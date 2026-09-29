@@ -7,10 +7,12 @@
 (in-package "ACL2")
 (include-book "../books/store-observed")
 (include-book "../books/history-columns-relation")
+(include-book "../books/open-frontier")
 ; D25: the duplicate-versus-conflict decision keys on the poster's bytes.
 (include-book "../books/poster-bytes")
 (include-book "../books/native-config-observation")
 (include-book "../books/store-sweep")
+(include-book "../books/limits-live")
 (include-book "../books/store-node-resolution")
 (include-book "../books/store-prepare-correspondence")
 (include-book "../books/store-budget")
@@ -258,6 +260,38 @@
   ; Each durable configuration record decodes exactly, or the list is :bad.
   (declare (xargs :mode :program))
   (fn-store-cfg-decode-records-loop octet-records nil))
+
+;; The open's frontier over the configuration history: each record names
+;; the next unconsumed Store txid when it was accepted (a POST refused on a
+;; full budget consumes its txid and leaves no record, so a record may stand
+;; above every event).  The fold is books/open-frontier.lisp
+;; fn-ofr-configs-next, the configuration half of fn-ofr-frontier, which
+;; fn-ofr-replay-ok-frontier-admits proves admits every history the replay
+;; accepts (the checkpoint-damaged bug, operability review 2026-09-29).
+;; :bad records answer ACC: the open refuses them itself.
+(defun fn-store-cfg-next-txid (octet-records acc)
+  (declare (xargs :mode :program))
+  (let ((records (fn-store-cfg-decode-records octet-records)))
+    (if (equal records :bad)
+        (nfix acc)
+      (fn-ofr-configs-next records acc))))
+
+;; The served profile: the sealed one under the configuration history's
+;; :set-limit rows (books/limits-live.lisp fn-lim-effective).
+(defun fn-store-lim-effective (sealed octet-records)
+  (declare (xargs :mode :program))
+  (let ((records (fn-store-cfg-decode-records octet-records)))
+    (if (equal records :bad)
+        sealed
+      (fn-lim-effective sealed records))))
+
+;; Row S1: the offline store's use a limit decision reads, (TRANSACTIONS
+;; HISTORY-OCTETS) of the replayed Store (store-budget.lisp fn-sbud-used,
+;; fn-sbud-bytes-used), for `policy set' with no owner running.
+(defun fn-store-lim-use (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((sn (f-get-global 'fn-store-sn state)))
+    (value (list (fn-sbud-used sn) (fn-sbud-bytes-used sn)))))
 
 (defun fn-store-cfg-native-admin-authorize
     (octet-records frontier config-octet-records record-octets lock-owned observed-name-octets

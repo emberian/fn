@@ -3981,7 +3981,7 @@
     {
       "id": "PRF-088",
       "title": "Content reclamation removes only unheld payload bytes and every history decision reads the same afterwards",
-      "statement": "fn-rcl-reclaimable-is-no-obligation-names-it: (fn-rcl-reclaimable rule now h verdicts article) (the standing verdict fn-rcl-standing-verdict, which reads no payload; the tombstone test is the caller's on the octets it holds: the record's own payload in fn-rclp-rewrites-p, the arena in fn-rcl-verdict-in, the payload in the octet model fn-rcl-verdict, fn-rcl-verdict-reclaimable-by-definition) equals: rule not keep-forever and a rule, the rule permits the article's stamp at now, no authorship verdict other than :absent (fn-rcl-verdict-heldp), and no obligation of (fn-rcl-obligations h) -- reader pin, consumer cursor, undelivered feed to a live peer, BP obligation -- names the article; no hypothesis. fn-rcl-reclaim-never-touches-a-held-article: if an obligation names the article or the rule is keep-forever, fn-rcl-reclaim-if-permitted is the identity. fn-rcl-reclaim-keeps-the-duplicate-history: fn-acceptedp of every Message-ID is unchanged, no hypothesis. fn-rcl-reclaim-keeps-every-binding and fn-rcl-reclaim-keeps-the-numbering: groups, memberships, pin, stamp, per-group next numbers, next txid and pending unchanged; every other article unchanged. fn-rcl-reclaim-preserves-statep: under fn-statep. fn-rcl-prepare-commutes-with-reclaim: under fn-statep, fn-accept-prepare after reclaiming equals reclaiming after fn-accept-prepare. fn-rcl-existing-action-after-reclaim: for an article M present and not already a tombstone, the D25 verdict fn-rcl-action-over (the host entry fn-store-existing-action is it over alpha, fn-store-existing-action-is-the-verdict-over-alpha) for every Message-ID, submission and groups is unchanged, or SHA-256 collides on the compared pair, or the submission names another agent under which the removed payload gives back a source. fn-rcl-config-rule-after-retention-set: under fn-rcl-rulep, the rule read after fn-cfg-apply of fn-rcl-rule-deltas is the rule, on any prior value. fn-nntp-reclaimed-article-answers-reclaimed: fn-nntp-article-response on an article with a usable identifier and a tombstone payload answers 423 (number or current) or 430 (Message-ID) article reclaimed. fn-rclb-same-articlep-is-rcl-same-articlep: under fn-octets-p (the buffer's recognizer), the buffer comparison fn-rclb-same-articlep, which the native owner's buffer verdict fn-pidx-existing-action makes (host/owner-host.lisp fn-owner-existing-action-buffer, fn-owner-prepare-buffer), equals the list comparison fn-rcl-same-articlep; the list sites call fn-store-existing-action (host/owner-host.lisp fn-owner-prepare, fn-owner-existing-action; host/store-node-host.lisp prepare and fn-store-sn-existing-action). The store-shaped twins fn-rcl-existing-action and fn-rclb-existing-action, which compared with the held handle, were retired (PKT-860, entry-guards-2). fn-nntp-over-by-msgid-answers-reclaimed: for a Message-ID token naming a held tombstone, fn-nntp-over-response (called by fn-nntp-archive-command) answers 430 article reclaimed; fn-nntp-over-current-answers-reclaimed: with a selected group and a current article that is a tombstone, 423 article reclaimed. fn-nov-lines-indexed-skip-a-reclaimed-article (subject of fn-nntp-over-range-indexed, the pinned OVER/XOVER range) and fn-nov-lines-skip-a-reclaimed-article (unpinned): the lines over NUMBERS equal the lines over NUMBERS without a tombstoned article's number. fn-nntp-newnews-scan-lists-only-live-articles: every Message-ID fn-nntp-newnews-scan lists is that of an article that is not a tombstone; no other hypothesis. fn-rcl-store-holders-hold-behind-a-lagging-consumer: while a registered consumer's acknowledgement is below the committed frontier, no article numbered (n >= 1) in a served group is reclaimable under fn-rcl-store-holders, for every rule, clock and verdict list. fn-rcl-absent-verdict-contributes-nothing: when fn-stx-verdict-of-octets of a payload under any keyring is :absent, fn-stx-delta of that payload is nil under every keyring, so an :absent verdict holds nothing; with fn-sn-finish-records-the-acceptance-verdict (the recorded verdict is fn-stx-verdict-of-octets of the payload) and fn-rcl-tombstone-contributes-nothing (fn-stx-delta of any payload satisfying fn-rcl-tombstonep is nil under every keyring), reclaiming such an article leaves the statement index every later open derives unchanged. fn-rcl-tombstone-refused-at-carrier-form: every payload satisfying fn-rcl-tombstonep gets (:refused :article) from fn-pa-carrier-form, which the host calls as fn-owner-peer-carrier-form (host/owner-host.lisp) in host/native/owner.lisp fnn-owner-attempt-transit before any Store call, on every served ingress (POST, IHAVE, TAKETHIS, peer and BP transit, bound submissions); no other hypothesis. Its keystone lemma fn-rca-nul-first-octet-is-not-an-article: an octet string whose first octet is 0 does not parse (fn-article-parse), no other hypothesis. Not covered: the developer image's store post (host/native/io.lisp fnn-command-post), which prepares a raw payload file without an article check. PKT-844 (lane bp-retention-leftovers): each article is in exactly one retention class, fn-rcl-class-in (books/store-reclaim-holders.lisp): :reclaimed (tombstone), :signed (an authorship verdict other than :absent names it: every kind-4 composite, served key statements among them), :reclaimable, :held (a holder), :kept (the rule keeps it). KEYSTONE fn-rcl-store-classes-partition-the-articles: reclaimable + reclaimed + held (fn-rcl-store-counts) + signed + kept (fn-rcl-store-classes) = the Store's article count, the articles=N of the same status report (host: books/native-live-status.lisp fn-nls-reclaim-words, `signed=N kept=N'). fn-rcl-signed-article-is-never-reclaimable: a signed article is not reclaimable under any rule, clock or holders.",
+      "statement": "fn-rcl-reclaimable-is-no-obligation-names-it: (fn-rcl-reclaimable rule now h verdicts article) (the standing verdict fn-rcl-standing-verdict, which reads no payload; the tombstone test is the caller's on the octets it holds: the record's own payload in fn-rclp-rewrites-p, the arena in fn-rcl-verdict-in, the payload in the octet model fn-rcl-verdict, fn-rcl-verdict-reclaimable-by-definition) equals: rule not keep-forever and a rule, the rule permits the article's stamp at now, no authorship verdict other than :absent (fn-rcl-verdict-heldp), and no obligation of (fn-rcl-obligations h) -- reader pin, consumer cursor, undelivered feed to a live peer, BP obligation -- names the article; no hypothesis. fn-rclp-event-never-touches-a-held-article (of the per-record rewrite the host calls, fn-rclp-event: host/checkpoint-host.lisp fn-store-log-reclaim-event; shared with PRF-119): if an obligation names the record's article, or its verdict needs its payload, or the rule is keep-forever and the expiry policy has not expired it, the rewrite returns the same octets (the in-memory model's fn-rcl-reclaim-never-touches-a-held-article, fn-rcl-reclaim-if-permitted the identity, stays in books/store-reclaim.lisp, uncited: no host verb drives that transition). fn-rcl-reclaim-keeps-the-duplicate-history: fn-acceptedp of every Message-ID is unchanged, no hypothesis. fn-rcl-reclaim-keeps-every-binding and fn-rcl-reclaim-keeps-the-numbering: groups, memberships, pin, stamp, per-group next numbers, next txid and pending unchanged; every other article unchanged. fn-rcl-reclaim-preserves-statep: under fn-statep. fn-rcl-prepare-commutes-with-reclaim: under fn-statep, fn-accept-prepare after reclaiming equals reclaiming after fn-accept-prepare. fn-rcl-existing-action-after-reclaim: for an article M present and not already a tombstone, the D25 verdict fn-rcl-action-over (the host entry fn-store-existing-action is it over alpha, fn-store-existing-action-is-the-verdict-over-alpha) for every Message-ID, submission and groups is unchanged, or SHA-256 collides on the compared pair, or the submission names another agent under which the removed payload gives back a source. fn-rcl-config-rule-after-retention-set: under fn-rcl-rulep, the rule read after fn-cfg-apply of fn-rcl-rule-deltas is the rule, on any prior value. fn-nntp-reclaimed-article-answers-reclaimed: fn-nntp-article-response on an article with a usable identifier and a tombstone payload answers 423 (number or current) or 430 (Message-ID) article reclaimed. fn-rclb-same-articlep-is-rcl-same-articlep: under fn-octets-p (the buffer's recognizer), the buffer comparison fn-rclb-same-articlep, which the native owner's buffer verdict fn-pidx-existing-action makes (host/owner-host.lisp fn-owner-existing-action-buffer, fn-owner-prepare-buffer), equals the list comparison fn-rcl-same-articlep; the list sites call fn-store-existing-action (host/owner-host.lisp fn-owner-prepare, fn-owner-existing-action; host/store-node-host.lisp prepare and fn-store-sn-existing-action). The store-shaped twins fn-rcl-existing-action and fn-rclb-existing-action, which compared with the held handle, were retired (PKT-860, entry-guards-2). fn-nntp-over-by-msgid-answers-reclaimed: for a Message-ID token naming a held tombstone, fn-nntp-over-response (called by fn-nntp-archive-command) answers 430 article reclaimed; fn-nntp-over-current-answers-reclaimed: with a selected group and a current article that is a tombstone, 423 article reclaimed. fn-nov-lines-indexed-skip-a-reclaimed-article (subject of fn-nntp-over-range-indexed, the pinned OVER/XOVER range) and fn-nov-lines-skip-a-reclaimed-article (unpinned): the lines over NUMBERS equal the lines over NUMBERS without a tombstoned article's number. fn-nntp-newnews-scan-lists-only-live-articles: every Message-ID fn-nntp-newnews-scan lists is that of an article that is not a tombstone; no other hypothesis. fn-rcl-store-holders-hold-behind-a-lagging-consumer: while a registered consumer's acknowledgement is below the committed frontier, no article numbered (n >= 1) in a served group is reclaimable under fn-rcl-store-holders, for every rule, clock and verdict list. fn-rcl-absent-verdict-contributes-nothing: when fn-stx-verdict-of-octets of a payload under any keyring is :absent, fn-stx-delta of that payload is nil under every keyring, so an :absent verdict holds nothing; with fn-sn-finish-records-the-acceptance-verdict (the recorded verdict is fn-stx-verdict-of-octets of the payload) and fn-rcl-tombstone-contributes-nothing (fn-stx-delta of any payload satisfying fn-rcl-tombstonep is nil under every keyring), reclaiming such an article leaves the statement index every later open derives unchanged. fn-rcl-tombstone-refused-at-carrier-form: every payload satisfying fn-rcl-tombstonep gets (:refused :article) from fn-pa-carrier-form, which the host calls as fn-owner-peer-carrier-form (host/owner-host.lisp) in host/native/owner.lisp fnn-owner-attempt-transit before any Store call, on every served ingress (POST, IHAVE, TAKETHIS, peer and BP transit, bound submissions); no other hypothesis. Its keystone lemma fn-rca-nul-first-octet-is-not-an-article: an octet string whose first octet is 0 does not parse (fn-article-parse), no other hypothesis. Not covered: the developer image's store post (host/native/io.lisp fnn-command-post), which prepares a raw payload file without an article check. PKT-844 (lane bp-retention-leftovers): each article is in exactly one retention class, fn-rcl-class-in (books/store-reclaim-holders.lisp): :reclaimed (tombstone), :signed (an authorship verdict other than :absent names it: every kind-4 composite, served key statements among them), :reclaimable, :held (a holder), :kept (the rule keeps it). KEYSTONE fn-rcl-store-classes-partition-the-articles: reclaimable + reclaimed + held (fn-rcl-store-counts) + signed + kept (fn-rcl-store-classes) = the Store's article count, the articles=N of the same status report (host: books/native-live-status.lisp fn-nls-reclaim-words, `signed=N kept=N'). fn-rcl-signed-article-is-never-reclaimable: a signed article is not reclaimable under any rule, clock or holders.",
       "milestone": "M5",
       "requirements": [
         "STO-014"
@@ -5029,7 +5029,7 @@
     {
       "id": "PRF-119",
       "title": "`store reclaim` rewrites only unheld legacy article records to their tombstones, converges, and frees exactly the octets admission counts",
-      "statement": "Subject: the per-record rewrite fn-rclp-event (host/checkpoint-host.lisp fn-store-log-reclaim-event, called per record by host/native/checkpoint.lisp fnn-log-reclaim-steps) under the context fn-rclp-ctx (fn-store-reclaim-context); fn-rclp-events is its map over the history (books/store-log-reclaim.lisp fn-lgr-rewrites-are-the-events), and PRF-271 (fn-lgr-decide-checkpoints-the-rewrite) makes it the history the log's checkpoint holds. fn-rclp-events-keep-the-summary-shape: fn-cc-octet-event-listp of the rewrite equals fn-cc-octet-event-listp of the history, for every sequence, lower and upper, no hypothesis. fn-rclp-event-decodes-to-the-tombstoned-record: a rewritten event decodes to the record with every field equal but the payload, which is fn-rcl-tombstone-of the old payload, and the charge, which is the history unit *fn-rclp-history-unit* (1). fn-rclp-rewritten-charge-is-the-history-unit: the charge a rewritten event carries into the ledger is the history unit, an unrewritten event carries its own; fn-rclp-freed-charge-account sums the released charge over the list. fn-rclp-events-never-touch-a-held-article: if the I-th event's record's article is named by an obligation of fn-rcl-obligations h, or its verdict needs its payload (fn-rcl-verdict-heldp), or the rule is keep-forever and the expiry policy's set (the context's sixth element, PRF-918) does not name it, the I-th event is byte-identical; the context is the one fn-rclp-ctx-expiring builds, its seventh element fn-rclp-article-index of its articles (PRF-934). fn-rclp-events-keep-every-other-kind: an event that does not decode as a legacy record (accepted-statement composites and every other kind) is byte-identical. fn-rclp-a-reclaimed-event-stays-reclaimed: a rewritten event is not rewritten again under any context; fn-rclp-events-idempotent under the same context. fn-rclp-freed-is-the-admission-count: for a rewritten event the fn-store-event-encode lengths the admission gate sums (fn-sbud-record-octets) fall by exactly the event's length less its replacement's; fn-rclp-freed-octets-account sums it over the list. The operator keystones: `store reclaim` and `store reclaim --dry-run` are exactly the :reclaim and :reclaim-dry-run native actions.",
+      "statement": "Subject: the per-record rewrite fn-rclp-event (host/checkpoint-host.lisp fn-store-log-reclaim-event, called per record by host/native/checkpoint.lisp fnn-log-reclaim-steps) under the context fn-rclp-ctx (fn-store-reclaim-context); fn-rclp-events is its map over the history (books/store-log-reclaim.lisp fn-lgr-rewrites-are-the-events), and PRF-271 (fn-lgr-decide-checkpoints-the-rewrite) makes it the history the log's checkpoint holds. fn-rclp-events-keep-the-summary-shape: fn-cc-octet-event-listp of the rewrite equals fn-cc-octet-event-listp of the history, for every sequence, lower and upper, no hypothesis. fn-rclp-event-decodes-to-the-tombstoned-record: a rewritten event decodes to the record with every field equal but the payload, which is fn-rcl-tombstone-of the old payload, and the charge, which is the history unit *fn-rclp-history-unit* (1). fn-rclp-rewritten-charge-is-the-history-unit: the charge a rewritten event carries into the ledger is the history unit, an unrewritten event carries its own; fn-rclp-freed-charge-account sums the released charge over the list. fn-rclp-event-never-touches-a-held-article (keystone, of the hosted fn-rclp-event; fn-rclp-events-never-touch-a-held-article is its map over the history, uncited): if the record's article is named by an obligation of fn-rcl-obligations h, or its verdict needs its payload (fn-rcl-verdict-heldp), or the rule is keep-forever and the expiry policy's set (the context's sixth element, PRF-918) does not name it, the rewrite returns the same octets; the context is the one fn-rclp-ctx-expiring builds, its seventh element fn-rclp-article-index of its articles (PRF-934). fn-rclp-events-keep-every-other-kind: an event that does not decode as a legacy record (accepted-statement composites and every other kind) is byte-identical. fn-rclp-a-reclaimed-event-stays-reclaimed: a rewritten event is not rewritten again under any context; fn-rclp-events-idempotent under the same context. fn-rclp-freed-is-the-admission-count: for a rewritten event the fn-store-event-encode lengths the admission gate sums (fn-sbud-record-octets) fall by exactly the event's length less its replacement's; fn-rclp-freed-octets-account sums it over the list. The operator keystones: `store reclaim` and `store reclaim --dry-run` are exactly the :reclaim and :reclaim-dry-run native actions.",
       "milestone": "M5",
       "requirements": [
         "STO-017"
@@ -10919,7 +10919,7 @@
         "PRF-299"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-prepare-outcome.lisp",
         "tests/acl2/owner-prepare-outcome-tests.lisp",
@@ -12451,7 +12451,7 @@
     {
       "id": "PRF-339",
       "title": "A web session is made only by the node's 281 to the AUTHINFO its sign-in sent, bound to that connection and login; a route that needs a session sends nothing without one; every send of a request goes to its own session's connection; a posted body can never end the article early",
-      "statement": "books/web-session.lisp, books/web-session-keystones.lisp. Subject: fn-web-step (host/web-host.lisp fn-web-host-step, called by host/native/web-host.lisp fnn-web-request for every event). KEYSTONES fn-web-session-route-needs-its-session, fn-web-session-sends-only-to-its-connection (at :begin to the connection of the session the request's token names, later to the flow's session's), fn-web-sessions-bound-by-281 (a session whose token the table did not hold was made by the reply to AUTHINFO whose PASS reply is 281, bound to the flow's connection and login), fn-wss-body-cannot-end-the-article with fn-wss-emit-body-is-stuff. The group access a session meets is the NNTP one by construction: its pages are rendered from the replies to its own connection (books/group-access.lisp).",
+      "statement": "books/web-session.lisp, books/web-session-keystones.lisp. Subject: fn-web-step (host/web-host.lisp fn-web-host-step, called by host/native/web-host.lisp fnn-web-request for every event). KEYSTONES fn-web-session-route-needs-its-session, fn-web-session-sends-only-to-its-connection (at :begin to the connection of the session the request's token names, later to the flow's session's), fn-web-step-admits-no-session-but-by-281 (of fn-web-step as the host calls it: a session whose token the table did not hold, and which no reply to AUTHINFO whose PASS reply is 281 made on the flow's connection for its login, is not in the table the step returns; fn-web-sessions-bound-by-281, the same property read from the new table, is uncited), fn-wss-body-cannot-end-the-article with fn-wss-emit-body-is-stuff. The group access a session meets is the NNTP one by construction: its pages are rendered from the replies to its own connection (books/group-access.lisp).",
       "milestone": "M6",
       "requirements": [
         "WEB-005"
@@ -14409,7 +14409,7 @@
         "PRF-274"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-host-relation.lisp",
         "tests/acl2/owner-host-relation-tests.lisp"
@@ -14435,7 +14435,7 @@
         "PRF-286"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-host-relation.lisp",
         "tests/acl2/owner-host-relation-tests.lisp"
@@ -14474,7 +14474,7 @@
         "PRF-286"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-host-relation.lisp"
       ],
@@ -14741,7 +14741,7 @@
         "PRF-921"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-number-bound.lisp",
         "tests/acl2/owner-number-bound-tests.lisp"
@@ -15089,6 +15089,200 @@
         "fn-sfk-carry-checks-ok",
         "fn-assume-carried-pair-is-carried",
         "fn-sfp-carried-open-under-carried-pair"
+      ]
+    },
+    {
+      "id": "PRF-937",
+      "title": "The open's transaction frontier admits every history the replay accepts: a configuration record above every event (refused POSTs on a full budget) no longer makes a clean store checkpoint-damaged",
+      "statement": "Subject: the configured open's frontier, host/native/io.lisp fnn-recover-log and host/store-open-host.lisp (the extraction open) joining host/store-node-host.lisp fn-store-cfg-next-txid = books/open-frontier.lisp fn-ofr-configs-next with the events' fold and the checkpoint floor; the replay is books/config-physical-replay.lisp fn-cpr-replay, and the check it passes is fn-rii-sco-finalize-configured's fn-rii-advance-idlep (= fn-replay-advance-okp, fn-rii-advance-idlep-is-advance-okp). fn-ofr-replay-ok-frontier-admits: whenever fn-cpr-replay accepts a history (any interleaving of Store events of every kind -- articles, composites, retention undertakings and releases, identity, consumer and topic events -- and configuration records, with any txid gaps, which is what a refused or aborted transaction leaves) and FLOOR is a natural, the replayed node is idle at or below fn-ofr-frontier (the max of every event's txid+1, every configuration record's txid, FLOOR). fn-ofr-loop-ok-within-frontier is the general form from any idle node at or below ACC (the open over a checkpoint: ACC its floor). Scope: the host's events fold (fn-store-log-next-txid-of-events) reads wire events, not the interned rows the replay reads; their txids agree by fn-rcon-wire-event-txid-is-wire-event-txid / fn-rcon-store-event-txid-is-store-event-txid, not restated here. That the durable history a clean stop leaves replays :ok is lane closure-theorems' (books/closure-open.lisp).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-011",
+        "STO-025"
+      ],
+      "depends_on": [
+        "PRF-083",
+        "PRF-186"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/open-frontier.lisp",
+        "tests/acl2/open-frontier-tests.lisp",
+        "tests/test_native_checkpoint_auto.py"
+      ],
+      "progress_note": "Lane limits-live-2 (2026-09-29), row B10: the checkpoint-damaged bug of the operability review's walk F3.",
+      "events": [
+        "fn-ofr-replay-ok-frontier-admits",
+        "fn-ofr-loop-ok-within-frontier",
+        "fn-ofr-apply-record-idle-past-txid"
+      ]
+    },
+    {
+      "id": "PRF-940",
+      "title": "A store limit (T, H, A) is a configuration event over the sealed profile: replayed identically by every open, and an accepted change leaves the store's use within the new limit",
+      "statement": "Subject: the served profile, host/native/io.lisp fnn-load-config calling host/store-node-host.lisp fn-store-lim-effective = books/limits-live.lisp fn-lim-effective over the decoded configuration records (the open, and the launcher's heap probe through it); and the decision the `policy set max-transactions|max-history-octets|max-article-octets N` verb takes, fn-lim-decide. fn-lim-effective-of-append-record: the profile the owner installs when it applies record R (R's :set-limit rows over the profile it serves) is the profile every later open computes from the history R ends. fn-lim-apply-deltas-of-the-verb: the verb's row (fn-lim-deltas) applied is fn-lim-apply-row for a live field. fn-lim-decide-accepted-keeps-use-within: an accepted decision (:applied or :at-restart) names a live field, leaves an admitted profile, and the store's use of that field (committed transactions, or history octets charged) at or below the new limit; an :applied decision's heap figure fits the reservation the running process holds. Refusals are by name with the number: below-current-use, not-a-live-limit, profile-invalid, and heap-figure's machine refusals. Scope: the use the host passes is the owner's budget reading at the decision; that admission keeps it below T afterwards is store-budget's fn-sbud-admitp, not restated here.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-038"
+      ],
+      "depends_on": [
+        "PRF-937"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/limits-live.lisp",
+        "tests/acl2/limits-live-tests.lisp"
+      ],
+      "progress_note": "Lanes limits-live (book), limits-live-3 (teeth, registry) 2026-09-29, row S1.",
+      "events": [
+        "fn-lim-effective-of-append-record",
+        "fn-lim-apply-deltas-of-the-verb",
+        "fn-lim-decide-accepted-keeps-use-within"
+      ]
+    },
+    {
+      "id": "PRF-945",
+      "title": "The open accepts every state a clean stop leaves: at the frontier the open computes from its own records, a clean stop is refused neither :history-by-frontier, nor :replay, nor :frontier -- its answer is the open or the carried contexts' :identity refusal",
+      "statement": "Subject: the host's store open, host/store-node-host.lisp and host/owner-host.lisp calling books/store-checkpoint-open.lisp fn-sco-store-open (= fn-rii-sco-store-open, PRF-321), whose :logic finalize is fn-sco-finalize. fn-clo-finalize-never-answers-frontier-at-the-computed-frontier: for ANY checkpoint C of a history (CONFIGS, EVENTS) -- C's records are EVENTS and C's drained fold is fn-cpr-replay CONFIGS EVENTS; fn-sco-capture is one (fn-sco-replay-of-capture) -- and any natural FLOOR, the finalize at fn-ofr-frontier CONFIGS EVENTS FLOOR (books/open-frontier.lisp, PRF-937) is not (fn-sn-open-error :frontier): the :frontier arm is dead at the computed frontier. fn-clo-clean-stop-is-accepted-or-identity (keystone): when moreover the history is a clean stop (fn-cst-recoverablep CONFIGS EVENTS FRONTIER, books/config-store-traces.lisp, the state the store steps carry, books/config-store-steps.lisp fn-cstp-recoverable-facts), CONFIGS is non-empty and EVENTS is an observed history below the computed frontier (fn-sn-observed-historyp), the finalize's answer has kind :ok or is (fn-sn-open-error :identity). fn-clo-capture-of-clean-stop-is-accepted-or-identity and fn-clo-store-open-of-clean-stop-is-accepted-or-identity: the same of fn-sco-capture CONFIGS EVENTS and of the second value of fn-sco-store-open on it. fn-clo-observed-at-the-computed-frontier: an observed history below the recorded frontier is observed below the computed one (the frontier enters fn-sf-record-listp only as the bound (< txid frontier), and the events fold is above every event's txid), so fn-clo-capture-of-clean-stop-opens-or-identity needs only the recorded frontier's premises plus the uint32 bound on the computed frontier, and fn-clo-relation-state-opens-or-identity states it of any state fn-cst-relation describes (books/config-store-traces.lisp: what the store steps carry): its history opens, or is refused :identity; witness config-observed-tests' ready state, answer :ok. Scope: 'the frontier the host passes is fn-ofr-frontier' rests on PRF-937's config half (host-called) and the events half by transcription (host/store-host.lisp fn-store-log-next-txid-of-events, program mode, owed); fn-sn-observed-historyp at the computed frontier is a hypothesis (the trace relation carries it at the recorded frontier); the host's extended captures reduce to the capture by fn-sco-extend-of-capture. Teeth: tests/acl2/closure-open-tests.lisp -- the positive witness on open-frontier-tests' fixture (every hypothesis, the conclusion, and which disjunct: the open); the mutation witness (at frontier 6, not the fold, the same clean stop IS refused :frontier); the hypothesis-removal witness (a history whose configuration chain starts at the late record: retained hypotheses affirmed, fn-cst-recoverablep fails, the conclusion fails, the answer is :replay).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-011",
+        "STO-025"
+      ],
+      "depends_on": [
+        "PRF-937",
+        "PRF-321"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/closure-open.lisp",
+        "tests/acl2/closure-open-tests.lisp"
+      ],
+      "progress_note": "Lane closure-theorems-2 (2026-09-29), row X1/K6's composition (C): the two halves (limits-live-2's PRF-937 and config-store-steps' clean stop) meet at the host's finalize.",
+      "events": [
+        "fn-clo-clean-stop-is-accepted-or-identity",
+        "fn-clo-finalize-never-answers-frontier-at-the-computed-frontier",
+        "fn-clo-capture-of-clean-stop-is-accepted-or-identity",
+        "fn-clo-store-open-of-clean-stop-is-accepted-or-identity",
+        "fn-clo-relation-state-opens-or-identity",
+        "fn-clo-capture-of-clean-stop-opens-or-identity",
+        "fn-clo-observed-at-the-computed-frontier"
+      ]
+    },
+    {
+      "id": "PRF-950",
+      "title": "An operator's waiver of a BP carry obligation (carry drop WORK --abandon) releases its Store pin exactly once, through the receipt's own retention event, and nothing but a waiver or a receipt releases it",
+      "statement": "books/bp-carry-waiver.lisp. KEYSTONE fn-bpcw-waiver-releases-exactly-once: when books/bp-carry-control.lisp fn-bpcc-waiver-release-event authors an event for W (the carry overlay holds W's waiver and W's :forward pin stands), the Store's retention step for it (books/retention.lisp fn-retain-release, kind :forward, the arm books/store-node-retention.lisp applies to a Store :release event) removes exactly W's obligation pin from a retention ledger in fn-retain-statep; afterwards W is not pinned, the waiver authors no second event, and no receipt's release decision (fn-bprl-release-okp) is admissible for W. fn-bpcw-only-a-waiver-waives / -authors-a-waiver-release: no carry record but a waiver of W (a drop without --abandon among them) makes W waived or authors this event. fn-bpcw-admitted-waiver-authors-its-release: a waiver fn-bpcc-waiver-refusal admits authors the event with the pin's own id, subject and evidence (the receipt's event shape: one release path). fn-bpcw-waiver-of-an-unheld-obligation-is-refused: refused by name (:unknown-work, :already-waived, :not-held). fn-bpcw-refusal-ignores-the-pin: the replay admissibility does not read retention, so the waiver replays after its own release. Subjects: host/workflow-host.lisp fn-workflow-carry-record (the decision; called by host/native/bp-obligation.lisp fnn-carry-execute), host/bp-release-owner-host.lisp fn-owner-workflow-store-waive and fn-owner-workflow-pending-waivers (the event and the recovery list; called by fnn-bpo-waiver-release and fnn-bpo-complete-waivers, which publish through host/native/owner.lisp fnn-owner-retention-commit), host/workflow-host.lisp fn-workflow-receipt-record (fn-bpcc-receipt-gate: a receipt for a waived work is refused, carry-waived). The Store step itself is cited from books/store-node-retention.lisp (fn-snrt-retention-of-apply-retention-event, local there): the theorem is stated over fn-retain-release with the event's fields.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-035"
+      ],
+      "depends_on": [
+        "PRF-914"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/bp-carry-waiver.lisp",
+        "books/bp-carry-control.lisp",
+        "books/bp-carry-frame.lisp",
+        "tests/acl2/bp-carry-waiver-tests.lisp",
+        "tests/test_native_bp_carry_abandon.py"
+      ],
+      "progress_note": "Lane carry-abandon (2026-09-29): REPL-admitted on hbox (bp-carry-control, bp-carry-waiver 0.96 s, the teeth book). Teeth: a reachable positive witness over an undertaken work (every hypothesis and conclusion), the drop-without-abandon witness (no event, pin kept), a CORRUPTED-STATE witness for the retention hypothesis (a ledger holding the pin twice keeps it pinned after one release), refusals by name (not-held before undertaking and after the release, unknown-work, already-waived), replay of the waiver over the released image, the receipt gate, the FNCC :waive frame round trip.",
+      "events": [
+        "fn-bpcw-waiver-releases-exactly-once",
+        "fn-bpcw-only-a-waiver-waives",
+        "fn-bpcw-only-a-waiver-authors-a-waiver-release",
+        "fn-bpcw-admitted-waiver-authors-its-release",
+        "fn-bpcw-waiver-of-an-unheld-obligation-is-refused",
+        "fn-bpcw-refusal-ignores-the-pin"
+      ]
+    },
+    {
+      "id": "PRF-957",
+      "title": "The Message-ID index on pages: a lookup that reads the tag's home page and its overflow page, merges their sequence numbers and confirms each against the row is the history's Message-ID reader, for every tag function (lane paged-history, row P2)",
+      "statement": "Subjects: books/msgid-pages.lisp fn-mpx-records (the paged reader: fn-mpx-confirm over fn-mpx-candidates of the Message-ID's tag) against fn-hist$a-msgid-records (the logic of the host-called fn-hist-msgid-records, books/history-columns; = fn-cei-article-records-for). No host line reads the pages at this revision: the executable half (the pages as page-store words, the BLAKE3 tag by functional instantiation of fn-mpx-tag, the suffix index and its merge at the checkpoint) and the host switch of fn-cat-view-find / fn-pidx-existing-action / the -hx twins are the next READYs of the row. KEYSTONE fn-mpx-confirm-is-the-records-for (the indexed-access refinement, reusable by every paged index): for any candidate list of sequence numbers that is a nat-listp, strictly ascending (fn-mpx-ascendingp), below the history's length (fn-mpx-below-p) and complete (fn-mpx-complete-from 0: every sequence whose row is a held article with the Message-ID is a member), fn-mpx-confirm (the records at the candidates whose Message-ID is the one asked, in candidate order) equals fn-cei-article-records-for. KEYSTONE fn-mpx-records-is-the-records-for: under fn-mpx-tablep and fn-mpx-faithful (every page's seqs ascending and below the length; every held row's sequence among its own tag's candidates), fn-mpx-records equals fn-cei-article-records-for; fn-mpx-records-is-hist-msgid-records restates it against fn-hist$a-msgid-records. fn-mpx-candidates-ascending / -below / -nat-listp: the merge of the home and overflow pages' seqs for a tag inherits the pages' order and bound. The tag is a constrained function (encapsulate, local witness 1): the theorems hold for every tag because correctness is the confirmation's. Teeth: tests/acl2/msgid-pages-tests.lisp attaches a colliding tag (FNV-32 mod 3), checks the complete antecedent and conclusion on a four-row history (two records under one Message-ID in history order, one, none), an overflow placement and a labelled stale entry, and drops fn-mpx-table-okp (order fails) and fn-mpx-faithful-from (completeness fails) in turn with the conclusion failing.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-027"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/msgid-pages.lisp",
+        "tests/acl2/msgid-pages-tests.lisp",
+        "planning/design-paged-history-2026-09-29.md"
+      ],
+      "progress_note": "2026-09-29 lane paged-history: the logical book and its teeth REPL-admitted on persvati; certification manifest at the READY sha. Not yet on a host path: a model with its equality theorem, the first of row P2's READYs (planning/design-paged-history-2026-09-29.md C).",
+      "events": [
+        "fn-mpx-confirm-is-the-records-for",
+        "fn-mpx-records-is-the-records-for",
+        "fn-mpx-records-is-hist-msgid-records",
+        "fn-mpx-candidates-ascending",
+        "fn-mpx-candidates-below",
+        "fn-mpx-candidates-nat-listp",
+        "fn-mpx-spec-from-is-records-for"
+      ]
+    },
+    {
+      "id": "PRF-969",
+      "title": "The Message-ID table, executable: the reader over the table stobj's page-store words (whole home page, the run of full pages after it, candidates ascending by construction, the BLAKE3 tag) confirmed against the rows is the ascending walk of the rows carrying the Message-ID (lane paged-history-2, row P2)",
+      "statement": "Subjects: books/msgid-pages-exec.lisp fn-mpxt-seqs (the executable paged reader: fn-mpxt-confirm over fn-mpxt-candidates of fn-mpxt-tag, the first eight octets of fn-digest of the Message-ID's octets floored at 1; the table a defstobj fn-mpxt of u64 words in 2048-word page-store pages, 1,024 two-word slots (TAG, SEQ+1) a page, 0 the empty slot) against fn-mpxt-spec-from 0 (the walk: the sequences of the rows whose fn-record-msgid is the Message-ID, ascending). KEYSTONE fn-mpxt-seqs-is-spec-from: under fn-mpxt-faithful (fn-mpxt-okp: every slot's SEQ word in 1..the row count; fn-mpxt-faithful-from 0: every row's own sequence among its tag's candidates) the reader equals the walk, for every table and every key. Structure by construction: fn-mpxt-candidates-ascending and -nat-listp (each match is inserted into an ascending list, fn-mpxt-ins), fn-mpxt-candidates-below (under okp), fn-mpxt-faithful-from-complete; the refinement fn-mpxt-confirm-is-the-spec (an ascending, below, complete candidate list confirmed is the walk). The reader scans the tag's home page whole and continues only past a FULL page, so no placement invariant is assumed: the page need is one page plus the run of full pages (expected one at the writer's load of at most 1/2; correct and bounded by the page count in every store, design B.3's L-MPX-OVERFLOW). The writer (fn-mpxt-put at the first empty slot of the first non-full page of the run; fn-mpxt-add grows at half the slots, doubling and re-placing every entry) is guard-verified with its shape lemmas; its preservation of fn-mpxt-faithful is the row's next READY. No host line reads the table at this revision: the catalog's concrete reader fn-cat$c-msgid-seqs switches to it in the catalog's next edit (PRF-970 is the bridge). Teeth tests/acl2/msgid-pages-exec-tests.lisp: a positive witness on three rows (two under one Message-ID) built by the writer on the live stobj, a 520-row build that grows to two pages, faithful-from removed (an unindexed row: the reader misses it) and okp removed (a stale sequence beyond the rows under the empty key's tag: the reader answers a sequence no row has), each with every retained hypothesis checked. The writer's preservation (the second READY): fn-mpxt-put-preserves-faithful -- under fn-mpxt-faithful over ROWS, placing (fn-mpxt-tag (fn-record-msgid h), (len rows)) by fn-mpxt-put keeps fn-mpxt-faithful over (append rows (list h)); by fn-mpxt-put-run-finds (the run of the written tag from its home page reaches the written entry: put-run and the reader walk the same pages, a page that was full stays full), fn-mpxt-put-run-run-subsetp (a write into an empty slot only grows every tag's candidates), fn-mpxt-pages-okp-of-put-run and fn-mpxt-faithful-from-of-put-run. Growth's preservation (fn-mpxt-grow, the rehash) is open: a slot-counting argument (LANEDUMP NEXT). The page layout is two columns a page (slot J's TAG at word J, its SEQ+1 at word 1024+J) so every slot-disjointness fact is linear arithmetic.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-957"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/msgid-pages-exec.lisp",
+        "tests/acl2/msgid-pages-exec-tests.lisp",
+        "planning/design-paged-history-2026-09-29.md"
+      ],
+      "progress_note": "2026-09-29 lane paged-history-2: the executable table and its reader keystone REPL-admitted on persvati; certification manifest at the READY sha. Not yet on a host path: the catalog's concrete stobj adopts the table in the row's next edit (the switch and the deletion of fn-cat$c-msgids are one edit: the reader is behind the abstract stobj, no host line names it).",
+      "events": [
+        "fn-mpxt-seqs-is-spec-from",
+        "fn-mpxt-confirm-is-the-spec",
+        "fn-mpxt-faithful-from-complete",
+        "fn-mpxt-candidates-ascending",
+        "fn-mpxt-candidates-below",
+        "fn-mpxt-candidates-nat-listp",
+        "fn-mpxt-put-preserves-faithful",
+        "fn-mpxt-put-run-finds",
+        "fn-mpxt-pages-okp-of-put-run",
+        "fn-mpxt-faithful-from-of-put-run"
+      ]
+    },
+    {
+      "id": "PRF-970",
+      "title": "The paged Message-ID reader is the catalog's Message-ID column: fn-mpxt-seqs equals fn-cat$a-msgid-seqs, the logic of the host-served fn-cat-msgid-seqs, under fn-mpxt-faithful (lane paged-history-2, row P2)",
+      "statement": "Subjects: books/msgid-pages-catalog.lisp fn-mpxt-seqs (books/msgid-pages-exec) against fn-cat$a-msgid-seqs (books/catalog: the logic function of the abstract stobj export fn-cat-msgid-seqs that every served Message-ID finder calls: served-columns fn-scol-find-row, served-catalog fn-scat-msgid-article, served-catalog-owner). KEYSTONE fn-mpxt-seqs-is-cat-msgid-seqs: under fn-mpxt-faithful over the catalog's rows, the paged reader's answer is the column's (fn-cat-seqs-for from 0), by fn-mpxt-spec-from-is-cat-seqs-for (the nth-walk from I is the catalog's cdr-walk over the rows from I) composed with PRF-969's keystone. The theorem the catalog's {correspondence} obligation for fn-cat-msgid-seqs cites once fn-cat$c-msgid-seqs reads a nested fn-mpxt instead of the hash fn-cat$c-msgids (design B.6, the 5u method: the export's logic is unchanged, so no served book changes). Teeth: tests/acl2/msgid-pages-exec-tests.lisp mpxe-catalog-witness (fn-cat$a-msgid-seqs on the positive fixture equals the reader's answers).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-969"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/msgid-pages-catalog.lisp",
+        "tests/acl2/msgid-pages-exec-tests.lisp",
+        "planning/design-paged-history-2026-09-29.md"
+      ],
+      "progress_note": "2026-09-29 lane paged-history-2: REPL-admitted on persvati with the exec book; certification manifest at the READY sha. The catalog's concrete edit that cites it is the row's next READY.",
+      "events": [
+        "fn-mpxt-seqs-is-cat-msgid-seqs",
+        "fn-mpxt-spec-from-is-cat-seqs-for"
       ]
     }
   ]
