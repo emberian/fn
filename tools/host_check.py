@@ -398,7 +398,7 @@ WORLD_UNBOUND = re.compile(r"\(DEF[A-Z-]*\s+([^\s()]+)\):\s+The variable ([^\s]+
 
 
 def classify_load(output: str, world_defined: set[str], world_source: str,
-                  definers: dict[str, str] | None = None
+                  definers: dict[str, str] | None = None, world_loaded: bool = False
                   ) -> tuple[list[str], dict[str, int], bool]:
     """(findings, counts, completed) from a --load transcript.
 
@@ -477,6 +477,15 @@ def classify_load(output: str, world_defined: set[str], world_source: str,
                 continue  # the summary of UNDEFINED lines, classified there
             label = next((label for words, label in FAILING_WARNINGS
                           if words in lowered), None)
+            if label == "redefinition" and world_loaded:
+                # Over the certified world, a raw file's defun of a book
+                # function is the image's intended raw override (extent.lisp,
+                # signatures.lisp): what the build does.  Only a name a
+                # second RAW file defines is a finding (item 40, hbox run).
+                overridden = re.search(r"redefining (?:ACL2_\*1\*_)?ACL2::(\S+)", text)
+                if overridden and in_world(overridden.group(1), world_defined, world_source):
+                    counts["warnings"] += 1
+                    continue
             if label:
                 findings.append(f"{label} (in or before {current}): {text}")
             else:
@@ -670,7 +679,7 @@ def load_check(acl2: Path, files: list[str], timeout: int,
             return load_check(bare_acl2 or acl2, files, timeout, log_dir, None, note)
     source = world_text()
     findings, counts, completed = classify_load(output, world_names(source), source,
-                                                raw_definers())
+                                                raw_definers(), world is not None)
     if world is not None:
         prefix_findings, reached = world_findings(output)
         findings = prefix_findings + findings

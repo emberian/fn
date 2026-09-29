@@ -222,6 +222,20 @@ class WorldTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(len(sessions), 2)
 
+    def test_over_the_world_a_raw_override_of_a_book_function_is_not_a_finding(self):
+        warn = f"{host_check.LOAD_TAG}-WARN redefining ACL2::FN-SIG-VERIFY in DEFUN\n"
+        done = f"{host_check.LOAD_TAG}-DONE\n"
+        source = "(defun fn-sig-verify (x) x)"
+        found, _, _ = host_check.classify_load(warn + done, {"fn-sig-verify"}, source,
+                                               {}, world_loaded=True)
+        self.assertEqual(found, [])
+        found, _, _ = host_check.classify_load(warn + done, {"fn-sig-verify"}, source, {})
+        self.assertEqual(len(found), 1)
+        other = f"{host_check.LOAD_TAG}-WARN redefining ACL2::FNN-RAW-ONLY in DEFUN\n"
+        found, _, _ = host_check.classify_load(other + done, set(), "", {},
+                                               world_loaded=True)
+        self.assertEqual(len(found), 1)
+
     def test_a_prefix_error_names_its_host_file(self):
         tag = host_check.WORLD_LD
         output = ("ACL2 !>\n"
