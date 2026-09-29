@@ -224,15 +224,25 @@
 ; not answer `430 withdrawn'.  Its nil buckets are the empty view's own, so
 ; the correspondence fn-served-connp carries holds as stated and GROUP and
 ; LISTGROUP answer as the trie does (fn-gidx-listgroup-command-of-build).
+; The ONE definition of the choice (Q6, lane correctness-remainder-4): the
+; connection's, the owner connection's (books/served-catalog-join-conns.lisp
+; fn-scj-conn-pinned-index), the chain premise's
+; (books/served-catalog-chain.lisp fn-scr-fields-catalogp) and the live
+; view's (books/served-catalog-join-inv.lisp) all call it; before, each
+; restated the test and three drifted out of step after PKT-443.
+(defun fn-served-pinned-index (archive index group-index control)
+  (declare (xargs :guard t))
+  (if (or group-index
+          (and control (not (consp (fn-state-articles archive)))))
+      (fn-gidx-pin-with-control index group-index control)
+    index))
+
 (defun fn-served-conn-pinned-index (conn)
   (declare (xargs :guard t))
-  (if (or (fn-served-conn-group-index conn)
-          (and (fn-served-conn-control conn)
-               (not (consp (fn-state-articles (fn-served-conn-archive conn))))))
-      (fn-gidx-pin-with-control (fn-served-conn-index conn)
-                                (fn-served-conn-group-index conn)
-                                (fn-served-conn-control conn))
-    (fn-served-conn-index conn)))
+  (fn-served-pinned-index (fn-served-conn-archive conn)
+                          (fn-served-conn-index conn)
+                          (fn-served-conn-group-index conn)
+                          (fn-served-conn-control conn)))
 
 (defun fn-served-make-conn-live
     (wire session archive config observation injection verdicts index buckets
