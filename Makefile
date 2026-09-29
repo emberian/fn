@@ -7,11 +7,15 @@ FN_CERTIFY_JOBS ?= 1
 FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
 	books/defkeystone \
+	books/definterface \
+	books/defevent \
 	books/deftransition \
 	books/rev-onto \
 	books/acceptance-alloc \
 	tests/acl2/defrecord-tests \
 	tests/acl2/defkeystone-tests \
+	tests/acl2/definterface-tests \
+	tests/acl2/defevent-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
@@ -1264,6 +1268,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-commit-steps-tests \
 	books/owner-commit-pipeline \
 	tests/acl2/owner-commit-pipeline-tests \
+	books/owner-commit-fairness \
+	tests/acl2/owner-commit-fairness-tests \
 	books/owner-ack-after-barrier \
 	tests/acl2/owner-ack-after-barrier-tests \
 	books/owner-reader-view \
@@ -1277,7 +1283,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
 	books/owner-article-slots \
+	books/owner-article-held \
 	tests/acl2/owner-article-slots-tests \
+	books/owner-credits \
+	tests/acl2/owner-credits-tests \
 	books/owner-time-journal-writer \
 	tests/acl2/owner-time-journal-writer-tests \
 	books/owner-stop-drain \
@@ -1428,7 +1437,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-records \
 	tests/acl2/history-records-tests
 
-.PHONY: extract-check site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
+.PHONY: extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -1465,6 +1474,26 @@ site:
 # other check is the same.
 check-lane:
 	FN_LANE_CHECK=1 FN_LANE_CHECK_DIR=$$(mktemp -d "$${TMPDIR:-/tmp}/fn-lane-check.XXXXXX") $(MAKE) check
+
+# `make check-fast`: the seconds-to-a-minute checks a two-line registry or
+# docs fix can break, before a full check-lane (lanes asked for it after a
+# two-line registry fix cost a 25-minute round; batch BB, 2026-09-28).  Not a
+# gate: `make check` stays the gate.  Registry reciprocity, spec and reach
+# citations, the ledger and the current view (with FN_LANE_CHECK, as
+# check-fast-lane sets it, the ledger is regenerated into a temporary
+# directory and only printed, as in check-lane), and docs_check.
+check-fast:
+	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
+	@$(CHECK_STEP) $(PYTHON) tools/merge_registry.py --reciprocate --check
+	@$(CHECK_STEP) $(PYTHON) tools/spec_cite_check.py --summary --strict
+	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
+	@$(CHECK_STEP) $(PYTHON) tools/ledger.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
+	@$(PYTHON) tools/check_steps.py summary $(CHECK_STEPS_DIR)
+
+check-fast-lane:
+	FN_LANE_CHECK=1 FN_LANE_CHECK_DIR=$$(mktemp -d "$${TMPDIR:-/tmp}/fn-lane-check.XXXXXX") $(MAKE) check-fast
 
 # `make check` runs every step even when one fails, then prints a table of
 # them (step, exit, seconds, first finding) and fails if any step failed:
@@ -1726,6 +1755,9 @@ check:
 # subject, so every orphan it reports is real and it misses some.
 	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/keystone_emit.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/interface_emit.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/event_emit.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/profile_limits.py --check
 # Which host entries walk retained state (PKT-334, answers 2026-09-26 §2): a
 # function called once per request that traverses the Store history, the
 # held BP fragments or the queued BP jobs.  tools/hot_path_check.py follows the
