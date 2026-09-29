@@ -655,6 +655,63 @@ def run_record(root: Path, identifier: str) -> dict:
     return record if isinstance(record, dict) else {}
 
 
+def checkpoint_excerpt(log: Path, limit: int = 40) -> list[str]:
+    """The prover's own account of one failed book: from the last `*** Key
+    checkpoint` before its first failure line through that line, at most
+    LIMIT lines (the head of the region kept); without a checkpoint, the
+    dozen lines before the failure.  Empty when the log has no failure."""
+    try:
+        text = log.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return []
+    fail = next((i for i, line in enumerate(text) if FAILURE_LINE.search(line)), None)
+    if fail is None:
+        return []
+    start = next((i for i in range(fail, -1, -1) if "*** Key checkpoint" in text[i]), None)
+    if start is None:
+        start = max(0, fail - 12)
+    region = text[start:fail + 1]
+    if len(region) > limit:
+        region = region[:limit - 2] + [f"... ({len(region) - limit + 1} lines)", region[-1]]
+    return region
+
+
+def failed_summary(host: str, identifier: str, root: Path, remote: Path | None = None,
+                   fetcher=None, limit: int = 40) -> list[str]:
+    """`farm.py status --failed-summary RUN`: each failed book's checkpoint.
+
+    Brings home only the run's manifest and per-book logs (`fetch_logs`: no
+    cache, no evidence archive), then prints, per failed book, its first
+    failure line and the key checkpoint above it -- what depth-debt-4 spent
+    two ssh rounds per book assembling (obstructions-5 item 35).
+    """
+    remote = remote or remote_root(root, identifier)
+    into = root / "build" / "farm" / f"{identifier}-logs"
+    directories = (fetcher or fetch_logs)(host, identifier, root, remote, into)
+    lines = [f"== failed summary {identifier} ({host}:{remote}; logs {into})"]
+    failed = 0
+    for directory in directories:
+        try:
+            manifest = json.loads((directory / "manifest.json").read_text())
+        except (OSError, ValueError):
+            lines.append(f"  {directory.name}: no manifest (still running, or died before it)")
+            continue
+        results = manifest.get("book_results") or {}
+        reasons = manifest.get("book_failures") or {}
+        for book in sorted(set(reasons) | {b for b, v in results.items() if v != "passed"}):
+            failed += 1
+            where = book_log(directory, book)
+            stated = "; ".join(reasons.get(book) or []) or str(results.get(book, "failed"))
+            lines.append(f"-- FAILED {book}: {stated}")
+            lines.append(f"   log: {where or directory}")
+            excerpt = checkpoint_excerpt(where, limit) if where else []
+            lines += ["   | " + line for line in excerpt] or ["   (no failure line in its log)"]
+    if not directories:
+        lines.append("  no evidence directory named in the run log yet")
+    lines.append(f"== {failed} failed book(s)")
+    return lines
+
+
 def remote_root(root: Path, identifier: str, override: str | None = None) -> Path:
     """Where the run lives on the box: the recorded path, or this one.
 
@@ -849,6 +906,13 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
         "pid": int(launched.group(1)) if launched else None,
         "path": str(root),
         "remote_path": str(remote),
+        # Named for what each is (depth-debt-4 read `remote_path` as the
+        # local path: by default the box mirror uses the SAME absolute path,
+        # so the two are equal; obstructions-5 item 35).
+        "local_path": str(root),
+        "box": host,
+        "box_path": str(remote),
+        "box_log": f"{remote}/build/farm/{identifier}.log",
         "books": books,
         "affected_by": affected_by,
         "closure": closure,
@@ -1753,6 +1817,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="submit: certify from certification images or not "
                              "(the runner's --images; default: the runner's own, on; "
                              "FN_CERT_IMAGES here is forwarded when set)")
+    parser.add_argument("--failed-summary", metavar="RUN", default=None,
+                        help="status: print each failed book of RUN with its first failure "
+                             "line and key checkpoint (fetches only its logs)")
     parser.add_argument("--no-publish", action="store_true",
                         help="submit: a measurement run: the runner publishes no pair "
                              "to the box's cache, and `wait` neither sweeps nor "
@@ -1847,6 +1914,12 @@ def main(argv: list[str] | None = None) -> int:
             return cancel(arguments.host, arguments.rest[0], root,
                           (str(expand_remote(arguments.host, arguments.remote_root))
                            if arguments.remote_root else None))
+        if arguments.failed_summary:
+            lines = failed_summary(arguments.host, arguments.failed_summary, root,
+                                   (expand_remote(arguments.host, arguments.remote_root)
+                                    if arguments.remote_root else None))
+            print("\n".join(lines))
+            return 1 if not lines[-1].startswith("== 0 ") else 0
         remote = (expand_remote(arguments.host, arguments.remote_root)
                   if arguments.remote_root else root)
         return status(arguments.host, remote, root)

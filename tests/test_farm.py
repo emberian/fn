@@ -1573,5 +1573,52 @@ class RecertifyFromTests(unittest.TestCase):
             submit.assert_not_called()
 
 
+class FailedSummaryTests(unittest.TestCase):
+    """obstructions-5 item 35: status --failed-summary RUN prints each failed
+    book's checkpoint; the run record names the box path as such."""
+
+    LOG = ("(defthm a ...)\n"
+           "*** Key checkpoint at the top level: ***\n"
+           "Goal'\n(IMPLIES (CONSP X) (EQUAL (F X) (G X)))\n"
+           "Summary\n******** FAILED ********\n"
+           "later noise\n")
+
+    def test_each_failed_book_with_its_checkpoint(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+
+            def fetcher(host, identifier, root_, remote, into):
+                directory = into / "certify-x"
+                directory.mkdir(parents=True)
+                (directory / "manifest.json").write_text(json.dumps({
+                    "book_results": {"books/a": "failed", "books/b": "passed"},
+                    "book_failures": {"books/a": ["ACL2 exited 1"]}}))
+                (directory / "books--a.certify.log").write_text(self.LOG)
+                return [directory]
+            lines = farm.failed_summary("persvati", "run-1", root, Path("/box/tree"),
+                                        fetcher=fetcher)
+        text = "\n".join(lines)
+        self.assertIn("-- FAILED books/a: ACL2 exited 1", text)
+        self.assertIn("   | *** Key checkpoint at the top level: ***", text)
+        self.assertIn("   | (IMPLIES (CONSP X) (EQUAL (F X) (G X)))", text)
+        self.assertIn("   | ******** FAILED ********", text)
+        self.assertNotIn("later noise", text)
+        self.assertNotIn("books/b", text)
+        self.assertEqual(lines[-1], "== 1 failed book(s)")
+
+    def test_excerpt_without_a_checkpoint_keeps_the_lines_before_the_failure(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            log = Path(scratch) / "x.log"
+            log.write_text("\n".join(f"line {n}" for n in range(30)) + "\nACL2 Error in X\n")
+            excerpt = farm.checkpoint_excerpt(log)
+        self.assertEqual(excerpt[0], "line 18")
+        self.assertEqual(excerpt[-1], "ACL2 Error in X")
+
+    def test_the_record_names_the_box_path(self):
+        text = Path(farm.__file__).read_text()
+        for field in ('"local_path": str(root)', '"box_path": str(remote)', '"box_log"'):
+            self.assertIn(field, text)
+
+
 if __name__ == "__main__":
     unittest.main()
