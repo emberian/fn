@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6212,6 +6212,7 @@
         "STO-020"
       ],
       "steps": [
+        "At launch, extend the previous ACL2 reservation by explicit cold_heap_octets and persistent cold_workers stack/runtime; exercise accepted and machine-too-small decisions. Missing or unsupported policy cannot silently enable unfunded cold reads.",
         "Install a supported, launcher-funded resource profile including persistent peak table capacity; open and charge a file incarnation before issuing served cold reads.",
         "Stall a real pread, issue until admission refuses, cancel/timeout clients repeatedly while original workers remain live.",
         "Release the stall, observe thread death and join, publish one verified buffer in cache; replay the old token, then evict it and physically close its file.",
@@ -6225,7 +6226,10 @@
       ],
       "evidence": [
         "tests/acl2/page-read-ledger-tests.lisp",
-        "tests/acl2/page-read-host-tests.lisp"
+        "tests/acl2/page-read-host-tests.lisp",
+        "books/cold-read-reservation.lisp",
+        "tests/acl2/cold-read-reservation-tests.lisp",
+        "tests/acl2/native-operator-tests.lisp"
       ],
       "execution_scope": "Model/adapter source REPL only; native scenario and actual allocator/profile refinement pending. This is not a checkpoint/suffix rescue completion claim."
     }

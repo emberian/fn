@@ -110,6 +110,7 @@
 (include-book "heap-figure")
 (include-book "heap-open-nursery")
 (include-book "heap-reservation")
+(include-book "cold-read-reservation")
 (include-book "store-intern")
 (include-book "open-frontier-wire")
 (include-book "store-recover-stream")

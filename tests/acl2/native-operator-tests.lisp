@@ -23,6 +23,27 @@
                           (fn-nop-test-argv '("run" "--once"))))
 (assert-event (equal (fn-native-operator-result-status *fn-nop-run*) :accepted))
 (assert-event (equal (fn-native-operator-result-command *fn-nop-run*) "run"))
+(assert-event (not (fn-native-operator-result-run-cold-resources *fn-nop-run*)))
+; Staged explicit policy remains refused until the concrete installed pool
+; consumer is funded. This reachable grammar gate must not silently ignore it.
+(assert-event
+ (let ((r (fn-native-operator-run
+           (append *fn-nop-minimal-config*
+                   (fn-nop-test-lines '("[resources]" "cold_heap_octets = 67108864"
+                                        "cold_workers = 2" "cold_descriptors = 16"
+                                        "cold_read_ids = 10000" "cold_file_ids = 10000")))
+           (fn-nop-test-argv '("run" "--once")))))
+   (and (equal (fn-native-operator-result-status r) :usage)
+        (equal (fn-native-operator-result-reason r)
+               '(:unsupported-profile "cold_resources"))
+        (not (fn-native-operator-result-run-cold-resources r)))))
+; Projection mutation witness only: an accepted synthetic plan forwards
+; the normalized policy exactly. Not a reachable supported-runtime claim.
+(assert-event
+ (equal (fn-native-operator-result-run-cold-resources
+         (fn-nop-result :accepted nil "run"
+                        (update-nth 29 '(67108864 2 16 10000 10000) nil) nil))
+        '(67108864 2 16 10000 10000)))
 (assert-event (equal (fn-native-operator-result-arguments *fn-nop-run*)
                      '(:run :once t)))
 (assert-event (equal (fn-native-operator-exit-code *fn-nop-run*) 0))

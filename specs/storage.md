@@ -1549,6 +1549,15 @@ is partial: supplied charges are not an allocator refinement, and the
 performed checkpoint/recovery demand, old/new coexistence, productive
 supported profile and suffix rescue admission still need implementation.
 
+The launcher component PRF-1082 extends its existing ACL2 reservation by
+explicit cold-pool heap octets and persistent executor stacks/runtime. Its
+accepted decision covers the rounded dynamic allowance and, for a valid
+policy, fits the observed machine. It does not establish an allocator
+bound or a maintenance reserve. The current operator rejects explicit
+resources as an unsupported profile until native pool initialization and
+the concrete funding consumer are integrated; this positive policy arm is
+currently unreachable in composition.
+
 
 ### Compaction of any length (P5; STO-012)
 

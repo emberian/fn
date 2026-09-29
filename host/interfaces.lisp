@@ -3247,6 +3247,11 @@
   :keystones (fn-heap-status-decide-is-the-launchers-run-reservation
               fn-heap-reserve-operation-decide-holds-the-operation))
 
+(definterface fn-crv-extend-reservation
+  :class ::common-lisp-compliant
+  :keystones (fn-crv-accepted-launch-fits-observed-machine
+              fn-crv-accepted-launch-funds-pool-dynamic-allowance))
+
 (definterface fn-heap-reserve-report-line
   :class ::common-lisp-compliant)
 
@@ -3540,6 +3545,9 @@
   :class ::program)
 
 (definterface fn-native-operator-host-result-run-control-path-octets
+  :class ::program)
+
+(definterface fn-native-operator-host-result-run-cold-resources
   :class ::program)
 
 (definterface fn-native-operator-host-result-run-implicit-tls-port

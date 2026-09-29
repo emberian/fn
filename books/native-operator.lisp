@@ -1169,6 +1169,12 @@ is installed into the owner for both served and control submission."
   (and (equal (fn-native-operator-result-status result) :accepted)
        (equal (fn-native-operator-result-command result) "run")))
 
+(defun fn-native-operator-result-run-cold-resources (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-run-planp result)
+      (fn-native-config-cold-resources (fn-native-operator-result-config result))
+    nil))
+
 (defun fn-native-operator-result-run-store-octets (result)
   (declare (xargs :guard t))
   (if (fn-native-operator-result-run-planp result)

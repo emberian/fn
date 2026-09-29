@@ -89,6 +89,7 @@
 (include-book "../../books/heap-figure")
 (include-book "../../books/heap-open-nursery")
 (include-book "../../books/heap-reservation")
+(include-book "../../books/cold-read-reservation")
 (include-book "../../books/native-control")
 (include-book "../../books/native-control-reason")
 (include-book "../../books/control-evidence")

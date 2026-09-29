@@ -17608,6 +17608,31 @@
         "tests/acl2/owner-resource-line-tests.lisp"
       ],
       "progress_note": "Clean-source resource teeth g61phresource403teeth hbox11forms0refused; includes actual reached owner fixtures and full positive/hypothesis-removal/mutation witnesses. No certification manifest or native verdict yet."
+    },
+    {
+      "id": "PRF-1082",
+      "title": "Explicit cold-resource launcher extension covers dynamic allowance and observed machine",
+      "statement": "Subject fn-crv-extend-reservation in books/cold-read-reservation.lisp, called by host/native/heap.lisp fnn-heap-reservation. If the extension is accepted, the rounded heap covers the previous accepted heap plus the explicit cold_heap_octets. If the supplied policy is valid and the extension is accepted, heap+core+stacks+thread runtime fit the observed machine. The added cold_workers remain reserved for service lifetime; per-job settlement is separate. The positive explicit-policy operator branch is unreachable-in-composition until the measured native pool factory/consumer is supported; current run rejects explicit resources by name. This is a numerical launcher component, not an allocator, bounded preparation, full productive profile or checkpoint/recovery rescue claim.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-1065"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-crv-accepted-launch-fits-observed-machine",
+        "fn-crv-accepted-launch-funds-pool-dynamic-allowance"
+      ],
+      "evidence": [
+        "books/cold-read-reservation.lisp",
+        "host/native/heap.lisp",
+        "tests/acl2/cold-read-reservation-tests.lisp",
+        "tests/acl2/native-operator-tests.lisp"
+      ],
+      "progress_note": "Clean-source hbox g61phlaunchwhole16 forms0refused with complete positives, literal hypothesis-removal and separately labeled corrupted-base witness. Resource projection source guard verified; named current grammar usage outcome confirmed. No certification manifest or matching native verdict."
     }
   ]
 }

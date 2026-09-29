@@ -17183,6 +17183,20 @@
         }
       ],
       "pending_subject": "Owner program adapter calls core subject; native served admission/refusal routing pending."
+    },
+    {
+      "id": "PRF-1082",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-crv-accepted-launch-fits-observed-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-crv-accepted-launch-funds-pool-dynamic-allowance"
+        }
+      ],
+      "pending_subject": "Host launcher calls component. Explicit supported policy factory/init consumer and actual image/native evidence pending; positive explicit-policy operator branch currently unreachable-in-composition."
     }
   ]
 }

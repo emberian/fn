@@ -89,6 +89,10 @@
   (fn-native-operator-result-arguments result))
 
 
+(defun fn-native-operator-host-result-run-cold-resources (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-cold-resources result))
+
 (defun fn-native-operator-host-result-run-store-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-run-store-octets result))
