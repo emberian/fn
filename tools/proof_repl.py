@@ -55,7 +55,8 @@ answer is (build/proof-repl/NAME/last-output.txt); the diagnostic forms
 trimmed.  `probe` proves a renamed copy of EVENT in a second session
 NAME.probe loaded up to just before it (reused while the book's bytes before
 EVENT and its closure are unchanged) and undoes the attempt afterwards, so
-neither session moves; `status` reports the load's time and steps and its
+neither session moves.  The probe loads the book FILE: an event sent to NAME
+by hand is not in it (it names them; `--with-sent` sends them first); `status` reports the load's time and steps and its
 costliest forms.
 
 A dependency the cache has no certificate for at this tree's bytes: `start`
@@ -2087,6 +2088,45 @@ def warn_free_expands(items: list[str], texts: list[str] = ()) -> None:
             print(line, file=sys.stderr, flush=True)
 
 
+# --- what `send` added to a session, for its probe (item 72) -------------
+#
+# A probe session is loaded from the BOOK FILE up to the event: a lemma sent
+# by hand to session NAME is in NAME's world and not in NAME.probe's, so the
+# probe "did not see" it (online-reclaim, 2026-09-29).  `send` records each
+# event form a session accepted, tagged with the session's start; `probe`
+# names them, and `probe --with-sent` sends them (above its checkpoint, so
+# they are undone with the attempt).
+
+SENT_EVENTS = "sent-events.jsonl"
+
+
+def record_sent(name: str, forms: list[str]) -> None:
+    started = (read_state(name) or {}).get("started_at")
+    events = [form for form in forms if is_event(form)]
+    if not events or started is None:
+        return
+    with contextlib.suppress(OSError):
+        with open(session_dir(name) / SENT_EVENTS, "a", encoding="utf-8") as handle:
+            for form in events:
+                handle.write(json.dumps({"started_at": started, "form": form}) + "\n")
+
+
+def sent_events(name: str) -> list[str]:
+    """The event forms `send` added to session NAME since it started."""
+    started = (read_state(name) or {}).get("started_at")
+    try:
+        lines = (session_dir(name) / SENT_EVENTS).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    out = []
+    for line in lines:
+        with contextlib.suppress(json.JSONDecodeError):
+            row = json.loads(line)
+            if row.get("started_at") == started and started is not None:
+                out.append(row["form"])
+    return out
+
+
 def send(args) -> int:
     form = args.form if args.form != "-" else sys.stdin.read()
     try:
@@ -2114,10 +2154,14 @@ def send(args) -> int:
     warn_free_expands(several, [(ROOT / f"{book}.lisp").read_text(encoding="utf-8")]
                       if book and (ROOT / f"{book}.lisp").exists() else [])
     if len(several) <= 1:
-        return send_one(args.name, several[0] if several else form, args.limit, args.full)
-    items = [(form_label(index, one), one) for index, one in enumerate(several, 1)]
-    return send_many(args.name, items, args.limit, args.full,
-                     getattr(args, "keep_going", False))
+        code = send_one(args.name, several[0] if several else form, args.limit, args.full)
+    else:
+        items = [(form_label(index, one), one) for index, one in enumerate(several, 1)]
+        code = send_many(args.name, items, args.limit, args.full,
+                         getattr(args, "keep_going", False))
+    if code == 0:
+        record_sent(args.name, several or [form])
+    return code
 
 
 def session_directory(name: str) -> Path | None:
@@ -2570,6 +2614,17 @@ def probe(args) -> int:
         base = load()
         if base is None:
             return 1
+
+    extra = sent_events(args.name) if not args.book else []
+    if extra and not getattr(args, "with_sent", False):
+        print(f"proof-repl probe: {len(extra)} event(s) sent by hand to {args.name} are not "
+              f"in the probe (it loads {book} from the file); --with-sent sends them first: "
+              + ", ".join(head_and_name(form)[1] or form.strip()[:30] for form in extra[:6])
+              + (" ..." if len(extra) > 6 else ""))
+    elif extra:
+        attempts = extra + attempts
+        print(f"proof-repl probe: sending the {len(extra)} event(s) sent by hand to "
+              f"{args.name} first (undone with the attempt)")
 
     totals = Totals()
     refused = timed_out = False
@@ -3663,6 +3718,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--idle-seconds", type=float, default=None, help=argparse.SUPPRESS)
     p.add_argument("--full", action="store_true")
     p.add_argument("--stop", action="store_true", help="stop the probe session afterwards")
+    p.add_argument("--with-sent", action="store_true",
+                   help="first send the events `send` added to session NAME by hand (the "
+                        "probe loads the book file, so it does not have them otherwise)")
     add_remote_options(p, sync=True)
     p.set_defaults(run=probe)
     p = sub.add_parser("status")

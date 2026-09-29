@@ -2035,5 +2035,40 @@ class GuardNotesTests(unittest.TestCase):
         self.assertIn("form #5", notes[0])
 
 
+class SentEventsTests(unittest.TestCase):
+    """obstructions-8 item 72: what `send` adds by hand is recorded for the probe."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dir = pathlib.Path(self.tmp.name)
+        self.state = {"started_at": 100.0}
+        patches = [mock.patch.object(proof_repl, "session_dir", return_value=self.dir),
+                   mock.patch.object(proof_repl, "read_state", side_effect=lambda n: self.state)]
+        for patch in patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def test_events_are_recorded_and_other_forms_are_not(self):
+        proof_repl.record_sent("s", ["(defthm l1 (equal x x))", "(pe 'l1)",
+                                     "(defun f (x) x)"])
+        self.assertEqual(proof_repl.sent_events("s"),
+                         ["(defthm l1 (equal x x))", "(defun f (x) x)"])
+
+    def test_a_restarted_session_starts_empty(self):
+        proof_repl.record_sent("s", ["(defthm l1 (equal x x))"])
+        self.state = {"started_at": 200.0}
+        self.assertEqual(proof_repl.sent_events("s"), [])
+
+    def test_send_records_only_an_accepted_send(self):
+        args = SimpleNamespace(name="s", form="(defthm l2 (equal y y))", limit=None, full=False)
+        for code, expected in ((1, []), (0, ["(defthm l2 (equal y y))"])):
+            with mock.patch.object(proof_repl, "prepare_includes",
+                                   return_value=([args.form], True)), \
+                    mock.patch.object(proof_repl, "send_one", return_value=code):
+                proof_repl.send(args)
+            self.assertEqual(proof_repl.sent_events("s"), expected)
+
+
 if __name__ == "__main__":
     unittest.main()
