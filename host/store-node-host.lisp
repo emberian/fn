@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "../books/store-observed")
 (include-book "../books/history-columns-relation")
+(include-book "../books/open-frontier")
 ; D25: the duplicate-versus-conflict decision keys on the poster's bytes.
 (include-book "../books/poster-bytes")
 (include-book "../books/native-config-observation")

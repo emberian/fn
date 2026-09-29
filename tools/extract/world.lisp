@@ -182,6 +182,7 @@
 (include-book "../../books/store-log-extend")
 (include-book "../../books/store-init-log-publication")
 (include-book "../../books/history-columns-relation")
+(include-book "../../books/open-frontier")
 (include-book "../../books/poster-bytes")
 (include-book "../../books/native-config-observation")
 (include-book "../../books/store-sweep")

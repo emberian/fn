@@ -74,6 +74,7 @@
 (include-book "store-init-log-publication")
 (include-book "accounts")
 (include-book "history-columns-relation")
+(include-book "open-frontier")
 (include-book "poster-bytes")
 (include-book "store-sweep")
 (include-book "limits-live")
