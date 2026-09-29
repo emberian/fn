@@ -215,3 +215,19 @@
                    (fn-ocl-relation (ohrt-rix-complete-h *ohrt-b8*))
                    (equal (fn-sf-phase (fn-sn-files (fn-own-store (fn-ocfg-owner (ohrt-rix-complete-h *ohrt-b8*))))) :ready)
                    (equal (fn-ocfg-owner (ohrt-rix-complete-h *ohrt-b8*)) (fn-ocfg-owner *ohrt-b9*))))
+
+; =============================================================================
+; READ-STEP (fn-ohr-read-step-preserves-ocl-relation; the host entry
+; fn-owner-tls-established: fn-ohr-tls-established-preserves-carried-relation).
+; Positive witness, complete antecedent and conclusion: the served owner's
+; reader 0 takes the (:tls-established) wire event; the connection survives
+; and the relation holds; the carried owner *lgt-oc0* likewise (its reader 1).
+(defconst *ohrt-tls* (in-arena-fn-ocfg-read-step *sr-arena* *ohrt-oc* 0 '(:tls-established)))
+(assert-event (and (fn-ocl-relation (cdr *ohrt-tls*))
+                   (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner (cdr *ohrt-tls*))))
+                   (equal (fn-ocfg-pins (cdr *ohrt-tls*)) (fn-ocfg-pins *ohrt-oc*))))
+(assert-event (fn-lgoc-invariantp (cdr (in-arena-fn-ocfg-read-step *sr-arena* *lgt-oc0* 1 '(:tls-established)))))
+; An unknown identifier keeps the configured owner (fn-ohr-missing-read-step-keeps-configured-owner).
+(assert-event (equal (cdr (in-arena-fn-ocfg-read-step *sr-arena* *ohrt-oc* 9 '(:tls-established))) *ohrt-oc*))
+; Removal witness (the hypothesis): the stale-pin owner fails before and after.
+(assert-event (not (fn-ocl-relation (cdr (in-arena-fn-ocfg-read-step *sr-arena* *ohrt-stale* 0 '(:tls-established))))))

@@ -1034,6 +1034,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-outcome-pinned \
 	books/owner-host-relation \
 	tests/acl2/owner-host-relation-tests \
+	books/owner-host-relation-span \
 	books/config-owner-live-authorize \
 	tests/acl2/config-owner-live-authorize-tests \
 	books/owner-prepare-served \
