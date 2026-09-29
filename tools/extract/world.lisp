@@ -188,6 +188,7 @@
 (include-book "../../books/store-budget")
 (include-book "../../books/store-budget-article")
 (include-book "../../books/store-maintenance-reserve")
+(include-book "../../books/history-image-snapshot")
 (include-book "../../books/store-capacity-vector")
 (include-book "../../books/store-carried-folds")
 (include-book "../../books/retention-figures")

@@ -1432,6 +1432,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-records-disk-tests \
 	books/history-image-binding \
 	books/history-image-fold \
+	books/history-image-snapshot \
 	tests/acl2/history-image-binding-tests \
 	books/image-world \
 	books/image-world-dtn \
