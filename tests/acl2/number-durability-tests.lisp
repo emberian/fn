@@ -17,7 +17,7 @@
 
 (in-package "ACL2")
 (include-book "must-fail-checked")
-(include-book "../../books/number-durability")
+(include-book "../../books/number-durability-handles")
 (include-book "held-rows-tests")
 (include-book "std/testing/assert-bang" :dir :system)
 
@@ -370,3 +370,94 @@
                (fn-state-next-txid (fn-node-acceptance
                                     (fn-sn-node (fn-sn-open-state
                                                  (fn-cpo-open-observed configs frontier recovered)))))))))
+
+; -----------------------------------------------------------------------------
+; books/number-durability-handles.lisp (PKT-886).  *NDT-LIVE* is YS as a
+; live arena numbers it after sealing the payload of a POST it then refused
+; (the rival's): the same Store events, every article's handle one later.
+; Its first three rows are NOT a prefix of the fresh intern XS the open
+; builds; they are one up to handles.
+
+(defconst *ndt-live*
+  (cdr (fn-hrt-rows (list *ndt-rival* *ndt-undertake* *ndt-release* *ndt-a1* *ndt-a2*) nil 0)))
+(defconst *ndt-live-view* (fn-own-take 3 *ndt-live*))
+(assert! (not (equal *ndt-live* *ndt-ys*)))
+(assert! (equal (fn-ndh-events *ndt-live*) (fn-ndh-events *ndt-ys*)))
+
+; KEYSTONE fn-ndh-replay-extension-keeps-every-number.  Hypotheses: (E1)
+; YS extends XS up to handles, (E2) YS opens, (E3) XS's replay holds N.
+; Witness: XS is the live view's three rows, YS the fresh intern; the
+; exact premise of fn-ndur-replay-extension-keeps-every-number fails.
+(assert! (not (fn-sf-prefixp *ndt-live-view* *ndt-ys*)))
+(assert! (fn-sf-prefixp (fn-ndh-events *ndt-live-view*) (fn-ndh-events *ndt-ys*)))
+(assert! (fn-cst-replay-node *ndt-configs* *ndt-ys* *ndt-f*))
+(assert! (equal (fn-ndur-holder "fn.test" 1 (ndt-articles *ndt-live-view*)) "<one@example.invalid>"))
+(assert! (ndt-k1-concl *ndt-live-view* *ndt-ys* "fn.test" 1))
+; E1 fails: ZS does not extend the live view even up to handles (another
+; Message-ID at txid 7); E2 and E3 hold; the conclusion is false.  The
+; theorem without E1 is ndt-k1-without-extension above, word for word.
+(assert! (not (fn-sf-prefixp (fn-ndh-events *ndt-live-view*) (fn-ndh-events *ndt-zs*))))
+(assert! (fn-cst-replay-node *ndt-configs* *ndt-zs* *ndt-f*))
+(assert! (fn-ndur-holder "fn.test" 1 (ndt-articles *ndt-live-view*)))
+(assert! (not (ndt-k1-concl *ndt-live-view* *ndt-zs* "fn.test" 1)))
+; E2 fails: BS extends the live view up to handles, the view holds 1, BS
+; does not open; the conclusion is false (ndt-k1-without-open, above).
+(assert! (fn-sf-prefixp (fn-ndh-events *ndt-live-view*) (fn-ndh-events *ndt-bs*)))
+(assert! (not (fn-cst-replay-node *ndt-configs* *ndt-bs* *ndt-f*)))
+(assert! (not (ndt-k1-concl *ndt-live-view* *ndt-bs* "fn.test" 1)))
+; E3 fails: fn.test 2 is not issued on the live view; after YS it is <two>
+; (ndt-k1-without-issue, above).
+(assert! (not (fn-ndur-holder "fn.test" 2 (ndt-articles *ndt-live-view*))))
+(assert! (not (ndt-k1-concl *ndt-live-view* *ndt-ys* "fn.test" 2)))
+
+; KEYSTONE fn-ndh-recovery-keeps-every-visible-number.  *NDT-O-LIVE* is the
+; live owner on *NDT-LIVE* with its view at version 3; recovery opens the
+; fresh intern XS.  Hypotheses as K2's, R3 up to handles (R3').
+(defconst *ndt-o-live* (ndt-owner *ndt-live* (ndt-view-at 3 *ndt-live-view*)))
+(defun ndt-k3-hyps-but (o fenced recovered g n skip)
+  (let* ((st (fn-own-store o))
+         (live (fn-sf-records (fn-sn-files st))))
+    (and (or (eq skip :r1) (fn-ocl-view-historyp o))
+         (or (eq skip :r2) (<= (fn-own-view-version (fn-own-view o)) (nfix fenced)))
+         (or (eq skip :r3) (fn-sf-prefixp (fn-ndh-events (fn-own-take fenced live))
+                                          (fn-ndh-events recovered)))
+         (or (eq skip :r4) (fn-sn-open-okp (fn-cpo-open-observed (fn-sn-config-history st)
+                                                                  *ndt-f* recovered)))
+         (or (eq skip :r5) (and (fn-ndur-holder g n (fn-own-view-raw (fn-own-view o))) t)))))
+; Witness: every hypothesis, the exact-rows R3 false, the conclusion.
+(assert! (ndt-k3-hyps-but *ndt-o-live* 3 *ndt-xs* "fn.test" 1 nil))
+(assert! (not (ndt-k2-hyps-but *ndt-o-live* 3 *ndt-xs* "fn.test" 1 nil)))
+(assert! (not (fn-sf-prefixp (fn-own-take 3 *ndt-live*) *ndt-xs*)))
+(assert! (ndt-k2-concl *ndt-o-live* *ndt-xs* "fn.test" 1))
+; R3' fails: the recovered history is the rival (a device that lost fenced
+; writes); the others hold; the conclusion is false.
+(assert! (not (fn-sf-prefixp (fn-ndh-events (fn-own-take 3 *ndt-live*)) (fn-ndh-events *ndt-zs*))))
+(assert! (ndt-k3-hyps-but *ndt-o-live* 3 *ndt-zs* "fn.test" 1 :r3))
+(assert! (not (ndt-k2-concl *ndt-o-live* *ndt-zs* "fn.test" 1)))
+(must-fail-checked
+ (defthm ndt-k3-without-extension
+   (let* ((st (fn-own-store o))
+          (raw (fn-own-view-raw (fn-own-view o)))
+          (node (fn-sn-node (fn-sn-open-state
+                             (fn-cpo-open-observed (fn-sn-config-history st)
+                                                   frontier recovered)))))
+     (implies (and (fn-ocl-view-historyp o)
+                   (<= (fn-own-view-version (fn-own-view o)) (nfix fenced))
+                   (fn-sn-open-okp (fn-cpo-open-observed (fn-sn-config-history st)
+                                                         frontier recovered))
+                   (fn-ndur-holder g n raw))
+              (equal (fn-ndur-holder g n (fn-state-articles (fn-node-acceptance node)))
+                     (fn-ndur-holder g n raw))))))
+; R1, R2, R4, R5 fail as in K2, on the live owner.
+(defconst *ndt-o-live-lying* (ndt-owner *ndt-live* (ndt-view-at 3 *ndt-zs*)))
+(assert! (not (fn-ocl-view-historyp *ndt-o-live-lying*)))
+(assert! (ndt-k3-hyps-but *ndt-o-live-lying* 3 *ndt-xs* "fn.test" 1 :r1))
+(assert! (not (ndt-k2-concl *ndt-o-live-lying* *ndt-xs* "fn.test" 1)))
+(assert! (ndt-k3-hyps-but *ndt-o-live* 2 *ndt-zs* "fn.test" 1 :r2))
+(assert! (not (ndt-k2-concl *ndt-o-live* *ndt-zs* "fn.test" 1)))
+(assert! (ndt-k3-hyps-but *ndt-o-live* 3 *ndt-bs* "fn.test" 1 :r4))
+(assert! (not (fn-sn-open-okp (fn-cpo-open-observed *ndt-configs* *ndt-f* *ndt-bs*))))
+(assert! (not (ndt-k2-concl *ndt-o-live* *ndt-bs* "fn.test" 1)))
+(assert! (ndt-k3-hyps-but *ndt-o-live* 3 *ndt-ys* "fn.test" 2 :r5))
+(assert! (not (ndt-k3-hyps-but *ndt-o-live* 3 *ndt-ys* "fn.test" 2 nil)))
+(assert! (not (ndt-k2-concl *ndt-o-live* *ndt-ys* "fn.test" 2)))
