@@ -35,7 +35,7 @@ import unittest
 from tests.campaign import native_cuts
 from tests import test_native_operator_verbs as verbs
 from tests.native_harness import (
-    EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, ROOT, Node, executable, native_image)
+    EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, ROOT, executable, native_image)
 
 IMAGE = native_image("FN_NATIVE_HOST")
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
@@ -161,23 +161,14 @@ class StateCheckpointSourceTests(unittest.TestCase):
         arena_steps = native_cuts.host_function(io, "fnn-checkpoint-write-arena-steps")
         self.assertIn("(fnn-call 'fn-scka-write-step state n count sequence", arena_steps)
         self.assertIn("(fnn-plan-write-all fd frames st)", arena_steps)
+        node_setup = native_cuts.host_function(node_host, "fn-store-sco-publish-setup")
         # checkpoint-arena-3: NEXT is the open's E extended over the rows
         # after it (fn-scka-next-checkpoint, no second canonicalization);
         # the arena run's setup and sources come from the bounded walk.
-        # composed-owner: the setup in two halves (NEXT, then the setup over
-        # the position that carries the history image's binding).
-        node_next = native_cuts.host_function(node_host, "fn-store-sco-publish-next")
-        node_setup = native_cuts.host_function(node_host, "fn-store-sco-publish-setup-of")
-        self.assertIn("(fn-scka-next-checkpoint e (len lens) configs records fn-arena)", node_next)
+        self.assertIn("(fn-scka-next-checkpoint e (len lens) configs records fn-arena)", node_setup)
         self.assertIn("(fn-scka-publication-setup next (fn-sf-frontier (fn-sn-files st))", node_setup)
         self.assertIn("(fn-scka-lens-setup lens segment-octets)", node_setup)
         self.assertIn("(fn-scka-initial-state srcs (nth 1 ws) 0)", node_setup)
-        self.assertIn("'fn-store-sco-publish-next", publish_steps_io := native_cuts.host_function(
-            io, "fnn-state-checkpoint-publish-steps"))
-        self.assertIn("(fnn-history-image-build", publish_steps_io)
-        self.assertIn("(fnn-history-image-write fd image)", publish_steps_io)
-        self.assertIn("(fn-his-open binding node salt (cadr log) file fn-hrecs$c)",
-                      native_cuts.host_function(node_host, "fn-store-sco-image-open"))
         publish_steps = native_cuts.host_function(io, "fnn-state-checkpoint-publish-steps")
         self.assertIn("(fnn-core-state 'fn-store-sco-pass-begin)", publish_steps)
         self.assertIn("(fnn-core-arena-state 'fn-store-sco-pass-step", publish_steps)
@@ -189,19 +180,6 @@ class StateCheckpointSourceTests(unittest.TestCase):
 # books/frame-octets.lisp *fn-frame-trailer-octets*: the chained seal that
 # ends every FNSC segment.
 FRAME_TRAILER_OCTETS = 32
-
-# books/history-image-snapshot.lisp: the file opens with the history image
-# region ("FNSI", version, NP u64, base u64, zeros; page A at base + 16 KiB *
-# A), and the framed segments start after its NP pages.
-IMAGE_BASE = 16384
-
-
-def framed_start(data):
-    """The offset of the first FNSC segment: after the image region, if any."""
-    if data[:4] == b"FNSI":
-        np = int.from_bytes(data[5:13], "little")
-        return IMAGE_BASE * (np + 1)
-    return 0
 
 
 class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
@@ -375,9 +353,7 @@ class StateCheckpointTests(StateCheckpointFixture):
         `corrupt', replays the journal, and reconstructs the same state."""
         self.init_with_checkpoint_at_three()
         expected = self.observation()
-        whole = self.path().read_bytes()
-        start = framed_start(whole)
-        data = whole[start:]
+        data = self.path().read_bytes()
         # FNSC segment: magic(4) schema(1) index count length sequence (u64 LE
         # each), the chunk, the 32-octet trailer; the first segment's count
         # is the arena run's segment count.
@@ -389,7 +365,7 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertEqual(data[:4], b"FNSC")
         self.assertEqual(data[37:41], b"fnA1")
         self.assertEqual(data[at:at + 4], b"FNSC")
-        self.path().write_bytes(whole[:start] + data[at:])
+        self.path().write_bytes(data[at:])
         self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
         self.assertEqual(self.open_line(), "open=full-replay reason=checkpoint-arena")
         self.assertEqual(self.observation(), expected)
@@ -402,9 +378,8 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.init_with_checkpoint_at_three()
         expected = self.observation()
         good = self.path().read_bytes()
-        start = framed_start(good)
         data = bytearray(good)
-        data[start + 21:start + 29] = b"\xff" * 8
+        data[21:29] = b"\xff" * 8
         self.path().write_bytes(bytes(data))
         self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
         self.assertEqual(self.open_line(),
@@ -412,89 +387,12 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertEqual(self.observation(), expected)
         # A LENGTH within the segment bound but not the chunk's: corrupt.
         data = bytearray(good)
-        data[start + 21] ^= 0x01
+        data[21] ^= 0x01
         self.path().write_bytes(bytes(data))
         self.assertEqual(self.open_line(), "open=full-replay reason=corrupt")
         self.path().write_bytes(good)
         self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
         self.assertEqual(self.observation(), expected)
-
-    def test_the_checkpoint_carries_its_history_image_and_the_open_adopts_it(self):
-        """Lane composed-owner (books/history-image-snapshot.lisp): the file
-        opens with the history image of the checkpoint's records on a page
-        store, its binding in the F row's log position; the open checks the
-        binding against this store's genesis, the log's chain value and the
-        codec, adopts the image (page 0 read and digest-checked, the header
-        from it) and compares its last row with the checkpoint's last record.
-        One file, one rename: no crash between two publications exists."""
-        self.init_with_checkpoint_at_three()
-        data = self.path().read_bytes()
-        self.assertEqual(data[:4], b"FNSI")
-        np = int.from_bytes(data[5:13], "little")
-        self.assertGreater(np, 1)
-        self.assertEqual(int.from_bytes(data[13:21], "little"), IMAGE_BASE)
-        self.assertEqual(data[framed_start(data):framed_start(data) + 4], b"FNSC")
-        status = self.op("status")
-        self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
-        self.assertNotIn(b"checkpoint image refused", status.stderr)
-        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
-
-    def test_a_damaged_history_image_is_refused_by_name(self):
-        """Page 0 of the image changed in the file: the adoption's digest
-        check refuses it by name -- (:page-damaged 0 PHYS) -- and the
-        checkpoint is unusable, as a corrupt one is: never an empty history,
-        never a silent answer."""
-        self.init_with_checkpoint_at_three()
-        expected = self.observation()
-        good = self.path().read_bytes()
-        data = bytearray(good)
-        data[IMAGE_BASE + 8 * 7] ^= 0x01   # page 0, word 7 (the header's region count)
-        self.path().write_bytes(bytes(data))
-        status = self.op("status")
-        self.assertIn(b"checkpoint image refused reason=(:page-damaged 0", status.stderr)
-        self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
-        self.assertEqual(self.open_line(), "open=full-replay reason=corrupt")
-        self.assertEqual(self.observation(), expected)
-        self.path().write_bytes(good)
-        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
-
-    def test_an_equal_count_checkpoint_of_another_history_is_refused_by_name(self):
-        """Row A3: two stores, each with a checkpoint at 3 records of its own
-        history and no suffix after it (the suffix segment is empty, so the
-        log's chain names no predecessor to compare with).  The other store's
-        checkpoint put in this store's place is refused by name -- its binding
-        names another store -- where before the binding it opened as this
-        store's history."""
-        created = self.op("init", "--profile", "development", "fn.test")
-        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        self.ids = ["<scp-mine-{}@example.invalid>".format(n) for n in range(3)]
-        self.post(self.ids)
-        self.keep_log()
-        made = self.checkpoint()
-        self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
-        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=0")
-        mine = self.path().read_bytes()
-        saved = (self.node, self.root, self.store, self.config, self.port, self.control)
-        other = Node(self, self.image, listener=True, control=True)
-        other.image = self.image
-        self.node, self.root, self.store, self.config, self.port, self.control = (
-            other, other.root, other.store_path, other.config, other.port, other.control)
-        try:
-            created = self.op("init", "--profile", "development", "fn.test")
-            self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-            self.post(["<scp-theirs-{}@example.invalid>".format(n) for n in range(3)])
-            made = self.checkpoint()
-            self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
-            theirs = self.path().read_bytes()
-        finally:
-            self.node, self.root, self.store, self.config, self.port, self.control = saved
-        self.assertNotEqual(theirs, mine)
-        self.path().write_bytes(theirs)
-        status = self.op("status")
-        self.assertIn(b"checkpoint image refused reason=(:refused :store-identity)", status.stderr)
-        self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
-        self.path().write_bytes(mine)
-        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=0")
 
     def test_a_running_owner_refuses_the_verb(self):
         self.init_with_checkpoint_at_three()

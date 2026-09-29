@@ -27,7 +27,6 @@
 (defvar *fnn-extent-lock* (sb-thread:make-mutex :name "fn extent realizer"))
 (defvar *fnn-extent-fds* (make-hash-table))   ; guarded-by: *fnn-extent-lock* (file id -> fd)
 (defvar *fnn-extent-paths* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> path)
-(defvar *fnn-extent-bases* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> page 0's offset)
 (defvar *fnn-extent-next-id* 1)
 (defvar *fnn-extent-cache* nil)               ; ((file eoff . octets) ...), most recent first
 (defvar *fnn-extent-stats* (list 0 0 0))      ; hits, misses (preads), refusals
@@ -42,24 +41,8 @@
               (gethash id *fnn-extent-paths*) path)
         id))))
 
-(defun fnn-extent-register-at (path base)
-  "A new file id for PATH whose page A the page fill reads at BASE + 16 KiB * A
-(the history image region of the state checkpoint's file: books/history-image-
-snapshot.lisp); a read-only descriptor held for the process's life, so the
-file stays readable after a later checkpoint replaces its name."
-  (let ((id (fnn-extent-register path)))
-    (sb-thread:with-mutex (*fnn-extent-lock*)
-      (setf (gethash id *fnn-extent-bases*) base))
-    id))
-
 (defun fnn-extent-pread (fd octets offset)
   "Fill OCTETS from OFFSET of FD; the count read (short at end of file)."
-  ;; Developer image only (lane composed-owner-3, row A4): a stalled read
-  ;; device.  While the named file exists a pread does not return, as a read
-  ;; from a device under maintenance does not (tests/test_native_slow_disk.py).
-  (let ((stall (fnn-developer-selector "FN_NATIVE_TEST_READ_STALL_FILE")))
-    (when (and stall (plusp (length stall)))
-      (loop while (probe-file stall) do (sleep 0.05))))
   (let ((n (length octets)) (done 0))
     (loop while (< done n) do
       (let ((got (sb-sys:with-pinned-objects (octets)
@@ -106,23 +89,8 @@ held; the buffer lets go of OCTETS afterwards."
       (setf (svref st 1) 0
             (svref st 0) (make-array 0 :element-type '(unsigned-byte 8))))))
 
-;;; Row A4 (option (c), lane composed-owner-3; books/owner-cold-line.lisp):
-;;; the served read span runs with *fnn-extent-no-io* bound true (host/native/
-;;; owner.lisp fnn-owner-chunk-span-no-io).  A miss then reads nothing: it
-;;; THROWS the entry it needs to the tag fnn-extent-cold (a throw, not a
-;;; condition: fnn-call turns every condition into a store fault), the span (pure over its
-;;; stobjs) is discarded, and the host reads the entry OUTSIDE the owner mutex
-;;; (fnn-extent-prefetch) within ACL2's dependency deadline
-;;; (fn-otb-dependency-step).  A hit is a hit either way: the warm path does
-;;; no more work than before.  With a cache limit of 0 nothing a prefetch
-;;; reads is kept, so the no-I/O mode is never used (fnn-extent-no-io-usable-p).
-(defvar *fnn-extent-no-io* nil)
-
-(defun fnn-extent-no-io-usable-p ()
-  (plusp (fnn-extent-cache-limit)))
-
 (defun fnn-extent-entry (file eoff elen trailer)
-  (declare (ignorable trailer))
+  (declare (ignore trailer))
   "The verified protected prefix of the entry at [EOFF, EOFF+ELEN) of FILE,
 from the cache or read once (one pread of the prefix and its trailer) and
 checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
@@ -134,9 +102,7 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
                  (setq *fnn-extent-cache* (cons hit (delete hit *fnn-extent-cache* :test #'eq))))
                (cddr hit))
       (let ((fd (gethash file *fnn-extent-fds*))
-            (octets (if *fnn-extent-no-io*
-                        (throw 'fnn-extent-cold (list file eoff elen trailer))
-                        (make-array (+ elen 32) :element-type '(unsigned-byte 8)))))
+            (octets (make-array (+ elen 32) :element-type '(unsigned-byte 8))))
         (incf (second *fnn-extent-stats*))
         (unless fd
           (incf (third *fnn-extent-stats*))
@@ -158,46 +124,6 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
             (when (> (length *fnn-extent-cache*) limit)
               (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit)))))
         octets))))
-
-;;; The entry a cold span needs, read into the cache (a store fault is
-;;; signalled as always: the caller re-signals it in the owner's thread).
-;;; Called OFF the owner mutex, from a thread of its own.  The pread runs
-;;; WITHOUT the realizer's lock, so a stalled disk holds only this thread:
-;;; cached reads on every other connection proceed (the lock is taken to find
-;;; the descriptor, and again to check the entry -- ACL2's check uses the
-;;; realizer's one buffer -- and keep it).
-(defun fnn-extent-prefetch (file eoff elen trailer)
-  (declare (ignore trailer))
-  (let ((fd nil)
-        (octets (make-array (+ elen 32) :element-type '(unsigned-byte 8))))
-    (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-      (when (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)))
-                     *fnn-extent-cache*)
-        (return-from fnn-extent-prefetch t))
-      (setq fd (gethash file *fnn-extent-fds*))
-      (incf (second *fnn-extent-stats*))
-      (unless fd
-        (incf (third *fnn-extent-stats*))
-        (error 'fnn-extent-fault
-               :message (format nil "arena-extent-read: no durable file ~a is registered" file))))
-    (let ((got (fnn-extent-pread fd octets eoff)))
-      (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-        (unless (= got (+ elen 32))
-          (incf (third *fnn-extent-stats*))
-          (error 'fnn-extent-fault
-                 :message (format nil "arena-extent-read: ~a at ~a holds fewer than ~a octets"
-                                  (gethash file *fnn-extent-paths*) eoff (+ elen 32))))
-        (unless (eq (fnn-extent-entry-ok octets elen) t)
-          (incf (third *fnn-extent-stats*))
-          (error 'fnn-extent-fault
-                 :message (format nil "arena-extent-digest: the entry at ~a of ~a does not match its trailer"
-                                  eoff (gethash file *fnn-extent-paths*))))
-        (let ((limit (fnn-extent-cache-limit)))
-          (when (plusp limit)
-            (push (list* file eoff octets) *fnn-extent-cache*)
-            (when (> (length *fnn-extent-cache*) limit)
-              (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit)))))
-        t))))
 
 ;;; The realizer (A-DURABLE-EXTENT's constrained function), raw and *1*.
 (defun fn-durable-realize-octet (file eoff elen poff plen trailer i)
@@ -274,14 +200,13 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
 ;;; (books/history-records-disk.lisp: the lazy decode of the committed
 ;;; history image `fn-hrs-disk-history', and fn-hrecs's retry loop).
 (defun fn-pgs-fill-realize (file addr)
-  (multiple-value-bind (fd base)
-      (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-        (values (gethash file *fnn-extent-fds*) (gethash file *fnn-extent-bases* 0)))
-   (let ((octets (make-array 16384 :element-type '(unsigned-byte 8))))
+  (let ((fd (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+              (gethash file *fnn-extent-fds*)))
+        (octets (make-array 16384 :element-type '(unsigned-byte 8))))
     (unless (and fd (integerp addr) (<= 0 addr))
       (error 'fnn-extent-fault
              :message (format nil "history-page-read: no page file ~a (page ~a)" file addr)))
-    (let ((got (fnn-extent-pread fd octets (+ base (* addr 16384)))))
+    (let ((got (fnn-extent-pread fd octets (* addr 16384))))
       (unless (= got 16384)
         (let ((path (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
                       (gethash file *fnn-extent-paths*))))
@@ -295,7 +220,7 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
           (loop for b of-type fixnum from 7 downto 0 do
             (setq w (logior (ash w 8) (aref octets (+ base b)))))
           (push w acc)))
-      acc))))
+      acc)))
 
 (defun acl2_*1*_acl2::fn-pgs-fill-realize (file addr)
   (fn-pgs-fill-realize file addr))

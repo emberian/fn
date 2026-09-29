@@ -877,69 +877,6 @@ lazy decode); the served readers move to `fn-hrecs-read` one at a time. No
 path builds a based field yet: the served open's adopt of a committed image
 is next.
 
-The adoption and the binding (PRF-920, lane composed-owner;
-`books/history-image-binding.lisp`; rows A2-A4 of the 6.6.0 list; GPT-6's
-review of 2026-09-28). The relation the reads above keep over the page file,
-`fn-hrecs-disk-faithful` (every unverified page at its address IS the
-image's), is not established by anything and could not be without reading
-every page; it is replaced by two relations the open establishes or states
-narrowly. ROOT-HOLDS (`fn-hib-root-holds`): the adopted root's tables name the
-digests of H's image pages. DISK-BOUND (`fn-hib-disk-bound`): the page file
-holds no BLAKE3 second preimage of an image page at the address the table
-names -- the cryptographic-failure assumption as a hypothesis on the actual
-file, with the collision figure (2^-128 per pair) as its pessimistic bound;
-no universal injectivity is assumed. Under them a fill verifies a page
-exactly when its words are H's page, and any other words (damage, a torn
-write, another history's page) are refused by the page store's check, by
-name: damage is never an answer and never absence. The ADOPTION
-(`fn-hib-adopt`) opens the page store at the committed root, fills and
-checks page 0, reads the header FROM PAGE 0 (never from a handle), checks its
-count against the binding's, and adopts; it ESTABLISHES `fn-hrs-rel` (the
-relation `fn-hrecs-faithful` is), root-holds and the disk bound
-(`fn-hib-adopt-establishes`), refusing by name otherwise. The BINDING the
-snapshot writes beside the checkpoint's fold state is (:hib NODE CODEC COUNT
-TRAIL REC SALT): the store's identity (the genesis record's node identity
-and salt), the image's interpretation (FNADTSN2 version, the tree codec's
-schema), the prefix's length, the prefix's IDENTITY (TRAIL: the log's chain
-value after the entries holding records [0, COUNT) -- not the count) and the
-page store's commit record exactly. The open (`fn-hib-open`) checks each
-against the store, the image format, the log's chain value at the prefix
-and the page file's root slots, refusing :store-identity, :salt, :codec,
-:prefix, :root-absent, (:count N COUNT), or the page store's refusal of the
-root's directory or table pages. Proved: an accepted binding's snapshot
-covered exactly the log's prefix entries, given that two entry lists
-chained from the same genesis trailer to the same value are equal
-(`fn-hib-chain-distinct`, the narrow chain bound: a failure needs a frame
-digest collision among the frames compared) (`fn-hib-open-binds-prefix`);
-the adopted image holds the snapshot's history, of exactly that prefix
-(`fn-hib-open-is-log-prefix`); replaying the log's suffix extends it by the
-suffix with nothing else changed (`fn-hib-replay-extends`). A read's need
-becomes a request (:page-request OP ROOT P PHYS DIGEST) the host can serve
-outside the owner; its completion keeps faithfulness (`fn-hib-complete-keeps`)
-and a late one -- the root or the page's entry changed since -- changes
-nothing and is refused :stale-root / :stale-page (`fn-hib-complete-stale`),
-so a stale completion is never mistaken for damage. Eviction of an
-unpinned page keeps faithfulness (`fn-hib-evict-keeps`); an operation that
-pins each page its reads asked for completes within the image's page count
-of its own completions whatever other operations and evictions do
-(`fn-hib-undone-evict`, `fn-hib-complete-progress`); the read loop never runs
-out of fuel with no relation to the disk at all
-(`fn-hib-hrecs-get-fuel-enough`). Teeth: `tests/acl2/history-image-binding-tests.lisp`,
-live runs over committed page files, including row A3's adversarial cases:
-equal-count histories whose image and binding are swapped (:root-absent,
-the directory refused, :prefix), an old root over a newer table generation
-(the table page refused :table-damaged; copy-on-write keeps the old root
-readable), a late fill after the active root changed (:stale-root, nothing
-changed, the new root still answers), and a crash between the two
-publications (the old root selected and read; the out-of-order case
-:root-absent, never an empty history). Scope: nothing on the served path
-calls these yet (the served checkpoint does not write the image, the served
-open does not adopt it); the eviction frees no memory in this
-representation (one words array per image; the page-frame table that frees
-it is the next representation step); a whole-state substitution of checkpoint
-and page file whose log suffix is empty is bound only by the store's
-identity and salt.
-
 ## History classes and lifetimes
 
 STO-010: every class of durable state the store holds has a stated lifetime,

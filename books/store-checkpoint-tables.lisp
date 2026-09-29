@@ -534,16 +534,11 @@
 ; does not cover and the trailer its first entry chains from
 ; (books/store-log-segments.lisp: the capture ROTATED the active segment at
 ; S, so every record below S is in the segments below K).  NIL: no log
-; position (the open scans the log from segment 1).  (K GENESIS BINDING)
-; when the file carries the history image (lane composed-owner,
-; books/history-image-snapshot.lisp): BINDING names the image's commit
-; record and binds it to this store, this codec and the prefix GENESIS
-; identifies (books/history-image-binding.lisp fn-hib-check); the open
-; checks it before it adopts the image.
+; position (the open scans the log from segment 1).
 (defun fn-sct-log-positionp (log)
   (declare (xargs :guard t))
   (or (null log)
-      (and (true-listp log) (or (equal (len log) 2) (equal (len log) 3))
+      (and (true-listp log) (equal (len log) 2)
            (posp (car log))
            (fn-cbor-octet-listp (cadr log))
            (equal (len (cadr log)) 32))))

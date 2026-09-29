@@ -70,17 +70,9 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         # suffix, KEYSTONE fn-scka-next-checkpoint-is-capture), the arena
         # run's setup and fn-scka-publication-setup (fn-ockp-setup with the
         # decision over the whole file); the arena run is written first.
-        # composed-owner: fn-owner-sco-prepare in its two halves, with the
-        # history image of NEXT's records built between them and its binding
-        # carried in the F row's position (fnn-history-image-build), the
-        # image written first (fnn-history-image-write).
-        self.assertIn("(fnn-core 'fn-owner-sco-next base base-payloads configs records", publish)
-        self.assertIn("(fnn-core 'fn-owner-sco-setup-of prepared frontier revision position2", publish)
-        self.assertIn("(fnn-history-image-build", publish)
-        self.assertIn("(fnn-history-image-write fd image)", publish)
+        self.assertIn("(fnn-core 'fn-owner-sco-prepare base base-payloads configs records", publish)
         self.assertIn("(fnn-live-octets-pub) arun)", publish)
-        prepare = (native_cuts.host_function(owner_host, "fn-owner-sco-next")
-                   + native_cuts.host_function(owner_host, "fn-owner-sco-setup-of"))
+        prepare = native_cuts.host_function(owner_host, "fn-owner-sco-prepare")
         # (the base is kept stripped of its event index and restored here:
         # fn-scka-restore-base-of-strip-of-capture, PKT-PRS-2)
         self.assertIn("(fn-scka-next-checkpoint (fn-scka-restore-base base) h0 configs records", prepare)
