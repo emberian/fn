@@ -115,6 +115,23 @@ RULES = {
         "obligation, books/bp-release-authority.lisp, PRF-075)",
         "fn-bpaj-dispatch-committed-never-retries", "books/bp-native-app.lisp", "PRF-132",
         "registered"),
+    "xref-locations-exact": Rule(
+        "xref-locations-exact",
+        "the one Xref line ARTICLE serves ahead of the stored octets (RFC 5537 §3.5 item 8, "
+        "RFC 5536 §3.2.14; fn-rcompat-served-payload-inserts-one-line, books/nntp-reader-"
+        "compat.lisp, PRF-346) names exactly the (group, local number) pairs at which the "
+        "node serves the article, the numbers its own LISTGROUP gave; the stored octets "
+        "never carry one (a supplied Xref is refused at injection)",
+        "fn-xref-pairs-exact", "books/nntp-xref.lisp", "PRF-206", "registered"),
+    "identity-is-the-bytes": Rule(
+        "identity-is-the-bytes",
+        "a retry that takes another route than its original carries other bytes (the served "
+        "route stores the injected article, the store verb the payload as posted) and is "
+        "refused by name as a different article under the same Message-ID "
+        "(fn-post-store-refusal-text :conflict, books/nntp-post.lisp), never a duplicate, "
+        "and changes nothing: the store's committed history and the served bytes are those "
+        "before it (no theorem states the conflict decision at the store boundary yet)",
+        None, "books/nntp-post.lisp", None, "pending"),
     "receipt-policy-order": Rule(
         "receipt-policy-order",
         "a policy change after the decision is recorded does not re-decide it: the "
@@ -207,6 +224,18 @@ def narrow(scenario, history: dict, rec: dict, journal, registry: dict) -> tuple
             if op.op == "retry":
                 of = op.args["of"]
                 was = committed_at(scenario, history, of, seq, journal)
+                if rec.get("cross_route"):
+                    # Other bytes under the same Message-ID: the named
+                    # conflict exactly when the original is committed; an
+                    # acceptance when it is not; never a duplicate.
+                    if out == "lost":
+                        return True, ()
+                    named = "different article with this Message-ID" in str(rec.get("status", ""))
+                    if out == "refused" and named:
+                        return was, ("identity-is-the-bytes",)
+                    if out == "accepted":
+                        return not was, ("identity-is-the-bytes",)
+                    return False, ("identity-is-the-bytes",)
                 if out == "duplicate":
                     return was, ("duplicate-is-no-op",)
                 if out == "accepted":
@@ -247,8 +276,29 @@ def narrow(scenario, history: dict, rec: dict, journal, registry: dict) -> tuple
         if ev == "read":
             art = rec["article"]
             is_in = committed_at(scenario, history, art, seq, journal)
+            xref = rec.get("xref")
+            if xref is not None and rec["result"] in ("match", "other"):
+                # The served Xref names exactly the article's memberships at
+                # the local numbers this session's LISTGROUP gave.
+                if xref.get("malformed") or not is_in:
+                    return False, ("xref-locations-exact",)
+                expected = {}
+                for group in sorted(scenario.groups_of(art)):
+                    number = None
+                    for lst in journal.of_kind("client"):
+                        if lst["seq"] >= seq:
+                            break
+                        if (lst.get("event") == "list-group" and lst.get("group") == group
+                                and art in lst.get("members", ())):
+                            number = lst["numbers"][lst["members"].index(art)]
+                    expected[group] = number
+                got = xref.get("locations", {})
+                if set(got) != set(expected) or any(
+                        n is not None and got[g] != n for g, n in expected.items()):
+                    return False, ("xref-locations-exact",)
             if rec["result"] == "match":
-                return is_in, ("committed-serves-exact", "committed-publishes-id")
+                rules = ("committed-serves-exact", "committed-publishes-id")
+                return is_in, rules + (("xref-locations-exact",) if xref else ())
             if rec["result"] == "absent":
                 return not is_in, ("absent-until-committed",)
             return False, ("committed-serves-exact",)   # other bytes: no history serves them
@@ -317,6 +367,9 @@ def witnesses_observed(scenario, journal) -> set:
                 seen.add("post-accepted")
             if op.op == "retry" and r["outcome"] in ("duplicate", "accepted"):
                 seen.add("retry-reconciled")
+            if (op.op == "retry" and r.get("cross_route") and r["outcome"] == "refused"
+                    and "different article with this Message-ID" in str(r.get("status", ""))):
+                seen.add("cross-route-retry-refused")
         if ev == "read" and r.get("result") == "match":
             seen.add("read-completed")
         if ev == "read" and r.get("during_competing_work") and r.get("result") == "match":

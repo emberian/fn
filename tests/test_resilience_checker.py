@@ -482,7 +482,7 @@ class SchedulePointTests(unittest.TestCase):
                 self.assertTrue(executable_on_native(s, REGISTRY), s.id)
                 self.assertEqual(Scenario.from_json(s.to_json()), s)
         self.assertEqual(counts, {"post": 5, "recovery": 7, "served": 5,
-                                  "served-recovery": 3, "checkpoint": 5})
+                                  "served-recovery": 3, "checkpoint": 5, "cross-route": 1})
 
 
 def receipt_journal(variant, *, first="accepted", dup="accepted", articles=1, present=True,
@@ -589,6 +589,105 @@ class ReceiptPointTests(unittest.TestCase):
                 self.assertEqual(validate(s, REGISTRY), [], s.id)
                 self.assertTrue(executable_on_native(s, REGISTRY), s.id)
                 self.assertEqual(s.witnesses, ["receipt-delivered", "receipt-effect-once"])
+
+
+def cross_route_journal(outcome="refused", status="441 posting failed; a different article "
+                        "with this Message-ID is stored here", xref=None, count_after=1):
+    """The cross-route scenario's journal as the box writes it, with the
+    knobs a tooth turns: the retry's outcome and line, the served Xref of
+    the reads (None: the LISTGROUP number in the one group), the final
+    record count."""
+    s = adapter.cross_route_retry_scenario()
+    j = Journal(s.id)
+    j.bind(adapter.PRIOR, adapter.mid(adapter.PRIOR))
+    j.stage("workload", "begun")
+    j.client("reply", operation=adapter.PRIOR, outcome="accepted", route="store-post", returncode=0)
+    j.environment("persisted-records", count=1, last="x", phase="at-cut", source="log scan-store")
+    done = heal(j)
+    j.client("recover", operation="recover", outcome="completed", phase="healing", returncode=0)
+    j.environment("persisted-records", count=1, last="x", phase="after-recovery",
+                  source="log scan-store")
+    j.client("list-group", operation="list-letters", group=adapter.GROUP,
+             members=[adapter.PRIOR], numbers=[1], route="served")
+    served_xref = xref or {"server": "node.invalid", "locations": {adapter.GROUP: 1},
+                           "malformed": False}
+    j.client("read", operation="read-before", article=adapter.PRIOR, result="match",
+             route="served", status="220 1 <x>", xref=served_xref)
+    j.client("reply", operation="retry-served", outcome=outcome, route="served-post",
+             status=status, cross_route=True)
+    j.client("read", operation="read-after", article=adapter.PRIOR, result="match",
+             route="served", status="220 1 <x>", xref=served_xref)
+    j.client("list-group", operation="list-after", group=adapter.GROUP,
+             members=[adapter.PRIOR], numbers=[1], route="served")
+    j.environment("persisted-records", count=count_after, last="x", phase="final",
+                  source="log scan-store")
+    done()
+    return s, j
+
+
+class XrefAndCrossRouteTests(unittest.TestCase):
+    """The two findings as scenarios with teeth (brief item 2)."""
+
+    def test_served_split_takes_exactly_one_leading_xref(self):
+        stored = b"Path: a!b\r\nMessage-ID: <x>\r\n\r\nbody\r\n"
+        xref, rest = adapter.served_split(b"Xref: node.invalid fn.letters:3 fn.replies:7\r\n"
+                                          + stored)
+        self.assertEqual(rest, stored)
+        self.assertEqual(xref, {"server": "node.invalid", "malformed": False,
+                                "locations": {"fn.letters": 3, "fn.replies": 7}})
+        self.assertEqual(adapter.served_split(stored), (None, stored))
+        two = b"Xref: n a:1\r\nXref: n a:1\r\n" + stored
+        xref, rest = adapter.served_split(two)
+        self.assertTrue(rest.startswith(b"Xref:"), "a second Xref stays in the stored bytes")
+        self.assertFalse(adapter.served_matches(two, stored))
+        self.assertTrue(adapter.served_split(b"Xref: n\r\n" + stored)[0]["malformed"])
+        self.assertTrue(adapter.served_split(b"Xref: n a:x\r\n" + stored)[0]["malformed"])
+
+    def test_the_cross_route_journal_is_consistent_with_its_witness(self):
+        s, j = cross_route_journal()
+        v = checker.check(s, j, registry=REGISTRY)
+        self.assertEqual(v.kind, "consistent", v.to_json())
+        self.assertTrue(v.green)
+        self.assertEqual(v.surviving, 1)
+        self.assertIn("cross-route-retry-refused", v.witnesses_observed)
+        self.assertEqual(v.pending_rules, ["atomic-memberships", "identity-is-the-bytes"])
+
+    def test_a_cross_route_retry_answered_duplicate_or_accepted_is_a_violation(self):
+        for outcome, status in (("duplicate", "441 posting failed; this article is already "
+                                              "stored here"),
+                                ("accepted", "240 article received"),
+                                ("refused", "441 posting failed; the store refused the "
+                                            "article as malformed")):
+            s, j = cross_route_journal(outcome=outcome, status=status)
+            v = checker.check(s, j, registry=REGISTRY)
+            self.assertEqual(v.kind, "violation", (outcome, v.to_json()))
+            self.assertEqual(v.explanation["record"]["operation"], "retry-served")
+            self.assertEqual(v.explanation["rules"], ["identity-is-the-bytes"])
+
+    def test_a_store_changed_by_the_refused_retry_is_a_violation(self):
+        s, j = cross_route_journal(count_after=2)
+        v = checker.check(s, j, registry=REGISTRY)
+        self.assertEqual(v.kind, "violation", v.to_json())
+        self.assertEqual(v.explanation["record"]["phase"], "final")
+
+    def test_an_xref_naming_other_locations_than_listgroup_is_a_violation(self):
+        for bad in ({"server": "n", "locations": {adapter.GROUP: 2}, "malformed": False},
+                    {"server": "n", "locations": {adapter.GROUP: 1, "other": 1},
+                     "malformed": False},
+                    {"server": "n", "locations": {}, "malformed": True}):
+            s, j = cross_route_journal(xref=bad)
+            v = checker.check(s, j, registry=REGISTRY)
+            self.assertEqual(v.kind, "violation", (bad, v.to_json()))
+            self.assertEqual(v.explanation["record"]["operation"], "read-before")
+            self.assertEqual(v.explanation["rules"], ["xref-locations-exact"])
+
+    def test_a_read_without_an_xref_is_judged_as_before(self):
+        s, j = cross_route_journal()
+        for r in j.records:
+            if r.get("event") == "read":
+                r["xref"] = None
+        v = checker.check(s, j, registry=REGISTRY)
+        self.assertEqual(v.kind, "consistent", v.to_json())
 
 
 class ContractRuleTests(unittest.TestCase):

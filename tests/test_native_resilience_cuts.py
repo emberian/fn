@@ -175,6 +175,29 @@ if IMAGE_AVAILABLE:
                 with self.subTest(scenario=s.id, point=rows[s.id]["point"]):
                     self.run_expected(s, "fn-resilience-schedule-")
 
+        def test_a_retry_across_routes_is_refused_by_name_and_the_store_is_unchanged(self):
+            """The route finding as a scenario (adapter.cross_route_retry_
+            scenario): the store-posted article POSTed again on the served
+            listener answers the named 441 conflict, the reads before and
+            after match the bytes as posted behind the one served Xref, and
+            the log's record count is the same at the cut and at the end."""
+            journal, verdict = self.run_expected(adapter.cross_route_retry_scenario(),
+                                                 "fn-resilience-xroute-")
+            reply = [r for r in journal.of_kind("client")
+                     if r.get("event") == "reply" and r.get("operation") == "retry-served"]
+            self.assertEqual(len(reply), 1)
+            self.assertEqual(reply[0]["outcome"], "refused", reply[0])
+            self.assertIn("a different article with this Message-ID is stored", reply[0]["status"])
+            self.assertTrue(reply[0]["cross_route"])
+            reads = [r for r in journal.of_kind("client") if r.get("event") == "read"]
+            self.assertEqual([r["result"] for r in reads], ["match", "match"], reads)
+            self.assertTrue(all(r["xref"] and not r["xref"]["malformed"] for r in reads), reads)
+            counts = [r["count"] for r in journal.of_kind("environment")
+                      if r.get("event") == "persisted-records"]
+            self.assertEqual(counts, [1, 1, 1], counts)
+            self.assertIn("cross-route-retry-refused", verdict.witnesses_observed)
+            self.assertIn("identity-is-the-bytes", verdict.pending_rules)
+
         def test_disabled_fault_hook_is_a_harness_failure(self):
             s = adapter.scenarios()[3]      # log-written
             with tempfile.TemporaryDirectory(prefix="fn-resilience-nofault-") as tmp:

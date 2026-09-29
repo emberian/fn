@@ -41,7 +41,7 @@ STAGES = ("issued", "performed", "persisted", "observed")
 WITNESSES = ("post-accepted", "retry-reconciled", "read-completed",
              "read-during-competing-work", "reclaim-freed", "recovery-completed",
              "memberships-listed", "checkpoint-installed",
-             "receipt-delivered", "receipt-effect-once")
+             "receipt-delivered", "receipt-effect-once", "cross-route-retry-refused")
 REPLAY = ("exact", "timed", "image")
 CONTRACTS = ("local-commit-log",)
 CANDIDATE_RULES = ("absent", "present", "either")
