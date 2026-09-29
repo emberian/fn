@@ -1304,7 +1304,12 @@
                               (fn-cpo-install
                                (fn-sn-update-replayed
                                 seed files advanced
-                                (fn-stx-index-of-store (fn-stx-store advanced) nil)
+                                ; the open has no keyring, so its index is
+                                ; the empty one (fn-stx-index-of-store-
+                                ; without-a-keyring); building it from the
+                                ; store parsed every retained payload for
+                                ; nothing (lane incremental-finalize)
+                                (fn-stx-index-empty)
                                 identity)
                                (fn-cnode-make advanced config) configs)
                               (fn-cp-nth 1 consumer))
@@ -1340,6 +1345,26 @@
   :hints (("Goal" :in-theory (e/d (fn-rii-cnode-statep-has-node-statep)
                                   (fn-cnode-statep fn-node-statep fn-cpr-replay fn-cpr-loop
                                    fn-sco-cpr-finish fn-sco-cpr-prefix)))))
+
+; The opened Store's index on this path IS the empty index: no retained
+; payload is parsed at open (the keyring arrives later, fn-sn-recover
+; recomputes the index, D21).
+(defthm fn-rii-opened-index-is-empty
+  (implies (equal (fn-sn-open-kind (fn-rii-sco-finalize-configured replayed c configs frontier))
+                  :ok)
+           (equal (fn-sn-index
+                   (fn-sn-open-state (fn-rii-sco-finalize-configured replayed c configs frontier)))
+                  (fn-stx-index-empty)))
+  :hints (("Goal" :in-theory (e/d (fn-rii-sco-finalize-configured fn-sn-open-kind fn-sn-open-state
+                                   fn-sn-open-ok fn-sn-open-error
+                                   fn-sn-with-event-index fn-sn-with-topic fn-sn-with-consumer
+                                   fn-cpo-install fn-sn-update-replayed fn-sn-observed-seed
+                                   fn-sn-make fn-sn-make-v6 fn-sn-with-configuration fn-sn-index)
+                                  (fn-rii-observed-historyp fn-rii-advance-idlep
+                                   fn-replay-advance-txid fn-rii-sn-statep-carried fn-sf-make
+                                   fn-node-initial-state fn-cnode-make fn-cnode-node fn-cnode-config
+                                   fn-cnode-domain-of fn-cfg-capacity fn-cfg-value fn-cp-nth
+                                   fn-th-at fn-stx-index-empty fn-replay-verdict-pairs)))))
 
 (defthm fn-rii-sco-cpr-finish-ok-is-configured
   (implies (and (fn-sco-pausedp r)

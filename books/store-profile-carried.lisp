@@ -161,7 +161,7 @@
 (defun fn-pvc-article-budget (v profile used bytes-used payload-length
                                 group-count debt)
   (declare (xargs :guard t))
-  (let ((figure (fn-sbud-article-figure payload-length group-count)))
+  (let ((figure (fn-sbud-article-gate-figure payload-length group-count)))
     (if (and (fn-pvc-roomp v profile (+ 1 (nfix used))
                            (+ (nfix bytes-used) figure) debt)
              (fn-pvc-history-admissiblep v profile bytes-used figure))
@@ -191,7 +191,7 @@
 ; Each twin at the profile's own verdict is the original
 
 (local (in-theory (disable fn-bs-profile-admittedp fn-bs-profile-field
-                           fn-sbud-article-figure fn-store-publication-ceiling
+                           fn-sbud-article-figure fn-sbud-article-gate-figure fn-store-publication-ceiling
                            fn-smr-reserve-octets fn-af-message-idp)))
 
 (defthm fn-pvc-budget-is-sbud-budget

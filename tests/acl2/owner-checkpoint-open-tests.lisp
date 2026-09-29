@@ -208,3 +208,34 @@
                  (<= (- count s) k)))
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-sco-select) (fn-ock-fast-path-within-k-by-definition))))))
+
+; fn-ock-next-checkpoint-is-the-capture
+; Reachable positive witness: the capture of the one-event prefix, advanced
+; over the admitted history it prefixes, is the capture of the whole history.
+(assert-event
+ (and (fn-sn-observed-historyp 8 *ock-t-events*)
+      (fn-ock-prefixp *ock-t-prefix* *ock-t-events*)
+      (equal (fn-ock-next-checkpoint (fn-sco-capture *ock-t-configs* *ock-t-prefix*)
+                                     *ock-t-configs* *ock-t-events*)
+             (fn-sco-capture *ock-t-configs* *ock-t-events*))))
+; The history hypothesis has NO removal witness (PKT-192): on every
+; non-history record list tried here the conclusion still holds, so these
+; are slack witnesses, labelled apart, not teeth.  The proof reads the
+; history only as the prefix's fn-sco-store-eventsp and the records'
+; true-listp; a record that is not fn-store-event-p is absorbed alike by the
+; prefix's capture and the whole capture.  A weakened statement without the
+; hypothesis did not prove in 48 s (2026-09-29); failed search is not a
+; counterexample, so the hypothesis stays and is reported untoothed.
+(defmacro ock-t-next-is-capture (prefix records)
+  `(equal (fn-ock-next-checkpoint (fn-sco-capture *ock-t-configs* ,prefix)
+                                  *ock-t-configs* ,records)
+          (fn-sco-capture *ock-t-configs* ,records)))
+(assert-event (and (not (fn-sn-observed-historyp 8 *ock-t-improper*))
+                   (ock-t-next-is-capture *ock-t-prefix* *ock-t-improper*)))
+(assert-event (and (not (fn-sn-observed-historyp 8 (append *ock-t-events* *ock-t-events*)))
+                   (ock-t-next-is-capture *ock-t-events*
+                                          (append *ock-t-events* *ock-t-events*))))
+(assert-event
+ (let ((bad (update-nth 1 -1 (car *ock-t-events*))))
+   (and (not (fn-store-event-p bad))
+        (ock-t-next-is-capture (list bad) (cons bad *ock-t-events*)))))

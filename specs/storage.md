@@ -49,9 +49,34 @@ marker, carried and never read, are gone;
 docs/operator.md), set at `init` by flags and validated by the relations of
 `fn-bs-profile-validp`; ACL2 fixes no value except the codec ceilings above
 them. It is written once, by `init` (or `store import`, STO-028), and never
-rewritten in place (D34, fresh deploys): a different profile is a reinstall
-and an import with the raised field; a store of another format is refused at
-open by name. This is a local-policy choice of fn; no RFC governs it.
+rewritten in place (D34, fresh deploys): the genesis record in
+`journal/000000.log` carries its digest, and every open refuses a config.json
+whose digest is not that one (`profile-digest`, below). A store of another
+format is refused at open by name. This is a local-policy choice of fn; no
+RFC governs it.
+
+STO-038: the store's limits are operator policy, changed in place. The
+transaction budget T, the history octets H and the article octets A are
+live: `fn admin policy set max-transactions|max-history-octets|max-article-octets N`
+publishes one configuration record holding the `:set-limit` row (FIELD, N)
+(books/config.lisp `fn-cfg-set-limit`), durable and replayed like every
+configuration record. The profile a store is served under is the sealed one
+with each live field overridden by its last row (books/limits-live.lisp
+`fn-lim-effective`), computed from the configuration history alone before
+the log is read, so the open, the launcher's heap probe and the running owner
+agree (`fn-lim-effective-of-append-record`: the profile the owner installs
+when it applies a record is the one every later open computes). ACL2 decides
+each change (`fn-lim-decide`): applied now when the new profile's heap figure
+fits the reservation the process started with; recorded and effective at the
+next start (no data moved) when it does not; refused by name with the number
+below the store's current use (`below-current-use`), for a profile the
+resolution refuses, or for a figure the machine cannot hold. An accepted
+change leaves the use within the new limit
+(`fn-lim-decide-accepted-keeps-use-within`, PRF-940). The fields that bound
+reading the configuration history or scanning the log before any fold
+(`max-config-generations`, `max-record-octets`, `max-open-suffix`) are not
+live; a lowered T lowers `max-open-suffix` with it as init's resolution does.
+No limit change moves data or needs an export and an import.
 
 STO-015: a namespace the store holds is bounded by the operator's profile,
 never by a constant (D27). Configuration generations and AUTHINFO
@@ -111,7 +136,7 @@ generations a store retains are the profile's capacity, `max-transactions`
 plus one: the allocator refuses exactly at that capacity
 (`fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity`; the pack
 allocator's twin went with the pack layer), so
-a reinstall with a larger T (`store import --max-transactions N`) raises it and a store no longer meets a lifetime
+a live raise of T (STO-038, `policy set max-transactions N`) raises it and a store no longer meets a lifetime
 figure of 4,096 publications. No store format changed: an older image
 refuses a configuration log holding codes 18 or 19 and a checkpoint
 directory holding more than 4,096 names or a name at or above 4096, the
@@ -1168,9 +1193,27 @@ the fold is the offline fold, `fn-orc-fold-is-the-offline-fold`), so the
 decision names exactly the rewritten articles
 (`fn-orc-decision-names-the-rewritten-articles`). Today the owner answers
 `--dry-run` (its report in the owner's log, posts and reads continuing) and
-refuses `store reclaim` and `--recorded` by name (`offline-only`) until the
-installing pass (the rewritten capture's checkpoint, the live swap, the
-drop) lands.
+`--recorded`, which INSTALLS (Q16 (a), `books/owner-reclaim-pass.lisp`,
+PRF-939): the pass reserves its second copy of the history in the run's
+credit ledger under its own key (`fn-orcp-reserve-keeps-funded`; past the
+budget `deferred reason=credit` by name, nothing moved), captures under
+the owner mutex, and off it rewrites, decides, stages the reclaimed
+checkpoint, interns the tombstones in owner quanta and rebuilds the owner
+the full open of the rewritten history installs
+(`fn-orcp-rebuild-is-the-full-open`) with fresh catalog and history
+columns. One owner quantum then installs the checkpoint (the commit point)
+and swaps the owner, re-pinning each connection to the rebuilt view
+(O(connections)), only when nothing was committed since the capture, the
+commit pipeline is idle and no other off-mutex reader holds the arena
+(`fn-orcp-swap-only-over-the-capture`); otherwise the pass defers by name
+(`delta`, `busy`, `readers`) and installs nothing. The covered segments are
+then dropped and their blocks given back (PRF-930). A death before the
+install leaves the old publication, from it the new
+(`fn-orcp-every-cut-is-old-or-new`), and a rerun rewrites nothing more
+(`fn-orcp-rerun-rewrites-nothing`). Local policy until the carried finalize
+verdict lands: a pass under continuous posting defers (`delta`). `store
+reclaim` without `--recorded` (which records the instant first) stays
+`offline-only` on a running owner.
 
 What becomes available again, precisely: the payload octets of each
 reclaimed record, on disk when the covered segments are dropped, and in the

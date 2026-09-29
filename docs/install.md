@@ -188,7 +188,14 @@ restart the node. Then follow [Read it in your browser](web.md).
   [Peering with a friend](peering-with-a-friend.md). Do all of it: after
   its step 2 the link is set up but carries nothing. Its step 3
   ([the feed, both ways](peering-with-a-friend.md#3-turn-on-the-encrypted-feed-both-ways))
-  starts the articles flowing.
+  starts the articles flowing: each of you gives the other a login and
+  adds the other as an encrypted peer, and each node fetches from the
+  other with `peer pull`. Step 4 ([check it](peering-with-a-friend.md#4-check-it))
+  posts on one node and reads the article on the other. Your friends are
+  connected when that article arrives and each `log/fn.log` shows
+  `accepted feed peer=...` and `pull peer=... round=done`. To copy what
+  your friend's node held before you connected, add
+  [catching up](peering-with-a-friend.md#catching-up).
 - To give a person an account, make an invitation code. It is shown once:
 
   ```sh

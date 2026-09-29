@@ -113,6 +113,50 @@ def predicate_application(term):
     return term[0], (term[1] if len(term) > 1 else None)
 
 
+def _substitute(term, env: dict):
+    """TERM with each variable in ENV replaced by its bound term; a quoted
+    constant is left alone."""
+    if isinstance(term, str):
+        return env.get(term, term)
+    if isinstance(term, list):
+        if term and term[0] == "quote":
+            return term
+        return [_substitute(t, env) for t in term]
+    return term
+
+
+def statement(form: str):
+    """(hypotheses, conclusion) of a defthm FORM with the binders opened:
+    a `let', `let*' or `mv-let' around the statement (or around the
+    conclusion of an `implies') is substituted away, so `(let* ((o (open
+    ...))) (implies (h o) (R o)))' concludes `(R (open ...))', as the
+    theorem does.  reach_check.split_statement stops at the binder and
+    would report no conclusion at all (fn-scj-invp-at-install, 2026-09-29)."""
+    tree = reach_check.read_sexp(form)
+    if not isinstance(tree, list) or len(tree) < 3:
+        return [], None
+    term, hyps, env = tree[2], [], {}
+    while True:
+        bound = reach_check._bindings(term)
+        if bound is not None:
+            pairs, body = bound
+            for variables, value in pairs:
+                value = _substitute(value, env)
+                if len(variables) == 1:
+                    env[variables[0]] = value
+                else:
+                    for i, v in enumerate(variables):
+                        env[v] = ["mv-nth", str(i), value]
+            term = body
+            continue
+        if isinstance(term, list) and len(term) == 3 and term[0] == "implies":
+            hyps.append(_substitute(term[1], env))
+            term = term[2]
+            continue
+        break
+    return hyps, _substitute(term, env)
+
+
 class Audit:
     def __init__(self, graph: reach_check.Graph) -> None:
         self.graph = graph
@@ -136,7 +180,7 @@ class Audit:
     def scan(self) -> None:
         reachable = self.graph.reachable
         for name, (book, form) in self.theorems.items():
-            hyps, conclusion = reach_check.split_statement(form)
+            hyps, conclusion = statement(form)
             if conclusion is None:
                 continue
             assumed_heads = set()
