@@ -72,8 +72,8 @@
 ; Message-ID grammar, the composed POST verdicts) are ACL2's:
 ; books/post-fields.lisp (fn-pfld-).  This file defines none of them.
 
-(defun fn-store-octets->string (xs)
-  (fn-record-octets-string xs))
+; Exact alias now guard-verified in its narrow logical book.
+(include-book "../books/store-octet-entry")
 
 ; The final transaction namespace is an ACL2 value.  The native host consumes
 ; the string wrapper; the Python bridge consumes octets so no Lisp string
