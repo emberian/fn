@@ -314,6 +314,13 @@ class EncapsulateTests(unittest.TestCase):
         self.assertEqual(proof_repl.encapsulated(text, books, {"books/dep"}),
                          ([], "(encapsulate ()\n(local (defthm l t))\n(defun f (x) x)\n)"))
 
+    def test_include_only_umbrella_has_no_empty_encapsulate(self):
+        text = '(in-package "ACL2")\n(include-book "dep")\n'
+        books = proof_repl.ROOT / "books"
+        self.assertEqual(proof_repl.encapsulated(text, books, set()),
+                         (['(include-book "dep")'], ""))
+        self.assertEqual(proof_repl.encapsulated(text, books, {"books/dep"}), ([], ""))
+
     def test_local_includes_stay_inside_and_defpkg_is_hoisted(self):
         text = ('(defpkg "FOO" nil)\n(local (include-book "std/lists/take" :dir :system))\n'
                 '(include-book "std/lists/rev" :dir :system)\n(defthm g t)\n')
@@ -471,6 +478,22 @@ class LaneAskTests(unittest.TestCase):
         self.assertIn("(local (defthm l1 t))", sent[1][1])
         self.assertEqual(len(sent), 2)
         self.assertIn("inside one encapsulate", out.getvalue())
+
+    def test_include_only_local_range_sends_only_hoisted_include(self):
+        path = self.book('(in-package "ACL2")\n(include-book "std/lists/top" :dir :system)\n')
+        sent = []
+        def fake_send_many(name, items, limit, full, keep_going):
+            sent.extend(items)
+            return 0
+        args = proof_repl.argparse.Namespace(
+            name="s", book=str(path), start=None, until=None, through=None,
+            skip_includes=False, ld_local=True, limit=None, full=False, keep_going=False)
+        with mock.patch.object(proof_repl, "send_many", fake_send_many), \
+                mock.patch.object(proof_repl, "read_state", lambda name: {}), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(proof_repl.send_range(args), 0)
+        self.assertEqual([form for _, form in sent],
+                         ['(include-book "std/lists/top" :dir :system)'])
 
     def test_resync_undoes_what_is_there_and_resends_from_the_first_missing(self):
         # web-native: :ubt! then send-range --from X left earlier definitions missing.
@@ -1326,6 +1349,44 @@ class SessionTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which(os.environ.get("FN_ACL2", "acl2")), "no ACL2 on PATH")
 class RealAcl2Tests(unittest.TestCase):
+    def test_include_only_source_umbrella_exports_child_without_leaking_locals(self):
+        scratch = ROOT / "build" / "proof-repl-real-umbrella"
+        scratch.mkdir(parents=True, exist_ok=True)
+        child = "build/proof-repl-real-umbrella/child"
+        umbrella = "build/proof-repl-real-umbrella/umbrella"
+        (scratch / "child.lisp").write_text(
+            '(in-package "ACL2")\n'
+            '(local (defthm umbrella-local (equal (car (cons x y)) x)))\n'
+            '(defun umbrella-child (x) x)\n')
+        (scratch / "umbrella.lisp").write_text(
+            '(in-package "ACL2")\n(include-book "child")\n')
+        (scratch / "top.lisp").write_text(
+            '(in-package "ACL2")\n(include-book "umbrella")\n'
+            '(assert-event (equal (umbrella-child 17) 17))\n')
+        name = "real-u-%d" % os.getpid()
+        cli = lambda *w: subprocess.run(  # noqa: E731
+            [sys.executable, str(ROOT / "tools" / "proof_repl.py"), *w],
+            capture_output=True, text=True, cwd=ROOT, timeout=300)
+        try:
+            started = cli("start", name, "build/proof-repl-real-umbrella/top",
+                          "--ld", child, "--ld", umbrella)
+            self.assertEqual(started.returncode, 0, started.stdout + started.stderr)
+            state = json.loads((proof_repl.SESSIONS / name / "state.json").read_text())
+            self.assertEqual(state["ld"], [child, umbrella])
+            self.assertEqual(state["ld_loaded"],
+                             {child: "encapsulated", umbrella: "encapsulated"})
+            self.assertEqual(state["loaded"], ["in-package", "assert-event"])
+            self.assertFalse(list(scratch.glob("*.cert")))
+            exported = cli("send", name,
+                           "(defthm umbrella-exported (equal (umbrella-child x) x))")
+            self.assertEqual(exported.returncode, 0, exported.stdout + exported.stderr)
+            hidden = cli("send", name, ":pe umbrella-local")
+            self.assertEqual(hidden.returncode, 1, hidden.stdout + hidden.stderr)
+        finally:
+            cli("stop", name)
+            shutil.rmtree(proof_repl.SESSIONS / name, ignore_errors=True)
+            shutil.rmtree(scratch, ignore_errors=True)
+
     def test_a_true_theorem_is_admitted_and_a_false_one_is_refused(self):
         scratch = ROOT / "build" / "proof-repl-real"
         scratch.mkdir(parents=True, exist_ok=True)
@@ -1962,6 +2023,34 @@ class LdHonoursLocalTests(unittest.TestCase):
 
     def test_ld_leak_loads_form_by_form(self):
         self.assertFalse(self.parsed("--ld", "books/y", "--ld-leak").ld_local)
+
+    def test_include_only_load_preserves_hoisted_failure_and_sends_no_empty_body(self):
+        scratch = ROOT / "build" / "proof-repl-umbrella"
+        scratch.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, scratch, True)
+        (scratch / "dep.lisp").write_text('(in-package "ACL2")\n(include-book "child")\n')
+        sent = []
+        class Recorder:
+            fail = False
+            def send(self, form, timeout):
+                sent.append(form)
+                if self.fail and form.startswith("(include-book"):
+                    return "ACL2 Error: child refused\n", False
+                return "", False
+        recorder = Recorder()
+        state = {"ld_loaded": {}}
+        self.assertTrue(proof_repl.load_book(recorder, "build/proof-repl-umbrella/dep",
+                                            state, 10, set(), record=False, encapsulate=True))
+        self.assertEqual(sent[-1], '(include-book "child")')
+        self.assertFalse(any(form.startswith("(encapsulate") for form in sent))
+        self.assertEqual(state["ld_loaded"],
+                         {"build/proof-repl-umbrella/dep": "encapsulated"})
+        recorder.fail = True
+        refused_state = {"ld_loaded": {}}
+        self.assertFalse(proof_repl.load_book(recorder, "build/proof-repl-umbrella/dep",
+                                             refused_state, 10, set(),
+                                             record=False, encapsulate=True))
+        self.assertEqual(refused_state["ld_loaded"], {})
 
     def test_an_encapsulated_refusal_names_ld_leak(self):
         class Refusing:
