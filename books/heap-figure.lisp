@@ -703,12 +703,31 @@
 ;; 512 MiB; that was the 12 KiB constant's figure, below the need.)
 (defthm fn-heap-small-run-base-of-an-empty-store
   (equal (fn-heap-store-base-octets *fn-heap-small-profile* core '(0 . 0))
-         (+ (fn-heap-core-dynamic core) 1191575754))
+         (+ (fn-heap-core-dynamic core) 1145742346))
   :hints (("Goal" :in-theory (enable fn-heap-store-base-octets fn-heap-open-octets-bound
                                      fn-heap-open-records-bound))))
 
 ; (A hypothesis bounding the nursery cap was removed after proving the
 ; weakened theorem: the trigger is at most a sixteenth of the space.)
+(local
+ (defthm fn-heap-ceiling-8-7-below
+   (implies (natp x) (< (ceiling (* 8 x) 7) (+ 1 (* 8/7 x))))
+   :rule-classes :linear))
+
+; The nursery's figure over BASE, without a ceiling (whose arithmetic
+; depends on the base's residue mod 7).
+(local
+ (defthm fn-heap-with-nursery-below-eight-sevenths
+   (implies (natp base)
+            (< (fn-heap-with-nursery base nursery)
+               (+ 1 (max (+ base (* 2 *fn-heap-nursery-least-octets*))
+                         (* 8/7 base)))))
+   :rule-classes :linear
+   :hints (("Goal" :use (fn-heap-with-nursery-is-at-most-an-eighth-more
+                         (:instance fn-heap-ceiling-8-7-below (x base)))
+                   :in-theory (disable fn-heap-with-nursery-is-at-most-an-eighth-more
+                                       fn-heap-ceiling-8-7-below)))))
+
 (defthm fn-heap-small-profile-run-fits-a-small-machine
   (implies (and (<= (fn-heap-core-dynamic core) (* 192 *fn-heap-mib*))
                 (posp machine) (<= (* 1536 *fn-heap-mib*) machine))
@@ -717,7 +736,7 @@
                   :heap))
   :hints (("Goal" :in-theory (e/d (fn-heap-mb-of fn-heap-store-figure-octets)
                                   (fn-heap-profile-word))
-           :use ((:instance fn-heap-with-nursery-is-at-most-an-eighth-more
+           :use ((:instance fn-heap-with-nursery-below-eight-sevenths
                             (base (fn-heap-store-base-octets *fn-heap-small-profile* core
                                                              '(0 . 0))))))))
 
@@ -729,7 +748,7 @@
                   :heap))
   :hints (("Goal" :in-theory (e/d (fn-heap-mb-of fn-heap-store-figure-octets)
                                   (fn-heap-profile-word))
-           :use ((:instance fn-heap-with-nursery-is-at-most-an-eighth-more
+           :use ((:instance fn-heap-with-nursery-below-eight-sevenths
                             (base (fn-heap-store-base-octets *fn-heap-small-profile* core
                                                              '(0 . 0))))))))
 

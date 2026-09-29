@@ -2,7 +2,7 @@
 ;
 ; The subject is `fn-nntp-archive-command-pinned' (books/nntp.lisp), the
 ; pinned dispatcher every served read reaches: host/owner-host.lisp
-; fn-owner-chunk -> fn-own-read (books/owner.lisp) -> fn-served-step ->
+; fn-owner-chunk-span-at -> fn-own-read (books/owner.lisp) -> fn-served-step ->
 ; fn-served-dispatch -> fn-auth-step-pinned -> fn-peer-step-pinned ->
 ; fn-nntp-post-step-pinned -> fn-nntp-step-pinned -> fn-nntp-command-pinned
 ; -> fn-nntp-archive-command-pinned (books/owner-control-read.lisp states the

@@ -98,3 +98,54 @@
  (null (fn-bpn-host-authored-retry *bpnh-test-config* *bpnh-test-peer*
                                    *bpnh-test-adu* "authored-7.wire"
                                    (butlast *bpnh-test-wire* 1))))
+
+; -----------------------------------------------------------------------------
+; Teeth for books/bp-node-host-transfer.lisp (PRF-944): the receive boundary
+; over a bundle this node's own send authored, as the host composes it.
+; Reachable positive witness: the complete antecedent of
+; fn-bpn-host-receive-of-host-send-hands-over-the-adu by name, the outcome
+; :accepted, and the ADU handed over.
+(defconst *bnh-a* (cons :dtn '(47 47 102 110 45 97 47)))     ; dtn://fn-a/
+(defconst *bnh-b* (cons :dtn '(47 47 102 110 45 98 47)))     ; dtn://fn-b/
+(defconst *bnh-config-a* (fn-bpn-host-config *bnh-a* 3600000 2 32 1048576))
+(defconst *bnh-config-b* (fn-bpn-host-config *bnh-b* 3600000 2 32 1048576))
+(defconst *bnh-obs* (fn-clock-observation 1000 0 0 nil))
+(defconst *bnh-obs-later* (fn-clock-observation 4000 0 0 nil))
+(defconst *bnh-adu* '(104 101 108 108 111))                  ; "hello"
+(defconst *bnh-wire* (fn-bpn-host-send *bnh-config-a* *bnh-b* *bnh-adu* 7 *bnh-obs*))
+(defconst *bnh-received*
+  (fn-bpn-host-receive *bnh-config-b* *bnh-wire* *bnh-obs-later*))
+(assert-event (and (fn-bpn-configp *bnh-config-a*) (fn-bpn-configp *bnh-config-b*)
+                   (fn-bpp-eidp *bnh-b*) (fn-bpb-datap *bnh-adu*) (fn-bpp-timep 7)
+                   (fn-clock-observationp *bnh-obs*)
+                   (fn-clock-observationp *bnh-obs-later*)
+                   (fn-cbor-octet-listp *bnh-wire*)))
+(assert-event (equal (fn-bpn-host-receive-outcome *bnh-received*) :accepted))
+(assert-event (equal (fn-bpn-host-receive-adu *bnh-received*) *bnh-adu*))
+(assert-event (equal (fn-bpn-host-receive-reason *bnh-received*) nil))
+(assert-event (equal *bnh-received* (list :accepted nil *bnh-adu* 5)))
+; Hypothesis removal, the wire: the ADU itself offered as the transfer is not
+; a bundle; the outcome is :refused with the book's reason and no ADU.
+(defconst *bnh-refused*
+  (fn-bpn-host-receive *bnh-config-b* *bnh-adu* *bnh-obs-later*))
+(assert-event (equal (fn-bpn-host-receive-outcome *bnh-refused*) :refused))
+(assert-event (equal (fn-bpn-host-receive-adu *bnh-refused*) nil))
+(assert-event (and (fn-bpn-host-receive-reason *bnh-refused*)
+                   (equal (fn-bpn-host-receive-reason *bnh-refused*)
+                          (fn-bpn-outcome-reason
+                           (fn-bpn-receive *bnh-config-b* *bnh-adu*
+                                           *bnh-obs-later*)))))
+; Hypothesis removal, well-formed arguments: no configuration, or no clock
+; observation, is the refusal :host-arguments, never an acceptance.
+(assert-event (equal (fn-bpn-host-receive nil *bnh-wire* *bnh-obs-later*)
+                     (list :refused :host-arguments nil 0)))
+(assert-event (equal (fn-bpn-host-receive *bnh-config-b* *bnh-wire* nil)
+                     (list :refused :host-arguments nil 0)))
+(assert-event (equal (fn-bpn-host-send nil *bnh-b* *bnh-adu* 7 *bnh-obs*) nil))
+; The :uncertain arm's reachable witness is fn-bpn-receive's
+; (*bpn-undecidable*, tests/acl2/bp-node-tests.lisp); the flattening of that
+; arm is the keystone's third conjunct.
+(assert-event (equal (symbol-class 'fn-bpn-host-receive (w state))
+                     :common-lisp-compliant))
+(assert-event (equal (symbol-class 'fn-bpn-host-send (w state))
+                     :common-lisp-compliant))

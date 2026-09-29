@@ -1208,3 +1208,23 @@
               (fn-smid-text " ")
               (fn-smid-unsafe-text reason)
               (fn-smid-text " (docs/operator.md, Storage requirements)")))))
+
+; KEYSTONE (PRF-954).  The durability warning the host prints (host/native/
+; io.lisp fnn-filesystem-durability-warn, at the owner's start and by status
+; and health) exists exactly when the mount observation shows a reason
+; durability is disabled -- :nobarrier or :memory, nothing else -- and an
+; observation that is not one never warns.
+(defthm fn-smid-durability-warning-warns-exactly-when-the-mount-is-unsafe
+  (and (iff (fn-smid-durability-warning observation)
+            (fn-smid-unsafe-reason observation))
+       (implies (not (fn-smid-observationp observation))
+                (not (fn-smid-durability-warning observation)))
+       (implies (fn-smid-durability-warning observation)
+                (member-equal (fn-smid-unsafe-reason observation)
+                              (list :nobarrier :memory))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-smid-durability-warning fn-smid-unsafe-reason)
+                           (fn-smid-text fn-smid-describe fn-smid-unsafe-text
+                            fn-smid-observed-identity fn-smid-comma-split-aux
+                            fn-smid-observationp nth member-equal)))))

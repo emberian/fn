@@ -302,7 +302,8 @@
 
 (definterface fn-bs-init-pub-admission
   :class ::common-lisp-compliant
-  :keystones (fn-bs-init-pub-admission-proceeds-only-on-nothing))
+  :keystones (fn-bs-init-pub-admission-proceeds-only-on-nothing
+              fn-bs-init-pub-admission-decides-by-what-is-present))
 
 (definterface fn-clock-observation
   :class ::common-lisp-compliant)
@@ -443,7 +444,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-lgdm-refusal-text
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-lgdm-refusal-text-refuses-exactly-a-break-or-damage))
 
 (definterface fn-lgdm-refused-p
   :class ::common-lisp-compliant)
@@ -544,7 +546,8 @@
               fn-lzr-append-plan-off))
 
 (definterface fn-lzr-append-refusal-text
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder))
 
 (definterface fn-lzr-candidate-cap
   :class ::common-lisp-compliant)
@@ -561,7 +564,8 @@
   :keystones (fn-lzr-intern-step-refines))
 
 (definterface fn-lzr-read-refusal-text
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-lzr-read-refusal-text-refuses-exactly-what-does-not-expand))
 
 (definterface fn-lzr-read-step
   :class ::common-lisp-compliant
@@ -758,7 +762,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-smid-durability-warning
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-smid-durability-warning-warns-exactly-when-the-mount-is-unsafe))
 
 (definterface fn-smid-init-policy
   :class ::common-lisp-compliant)
@@ -1246,7 +1251,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-otb-answer-early
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-otb-answer-early-answers-each-untold-member-once))
 
 (definterface fn-otb-complete
   :class ::common-lisp-compliant
@@ -1871,7 +1877,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-anchor-rp-outcome
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-anchor-rp-outcome-is-terminal-only-after-the-directory-barrier))
 
 (definterface fn-anchor-rp-recover-start
   :class ::common-lisp-compliant)
@@ -1955,7 +1962,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-hsig-authorized-injected-carried-submission-event
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-hsig-authorized-injected-carried-submission-event-decides))
 
 (definterface fn-hsig-host-authored-source-fields
   :class ::program)
@@ -2357,19 +2365,27 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-receive
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-receive-keeps-the-three-outcomes-distinct
+              fn-bpn-host-receive-of-host-send-hands-over-the-adu))
 
 (definterface fn-bpn-host-receive-adu
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-receive-keeps-the-three-outcomes-distinct
+              fn-bpn-host-receive-of-host-send-hands-over-the-adu))
 
 (definterface fn-bpn-host-receive-outcome
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-receive-keeps-the-three-outcomes-distinct
+              fn-bpn-host-receive-of-host-send-hands-over-the-adu))
 
 (definterface fn-bpn-host-receive-reason
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-receive-keeps-the-three-outcomes-distinct))
 
 (definterface fn-bpn-host-send
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-receive-of-host-send-hands-over-the-adu))
 
 (definterface fn-bpn-host-sent-summary
   :class ::ideal)
@@ -2647,7 +2663,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnp-tcpcl-outcome
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct))
 
 (definterface fn-bpnp-used
   :class ::common-lisp-compliant)

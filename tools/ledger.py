@@ -3373,50 +3373,50 @@ def event_books(tree: Tree, curated: dict) -> dict[str, set[str]]:
 
 
 def derived_status(entry: dict, names: list[str], books: set[str],
-                   state: "dict[str, tuple[str, list[str]]]", root: Path = ROOT) -> str:
+                   state: dict, root: Path = ROOT) -> str:
     """A proof target's ``status``: generated, never typed.
 
-    ``planned`` when the target cites no event; ``certified`` when, for every
-    event's defining book, a manifest the row cites in ``evidence`` recorded
-    that book passed at its current source digest and include closure (the
-    rule tools/certified_claims.py enforces); otherwise
-    ``uncertified-at-current-digest``.  The status speaks for the cited
-    events only; the target's statement may say more than they prove.
+    ``planned`` when the target cites no event; ``certified`` when every
+    event's defining book is green at these bytes
+    (tools/green_check.py ``green_at_these_bytes``: green_check's verdict at
+    the book's current digest and include closure, from an archived
+    manifest -- the one meaning of "certified", row R2); otherwise
+    ``uncertified-at-current-digest``.  The row's ``evidence`` citations are
+    provenance, not the rule.  The status speaks for the cited events only;
+    the target's statement may say more than they prove.  STATE caches
+    green_check's report under ``"__green__"`` (apply_events fills it once
+    for every row's books).
     """
     if not names:
         return "planned"
+    if not books:
+        return "uncertified-at-current-digest"
     here = str(Path(__file__).resolve().parent)
     if here not in sys.path:
         sys.path.insert(0, here)
-    import certified_claims  # the manifest rule; imported late, it imports this module
-    manifests = []
-    for relative in certified_claims.cited_manifests(entry):
-        path = root / relative
-        try:
-            value = json.loads(path.read_text(encoding="utf-8"))
-            if isinstance(value, dict):
-                value = certified_claims.certs.read_as_current(value, root)
-        except (OSError, ValueError):
-            continue
-        if isinstance(value, dict):
-            manifests.append(value)
-    if not manifests or not books:
-        return "uncertified-at-current-digest"
-    for book in books:
-        if book not in state:
-            state[book] = certified_claims.current_state(root, book)
-        digest, listing = state[book]
-        if not any(certified_claims.certifies(value, book, digest, listing)[0]
-                   for value in manifests):
-            return "uncertified-at-current-digest"
-    return "certified"
+    import green_check  # imported late, it imports this module
+    report = state.get("__green__") or {}
+    records = report.get("books_by_verdict", {})
+    if any(book not in records for book in books):
+        report = green_check.audit(root, roots=sorted(set(books) | set(records)))
+        state["__green__"] = report
+        records = report.get("books_by_verdict", {})
+    if all(green_check.green_at_these_bytes(records.get(book)) for book in books):
+        return "certified"
+    return "uncertified-at-current-digest"
 
 
 def apply_events(regenerated: dict[str, list[str]],
                  books: "dict[str, set[str]] | None" = None) -> str:
     """``proofs.json`` with regenerated ``events`` and ``status``; the rest untouched."""
     registry = json.loads(PROOFS.read_text(encoding="utf-8"))
-    state: dict[str, tuple[str, list[str]]] = {}
+    state: dict = {}
+    if books is not None and any(books.values()):
+        here = str(Path(__file__).resolve().parent)
+        if here not in sys.path:
+            sys.path.insert(0, here)
+        import green_check
+        state["__green__"] = green_check.audit(ROOT, roots=sorted(set().union(*books.values())))
     for entry in registry["proofs"]:
         names = regenerated.get(entry["id"], [])
         # proofs.json's events are GENERATED from planning/proof-events.json:

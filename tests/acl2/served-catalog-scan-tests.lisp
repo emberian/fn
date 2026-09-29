@@ -67,8 +67,8 @@
 
 (defun scst-agree (conn i end fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil))
-  (let ((scan (fn-scr-scan-span conn i end nil nil nil nil fn-octets fn-arena fn-cat)))
-    (and (equal scan (fn-scr-feed-span conn i end nil nil nil nil fn-octets fn-arena fn-cat))
+  (let ((scan (fn-scr-scan-span conn i end nil nil nil nil nil fn-octets fn-arena fn-cat)))
+    (and (equal scan (fn-scr-feed-span conn i end nil nil nil nil nil fn-octets fn-arena fn-cat))
          (equal scan (fn-scar-scan-span conn i end nil nil nil fn-octets fn-arena)))))
 
 (defun scst-ranges-end (conn i end n fn-octets fn-arena fn-cat)
@@ -106,8 +106,8 @@
     (mv (case mode
           (:ranges (scst-ranges conn 0 n fn-octets fn-arena fn-cat))
           (:cuts (scst-cuts conn 0 n fn-octets fn-arena fn-cat))
-          (:scan (fn-scr-scan-span conn 0 n nil nil nil nil fn-octets fn-arena fn-cat))
-          (otherwise (fn-scr-step-span-fast conn 0 n nil nil nil nil fn-octets fn-arena fn-cat)))
+          (:scan (fn-scr-scan-span conn 0 n nil nil nil nil nil fn-octets fn-arena fn-cat))
+          (otherwise (fn-scr-step-span-fast conn 0 n nil nil nil nil nil fn-octets fn-arena fn-cat)))
         fn-octets)))
 
 (defun scst (mode conn octets)
