@@ -33,8 +33,12 @@ what the store holds. Repeats mean a failing disk.
         --reason takedown
 
 *When the store is full:* Posts are refused with 441; peers are told
-to try later. Limits are fixed at init. Raise them
-with an export, then an import with --max-transactions.
+to try later. Raise a limit in place, on a running node or offline:
+
+    fn operator CONFIG policy set max-transactions N
+
+(also max-history-octets and max-article-octets). It applies now when
+the running heap holds it, otherwise at the next start; no data moves.
 
 *Backups:* Stop, copy the node folder, start. Exports omit keys.
 
