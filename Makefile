@@ -354,6 +354,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-retention-publication \
 	tests/acl2/byte-store-retention-publication-tests \
 	books/byte-store-keystones \
+	tests/acl2/byte-store-node-witness-tests \
 	books/byte-store-observation \
 	tests/acl2/byte-store-observation-tests \
 	books/byte-store-observation-scan \
