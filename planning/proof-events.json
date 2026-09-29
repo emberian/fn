@@ -5796,6 +5796,10 @@
         {
           "kind": "theorem",
           "name": "fn-nctrl-reason-word-of-a-reason-is-not-none"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-host-refusal-names-its-class"
         }
       ]
     },
