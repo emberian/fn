@@ -5962,6 +5962,30 @@
         "tests/test_native_checkpoint_auto.py",
         "planning/evidence/operations-2026-09-28.md"
       ]
+    },
+    {
+      "id": "SCN-210",
+      "title": "`store export DIR' answers on the running owner: requested and written while serving, refused by name when an export is in flight or DIR exists; the archive imports with the captured count",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-036"
+      ],
+      "steps": [
+        "A development-profile store; `run`; N POSTs; `operator store export DIR` while the owner serves (posting continues during it); `operator store export DIR` again; `operator store import DIR` into a fresh root; `operator status --replay` on the imported store; the owner's log."
+      ],
+      "expected": [
+        "The first export prints `export requested archive=DIR` then `exported archive=DIR: complete ...` exit 0 and never `store is already locked`; DIR/MANIFEST exists; the second answers `export refused reason=archive-exists ...` exit 1 (a request while the first is still writing answers `reason=export-in-flight`); the import opens and `status --replay` shows `transactions=` the count captured at the request (at most N, at least the POSTs acknowledged before it); the owner's log carries `EXPORT done records=... configuration=...`; serving continued (POSTs during the export were accepted)."
+      ],
+      "implementation": {
+        "test": "tests.test_native_maintenance_live",
+        "cases": [],
+        "native": true
+      },
+      "evidence": [
+        "books/owner-export-request.lisp",
+        "tests/acl2/owner-export-request-tests.lisp"
+      ]
     }
   ]
 }

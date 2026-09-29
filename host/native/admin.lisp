@@ -352,7 +352,6 @@ absent.  The client renders the offline report from the word."
                  service nil (lambda () (and (fnn-bridge-lookup-found-p octets) t))))
          (word (fnn-core 'fn-omr-inspect-word found)))
     (list :reason (fnn-core 'fn-omr-inspect-status word) word)))
-
 (defun fnn-owner-reclaim-request (service mode)
   "Q16: `store reclaim' on the running owner (books/owner-reclaim.lisp).  ACL2
 answers it under the owner mutex (host/owner-host.lisp fn-owner-orc-request):
@@ -379,7 +378,7 @@ the pass that installs lands.  The reply names the word."
 (defun fnn-owner-live-admin-serialized (service argv)
   "Publish one ACL2-planned configuration mutation through the live owner,
 or answer the one owner request an admin vector carries (PKT-868: the
-compaction request; Row S3: the inspect request; Q16: the reclaim request;
+compaction request; row S3: the inspect request; Q16: the reclaim request;
 ACL2's fn-native-admin-result-owner-requestp, -inspect-msgid and
 -reclaim-mode)."
   (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
@@ -387,10 +386,11 @@ ACL2's fn-native-admin-result-owner-requestp, -inspect-msgid and
       (let ((mode (fnn-core 'fn-native-admin-host-reclaim-mode plan))
             (msgid (fnn-core 'fn-native-admin-result-inspect-msgid plan)))
         (return-from fnn-owner-live-admin-serialized
-          (cond (mode (fnn-owner-reclaim-request service mode))
-                (msgid (fnn-owner-inspect-request service msgid))
-                (t
-                 (fnn-owner-compaction-request service)))))))
+          (if (or mode msgid)
+              (if mode
+                  (fnn-owner-reclaim-request service mode)
+                (fnn-owner-inspect-request service msgid))
+            (fnn-owner-compaction-request service))))))
   (fnn-owner-serialized
    service nil
    (lambda ()

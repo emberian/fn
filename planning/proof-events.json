@@ -13569,10 +13569,6 @@
         {
           "kind": "theorem",
           "name": "fn-omr-transactions-at-most-bounds-the-count"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-omr-stopped-line-is-header-and-octets-by-definition"
         }
       ]
     },
@@ -13582,10 +13578,6 @@
         {
           "kind": "theorem",
           "name": "fn-ocpr-line-names-the-reason-exactly-when-refused"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ocpr-reason-is-the-word-when-refused-by-definition"
         }
       ]
     },
