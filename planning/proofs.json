@@ -16834,6 +16834,103 @@
         "fn-assume-carried-pair-is-carried",
         "fn-sfp-carried-open-under-carried-pair"
       ]
+    },
+    {
+      "id": "PRF-981",
+      "title": "The executed article parse folds each continuation line in its own length and returns exactly the reference parse",
+      "statement": "books/article.lisp. KEYSTONE fn-article-parse-lines-acc-is-parse-lines: on every input, fn-article-parse-lines-acc (the field under construction carried reversed: fn-article-add-fold-open, a cons and a revappend of the line) returns what fn-article-parse-lines returns with the reversed field closed (fn-article-close-field). Subject: fn-article-parse-under, whose :exec branch (mbe) runs the accumulator loop; it is called by fn-article-parse, which the host calls throughout (e.g. host/bp-ingress-host.lisp and every owner reader through books/owner-parse-carried fn-apc-parse). Cost: books/article-work.lisp fn-aw-add-fold-open-cost, the executed fold step costs 2 + (len line), against fn-aw-add-fold-cost's growth with the field (PKT-552/770). The whole-parse work bound (fn-article-parse-under-work-input-bound) remains stated over the reference loop.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-030"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/article.lisp",
+        "books/article-work.lisp"
+      ],
+      "progress_note": "Lane served-costs (2026-09-29): REPL-admitted on hbox (article.lisp whole book 4.05 s; the correspondence 0.25 s); certification owed with the affected roots.",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-lines-acc-is-parse-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-aw-add-fold-open-cost"
+        }
+      ]
+    },
+    {
+      "id": "PRF-982",
+      "title": "A signed POST's carrier plan is decided once and every owner reader of the memo reads fn-hc-received-plan",
+      "statement": "books/owner-parse-carried.lisp. KEYSTONE fn-apc-plan-is-received-plan: under fn-apc-p of the parse carry and fn-apc-plansp of the memo, fn-apc-plan is fn-hc-received-plan. fn-apc-plansp-of-extend: fn-apc-plans-extend (the host's only writer of 'fn-owner-plan-carry, host/owner-host.lisp fn-owner-plans-for) preserves fn-apc-plansp; fn-apc-plans-extend-bounded: the memo holds at most one entry. The four readers fn-apc-carrier-form, fn-apc-current-plan, fn-apc-transit-verdict and fn-apc-transit-refusal-detail take the memo, and their -is-reference keystones hold under the added fn-apc-plansp hypothesis. Subjects: host/owner-host.lisp fn-owner-peer-carrier-form, fn-owner-peer-carrier-plan, fn-owner-transit-verdict, fn-owner-transit-refusal-class (PKT-552).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-004"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-parse-carried.lisp",
+        "tests/acl2/owner-parse-carried-tests.lisp"
+      ],
+      "progress_note": "Lane served-costs (2026-09-29): REPL-admitted on hbox; teeth in tests/acl2/owner-parse-carried-tests.lisp (one-entry memo, unchanged by later readers, mutation witness, hypothesis-removal witness); certification owed.",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-apc-plan-is-received-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-plansp-of-extend"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-plans-extend-bounded"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1011",
+      "title": "The signed POST's identity prepare answers its retention admission from the carried obligation-id trie",
+      "statement": "books/identity-retain-carried.lisp (Q5b). KEYSTONE fn-irc-pout-prepare-identity-of-refresh-is-pout: for every carry satisfying fn-prc-carryp (PRF-289) and every ledger, fn-irc-pout-prepare-identity over (fn-prc-refresh carry ledger) returns fn-pout-prepare-identity's word and owner. The chain: fn-irc-apply-record-is-replay-apply-record (fn-irc-node-prepare's admission through fn-prc-admissiblep), fn-irc-sn-prepare-identity-is-ccar, fn-irc-ocfg-prepare-identity-is-ccar, fn-irc-psrv-prepare-identity-is-psrv, fn-irc-oiis-prepare-identity-is-oiis. Subject: host/owner-host.lisp fn-owner-prepare-identity calls fn-irc-pout-prepare-identity with the carry refreshed to the Store node's ledger and stores it back. Local policy (cost); no RFC requirement.",
+      "depends_on": [
+        "PRF-289"
+      ],
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/identity-retain-carried.lisp",
+        "tests/acl2/identity-retain-carried-tests.lisp"
+      ],
+      "progress_note": "Lane served-costs-4 (2026-09-29): REPL-admitted; certification owed with the affected roots."
+    },
+    {
+      "id": "PRF-1012",
+      "title": "The identity, consumer and topic completion applies its record through the carried obligation-id trie",
+      "statement": "books/identity-retain-carried.lisp (Q5b). KEYSTONE fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete: under fn-prc-carryp of the carry and fn-hist-of-storep of the owner's Store, fn-irc-rix-ocfg-complete over (fn-prc-refresh carry ledger) is fn-ocfg-step of (:complete) (through fn-irc-rix-ocfg-complete-is-rix and fn-rix-ocfg-complete-is-ccar-ocfg-complete). The retention record through the carry (fn-irc-apply-retention-event-is-reference: the undertaking admission by fn-prc-admissiblep), also inside fn-irc-apply-record. The gate and finish twins fn-irc-completion-core-enabledp-is-ccar, fn-irc-completion-enabledp-is-ccar, fn-irc-sn-finish-enabled-is-ccar, fn-irc-rix-own-complete-enabled-is-rix, fn-irc-rix-own-complete-is-rix. Subject: host/owner-host.lisp fn-owner-finish-synced calls fn-irc-rix-ocfg-complete. Local policy (cost); no RFC requirement.",
+      "depends_on": [
+        "PRF-289",
+        "PRF-1011"
+      ],
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/identity-retain-carried.lisp",
+        "tests/acl2/identity-retain-carried-tests.lisp"
+      ],
+      "progress_note": "Lane served-costs-4 (2026-09-29): REPL-admitted; certification owed with the affected roots."
     }
   ]
 }

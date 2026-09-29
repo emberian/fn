@@ -16618,6 +16618,106 @@
           "name": "fn-sfp-carried-open-under-carried-pair"
         }
       ]
+    },
+    {
+      "id": "PRF-981",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-lines-acc-is-parse-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-aw-add-fold-open-cost"
+        }
+      ]
+    },
+    {
+      "id": "PRF-982",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-apc-plan-is-received-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-plansp-of-extend"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-plans-extend-bounded"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1011",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-irc-pout-prepare-identity-of-refresh-is-pout"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-apply-record-is-replay-apply-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-node-prepare-is-node-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-sn-prepare-identity-is-ccar"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-ocfg-prepare-identity-is-ccar"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-psrv-prepare-identity-is-psrv"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-oiis-prepare-identity-is-oiis"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1012",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-rix-ocfg-complete-is-rix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-rix-own-complete-is-rix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-rix-own-complete-enabled-is-rix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-sn-finish-enabled-is-ccar"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-completion-enabledp-is-ccar"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-completion-core-enabledp-is-ccar"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-apply-retention-event-is-reference"
+        }
+      ]
     }
   ]
 }

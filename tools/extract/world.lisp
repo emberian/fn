@@ -240,6 +240,7 @@
 (include-book "../../books/config-owner-live-authorize")
 (include-book "../../books/owner-bound-commit")
 (include-book "../../books/owner-log-reopen")
+(include-book "../../books/identity-retain-carried")
 (include-book "../../books/owner-log-route")
 (include-book "../../books/owner-parse-carried")
 (include-book "../../books/owner-identity-intern")
