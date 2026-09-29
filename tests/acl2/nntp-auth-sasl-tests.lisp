@@ -822,3 +822,14 @@
                     (fn-post-result-session
                      (fn-auth-sasl-finish *sa-q-peer-as* *sa-q-st* *sa-q-final-bad*)))))
 (must-fail-checked (assert-event (sa-fin-concl *sa-q-peer-as* *sa-q-st* *sa-q-final-bad*)))
+
+; The recognisers the removals above assert false, anchored true on the
+; scenario's values.
+(assert-event (fn-sasl-bindingp *sa-binding*))
+(assert-event (fn-sasl-seedp *sa-seed*))
+(assert-event (fn-scram-noncep *sa-cnonce*))
+(assert-event (fn-sha256-octet-listp *sa-name*))
+(assert-event (fn-scram-no-nulp *sa-name*))
+(assert-event (fn-sasl-no-nulp *sa-secret*))
+(assert-event (fn-scram-failp (fn-scram-parse-client-first
+                               (fn-nntp-string-octets "y,,n=,r=abc"))))
