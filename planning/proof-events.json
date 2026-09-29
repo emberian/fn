@@ -2581,6 +2581,11 @@
           "kind": "theorem",
           "name": "fn-tcl-delivery-events-imply-held-final",
           "note": "Keystone relating the event grammar to the native ordered :send collection and the exact fn-tcl-held-final-ackp planner premise. fn-tcl-delivery-eventsp-after-first-bundle preserves the grammar for each later completed transfer in the same batch."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-host-drive-bundle-has-held-final",
+          "note": "The host-called wrapper (host/native/tcpcl.lisp fnn-tcl-apply): fn-tcl-host-drive is fn-tcl-host-triple of fn-tcl-drive, and its event list satisfies the delivery gate at the first bundle boundary; the book books/tcpcl-delivery-invariants is in the image world since decision-keystones-5."
         }
       ]
     },
@@ -14683,6 +14688,24 @@
         {
           "kind": "theorem",
           "name": "fn-bpnp-forward-publication-frame-not-bad-implies-frame-nats"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1031",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1032",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-evidence-next-result-name-names-exactly-the-next-record"
         }
       ]
     },

@@ -265,6 +265,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-init-publication-tests \
 	tests/acl2/store-host-boundary-tests \
 	tests/acl2/bp-node-host-sequence-tests \
+	books/bp-node-host-machine \
+	tests/acl2/bp-node-host-machine-tests \
 	tests/acl2/store-profile-facts-tests \
 	books/store-genesis \
 	tests/acl2/store-genesis-tests \
@@ -742,6 +744,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-sequence-fidelity-tests \
 	books/bp-receive-evidence \
 	tests/acl2/bp-receive-evidence-tests \
+	books/bp-evidence-host-names \
+	tests/acl2/bp-evidence-host-names-tests \
 	tests/acl2/bp-node-machine-authorization-tests \
 	books/bp-fragment \
 	books/bp-fragment-invariants \

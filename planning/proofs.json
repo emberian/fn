@@ -15362,6 +15362,42 @@
       "progress_note": "Lane decision-keystones-5: the bp publication-authorize family, the dispatch and forward keystones (the PRF-1013 shape); REPL-admitted with the test books loaded from source (persvati, 0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
     },
     {
+      "id": "PRF-1031",
+      "title": "fn-bpn-host-existing-sequence answers an existing creation sequence exactly for a queued job with the offered obligation key, and then the value the host reuses is that job's sequence",
+      "statement": "books/bp-node-host-machine.lisp (moved from host/bp-node-machine-host.lisp), called by host/native/bp-obligation.lisp's obligation enqueue and host/native/bp-node.lisp's owed-receipt path, with fn-bpn-host-existing-sequence-p and fn-bpn-host-existing-sequence-value reading the answer. KEYSTONE fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence, two-sided: the answer is an existing sequence (the -p recognizer) iff the state is a machine state, (work attempt generation) is a well-formed obligation key, a job with that key is queued in the state's jobs and its sequence is a creation time; then the value is that job's sequence; otherwise the answer is :absent (or, for a queued job whose sequence is not a time, an :existing answer the recognizer refuses). So the host reuses a sequence only for an obligation already queued, never inventing one. The shim is guard-verified (fn-bpn-existing-sequence's guards from bp-node-machine-guards). Teeth: tests/acl2/bp-node-host-machine-tests.lisp (the positive witness is the job the authorization fixture's enqueue step queued, with the antecedent by name and the value; an unqueued key, a malformed state answer :absent).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-node-host-machine.lisp",
+        "tests/acl2/bp-node-host-machine-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-5: a host wrapper moved into a certified book with its keystone (the bp-node-host-sequence pattern); REPL-admitted on persvati (guards verified, 0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
+    },
+    {
+      "id": "PRF-1032",
+      "title": "fn-bpn-host-evidence-next-result-name names the next result record exactly for an evidence state and one of the three outcomes, and then the name is the evidence name of the state's next sequence under the outcome's result kind",
+      "statement": "books/bp-evidence-host-names.lisp (moved from host/bp-receive-evidence-host.lisp), called by host/native/bp.lisp's evidence allocation to observe the final result name absent before fn-bpn-host-evidence-authorize. KEYSTONE fn-bpn-host-evidence-next-result-name-names-exactly-the-next-record, two-sided: a name is answered iff the state is an evidence state (fn-bpn-evidence-statep) and the outcome is :accepted, :refused or :uncertain; then it is a string equal to (fn-bpn-evidence-name (fn-bpn-evidence-next st) (fn-bpn-evidence-result-kind outcome)), the name the authorization publishes; a state or outcome the books do not recognize names nothing, so a corrupt tally never names record 0. The shim is guard-verified. Teeth: tests/acl2/bp-evidence-host-names-tests.lisp (the recovered empty state and each outcome by name against the callee; a malformed state and an unknown outcome answer nil).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-evidence-host-names.lisp",
+        "tests/acl2/bp-evidence-host-names-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-5: a host wrapper moved into a certified book with its keystone (the bp-node-host-sequence pattern); REPL-admitted on persvati (guards verified, 0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
+    },
+    {
       "id": "PRF-959",
       "title": "A state checkpoint's verifiable digest is a function of its prefix: the loaded file digests the same whatever image wrote it and whenever the log rotated",
       "statement": "books/store-checkpoint-digest.lisp fn-sckd-digest-of-written-file: under fn-scka-load-of-written-file's hypotheses (the file the writer produced for CONFIGS, RECORDS, a frontier and the payloads PS, with any REVISION and LOG in its F row), fn-sckd-digest of the tables fn-scka-load answers and fn-sdg-arena-pool of the arena it leaves equals fn-sckd-digest-of-prefix CONFIGS RECORDS FRONTIER PS, which reads neither REVISION nor LOG (fn-sckd-digest-ignores-revision-and-log). fn-sckd-digest is fn-sckd-combine of fn-sckd-tables-digest (schema, S, frontier, P, E, R) and the pool. host: fn-store-sco-decode-finish (host/store-node-host.lisp) calls fn-sckd-tables-digest on the loaded tables when `store ROOT digest' asked, and fn-store-sco-note-checkpoint-digest, called by fnn-state-checkpoint-load-arena (host/native/io.lisp) right after the load, calls fn-sckd-combine with fn-sdg-arena-pool; fn-store-sn-replay-digest-report prints `checkpoint-digest sequence=S HEX'. Scope: PKT-854 (planning/evidence/proto-determinism-2026-09-27.md N1); the digest is an abstract fn-digest (crypto-seam): equal digests imply nothing about preimages in this logic.",
