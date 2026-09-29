@@ -582,7 +582,21 @@
            (and (fn-rck-limit-slotp key)
                 (not (equal key *fn-rck-require-path-slot*)))
            (member-equal key '("max-transactions" "max-history-octets"
-                               "max-article-octets")))
+                               "max-article-octets" "compress-min-octets")))
+       t))
+
+; Row S10: every `policy set' key the grammar above has an arm for: the
+; counted ones and the worded ones (the path identity, the posting policy,
+; the trusted range, the anonymous policy, the complaints address, the
+; relay's require-path switch).  A key outside this set is unknown by name;
+; a known key with a malformed value keeps its own arm's answer.
+(defun fn-native-admin-known-policy-keyp (key)
+  (declare (xargs :guard t))
+  (and (or (fn-native-admin-counted-policy-keyp key)
+           (member-equal key (list "path-identity" "posting-policy"
+                                   *fn-exp-trusted-slot* *fn-exp-policy-slot*
+                                   *fn-ipp-complaints-slot*
+                                   *fn-rck-require-path-slot*)))
        t))
 
 (defun fn-native-admin-plan (argv)
@@ -775,8 +789,7 @@
        ((and (equal (len words) 4)
              (equal (car words) "policy")
              (equal (cadr words) "set")
-             (not (fn-native-admin-counted-policy-keyp (caddr words)))
-             (not (member-equal (caddr words) '("path-identity" "posting-policy"))))
+             (not (fn-native-admin-known-policy-keyp (caddr words))))
         (fn-native-admin-result :refused :unknown-policy-key nil nil 0 nil nil))
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
