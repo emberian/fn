@@ -16160,6 +16160,36 @@
       ]
     },
     {
+      "id": "PRF-1037",
+      "title": "THE SWITCH: the catalog's Message-ID column is served from the paged table (lane paged-history-5, row P2): fn-cat-msgid-seqs reads a nested fn-mpxt whose logical value is the fold fn-mpxt-build of the rows under the table's own key; the served refusal fn-cat-msgid-saturatedp is the fold's outcome for one more row",
+      "statement": "Subjects: books/catalog.lisp, the concrete stobj fn-cat$c with the paged Message-ID table fn-cat$c-mpx (a nested fn-mpxt, books/msgid-pages-exec), its next generation fn-cat$c-mpx2 and the unplaced count fn-cat$c-unplaced, replacing the hash fn-cat$c-msgids; the abstraction relation fn-cat$corr-base states EQUALITY: (nth 2 c) = fn-mpxt-build key rows, (nth 9 c) = fn-mpxt-build-buffer, (nth 10 c) = fn-mpxt-build-unplaced, key = fn-cat-key-of c (the table's own key octets). Host caller: every served Message-ID finder calls the abstract export fn-cat-msgid-seqs (served-columns fn-scol-find-row, served-catalog fn-scat-msgid-article, served-catalog-owner); its logic fn-cat$a-msgid-seqs is unchanged (design B.6, the 5u method: no served book changes). (1) fn-cat-msgid-seqs{correspondence-bl}: the executable reader -- fn-cat$c-confirm (the twin of fn-mpxt-confirm over the rows array, a candidate at or past the count dropped) of fn-mpxt-candidates of the tag from the nested table, or the degraded scan fn-cat$c-scan-msgid when a row could not be placed -- equals fn-cat-seqs-for under the relation, by KEYSTONE fn-mpxt-seqs-is-cat-msgid-seqs (PRF-970, folded in from the retired bridge book msgid-pages-catalog) under fn-mpxt-build-faithful (PRF-1018) when the unplaced count is 0, and by fn-ctg-scan-is-seqs-for otherwise. (2) The commit is the fold's step: fn-ctg-index-add-is-the-fold (the index's add on tables that are the fold of the rows is fn-mpxt-build-append for a row carrying the added Message-ID; the step is BOUNDED: below the word limit the entry is placed or counted unplaced, at the limit counted unplaced without a write), so fn-cat-commit{correspondence} preserves the equality; withdraw and redecide keep it by fn-mpxt-build-of-update-nth-same-msgid; the clear and the creator meet the fold's base case by fn-mpxt-clear-is-build-nil and fn-mpxt-create-is-build-nil (7h: the cleared table is canonical, fn-mpxt-set-key-is-a-list). (3) The served refusal: fn-cat-msgid-saturatedp key msgid fn-cat, logic fn-mpxt-build-saturatedp (the fold over a local table, executable and guard-verified), exec the table's own fn-mpxt-saturatedp when KEY is the table's key (fn-mpxt-key-samep, no conses) else the fold over fn-cat$c-rows-below-count (unreachable-in-composition: the host passes the ring's key the open installed; O(count) when reached); KEYSTONE fn-cat-msgid-saturatedp-is-the-outcome over the opened view: the fold over the rows and one more row carrying MSGID leaves the unplaced count unchanged exactly when the refusal does not fire -- the POST that is accepted is indexed (the host boundary switch is paged-history-6's). (4) fn-cat-clear-keyed key: the clear with the ring's key installed (fn-mpxt-key-octets-of-set-key: a 32-octet key reads back as itself); fn-cat-index-health key: (pages count unplaced stuck) of the fold. Scope: the concrete tables only; the served path never evaluates the relation; the heap holds 16 octets an entry and no Message-ID string (the figure's restatement is paged-history-6's).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-969",
+        "PRF-970",
+        "PRF-1018"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/catalog.lisp",
+        "books/msgid-pages-exec.lisp",
+        "tests/acl2/msgid-pages-exec-tests.lisp",
+        "planning/design-paged-history-2026-09-29.md"
+      ],
+      "progress_note": "2026-09-29 lane paged-history-5: catalog.lisp REPL-admitted end to end on persvati (proof_repl ph5c) and CERTIFIED for real there by the fixture session's --certify-missing (certify_books exit 0; msgid-pages-exec likewise); the fixture loaded 38/38. Landed under the LAND-AND-FIX-FORWARD mode; native served_differential at ea9bf4636 on hbox. Teeth: tests/acl2/msgid-pages-exec-tests mpxe-catalog-witness (fn-cat$a-msgid-seqs on the positive fixture equals the reader's answers); a catalog-level witness (a stobj commit, then fn-cat-msgid-seqs; the refusal firing at a crafted saturated table) is owed by paged-history-6.",
+      "events": [
+        "fn-cat-msgid-seqs{correspondence-bl}",
+        "fn-mpxt-seqs-is-cat-msgid-seqs",
+        "fn-cat-msgid-saturatedp-is-the-outcome",
+        "fn-cat-index-health-is-the-build",
+        "fn-cat-clear-keyed-is-nil"
+      ]
+    },
+    {
       "id": "PRF-1004",
       "title": "`store inspect --group GROUP' lists LISTGROUP's numbers: the report's rows number exactly fn-nntp-group-range-numbers of the archive, offline and on the running owner alike",
       "statement": "books/owner-inspect-group.lisp. KEYSTONE fn-oig-rows-number-the-listgroup-numbers: for every group, range and article list, the cars of fn-oig-rows equal fn-nntp-group-range-numbers of the same arguments (books/nntp-projection.lisp, the logical model the served catalog's fn-scat-range-numbers is proven equal to: books/served-catalog.lisp fn-scat-range-numbers-is-group-range-numbers); no hypothesis. fn-oig-report-exit-is-the-membership: the exit the client reads back from the printed octets is 0 exactly when the archive carries the group, 1 for the refusal by name. Subject: fn-oig-report over 1 .. *fn-nntp-max-article-number*, which the host reaches through books/control-evidence.lisp fn-cev-offline-report (host/native/io.lisp fnn-command-inspect-group-offline: the archive the open replayed from the checkpoint and its suffix) and fn-cev-live-report (host/native-live-status-host.lisp fn-native-live-status-host-answer under the owner mutex: the archive the served view carries, books/owner.lisp fn-served-live-archive), both from host/native/operator.lisp fnn-operator-execute-inspect-group. The request rides FNLS frame kind 3 code 11: fn-cev-any-request-decode-of-encode now covers (:inspect-group . GROUP). Work: one report renders the group's rows in one quantum (as the status report's reclaim line walks every article); a per-number cursor over the paged report is the named next step, measure at convergence. Teeth: tests/acl2/owner-inspect-group-tests.lisp (rows in number order out of posting order, two groups, a sub-range, the report's octets, the refusal, both exits, a configured empty group, digits past ten); tests/acl2/control-evidence-tests.lisp (the request round trip at two offsets, the recognizers).",
