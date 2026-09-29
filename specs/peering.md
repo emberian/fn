@@ -1895,7 +1895,7 @@ current administrative authority stay separate facts (the mandate §5.4);
 `:fn-control` remains the only answer about authority. The theorem over the
 host-called read is `fn-own-read-hdr-fn-enrollment-is-the-pinned-enrollment`
 (books/owner-enrollment-read.lisp; host line host/owner-host.lisp
-`fn-owner-chunk`).
+`fn-owner-chunk-span-at`).
 
 NNT-036: a reader is told the current enrollment, in the node's pinned
 keyring view, of the principal a historical verdict names, as a fact

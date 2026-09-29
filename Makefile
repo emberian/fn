@@ -937,6 +937,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-join-host-columns-open \
 	books/served-catalog-join-host-views \
 	books/catalog-number-window \
+	books/served-chunk-live-free \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -981,6 +982,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-join-pinned-tests \
 	tests/acl2/served-catalog-join-inv-tests \
 	tests/acl2/served-catalog-join-host-tests \
+	tests/acl2/served-chunk-live-free-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
 	books/payload-kinds \
