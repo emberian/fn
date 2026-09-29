@@ -8,8 +8,8 @@ native profile before publishing persistent or interoperable formats.
 `books/cbor.lisp` currently implements uint32 and definite byte strings as
 experimental primitives. `books/cbor-invariants.lisp` proves full value round
 trips and exact accepted-input re-encoding for both supported types.
-`books/records.lisp` composes them into the provisional schema-0 and schema-1 transaction
-grammar described in the [storage experiment](store-experiment.md); its invariant
+`books/records.lisp` composes them into the provisional transaction-record
+grammar (schema 1, and schema 2 when an integer field is wide) described in the [storage experiment](store-experiment.md); its invariant
 book proves the full variable-record round trip, and
 [record canonicality](../books/records-canonicality.lisp) proves every successful
 exact decode re-encodes the same octets. All 21 CBOR and 45 record functions have
@@ -21,17 +21,18 @@ The record codec is behind a seam (plan 2026-09-22 §4.1, step T1).
 `fn-record-encode` and `fn-record-decode-exact` by six properties (a
 non-record encodes to nil, the round trip, accepted-input canonicality, the
 accepted-input bounds, the five magic octets, and the sixth octet as the
-schema octet the decoded record needs, `fn-record-schema-octet`, 0 for
-`:legacy` and 1 for a natural acceptance stamp) whose local witnesses are the implementation;
+schema octet the decoded record needs, `fn-record-schema-octet`, 1 for a
+record whose integer fields fit u32 and 2 for a wide one) whose local witnesses are the implementation;
 `books/records-attach.lisp` attaches the implementation with `defattach`,
 which re-proves the six and adds no axiom. The header is two constraints so
 that the acceptance stamp's schema 1 ([acceptance stamp](acceptance-stamp.md)
 §2.1) widens the grammar behind the seam without moving a statement above
-it. Schema-0 bytes decode with the explicit `:legacy` stamp and re-encode
-unchanged. New article records carry a uint32 stamp in seconds since the
+it. Every record carries its stamp: the stampless schema 0 and its `:legacy`
+stamp are deleted (no migrations: fresh deploys at 6.6.0), and a schema-0
+header is refused `:unknown-version`. Article records carry a uint32 stamp in seconds since the
 DTN epoch inside the committed record; the schema-1 item adds at most five
 octets inside the existing 65,538-octet record limit. The exact octets are concrete facts of the implementation,
-`fn-record-schema0-golden-octets-are-the-encoding` in `books/records.lisp`:
+`fn-record-schema1-golden-octets-are-the-encoding` in `books/records.lisp`:
 a round trip and canonicality hold of any length-preserving permutation of
 the encodings, so they do not identify the wire language. Every book above the
 codec, and the host, calls the constrained names; the image and the test
@@ -132,9 +133,9 @@ ENC-004: evolution distinguishes known-and-interpreted objects from unknown
 opaque objects. An unknown schema may be carried under bounded relay policy,
 but it cannot authorize an operation or establish semantic acceptance. Migration
 preserves old objects and explicit provenance; it does not silently change the
-meaning of an existing content ID or signed statement. Record schema 1 is the
-first concrete migration: readers accept schema 0 exactly as written, mark its
-stamp `:legacy`, and writers use schema 1 for newly accepted articles.
+meaning of an existing content ID or signed statement. No release reads
+another release's store (fresh deploys at 6.6.0): record schema 1 replaced the
+stampless schema 0 outright, and the schema-0 reader is deleted.
 
 ## Experimental signed-source topic metadata
 

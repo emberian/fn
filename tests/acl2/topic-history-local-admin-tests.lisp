@@ -35,7 +35,7 @@
          (fn-stmt-value *thla-anchor*) *tha-event* *tha-snapshot*
          *thla-install* nil)
         (fn-th-commit-anchor
-         (fn-th-anchor-v1-fields (fn-stmt-value *thla-anchor*))
+         (fn-th-anchor-core-fields (fn-stmt-value *thla-anchor*))
          *tha-event* *tha-snapshot* *thla-id* nil)))
 (assert-event
  (equal (fn-th-commit-anchor-installed-v2

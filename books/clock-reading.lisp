@@ -111,6 +111,23 @@
                            0)))))
   :hints (("Goal" :in-theory (enable fn-otm-wall-reading fn-clkr-ms-of-ns))))
 
+; KEYSTONE (PRF-305, the genesis's creation time).  host/native/io.lisp
+; fnn-genesis-octets hands gettimeofday's seconds and microseconds to
+; fn-otm-wall-seconds: the whole seconds of the ns decision's wall past the
+; DTN epoch, 0 when that decision has no wall.
+(defthm fn-clkr-wall-seconds-is-the-ns-decision
+  (implies (and (integerp seconds) (natp microseconds))
+           (let ((ns (+ (* 1000000000 seconds) (* 1000 microseconds))))
+             (equal (fn-otm-wall-seconds seconds microseconds)
+                    (if (and (natp ns)
+                             (<= *fn-clkr-dtn-epoch-unix-ms* (fn-clkr-ms-of-ns ns)))
+                        (floor (- (fn-clkr-ms-of-ns ns) *fn-clkr-dtn-epoch-unix-ms*)
+                               1000)
+                      0))))
+  :hints (("Goal" :in-theory (e/d (fn-otm-wall-seconds)
+                                  (fn-otm-wall-reading fn-clkr-ms-of-ns))
+                  :use fn-clkr-wall-reading-is-the-ns-decision)))
+
 ; KEYSTONE (PRF-305, the served monotonic readings).  The owner, the store's
 ; prepare and the feed ports hand SBCL's tick counter and its rate to
 ; fn-otm-monotonic-ms (host/native/owner.lisp fnn-owner-monotonic-ms,

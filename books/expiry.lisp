@@ -20,8 +20,7 @@
 ;   plus PURGE days (`fn-xpy-age-instant'), so a poster's Expires: is honoured
 ;   exactly within the operator's bounds (`fn-xpy-age-instant-honours-expires-
 ;   within-the-bounds') and never outside them (`fn-xpy-age-instant-is-within-
-;   the-bounds').  An article accepted with no natural stamp (a :legacy stamp)
-;   never expires by age, as under the store-wide rule.
+;   the-bounds').
 ; Size (fn's own):
 ;   an article is outside the group's window when the live payload octets of
 ;   the group's articles accepted at or after it exceed OCTETS
