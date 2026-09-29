@@ -136,10 +136,10 @@
                                         (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))))))
 
 (defthm fn-scj-scr-own-read-span-keeps
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (fn-scj-conns-pinp (fn-own-conns o) fn-arena fn-cat)
                 (fn-scj-live-okp (fn-own-view o) fn-arena fn-cat))
-           (let ((o2 (fn-own-tls-result-owner (fn-scr-own-read-span o id i end fn-octets fn-arena fn-cat))))
+           (let ((o2 (fn-own-tls-result-owner (fn-scr-own-read-span o id i end cache fn-octets fn-arena fn-cat))))
              (and (fn-scj-conns-pinp (fn-own-conns o2) fn-arena fn-cat)
                   (equal (fn-own-view o2) (fn-own-view o))
                   (equal (fn-own-store o2) (fn-own-store o)))))
@@ -160,20 +160,20 @@
 ; fn-scr-own-read-span leaves satisfies fn-scj-invp whenever the owner it
 ; read satisfied it.
 (defthm fn-scj-invp-of-scr-own-read-span
-  (implies (and (fn-scol-okp fn-arena fn-cat) (fn-scj-invp o fn-arena fn-cat))
+  (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache) (fn-scj-invp o fn-arena fn-cat))
            (fn-scj-invp (fn-own-tls-result-owner
-                         (fn-scr-own-read-span o id i end fn-octets fn-arena fn-cat))
+                         (fn-scr-own-read-span o id i end cache fn-octets fn-arena fn-cat))
                         fn-arena fn-cat))
   :hints (("Goal" :use ((:instance fn-scj-scr-own-read-span-keeps)
                         (:instance fn-scj-invp-by-parts
                                    (o2 (fn-own-tls-result-owner
-                                        (fn-scr-own-read-span o id i end fn-octets fn-arena fn-cat)))))
+                                        (fn-scr-own-read-span o id i end cache fn-octets fn-arena fn-cat)))))
            :in-theory (e/d (fn-scj-invp) (fn-scj-scr-own-read-span-keeps fn-scj-invp-by-parts
                                           fn-scr-own-read-span)))))
 
 (defthm fn-scj-scr-ocfg-read-span-owner
-  (equal (fn-ocfg-owner (fn-own-tls-result-owner (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)))
-         (fn-own-tls-result-owner (fn-scr-own-read-span (fn-ocfg-owner oc) id i end fn-octets fn-arena fn-cat)))
+  (equal (fn-ocfg-owner (fn-own-tls-result-owner (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)))
+         (fn-own-tls-result-owner (fn-scr-own-read-span (fn-ocfg-owner oc) id i end cache fn-octets fn-arena fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-scr-ocfg-read-span fn-ocfg-with-read-owner
                                    fn-own-tls-result-owner fn-own-tls-make-result)
                                   (fn-scr-own-read-span)))))
@@ -191,15 +191,15 @@
 
 (defthm fn-scj-orr-read-span-owner
   (equal (fn-ocfg-owner (fn-own-tls-result-owner
-                         (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat)))
+                         (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat)))
          (if (consp views)
              (fn-ocfg-owner
               (fn-ocfg-with-view
                (fn-own-tls-result-owner
-                (fn-scr-ocfg-read-span (fn-ocfg-with-view oc (car views)) id i end fn-octets fn-arena fn-cat))
+                (fn-scr-ocfg-read-span (fn-ocfg-with-view oc (car views)) id i end cache fn-octets fn-arena fn-cat))
                (fn-own-view (fn-ocfg-owner oc))))
            (fn-own-tls-result-owner
-            (fn-scr-own-read-span (fn-ocfg-owner oc) id i end fn-octets fn-arena fn-cat))))
+            (fn-scr-own-read-span (fn-ocfg-owner oc) id i end cache fn-octets fn-arena fn-cat))))
   :hints (("Goal" :in-theory (union-theories '(fn-orr-read-span fn-ocfg-at-reader-view fn-ocv-reader-view
                                                fn-scj-tls-result-owner-of-make
                                                fn-scj-scr-ocfg-read-span-owner)
@@ -208,13 +208,13 @@
 ; A read at any view V the pins and V are live over keeps the pins, V and
 ; the store (the captured owner's store is the working owner's).
 (defthm fn-scj-read-at-view-keeps
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (fn-scj-conns-pinp (fn-own-conns (fn-ocfg-owner oc)) fn-arena fn-cat)
                 (fn-scj-live-okp v fn-arena fn-cat))
            (let ((o2 (fn-ocfg-owner
                       (fn-ocfg-with-view
                        (fn-own-tls-result-owner
-                        (fn-scr-ocfg-read-span (fn-ocfg-with-view oc v) id i end fn-octets fn-arena fn-cat))
+                        (fn-scr-ocfg-read-span (fn-ocfg-with-view oc v) id i end cache fn-octets fn-arena fn-cat))
                        w))))
              (and (fn-scj-conns-pinp (fn-own-conns o2) fn-arena fn-cat)
                   (equal (fn-own-view o2) w)
@@ -224,7 +224,7 @@
            :use ((:instance fn-orr-with-view-fields)
                  (:instance fn-orr-with-view-fields
                             (oc (fn-own-tls-result-owner
-                                 (fn-scr-ocfg-read-span (fn-ocfg-with-view oc v) id i end fn-octets fn-arena fn-cat)))
+                                 (fn-scr-ocfg-read-span (fn-ocfg-with-view oc v) id i end cache fn-octets fn-arena fn-cat)))
                             (v w))
                  (:instance fn-scj-scr-own-read-span-keeps
                             (o (fn-ocfg-owner (fn-ocfg-with-view oc v))))))))
@@ -237,11 +237,11 @@
 ; pinned view is (a capture is a view the owner held, pinned like a
 ; connection).
 (defthm fn-scj-invp-of-orr-read-span
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (implies (consp views) (fn-scj-live-okp (car views) fn-arena fn-cat)))
            (fn-scj-invp (fn-ocfg-owner (fn-own-tls-result-owner
-                                        (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat)))
+                                        (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat)))
                         fn-arena fn-cat))
   :hints (("Goal" :in-theory (union-theories '(fn-scj-orr-read-span-owner)
                                              (theory 'minimal-theory))
@@ -256,7 +256,7 @@
                                  (fn-ocfg-with-view
                                   (fn-own-tls-result-owner
                                    (fn-scr-ocfg-read-span (fn-ocfg-with-view oc (car views))
-                                                          id i end fn-octets fn-arena fn-cat))
+                                                          id i end cache fn-octets fn-arena fn-cat))
                                   (fn-own-view (fn-ocfg-owner oc))))))))))
 
 ; KEYSTONE (the chain, with the catalog premise discharged by the carried
@@ -265,12 +265,12 @@
 ; fn-scj-invp, which the owner's entries establish and its steps keep
 ; (this book's read keystones; books/served-catalog-join-frame*.lisp).
 (defthm fn-scj-ocfg-read-span-is-reference-under-invp
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (fn-ocl-relation oc)
                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (natp i) (natp end))
-           (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
+           (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
   :hints (("Goal" :in-theory (union-theories '() (theory 'minimal-theory))
            :use ((:instance fn-scj-invp-gives-owner-catalogp (o (fn-ocfg-owner oc)))

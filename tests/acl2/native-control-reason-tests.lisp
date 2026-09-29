@@ -165,3 +165,35 @@
    (not (equal (fn-nctrl-reason-word (fn-native-control-host-refusal-reason class))
                *fn-nctrl-no-reason-word*))
    :rule-classes nil))
+
+; PKT-867 teeth for fn-native-control-admin-decode-of-encode and its reasoned
+; twin.  Positive witnesses: the antecedent (the client can seal the argv)
+; and the conclusion (the owner decodes that argv) both hold for 200 words
+; and for one word of 70,000 octets, past the narrow codec's 65,535 that the
+; words were encoded with before.  Hypothesis-removal witness: an argv the
+; client cannot seal (a non-ASCII word) is :bad, and its "decode" is not the
+; argv, so the antecedent is what makes the conclusion hold.
+(defun fn-nctrl-rt-repeat (word count)
+  (if (zp count) nil (cons word (fn-nctrl-rt-repeat word (1- count)))))
+(defconst *fn-nctrl-rt-200*
+  (fn-nctrl-rt-repeat (fn-record-string-octets "group") 200))
+(defconst *fn-nctrl-rt-wide*
+  (list (fn-record-string-octets "motd") (fn-record-string-octets "set")
+        (make-list 70000 :initial-element 97)))
+(assert-event (not (equal (fn-native-control-admin-encode *fn-nctrl-rt-200*) :bad)))
+(assert-event (equal (fn-native-control-admin-decode
+                      (fn-native-control-admin-encode *fn-nctrl-rt-200*))
+                     (list :admin *fn-nctrl-rt-200*)))
+(assert-event (not (equal (fn-native-control-reasoned-admin-encode *fn-nctrl-rt-wide*) :bad)))
+(assert-event (equal (fn-native-control-reasoned-admin-decode
+                      (fn-native-control-reasoned-admin-encode *fn-nctrl-rt-wide*))
+                     (list :admin *fn-nctrl-rt-wide*)))
+(assert-event (equal (fn-native-control-admin-encode (list '(200))) :bad))
+(assert-event (not (equal (fn-native-control-admin-decode
+                           (fn-native-control-admin-encode (list '(200))))
+                          (list :admin (list '(200))))))
+(must-fail-checked
+ (defthm ncrt-admin-round-trip-without-sealable
+   (equal (fn-native-control-admin-decode (fn-native-control-admin-encode argv))
+          (list :admin argv))
+   :rule-classes nil))

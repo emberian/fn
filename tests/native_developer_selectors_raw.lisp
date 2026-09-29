@@ -192,6 +192,14 @@
 (defun fn-outcome-code (class)
   (let ((pair (assoc class *fn-outcome-codes* :test #'equal)))
     (if (consp pair) (cdr pair) 3)))
+;; io.lisp's +fnn-gc-nursery-octets+ reads books/profile-limits.lisp's
+;; fn-profile-limit (a macro over its table, lane generators G5) at load: the
+;; table is the book's own quoted constant, the macro its row lookup.
+(defparameter *fn-profile-limits*
+  (book-defconst-value "books/profile-limits.lisp" '*fn-profile-limits*))
+(defmacro fn-profile-limit (key)
+  (let ((row (assoc key *fn-profile-limits*)))
+    (if row (second row) (error "~a is not a row of *fn-profile-limits*" key))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The deployed definitions.

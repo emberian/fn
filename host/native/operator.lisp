@@ -1,6 +1,6 @@
 ;;; Native `--fn operator CONFIG-PATH COMMAND ...` transport and execution.
 ;;;
-;;; This raw module transports only bounded ASCII argv/configuration octets to
+;;; This raw module transports only ASCII argv and bounded configuration octets to
 ;;; host/native-operator-host.lisp.  ACL2 chooses command grammar, defaults,
 ;;; profile availability, the result tag, and the exit-code projection.  RUN
 ;;; installs the local-control lifecycle and POST calls that control socket;
@@ -32,7 +32,10 @@
     ;; request 12 (host/native/keys.lisp); tls reload as request 19
     ;; (host/native/tls-reload.lisp); moderation approve|reject and article
     ;; withdraw as request 21.
-    ((:peering :keys :tls :moderate) :control)))
+    ((:peering :keys :tls :moderate) :control)
+    ;; PKT-869: carry list|inspect|pause|resume|drop over the FNWF journal
+    ;; (host/native/bp-obligation.lisp).
+    (:carry :workflow)))
 
 (defvar *fnn-operator-surface-executors* nil
   "Alist ACTION -> function of the operator result, one per surface action
@@ -64,16 +67,17 @@ this image loaded (fnn-operator-register-action).")
   admin-observe
   ;; (control-path argv liveness) -> exit code and the detail word of an
   ;; administrative vector the live owner (:live) or its lock (:held) answered.
-  admin)
+  admin
+  ;; (control-path argv) -> exit code, the owner's answer word printed: the
+  ;; compaction request (PKT-868).
+  request)
 
 (defvar *fnn-operator-live-owner* nil)
 
-(defun fnn-operator-argv-octets (texts max-arguments max-octets)
-  (when (< max-arguments (length texts))
-    (error 'fnn-usage-error :message "operator argv exceeds ACL2 bound"))
+(defun fnn-operator-argv-octets (texts)
+  "The argv as ASCII octet lists, as the kernel handed it (PKT-867: no word
+count or length here; ACL2's grammar judges every word)."
   (mapcar (lambda (text)
-            (when (< max-octets (length text))
-              (error 'fnn-usage-error :message "operator argument exceeds ACL2 bound"))
             (let ((octets (fnn-ascii-octet-list text)))
               (unless (every (lambda (octet) (<= octet 127)) octets)
                 (error 'fnn-usage-error :message "operator argument is not ASCII"))
@@ -461,6 +465,36 @@ observation into the outcome and this function only carries it out."
 ; And `fnn-command-reclaim' (`store reclaim [--dry-run | --recorded]', STO-017).
 (defvar *fnn-reclaim-callback* nil)
 
+(defun fnn-operator-execute-compaction (result root offline)
+  "PKT-868: `store compact' / `store checkpoint'.  A running owner is asked
+(ACL2's liveness decision over the socket and the lock, as for an
+administrative vector): it answers the compaction request by name and runs
+the publication itself, off its mutex (host/native/admin.lisp
+fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
+  (let* ((live *fnn-operator-live-owner*)
+         (path-list (fnn-core 'fn-native-operator-host-result-compaction-control-path-octets
+                              result))
+         (control-path (and (fnn-octet-list-p path-list) (consp path-list)
+                            (fnn-octets path-list)))
+         (liveness (if (and live control-path)
+                       (funcall (fnn-olo-admin-observe live) root path-list nil)
+                     :offline)))
+    (cond ((eq liveness :live)
+           ;; The owner's answer word (books/owner-compact-request.lisp
+           ;; fn-ock-request-word: requested, coalesced, nothing-to-compact,
+           ;; or the refusal's blocked), printed as ACL2 rendered it
+           ;; (host/native/operator-live.lisp fnn-operator-live-request).
+           (funcall (fnn-olo-request live) control-path
+                    (fnn-core 'fn-native-operator-host-result-compaction-argv result)))
+          ((eq liveness :held)
+           (multiple-value-bind (exit detail)
+               (funcall (fnn-olo-admin live) control-path
+                        (fnn-core 'fn-native-operator-host-result-compaction-argv result)
+                        liveness)
+             (when detail (fnn-out "~a" detail))
+             exit))
+          (t (funcall offline)))))
+
 (defun fnn-operator-execute-store-action (result action)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
     (handler-case
@@ -472,11 +506,13 @@ observation into the outcome and this function only carries it out."
                        (let ((at (second (fnn-core 'fn-native-operator-result-arguments result))))
                          (fnn-command-recover root (and (stringp at)
                                                         (list "--repair" "truncate" at)))))
-                      (:compact (funcall *fnn-compact-callback* root))
+                      (:compact (fnn-operator-execute-compaction
+                                 result root (lambda () (funcall *fnn-compact-callback* root))))
                       (:reclaim (funcall *fnn-reclaim-callback* root :reclaim))
                       (:reclaim-dry-run (funcall *fnn-reclaim-callback* root :dry-run))
                       (:reclaim-recorded (funcall *fnn-reclaim-callback* root :recorded))
-                      (:checkpoint (fnn-command-state-checkpoint root))
+                      (:checkpoint (fnn-operator-execute-compaction
+                                    result root (lambda () (fnn-command-state-checkpoint root))))
                       (:rebind-filesystem
                        (fnn-command-rebind-filesystem
                         root
@@ -772,9 +808,7 @@ path no platform binds whole becomes ACL2's :control-path-too-long refusal
 of the node's web face from the same octets, books/web-config.lisp).")
 
 (defun fnn-command-operator (config-path argv)
-  (let* ((max-arguments (fnn-core 'fn-native-operator-host-argv-max-arguments))
-         (max-octets (fnn-core 'fn-native-operator-host-argv-max-octets))
-         (argv-octets (fnn-operator-argv-octets argv max-arguments max-octets))
+  (let* ((argv-octets (fnn-operator-argv-octets argv))
          (preflight (fnn-core 'fn-native-operator-host-preflight argv-octets)))
     (when (fnn-core 'fn-native-operator-host-preflight-needs-config-path-p preflight)
       (return-from fnn-command-operator

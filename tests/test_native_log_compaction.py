@@ -3,8 +3,9 @@ planning/design-2026-09-27-storage-log.md sections 4 and 6; books/store-log-
 segments.lisp, T8 fn-lg-segment-drop-preserves-the-open).
 
 A store's `store compact` publishes a state checkpoint with the log
-ROTATED (the active segment closed, the next created and fenced before the
-checkpoint's F row names it) and, once the checkpoint is installed, DROPS the
+ROTATED (the active segment closed; the next created and fenced in staging/,
+renamed into journal/, and journal/ fenced before the checkpoint's F row
+names it) and, once the checkpoint is installed, DROPS the
 segments it covers.  The cases, each over a store the served node filled:
 
 * compaction: journal/ holds only the new segment, every article is served
@@ -12,10 +13,11 @@ segments it covers.  The cases, each over a store the served node filled:
   second compaction drops the next segment; export then import of the
   compacted store gives the same archive;
 * a process death at each rotation and drop cut (developer image,
-  FN_NATIVE_LOG_FAULT = rotate-created | rotate-fenced | rotate-durable |
-  drop-unlinked | drop-durable): the next writable open (`store recover`)
-  serves every article as before, finishes an interrupted drop, and a later
-  compaction succeeds;
+  FN_NATIVE_LOG_FAULT = rotate-created | rotate-fenced | rotate-renamed |
+  rotate-durable | drop-unlinked | drop-durable): the next writable open
+  (`store recover`) serves every article as before, sweeps a spare that was
+  never renamed, finishes an interrupted drop, and a later compaction
+  succeeds;
 * content reclamation: `store reclaim` under released-by-all-holders
   rewrites the history (books/store-log-reclaim.lisp), checkpoints it with
   the log rotated and drops the covered segment: no file of the store holds
@@ -33,13 +35,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.test_native_commit_log import Node, init, msgid, post_concurrently, start, stop
+from tests.test_native_commit_log import Node, msgid, post_concurrently
 
 DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST", "")
 PRODUCTION = os.environ.get("FN_NATIVE_HOST", "")
 
-ROTATION_CUTS = ("rotate-created", "rotate-fenced", "rotate-durable",
+ROTATION_CUTS = ("rotate-created", "rotate-fenced", "rotate-renamed", "rotate-durable",
                  "drop-unlinked", "drop-durable")
+# The spare's cuts: the next segment is staged, not yet named in journal/.
+SPARE_CUTS = ("rotate-created", "rotate-fenced")
 
 
 GENESIS = "000000.log"
@@ -82,14 +86,14 @@ class LogCompactionMixin:
         self.dir.cleanup()
 
     def filled(self, first: int, count: int, node=None) -> Node:
-        node = node or Node(self, self.image, root=self.root / "node")
+        node = node or Node(self, self.image, root=self.root)
         if not (node.store_path / "journal").exists():
-            init(node)
-        start(node)
+            node.init()
+        node.start()
         try:
             replies, errors = post_concurrently(node.port, range(first, first + count), 4)
         finally:
-            stop(node)
+            node.stop()
         self.assertEqual(errors, [])
         self.assertTrue(all(r.startswith(b"240") for r in replies.values()), replies)
         return node
@@ -235,6 +239,12 @@ class DeveloperLogCompactionTests(LogCompactionMixin, unittest.TestCase):
                 if cut.startswith("drop"):
                     # the checkpoint was installed: the recover finished the drop
                     self.assertEqual(present, ["000002.log"], cut)
+                elif cut in SPARE_CUTS:
+                    # the spare was staged, never named: segment 1 is still
+                    # the active one, and the writable open swept the spare
+                    self.assertEqual(present, ["000001.log"], cut)
+                    self.assertEqual([p.name for p in (node.store_path / "staging").glob(".stage-segment-*")],
+                                     [], cut)
                 else:
                     # no checkpoint names segment 2 yet: the open scans 1 then 2
                     self.assertEqual(present, ["000001.log", "000002.log"], cut)

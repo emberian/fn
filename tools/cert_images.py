@@ -85,13 +85,8 @@ class Graph:
         self.edges: dict[str, list[str]] = {}
         self.nonlocal_edges: dict[str, list[str]] = {}
         self.cost_ms: dict[str, float] = {}
-        # Books whose events include an `attach-stobj': it must precede the
-        # stobj's definition, so a book that loads one cannot certify from
-        # an image that defined the stobj without it (image-world's
-        # payload-arena-attach against the owner image's fn-arena).
-        self.attaches: set[str] = set()
         self._nonlocal_closure: dict[str, frozenset[str]] = {}
-        self._closure: dict[str, frozenset[str]] = {}
+        self._attaches: dict[str, bool] = {}
 
     def load(self, book: str) -> None:
         pending = [book]
@@ -103,9 +98,6 @@ class Graph:
             analysis = ledger.analyze_book(source, source.name)
             if analysis.read_error:
                 raise ValueError(f"{name}.lisp: {analysis.read_error}")
-            if re.search(r"^\s*\(attach-stobj\b", source.read_text(encoding="utf-8"),
-                         re.MULTILINE | re.IGNORECASE):
-                self.attaches.add(name)
 
             def resolve(reference: str) -> str:
                 target = (source.parent / reference).with_suffix(".lisp").resolve()
@@ -136,21 +128,14 @@ class Graph:
             self._nonlocal_closure[book] = found
         return found
 
-    def closure(self, book: str) -> frozenset[str]:
-        """Every book BOOK's certification world loads, local includes too."""
-        found = self._closure.get(book)
+    def attaches(self, book: str) -> bool:
+        """BOOK issues a top-level attach-stobj event."""
+        found = self._attaches.get(book)
         if found is None:
-            seen: set[str] = set()
-            pending = [book]
-            while pending:
-                name = pending.pop()
-                if name in seen:
-                    continue
-                seen.add(name)
-                self.load(name)
-                pending.extend(self.edges[name])
-            found = frozenset(seen)
-            self._closure[book] = found
+            source = self.root / f"{book}.lisp"
+            text = source.read_text(errors="replace") if source.exists() else ""
+            found = re.search(r"^\(attach-stobj\s", text, re.M) is not None
+            self._attaches[book] = found
         return found
 
     def include_cost(self, books: frozenset[str]) -> float:
@@ -185,14 +170,22 @@ def image_for(book: str, images: list[dict], graph: Graph) -> dict | None:
     if book_directory(book) is None:
         return None
     reach = graph.nonlocal_closure(book)
-    attachers = graph.closure(book) & graph.attaches
+    attaching = {b for b in reach if graph.attaches(b)}
     best, best_cost = None, 0.0
     for image in images:
         roots = image["roots"]
         if book in roots or not all(root in reach for root in roots):
             continue
         closure = frozenset().union(*(graph.nonlocal_closure(r) for r in roots))
-        if book in closure or not attachers <= closure:
+        if book in closure:
+            continue
+        # An attach-stobj event must precede the stobj's definition (ACL2:
+        # "The name FN-ARENA is in use, so it cannot serve here as an
+        # attachable stobj").  A book that includes an attaching book the
+        # image does not already hold cannot start from that image: the
+        # image has defined the stobj first (composed-owner-3, 2026-09-29:
+        # books/image-world* under the served-catalog-owner image).
+        if attaching - closure:
             continue
         cost = graph.include_cost(closure)
         if cost > best_cost or (cost == best_cost and best is not None
@@ -274,11 +267,9 @@ class Runner:
             if book_directory(book) is None:
                 continue
             reach = self.graph.nonlocal_closure(book)
-            attachers = self.graph.closure(book) & self.graph.attaches
             names = [name for name, image in by_name.items()
                      if book not in image["roots"] and book not in self.closures[name]
-                     and all(r in reach for r in image["roots"])
-                     and attachers <= self.closures[name]]
+                     and all(r in reach for r in image["roots"])]
             self.applicable[book] = sorted(names, key=lambda n: (-self.cost[n], n))
         self.kick()
 
