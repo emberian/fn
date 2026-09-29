@@ -13696,6 +13696,54 @@
       ]
     },
     {
+      "id": "PRF-948",
+      "title": "The payload decoder's window frame: it writes only ring cells below min(TOUT, 32 KiB) and never the preset half",
+      "statement": "books/deflate-frame.lisp (lane compress-3). KEYSTONE fn-zfr-loop-ahead-frame: from any state whose ring position W satisfies fn-zfr-posp (W below 32 KiB, and W = TOUT while TOUT is below 32 KiB), fn-zin-loop-ahead (the store's payload decoder, with its fast path) returns a state that satisfies it again, does not decrease TOUT, and a window equal to its input from cell min(TOUT', 32768) on: the preset half is never written and the ring only below the octets produced. Per-function frame lemmas for emit, copy, match, lits, lit-loop, act, step, f-copy, f-sym, fast and ahead-fast. Subject of PRF-949's pool invariant.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-037"
+      ],
+      "depends_on": [
+        "PRF-909"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/deflate-frame.lisp"
+      ],
+      "progress_note": "Lane compress-3 (Opus 5.5, 2026-09-29): REPL-green on hbox; certification in persvati run-20260929T042101Z-6c3f.",
+      "events": [
+        "fn-zfr-loop-ahead-frame"
+      ]
+    },
+    {
+      "id": "PRF-949",
+      "title": "The served read's pooled payload decoder: fn-zpl-decode-bufs is fn-pzd-decode over a window kept across payloads, and keeps its pool invariant",
+      "statement": "books/deflate-pool.lisp (lane compress-3). The host keeps, with each buffer set, ACL2's POOL value (DICT H DIRTY) or NIL; fn-zpl-pool-okp: the window is DICT's ready window (fn-zin-payload-ready's) from cell DIRTY on, H its preset length. fn-zpl-decode-bufs re-zeroes only the DIRTY cells and remakes the table when the pool names the same dictionary (an equal that is eq for the shared table entry), else makes the buffers whole. KEYSTONES fn-zpl-decode-bufs-is-decode (under fn-zpl-pool-okp: the answer's status is fn-pzd-decode's, on :ok the output buffer holds its octets, and the returned pool satisfies fn-zpl-pool-okp; fn-zpl-pool-okp-of-nil: the host's starting pool does) and fn-zpl-decode-bufs-is-the-lz-value (an :ok answer's octets are fn-lzr-lz-value, the value A-DURABLE-LZ names). Host subject: host/native/deflate.lisp fnn-pzd-decode calls fn-zpl-decode-bufs (the realizer host/native/extent.lisp fn-durable-realize-lz). Witnesses: tests/acl2/deflate-pool-tests.lisp (two reads over one buffer set, the second through the reuse branch; a forged pool without the invariant answers other octets; must-fail without fn-zpl-pool-okp). Measured (hbox, load ~18, same session, held-out 9,733 20news articles): 223 us median vs 497-526 us for fn-pzd-decode-bufs, 0 mismatches; measure at convergence.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-037"
+      ],
+      "depends_on": [
+        "PRF-948",
+        "PRF-912",
+        "PRF-326"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/deflate-pool.lisp",
+        "tests/acl2/deflate-pool-tests.lisp",
+        "host/native/deflate.lisp"
+      ],
+      "progress_note": "Lane compress-3 (Opus 5.5, 2026-09-29): REPL-green on hbox; certification in persvati run-20260929T042101Z-6c3f. Open: a witness that evaluates fn-zpl-pool-okp of a returned pool (non-executable; needs an executable twin).",
+      "events": [
+        "fn-zpl-decode-bufs-is-decode",
+        "fn-zpl-decode-bufs-is-the-lz-value",
+        "fn-zpl-pool-okp-of-nil"
+      ]
+    },
+    {
       "id": "PRF-906",
       "title": "An acknowledged BP custody is delivered within one quiet read timeout of an open session, never held until the session ends (PKT-873)",
       "statement": "Subjects fn-tcl-delivery-plan and fn-tcl-delivery-plan-progress-p (books/tcpcl-delivery.lisp), which host/native/tcpcl.lisp fnn-tcl-act calls on every completed inbound transfer; fnn-tcl-session marks the custody when the plan names the progress point and calls *fnn-tcl-progress* at its first quiet read timeout after it (at most max(1, keepalive/4) s; a session the peer ends first is delivered by the between-sessions pass), and host/native/bp-node.lisp fnn-command-bp-node binds it to fnn-bpnode-dispatch-pending. KEYSTONE fn-tcl-acknowledged-custody-is-progressed-in-its-turn: if the plan's released messages carry the transfer's final END XFER_ACK, the callback's result was (:accepted PATH) (kind-5 custody durable, spec 9.2) and the plan names the progress point; fn-tcl-unaccepted-delivery-names-no-progress: a refusal, an uncertain publication or a fault names none. Crash scope: the in-session turn adds no durable write; a process death between the ACK and the delivery is the existing kind-5 cut, recovered by the open's delivery pass. Teeth: tests/acl2/tcpcl-delivery-tests.lisp (fn-tcl-complete's held END ACK with (:accepted nil): final ACK released, progress named; removal of the final-ACK hypothesis by a refusal, an uncertain publication and a fault: no progress). Native: tests/test_native_source_corpus_bp.py (B SIGKILLed mid-receive; the relay restarted after B keeps its session open; the verdict precedes that session's end).",

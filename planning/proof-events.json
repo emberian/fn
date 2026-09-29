@@ -13571,6 +13571,32 @@
           "name": "fn-bpcc-frame-decode-of-sealed"
         }
       ]
+    },
+    {
+      "id": "PRF-948",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-zfr-loop-ahead-frame"
+        }
+      ]
+    },
+    {
+      "id": "PRF-949",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-zpl-decode-bufs-is-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zpl-decode-bufs-is-the-lz-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zpl-pool-okp-of-nil"
+        }
+      ]
     }
   ]
 }
