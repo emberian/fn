@@ -210,6 +210,52 @@ class NativeBpApplicationTests(unittest.TestCase):
         self.assertNotIn(b"BP application accepted", receiver_out)
         self.assertEqual(self.recovered_counts()[1], 0)
 
+    def test_past_limit_article_is_refused_by_name_before_any_intent(self):
+        """PKT-771 / PRF-978 (STO-030): a transit article past the store
+        profile's header limits is refused by the limit's name before any
+        durable intent.
+
+        The receiver plans with fn-bpaj-transit-plan-under under the owner's
+        header limits (host/bp-native-app-host.lisp fn-owner-app-plan-install;
+        books/bp-transit-join.lisp
+        fn-bpaj-transit-plan-under-refuses-past-the-limits-before-any-intent):
+        an admitted sender's 80-field article is `(:refused
+        :header-fields-limit)' (books/article-header-census.lisp
+        fn-article-census-refusal, the default profile's 64 fields), the
+        receiver's line carries that name, and the refusal precedes every
+        durable effect: no FNRJ record (host/native/bp-app.lisp
+        fnn-bpapp-accept-locked returns on the plan answer before
+        :persist-intent), no Store transaction, no retention pin.
+        """
+        msgid = b"<native-bp-past-limit@example.invalid>"
+        lines = [b"From: sender@example.invalid", b"Newsgroups: fn.test",
+                 b"Subject: past the header limits over BP",
+                 b"Date: Mon, 21 Sep 2026 08:00:00 +0000",
+                 b"Message-ID: " + msgid]
+        lines += [b"X-Field-%04d: value %d" % (i, i)
+                  for i in range(80 - len(lines))]
+        article = b"\r\n".join(lines) + b"\r\n\r\nbody over BP\r\n"
+        self.request_path.write_bytes(self.request_for(article, msgid))
+        (sender_code, receiver_code, sender_out, receiver_out,
+         receiver_err) = self.exchange()
+        self.assertEqual(receiver_code, EXIT.REFUSED, receiver_err.decode())
+        self.assertEqual(sender_code, EXIT.REFUSED, sender_out.decode())
+        self.assertIn(
+            b"refused bp-application xfer=0 result=refused "
+            b"reason=header-fields-limit\n", receiver_err)
+        self.assertIn(b"BP summary accepted=0", sender_out)
+        self.assertNotIn(b"BP application accepted", receiver_out)
+        # Before any durable intent: the journal holds no record and the
+        # Store no transaction, article or pin.
+        self.assertEqual(
+            sorted((self.receipts / "records").glob("*.rj")), [],
+            "a refused plan must journal nothing")
+        self.assertEqual(self.recovered_counts(), (0, 0, 0))
+        inspected = self.invoke("store", self.store, "inspect",
+                                msgid.decode("ascii"))
+        self.assertNotEqual(inspected.returncode, EXIT.OK,
+                            "the refused article must not be in the Store")
+
     def request_for(self, article, msgid, work=None):
         """The BP application request carrying ARTICLE, encoded by the image's
         own ACL2 (`fn acl2 session`: fn-bpa-encode over ARTICLE's subject)."""
