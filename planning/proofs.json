@@ -14687,6 +14687,64 @@
         "fn-onb-boundp-of-psrv-prepare",
         "fn-onb-boundp-at-owner-prepare-buffer"
       ]
+    },
+    {
+      "id": "PRF-1001",
+      "title": "The productive counterpart of the served POST's 240 safety theorem: a request the Store admits, under the nine specified successful primitive completions, reaches the 240 line and the record in durable history",
+      "statement": "books/productive-contract.lisp (fn-pcx-). KEYSTONE fn-pcx-post-productive: an owner whose Store admits R (fn-pcx-admissiblep: phase :ready, nothing staged, R a non-legacy held row under the keyring generation in force, the consumer projection accepts it, the node binds it, R is the candidate at the frontier the reservation will hold and the extended history is replayable) and whose topic prefix accepts R, with connection ID's submission in flight (its ledger mark at most the ledger's length) and R naming that submission through the arena (fn-row-wire-of: Message-ID and payload), after fn-own-run of fn-pcx-post-script (four frontier answers, (:prepare R), three record answers, (:complete); *fn-pcx-post-steps* = 9 steps of fn-own-step): fn-own-finish's word is :durable and its owner is that run; the completion is consumed; the ledger and the Store's successes each gain exactly R's pair; R is in fn-sf-records; and fn-own-outcome ID :durable renders fn-served-post-outcome's :durable effects. Parts: fn-pcx-store-run-fields (KEYSTONE, store: :completing with R as the completion record, appended to the history, successes untouched, the node the prepared node), fn-pcx-store-run-completion-enabled (the gate holds; the topic condition is a named hypothesis), fn-pcx-own-run-store (a (:store E) step is the Store's with every other owner field kept), fn-pcx-post-finish-word. The one-step lemmas fn-pcx-io-* and fn-pcx-prepare-step-fields read each answer's phase move with fn-sn-io closed (fn-cstp-io-fields disabled in every composition: enabled, it rewrites an io step's files before the per-step rules can read them).",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-1000"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proved",
+      "evidence": [
+        "books/productive-contract.lisp",
+        "tests/acl2/productive-contract-tests.lisp",
+        "specs/productive-contract.md"
+      ],
+      "progress_note": "Teeth: the reachable witness is owner-tests' plain served POST (*own-taken*, connection 4) with the record its own octets intern at sequence 2 and the arena holding the journal's prior; the complete antecedent and the complete conclusion asserted per literal theorem, including the 240 octets. Hypothesis removal: a record at the wrong sequence is not admissible and the nine steps do not reach :completing. MUTATION (the regression's shape): the completed row's handle compared against the staged octets makes the finish word :fault; the conclusion fails. The served read and the peer transfer are stated in specs/productive-contract.md section 5 and open.",
+      "events": []
+    },
+    {
+      "id": "PRF-1002",
+      "title": "Every uncertain outcome of the served POST and the peer transfer names its cause: an effect failed after publication, or the completion is outstanding",
+      "statement": "books/productive-contract.lisp. fn-pcx-uncertain-cause o word: :effect-failed-after-publication when a completion was consumed after the take (fn-own-completion-consumedp) and the host's word is not a durable one; :completion-outstanding when no completion was consumed and the word names no refusal (fn-own-refusal-wordp) and is not :clock-unusable; else nil. KEYSTONE fn-pcx-uncertain-has-a-named-cause: (fn-own-outcome-completion o word) is :uncertain iff the cause is one of the two. fn-own-transit-outcome (IHAVE/TAKETHIS, kind :want) renders the same function. A fence never reaches the function (the host recovers instead of finishing).",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-1000"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proved",
+      "evidence": [
+        "books/productive-contract.lisp",
+        "tests/acl2/productive-contract-tests.lisp",
+        "specs/productive-contract.md"
+      ],
+      "progress_note": "Teeth: a positive witness per cause on the real served trace (*osi-completing* before and after (:complete)); the durable, refused and clock-refused outcomes have no cause; must-fail for an uncertain with no cause; a mutant cause function that drops the outstanding-completion case leaves the unconfirmed :durable claim without a cause.",
+      "events": []
+    },
+    {
+      "id": "PRF-1003",
+      "title": "The external observer: the octets the host writes for the durable outcome of a POST-composed session are the 240 line the outside-in test reads",
+      "statement": "books/productive-observer.lisp. *fn-pcx-240-line* = the octets of \"240 article received OK\" then CRLF. KEYSTONE fn-pcx-observer-240: for a connection whose session is the POST-composed one (fn-post-sessionp of fn-auth-post-session), fn-served-reply-octets of fn-served-result-effects of (fn-served-post-outcome conn :durable) is *fn-pcx-240-line*; fn-pcx-observer-240-code: its first three octets are \"240\", the observation tests/test_native_outside_in.py test_a06_post_to_a_group makes (expect(\"240\")). With fn-pcx-post-productive, the conclusion named by effects is the line on the wire.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-1000"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proved",
+      "evidence": [
+        "books/productive-observer.lisp",
+        "tests/acl2/productive-contract-tests.lisp",
+        "tests/test_native_outside_in.py",
+        "specs/productive-contract.md"
+      ],
+      "progress_note": "Teeth: tests/acl2/productive-contract-tests.lisp asserts the reply octets of the witness's outcome equal the line; tests/test_native_outside_in.py cites the book at its expect(\"240\").",
+      "events": []
     }
   ]
 }
