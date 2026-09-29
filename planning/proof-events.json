@@ -13789,6 +13789,19 @@
           "name": "fn-arpn-step-preserves-okp"
         }
       ]
+    },
+    {
+      "id": "PRF-987",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orli-live-record-is-the-recorded-config-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orli-live-record-decides-the-context"
+        }
+      ]
     }
   ]
 }

@@ -4364,8 +4364,11 @@ existing port only after fn-fc has made this connection ready."
 ;; (fn-owner-reconfigure-deltas: the generation pin, the connection budget,
 ;; the staged record), published by host/native/admin.lisp
 ;; fnn-owner-live-reconfigure-locked.  An unrepresentable instant is refused
-;; by name, :reclaim-instant, before anything is staged.  KEYSTONE (the
-;; record's meaning) fn-rci-recorded-context-is-the-decided-context.
+;; by name, :reclaim-instant, before anything is staged.  KEYSTONE
+;; (books/owner-reclaim-instant.lisp, PRF-987)
+;; fn-orli-live-record-decides-the-context: the record this stages yields the
+;; context the offline record decides at NOW
+;; (fn-rci-recorded-context-is-the-decided-context).
 (defun fn-owner-orc-instant-stage (cid clock fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let* ((stamp (fn-record-stamp-of-observation clock))
