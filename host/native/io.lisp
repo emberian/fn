@@ -1766,7 +1766,14 @@ resolves the names against `domain' and the host carries that list verbatim."
 (defvar *fnn-log-batch* nil)
 
 (defstruct (fnn-store (:constructor %make-fnn-store))
-  root writable lock-fd config frontier fenced (orphans nil) (orphans-more nil)
+  root writable lock-fd config frontier fenced
+  ;; The profile config.json seals (the genesis digest's subject); CONFIG is
+  ;; the served one, SEALED under the configuration history's limit rows
+  ;; (fnn-load-config, books/limits-live.lisp).
+  (sealed-config nil) (orphans nil) (orphans-more nil)
+  ;; Row S1: how long this open took, in milliseconds (an observation; the
+  ;; next start's open takes about as long): the limit verb's words read it.
+  (open-ms 0)
   (completion-pending nil)
   ;; P3: how the last open reached the Store state: (:checkpoint S K) or
   ;; (:full-replay REASON).  `operator status' prints it.
@@ -2126,7 +2133,19 @@ store; anything else is left to the ordinary open."
   (let ((raw (handler-case
                  (fnn-read-regular-bounded (fnn-config-path store) 16384)
                (fnn-os-error (e) (fnn-fault "invalid durable config: ~a" e)))))
-    (setf (fnn-store-config store) (fnn-metadata-config-decode raw))))
+    (let ((sealed (fnn-metadata-config-decode raw)))
+      (setf (fnn-store-sealed-config store) sealed
+            (fnn-store-config store) sealed)
+      ;; The live limits (row S1): the configuration history's :set-limit
+      ;; rows over the sealed profile, read before any bound of the log
+      ;; applies (the history's own readdir bound is a sealed field).
+      (when (let ((st (fnn-lstat (fnn-config-dir store))))
+              (and st (fnn-directory-p st) (not (fnn-symlink-p st))))
+        (let ((observation (fnn-config-record-observation store)))
+          (when observation
+            (setf (fnn-store-config store)
+                  (fnn-core 'fn-store-lim-effective sealed
+                            (mapcar #'fnn-octet-list (mapcar #'cdr observation))))))))))
 
 (defun fnn-initialize (store &optional (groups +fnn-default-groups+) (profile :development))
   ;; One durable configuration record at generation 1, built and admitted by
@@ -3314,9 +3333,13 @@ the records are read after the open by the verbs that need them
   (let ((store (make-fnn-store root :writable writable :fault fault)))
     (fnn-acquire store)
     (handler-case
-        (progn
+        (let ((before (get-internal-real-time)))
           (fnn-bridge-reset)
-          (values store (fnn-recover store)))
+          (let ((count (fnn-recover store)))
+            (setf (fnn-store-open-ms store)
+                  (floor (* 1000 (- (get-internal-real-time) before))
+                         internal-time-units-per-second))
+            (values store count)))
       (error (e) (fnn-store-close store) (error e)))))
 
 (defun fnn-orphan-report (store)
@@ -6376,7 +6399,8 @@ re-run init completes, never redraws: EEXIST at the link)."
   (fnn-fsync-dir (fnn-journal-dir store))
   (fnn-init-cut store "init-genesis-journal-fenced"))
 
-(defun fnn-genesis-open (store &optional (profile (fnn-store-config store)))
+(defun fnn-genesis-open (store &optional (profile (or (fnn-store-sealed-config store)
+                                                      (fnn-store-config store))))
   "Every open of a format-10 store: ACL2's open of journal/000000.log under
 the profile the store opened (fn-gen-open, books/store-genesis.lisp),
 refused by name (genesis-damaged, genesis-format, schema-digest,
@@ -6856,13 +6880,15 @@ refused by name."
       (unless (eq action :recovering)
         ;; A replay that stopped names itself (fn-store-open-refusal-text:
         ;; books/store-open-replay-refusal.lisp); else the checkpoint is damaged.
-        (let ((text (and (eq action :refused) (fnn-core-state 'fn-store-open-refusal-text))))
+        (let ((text (and (eq action :refused) (fnn-core-state 'fn-store-open-refusal-text)))
+              (stop (and (eq action :fault) (fnn-core-state 'fn-store-open-stop-text))))
           (fnn-core-state 'fn-store-sco-clear)
           (fnn-bridge-reset)
           (error 'fnn-store-open-refusal
-                 :message (if (stringp text)
-                              text
-                            "open refused reason=checkpoint-damaged: the checkpoint that covers the dropped log segments does not open")))))
+                 :message (cond ((stringp text) text)
+                                ((stringp stop)
+                                 (format nil "open refused reason=checkpoint-damaged: the checkpoint that covers the dropped log segments does not open: ~a" stop))
+                                (t "open refused reason=checkpoint-damaged: the checkpoint that covers the dropped log segments does not open"))))))
     (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
     ;; The history's count (PKT-823); the prefix stays in the arena and the
     ;; checkpoint's rows, encoded only for a verb that reads the history
@@ -6982,8 +7008,14 @@ does, and records how the log holds the history (fnn-store-log-history) for
               ;; The frontier: the fold, at least the checkpoint's frontier at S
               ;; (the dropped segments' txids) and the log kernel's next, and
               ;; the log kernel caught up to it.
+              ;; And past every configuration record's txid
+              ;; (fn-store-cfg-next-txid): a record accepted while POSTs were
+              ;; refused on a full budget stands above every event.
               (let ((next (fnn-nat (fnn-core 'fn-store-log-next-txid-join
-                                             (fnn-core 'fn-store-log-next-txid-join acc floor)
+                                             (fnn-core 'fn-store-log-next-txid-join
+                                                       (fnn-core 'fn-store-log-next-txid-join acc floor)
+                                                       (fnn-core 'fn-store-cfg-next-txid
+                                                                 (mapcar #'fnn-octet-list config-records) 0))
                                              (fnn-core 'fn-lgc-next-txid (fnn-log-kernel log))))))
                 (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-consume-to (fnn-log-kernel log) next)
                       (fnn-store-log store) log

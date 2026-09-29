@@ -14782,6 +14782,47 @@
       "events": [
         "fn-crqw-request-word-names-the-outcome"
       ]
+    },
+    {
+      "id": "PRF-937",
+      "title": "The open's transaction frontier admits every history the replay accepts: a configuration record above every event (refused POSTs on a full budget) no longer makes a clean store checkpoint-damaged",
+      "statement": "Subject: the configured open's frontier, host/native/io.lisp fnn-recover-log and host/store-open-host.lisp (the extraction open) joining host/store-node-host.lisp fn-store-cfg-next-txid = books/open-frontier.lisp fn-ofr-configs-next with the events' fold and the checkpoint floor; the replay is books/config-physical-replay.lisp fn-cpr-replay, and the check it passes is fn-rii-sco-finalize-configured's fn-rii-advance-idlep (= fn-replay-advance-okp, fn-rii-advance-idlep-is-advance-okp). fn-ofr-replay-ok-frontier-admits: whenever fn-cpr-replay accepts a history (any interleaving of Store events of every kind -- articles, composites, retention undertakings and releases, identity, consumer and topic events -- and configuration records, with any txid gaps, which is what a refused or aborted transaction leaves) and FLOOR is a natural, the replayed node is idle at or below fn-ofr-frontier (the max of every event's txid+1, every configuration record's txid, FLOOR). fn-ofr-loop-ok-within-frontier is the general form from any idle node at or below ACC (the open over a checkpoint: ACC its floor). Scope: the host's events fold (fn-store-log-next-txid-of-events) reads wire events, not the interned rows the replay reads; their txids agree by fn-rcon-wire-event-txid-is-wire-event-txid / fn-rcon-store-event-txid-is-store-event-txid, not restated here. That the durable history a clean stop leaves replays :ok is lane closure-theorems' (books/closure-open.lisp).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-011",
+        "STO-025"
+      ],
+      "depends_on": [
+        "PRF-083",
+        "PRF-186"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/open-frontier.lisp",
+        "tests/acl2/open-frontier-tests.lisp",
+        "tests/test_native_checkpoint_auto.py"
+      ],
+      "progress_note": "Lane limits-live-2 (2026-09-29), row B10: the checkpoint-damaged bug of the operability review's walk F3."
+    },
+    {
+      "id": "PRF-940",
+      "title": "A store limit (T, H, A) is a configuration event over the sealed profile: replayed identically by every open, and an accepted change leaves the store's use within the new limit",
+      "statement": "Subject: the served profile, host/native/io.lisp fnn-load-config calling host/store-node-host.lisp fn-store-lim-effective = books/limits-live.lisp fn-lim-effective over the decoded configuration records (the open, and the launcher's heap probe through it); and the decision the `policy set max-transactions|max-history-octets|max-article-octets N` verb takes, fn-lim-decide. fn-lim-effective-of-append-record: the profile the owner installs when it applies record R (R's :set-limit rows over the profile it serves) is the profile every later open computes from the history R ends. fn-lim-apply-deltas-of-the-verb: the verb's row (fn-lim-deltas) applied is fn-lim-apply-row for a live field. fn-lim-decide-accepted-keeps-use-within: an accepted decision (:applied or :at-restart) names a live field, leaves an admitted profile, and the store's use of that field (committed transactions, or history octets charged) at or below the new limit; an :applied decision's heap figure fits the reservation the running process holds. Refusals are by name with the number: below-current-use, not-a-live-limit, profile-invalid, and heap-figure's machine refusals. Scope: the use the host passes is the owner's budget reading at the decision; that admission keeps it below T afterwards is store-budget's fn-sbud-admitp, not restated here.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-038"
+      ],
+      "depends_on": [
+        "PRF-937"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/limits-live.lisp",
+        "tests/acl2/limits-live-tests.lisp"
+      ],
+      "progress_note": "Lanes limits-live (book), limits-live-3 (teeth, registry) 2026-09-29, row S1."
     }
   ]
 }

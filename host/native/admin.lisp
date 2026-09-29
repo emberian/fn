@@ -369,6 +369,104 @@ instant live.  The reply names the word."
                    (fnn-owner-reclaim-pass service free))))
     (list :reason (fnn-core 'fn-owner-orc-request-status word) word)))
 
+;;; Row S1 (books/limits-live.lisp, PRF-940): `policy set
+;;; max-transactions|max-history-octets|max-article-octets N'.  ACL2 decides
+;;; the change (fn-lim-decide) before anything is staged, over the profile
+;;; the configuration history records (fn-store-lim-effective), the store's
+;;; use, the reservation this process runs in and the launcher's
+;;; observations (heap-reservation.lisp fn-heap-status-decide): applied now,
+;;; recorded for the next start (no data moved), or refused by name with the
+;;; number.  The host observes, publishes and installs; the words are ACL2's.
+
+(defun fnn-lim-plan-p (plan)
+  (and (fnn-admin-plan-acceptedp plan)
+       (eq (fnn-core 'fn-native-admin-result-kind plan) :set-store-limit)))
+
+(defun fnn-lim-plan-field (plan)
+  (fnn-core 'fn-record-octets-string (fnn-core 'fn-native-admin-result-name plan)))
+
+(defun fnn-lim-plan-n (plan)
+  (fnn-nat (fnn-core 'fn-native-admin-result-capacity plan)))
+
+(defun fnn-lim-recorded-profile (store)
+  "The profile STORE's configuration history records: the sealed one under
+every :set-limit row (ACL2's fn-store-lim-effective over the records)."
+  (let ((observation (fnn-config-record-observation store)))
+    (fnn-core 'fn-store-lim-effective (fnn-store-sealed-config store)
+              (mapcar #'fnn-octet-list (mapcar #'cdr observation)))))
+
+(defun fnn-lim-decision (store plan values use run-mb core observations)
+  (fnn-core 'fn-lim-decide (fnn-lim-plan-field plan) (fnn-lim-plan-n plan)
+            values use run-mb core +fnn-gc-nursery-octets+ observations
+            (fnn-heap-history-observation (fnn-store-root store) values)))
+
+(defun fnn-lim-reason (plan decision store)
+  (fnn-core 'fn-lim-decision-reason (fnn-lim-plan-field plan) (fnn-lim-plan-n plan)
+            decision (fnn-store-open-ms store)))
+
+(defun fnn-lim-line (plan decision store)
+  (fnn-core 'fn-lim-decision-line (fnn-lim-plan-field plan) (fnn-lim-plan-n plan)
+            decision (fnn-store-open-ms store)))
+
+(defun fnn-owner-limit-serialized (service plan)
+  "The live owner's limit change: decided under the owner mutex (the
+configuration history does not move under it), published through the
+ordinary live reconfiguration, and on :applied served at once."
+  (let* ((store (fnn-owner-service-store service))
+         ;; The machine and image observations, off the mutex.
+         (core (fnn-heap-image-observation))
+         (observations (fnn-heap-observations))
+         (run-mb (floor (sb-ext:dynamic-space-size) 1048576)))
+    (fnn-owner-serialized
+     service nil
+     (lambda ()
+       (let* ((values (fnn-lim-recorded-profile store))
+              (use (fnn-owner-core 'fn-owner-limit-use))
+              (d (fnn-lim-decision store plan values use run-mb core observations)))
+         (fnn-err "LIMIT ~a" (fnn-lim-line plan d store))
+         (if (not (eq (fnn-core 'fn-lim-decision-status d) :accepted))
+             (list :reason :refused (fnn-lim-reason plan d store))
+           (multiple-value-bind (word reason)
+               (fnn-owner-live-reconfigure-locked
+                service
+                (lambda (cid)
+                  (fnn-owner-result 'fn-ores-config-result-p
+                                    'fn-native-admin-host-owner-reconfigure cid plan)))
+             (cond
+               ((eq word :refused) (list :reason :refused reason))
+               (t
+                (when (eq (first d) :applied)
+                  ;; The profile every later open computes from the history
+                  ;; this record ended (fn-lim-effective-of-append-record).
+                  (let ((served (fnn-core 'fn-lim-apply-row values
+                                          (fnn-lim-plan-field plan) (fnn-lim-plan-n plan))))
+                    (unless (eq (fnn-owner-core 'fn-owner-apply-limit-profile served)
+                                :installed)
+                      (fnn-indeterminate
+                       "owner refused a durably recorded limit's profile"))
+                    (setf (fnn-store-config store) served)))
+                (list :reason :accepted (fnn-lim-reason plan d store)))))))))))
+
+(defun fnn-admin-execute-limit (store plan)
+  "The offline limit change: no process holds a reservation (run-mb 0), so an
+accepted change is recorded for the next start.  Prints ACL2's line."
+  (let* ((values (fnn-lim-recorded-profile store))
+         (use (fnn-core-state 'fn-store-lim-use))
+         (d (fnn-lim-decision store plan values use 0
+                              (fnn-heap-image-observation) (fnn-heap-observations)))
+         (line (fnn-lim-line plan d store)))
+    (unless (eq (fnn-core 'fn-lim-decision-status d) :accepted)
+      (fnn-refuse "~a" line))
+    (multiple-value-bind (record reason) (fnn-admin-reconfigure plan (fnn-admin-clock-plan))
+      (unless record
+        (fnn-refuse "administrative configuration refused: ~a" reason))
+      (multiple-value-bind (generation name verification)
+          (fnn-admin-publish-record store record)
+        (fnn-out "configured generation=~d record=~a verification=~a"
+                 generation name verification)
+        (fnn-out "~a" line)
+        +fnn-exit-ok+))))
+
 (defun fnn-owner-live-admin-serialized (service argv)
   "Publish one ACL2-planned configuration mutation through the live owner,
 or answer the one owner request an admin vector carries (PKT-868: the
@@ -381,6 +479,10 @@ fn-native-admin-result-owner-requestp and -reclaim-mode)."
           (if mode
               (fnn-owner-reclaim-request service mode)
             (fnn-owner-compaction-request service))))))
+  (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
+    (when (fnn-lim-plan-p plan)
+      (return-from fnn-owner-live-admin-serialized
+        (fnn-owner-limit-serialized service plan))))
   (fnn-owner-serialized
    service nil
    (lambda ()
@@ -456,6 +558,8 @@ turning a refusal into a physical mutation."
              (declare (ignore count))
              (setq store opened)
              (fnn-require-writer store)
+             (when (fnn-lim-plan-p plan)
+               (return-from fnn-admin-execute (fnn-admin-execute-limit store plan)))
              (multiple-value-bind (record reason) (fnn-admin-reconfigure plan (fnn-admin-clock-plan))
                (unless record
                  (fnn-refuse "administrative configuration refused: ~a" reason))

@@ -278,6 +278,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/memory-credits \
 	tests/acl2/memory-credits-tests \
 	tests/acl2/heap-figure-tests \
+	tests/acl2/open-frontier-tests \
+	tests/acl2/limits-live-tests \
 	books/connection-budget \
 	tests/acl2/connection-budget-tests \
 	books/store-open-pre-c1 \

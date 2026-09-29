@@ -683,8 +683,10 @@ The memory refusals, and what to do:
 
 - `fn: refused machine-cannot-hold-profile heap=H MB machine=M MB`: the
   store's limits need more memory than this machine (or the service's
-  `MemoryMax`) gives. Raise the limit, or move the store to settings that
-  fit (`store export`, then `store import` with smaller `--max-...`).
+  `MemoryMax`) gives. Raise the limit, or lower the store's limits to fit
+  (`policy set max-transactions N`, `max-history-octets N` or
+  `max-article-octets N`; a limit below what the store already holds is
+  refused, `below-current-use`).
 - `fn: refused machine-cannot-hold-threads reservation=R MB machine=M MB`:
   the same, for the whole node with its threads. Raise the limit.
 - `refused connections-exceed-memory capacity=C holds=B ...`: the node
@@ -770,11 +772,10 @@ groups would not, it is refused with
 `441 posting failed; the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)`.
 A feeding node is told "try later" (`436`) for this too.
 
-The store's size limits are fixed when it is made. To raise them, move to a
-new store with bigger limits: `store export`, a fresh install, then
-`store import DIR --max-transactions N --max-history-octets N` (see
-[reinstalling](install.md#4-reinstalling) and
-[store settings](#store-settings)).
+To raise the store's size limits, set them in place:
+`fn operator CONFIG policy set max-transactions N` (or `max-history-octets`,
+`max-article-octets`), against the running node or offline. No data moves
+(see [store settings](#store-settings)).
 
 The store is a log that grows with each post. Now and then the running
 node saves a summary (a checkpoint) and deletes the parts of the log it
@@ -840,15 +841,30 @@ Restart after editing the file.
 
 ### Store settings
 
-A store's size limits are set by `init` and never change. Under a `mission`,
-`init` takes group names only and picks the limits for the machine. To
-choose them yourself, or to raise them later through an export:
+A store's size limits are set by `init`. Under a `mission`, `init` takes
+group names only and picks the limits for the machine. To choose them
+yourself, and to raise or lower three of them later in place:
 
 ```text
 fn operator /path/to/fn.toml init --max-transactions 100000 --max-history-octets 268435456 --max-article-octets 20000 fn.letters
-fn operator /path/to/fn.toml store export /srv/fn-archive
-fn operator /path/to/fn.toml store import /srv/fn-archive --max-transactions 1000000
+fn operator /path/to/fn.toml policy set max-transactions 1000000
+fn operator /path/to/fn.toml policy set max-history-octets 1073741824
+fn operator /path/to/fn.toml policy set max-article-octets 65536
 ```
+
+`policy set` works against the running node or offline, and moves no data.
+The change is applied now when the running process's heap holds the new
+limits (`accepted applied:max-transactions=...:served-now:no-data-moved`);
+otherwise it is recorded and takes effect at the next start, and the reply
+says how long that start takes and how much heap it reserves
+(`recorded limit max-transactions=N effective-at-next-start: takes effect at the next restart (about S s), no data moved; the next start reserves heap=H MB`).
+It is refused (exit 1), with nothing changed, when the number is below what
+the store already holds (`below-current-use: the store holds U`), when the
+limits would not be a valid profile (`profile-invalid: REASON`), or when
+this machine cannot hold them
+(`machine-cannot-hold-profile: heap=H MB machine=M MB`). The other limits
+below are fixed when the store is made; lowering `--max-transactions`
+lowers `--max-open-suffix` with it.
 
 Limits: `--max-transactions`, `--max-history-octets`,
 `--max-record-octets`, `--max-article-octets`, `--max-groups-per-article`,
@@ -875,17 +891,21 @@ warns on stderr with both numbers, exit code 0:
 `init` with no `--profile` and no limit (and every `init` under a
 `mission`) picks the largest of four sizes this machine's memory holds:
 64, 32 or 16 MiB of articles, else 8 MiB. A short post to one group
-takes about 1,180 bytes (860 for the post, 320 for its group), so that is
-about 56,000 posts at the top and about 7,000 at the bottom. `status`
+takes about 4,900 bytes (860 for the post, 320 for its group, and about
+3,700 for its header of about 400 bytes; see below), so that is about
+13,800 posts at the top and about 1,700 at the bottom. `status`
 shows the limits on its `profile` line and about how many posts still fit
-on its `capacity articles-left=N` line. A friend's feed uses the same room. The smallest size
-needs about 1.9 GB for its first run (`reservation=1906 MB` with a 190 MB
-image): fn reserves room for every article to carry the longest header
-the store admits, so a machine that gives `init` less, such as a 2 GB
-machine after the system's share, is refused by name; name smaller limits
-(`--max-transactions`, `--max-history-octets`). For more, remove the `mission`
+on its `capacity articles-left=N` line. A friend's feed uses the same room. A
+header costs the node's memory far more than its size on disk, so each
+article's header is charged to its history budget at 8 bytes a byte (12
+more for each byte of its Message-ID): articles with long headers fill the
+store sooner, and past its budget a POST is refused by name
+(`unaffordable`). The smallest size's first run needs about 1 GB, so a
+2 GB machine (1,536 MB after the system's share) gets the 16 MiB size.
+For more, remove the `mission`
 line from `fn.toml` and `init` with the limits above, or raise them later
-with `store export` and `store import --max-... N`.
+with `policy set max-transactions N` (and `max-history-octets`,
+`max-article-octets`).
 
 ### Other commands
 
