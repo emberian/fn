@@ -18,13 +18,11 @@ host/native/deflate.lisp); its outbound one by the vendored zlib
     (compress-malformed) and the connection closes;
   * an unknown algorithm is 503 and a malformed one 501.
 """
-import subprocess
-import sys
 import threading
 import unittest
 import zlib
 
-from tests.native_harness import EXIT_OK, ROOT, Client, Node, native_image, requires
+from tests.native_harness import EXIT_OK, Client, Node, native_image, requires
 
 IMAGE = native_image("FN_NATIVE_HOST")
 
@@ -81,13 +79,10 @@ class NativeCompressTests(unittest.TestCase):
         self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
         self.node.write_config(extra='\n[auth]\nrequired = true\nprotected_only = false\n'
                                      'path = "{}"\n'.format(self.auth))
-        enrolled = subprocess.run(
-            [sys.executable, "bin/fn", "--config", str(self.config),
-             "principal", "set-password", "native-reader",
-             "--password", "correct-horse", "--posting"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=self.node.environment(), timeout=600, check=False)
-        self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+        # The native operator reads the password and its confirmation from
+        # standard input when there is no tty (the Python host is retired).
+        self.node.operator("principal", "set-password", "native-reader", "--posting",
+                           input=b"correct-horse\ncorrect-horse\n", expect=EXIT_OK)
 
     def start(self):
         return self.node.start(verb=("run", "--once"))
