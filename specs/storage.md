@@ -188,10 +188,10 @@ Store profile's `max-bp-rows` field is still not read (PKT-294).
 STO-013: a record's sequence, transaction ID, generation, charge and stamp
 are u64 (design 2026-09-25-bounds §2.3, packet P6). A record that needs a
 field above 2^32 - 1 carries schema octet 2 and eight-octet CBOR uint heads
-(RFC 8949 §3.1); every other record keeps its schema-0 or schema-1 octet and
-its bytes, and a store written under schemas 0 and 1 opens to the same
-records (`fn-record-v1-bytes-decode-identically`,
-`fn-record-v1-bytes-are-their-translation`). A profile's record bound R is
+(RFC 8949 §3.1); every other record keeps its schema-1 octet and its
+bytes. No older image's store is read (D34, no migrations: fresh deploys at
+6.6.0); the pre-P6 decoder and its two identity theorems were retired with
+it. A profile's record bound R is
 checked against the record ceiling at the widths the runtime produces (u32
 heads, 1 083 octets of fixed overhead); a schema-2
 record is at most 28 octets past that ceiling and the publish gate refuses

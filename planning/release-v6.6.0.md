@@ -201,8 +201,7 @@ prints every other gate's commands and checks the box preconditions it can
 What the gates do not decide (the cut's qualification record, section 4):
 
 - **Per-test skips inside an OK module** are not evidence. The notes
-  `tools/native_env.py plan` prints today name them: FN_OLD_IMAGE and
-  FN_OLD_NATIVE_HOST (upgrade cases, moot under D34), FN_INN_SRC (the INN
+  `tools/native_env.py plan` prints today name them: FN_INN_SRC (the INN
   lab), FN_DTN7_REPO (dtn7-rs interop), FN_BUILD_OPENSSL_PREFIX
   (frozen_relocation). The record lists each one as unexercised with its
   reason.

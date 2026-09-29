@@ -396,10 +396,9 @@
 ; without a second name list to keep in step with it.  A caller that wants
 ; the records pairs this with `fn-cfg-peer-find'.
 ;
-; books/owner-feed.lisp's `fn-own-feed-peer-names' is the same fold and
-; predates this definition; it stays where it is until owner-feed is next
-; recertified.  host/store-node-host.lisp's `fn-store-cfg-peer-name-list'
-; was the third copy and now calls this one.
+; It is the one enumeration: books/owner-feed.lisp's copy is gone (lane
+; small-rows, D3) and host/store-node-host.lisp's
+; `fn-store-cfg-peer-name-list' calls this one.
 ;
 ; It walks the whole peer table (D27: no row cap), so it executes by a loop
 ; (lane config-and-legacy): the :logic is the recursion, unchanged; the :exec

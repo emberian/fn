@@ -1875,12 +1875,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bs-recover-program-run-from-a-quiet-image",
-          "note": "fn-bs-recover-program from a quiet byte state and any kernel whose (:recover) observation is the recovered kernel at zero barriers: all 17 pairs keep the byte state and the kernel counts one barrier per (:recovery-barrier :ok).",
-          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bs-recover-program-keeps-relation-at-every-cut",
           "note": "K0 at recover-replayed and the five recover-barrier cuts: from a crash image of any related state and any kernel whose (:recover) observation is the recovered kernel, every pair of the run is related, the last pair is the image with the :ready kernel at five barriers.",
           "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
@@ -3978,14 +3972,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-record-v1-bytes-decode-identically"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-record-v1-bytes-are-their-translation"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cbor-decode-prechecked-wide-extends-narrow"
         },
         {
@@ -4747,10 +4733,6 @@
         {
           "kind": "theorem",
           "name": "fn-smr-roomp-antitone-in-octets"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-smr-roomp-is-within-the-bound"
         },
         {
           "kind": "theorem",
