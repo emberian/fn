@@ -34,8 +34,25 @@ import os
 import re
 import sys
 import tempfile
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
+
+# One module under both names.  `from tools import ledger' (interface_emit,
+# harness_check, check_scaffold, ...) and `import ledger' (certified_claims,
+# depth_check, ...) made two module objects, so a tree cache entry pickled by
+# one (its classes named `ledger.Tree') failed the other's isinstance check
+# and was analysed again, four minutes on persvati, in three of make check's
+# steps at once (check-parallel, 2026-09-29).  Imported as `tools.ledger',
+# this file registers itself as `ledger' and names its classes so; imported
+# as `tools.ledger' after `ledger', the import returns that module (this
+# body's remaining definitions go nowhere).
+if __name__ == "tools.ledger":
+    if "ledger" in sys.modules:
+        sys.modules[__name__] = sys.modules["ledger"]
+    else:
+        sys.modules["ledger"] = sys.modules[__name__]
+    __name__ = "ledger"  # noqa: A001 -- the classes below pickle as ledger.X
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -3497,7 +3514,17 @@ def main(argv: list[str] | None = None) -> int:
                         help="report only these books (repeatable): their row and the "
                              "suspect reasons of their own theorems, without the "
                              "whole-tree suspect pass (a before/after diff of one book)")
+    parser.add_argument("--load-tree", action="store_true",
+                        help="analyse the tree into build/cache/ledger-tree and stop: "
+                             "make check's first step, so the checkers that read the "
+                             "tree load it instead of each analysing it at once")
     arguments = parser.parse_args(argv)
+    if arguments.load_tree:
+        started = time.monotonic()
+        tree = load_tree()
+        print(f"ledger --load-tree: {len(tree.books)} books, "
+              f"{time.monotonic() - started:.1f} s")
+        return 0
     if arguments.book:
         return book_report(arguments.book)
     if arguments.check:
