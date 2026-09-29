@@ -175,12 +175,14 @@ class Curl:
                 argv += ["--data-urlencode", "%s=%s" % (key, value)]
         argv += list(args) + [self.base + path]
         if record:
+            # The stranger's line: no scratch paths, and the form's field
+            # names in place of its values (tokens and the password).
             shown, skip = [], False
             for word in argv:
                 if skip:
                     skip = False
                     continue
-                if word in ("-o", "-D"):
+                if word in ("-o", "-D", "--data-urlencode"):
                     skip = True
                     continue
                 if self.jar and word == str(self.jar):
@@ -188,6 +190,8 @@ class Curl:
                 if self.cacert and word == str(self.cacert):
                     word = "node-cert.pem"
                 shown.append(word)
+            if data is not None:
+                shown.insert(-1, "[form: %s]" % " ".join(data))
             self.case.ran(shown)
         done = subprocess.run(argv, capture_output=True, timeout=timeout + 30)
         status, headers = 0, []
@@ -497,7 +501,7 @@ class StrangerTests(NodeCase):
         self.assertEqual(again.status, 403, again)
         self.assertIn("didn&#39;t work", again.body)
         form = second("/redeem")
-        typo = second("/redeem", data={"pre": form.form_value("pre"), "code": "0" * 32, "user": "robin3",
+        typo = second("/redeem", data={"pre": form.form_value("pre"), "code": "mistyped", "user": "robin3",
                                        "password": PASSWORD, "again": PASSWORD})
         self.assertEqual(typo.status, 403, typo)
         self.saw("the code once: 303; the same code again: 403 \"didn't work\"; a mistyped code: 403")
@@ -712,7 +716,7 @@ class StrangerTests(NodeCase):
         talk = self.plain()
         talk.expect("200", "201")
         user = talk.command("AUTHINFO USER alice", "483")
-        redeem = talk.command("XREDEEM 0123456789abcdef0123456789abcdef alice", "483")
+        redeem = talk.command("XREDEEM not-a-code alice", "483")
         talk.quit()
         talk.record()
         self.saw("AUTHINFO USER -> %s; XREDEEM CODE -> %s" % (user, redeem))
@@ -1051,7 +1055,7 @@ class StrangerTests(NodeCase):
 
     @unittest.expectedFailure
     def test_b17_sasl_authentication(self):
-        """PKT-OUTSIDE-IN-1 (finding): specs/nntp.md NNT-056 says "fn offers
+        """PKT-890 (finding): specs/nntp.md NNT-056 says "fn offers
         three mechanisms" and "CAPABILITIES lists AUTHINFO USER SASL ... and
         SASL with the offered mechanisms", but books/nntp-auth.lisp on dev
         still answers AUTHINFO SASL as deferred and advertises no SASL line.
