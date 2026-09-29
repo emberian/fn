@@ -2331,8 +2331,6 @@
         "books/cbor-invariants.lisp",
         "books/records-shape.lisp",
         "books/records.lisp",
-        "books/records-schema-v1.lisp",
-        "tests/acl2/records-schema-v1-teeth-tests.lisp",
         "planning/evidence/bounds-p6-2026-09-25.md",
         "books/record-width-producers.lisp",
         "tests/acl2/record-width-producers-tests.lisp"

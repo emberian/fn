@@ -3958,14 +3958,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-record-v1-bytes-decode-identically"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-record-v1-bytes-are-their-translation"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cbor-decode-prechecked-wide-extends-narrow"
         },
         {
