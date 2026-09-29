@@ -631,7 +631,8 @@
   :hints (("Goal" :in-theory (enable fn-lg-rotation-frame))))
 
 (defthm fn-lgx-rotation-frame-true-listp
-  (true-listp (fn-lgx-rotation-frame prev k)))
+  (true-listp (fn-lgx-rotation-frame prev k))
+  :hints (("Goal" :in-theory (e/d (fn-lgx-rotation-frame) (fn-lgx-rotation-frame-is-frame)))))
 
 (defun fn-lgx-rotation-entry (prev k unit)
   (declare (xargs :guard (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k) (natp unit))

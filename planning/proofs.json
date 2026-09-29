@@ -14232,8 +14232,7 @@
         "fn-lgl-open-of-rotated-segment",
         "fn-lgl-fork-refused",
         "fn-lgl-accepted-shares-lineage",
-        "fn-lg-scan-of-rotation-entry-append",
-        "fn-lgs-rotate-is-the-recovered-kernel"
+        "fn-lg-scan-of-rotation-entry-append"
       ]
     },
     {
