@@ -81,7 +81,7 @@
                                 (fn-peer-submission-octets d))
       (fn-cl-served-payload secret (fn-own-sub-account sub)
                             (fn-inj-decision-msgid d)
-                            (fn-ipp-injected-octets d secret (fn-own-sub-account sub)
+                            (fn-ipp-injected-octets d secret (fn-own-sub-login sub)
                                                     cfg)))))
 
 ;; The two arms, named by definition (they are not keystones).  A local or
@@ -98,7 +98,7 @@
                                         (fn-own-sub-msgid sub)
                                         (fn-ipp-injected-octets
                                          (fn-own-sub-decision sub) secret
-                                         (fn-own-sub-account sub) cfg))))
+                                         (fn-own-sub-login sub) cfg))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets fn-own-sub-octets
                                    fn-own-sub-msgid)
@@ -107,7 +107,7 @@
 (defthm fn-own-sub-stored-octets-without-an-account-by-definition
   (implies (and (not (fn-peer-submissionp (fn-own-sub-decision sub)))
                 (not (fn-cl-accountp (fn-own-sub-account sub)))
-                (not (fn-ipp-accountp secret (fn-own-sub-account sub)))
+                (not (fn-ipp-accountp secret (fn-own-sub-login sub)))
                 (not (fn-ipp-complaints cfg)))
            (equal (fn-own-sub-stored-octets cfg sub secret)
                   (fn-own-sub-octets sub)))
@@ -117,7 +117,7 @@
                                   (fn-ipp-injected-octets fn-ipp-complaints))
            :use ((:instance fn-ipp-injected-octets-without-parameters
                             (d (fn-own-sub-decision sub))
-                            (login (fn-own-sub-account sub)))))))
+                            (login (fn-own-sub-login sub)))))))
 
 (defthm fn-own-sub-stored-octets-of-a-transit-submission-by-definition
   (implies (fn-peer-submissionp (fn-own-sub-decision sub))
@@ -141,7 +141,7 @@
 (defthm fn-own-stored-octets-carry-the-account-lock
   (let* ((d (fn-own-sub-decision sub))
          (account (fn-own-sub-account sub))
-         (x (fn-ipp-injected-octets d secret (fn-own-sub-account sub) cfg))
+         (x (fn-ipp-injected-octets d secret (fn-own-sub-login sub) cfg))
          (fields (fn-ctl-received-fields x)))
     (implies (and (not (fn-peer-submissionp d))
                   (fn-cl-lock-wanted-p secret account fields))
@@ -164,7 +164,7 @@
                             (msgid (fn-inj-decision-msgid (fn-own-sub-decision sub)))
                             (payload (fn-ipp-injected-octets
                                       (fn-own-sub-decision sub) secret
-                                      (fn-own-sub-account sub) cfg)))))))
+                                      (fn-own-sub-login sub) cfg)))))))
 
 ; KEYSTONE (D25 restored, gpt-6's wave-5 review section 3; subject
 ; fn-own-sub-stored-octets).  Whatever the key ring and the account, the
@@ -176,7 +176,7 @@
 ; articles do (books/cancel-lock-d25.lisp states the verdicts).
 (defthm fn-own-stored-octets-keep-the-injected-octets
   (let* ((d (fn-own-sub-decision sub))
-         (x (fn-ipp-injected-octets d secret (fn-own-sub-account sub) cfg)))
+         (x (fn-ipp-injected-octets d secret (fn-own-sub-login sub) cfg)))
     (implies (and (not (fn-peer-submissionp d))
                   (not (equal (car x) 67)))
              (equal (fn-cll-skip (fn-own-sub-stored-octets cfg sub secret)) x)))
@@ -188,7 +188,7 @@
                             (msgid (fn-inj-decision-msgid (fn-own-sub-decision sub)))
                             (payload (fn-ipp-injected-octets
                                       (fn-own-sub-decision sub) secret
-                                      (fn-own-sub-account sub) cfg)))))))
+                                      (fn-own-sub-login sub) cfg)))))))
 
 ; The store retains ROWS (records-flip, books/store-intern.lisp): the
 ; completion record is a held row whose payload position is a handle into

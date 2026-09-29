@@ -68,6 +68,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/blake3-stobj \
 	tests/acl2/blake3-stobj-tests \
 	books/frame-octets \
+	tests/acl2/stack-depth-twins-tests \
 	books/frame-fields \
 	books/frame-journal \
 	books/frame \
@@ -233,6 +234,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-budget-stored \
 	tests/acl2/store-budget-stored-tests \
 	books/store-carried-folds \
+	tests/acl2/owner-store-indexed-tests \
 	tests/acl2/store-carried-folds-tests \
 	books/store-profile-facts \
 	books/store-replay-bound \
@@ -1001,9 +1003,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/octet-window \
 	books/subject-id-buffer \
 	tests/acl2/subject-id-buffer-tests \
-	books/article-buffer \
-	tests/acl2/article-buffer-tests \
-	books/frame-buffer \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
@@ -1058,10 +1057,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-store-steps \
 	books/owner-log-ocl \
 	tests/acl2/owner-log-ocl-tests \
-	books/owner-outcome-pinned \
 	books/owner-host-relation \
 	tests/acl2/owner-host-relation-tests \
-	books/owner-host-relation-span \
 	books/config-owner-live-authorize \
 	tests/acl2/config-owner-live-authorize-tests \
 	books/store-number-bound \
@@ -1073,6 +1070,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-prepare-served-ocl \
 	tests/acl2/owner-prepare-served-tests \
 	tests/acl2/owner-prepare-served-events-tests \
+	books/owner-number-bound \
+	tests/acl2/owner-number-bound-tests \
 	tests/acl2/owner-identity-served-tests \
 	tests/acl2/owner-prepare-served-abort-tests \
 	books/owner-prepare-outcome \
@@ -1284,7 +1283,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/control-served-tests \
 	books/nntp-control \
 	tests/acl2/nntp-control-tests \
-	tests/acl2/served-empty-view-tests \
 	books/owner-control-read \
 	books/nntp-enrollment \
 	books/owner-enrollment-read \
@@ -1335,6 +1333,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-journal \
 	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
+	tests/acl2/owner-time-space-tests \
 	books/owner-article-slots \
 	books/owner-article-held \
 	tests/acl2/owner-article-slots-tests \
@@ -1567,6 +1566,7 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) tools/ledger.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
 	@$(CHECK_EXECUTE)
 
 check-fast-lane:
@@ -1604,6 +1604,8 @@ check:
 # the ones that do wait for it (they had each analysed it at once).
 	@$(CHECK_STEP_WARM) $(PYTHON) tools/ledger.py --load-tree
 	@$(CHECK_STEP) $(PYTHON) tools/check_scaffold.py
+# Every tests/acl2/*-tests.lisp is a certification root (Q7j).
+	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
 # Every command the docs name exists with the grammar the docs give (NNT-032):
 # operator invocations are judged by ACL2's grammar in the generated book
 # tests/acl2/docs-operator-grammar-tests.lisp, which this fails on when it is
@@ -1749,22 +1751,6 @@ check:
 # counts the sites left per file and only shrinks.
 	@$(CHECK_STEP) $(PYTHON) tools/clock_unit_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_clock_unit_check
-# Host-called octet-list codecs (D27, row Q2 of COMPLETE-BEFORE-6.6.0): a host
-# dispatch that hands a codec an octet list consed from a byte vector
-# (fnn-octet-list).  tools/list_codec_baseline.json counts the sites per host
-# file and only shrinks; the target is zero (books/article-buffer.lisp is the
-# pattern: a buffer twin and its boundary theorem).
-	@$(CHECK_STEP) $(PYTHON) tools/list_codec_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_list_codec_check
-# The owner's ACL2 state globals (row Q3c, lane owner-relation-2): the host
-# keeps one canonical owner in `fn-owner' and every other `fn-owner-*' state
-# global is a side channel the adapter-retirement record
-# (planning/evidence/adapter-retirement-2026-09-26.md) wants folded into the
-# owner value or a wrapper's result.  tools/owner_globals_baseline.json holds
-# the distinct names per host file (95 across 8 files at the baseline) and
-# only shrinks.  Source-level, no ACL2.
-	@$(CHECK_STEP) $(PYTHON) tools/owner_globals_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_owner_globals_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make

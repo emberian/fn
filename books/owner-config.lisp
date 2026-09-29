@@ -638,28 +638,13 @@
           (fn-ocfg-with-read-owner oc id (car (cdr result))
                                    (car (cdr (cdr result)))))))
 
-; A transit connection is opened over the live configuration (the peer
-; record is read from it and the session carries it) and, like a reader's
-; (fn-ocfg-open), it pins that configuration: the pin table's domain is the
-; open connections (fn-ocfg-conns-pinnedp), and before this pin the table
-; lacked every peer connection, so the configured owner's relation was
-; false from the first peer open on (PKT-888, lane owner-relation-2;
-; books/owner-host-relation.lisp fn-ohr-open-peer-preserves-ocl-relation).
 (defun fn-ocfg-open-peer (oc peer acfg)
   (declare (xargs :guard t))
-  (let* ((id (fn-own-next-id (fn-ocfg-owner oc)))
-         (result (fn-own-open-peer (fn-ocfg-owner oc) peer
-                                   (fn-ocfg-config oc)
-                                   (fn-auth-config-with-accounts
-                                    acfg (fn-cfg-value (fn-ocfg-config oc))))))
-    (cons (car result)
-          (fn-ocfg-make (cdr result) (fn-ocfg-config oc)
-                        (if (fn-own-find-conn id (fn-own-conns (cdr result)))
-                            ; a new connection pins the LATEST configuration
-                            (fn-ocfg-pin-add id (fn-ocfg-config oc)
-                                             (fn-ocfg-pins oc))
-                          (fn-ocfg-pins oc))
-                        (fn-ocfg-staged oc)))))
+  (let ((result (fn-own-open-peer (fn-ocfg-owner oc) peer
+                                  (fn-ocfg-config oc)
+                                  (fn-auth-config-with-accounts
+                                   acfg (fn-cfg-value (fn-ocfg-config oc))))))
+    (cons (car result) (fn-ocfg-with-owner oc (cdr result)))))
 
 (defun fn-ocfg-fault (oc id)
   (declare (xargs :guard t))

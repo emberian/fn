@@ -140,8 +140,7 @@
 ; takes them from.
 (defun-nx fn-scr-fields-catalogp (archive index group-index control pinned fn-arena fn-cat)
   (fn-scr-catalogp archive
-                   (if (or group-index
-                           (and control (not (consp (fn-state-articles archive)))))
+                   (if group-index
                        (fn-gidx-pin-with-control index group-index control)
                      index)
                    (fn-scr-view-of (fn-served-pinned-version pinned) fn-cat)

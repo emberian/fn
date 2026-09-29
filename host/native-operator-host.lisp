@@ -283,27 +283,18 @@
   (declare (xargs :mode :program))
   (fn-native-operator-inspect-report msgid-octets foundp))
 
-;; PKT-597, PKT-786: `account hash LOGIN' (host/native/operator.lisp): the
-;; login the plan admitted, the credential file it reads, and the value ACL2
-;; computes from the node secret and the credential file the host read
-;; (books/native-operator.lisp fn-nop-account-hash: LOGIN's account, then its
-;; posting-account value), as text; nil when the octets the host read are not
-;; a node secret, :credential-file-refused when the owner's load refuses the
-;; credential file.
+;; PKT-597: `account hash LOGIN' (host/native/operator.lisp): the login the
+;; plan admitted, and the value ACL2 computes from the node secret the host
+;; read (books/injection-info-policy.lisp fn-ipp-account-hash), as text;
+;; nil when the octets the host read are not a node secret.
 (defun fn-native-operator-host-result-account-hash-login (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-account-hash-login result))
-(defun fn-native-operator-host-result-account-hash-auth-path-octets (result)
+(defun fn-native-operator-host-account-hash-text (secret login)
   (declare (xargs :mode :program))
-  (fn-native-operator-result-account-hash-auth-path-octets result))
-(defun fn-native-operator-host-account-hash-text (secret login octets presentp
-                                                         max-credentials)
-  (declare (xargs :mode :program))
-  (cond ((not (and (fn-ns-ringp secret) (fn-ipp-login-wordp login))) nil)
-        ((fn-nop-account-hash secret login octets presentp max-credentials)
-         (fn-record-octets-string
-          (fn-nop-account-hash secret login octets presentp max-credentials)))
-        (t :credential-file-refused)))
+  (if (and (fn-ns-ringp secret) (fn-ipp-login-wordp login))
+      (fn-record-octets-string (fn-ipp-account-hash secret login))
+    nil))
 
 ;; PRF-164: `account invite' (host/native/operator.lisp).
 (defun fn-native-operator-host-result-account-invite-seconds (result)

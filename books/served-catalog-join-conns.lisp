@@ -28,9 +28,7 @@
 (include-book "served-catalog-join-finish")
 
 (defun-nx fn-scj-conn-pinned-index (conn)
-  (if (or (fn-own-conn-group-index conn)
-          (and (fn-own-conn-control conn)
-               (not (consp (fn-state-articles (fn-own-conn-archive conn))))))
+  (if (fn-own-conn-group-index conn)
       (fn-gidx-pin-with-control (fn-own-conn-index conn)
                                 (fn-own-conn-group-index conn)
                                 (fn-own-conn-control conn))

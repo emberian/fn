@@ -156,10 +156,7 @@
 
 ; A PEER connection on that owner (RFC 4644 streaming): opened by
 ; fn-ocfg-open-peer under a configuration naming peer "p", the owner's own
-; configuration then restored with its own pin table (fn-ocfg-with-owner keeps
-; the pins of OC: the pin the peer open adds, PKT-888, is dropped here, so
-; this owner is not under fn-ocl-relation; the article-slot facts below do
-; not read it).
+; configuration then restored (the pins do not change at a peer's open).
 (defconst *oahx-peer-record*
   (fn-cfg-peer-make "p" "peer.example" '(:nntp "127.0.0.1" 1119)
                     '("fn.*" 32768 16) nil '(:source-address "127.0.0.1")))

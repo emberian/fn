@@ -135,7 +135,6 @@
 ;; books/store-reclaim-buffer's fn-rclb-same-articlep (D13, STO-014).
 (include-book "../books/records-concrete-owner")
 (include-book "../books/octets-stobj")
-(include-book "../books/article-buffer")
 (include-book "../books/store-reclaim-buffer")
 ; HST-023 (PRF-248): the served step's typed result and render plan.
 (include-book "../books/served-plan")
@@ -2759,18 +2758,11 @@
 ; `(:feed-enqueue ...)` records a POST does: a relayed article is fed
 ; onward (RFC 5537 sec. 3.6) and the entry must survive the process that
 ; accepted it.  Read before the outcome moves the owner, as for POST.
-; The call is fn-oop-transit-outcome (books/owner-outcome-pinned.lisp): the
-; transit outcome over the configured owner, whose effects and owner are
-; fn-own-transit-outcome's (fn-oop-transit-outcome-is-own-transit-outcome)
-; and whose pin table follows a durable completion's advance, as
-; fn-ocfg-advance's does (PKT-889: fn-owner-replace-core kept the pin the
-; connection was opened under, so the carried relation was false after a
-; durable transfer on a connection older than the live configuration;
-; books/owner-host-relation.lisp fn-ohr-transit-outcome-preserves-carried-relation).
 (defun fn-owner-transit-outcome (id kind reason word state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((result (fn-oop-transit-outcome (fn-owner-ocfg state) id kind reason word))
-         (state (fn-owner-install-ocfg (cdr result) state))
+  (let* ((owner (fn-owner-core state))
+         (result (fn-own-transit-outcome owner id kind reason word))
+         (state (fn-owner-replace-core (cdr result) state))
          (state (fn-owner-install-effects (car result) state)))
     (value :fed)))
 
@@ -2833,18 +2825,9 @@
          ; under the intent and parse carries fn-owner-take wrote
          ; (fn-apc-own-outcome-is-acar-own-outcome): the durable article's
          ; feed targets from the carried Path and parse, not a reparse.
-         ; owner-relation-2 (PKT-889): the call is fn-oop-outcome
-         ; (books/owner-outcome-pinned.lisp), fn-apc-own-outcome over the
-         ; configured owner with the same effects and owner
-         ; (fn-oop-outcome-is-apc-own-outcome) and the pin table following a
-         ; durable completion's advance, as fn-ocfg-advance's does;
-         ; fn-owner-replace-core kept the pin the connection was opened
-         ; under (books/owner-host-relation.lisp
-         ; fn-ohr-outcome-preserves-carried-relation).
-         (result (fn-oop-outcome (fn-owner-ocfg state) id word
-                                 (fn-owner-intent-carry state)
-                                 (fn-owner-parse-carry state)))
-         (state (fn-owner-install-ocfg (cdr result) state))
+         (result (fn-apc-own-outcome owner id word (fn-owner-intent-carry state)
+                                     (fn-owner-parse-carry state)))
+         (state (fn-owner-replace-core (cdr result) state))
          (state (fn-owner-install-effects (car result) state))
          (state (f-put-global 'fn-owner-shared-resolution-id nil state)))
     (value :fed)))
@@ -3088,7 +3071,7 @@
 ; (books/peer-carriage.lisp fn-pcb-refusal-class): :no-local-binding,
 ; :unsupported-profile, :signature-failed or :malformed, or nil.  ED and ML
 ; are the host's two primitive outcomes (nil when not observed).
-; PKT-240: through the eight-class verdict, whose refusal arm is
+; PKT-240: through the seven-class verdict, whose refusal arm is
 ; fn-pcb-refusal-class on every input
 ; (fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class).
 (defun fn-owner-transit-refusal-class (received transitp ed ml state)
@@ -3326,41 +3309,6 @@
                      (fn-store-octets->string msgid-octets) fn-octets groups
                      (fn-owner-core state) fn-arena fn-cat)))
         (value (if action action :absent))))))
-
-; The received article in the octet buffer (books/article-buffer.lisp, D27
-; boundary 9): the served POST's login gate and the transit attempt's four
-; article calls, each the buffer twin of the list entry above it, equal to
-; it over the buffer's value (fn-ars-lb-ocfg-gate-is-reference,
-; fn-ars-filing-plan-is-reference, fn-ars-carrier-form-is-reference,
-; fn-ars-current-plan-is-reference), so no list of the article is built for
-; them.  Called by host/native/owner.lisp fnn-owner-attempt-served and
-; fnn-owner-attempt-transit through fnn-core-buffer-state after
-; fnn-octets-fill of the payload.
-(defun fn-owner-login-gate-buffer (fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
-  (let* ((verdict (fn-ars-lb-ocfg-gate (fn-owner-ocfg state) fn-octets))
-         (state (f-put-global 'fn-owner-login-log-line
-                              (fn-lb-verdict-line verdict) state)))
-    (value verdict)))
-
-(defun fn-owner-control-filing-buffer (group-octets fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program
-                  :guard (fn-octet-list-listp group-octets)))
-  (value (fn-ars-filing-plan
-          group-octets
-          (fn-state-groups (fn-node-acceptance (fn-owner-node state)))
-          fn-octets)))
-
-(defun fn-owner-peer-carrier-form-buffer (fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
-  (value (fn-ars-carrier-form fn-octets)))
-
-(defun fn-owner-peer-carrier-plan-buffer (transitp fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
-  (value (fn-ars-current-plan
-          (fn-sn-keyring-snapshots (fn-owner-store state))
-          (fn-owner-transit-carried-list transitp state)
-          (and transitp t) fn-octets)))
 
 ; The subject identity of the payload in the octet buffer is
 ; books/subject-id-buffer.lisp fn-sidb-subject-id-bounded, which host/native/io.lisp

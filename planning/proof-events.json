@@ -3589,10 +3589,6 @@
         {
           "kind": "theorem",
           "name": "fn-ctl-served-status-is-control-status"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-own-read-of-a-withdrawn-article-answers-430-withdrawn"
         }
       ]
     },
@@ -4405,10 +4401,6 @@
         {
           "kind": "theorem",
           "name": "fn-pcb-admission-verdict-names-its-class"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pcb-admission-verdict-names-a-revocation"
         }
       ]
     },
@@ -5798,10 +5790,6 @@
         {
           "kind": "theorem",
           "name": "fn-nctrl-reason-word-of-a-reason-is-not-none"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-native-control-host-refusal-names-its-class"
         }
       ]
     },
@@ -13751,15 +13739,6 @@
       ]
     },
     {
-      "id": "PRF-933",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-ocln-a-cold-line-is-answered-unavailable"
-        }
-      ]
-    },
-    {
       "id": "PRF-938",
       "events": [
         {
@@ -13931,35 +13910,6 @@
       ]
     },
     {
-      "id": "PRF-935",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-ars-parse-under-is-article-parse-under"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ars-body-is-located"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ars-lb-ocfg-gate-is-reference"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ars-filing-plan-is-reference"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ars-carrier-form-is-reference"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ars-current-plan-is-reference"
-        }
-      ]
-    },
-    {
       "id": "PRF-924",
       "events": [
         {
@@ -14095,74 +14045,6 @@
       ]
     },
     {
-      "id": "PRF-931",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-ohr-open-peer-preserves-ocl-relation",
-          "note": "host/owner-host.lisp fn-owner-open-peer and fn-exp-open's peer arm (fn-owner-exposure-open): fn-ocfg-open-peer keeps fn-ocl-relation."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ohr-open-peer-preserves-carried-relation",
-          "note": "The carried fn-lgoc-invariantp across the peer open."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ohr-exposure-open-preserves-ocl-relation",
-          "note": "Both arms of fn-ocar-exp-open (reader and configured peer)."
-        }
-      ]
-    },
-    {
-      "id": "PRF-932",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-oop-outcome-is-apc-own-outcome",
-          "note": "host/owner-host.lisp fn-owner-outcome: the configured outcome's effects and owner are fn-apc-own-outcome's."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-oop-transit-outcome-is-own-transit-outcome",
-          "note": "host/owner-host.lisp fn-owner-transit-outcome: the configured transit outcome's effects and owner are fn-own-transit-outcome's."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ohr-outcome-preserves-ocl-relation",
-          "note": "fn-oop-outcome keeps fn-ocl-relation (the pin follows a durable completion's advance)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ohr-transit-outcome-preserves-ocl-relation",
-          "note": "fn-oop-transit-outcome keeps fn-ocl-relation."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ohr-outcome-preserves-carried-relation",
-          "note": "The carried fn-lgoc-invariantp across the served outcome."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ohr-transit-outcome-preserves-carried-relation",
-          "note": "The carried fn-lgoc-invariantp across the transit outcome."
-        }
-      ]
-    },
-    {
-      "id": "PRF-959",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-sckd-digest-of-written-file"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sckd-digest-ignores-revision-and-log"
-        }
-      ]
-    },
-    {
       "id": "PRF-936",
       "events": [
         {
@@ -14180,10 +14062,6 @@
         {
           "kind": "theorem",
           "name": "fn-lgu-scan-of-a-complete-prefix-reads-its-records"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgu-recovered-kernel-holds-the-scan"
         },
         {
           "kind": "theorem",
@@ -14321,6 +14199,40 @@
         {
           "kind": "theorem",
           "name": "fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct"
+        }
+      ]
+    },
+    {
+      "id": "PRF-958",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-onb-node-boundp-of-replay-apply-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onb-store-boundp-of-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onb-boundp-of-refresh"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onb-boundp-of-psrv-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onb-boundp-at-owner-prepare-buffer"
+        }
+      ]
+    },
+    {
+      "id": "PRF-933",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocln-a-cold-line-is-answered-unavailable"
         }
       ]
     }
