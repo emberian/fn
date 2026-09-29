@@ -76,6 +76,29 @@
          (mv (and a b c d) fn-octets)))))
  :stobjs-out '(nil fn-octets))
 
+; The continuation-line rule (small-rows-i5, RFC 5322 section 2.2.3): an
+; empty first-line value is a field still open -- refused at the separator
+; when no fold line follows (fn-article-field-closedp), accepted when one
+; does; the twin follows the reference in both.
+(assert-event
+ (mv-let (a fn-octets) (arbt-agreesp (append (arbt-octets "References:") '(13 10 13 10)
+                                             (arbt-octets "body") '(13 10))
+                                     *fn-article-default-limits* fn-octets)
+   (let* ((folded (append (arbt-octets "From: a@b") '(13 10)
+                          (arbt-octets "References:") '(13 10)
+                          (arbt-octets " <x@y>") '(13 10) '(13 10)
+                          (arbt-octets "body") '(13 10)))
+          (fn-octets (fn-octets-clear fn-octets))
+          (fn-octets (fn-octets-append-list folded fn-octets))
+          (twin (fn-ars-parse-under *fn-article-default-limits* fn-octets))
+          (ref (fn-article-parse-under folded *fn-article-default-limits*)))
+     (mv (and a
+              (fn-article-result-okp ref)
+              (fn-article-result-okp twin)
+              (equal twin (fn-ars-of ref (len folded))))
+         fn-octets)))
+ :stobjs-out '(nil fn-octets))
+
 ; 3. Hypothesis removal: the omitted antecedent fails and the conclusion
 ; fails, on the logical definitions (no live buffer holds 300).  The bad
 ; cell is the body's first octet (offset 28): the reference's preflight

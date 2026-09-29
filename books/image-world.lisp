@@ -281,6 +281,7 @@
 (include-book "consumer-wait-codec")
 (include-book "consumer-reason")
 (include-book "topic-history-local-control")
+(include-book "native-live-buffer")
 (include-book "hybrid-store")
 (include-book "hybrid-carrier")
 (include-book "tls-reload")

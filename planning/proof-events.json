@@ -14536,6 +14536,55 @@
           "name": "fn-ars-current-plan-is-reference"
         }
       ]
+    },
+    {
+      "id": "PRF-960",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-frb-open-as-is-ref-open-as"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-open-payload-as-is-ref-open-as"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-nls-open-payload-with-is-nls-open-with"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-site-decode-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-open-with-is-nctrl-open-with"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-open-payload-with-is-nctrl-open-with"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-open-is-nctrl-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-open-payload-is-nctrl-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-control-decode-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-decode-is-frame-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-payload-is-window"
+        }
+      ]
     }
   ]
 }

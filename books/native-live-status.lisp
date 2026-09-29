@@ -669,10 +669,12 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
                  (append (fn-cbor-encode (cons :uint (fn-nls-kind-code kind)))
                          (fn-cbor-encode (cons :uint offset))))))
 
-(defun fn-nls-request-decode (octets)
+; The payload grammar over an opened frame; the decode below is the open
+; (fn-nls-open) followed by it, and books/native-live-buffer.lisp opens the
+; frame in place and calls the grammar.
+(defun fn-nls-request-payload-decode (opened)
   "(:live-status KIND OFFSET), or (:refused REASON)."
   (declare (xargs :guard t :verify-guards nil))
-  (let ((opened (fn-nls-open octets *fn-nls-request-kind*)))
     (if (not (fn-frame-result-okp opened))
         (list :refused :frame)
       (let* ((payload (fn-frame-result-payload opened))
@@ -686,7 +688,12 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
                           (null (fn-record-parse-rest second))))
                 (list :refused :fields)
               (list :live-status (fn-nls-code-kind (fn-record-parse-value first))
-                    (fn-record-parse-value second)))))))))
+                    (fn-record-parse-value second))))))))
+
+(defun fn-nls-request-decode (octets)
+  "(:live-status KIND OFFSET), or (:refused REASON)."
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-nls-request-payload-decode (fn-nls-open octets *fn-nls-request-kind*)))
 
 (defun fn-nls-status-code (status)
   (declare (xargs :guard t))

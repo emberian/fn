@@ -266,6 +266,31 @@ empty list, is unchanged, and it decides nothing ACL2 decides."
     (setf (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))
     st))
 
+;;; The CONTROL buffer: `fn-octets-ctl' (books/native-control-buffer.lisp), a
+;;; third abstract stobj congruent to `fn-octets' with its own live object.
+;;; A local-control client's worker thread (host/native/control.lisp
+;;; fnn-control-handle-client) decodes its frame from it BEFORE it takes the
+;;; owner mutex, so the owner's buffer, which served attempts fill under that
+;;; mutex, is never shared with it; the workers share this one under the
+;;; control buffer lock (control.lisp fnn-with-control-buffer).  One buffer,
+;;; one lock.
+
+(defvar *fnn-octets-ctl* nil)
+
+(defun fnn-live-octets-ctl ()
+  (or *fnn-octets-ctl*
+      (setq *fnn-octets-ctl*
+            (or (cdr (assoc 'fn-octets-ctl (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the control buffer stobj is not in this image")))))
+
+(defun fnn-octets-ctl-fill (vector)
+  "Make VECTOR's bytes the control buffer's contents; return the live stobj."
+  (let* ((st (fnn-live-octets-ctl)) (n (length vector)))
+    (fn-octets$c-reserve n st)
+    (replace (the fnn-octets (svref st 0)) vector)
+    (setf (svref st 1) n)
+    st))
+
 (defun fnn-octets-reserve (n)
   "Grow the buffer's array so that N octets fit; contents and count unchanged."
   (fn-octets$c-reserve n (fnn-live-octets)))

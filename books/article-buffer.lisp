@@ -158,7 +158,8 @@
         (let ((line (fn-article-line-value next))
               (rest (fn-article-line-rest next)))
           (if (null line)
-              (if (not (fn-ars-body-crlfp rest fn-octets))
+              (if (or (not (fn-ars-body-crlfp rest fn-octets))
+                      (not (fn-article-field-closedp current)))
                   (fn-article-error :invalid-header)
                 (fn-article-ok
                  (fn-article-make
@@ -180,6 +181,8 @@
                 (let ((field-result (fn-article-new-field line)))
                   (if (not (fn-article-line-okp field-result))
                       field-result
+                   (if (not (fn-article-field-closedp current))
+                       (fn-article-error :invalid-header)
                     (if (<= (fn-article-limit-fields limits)
                             (+ (if current 1 0) (nfix nfields)))
                         (fn-article-error :header-fields-limit)
@@ -189,7 +192,7 @@
                        (if current (cons current fields-rev) fields-rev)
                        (fn-article-line-value field-result)
                        (fn-article-header-rev-add-line header-rev line)
-                       fn-octets))))))))))))
+                       fn-octets)))))))))))))
 
 ; The parse the host calls: fn-article-parse-under over the whole buffer.
 ; The reference's two preflights are the buffer's: its length against the

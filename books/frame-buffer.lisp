@@ -241,10 +241,14 @@
                                    fn-oct-octets-p-is-octet-listp)
                                   (fn-cbor-u32-from fn-frame-split)))))
 
-; The payload is the buffer's window after the header.
+; The payload is the buffer's window after the header: the reference's
+; payload is the window of the twin's located length (an error's payload is
+; nil, the empty window).  One hypothesis, the buffer's invariant: a decode
+; that is ok is one of an octet list, and under the invariant the keystone
+; decides the error arms, so neither of two hypotheses would have a removal
+; witness.
 (defthm fn-frb-payload-is-window
-  (implies (and (fn-octets-p fn-octets)
-                (fn-frame-result-okp (fn-frame-decode fn-octets digest max-payload)))
+  (implies (fn-octets-p fn-octets)
            (equal (fn-frame-result-payload (fn-frame-decode fn-octets digest max-payload))
                   (fn-shr-win *fn-frame-header-octets*
                               (fn-frame-result-payload
