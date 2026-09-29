@@ -348,8 +348,10 @@ a dry run the owner runs now, off its mutex, on this control thread
 (host/native/owner.lisp fnn-owner-reclaim-dry-run: the capture by pointer,
 then the fold over the rows, the classes and the decision), its report in the
 owner's log as `store reclaim --dry-run' prints it offline; a pass in flight
-answers :in-flight; `store reclaim' and `--recorded' are :offline-only until
-the pass that installs lands.  The reply names the word."
+answers :in-flight; `--recorded' runs the pass that installs
+(fnn-owner-reclaim-pass: :installed, :none, or deferred by name);
+`store reclaim' without it is :offline-only until the pass records the
+instant live.  The reply names the word."
   (let* ((free (fnn-disk-free-octets (fnn-owner-service-store service)))
          (word (fnn-owner-serialized
                 service nil
@@ -361,7 +363,10 @@ the pass that installs lands.  The reply names the word."
       (fnn-fault "owner returned a malformed reclaim answer ~a" word))
     (fnn-err "RECLAIM request mode=~(~a~) answer=~(~a~)" mode word)
     (when (eq word :requested)
-      (setq word (fnn-owner-reclaim-dry-run service free)))
+      (setq word (if (eq mode :dry-run)
+                     (fnn-owner-reclaim-dry-run service free)
+                   ;; Q16 (a): `--recorded' installs (fnn-owner-reclaim-pass)
+                   (fnn-owner-reclaim-pass service free))))
     (list :reason (fnn-core 'fn-owner-orc-request-status word) word)))
 
 (defun fnn-owner-live-admin-serialized (service argv)

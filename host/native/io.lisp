@@ -5433,7 +5433,7 @@ tree root), or stop the build."
 (defparameter +fnn-developer-selectors+
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
     "FN_NATIVE_STATE_CHECKPOINT_FAULT" "FN_NATIVE_IMPORT_FAULT" "FN_NATIVE_EXPORT_FAULT"
-    "FN_NATIVE_CHECKPOINT_BUDGET_TEST"
+    "FN_NATIVE_CHECKPOINT_BUDGET_TEST" "FN_NATIVE_RECLAIM_FAULT"
     "FN_NATIVE_DISK_FREE"
     "FN_NATIVE_EXTENT_CACHE_TEST_OFF"
     ;; host/native/digest.lisp: the matched measurement's reference arm.
