@@ -12680,7 +12680,7 @@
           "theorem": "fn-bpnp-receipt-contact-event-needs-a-queued-job"
         },
         {
-          "theorem": "fn-bpnp-contact-closes-only-when-nothing-owed-remains"
+          "theorem": "fn-bpnj-contact-offers-while-a-ready-job-remains"
         },
         {
           "theorem": "fn-bpnj-step-forwarded-needs-a-durable-finished-record"

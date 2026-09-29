@@ -2674,7 +2674,7 @@
         "PRF-046"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tcpcl-delivery.lisp",
         "books/tcpcl-delivery-invariants.lisp",
@@ -4229,7 +4229,7 @@
     {
       "id": "PRF-103",
       "title": "Queued base jobs are offered only to their routed hop, each at most once per contact; the routed session scans only routed rows and the ungated forms offer nothing",
-      "statement": "Host subject since PRF-120: the host asks fn-bpnj-contact-next (books/bp-node-job-offer.lisp; host/native/bp-service.lisp fnn-bpc-drive-contact before every offer of a base contact, for bp-service run/resume, bp-obligation request, bp-contact tick and bp-node serve, and fnn-bpnode-send-receipts) and drives its event through fn-bpnj-step (fnn-bps-foundation-step); the named theorems fn-bpnj-contact-next-offer-shape (the offer is the key of fn-bpnj-select's job) and fn-bpnj-step-delegates-every-other-event (fn-bpnj-step is fn-bpnp-step on every event but the three new arms) connect the theorems below, stated over fn-bpnp-contact-next and fn-bpnp-step, to the host-called functions. fn-bpnp-contact-offer-is-the-routed-hop: when fn-bpnp-contact-next (formerly asked directly by fnn-bpc-drive-contact) answers an offer with routing (:table TABLE) in force, fn-bpnp-step on its event (host/native/bp-service.lisp fnn-bps-foundation-step), for a well-formed base and a journal token below its bound, persists exactly the :attempting record of the peer's first queued job, the :cl-send it owes carries that job's durable route, and that route is the one fn-bprt-send-decision names over TABLE: the contact port of the boundary fn-bprt-next-hop chooses for the destination among the boundaries with a contact; the EID the host passes as the expected TCPCL peer is the decision's. fn-bpnp-contact-holds-an-unrouted-job: with no route matching the destination the driver never offers. fn-bpnp-contact-offers-each-job-at-most-once: along any sequence of states the host consults it at, threading OFFERED, the keys one contact offers are distinct and none was offered before. fn-bpnp-contact-closes-only-when-nothing-owed-remains: with the peer an EID, nothing issued, no delivery uncertain, the base neither fenced nor pending and a queued job for the peer, a close means that job's key is in OFFERED; fn-bpn-apply-record-keeps-forwarded: no lifecycle record returns a :forwarded job to :queued, so a job queued again after its offer had a transfer that was not accepted. fn-bpnp-step-session-offer-is-the-scan-choice (restated) and fn-bpnp-routed-rows-skip-an-unrouted-row: a routed :session proposes the row the arrival-order scan chooses among the held rows the table routes to its hop, so an unrouted older row never blocks a younger routed one; a :session open or :resume without VIA offers nothing. Covered scope: queue-time routing is host-driven through fn-bprt-job-route and a job is not queued without a route; a table change after queueing holds the job (:route-changed) and a durable re-route record is open; verbs without a Store keep the queued address; the contact host is loopback.",
+      "statement": "The host asks fn-bpnj-contact-next: host/native/bp-service.lisp fnn-bpc-drive-contact calls fn-bpnjc-contact-next, equal to fn-bpnj-contact-next by fn-bpnjc-contact-next-is-the-head-scan (books/bp-node-job-cursor.lisp), before every offer of a base contact (bp-service run/resume, bp-obligation request, bp-contact tick, bp-node serve's fnn-bpnode-send-receipts), and drives its event through fn-bpnj-step (fnn-bps-foundation-step). fn-bpnj-contact-offer-is-the-routed-hop: when it answers an offer with routing (:table TABLE) in force, the offer names fn-bpnj-select's job, queued, for the peer and not yet offered on this contact; OFFERED gains its key; fn-bprt-send-decision over TABLE answers :send on the job's durable route (the contact port of the boundary fn-bprt-next-hop chooses among the boundaries with a contact) and the EID the host passes as the expected TCPCL peer is the decision's, so a job the table routes nowhere is never offered. fn-bpnj-contact-offers-each-job-at-most-once: along any sequence of states the host consults it at, threading OFFERED, the keys one contact offers are distinct and none was offered before. fn-bpnj-contact-offers-while-a-ready-job-remains: while the gate is open and any queued job for the peer is ready, the answer is an offer, so a held or already offered job never ends the contact. fn-bpn-apply-record-keeps-forwarded: no lifecycle record returns a :forwarded job to :queued, so a job queued again after its offer had a transfer that was not accepted. fn-bpnp-step-session-offer-is-the-scan-choice (restated) and fn-bpnp-routed-rows-skip-an-unrouted-row: a routed :session proposes the row the arrival-order scan chooses among the held rows the table routes to its hop, so an unrouted older row never blocks a younger routed one; a :session open or :resume without VIA offers nothing. Covered scope: queue-time routing is host-driven through fn-bprt-job-route and a job is not queued without a route; a table change after queueing holds the job (:route-changed) and a durable re-route record is open; verbs without a Store keep the queued address; the contact host is loopback.",
       "milestone": "M4",
       "requirements": [
         "REP-007",
@@ -4247,6 +4247,8 @@
       "evidence": [
         "books/bp-route-jobs.lisp",
         "books/bp-node-contact-driver.lisp",
+        "tests/acl2/bp-node-job-offer-tests.lisp",
+        "books/bp-node-job-offer.lisp",
         "tests/acl2/bp-node-contact-driver-tests.lisp",
         "tests/acl2/bp-route-jobs-tests.lisp",
         "books/bp-node-progress.lisp",
@@ -4272,10 +4274,9 @@
         "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
       ],
       "events": [
-        "fn-bpnp-contact-offer-is-the-routed-hop",
-        "fn-bpnp-contact-holds-an-unrouted-job",
-        "fn-bpnp-contact-offers-each-job-at-most-once",
-        "fn-bpnp-contact-closes-only-when-nothing-owed-remains",
+        "fn-bpnj-contact-offer-is-the-routed-hop",
+        "fn-bpnj-contact-offers-each-job-at-most-once",
+        "fn-bpnj-contact-offers-while-a-ready-job-remains",
         "fn-bpn-apply-record-keeps-forwarded",
         "fn-bpnp-routed-rows-skip-an-unrouted-row",
         "fn-bpnp-step-session-offer-is-the-scan-choice"
@@ -13729,7 +13730,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tcpcl-delivery.lisp",
         "books/tcpcl-delivery-invariants.lisp",
@@ -15185,7 +15186,7 @@
     {
       "id": "PRF-1006",
       "title": "fn-tcl-encode is the canonical TCPCL wire form: the encoding of every message kind the host sends decodes back to it with the rest untouched, and an accepted buffer is the encoding of its parse",
-      "statement": "books/tcpcl-octets.lisp; host/tcpcl-host.lisp's fn-tcl-host-encode is an exact alias (a checked :delegates fn-tcl-encode, the generated equation fn-tcl-host-encode-is-fn-tcl-encode-by-definition), called by host/native/tcpcl.lisp's send path. KEYSTONES: fn-tcl-decode-message-of-encode-{init,segment,ack,refuse,term,reject,keepalive} and fn-tcl-decode-contact-of-encode: for a message M of that kind with (fn-tcl-messagep M mru) (for the contact header: an octet version and octet flags), (fn-tcl-decode-message (append (fn-tcl-encode M) rest) mru) is (fn-tcl-parse-ok M rest), so a peer reads exactly M and consumes exactly the encoding; fn-tcl-accepted-message-is-canonical and fn-tcl-accepted-contact-is-canonical: an octet buffer the decoder accepts equals the encoding of its parse followed by its rest, so no second octet form is accepted for a message. Scope: the octet codec under the segment MRU bound; the session machine's use of the codec is PRF-956 and PRF-060. Teeth: tests/acl2/tcpcl-tests.lisp (golden vectors per kind; the round trip per kind with the antecedent by name; the canonical reconstruction of an accepted buffer; a segment over the MRU is neither a message at it nor accepted at it).",
+      "statement": "books/tcpcl-octets.lisp; host/tcpcl-host.lisp's fn-tcl-host-encode is an exact alias (a checked :delegates fn-tcl-encode, the generated equation fn-tcl-host-encode-is-fn-tcl-encode-by-definition), called by host/native/tcpcl.lisp's send path. KEYSTONES: fn-tcl-decode-message-of-encode-{init,segment,ack,refuse,term,reject,keepalive} and fn-tcl-decode-contact-of-encode: for a message M of that kind with (fn-tcl-messagep M mru) (for the contact header: an octet version and octet flags; for term and reject no hypothesis at all, since their two fields are single octets written and read verbatim -- the recognizer was proved redundant there), (fn-tcl-decode-message (append (fn-tcl-encode M) rest) mru) is (fn-tcl-parse-ok M rest), so a peer reads exactly M and consumes exactly the encoding; fn-tcl-accepted-message-is-canonical and fn-tcl-accepted-contact-is-canonical: an octet buffer the decoder accepts equals the encoding of its parse followed by its rest, so no second octet form is accepted for a message. Scope: the octet codec under the segment MRU bound; the session machine's use of the codec is PRF-956 and PRF-060. Teeth: tests/acl2/tcpcl-tests.lisp (golden vectors per kind; per keystone by name a positive witness and one removal per hypothesis with its weakened statement a must-fail: a non-octet contact version and flags, init keepalive past u16, a segment over the MRU, ack length and refuse id of 2^64, and for both canonical keystones a non-octet buffer the decoder accepts and an octet buffer it does not).",
       "milestone": "M4",
       "requirements": [
         "REP-006",
@@ -15193,7 +15194,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tcpcl-octets.lisp",
         "host/tcpcl-host.lisp",
@@ -15862,7 +15863,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-tcl-passive-version-mismatch-closes-without-reject"
       ],
@@ -17341,7 +17342,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tcpcl-delivery.lisp",
         "tests/acl2/tcpcl-delivery-tests.lisp"
