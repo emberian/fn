@@ -14511,12 +14511,7 @@
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [
-        [
-          "event",
-          "fn-bpnj-host-eventp"
-        ]
-      ],
+      "kinds": [],
       "exempt": {},
       "keystones": [
         {
