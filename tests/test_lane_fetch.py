@@ -74,5 +74,144 @@ class LaneFetchTests(unittest.TestCase):
         self.assertIn("removed stale", err)
 
 
+class RevertCheckTests(unittest.TestCase):
+    """obstructions-8 item 69: a merge of dev that brings in a revert of the
+    lane's own work is named, and --merge refuses it without --allow-revert."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo = Path(self.tmp.name)
+        r = self.repo
+        sh(r, "init", "-q", "-b", "dev")
+        sh(r, "config", "user.name", "t")
+        sh(r, "config", "user.email", "t@t")
+        sh(r, "config", "commit.gpgsign", "false")
+        (r / "base").write_text("base\n")
+        sh(r, "add", "base")
+        sh(r, "commit", "-q", "-m", "base")
+        sh(r, "checkout", "-q", "-b", "lane/mine")
+        (r / "mine").write_text("work\n")
+        sh(r, "add", "mine")
+        sh(r, "commit", "-q", "-m", "my work")
+        sh(r, "checkout", "-q", "-b", "lane/other", "dev")
+        (r / "other").write_text("theirs\n")
+        sh(r, "add", "other")
+        sh(r, "commit", "-q", "-m", "their work")
+        sh(r, "checkout", "-q", "dev")
+        sh(r, "merge", "-q", "--no-ff", "-m", "Merge lane/mine", "lane/mine")
+        sh(r, "merge", "-q", "--no-ff", "-m", "Merge lane/other", "lane/other")
+        sh(r, "checkout", "-q", "lane/mine")
+        (r / "mine2").write_text("more work\n")
+        sh(r, "add", "mine2")
+        sh(r, "commit", "-q", "-m", "more of my work")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def revert(self, subject):
+        sha = subprocess.run(["git", "log", "-1", "--format=%H", "--grep", subject, "dev"],
+                             cwd=self.repo, text=True, capture_output=True).stdout.strip()
+        sh(self.repo, "checkout", "-q", "dev")
+        sh(self.repo, "revert", "--no-edit", "-m", "1", sha)
+        sh(self.repo, "checkout", "-q", "lane/mine")
+
+    def merge(self, allow=False):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = lane_fetch.merge("dev", self.repo, allow)
+        return code, out.getvalue() + err.getvalue()
+
+    def test_no_revert_merges_and_says_so(self):
+        code, text = self.merge()
+        self.assertEqual(code, 0, text)
+        self.assertIn("no revert commit in HEAD..dev", text)
+
+    def test_a_revert_of_another_lane_is_listed_and_merged(self):
+        self.revert("Merge lane/other")
+        found = lane_fetch.incoming_reverts("dev", self.repo)
+        self.assertEqual([(r["subject"], r["ours"]) for r in found],
+                         [('Revert "Merge lane/other"', False)])
+        code, text = self.merge()
+        self.assertEqual(code, 0, text)
+        self.assertIn('Revert "Merge lane/other"', text)
+        self.assertNotIn("REVERTS THIS LANE", text)
+
+    def test_a_revert_of_this_lanes_merge_is_refused_then_allowed(self):
+        self.revert("Merge lane/mine")
+        found = lane_fetch.incoming_reverts("dev", self.repo)
+        self.assertEqual(len(found), 1)
+        self.assertTrue(found[0]["ours"])
+        before = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.repo, text=True,
+                                capture_output=True).stdout
+        code, text = self.merge()
+        self.assertEqual(code, 4)
+        self.assertIn("REVERTS THIS LANE'S WORK", text)
+        self.assertIn("refusing to merge dev", text)
+        self.assertEqual(subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.repo, text=True,
+                                        capture_output=True).stdout, before)
+        code, text = self.merge(allow=True)
+        self.assertEqual(code, 0, text)
+
+    def test_ownership_by_the_first_parent_chain_without_a_branch_name(self):
+        self.revert("Merge lane/mine")
+        found = lane_fetch.incoming_reverts("dev", self.repo, branch="lane/renamed")
+        self.assertTrue(found[0]["ours"])  # the merged commit is on HEAD's first-parent chain
+
+
+class DuplicateCheckTests(unittest.TestCase):
+    """obstructions-9 item 81: a merge that keeps both sides' copy of a tools/
+    function (obstructions-8's two `_xargs`) is named after the merge."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        r = self.repo = Path(self.tmp.name)
+        sh(r, "init", "-q", "-b", "dev")
+        sh(r, "config", "user.name", "t")
+        sh(r, "config", "user.email", "t@t")
+        sh(r, "config", "commit.gpgsign", "false")
+        (r / "tools").mkdir()
+        (r / "tools" / "t.py").write_text("def a():\n    return 1\n\n\ndef keep():\n    pass\n")
+        (r / "tools" / "t.sh").write_text("f() {\n  :\n}\n")
+        sh(r, "add", "tools")
+        sh(r, "commit", "-q", "-m", "base")
+        sh(r, "checkout", "-q", "-b", "lane/mine")
+        # The lane appends its own copy of _xargs at the end; dev adds one at the top.
+        (r / "tools" / "t.py").write_text("def a():\n    return 1\n\n\ndef keep():\n    pass\n"
+                                          "\n\ndef _xargs():\n    return 'lane'\n")
+        sh(r, "commit", "-q", "-am", "lane xargs")
+        sh(r, "checkout", "-q", "dev")
+        (r / "tools" / "t.py").write_text("def _xargs():\n    return 'dev'\n\n\n"
+                                          "def a():\n    return 1\n\n\ndef keep():\n    pass\n")
+        (r / "tools" / "t.sh").write_text("f() {\n  :\n}\nf() {\n  echo\n}\n")
+        sh(r, "commit", "-q", "-am", "dev xargs")
+        sh(r, "checkout", "-q", "lane/mine")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_a_clean_merge_that_doubles_a_def_is_named_and_exits_5(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            code = lane_fetch.merge("dev", self.repo, False)
+        text = out.getvalue()
+        self.assertEqual(code, 5, text)
+        self.assertIn("tools/t.py: _xargs defined 2 times (lines 1, 13)", text)
+        self.assertIn("tools/t.sh: f defined 2 times (lines 1, 4)", text)
+        self.assertNotIn("keep defined", text)
+
+    def test_a_single_definition_per_name_is_clean(self):
+        path = self.repo / "tools" / "t.py"
+        self.assertEqual(lane_fetch.top_level_duplicates(path), [])
+        path.write_text("class C:\n    def m(self): pass\n    def m(self): pass\n")
+        self.assertEqual(lane_fetch.top_level_duplicates(path), [])  # methods are not top level
+
+    def test_conflict_markers_are_named_not_checked(self):
+        path = self.repo / "tools" / "t.py"
+        path.write_text("<<<<<<< HEAD\ndef a(): pass\n=======\ndef b(): pass\n>>>>>>> dev\n")
+        lines = lane_fetch.duplicate_report(lane_fetch.duplicates([path]), self.repo)
+        self.assertEqual(lines, ["lane_fetch: tools/t.py: not checked (does not parse: "
+                                 "conflict markers?)"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -4,8 +4,8 @@
   "coverage": {
     "declared": 1224,
     "declared_and_dispatched": 1207,
-    "guard_verified": 542,
-    "with_keystone": 155
+    "guard_verified": 546,
+    "with_keystone": 153
   },
   "entries": [
     {
@@ -19860,12 +19860,7 @@
         ]
       ],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-xrt-quiet-files-are-unnamed",
-          "via": "fn-xrt-quiet-files"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -19894,12 +19889,7 @@
         ]
       ],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-xrt-reseat-checkpoint-frame-keeps-the-arena",
-          "via": "fn-xrt-reseat-checkpoint-frame"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -20834,7 +20824,7 @@
       "name": "fn-native-admin-host-reclaim-mode",
       "subsystem": "admin/operator",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "ideal",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -21143,7 +21133,7 @@
       "name": "fn-owner-orc-init",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -21175,7 +21165,7 @@
       "name": "fn-owner-orc-request-status",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -21448,11 +21438,9 @@
       "name": "fn-his-file-octets",
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
-      "exempt": {
-        "stream-octets": "a count of octets (the stream region's length), not bytes"
-      },
+      "exempt": {},
       "keystones": [],
       "extraction": null,
       "direct": null,
@@ -21467,7 +21455,7 @@
       "name": "fn-his-stream-free",
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -21485,12 +21473,7 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "program",
-      "kinds": [
-        [
-          "octet-records",
-          "fn-octet-list-listp"
-        ]
-      ],
+      "kinds": [],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -21506,12 +21489,7 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "program",
-      "kinds": [
-        [
-          "octet-records",
-          "fn-octet-list-listp"
-        ]
-      ],
+      "kinds": [],
       "exempt": {},
       "keystones": [],
       "extraction": null,

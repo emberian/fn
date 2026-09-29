@@ -20,12 +20,7 @@ the same forms with the ledger's non-evaluating reader and GENERATES:
   world says about each entry (its direct theorems, the ones about its
   callers or callees, and nothing), from a dump of the world, not a name match;
 
-`--kinds' compares every declaration's :kinds with the kinds its guard gives
-(tools/interface_kinds.py, from source, no ACL2: the refusal
-books/definterface.lisp would give at image build), and `--kinds NAME...'
-prints the :kinds a new declaration of NAME needs.
-
-It also hands tools/harness_check.py its exempt formals (`entry_kind_exempt')
+and hands tools/harness_check.py its exempt formals (`entry_kind_exempt')
 and its direct applications (`entry_direct_allowed'), which were hand lists
 there.
 
@@ -45,9 +40,15 @@ applies directly, and refuses
   declared);
 * a generated file that differs from what the forms say.
 
-What it cannot check is the world: the class, the kinds and the keystones
-are ACL2's to confirm, at image build (host/interfaces.lisp) and in
-tests/acl2/definterface-tests.lisp.
+* a declaration whose :class or :kinds is not what the image build will
+  find (tools/interface_kinds.py computes both from the source the way
+  books/definterface.lisp's fn-di-problem reads the world, and skips what
+  the source alone cannot decide -- item 68: the image build stopped on a
+  missing :kinds after its 25 minutes).
+
+What it cannot check is the world: the keystones, and the class and kinds
+the source cannot decide, are ACL2's to confirm, at image build
+(host/interfaces.lisp) and in tests/acl2/definterface-tests.lisp.
 
     python3 tools/interface_emit.py            # report
     python3 tools/interface_emit.py --check    # exit 1 on any finding (make check)
@@ -306,43 +307,13 @@ def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
     return out
 
 
-def kinds_main(names: list[str], root: Path = ROOT) -> int:
-    """`--kinds': the guard kinds the image build will require, from source."""
-    from tools import interface_kinds
-    kinds = interface_kinds.entry_guard_kinds(root)
-    defs = interface_kinds.definitions(root)
-    if names:
-        missing = 0
-        for name in names:
-            found = defs.get(name.lower())
-            if found is None:
-                print("{}: defined by no book or ACL2-mode host file".format(name))
-                missing += 1
-                continue
-            print("{} ({}) :kinds {}".format(
-                name.lower(), found[0],
-                interface_kinds.render(interface_kinds.kinds_of(found[1], kinds))))
-        return 1 if missing else 0
-    decls = declarations(root)
-    problems = interface_kinds.disagreements(decls, defs, kinds)
-    print("interface_emit --kinds: {} declared, {} defined in source; {} disagreement(s)".format(
-        len(decls), sum(1 for d in decls if d["name"] in defs), len(problems)))
-    for problem in problems:
-        print("  " + problem)
-    return 1 if problems else 0
-
-
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--write", action="store_true")
-    parser.add_argument("--kinds", nargs="*", metavar="NAME", default=None,
-                        help="compare every declaration's :kinds with its guard "
-                             "(tools/interface_kinds.py; no ACL2), or print the "
-                             ":kinds of each NAME")
+    parser.add_argument("--kinds", action="store_true",
+                        help="also report :class/:kinds disagreements without --check")
     args = parser.parse_args(argv)
-    if args.kinds is not None:
-        return kinds_main(args.kinds)
     if args.write:
         from tools import acl2_slots  # noqa: E402
         acl2_slots.refuse_on_laptop("tools/interface_emit.py --write")
@@ -352,6 +323,16 @@ def main(argv=None) -> int:
         ROOTS_SH.write_text(render_roots(decls))
         REGISTRY.write_text(render_registry(decls, reading))
     problems = findings(decls, reading)
+    if args.check or args.kinds:
+        # the image build's :class / :kinds check, estimated from the source
+        # (tools/interface_kinds.py, obstructions-8 item 68)
+        from tools import interface_kinds
+        judged, skipped = interface_kinds.judge(
+            decls, interface_kinds.read_source(interface_kinds.tree_files()))
+        problems += judged
+        print("interface_emit: :class/:kinds as the image build checks them: {} "
+              "disagreement(s), {} declaration(s) the source cannot judge".format(
+                  len(judged), skipped))
     declared = sum(1 for d in decls if d["name"] in reading["dispatched"])
     print("interface_emit: {} declared; {} of the raw host's {} dispatched entries; "
           "{} extraction roots, {} EXTRA; {} finding(s)".format(

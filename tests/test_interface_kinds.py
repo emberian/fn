@@ -1,131 +1,128 @@
-"""tools/interface_kinds.py and `interface_emit.py --kinds': the guard kinds
-books/definterface.lisp's fn-di-world-kinds requires, computed from source."""
+"""tools/interface_kinds.py: definterface's :class/:kinds from the source (item 68)."""
+
 from __future__ import annotations
 
-import contextlib
-import io
-from pathlib import Path
 import sys
-import tempfile
 import unittest
+from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tools import interface_kinds  # noqa: E402
 
-from tools import interface_emit, interface_kinds, ledger  # noqa: E402
-
-KINDS_BOOK = """(in-package "ACL2")
-(defconst *fn-entry-guard-kinds*
-  '((fn-payload-handle-p . "a payload handle")
-    (fn-cbor-octet-listp . "octets")
-    (natp . "a natural")
-    (integerp . "an integer")
-    (stringp . "a string")
-    (true-listp . "a NIL-terminated list")))
+KINDS = """(defconst *fn-entry-guard-kinds*
+  '((fn-payload-handle-p . "h") (fn-cbor-octet-listp . "o") (natp . "n")
+    (integerp . "i") (stringp . "s") (true-listp . "l")))
 """
 
-BOOK = """(in-package "ACL2")
-(defun fn-k-plain (octets n name)
-  (declare (xargs :guard (and (stringp name) (natp n) (fn-cbor-octet-listp octets)
-                              (consp octets) (< n 10) (natp (car octets)))))
-  (list octets n name))
-(defun fn-k-stobj (st n state)
-  (declare (xargs :stobjs (st state) :guard (and (natp st) (natp state) (natp n))))
-  (list st n state))
-(defund fn-k-types (a b)
-  (declare (type integer a) (type (satisfies fn-cbor-octet-listp) b))
+BOOK = """(defun fn-k-a (x n state)
+  (declare (xargs :guard (and (fn-cbor-octet-listp x) (natp n) (state-p state))
+                  :stobjs state))
+  (list x n state))
+(defun fn-k-types (a b)
+  (declare (type (unsigned-byte 8) a) (type string b))
+  (declare (xargs :guard (natp a)))
   (list a b))
-(defun fn-k-tie (n)
-  (declare (xargs :guard (and (integerp n) (natp n))))
-  n)
-(encapsulate ()
-  (local (defun fn-k-inner (h) (declare (xargs :guard (fn-payload-handle-p h))) h)))
-(defun fn-k-none (x) x)
+(defun fn-k-plain (x) x)
+(defun fn-k-off (x)
+  (declare (xargs :guard (natp x) :verify-guards nil))
+  x)
+(verify-guards fn-k-off)
+(defun fn-k-later (x)
+  (declare (xargs :guard (natp x) :verify-guards nil))
+  x)
+(defun fn-k-prog (x) (declare (xargs :mode :program)) x)
+(defmacro octets-p (x) `(fn-cbor-octet-listp ,x))
+(defun fn-k-macro (x) (declare (xargs :guard (octets-p x))) x)
+(defun fn-k-if (x y) (declare (xargs :guard (if (stringp y) (natp x) 'nil))) (list x y))
+(mutual-recursion
+ (defun fn-k-even (x) (declare (xargs :verify-guards nil)) (if (zp x) t (fn-k-odd (1- x))))
+ (defun fn-k-odd (x) (declare (xargs :verify-guards nil)) (if (zp x) nil (fn-k-even (1- x)))))
+(verify-guards fn-k-even)
 """
 
-INTERFACES = """(in-package "ACL2")
-(definterface fn-k-plain :class :common-lisp-compliant
-  :kinds ((octets fn-cbor-octet-listp) (n natp) (name stringp)))
-(definterface fn-k-types :class :common-lisp-compliant :kinds ((a integerp)))
-(definterface fn-k-none :class :ideal)
-(definterface fn-k-elsewhere :class :program)
+EAGER = """(set-verify-guards-eagerness 2)
+(defun fn-k-eager (x) x)
+(set-verify-guards-eagerness 0)
+(defun fn-k-lazy (x) (declare (xargs :guard t)) x)
+(defun fn-k-lazy-t (x) (declare (xargs :guard t :verify-guards t)) x)
+(program)
+(defun fn-k-host (x) (declare (xargs :guard (natp x))) x)
+(defun fn-k-host-logic (x) (declare (xargs :mode :logic :guard (natp x))) x)
+(logic)
+(defun fn-k-back (x) (declare (xargs :guard t :verify-guards t)) x)
 """
 
 
-def tree() -> Path:
-    root = Path(tempfile.mkdtemp())
-    (root / "books").mkdir()
-    (root / "host").mkdir()
-    (root / "books" / "payload-kinds.lisp").write_text(KINDS_BOOK)
-    (root / "books" / "k.lisp").write_text(BOOK)
-    (root / "host" / "interfaces.lisp").write_text(INTERFACES)
-    return root
+def source():
+    return interface_kinds.read_source([("books/payload-kinds.lisp", KINDS),
+                                        ("books/k.lisp", BOOK), ("books/e.lisp", EAGER)])
 
 
-def form(text: str) -> list:
-    return ledger.Reader(text).top_level()[0][0]
+def decl(name, klass, kinds):
+    return {"name": name, "class": klass, "kinds": kinds, "source": "host/interfaces.lisp",
+            "line": 1}
 
 
 class KindsTests(unittest.TestCase):
     def setUp(self):
-        self.root = tree()
-        self.kinds = interface_kinds.entry_guard_kinds(self.root)
-        self.defs = interface_kinds.definitions(self.root)
+        self.source = source()
 
-    def of(self, name):
-        return interface_kinds.kinds_of(self.defs[name][1], self.kinds)
+    def kinds(self, name):
+        return interface_kinds.kinds(self.source.definitions[name], self.source)
 
-    def test_the_defconst_is_read(self):
-        self.assertEqual(self.kinds, ["fn-payload-handle-p", "fn-cbor-octet-listp", "natp",
-                                      "integerp", "stringp", "true-listp"])
+    def klass(self, name):
+        return interface_kinds.symbol_class(self.source.definitions[name], self.source)
 
-    def test_single_formal_kind_conjuncts_in_formal_order(self):
-        # (consp octets) is not a kind, (< n 10) has two arguments, and
-        # (natp (car octets)) is not applied to a formal.
-        self.assertEqual(self.of("fn-k-plain"),
-                         [["octets", "fn-cbor-octet-listp"], ["n", "natp"], ["name", "stringp"]])
+    def test_the_kinds_table_is_read_from_the_defconst(self):
+        self.assertIn("fn-cbor-octet-listp", self.source.kinds)
+        self.assertNotIn("state-p", self.source.kinds)
 
-    def test_stobj_formals_carry_no_kind(self):
-        self.assertEqual(self.of("fn-k-stobj"), [["n", "natp"]])
+    def test_guard_kinds_in_position_order_stobj_excluded(self):
+        self.assertEqual(self.kinds("fn-k-a"), [["x", "fn-cbor-octet-listp"], ["n", "natp"]])
 
-    def test_type_declarations_translate_to_recognizers(self):
-        self.assertEqual(self.of("fn-k-types"),
-                         [["a", "integerp"], ["b", "fn-cbor-octet-listp"]])
+    def test_type_declarations_come_first_and_ties_reverse(self):
+        # conjuncts: (integerp a) range (stringp b) (natp a): a's two ties reversed
+        self.assertEqual(self.kinds("fn-k-types"),
+                         [["a", "natp"], ["a", "integerp"], ["b", "stringp"]])
 
-    def test_ties_keep_fn_di_sort_order(self):
-        # fn-di-insert puts a check after every check at its own position, so
-        # two kinds on one formal come out last conjunct first.
-        self.assertEqual(self.of("fn-k-tie"), [["n", "natp"], ["n", "integerp"]])
+    def test_if_nil_is_a_conjunction(self):
+        self.assertEqual(self.kinds("fn-k-if"), [["x", "natp"], ["y", "stringp"]])
 
-    def test_definitions_inside_wrappers_are_found(self):
-        self.assertEqual(self.of("fn-k-inner"), [["h", "fn-payload-handle-p"]])
-        self.assertEqual(self.of("fn-k-none"), [])
+    def test_a_guard_macro_is_not_judged(self):
+        with self.assertRaises(interface_kinds.CannotJudge):
+            self.kinds("fn-k-macro")
 
-    def test_a_wrong_declaration_is_a_disagreement_and_a_right_one_is_not(self):
-        decls = interface_emit.declarations(self.root)
-        problems = interface_kinds.disagreements(decls, self.defs, self.kinds)
-        self.assertEqual(len(problems), 1, problems)
-        self.assertIn("fn-k-types declares :kinds ((a integerp)) but its guard "
-                      "(books/k.lisp) gives ((a integerp) (b fn-cbor-octet-listp))", problems[0])
+    def test_classes(self):
+        self.assertEqual(self.klass("fn-k-a"), "common-lisp-compliant")
+        self.assertEqual(self.klass("fn-k-plain"), "ideal")
+        self.assertEqual(self.klass("fn-k-off"), "common-lisp-compliant")  # verify-guards event
+        self.assertEqual(self.klass("fn-k-later"), "ideal")
+        self.assertEqual(self.klass("fn-k-prog"), "program")
+        self.assertEqual(self.klass("fn-k-eager"), "common-lisp-compliant")
+        self.assertEqual(self.klass("fn-k-lazy"), "ideal")  # eagerness 0
+        self.assertEqual(self.klass("fn-k-lazy-t"), "common-lisp-compliant")
+        self.assertEqual(self.klass("fn-k-host"), "program")  # (program) default
+        self.assertEqual(self.klass("fn-k-host-logic"), "ideal")  # eagerness 0 still
+        self.assertEqual(self.klass("fn-k-back"), "common-lisp-compliant")
+        self.assertEqual(self.klass("fn-k-odd"), "common-lisp-compliant")  # its clique's event
 
-    def test_kinds_main_exit_codes(self):
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            self.assertEqual(interface_emit.kinds_main([], self.root), 1)
-            self.assertEqual(interface_emit.kinds_main(["fn-k-plain"], self.root), 0)
-            self.assertEqual(interface_emit.kinds_main(["fn-k-elsewhere"], self.root), 1)
-        text = out.getvalue()
-        self.assertIn("4 declared, 3 defined in source; 1 disagreement(s)", text)
-        self.assertIn("fn-k-plain (books/k.lisp) :kinds ((octets fn-cbor-octet-listp) "
-                      "(n natp) (name stringp))", text)
-        self.assertIn("fn-k-elsewhere: defined by no book or ACL2-mode host file", text)
 
-    def test_a_fixed_declaration_has_no_disagreement(self):
-        text = INTERFACES.replace(":kinds ((a integerp))",
-                                  ":kinds ((a integerp) (b fn-cbor-octet-listp))")
-        (self.root / "host" / "interfaces.lisp").write_text(text)
-        decls = interface_emit.declarations(self.root)
-        self.assertEqual(interface_kinds.disagreements(decls, self.defs, self.kinds), [])
+class JudgeTests(unittest.TestCase):
+    def test_agreement_is_silent_and_disagreements_are_worded(self):
+        decls = [decl("fn-k-a", "common-lisp-compliant",
+                      [["x", "fn-cbor-octet-listp"], ["n", "natp"]]),
+                 decl("fn-k-plain", "common-lisp-compliant", []),
+                 decl("fn-k-types", "common-lisp-compliant", [["b", "stringp"]]),
+                 decl("fn-k-macro", "common-lisp-compliant", []),
+                 decl("fn-no-such", "ideal", [])]
+        problems, skipped = interface_kinds.judge(decls, source())
+        self.assertEqual(skipped, 2)  # the macro guard, the missing definition
+        self.assertEqual(len(problems), 2, problems)
+        self.assertIn("fn-k-plain is :ideal (by its source, books/k.lisp:", problems[0])
+        self.assertIn("declared :common-lisp-compliant", problems[0])
+        self.assertIn("fn-k-types's guard kinds are ((a natp) (a integerp) (b stringp))",
+                      problems[1])
+        self.assertIn("declared ((b stringp))", problems[1])
 
 
 if __name__ == "__main__":
