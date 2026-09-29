@@ -2204,7 +2204,8 @@
   :class ::ideal)
 
 (definterface fn-bpah-handoff-report
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpah-handoff-report-is-application-disposition))
 
 (definterface fn-bpah-outbox-effective-status
   :class ::common-lisp-compliant)
@@ -2328,7 +2329,8 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-evidence-next-result-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-evidence-next-result-name-names-exactly-the-next-record))
 
 (definterface fn-bpn-host-evidence-next-wire-name
   :class ::ideal)
@@ -2361,13 +2363,16 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-existing-sequence
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence))
 
 (definterface fn-bpn-host-existing-sequence-p
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence))
 
 (definterface fn-bpn-host-existing-sequence-value
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence))
 
 (definterface fn-bpn-host-lifecycle-frame-limit
   :class ::ideal)
@@ -2685,7 +2690,8 @@
               fn-bpnjc-ask-position-bounds))
 
 (definterface fn-bpnp-configured-budgets
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets))
 
 (definterface fn-bpnp-delivery-view
   :class ::common-lisp-compliant)
@@ -2963,7 +2969,8 @@
   :class ::ideal)
 
 (definterface fn-tcl-host-drive
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-tcl-host-drive-bundle-has-held-final))
 
 (definterface fn-tcl-host-encode
   ; an exact alias; the callee's keystones are PRF-1006 (the per-kind
