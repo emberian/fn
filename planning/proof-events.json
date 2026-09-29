@@ -14719,6 +14719,15 @@
       ]
     },
     {
+      "id": "PRF-1036",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-delivery-plan-decides-exactly-by-the-held-final-ack-and-the-callback"
+        }
+      ]
+    },
+    {
       "id": "PRF-959",
       "events": [
         {

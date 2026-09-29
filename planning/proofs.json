@@ -15416,6 +15416,24 @@
       "progress_note": "Lane decision-keystones-5: the bp book entries, one two-sided keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
     },
     {
+      "id": "PRF-1036",
+      "title": "fn-tcl-delivery-plan decides the delivery plan's status exactly by the held final ACK and the durability callback's answer, and carries the held messages when accepted, the prior messages and one XFER_REFUSE when refused, and nothing when uncertain or faulted",
+      "statement": "books/tcpcl-delivery.lisp, called by host/native/tcpcl.lisp's transfer completion (it acts on fn-tcl-delivery-plan-status and writes fn-tcl-delivery-plan-messages). KEYSTONE fn-tcl-delivery-plan-decides-exactly-by-the-held-final-ack-and-the-callback, two-sided per status: the status is one of :accepted, :refused, :uncertain, :fault; it is :accepted iff the final ACK of the transfer is held in the messages (fn-tcl-held-final-ackp) and the callback answered a two-element (:accepted nil-or-string), :refused iff held and (:refused detail), :uncertain iff held and (:uncertain detail); an accepted plan carries the held messages and the callback's detail, a refused plan the prior messages followed by one XFER_REFUSE naming the transfer with (fn-tcl-delivery-refuse-reason detail), an uncertain or faulted plan no message (nothing is sent on uncertainty), and a fault's detail is :missing-final-ack or :bad-callback-result. Teeth: tests/acl2/tcpcl-delivery-tests.lisp (the held ACK of transfer 0 with each callback answer by name and the messages carried; no held ACK and two malformed callbacks answer the fault with its detail).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/tcpcl-delivery.lisp",
+        "tests/acl2/tcpcl-delivery-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-5: the bp book entries, one two-sided keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
+    },
+    {
       "id": "PRF-959",
       "title": "A state checkpoint's verifiable digest is a function of its prefix: the loaded file digests the same whatever image wrote it and whenever the log rotated",
       "statement": "books/store-checkpoint-digest.lisp fn-sckd-digest-of-written-file: under fn-scka-load-of-written-file's hypotheses (the file the writer produced for CONFIGS, RECORDS, a frontier and the payloads PS, with any REVISION and LOG in its F row), fn-sckd-digest of the tables fn-scka-load answers and fn-sdg-arena-pool of the arena it leaves equals fn-sckd-digest-of-prefix CONFIGS RECORDS FRONTIER PS, which reads neither REVISION nor LOG (fn-sckd-digest-ignores-revision-and-log). fn-sckd-digest is fn-sckd-combine of fn-sckd-tables-digest (schema, S, frontier, P, E, R) and the pool. host: fn-store-sco-decode-finish (host/store-node-host.lisp) calls fn-sckd-tables-digest on the loaded tables when `store ROOT digest' asked, and fn-store-sco-note-checkpoint-digest, called by fnn-state-checkpoint-load-arena (host/native/io.lisp) right after the load, calls fn-sckd-combine with fn-sdg-arena-pool; fn-store-sn-replay-digest-report prints `checkpoint-digest sequence=S HEX'. Scope: PKT-854 (planning/evidence/proto-determinism-2026-09-27.md N1); the digest is an abstract fn-digest (crypto-seam): equal digests imply nothing about preimages in this logic.",
