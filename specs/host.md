@@ -418,7 +418,18 @@ executable counterpart (`fnn-call`, the raw-Lisp spelling of `ec-call`), under
 the image's `guard-checking-on`, which the entry asserts is `t`, the same
 policy the interpreted bridge evaluates under. A `:program` wrapper therefore
 runs raw beneath its counterpart in both hosts; the complete call-graph guard
-requirement of packet C3-05 is unchanged by the packaging.
+requirement of packet C3-05 is unchanged by the packaging. One exception, by
+declaration (D40): an entry whose `definterface` carries `:raw-with (THM ...)`
+is applied as its guard-verified definition, not its counterpart --
+guard verification is the condition for faithful raw execution, and the named
+theorems are the argument that the guard's carried conjuncts (the owner's
+`fn-sn-statep` of the live Store, established at the open and preserved by
+every transition) hold at the call; `books/definterface.lisp` refuses the
+annotation at image build unless they do conclude those conjuncts, the entry
+guard's arity and kind checks still run before the call, and
+`planning/interfaces.json` (`raw_dispatched`) lists every such entry. The
+developer image keeps the counterpart path behind
+`FN_NATIVE_DISPATCH_COUNTERPART=1` so a native can compare both.
 
 ### The saved image's memory
 

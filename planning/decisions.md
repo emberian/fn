@@ -1563,3 +1563,73 @@ Consequences: the catalog's `fn-cat$c-msgids' hash goes with THE SWITCH
 (row P2); the figure's Message-ID term (books/heap-store-figure) becomes the
 table's words; the 10k crafted-collision native lands with the switch.
 Affected: STO-027, PRF-969, PRF-970, PRF-991.
+
+### 2026-09-30: D40 — Raw dispatch: the host calls the guard-verified definition for entries whose guard is a named preserved invariant (~01:30 UTC; coordinator ruling on depth-debt-8's finding, recorded by lane depth-debt-9)
+
+The finding (lanedumps/depth-debt-8.md): after depth-debt-7's 107 conversions
+the owner's served entries are guard-verified, so their bodies run compiled;
+the one walk left per served POST is the executable counterpart's guard check
+at the host boundary -- `fn-sn-statep` of the live Store, the whole-node
+revalidation AGENTS.md forbids on a served path. It cannot be carried as a
+stobj invariant (ACL2 8.7 refuses a stobj field typed by a recognizer whose
+supporters include `fn-digest`, which has an attachment;
+stobj-attachment-restrictions), and the `(or (equal s live) (fn-sn-statep s))`
+shape does not guard-verify against `fn-sn-statep`-guarded callees. The
+terminology is GPT-6's (review-2026-09-30-gpt6-log2.md §3): `*1*` is the
+executable-counterpart distinction, not an interpreter; GUARD VERIFICATION IS
+THE CONDITION FOR FAITHFUL RAW EXECUTION -- where the guard holds, the raw
+definition is the logical function -- so the question is only whether the
+guard holds at the call, and checking it must not reproduce the computation
+raw dispatch exists to avoid.
+
+DECIDED: the host dispatcher (host/native/io.lisp `fnn-dispatch-function`)
+calls the RAW definition instead of the counterpart for a host-called entry
+ONLY when its `definterface` declaration (host/interfaces.lisp) carries
+`:raw-with (THM ...)`, the NAMED PRESERVATION ARGUMENT: the theorems that
+establish the guard's carried conjuncts where the host first obtains the
+value (the open: `fn-ohr-store-open-installs-the-carried-relation`,
+`fn-lgoc-recover-installs-invariant`), preserve them across the entry's own
+transition (books/owner-host-relation.lisp's COVERAGE table names every other
+host transition's theorem), and conclude the guard predicate from the carried
+relation (`fn-lgoc-invariant-statep`). The entry guard (arity and kind
+checks) still runs before either dispatch; what raw dispatch skips is the
+carried conjuncts alone. THE CHECKER is books/definterface.lisp
+`fn-di-raw-with-problem`, evaluated at image build against the LOADED WORLD
+(never a source grep): it refuses the annotation unless the entry is
+:common-lisp-compliant; every guard conjunct that is neither a kind check nor
+a stobj formal's own recognizer is over stobj formals alone (a conjunct over
+an argument the host passes per call has no preservation theorem and is
+refused); every such conjunct's tree-defined head is the CONCLUSION of a named
+theorem (a boot-strap primitive such as `boundp-global` fails loud in raw
+Lisp and is exempt); every named theorem exists and mentions a function of
+that argument; and the guard has at least one such conjunct (an annotation
+that skips nothing is refused). `fnn-install-raw-dispatch` derives the
+dispatch table from the world's `fn-interfaces` table at image build and
+stops the build on an unknown or unverified target; `tools/interface_emit.py`
+lists every raw-dispatched entry in planning/interfaces.json
+(`raw_dispatched`) and refuses a `:raw-with` naming no theorem of the tree;
+tests/acl2/definterface-tests.lisp holds the teeth (the accepted stobj
+invariant and one refusal per check). The developer image keeps the
+counterpart path behind the selector `FN_NATIVE_DISPATCH_COUNTERPART=1`
+(tests.test_native_owner runs the served POST both ways and requires the same
+replies); the production image always dispatches raw.
+
+CLASSIFICATION (GPT-6 §3): the raw-dispatched entries are BOUNDARY DRIVERS
+(the owner's served transitions) whose closure is the semantic kernel; the
+release rule they answer is "no unexpected fallback into an unqualified
+execution mode" -- an entry is raw or counterpart by declaration, listed,
+never by accident. First entries: `fn-owner-io`, `fn-owner-known-abort`,
+`fn-owner-prepare-consumer`, `fn-owner-prepare-topic`,
+`fn-owner-refuse-reservation`. `fn-owner-io`'s preservation theorems carry
+the log route's io-safety hypotheses (`fn-lgoc-io-safep`,
+`fn-lgoc-article-stagedp`): the route's ORDER and RESERVE steps establish
+them, and the row names that dependence rather than hiding it. NOT YET:
+`fn-owner-finish` and `fn-owner-prepare-identity`, whose guard also carries
+`fn-prc-carryp (fn-owner-retain-carry state)`: only the refresh's preservation
+(`fn-prc-carryp-of-refresh`) exists; the carry's establishment at the recover
+rebuild and at the prepare's outcome is unproved, so their annotation waits
+on those theorems (row K2). What this decision does NOT claim: a raw
+dispatch is not a proof about the host's other globals, and hot_path_check
+never modelled a host entry's own guard (its doc now says so) -- the
+raw-dispatch list, not hot_path, accounts for the boundary walk.
+Affected: specs/host.md (the dispatch), planning/interfaces.json, K2.
