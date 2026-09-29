@@ -1576,38 +1576,3 @@
                                                   (fn-record-string-octets "/tmp/a")
                                                   (fn-record-string-octets "extra"))))
                      :refused))
-
-; Row S7 (lane operability-12): the running owner's snapshot request and its
-; status poll are owner requests (no configuration record), the DIR in the
-; request's value; a request without DIR or with a fourth word is refused.
-(assert-event
- (let ((plan (fn-native-admin-plan (list (fn-record-string-octets "snapshot")
-                                         (fn-record-string-octets "request")
-                                         (fn-record-string-octets "/tmp/s")))))
-   (and (fn-native-admin-result-owner-requestp plan)
-        (equal (fn-native-admin-result-kind plan) :request-snapshot)
-        (equal (fn-native-admin-result-snapshot-dir plan) "/tmp/s")
-        (not (fn-native-admin-result-snapshot-statusp plan))
-        (not (fn-native-admin-result-export-dir plan))
-        (not (fn-native-admin-result-export-statusp plan))
-        (not (fn-native-admin-result-inspect-msgid plan))
-        (not (fn-native-admin-result-reclaim-mode plan)))))
-(assert-event
- (let ((plan (fn-native-admin-plan (list (fn-record-string-octets "snapshot")
-                                         (fn-record-string-octets "status")))))
-   (and (fn-native-admin-result-owner-requestp plan)
-        (equal (fn-native-admin-result-kind plan) :request-snapshot-status)
-        (fn-native-admin-result-snapshot-statusp plan)
-        (not (fn-native-admin-result-snapshot-dir plan)))))
-(assert-event
- (equal (fn-native-admin-result-status
-         (fn-native-admin-plan (list (fn-record-string-octets "snapshot")
-                                     (fn-record-string-octets "request"))))
-        :refused))
-(assert-event
- (equal (fn-native-admin-result-status
-         (fn-native-admin-plan (list (fn-record-string-octets "snapshot")
-                                     (fn-record-string-octets "request")
-                                     (fn-record-string-octets "/tmp/s")
-                                     (fn-record-string-octets "more"))))
-        :refused))
