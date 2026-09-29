@@ -1474,7 +1474,7 @@
   :class ::program)
 
 (definterface fn-owner-exposure-install-set
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-exposure-open
   :class ::program

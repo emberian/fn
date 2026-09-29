@@ -3830,14 +3830,26 @@
 ;; defaults of every absent row.
 ;; NNT-041: several listeners.  The node is public when any listener is
 ;; (fn-exp-address-publicp decides each).
+;; The listener projections the raw host hands the install (host/native/
+;; owner.lisp fnn-owner-run: one (FAMILY ADDRESS-OCTETS) per bound listener,
+;; ACL2's projected family and the address as a list): the shape the two
+;; guards below read, and nothing else about them (K2, depth-debt-9).
+(defun fn-owner-exposure-projectionsp (projections)
+  (declare (xargs :guard t))
+  (if (atom projections)
+      (null projections)
+    (and (consp (car projections))
+         (consp (cdr (car projections)))
+         (fn-owner-exposure-projectionsp (cdr projections)))))
+
 (defun fn-owner-exposure-projections-publicp (projections)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard (fn-owner-exposure-projectionsp projections)))
   (and (consp projections)
        (or (fn-exp-address-publicp (car (car projections)) (cadr (car projections)))
            (fn-owner-exposure-projections-publicp (cdr projections)))))
 
 (defun fn-owner-exposure-install-set (projections state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (fn-owner-exposure-projectionsp projections)))
   (let* ((publicp (fn-owner-exposure-projections-publicp projections))
          (state (f-put-global 'fn-owner-exposure (fn-exp-initial) state))
          (state (f-put-global 'fn-owner-exposure-close nil state))
