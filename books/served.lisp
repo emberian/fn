@@ -217,18 +217,9 @@
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
               (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))))))
 
-; A connection whose view has no articles is pinned with its control pin
-; too (PKT-443): a view whose visible list is empty but whose withdrawn list
-; is not (two signed cancels naming each other) has no buckets (fn-gidx-build
-; of no articles is nil), and without the control pin the dispatcher could
-; not answer `430 withdrawn'.  Its nil buckets are the empty view's own, so
-; the correspondence fn-served-connp carries holds as stated and GROUP and
-; LISTGROUP answer as the trie does (fn-gidx-listgroup-command-of-build).
 (defun fn-served-conn-pinned-index (conn)
   (declare (xargs :guard t))
-  (if (or (fn-served-conn-group-index conn)
-          (and (fn-served-conn-control conn)
-               (not (consp (fn-state-articles (fn-served-conn-archive conn))))))
+  (if (fn-served-conn-group-index conn)
       (fn-gidx-pin-with-control (fn-served-conn-index conn)
                                 (fn-served-conn-group-index conn)
                                 (fn-served-conn-control conn))

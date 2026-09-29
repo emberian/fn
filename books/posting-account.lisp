@@ -4,10 +4,7 @@
 ; article was posted from, "posting-account", and says it may be obscured.
 ; fn obscures it with a key only the node holds (PKT-574; gpt-6 wave-5
 ; review section 3): the value is the lowercase hexadecimal keyed BLAKE3 of
-; the account (PKT-786: the principal the login authenticated as, the
-; session subject books/served.lisp fn-served-account; the parameter below
-; is named LOGIN for history) under the posting-account purpose key of the
-; owner's key ring,
+; the login under the posting-account purpose key of the owner's key ring,
 ; BLAKE3 derive_key of the current epoch's root and node identity under the
 ; context `fn/posting-account/v2' (HMAC-SHA256 under HKDF-SHA256 up to store
 ; format 9) (books/node-secret.lisp
@@ -16,7 +13,7 @@
 ; carried by the owner as fn-own-node-secret).  The Cancel-Lock key is the
 ; same root under `fn/cancel-lock/v2'; the two derivation inputs never coincide
 ; (fn-ns-cancel-lock-and-posting-account-inputs-differ).  A key rotation
-; changes every account's value.
+; changes every login's value.
 ; What this book proves (PRF-206 (c)), over the functions the injecting
 ; agent calls:
 ;   * `fn-pa-account-value-is-hex': the value is exactly 64 octets, each a
