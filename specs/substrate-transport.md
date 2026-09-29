@@ -384,8 +384,8 @@ preserved by every transition of the store node (PRF-1027, PRF-1034). The
 group's authority is the live group entry's policy-id when it is a principal id
 ([reconfiguration](reconfiguration.md) `(:create-group name policy-id)`); every
 other group is ungoverned by name. In the configuration model that policy-id
-is the posting-policy identifier (`fn-policy-default-1`, written by `store
-init` and `:set-group-status`), and no operator path binds a principal there,
+is the posting-policy identifier (`*fn-cfg-default-policy-id*` in
+books/config.lisp, written by `store init` and `:set-group-status`), and no operator path binds a principal there,
 so on a running node the gate answers `:ungoverned` for every take
 (tests/test_native_key_statements' forked pair) until D11's group authority
 binding lands: an open decision, not a served refusal.
