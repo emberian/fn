@@ -90,6 +90,13 @@
   :class :common-lisp-compliant
   :root :extract)
 
+; host/native/owner.lisp's checkpoint release reads the live arena's file
+; count (lane composed-owner-4, row A6).
+(definterface fn-arx-file-count
+  :class :common-lisp-compliant
+  :kinds ((f natp))
+  :root :extract)
+
 ; fn-xo-open-store: host/interfaces-extract.lisp (the image does not load
 ; host/store-open-host.lisp).
 
