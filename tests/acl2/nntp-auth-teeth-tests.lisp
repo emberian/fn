@@ -3229,3 +3229,61 @@
 (local (must-fail-checked (aut-k14 aut-k14-without-e10 (e1 e2 e3 e4 e5 e6 e7 e8 e9))))
 (local (must-fail-checked (aut-k9 aut-k9-without-p12 (p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p13))))
 (local (must-fail-checked (aut-k10 aut-k10-without-s4 (s1 s2 s3))))
+
+; =============================================================================
+; PRF-911 (books/nntp-compress.lisp), the two keystones the COMPRESS arm of
+; fn-auth-command and the CAPABILITIES arm rest on (fn-auth-compress calls
+; fn-zc-decide; the capability block goes through fn-zc-capability-lines).
+
+; fn-zc-decide-starts-only-deflate.  Positive: COMPRESS DEFLATE on a
+; connection with no layer that may start one.
+(defconst *aut-zc-deflate* (list (fn-nntp-string-octets "DEFLATE")))
+(assert-event
+ (let ((d (fn-zc-decide nil t *aut-zc-deflate*)))
+   (and (equal (car d) :start)
+        (equal (cadr d) :deflate))))
+; The hypothesis removed: with a layer active the answer is :active, which
+; is no start, and neither does it name DEFLATE nor is the state empty.
+(assert-event
+ (with-guard-checking :none
+  (let ((d (fn-zc-decide '(:active :deflate) t *aut-zc-deflate*)))
+    (and (equal d :active)
+         (not (equal (car d) :start))
+         (not (equal (cadr d) :deflate))))))
+(must-fail-checked
+ (defthm aut-zc-decide-without-start
+   (and (equal (cadr (fn-zc-decide zs mayp args)) :deflate)
+        (null zs)
+        mayp)
+   :rule-classes nil))
+
+; fn-zc-capability-lines-withdraw.  Positive: an active layer drops STARTTLS
+; and the AUTHINFO labels, adds no COMPRESS label, and is exactly the
+; filter.
+(defconst *aut-zc-block*
+  (list (fn-nntp-string-octets "VERSION 2")
+        (fn-nntp-string-octets "STARTTLS")
+        (fn-nntp-string-octets "AUTHINFO USER")))
+(assert-event
+ (and (fn-zc-activep '(:active :deflate))
+      (not (member-equal (fn-nntp-string-octets "STARTTLS")
+                         (fn-zc-capability-lines *aut-zc-block* '(:active :deflate) t)))
+      (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
+                         (fn-zc-capability-lines *aut-zc-block* '(:active :deflate) t)))
+      (equal (fn-zc-capability-lines *aut-zc-block* '(:active :deflate) t)
+             (fn-zc-drop-withdrawn *aut-zc-block*))
+      (equal (fn-zc-capability-lines *aut-zc-block* '(:active :deflate) t)
+             (list (fn-nntp-string-octets "VERSION 2")))))
+; The hypothesis removed: with no layer the block keeps STARTTLS and gains
+; the COMPRESS label, so it is not the filter.
+(assert-event
+ (and (not (fn-zc-activep nil))
+      (member-equal (fn-nntp-string-octets "STARTTLS")
+                    (fn-zc-capability-lines *aut-zc-block* nil t))
+      (not (equal (fn-zc-capability-lines *aut-zc-block* nil t)
+                  (fn-zc-drop-withdrawn *aut-zc-block*)))))
+(must-fail-checked
+ (defthm aut-zc-capability-lines-without-active
+   (not (member-equal (fn-nntp-string-octets "STARTTLS")
+                      (fn-zc-capability-lines lines zs mayp)))
+   :rule-classes nil))
