@@ -387,15 +387,19 @@
 
 (local (in-theory (disable fn-hkn-reduce-pin)))
 
-; Over an obligation list (the ledger's invariant, fn-retain-statep).
+; The walk finds the same position after the reduction (every element keeps
+; its id), so the found pin is the reduced one exactly when it is the one
+; reduced.  No hypothesis: over any list.
 (defthm fn-hkn-find-id-after-reduce
-  (implies (fn-retain-obligation-listp pins)
-           (equal (fn-retain-find-id x (fn-hkn-reduce-pins pins id))
-                  (if (and (equal x id) (consp (fn-retain-find-id id pins)))
-                      (fn-hkn-reduce-pin (fn-retain-find-id id pins))
-                    (fn-retain-find-id x pins))))
-  :hints (("Goal" :induct (fn-retain-find-id x pins)
-                  :in-theory (enable fn-retain-obligation-listp))))
+  (equal (fn-retain-find-id x (fn-hkn-reduce-pins pins id))
+         (if (and (equal x id) (fn-retain-pin-id-scanp id pins))
+             (fn-hkn-reduce-pin (fn-retain-find-id id pins))
+           (fn-retain-find-id x pins)))
+  :hints (("Goal" :induct (fn-retain-find-id x pins))))
+
+(defthm fn-hkn-a-found-pin-is-scanned
+  (implies (consp (fn-retain-find-id id pins))
+           (fn-retain-pin-id-scanp id pins)))
 
 ; A receipt or a release matches by id, subject, kind and evidence, never
 ; by charge: the reduced pin matches exactly what the pin matched.
@@ -421,13 +425,12 @@
 ; the wrong obligation") cannot occur, because the release keeps every pin
 ; and every identifying field of it.
 (defthm fn-hkn-release-discharges-the-same-obligation
-  (implies (fn-retain-obligation-listp (fn-retain-pins r))
   (equal (fn-retain-matching-releasep
           (fn-retain-find-id x (fn-retain-pins (fn-hkn-release-retention r id)))
           x subject kind evidence)
          (fn-retain-matching-releasep
           (fn-retain-find-id x (fn-retain-pins r))
-          x subject kind evidence)))
+          x subject kind evidence))
   :hints (("Goal" :cases ((equal x id)))))
 
 ; The one observable change, exactly: the reserved sum drops by the content
