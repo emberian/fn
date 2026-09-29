@@ -1536,6 +1536,18 @@
                       (fn-native-operator-run *fn-nop-minimal-config*
                                               (fn-nop-test-argv '("carry" "/srv/fn/workflow" "drop" "work-a"))))
                      :usage))
+; PRF-950: `drop WORK --abandon REASON...' plans the waiver; --abandon
+; with no reason is a usage error.
+(assert-event (equal (fn-native-operator-result-carry-fields
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("carry" "/srv/fn/workflow" "drop" "work-a"
+                                                                  "--abandon" "peer" "retired"))))
+                     '("/srv/fn/workflow" :abandon "work-a" "peer retired")))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("carry" "/srv/fn/workflow" "drop" "work-a"
+                                                                  "--abandon"))))
+                     :usage))
 
 ; PRF-388 (PKT-560): `principal bind|unbind' carries the `account
 ; bind|unbind' plan of the same words, which the host dispatches when the

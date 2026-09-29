@@ -7,6 +7,30 @@
 ;;; while the obligation verbs run.
 (defvar *fnn-bpo-carry-journal* nil)
 
+;;; PRF-950: an operator's waiver (`carry drop WORK --abandon') is durable in
+;;; the carry journal first, then released in the Store through the one
+;;; retention event a receipt's release publishes (fnn-owner-retention-commit;
+;;; ACL2 authors it: host/bp-release-owner-host.lisp
+;;; fn-owner-workflow-store-waive).  A crash between the two leaves a waiver
+;;; whose pin stands; every writable owner open completes each such waiver
+;;; before its verb runs (fn-owner-workflow-pending-waivers), and ACL2 authors
+;;; no event once the pin is gone, so the release happens exactly once
+;;; (books/bp-carry-waiver.lisp fn-bpcw-waiver-releases-exactly-once).
+(defun fnn-bpo-waiver-release (service work-id)
+  (let ((event (fnn-owner-core 'fn-owner-workflow-store-waive work-id)))
+    (unless event
+      (fnn-fault "ACL2 authored no Store release for the waiver of work=~a" work-id))
+    (fnn-owner-retention-commit service event)
+    (fnn-owner-action 'fn-owner-workflow-sync-store-node)))
+
+(defun fnn-bpo-complete-waivers (service)
+  (let ((pending (fnn-owner-core 'fn-owner-workflow-pending-waivers)))
+    (unless (listp pending)
+      (fnn-fault "ACL2 returned a malformed pending-waiver list"))
+    (dolist (work-id pending)
+      (fnn-bpo-waiver-release service work-id)
+      (fnn-out "BP carry recovered waiver release work=~a" work-id))))
+
 (defun fnn-bpo-call-with-owner-journal
     (store-root journal-root writable thunk)
   (let ((service nil) (journal nil) (carry nil))
@@ -26,6 +50,7 @@
               (when (and writable
                          (fnn-store-fenced (fnn-owner-service-store service)))
                 (fnn-indeterminate "BP obligation owner Store is fenced"))
+              (when writable (fnn-bpo-complete-waivers service))
               (let ((*fnn-bpo-carry-journal* carry))
                 (funcall thunk journal service)))))
       (when carry (fnn-app-journal-close carry))
@@ -325,8 +350,9 @@
                     (fnn-bpo-call-with-owner-journal
                      root journal t
                      (lambda (opened service)
-                       (declare (ignore opened service))
-                       (let ((answer (fnn-core-state 'fn-workflow-carry-record verb work reason))
+                       (declare (ignore opened))
+                       (let ((answer (fnn-core-state 'fn-workflow-carry-record verb work reason
+                                                     (sb-posix:geteuid)))
                              (carry *fnn-bpo-carry-journal*))
                          (unless (and (consp answer) (member (first answer) '(:record :refused)))
                            (fnn-fault "ACL2 returned a malformed carry decision"))
@@ -337,6 +363,9 @@
                          (unless (fnn-core 'fn-aj-initializedp (fnn-app-journal-frontier carry))
                            (fnn-app-publish carry (fnn-core 'fn-bpcc-journal-config)))
                          (fnn-app-publish carry (second answer))
+                         ;; The waiver is durable; now its Store release.
+                         (when (eq verb :abandon)
+                           (fnn-bpo-waiver-release service work))
                          (fnn-out "BP carry durable ~(~a~) work=~a" verb work)
                          +fnn-exit-ok+))))))
             (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "carry")
