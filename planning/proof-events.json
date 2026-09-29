@@ -13566,10 +13566,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-onbj-boundp-at-owner-unstage"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-onbj-boundp-at-owner-node-secret"
         },
         {
@@ -13578,7 +13574,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-onbj-boundp-at-owner-outcome"
+          "name": "fn-onbj-arm-acar-outcome"
         },
         {
           "kind": "theorem",
@@ -13630,15 +13626,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-onbj-boundp-at-owner-finish"
+          "name": "fn-onbj-boundp-of-ccar-ocfg-complete"
         },
         {
           "kind": "theorem",
           "name": "fn-onbj-boundp-at-host-article-finish"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-onbj-boundp-at-owner-finish-submission"
         },
         {
           "kind": "theorem",

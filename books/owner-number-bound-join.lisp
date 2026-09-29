@@ -788,6 +788,7 @@
 (defthm fn-onbj-open-okp-is-boundp-when-idle
   (implies (fn-own-store-idlep (fn-own-store o))
            (equal (fn-onb-open-okp o) (fn-onb-boundp o)))
+  :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-own-store-idlep fn-snt-idle-phasep fn-sf-record-phasep)
                                   (fn-onb-open-okp fn-onb-boundp))
            :use ((:instance fn-onb-open-okp-is-boundp-outside-a-transaction)))))
