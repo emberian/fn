@@ -79,7 +79,8 @@ class Row:
 
 
 # The rows.  Ids: M memory, W work per step, S stack, T TLS, C time
-# (classification), D disk.  A row without theorems is measured or open; the
+# (classification), D disk, X closure (what the rows assume of the state
+# they are entered in, and what a refusal leaves: lane closure-theorems).  A row without theorems is measured or open; the
 # prose says which.  A `landing` row cites what another lane is delivering,
 # so the contract states the figure as it will be (heap-bounds-2's brief).
 ROWS: tuple[Row, ...] = (
@@ -256,6 +257,17 @@ ROWS: tuple[Row, ...] = (
         proofs=("PRF-918",),
         records=("planning/evidence/expiry-q11-2026-09-28.md",),
         landing="lane/operations baec98157 (PKT-868, PRF-908: online compaction)"),
+    Row("X1", "a refused request has no effect on the state, per host refusal entry (admission, budget, configuration: by definition); the full-store POST refusal consumes exactly one transaction id, the records, groups and capacity kept, and every reader of ids accounts for it (B10)",
+        theorems=(("books/refusal-effect", "fn-rfx-unserved-prepare-is-unchanged-by-definition"),
+                  ("books/refusal-effect", "fn-rfx-unaffordable-prepare-is-unchanged-by-definition"),
+                  ("books/refusal-effect", "fn-rfx-refused-reconfigure-is-unchanged-by-definition"),
+                  ("books/refusal-effect", "fn-rfx-refused-post-keeps-records"),
+                  ("books/refusal-effect", "fn-rfx-refused-post-keeps-configuration"),
+                  ("books/refusal-effect", "fn-rfx-refused-post-consumes-one-txid"),
+                  ("books/refusal-effect", "fn-rfx-config-record-txid-is-the-node-next-by-definition")),
+        records=("planning/evidence/closure-theorems-2026-09-29.md",)),
+    Row("X2", "the replay dispatcher's alphabet is the writers' alphabet (configuration deltas, store events; the defevent families by construction), read from the source at every make check; and every premise a hosted theorem assumes that no hosted theorem establishes is listed, baselined shrink-only",
+        records=("planning/evidence/closure-theorems-2026-09-29.md",)),
 )
 
 
@@ -507,7 +519,7 @@ def cited_books(root: Path = ROOT) -> list[str]:
 
 def row_ids_in_prose(text: str) -> set[str]:
     prose = text[:text.find(BEGIN)] if BEGIN in text else text
-    return set(re.findall(r"\*\*([MWSTCD]\d+b?)\*\*", prose))
+    return set(re.findall(r"\*\*([MWSTCDX]\d+b?)\*\*", prose))
 
 
 def check(root: Path = ROOT, strict: bool = False, certify: bool = True) -> int:
