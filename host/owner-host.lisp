@@ -30,6 +30,7 @@
 (include-book "../books/owner-config")
 (include-book "../books/state-globals")
 (include-book "../books/owner-retain-state")
+(include-book "../books/owner-obligation-state")
 ; The compression threshold (fn-owner-compress-min-octets; PRF-341).
 (include-book "../books/payload-lz-append")
 ;; RFC 8054 COMPRESS DEFLATE: the inflater the host calls per connection
@@ -337,9 +338,8 @@
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-own-config (fn-owner-core state))))
 
-(defun fn-owner-install-ocfg (oc state)
-  (declare (xargs :stobjs state :guard t))
-  (f-put-global 'fn-owner oc state))
+; fn-owner-install-ocfg is the exact logical state/effects subject in
+; books/owner-obligation-state. Its W9 update never reconstructs a ledger.
 
 (defun fn-owner-replace-core (owner state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
@@ -418,7 +418,7 @@
    ((not (fn-onb-open-okp (fn-ocfg-owner oc)))
     (mv nil :article-numbers-damaged fn-arena fn-cat fn-hist state))
    (t
-      (let* ((state (fn-owner-install-ocfg oc state))
+      (let* ((state (fn-owner-install-open-ocfg oc state))
              ; PRF-289: the carried obligation-id trie for the ledger the
              ; owner opens with (books/post-retain-carried.lisp
              ; fn-prc-refresh of nil; fn-prc-carryp-of-refresh), so the
@@ -4874,7 +4874,7 @@ existing port only after fn-fc has made this connection ready."
          (oc (nth 1 rebuilt))
          (next (fn-orcp-swapped-ocfg (fn-owner-ocfg state) oc))
          (swapped (fn-ocfg-owner next))
-         (state (fn-owner-install-ocfg next state))
+         (state (fn-owner-install-rebuilt-ocfg next (nth 6 rebuilt) state))
          (count (fn-sf-records-count (fn-sn-files (fn-own-store swapped))))
          (state (fn-owner-retain-carry-put (nth 2 rebuilt) state))
          (state (f-put-global 'fn-owner-record-octets (nth 3 rebuilt) state))

@@ -361,3 +361,5 @@ anything a book does not already decide.
 | `fn-vd-` | view-delta | W9 keyed aggregate logical oracle and delta rules |
 | `fn-vdc-` | view-delta-concrete | W9 bounded-key radix aggregate representation |
 | `fn-rov-` | retention-obligation-view | W9 total and independent subject contributions |
+| `fn-oqg-` | obligation-subject-grammar | W9 read-only subject inspection grammar and typed FNLS argument |
+| `fn-oqr-` | obligation-subject-report | W9 exact keyed count/charge report and reconstruction boundary |

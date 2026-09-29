@@ -5642,6 +5642,28 @@
         "tests/test_native_snapshot_bless.py"
       ],
       "implementation_note": "S7a checker implemented; native evidence pending matching union image. S7 running producer remains separate, unfinished."
+    },
+    {
+      "id": "RET-009",
+      "title": "Read-only immutable-subject contribution inspection reports active obligation count and reserved charge without authorizing release or reclamation",
+      "specification": "specs/retention.md#incremental-obligation-views-w9-bounded-pilot",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1052"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "scenario",
+        "measurement"
+      ],
+      "evidence": [
+        "books/obligation-subject-report.lisp",
+        "tests/acl2/obligation-subject-tests.lisp",
+        "tests/test_native_obligation_subject.py"
+      ],
+      "note": "Source integration checkpoint only. Full carried owner relation at every actual writer, representation funding, matching certification/native evidence and matched cost remain open."
     }
   ]
 }

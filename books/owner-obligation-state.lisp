@@ -56,6 +56,8 @@
 
 (defthm fn-owner-installed-ocfg-effect
   (equal (f-get-global 'fn-owner (fn-owner-install-ocfg oc state)) oc))
+(defthm fn-owner-installed-owner-bound
+  (boundp-global 'fn-owner (fn-owner-install-ocfg oc state)))
 
 (defthm fn-owner-installed-view-effect
   (equal (fn-owner-obligation-view (fn-owner-install-ocfg oc state))
@@ -108,6 +110,8 @@
 
 (defthm fn-owner-rebuilt-ocfg-effect
   (equal (f-get-global 'fn-owner (fn-owner-install-rebuilt-ocfg oc view state)) oc))
+(defthm fn-owner-rebuilt-owner-bound
+  (boundp-global 'fn-owner (fn-owner-install-rebuilt-ocfg oc view state)))
 (defthm fn-owner-rebuilt-view-effect
   (equal (fn-owner-obligation-view (fn-owner-install-rebuilt-ocfg oc view state)) view))
 (defthm fn-owner-rebuilt-other-global-effect
@@ -132,6 +136,8 @@
                     (view (fn-rov-build (fn-retain-pins (fn-rov-oc-ledger oc)))))))))
 (defthm fn-owner-open-state-p1
   (implies (state-p1 state) (state-p1 (fn-owner-install-open-ocfg oc state))))
+(defthm fn-owner-open-owner-bound
+  (boundp-global 'fn-owner (fn-owner-install-open-ocfg oc state)))
 
 (in-theory (disable fn-rov-oc-ledger fn-owner-obligation-view
                     fn-owner-obligation-view-put fn-rov-owner-ledger

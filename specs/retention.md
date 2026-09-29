@@ -205,10 +205,28 @@ release record plus the reservation change, rather than searching for a pin.
 The owner-state book names the actual installation function and proves its
 owner/view/global effects; separate cold and rebuilt installations establish
 the correspondence. The status substitution preserves the exact report under
-that correspondence. These boundaries are not yet connected to the host.
+that correspondence. The host now uses these boundaries: cold open constructs once, ordinary installation applies a delta, and online reclaim supplies the rebuilt view from its off-mutex fold. Status reads the cached total at the committed reader view. An unavailable carried view is a named refusal, never a reconstruction fallback.
 
 At this checkpoint these are source definitions with clean REPL evidence, not
-a served implementation claim. Host writer preservation, matching native status
+a served implementation claim. Every actual host writer preservation, matching native status
 and obligation scenarios, charged retained trie paths (including zero entries
 until rebuild), and measured cost remain open. The pilot introduces no general
 dataflow runtime and no irreversible action triggered by a retraction.
+
+RET-009: `operator CONFIG obligations subject SUBJECT` reads the active count
+and reserved charge for one immutable content subject. It uses the existing
+record metadata type (nonempty octet string, currently at most 256 octets),
+with request admission before report work. ACL2 parses and formats the query.
+The exact reply is `subject-hex=HEX obligations=N charge=M` plus LF; hex
+encodes the supplied subject octets unambiguously. An absent subject has zero
+count and charge. The live answer uses one trie lookup; a stopped store uses
+the replayed ledger oracle. FNLS report request kind 3/code 12 carries the
+query. The identity listing remains unchanged. These values are diagnostic:
+release predicates still name and validate an individual obligation, and no
+aggregate authorizes release or reclamation. SCN-1003 covers the composed
+query; native evidence is pending.
+The subject query is one FNLS page and retains no report-cache entry keyed by
+subject. Unsupported continuation/oversize replies are named refusals; the
+request does not grow the owner cache. The underlying existing FNLS framing
+entries remain unguarded :ideal functions; no guard-verified composed framing
+claim is made by this source checkpoint.

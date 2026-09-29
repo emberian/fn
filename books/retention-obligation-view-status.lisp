@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "native-status-columns")
 (include-book "retention-obligation-view")
+(include-book "owner-reader-view")
 
 (defun fn-rov-pins-line (s pins count)
   (declare (xargs :guard t :verify-guards nil))
@@ -72,5 +73,21 @@
                   (fn-nsc-answer-report kind profile oc cache obs min disk fn-arena fn-cat)))
   :hints (("Goal" :in-theory '(fn-rov-answer-report-is-answer-report
                                fn-rov-count-is-pin-count))))
+
+(defthm fn-rov-reader-view-keeps-retention
+  (equal (fn-nls-retention
+          (fn-own-store (fn-ocfg-owner (fn-ocfg-at-reader-view oc readers))))
+         (fn-nls-retention (fn-own-store (fn-ocfg-owner oc))))
+  :hints (("Goal" :in-theory (enable fn-ocfg-at-reader-view))))
+
+(defthm fn-rov-answer-report-at-reader-view-from-corresponding-view
+  (implies (fn-rov-correspondp view
+             (fn-retain-pins (fn-nls-retention (fn-own-store (fn-ocfg-owner oc)))))
+           (equal (fn-rov-answer-report kind profile (fn-ocfg-at-reader-view oc readers)
+                    cache obs min disk (fn-rov-count view) fn-arena fn-cat)
+                  (fn-nsc-answer-report kind profile (fn-ocfg-at-reader-view oc readers)
+                    cache obs min disk fn-arena fn-cat)))
+  :hints (("Goal" :in-theory '(fn-rov-answer-report-from-corresponding-view
+                               fn-rov-reader-view-keeps-retention))))
 
 (in-theory (disable fn-rov-report fn-rov-live-report fn-rov-answer-report fn-rov-pins-line))

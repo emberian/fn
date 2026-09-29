@@ -412,6 +412,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/retention-obligation-view \
 	books/retention-obligation-view-status \
 	books/owner-obligation-state \
+	books/retention-obligation-view-node \
+	books/obligation-subject-grammar \
+	books/obligation-subject-report \
+	tests/acl2/retention-obligation-view-node-tests \
+	tests/acl2/obligation-subject-tests \
 	tests/acl2/retention-obligation-view-tests \
 	tests/acl2/native-live-pages-tests \
 	books/feed-link-backoff \

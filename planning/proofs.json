@@ -17789,6 +17789,37 @@
         "fn-pio-close-waits-for-every-worker"
       ],
       "progress_note": "Folded definitions guard-verified and all 16 forms admitted in clean REPL pio-clean on hbox; teeth evaluated there. Certification and matching native image pending runner union; no pass claimed."
+    },
+    {
+      "id": "PRF-1052",
+      "title": "W9 bounded total and immutable-subject obligation contributions equal reconstruction through actual owner transitions",
+      "statement": "Host/native-live-status-host.lisp fn-native-live-status-host-answer calls fn-rov-answer-report and fn-oqr-live-report over the carried owner obligation view. The pilot must establish and preserve fn-rov-owner-correspondp through cold initialization, actual prepare/prepare-buffer/prepare-identity/finish-synced and paired off-mutex rebuild/swap, and frame every other owner installation. Under correspondence the direct total equals ledger pin count and the keyed report equals the exact fn-vd-oracle-at reconstruction, including charge and exact reply octets. Arrival/release changes one obligation contribution; a duplicate release leaves other holds intact. Concrete radix lookup/update must have bounded actual work and funded cumulative subject paths, collector/coexistence/transient allocation. This is an open composed target: component definitions and conditional boundary lemmas alone do not establish it.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-001",
+        "RET-002",
+        "RET-004",
+        "RET-009"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/view-delta-concrete.lisp",
+        "books/retention-obligation-view.lisp",
+        "books/retention-obligation-view-node.lisp",
+        "books/owner-obligation-state.lisp",
+        "books/owner-reclaim-carry.lisp",
+        "books/retention-obligation-view-status.lisp",
+        "books/obligation-subject-report.lisp",
+        "tests/acl2/retention-obligation-view-tests.lisp",
+        "tests/acl2/retention-obligation-view-node-tests.lisp",
+        "tests/acl2/obligation-subject-tests.lisp",
+        "tests/test_native_obligation_subject.py"
+      ],
+      "progress_note": "Clean narrow hbox REPL source evidence for core, node completion/recover and report/codec/operator boundaries, with full antecedent and mutation/corrupted-state teeth. No committed certification manifest or matching native execution. Every actual owner writer, carried funding invariant and measured real-caller fast path remain open; no W9 completion claim."
     }
   ]
 }
