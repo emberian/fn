@@ -13179,109 +13179,6 @@
       ]
     },
     {
-      "id": "PRF-922",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-bch-unpack-of-pack"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bch-pack-of-append"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bch-digits-onto-is-digits"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bch-unpack-is-digits"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bch-octets-of-push-list"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bch-wf-is-of-octets"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bch-body-okp-line"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bch-body-okp-whole-line"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bch-join-of-terminator-lines"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bchs-push-span-is-push-list"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wire-article-event-is-the-held-body"
-        }
-      ]
-    },
-    {
-      "id": "PRF-928",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-psub-unpack-of-pack-octets"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-psub-unpack-of-pack-groups"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-psub-unpack-of-pack-sub"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-psub-packed-octets-len-is-len"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-own-take-installs-the-enqueued-submission"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-own-take-installs-the-queued-submission-whatever-it-carries"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-heap-article-slots-are-held"
-        }
-      ]
-    },
-    {
-      "id": "PRF-929",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-wire-statep-article-holds-at-most-the-body-limit"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wire-feed-byte-preserves-statep"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tb-served-run-holds-at-most-the-body-limit-mid-article"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wire-scan-is-span-fold"
-        }
-      ]
-    },
-    {
       "id": "PRF-906",
       "events": [
         {
@@ -13675,6 +13572,262 @@
       ]
     },
     {
+      "id": "PRF-942",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-pub-admission-decides-by-what-is-present"
+        }
+      ]
+    },
+    {
+      "id": "PRF-943",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-authorized-injected-carried-submission-event-decides"
+        }
+      ]
+    },
+    {
+      "id": "PRF-944",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-receive-keeps-the-three-outcomes-distinct"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-receive-of-host-send-hands-over-the-adu"
+        }
+      ]
+    },
+    {
+      "id": "PRF-951",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otb-answer-early-answers-each-untold-member-once"
+        }
+      ]
+    },
+    {
+      "id": "PRF-952",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-read-refusal-text-refuses-exactly-what-does-not-expand"
+        }
+      ]
+    },
+    {
+      "id": "PRF-953",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgdm-refusal-text-refuses-exactly-a-break-or-damage"
+        }
+      ]
+    },
+    {
+      "id": "PRF-954",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-smid-durability-warning-warns-exactly-when-the-mount-is-unsafe"
+        }
+      ]
+    },
+    {
+      "id": "PRF-955",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-anchor-rp-outcome-is-terminal-only-after-the-directory-barrier"
+        }
+      ]
+    },
+    {
+      "id": "PRF-956",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct"
+        }
+      ]
+    },
+    {
+      "id": "PRF-961",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-store-publication-admissibility-admits-exactly-within-the-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-store-profile-read-bound-covers-every-admitted-publication"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge"
+        }
+      ]
+    },
+    {
+      "id": "PRF-962",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-spo-refusal-text-refuses-exactly-the-foreign-format"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gen-refusal-text-refuses-exactly-a-refused-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-report-names-the-format-exactly-for-a-valid-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-config-frame-for-profile-is-what-the-open-opens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-logp-holds-exactly-for-a-valid-profile"
+        }
+      ]
+    },
+    {
+      "id": "PRF-983",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling"
+        }
+      ]
+    },
+    {
+      "id": "PRF-984",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-authored-wire-name-names-the-reserved-sequence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-authored-wire-authorize-carries-reservation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-922",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bch-unpack-of-pack"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-pack-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-digits-onto-is-digits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-unpack-is-digits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-octets-of-push-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-wf-is-of-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-body-okp-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-body-okp-whole-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-join-of-terminator-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bchs-push-span-is-push-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-article-event-is-the-held-body"
+        }
+      ]
+    },
+    {
+      "id": "PRF-928",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-psub-unpack-of-pack-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psub-unpack-of-pack-groups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psub-unpack-of-pack-sub"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psub-packed-octets-len-is-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-take-installs-the-enqueued-submission"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-take-installs-the-queued-submission-whatever-it-carries"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-article-slots-are-held"
+        }
+      ]
+    },
+    {
+      "id": "PRF-929",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-wire-statep-article-holds-at-most-the-body-limit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-feed-byte-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tb-served-run-holds-at-most-the-body-limit-mid-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-scan-is-span-fold"
+        }
+      ]
+    },
+    {
       "id": "PRF-927",
       "events": [
         {
@@ -13942,95 +14095,6 @@
         {
           "kind": "theorem",
           "name": "fn-lgs-open-plan-scan-ignores-covered"
-        }
-      ]
-    },
-    {
-      "id": "PRF-942",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-bs-init-pub-admission-decides-by-what-is-present"
-        }
-      ]
-    },
-    {
-      "id": "PRF-943",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-hsig-authorized-injected-carried-submission-event-decides"
-        }
-      ]
-    },
-    {
-      "id": "PRF-944",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-host-receive-keeps-the-three-outcomes-distinct"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-host-receive-of-host-send-hands-over-the-adu"
-        }
-      ]
-    },
-    {
-      "id": "PRF-951",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-otb-answer-early-answers-each-untold-member-once"
-        }
-      ]
-    },
-    {
-      "id": "PRF-952",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lzr-read-refusal-text-refuses-exactly-what-does-not-expand"
-        }
-      ]
-    },
-    {
-      "id": "PRF-953",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-lgdm-refusal-text-refuses-exactly-a-break-or-damage"
-        }
-      ]
-    },
-    {
-      "id": "PRF-954",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-smid-durability-warning-warns-exactly-when-the-mount-is-unsafe"
-        }
-      ]
-    },
-    {
-      "id": "PRF-955",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-anchor-rp-outcome-is-terminal-only-after-the-directory-barrier"
-        }
-      ]
-    },
-    {
-      "id": "PRF-956",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct"
         }
       ]
     },
@@ -14487,6 +14551,116 @@
       ]
     },
     {
+      "id": "PRF-1006",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-contact-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-init"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-ack"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-refuse"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-term"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-reject"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-keepalive"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-accepted-message-is-canonical"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-accepted-contact-is-canonical"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1007",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-evidence-authorize-admits-exactly-the-locked-next-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-evidence-successor-does-not-reuse-identity"
+        }
+      ]
+    },
+    {
+      "id": "PRF-985",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-lifecycle-publication-authorize-admits-exactly-the-pending-persist"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1013",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-publication-authorize-admits-exactly-the-issued-pending-delivery"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-delivery-record-epoch-and-op-are-frame-nats"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1014",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-delete-publication-authorize-admits-exactly-the-issued-pending-deletion"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-delete-record-epoch-and-op-are-frame-nats"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-nth-is-nth-on-true-lists"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1015",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-record-at-epoch-and-op-are-frame-nats"
+        }
+      ]
+    },
+    {
       "id": "PRF-959",
       "events": [
         {
@@ -14883,48 +15057,6 @@
       ]
     },
     {
-      "id": "PRF-961",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-store-publication-admissibility-admits-exactly-within-the-profile"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-store-profile-read-bound-covers-every-admitted-publication"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge"
-        }
-      ]
-    },
-    {
-      "id": "PRF-962",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-spo-refusal-text-refuses-exactly-the-foreign-format"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-gen-refusal-text-refuses-exactly-a-refused-open"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-profile-report-names-the-format-exactly-for-a-valid-profile"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-config-frame-for-profile-is-what-the-open-opens"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-profile-logp-holds-exactly-for-a-valid-profile"
-        }
-      ]
-    },
-    {
       "id": "PRF-964",
       "events": [
         {
@@ -14952,28 +15084,6 @@
         {
           "kind": "theorem",
           "name": "fn-ocpr-line-names-the-reason-exactly-when-refused"
-        }
-      ]
-    },
-    {
-      "id": "PRF-983",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling"
-        }
-      ]
-    },
-    {
-      "id": "PRF-984",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-host-authored-wire-name-names-the-reserved-sequence"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-authored-wire-authorize-carries-reservation"
         }
       ]
     },
