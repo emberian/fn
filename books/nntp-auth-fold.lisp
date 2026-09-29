@@ -282,6 +282,7 @@
          (fn-zar-command session archive index args fn-arena))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-zar-command fn-nntp-msgid-retrieval-indexed fn-post-offeredp
+                            fn-nntp-msgid-retrieval
                             fn-nntp-reply-effect fn-nntp-article-response)
                            (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets fn-zar-decide
                             fn-zar-initial fn-zdn-body-lines fn-zar-line-okp
@@ -304,6 +305,12 @@
                  fn-nntp-archive-command fn-nntp-keywordp
                  fn-nntp-stuff-lines fn-nntp-crlf)))))
 (local (in-theory (disable (tau-system))))
+
+;; XFN-ZARTICLE's row answers a withdrawn article as ARTICLE does (NNT-055).
+(defthm fn-auth-fold-withdrawn-reply-has-no-offer
+  (not (fn-post-offeredp (fn-nntp-result-effects (fn-nntp-withdrawn-reply session flag))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-withdrawn-reply fn-post-offeredp fn-nntp-reply-effect)
+                                  (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets)))))
 
 (defthm fn-auth-fold-command-pinned-offers-only-post
   (implies (not (fn-nntp-keywordp (car tokens) "POST"))
