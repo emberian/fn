@@ -22,10 +22,23 @@
                     (:free (y) (adt-le 5 y)) (:free (y) (adt-le 4 y)) (:free (y) (adt-le 3 y))
                     (:free (y) (adt-le 2 y)) (:free (y) (adt-le 1 y)) (:free (y) (adt-le 0 y))))))
 
+; A loop twin (depth_check: N is a page image's words, store data):
+; (mbe :logic <the recursion> :exec <a tail-recursive loop>), with the lemma
+; equating them.
+(defun fn-hp-pack8-loop (n b rev)
+  (declare (xargs :guard (and (natp n) (true-listp b) (true-listp rev))))
+  (if (zp n) (revappend rev nil) (fn-hp-pack8-loop (1- n) (nthcdr 8 b) (cons (adt-unle 8 b) rev))))
+
 (defun fn-hp-pack8 (n b)
   ; the first 8N octets of B as N little-endian words
-  (declare (xargs :guard (and (natp n) (true-listp b))))
-  (if (zp n) nil (cons (adt-unle 8 b) (fn-hp-pack8 (1- n) (nthcdr 8 b)))))
+  (declare (xargs :guard (and (natp n) (true-listp b)) :verify-guards nil))
+  (mbe :logic (if (zp n) nil (cons (adt-unle 8 b) (fn-hp-pack8 (1- n) (nthcdr 8 b))))
+       :exec (fn-hp-pack8-loop n b nil)))
+
+(defthm fn-hp-pack8-loop-is-pack8
+  (equal (fn-hp-pack8-loop n b rev) (revappend rev (fn-hp-pack8 n b))))
+
+(verify-guards fn-hp-pack8)
 
 (defthm fn-hp-len-pack8 (equal (len (fn-hp-pack8 n b)) (nfix n)))
 

@@ -28,6 +28,7 @@ from tests import test_native_checkpoint_auto as auto
 from tests.native_harness import EXIT_OK
 
 STOPPED = re.compile(rb"^stopped checkpoint=(none|\d+) journal-octets=(\d+) transactions-at-most=(\d+)$", re.M)
+EXPORT_DONE = re.compile(rb"EXPORT done archive=\S+ records=(\d+) configuration=(\d+) ms=(\d+)")
 TRANSACTIONS = re.compile(rb"^transactions=(\d+) ", re.M)
 
 
@@ -94,6 +95,57 @@ class MaintenanceLiveTests(auto.AutoCheckpointFixture):
         self.assertIsNotNone(line, stopped.stdout)
         self.assertEqual(line.group(1), b"5")
         self.assertGreaterEqual(int(line.group(3)), 5)
+
+    def test_store_export_answers_on_the_running_owner_and_the_archive_imports(self):
+        """Row S3b (lane operability-7; SCN-210): `store export DIR' on the
+        running owner is the owner's own export of the captured history,
+        written while it serves (host/native/admin.lisp
+        fnn-owner-export-request; books/owner-export-request.lisp): the
+        request's line, then the outcome's; the archive imports into a fresh
+        store with the captured count; a second export into the same DIR is
+        refused by name (archive-exists); `store export --status' names the
+        outcome; never `store is already locked'."""
+        self.init_development()
+        owner = self.node.start()
+        self.ids = self.post_batch(0, 4)
+        archive = self.root / "live-archive"
+        exported = self.op("store", "export", str(archive))
+        self.assertEqual(exported.returncode, EXIT_OK,
+                         exported.stdout.decode() + exported.stderr.decode())
+        self.assertIn(b"export requested archive=" + str(archive).encode("ascii"), exported.stdout)
+        self.assertIn(b"exported archive=" + str(archive).encode("ascii") + b": complete",
+                      exported.stdout)
+        self.assertNotIn(b"already locked", exported.stdout + exported.stderr)
+        self.assertTrue((archive / "MANIFEST").is_file(), sorted(archive.iterdir()))
+        done = self.owner_line(owner, EXPORT_DONE, deadline=30.0, nudge=False)
+        self.assertIsNotNone(done, "the owner logged no EXPORT done line")
+        self.assertEqual(int(done.group(1)), 4)
+        # `--status' after the outcome: done, by name; serving continued.
+        status = self.op("store", "export", "--status")
+        self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
+        self.assertIn(b"exported archive=" + str(archive).encode("ascii"), status.stdout)
+        self.ids += self.post_batch(4, 2)
+        # The same DIR again: refused by name, nothing written over it.
+        again = self.op("store", "export", str(archive))
+        self.assertEqual(again.returncode, 1, again.stdout.decode() + again.stderr.decode())
+        self.assertIn(b"export refused reason=archive-exists", again.stdout)
+        self.node.stop(process=owner)
+        # The archive is a complete export of the captured four: it imports
+        # into a fresh store and that store replays exactly them.
+        fresh = self.root / "imported-store"
+        imported = self.node.invoke("store", str(fresh), "import", str(archive))
+        self.assertEqual(imported.returncode, EXIT_OK,
+                         imported.stdout.decode() + imported.stderr.decode())
+        self.assertIn(b"imported records=4 ", imported.stdout)
+        for message_id in self.ids[:4]:
+            found = self.node.invoke("store", str(fresh), "inspect", message_id)
+            self.assertEqual(found.returncode, EXIT_OK, found.stdout.decode())
+        absent = self.node.invoke("store", str(fresh), "inspect", self.ids[4])
+        self.assertEqual(absent.returncode, 1, absent.stdout.decode())
+        # No owner: the status verb refuses by name.
+        offline = self.op("store", "export", "--status")
+        self.assertEqual(offline.returncode, 1, offline.stdout.decode())
+        self.assertIn(b"export status refused reason=no-owner", offline.stdout)
 
     def test_inspect_group_lists_the_memberships_live_and_offline(self):
         """Row S3d (lane operability-5): `store inspect --group GROUP` prints

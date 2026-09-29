@@ -8,9 +8,12 @@
 # libexec/fn/ (launcher, core, SBCL runtime, the bundled libraries,
 # source-revision), share/fn/ (the service templates, native-artifacts.txt)
 # and install.sh, the installer a release carries (packaging/install.sh).
-# It refuses a PREFIX that exists and is not empty: an installation is one
-# directory, never a versioned sibling of another, and a reinstall removes
-# the old one first (D34: stop, export, remove, install, import, start).
+# It refuses a PREFIX that exists and is not empty: a stage is one release
+# in one directory.  On a machine, install.sh (the file this stages) puts
+# each release at PREFIX/releases/VERSION+REV12 and points PREFIX/current at
+# the one that runs (`--upgrade` installs the next beside it, `--rollback`
+# switches back; docs/install.md "Upgrading").  A release is never
+# translated: a store of another format is refused by name (D34, D38).
 # packaging/release-tarball.sh stages every release through this script.
 set -eu
 
@@ -167,10 +170,16 @@ if [ "$frozen" = yes ]; then
 else
   cp -p "$mldsa" "$deflate" "$blake3" "$libdir/lib/"
 
-  sed -e "s|^export SBCL_HOME='[^']*'|export SBCL_HOME='$prefix/libexec/fn/runtime/sbcl-home/'|" \
-      -e "s|^exec \"[^\"]*\"|exec \"$prefix/libexec/fn/runtime/sbcl\"|" \
-      -e "s|--core \"[^\"]*\"|--core \"$prefix/libexec/fn/fn-host.core\"|" \
+  # Self-locating, like the frozen launcher (packaging/freeze-native-image.sh
+  # v2): a release lives wherever install.sh puts it (PREFIX/releases/NAME,
+  # reached through PREFIX/current), so no path of the staging prefix may
+  # be written into it.
+  sed -e 's|^export SBCL_HOME=.*|here=$(CDPATH= cd -- "$(dirname -- "$0")" \&\& pwd); export SBCL_HOME="$here/runtime/sbcl-home/"|' \
+      -e 's|^exec "[^"]*"|exec "$here/runtime/sbcl"|' \
+      -e 's|--core "[^"]*"|--core "$here/fn-host.core"|' \
       "$image" > "$libdir/fn-host"
+  grep -q '^here=' "$libdir/fn-host" && grep -q '^exec "\$here/runtime/sbcl"' "$libdir/fn-host" || {
+    echo "install-native: the image launcher has no SBCL_HOME/exec lines to relocate: $image" >&2; exit 4; }
 fi
 chmod 0755 "$libdir/fn-host"
 install -m 0644 "$core" "$libdir/fn-host.core"

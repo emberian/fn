@@ -1013,6 +1013,21 @@
              (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest words)))))
         (fn-native-admin-result :accepted nil :request-inspect nil 0 nil
                                 (fn-ncfg-nth 2 words)))
+       ; Row S3b (lane operability-7): what `store export DIR' sends a
+       ; running owner (host/native/operator.lisp
+       ; fnn-operator-execute-export-live): a request for its own export of
+       ; the captured history into DIR (the operator's grammar admitted an
+       ; absolute path, fn-nop-archive-pathp), and the status poll that
+       ; follows it (books/owner-export-request.lisp fn-oex-request-word,
+       ; fn-oex-status-word).  No configuration record.
+       ((and (equal (fn-ncfg-first words) "export")
+             (equal (fn-ncfg-second words) "request")
+             (stringp (fn-ncfg-nth 2 words))
+             (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest words)))))
+        (fn-native-admin-result :accepted nil :request-export nil 0 nil
+                                (fn-ncfg-nth 2 words)))
+       ((equal words '("export" "status"))
+        (fn-native-admin-result :accepted nil :request-export-status nil 0 nil nil))
        ; Q16: what `store reclaim' sends a running owner
        ; (host/native/operator.lisp fnn-operator-execute-store-action): a
        ; request for its reclaim pass (books/owner-reclaim.lisp), no
@@ -1032,7 +1047,8 @@
   (and (equal (fn-native-admin-result-status result) :accepted)
        (member-equal (fn-native-admin-result-kind result)
                      '(:request-compaction :request-inspect :request-reclaim
-                       :request-reclaim-recorded :request-reclaim-dry-run))
+                       :request-reclaim-recorded :request-reclaim-dry-run
+                       :request-export :request-export-status))
        t))
 
 ; Row S3: the Message-ID an inspect request carries (its value field), or nil.
@@ -1043,8 +1059,22 @@
        (stringp (fn-native-admin-result-value result))
        (fn-native-admin-result-value result)))
 
+; Row S3b: the archive directory an export request carries (its value
+; field), or nil; and whether the request is the export status poll.
+(defun fn-native-admin-result-export-dir (result)
+  (declare (xargs :guard t))
+  (and (fn-native-admin-result-owner-requestp result)
+       (equal (fn-native-admin-result-kind result) :request-export)
+       (stringp (fn-native-admin-result-value result))
+       (fn-native-admin-result-value result)))
+
+(defun fn-native-admin-result-export-statusp (result)
+  (declare (xargs :guard t))
+  (and (fn-native-admin-result-owner-requestp result)
+       (equal (fn-native-admin-result-kind result) :request-export-status)))
+
 ; Q16: the reclaim pass's mode an accepted reclaim request names, or nil
-; (the compaction and inspect requests).
+; (the compaction, inspect and export requests).
 (defun fn-native-admin-result-reclaim-mode (result)
   (declare (xargs :guard t))
   (and (fn-native-admin-result-owner-requestp result)

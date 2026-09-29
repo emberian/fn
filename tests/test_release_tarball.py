@@ -182,29 +182,57 @@ class ReleaseTarballTests(unittest.TestCase):
         self.assertIn("libexec/fn/lib/libfn-blake3.so", elves)
         self.assertEqual(above, [])
 
-    def install(self, prefix: Path, node: Path) -> subprocess.CompletedProcess:
+    def install(self, prefix: Path, node: Path, *flags: str) -> subprocess.CompletedProcess:
         return subprocess.run(["sh", str(self.top / "install.sh"), "--prefix", str(prefix),
-                               "--node", str(node), "--no-service"], env=CLEAN_ENV,
+                               "--node", str(node), "--no-service", *flags], env=CLEAN_ENV,
                               capture_output=True, text=True, timeout=600)
 
-    def test_install_is_one_directory(self):
+    def release_name(self) -> str:
+        """VERSION+REV from `bin/fn --version` (`fn VERSION (REV)`): the
+        installed release's directory under PREFIX/releases."""
+        printed = subprocess.run([str(self.top / "bin/fn"), "--version"], env=CLEAN_ENV,
+                                 capture_output=True, text=True, timeout=600).stdout.split()
+        self.assertEqual(printed[:1], ["fn"], printed)
+        return "{}+{}".format(printed[1], printed[2].strip("()"))
+
+    def test_install_makes_the_releases_layout_and_refuses_the_rest_by_name(self):
         with tempfile.TemporaryDirectory() as tmp:
             prefix, node = Path(tmp) / "opt/fn", Path(tmp) / "node"
             first = self.install(prefix, node)
             self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
-            self.assertTrue((prefix / "bin/fn").is_file())
+            name = self.release_name()
+            self.assertTrue((prefix / "releases" / name / "bin/fn").is_file())
+            self.assertEqual(os.readlink(prefix / "current"), "releases/" + name)
+            self.assertFalse((prefix / "previous").exists())
             if platform.system() == "OpenBSD":
                 # rc.d(8) names the program and its flags apart
-                # (share/fn/rc.d/fn.rc.in).
+                # (share/fn/rc.d/fn.rc.in); the daemon runs through current.
                 rc = (node / "fn.rc").read_text()
-                self.assertIn(f'daemon="{prefix}/bin/fn"', rc)
+                self.assertIn(f'daemon="{prefix}/current/bin/fn"', rc)
                 self.assertIn(f'daemon_flags="operator {node}/fn.toml run"', rc)
             else:
                 unit = node / "fn.service"
-                self.assertIn(f"{prefix}/bin/fn operator {node}/fn.toml run", unit.read_text())
+                self.assertIn(f"{prefix}/current/bin/fn operator {node}/fn.toml run",
+                              unit.read_text())
+            # The same release again: refused by name (a node moves to a
+            # release by --upgrade); as an upgrade: already installed; a
+            # rollback with nothing before it: refused by name.
             again = self.install(prefix, node)
-            self.assertEqual(again.returncode, 4)
-            self.assertIn("an installation is one directory", again.stderr)
+            self.assertEqual(again.returncode, 4, again.stdout + again.stderr)
+            self.assertIn("is already installed at", again.stderr)
+            (node / "fn.toml").write_text("")
+            upgrade = self.install(prefix, node, "--upgrade")
+            self.assertEqual(upgrade.returncode, 4, upgrade.stdout + upgrade.stderr)
+            self.assertIn("is already installed at", upgrade.stderr)
+            rollback = self.install(prefix, node, "--rollback")
+            self.assertEqual(rollback.returncode, 4, rollback.stdout + rollback.stderr)
+            self.assertIn("nothing to roll back to", rollback.stderr)
+            # A prefix from before the layout (no releases/): refused by name.
+            old = Path(tmp) / "opt/old"
+            (old / "bin").mkdir(parents=True)
+            before = self.install(old, node)
+            self.assertEqual(before.returncode, 4, before.stdout + before.stderr)
+            self.assertIn("holds no releases/", before.stderr)
 
     def test_install_refuses_a_store_of_another_format(self):
         with tempfile.TemporaryDirectory() as tmp:

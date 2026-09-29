@@ -71,63 +71,51 @@
 ; of the slot: the context's own index is already fast, so that is a table
 ; probe; a context built another way (a witness's literal list) is made fast
 ; there rather than breaking on ACL2's slow-alist discipline.
+;
+; It is built in ONE forward pass in history order, tail-recursively (a
+; 25,000-article Store exhausted the control stack through a consing
+; recursion): each article is bound unless an earlier one already binds its
+; Message-ID (one hashed probe), so the first article naming a Message-ID is
+; the binding `hons-get' finds.  No reversed copy of the article list is
+; made (the earlier build reversed the whole list first so that the last
+; `hons-acons' was the first article).
+(defun fn-rclp-index-into (xs acc)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (let ((m (fn-article-msgid (car xs))))
+        (fn-rclp-index-into (cdr xs)
+                            (if (hons-get m acc) acc (hons-acons m (car xs) acc))))
+    acc))
+
 (defun fn-rclp-article-index (articles)
   (declare (xargs :guard t))
-  (if (consp articles)
-      (cons (cons (fn-article-msgid (car articles)) (car articles))
-            (fn-rclp-article-index (cdr articles)))
-    nil))
+  (fn-rclp-index-into articles nil))
+
+; One step's correspondence: after the fold over XS from ACC, a Message-ID
+; bound in ACC keeps its binding, and any other is bound to the first
+; article of XS naming it (nil when none does).
+(defthm fn-rclp-index-into-finds
+  (equal (cdr (hons-assoc-equal msgid (fn-rclp-index-into xs acc)))
+         (if (hons-assoc-equal msgid acc)
+             (cdr (hons-assoc-equal msgid acc))
+           (fn-find-article msgid xs)))
+  :hints (("Goal" :induct (fn-rclp-index-into xs acc))))
 
 (defthm fn-rclp-article-index-finds-the-article
   (equal (cdr (hons-assoc-equal msgid (fn-rclp-article-index articles)))
          (fn-find-article msgid articles)))
 
-; The index as the host builds it: in a loop (a 25,000-article Store
-; exhausted the control stack through the recursion above), each article
-; hons-acons'd onto the front in reverse history order, so the first
-; article naming a Message-ID is the binding `hons-get' finds.  It IS the
-; index (`fn-rclp-index-built-is-the-index').
-(defun fn-rclp-index-into (xs acc)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (fn-rclp-index-into (cdr xs)
-                          (hons-acons (fn-article-msgid (car xs)) (car xs) acc))
-    acc))
+(in-theory (disable fn-rclp-article-index))
 
-(defun fn-rclp-reversed (xs acc)
-  (declare (xargs :guard t))
-  (if (consp xs) (fn-rclp-reversed (cdr xs) (cons (car xs) acc)) acc))
-
+; The index as the host builds it (`fn-rclp-ctx-expiring').
 (defun fn-rclp-index-built (articles)
   (declare (xargs :guard t))
-  (fn-rclp-index-into (fn-rclp-reversed articles nil) nil))
+  (fn-rclp-index-into articles nil))
 
-(local
- (defthm fn-rclp-reversed-is-revappend
-   (equal (fn-rclp-reversed xs acc) (revappend xs acc))))
-
-(local
- (defthm fn-rclp-index-into-is-revappend
-   (equal (fn-rclp-index-into xs acc)
-          (revappend (fn-rclp-article-index xs) acc))))
-
-(local
- (defthm fn-rclp-article-index-of-append
-   (equal (fn-rclp-article-index (append a b))
-          (append (fn-rclp-article-index a) (fn-rclp-article-index b)))))
-
-(local
- (defthm fn-rclp-article-index-of-rev
-   (equal (fn-rclp-article-index (rev xs)) (rev (fn-rclp-article-index xs)))))
-
-(local
- (defthm fn-rclp-article-index-true-listp
-   (true-listp (fn-rclp-article-index xs))
-   :rule-classes :type-prescription))
-
-(defthm fn-rclp-index-built-is-the-index
+(defthm fn-rclp-index-built-is-the-index-by-definition
   (equal (fn-rclp-index-built articles)
-         (fn-rclp-article-index articles)))
+         (fn-rclp-article-index articles))
+  :hints (("Goal" :in-theory (enable fn-rclp-article-index))))
 
 ; CTX is (RULE NOW HOLDERS VERDICTS ARTICLES EXPIRED INDEX) of the opened
 ; store: EXPIRED the Message-IDs the operator's expiry policy expires at NOW

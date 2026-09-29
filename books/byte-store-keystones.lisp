@@ -488,3 +488,46 @@
                                               outcomes groups capacity)))
                  (:instance fn-bs-crash-image-reopens (bs (car pair))))
            :in-theory (theory 'minimal-theory))))
+
+; The names the byte run unlinks are the sweep's.  fn-sn-sweep-round decides
+; over octet names (the host's observation, io.lisp fnn-bridge-sweep-round:
+; each name's octets); the byte model names files by strings.  Each removal
+; the round returns is unlinked in :staging by its byte name
+; (fn-bs-octets-name), and that name gives the removal back
+; (fn-bs-octets-name-inverts): the model removes the file the sweep chose,
+; and so the cuts of fn-bs-sweep-round-keeps-every-cut-reopenable include
+; the ones after a real unlink (recovery-stage-unlinked).  Before lane
+; online-reclaim-10 the octet name went to the byte model unconverted and
+; every unlink answered :enoent (assurance-hygiene-6, row B29).
+(local
+ (defthm fn-bs-octet-list-listp-member
+   (implies (and (fn-octet-list-listp xs) (member-equal x xs))
+            (fn-cbor-octet-listp x))
+   :hints (("Goal" :in-theory (enable fn-octet-list-listp)))))
+
+(local
+ (defthm fn-bs-recover-sweep-program-unlinks-member
+   (implies (member-equal name names)
+            (member-equal (list :unlink :staging (fn-bs-octets-name name))
+                          (fn-bs-recover-sweep-program names)))
+   :hints (("Goal" :induct (fn-bs-recover-sweep-program names)
+                   :in-theory (e/d (fn-bs-recover-sweep-program
+                                    fn-bs-recover-stage-cleanup-program)
+                                   (fn-bs-octets-name))))))
+
+; KEYSTONE.  Host subject: fn-sn-sweep-round (host/store-node-host.lisp
+; fn-store-sn-sweep-round, called by io.lisp fnn-bridge-sweep-round for
+; fnn-sweep-staging).
+(defthm fn-bs-sweep-round-unlinks-each-removal-by-its-name
+  (implies (and (fn-octet-list-listp observed)
+                (member-equal name (cadr (fn-sn-sweep-round s observed overp held))))
+           (and (member-equal (list :unlink :staging (fn-bs-octets-name name))
+                              (fn-bs-recover-sweep-program
+                               (cadr (fn-sn-sweep-round s observed overp held))))
+                (fn-bs-namep (fn-bs-octets-name name))
+                (equal (fn-record-string-octets (fn-bs-octets-name name)) name)))
+  :hints (("Goal"
+           :use ((:instance fn-sn-sweep-round-removes-only-unheld-staging-names)
+                 (:instance fn-bs-octet-list-listp-member (xs observed) (x name)))
+           :in-theory (disable fn-sn-sweep-round fn-sn-sweep-round-removes-only-unheld-staging-names
+                               fn-bs-octet-list-listp-member fn-bs-octets-name))))

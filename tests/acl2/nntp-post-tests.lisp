@@ -192,6 +192,24 @@
                      (fn-tp-line "441 posting failed; the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)")))
 (assert-event (equal (fn-tp-outcome-line :article-numbers-exhausted)
                      (fn-tp-line "441 posting failed; a group this article is posted to has no article number left (RFC 3977 section 6 ends at 2147483647), nothing was stored (article-numbers-exhausted)")))
+(assert-event (fn-post-store-refusalp :mpx-saturated))
+(assert-event (equal (fn-tp-outcome-line :mpx-saturated)
+                     (fn-tp-line "441 posting failed; the keyed Message-ID index cannot place this article, nothing was stored (mpx-saturated); the node's operator must rebuild the index")))
+(assert-event (not (equal (fn-tp-outcome-line :mpx-saturated)
+                          (fn-tp-outcome-line :refused))))
+; Complete positive antecedents/conclusions for the two existing refusal
+; keystones at the newly admitted word, including the live POST session.
+(assert-event
+ (and (fn-post-sessionp (fn-post-result-session *fn-tp-r2*))
+      (fn-post-store-refusalp :mpx-saturated)
+      (not (equal (fn-tp-outcome-line :mpx-saturated)
+                  (fn-tp-outcome-line :uncertain)))))
+(assert-event
+ (and (fn-post-sessionp (fn-post-result-session *fn-tp-r2*))
+      (fn-post-store-refusalp :mpx-saturated)
+      (not (equal :refused :mpx-saturated))
+      (not (equal (fn-tp-outcome-line :refused)
+                  (fn-tp-outcome-line :mpx-saturated)))))
 (assert-event (equal (fn-tp-outcome-line :storage-failed)
                      (fn-tp-line "441 posting failed; the store could not write the article, nothing was stored")))
 ; A word that is no refusal kind is uncertain, never a refusal.

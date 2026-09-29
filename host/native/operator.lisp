@@ -554,12 +554,27 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
                        (fnn-command-rebind-filesystem
                         root
                         (fnn-core 'fn-native-operator-host-result-rebind-policy result)))
+                      ;; Row S3b: with an owner, ACL2's route answers
+                      ;; (fn-omr-route): the running owner writes the
+                      ;; archive while serving (fnn-operator-execute-export-live);
+                      ;; the offline export runs only when no owner holds
+                      ;; the store.
                       (:export
-                       (fnn-command-store-export
-                        root
-                        (fnn-octets-string
-                         (fnn-core 'fn-native-operator-host-result-archive-path-octets
-                                   result))))
+                       (let ((dir (fnn-octets-string
+                                   (fnn-core 'fn-native-operator-host-result-archive-path-octets
+                                             result))))
+                         (case (fnn-operator-maintenance-route result root)
+                           (:owner (fnn-operator-execute-export-live result dir))
+                           (:held (fnn-out "~a" (fnn-core 'fn-omr-held-line "export"))
+                                  +fnn-exit-refused+)
+                           (t (fnn-command-store-export root dir)))))
+                      (:export-status
+                       (case (fnn-operator-maintenance-route result root)
+                         (:owner (fnn-operator-execute-export-status result))
+                         (:held (fnn-out "~a" (fnn-core 'fn-omr-held-line "export"))
+                                +fnn-exit-refused+)
+                         (t (fnn-out "~a" (fnn-core 'fn-oex-status-no-owner-line))
+                            +fnn-exit-refused+)))
                       (:import
                        (fnn-command-store-import
                         root
@@ -802,6 +817,76 @@ owner's status), refused by name on a held lock (fn-omr-recover-line)."
          root (fnn-octets (fnn-core 'fn-omr-control-path-octets result)) :status result)
       +fnn-exit-refused+)))
 
+(defun fnn-operator-export-exchange (control-path argv)
+  "Row S3b: one export exchange with the live owner, (values WORD LINE):
+WORD read back from the reply's octets by ACL2 (fn-oex-word-of-octets,
+fn-oex-word-reads-back; nil for octets this release does not know), LINE
+the owner's sentence (kind 23), or (values :uncertain DETAIL) when the
+answer is neither accepted nor refused (the transport)."
+  (multiple-value-bind (status word line) (fnn-control-admin control-path argv)
+    (if (not (member status '(:accepted :refused)))
+        (values :uncertain
+                (if (fnn-octet-list-p word) (fnn-octets-string (fnn-octets word)) status))
+      (values (fnn-core 'fn-oex-word-of-octets (and (fnn-octet-list-p word) word))
+              (and (fnn-octet-list-p line) (consp line)
+                   (fnn-octets-string (fnn-octets line)))))))
+
+(defun fnn-operator-export-words (&rest words)
+  (mapcar (lambda (word) (fnn-core 'fn-record-string-octets word)) words))
+
+(defun fnn-operator-execute-export-live (result dir)
+  "`store export DIR' on a running owner: the request `export request DIR'
+(host/native/admin.lisp fnn-owner-export-request), its line printed as the
+owner sent it (KEYSTONE fn-native-control-printed-line-is-the-decisions),
+then `export status' every 250 ms until the word is no longer :in-flight
+(fn-oex-in-flight-is-the-status-while-writing) and that line: exit 0 on
+:done, refused otherwise; uncertain on a transport answer."
+  (let ((control-path (fnn-octets (fnn-core 'fn-omr-control-path-octets result))))
+    (multiple-value-bind (word line)
+        (fnn-operator-export-exchange
+         control-path (fnn-operator-export-words "export" "request" dir))
+      (cond ((eq word :uncertain)
+             (fnn-out "export uncertain reason=~a" line)
+             +fnn-exit-uncertain+)
+            (t
+             (fnn-out "~a" (or line (fnn-core 'fn-oex-request-line word dir)))
+             (cond ((null word) +fnn-exit-uncertain+)
+                   ((not (eq word :requested)) +fnn-exit-refused+)
+                   (t
+                    (loop
+                      (sleep 0.25)
+                      (multiple-value-bind (status-word status-line)
+                          (fnn-operator-export-exchange
+                           control-path (fnn-operator-export-words "export" "status"))
+                        (cond ((eq status-word :uncertain)
+                               (fnn-out "export uncertain reason=~a" status-line)
+                               (return +fnn-exit-uncertain+))
+                              ((eq status-word :in-flight))
+                              (t
+                               (fnn-out "~a" (or status-line
+                                                 (fnn-core 'fn-oex-outcome-line
+                                                           status-word dir)))
+                               (return (cond ((eq status-word :done) +fnn-exit-ok+)
+                                             ((null status-word) +fnn-exit-uncertain+)
+                                             (t +fnn-exit-refused+))))))))))))))
+
+(defun fnn-operator-execute-export-status (result)
+  "`store export --status' on a running owner: the owner's word and its
+sentence (host/native/admin.lisp fnn-owner-export-status); exit 0 unless
+the last export failed."
+  (let ((control-path (fnn-octets (fnn-core 'fn-omr-control-path-octets result))))
+    (multiple-value-bind (word line)
+        (fnn-operator-export-exchange
+         control-path (fnn-operator-export-words "export" "status"))
+      (cond ((eq word :uncertain)
+             (fnn-out "export uncertain reason=~a" line)
+             +fnn-exit-uncertain+)
+            (t
+             (fnn-out "~a" (or line (fnn-core 'fn-oex-outcome-line word "")))
+             (cond ((null word) +fnn-exit-uncertain+)
+                   ((eq word :failed) +fnn-exit-refused+)
+                   (t +fnn-exit-ok+)))))))
+
 (defun fnn-operator-execute-inspect-live (result msgid-list)
   "Row S3: `store inspect ID' on a running owner is the owner's own lookup,
 asked as the administrative vector `inspect request ID' (host/native/admin.lisp
@@ -936,7 +1021,7 @@ answer that is neither the report nor a refusal (the transport) is uncertain."
           (:init (fnn-operator-execute-init result))
           (:status (fnn-operator-execute-status result))
           (:health (fnn-operator-execute-health result))
-          ((:recover :compact :checkpoint :export :import
+          ((:recover :compact :checkpoint :export :export-status :import
             :reclaim :reclaim-dry-run :reclaim-recorded :rebind-filesystem)
            (fnn-operator-execute-store-action result action))
           (:inspect (fnn-operator-execute-inspect result))

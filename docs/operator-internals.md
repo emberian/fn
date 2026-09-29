@@ -1052,8 +1052,11 @@ Store inspection and recovery remain production operations.
 The low-level native `--fn store ROOT retention` diagnostic opens the recovered
 Store under a shared lock and prints `pins=N reserved=B` from the ACL2
 retention ledger. It reports aggregate active pins and reserved charge; it does
-not decide release or identify an obligation. Like `store ROOT status`, it
-refuses with exit 1 if a live writer holds the Store lock. While an owner
+not decide release or identify an obligation. Like `store ROOT status
+--replay` (the report over the replayed log; the plain `store ROOT status`
+reads the checkpoint header alone, row S3, the same decision as `operator
+CONFIG status [--replay]`), it refuses with exit 1 if a live writer holds
+the Store lock. While an owner
 runs, `operator CONFIG obligations` opens with the same two figures
 (`obligations=N reserved=B`), computed by the same ACL2 functions over the
 Store the owner carries.

@@ -602,6 +602,10 @@ three parts have three different owners of the *reply*, all of them ACL2.
    the conflict; the stored record keeps its injected fields;
    `books/poster-bytes-invariants.lisp`), `:malformed` (`fn-owner-prepare`'s `:invalid`),
    `:unaffordable` (the persisted profile or the transaction capacity),
+   `:mpx-saturated` (the keyed Message-ID table cannot place the offered
+   article; refused before buffer fill, transaction identity allocation or
+   prepare, and the exact word survives the host boundary into the named
+   441 reply),
    `:storage-failed` (a write that failed before publication, whose
    reservation `fn-owner-known-abort` consumed, so nothing was stored), the
    three control-message filing refusals of `fn-pa-filing-plan` (C1,

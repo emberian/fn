@@ -1722,6 +1722,11 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-bs-sweep-round-unlinks-each-removal-by-its-name",
+          "note": "The byte run of fn-sn-sweep-round's removals unlinks each in :staging by its byte-model name (fn-bs-octets-name), which gives the octet name back (fn-bs-octets-name-inverts): the model removes the file the sweep chose (row B29, online-reclaim-10)."
+        },
+        {
+          "kind": "theorem",
           "name": "fn-sn-sweep-round-removes-only-unheld-staging-names"
         },
         {
@@ -13884,6 +13889,10 @@
         {
           "kind": "theorem",
           "name": "fn-xrt-quiet-files-are-unnamed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-dropped-file-is-released"
         }
       ]
     },
@@ -15572,6 +15581,56 @@
       ]
     },
     {
+      "id": "PRF-1037",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cat-msgid-seqs{correspondence-bl}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-seqs-is-cat-msgid-seqs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-msgid-saturatedp-is-the-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-index-health-is-the-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-clear-keyed-is-nil"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1044",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pak-post-admission-ok-is-indexed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pak-post-admission-saturated-is-not-indexed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pak-post-admission-is-a-named-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pak-boundary-never-says-mpx-saturated"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-load-held-rows-keyed-is-load-held-rows"
+        }
+      ]
+    },
+    {
       "id": "PRF-1004",
       "events": [
         {
@@ -16803,10 +16862,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-irc-rix-ocfg-complete-is-rix"
         },
         {
@@ -16998,31 +17053,6 @@
         {
           "kind": "theorem",
           "name": "fn-bpnr-publish-action-of-run-is-dispatched"
-        }
-      ]
-    },
-    {
-      "id": "PRF-1037",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-cat-msgid-seqs{correspondence-bl}"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-mpxt-seqs-is-cat-msgid-seqs"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cat-msgid-saturatedp-is-the-outcome"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cat-index-health-is-the-build"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cat-clear-keyed-is-nil"
         }
       ]
     },
