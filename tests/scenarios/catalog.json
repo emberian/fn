@@ -5986,6 +5986,35 @@
         "books/owner-export-request.lisp",
         "tests/acl2/owner-export-request-tests.lisp"
       ]
+    },
+    {
+      "id": "SCN-207",
+      "title": "An operator waives a BP carry obligation with drop --abandon: the Store pin is released once, a drop alone keeps it, a waiver of an obligation not held is refused by name, and a waiver cut off before its Store release is completed at the next writable open",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-035"
+      ],
+      "steps": [
+        "`store init`, `store post` two articles, `app-journal workflow-init`, `workflow-enqueue` work-a and work-b, `bp-obligation undertake` work-a; `operator CONFIG carry JOURNAL drop work-a peer retired`; `drop work-a --abandon peer gone`; `drop work-a --abandon again`; `drop work-b --abandon never undertaken`; `drop work-z --abandon x`; in a fresh setup `drop work-a --abandon peer gone` under FN_NATIVE_POST_FAULT=frontier-reserved:kill, `inspect work-a`, `pause work-b`, `resume work-b`."
+      ],
+      "expected": [
+        "after the drop work-a is pinned=yes hold=dropped; after the waiver it is pinned=no hold=waived with waived-by=uid:N waiver=peer gone and bp-obligation status says pinned=no; the second waiver is refused already-waived, work-b's not-held and work-z's unknown-work, with no carry record written; after the cut the carry journal holds the waiver and work-a is still pinned (hold=waived); the next writable open prints BP carry recovered waiver release work=work-a and work-a is pinned=no; the one after recovers nothing."
+      ],
+      "implementation": {
+        "test": "tests.test_native_bp_carry_abandon",
+        "cases": [
+          "NativeBpCarryAbandonTests.test_drop_keeps_the_pin_and_abandon_releases_it_once",
+          "NativeBpCarryAbandonTests.test_waiver_of_an_obligation_not_held_is_refused",
+          "NativeBpCarryAbandonTests.test_a_waiver_cut_before_its_store_release_is_completed_once"
+        ],
+        "native": true,
+        "record": "planning/evidence/carry-abandon-2026-09-29.md"
+      },
+      "evidence": [
+        "tests/test_bp_obligation_native.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
     }
   ]
 }

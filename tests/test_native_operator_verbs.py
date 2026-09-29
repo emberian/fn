@@ -568,6 +568,21 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
             self.assertTrue(first.startswith(b"340"), first)
         return final.rstrip(b"\r\n").decode("ascii"), len(text)
 
+    @staticmethod
+    def header_octets(message_id, groups):
+        """The octets of the header post_article sends, through its blank line
+        (what the facts' body start counts: books/catalog-record.lisp)."""
+        text = article(message_id, groups=",".join(groups), subject="crosspost",
+                       date=None, body=b"x\r\n")
+        return text.index(b"\r\n\r\n") + 4
+
+    # The history charge of one stored article (books/store-budget.lisp
+    # fn-sbud-row-octets): its stored octets, 320 a group, and since lane
+    # heap-pool its header charge, 8 a header octet and 12 a Message-ID octet.
+    @staticmethod
+    def charge(stored, header, msgid, groups):
+        return stored + 320 * groups + 8 * header + 12 * len(msgid)
+
     def test_a_crosspost_is_charged_per_group_and_refused_by_name_past_the_budget(self):
         """Lane membership-budget (ember, 2026-09-27): each group an article is
         filed in is charged 320 octets of the history budget
@@ -586,7 +601,9 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.node.start()
         # One group, then three: the stored charge is the payload as stored
         # (the owner injects the same Path and Injection-Info into both: the
-        # Message-IDs have one length) plus 320 per group.
+        # Message-IDs have one length) plus 320 per group, plus (lane
+        # heap-pool) the header charge: the two groups more are header octets,
+        # charged 1 + 8 each.
         reply, one = self.post_article("<xp-a01@example.invalid>", groups[:1], b"body")
         self.assertEqual(reply, "240 article received OK")
         self.node.stop()
@@ -596,28 +613,43 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual(reply, "240 article received OK")
         self.node.stop()
         after_three = self.headroom()["bytes-used"]
-        self.assertEqual(after_three - 2 * after_one, (three - one) + 640)
-        injected = after_one - 320 - one
+        self.assertEqual(after_three - 2 * after_one, 9 * (three - one) + 640)
+        # The injected octets are header octets: the first article's charge
+        # is charge(one + i, header + i, its Message-ID, 1).
+        header_one = self.header_octets("<xp-a01@example.invalid>", groups[:1])
+        base = self.charge(one, header_one, "<xp-a01@example.invalid>", 1)
+        self.assertEqual((after_one - base) % 9, 0, (after_one, base))
+        injected = (after_one - base) // 9
         # Fill with one-group articles to leave ROOM octets of history: a
-        # 10-group article of payload P then needs P + 1083 + 261 x 10 without
-        # its memberships and 3,200 more with them, beside the 4,096-octet
-        # maintenance reservation.  Aim the room at the middle of that window.
+        # 10-group article of stored payload P is charged at its figure,
+        # P + 1083 + 261 x 10 and its header charge at its worst, 8 P +
+        # 12 x 250 (books/store-budget-article.lisp fn-sbud-article-figure),
+        # without its memberships, and 3,200 more with them, beside the
+        # 4,096-octet maintenance reservation.  Aim the room at the middle of
+        # that window.
         room = self.headroom()
         target_payload = 600
-        record = target_payload + 1083 + 261 * 10
+        record = 9 * target_payload + 1083 + 261 * 10 + 3000
         want_left = record + 4096 + 1600
         filler_total = room["history-bound"] - room["bytes-used"] - want_left
         self.node.start()
         fill, count = 0, 0
         while filler_total - fill > 0:
-            size = min(30000, filler_total - fill - 320 - injected - 200)
+            filler_id = "<xp-f{:03d}@example.invalid>".format(count)
+            header = self.header_octets(filler_id, groups[:1]) + injected
+            # The gate admits a filler of stored payload P at its figure,
+            # 9 P + 1,083 + 261 + 320 + 3,000, beside the 4,096 reserve
+            # (lane heap-pool), though it is charged far less.
+            remaining = room["history-bound"] - room["bytes-used"] - fill
+            gate_cap = (remaining - (1083 + 261 + 320 + 3000 + 4096) - 200) // 9 - header
+            size = min(30000, gate_cap, filler_total - fill - 320 - 9 * injected - 8 * header
+                       - 12 * len(filler_id) - 200)
             if size < 200:
                 break
             body = self.body_of(size)
-            reply, sent = self.post_article("<xp-f{:03d}@example.invalid>".format(count),
-                                            groups[:1], body)
+            reply, sent = self.post_article(filler_id, groups[:1], body)
             self.assertEqual(reply, "240 article received OK")
-            fill += sent + injected + 320
+            fill += self.charge(sent + injected, header, filler_id, 1)
             count += 1
         self.node.stop()
         left = self.headroom()
@@ -629,7 +661,10 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
                    ",".join(groups[:10]).encode("ascii") +
                    b"\r\nSubject: crosspost\r\nMessage-ID: <xp-x10@example.invalid>"
                    b"\r\n\r\n\r\n")
-        pad = room_left - (1083 + 261 * 10 + 4096 + 1600) - injected - bare
+        stored = (room_left - (1083 + 261 * 10 + 3000 + 4096 + 1600)) // 9
+        pad = stored - injected - bare
+        print("NATIVE-CROSSPOST room_left={} injected={} bare={} stored={} pad={} left={}"
+              .format(room_left, injected, bare, stored, pad, left))
         self.assertGreater(pad, 0, left)
         self.node.start()
         crosspost, _ = self.post_article("<xp-x10@example.invalid>", groups[:10],

@@ -88,7 +88,8 @@ peer identity resolved at open; outbound adds a client-side connection kind.
 
 `:command` is distinct from `:reply` because `fn-nntp-effectp` types replies
 as RFC 3977 §3.2 responses; a command line has a different grammar
-(`fn-feed-commandp`, §3.2), and the closed effect type of node-functionality
+(the lines `fn-feed-check-line`, `fn-feed-ihave-line` and
+`fn-feed-takethis-line` render, §3.2), and the closed effect type of node-functionality
 §1.2 must stay closed.
 
 ### 1.2 The peer record: a configuration record kind
@@ -136,9 +137,10 @@ sentence of that design (§1.2.1 below).
 
 ;; Deltas added to *fn-cfg-delta-kinds*; (:set-peers ...) is retired in favour of these.
 ;;   (:set-peer record)      upserts by name
-;;   (:remove-peer name)     admissible only when no feed queue entry for that peer is
-;;                           outstanding (fn-feed-peer-idlep), so a retired peer never
-;;                           has an orphaned durable offer
+;;   (:remove-peer name)     admissible for any configured peer (:no-such-peer otherwise);
+;;                           the owner keeps a removed peer's busy feed until it drains
+;;                           (fn-own-feed-retire-keeps-a-busy-feed), so a retired peer
+;;                           never has an orphaned durable offer
 ;; The node's own path identity is a policy slot: (:set-policy :path-identity octets).
 ```
 
@@ -441,11 +443,14 @@ exactly as a batch's.
 
 Reconfiguration §2.3 and theorem §3.7 call listener and peer changes "effects,
 not state". That is exact for the node's *state* (acceptance, retention,
-bindings, stage are untouched, and §3.7 stays true) and inexact for
-*decisions*: `accept-groups` and `feed-groups` change what `fn-peer-decide`
-answers from the next command on. So `(:set-peer ...)` bumps the generation
-like every delta, `fn-cfg-transport-only-deltasp` continues to hold of it
-(the theorem is about state), and this design adds the sentence
+bindings, stage are untouched) and inexact for *decisions*:
+`accept-groups` and `feed-groups` change what `fn-peer-decide-offer/-transfer`
+answer from the next command on. So `(:set-peer ...)` bumps the generation
+like every delta. What is proved of it is value-level:
+`fn-cfg-peer-deltas-change-only-peers` (a `:set-peer` or `:remove-peer`
+delta changes the peers slot and no other slot of the configuration value);
+reconfiguration §3.7's node-level statement is not written. This design adds
+the sentence
 reconfiguration should carry: *a peer delta changes future transit decisions
 and no committed state*. Theorem K7 in §4 states it.
 
@@ -530,7 +535,7 @@ octets, exactly as for a POST.
 | --- | --- | --- |
 | Peer record | `fn-cfg-peerp` with `(:nntp host port)` | `fn-cfg-peerp` with `(:bp eid)`; the same `accept-groups`/`feed-groups`, the same `path-identity` |
 | Offer phase | `CHECK`/`IHAVE` before the bytes | none: the bundle arrives whole; offer and transfer collapse into one `(:bundle src octets)` event |
-| Decision | `fn-peer-decide` (§2.2) | **the same function**, called by `fn-bpi-ingress-prepare` before `fn-bpi-record-for`; `fn-bpi-policy-group-map` is derived from the peer's `accept-groups` and the live group table |
+| Decision | `fn-peer-decide-offer/-transfer` (§2.2) | **the same function** by design (packet K6, not built): `fn-bpi-ingress-prepare` does not call it today, and `fn-bpi-policy-group-map` is the host's constant map, which `fn-bpi-policy-appliesp-carried` checks against the store's live groups rather than deriving it from the peer's `accept-groups` |
 | Transfer and acceptance | `fn-peer-transfer` → `fn-node-prepare`/`fn-node-complete` through the store | `fn-bpi-ingress-prepare` → the same `fn-node-prepare`/`fn-node-complete` (already so at `books/bp-ingress.lisp:318`) |
 | Provenance record | `(:peer-transit peer diag)` §2.4 | the same record with `(:cl session transfer peer)` origin (bp-design §1.3) |
 | Duplicate history | `fn-peer-history-hasp` §2.5 | the same predicate (`fn-bpi-adu-durably-acceptedp` is its current BP-side twin and is replaced by it) |
@@ -539,7 +544,7 @@ octets, exactly as for a POST.
 | Receipt semantics | `239`/`235` is a *transmission* receipt (RET-003), never a retention receipt; no pin is released by it | `fn-bpr` receipt is application evidence; `fn-bprl-release-decision` may release the `:forward` pin |
 | Loop check | Path (§2.3) | Path **and** Previous Node / Hop Count (bp-design §1.2) |
 
-Shared, by construction: the peer record, `fn-peer-decide`, the acceptance
+Shared, by construction once K6 lands: the peer record, `fn-peer-decide-transfer`, the acceptance
 path, the provenance record, the history predicate, the loop check. Different:
 the offer phase, the response vocabulary, the outbound driver and journal, and
 what a positive reply means for retention. The relay's undertaking rule
@@ -552,7 +557,8 @@ promise anything.
 
 `fn-nntp-make-session` gains two fields; `fn-nntp-sessionp` gains their
 recognizers. This is a shared-struct change: every book that opens the
-session shape (`nntp-invariants`, `nntp-effects`, owner, F_node's `fn-ideal-connp`)
+session shape (`nntp-invariants`, `nntp-effects`, owner, F_node's `fn-ideal-conn-alistp` through
+`fn-served-connp`)
 rebuilds; packet K1 builds the whole tree, not the changed books.
 
 ```lisp
@@ -806,10 +812,12 @@ article missing a mandatory field is open (below).
 
 `fn-peer-injection-arguments` stages the updated octets as the payload of
 `fn-node-prepare`, and charges retention for them;
-`host/owner-host.lisp` `fn-owner-take` hands the same octets to the host as
-`fn-owner-submit-octets`, which the native drain digests and stores, and the
-drain faults if they differ from the payload the transfer decision staged
-(`fn-owner-transit-payload`). The loop check (§3.6) still reads the
+`host/owner-host.lisp` `fn-owner-take` hands the same octets to the host in
+its SubmissionTaken result (`fn-ores-take-result` of
+`fn-own-sub-stored-octets`, which for a transit article is
+`fn-peer-relayed-octets`), which the native drain digests and stores, and the
+drain faults if they differ from the payload `fn-owner-transit-decide`
+staged. The loop check (§3.6) still reads the
 **received** Path, before the update, and the outbound feed's offer check
 reads the Path of the received octets too; the update adds only this node's
 identity and a diagnostic, which never names a target peer, so the answer is
@@ -911,9 +919,11 @@ Bindings are the tombstones. This is why the design needs no separate
 and a reimport of the same Message-ID is `:have` forever. Cost: both
 membership tests are linear in the store. `fn-acceptedp` is a lookup, not a
 recognizer, so the served-path rule is not violated; but a CHECK storm at
-`O(A)` each is the cost node-functionality §3.2 must quote, and packet K5
-carries a history index twin (`fn-nntp-index-` style, `books/nntp-index.lisp`)
-with the equality theorem `fn-peer-history-index-agrees-with-history`.
+`O(A)` each is the scan's cost. The served peer step answers the test from
+the owner's Message-ID trie instead: `fn-pix-history-hasp`
+(`books/peer-offer-indexed.lisp`, one `fn-midx-lookup`), with the equality
+theorem `fn-pix-history-hasp-is-peer-history-hasp` under the trie's
+correspondence to the article list and `fn-node-statep`.
 
 ### Refused-offer memory (NNT-049)
 
@@ -1304,11 +1314,14 @@ followed by our identity is accepted.
 
 Over the fact-set model of REP-002 (`fn-exchange-merge`,
 `books/exchange.lisp:327`) and the lace merge (`fn-lace-merge`,
-`books/lace.lisp:105`). `fn-peer-facts` projects a node's committed articles
-to exchange facts `(schema kind message-id content-id origin incarnation sequence provenance)`
-with `content-id` the payload digest (`fn-id-subject-of-payload`) and
-provenance the evidence; `fn-sys-run` is node-functionality §5.4's composed
-system with two nodes and an NNTP channel in place of `fn-dtn`.
+`books/lace.lisp:105`). Nothing below is built: no book defines the
+projection of a node's committed articles to exchange facts
+`(schema kind message-id content-id origin incarnation sequence provenance)`
+(with `content-id` the payload digest, `fn-id-subject-of-payload`, and
+provenance the evidence), nor the two-node composed system the sketch runs
+(node-functionality §5.4's composed system, with an NNTP channel in place of
+the DTN channel); F_node itself is `fn-ideal-step`, a skeleton whose only
+real port is the reader.
 
 ```lisp
 ;; A complete exchange: every article accepted at either node before the run
@@ -1334,10 +1347,11 @@ system with two nodes and an NNTP channel in place of `fn-dtn`.
 
 The third conjunct is `fn-exchange-merge-commutative-member`
 (`books/exchange.lisp:392`) applied to the first two; the first two are the
-content. Local numbers, Xref and rendered Path are outside `fn-peer-facts`,
-which is exactly REP-002's "modulo local numbering". The statement-level
-twin, for articles carrying `FN-Statement` (§6), replaces `fn-peer-facts`
-by `fn-peer-lace` and `fn-exchange-set-equiv` by `fn-lace-same-idsp`, and
+content. Local numbers, Xref and rendered Path are outside the fact
+projection, which is exactly REP-002's "modulo local numbering". The
+statement-level twin, for articles carrying `FN-Statement` (§6), replaces
+the fact projection by a lace projection (also unbuilt) and
+`fn-exchange-set-equiv` by `fn-lace-same-idsp`, and
 its third conjunct is `fn-lace-merge-commutative-ids`; equivocations survive
 by `fn-lace-merge-preserves-equivocation`.
 
@@ -1420,28 +1434,30 @@ must-fail that separates "acknowledged" from "written"); drop
 ```
 
 `fn-feed-settle` maps `(:offered _)`/`(:sent _)` to `:queued` and forgets
-attempt ids; it is the relation, not a re-implementation. Teeth: witness of
-five queued articles, a crash after the third `(:feed-sent ...)` with no
-outcome, replay, and the fourth command emitted is a `CHECK` of the third
-msgid (non-degenerate: something was in flight); drop `fn-feed-journal-okp`
-(two `(:feed-outcome ... 239)` for one attempt, fabricated); drop the image
-hypothesis (a record list with an outcome for an attempt never offered); a
-separating witness for `fn-feed-done-is-never-reoffered` that is `:done` by
-`438` rather than `239`.
+attempt ids; it is the relation, not a re-implementation. Teeth, as landed:
+five queued articles, a crash after the third `:feed-sent` with no outcome,
+and a reopened `CHECK` for that entry
+(`tests/acl2/feed-port-replay-tests.lisp`); dropping `fn-feed-drivenp`, the
+landed form of the journal hypothesis, is a fabricated journal with two
+`239` outcomes for one attempt and a `239` for an entry never offered
+(`tests/acl2/peer-feed-tests.lisp`). The `:done`-by-`438` witness has no
+subject since PRF-335: a final answer, `438` as much as `239`, retires the
+entry, and there is no `:done` state.
 
 **What is earned, and by which theorem** (lane `w6/peering-feed-4`,
 `books/peer-feed-invariants`; the per-root evidence and the exact hypothesis
 of each is in the outbound-feed status section at the end of this file).
 All five keystones of that book are proved. The live/replay equation now has
-the bounded FNFD port subject below; the earlier `fn-ideal-run` formulation
-remains a design statement because `fn-ideal-run` does not carry feeds:
+the bounded FNFD port subject below; the F_node formulation above remains a
+design statement because F_node (`fn-ideal-step`) has no run function and
+does not carry feeds:
 
 | Statement above | Earned by | Reading |
 | --- | --- | --- |
-| `fn-feed-at-most-one-accepted-outcome` | the theorem of that name | **Earned.** Same name, same content. The hypothesis is `fn-feed-drivenp` -- each record admissible in the state the fold had reached -- in place of the design's `fn-feed-journal-okp`, and it is a check over the fold, never the conclusion. |
-| `fn-feed-done-is-never-reoffered` | `fn-feed-done-is-never-selected` with `fn-feed-tick-step-offers-the-selection` and `fn-feed-tick-step-is-silent-without-a-selection` | **Earned over `fn-feed-tick-step`**, the function the host calls once per scheduler tick, not over `fn-ideal-run`, which does not carry the feed. `fn-feed-done-is-never-selected` carries `(fn-feed-selection f obs)` as a hypothesis: without it the statement is FALSE at `msgid` = `NIL` (a feed that selects nothing selects `NIL`, and `NIL` is not `:queued`), and the silent-without-a-selection theorem is the other half of the pair. |
-| `fn-feed-replay-is-the-live-feed-modulo-inflight` | `fn-feed-port-history-reconstructs-live`, `fn-feed-port-replay-is-live-modulo-inflight`, and `fn-own-feed-port-tick-replays-the-live-tick` (`books/feed-port-replay.lisp`) | **Earned for the bounded port and its generated FNFD record image.** The port calls `fn-feed-tick-step`, preserves the feed and emits no record/effect on refusal; replay of its generated records and the maintained feed agree in every durable field after `fn-feed-restart` normalizes an unresolved `:offered` or `:sent` entry to `:queued` and clears the socket. `tests/acl2/feed-port-replay-tests.lisp` has five queued articles, a crash after the third `:feed-sent`, a reopened CHECK for that entry, and a false-image `must-fail`. The equality assumes the persisted record sequence is the generated sequence; physical append/recovery correspondence is a separate open obligation. |
-| `fn-feed-restart-resolves-by-offer` | `fn-feed-restart-emits-no-transfer` with `fn-feed-restart-then-tick-offers` | **Earned over `fn-feed-send`** -- the only producer of a TAKETHIS or an article block -- **and `fn-feed-tick-step`**, not over `fn-ideal-restart`. Read the first one narrowly: `fn-feed-restart` also forgets the connection and `fn-feed-send` refuses a feed whose `fn-feed-conn` is not a `natp`, so the settled queue is not what it rests on. The statement that would need the settled queue is the one over the REOPENED feed, which is what the host does next; it is recorded open in the lane handoff. |
+| `fn-feed-at-most-one-accepted-outcome` | the theorem of that name | **Earned.** Same name, same content. The hypothesis is `fn-feed-drivenp` -- each record admissible in the state the fold had reached -- in place of the design's journal-validity hypothesis, and it is a check over the fold, never the conclusion. |
+| No TAKETHIS for a `:done` entry | `fn-feed-done-is-never-selected` with `fn-feed-tick-step-offers-the-selection` and `fn-feed-tick-step-is-silent-without-a-selection` | **Earned over `fn-feed-tick-step`**, the function the host calls once per scheduler tick, not over F_node, which does not carry the feed. `fn-feed-done-is-never-selected` carries `(fn-feed-selection f obs)` as a hypothesis: without it the statement is FALSE at `msgid` = `NIL` (a feed that selects nothing selects `NIL`, and `NIL` is not `:queued`), and the silent-without-a-selection theorem is the other half of the pair. |
+| Crash replay is the live feed modulo in-flight | `fn-feed-port-history-reconstructs-live`, `fn-feed-port-replay-is-live-modulo-inflight`, and `fn-own-feed-port-tick-replays-the-live-tick` (`books/feed-port-replay.lisp`) | **Earned for the bounded port and its generated FNFD record image.** The port calls `fn-feed-tick-step`, preserves the feed and emits no record/effect on refusal; replay of its generated records and the maintained feed agree in every durable field after `fn-feed-restart` normalizes an unresolved `:offered` or `:sent` entry to `:queued` and clears the socket. `tests/acl2/feed-port-replay-tests.lisp` has five queued articles, a crash after the third `:feed-sent`, a reopened CHECK for that entry, and a false-image `must-fail`. The equality assumes the persisted record sequence is the generated sequence; physical append/recovery correspondence is a separate open obligation. |
+| After restart an in-flight entry is resolved by an offer | `fn-feed-restart-emits-no-transfer` with `fn-feed-restart-then-tick-offers` | **Earned over `fn-feed-send`** -- the only producer of a TAKETHIS or an article block -- **and `fn-feed-tick-step`**, not over an F_node restart, which does not exist. Read the first one narrowly: `fn-feed-restart` also forgets the connection and `fn-feed-send` refuses a feed whose `fn-feed-conn` is not a `natp`, so the settled queue is not what it rests on. The statement that would need the settled queue is the one over the REOPENED feed, which is what the host does next; it is recorded open in the lane handoff. |
 
 The fifth keystone of the book has no row above because §4 does not state it:
 `fn-feed-drop-needs-a-drop-record`, "nothing leaves the queue without a drop
@@ -1495,8 +1511,11 @@ because `*fn-peer-reasons*` is closed and every `cond` arm returns from it.
 
 Tooth: a witness where `(:set-peer ...)` narrows `accept-groups` and the
 same offer flips from `:want` to `:refuse :out-of-scope` while
-`fn-state-articles` is `equal` before and after; drop
-`fn-cfg-peer-only-deltasp` with a `(:create-group ...)` in the list.
+`fn-state-articles` is `equal` before and after; drop the peer-only
+hypothesis with a `(:create-group ...)` in the list. K7 is open (wave 9
+status): the value-level half is `fn-cfg-peer-deltas-change-only-peers`, and
+the node-level statement would be over the configured node's transition,
+`fn-cnode-apply-config`.
 
 ## 5. INN interop plan
 
@@ -1617,11 +1636,11 @@ touches the session or config shape builds the whole tree.
 | K0 | prefixes and registry | assurance-tooling, Sonnet | `fn-peer-`, `fn-feed-`, `fn-path-` rows in `docs/prefixes.md`; requirement rows PEER-001 (transit acceptance is the post path), PEER-002 (loop freedom), PEER-003 (exact history), PEER-004 (feed journal), PEER-005 (typed transit refusals) in `planning/requirements.json`; proof rows per K1–K7 in `proofs.json`, all `open` | `make check` green; no count typed |
 | K1 | inbound transit | service integrator, Opus | `books/path.lisp`, `books/peer.lisp`, session fields, `fn-nntp-step` routing of IHAVE/CHECK/TAKETHIS/MODE STREAM and the `:article` event, `*fn-peer-reasons*`, K1, K2 (inbound half), K6 restated; `tests/acl2/peer-tests.lisp` with the RFC transcripts of §2.2's tables as `assert-event`s | whole-tree `make certify` green; every cell of the two response tables has a transcript; one `must-fail` per K1/K2 hypothesis; the `:article`-event `unreachable-in-composition` mark removed |
 | K2 | outbound feed | BP lane (scheduler owner), Opus | `books/feed.lisp`, FNFD records in `books/frame`, `fn-feed-replay`, K5, K2 (outbound half), the select/drive/take equation against `host/feed-host.lisp` | K5's five-article crash witness certifies; `tests/test_feed.py` kills the host at every FNFD record boundary and the CHECK-first property holds at each |
-| K3 | peer configuration | reconfiguration lane (after R2), Sonnet | `fn-cfg-peerp`, `:set-peer`/`:remove-peer`, `:path-identity` policy slot, K7, the §1.2.1 sentence in reconfiguration.md | `reconfigure` adds a peer without restart and the next CHECK from it is `238`; `:remove-peer` with an outstanding feed entry is refused with a named reason |
+| K3 | peer configuration | reconfiguration lane (after R2), Sonnet | `fn-cfg-peerp`, `:set-peer`/`:remove-peer`, `:path-identity` policy slot, K7, the §1.2.1 sentence in reconfiguration.md | `reconfigure` adds a peer without restart and the next CHECK from it is `238`; `:remove-peer` with an outstanding feed entry is admitted and the owner keeps the busy feed until it drains (`fn-own-feed-retire-keeps-a-busy-feed`) |
 | K4 | INN interop | host lane, Opus, on hbox | `tests/inn/` (pin, configs, `run_inn_lab.py`), S1–S11, the evidence record | every scenario's expected lines match; S10 and S11 show one copy each; the record names what was not shown |
-| K5 | history index and cost | core lane, Opus | `fn-peer-history-index` twin and `fn-peer-history-index-agrees-with-history`; the K6 cost term quoted with its measured distance | the CHECK cost sentence quotes exponent, constant and measurement in one sentence |
+| K5 | history index and cost | core lane, Opus | the history index twin (landed as `fn-pix-history-hasp`, equality `fn-pix-history-hasp-is-peer-history-hasp`); the K6 cost term quoted with its measured distance | the CHECK cost sentence quotes exponent, constant and measurement in one sentence |
 | K6 | BP unification | BP lane, Fable | `fn-bpi-ingress-prepare` calls `fn-peer-decide-transfer`; `fn-bpi-adu-durably-acceptedp` retired for `fn-peer-history-hasp`; the group map derived from the peer record | `bp-dtn7` scenarios unchanged byte-for-byte; the equality theorem between the old and new ingress decision on the reachable set |
-| K7 | merge theorem | core lane, Fable design then Opus proofs | K3 over `fn-sys-run` with an NNTP channel; the lace twin | the three-article witness and the four must-fails certify |
+| K7 | merge theorem | core lane, Fable design then Opus proofs | K3 over the two-node composed system with an NNTP channel (not built); the lace twin | the three-article witness and the four must-fails certify |
 | K8 | inter-agent reservation | substrate lane, Sonnet | `FN-Statement`/`FN-Policy` grammar in `books/article-fields.lisp`, `:statement` exchange kind, `(:principal id)` auth | a signed article survives S3 with `FN-Statement` byte-identical and verifies at fn |
 
 Dependencies on current lanes: **w4/post** for the injecting-agent
@@ -1632,8 +1651,8 @@ K6 restates over and for `*fn-ideal-refusals*`; **w3/scheduler** for
 `fn-sched-contact`/`fn-sched-contact-holdsp` and the tick model K2 reuses;
 **w2/mutable-owner** for the connection/pin model peer connections share and
 for the single pending slot that makes `:busy`/`:staged` decidable;
-**reconfiguration R2+** (`fn-node-config`, the `cfg-gen` argument, the
-delta list) for K3 and for `fn-peer-injection-arguments`. K0 and K1 can
+**reconfiguration R2+** (landed as the configured node: `fn-cnode-config`,
+the `cfg-gen` argument of `fn-cnode-prepare`, the delta list) for K3 and for `fn-peer-injection-arguments`. K0 and K1 can
 start now against `ca66782` with the `cfg-gen` argument omitted and added
 when R2 lands.
 
@@ -2304,8 +2323,8 @@ What differs from the design above, and why:
   `fn-cfg-peer-of-rows`, `books/peer-config.lisp`), so the record codec of
   `books/config.lisp` carries it with no new item type. `(:set-peers rows)`
   is not retired: it is still a typed kind and the ledger keeps its
-  statements. Round trip: `fn-cfg-peer-of-rows-of-peer-rows` over every
-  well-formed record: **open** (below); canonicality is by construction
+  statements. Round trip (`fn-cfg-peer-of-rows` of `fn-cfg-peer-rows` is
+  the record) over every well-formed record: **open** (below); canonicality is by construction
   (one encoder) and witnessed on ground records;
   `fn-cfg-set-peer-delta-is-admissible`, `fn-cfg-peer-rows-after-set-peer`,
   `fn-cfg-peer-find-after-remove-peer`, `fn-cfg-peer-deltas-change-only-peers`
@@ -2313,8 +2332,10 @@ What differs from the design above, and why:
   carrying both deltas is a ground witness in the test book, which is the
   coverage `books/config.lisp` has for its own codec (its general
   decode-of-encode is still open there).
-- **`:remove-peer`'s feed condition is owner-side.** `fn-feed-peer-idlep` is
-  the feed lane's; config admits `:remove-peer` for any configured peer
+- **`:remove-peer`'s feed condition is owner-side.** The owner forgets a
+  removed peer's feed only when `fn-own-feed-idlep` holds (nothing in
+  flight, nothing queued) and keeps a busy one until it drains
+  (`fn-own-feed-retire-keeps-a-busy-feed`); config admits `:remove-peer` for any configured peer
   (`:no-such-peer` otherwise), as reader pins never enter a durable record.
 - **Signatures.** `fn-peer-decide-transfer` and `fn-peer-transfer` take the
   obligation id and subject strings (and `fn-peer-transfer` the transaction
@@ -2372,8 +2393,9 @@ What differs from the design above, and why:
   fn's is the RFC 5537 §3.6 scan, and a Path naming INN gets INN's
   `437 Unwanted site <pathhost> in path`, which fn's `437 transfer rejected;
   path loop` mirrors in class.
-- **The general rows-to-record round trip is open.**
-  `fn-cfg-peer-of-rows-of-peer-rows` over every `fn-cfg-peerp` (sixteen
+- **The general rows-to-record round trip is open.** That
+  `fn-cfg-peer-of-rows` inverts `fn-cfg-peer-rows` over every
+  `fn-cfg-peerp` (sixteen
   shapes through ten slot lookups) did not close in budget; it and the
   injectivity it gives are recorded open, witnessed on two ground records in
   the test book, and `fn-cfg-peer-rows-after-set-peer` (the peers slot holds
@@ -2408,12 +2430,12 @@ Keystones, as certified (statements in `books/peer-inbound-invariants.lisp`):
 | K1 transit node = post-path node | `fn-peer-transfer-is-the-post-path` | the transfer decision is `:want` (the branch), nothing else: `fn-node-statep` and `fn-cfgp` were unnecessary and are dropped | the IHAVE transcript: two Newsgroups, one membership, `equal` to the `fn-node-prepare` call; `fn-state-articles` unchanged until `:durable` |
 | K1 memberships are the scope groups | `fn-peer-transfer-stages-only-scope-groups`, `fn-peer-scope-groups-are-live` | as above plus the prepare staged | `alt.test` not staged; the narrowed peer record flips the same article to `:out-of-scope` |
 | K1 refused transfer leaves the node | `fn-peer-refused-transfer-leaves-the-node` (`-by-definition`, `:rule-classes nil`) | | loop, duplicate and out-of-scope transfers return the node `equal` |
-| K1 "accepted through transit satisfies every acceptance premise" (`fn-peer-accepted-article-is-acceptance-accepted`) | **open** | | not attempted this wave: it is a theorem over `fn-node-complete` after `fn-node-prepare` and needs `fn-node-complete-preserves-state`'s article projection |
+| K1 "accepted through transit satisfies every acceptance premise" | **open** | | not attempted this wave: it is a theorem over `fn-node-complete` after `fn-node-prepare` and needs `fn-node-complete-preserves-state`'s article projection |
 | K2 loop refused at transfer | `fn-peer-loop-is-refused` | the Path names the local identity; `fn-node-statep`, `fn-cfgp` and the parse hypothesis were unnecessary and are dropped | identity second of three: refused `:loop`; tail-entry, `.POSTED` and `.POSTED.<src>` variants accepted; `fnA.hbox.test.old` not a match; unparsable octets are `:proto-article`, not `:loop` |
-| K2 outbound half (`fn-own-feed-never-offers-a-loop`, `fn-peer-render-prepends-path`) | **open**, feed lane | | |
-| K2 general loop-test lemma over an arbitrary identity | **open** (`fn-path-names-p-ignores-the-tail-entry` was attempted and removed; the split/reverse induction did not close in budget) | | witnessed on concrete Paths |
+| K2 outbound half | **open** at this wave, feed lane; since proved as `fn-own-feed-never-offers-a-loop` (`books/owner-feed.lisp`), with the Path prepend done at acceptance rather than at render (`fn-peer-relayed-octets-name-this-node-in-every-path`, `books/peer-inbound-invariants.lisp`) | | |
+| K2 general loop-test lemma over an arbitrary identity | **open** (a lemma that `fn-path-names-p` ignores the tail-entry was attempted and removed; the split/reverse induction did not close in budget) | | witnessed on concrete Paths |
 | K3 (K4 offer/transfer half) duplicate refused at offer and transfer | `fn-peer-history-is-refused-at-offer`, `fn-peer-history-is-have-at-offer`, `fn-peer-history-is-refused-at-transfer`, `fn-peer-history-grows-under-transfer` | history membership; for `-is-have-` also the peer record with an inbound half and a syntactic Message-ID; for `-grows-` `fn-node-statep` | `435`/`438` transcripts after the durable completion; a fresh Message-ID on the same node is `:want`; the binding is a tombstone (`fn-node-find-binding` consp after completion) |
-| K3 after replay (`fn-peer-history-survives-reopen`) | **open**, needs the store-node trace books | | |
+| K3 after replay (the history survives a reopen) | **open**, needs the store-node trace books | | |
 | Code classes | `fn-peer-not-now-is-a-retry-code` | none | every transit and offer code on ground decisions and completions |
 | Served-path keystones | `fn-peer-step-effects-well-formed`, `fn-peer-step-preserves-consistent-session`, `fn-peer-step-submission-is-typed`, `fn-peer-transit-outcome-effects-well-formed`; `fn-served-*` keystones recertified with statements unchanged, `fn-nntp-step-effects-well-formed` and `fn-nntp-step-preserves-consistent-session` recertified with statements unchanged | `fn-peer-session-consistentp` | every cell of both response tables has a transcript in the test book |
 
@@ -2441,9 +2463,9 @@ inbound half's rows are the sibling lane's and are not repeated here.
 | §3.3 FNFD, "one file per peer under `<journal>/feed/<peer>/`" | `<journal>/feed/<peer>.fnfd`, a 4-octet big-endian length before each frame | The length prefix is file layout, not a frame field: it is what lets the host hand ACL2 one whole record at a time, and a torn tail ends the record stream. |
 | §4 K5 `fn-feed-at-most-one-accepted-outcome` | `books/peer-feed-invariants.lisp`, same name, from `fn-feed-accepted-outcomes-bounded-by-enqueues` | The hypothesis is `fn-feed-drivenp`, a check over the fold that each record was admissible in the state the fold had reached — never the conclusion. Since PRF-335 the entry the peer answered finally is RETIRED (it leaves the queue) rather than kept `:done`, so the feed no longer refuses a second enqueue of a delivered Message-ID by itself: the bound is the number of times the Message-ID was owed (enqueue/commit records), and at most one holds with the owed-once hypothesis. The owner owes a Message-ID once per durable acceptance. |
 | §3.2 `:done` | no delivered state (PRF-335) | A final answer (`235`/`239`/`435`/`438`/`437`/`439`) removes the entry (`fn-feed-queue-retire`); the outcome record keeps the answer. The queue holds only undelivered obligations: `fn-feed-queue-length-is-undelivered` (length = enqueues - final answers over any driven journal) and `fn-feed-final-outcome-retires-for-good`. Kept, `:done` entries counted against max-queue and after 1,024 fed articles every local post was refused (the openbsd-rehearsal record of 2026-09-27, stop 1). No FNFD format change: an existing journal heals on replay. A full queue refuses a POST by name (`feed-queue-full`) and a transit with `436`, and health holds `unavailable-peer` (`saturated=N`). |
-| §4 K5 `fn-feed-done-is-never-reoffered` | `fn-feed-done-is-never-selected` + `fn-feed-tick-step-offers-the-selection` + `fn-feed-tick-step-is-silent-without-a-selection` | Stated over `fn-feed-tick-step`, the function the host calls, rather than over `fn-ideal-run`, which does not yet carry the feed. `fn-feed-done-is-never-selected` gained the hypothesis `(fn-feed-selection f obs)` in lane `w6/peering-feed-4`: without it the statement is FALSE at `msgid` = `NIL`, and the third theorem covers the states it excludes. |
-| §4 K5 `fn-feed-replay-is-the-live-feed-modulo-inflight` | `fn-feed-replay-is-the-fold`, `fn-feed-replay-preserves-feedp`, `fn-feed-replay-preserves-peer` and the ground witness of `tests/acl2/peer-feed-tests.lisp` | **Open.** The general equation needs a second machine (a live run that emits its own journal) that no lane has built. The three replay theorems are proved (`w6/peering-feed-3` and `w6/peering-feed-4`), so what is missing is the live side, not the fold. |
-| §4 K5 `fn-feed-restart-resolves-by-offer` | `fn-feed-restart-emits-no-transfer` + `fn-feed-restart-then-tick-offers` | Stated over `fn-feed-send` (the only producer of a TAKETHIS or an article block) and `fn-feed-tick-step`, not over `fn-ideal-restart`. |
+| §4 K5, no TAKETHIS for a `:done` entry | `fn-feed-done-is-never-selected` + `fn-feed-tick-step-offers-the-selection` + `fn-feed-tick-step-is-silent-without-a-selection` | Stated over `fn-feed-tick-step`, the function the host calls, rather than over F_node, which does not yet carry the feed. `fn-feed-done-is-never-selected` gained the hypothesis `(fn-feed-selection f obs)` in lane `w6/peering-feed-4`: without it the statement is FALSE at `msgid` = `NIL`, and the third theorem covers the states it excludes. |
+| §4 K5, crash replay is the live feed modulo in-flight | `fn-feed-replay-is-the-fold`, `fn-feed-replay-preserves-feedp`, `fn-feed-replay-preserves-peer` and the ground witness of `tests/acl2/peer-feed-tests.lisp` | **Open at this wave.** The general equation needed a second machine (a live run that emits its own journal). The three replay theorems are proved (`w6/peering-feed-3` and `w6/peering-feed-4`), so what was missing was the live side, not the fold. Since earned for the bounded port by `fn-feed-port-replay-is-live-modulo-inflight` (§4 K5's table). |
+| §4 K5, restart resolves an in-flight entry by an offer | `fn-feed-restart-emits-no-transfer` + `fn-feed-restart-then-tick-offers` | Stated over `fn-feed-send` (the only producer of a TAKETHIS or an article block) and `fn-feed-tick-step`, not over an F_node restart, which does not exist. |
 
 **Certification, lane `w6/peering-feed-4`.** `books/peer-feed-invariants`
 certifies with **no open form**: laptop, ACL2 8.7, `tools/certify_books.py`,
@@ -2468,8 +2490,9 @@ Open, recorded rather than weakened:
   `fn-own-feed-parse-response` (`books/owner-feed.lisp`); the Python split
   this paragraph recorded as open was deleted with its driver (see the row
   below and `tools/feed_wire.py`).
-- The feed is not yet a field of F_node's state, so K6's cost term
-  (`fn-cfg-max-queue-total`) and the `:feed-octets`/`:tick` event kinds are
+- The feed is not yet a field of F_node's state, so K6's cost term (the
+  configured total of the peers' `fn-cfg-peer-max-queue` bounds, which no
+  book sums yet) and the `:feed-octets`/`:tick` event kinds are
   untouched by this lane.
 - No INN and no second fn node had been fed by `tools/run_feed.py`, whose
   only peer was the two-node harness's fake
@@ -2598,7 +2621,7 @@ Open at the end of this lane, with the obligation each one needs:
 | --- | --- | --- |
 | `books/owner`, `books/owner-invariants` with the transit port | **uncertified and unreached**: persvati `run-20260920T180927Z-a8a4` published 29 books and failed six. The two root causes are `books/peer-config`'s `fn-cfg-set-peer-delta-is-admissible` (closed on `w6/peering-inbound-2`, not yet on dev) and `books/nntp-effects` having no certificate on dev; `peer-inbound`, `nntp-post`, `served` and `owner` are cascades of those | merge those two fixes, then resubmit the two roots with `--closure` |
 | K6 (`fn-ideal-*` restated over the peer event kinds) | open, not attempted | `books/ideal.lisp` gains `(:open id peer)`, `:feed-octets` and `:tick`; the served-path robustness for peer connections is `fn-peer-step-effects-well-formed` today, which is the per-connection half, not the F_node half |
-| K7 (`fn-cfg-peer-delta-preserves-the-node-and-changes-only-decisions`) | open | `fn-cfg-peer-deltas-change-only-peers` is the value-level half and is certified; the node-level statement needs `fn-node-apply-config` |
+| K7 (a peer delta preserves the node and changes only decisions) | open | `fn-cfg-peer-deltas-change-only-peers` is the value-level half and is certified; the node-level statement would be over the configured node's transition, `fn-cnode-apply-config` (`books/node-config.lisp`) |
 | K8 / `(:principal id)` | reserved, unimplemented | a keyring lookup at accept beside the address match |
 | The feed driven by the owner (milestone 3) | **not delivered** | `books/peer-feed.lisp` is w6/peering-feed's and had not landed on dev at this lane's HEAD; the owner's tick would be `fn-sched-table-tick` per configured peer plus `fn-feed-tick-step`, and the FNFD journal write before the offer |
 | K5's crash-replay evidence (milestone 4) | **not delivered** | depends on the feed |
@@ -2628,7 +2651,7 @@ The keystones, each stated over the function the owner calls:
 - `fn-own-feed-target-is-in-scope`: a target's outbound wildmat matches one of the article's own Newsgroups names.
 - `fn-own-feed-accept-touches-only-its-targets` and `fn-own-feed-accept-never-enqueues-on-the-origin`: the same, transported to the table the owner holds.
 - `fn-own-feed-tick-peer-is-the-feed-tick`: the subject rule. One peer's tick IS `fn-feed-tick-step` on that peer's own feed, with the same effects.
-- `fn-own-feed-tick-peer-records-the-command-it-emits`: durable before the effect — a record is built exactly when a command goes out, and it names the Message-ID that command offers. **OPEN, removed rather than weakened.** The residue is `fn-feed-offer`'s own precondition that the selected entry is `:queued`; the lemma for it, `fn-feed-selection-is-queued`, is in `books/peer-feed-invariants` and is a cascade of that book's one open form. The ground case is in the test book.
+- Durable before the effect — a record is built exactly when a command goes out, and it names the Message-ID that command offers. **OPEN, removed rather than weakened.** The residue is `fn-feed-offer`'s own precondition that the selected entry is `:queued`; the lemma for it, `fn-feed-selection-is-queued`, is in `books/peer-feed-invariants` and is a cascade of that book's one open form. The ground case is in the test book.
 - `fn-own-feed-retire-keeps-a-busy-feed`: a reconfiguration is a change of decisions; a feed with queued or in-flight work is never dropped.
 - `fn-own-feed-tablep` preserved by `fn-own-feed-reconfigure`, `-restart-all`, `-enqueue-all`, `-accept`, `-tick-peer` and `-tick`. `fn-feedp` preservation is CITED from `books/peer-feed-invariants` (`fn-feed-enqueue-preserves-feedp`, `fn-feed-restart-preserves-feedp`, `fn-feed-tick-step-preserves-feedp`) and never restated.
 
@@ -2649,7 +2672,7 @@ Open at the end of this lane, with the obligation each needs:
 | --- | --- | --- |
 | `books/owner-feed` and its test book | **admitted with no open form, not certified** | `books/peer-feed-invariants` has no certificate: it fails at `fn-feed-apply-record-preserves-feedp`, whose residue is now the attempt bound in the `:feed-sent` arm (`fn-feed-attempts-belowp` of `fn-feed-queue-set-state ... (:sent n)`), not the `find`/`consp` bridge the w6 handoff named. The feed lane owns it. |
 | `books/owner`, `books/owner-invariants` with the feed field and the arms | **not admitted at all** | `books/served` has no certificate on dev; `books/peer-inbound`'s `fn-peer-echo-reply-effects-well-formed` is closed on `w10/auth-served` and that file is taken into this lane's worktree, so the chain may certify on the next farm run. Until it does, `include-book "served"` fails and the owner books cannot even be `ld`ed. |
-| The owner's feed keystones stated over `fn-own-step` | open | `books/owner-invariants.lisp` needs `fn-own-feed-durable-is-the-target-enqueue` (the subject rule for the `(:outcome id :durable)` arm) and the preservation of `fn-own-relation` by the five new arms. Not written: a theorem that cannot be admitted is not a theorem. |
+| The owner's feed keystones stated over `fn-own-step` | open | `books/owner-invariants.lisp` needs the subject rule for the `(:outcome id :durable)` arm and the preservation of `fn-own-relation` by the five new arms. Not written: a theorem that cannot be admitted is not a theorem. The subject rule landed later in `books/owner-feed-subject.lisp`, over `fn-own-feed-durable`, the function the outcome arms call: `fn-own-submission-targets-are-feed-targets` and `fn-own-feed-durable-touches-only-the-submission-targets`. |
 | `fn-own-feed-group-matchp` vs `fn-peer-wildmat-matchp` | a named twin | One `:rule-classes nil` equality in `books/owner-invariants.lisp`, where both are visible. `books/owner-feed` cannot include `books/peer-inbound` without inheriting the served chain's blocker. |
 | fn does not prepend its own path-identity to a transit article's Path (RFC 5537 §3.2.1) | open, inbound lane's | `fn-peer-injection-arguments` stages the peer's octets verbatim. The outbound loop check still refuses a target already in Path and refuses the origin outright, but on the return leg loop suppression rests on the peer's history answer (435/438) rather than on Path. |
 | RFC 3977 §3.1.1 dot stuffing of an outgoing article block | executable ACL2, transported by host | `fn-wire-render-feed-command` in `books/wire.lisp` accepts only bounded, exact CRLF source octets; it stuffs every line-leading dot and appends `.` CRLF. `books/owner-results.lisp`'s `fn-ores-feed-port-publication` projects those ACL2-produced octets and their explicit status into the step's FeedPublication (HST-019). `tools/run_owner.py::feed_write` preserves its uncertain-feed fence and gives the projected octets to `tools/feed_wire.py::Session.send_block`, whose only operation is `sock.sendall`. It does not split, trim, normalize, dot-stuff, or append a terminator. `tests/acl2/wire-tests.lisp` proves a bounded actual-reader `fn-wire-drive` round trip for literal leading dots, a dot-only line, empty lines, and trailing empty lines; `tests/test_feed.py::SessionTests` witnesses one socket write of that already-rendered byte vector. Bare LF, malformed CR, improper lists, and exhausted source or command bounds are explicit ACL2 refusals. |
