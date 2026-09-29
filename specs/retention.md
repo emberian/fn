@@ -186,3 +186,25 @@ Initially retain duplicate-history entries as well; D13 must settle their later
 pruning policy. Until reclamation is implemented and justified, released objects
 may remain physically stored. Keeping extra bytes does not license accepting
 unaccounted new obligations.
+
+## Incremental obligation views (W9 bounded pilot)
+
+The pilot maintains one active-obligation count and one keyed aggregate of
+active count and charge per immutable subject. An obligation contributes by its
+own identity: discharging one contribution does not discharge another hold on
+the same subject, and a refused duplicate discharge changes no contribution.
+The exact reconstruction oracle is `fn-vd-oracle-at` over the ledger's
+contributions. Initialization and each admitted/retracted contribution preserve
+that answer (`books/retention-obligation-view.lisp`).
+
+The concrete keyed view is a string-indexed radix trie. Lookup and a delta touch
+the subject path and its finite character branches, independent of ledger size.
+Initialization is a tail-recursive fold; it is separate from served reads.
+The delta updater has no reconstruction fallback and releases use the new
+release record plus the reservation change, rather than searching for a pin.
+
+At this checkpoint these are source definitions with clean REPL evidence, not
+a served implementation claim. Host writer preservation, matching native status
+and obligation scenarios, charged retained trie paths (including zero entries
+until rebuild), and measured cost remain open. The pilot introduces no general
+dataflow runtime and no irreversible action triggered by a retraction.

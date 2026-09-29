@@ -26,6 +26,7 @@
 ; (warranty-quality-proof-engineering.md section 7: a retracted row never
 ; performs an irreversible action; the consumers read counts).
 (in-package "ACL2")
+(local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
 ; 1. The view: an alist from key to (COUNT . SUM), each key once.
@@ -98,7 +99,9 @@
 (defthm fn-vd-oracle-at-is-a-pair
   (fn-vd-pairp (fn-vd-oracle-at k cs)))
 
-(verify-guards fn-vd-oracle-at)
+(verify-guards fn-vd-oracle-at
+  :hints (("Goal" :use ((:instance fn-vd-oracle-at-is-a-pair (cs (cdr cs))))
+           :in-theory (e/d (fn-vd-pairp) (fn-vd-oracle-at-is-a-pair)))))
 
 ; -----------------------------------------------------------------------------
 ; 3. The operators.
@@ -107,16 +110,16 @@
   "The fact contributing (K . W) arrives."
   (declare (xargs :guard t))
   (let ((r (fn-vd-get k v)))
-    (fn-vd-put k (cons (+ 1 (nfix (car r))) (+ (nfix w) (nfix (cdr r)))) v)))
+    (fn-vd-put k (cons (+ 1 (nfix (if (consp r) (car r) nil))) (+ (nfix w) (nfix (if (consp r) (cdr r) nil)))) v)))
 
 (defun fn-vd-unbump (k w v)
   "The fact contributing (K . W) is retracted."
   (declare (xargs :guard t))
   (let* ((r (fn-vd-get k v))
-         (c (nfix (car r))))
+         (c (nfix (if (consp r) (car r) nil))))
     (if (<= c 1)
         (fn-vd-drop k v)
-      (fn-vd-put k (cons (- c 1) (nfix (- (nfix (cdr r)) (nfix w)))) v))))
+      (fn-vd-put k (cons (- c 1) (nfix (- (nfix (if (consp r) (cdr r) nil)) (nfix w)))) v))))
 
 (defun fn-vd-build (cs)
   "The view initialized from the whole contribution list."
@@ -175,13 +178,31 @@
 (defthm fn-vd-viewp-of-build
   (fn-vd-viewp (fn-vd-build cs)))
 
+(defthm fn-vd-oracle-count-natp
+  (natp (car (fn-vd-oracle-at k cs)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use fn-vd-oracle-at-is-a-pair
+           :in-theory (e/d (fn-vd-pairp) (fn-vd-oracle-at-is-a-pair)))))
+(defthm fn-vd-oracle-sum-natp
+  (natp (cdr (fn-vd-oracle-at k cs)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use fn-vd-oracle-at-is-a-pair
+           :in-theory (e/d (fn-vd-pairp) (fn-vd-oracle-at-is-a-pair)))))
+(defthm fn-vd-oracle-consp
+  (consp (fn-vd-oracle-at k cs))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use fn-vd-oracle-at-is-a-pair
+           :in-theory (e/d (fn-vd-pairp) (fn-vd-oracle-at-is-a-pair)))))
+
 ; The insert rule: the view bumped by C answers the oracle over (cons C cs)
 ; wherever it answered the oracle over cs.
 (defthm fn-vd-get-of-bump-is-the-oracle
   (implies (and (consp c)
                 (equal (fn-vd-get k v) (fn-vd-oracle-at k cs)))
            (equal (fn-vd-get k (fn-vd-bump (car c) (cdr c) v))
-                  (fn-vd-oracle-at k (cons c cs)))))
+                  (fn-vd-oracle-at k (cons c cs))))
+  :hints (("Goal" :expand ((fn-vd-oracle-at k (cons c cs)))
+           :in-theory (e/d (fn-vd-bump) (fn-vd-get fn-vd-put fn-vd-oracle-at)))))
 
 ; The retraction rule needs what the oracle knows about a member: its key's
 ; count is at least one, its sum at least the weight, and a count of one is
@@ -199,6 +220,10 @@
            (and (<= 1 (car (fn-vd-oracle-at k cs)))
                 (<= (nfix (cdr c)) (cdr (fn-vd-oracle-at k cs)))))
   :rule-classes (:rewrite :linear))
+
+(defthm fn-vd-oracle-zero-count-zero-sum
+  (implies (equal (car (fn-vd-oracle-at k cs)) 0)
+           (equal (cdr (fn-vd-oracle-at k cs)) 0)))
 
 (defthm fn-vd-oracle-at-count-one-is-the-member
   (implies (and (consp c) (member-equal c cs) (equal (car c) k)
@@ -223,11 +248,12 @@
 (defun-sk fn-vd-correspondp (v cs)
   (forall (k) (equal (fn-vd-get k v) (fn-vd-oracle-at k cs))))
 
-(in-theory (disable fn-vd-correspondp))
+(in-theory (disable fn-vd-correspondp fn-vd-correspondp-necc
+                    fn-vd-bump fn-vd-unbump fn-vd-get fn-vd-put fn-vd-drop fn-vd-oracle-at))
 
 (defthm fn-vd-correspondp-of-nil
   (fn-vd-correspondp nil nil)
-  :hints (("Goal" :in-theory (enable fn-vd-correspondp))))
+  :hints (("Goal" :in-theory (enable fn-vd-correspondp fn-vd-get fn-vd-oracle-at))))
 
 (defthm fn-vd-correspondp-of-bump
   (implies (and (consp c) (fn-vd-correspondp v cs))
@@ -254,7 +280,11 @@
 ; Initialization: the view built from the whole list corresponds to it.
 (defthm fn-vd-build-corresponds
   (implies (fn-vd-contribsp cs)
-           (fn-vd-correspondp (fn-vd-build cs) cs)))
+           (fn-vd-correspondp (fn-vd-build cs) cs))
+  :hints (("Goal" :induct (fn-vd-build cs))
+          ("Subgoal *1/1" :in-theory (disable fn-vd-correspondp-of-bump)
+           :use ((:instance fn-vd-correspondp-of-bump
+                    (c (car cs)) (v (fn-vd-build (cdr cs))) (cs (cdr cs)))))))
 
 (in-theory (disable fn-vd-get fn-vd-put fn-vd-drop fn-vd-bump fn-vd-unbump
                     fn-vd-build fn-vd-oracle-at fn-vd-viewp fn-vd-boundp

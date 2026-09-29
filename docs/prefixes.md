@@ -350,3 +350,7 @@ Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `host/config-host.lisp` marshals under `fn-cfg-host-`. The `fn-store-` tag is shared: `books/store-config` owns the group table under
 it and `host/store-host.lisp` marshals under it. A host wrapper never decides
 anything a book does not already decide.
+
+| `fn-vd-` | view-delta | W9 keyed aggregate logical oracle and delta rules |
+| `fn-vdc-` | view-delta-concrete | W9 bounded-key radix aggregate representation |
+| `fn-rov-` | retention-obligation-view | W9 total and independent subject contributions |
