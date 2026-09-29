@@ -1,6 +1,7 @@
 ; Program bridge for native BP receive evidence allocation and recovery.
 (in-package "ACL2")
 (include-book "../books/bp-receive-evidence")
+(include-book "../books/bp-evidence-host-names")
 
 (defun fn-bpn-host-evidence-max-entries () (fn-bpn-evidence-max-entries))
 (defun fn-bpn-host-evidence-directory-name () *fn-bpn-evidence-directory-name*)
@@ -18,11 +19,8 @@
   (if (fn-bpn-evidence-statep st)
       (fn-bpn-evidence-next-wire-name st)
     nil))
-(defun fn-bpn-host-evidence-next-result-name (st outcome)
-  (if (and (fn-bpn-evidence-statep st)
-           (fn-bpn-evidence-outcomep outcome))
-      (fn-bpn-evidence-next-result-name st outcome)
-    nil))
+; fn-bpn-host-evidence-next-result-name is books/bp-evidence-host-names.lisp's
+; (guard-verified, with the keystone PRF-1032).
 (defun fn-bpn-host-evidence-operationp (operation)
   ; An exact alias (definterface :delegates); the recognizer is boolean.
   (fn-bpn-evidence-operationp operation))

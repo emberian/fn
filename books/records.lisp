@@ -1,4 +1,4 @@
-; fn: experimental local transaction-record bytes, schema 0.
+; fn: experimental local transaction-record bytes, schemas 1 and 2.
 ;
 ; This is a deliberately narrow local prototype envelope.  It is not a native
 ; article, signature, batch, journal, or storage ABI, and it makes no
@@ -7,23 +7,23 @@
 ; profile in books/cbor.lisp.  No definition in
 ; this book reads, prints, or evaluates external Lisp data.
 ;
-; The logical record is the ten-element tuple
+; The logical record is the eleven-element tuple
 ;   (sequence txid generation msgid payload groups obligation-id
-;    content-subject release-evidence charge)
+;    content-subject release-evidence charge stamp)
 ; where all text-like fields are ACL2 strings.  `msgid` and every group name
 ; are ASCII.  The three metadata fields are nonempty octet-domain strings:
 ; every character has a code in 0..255.  Conversion to a byte string is exactly
 ; the list of `char-code`s; parsing uses the inverse `code-char` conversion.
 ; `payload` alone is an arbitrary list of octets.
 ;
-; Schema-0 exact grammar, a concatenation of self-delimiting primitive items:
+; Exact grammar, a concatenation of self-delimiting primitive items:
 ;   bstr h'666e2d72'                 ; magic "fn-r"
-;   uint 0                           ; local schema version
+;   uint 1 or 2                      ; schema: 2 when an integer field is wide
 ;   uint sequence, uint txid, uint generation
 ;   bstr msgid, bstr payload
 ;   uint group-count, bstr group[0] ... bstr group[group-count - 1]
 ;   bstr obligation-id, bstr content-subject, bstr release-evidence
-;   uint charge
+;   uint charge, uint stamp
 ; The decoder requires the stated order, exact group count, canonical CBOR
 ; heads, and no trailing octets.  It checks the input bound before octet
 ; traversal; magic/version/group count are checked before the remaining record
@@ -51,7 +51,7 @@
 (in-package "ACL2")
 (include-book "records-shape")
 
-; This book is the schema-0 codec over the CBOR primitives, so it opens their
+; This book is the record codec over the CBOR primitives, so it opens their
 ; definitions locally.  CBOR results stay opaque: the record lemmas exported
 ; by `cbor' are what close the goals about them.
 (local (in-theory (enable fn-cbor-codec-vocabulary)))
@@ -150,14 +150,9 @@
                                   (fn-record-string-octets
                                    (fn-record-release-evidence record))))
             (fn-record-uint-encode (fn-record-charge record))
-            (if (equal (fn-record-stamp record) :legacy)
-                nil
-              (fn-record-uint-encode (fn-record-stamp record))))))
+            (fn-record-uint-encode (fn-record-stamp record)))))
       (if (fn-cbor-at-mostp octets *fn-record-max-octets*) octets nil))))
 (local (in-theory (enable (:type-prescription true-listp-append))))
-
-(defun fn-record-schema0-encode (record)
-  (fn-record-encode-impl (fn-record-with-stamp record :legacy)))
 
 
 (defun fn-record-read-uint (octets)
@@ -209,9 +204,8 @@
 ;; the :logic definitions only, so an edit to an exec body recertifies the
 ;; exec book and the attachment's includers, not this book's dependents.
 
-(defun fn-record-decode-tail (schema sequence txid generation msgid payload octets)
-  (declare (xargs :guard (and (member-equal schema '(0 1 2))
-                              (fn-record-uint64p sequence)
+(defun fn-record-decode-tail (sequence txid generation msgid payload octets)
+  (declare (xargs :guard (and (fn-record-uint64p sequence)
                               (fn-record-uint64p txid)
                               (fn-record-uint64p generation)
                               (fn-record-msgidp msgid)
@@ -248,11 +242,8 @@
                             (if (not (fn-record-parse-okp charge-result))
                                 charge-result
                               (let* ((stamp-result
-                                      (if (equal schema 0)
-                                          (fn-record-parse-ok :legacy
-                                                              (fn-record-parse-rest charge-result))
-                                        (fn-record-read-uint
-                                         (fn-record-parse-rest charge-result))))
+                                      (fn-record-read-uint
+                                       (fn-record-parse-rest charge-result)))
                                      (id (fn-record-octets-string
                                           (fn-record-parse-value id-result)))
                                      (subject (fn-record-octets-string
@@ -274,9 +265,8 @@
                                       (fn-record-parse-ok record nil)
                                     (fn-record-parse-error :invalid))))))))))))))))))))
 
-(defun fn-record-decode-after-header (schema octets)
-  (declare (xargs :guard (and (member-equal schema '(0 1 2))
-                              (fn-cbor-octet-listp octets))
+(defun fn-record-decode-after-header (octets)
+  (declare (xargs :guard (fn-cbor-octet-listp octets)
                   :verify-guards nil))
   (let ((sequence-result (fn-record-read-uint octets)))
     (if (not (fn-record-parse-okp sequence-result))
@@ -307,7 +297,6 @@
                             (if (not (fn-record-payloadp payload))
                                 (fn-record-parse-error :payload)
                               (fn-record-decode-tail
-                               schema
                                (fn-record-parse-value sequence-result)
                                (fn-record-parse-value txid-result)
                                (fn-record-parse-value generation-result)
@@ -330,11 +319,10 @@
               (if (not (fn-record-parse-okp version-result))
                   version-result
                 (if (not (member-equal (fn-record-parse-value version-result)
-                                       '(0 1 2)))
+                                       '(1 2)))
                     (fn-record-parse-error :unknown-version)
                   (let ((parsed
                          (fn-record-decode-after-header
-                          (fn-record-parse-value version-result)
                           (fn-record-parse-rest version-result))))
                     (if (fn-record-parse-okp parsed)
                         ; The schema octet is a function of the record: a
@@ -678,55 +666,43 @@
                                fn-cbor-octet-listp
                                true-listp))))
 
-; A certified end-to-end schema-0 vector.  The broader all-record round-trip
+; A certified end-to-end schema-1 vector.  The broader all-record round-trip
 ; property remains proof work because it includes the exact ACL2 string/octet
 ; conversion and bounded variable group sequence.
 ; A witness, not a rewrite rule: it is one ground vector, cited by name.
-(defthm fn-record-schema0-golden-round-trip
+(defthm fn-record-schema1-golden-round-trip
   (equal (fn-record-decode-exact-impl
           (fn-record-encode-impl
-           (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 :legacy)))
+           (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5)))
          (fn-record-result-ok
-          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 :legacy)))
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5)))
   :rule-classes nil)
 
 ; The same vector as exact wire octets: the concrete conformance fact the
 ; seam cannot carry (review 2026-09-22-bp-node-machine-2 section 4: a round trip
 ; and canonicality hold of any length-preserving permutation of the
 ; encodings, so they do not identify this wire language).  Magic h'44666e2d72'
-; ("fn-r"), schema 0, sequence 1, txid 2, generation 3, msgid h'433c613e'
+; ("fn-r"), schema 1, sequence 1, txid 2, generation 3, msgid h'433c613e'
 ; ("<a>"), payload h'420908', one group h'4167', obligation, subject and
-; evidence h'416f' h'4173' h'4165', charge 4 -- the layout of
+; evidence h'416f' h'4173' h'4165', charge 4, stamp 5 -- the layout of
 ; specs/encoding.md, octet for octet.
-(defconst *fn-record-schema0-golden-octets*
-  '(68 102 110 45 114 0 1 2 3 67 60 97 62 66 9 8 1 65 103
-    65 111 65 115 65 101 4))
-
-(defthm fn-record-schema0-golden-octets-are-the-encoding
-  (equal (fn-record-encode-impl
-          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 :legacy))
-         *fn-record-schema0-golden-octets*)
-  :rule-classes nil)
-
-(defthm fn-record-schema0-golden-octets-decode
-  (equal (fn-record-decode-exact-impl *fn-record-schema0-golden-octets*)
-         (fn-record-result-ok
-          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 :legacy)))
-  :rule-classes nil)
-
-; Grammar conformance at the header: a wrong magic octet and a version
-; octet other than 0 are refused with their own errors, before any field.
-(defthm fn-record-schema0-golden-grammar-refusals
-  (and (equal (fn-record-decode-exact-impl '(68 102 110 45 115 0))
-              (fn-record-parse-error :magic))
-       (equal (fn-record-decode-exact-impl '(68 102 110 45 114 3))
-              (fn-record-parse-error :unknown-version)))
-  :rule-classes nil)
-
-; Schema 1 preserves every schema-0 field byte and appends one canonical uint.
 (defconst *fn-record-schema1-golden-octets*
   '(68 102 110 45 114 1 1 2 3 67 60 97 62 66 9 8 1 65 103
     65 111 65 115 65 101 4 5))
+
+; Grammar conformance at the header: a wrong magic octet and a version octet
+; other than 1 or 2 -- the retired stampless schema 0 among them -- are
+; refused with their own errors, before any field.
+(defthm fn-record-golden-grammar-refusals
+  (and (equal (fn-record-decode-exact-impl '(68 102 110 45 115 1))
+              (fn-record-parse-error :magic))
+       (equal (fn-record-decode-exact-impl '(68 102 110 45 114 3))
+              (fn-record-parse-error :unknown-version))
+       (equal (fn-record-decode-exact-impl
+               (list* 68 102 110 45 114 0
+                      (nthcdr 6 (butlast *fn-record-schema1-golden-octets* 1))))
+              (fn-record-parse-error :unknown-version)))
+  :rule-classes nil)
 
 (defthm fn-record-schema1-golden-octets-are-the-encoding
   (equal (fn-record-encode-impl
@@ -760,10 +736,7 @@
   :rule-classes nil)
 
 ; The schema octet is the record's: a schema-1 header over the u64 charge,
-; and a schema-2 header over the all-u32 schema-1 vector, are both refused,
-; and a u64 field under the legacy schema-0 header is refused too (a legacy
-; record's stamp is absent, so its schema is 0 whatever its widths; the
-; refusal here is the trailing stamp).
+; and a schema-2 header over the all-u32 schema-1 vector, are both refused.
 (defthm fn-record-schema2-golden-grammar-refusals
   (and (equal (fn-record-decode-exact-impl
                (list* 68 102 110 45 114 1 (nthcdr 6 *fn-record-schema2-golden-octets*)))

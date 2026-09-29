@@ -134,7 +134,7 @@ def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
     if len(narrowing) > budget.max_records:
         return Verdict("inconclusive", scenario.id, journal.digest(),
                        cause="budget:records", budget=asdict(budget)).sign()
-    hist = contract.histories(scenario, budget.max_histories)
+    hist = contract.histories(scenario, budget.max_histories, journal)
     if hist is None:
         return Verdict("inconclusive", scenario.id, journal.digest(),
                        cause="budget:histories", budget=asdict(budget)).sign()

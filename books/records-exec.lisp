@@ -56,9 +56,8 @@
                                                release-evidence charge stamp))))
   :hints (("Goal" :in-theory (enable fn-record-p fn-record-internals))))
 
-(defun fn-record-decode-tail-exec (schema sequence txid generation msgid payload octets)
-  (declare (xargs :guard (and (member-equal schema '(0 1 2))
-                              (fn-record-uint64p sequence)
+(defun fn-record-decode-tail-exec (sequence txid generation msgid payload octets)
+  (declare (xargs :guard (and (fn-record-uint64p sequence)
                               (fn-record-uint64p txid)
                               (fn-record-uint64p generation)
                               (fn-record-msgidp msgid)
@@ -66,7 +65,7 @@
                               (fn-cbor-octet-listp octets))
                   :verify-guards nil))
   (mbe
-   :logic (fn-record-decode-tail schema sequence txid generation msgid payload octets)
+   :logic (fn-record-decode-tail sequence txid generation msgid payload octets)
    :exec
    (let ((count-result (fn-record-read-uint octets)))
      (if (not (fn-record-parse-okp count-result))
@@ -98,11 +97,8 @@
                              (if (not (fn-record-parse-okp charge-result))
                                  charge-result
                                (let* ((stamp-result
-                                       (if (equal schema 0)
-                                           (fn-record-parse-ok :legacy
-                                                               (fn-record-parse-rest charge-result))
-                                         (fn-record-read-uint
-                                          (fn-record-parse-rest charge-result))))
+                                       (fn-record-read-uint
+                                        (fn-record-parse-rest charge-result)))
                                       (id (fn-record-octets-string
                                            (fn-record-parse-value id-result)))
                                       (subject (fn-record-octets-string
@@ -134,12 +130,11 @@
                                          (fn-record-parse-ok record nil)
                                        (fn-record-parse-error :invalid)))))))))))))))))))))
 
-(defun fn-record-decode-after-header-exec (schema octets)
-  (declare (xargs :guard (and (member-equal schema '(0 1 2))
-                              (fn-cbor-octet-listp octets))
+(defun fn-record-decode-after-header-exec (octets)
+  (declare (xargs :guard (fn-cbor-octet-listp octets)
                   :verify-guards nil))
   (mbe
-   :logic (fn-record-decode-after-header schema octets)
+   :logic (fn-record-decode-after-header octets)
    :exec
    (let ((sequence-result (fn-record-read-uint octets)))
      (if (not (fn-record-parse-okp sequence-result))
@@ -174,7 +169,6 @@
                              (if (not (<= (len payload) *fn-record-max-payload*))
                                  (fn-record-parse-error :payload)
                                (fn-record-decode-tail-exec
-                                schema
                                 (fn-record-parse-value sequence-result)
                                 (fn-record-parse-value txid-result)
                                 (fn-record-parse-value generation-result)
@@ -201,11 +195,10 @@
                (if (not (fn-record-parse-okp version-result))
                    version-result
                  (if (not (member-equal (fn-record-parse-value version-result)
-                                        '(0 1 2)))
+                                        '(1 2)))
                      (fn-record-parse-error :unknown-version)
                    (let ((parsed
                           (fn-record-decode-after-header-exec
-                           (fn-record-parse-value version-result)
                            (fn-record-parse-rest version-result))))
                      (if (fn-record-parse-okp parsed)
                          (if (equal (fn-record-schema-octet

@@ -53,32 +53,22 @@ class NativeCutTableTests(unittest.TestCase):
         self.assertEqual(unlinked.follows, "fn-lg-open-program")
 
     def test_every_developer_selector_is_registered(self):
-        self.assertEqual(set(native_cuts.developer_selectors()), {
-            "FN_NATIVE_INIT_FAULT", "FN_NATIVE_RECOVERY_FAULT",
-            "FN_NATIVE_POST_FAULT",
-            "FN_NATIVE_STATE_CHECKPOINT_FAULT",
-            # The checkpoint pipeline's batch fault and budget override, and
-            # the committer's barrier delay and pipeline trace (log-2).
-            "FN_NATIVE_CHECKPOINT_BATCH_FAULT", "FN_NATIVE_CHECKPOINT_BUDGET_TEST",
-            "FN_NATIVE_OWNER_TEST_BARRIER_MS", "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE",
-            # lane time-model: a stalled device (the slow-disk native case).
-            "FN_NATIVE_TEST_DISK_STALL_FILE",
-            # `store import''s publication cuts (fn-bs-imp-program).
-            "FN_NATIVE_IMPORT_FAULT",
-            # reclaim-lifecycle 1 and 2: the disk-free observation.  It is
-            # refused at start by the production image like the rest
-            # (test_served_owner_cuts_stop_and_production_refusals iterates
-            # this table).  The reclaiming pack's fault went with the packs.
-            "FN_NATIVE_DISK_FREE",
-            "FN_NATIVE_CONTROL_FAULT",
-            "FN_NATIVE_CONTROL_TEST_STOP", "FN_NATIVE_AUTH_ADMIN_FAULT",
-            "FN_NATIVE_KEY_STATEMENT_FAULT",
-            "FN_NATIVE_OWNER_TEST_SIGTERM", "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP",
-            "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN",
-            "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT",
-            # w6-log-core: the record log's cuts (tests/campaign/native_cuts.py
-            # LOG_CUTS), a SIGKILL at the named cut of fnn-log-*.
-            "FN_NATIVE_LOG_FAULT"})
+        # Generated from the host (item 73): the hand-kept set here went
+        # stale as lanes added selectors.  What must hold: every selector a
+        # host file reads by name is in +fnn-developer-selectors+ (else the
+        # read faults), the table names each once, and the production gate's
+        # refusal (test_served_owner_cuts_stop_and_production_refusals)
+        # iterates exactly that table.
+        table = native_cuts.developer_selectors()
+        self.assertEqual(len(table), len(set(table)), "a selector registered twice")
+        self.assertIn("FN_NATIVE_POST_FAULT", table)
+        self.assertIn("FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH", table)
+        read = native_cuts.selectors_read()
+        self.assertIn("FN_NATIVE_AUTH_ADMIN_FAULT", read)
+        unregistered = {name: files for name, files in read.items() if name not in table}
+        self.assertEqual(unregistered, {}, "read by name but not registered")
+        from tests import native_harness
+        self.assertEqual(set(native_harness.developer_selectors()), set(table))
 
 
 class InjectedFormTests(unittest.TestCase):

@@ -79,6 +79,76 @@
      (iff (cadr w) (and (natp ns) (<= *fn-clkr-dtn-epoch-unix-ms* (fn-clkr-ms-of-ns ns)))))
    :rule-classes nil))
 
+;;; KEYSTONE fn-clkr-wall-seconds-is-the-ns-decision (PRF-305, the genesis's
+;;; creation time: host/native/io.lisp fnn-genesis-octets hands gettimeofday's
+;;; reading to fn-otm-wall-seconds).
+
+;; Reachable positive: 5.25 s past the epoch is 5 whole seconds, the ns
+;; decision's wall floored; the second before the epoch has no wall and is 0.
+(defthm clkt-wall-seconds-positive
+  (and (integerp 946684805) (natp 250000)
+       (equal (fn-otm-wall-seconds 946684805 250000) 5)
+       (natp (+ (* 1000000000 946684805) (* 1000 250000)))
+       (<= *fn-clkr-dtn-epoch-unix-ms*
+           (fn-clkr-ms-of-ns (+ (* 1000000000 946684805) (* 1000 250000))))
+       (equal (floor (- (fn-clkr-ms-of-ns (+ (* 1000000000 946684805) (* 1000 250000)))
+                        *fn-clkr-dtn-epoch-unix-ms*)
+                     1000)
+              5)
+       (integerp 946684799) (natp 999999)
+       (equal (fn-otm-wall-seconds 946684799 999999) 0)
+       (< (fn-clkr-ms-of-ns (+ (* 1000000000 946684799) (* 1000 999999)))
+          *fn-clkr-dtn-epoch-unix-ms*))
+  :rule-classes nil)
+
+;; Without (integerp seconds): 2.5 s past the epoch is a natural count of
+;; nanoseconds whose decision is 2 seconds, but the reading answers 0.
+(defthm clkt-wall-seconds-integerp-hypotheses
+  (and (not (integerp 1893369605/2)) (natp 0)
+       (equal (fn-otm-wall-seconds 1893369605/2 0) 0)
+       (natp (* 1000000000 1893369605/2))
+       (equal (floor (- (fn-clkr-ms-of-ns (* 1000000000 1893369605/2))
+                        *fn-clkr-dtn-epoch-unix-ms*)
+                     1000)
+              2))
+  :rule-classes nil)
+
+(must-fail-checked
+ (defthm clkt-wall-seconds-without-integerp
+   (implies (natp microseconds)
+            (let ((ns (+ (* 1000000000 seconds) (* 1000 microseconds))))
+              (equal (fn-otm-wall-seconds seconds microseconds)
+                     (if (and (natp ns)
+                              (<= *fn-clkr-dtn-epoch-unix-ms* (fn-clkr-ms-of-ns ns)))
+                         (floor (- (fn-clkr-ms-of-ns ns) *fn-clkr-dtn-epoch-unix-ms*)
+                                1000)
+                       0))))
+   :rule-classes nil))
+
+;; Without (natp microseconds): 2 s past the epoch less a whole second of
+;; negative microseconds is 1 s by the ns decision; the reading answers 0.
+(defthm clkt-wall-seconds-natp-hypotheses
+  (and (integerp 946684802) (not (natp -1000000))
+       (equal (fn-otm-wall-seconds 946684802 -1000000) 0)
+       (natp (+ (* 1000000000 946684802) (* 1000 -1000000)))
+       (equal (floor (- (fn-clkr-ms-of-ns (+ (* 1000000000 946684802) (* 1000 -1000000)))
+                        *fn-clkr-dtn-epoch-unix-ms*)
+                     1000)
+              1))
+  :rule-classes nil)
+
+(must-fail-checked
+ (defthm clkt-wall-seconds-without-natp
+   (implies (integerp seconds)
+            (let ((ns (+ (* 1000000000 seconds) (* 1000 microseconds))))
+              (equal (fn-otm-wall-seconds seconds microseconds)
+                     (if (and (natp ns)
+                              (<= *fn-clkr-dtn-epoch-unix-ms* (fn-clkr-ms-of-ns ns)))
+                         (floor (- (fn-clkr-ms-of-ns ns) *fn-clkr-dtn-epoch-unix-ms*)
+                                1000)
+                       0))))
+   :rule-classes nil))
+
 ;;; KEYSTONE fn-clkr-monotonic-readings-are-the-ns-decision (PRF-305, the
 ;;; served monotonic readings: fnn-owner-monotonic-ms and its siblings hand
 ;;; SBCL's tick counter and rate to fn-otm-monotonic-ms; fnn-bp-monotonic-now
