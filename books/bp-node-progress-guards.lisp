@@ -421,32 +421,20 @@
                              fn-bpf-fragment-listp-car-and-cdr
                              fn-bpf-fragmentp-fields))))))
 (local
+ (defthm fn-bpnpg-nth-past-the-end
+   (implies (and (true-listp e) (natp n) (<= (len e) n))
+            (not (nth n e)))
+   :hints (("Goal" :induct (nth n e)))))
+(local
  (defthm fn-bpnpg-nth-3-of-a-three-list
    (implies (and (true-listp e) (equal (len e) 3))
             (equal (fn-bpn-nth 3 e) nil))
-   :hints (("Goal" :expand ((fn-bpn-nth 3 e) (fn-bpn-nth 2 (cdr e))
-                            (fn-bpn-nth 1 (cddr e)) (fn-bpn-nth 0 (cdddr e))
-                            (len e) (len (cdr e)) (len (cddr e))
-                            (len (cdddr e)))
-            :in-theory (union-theories '(fn-cbor-ag-car car-cons cdr-cons
-                                         natp zp (:e natp) (:e zp) (:e binary-+)
-                                         (:e unary--) (:e equal) (:e not)
-                                         default-car default-cdr true-listp)
-                                       (theory 'minimal-theory))))))
+   :hints (("Goal" :in-theory (enable fn-bpn-nth-is-nth-on-true-lists)))))
 (local
  (defthm fn-bpnpg-nth-4-of-a-four-list
    (implies (and (true-listp e) (equal (len e) 4))
             (equal (fn-bpn-nth 4 e) nil))
-   :hints (("Goal" :expand ((fn-bpn-nth 4 e) (fn-bpn-nth 3 (cdr e))
-                            (fn-bpn-nth 2 (cddr e)) (fn-bpn-nth 1 (cdddr e))
-                            (fn-bpn-nth 0 (cddddr e))
-                            (len e) (len (cdr e)) (len (cddr e))
-                            (len (cdddr e)) (len (cddddr e)))
-            :in-theory (union-theories '(fn-cbor-ag-car car-cons cdr-cons
-                                         natp zp (:e natp) (:e zp) (:e binary-+)
-                                         (:e unary--) (:e equal) (:e not)
-                                         default-car default-cdr true-listp)
-                                       (theory 'minimal-theory))))))
+   :hints (("Goal" :in-theory (enable fn-bpn-nth-is-nth-on-true-lists)))))
 (local
  (defthm fn-bpnp-delegate-event-guard
    (implies (and (fn-bpnp-host-eventp event)

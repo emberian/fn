@@ -265,6 +265,21 @@
                          (theory 'minimal-theory)))))))
 
 (local
+ (defthm fn-bpnpp-job-apply-at-true-listp
+   (implies (equal (fn-cbor-ag-car (fn-bpfj-apply-at st r a job limit)) :ready)
+            (true-listp (fn-bpn-nth 1 (fn-bpfj-apply-at st r a job limit))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (union-theories
+                        '(fn-bpfj-apply-at fn-bpfj-apply
+                          fn-bpnpp-true-listp-cons
+                          fn-bpn-nth fn-cbor-ag-car car-cons cdr-cons
+                          zp natp (:e zp) (:e natp) (:e binary-+)
+                          (:e fn-cbor-ag-car) (:e fn-bpn-nth))
+                        (union-theories
+                         (theory 'fn-bpnpp-replacements-true-listp)
+                         (theory 'minimal-theory)))))))
+
+(local
  (defthm fn-bpnpp-family-apply-at-true-listp
    (implies (equal (fn-cbor-ag-car (fn-bpnf-family-apply-at st r a)) :ready)
             (true-listp (fn-bpn-nth 1 (fn-bpnf-family-apply-at st r a))))
@@ -362,32 +377,20 @@
 
 ;; The host event supplies the delegated arms' own premises.
 (local
+ (defthm fn-bpnpp-nth-past-the-end
+   (implies (and (true-listp e) (natp n) (<= (len e) n))
+            (not (nth n e)))
+   :hints (("Goal" :induct (nth n e)))))
+(local
  (defthm fn-bpnpp-nth-3-of-a-three-list
    (implies (and (true-listp e) (equal (len e) 3))
             (equal (fn-bpn-nth 3 e) nil))
-   :hints (("Goal" :expand ((fn-bpn-nth 3 e) (fn-bpn-nth 2 (cdr e))
-                            (fn-bpn-nth 1 (cddr e)) (fn-bpn-nth 0 (cdddr e))
-                            (len e) (len (cdr e)) (len (cddr e))
-                            (len (cdddr e)))
-            :in-theory (union-theories '(fn-cbor-ag-car car-cons cdr-cons
-                                         natp zp (:e natp) (:e zp) (:e binary-+)
-                                         (:e unary--) (:e equal) (:e not)
-                                         default-car default-cdr true-listp)
-                                       (theory 'minimal-theory))))))
+   :hints (("Goal" :in-theory (enable fn-bpn-nth-is-nth-on-true-lists)))))
 (local
  (defthm fn-bpnpp-nth-4-of-a-four-list
    (implies (and (true-listp e) (equal (len e) 4))
             (equal (fn-bpn-nth 4 e) nil))
-   :hints (("Goal" :expand ((fn-bpn-nth 4 e) (fn-bpn-nth 3 (cdr e))
-                            (fn-bpn-nth 2 (cddr e)) (fn-bpn-nth 1 (cdddr e))
-                            (fn-bpn-nth 0 (cddddr e))
-                            (len e) (len (cdr e)) (len (cddr e))
-                            (len (cdddr e)) (len (cddddr e)))
-            :in-theory (union-theories '(fn-cbor-ag-car car-cons cdr-cons
-                                         natp zp (:e natp) (:e zp) (:e binary-+)
-                                         (:e unary--) (:e equal) (:e not)
-                                         default-car default-cdr true-listp)
-                                       (theory 'minimal-theory))))))
+   :hints (("Goal" :in-theory (enable fn-bpn-nth-is-nth-on-true-lists)))))
 (local
  (defthm fn-bpnpp-delegate-event-premises
    (implies (and (fn-bpnp-host-eventp event)
@@ -495,6 +498,7 @@
       fn-bpnpp-true-listp-cons
       fn-bpnpp-ready-appliers-true-listp
       fn-bpnpp-family-apply-at-true-listp
+      fn-bpnpp-job-apply-at-true-listp
       fn-bpnpp-apply-delivery-true-listp
       fn-bpnpp-apply-delete-true-listp
       fn-bpnpp-recovery-held-true-listp
@@ -563,11 +567,22 @@
   (fn-bpnf-family-persist-step st epoch op result)
   (fn-bpnf-family-persist-step))
 
+;; The twins over the host-carried reassembly job (Q4a increment B).
+(fn-bpnpp-defkeep fn-bpnpp-job-propose-step
+  (fn-bpfj-propose-step st anchor-arrival observation job limit)
+  (fn-bpfj-propose-step))
+
+(fn-bpnpp-defkeep fn-bpnpp-job-persist-step
+  (fn-bpfj-persist-step st epoch op result job limit)
+  (fn-bpfj-persist-step))
+
 (fn-bpnpp-defkeep fn-bpnpp-fragment-step
   (fn-bpnf-fragment-step st event)
   (fn-bpnf-fragment-step fn-bpnpp-foundation-step
                            fn-bpnpp-family-propose-step
-                           fn-bpnpp-family-persist-step)
+                           fn-bpnpp-family-persist-step
+                           fn-bpnpp-job-propose-step
+                           fn-bpnpp-job-persist-step)
   :event t)
 
 (fn-bpnpp-defkeep fn-bpnpp-delete-propose-step
