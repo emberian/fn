@@ -23,7 +23,7 @@
 ; collision or second preimage.  What the digest check does without the
 ; tables being the history's is witnessed instead (root-is-image removed).
 (in-package "ACL2")
-(include-book "../../books/history-image-binding")
+(include-book "../../books/history-image-fold")
 
 ; -----------------------------------------------------------------------------
 ; The host runs compiled code: every executable the host will call is
@@ -36,7 +36,9 @@
       (eq (symbol-class 'fn-hib-select (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-hib-request (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-hib-complete (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-hib-evict (w state)) :common-lisp-compliant)))
+      (eq (symbol-class 'fn-hib-evict (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-hif-count-run (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-hif-collect-run (w state)) :common-lisp-compliant)))
 
 ; -----------------------------------------------------------------------------
 ; The page file as data.
@@ -548,3 +550,55 @@
                    (equal (nth 8 *hibt-ev*) 2)
                    (equal (nth 9 *hibt-ev*) :ok)
                    (equal (nth 10 *hibt-ev*) (list :ok (nth 39 *hibt-h1*)))))
+
+; -----------------------------------------------------------------------------
+; The fold over the image (books/history-image-fold.lisp): KEYSTONE
+; fn-hif-run-is-foldl, instantiated (fn-hif-collect-run-is-foldl).  The run
+; reads without filling: over the freshly adopted image it stops at the
+; first row whose page is not verified and answers the need with its cursor
+; and accumulator; the host serves the request (fn-hib-request /
+; fn-hib-complete: the asynchronous path) and resumes at the cursor.  The
+; composed loop ends :done with the fold of every row (the rows newest
+; first), after one completion per page the rows touch.
+
+(defun hibt-fold-loop (fuel i acc file completions fn-hrecs$c)
+  (declare (xargs :stobjs fn-hrecs$c :verify-guards nil :measure (nfix fuel)
+                  :hints (("Goal" :in-theory (disable fn-hif-collect-run fn-hib-complete fn-hib-request)))))
+  (if (zp fuel)
+      (mv :fuel i acc completions fn-hrecs$c)
+    (mv-let (v j a) (fn-hif-collect-run i (fn-hrc-nimg fn-hrecs$c) acc fn-hrecs$c)
+      (cond ((eq v :done) (mv :done j a completions fn-hrecs$c))
+            ((and (consp v) (eq (car v) :need-page))
+             (let ((q (fn-hib-request :fold (cadr v) fn-hrecs$c)))
+               (mv-let (cv fn-hrecs$c) (fn-hib-complete q (hibt-page file (fn-hib-q-phys q)) fn-hrecs$c)
+                 (if (eq cv :ok)
+                     (hibt-fold-loop (1- fuel) j a file (+ 1 completions) fn-hrecs$c)
+                   (mv cv j a completions fn-hrecs$c)))))
+            (t (mv v j a completions fn-hrecs$c))))))
+
+(defun hibt-fold (file)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hrecs$c
+    (mv-let (out fn-hrecs$c)
+      (mv-let (v0 fn-hrecs$c)
+        (fn-hib-open *hibt-bind1* *hibt-node* *hibt-salt* *hibt-t1* (list (hibt-slot *hibt-rec1*)) file fn-hrecs$c)
+        (mv-let (v1 j1 a1) (fn-hif-collect-run 0 40 nil fn-hrecs$c)
+          (mv-let (v j a n fn-hrecs$c) (hibt-fold-loop 100 0 nil file 0 fn-hrecs$c)
+            (mv (list v0 v1 j1 a1 v j a n (fn-hrc-vlen fn-hrecs$c)) fn-hrecs$c))))
+      out)))
+
+(hibt-defconst *hibt-fold* (hibt-fold *hibt-file1*))
+(assert-event (and (null (nth 0 *hibt-fold*))
+                   (eq (car (nth 1 *hibt-fold*)) :need-page)   ; the first run stops at a need,
+                   (equal (nth 2 *hibt-fold*) 0)                  ; at cursor 0, nothing folded
+                   (equal (nth 3 *hibt-fold*) nil)
+                   (equal (nth 4 *hibt-fold*) :done)               ; the composed loop ends :done
+                   (equal (nth 5 *hibt-fold*) 40)
+                   (equal (nth 6 *hibt-fold*) (reverse *hibt-h1*)) ; the fold of every row
+                   (<= (nth 7 *hibt-fold*) (nth 8 *hibt-fold*))))  ; at most one completion per page
+; Damage stops the fold by name at the damaged page's first row, with the
+; rows before it folded -- never a shorter answer presented as whole.
+(hibt-defconst *hibt-fold-dmg* (hibt-fold (hibt-corrupt *hibt-file1* *hibt-last-phys*)))
+(assert-event (and (eq (car (nth 4 *hibt-fold-dmg*)) :page-damaged)
+                   (< (nth 5 *hibt-fold-dmg*) 40)
+                   (equal (nth 6 *hibt-fold-dmg*) (reverse (take (nth 5 *hibt-fold-dmg*) *hibt-h1*)))))
