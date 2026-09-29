@@ -89,7 +89,7 @@
 ;; since the last read.  One process serves one Store (owner mode, or the
 ;; store node's), so one stobj.
 (defun fn-host-hist-sync (store fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (declare (xargs :stobjs (fn-hist state) :guard t))
   (let ((reload (and (boundp-global 'fn-store-sn-hist-reload state)
                      (f-get-global 'fn-store-sn-hist-reload state))))
     (let ((fn-hist (fn-hist-refresh (fn-sn-files store) reload fn-hist)))
