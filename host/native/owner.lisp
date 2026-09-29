@@ -1526,16 +1526,10 @@ follows is justified only by this line."
 (defvar *fnn-owner-payload-list* nil)
 
 (defun fnn-owner-payload-octets (payload)
-  "PAYLOAD's octet list, converted at most once per attempt: the transit
-attempt binds *fnn-owner-payload-list* to nil and the first list consumer
-(the transit verdict, the carried relay event, the signed-event boundary:
-D27 boundary 9's remainder) fills it; the buffer twins never ask."
   (if (and (consp *fnn-owner-payload-list*)
            (eq (car *fnn-owner-payload-list*) payload))
       (cdr *fnn-owner-payload-list*)
-    (let ((octets (fnn-octet-list payload)))
-      (setq *fnn-owner-payload-list* (cons payload octets))
-      octets)))
+    (fnn-octet-list payload)))
 
 (defun fnn-owner-note-transit-verdict (payload nntp-transit-p ed ml)
   (setq *fnn-owner-transit-verdict*
@@ -1579,17 +1573,13 @@ First, for every ingress, ACL2's filing step (C1, fn-pa-filing-plan through
 fn-owner-control-filing): a control article's groups become exactly its
 control.<verb> filing group, or the attempt is refused with the plan's
 reason before any Store call.  An ordinary article's groups are unchanged."
-  ;; The article in the octet buffer (books/article-buffer.lisp, D27
-  ;; boundary 9): filled once here from the byte vector and read in place
-  ;; by the filing plan, the carrier form, the existing-article test and
-  ;; the carrier plan (host/owner-host.lisp fn-owner-*-buffer, each equal
-  ;; to its list entry by the -is-reference theorems); no list of the
-  ;; article is built for them.  Nothing between the fill and the attempt
-  ;; writes the buffer; all of it runs under the service mutex.
-  (fnn-octets-fill payload)
-  (let ((*fnn-owner-payload-list* nil))
-  (let ((filing (fnn-core-buffer-state 'fn-owner-control-filing-buffer
-                                       (mapcar #'fnn-octet-list groups))))
+  ;; The payload's octet list, converted once for the ACL2 calls below
+  ;; (fnn-owner-payload-octets): each call used to convert the vector
+  ;; again, 16 bytes a cons per octet.
+  (let ((*fnn-owner-payload-list* (cons payload (fnn-octet-list payload))))
+  (let ((filing (fnn-owner-core 'fn-owner-control-filing
+                                (fnn-owner-payload-octets payload)
+                                (mapcar #'fnn-octet-list groups))))
     (unless (and (consp filing)
                  (member (first filing) '(:file :refused))
                  (consp (rest filing)))
@@ -1601,7 +1591,8 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                  (every #'fnn-octet-list-p (second filing)))
       (fnn-fault "owner returned malformed filed groups"))
     (setq groups (mapcar #'fnn-octets (second filing))))
-  (let ((form (fnn-core-buffer-state 'fn-owner-peer-carrier-form-buffer)))
+  (let ((form (fnn-owner-core 'fn-owner-peer-carrier-form
+                              (fnn-owner-payload-octets payload))))
     (cond
       ((eq form :absent)
        (fnn-owner-note-transit-verdict payload nntp-transit-p nil nil)
@@ -1623,13 +1614,15 @@ reason before any Store call.  An ordinary article's groups are unchanged."
              (fnn-validate-post-boundary
               (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
                               (length payload) (length codes) charge))
-             (case (fnn-owner-buffer-arena-action 'fn-owner-existing-action-buffer
-                                            (fnn-octet-list msgid) codes)
+             (case (fnn-owner-arena-action 'fn-owner-existing-action
+                                     (fnn-octet-list msgid)
+                                     (fnn-owner-payload-octets payload) codes)
                (:duplicate (return-from fnn-owner-attempt-transit :duplicate))
                (:conflict (return-from fnn-owner-attempt-transit
                             (fnn-owner-transit-refused :conflict))))
-             (let ((plan (fnn-core-buffer-state 'fn-owner-peer-carrier-plan-buffer
-                                                (and nntp-transit-p t))))
+             (let ((plan (fnn-owner-core 'fn-owner-peer-carrier-plan
+                                         (fnn-owner-payload-octets payload)
+                                         (and nntp-transit-p t))))
                (when (and (consp plan) (eq (first plan) :carried))
                  (unless (eq (fnn-owner-advance-clock) :observed)
                    (return-from fnn-owner-attempt-transit :clock-unusable))
@@ -1883,11 +1876,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
 (defun fnn-owner-attempt-served (service msgid payload groups evidence)
   (setq *fnn-owner-transit-detail* nil
         *fnn-owner-transit-verdict* nil)
-  ;; The article in the octet buffer for the gate (books/article-buffer.lisp
-  ;; fn-ars-lb-ocfg-gate-is-reference): filled once here, read in place;
-  ;; fnn-owner-attempt fills it again from the same vector.
-  (fnn-octets-fill payload)
-  (let ((gate (fnn-core-buffer-state 'fn-owner-login-gate-buffer)))
+  (let ((gate (fnn-owner-core 'fn-owner-login-gate (fnn-octet-list payload))))
     (unless (and (consp gate) (member (first gate) '(:pass :refused)))
       (fnn-fault "owner returned malformed login gate ~a" gate))
     (fnn-owner-log 'fn-owner-login-log-line t)
