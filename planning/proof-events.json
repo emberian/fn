@@ -7805,10 +7805,6 @@
         {
           "kind": "theorem",
           "name": "fn-post-body-octets-iter-is-body-octets"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wire-list-length-onto-is-list-length"
         }
       ]
     },
@@ -13566,6 +13562,109 @@
         {
           "kind": "theorem",
           "name": "fn-lim-decide-accepted-keeps-use-within"
+        }
+      ]
+    },
+    {
+      "id": "PRF-922",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bch-unpack-of-pack"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-pack-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-digits-onto-is-digits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-unpack-is-digits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-octets-of-push-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-wf-is-of-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-body-okp-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-body-okp-whole-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-join-of-terminator-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bchs-push-span-is-push-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-article-event-is-the-held-body"
+        }
+      ]
+    },
+    {
+      "id": "PRF-928",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-psub-unpack-of-pack-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psub-unpack-of-pack-groups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psub-unpack-of-pack-sub"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psub-packed-octets-len-is-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-take-installs-the-enqueued-submission"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-take-installs-the-queued-submission-whatever-it-carries"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-article-slots-are-held"
+        }
+      ]
+    },
+    {
+      "id": "PRF-929",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-wire-statep-article-holds-at-most-the-body-limit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-feed-byte-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tb-served-run-holds-at-most-the-body-limit-mid-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-scan-is-span-fold"
         }
       ]
     }

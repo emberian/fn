@@ -2006,6 +2006,9 @@
   ; function of the same configuration.
   (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((before (fn-owner-core state))
+         ;; The submission as it was queued (packed; lane chunked-body-2):
+         ;; what its connection's credit held for it, and what moves.
+         (queued (car (fn-own-queue before)))
          (state (fn-owner-step (list :take) fn-arena state))
          (after (fn-owner-core state))
          (sub (fn-own-inflight after)))
@@ -2036,7 +2039,7 @@
              ;; Lane credits: the submission's credit follows it from its
              ;; connection to the committer (fn-mca-take; :open until the
              ;; batch is appended, fn-owner-credits-seal).
-             (charge (fn-mca-sub-charge sub (fn-owner-credit-reserve state)))
+             (charge (fn-mca-sub-charge queued (fn-owner-credit-reserve state)))
              (state (f-put-global 'fn-owner-credit-taken charge state))
              (state (fn-owner-put-credits
                      (fn-mca-take (fn-owner-credits state) (fn-own-sub-id sub) charge)

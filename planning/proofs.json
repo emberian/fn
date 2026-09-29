@@ -8203,7 +8203,7 @@
     {
       "id": "PRF-218",
       "title": "The served path's per-line and per-octet-of-line folds run as loops: serving and posting an article uses a control stack independent of its line count and line length",
-      "statement": "Four keystones, each with no hypotheses, each the :exec of an mbe whose :logic is the unchanged recursive definition, so the guard proof makes the loop the executable the host runs. fn-nntp-stuff-lines-iter-is-stuff-lines (books/nntp-session.lisp): (fn-nntp-stuff-lines-iter lines) = (fn-nntp-stuff-lines lines), the dot-stuffed CRLF block of every multi-line reply (ARTICLE, HEAD, BODY, OVER, HDR, LIST), built by a tail-recursive accumulator (fn-nntp-stuff-lines-onto) turned round once. fn-post-body-octets-iter-is-body-octets (books/nntp-post.lisp): (fn-post-body-octets-iter lines) = (fn-post-body-octets lines), the POST's article reassembled from the wire's (:article lines) event. fn-wire-list-length-onto-is-list-length (books/wire.lisp): (fn-wire-list-length-onto xs 0) = (fn-wire-list-length xs), the length fn-wire-after-line charges each article line (fn-wire-line-cost). fn-hf-crlf-count-onto-is-crlf-count (books/catalog-record.lisp, lane line-stack 2026-09-27): (fn-hf-crlf-count-onto bytes inline 0) = (fn-hf-crlf-count bytes inline), the body line count the committer's intern decides once per article (host/native/owner.lisp fnn-owner-buffer-arena-action -> fn-owner-prepare-buffer -> fn-apc-intern-row-at -> fn-apc-held-facts-of -> fn-hf-body-lines-of); the recursion it replaced added one after its recursive call, a frame per body line, and stopped the owner on a 2,000,000-line POST at 1 MiB of stack. The recursions they replaced took one control-stack frame per article line (stuff-lines, post-body-octets) or per octet of one line (fn-inj-append inside post-body-octets, fn-wire-list-length); the profile admits a line as long as the article (fn-wire-article-line-limit), so each was a remote stop. Host chain: host/native/owner.lisp fnn-owner-handle-chunk -> host/owner-host.lisp fn-owner-chunk-span -> fn-scar-ocfg-read-span, whose wire fold (fn-wire-feed-span -> fn-wire-feed-byte -> fn-wire-after-line) calls fn-wire-line-cost, whose served POST (fn-nntp-post-step-pinned -> fn-nntp-post-step) calls fn-post-body-octets, and whose retrievals (fn-nntp-article-response) call fn-nntp-stuff-lines. Scope: a measured constant, not a theorem about frames: the native witness posts, serves, reopens and serves articles of 2,000,000 lines and of one 4 MiB line at 1 MiB of control stack per thread on both images.",
+      "statement": "Three keystones, each with no hypotheses, each the :exec of an mbe whose :logic is the unchanged recursive definition, so the guard proof makes the loop the executable the host runs. fn-nntp-stuff-lines-iter-is-stuff-lines (books/nntp-session.lisp): (fn-nntp-stuff-lines-iter lines) = (fn-nntp-stuff-lines lines), the dot-stuffed CRLF block of every multi-line reply (ARTICLE, HEAD, BODY, OVER, HDR, LIST), built by a tail-recursive accumulator (fn-nntp-stuff-lines-onto) turned round once. fn-post-body-octets-iter-is-body-octets (books/nntp-post.lisp): (fn-post-body-octets-iter lines) = (fn-post-body-octets lines), the POST's article reassembled from the wire's (:article lines) event. (The fourth, fn-wire-list-length-onto-is-list-length, is retired from the citation since lane chunked-body: the served article line is held in the packed store and fn-wire-after-line charges it in constant work, fn-wire-partial-len, PRF-922.) fn-hf-crlf-count-onto-is-crlf-count (books/catalog-record.lisp, lane line-stack 2026-09-27): (fn-hf-crlf-count-onto bytes inline 0) = (fn-hf-crlf-count bytes inline), the body line count the committer's intern decides once per article (host/native/owner.lisp fnn-owner-buffer-arena-action -> fn-owner-prepare-buffer -> fn-apc-intern-row-at -> fn-apc-held-facts-of -> fn-hf-body-lines-of); the recursion it replaced added one after its recursive call, a frame per body line, and stopped the owner on a 2,000,000-line POST at 1 MiB of stack. The recursions they replaced took one control-stack frame per article line (stuff-lines, post-body-octets) or per octet of one line (fn-inj-append inside post-body-octets, fn-wire-list-length); the profile admits a line as long as the article (fn-wire-article-line-limit), so each was a remote stop. Host chain: host/native/owner.lisp fnn-owner-handle-chunk -> host/owner-host.lisp fn-owner-chunk-span -> fn-scar-ocfg-read-span, whose wire fold (fn-wire-feed-span -> fn-wire-feed-byte -> fn-wire-after-line) calls fn-wire-line-cost, whose served POST (fn-nntp-post-step-pinned -> fn-nntp-post-step) calls fn-post-body-octets, and whose retrievals (fn-nntp-article-response) call fn-nntp-stuff-lines. Scope: a measured constant, not a theorem about frames: the native witness posts, serves, reopens and serves articles of 2,000,000 lines and of one 4 MiB line at 1 MiB of control stack per thread on both images.",
       "milestone": "M5",
       "requirements": [
         "HST-001"
@@ -8224,7 +8224,7 @@
         "planning/evidence/line-stack-2026-09-27.md",
         "planning/evidence/manifests/certify-20260927T160812Z-252949.json"
       ],
-      "progress_note": "Lane served-line-iterative (2026-09-26; image-floor packet 2, PKT-481's class, D27). Cause by persvati REPL backtrace (FN-POST-BODY-OCTETS frames to exhaustion on 3,000,000 lines) and by the native witness (one 4 MiB line: Control stack exhausted in fn-owner-chunk-span until fn-wire-list-length was a loop). Teeth: tests/acl2/served-line-iterative-tests.lisp (reachable witnesses, the composed BODY reply, served-size witnesses of 2,100,000 lines and of one 20,000,000-octet line through the compiled executables, labelled MUTATION witnesses refuted on ground instances). Lane line-stack (Opus 5.5, 2026-09-27): the fourth keystone; cause read from the frames of FN_NATIVE_FAULT_BACKTRACE's stack-exhaustion report (FN-HF-CRLF-COUNT x60795 on the committer); teeth in tests/acl2/catalog-record-tests.lisp (reachable witnesses by loop and definition; 5,000,000 lines through fn-hf-body-lines-of).",
+      "progress_note": "Lane served-line-iterative (2026-09-26; image-floor packet 2, PKT-481's class, D27). Cause by persvati REPL backtrace (FN-POST-BODY-OCTETS frames to exhaustion on 3,000,000 lines) and by the native witness (one 4 MiB line: Control stack exhausted in fn-owner-chunk-span until fn-wire-list-length was a loop). Teeth: tests/acl2/served-line-iterative-tests.lisp (reachable witnesses, the composed BODY reply, served-size witnesses of 2,100,000 lines and of one 20,000,000-octet line through the compiled executables, labelled MUTATION witnesses refuted on ground instances). Lane line-stack (Opus 5.5, 2026-09-27): the fourth keystone; cause read from the frames of FN_NATIVE_FAULT_BACKTRACE's stack-exhaustion report (FN-HF-CRLF-COUNT x60795 on the committer); teeth in tests/acl2/catalog-record-tests.lisp (reachable witnesses by loop and definition; 5,000,000 lines through fn-hf-body-lines-of). Lane chunked-body (B6, 2026-09-29): fn-wire-list-length-onto-is-list-length is no longer cited: the served article line is no longer a list the wire measures -- it is in the article's packed store and fn-wire-after-line reads its length in constant work (fn-wire-partial-len; PRF-922).",
       "events": [
         "fn-nntp-stuff-lines-iter-is-stuff-lines",
         "fn-post-body-octets-iter-is-body-octets",
@@ -11246,7 +11246,7 @@
     {
       "id": "PRF-313",
       "title": "A transit article is bounded by the operator's profile before its verdict: the transit connection opens at the profile bound, the served run retains at most it, and the cut article is refused by name (437/439) and closed",
-      "statement": "fn-tb-open-peer-body-limit-is-the-profile-bound: for an admitted profile and O2 the owner fn-osb-install leaves (host/owner-host.lisp fn-owner-install-profile, on every run path), a transit connection fn-own-open-peer opens (host/owner-host.lisp fn-owner-open-peer, at accept) has a wire body limit no larger than the profile's max-article-octets A, whatever the peer record's inbound-max-octets (peer add writes the codec ceiling, 4 GiB, there); fn-own-peer-body-limit-is-within-the-profile-bound: the limit fn-own-open-peer uses is positive and at most fn-own-body-limit. fn-tb-served-run-retains-at-most-the-body-limit: for any connection whose wire is a wire state (fn-wire-statep, which every open establishes) and any reads, the article octets the wire retains after fn-served-run are at most the body limit it opened with and the partial line at most the line ceiling (the opening line limit or the body limit plus one); fn-tb-served-step-keeps-the-body-limit / fn-tb-served-run-keeps-the-body-limit: no read changes the limit. fn-peer-transfer-unreceived-effects (called by fn-peer-step and its carried twin fn-pgc-transfer-step): an article the wire cut at the limit ((:reject :body-overlimit)) is refused 437 with the size's reason text (IHAVE, RFC 3977 section 6.3.2) or 439 echoing the Message-ID (TAKETHIS, RFC 4644 section 2.5.2), then closed; fn-peer-transfer-unreceived-effects-well-formed. Fuzz-nntp F2.",
+      "statement": "fn-tb-open-peer-body-limit-is-the-profile-bound: for an admitted profile and O2 the owner fn-osb-install leaves (host/owner-host.lisp fn-owner-install-profile, on every run path), a transit connection fn-own-open-peer opens (host/owner-host.lisp fn-owner-open-peer, at accept) has a wire body limit no larger than the profile's max-article-octets A, whatever the peer record's inbound-max-octets (peer add writes the codec ceiling, 4 GiB, there); fn-own-peer-body-limit-is-within-the-profile-bound: the limit fn-own-open-peer uses is positive and at most fn-own-body-limit. fn-tb-served-run-retains-at-most-the-body-limit: for any connection whose wire is a wire state (fn-wire-statep, which every open establishes) and any reads, the completed lines the wire retains after fn-served-run (its body size) are at most the body limit it opened with, and everything it retains (fn-wire-held-octets: the completed lines and the current line, in article mode the packed store of lane chunked-body) at most that limit plus the line ceiling (the opening line limit or the body limit plus one); fn-tb-served-step-keeps-the-body-limit / fn-tb-served-run-keeps-the-body-limit: no read changes the limit. fn-peer-transfer-unreceived-effects (called by fn-peer-step and its carried twin fn-pgc-transfer-step): an article the wire cut at the limit ((:reject :body-overlimit)) is refused 437 with the size's reason text (IHAVE, RFC 3977 section 6.3.2) or 439 echoing the Message-ID (TAKETHIS, RFC 4644 section 2.5.2), then closed; fn-peer-transfer-unreceived-effects-well-formed. Fuzz-nntp F2.",
       "milestone": "M5",
       "requirements": [
         "NNT-003"
@@ -14120,6 +14120,89 @@
         "tests/acl2/limits-live-tests.lisp"
       ],
       "progress_note": "Lanes limits-live (book), limits-live-3 (teeth, registry) 2026-09-29, row S1."
+    },
+    {
+      "id": "PRF-922",
+      "title": "The article in flight is held as a canonical store of packed blocks: the wire's article mode keeps the decoded body (completed lines with CR LF, then the current line) as fixed 512-octet naturals, one octet a byte; the served scan appends straight from the buffer and stays equal to the byte fold; the article event is the store's lines and they are its octets",
+      "statement": "books/packed-octets.lisp: fn-bch-pack xs = 256^|xs| + sum xs_i 256^i; fn-bch-unpack-of-pack (octet lists round-trip), fn-bch-pack-of-append, and the reader the host runs, fn-bch-digits-onto (divide and conquer, depth log2 of the length: fn-bch-digits-onto-is-digits; fn-bch-unpack-is-digits). books/body-chunks.lisp: the store (COUNT TAIL-LEN TAIL . BLOCKS); fn-bch-push appends one octet; KEYSTONE fn-bch-octets-of-push-list (the abstraction: appending XS to a well-formed store appends XS to its octets); KEYSTONE fn-bch-wf-is-of-octets (canonicity: a well-formed store is fn-bch-of its octets); the held body fn-bch-body-okp B N L (B's octets are N octets of lines each followed by CR LF, then the current line's decoded octets, L its arrived length) and its transitions fn-bch-body-okp-dot / -octet / -line / -whole-line; KEYSTONE fn-bch-join-of-terminator-lines (at a line start the lines the terminator reads out, joined with CR LF, are exactly the store's octets). books/body-chunks-span.lisp: KEYSTONE fn-bchs-push-span-is-push-list (no hypothesis): the span append straight from the octet buffer is the per-octet append of the span's octets, for every store. books/wire.lisp: in article mode the body-rev field is the store and line-rev is empty; fn-wire-statep has fn-bch-body-okp as its article conjunct; fn-wire-after-line reads the current line's length in constant work (fn-wire-partial-len). books/wire-invariants.lisp KEYSTONE fn-wire-article-event-is-the-held-body: the article a byte ends (fn-wire-feed-byte, the byte step of the served scan) is the store's completed lines (fn-wire-body-lines) and they joined are its octets. books/wire-scan.lisp: an article-mode run goes into the store by fn-bchs-push-span; fn-wire-scan-is-span-fold (PRF-346) stays hypothesis-free. The subject is the host's read: host/owner-host.lisp fn-owner-chunk-span-at -> fn-mca-read-span -> ... -> books/served-scan.lisp fn-scar-scan-span -> fn-wire-scan. Not claimed: the article event and the queued decision are still octet lists (16 octets of heap an octet); the credit (books/heap-store-figure.lisp fn-heap-article-reserve-octets) is therefore unchanged, and now covers the wire's form soundly (before, a body of A and a current line of A+1 could coexist as lists past the reserve's A+512).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012"
+      ],
+      "depends_on": [
+        "PRF-346"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/packed-octets.lisp",
+        "books/body-chunks.lisp",
+        "books/body-chunks-span.lisp",
+        "books/wire.lisp",
+        "books/wire-invariants.lisp",
+        "books/wire-scan.lisp",
+        "books/wire-outbound-invariants.lisp",
+        "books/transit-bound.lisp",
+        "tests/acl2/body-chunks-tests.lisp",
+        "tests/acl2/wire-tests.lisp",
+        "specs/store-refinement.md"
+      ],
+      "progress_note": "Lane chunked-body (2026-09-28/29, B6 of COMPLETE-BEFORE-6.6.0): certification and native modules in the lane's READY."
+    },
+    {
+      "id": "PRF-928",
+      "title": "The queued submission is packed: the owner's queue holds each submission's article octets as one natural and an injection's groups comma-joined into another, and the take unpacks it, so the committer installs exactly the submission the read enqueued; the per-article credit is the packed article",
+      "statement": "books/packed-submission.lisp: fn-psub-pack-dc (the executable packing, divide and conquer, depth log2 of the length; the lemma fn-psub-pack-dc-is-pack: it is fn-bch-pack of the first N octets); KEYSTONES fn-psub-unpack-of-pack-octets, fn-psub-unpack-of-pack-groups, fn-psub-unpack-of-pack-sub (no hypothesis: every field round-trips, a field that is not an octet list, or groups that are not joinable names, kept as (:raw . X)); fn-psub-packed-octets-len-is-len. books/owner.lisp: fn-own-enqueue appends (fn-psub-pack-sub SUB); fn-own-take-submission installs the fields of (fn-psub-unpack-sub (car queue)); fn-own-sub-fields-of-pack / -unpack and fn-own-decision-fields-of-pack (id, version, mark, login, account, the Message-ID, transit and control are the packed record's own); fn-own-sub-queued-decision (the decision a queued submission carries, unpacked). books/owner-invariants-outcome.lisp KEYSTONE fn-own-take-installs-the-enqueued-submission: after enqueuing SUB on an idle ready owner the take installs SUB's decision exactly; fn-own-take-installs-the-queued-submission-whatever-it-carries restated over the unpacked head. books/owner-credits.lisp fn-mca-sub-charge: twice fn-psub-sub-heap of the QUEUED submission (host/owner-host.lisp fn-owner-take charges the queue's head before the take), capped by the reserve. books/heap-store-figure.lisp fn-heap-article-reserve-octets = 2 x max(fn-heap-article-wire-octets, fn-heap-article-queued-octets) (544 octets a 512-octet block of the wire's store over A + 1 octets; the packed submission: A + HDR + a 250-octet Message-ID list + cells), and fn-heap-store-inflight-octets gains the taken (unpacked) submission, one at a time. The subject is the owner step the host calls (host/owner-host.lisp fn-owner-step -> fn-own-finish-read -> fn-own-enqueue; fn-owner-take -> fn-own-take-submission). Not claimed: that the packed forms take the figure's octets of heap (a measurement: measure at convergence, VmRSS with 30 posters mid-article at A = 1 MiB).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012"
+      ],
+      "depends_on": [
+        "PRF-922",
+        "PRF-380"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/packed-submission.lisp",
+        "books/owner.lisp",
+        "books/owner-invariants-outcome.lisp",
+        "books/owner-invariants-step.lisp",
+        "books/owner-credits.lisp",
+        "books/heap-store-figure.lisp",
+        "books/heap-figure.lisp",
+        "books/heap-breakdown.lisp",
+        "tests/acl2/packed-submission-tests.lisp",
+        "tests/acl2/owner-credits-tests.lisp",
+        "tests/test_native_article_slots.py",
+        "specs/store-refinement.md"
+      ],
+      "progress_note": "Lane chunked-body-2 (2026-09-29, B6b of COMPLETE-BEFORE-6.6.0): at A = 1 MiB the 64 MiB pool holds 30 articles in flight (it held 1)."
+    },
+    {
+      "id": "PRF-929",
+      "title": "Mid-article a connection holds at most the body limit and one octet: the wire closes :body-overlimit at the octet that dooms the line, not at its LF",
+      "statement": "books/wire.lisp: fn-wire-line-room (in article mode the line's room is also the body's: min(line limit, body limit + 1 - body-size)); fn-wire-feed-byte takes an ordinary octet only within it and otherwise closes :body-overlimit (:line-overlimit when the line limit binds); fn-wire-statep's article conjunct gains body-size + line-len <= body limit + 1; KEYSTONE fn-wire-statep-article-holds-at-most-the-body-limit (fn-wire-held-octets <= body limit + 1). The octet closed on dooms the article: its completed line would be over the body limit (a completed line adds its CR LF, and the terminator is one octet). books/wire-scan.lisp: the scan's run ends at the same room, fn-wire-scan-is-span-fold (PRF-346) unchanged and hypothesis-free. books/transit-bound.lisp KEYSTONE fn-tb-served-run-holds-at-most-the-body-limit-mid-article: after any served run from a wire-invariant state, mid-article, the held octets are at most the body limit and one. The subject is the host's read: host/owner-host.lisp fn-owner-chunk-span-at -> ... -> books/served-scan.lisp fn-scar-scan-span -> fn-wire-scan. This is the wire's term of fn-heap-article-reserve-octets (PRF-928).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012"
+      ],
+      "depends_on": [
+        "PRF-922",
+        "PRF-346"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/wire.lisp",
+        "books/wire-scan.lisp",
+        "books/wire-invariants.lisp",
+        "books/wire-outbound-invariants.lisp",
+        "books/transit-bound.lisp",
+        "tests/acl2/wire-tests.lisp",
+        "specs/store-refinement.md"
+      ],
+      "progress_note": "Lane chunked-body-2 (2026-09-29, B6b)."
     }
   ]
 }
