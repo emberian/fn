@@ -6719,11 +6719,22 @@ number of units is a fault: init and every extension leave whole units."
 (defun fnn-genesis-path (store)
   (fnn-join (fnn-journal-dir store) (fnn-core 'fn-store-genesis-file-name)))
 
+(defun fnn-genesis-created-seconds ()
+  "The genesis's creation time: ACL2 decides the whole seconds past the DTN
+epoch (0 without a usable wall) from gettimeofday's raw reading
+(books/clock-wall-reading.lisp fn-otm-wall-seconds, KEYSTONE
+fn-clkr-wall-seconds-is-the-ns-decision); the host divides nothing."
+  (multiple-value-bind (seconds microseconds) (sb-ext:get-time-of-day)
+    (let ((created (fnn-core 'fn-otm-wall-seconds seconds microseconds)))
+      (unless (and (integerp created) (<= 0 created))
+        (fnn-fault "ACL2 returned a malformed genesis time"))
+      created)))
+
 (defun fnn-genesis-octets (profile)
   (let ((octets (fnn-core 'fn-store-genesis-octets
                           (fnn-csprng-octets 32 "genesis node identity")
                           (fnn-csprng-octets 4 "genesis history salt")
-                          (floor (fnn-owner-wall-milliseconds) 1000)
+                          (fnn-genesis-created-seconds)
                           (fnn-octet-list (fnn-string-octets
                                            (or (ignore-errors (fnn-source-revision))
                                                "unknown")))

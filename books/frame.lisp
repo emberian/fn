@@ -179,13 +179,17 @@
                             payload)))))
 
 (verify-guards fn-frame-workflow-protected
-  ; The table lookup, the per-field recognizer and the encoder stay closed:
-  ; the guard needs only that the record's specification is a spec list its
-  ; values satisfy (`fn-frame-spec-for-workflow-is-spec-list' and the
-  ; recognizer's own conjuncts) and `fn-frame-fields-octets-are-octets'.
-  ; Opened, they unrolled every kind's field list (17.7 million steps, 84 s).
-  :hints (("Goal" :in-theory (disable fn-frame-spec-for fn-frame-values-okp
-                                      fn-frame-fields-octets))))
+  ; The record recognizer, the table lookup, the per-field recognizer, the
+  ; code lookup and the encoder stay closed: the guard needs only the
+  ; journal's generic table facts (books/frame-journal
+  ; `fn-frame-journal-vocabulary', row K3) and `fn-frame-fields-octets-are-
+  ; octets', so its cost does not grow with the kinds (8,672 steps; with the
+  ; recognizer and the code lookup open it split on every kind: 475,868 at
+  ; eleven kinds, doubling per kind).
+  :hints (("Goal" :in-theory (e/d (fn-frame-workflow-record-okp-fields)
+                                  (fn-frame-workflow-record-okp
+                                   fn-frame-spec-for fn-frame-values-okp
+                                   fn-frame-fields-octets fn-frame-enum-index)))))
 
 (defun fn-frame-receipt-protected (kind values)
   (declare (xargs :guard t :verify-guards nil))
@@ -201,8 +205,10 @@
                             payload)))))
 
 (verify-guards fn-frame-receipt-protected
-  :hints (("Goal" :in-theory (disable fn-frame-spec-for fn-frame-values-okp
-                                      fn-frame-fields-octets))))
+  :hints (("Goal" :in-theory (e/d (fn-frame-receipt-record-okp-fields)
+                                  (fn-frame-receipt-record-okp
+                                   fn-frame-spec-for fn-frame-values-okp
+                                   fn-frame-fields-octets fn-frame-enum-index)))))
 
 ; -----------------------------------------------------------------------------
 ; The field names a host uses to label a decoded record
