@@ -25,15 +25,20 @@
 
 (local (in-theory (disable (tau-system))))
 
+;; join-f2-midx: and its trie is its visible list's index
+;; (fn-scj-trie-indexedp), which the served chain asks since the peer arm
+;; reads the catalog (books/served-catalog-chain.lisp).
 (defun-nx fn-sjh-views-okp (views o fn-arena fn-cat)
   (implies (consp views)
            (and (fn-scj-live-okp (car views) fn-arena fn-cat)
+                (fn-scj-trie-indexedp (car views))
                 (<= (nfix (fn-own-view-version (car views)))
                     (nfix (fn-own-view-version (fn-own-view o)))))))
 
 (defthm fn-sjh-rd-orr-keeps
   (implies (and (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
+                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (let ((o2 (fn-ocfg-owner (fn-own-tls-result-owner
                                      (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat)))))

@@ -135,10 +135,24 @@
                                         (trie (fn-own-view-index (fn-own-view o)))
                                         (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))))))
 
+; A view's trie is its visible list's index (fn-scar-view-indexedp of an
+; owner holding it): the served chain's peer arm reads the catalog where the
+; scar arm reads that trie, so the chain equation asks it
+; (books/served-catalog-chain.lisp fn-scr-own-read-span-is-scar-own-read-span,
+; lane join-f2-midx).  fn-sjh-okp carries it for the working view, and
+; fn-sjh-views-okp for a captured one.
+(defun-nx fn-scj-trie-indexedp (v)
+  (fn-midx-correspondencep (fn-own-view-index v) (fn-state-articles (fn-own-view-archive v))))
+
+(defthm fn-scj-trie-indexedp-is-view-indexedp
+  (equal (fn-scar-view-indexedp o) (fn-scj-trie-indexedp (fn-own-view o)))
+  :hints (("Goal" :in-theory '(fn-scar-view-indexedp fn-scj-trie-indexedp))))
+
 (defthm fn-scj-scr-own-read-span-keeps
   (implies (and (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-conns-pinp (fn-own-conns o) fn-arena fn-cat)
-                (fn-scj-live-okp (fn-own-view o) fn-arena fn-cat))
+                (fn-scj-live-okp (fn-own-view o) fn-arena fn-cat)
+                (fn-scar-view-indexedp o))
            (let ((o2 (fn-own-tls-result-owner (fn-scr-own-read-span o id i end fn-octets fn-arena fn-cat))))
              (and (fn-scj-conns-pinp (fn-own-conns o2) fn-arena fn-cat)
                   (equal (fn-own-view o2) (fn-own-view o))
@@ -160,7 +174,8 @@
 ; fn-scr-own-read-span leaves satisfies fn-scj-invp whenever the owner it
 ; read satisfied it.
 (defthm fn-scj-invp-of-scr-own-read-span
-  (implies (and (fn-scol-okp fn-arena fn-cat) (fn-scj-invp o fn-arena fn-cat))
+  (implies (and (fn-scol-okp fn-arena fn-cat) (fn-scj-invp o fn-arena fn-cat)
+                (fn-scar-view-indexedp o))
            (fn-scj-invp (fn-own-tls-result-owner
                          (fn-scr-own-read-span o id i end fn-octets fn-arena fn-cat))
                         fn-arena fn-cat))
@@ -210,7 +225,8 @@
 (defthm fn-scj-read-at-view-keeps
   (implies (and (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-conns-pinp (fn-own-conns (fn-ocfg-owner oc)) fn-arena fn-cat)
-                (fn-scj-live-okp v fn-arena fn-cat))
+                (fn-scj-live-okp v fn-arena fn-cat)
+                (fn-scj-trie-indexedp v))
            (let ((o2 (fn-ocfg-owner
                       (fn-ocfg-with-view
                        (fn-own-tls-result-owner
@@ -219,7 +235,8 @@
              (and (fn-scj-conns-pinp (fn-own-conns o2) fn-arena fn-cat)
                   (equal (fn-own-view o2) w)
                   (equal (fn-own-store o2) (fn-own-store (fn-ocfg-owner oc))))))
-  :hints (("Goal" :in-theory (union-theories '(fn-scj-scr-ocfg-read-span-owner)
+  :hints (("Goal" :in-theory (union-theories '(fn-scj-scr-ocfg-read-span-owner
+                                               fn-scj-trie-indexedp-is-view-indexedp)
                                              (theory 'minimal-theory))
            :use ((:instance fn-orr-with-view-fields)
                  (:instance fn-orr-with-view-fields
@@ -239,7 +256,9 @@
 (defthm fn-scj-invp-of-orr-read-span
   (implies (and (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
-                (implies (consp views) (fn-scj-live-okp (car views) fn-arena fn-cat)))
+                (fn-scar-view-indexedp (fn-ocfg-owner oc))
+                (implies (consp views) (and (fn-scj-live-okp (car views) fn-arena fn-cat)
+                                            (fn-scj-trie-indexedp (car views)))))
            (fn-scj-invp (fn-ocfg-owner (fn-own-tls-result-owner
                                         (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat)))
                         fn-arena fn-cat))
