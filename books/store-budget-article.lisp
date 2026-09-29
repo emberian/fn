@@ -1,5 +1,5 @@
 ; fn: the history gate charges an article at its own worst case (packet 1 of
-; the Fable mandate §12, decided 2026-09-25).
+; the Fable mandate section 12, decided 2026-09-25).
 ;
 ; Before this book the owner's history gate charged every article the fixed
 ; pre-reservation figure 65 538 (`*fn-store-article-publication-figure*'),
