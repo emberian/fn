@@ -30,10 +30,14 @@
 ;     (`fn-xref-pair-is-an-index-entry'); the line is the eight-field line
 ;     followed by TAB and this field (`fn-nov-served-line'); with no server
 ;     the renderer is the eight-field one (`...-without-a-server').
-;   * local policy: the field is overview metadata only.  ARTICLE and HEAD
-;     serve the stored octets as held (peering section 2.3); no Xref is
-;     spliced into them, and a supplied Xref is refused at injection
-;     (books/injection.lisp, RFC 5537 section 3.5 item 2).  A membership
+;   * local policy: the field is overview metadata, and ARTICLE and HEAD
+;     serve this node's Xref as ONE line that LEADS the stored header, built
+;     at reply time from the local numbering and never stored (D01, PKT-668
+;     7b15db398: `fn-rcompat-served-payload' of books/nntp-reader-compat.lisp;
+;     keystone `fn-rcompat-served-payload-inserts-one-line': the stored
+;     octets are a suffix of what is served, RFC 5537 section 3.5 item 8).
+;     A supplied Xref is refused at injection (books/injection.lisp,
+;     RFC 5537 section 3.5 item 2, RFC 5536 section 3.2.14).  A membership
 ;     whose group octets are not an Xref word (printable, no colon) is not
 ;     listed; `fn-record-group-namep' admits no such group.
 

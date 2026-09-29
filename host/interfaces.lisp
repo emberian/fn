@@ -20,6 +20,10 @@
 
 (in-package "ACL2")
 (include-book "../books/definterface")
+; Keystones the declarations below name, in books no host file otherwise
+; brings into the image world (decision-keystones-5; host_check --books).
+(include-book "../books/bp-handoff-report")
+(include-book "../books/tcpcl-delivery-invariants")
 
 ; -----------------------------------------------------------------------------
 ; The extraction roots: the functions the extracted served program's driver
@@ -756,6 +760,10 @@
   :class ::common-lisp-compliant
   :keystones (fn-otm-wall-reading-shape fn-clkr-wall-reading-is-the-ns-decision))
 
+(definterface fn-otm-wall-seconds
+  :class ::common-lisp-compliant
+  :keystones (fn-otm-wall-seconds-is-natural fn-clkr-wall-seconds-is-the-ns-decision))
+
 (definterface fn-otm-monotonic-ms
   :class ::common-lisp-compliant
   :keystones (fn-clkr-monotonic-readings-are-the-ns-decision))
@@ -1333,10 +1341,10 @@
   :class ::program)
 
 (definterface fn-owner-barrier-limits
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-bound-commit-gate
-  :class ::program
+  :class :common-lisp-compliant
   :kinds ((group-octets fn-octet-list-listp)))
 
 (definterface fn-owner-bp-listener-ports
@@ -1376,33 +1384,33 @@
   :class ::program)
 
 (definterface fn-owner-bp-transit-raw
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-cat-prepare-sealed
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-catchup-plans
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-cfg-native-admin-authorize
   :class ::program
   :kinds ((config-octet-records fn-octet-list-listp) (record-octets fn-cbor-octet-listp) (observed-name-octets fn-octet-list-listp)))
 
 (definterface fn-owner-checkpoint-clone-phase
-  :class ::program
+  :class :common-lisp-compliant
   :kinds ((marker-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-clock-observation
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-close
   :class ::program)
 
 (definterface fn-owner-compress-min-octets
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-config-generation
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-config-served
   :class ::program)
@@ -1411,11 +1419,11 @@
   :class ::program)
 
 (definterface fn-owner-consumer-local-ack
-  :class ::program
+  :class :common-lisp-compliant
   :kinds ((cursor-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-consumer-local-bootstrap
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-consumer-local-bound-ack
   :class ::program
@@ -1428,16 +1436,16 @@
   :class ::program)
 
 (definterface fn-owner-consumer-local-position
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-consumer-local-register
   :class ::program)
 
 (definterface fn-owner-consumer-local-status
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-consumer-local-unregister
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-consumer-local-wait-admit
   :class :common-lisp-compliant)
@@ -1488,7 +1496,7 @@
   :kinds ((peer-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-feed-connect-timeout
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-feed-dial-open
   :class ::program
@@ -1503,13 +1511,13 @@
   :kinds ((peer-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-feed-journal-begin
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-feed-journal-offset
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-feed-journal-prefix-size
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-feed-journal-scan
   :class ::program
@@ -1520,14 +1528,14 @@
   :kinds ((peer-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-feed-profile-decode
-  :class ::program
+  :class :common-lisp-compliant
   :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-feed-profile-max-octets
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-feed-read-limit
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-feed-reconcile-apply
   :class ::program)
@@ -1541,7 +1549,7 @@
   :kinds ((peer-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-finish
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-finish-identity
   :class ::program)
@@ -1554,10 +1562,10 @@
   :kinds ((name-octets fn-octet-list-listp)))
 
 (definterface fn-owner-hybrid-current-enrollment
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-hybrid-snapshots
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-identity-publication-verdict
   :class ::program)
@@ -1569,13 +1577,13 @@
   :class ::program)
 
 (definterface fn-owner-io
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-key-statement-event
   :class ::program)
 
 (definterface fn-owner-key-statement-log-line
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-key-statement-pending
   :class ::program
@@ -1600,34 +1608,34 @@
   :class :common-lisp-compliant)
 
 (definterface fn-owner-known-abort
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-live-post-config
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-log-bounds
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-log-reopen
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-login-bindings-plan
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-login-gate
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-moderation-plan
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-next-store-coordinates
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-next-txid
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-observe
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-open
   :class ::program)
@@ -1637,7 +1645,7 @@
   :kinds ((peer-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-operator-refusal-reason
-  :class ::program
+  :class :common-lisp-compliant
   :kinds ((msgid-octets fn-cbor-octet-listp) (group-octets fn-octet-list-listp) (payload fn-cbor-octet-listp)))
 
 (definterface fn-owner-outcome
@@ -1656,10 +1664,10 @@
   :class ::program)
 
 (definterface fn-owner-pending-octets
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-pending-sequence
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-post-boundary
   :class ::program
@@ -1669,29 +1677,29 @@
   :class ::program)
 
 (definterface fn-owner-prepare-consumer
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-prepare-identity
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-prepare-retention
   :class ::program
   :kinds ((id-octets fn-cbor-octet-listp) (subject-octets fn-cbor-octet-listp) (evidence-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-prepare-topic
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-prov-post
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-publication-verdict
   :class ::program)
 
 (definterface fn-owner-pull-plans
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-queue-head-served-p
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-read-octets
   :class ::program)
@@ -1700,19 +1708,19 @@
   :class ::program)
 
 (definterface fn-owner-reconfigure-authorizedp
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-reconfigure-complete
   :class ::program)
 
 (definterface fn-owner-reconfigure-unstage
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-recover-from-store-open
   :class ::program)
 
 (definterface fn-owner-refuse-reservation
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-sco-capture
   :class ::program)
@@ -1721,26 +1729,26 @@
   :class ::program)
 
 (definterface fn-owner-sco-note-base-payloads
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-sco-note-durable
-  :class ::program)
+  :class :common-lisp-compliant)
 
 
 (definterface fn-owner-sco-publication-done
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-sco-request
   :class ::program)
 
 (definterface fn-owner-served-carried-word
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-served-post-word
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-set-auth-config
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-shed-outcome
   :class ::program)
@@ -1749,13 +1757,13 @@
   :class ::program)
 
 (definterface fn-owner-snapshot
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-space-need
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-stamp-status
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-statement-fence
   :class :common-lisp-compliant)
@@ -1764,22 +1772,25 @@
   :class ::program)
 
 (definterface fn-owner-topic-propose
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-transit-decide
   :class ::program
   :kinds ((id-octets fn-cbor-octet-listp) (subject-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-transit-evidence
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-transit-log-line
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-transit-outcome
   :class ::program)
 
 (definterface fn-owner-transit-reason
+  :class :common-lisp-compliant)
+
+(definterface fn-owner-transit-authority
   :class ::program)
 
 (definterface fn-owner-transit-refusal-class
@@ -2198,7 +2209,8 @@
   :class ::ideal)
 
 (definterface fn-bpah-handoff-report
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpah-handoff-report-is-application-disposition))
 
 (definterface fn-bpah-outbox-effective-status
   :class ::common-lisp-compliant)
@@ -2322,7 +2334,8 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-evidence-next-result-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-evidence-next-result-name-names-exactly-the-next-record))
 
 (definterface fn-bpn-host-evidence-next-wire-name
   :class ::ideal)
@@ -2355,13 +2368,16 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-existing-sequence
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence))
 
 (definterface fn-bpn-host-existing-sequence-p
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence))
 
 (definterface fn-bpn-host-existing-sequence-value
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence))
 
 (definterface fn-bpn-host-lifecycle-frame-limit
   :class ::ideal)
@@ -2679,13 +2695,15 @@
               fn-bpnjc-ask-position-bounds))
 
 (definterface fn-bpnp-configured-budgets
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets))
 
 (definterface fn-bpnp-delivery-view
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnp-dispatch-publication-authorize
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpnp-dispatch-publication-authorize-admits-exactly-the-issued-pending-dispatch))
 
 (definterface fn-bpnp-dispatch-publication-frame
   :class ::ideal)
@@ -2706,7 +2724,8 @@
               fn-bpnp-forward-plan-has-one-session-per-peer))
 
 (definterface fn-bpnp-forward-publication-authorize
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward))
 
 (definterface fn-bpnp-forward-publication-name
   :class ::ideal)
@@ -2715,7 +2734,8 @@
   :class ::ideal)
 
 (definterface fn-bpnp-forward-publication-operationp
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward))
 
 (definterface fn-bpnp-forward-publication-publisher
   :class ::ideal)
@@ -2936,7 +2956,8 @@
   :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-tcl-delivery-plan
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-tcl-delivery-plan-decides-exactly-by-the-held-final-ack-and-the-callback))
 
 (definterface fn-tcl-delivery-plan-detail
   :class ::common-lisp-compliant)
@@ -2954,7 +2975,8 @@
   :class ::ideal)
 
 (definterface fn-tcl-host-drive
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-tcl-host-drive-bundle-has-held-final))
 
 (definterface fn-tcl-host-encode
   ; an exact alias; the callee's keystones are PRF-1006 (the per-kind

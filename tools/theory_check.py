@@ -16,6 +16,7 @@ decodes, never at the top of a book.
     python3 tools/theory_check.py --json
     python3 tools/theory_check.py --strict    # exit 1 on a codec opening
     python3 tools/theory_check.py --books books/replay books/store-node   # one cluster
+    python3 tools/theory_check.py --book-order [--books ...]  # guard order, mv-nth opened
 
 THE CODEC LAYER.  A codec's own books -- its definitions, the proofs of its
 round trips, and the seam and attachment books of plan 2026-09-22 §4.1 --
@@ -247,6 +248,158 @@ def table(report: dict) -> list[str]:
     return lines
 
 
+# --- BOOK-ORDER LINTS (obstructions-7 items 56 and 65) --------------------
+#
+# GUARD ORDER.  A guard verification (a `verify-guards' event, or a defun
+# verified at its definition) of F that calls G fails at certify when G's
+# own guards are verified only LATER in the same book, and passes in a world
+# session where everything is verified already (depth-debt-5 lost two
+# rounds).  `--guard-order' walks each book's forms in order.
+#
+# MV-NTH OPEN.  `mv-nth' enabled in a book's theory (a top-level in-theory)
+# rewrites every multiple-value accessor in every goal of the book into
+# car/cdr nests.  `--mv-nth' names the books.
+
+def _ledger():
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import ledger  # noqa: PLC0415
+    return ledger
+
+
+def _low(x) -> str:
+    return str(x).lower()
+
+
+def _unlocal(form):
+    while isinstance(form, list) and len(form) == 2 and _low(form[0]) == "local":
+        form = form[1]
+    return form
+
+
+def _declares(form) -> tuple[dict[str, object], bool]:
+    xargs: dict[str, object] = {}
+    typed = False
+    for item in form[3:]:
+        if isinstance(item, list) and item and _low(item[0]) == "declare":
+            for decl in item[1:]:
+                if isinstance(decl, list) and decl and _low(decl[0]) == "xargs":
+                    rest = decl[1:]
+                    for key, value in zip(rest[::2], rest[1::2]):
+                        xargs[_low(key).lstrip(":")] = value
+                elif isinstance(decl, list) and decl and _low(decl[0]) == "type":
+                    typed = True
+    return xargs, typed
+
+
+def _executed_symbols(term, out: set[str]) -> None:
+    """Symbols of TERM a guard proof needs verified: an mbe's :logic is not."""
+    if isinstance(term, list):
+        if not term:
+            return
+        head = _low(term[0])
+        if head in ("quote", "declare"):
+            return
+        if head == "mbe":
+            rest = term[1:]
+            for key, value in zip(rest[::2], rest[1::2]):
+                if _low(key) != ":logic":
+                    _executed_symbols(value, out)
+            return
+        for item in term:
+            _executed_symbols(item, out)
+    elif not isinstance(term, (str, int, float)) or type(term).__name__ == "Sym":
+        out.add(_low(term))
+
+
+DEFUNS = ("defun", "defund", "defun-inline", "defund-inline", "define")
+
+
+def guard_events(text: str) -> list[tuple[int, str, list[tuple[str, int]]]]:
+    """Each guard verification in the book, in order: (form number, the
+    function, [(a callee of the same book, the form its guards are verified
+    at)]).  Form numbers count top-level forms from 1, as proof_repl's do."""
+    forms = [_unlocal(form) for form in _ledger().read_forms(text)]
+    eager = False
+    verified_at: dict[str, int] = {}
+    events: list[tuple[int, str, object]] = []
+    defs: dict[str, object] = {}
+    for index, form in enumerate(forms, 1):
+        if not isinstance(form, list) or not form:
+            continue
+        head = _low(form[0])
+        if head == "set-verify-guards-eagerness" and len(form) > 1 and _low(form[1]) == "2":
+            eager = True
+        elif head in DEFUNS and len(form) >= 4:
+            name = _low(form[1])
+            defs[name] = form
+            xargs, typed = _declares(form)
+            if _low(xargs.get("mode", "")).lstrip(":") == "program":
+                continue
+            flag = _low(xargs.get("verify-guards", ""))
+            if flag == "nil":
+                continue
+            if (flag == "t" or head == "define" or eager or typed
+                    or any(k in xargs for k in ("guard", "stobjs", "guard-hints"))):
+                verified_at.setdefault(name, index)
+                events.append((index, name, form[3:]))
+        elif head == "verify-guards" and len(form) > 1:
+            name = _low(form[1])
+            verified_at.setdefault(name, index)
+            if name in defs:
+                events.append((index, name, defs[name][3:]))
+    out = []
+    for index, name, body in events:
+        called: set[str] = set()
+        _executed_symbols(body, called)
+        callees = [(callee, verified_at[callee]) for callee in sorted(called - {name})
+                   if callee in defs and callee in verified_at]
+        out.append((index, name, callees))
+    return out
+
+
+def guard_order(text: str) -> list[str]:
+    """Each guard verification of F calling a G of the same book whose guards
+    are verified only later: 'form #I (F) calls G, verified at form #J'."""
+    found = []
+    for index, name, callees in guard_events(text):
+        for callee, later in callees:
+            if later > index:
+                found.append(f"form #{index} verifies the guards of {name}, which calls "
+                             f"{callee}, whose guards are verified only at form #{later}: "
+                             f"certify fails here (a world session passes)")
+    return found
+
+
+def mv_nth_opened(text: str) -> bool:
+    """Whether a top-level in-theory of the book enables mv-nth."""
+    for form in _ledger().read_forms(text):
+        form = _unlocal(form)
+        if isinstance(form, list) and form and _low(form[0]) == "in-theory":
+            symbols: set[str] = set()
+            spec = form[1] if len(form) > 1 else None
+            if isinstance(spec, list) and spec and _low(spec[0]) in ("enable", "e/d", "enable*"):
+                target = spec[1] if _low(spec[0]) == "e/d" and len(spec) > 1 else spec[1:]
+                _executed_symbols(target, symbols)
+                if "mv-nth" in symbols:
+                    return True
+    return False
+
+
+def book_lints(paths: list[Path], root: Path) -> list[str]:
+    lines = []
+    for path in paths:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        relative = path.relative_to(root) if path.is_relative_to(root) else path
+        for one in guard_order(text):
+            lines.append(f"{relative}: guard-order: {one}")
+        if mv_nth_opened(text):
+            lines.append(f"{relative}: mv-nth: enabled in the book's theory (open it in a hint)")
+    return lines
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Codec theories opened book-wide.")
     parser.add_argument("--summary", action="store_true")
@@ -257,7 +410,19 @@ def main(argv: list[str] | None = None) -> int:
                              "theory at the top or names a seam's implementation")
     parser.add_argument("--books", nargs="+", default=None,
                         help="restrict the report to these books (books/NAME)")
+    parser.add_argument("--book-order", action="store_true",
+                        help="warn-only: guard verifications ahead of a callee's, and "
+                             "mv-nth enabled in a book's theory (--books to restrict)")
     args = parser.parse_args(argv)
+    if args.book_order:
+        root = Path(__file__).resolve().parents[1]
+        paths = ([root / (name.removesuffix(".lisp") + ".lisp") for name in args.books]
+                 if args.books else sorted((root / "books").glob("*.lisp"))
+                 + sorted((root / "tests" / "acl2").glob("*.lisp")))
+        lines = book_lints(paths, root)
+        print("\n".join(lines + [f"theory_check --book-order: {len(lines)} warning(s) over "
+                                  f"{len(paths)} book(s)"]))
+        return 0
     only = None
     if args.books:
         only = {name.removesuffix(".lisp") for name in args.books}
