@@ -3598,6 +3598,62 @@
                  (fn-owner-exposure-publicp state)
                  (fn-auth-config-requiredp (fn-owner-auth state))))
 
+;; PRF-986 (PKT-639, W2a): the TLS handshake as an admission decision
+;; (books/tls-handshake-budget.lisp).  The limits are the operator's live
+;; rows (`policy set tls-handshakes-per-source-per-minute|
+;; tls-handshakes-in-flight|tls-handshake-ms N'), ACL2's defaults when absent.
+(defun fn-owner-handshake-state (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-handshakes state)
+      (f-get-global 'fn-owner-handshakes state)
+    (fn-hsb-initial)))
+
+(defun fn-owner-handshake-limits (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((v (fn-cfg-value (fn-owner-config state))))
+    (fn-hsb-limits (fn-cfg-limit v "tls-handshakes-per-source-per-minute")
+                   (fn-cfg-limit v "tls-handshakes-in-flight")
+                   (fn-cfg-limit v "tls-handshake-ms"))))
+
+;; Before any handshake work on a socket from (FAMILY . ADDRESS): QUEUEDP
+;; when the socket is one that waited for a slot.  The value is
+;; (VERDICT X DEADLINE-MS LINE): VERDICT :admit (X the handshake id, to hand
+;; back to fn-owner-handshake-done), :wait (the socket waits unadmitted, at
+;; most DEADLINE-MS), or :refuse (X the reason; LINE the service log's line,
+;; and the socket is closed without SSL_accept).
+(defun fn-owner-handshake-admit (family address queuedp state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((hl (fn-owner-handshake-limits state))
+         (source (cons family address))
+         (trustedp (fn-exp-trusted-addressp
+                    source (fn-exp-lim-trusted (fn-owner-exposure-limits state))))
+         (r (fn-hsb-admit (fn-owner-handshake-state state) hl trustedp source
+                          (fn-owner-exposure-now state) queuedp))
+         (state (f-put-global 'fn-owner-handshakes (fn-hsb-state r) state))
+         (verdict (fn-hsb-verdict r)))
+    (value (list verdict (fn-hsb-detail r) (fn-hsb-lim-deadline hl)
+                 (if (equal verdict :refuse)
+                     (fn-hsb-refusal-line (fn-hsb-detail r) source)
+                   nil)))))
+
+;; A handshake fn-owner-handshake-admit admitted ended: completed, failed,
+;; timed out or closed.
+(defun fn-owner-handshake-done (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-handshakes
+                             (fn-hsb-done (fn-owner-handshake-state state) id)
+                             state)))
+    (value :ok)))
+
+;; A socket that waited for a slot left without a decision (its deadline,
+;; its peer's close, the service's stop).
+(defun fn-owner-handshake-leave (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-handshakes
+                             (fn-hsb-leave (fn-owner-handshake-state state))
+                             state)))
+    (value :ok)))
+
 ;; The octets one served step may read (books/connection-budget.lisp
 ;; fn-cbud-step-read-octets): 512 under a step rate, 4 KiB without one.
 ;; host/native/owner.lisp fnn-owner-refresh-read-octets reads it under the

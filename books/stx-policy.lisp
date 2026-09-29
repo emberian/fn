@@ -12,7 +12,7 @@
 ; has a signed answer.
 
 (in-package "ACL2")
-(include-book "stx-lace")
+(include-book "stx-node-lace")
 (include-book "policy-invariants")
 
 (local (in-theory (enable fn-pol-invariants-vocabulary)))
@@ -20,11 +20,14 @@
 ; -----------------------------------------------------------------------------
 ; The gate
 
-(defun fn-stx-transit-authority-ok (node article keyring group authority)
-  (declare (xargs :guard (and (fn-article-syntax-p article)
+; The node's lace is read through the arena (books/stx-node-lace.lisp,
+; PKT-892): the gate takes the arena the node's handles denote into.
+(defun fn-stx-transit-authority-ok (node article keyring group authority fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-article-syntax-p article)
                               (fn-prin-keyringp keyring))))
   (and (fn-stx-verifiedp article keyring)
-       (fn-pol-admitp (fn-stx-lace node keyring) keyring group authority
+       (fn-pol-admitp (fn-stx-lace node keyring fn-arena) keyring group authority
                       (fn-stx-statement-of article))
        t))
 
@@ -45,8 +48,8 @@
 (defthm fn-stx-transit-admit-is-fn-pol-admitp-by-definition
   (implies (fn-stx-verifiedp article keyring)
            (equal (fn-stx-transit-authority-ok node article keyring group
-                                               authority)
-                  (if (fn-pol-admitp (fn-stx-lace node keyring) keyring group
+                                               authority fn-arena)
+                  (if (fn-pol-admitp (fn-stx-lace node keyring fn-arena) keyring group
                                      authority (fn-stx-statement-of article))
                       t
                     nil))))
@@ -55,9 +58,10 @@
 ; keyring, a group, an authority and a statement.  The peer is not among
 ; them, and no function of the peer appears in the gate's support.
 (defthm fn-stx-admission-is-peer-independent-by-definition
-  (equal (fn-stx-transit-authority-ok node article keyring group authority)
+  (equal (fn-stx-transit-authority-ok node article keyring group
+                                               authority fn-arena)
          (and (fn-stx-verifiedp article keyring)
-              (fn-pol-admitp (fn-stx-lace node keyring) keyring group authority
+              (fn-pol-admitp (fn-stx-lace node keyring fn-arena) keyring group authority
                              (fn-stx-statement-of article))
               t)))
 
@@ -68,17 +72,18 @@
 (defthm fn-stx-unverified-transit-admits-nothing
   (implies (not (fn-stx-verifiedp article keyring))
            (not (fn-stx-transit-authority-ok node article keyring group
-                                             authority)))
+                                               authority fn-arena)))
   :hints (("Goal" :in-theory (enable (:d fn-stx-transit-authority-ok)))))
 
 ; Corollary of fn-pol-admission-is-grounded: a gate that opens names the
 ; policy statement in this node's own lace that opened it.
 (defthm fn-stx-transit-admission-is-grounded
-  (implies (fn-stx-transit-authority-ok node article keyring group authority)
-           (let ((p (fn-pol-current (fn-stx-lace node keyring) keyring group
+  (implies (fn-stx-transit-authority-ok node article keyring group
+                                               authority fn-arena)
+           (let ((p (fn-pol-current (fn-stx-lace node keyring fn-arena) keyring group
                                     authority))
                  (s (fn-stx-statement-of article)))
-             (and (member-equal p (fn-stx-lace node keyring))
+             (and (member-equal p (fn-stx-lace node keyring fn-arena))
                   (equal (fn-stmt-creator p) authority)
                   (equal (fn-stmt-kind p) :policy)
                   (fn-prin-verifiedp p keyring)
@@ -88,7 +93,7 @@
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-pol-admission-is-grounded
-                            (lace (fn-stx-lace node keyring))
+                            (lace (fn-stx-lace node keyring fn-arena))
                             (s (fn-stx-statement-of article))))
            :in-theory (e/d ((:d fn-stx-transit-authority-ok))
                            (fn-pol-admission-is-grounded fn-pol-admitp
@@ -244,28 +249,27 @@
 (defthm fn-stx-policy-statement-propagates
   (implies (and (fn-stx-acceptedp node next article)
                 (fn-stx-delta-freshp
-                 (fn-stx-lace node keyring)
-                 (fn-stx-delta (fn-article-payload article) keyring))
-                (equal (list s) (fn-stx-delta (fn-article-payload article)
-                                              keyring))
+                 (fn-stx-lace node keyring fn-arena)
+                 (fn-stx-article-delta article keyring fn-arena))
+                (equal (list s) (fn-stx-article-delta article keyring fn-arena))
                 (fn-pol-candidatep s keyring group authority))
-           (member-equal s (fn-pol-candidates (fn-stx-lace next keyring)
+           (member-equal s (fn-pol-candidates (fn-stx-lace next keyring fn-arena)
                                               keyring group authority)))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-stx-lace-of-accept-is-merge)
                  (:instance fn-stx-merge-of-fresh-short-delta
-                            (lace (fn-stx-lace node keyring))
-                            (delta (fn-stx-delta (fn-article-payload article)
-                                                 keyring)))
+                            (lace (fn-stx-lace node keyring fn-arena))
+                            (delta (fn-stx-article-delta article keyring fn-arena)))
                  (:instance fn-pol-member-candidate-is-in-candidates
                             (p s)
-                            (lace (append (fn-stx-lace node keyring)
+                            (lace (append (fn-stx-lace node keyring fn-arena)
                                           (list s)))))
            :in-theory (disable fn-stx-lace-of-accept-is-merge
                                fn-stx-merge-of-fresh-short-delta
                                fn-pol-member-candidate-is-in-candidates
                                fn-pol-candidates fn-pol-candidatep
                                fn-stx-lace fn-stx-acceptedp fn-stx-delta
+                               fn-stx-article-delta
                                fn-stx-delta-freshp fn-lace-merge))))
 
 ; -----------------------------------------------------------------------------

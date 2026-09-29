@@ -41,6 +41,7 @@
 (include-book "catalog-record")
 (include-book "store-node")
 (include-book "store-reclaim")
+(include-book "stx-node-lace")
 
 ; -----------------------------------------------------------------------------
 ; 1. One wire event to its row.
@@ -985,18 +986,9 @@
 ; bytes (a handle outside the arena reads as no bytes, as fn-row-bytes).
 
 ; fn-handle-bytes (the octets at a handle, nil outside the arena) is defined
-; in books/payload-arena.lisp, beside the arena, so the owner reads it too.
-
-(defun fn-articles-wire-of (articles fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (if (atom articles)
-      nil
-    (let ((a (car articles)))
-      (cons (fn-make-article (fn-article-msgid a)
-                             (fn-handle-bytes (fn-article-payload a) fn-arena)
-                             (fn-article-groups a) (fn-article-memberships a)
-                             (fn-article-pin a) (fn-article-stamp a))
-            (fn-articles-wire-of (cdr articles) fn-arena)))))
+; in books/payload-arena.lisp, beside the arena, so the owner reads it too;
+; fn-articles-wire-of, ALPHA itself, is books/stx-node-lace.lisp's since
+; 2026-09-29 (the node lace reads it too, PKT-892).
 
 (defun fn-store-existing-action (msgid payload groups s fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
@@ -1010,7 +1002,6 @@
           :conflict)
       nil)))
 
-(verify-guards fn-articles-wire-of)
 (verify-guards fn-store-existing-action)
 
 (local (defthm fn-find-article-of-articles-wire-of
