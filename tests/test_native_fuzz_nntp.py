@@ -48,7 +48,8 @@ class HarnessTests(unittest.TestCase):
 
     def test_shape_accepts_a_well_formed_stream(self):
         stream = (b"200 ready\r\n211 2 1 2 fn.test\r\n211 2 1 2 fn.test list follows\r\n1\r\n2\r\n.\r\n"
-                  b"220 1 <a@b> article\r\nSubject: x\r\n\r\n..dot\r\n.\r\n205 bye\r\n")
+                  b"220 1 <a@b> article\r\nSubject: x\r\n\r\n..dot\r\n.\r\n"
+                  b"229 845a 10 12\r\nab=Mc\r\n..x\r\n.\r\n205 bye\r\n")
         self.assertEqual(fz.shape_problems(stream), [])
 
     def test_shape_sees_each_fault(self):
@@ -59,6 +60,7 @@ class HarnessTests(unittest.TestCase):
             b"200 ok\r\n205 by": "partial last line",
             b"200 " + b"x" * 520 + b"\r\n": "octets",
             b"500 no\r\n": "greeting",
+            b"200 ok\r\n229 00 1 2\r\nab\r\n": "not terminated",
         }
         for stream, word in cases.items():
             self.assertTrue(any(word in p for p in fz.shape_problems(stream)), (stream[:40], word))

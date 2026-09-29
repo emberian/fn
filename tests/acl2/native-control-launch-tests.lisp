@@ -23,3 +23,23 @@
 ; ceiling hypothesis (one below it) the answer is :launch.
 (assert-event (not (equal (fn-ncla-launch-disposition t *ncla-max*) :busy)))
 (assert-event (not (equal (fn-ncla-launch-disposition nil (1- *ncla-max*)) :busy)))
+
+; KEYSTONE fn-ncla-launch-exactly-below-the-ceiling (PRF-304; no
+; hypothesis), by name: each conjunct at a launch, at the ceiling, while
+; stopping and on a non-natural count.
+(defmacro ncla-keystone-at (stoppingp active)
+  `(let ((d (fn-ncla-launch-disposition ,stoppingp ,active)))
+     (and (iff (equal d :launch)
+               (and (not ,stoppingp) (natp ,active)
+                    (< ,active (fn-native-control-max-active-clients))))
+          (implies (equal d :launch)
+                   (<= (+ 1 ,active) (fn-native-control-max-active-clients)))
+          (member-equal d '(:stopping :busy :launch)))))
+(assert-event (and (equal (fn-ncla-launch-disposition nil (1- *ncla-max*)) :launch)
+                   (ncla-keystone-at nil (1- *ncla-max*))))
+(assert-event (and (equal (fn-ncla-launch-disposition nil *ncla-max*) :busy)
+                   (ncla-keystone-at nil *ncla-max*)))
+(assert-event (and (equal (fn-ncla-launch-disposition t 0) :stopping)
+                   (ncla-keystone-at t 0)))
+;; (guard checking off: `implies' evaluates (+ 1 :many)).
+(assert-event (with-guard-checking :none (ncla-keystone-at nil :many)))

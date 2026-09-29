@@ -90,3 +90,50 @@
                                fn-bpn-report-primary-for-guard))))
 (verify-guards fn-bpn-report-observe-next-aux)
 (verify-guards fn-bpn-report-observe-next)
+
+; The outbox scan's guards (decision-keystones-6): a view is a held row's
+; (fn-bpnf-heldp), so the arrival it carries, and the row's, is a natural;
+; the scan's carried selection is nil or a view.  The lemmas are stated in
+; the shapes the guard conjecture takes (fn-bpn-nth and nth; natp, integerp
+; and rationalp), since a natp rewrite does not answer a rationalp goal.
+(defthm fn-bpn-report-outbox-view-arrival-is-natp
+  (implies (fn-bpn-report-outbox-view held)
+           (and (natp (fn-bpn-nth 3 held))
+                (natp (fn-bpn-nth 1 (fn-bpn-report-outbox-view held)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnrg-deleted-match-has-heldp
+                            (record (fn-bpn-nth 14 held))))
+           :in-theory (e/d (fn-bpn-report-outbox-view fn-bpnf-heldp)
+                           (fn-bpn-report-deleted-record-matches-heldp
+                            fn-bpn-report-decode fn-bpn-report-outbox-work
+                            fn-bpp-report-to fn-bpb-bundle-primary
+                            fn-bpnf-held-bundle fn-cbor-result-okp)))))
+(defthm fn-bpn-report-outbox-view-arrival-is-a-natural-nth
+  (implies (fn-bpn-report-outbox-view held)
+           (and (integerp (nth 1 (fn-bpn-report-outbox-view held)))
+                (<= 0 (nth 1 (fn-bpn-report-outbox-view held)))))
+  :hints (("Goal" :use ((:instance fn-bpn-report-outbox-view-arrival-is-natp))
+           :in-theory (e/d (fn-bpn-report-outbox-view)
+                           (fn-bpn-report-outbox-view-arrival-is-natp
+                            fn-bpn-report-deleted-record-matches-heldp
+                            fn-bpn-report-decode fn-bpn-report-outbox-work
+                            fn-bpp-report-to fn-bpb-bundle-primary
+                            fn-bpnf-held-bundle fn-cbor-result-okp fn-bpn-nth)))))
+(defthm fn-bpn-report-outbox-view-arrival-is-rational
+  (implies (fn-bpn-report-outbox-view held)
+           (rationalp (fn-bpn-nth 3 held)))
+  :hints (("Goal" :use ((:instance fn-bpn-report-outbox-view-arrival-is-natp))
+           :in-theory (disable fn-bpn-report-outbox-view fn-bpn-nth
+                               fn-bpn-report-outbox-view-arrival-is-natp))))
+(defthm fn-bpn-report-outbox-view-carried-arrival-is-rational
+  (implies (fn-bpn-report-outbox-view held)
+           (and (rationalp (nth 1 (fn-bpn-report-outbox-view held)))
+                (rationalp (fn-bpn-nth 1 (fn-bpn-report-outbox-view held)))))
+  :hints (("Goal" :use ((:instance fn-bpn-report-outbox-view-arrival-is-natp)
+                        (:instance fn-bpn-report-outbox-view-arrival-is-a-natural-nth))
+           :in-theory (disable fn-bpn-report-outbox-view fn-bpn-nth
+                               fn-bpn-report-outbox-view-arrival-is-natp
+                               fn-bpn-report-outbox-view-arrival-is-a-natural-nth))))
+(verify-guards fn-bpn-report-outbox-next-aux
+  :hints (("Goal" :in-theory (disable fn-bpn-report-outbox-view))))
+(verify-guards fn-bpn-report-outbox-next)

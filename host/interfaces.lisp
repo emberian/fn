@@ -2417,7 +2417,8 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-lifecycle-recovery-agrees-p
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-lifecycle-recovery-agrees-with-the-replayed-machine))
 
 (definterface fn-bpn-host-lifecycle-recovery-ready-p
   :class ::ideal)
@@ -2510,10 +2511,12 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpn-report-observe-next
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-report-observe-next-selects-exactly-the-least-yielding-row))
 
 (definterface fn-bpn-report-outbox-next
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-report-outbox-next-selects-exactly-the-least-yielding-row))
 
 (definterface fn-bpn-report-outbox-peer-matchp
   :class ::ideal)
@@ -2533,7 +2536,7 @@
               fn-bpnp-receipt-reoffer-after-uncertain
               fn-bpnp-receipt-contact-offers-the-queued-job
               fn-bpnp-receipt-contact-event-needs-a-queued-job
-              fn-bpnp-contact-closes-only-when-nothing-owed-remains
+              fn-bpnj-contact-offers-while-a-ready-job-remains
               fn-bpnj-step-forwarded-needs-a-durable-finished-record
               fn-bpnj-new-arms-preserve-the-lifecycle-invariant
               fn-bpnj-named-result-is-the-transport-outcome
@@ -2594,7 +2597,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-family-next
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnf-family-next-selects-exactly-the-first-ready-family))
 
 (definterface fn-bpnf-family-publication-authorize
   :class ::ideal
@@ -2808,13 +2812,15 @@
   :class ::ideal)
 
 (definterface fn-bpnr-publish-action
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnr-publish-outcome
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnr-publish-outcome-is-pending-exactly-while-the-loop-runs
+              fn-bpnr-publish-outcome-names-the-stopped-phase))
 
 (definterface fn-bpnr-publish-step
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnr-read-bound
   :class ::common-lisp-compliant)

@@ -292,3 +292,54 @@
           *bpnfs-live-observation* nil *bpnfs-steps-zero*)
          (* (len (fn-bpnf-held-list *bpnfs-steps-state*))
             (+ 1 (len *bpnfs-steps-zero*) 0)))))
+
+;; KEYSTONE teeth (PRF-1051,
+;; fn-bpnf-family-next-selects-exactly-the-first-ready-family).  Reachable
+;; positive witness, the complete antecedent and conclusion: *bpnff-state*
+;; has no issued family, no wait and a framed next arrival, and a held row
+;; is ready; the answer is (:ready 0), 0 is a ready row's arrival, and no
+;; held row before it is ready.
+(assert-event
+ (let* ((st *bpnff-state*)
+        (rows (fn-bpnf-held-list st))
+        (obs *bpnfs-live-observation*)
+        (r (fn-bpnf-family-next st obs)))
+   (and (not (fn-bpnf-issued st))
+        (not (fn-bpnf-waits st))
+        (fn-frame-natp (fn-bpnf-next-arrival st))
+        (fn-bpnf-any-family-ready-row st rows obs)
+        (equal r '(:ready 0))
+        (fn-bpnf-family-ready-row-with-arrival st rows obs 0)
+        (not (fn-bpnf-any-family-ready-row
+              st (fn-bpnf-rows-before-arrival rows 0) obs)))))
+;; The nil side: *bpnfs-no-zero-state* (a free machine, framed arrival)
+;; holds no ready row and the answer is nil.
+(assert-event
+ (let* ((st *bpnfs-no-zero-state*)
+        (rows (fn-bpnf-held-list st))
+        (obs *bpnfs-live-observation*))
+   (and (not (fn-bpnf-issued st))
+        (not (fn-bpnf-waits st))
+        (fn-frame-natp (fn-bpnf-next-arrival st))
+        (not (fn-bpnf-any-family-ready-row st rows obs))
+        (null (fn-bpnf-family-next st obs)))))
+;; Tooth, the gate "no family issued" (the iff's right side without it):
+;; the same rows under an issued family still hold a ready row, yet the
+;; selector answers nil; ready rows alone do not decide the answer.
+(defconst *bpnfs-issued-state* (update-nth 6 '(:issued) *bpnff-state*))
+(assert-event
+ (let* ((st *bpnfs-issued-state*)
+        (rows (fn-bpnf-held-list st))
+        (obs *bpnfs-live-observation*))
+   (and (fn-bpnf-issued st)
+        (not (fn-bpnf-waits st))
+        (fn-frame-natp (fn-bpnf-next-arrival st))
+        (fn-bpnf-any-family-ready-row st rows obs)
+        (null (fn-bpnf-family-next st obs)))))
+(must-fail-checked
+ (assert-event
+  (let* ((st *bpnfs-issued-state*)
+         (rows (fn-bpnf-held-list st))
+         (obs *bpnfs-live-observation*))
+    (iff (fn-bpnf-family-next st obs)
+         (fn-bpnf-any-family-ready-row st rows obs)))))
