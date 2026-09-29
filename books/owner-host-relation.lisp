@@ -40,13 +40,16 @@
 ;   fn-owner-at-reader-view/-working-view  fn-ocfg-with-view  fn-orr-relation-of-with-view, fn-ocl-relation-of-a-view-captured-before-appends
 ;   fn-owner-chunk                    fn-scar-ocfg-read-tls-prefix (= fn-ocfg-read-tls-prefix = fn-ocfg-read of the consumed prefix)  fn-ocl-read-preserves-historical-relation [composite owed]
 ;   fn-owner-chunk-span-at            fn-oas-read-span       [owed: join-f2's fn-otm-read-span arm]
-;   fn-owner-exposure-open            fn-ocar-exp-open (= fn-exp-open)  [owed: composite over fn-ocfg-open / fn-ocfg-open-peer]
+;   fn-owner-exposure-open            fn-ocar-exp-open (= fn-exp-open)  fn-ohr-exposure-open-preserves-ocl-relation (both arms: fn-ocfg-open, fn-ocfg-open-peer)
 ;   fn-owner-finish-synced            fn-rix-ocfg-complete (= fn-ccar-ocfg-complete)  [owed]
 ;   fn-owner-begin, -declare-group    fn-pout-begin, fn-pout-declare-group  [owed: :begin keeps control; :declare-group appends a fact]
 ;   fn-owner-tls-established          fn-ocfg-read-step (:tls-established)  [owed]
-;   fn-owner-open-peer, fn-exp-open's peer branch  fn-ocfg-open-peer  NOT PRESERVED: no pin (PKT-888)
-;   fn-owner-outcome, -transit-outcome  fn-apc-own-outcome (= fn-own-outcome), fn-own-transit-outcome
-;                                     a :durable completion advances the connection without re-pinning (PKT-889)
+;   fn-owner-open-peer (host/native/pull-service.lisp fnn-pull-local-open), fn-exp-open's peer arm (host/native/mux.lisp)
+;                                     fn-ocfg-open-peer      fn-ohr-open-peer-preserves-carried-relation (PRF-931; pins the live configuration since PKT-888)
+;   fn-owner-outcome                  fn-oop-outcome (= fn-apc-own-outcome on the owner and effects; books/owner-outcome-pinned.lisp)
+;                                                            fn-ohr-outcome-preserves-carried-relation (PRF-932; re-pins on a durable completion since PKT-889)
+;   fn-owner-transit-outcome          fn-oop-transit-outcome (= fn-own-transit-outcome on the owner and effects)
+;                                                            fn-ohr-transit-outcome-preserves-carried-relation (PRF-932)
 
 (in-package "ACL2")
 
@@ -54,6 +57,7 @@
 (include-book "owner-prepare-outcome")
 (include-book "owner-open-carried")
 (include-book "owner-parse-carried")
+(include-book "owner-outcome-pinned")
 (include-book "config-owner-advance-invariants")
 (include-book "owner-served-bound")
 
@@ -750,16 +754,20 @@
            :in-theory (disable fn-scar-ocfg-read-tls-prefix fn-ocfg-read-tls-prefix fn-ocfg-read))))
 
 ; ---------------------------------------------------------------------------
-; EXPOSURE OPEN (fn-owner-exposure-open: fn-ocar-exp-open) with no peer named:
-; the admitted branch is fn-ocfg-open, the refused branch keeps the owner.  A
-; configured peer takes fn-ocfg-open-peer, which adds no pin (PKT-888).
+; EXPOSURE OPEN (fn-owner-exposure-open: fn-ocar-exp-open): the admitted
+; branch is fn-ocfg-open for a reader and fn-ocfg-open-peer for a source the
+; host resolved to a configured peer (host/native/mux.lisp), the refused
+; branch keeps the owner.  Both opens pin the live configuration
+; (fn-ocl-open-preserves-historical-relation,
+; fn-ohr-open-peer-preserves-ocl-relation below).
 (defthm fn-ohr-exposure-open-preserves-ocl-relation
-  (implies (and (fn-ocl-relation oc) (null peer))
+  (implies (fn-ocl-relation oc)
            (fn-ocl-relation (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now))))
   :hints (("Goal" :use (fn-ocar-exp-open-is-exp-open-under-ocl-relation)
            :in-theory (e/d (fn-exp-open fn-exp-open-ocfg fn-exp-at)
                            (fn-ocar-exp-open-is-exp-open-under-ocl-relation fn-ocar-exp-open
                             fn-exp-admit-decision fn-exp-register fn-exp-pinned-acfg fn-ocfg-open
+                            fn-ocfg-open-peer
                             fn-exp-with fn-exp-counters-bump fn-exp-make)))))
 
 ; ---------------------------------------------------------------------------
@@ -781,3 +789,300 @@
            :in-theory (e/d (fn-ccar-ocfg-complete fn-ccar-own-complete-is-own-complete)
                            (fn-rix-ocfg-complete fn-rix-ocfg-complete-is-ccar-ocfg-complete fn-ccar-ocfg-complete-is-ocfg-step-complete
                             fn-ocmt-own-complete-preserves-ocl-relation fn-own-complete)))))
+
+; ---------------------------------------------------------------------------
+; PEER OPEN (fn-owner-open-peer, host/native/pull-service.lisp
+; fnn-pull-local-open; fn-exp-open's peer arm from host/native/mux.lisp):
+; fn-ocfg-open-peer.  Since PKT-888 the transit connection pins the live
+; configuration exactly as a reader's open does, so the proof mirrors
+; books/config-owner-live-open.lisp's fn-ocfg-open theorems: the new
+; connection's history clause from fn-ocl-unchanged-view-new-pin-is-historical
+; (its view fields are the owner's view's, its pin the live configuration, its
+; fresh session bounded), the surviving connections' clauses under the same
+; store and pins, the pin table's three clauses by the pin-add lemmas.  A peer
+; the configuration does not name opens too (its offers are refused by name,
+; books/owner.lisp fn-own-open-peer); nothing here asks the record.
+
+(local
+ (defthm fn-ohr-pin-is-open
+   (implies (and (fn-ocfg-pins-pin-conns-only pins conns)
+                 (fn-ocfg-pin-find id pins))
+            (fn-own-find-conn id conns))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-ocfg-pin-find id pins)
+            :in-theory (enable fn-ocfg-pin-find fn-ocfg-pins-pin-conns-only)))))
+
+; The session a transit open builds (books/served.lisp
+; fn-served-open-peer-indexed: fn-auth-open-session over the peer record)
+; selects no group and no article, so it is bounded by every domain
+; (books/owner-invariants-relation.lisp fn-own-open-peer-indexed-session-boundedp,
+; stated here over the session as fn-own-open-peer exposes it).
+(defthm fn-ohr-open-peer-session-is-bounded
+  (fn-own-conn-boundedp
+   (fn-own-conn-make-group-indexed
+    id version frontier wire (fn-auth-open-session archive peer node cfg acfg nil)
+    archive config observation verdicts index buckets control)
+   groups)
+  :hints (("Goal"
+           :in-theory (e/d (fn-own-conn-boundedp fn-auth-open-session fn-peer-open-session
+                            fn-post-open-session fn-nntp-open-session fn-nntp-make-session
+                            fn-nntp-session-openp fn-nntp-session-group fn-nntp-session-current
+                            fn-nntp-session-projected)
+                           (fn-auth-sessionp fn-auth-configp fn-peer-sessionp fn-post-sessionp
+                            fn-nntp-sessionp fn-nntp-projectionp fn-node-statep fn-cfgp
+                            fn-auth-open-session-is-consistent fn-auth-open-config))
+           :use ((:instance fn-auth-open-session-is-consistent (tlsp nil))))))
+
+(defthm fn-ohr-open-peer-keeps-store-and-view
+  (and (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))))
+              (fn-own-store (fn-ocfg-owner oc)))
+       (equal (fn-own-view (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))))
+              (fn-own-view (fn-ocfg-owner oc))))
+  :hints (("Goal" :in-theory (enable fn-ocfg-open-peer fn-own-open-peer))))
+
+(defthm fn-ohr-open-peer-pins-current-configuration
+  (implies (and (fn-ocl-relation oc)
+                (fn-own-find-conn
+                 (fn-own-next-id (fn-ocfg-owner oc))
+                 (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))))))
+           (equal (fn-ocfg-conn-config
+                   (cdr (fn-ocfg-open-peer oc peer acfg))
+                   (fn-own-next-id (fn-ocfg-owner oc)))
+                  (fn-ocfg-config oc)))
+  :hints (("Goal"
+           :use ((:instance fn-ohr-pin-is-open
+                            (id (fn-own-next-id (fn-ocfg-owner oc)))
+                            (pins (fn-ocfg-pins oc))
+                            (conns (fn-own-conns (fn-ocfg-owner oc))))
+                 (:instance fn-own-find-conn-id-below-next
+                            (id (fn-own-next-id (fn-ocfg-owner oc)))
+                            (conns (fn-own-conns (fn-ocfg-owner oc)))
+                            (n (fn-own-next-id (fn-ocfg-owner oc)))))
+           :in-theory (e/d (fn-ocl-relation fn-ocfg-open-peer
+                            fn-ocfg-conn-config fn-ocfg-pin-add fn-ocfg-pin-find)
+                           (fn-cst-relation fn-ocl-conns-historyp
+                            fn-ocl-view-historyp fn-ocl-config-historyp)))))
+
+(defthm fn-ohr-open-peer-new-connection-is-historical
+  (implies
+   (and (fn-ocl-relation oc)
+        (fn-own-find-conn
+         (fn-own-next-id (fn-ocfg-owner oc))
+         (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))))))
+   (fn-ocl-conn-historyp
+    (cdr (fn-ocfg-open-peer oc peer acfg))
+    (fn-own-find-conn
+     (fn-own-next-id (fn-ocfg-owner oc))
+     (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg)))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-ohr-open-peer-pins-current-configuration
+                 (:instance fn-ocl-unchanged-view-new-pin-is-historical
+                            (next (cdr (fn-ocfg-open-peer oc peer acfg)))
+                            (conn
+                             (fn-own-find-conn
+                              (fn-own-next-id (fn-ocfg-owner oc))
+                              (fn-own-conns
+                               (fn-ocfg-owner
+                                (cdr (fn-ocfg-open-peer oc peer acfg))))))))
+           :in-theory (e/d (fn-ocfg-open-peer fn-own-open-peer)
+                           (fn-ocl-relation fn-ocl-conn-historyp
+                            fn-cpr-replay fn-cst-replay-node
+                            fn-own-conn-make-group-indexed
+                            fn-own-view-make-group-indexed)))))
+
+(defthm fn-ohr-open-peer-preserves-an-existing-connection-history
+  (implies
+   (and (fn-ocl-conn-historyp oc conn)
+        (fn-ocfg-pin-find (fn-own-conn-id conn) (fn-ocfg-pins oc)))
+   (fn-ocl-conn-historyp (cdr (fn-ocfg-open-peer oc peer acfg)) conn))
+  :hints (("Goal"
+           :use ((:instance fn-ocl-conn-historyp-under-same-store-and-pin
+                            (next (cdr (fn-ocfg-open-peer oc peer acfg)))))
+           :in-theory (enable fn-ocfg-open-peer fn-ocfg-conn-config
+                              fn-ocfg-pin-add fn-ocfg-pin-find))))
+
+(defthm fn-ohr-open-peer-preserves-existing-connection-histories
+  (implies
+   (and (fn-ocl-conns-historyp oc conns)
+        (fn-ocfg-conns-pinnedp conns (fn-ocfg-pins oc)))
+   (fn-ocl-conns-historyp (cdr (fn-ocfg-open-peer oc peer acfg)) conns))
+  :hints (("Goal" :induct (fn-ocl-conns-historyp oc conns)
+           :in-theory (e/d (fn-ocfg-conns-pinnedp fn-ocl-conns-historyp)
+                           (fn-ocl-conn-historyp fn-ocfg-open-peer)))))
+
+(defthm fn-ohr-open-peer-preserves-all-connection-histories
+  (implies (fn-ocl-relation oc)
+           (fn-ocl-conns-historyp
+            (cdr (fn-ocfg-open-peer oc peer acfg))
+            (fn-own-conns
+             (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-ohr-open-peer-new-connection-is-historical
+                 (:instance fn-ohr-open-peer-preserves-existing-connection-histories
+                            (conns (fn-own-conns (fn-ocfg-owner oc)))))
+           :in-theory (e/d (fn-ocl-relation fn-ocfg-open-peer fn-own-open-peer
+                            fn-ocl-conns-historyp)
+                           (fn-cst-relation fn-ocl-conn-historyp
+                            fn-ocl-view-historyp fn-ocl-config-historyp
+                            fn-ocl-view-configp fn-cpr-replay
+                            fn-cst-replay-node)))))
+
+; KEYSTONE (PRF-931): the peer open keeps the configured owner's relation.
+(defthm fn-ohr-open-peer-preserves-ocl-relation
+  (implies (fn-ocl-relation oc)
+           (fn-ocl-relation (cdr (fn-ocfg-open-peer oc peer acfg))))
+  :hints (("Goal"
+           :use (fn-ohr-open-peer-preserves-all-connection-histories
+                 (:instance fn-own-ids-below-next-p-of-open
+                            (conns (fn-own-conns (fn-ocfg-owner oc)))
+                            (n (fn-own-next-id (fn-ocfg-owner oc)))
+                            (conn
+                             (fn-own-find-conn
+                              (fn-own-next-id (fn-ocfg-owner oc))
+                              (fn-own-conns
+                               (fn-ocfg-owner
+                                (cdr (fn-ocfg-open-peer oc peer acfg))))))))
+           :in-theory (e/d (fn-ocl-relation fn-ocfg-open-peer fn-own-open-peer
+                            fn-ocl-config-historyp fn-ocl-unique-conn-idsp
+                            fn-ocl-view-historyp fn-ocl-view-configp
+                            fn-ocfg-pins-okp fn-ocfg-conns-pinnedp
+                            fn-ocfg-pins-pin-conns-only fn-own-ids-below-next-p)
+                           (fn-cst-relation fn-cpr-replay
+                            fn-cst-replay-node fn-ocl-conns-historyp
+                            fn-ocl-conn-historyp)))))
+
+(defthm fn-ohr-open-peer-preserves-carried-relation
+  (implies (fn-lgoc-invariantp oc)
+           (fn-lgoc-invariantp (cdr (fn-ocfg-open-peer oc peer acfg))))
+  :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
+                                   (x (cdr (fn-ocfg-open-peer oc peer acfg)))))
+           :in-theory (disable fn-ocfg-open-peer))))
+
+; ---------------------------------------------------------------------------
+; OUTCOME and TRANSIT-OUTCOME (fn-owner-outcome: fn-oop-outcome;
+; fn-owner-transit-outcome: fn-oop-transit-outcome; books/owner-outcome-pinned.lisp).
+; Each is its raw outcome's owner before the advance (a same-control step:
+; the queue, the in-flight submission, the pending id, the feeds and the
+; refusals move; nothing the relation reads does) followed, on a :durable
+; completion, by the configured advance, which moves the pin with the
+; connection (fn-ocl-advance-preserves-historical-relation).  Before PKT-889
+; the host installed the raw outcome's owner with the old pin table.
+
+(defthm fn-ohr-outcome-next-keeps-control
+  (implies (fn-own-shapep o)
+           (let ((o2 (fn-oop-outcome-next o id sub completion icar carry)))
+             (and (fn-own-shapep o2)
+                  (equal (fn-own-store o2) (fn-own-store o))
+                  (equal (fn-own-view o2) (fn-own-view o))
+                  (equal (fn-own-conns o2) (fn-own-conns o))
+                  (equal (fn-own-next-id o2) (fn-own-next-id o))
+                  (equal (fn-own-max-conns o2) (fn-own-max-conns o))
+                  (equal (fn-own-ledger-field o2) (fn-own-ledger-field o))
+                  (equal (fn-own-clock o2) (fn-own-clock o))
+                  (equal (fn-own-facts o2) (fn-own-facts o)))))
+  :hints (("Goal" :in-theory (enable fn-oop-outcome-next))))
+
+(defthm fn-ohr-transit-next-keeps-control
+  (implies (fn-own-shapep o)
+           (let ((o2 (fn-oop-transit-next o id conn sub completion kind reason)))
+             (and (fn-own-shapep o2)
+                  (equal (fn-own-store o2) (fn-own-store o))
+                  (equal (fn-own-view o2) (fn-own-view o))
+                  (equal (fn-own-conns o2) (fn-own-conns o))
+                  (equal (fn-own-next-id o2) (fn-own-next-id o))
+                  (equal (fn-own-max-conns o2) (fn-own-max-conns o))
+                  (equal (fn-own-ledger-field o2) (fn-own-ledger-field o))
+                  (equal (fn-own-clock o2) (fn-own-clock o))
+                  (equal (fn-own-facts o2) (fn-own-facts o)))))
+  :hints (("Goal" :in-theory (enable fn-oop-transit-next))))
+
+; KEYSTONE (PRF-932): the served outcome keeps the configured owner's relation.
+(defthm fn-ohr-outcome-preserves-ocl-relation
+  (implies (fn-ocl-relation oc)
+           (fn-ocl-relation (cdr (fn-oop-outcome oc id word icar carry))))
+  :hints (("Goal"
+           :use ((:instance fn-ohr-ocl-relation-with-owner-of-same-control-field
+                            (o2 (fn-oop-outcome-next (fn-ocfg-owner oc) id
+                                                     (fn-own-inflight (fn-ocfg-owner oc))
+                                                     (fn-own-outcome-completion (fn-ocfg-owner oc) word)
+                                                     icar carry)))
+                 (:instance fn-ocl-advance-preserves-historical-relation
+                            (oc (fn-ocfg-with-owner
+                                 oc (fn-oop-outcome-next (fn-ocfg-owner oc) id
+                                                         (fn-own-inflight (fn-ocfg-owner oc))
+                                                         (fn-own-outcome-completion (fn-ocfg-owner oc) word)
+                                                         icar carry)))))
+           :in-theory (e/d (fn-oop-outcome)
+                           (fn-oop-outcome-next fn-oop-advance fn-ocfg-advance fn-ocfg-with-owner
+                            fn-own-outcome-completion fn-served-post-outcome fn-own-post-rendering
+                            fn-served-make-conn-group-indexed fn-acar-own-advance-result
+                            fn-ohr-ocl-relation-with-owner-of-same-control-field)))))
+
+; KEYSTONE (PRF-932): the transit outcome keeps the configured owner's relation.
+(defthm fn-ohr-transit-outcome-preserves-ocl-relation
+  (implies (fn-ocl-relation oc)
+           (fn-ocl-relation (cdr (fn-oop-transit-outcome oc id kind reason word))))
+  :hints (("Goal"
+           :use ((:instance fn-ohr-ocl-relation-with-owner-of-same-control-field
+                            (o2 (fn-oop-transit-next (fn-ocfg-owner oc) id
+                                                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))
+                                                     (fn-own-inflight (fn-ocfg-owner oc))
+                                                     (if (equal kind :want)
+                                                         (fn-own-outcome-completion (fn-ocfg-owner oc) word)
+                                                       nil)
+                                                     kind reason)))
+                 (:instance fn-ocl-advance-preserves-historical-relation
+                            (oc (fn-ocfg-with-owner
+                                 oc (fn-oop-transit-next (fn-ocfg-owner oc) id
+                                                         (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))
+                                                         (fn-own-inflight (fn-ocfg-owner oc))
+                                                         (if (equal kind :want)
+                                                             (fn-own-outcome-completion (fn-ocfg-owner oc) word)
+                                                           nil)
+                                                         kind reason)))))
+           :in-theory (e/d (fn-oop-transit-outcome)
+                           (fn-oop-transit-next fn-ocfg-advance fn-ocfg-with-owner
+                            fn-own-outcome-completion fn-own-outcome-rendering fn-served-transit-outcome
+                            fn-peer-decision fn-own-transit-subp
+                            fn-served-make-conn-group-indexed fn-own-advance-result
+                            fn-ohr-ocl-relation-with-owner-of-same-control-field)))))
+
+(defthm fn-ohr-oop-advance-keeps-store
+  (equal (fn-own-store (fn-ocfg-owner (fn-oop-advance oc id))) (fn-own-store (fn-ocfg-owner oc)))
+  :hints (("Goal" :in-theory (enable fn-oop-advance fn-acar-own-advance-result))))
+
+(defthm fn-ohr-outcome-keeps-store
+  (implies (fn-own-shapep (fn-ocfg-owner oc))
+           (equal (fn-own-store (fn-ocfg-owner (cdr (fn-oop-outcome oc id word icar carry))))
+                  (fn-own-store (fn-ocfg-owner oc))))
+  :hints (("Goal" :in-theory (e/d (fn-oop-outcome)
+                                  (fn-oop-outcome-next fn-oop-advance fn-own-outcome-completion
+                                   fn-served-post-outcome fn-own-post-rendering
+                                   fn-served-make-conn-group-indexed
+                                   fn-oop-outcome-is-apc-own-outcome)))))
+
+(defthm fn-ohr-transit-outcome-keeps-store
+  (implies (fn-own-shapep (fn-ocfg-owner oc))
+           (equal (fn-own-store (fn-ocfg-owner (cdr (fn-oop-transit-outcome oc id kind reason word))))
+                  (fn-own-store (fn-ocfg-owner oc))))
+  :hints (("Goal" :in-theory (e/d (fn-oop-transit-outcome)
+                                  (fn-oop-transit-next fn-ocfg-advance fn-own-outcome-completion
+                                   fn-own-outcome-rendering fn-served-transit-outcome fn-peer-decision
+                                   fn-own-transit-subp fn-served-make-conn-group-indexed
+                                   fn-oop-transit-outcome-is-own-transit-outcome)))))
+
+(defthm fn-ohr-outcome-preserves-carried-relation
+  (implies (fn-lgoc-invariantp oc)
+           (fn-lgoc-invariantp (cdr (fn-oop-outcome oc id word icar carry))))
+  :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
+                                   (x (cdr (fn-oop-outcome oc id word icar carry)))))
+           :in-theory (disable fn-oop-outcome fn-oop-outcome-is-apc-own-outcome))))
+
+(defthm fn-ohr-transit-outcome-preserves-carried-relation
+  (implies (fn-lgoc-invariantp oc)
+           (fn-lgoc-invariantp (cdr (fn-oop-transit-outcome oc id kind reason word))))
+  :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
+                                   (x (cdr (fn-oop-transit-outcome oc id kind reason word)))))
+           :in-theory (disable fn-oop-transit-outcome fn-oop-transit-outcome-is-own-transit-outcome))))

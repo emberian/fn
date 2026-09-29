@@ -225,6 +225,7 @@
 (include-book "owner-log-reopen")
 (include-book "owner-log-route")
 (include-book "owner-parse-carried")
+(include-book "owner-outcome-pinned")
 (include-book "owner-identity-intern")
 (include-book "owner-identity-served")
 (include-book "owner-prepare-outcome")
