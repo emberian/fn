@@ -237,7 +237,7 @@ set -u
 S=$S
 T=\$S/tree
 L=\$S/logs
-ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k  # the certify launcher (tools/farm.py HOSTS)
 CACHE=/tank/fn/certcache
 unset FN_OPENSSL_PREFIX
 mkdir -p \$S/bin

@@ -168,7 +168,8 @@ static int fnx_statfs(const char *p, unsigned char *buf) {
   (let ((r (%lock-shared path)))
     (cond ((= r 1000000) '|KEYWORD::NOT-REGULAR|)
           ((= r 1000001) '|KEYWORD::LOCKED|)
-          ((< r 0) (list kw-error (- r) "open"))
+          ;; the text is the image's fnn-os-error report (fnn-open names the path)
+          ((< r 0) (list kw-error (- r) (hx-os-text (- r) path)))
           (else kw-ok))))
 
 (define (a-hx-fsync-dir path)
@@ -292,3 +293,291 @@ static int fnx_statfs(const char *p, unsigned char *buf) {
                             poff (hx-path file) n)))
           (set! extent-lz-last (cons key (cons dict (cadr r))))
           (cadr r)))))
+
+;;; --- the writable verbs' primitives (host/store-write-host.lisp; lane
+;;; extract-writable) ---------------------------------------------------------
+;;; A syscall's failure answers (:error ERRNO TEXT), TEXT exactly what io.lisp's
+;;; fnn-os-error reports: "[Errno N] STRERROR", then ": 'PATH'" where io.lisp's
+;;; fnn-posix names the path (open, lstat, unlink, mkdir, link and rename name
+;;; it; a write, a barrier, a close and an allocation do not).  Read-write
+;;; handles live in the handle table beside the read-only ones and are closed.
+(import (chicken process-context) (chicken process-context posix) (chicken process signal)
+        (chicken process) (chicken time))
+(foreign-declare "
+#include <stdio.h>
+#include <time.h>
+#include <sys/time.h>
+static long fnx_open_flags(const char *p, int flags, int mode) {
+  int fd = open(p, flags, mode);
+  return fd < 0 ? -(long) errno : fd;
+}
+static long fnx_lock_ex(const char *p) {
+  int fd = open(p, O_RDWR | O_CREAT | O_NOFOLLOW, 0600);
+  struct stat st;
+  if (fd < 0) return -(long) errno;
+  if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode)) { close(fd); return 1000000; }
+  if (flock(fd, LOCK_EX | LOCK_NB) != 0) { close(fd); return 1000001; }
+  return fd;
+}
+static long fnx_lstat_full(const char *p, long *out) {
+  struct stat st;
+  if (lstat(p, &st) != 0) return errno == ENOENT ? -1 : -(long) errno - 10;
+  out[0] = S_ISREG(st.st_mode) ? 1 : S_ISDIR(st.st_mode) ? 2 : S_ISLNK(st.st_mode) ? 3 : 4;
+  out[1] = (long) st.st_size;
+  out[2] = (long) st.st_mode;
+  return 0;
+}
+static long fnx_write_at(int fd, unsigned char *buf, size_t n, long off, int positioned) {
+  size_t done = 0;
+  if (positioned && lseek(fd, off, SEEK_SET) < 0) return -(long) errno;
+  while (done < n) {
+    ssize_t r = write(fd, buf + done, n - done);
+    if (r > 0) done += (size_t) r;
+    else if (r < 0 && errno == EINTR) continue;
+    else return r < 0 ? -(long) errno : -(long) EIO;
+  }
+  return 0;
+}
+static long fnx_read_at(int fd, unsigned char *buf, size_t n, long off) {
+  size_t done = 0;
+  if (lseek(fd, off, SEEK_SET) < 0) return -(long) errno;
+  while (done < n) {
+    ssize_t r = read(fd, buf + done, n - done);
+    if (r > 0) done += (size_t) r;
+    else if (r == 0) break;
+    else if (errno == EINTR) continue;
+    else return -(long) errno;
+  }
+  return (long) done;
+}
+static long fnx_datasync(int fd) {
+#ifdef __linux__
+  return fdatasync(fd) == 0 ? 0 : (long) errno;
+#else
+  return fsync(fd) == 0 ? 0 : (long) errno;
+#endif
+}
+static long fnx_fsync(int fd) { return fsync(fd) == 0 ? 0 : (long) errno; }
+static long fnx_prealloc(int fd, long from, long extent) {
+#ifdef __linux__
+  return (long) posix_fallocate(fd, from, extent - from);
+#else
+  static unsigned char zeros[65536];
+  long at = from;
+  if (lseek(fd, from, SEEK_SET) < 0) return (long) errno;
+  while (at < extent) {
+    long n = extent - at < 65536 ? extent - at : 65536;
+    long r = fnx_write_at(fd, zeros, (size_t) n, 0, 0);
+    if (r != 0) return -r;
+    at += n;
+  }
+  return 0;
+#endif
+}
+static long fnx_sync_dir(const char *p) {
+  int fd = open(p, O_RDONLY | O_DIRECTORY);
+  if (fd < 0) return -(long) errno;
+  if (fsync(fd) != 0) { int e = errno; close(fd); return (long) e; }
+  close(fd);
+  return 0;
+}
+static long fnx_mono_ms(void) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (long) ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+static long fnx_tod(long *out) {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  out[0] = (long) tv.tv_sec; out[1] = (long) tv.tv_usec;
+  return 0;
+}
+int fn_lz4_compress_hc(const unsigned char *dict, int dict_len, const unsigned char *src, int src_len,
+                       unsigned char *dst, int dst_cap, int level);
+")
+
+(define %open-flags (foreign-lambda long "fnx_open_flags" c-string int int))
+(define %lock-ex (foreign-lambda long "fnx_lock_ex" c-string))
+(define %lstat-full (foreign-lambda long "fnx_lstat_full" c-string s64vector))
+(define %write-at (foreign-lambda* long ((int fd) (u8vector buf) (size_t n) (long off) (int pos))
+                    "C_return(fnx_write_at(fd, buf, n, off, pos));"))
+(define %read-at (foreign-lambda* long ((int fd) (u8vector buf) (size_t n) (long off))
+                   "C_return(fnx_read_at(fd, buf, n, off));"))
+(define %datasync (foreign-lambda long "fnx_datasync" int))
+(define %fsync-fd (foreign-lambda long "fnx_fsync" int))
+(define %prealloc (foreign-lambda long "fnx_prealloc" int long long))
+(define %sync-dir (foreign-lambda long "fnx_sync_dir" c-string))
+(define %close-fd (foreign-lambda* int ((int fd)) "C_return(close(fd) == 0 ? 0 : errno);"))
+(define %unlock-close (foreign-lambda* int ((int fd)) "flock(fd, LOCK_UN); C_return(close(fd));"))
+(define %strerror (foreign-lambda c-string "strerror" int))
+(define %unlink (foreign-lambda* int ((c-string p)) "C_return(unlink(p) == 0 ? 0 : errno);"))
+(define %mkdir (foreign-lambda* int ((c-string p)) "C_return(mkdir(p, 0700) == 0 ? 0 : errno);"))
+(define %link (foreign-lambda* int ((c-string a) (c-string b)) "C_return(link(a, b) == 0 ? 0 : errno);"))
+(define %rename (foreign-lambda* int ((c-string a) (c-string b)) "C_return(rename(a, b) == 0 ? 0 : errno);"))
+(define %mono-ms (foreign-lambda long "fnx_mono_ms"))
+(define %tod (foreign-lambda long "fnx_tod" s64vector))
+(define %getcwd (foreign-lambda* c-string* () "C_return(getcwd(NULL, 0));"))
+(define %lz4-hc
+  (foreign-lambda* int ((u8vector src) (int start) (int n) (u8vector dst) (int cap))
+    "C_return(fn_lz4_compress_hc((const unsigned char *) \"\", 0, src + start, n, dst, cap, 9));"))
+(define o-rdonly (foreign-value "O_RDONLY" int))
+(define o-rdwr (foreign-value "O_RDWR" int))
+(define o-wronly (foreign-value "O_WRONLY" int))
+(define o-creat (foreign-value "O_CREAT" int))
+(define o-excl (foreign-value "O_EXCL" int))
+(define o-nofollow (foreign-value "O_NOFOLLOW" int))
+
+(define kw-absent '|KEYWORD::ABSENT|)
+(define (hx-os-text errno path)
+  (string-append "[Errno " (number->string errno) "] " (%strerror errno)
+                 (if path (string-append ": '" path "'") "")))
+(define (hx-err errno path) (list kw-error errno (hx-os-text errno path)))
+(define (hx-bool x) (if x '|COMMON-LISP::T| '()))
+(define (hx-status code path) (if (eqv? code 0) kw-ok (hx-err code path)))
+
+(define (a-hx-getenv name) (or (get-environment-variable name) '()))
+(define (a-hx-strerror errno) (%strerror errno))
+(define (a-hx-kill-self) (process-signal (current-process-id) signal/kill) '())
+(define (a-hx-out text)
+  (let ((port (current-output-port))) (display text port) (newline port) (flush-output port) '()))
+(define (a-hx-getpid) (current-process-id))
+(define (a-hx-getcwd) (or (%getcwd) "."))
+
+(define (a-hx-lock-exclusive path)
+  (let ((r (%lock-ex path)))
+    (cond ((= r 1000000) '|KEYWORD::NOT-REGULAR|)
+          ((= r 1000001) '|KEYWORD::LOCKED|)
+          ((< r 0) (hx-err (- r) path))
+          (else (list kw-ok (hx-register r path))))))
+(define (a-hx-unlock h) (%unlock-close (hx-fd h)) (vector-set! hx-handles h #f) kw-ok)
+
+(define (hx-open-with path flags mode)
+  (let ((fd (%open-flags path flags mode)))
+    (if (< fd 0)
+        (hx-err (- fd) path)
+        (let ((size (%fsize fd)))
+          (list kw-ok (hx-register fd path) (if (< size 0) 0 size))))))
+(define (a-hx-open-rw path) (hx-open-with path (bitwise-ior o-rdwr o-nofollow) 0))
+(define (a-hx-open-ro path) (hx-open-with path (bitwise-ior o-rdonly o-nofollow) 0))
+(define (a-hx-create-excl path nofollow)
+  (let ((fd (%open-flags path (bitwise-ior o-wronly o-creat o-excl (if (null? nofollow) 0 o-nofollow)) #o600)))
+    (if (< fd 0) (hx-err (- fd) path) (list kw-ok (hx-register fd path)))))
+(define (a-hx-close h)
+  (let ((e (%close-fd (hx-fd h))))
+    (vector-set! hx-handles h #f)
+    (hx-status e #f)))
+
+(define (hx-list->u8 l)
+  (let ((v (make-u8vector (length l) 0)))
+    (let loop ((l l) (i 0)) (if (null? l) v (begin (u8vector-set! v i (car l)) (loop (cdr l) (fx+ i 1)))))))
+(define (a-hx-pwrite h off octets)
+  (let ((v (hx-list->u8 octets)))
+    (let ((r (%write-at (hx-fd h) v (u8vector-length v) off 1))) (if (= r 0) kw-ok (hx-err (- r) #f)))))
+(define (a-hx-pwrite-zeros h off n)
+  (let ((r (%write-at (hx-fd h) (make-u8vector n 0) n off 1))) (if (= r 0) kw-ok (hx-err (- r) #f))))
+(define (a-hx-write-all h octets)
+  (let* ((v (hx-list->u8 octets)) (r (%write-at (hx-fd h) v (u8vector-length v) 0 0)))
+    (if (= r 0) kw-ok (hx-err (- r) #f))))
+(define (a-hx-read-at h off n)
+  (let* ((buf (make-u8vector n 0)) (r (%read-at (hx-fd h) buf n off)))
+    (cond ((< r 0) (hx-err (- r) #f))
+          (else (list kw-ok (u8vector->list (if (= r n) buf (subu8vector buf 0 r))))))))
+(define (a-hx-fdatasync h) (hx-status (%datasync (hx-fd h)) #f))
+(define (a-hx-fsync h) (hx-status (%fsync-fd (hx-fd h)) #f))
+(define (a-hx-preallocate h from extent) (hx-status (%prealloc (hx-fd h) from extent) #f))
+(define (a-hx-sync-dir path)
+  (let ((r (%sync-dir path))) (cond ((= r 0) kw-ok) ((< r 0) (hx-err (- r) path)) (else (hx-err r #f)))))
+(define (a-hx-unlink path) (hx-status (%unlink path) path))
+(define (a-hx-mkdir path) (hx-status (%mkdir path) path))
+(define (a-hx-link old new) (hx-status (%link old new) new))
+(define (a-hx-rename old new) (hx-status (%rename old new) new))
+
+(define (a-hx-lstat-full path)
+  (let* ((out (make-s64vector 3 0)) (r (%lstat-full path out)))
+    (cond ((= r -1) (list kw-absent))
+          ((< r -1) (hx-err (- (+ r 10)) path))
+          (else (list kw-ok
+                      (case (s64vector-ref out 0)
+                        ((1) '|KEYWORD::REGULAR|) ((2) '|KEYWORD::DIRECTORY|)
+                        ((3) '|KEYWORD::SYMLINK|) (else '|KEYWORD::OTHER|))
+                      (s64vector-ref out 1) (s64vector-ref out 2))))))
+
+(define (hx-readdir path limit window)
+  ;; (:ok NAMES MORE) in directory order; bounded: (:over) past LIMIT
+  (let ((d (%opendir path)))
+    (if (not d)
+        (hx-err (foreign-value "errno" int) path)
+        (let loop ((names '()) (count 0))
+          (let ((name (%readdir-name d)))
+            (cond ((not name) (%closedir d) (list kw-ok (reverse names) '()))
+                  ((or (string=? name ".") (string=? name "..")) (loop names count))
+                  ((>= count limit) (%closedir d)
+                   (if window (list kw-ok (reverse names) '|COMMON-LISP::T|) (list '|KEYWORD::OVER|)))
+                  (else (loop (cons name names) (fx+ count 1)))))))))
+(define (a-hx-list-window path limit) (hx-readdir path limit #t))
+(define (a-hx-list-bounded path limit) (hx-readdir path limit #f))
+
+(define (a-hx-read-file path maximum)
+  ;; fnn-read-regular-bounded
+  (let ((fd (%open-flags path (bitwise-ior o-rdonly o-nofollow) 0)))
+    (if (< fd 0)
+        (hx-err (- fd) path)
+        (let ((size (%fsize fd)))
+          (cond ((= size -2) (%close-fd fd) (list '|KEYWORD::NON-REGULAR|))
+                ((= size -1) (%close-fd fd) (hx-err 5 #f))
+                ((> size maximum) (%close-fd fd) (list '|KEYWORD::OVERBOUND|))
+                (else
+                 (let* ((buf (make-u8vector (+ maximum 1) 0))
+                        (r (%read-at fd buf (+ maximum 1) 0)))
+                   (%close-fd fd)
+                   (cond ((< r 0) (hx-err (- r) #f))
+                         ((> r maximum) (list '|KEYWORD::GREW|))
+                         (else (list kw-ok (u8vector->list (subu8vector buf 0 r))))))))))))
+
+;; The environment readings, recorded when the developer selectors say so (as
+;; the image's fnn-test-clock-readings and fnn-test-entropy read them).
+(define (hx-digits? s) (and (> (string-length s) 0) (<= (string-length s) 18)
+                            (let loop ((i 0)) (or (= i (string-length s))
+                                                  (and (char-numeric? (string-ref s i)) (loop (+ i 1)))))))
+(define (a-hx-clock)
+  (let ((raw (get-environment-variable "FN_NATIVE_TEST_CLOCK")))
+    (if raw
+        (let ((words (string-split raw ":" #t)))
+          (if (and (= (length words) 3) (hx-digits? (car words)) (hx-digits? (cadr words))
+                   (hx-digits? (caddr words)))
+              (map string->number words)
+              (error "invalid FN_NATIVE_TEST_CLOCK (expected MONO-MS:SECONDS:MICROSECONDS)")))
+        (let ((tod (make-s64vector 2 0)))
+          (%tod tod)
+          (list (%mono-ms) (s64vector-ref tod 0) (s64vector-ref tod 1))))))
+(define hx-entropy-draws 0)
+(define (a-hx-random-octets n)
+  (let ((raw (get-environment-variable "FN_NATIVE_TEST_ENTROPY")))
+    (if raw
+        (let ((b (string->number raw)))
+          (unless (and (hx-digits? raw) (<= (string-length raw) 3) b (< b 256))
+            (error "invalid FN_NATIVE_TEST_ENTROPY (expected 0 to 255)"))
+          (let ((k hx-entropy-draws))
+            (set! hx-entropy-draws (+ k 1))
+            (list kw-ok (let loop ((i (- n 1)) (acc '()))
+                          (if (< i 0) acc (loop (- i 1) (cons (modulo (+ b (* 7 k) i) 256) acc)))))))
+        (let ((fd (%open-flags "/dev/urandom" o-rdonly 0)))
+          (if (< fd 0) (hx-err (- fd) "/dev/urandom")
+              (let* ((buf (make-u8vector n 0)) (r (%read-at fd buf n 0)))
+                (%close-fd fd)
+                (if (= r n) (list kw-ok (u8vector->list buf))
+                    (hx-err 5 #f))))))))
+(define (a-hx-random-hex n)
+  (let ((fd (%open-flags "/dev/urandom" o-rdonly 0)) (buf (make-u8vector n 0)))
+    (when (>= fd 0) (%read-at fd buf n 0) (%close-fd fd))
+    (apply string-append
+           (map (lambda (b) (let ((s (number->string b 16))) (if (< b 16) (string-append "0" s) s)))
+                (u8vector->list buf)))))
+
+;; host/native/lz4.lisp fnn-lz4-candidate over the image's lib/libfn-lz4, the
+;; empty dictionary (ID 0, ACL2's only one) at level 9 (+fnn-lz4-level+)
+(define (a-hx-lz4-candidate src k n cap)
+  (let* ((v (hx-list->u8 src)) (dst (make-u8vector cap 0)) (got (%lz4-hc v k n dst cap)))
+    (cond ((> got 0) (u8vector->list (subu8vector dst 0 got)))
+          ((= got 0) '|KEYWORD::NONE|)
+          (else (list '|KEYWORD::CODE| got)))))

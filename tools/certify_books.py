@@ -68,6 +68,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import acl2_cost  # noqa: E402
 import acl2_slots  # noqa: E402
 import acl2_toolchain  # noqa: E402
+import cert_images  # noqa: E402
 import certs  # noqa: E402
 import chain_schedule  # noqa: E402
 import evidence_manifests  # noqa: E402
@@ -555,7 +556,8 @@ def with_dependencies(books: list[str]) -> list[str]:
     return ordered
 
 
-def make_driver(book: str, nonce: str, wave: str | None = None) -> str:
+def make_driver(book: str, nonce: str, wave: str | None = None,
+                portcullis: int = 0) -> str:
     """The ld that certifies one book, or runs one provisional-certification wave.
 
     `certify-book` must run at the top level of an ACL2 ld.  On an error, the
@@ -570,7 +572,7 @@ def make_driver(book: str, nonce: str, wave: str | None = None) -> str:
     disk.  See `PCERT_WAVES` for what each wave is.
     """
     if wave is None:
-        return f'''(ld '((certify-book "{book}" 0 t)
+        return f'''(ld '((certify-book "{book}" {portcullis} t)
       (value-triple (cw "~%{success_token(book, nonce)}~%")))
     :ld-error-action :return
     :ld-error-triples t)
@@ -934,6 +936,22 @@ def main() -> int:
         help="do not publish the resulting certificates to the local cache",
     )
     parser.add_argument(
+        "--images",
+        choices=("on", "off"),
+        default=os.environ.get("FN_CERT_IMAGES", "off"),
+        help=(
+            "certify each book from the costliest built certification image "
+            "its closure allows (tools/cert_images.py, tools/cert-images.json); "
+            "off certifies every book in a plain world (default: off until the attach-stobj defect is fixed, batch BB 2026-09-29; or "
+            "FN_CERT_IMAGES)"
+        ),
+    )
+    parser.add_argument(
+        "--keep-images",
+        action="store_true",
+        help="keep the run's image cores under its evidence directory",
+    )
+    parser.add_argument(
         "--pcert",
         action="store_true",
         help=(
@@ -1122,6 +1140,11 @@ def main() -> int:
         print(f"Certification evidence: {run_dir.relative_to(ROOT)}", file=sys.stderr)
         return 2
     manifest["source_digests_sha256"] = source_digests
+    # The same closure by read forms (`certs.form_hash`): a later comment-only
+    # edit keeps ACL2's book-hash, and `certs.manifest_sources` lets this run
+    # keep vouching for the edited bytes.
+    manifest["source_form_digests_sha256"] = {
+        path: certs.form_hash(ROOT / path) for path in source_digests}
     manifest["local_source_audit"] = {
         "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
         "forbidden_facilities": sorted(FORBIDDEN_FACILITIES),
@@ -1222,6 +1245,16 @@ def main() -> int:
             driver_digests[f"{book}{suffix}"] = digest(driver_path)
             drivers[f"{book}{suffix}"] = driver
 
+    # Certification images (tools/cert_images.py): built during the run in
+    # this tree, handed to each book as they become available.
+    images = None
+    if (not args.pcert and args.images == "on" and args.books
+            and cert_images.load_config(ROOT)):
+        images = cert_images.Runner(
+            ROOT, run_dir, acl2, args.books,
+            run=lambda image_acl2, driver, timeout: run_acl2(image_acl2, driver, timeout),
+            slot=acl2_slots.slot, timeout=args.timeout_seconds)
+
     outputs: dict[str, str] = {}
     exit_codes: dict[str, int | str] = {}
     book_wall_seconds: dict[str, float] = {}
@@ -1259,10 +1292,22 @@ def main() -> int:
                 # is not occupying one, and the schedule tests read this order.
                 start_order.append(book)
                 slot_wait_seconds[book] = held.seconds
+            launcher, driver = acl2, drivers[book]
+            chosen = images.choose(book) if images is not None else None
+            if chosen is not None:
+                # The image's include-books are this certificate's portcullis
+                # (certify-book's second argument counts them); FIXUP first
+                # (tools/cert_images.py says why).
+                launcher = chosen[0]
+                driver = cert_images.FIXUP + make_driver(book, nonce, portcullis=chosen[1])
+                driver_path = run_dir / (book.replace("/", "--") + ".certify.lsp")
+                driver_path.write_text(driver, encoding="utf-8")
+                with record_lock:
+                    driver_digests[book] = digest(driver_path)
             load_started = load_average()
             started = time.monotonic()
             try:
-                result = run_acl2(acl2, drivers[book], args.timeout_seconds,
+                result = run_acl2(launcher, driver, args.timeout_seconds,
                                   log_path=log_path, book=book)
                 output = result.stdout.decode("utf-8", errors="replace")
                 code: int | str = result.returncode
@@ -1278,10 +1323,12 @@ def main() -> int:
             book_wall_seconds[book] = round(elapsed, 3)
             book_load_average[book] = [load_started, load_ended]
             record_cost(book, output)
-        if args.no_publish:
-            return
         verdict, _ = book_result(book, output, code, nonce,
                                  (ROOT / f"{book}.cert").is_file())
+        if images is not None:
+            images.finished(book, verdict == "passed")
+        if args.no_publish:
+            return
         with publish_lock:
             cache_events.append(publish_pair(book, verdict, run_dir, nonce,
                                              source_digests, output, code,
@@ -1418,7 +1465,11 @@ def main() -> int:
             collect_pcert(book)
     else:
         pcert_wall_seconds = None
-        run_schedule(args.books, schedule, effective_jobs, certify, priority)
+        try:
+            run_schedule(args.books, schedule, effective_jobs, certify, priority)
+        finally:
+            if images is not None:
+                manifest["cert_images"] = images.close(keep=args.keep_images)
     certify_wall_seconds = round(time.monotonic() - certify_started, 3)
 
     # Evidence is assembled in requested order, never completion order, so the
