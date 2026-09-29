@@ -14219,7 +14219,7 @@
         "tests/acl2/msgid-pages-exec-tests.lisp",
         "planning/design-paged-history-2026-09-29.md"
       ],
-      "progress_note": "2026-09-29 lane paged-history-2: the executable table and its reader keystone REPL-admitted on persvati; certification manifest at the READY sha. Not yet on a host path: the catalog's concrete stobj adopts the table in the row's next edit (the switch and the deletion of fn-cat$c-msgids are one edit: the reader is behind the abstract stobj, no host line names it).",
+      "progress_note": "2026-09-29 lane paged-history-2: the executable table and its reader keystone REPL-admitted on persvati; certification manifest at the READY sha. Not yet on a host path: the catalog's concrete stobj adopts the table in the row's next edit (the switch and the deletion of fn-cat$c-msgids are one edit: the reader is behind the abstract stobj, no host line names it). 2026-09-29 paged-history-3: the tag is KEYED (fn-mpxt-tag msgid key; the key in the stobj, PRF-991); the theorems are unchanged in substance.",
       "events": []
     },
     {
@@ -14241,6 +14241,28 @@
         "planning/design-paged-history-2026-09-29.md"
       ],
       "progress_note": "2026-09-29 lane paged-history-2: REPL-admitted on persvati with the exec book; certification manifest at the READY sha. The catalog's concrete edit that cites it is the row's next READY.",
+      "events": []
+    },
+    {
+      "id": "PRF-991",
+      "title": "The Message-ID table resists crafted Message-IDs (ember's PKT-774 ruling, row W2b): the tag is keyed BLAKE3 under a per-node purpose key of the node secret, and a lookup's work is its pages, one plus the run of full pages after the home page, bounded by the page count for every tag; at most two under the table condition, and a skewed home (overflow full) is refused by name, never scanned (lane paged-history-3)",
+      "statement": "Subjects: books/msgid-pages-exec.lisp section 0 and section 6. THE KEY: the stobj fn-mpxt carries 32 key octets (fn-mpxt-key; fn-mpxt-key-octets reads them); fn-mpxt-set-key installs a key into an emptied table (a key change empties the table: the tags of the entries a table holds are its key's); fn-mpxt-key-of-entry entry = fn-ns-purpose-key entry \"fn/msgid-index/v1\" (books/node-secret: BLAKE3 derive_key over the ring's current entry, the same derivation as the cancel-lock and posting-account keys, from which its label differs by definition, fn-mpxt-key-info-separate-by-definition); every writer keeps the key (the -key clauses of fn-mpxt-write-slot-frame, -put-run-frame, -put-frame, -zero-words-frame, -put-all-frame, fn-mpxt-grow-key, fn-mpxt-add-key, fn-mpxt-clear-shape). THE TAG: fn-mpxt-tag msgid key = the first eight octets of fn-ns-mac key octets (BLAKE3 keyed_hash of the Message-ID's octets) as a little-endian word floored at 1; nobody outside the node can compute a Message-ID's home page, so filling a home page and its overflow takes 2,048 entries whose tags the adversary cannot choose. THE PAGE NEED: fn-mpxt-run-counted is the reader's run returning its candidates and the pages it read (fn-mpxt-run-counted-is-run: the candidates are fn-mpxt-run's, the pages fn-mpxt-run-pages); fn-mpxt-candidates-pages tag is the lookup's need (fn-mpxt-candidates-counted-is-candidates). KEYSTONE fn-mpxt-candidates-page-need: for every table and every natural tag, the need is one page plus the full run from the home page (fn-mpxt-full-run: the consecutive full pages), and at most the page count -- no hypothesis restricts the tag beyond its type. Under the table condition fn-mpxt-no-adjacent-fullp (no page and its successor both full) the need is at most two (fn-mpxt-candidates-page-need-two, design B.3's L-MPX-OVERFLOW) and no tag is skewed (fn-mpxt-no-skew-under-the-condition). THE SKEW fn-mpxt-skewp tag: the home page and its overflow are both full; a placement that is not skewed lands (fn-mpxt-put-places-unless-skewed) and its tag's lookup reads at most two pages (fn-mpxt-page-need-two-unless-skewed); the served POST refuses a skewed Message-ID by name (:mpx-skew, the catalog's key-argument export at THE SWITCH, row P2) instead of placing past the overflow page, so a run longer than two full pages arises only from a grow's re-placement under crafted tags, never from a POST; the reader continues past full pages regardless, so completeness never depends on the tag distribution. What this does not prove: unpredictability of the tags (BLAKE3 keyed_hash as a PRF is A-CRYPTO; the theorems hold for every key), the Poisson occupancy figure (a full page at a load of at most 1/2 is a tail event, stated in prose), or secrecy of the key file. Teeth tests/acl2/msgid-pages-exec-tests.lisp section 6: on a 520-row table (two pages) the counted reader's pages equal the need, the need is 1 + the full run, at most the page count and at most two, the condition holds and no tag is skewed; 2,048 entries under one tag (a leaked key's crafted tags) in eight pages fill the home page and its overflow: the tag is skewed, its need is three pages, the condition fails, and the entry still lands; 1,000 entries under one tag are not skewed; the key witness: two entries' keys and tags differ, the key differs from the cancel-lock key. The 10k crafted-collision native (Message-IDs colliding under the old table's hash) exercises the served path and ships with THE SWITCH (row P2).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-969"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/msgid-pages-exec.lisp",
+        "tests/acl2/msgid-pages-exec-tests.lisp",
+        "planning/design-paged-history-2026-09-29.md",
+        "planning/decisions.md"
+      ],
+      "progress_note": "2026-09-29 lane paged-history-3: ember's 06:34Z ruling (W2 row, PKT-774 -> W2b). REPL-admitted on persvati; certification manifest at the READY sha. The served refusal :mpx-skew and the crafted-collision native land with THE SWITCH (row P2, the catalog's concrete stobj), since no host line reads the table before it.",
       "events": []
     },
     {

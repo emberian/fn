@@ -14,11 +14,20 @@
 ; the figure's Message-ID term at 32 octets a record instead of 12,000
 ; (books/heap-store-figure, when the catalog's hash is deleted).
 ;
-; THE TAG is a natural of the Message-ID: the first eight octets of
-; `fn-digest' (BLAKE3, attached in books/crypto-attach) of the Message-ID's
-; octets as a little-endian word, floored at 1 (0 is the empty slot).  The
-; theorems never depend on it: a tag collision costs a confirmation against
-; the row, never a wrong answer (`fn-mpxt-confirm').
+; THE TAG is a natural of the Message-ID under the table's KEY (ember's
+; PKT-774 ruling, row W2b): the first eight octets of the BLAKE3 keyed hash
+; (`fn-ns-mac', books/node-secret: keyed_hash under a 32-octet key) of the
+; Message-ID's octets as a little-endian word, floored at 1 (0 is the empty
+; slot).  The key is a purpose key of the node secret (`fn-mpxt-key-of-
+; entry': BLAKE3 derive_key over the current entry's root and identity under
+; the label "fn/msgid-index/v1", which differs from the cancel-lock and
+; posting-account labels by definition), set into an emptied table at the
+; open (`fn-mpxt-set-key') and kept through every write (the -key frame
+; clauses).  Nobody outside the node can compute a Message-ID's home page,
+; so filling a home page and its overflow takes 2,048 entries whose tags the
+; adversary cannot choose.  The theorems never depend on the tag's value: a
+; tag collision costs a confirmation against the row, never a wrong answer
+; (`fn-mpxt-confirm'); section 6 states the page need.
 ;
 ; THE READER `fn-mpxt-candidates' scans the tag's HOME page (TAG mod the
 ; page count) whole -- every slot, so no placement invariant is needed --
@@ -51,7 +60,7 @@
 
 (in-package "ACL2")
 (include-book "msgid-pages")
-(include-book "crypto-seam")
+(include-book "node-secret")
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
 (local (include-book "arithmetic/top" :dir :system))
 
@@ -82,21 +91,45 @@
   :hints (("Goal" :induct (fn-mpxt-word k octets)
            :expand ((fn-mpxt-word k octets)) :in-theory (enable min))))
 
-(defun fn-mpxt-tag (msgid)
+(defconst *fn-mpxt-key-octets* 32)
+
+; "fn/msgid-index/v1": the purpose label of the table's key.
+(defconst *fn-mpxt-key-info*
+  '(102 110 47 109 115 103 105 100 45 105 110 100 101 120 47 118 49))
+
+; The table's key from a node-secret entry (the ring's current one).
+(defun fn-mpxt-key-of-entry (entry)
+  (declare (xargs :guard t))
+  (fn-ns-purpose-key entry *fn-mpxt-key-info*))
+
+(defthm fn-mpxt-key-of-entry-shape
+  (and (true-listp (fn-mpxt-key-of-entry entry))
+       (equal (len (fn-mpxt-key-of-entry entry)) 32)
+       (fn-b3-octet-listp (fn-mpxt-key-of-entry entry))))
+
+(defthm fn-mpxt-key-info-separate-by-definition
+  (and (not (equal *fn-mpxt-key-info* *fn-ns-cancel-lock-info*))
+       (not (equal *fn-mpxt-key-info* *fn-ns-posting-account-info*)))
+  :rule-classes nil)
+
+(in-theory (disable fn-mpxt-key-of-entry))
+
+; THE KEYED TAG.
+(defun fn-mpxt-tag (msgid key)
   (declare (xargs :guard t))
   (if (stringp msgid)
-      (max 1 (fn-mpxt-word 8 (fn-digest (fn-record-string-octets msgid))))
+      (max 1 (fn-mpxt-word 8 (fn-ns-mac key (fn-record-string-octets msgid))))
     1))
 
 (defthm fn-mpxt-tag-posp
-  (posp (fn-mpxt-tag msgid))
+  (posp (fn-mpxt-tag msgid key))
   :rule-classes :type-prescription)
 
 (defthm fn-mpxt-tag-is-a-word
-  (< (fn-mpxt-tag msgid) *fn-mpxt-word-limit*)
+  (< (fn-mpxt-tag msgid key) *fn-mpxt-word-limit*)
   :rule-classes :linear
   :hints (("Goal" :use ((:instance fn-mpxt-word-bound
-                                   (k 8) (octets (fn-digest (fn-record-string-octets msgid))))))))
+                                   (k 8) (octets (fn-ns-mac key (fn-record-string-octets msgid))))))))
 
 (in-theory (disable fn-mpxt-tag))
 
@@ -110,6 +143,7 @@
   (fn-mpxt-w :type (array (unsigned-byte 64) (0)) :initially 0 :resizable t)
   (fn-mpxt-pages :type (integer 0 *) :initially 0)
   (fn-mpxt-count :type (integer 0 *) :initially 0)
+  (fn-mpxt-key :type (array (unsigned-byte 8) (32)) :initially 0)
   :inline t)
 
 ;; The stobj's facts, stated over its accessors.
@@ -129,6 +163,14 @@
   :hints (("Goal" :in-theory (enable unsigned-byte-p)))))
 (local (defthm fn-mpxt-wp-true-listp
   (implies (fn-mpxt-wp l) (true-listp l))))
+(local (defthm fn-mpxt-keyp-of-update-nth
+  (implies (and (fn-mpxt-keyp l) (natp i) (< i (len l)) (unsigned-byte-p 8 v))
+           (fn-mpxt-keyp (update-nth i v l)))
+  :hints (("Goal" :in-theory (enable update-nth)))))
+(local (defthm fn-mpxt-keyp-nth
+  (implies (and (fn-mpxt-keyp l) (natp i) (< i (len l)))
+           (unsigned-byte-p 8 (nth i l)))
+  :hints (("Goal" :in-theory (enable nth)))))
 
 (defthm fn-mpxt-wi-is-a-word
   (implies (fn-mpxtp fn-mpxt)
@@ -143,14 +185,25 @@
                          (fn-mpxtp (update-fn-mpxt-wi i v fn-mpxt)))
                 (implies (natp n) (fn-mpxtp (resize-fn-mpxt-w n fn-mpxt)))
                 (implies (natp n) (fn-mpxtp (update-fn-mpxt-pages n fn-mpxt)))
-                (implies (natp n) (fn-mpxtp (update-fn-mpxt-count n fn-mpxt))))))
+                (implies (natp n) (fn-mpxtp (update-fn-mpxt-count n fn-mpxt)))
+                (implies (and (natp i) (< i *fn-mpxt-key-octets*) (unsigned-byte-p 8 v))
+                         (fn-mpxtp (update-fn-mpxt-keyi i v fn-mpxt))))))
+
+(defthm fn-mpxt-key-length-is-32
+  (implies (fn-mpxtp fn-mpxt)
+           (equal (fn-mpxt-key-length fn-mpxt) *fn-mpxt-key-octets*)))
+
+(defthm fn-mpxt-keyi-is-an-octet
+  (implies (and (fn-mpxtp fn-mpxt) (natp i) (< i *fn-mpxt-key-octets*))
+           (unsigned-byte-p 8 (fn-mpxt-keyi i fn-mpxt))))
 
 (defthm fn-mpxt-lengths-of-updates
   (and (implies (and (natp i) (< i (fn-mpxt-w-length fn-mpxt)))
                 (equal (fn-mpxt-w-length (update-fn-mpxt-wi i v fn-mpxt)) (fn-mpxt-w-length fn-mpxt)))
        (equal (fn-mpxt-w-length (resize-fn-mpxt-w n fn-mpxt)) (nfix n))
        (equal (fn-mpxt-w-length (update-fn-mpxt-pages n fn-mpxt)) (fn-mpxt-w-length fn-mpxt))
-       (equal (fn-mpxt-w-length (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-w-length fn-mpxt))))
+       (equal (fn-mpxt-w-length (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-w-length fn-mpxt))
+       (equal (fn-mpxt-w-length (update-fn-mpxt-keyi i v fn-mpxt)) (fn-mpxt-w-length fn-mpxt))))
 
 (defthm fn-mpxt-fields-natp
   (implies (fn-mpxtp fn-mpxt)
@@ -170,13 +223,51 @@
        (equal (fn-mpxt-count (update-fn-mpxt-count n fn-mpxt)) n)
        (equal (fn-mpxt-wi i (update-fn-mpxt-pages n fn-mpxt)) (fn-mpxt-wi i fn-mpxt))
        (equal (fn-mpxt-wi i (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-wi i fn-mpxt))
+       (equal (fn-mpxt-wi i (update-fn-mpxt-keyi j v fn-mpxt)) (fn-mpxt-wi i fn-mpxt))
+       (equal (fn-mpxt-pages (update-fn-mpxt-keyi j v fn-mpxt)) (fn-mpxt-pages fn-mpxt))
+       (equal (fn-mpxt-count (update-fn-mpxt-keyi j v fn-mpxt)) (fn-mpxt-count fn-mpxt))
+       (equal (fn-mpxt-keyi i (update-fn-mpxt-wi j v fn-mpxt)) (fn-mpxt-keyi i fn-mpxt))
+       (equal (fn-mpxt-keyi i (resize-fn-mpxt-w n fn-mpxt)) (fn-mpxt-keyi i fn-mpxt))
+       (equal (fn-mpxt-keyi i (update-fn-mpxt-pages n fn-mpxt)) (fn-mpxt-keyi i fn-mpxt))
+       (equal (fn-mpxt-keyi i (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-keyi i fn-mpxt))
+       (implies (and (natp i) (natp j))
+                (equal (fn-mpxt-keyi i (update-fn-mpxt-keyi j v fn-mpxt))
+                       (if (equal i j) v (fn-mpxt-keyi i fn-mpxt))))
        (implies (and (natp i) (natp j))
                 (equal (fn-mpxt-wi i (update-fn-mpxt-wi j v fn-mpxt))
                        (if (equal i j) v (fn-mpxt-wi i fn-mpxt))))))
 
 ;; The primitives are closed from here on: every fact about them is above.
 (in-theory (disable fn-mpxtp fn-mpxt-wi update-fn-mpxt-wi fn-mpxt-w-length resize-fn-mpxt-w
-                    fn-mpxt-pages update-fn-mpxt-pages fn-mpxt-count update-fn-mpxt-count))
+                    fn-mpxt-pages update-fn-mpxt-pages fn-mpxt-count update-fn-mpxt-count
+                    fn-mpxt-keyi update-fn-mpxt-keyi fn-mpxt-key-length))
+
+; The table's key, as the list of its 32 octets from index I.
+(defun fn-mpxt-key-from (i fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt :guard (natp i)
+                  :measure (nfix (- *fn-mpxt-key-octets* (nfix i)))))
+  (if (>= (nfix i) *fn-mpxt-key-octets*)
+      nil
+    (cons (fn-mpxt-keyi (nfix i) fn-mpxt) (fn-mpxt-key-from (1+ (nfix i)) fn-mpxt))))
+
+(defun fn-mpxt-key-octets (fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt))
+  (fn-mpxt-key-from 0 fn-mpxt))
+
+; The key is untouched by every write to the words, the pages and the count.
+(defthm fn-mpxt-key-from-of-updates
+  (and (equal (fn-mpxt-key-from i (update-fn-mpxt-wi j v fn-mpxt)) (fn-mpxt-key-from i fn-mpxt))
+       (equal (fn-mpxt-key-from i (resize-fn-mpxt-w n fn-mpxt)) (fn-mpxt-key-from i fn-mpxt))
+       (equal (fn-mpxt-key-from i (update-fn-mpxt-pages n fn-mpxt)) (fn-mpxt-key-from i fn-mpxt))
+       (equal (fn-mpxt-key-from i (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-key-from i fn-mpxt))))
+
+(defthm fn-mpxt-key-octets-of-updates
+  (and (equal (fn-mpxt-key-octets (update-fn-mpxt-wi j v fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))
+       (equal (fn-mpxt-key-octets (resize-fn-mpxt-w n fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))
+       (equal (fn-mpxt-key-octets (update-fn-mpxt-pages n fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))
+       (equal (fn-mpxt-key-octets (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))))
+
+(in-theory (disable fn-mpxt-key-octets))
 
 ; Well formed: the pages fit the words.
 (defun fn-mpxt-wfp (fn-mpxt)
@@ -457,7 +548,7 @@
 ; THE PAGED READER: the candidates for MSGID's tag, confirmed against the rows.
 (defun fn-mpxt-seqs (msgid rows fn-mpxt)
   (declare (xargs :stobjs fn-mpxt :guard (and (true-listp rows) (fn-mpxt-wfp fn-mpxt))))
-  (fn-mpxt-confirm msgid (fn-mpxt-candidates (fn-mpxt-tag msgid) fn-mpxt) rows))
+  (fn-mpxt-confirm msgid (fn-mpxt-candidates (fn-mpxt-tag msgid (fn-mpxt-key-octets fn-mpxt)) fn-mpxt) rows))
 
 ; FAITHFUL from I: every row at or after I is among its own tag's candidates.
 (defun fn-mpxt-faithful-from (i rows fn-mpxt)
@@ -468,7 +559,8 @@
   (if (>= (nfix i) (len rows))
       t
     (and (member-equal (nfix i)
-                       (fn-mpxt-candidates (fn-mpxt-tag (fn-record-msgid (nth (nfix i) rows)))
+                       (fn-mpxt-candidates (fn-mpxt-tag (fn-record-msgid (nth (nfix i) rows))
+                                                        (fn-mpxt-key-octets fn-mpxt))
                                            fn-mpxt))
          (fn-mpxt-faithful-from (1+ (nfix i)) rows fn-mpxt))))
 
@@ -482,7 +574,7 @@
 
 (defthm fn-mpxt-faithful-from-complete
   (implies (fn-mpxt-faithful-from i rows fn-mpxt)
-           (fn-mpxt-complete-from i msgid (fn-mpxt-candidates (fn-mpxt-tag msgid) fn-mpxt) rows))
+           (fn-mpxt-complete-from i msgid (fn-mpxt-candidates (fn-mpxt-tag msgid (fn-mpxt-key-octets fn-mpxt)) fn-mpxt) rows))
   :hints (("Goal" :induct (fn-mpxt-faithful-from i rows fn-mpxt)
            :in-theory (e/d (fn-mpxt-hitp) (fn-mpxt-candidates)))))
 
@@ -592,11 +684,11 @@
                                   (fn-mpxt-candidates fn-mpxt-confirm fn-mpxt-faithful-from
                                    fn-mpxt-okp fn-mpxt-spec-from fn-mpxt-complete-from))
            :use ((:instance fn-mpxt-confirm-is-the-spec
-                            (seqs (fn-mpxt-candidates (fn-mpxt-tag msgid) fn-mpxt)))
+                            (seqs (fn-mpxt-candidates (fn-mpxt-tag msgid (fn-mpxt-key-octets fn-mpxt)) fn-mpxt)))
                  (:instance fn-mpxt-faithful-from-complete (i 0))
-                 (:instance fn-mpxt-candidates-below (tag (fn-mpxt-tag msgid)) (n (len rows)))
-                 (:instance fn-mpxt-candidates-ascending (tag (fn-mpxt-tag msgid)))
-                 (:instance fn-mpxt-candidates-nat-listp (tag (fn-mpxt-tag msgid)))))))
+                 (:instance fn-mpxt-candidates-below (tag (fn-mpxt-tag msgid (fn-mpxt-key-octets fn-mpxt))) (n (len rows)))
+                 (:instance fn-mpxt-candidates-ascending (tag (fn-mpxt-tag msgid (fn-mpxt-key-octets fn-mpxt))))
+                 (:instance fn-mpxt-candidates-nat-listp (tag (fn-mpxt-tag msgid (fn-mpxt-key-octets fn-mpxt))))))))
 
 ; -----------------------------------------------------------------------------
 ; 4. The writer: put at the first empty slot of the first non-full page of
@@ -633,7 +725,8 @@
 
 (defthm fn-mpxt-write-slot-frame
   (and (equal (fn-mpxt-pages (fn-mpxt-write-slot p j tag seq fn-mpxt)) (fn-mpxt-pages fn-mpxt))
-       (equal (fn-mpxt-count (fn-mpxt-write-slot p j tag seq fn-mpxt)) (fn-mpxt-count fn-mpxt))))
+       (equal (fn-mpxt-count (fn-mpxt-write-slot p j tag seq fn-mpxt)) (fn-mpxt-count fn-mpxt))
+       (equal (fn-mpxt-key-octets (fn-mpxt-write-slot p j tag seq fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))))
 
 (defthm fn-mpxt-write-slot-shape
   (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-slot-guardp p j fn-mpxt)
@@ -664,7 +757,8 @@
 
 (defthm fn-mpxt-put-run-frame
   (and (equal (fn-mpxt-pages (mv-nth 1 (fn-mpxt-put-run tag seq p k fn-mpxt))) (fn-mpxt-pages fn-mpxt))
-       (equal (fn-mpxt-count (mv-nth 1 (fn-mpxt-put-run tag seq p k fn-mpxt))) (fn-mpxt-count fn-mpxt))))
+       (equal (fn-mpxt-count (mv-nth 1 (fn-mpxt-put-run tag seq p k fn-mpxt))) (fn-mpxt-count fn-mpxt))
+       (equal (fn-mpxt-key-octets (mv-nth 1 (fn-mpxt-put-run tag seq p k fn-mpxt))) (fn-mpxt-key-octets fn-mpxt))))
 
 (defthm fn-mpxt-put-run-shape
   (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt)
@@ -691,7 +785,8 @@
 
 (defthm fn-mpxt-put-frame
   (and (equal (fn-mpxt-pages (mv-nth 1 (fn-mpxt-put tag seq fn-mpxt))) (fn-mpxt-pages fn-mpxt))
-       (equal (fn-mpxt-count (mv-nth 1 (fn-mpxt-put tag seq fn-mpxt))) (fn-mpxt-count fn-mpxt))))
+       (equal (fn-mpxt-count (mv-nth 1 (fn-mpxt-put tag seq fn-mpxt))) (fn-mpxt-count fn-mpxt))
+       (equal (fn-mpxt-key-octets (mv-nth 1 (fn-mpxt-put tag seq fn-mpxt))) (fn-mpxt-key-octets fn-mpxt))))
 
 (defthm fn-mpxt-put-shape
   (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt)
@@ -755,7 +850,8 @@
 
 (defthm fn-mpxt-zero-words-frame
   (and (equal (fn-mpxt-pages (fn-mpxt-zero-words i fn-mpxt)) (fn-mpxt-pages fn-mpxt))
-       (equal (fn-mpxt-count (fn-mpxt-zero-words i fn-mpxt)) (fn-mpxt-count fn-mpxt))))
+       (equal (fn-mpxt-count (fn-mpxt-zero-words i fn-mpxt)) (fn-mpxt-count fn-mpxt))
+       (equal (fn-mpxt-key-octets (fn-mpxt-zero-words i fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))))
 
 (defthm fn-mpxt-zero-words-shape
   (implies (and (fn-mpxtp fn-mpxt) (<= i (fn-mpxt-w-length fn-mpxt)))
@@ -780,7 +876,8 @@
 
 (defthm fn-mpxt-put-all-frame
   (and (equal (fn-mpxt-pages (fn-mpxt-put-all es fn-mpxt)) (fn-mpxt-pages fn-mpxt))
-       (equal (fn-mpxt-count (fn-mpxt-put-all es fn-mpxt)) (fn-mpxt-count fn-mpxt))))
+       (equal (fn-mpxt-count (fn-mpxt-put-all es fn-mpxt)) (fn-mpxt-count fn-mpxt))
+       (equal (fn-mpxt-key-octets (fn-mpxt-put-all es fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))))
 
 (defthm fn-mpxt-put-all-shape
   (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt) (fn-mpxt-entriesp es))
@@ -813,6 +910,10 @@
                 (equal (fn-mpxt-count (fn-mpxt-grow fn-mpxt)) (fn-mpxt-count fn-mpxt))))
   :hints (("Goal" :in-theory (disable fn-mpxt-entries fn-mpxt-put-all fn-mpxt-zero-words))))
 
+(defthm fn-mpxt-grow-key
+  (equal (fn-mpxt-key-octets (fn-mpxt-grow fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))
+  :hints (("Goal" :in-theory (disable fn-mpxt-entries fn-mpxt-put-all fn-mpxt-zero-words))))
+
 (in-theory (disable fn-mpxt-grow))
 
 ; ADD (TAG, SEQ) as the N-th entry: grow at half the slots, then place.
@@ -840,20 +941,70 @@
                     (fn-mpxt-w-length (mv-nth 1 (fn-mpxt-add tag seq fn-mpxt))))))
   :hints (("Goal" :in-theory (disable fn-mpxt-put fn-mpxt-grow))))
 
+(defthm fn-mpxt-add-key
+  (equal (fn-mpxt-key-octets (mv-nth 1 (fn-mpxt-add tag seq fn-mpxt))) (fn-mpxt-key-octets fn-mpxt))
+  :hints (("Goal" :in-theory (disable fn-mpxt-put fn-mpxt-grow))))
+
 (in-theory (disable fn-mpxt-add))
 
-; Empty the table (no pages).
+; Empty the table: no pages, no words (a cleared table keeps no reference to
+; what it held, and is the value the fold from nothing builds).
 (defun fn-mpxt-clear (fn-mpxt)
   (declare (xargs :stobjs fn-mpxt))
   (let* ((fn-mpxt (update-fn-mpxt-pages 0 fn-mpxt))
-         (fn-mpxt (update-fn-mpxt-count 0 fn-mpxt)))
+         (fn-mpxt (update-fn-mpxt-count 0 fn-mpxt))
+         (fn-mpxt (resize-fn-mpxt-w 0 fn-mpxt)))
     fn-mpxt))
+
+(defthm fn-mpxt-clear-shape
+  (implies (fn-mpxtp fn-mpxt)
+           (and (fn-mpxtp (fn-mpxt-clear fn-mpxt))
+                (equal (fn-mpxt-pages (fn-mpxt-clear fn-mpxt)) 0)
+                (equal (fn-mpxt-count (fn-mpxt-clear fn-mpxt)) 0)
+                (equal (fn-mpxt-w-length (fn-mpxt-clear fn-mpxt)) 0)
+                (equal (fn-mpxt-key-octets (fn-mpxt-clear fn-mpxt)) (fn-mpxt-key-octets fn-mpxt)))))
 
 (defthm fn-mpxt-clear-candidates
   (equal (fn-mpxt-candidates tag (fn-mpxt-clear fn-mpxt)) nil))
 
 (defthm fn-mpxt-clear-faithful-nil
   (fn-mpxt-faithful nil (fn-mpxt-clear fn-mpxt)))
+
+; Write KEY's octets (clamped, missing ones 0) from index I.
+(defun fn-mpxt-set-key-from (i key fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt :guard (natp i)
+                  :measure (nfix (- *fn-mpxt-key-octets* (nfix i)))))
+  (if (>= (nfix i) *fn-mpxt-key-octets*)
+      fn-mpxt
+    (let ((fn-mpxt (update-fn-mpxt-keyi (nfix i) (fn-ns-octet (if (consp key) (car key) 0)) fn-mpxt)))
+      (fn-mpxt-set-key-from (1+ (nfix i)) (if (consp key) (cdr key) nil) fn-mpxt))))
+
+(defthm fn-mpxt-set-key-from-shape
+  (implies (fn-mpxtp fn-mpxt)
+           (and (fn-mpxtp (fn-mpxt-set-key-from i key fn-mpxt))
+                (equal (fn-mpxt-pages (fn-mpxt-set-key-from i key fn-mpxt)) (fn-mpxt-pages fn-mpxt))
+                (equal (fn-mpxt-count (fn-mpxt-set-key-from i key fn-mpxt)) (fn-mpxt-count fn-mpxt))
+                (equal (fn-mpxt-w-length (fn-mpxt-set-key-from i key fn-mpxt)) (fn-mpxt-w-length fn-mpxt))))
+  :hints (("Goal" :induct (fn-mpxt-set-key-from i key fn-mpxt)
+           :in-theory (enable unsigned-byte-p))))
+
+; INSTALL the key into an emptied table (the open's step): the tags of the
+; entries a table holds are its key's, so a key change empties it.
+(defun fn-mpxt-set-key (key fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt))
+  (let ((fn-mpxt (fn-mpxt-clear fn-mpxt)))
+    (fn-mpxt-set-key-from 0 key fn-mpxt)))
+
+(defthm fn-mpxt-set-key-shape
+  (implies (fn-mpxtp fn-mpxt)
+           (and (fn-mpxtp (fn-mpxt-set-key key fn-mpxt))
+                (equal (fn-mpxt-pages (fn-mpxt-set-key key fn-mpxt)) 0)
+                (equal (fn-mpxt-count (fn-mpxt-set-key key fn-mpxt)) 0)
+                (equal (fn-mpxt-w-length (fn-mpxt-set-key key fn-mpxt)) 0))))
+
+(defthm fn-mpxt-set-key-faithful-nil
+  (fn-mpxt-faithful nil (fn-mpxt-set-key key fn-mpxt))
+  :hints (("Goal" :in-theory (enable fn-mpxt-faithful fn-mpxt-okp fn-mpxt-candidates))))
 
 ; -----------------------------------------------------------------------------
 ; 5. The writer's frame: what a write into an empty slot does to the
@@ -1153,7 +1304,7 @@
 (defthm fn-mpxt-faithful-from-append
   (implies (and (true-listp rows) (natp i)
                 (fn-mpxt-faithful-from i rows fn-mpxt)
-                (member-equal (len rows) (fn-mpxt-candidates (fn-mpxt-tag (fn-record-msgid h)) fn-mpxt)))
+                (member-equal (len rows) (fn-mpxt-candidates (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets fn-mpxt)) fn-mpxt)))
            (fn-mpxt-faithful-from i (append rows (list h)) fn-mpxt))
   :hints (("Goal" :induct (fn-mpxt-faithful-from i (append rows (list h)) fn-mpxt)
            :in-theory (disable fn-mpxt-candidates))))
@@ -1164,24 +1315,206 @@
 (defthm fn-mpxt-put-preserves-faithful
   (implies (and (true-listp rows) (natp (fn-mpxt-pages fn-mpxt))
                 (fn-mpxt-faithful rows fn-mpxt)
-                (mv-nth 0 (fn-mpxt-put (fn-mpxt-tag (fn-record-msgid h)) (len rows) fn-mpxt)))
+                (mv-nth 0 (fn-mpxt-put (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets fn-mpxt)) (len rows) fn-mpxt)))
            (fn-mpxt-faithful (append rows (list h))
-                             (mv-nth 1 (fn-mpxt-put (fn-mpxt-tag (fn-record-msgid h)) (len rows) fn-mpxt))))
+                             (mv-nth 1 (fn-mpxt-put (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets fn-mpxt)) (len rows) fn-mpxt))))
   :hints (("Goal" :in-theory (e/d (fn-mpxt-put fn-mpxt-faithful fn-mpxt-okp fn-mpxt-candidates)
                                   (fn-mpxt-put-run fn-mpxt-run fn-mpxt-pages-okp fn-mpxt-faithful-from
                                    fn-mpxt-faithful-from-append fn-mpxt-pages-okp-of-put-run))
            :do-not-induct t
            :use ((:instance fn-mpxt-put-run-finds
-                            (wtag (fn-mpxt-tag (fn-record-msgid h))) (seq (len rows))
-                            (p (fn-mpx-home (fn-mpxt-tag (fn-record-msgid h)) (fn-mpxt-pages fn-mpxt)))
+                            (wtag (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets fn-mpxt))) (seq (len rows))
+                            (p (fn-mpx-home (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets fn-mpxt)) (fn-mpxt-pages fn-mpxt)))
                             (k (fn-mpxt-pages fn-mpxt)))
                  (:instance fn-mpxt-pages-okp-of-put-run
-                            (wtag (fn-mpxt-tag (fn-record-msgid h))) (seq (len rows))
-                            (p (fn-mpx-home (fn-mpxt-tag (fn-record-msgid h)) (fn-mpxt-pages fn-mpxt)))
+                            (wtag (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets fn-mpxt))) (seq (len rows))
+                            (p (fn-mpx-home (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets fn-mpxt)) (fn-mpxt-pages fn-mpxt)))
                             (k (fn-mpxt-pages fn-mpxt)) (np (fn-mpxt-pages fn-mpxt))
                             (n (len rows)) (n2 (+ 1 (len rows))))
                  (:instance fn-mpxt-faithful-from-append
                             (i 0)
-                            (fn-mpxt (mv-nth 1 (fn-mpxt-put-run (fn-mpxt-tag (fn-record-msgid h)) (len rows)
-                                                                (fn-mpx-home (fn-mpxt-tag (fn-record-msgid h)) (fn-mpxt-pages fn-mpxt))
+                            (fn-mpxt (mv-nth 1 (fn-mpxt-put-run (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets fn-mpxt)) (len rows)
+                                                                (fn-mpx-home (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets fn-mpxt)) (fn-mpxt-pages fn-mpxt))
                                                                 (fn-mpxt-pages fn-mpxt) fn-mpxt))))))))
+
+; -----------------------------------------------------------------------------
+; 6. The page need (ember's PKT-774 ruling, row W2b).  The work of a lookup
+; is the pages its run reads: one plus the run of full pages after the home
+; page, for EVERY table and EVERY tag -- the adversary's Message-IDs choose
+; tags, never the bound -- and at most the page count.  Under the table
+; condition "no page and its successor are both full" it is at most two
+; (design B.3's L-MPX-OVERFLOW).  `fn-mpxt-skewp' is the pre-check the
+; served POST refuses by name (`:mpx-skew'): a home page whose overflow is
+; full, so the placement would go past it -- evidence of crafted tags under
+; a leaked key, never a longer run written by a POST; a not-skewed placement
+; lands, and its tag's lookup reads at most two pages.
+
+; The pages a run of at most K from P reads: P, then the next while full.
+(defun fn-mpxt-run-pages (p k fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt :measure (nfix k)
+                  :guard (and (natp p) (natp k) (< p (fn-mpxt-pages fn-mpxt)) (fn-mpxt-wfp fn-mpxt))))
+  (if (zp k)
+      0
+    (if (fn-mpxt-page-fullp p *fn-mpxt-page-slots* fn-mpxt)
+        (+ 1 (fn-mpxt-run-pages (fn-mpxt-next p (fn-mpxt-pages fn-mpxt)) (1- k) fn-mpxt))
+      1)))
+
+; The run, counting the pages it reads: (mv candidates pages).
+(defun fn-mpxt-run-counted (tag p k acc fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt :measure (nfix k)
+                  :guard (and (natp tag) (natp p) (natp k)
+                              (< p (fn-mpxt-pages fn-mpxt)) (fn-mpxt-wfp fn-mpxt)
+                              (nat-listp acc))))
+  (if (zp k)
+      (mv acc 0)
+    (let ((acc (fn-mpxt-scan tag p *fn-mpxt-page-slots* acc fn-mpxt)))
+      (if (fn-mpxt-page-fullp p *fn-mpxt-page-slots* fn-mpxt)
+          (mv-let (acc pages)
+            (fn-mpxt-run-counted tag (fn-mpxt-next p (fn-mpxt-pages fn-mpxt)) (1- k) acc fn-mpxt)
+            (mv acc (+ 1 pages)))
+        (mv acc 1)))))
+
+; The counted run is the run, and its count is the run's pages.
+(defthm fn-mpxt-run-counted-is-run
+  (and (equal (mv-nth 0 (fn-mpxt-run-counted tag p k acc fn-mpxt))
+              (fn-mpxt-run tag p k acc fn-mpxt))
+       (equal (mv-nth 1 (fn-mpxt-run-counted tag p k acc fn-mpxt))
+              (fn-mpxt-run-pages p k fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-run-counted tag p k acc fn-mpxt)
+           :in-theory (disable fn-mpxt-scan fn-mpxt-page-fullp))))
+
+; The full run from P: the consecutive full pages, at most K.
+(defun fn-mpxt-full-run (p k fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt :measure (nfix k)
+                  :guard (and (natp p) (natp k) (< p (fn-mpxt-pages fn-mpxt)) (fn-mpxt-wfp fn-mpxt))))
+  (if (or (zp k) (not (fn-mpxt-page-fullp p *fn-mpxt-page-slots* fn-mpxt)))
+      0
+    (+ 1 (fn-mpxt-full-run (fn-mpxt-next p (fn-mpxt-pages fn-mpxt)) (1- k) fn-mpxt))))
+
+(defthm fn-mpxt-run-pages-is-one-plus-the-full-run
+  (equal (fn-mpxt-run-pages p k fn-mpxt)
+         (if (zp k) 0 (+ 1 (fn-mpxt-full-run p (1- k) fn-mpxt))))
+  :hints (("Goal" :induct (fn-mpxt-run-pages p k fn-mpxt)
+           :in-theory (disable fn-mpxt-page-fullp))))
+
+(defthm fn-mpxt-run-pages-at-most-k
+  (<= (fn-mpxt-run-pages p k fn-mpxt) (nfix k))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-mpxt-run-pages p k fn-mpxt)
+           :in-theory (disable fn-mpxt-page-fullp fn-mpxt-run-pages-is-one-plus-the-full-run))))
+
+; THE PAGE NEED of a lookup: the pages the reader reads for TAG.
+(defun fn-mpxt-candidates-pages (tag fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt :guard (and (natp tag) (fn-mpxt-wfp fn-mpxt))))
+  (let ((np (fn-mpxt-pages fn-mpxt)))
+    (if (zp np)
+        0
+      (fn-mpxt-run-pages (fn-mpx-home tag np) np fn-mpxt))))
+
+; The reader, counting: its candidates are the reader's, its pages the need.
+(defun fn-mpxt-candidates-counted (tag fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt :guard (and (natp tag) (fn-mpxt-wfp fn-mpxt))))
+  (let ((np (fn-mpxt-pages fn-mpxt)))
+    (if (zp np)
+        (mv nil 0)
+      (fn-mpxt-run-counted tag (fn-mpx-home tag np) np nil fn-mpxt))))
+
+(defthm fn-mpxt-candidates-counted-is-candidates
+  (and (equal (mv-nth 0 (fn-mpxt-candidates-counted tag fn-mpxt)) (fn-mpxt-candidates tag fn-mpxt))
+       (equal (mv-nth 1 (fn-mpxt-candidates-counted tag fn-mpxt)) (fn-mpxt-candidates-pages tag fn-mpxt))))
+
+; KEYSTONE (the page need): for every table and every tag, the lookup reads
+; one page plus the run of full pages after the home page, and at most the
+; page count.  No hypothesis restricts the tag beyond its type.
+(defthm fn-mpxt-candidates-page-need
+  (implies (natp tag)
+           (and (equal (fn-mpxt-candidates-pages tag fn-mpxt)
+                       (if (zp (fn-mpxt-pages fn-mpxt))
+                           0
+                         (+ 1 (fn-mpxt-full-run (fn-mpx-home tag (fn-mpxt-pages fn-mpxt))
+                                                (1- (fn-mpxt-pages fn-mpxt)) fn-mpxt))))
+                (<= (fn-mpxt-candidates-pages tag fn-mpxt) (nfix (fn-mpxt-pages fn-mpxt)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-mpxt-run-pages-is-one-plus-the-full-run)
+           :use ((:instance fn-mpxt-run-pages-is-one-plus-the-full-run
+                            (p (fn-mpx-home tag (fn-mpxt-pages fn-mpxt))) (k (fn-mpxt-pages fn-mpxt)))
+                 (:instance fn-mpxt-run-pages-at-most-k
+                            (p (fn-mpx-home tag (fn-mpxt-pages fn-mpxt))) (k (fn-mpxt-pages fn-mpxt)))))))
+
+; No page below P and its successor are both full: the table condition.
+(defun fn-mpxt-no-adjacent-fullp (p fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt :measure (nfix p)
+                  :guard (and (natp p) (<= p (fn-mpxt-pages fn-mpxt)) (fn-mpxt-wfp fn-mpxt))))
+  (if (zp p)
+      t
+    (and (not (and (fn-mpxt-page-fullp (1- p) *fn-mpxt-page-slots* fn-mpxt)
+                   (fn-mpxt-page-fullp (fn-mpxt-next (1- p) (fn-mpxt-pages fn-mpxt))
+                                       *fn-mpxt-page-slots* fn-mpxt)))
+         (fn-mpxt-no-adjacent-fullp (1- p) fn-mpxt))))
+
+(defthm fn-mpxt-no-adjacent-fullp-page
+  (implies (and (fn-mpxt-no-adjacent-fullp np fn-mpxt) (natp q) (< q np)
+                (fn-mpxt-page-fullp q *fn-mpxt-page-slots* fn-mpxt))
+           (not (fn-mpxt-page-fullp (fn-mpxt-next q (fn-mpxt-pages fn-mpxt)) *fn-mpxt-page-slots* fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-no-adjacent-fullp np fn-mpxt)
+           :in-theory (disable fn-mpxt-page-fullp))))
+
+(defthm fn-mpxt-full-run-at-most-one
+  (implies (and (fn-mpxt-no-adjacent-fullp (fn-mpxt-pages fn-mpxt) fn-mpxt)
+                (natp p) (< p (fn-mpxt-pages fn-mpxt)))
+           (<= (fn-mpxt-full-run p k fn-mpxt) 1))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-mpxt-page-fullp)
+           :expand ((fn-mpxt-full-run p k fn-mpxt)
+                    (fn-mpxt-full-run (fn-mpxt-next p (fn-mpxt-pages fn-mpxt)) (+ -1 k) fn-mpxt)))))
+
+; L-MPX-OVERFLOW: under the condition, every lookup reads at most two pages.
+(defthm fn-mpxt-candidates-page-need-two
+  (implies (and (fn-mpxtp fn-mpxt) (natp tag)
+                (fn-mpxt-no-adjacent-fullp (fn-mpxt-pages fn-mpxt) fn-mpxt))
+           (<= (fn-mpxt-candidates-pages tag fn-mpxt) 2))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-mpxt-candidates-pages fn-mpxt-full-run)
+           :use (fn-mpxt-candidates-page-need
+                 (:instance fn-mpxt-full-run-at-most-one
+                            (p (fn-mpx-home tag (fn-mpxt-pages fn-mpxt)))
+                            (k (1- (fn-mpxt-pages fn-mpxt))))))))
+
+; THE SKEW: TAG's home page and its overflow are both full, so a placement
+; would go past the overflow page.
+(defun fn-mpxt-skewp (tag fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt :guard (and (natp tag) (fn-mpxt-wfp fn-mpxt))))
+  (let ((np (fn-mpxt-pages fn-mpxt)))
+    (and (not (zp np))
+         (fn-mpxt-page-fullp (fn-mpx-home tag np) *fn-mpxt-page-slots* fn-mpxt)
+         (fn-mpxt-page-fullp (fn-mpxt-next (fn-mpx-home tag np) np) *fn-mpxt-page-slots* fn-mpxt))))
+
+; A placement that is not skewed lands (within the home page and its overflow).
+(defthm fn-mpxt-put-places-unless-skewed
+  (implies (and (fn-mpxtp fn-mpxt) (natp tag) (posp (fn-mpxt-pages fn-mpxt))
+                (not (fn-mpxt-skewp tag fn-mpxt)))
+           (mv-nth 0 (fn-mpxt-put tag seq fn-mpxt)))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-put) (fn-mpxt-page-fullp fn-mpxt-find-empty))
+           :expand ((fn-mpxt-put-run tag seq (fn-mpx-home tag (fn-mpxt-pages fn-mpxt)) (fn-mpxt-pages fn-mpxt) fn-mpxt)
+                    (fn-mpxt-put-run tag seq (fn-mpxt-next (fn-mpx-home tag (fn-mpxt-pages fn-mpxt)) (fn-mpxt-pages fn-mpxt))
+                                     (+ -1 (fn-mpxt-pages fn-mpxt)) fn-mpxt)))))
+
+; A tag that is not skewed reads at most two pages.
+(defthm fn-mpxt-page-need-two-unless-skewed
+  (implies (and (natp tag) (not (fn-mpxt-skewp tag fn-mpxt)))
+           (<= (fn-mpxt-candidates-pages tag fn-mpxt) 2))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-mpxt-page-fullp fn-mpxt-run-pages-is-one-plus-the-full-run)
+           :expand ((fn-mpxt-run-pages (fn-mpx-home tag (fn-mpxt-pages fn-mpxt)) (fn-mpxt-pages fn-mpxt) fn-mpxt)
+                    (fn-mpxt-run-pages (fn-mpxt-next (fn-mpx-home tag (fn-mpxt-pages fn-mpxt)) (fn-mpxt-pages fn-mpxt))
+                                       (+ -1 (fn-mpxt-pages fn-mpxt)) fn-mpxt)))))
+
+; Under the condition nothing is refused: no tag is skewed.
+(defthm fn-mpxt-no-skew-under-the-condition
+  (implies (and (fn-mpxtp fn-mpxt) (natp tag)
+                (fn-mpxt-no-adjacent-fullp (fn-mpxt-pages fn-mpxt) fn-mpxt))
+           (not (fn-mpxt-skewp tag fn-mpxt)))
+  :hints (("Goal" :in-theory (disable fn-mpxt-page-fullp fn-mpxt-no-adjacent-fullp-page)
+           :use ((:instance fn-mpxt-no-adjacent-fullp-page
+                            (np (fn-mpxt-pages fn-mpxt))
+                            (q (fn-mpx-home tag (fn-mpxt-pages fn-mpxt))))))))
