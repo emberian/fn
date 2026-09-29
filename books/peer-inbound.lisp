@@ -540,6 +540,13 @@
 ; Transfer-time decision: the whole article is here
 
 
+; An article the octets do not parse to (OKP nil) is refused by the octets
+; alone: the later arms never read a nil article.
+(defthm fn-peer-intrinsic-refusal-of-when-not-okp
+  (implies (not okp)
+           (fn-peer-intrinsic-refusal-of msgid okp article check limitp))
+  :hints (("Goal" :in-theory (enable fn-peer-intrinsic-refusal-of))))
+
 (defun fn-peer-decide-transfer (node cfg peer msgid octets clock id subject)
   (declare (xargs :guard (fn-node-statep node) :verify-guards nil))
   (let* ((record (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))
@@ -641,6 +648,8 @@
   (fn-article-census-refusal
    (fn-article-header-census (fn-peer-relayed-octets cfg peer octets))
    limits))
+
+(verify-guards fn-peer-decide-transfer)
 
 (defun fn-peer-decide-transfer-under
     (node cfg peer msgid octets clock id subject limits)

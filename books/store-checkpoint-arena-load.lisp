@@ -253,6 +253,15 @@
   :hints (("Goal" :induct (fn-scka-seal-n i end n1 fn-octets fn-arena)
            :in-theory (e/d (fn-scka-seal-n) (fn-arena-seal-range-is-append)))))
 
+; A plan's first frame carries the segment header octets (fn-sccr-framep):
+; what fn-scka-open-run's header parse reads.
+(defthm fn-sccr-planp-first-frame-octets
+  (implies (and (consp plan) (fn-sccr-planp plan pos fn-octets))
+           (fn-scc-octet-listp (car (car plan))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (enable fn-sccr-framep)
+           :expand ((fn-sccr-planp plan pos fn-octets)))))
+
 (defun fn-scka-open-run (plan fn-octets)
   (declare (xargs :stobjs fn-octets :guard t :verify-guards nil))
   (let ((start (if (consp plan) (fn-sccr-at 1 (car plan)) 0)))
@@ -474,6 +483,8 @@
                              fn-scc-read-nat-of-octets fn-scka-slice-len
                              fn-scka-program fn-scka-body fn-scc-nat-octets fn-scc-read-nat
                              fn-oct-slice-list-is-take-nthcdr))))))
+
+(verify-guards fn-scka-open-run)
 
 (defthm fn-scka-open-run-of-written
   (implies (and (fn-octets-p fn-octets)

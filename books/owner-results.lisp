@@ -237,8 +237,17 @@
 ; fn-icar-submission-intent itself (the subject capability P7 names) and hands
 ; its value here.
 (defun fn-ores-intent-publication (intent token)
+  ; Total in INTENT (the host hands it a parsed intent): the executable
+  ; accessors refuse nothing, an atom reads as the empty intent, exactly as
+  ; the logical car/cdr do.
   (declare (xargs :guard t :verify-guards nil))
-  (fn-ores-feed-port-publication (car intent) (cdr intent) nil token nil))
+  (fn-ores-feed-port-publication
+   (mbe :logic (car intent) :exec (if (consp intent) (car intent) nil))
+   (mbe :logic (cdr intent) :exec (if (consp intent) (cdr intent) nil))
+   nil token nil))
+(verify-guards fn-ores-feed-publication)
+(verify-guards fn-ores-feed-port-publication)
+(verify-guards fn-ores-intent-publication)
 
 (defun fn-ores-submission-intent-publication (o carry evidence generation txid)
   (declare (xargs :guard t :verify-guards nil))

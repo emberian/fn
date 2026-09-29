@@ -837,11 +837,15 @@
 ; rewritten).
 
 (defun fn-scka-next-checkpoint (base h0 configs records fn-arena)
-  (declare (xargs :stobjs fn-arena :guard (natp h0) :verify-guards nil))
+  ; RECORDS is a list (the host's checkpoint rows): the canon walk reads it
+  ; from the base's length on.
+  (declare (xargs :stobjs fn-arena :guard (and (natp h0) (true-listp records))
+                  :verify-guards nil))
   (let ((canon (fn-scka-canon-rows (nthcdr (len (fn-sco-records base)) records) fn-arena h0)))
     (if (equal canon :bad)
         :bad
       (fn-sco-extend base configs canon))))
+(verify-guards fn-scka-next-checkpoint)
 
 (local
  (defthm fn-scka-sco-records-of-capture

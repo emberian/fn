@@ -40,8 +40,16 @@
 ; The owner (host/owner-host.lisp fn-owner-io's :log-reserve and :log-order
 ; arms): the same sequences as owner events.
 
+; The routes below chain concrete io steps on the owner's store: each step
+; wants (and keeps) the store a store-node state, which is what the host
+; carries for the owner (fn-rcon-ocfg-io's guard).
+(defthm fn-rcon-ocfg-io-keeps-the-store-a-state
+  (implies (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+           (fn-sn-statep (fn-own-store (fn-ocfg-owner (fn-rcon-ocfg-io oc operation result)))))
+  :hints (("Goal" :in-theory (enable fn-rcon-ocfg-io fn-rcon-own-store-io))))
+
 (defun fn-olr-ocfg-reserve (oc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))))
   (fn-rcon-ocfg-io
    (fn-rcon-ocfg-io
     (fn-rcon-ocfg-io (fn-rcon-ocfg-io oc :start-frontier nil) :frontier-file :ok)
@@ -49,7 +57,7 @@
    :frontier-directory :ok))
 
 (defun fn-olr-ocfg-order (oc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))))
   (fn-rcon-ocfg-io
    (fn-rcon-ocfg-io (fn-rcon-ocfg-io oc :record-file :ok) :record-link :ok)
    :record-directory :ok))

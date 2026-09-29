@@ -124,10 +124,15 @@
 ; numbers would pass RFC 3977 section 6's bound, else :refused
 ; (books/owner-prepare-served.lisp fn-psrv-identity-refusal-kind).
 (defun fn-pout-identity-refusal-kind (oc w h)
-  (declare (xargs :guard (natp h) :verify-guards nil))
+  ; The store's keyring is read: the owner's store is a store-node state
+  ; (fn-pout-prepare-identity's guard, carried by the host).
+  (declare (xargs :guard (and (fn-sn-statep (fn-sbud-oc-store oc)) (natp h))
+                  :verify-guards nil))
   (let ((s (fn-sbud-oc-store oc)))
     (fn-psrv-identity-refusal-kind
      oc (fn-oii-identity-row w (fn-sn-keyring s) (fn-sn-keyring-generation s) h))))
+(verify-guards fn-pout-identity-refusal-kind
+  :hints (("Goal" :in-theory (enable fn-sn-statep))))
 
 (defthm fn-pout-identity-refusal-kind-is-a-refusal
   (and (not (equal (fn-pout-identity-refusal-kind oc w h) :prepared))
