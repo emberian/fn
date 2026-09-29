@@ -10787,6 +10787,41 @@
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-read-step",
           "note": "KEYSTONE (join-f2-2). fn-owner-tls-established and fn-owner-account-outcome (fn-ocfg-read-step)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-colsp-at-full-open",
+          "note": "KEYSTONE (join-f2-2). The columns at the full open: the intern decides each row's column from the bytes it seals."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-colsp-at-recover",
+          "note": "KEYSTONE (join-f2-2). The columns at the checkpoint open and recovery (the checkpoint rows' column facts named)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-colsp-at-owner-prepare-buffer",
+          "note": "KEYSTONE (join-f2-2). The columns across the article POST's seal and catalog prepare."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-colsp-at-owner-prepare-identity-sealed",
+          "note": "KEYSTONE (join-f2-2). The columns across the signed composite's seal and catalog prepare."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-colsp-at-finish",
+          "note": "KEYSTONE (join-f2-2). The columns across the host's finishes (fn-sca-finish with the pending row)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-colsp-at-commit-reseat",
+          "note": "KEYSTONE (join-f2-2). The columns across the commit's reseat (the arena is the same arena)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-chunk-span-carried",
+          "note": "KEYSTONE (join-f2-2). The served read with fn-scol-okp discharged by fn-sjh-colsp."
         }
       ]
     },
