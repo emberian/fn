@@ -39,6 +39,15 @@ class VerdictTests(unittest.TestCase):
 
 
 class ImageFreeTests(unittest.TestCase):
+    def test_a_skip_at_setup_is_ok_and_names_its_reason(self):
+        out = ("setUpClass (tests.test_native_x.T) ... skipped 'developer native image missing: x'\n"
+               "\nRan 0 tests in 0.0s\n\nOK (skipped=1)\n")
+        ok, line = nsc.verdict("tests.test_native_x", 0, out, 0.1)
+        self.assertTrue(ok, line)
+        self.assertIn("skipped whole at setup: developer native image missing: x", line)
+        # Nothing collected and nothing skipped stays red.
+        self.assertFalse(nsc.verdict("m", 0, "\nRan 0 tests in 0.0s\n\nOK\n", 0.1)[0])
+
     def test_the_scratch_root_has_no_build_and_no_fn_variables(self):
         with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
             src, dst = Path(src), Path(dst)
