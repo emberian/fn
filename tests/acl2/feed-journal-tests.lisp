@@ -38,40 +38,37 @@
                        (update-nth 12 255 *fj-frame*) 99) '(:invalid 99 nil)))
 (assert-event (equal (fn-feed-journal-scan '(98) *fj-prefix* *fj-frame* 99)
                      '(:invalid 99 nil)))
-; Final legacy outcomes have all information needed for replay.  Retry/lost
-; outcomes do not contain a monotonic tick, so the scanner stops before them,
-; keeps the last safe offset, and returns the exact evidence to a migration.
+;; A final outcome is a record and the scan advances over it.  An outcome
+;; frame with a retry or loss code (the pre-6.6.0 journal's shape; this
+;; release writes :feed-retry / :feed-lost with the tick, books/feed-events
+;; fn-feed-observe-records) is complete, correctly sealed, and not a record:
+;; the scan reports it :invalid at the last safe offset, never a truncation
+;; and never a replayed record (no migrations: fresh deploys at 6.6.0).
 (defconst *fj-final-values* (list *fj-peer* '(60 97 64 102 110 62) 1 239))
 (defconst *fj-final-frame* (fj-frame-of :feed-outcome *fj-final-values*))
-(defconst *fj-retry-values* (list *fj-peer* '(60 97 64 102 110 62) 1 431))
-(defconst *fj-retry-frame* (fj-frame-of :feed-outcome *fj-retry-values*))
-(defconst *fj-defer-values* (list *fj-peer* '(60 97 64 102 110 62) 1 436))
-(defconst *fj-defer-frame* (fj-frame-of :feed-outcome *fj-defer-values*))
-(defconst *fj-lost-values* (list *fj-peer* '(60 97 64 102 110 62) 1 400))
-(defconst *fj-lost-frame* (fj-frame-of :feed-outcome *fj-lost-values*))
 (assert-event
  (equal (car (fn-feed-journal-scan
               *fj-peer* (fn-cbor-u32-bytes (len *fj-final-frame*))
               *fj-final-frame* 99))
         :next))
-(assert-event
- (equal (fn-feed-journal-scan
-         *fj-peer* (fn-cbor-u32-bytes (len *fj-retry-frame*))
-         *fj-retry-frame* 99)
-        (list :migration-required 99
-              (fn-feed-journal-entry :feed-outcome *fj-retry-values*))))
-(assert-event
- (equal (fn-feed-journal-scan
-         *fj-peer* (fn-cbor-u32-bytes (len *fj-defer-frame*))
-         *fj-defer-frame* 99)
-        (list :migration-required 99
-              (fn-feed-journal-entry :feed-outcome *fj-defer-values*))))
-(assert-event
- (equal (fn-feed-journal-scan
-         *fj-peer* (fn-cbor-u32-bytes (len *fj-lost-frame*))
-         *fj-lost-frame* 99)
-        (list :migration-required 99
-              (fn-feed-journal-entry :feed-outcome *fj-lost-values*))))
+(defun fj-raw-frame-of (kind values)
+  ;; Sealed like the writer's frames, without fn-feed-encode's record check.
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((protected (fn-frame-protected
+                    *fn-feed-magic* *fn-frame-version*
+                    (fn-frame-enum-index kind *fn-feed-kinds*)
+                    (fn-frame-fields-octets
+                     (fn-frame-spec-for kind *fn-feed-specs*) values))))
+    (append protected (fn-blake3 protected))))
+(assert-event (equal (fj-raw-frame-of :feed-outcome *fj-final-values*)
+                     *fj-final-frame*))
+(defmacro fj-legacy-scan (code)
+  `(let ((frame (fj-raw-frame-of :feed-outcome
+                                 (list *fj-peer* '(60 97 64 102 110 62) 1 ,code))))
+     (fn-feed-journal-scan *fj-peer* (fn-cbor-u32-bytes (len frame)) frame 99)))
+(assert-event (equal (fj-legacy-scan 431) '(:invalid 99 nil)))
+(assert-event (equal (fj-legacy-scan 436) '(:invalid 99 nil)))
+(assert-event (equal (fj-legacy-scan 400) '(:invalid 99 nil)))
 ; Teeth: drop :next from bounded-progress, EOF has no strict progress.
 (must-fail-checked
  (assert-event (< 99 (cadr (fn-feed-journal-scan *fj-peer* nil nil 99)))))

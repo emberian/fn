@@ -160,7 +160,15 @@ fi
 # the 65536 wrapper (tools/hbox_native.sh); the saved launcher runs at the
 # same limit, or run time could exhaust what build time did not.  The
 # frozen launchers (packaging/freeze-native-image.sh) copy this exec line.
-FN_TLS_LIMIT=${FN_TLS_LIMIT:-65536}
+# The limit is the profile's (books/profile-limits.lisp :tls-limit), which the
+# build prints (FN_NATIVE_TLS_LIMIT, as it prints the stack below);
+# FN_TLS_LIMIT still overrides it for an experiment.
+BUILT_TLS_LIMIT=$(sed -n 's/.*FN_NATIVE_TLS_LIMIT \([0-9][0-9]*\).*/\1/p' "$LOG" | tail -1)
+if [ -z "$BUILT_TLS_LIMIT" ]; then
+    echo "build_native_host: the build printed no FN_NATIVE_TLS_LIMIT; see $LOG" >&2
+    exit 1
+fi
+FN_TLS_LIMIT=${FN_TLS_LIMIT:-$BUILT_TLS_LIMIT}
 if ! grep -q -- '--tls-limit 16384 ' "$IMAGE" && ! grep -q -- "--tls-limit $FN_TLS_LIMIT " "$IMAGE"; then
     echo "build_native_host: the launcher $IMAGE names no known --tls-limit; see $LOG" >&2
     exit 1

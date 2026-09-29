@@ -95,6 +95,7 @@
 
 (include-book "heap-figure")
 (include-book "public-exposure")
+(include-book "profile-limits") ; its figures are rows there
 (include-book "nntp-compress")
 (include-book "deflate-inflate")
 
@@ -155,7 +156,7 @@
 (defconst *fn-cbud-reply-status-octets* 1024)
 (defconst *fn-cbud-kernel-octets* 212992)
 (defconst *fn-cbud-tls-octets* 131072)
-(defconst *fn-cbud-thread-runtime-octets* 4194304)
+(defconst *fn-cbud-thread-runtime-octets* (* (fn-profile-limit :thread-runtime-mib) 1024 1024))
 (defconst *fn-cbud-compress-heap-octets* 57344)
 (defconst *fn-cbud-compress-native-octets* 57344)
 

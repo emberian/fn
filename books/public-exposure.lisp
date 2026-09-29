@@ -75,6 +75,7 @@
 
 (in-package "ACL2")
 (include-book "public-exposure-rows")
+(include-book "profile-limits") ; its figures are rows there
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "owner-config")
 (include-book "native-config")
@@ -90,12 +91,12 @@
 ; The public defaults: what a listener off loopback gets with no row.  They
 ; are the packet's recommendation, not ceilings on anything stored.  RFC 3977
 ; section 3.1 asks for an autologout of at least three minutes; ten is used.
-(defconst *fn-exp-public-per-address* 8)
-(defconst *fn-exp-public-steps* 64)
-(defconst *fn-exp-public-idle* 600)
-(defconst *fn-exp-public-first* 60)
-(defconst *fn-exp-public-auth-failures* 10)
-(defconst *fn-exp-public-posts* 60)
+(defconst *fn-exp-public-per-address* (fn-profile-limit :exposure-per-address))
+(defconst *fn-exp-public-steps* (fn-profile-limit :exposure-steps-per-second))
+(defconst *fn-exp-public-idle* (fn-profile-limit :exposure-idle-seconds))
+(defconst *fn-exp-public-first* (fn-profile-limit :exposure-first-seconds))
+(defconst *fn-exp-public-auth-failures* (fn-profile-limit :exposure-auth-failures))
+(defconst *fn-exp-public-posts* (fn-profile-limit :exposure-posts-per-minute))
 
 (defconst *fn-exp-quantum-ms* 1000)
 (defconst *fn-exp-window-ms* 60000)

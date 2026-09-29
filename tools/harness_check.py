@@ -1375,10 +1375,12 @@ def _enclosing_test(parsed: ast.Module, call: ast.Call, lines: list[str]) -> str
 # whose name says it carries bytes (`octets', `payload', `frame', `-records',
 # ...) is covered by a kind conjunct in the entry's guard, or that the
 # entry's body tests that kind first and refuses by name (the bp entries'
-# `:host-arguments'), or that ENTRY_KIND_EXEMPT names why not.  It also asks
+# `:host-arguments'), or that its definterface declaration (:exempt, in
+# host/interfaces.lisp) names why not.  It also asks
 # that the raw host reaches ACL2 only through a dispatcher: a raw application
-# of an ACL2 function bypasses the entry guard (ENTRY_DIRECT_ALLOWED names
-# the two that must: a stobj primitive and the exit-code classifier).
+# of an ACL2 function bypasses the entry guard (a definterface :direct
+# declaration names each that must: a stobj primitive and the exit-code
+# classifier).
 #
 # **test-stubs** asks, of every raw test harness under tests/*.lisp, that a
 # function it stubs has the lambda-list range the host defines today: a stub
@@ -1390,40 +1392,18 @@ ENTRY_KIND_FORMAL = re.compile(
     r"(^|-)(octets|payload|frame|octet-records|octet-suffix|octets-list)$")
 # A formal that COUNTS octets is a number, not bytes.
 ENTRY_KIND_COUNT = re.compile(r"^(max|min|budget|sizing|limit|bound|prospective-payload)-")
-ENTRY_KIND_EXEMPT = {
-    ("fn-native-operator-host-inspect-report", "msgid-octets"):
-        "the host passes a LIST of Message-IDs (msgid-list); the name is historical",
-    ("fn-native-operator-host-mission-run", "argv-octets"):
-        "a list of argument octet lists, preflighted by fn-native-operator-host-preflight",
-    ("fn-native-operator-host-preflight", "argv-octets"):
-        "the argv preflight is the check: it refuses a malformed argv by name",
-    ("fn-native-operator-host-run", "argv-octets"):
-        "a list of argument octet lists, preflighted (fn-native-operator-host-preflight)",
-    ("fn-native-operator-host-run", "config-octets"):
-        "read by fnn-operator-read-config, bounded; NIL when absent",
-    ("fn-owner-control-submit", "payload"):
-        "the received article's buffer (host/native/hybrid-control.lisp)",
-    ("fn-store-sco-publish-setup", "segment-octets"):
-        "a segment descriptor, not bytes",
-    ("fn-native-health-host-exit", "octets"):
-        "the health report's summary structure (fnn-operator-health-report)",
-    # Counts named after octets.
-    ("fn-srs-chunk-fullp", "octets"): "a count of octets (natp in the body)",
-    ("fn-ockp-segment-octets", "record-octets"): "a count of octets (nfix)",
-    ("fn-lgc-take", "octets"): "the open batch's running octet count",
-    # Total decoders over any value: a non-octet argument decodes to the
-    # decoder's own refusal, which the host names.
-    ("fn-ns-file-parse", "octets"): "total parser; NIL is refused by fnn-node-secret-read-entry",
-    ("fn-pull-journal-scan", "frame"): "total journal scan (guard t)",
-    ("fn-cu-journal-scan", "frame"): "total journal scan (guard t; peer-catchup's FNCU twin of fn-pull-journal-scan)",
-    ("fn-bpnf-inspect-adu", "frame"): "total unframe (fn-bpnf-stored-recordp gates it)",
-    ("fn-bpnpf-node-profile-write-octets", "octets"): "a count (the octets limit), gated by fn-bpnpf-profile-upgradep (bp-rotation: the format-3 writer the host dispatches)",
-    ("fn-heap-limit-of-octets", "octets"): "total parser of a limit file (true-listp tested)",
-}
-ENTRY_DIRECT_ALLOWED = {
-    "fn-octets$c-reserve": "the octet buffer's stobj primitive (host/native/io.lisp fnn-live-octets)",
-    "fn-outcome-host-condition-exit-code": "runs in handlers, where a dispatcher's own fault would recurse",
-}
+# The exempt formals and the direct applications are DECLARED, one
+# `definterface' form per entry (host/interfaces.lisp, checked against the
+# image's world at build), and read here through tools/interface_emit.py;
+# they were hand lists in this file until lane generators (2026-09-28).
+def _entry_kind_exempt() -> dict:
+    from tools import interface_emit
+    return interface_emit.entry_kind_exempt(ROOT)
+
+
+def _entry_direct_allowed() -> dict:
+    from tools import interface_emit
+    return interface_emit.entry_direct_allowed(ROOT)
 
 
 def entry_guard_kinds(root: Path) -> set[str]:
@@ -1546,6 +1526,8 @@ def entry_guard_findings(root: Path) -> tuple[list[dict], dict]:
                          "problem": "*fn-entry-guard-kinds* not found: the host "
                                     "entry guard has no kinds to check"})
     seen_exempt: set = set()
+    ENTRY_KIND_EXEMPT = _entry_kind_exempt()
+    ENTRY_DIRECT_ALLOWED = _entry_direct_allowed()
     for callee, site in sorted(callees.items()):
         entry = definitions.get(callee)
         if entry is None:
@@ -1577,9 +1559,9 @@ def entry_guard_findings(root: Path) -> tuple[list[dict], dict]:
                                "refuse a handle there; dispatched at {}".format(formal, site)})
     for key, why in sorted(ENTRY_KIND_EXEMPT.items()):
         if key not in seen_exempt:
-            findings.append({"lint": "entry-guards", "where": "tools/harness_check.py",
+            findings.append({"lint": "entry-guards", "where": "host/interfaces.lisp",
                              "callee": key[0],
-                             "problem": "stale ENTRY_KIND_EXEMPT row ({}: {})".format(
+                             "problem": "stale definterface :exempt ({}: {})".format(
                                  key[1], why)})
     for name, site in direct:
         if name in ENTRY_DIRECT_ALLOWED:
@@ -1588,7 +1570,8 @@ def entry_guard_findings(root: Path) -> tuple[list[dict], dict]:
         findings.append({"lint": "entry-guards", "where": site, "callee": name,
                          "problem": "the raw host applies an ACL2 function directly, "
                                     "bypassing fnn-call's entry guard; dispatch it "
-                                    "(fnn-core) or name it in ENTRY_DIRECT_ALLOWED"})
+                                    "(fnn-core) or declare it (definterface ... :direct \"why\") "
+                                    "in host/interfaces.lisp"})
     return findings, counts
 
 
