@@ -14016,6 +14016,27 @@
           "name": "fn-onb-boundp-at-owner-prepare-buffer"
         }
       ]
+    },
+    {
+      "id": "PRF-986",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-steps-keep-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-admits-per-tick-are-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-source-admits-are-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-scratch-within-the-reservation"
+        }
+      ]
     }
   ]
 }
