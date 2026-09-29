@@ -4,7 +4,9 @@
 ;
 ; A stobj holding the table's WORDS in page-store pages: 2048 little-endian
 ; u64 words a page (`*pgs-page-words*', books/pagestore-words), 1,024 slots
-; of two words each, (TAG, SEQ + 1); TAG 0 is an empty slot.  The words are
+; a page in two columns: slot J's TAG is word J and its SEQ + 1 is word
+; 1024 + J (a column read is one word; the tag scan reads one contiguous
+; 8 KiB run); TAG 0 is an empty slot.  The words are
 ; the page store's pages so that P8 (the checkpoint as dirty pages) commits
 ; them as pages with the BLAKE3 digest `pgs-x-words-digest' computes over
 ; the same words; until then they are resident (the served node has no page
@@ -181,10 +183,10 @@
   (declare (xargs :stobjs fn-mpxt))
   (<= (* *fn-mpxt-page-words* (fn-mpxt-pages fn-mpxt)) (fn-mpxt-w-length fn-mpxt)))
 
-; The word index of slot J's TAG on page P.
+; The word index of slot J's TAG on page P; its SEQ word is 1024 further.
 (defun fn-mpxt-slot (p j)
   (declare (xargs :guard (and (natp p) (natp j))))
-  (+ (* *fn-mpxt-page-words* p) (* 2 j)))
+  (+ (* *fn-mpxt-page-words* p) j))
 
 (defun fn-mpxt-slot-guardp (p j fn-mpxt)
   (declare (xargs :stobjs fn-mpxt))
@@ -198,7 +200,7 @@
 ; The SEQ word: 1 + the sequence; 0 in an empty slot.
 (defun fn-mpxt-seq-at (p j fn-mpxt)
   (declare (xargs :stobjs fn-mpxt :guard (fn-mpxt-slot-guardp p j fn-mpxt)))
-  (nfix (fn-mpxt-wi (+ 1 (fn-mpxt-slot p j)) fn-mpxt)))
+  (nfix (fn-mpxt-wi (+ *fn-mpxt-page-slots* (fn-mpxt-slot p j)) fn-mpxt)))
 
 (defthm fn-mpxt-tag-at-natp
   (natp (fn-mpxt-tag-at p j fn-mpxt))
@@ -219,7 +221,7 @@
   (implies (fn-mpxtp fn-mpxt)
            (< (fn-mpxt-seq-at p j fn-mpxt) *fn-mpxt-word-limit*))
   :rule-classes :linear
-  :hints (("Goal" :use ((:instance fn-mpxt-wi-is-a-word (i (+ 1 (fn-mpxt-slot p j)))))
+  :hints (("Goal" :use ((:instance fn-mpxt-wi-is-a-word (i (+ *fn-mpxt-page-slots* (fn-mpxt-slot p j)))))
            :in-theory (e/d (fn-mpxt-seq-at) (fn-mpxt-wi-is-a-word)))))
 
 (in-theory (disable fn-mpxt-tag-at fn-mpxt-seq-at))
@@ -626,7 +628,7 @@
                               (natp tag) (< tag *fn-mpxt-word-limit*)
                               (natp seq) (< (+ 1 seq) *fn-mpxt-word-limit*))))
   (let* ((fn-mpxt (update-fn-mpxt-wi (fn-mpxt-slot p j) tag fn-mpxt))
-         (fn-mpxt (update-fn-mpxt-wi (+ 1 (fn-mpxt-slot p j)) (+ 1 seq) fn-mpxt)))
+         (fn-mpxt (update-fn-mpxt-wi (+ *fn-mpxt-page-slots* (fn-mpxt-slot p j)) (+ 1 seq) fn-mpxt)))
     fn-mpxt))
 
 (defthm fn-mpxt-write-slot-frame
@@ -852,3 +854,213 @@
 
 (defthm fn-mpxt-clear-faithful-nil
   (fn-mpxt-faithful nil (fn-mpxt-clear fn-mpxt)))
+
+; -----------------------------------------------------------------------------
+; 5. The writer's frame: what a write into an empty slot does to the
+; reader (toward `fn-mpxt-put-preserves-faithful', the next READY).
+
+
+(defthm fn-mpxt-wi-of-write-slot
+  (implies (and (natp w) (natp p) (natp j))
+           (equal (fn-mpxt-wi w (fn-mpxt-write-slot p j tag seq fn-mpxt))
+                  (cond ((equal w (fn-mpxt-slot p j)) tag)
+                        ((equal w (+ *fn-mpxt-page-slots* (fn-mpxt-slot p j))) (+ 1 seq))
+                        (t (fn-mpxt-wi w fn-mpxt)))))
+  :hints (("Goal" :in-theory (enable fn-mpxt-write-slot))))
+
+(defthm fn-mpxt-ins-commutes
+  (implies (and (natp a) (natp b) (nat-listp l))
+           (equal (fn-mpxt-ins a (fn-mpxt-ins b l))
+                  (fn-mpxt-ins b (fn-mpxt-ins a l)))))
+
+(defthm fn-mpxt-scan-of-ins
+  (implies (and (natp s) (nat-listp acc))
+           (equal (fn-mpxt-scan tag p j (fn-mpxt-ins s acc) fn-mpxt)
+                  (fn-mpxt-ins s (fn-mpxt-scan tag p j acc fn-mpxt))))
+  :hints (("Goal" :induct (fn-mpxt-scan tag p j acc fn-mpxt))))
+
+(defthm fn-mpxt-slot-equal
+  (implies (and (natp q) (natp i) (< i *fn-mpxt-page-slots*)
+                (natp p) (natp j) (< j *fn-mpxt-page-slots*))
+           (iff (equal (fn-mpxt-slot q i) (fn-mpxt-slot p j))
+                (and (equal q p) (equal i j))))
+  :hints (("Goal" :in-theory (enable fn-mpxt-slot) :cases ((< q p) (< p q)))))
+
+(defthm fn-mpxt-slot-is-not-a-seq-word
+  (implies (and (natp q) (natp i) (< i *fn-mpxt-page-slots*)
+                (natp p) (natp j) (< j *fn-mpxt-page-slots*))
+           (not (equal (fn-mpxt-slot q i) (+ *fn-mpxt-page-slots* (fn-mpxt-slot p j)))))
+  :hints (("Goal" :in-theory (enable fn-mpxt-slot) :cases ((< q p) (< p q)))))
+
+(defthm fn-mpxt-slot-natp
+  (implies (and (natp p) (natp j))
+           (natp (fn-mpxt-slot p j)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-mpxt-slot))))
+
+
+(in-theory (disable fn-mpxt-slot))
+
+
+(defthm fn-mpxt-tag-at-of-write-slot
+  (implies (and (natp q) (natp i) (< i *fn-mpxt-page-slots*)
+                (natp p) (natp j) (< j *fn-mpxt-page-slots*))
+           (equal (fn-mpxt-tag-at q i (fn-mpxt-write-slot p j tag seq fn-mpxt))
+                  (if (and (equal q p) (equal i j)) (nfix tag) (fn-mpxt-tag-at q i fn-mpxt))))
+  :hints (("Goal" :in-theory (enable fn-mpxt-tag-at))))
+
+(defthm fn-mpxt-seq-at-of-write-slot
+  (implies (and (natp q) (natp i) (< i *fn-mpxt-page-slots*)
+                (natp p) (natp j) (< j *fn-mpxt-page-slots*))
+           (equal (fn-mpxt-seq-at q i (fn-mpxt-write-slot p j tag seq fn-mpxt))
+                  (if (and (equal q p) (equal i j)) (nfix (+ 1 seq)) (fn-mpxt-seq-at q i fn-mpxt))))
+  :hints (("Goal" :in-theory (enable fn-mpxt-seq-at))))
+
+(defthm fn-mpxt-find-empty-is-empty
+  (implies (fn-mpxt-find-empty p j fn-mpxt)
+           (equal (fn-mpxt-tag-at p (fn-mpxt-find-empty p j fn-mpxt) fn-mpxt) 0))
+  :hints (("Goal" :induct (fn-mpxt-find-empty p j fn-mpxt))))
+
+(defthm fn-mpxt-find-empty-nil-slot
+  (implies (and (not (fn-mpxt-find-empty p j fn-mpxt)) (natp j) (natp i) (<= j i)
+                (< i *fn-mpxt-page-slots*))
+           (not (equal 0 (fn-mpxt-tag-at p i fn-mpxt))))
+  :hints (("Goal" :induct (fn-mpxt-find-empty p j fn-mpxt))))
+
+(defthm fn-mpxt-find-empty-nil-is-full
+  (implies (and (not (fn-mpxt-find-empty p 0 fn-mpxt)) (natp k) (<= k *fn-mpxt-page-slots*))
+           (fn-mpxt-page-fullp p k fn-mpxt))
+  :hints (("Goal" :induct (fn-mpxt-page-fullp p k fn-mpxt)
+           :in-theory (disable fn-mpxt-find-empty))))
+
+(defthm fn-mpxt-subsetp-cons
+  (implies (subsetp-equal a b)
+           (subsetp-equal a (cons e b))))
+
+(defthm fn-mpxt-subsetp-refl
+  (subsetp-equal a a)
+  :hints (("Goal" :induct (len a))))
+
+(defthm fn-mpxt-subsetp-trans
+  (implies (and (subsetp-equal a b) (subsetp-equal b c))
+           (subsetp-equal a c)))
+
+(defthm fn-mpxt-subsetp-ins
+  (implies (and (natp e) (nat-listp b) (subsetp-equal a b))
+           (subsetp-equal a (fn-mpxt-ins e b))))
+
+(defthm fn-mpxt-subsetp-ins-both
+  (implies (and (natp e) (nat-listp a) (nat-listp b) (subsetp-equal a b))
+           (subsetp-equal (fn-mpxt-ins e a) (fn-mpxt-ins e b))))
+
+(defthm fn-mpxt-scan-grows-general
+  (implies (and (nat-listp acc) (subsetp-equal a acc))
+           (subsetp-equal a (fn-mpxt-scan tag p k acc fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-scan tag p k acc fn-mpxt)
+           :in-theory (disable fn-mpxt-ins fn-mpxt-scan-of-ins))))
+(defthm fn-mpxt-scan-grows
+  (implies (nat-listp acc)
+           (subsetp-equal acc (fn-mpxt-scan tag p k acc fn-mpxt))))
+(local
+ (defun fn-mpxt-scan2-ind (tag p k a b fn-mpxt)
+   (declare (xargs :stobjs fn-mpxt :verify-guards nil :measure (nfix k)))
+   (if (zp k)
+       (list a b)
+     (let* ((j (1- k))
+            (m (and (equal tag (fn-mpxt-tag-at p j fn-mpxt)) (<= 1 (fn-mpxt-seq-at p j fn-mpxt))))
+            (e (1- (fn-mpxt-seq-at p j fn-mpxt))))
+       (fn-mpxt-scan2-ind tag p j (if m (fn-mpxt-ins e a) a) (if m (fn-mpxt-ins e b) b) fn-mpxt)))))
+(defthm fn-mpxt-scan-subsetp
+  (implies (and (nat-listp a) (nat-listp b) (subsetp-equal a b))
+           (subsetp-equal (fn-mpxt-scan tag p k a fn-mpxt) (fn-mpxt-scan tag p k b fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-scan2-ind tag p k a b fn-mpxt)
+           :in-theory (disable fn-mpxt-ins fn-mpxt-scan-of-ins))))
+(defthm fn-mpxt-run-grows-general
+  (implies (and (nat-listp acc) (subsetp-equal a acc))
+           (subsetp-equal a (fn-mpxt-run tag p k acc fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-run tag p k acc fn-mpxt)
+           :in-theory (disable fn-mpxt-scan fn-mpxt-page-fullp fn-mpxt-ins fn-mpxt-scan-of-ins))))
+(defthm fn-mpxt-run-grows
+  (implies (nat-listp acc)
+           (subsetp-equal acc (fn-mpxt-run tag p k acc fn-mpxt))))
+(local
+ (defun fn-mpxt-run2-ind (tag p k a b fn-mpxt)
+   (declare (xargs :stobjs fn-mpxt :verify-guards nil :measure (nfix k)))
+   (if (zp k)
+       (list a b)
+     (fn-mpxt-run2-ind tag (fn-mpxt-next p (fn-mpxt-pages fn-mpxt)) (1- k)
+                       (fn-mpxt-scan tag p *fn-mpxt-page-slots* a fn-mpxt)
+                       (fn-mpxt-scan tag p *fn-mpxt-page-slots* b fn-mpxt)
+                       fn-mpxt))))
+(defthm fn-mpxt-run-subsetp
+  (implies (and (nat-listp a) (nat-listp b) (subsetp-equal a b))
+           (subsetp-equal (fn-mpxt-run tag p k a fn-mpxt) (fn-mpxt-run tag p k b fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-run2-ind tag p k a b fn-mpxt)
+           :in-theory (disable fn-mpxt-scan fn-mpxt-page-fullp fn-mpxt-ins fn-mpxt-scan-of-ins))))
+
+(defthm fn-mpxt-scan-of-write-slot-other
+  (implies (and (natp q) (natp p) (not (equal q p)) (natp j) (< j *fn-mpxt-page-slots*)
+                (natp k) (<= k *fn-mpxt-page-slots*))
+           (equal (fn-mpxt-scan tag q k acc (fn-mpxt-write-slot p j wtag seq fn-mpxt))
+                  (fn-mpxt-scan tag q k acc fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-scan tag q k acc fn-mpxt))))
+
+(defthm fn-mpxt-page-fullp-of-write-slot
+  (implies (and (natp q) (natp p) (natp j) (< j *fn-mpxt-page-slots*) (natp k) (<= k *fn-mpxt-page-slots*)
+                (posp wtag) (fn-mpxt-page-fullp q k fn-mpxt))
+           (fn-mpxt-page-fullp q k (fn-mpxt-write-slot p j wtag seq fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-page-fullp q k fn-mpxt))))
+
+(defthm fn-mpxt-subsetp-member
+  (implies (and (subsetp-equal a b) (member-equal s a))
+           (member-equal s b)))
+(defthm fn-mpxt-scan-member
+  (implies (and (member-equal s acc) (nat-listp acc))
+           (member-equal s (fn-mpxt-scan tag p k acc fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-scan tag p k acc fn-mpxt)
+           :in-theory (disable fn-mpxt-ins fn-mpxt-scan-of-ins))))
+(defthm fn-mpxt-run-member
+  (implies (and (member-equal s acc) (nat-listp acc))
+           (member-equal s (fn-mpxt-run tag p k acc fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-run tag p k acc fn-mpxt)
+           :in-theory (disable fn-mpxt-scan fn-mpxt-page-fullp fn-mpxt-ins))))
+(defthm fn-mpxt-run-scan-member
+  (implies (and (not (zp k)) (nat-listp acc)
+                (member-equal s (fn-mpxt-scan tag p *fn-mpxt-page-slots* acc fn-mpxt)))
+           (member-equal s (fn-mpxt-run tag p k acc fn-mpxt)))
+  :hints (("Goal" :expand ((fn-mpxt-run tag p k acc fn-mpxt))
+           :in-theory (disable fn-mpxt-scan fn-mpxt-page-fullp fn-mpxt-run))))
+(defthm fn-mpxt-scan-of-write-slot-subsetp
+  (implies (and (natp q) (natp p) (natp j) (< j *fn-mpxt-page-slots*) (natp k) (<= k *fn-mpxt-page-slots*)
+                (equal (fn-mpxt-tag-at p j fn-mpxt) 0)
+                (posp tag) (posp wtag) (natp seq) (nat-listp acc))
+           (subsetp-equal (fn-mpxt-scan tag q k acc fn-mpxt)
+                          (fn-mpxt-scan tag q k acc (fn-mpxt-write-slot p j wtag seq fn-mpxt))))
+  :hints (("Goal" :induct (fn-mpxt-scan tag q k acc fn-mpxt)
+           :expand ((fn-mpxt-scan tag q k acc (fn-mpxt-write-slot p j wtag seq fn-mpxt)))
+           :in-theory (disable fn-mpxt-ins fn-mpxt-scan-of-ins fn-mpxt-scan-of-write-slot-other))))
+(defthm fn-mpxt-scan-of-write-slot-finds
+  (implies (and (natp p) (natp j) (< j k) (natp k) (<= k *fn-mpxt-page-slots*)
+                (posp wtag) (natp seq) (nat-listp acc))
+           (member-equal seq (fn-mpxt-scan wtag p k acc (fn-mpxt-write-slot p j wtag seq fn-mpxt))))
+  :hints (("Goal" :induct (fn-mpxt-scan wtag p k acc fn-mpxt)
+           :expand ((fn-mpxt-scan wtag p k acc (fn-mpxt-write-slot p j wtag seq fn-mpxt)))
+           :in-theory (disable fn-mpxt-ins fn-mpxt-scan-of-ins fn-mpxt-scan-of-write-slot-other))))
+
+(in-theory (disable fn-mpxt-find-empty))
+
+(defthm fn-mpxt-put-run-keeps-full
+  (implies (and (natp q) (natp k2) (<= k2 *fn-mpxt-page-slots*)
+                (natp p) (< p (fn-mpxt-pages fn-mpxt)) (natp (fn-mpxt-pages fn-mpxt))
+                (posp wtag) (fn-mpxt-page-fullp q k2 fn-mpxt))
+           (fn-mpxt-page-fullp q k2 (mv-nth 1 (fn-mpxt-put-run wtag seq p k fn-mpxt))))
+  :hints (("Goal" :induct (fn-mpxt-put-run wtag seq p k fn-mpxt)
+           :in-theory (disable fn-mpxt-page-fullp))))
+(defthm fn-mpxt-put-run-scan-subsetp
+  (implies (and (natp q) (natp k2) (<= k2 *fn-mpxt-page-slots*)
+                (natp p) (< p (fn-mpxt-pages fn-mpxt)) (natp (fn-mpxt-pages fn-mpxt))
+                (posp tag) (posp wtag) (natp seq) (nat-listp acc))
+           (subsetp-equal (fn-mpxt-scan tag q k2 acc fn-mpxt)
+                          (fn-mpxt-scan tag q k2 acc (mv-nth 1 (fn-mpxt-put-run wtag seq p k fn-mpxt)))))
+  :hints (("Goal" :induct (fn-mpxt-put-run wtag seq p k fn-mpxt)
+           :in-theory (disable fn-mpxt-scan))))
