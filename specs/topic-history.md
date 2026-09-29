@@ -104,8 +104,8 @@ succession operation. Reuse of the same OS account remains inside the local
 operator trust boundary; a later replacement or revocation must be explicit.
 The event and Store replay join are executable. Fresh anchors carry both the
 installed ID and the generation of that earlier immutable installation in a
-version-2 anchor event. Historical version-1 anchors retain their original
-ID-only meaning; replay never invents a generation for them. Authenticated
+version-2 anchor event; the eight-field version-1 anchor is not a topic event
+(no migrations: fresh deploys at 6.6.0). Authenticated
 native installation, publication and version-migration qualification remain
 separate from this source contract.
 
@@ -153,8 +153,8 @@ sequence and transaction with article acceptance contents unchanged.
 `books/topic-history-prefix.lisp` is the recovery-side ordered projector. It
 collects preceding T10 accepted events and keyring snapshots and resolves
 each topic event's exact authorship reference only from that earlier prefix.
-It invokes the historical `fn-th-commit-anchor` for v1 anchors and the
-installed-event generation check before that same transition for v2 anchors;
+It checks the installed-event generation (`fn-th-commit-anchor-installed-v2`)
+before `fn-th-commit-anchor` for an anchor;
 reports use `fn-th-commit-report`. It faults on a missing source, snapshot,
 mismatched administrator, generation or invalid report. Store carries this projection in slot 12 and reconstructs
 it from the completed journal at observed reopen. Article, identity and
@@ -163,9 +163,7 @@ reopen separately requires topic replay success. Configuration updates use a
 shared Store updater proved to preserve the file, consumer and topic slots.
 
 The owner/control source calls the ACL2 proposal dispatcher and Store
-publication gate. The fresh Store prepare gate refuses a v1 anchor, preventing
-a current submission from downgrading to historical ID-only binding; observed
-reopen still accepts valid old v1 bytes. The version-2 codec and called
+publication gate. The version-2 codec and called
 proposal path have scoped ACL2 evidence, while their affected reverse closure
 and source-matched native execution remain open (no dual-image migration: no
 store of another release is opened; fresh deploys at 6.6.0). The
