@@ -36,6 +36,8 @@
 (include-book "../books/owner-compact-request")
 ; Q16: content reclamation on a running owner (fn-orc-).
 (include-book "../books/owner-reclaim")
+; Q16 (b): online disk release of dropped files (fn-xrt-).
+(include-book "../books/extent-retire")
 ; The publication through the octet buffer, decided before it is encoded
 ; (fn-ock-publication-stream, fn-ock-capture-budget, fn-ock-publication-blockedp;
 ; PKT-492, PKT-315).

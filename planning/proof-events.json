@@ -12966,6 +12966,35 @@
       ]
     },
     {
+      "id": "PRF-930",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-reseat-frame-keeps-the-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-reseat-checkpoint-frame-keeps-the-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-first-naming-none"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-first-naming-found"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-first-naming-compose"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-close-set-is-safe"
+        }
+      ]
+    },
+    {
       "id": "PRF-387",
       "events": [
         {

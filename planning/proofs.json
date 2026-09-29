@@ -13571,6 +13571,37 @@
       ]
     },
     {
+      "id": "PRF-930",
+      "title": "A running owner gives the disk blocks of the files a checkpoint publication dropped back while serving: every live payload the installed checkpoint holds is reseated at its frame without changing the arena, and a dropped file's descriptor closes only when no extent, no log member in flight and no off-mutex reader names it",
+      "statement": "Subject: host/native/owner.lisp fnn-owner-release-extents (called by fnn-owner-publish-captured after a durable install) calls books/extent-retire.lisp fn-xrt-reseat-checkpoint-frame per payload frame the arena run wrote (host/native/io.lisp fnn-checkpoint-write-arena-steps records each frame's entry offset and fn-xrt-step-handles), fn-xrt-scan in bounded calls (started when fn-xrt-scan-may-start), and fn-xrt-close-set; host/native/extent.lisp fnn-extent-close closes what it names. fn-xrt-reseat-frame-keeps-the-arena (KEYSTONE): when the file durably holds, at the frame entry's offset, the octets the buffer holds (A-DURABLE-EXTENT's faithful file), the reseat leaves the arena (every handle's payload) unchanged; each payload is the commit's reseat (PRF-309 fn-arx-commit-reseat) with R the payload's own octets, so a wrong pairing reseats nothing. fn-xrt-first-naming-none (KEYSTONE): a scan answering none over [LO, END) means no extent entry there names a retired file; fn-xrt-first-naming-compose: the bounded calls are one scan. fn-xrt-close-set-is-safe: a closed file is retired, named by no member in flight, and closes only after a clean scan with no other off-mutex arena reader. Before this every extent descriptor was held for the process's life, so the online compaction (PKT-868) freed no disk until restart. Scope: the realizer file table and descriptors are host state; the reseat's progress (every checkpoint payload found in its frame) is observed by the native (df shrinks), not proved.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-309"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/extent-retire.lisp",
+        "tests/acl2/extent-retire-tests.lisp",
+        "host/native/extent.lisp",
+        "host/native/owner.lisp",
+        "host/native/io.lisp"
+      ],
+      "progress_note": "Lane online-reclaim-2 (2026-09-29, Q16 (b)). REPL-admitted on persvati.",
+      "events": [
+        "fn-xrt-reseat-frame-keeps-the-arena",
+        "fn-xrt-reseat-checkpoint-frame-keeps-the-arena",
+        "fn-xrt-first-naming-none",
+        "fn-xrt-first-naming-found",
+        "fn-xrt-first-naming-compose",
+        "fn-xrt-close-set-is-safe"
+      ]
+    },
+    {
       "id": "PRF-387",
       "title": "`run` takes its TLS certificate and key exactly when they load, match and are valid now and readable, by the decision `tls reload` applies, and refuses the start by name otherwise",
       "statement": "Subject fn-tlsr-start-decide (books/tls-reload.lisp), which host/tls-reload-host.lisp fn-tlsr-host-start-decide computes for host/native/tls-reload.lisp fnn-tls-start-context, called by host/native/operator-live.lisp fnn-operator-execute-run before the owner starts; the host builds and observes the candidate exactly as a reload does (fnn-tls-server-candidate, fnn-tls-facts-of), serves it exactly on :accept (recording the facts as the context's served facts, the relation fnn-tls-context-swap preserves), and otherwise frees it and refuses the start (exit 1, `refused operator run tls REASON`). (1) fn-tlsr-start-decide-accepts-exactly-loaded-matching-current-material (KEYSTONE, no hypotheses): the start accepts iff the chain loaded, the key loaded, the key matches, the clock lies in the validity window and the subjectAltName is readable. (2) fn-tlsr-decide-is-the-start-decision-unless-names-dropped (KEYSTONE): every reload decision other than (:refuse :names-dropped) equals the start decision, so the two paths decide the same material by one check and a pair the start refuses a reload refuses by the same word. Before PKT-606 the start refused only what OpenSSL refused (fnn-tls-open-context, deleted), so an expired, not-yet-valid or name-unreadable pair started. Teeth: tests/acl2/tls-reload-tests.lisp (the real P-256 certificate's facts; the positive witness asserting every conjunct; per conjunct a witness where it alone fails and the start refuses by name; per conjunct a must-fail; the names-dropped material the reload refuses and the start takes, with a must-fail of the equation without its hypothesis). Trusted, not proved: as PRF-212 (the library's parse and three booleans, the host clock). Native: tests/test_native_tls_reload.py (a start with a mismatched pair refused key-mismatch and one with an expired certificate refused expired, exit 1, no listener), tests/test_native_starttls.py test_context_mismatch_refuses_before_listener, tests/test_native_tls_transport.py (the candidate's observations).",

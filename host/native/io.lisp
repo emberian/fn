@@ -2898,6 +2898,12 @@ one walk: fn-scka-srcs-n-compose).  READS the arena.  The last state,
       (unless (and (consp walk) (= (length walk) 3))
         (fnn-fault "ACL2 returned a malformed checkpoint walk")))))
 
+(defvar *fnn-checkpoint-frames* :off
+  "The owner's publication binds this to a list: the arena run's payload
+frames written, newest first, each (EOFF ELEN HANDLES) -- the entry's file
+offset (the frame start less 32), its protected prefix's length, and the
+step's handles (fn-xrt-step-handles).  :off for the offline verbs.")
+
 (defun fnn-checkpoint-write-arena-steps (fd arun sequence segment-bound file-bound st fault)
   "Write the arena run's frames to FD step by step (fn-scka-write-step: step 0
 the head, each later step one batch of whole canonical payloads read through
@@ -2922,6 +2928,21 @@ the publication buffer ST."
               (fnn-refuse-io "the checkpoint arena run refused by name: ~a" verdict))
             (unless (fnn-plan-p frames st)
               (fnn-fault "ACL2 returned a malformed checkpoint arena step"))
+            ;; The owner's publication keeps, per payload frame, where it
+            ;; lies and the handles it holds, for the reseat after the
+            ;; install (books/extent-retire.lisp fn-xrt-step-handles; the
+            ;; frame's entry opens 32 octets before it, at the previous
+            ;; frame's trailer).
+            (when (listp *fnn-checkpoint-frames*)
+              (let ((handles (fnn-core 'fn-xrt-step-handles state)))
+                (when (and (consp handles) (= (length frames) 1))
+                  (let ((at (sb-posix:lseek fd 0 sb-posix:seek-cur))
+                        (frame (first frames)))
+                    (when (>= at 32)
+                      (push (list (- at 32)
+                                  (+ 32 (length (first frame)) (- (third frame) (second frame)))
+                                  handles)
+                            *fnn-checkpoint-frames*))))))
             (fnn-plan-write-all fd frames st)
             (setq state next)
             (incf steps)
@@ -6159,6 +6180,17 @@ which case they wait for the next COMPLETE."
         (dolist (h *fnn-release-pending*) (fnn-call 'fn-arena-release h arena))
         (setq *fnn-release-pending* nil)))))
 
+
+(defun fnn-log-member-files (log)
+  "The realizer file ids the log's members in flight or fenced name (their
+COMPLETE reseats them there): fn-xrt-scan-may-start's and fn-xrt-close-set's
+NAMED."
+  (if log
+      (fnn-log-with-kernel (log)
+        (remove-duplicates
+         (loop for m in (append (fnn-log-inflight log) (fnn-log-fenced log))
+               when (and (consp m) (integerp (second m))) collect (second m))))
+    nil))
 
 (defun fnn-log-fence (log)
   "P-BATCH's fence (fn-lg-fence-program): the barrier, then the kernel's
