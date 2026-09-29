@@ -38,6 +38,22 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+# One module under both names.  `from tools import ledger' (interface_emit,
+# harness_check, check_scaffold, ...) and `import ledger' (certified_claims,
+# depth_check, ...) made two module objects, so a tree cache entry pickled by
+# one (its classes named `ledger.Tree') failed the other's isinstance check
+# and was analysed again, four minutes on persvati, in three of make check's
+# steps at once (check-parallel, 2026-09-29).  Imported as `tools.ledger',
+# this file registers itself as `ledger' and names its classes so; imported
+# as `tools.ledger' after `ledger', the import returns that module (this
+# body's remaining definitions go nowhere).
+if __name__ == "tools.ledger":
+    if "ledger" in sys.modules:
+        sys.modules[__name__] = sys.modules["ledger"]
+    else:
+        sys.modules["ledger"] = sys.modules[__name__]
+    __name__ = "ledger"  # noqa: A001 -- the classes below pickle as ledger.X
+
 
 ROOT = Path(__file__).resolve().parents[1]
 LEDGER_JSON = ROOT / "planning/ledger.json"
