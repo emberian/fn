@@ -3579,6 +3579,10 @@
         {
           "kind": "theorem",
           "name": "fn-ctl-served-status-is-control-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-of-a-withdrawn-article-answers-430-withdrawn"
         }
       ]
     },
