@@ -295,6 +295,7 @@
 ;; fnn-command-init-published asks fn-bs-init-pub-admission.
 (include-book "books/store-init-publication")
 (ld "host/store-host.lisp" :ld-error-action :error)
+(ld "host/page-read-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
 (include-book "books/store-checkpoint-buffer")

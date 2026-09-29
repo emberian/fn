@@ -86,6 +86,7 @@
 ;; duplicate verdict, calls.
 (include-book "books/store-reclaim-buffer")
 (ld "host/store-host.lisp" :ld-error-action :error)
+(ld "host/page-read-host.lisp" :ld-error-action :error)
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 (ld "host/config-host.lisp" :ld-error-action :error)
