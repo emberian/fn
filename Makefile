@@ -73,6 +73,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/frame \
 	books/frame-invariants \
 	tests/acl2/frame-tests \
+	tests/acl2/frame-journal-kinds-tests \
 	books/frame-trailer \
 	tests/acl2/frame-trailer-tests \
 	books/tcpcl-spool \
