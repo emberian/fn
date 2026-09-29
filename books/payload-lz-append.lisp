@@ -6,7 +6,7 @@
 ; R only when the host's candidate block decodes to R's payload span, and the
 ; expansion of the seal is R (KEYSTONE `fn-lzr-expand-of-seal').  The seal is
 ; total: whatever goes wrong, R is kept.  At the append that is not enough.
-; A candidate the proved decoder refuses means the encoder (liblz4-HC,
+; A candidate the proved decoder refuses means the encoder (zlib,
 ; untrusted) produced something that is not the span: that is a FAULT, named,
 ; never a silent uncompressed record.  So the append decides through
 ; `fn-lzr-append-decide', whose outcomes are distinct:
@@ -27,7 +27,7 @@
 ; it compressed, and NIL otherwise.  The span is ACL2's: R decodes as a record
 ; (the codec, books/records-seam.lisp) and its payload opens at K
 ; (books/payload-extent.lisp fn-arx-record-suffix-len; checked, never
-; assumed).  A span above LZ4_MAX_INPUT_SIZE is not planned (the host
+; assumed).  A span above the host encoder's one-call input (2^30 - 1) is not planned (the host
 ; primitive's domain; the policy keeps R).  With MIN = 0 the plan is NIL for
 ; every record (`fn-lzr-append-plan-off'): the host takes R, byte for byte
 ; what it took before this book.
@@ -51,9 +51,9 @@
 ; -----------------------------------------------------------------------------
 ; 1. The plan.
 
-; LZ4_MAX_INPUT_SIZE (third_party/lz4/lz4.h, 1.10.0): the largest source the
-; host's encoder accepts.  The decoder has no such bound.
-(defconst *fn-lzr-encoder-max-input* 2113929216)
+; The largest source the host's one-call encoder takes (host/native/
+; fn-deflate.c fn_deflate_payload: 2^30 - 1).  The decoder has no such bound.
+(defconst *fn-lzr-encoder-max-input* 1073741823)
 
 (defthm fn-lzr-decoded-record-p
   (implies (fn-record-result-okp (fn-record-decode-exact r))
@@ -151,7 +151,7 @@
   (cond ((not (and (fn-lzr-span-okp r k n) (fn-lzr-u32p dict-id)))
          (list :kept :lz-span))
         ((eq candidate :none) (list :kept :lz-no-gain))
-        ((not (equal (fn-lz-decode dict candidate n) (list :ok (take n (nthcdr k r)))))
+        ((not (equal (fn-pzd-decode dict candidate n) (list :ok (take n (nthcdr k r)))))
          (list :refused :lz-candidate))
         ((not (fn-lzr-compress-p min n (len candidate))) (list :kept :lz-no-gain))
         (t (list :framed (fn-lzr-seal dict dict-id min r k n candidate)))))
@@ -166,7 +166,7 @@
 (defun fn-lzr-append-refusal-text (decision)
   (declare (xargs :guard t))
   (if (and (consp decision) (eq (car decision) :refused))
-      "lz-candidate: the LZ4 encoder's block does not decode to the record's payload (the encoder is untrusted; nothing was taken)"
+      "lz-candidate: the DEFLATE encoder's stream does not decode to the record's payload (the encoder is untrusted; nothing was taken)"
     nil))
 
 ; -----------------------------------------------------------------------------
@@ -181,7 +181,7 @@
                                                                    candidate)))
                   (list :ok r)))
   :hints (("Goal" :in-theory (e/d (fn-lzr-span-okp)
-                                  (fn-lzr-seal fn-lzr-expand fn-lz-decode fn-lzr-compress-p
+                                  (fn-lzr-seal fn-lzr-expand fn-pzd-decode fn-lzr-compress-p
                                    fn-lzr-u32p take nthcdr)))))
 
 ; The framed octets are the seal's, and a frame (not R).
@@ -190,8 +190,8 @@
            (and (equal (cadr (fn-lzr-append-decide dict dict-id min r k n candidate))
                        (fn-lzr-seal dict dict-id min r k n candidate))
                 (fn-lzr-compress-p min n (len candidate))
-                (equal (fn-lz-decode dict candidate n) (list :ok (take n (nthcdr k r))))))
-  :hints (("Goal" :in-theory (disable fn-lzr-seal fn-lz-decode fn-lzr-compress-p take nthcdr))))
+                (equal (fn-pzd-decode dict candidate n) (list :ok (take n (nthcdr k r))))))
+  :hints (("Goal" :in-theory (disable fn-lzr-seal fn-pzd-decode fn-lzr-compress-p take nthcdr))))
 
 ; A refusal is exactly a candidate the proved decoder does not decode to the
 ; span: the fault is the encoder's, and it is named.
@@ -200,8 +200,8 @@
               (list :refused :lz-candidate))
        (and (fn-lzr-span-okp r k n) (fn-lzr-u32p dict-id)
             (not (eq candidate :none))
-            (not (equal (fn-lz-decode dict candidate n) (list :ok (take n (nthcdr k r)))))))
-  :hints (("Goal" :in-theory (disable fn-lzr-seal fn-lz-decode fn-lzr-compress-p take nthcdr
+            (not (equal (fn-pzd-decode dict candidate n) (list :ok (take n (nthcdr k r)))))))
+  :hints (("Goal" :in-theory (disable fn-lzr-seal fn-pzd-decode fn-lzr-compress-p take nthcdr
                                       fn-lzr-span-okp))))
 
 ; The policy by name: R is kept for no gain only when the encoder found no
@@ -212,7 +212,7 @@
            (or (eq candidate :none)
                (not (fn-lzr-compress-p min n (len candidate)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-lzr-seal fn-lz-decode fn-lzr-compress-p take nthcdr
+  :hints (("Goal" :in-theory (disable fn-lzr-seal fn-pzd-decode fn-lzr-compress-p take nthcdr
                                       fn-lzr-span-okp))))
 
 (local
@@ -239,14 +239,14 @@
               (len r)))
   :rule-classes :linear
   :hints (("Goal" :in-theory (e/d (fn-lzr-seal fn-lzr-span-okp fn-lzr-compress-p)
-                                  (fn-lz-decode fn-lzr-frame take nthcdr)))))
+                                  (fn-pzd-decode fn-lzr-frame take nthcdr)))))
 
 (defthm fn-lzr-append-octets-of-decide
   (equal (fn-lzr-append-octets (fn-lzr-append-decide dict dict-id min r k n candidate) r)
          (if (equal (car (fn-lzr-append-decide dict dict-id min r k n candidate)) :framed)
              (cadr (fn-lzr-append-decide dict dict-id min r k n candidate))
            r))
-  :hints (("Goal" :in-theory (disable fn-lzr-seal fn-lz-decode fn-lzr-compress-p take nthcdr
+  :hints (("Goal" :in-theory (disable fn-lzr-seal fn-pzd-decode fn-lzr-compress-p take nthcdr
                                       fn-lzr-span-okp))))
 
 ; -----------------------------------------------------------------------------
@@ -375,7 +375,7 @@
     (and (iff (fn-lzr-append-refusal-text d)
               (and (fn-lzr-span-okp r k n) (fn-lzr-u32p dict-id)
                    (not (eq candidate :none))
-                   (not (equal (fn-lz-decode dict candidate n)
+                   (not (equal (fn-pzd-decode dict candidate n)
                                (list :ok (take n (nthcdr k r)))))))
          (implies (fn-lzr-append-refusal-text d)
                   (and (stringp (fn-lzr-append-refusal-text d))
@@ -388,7 +388,7 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-lzr-append-refusal-text fn-lzr-append-decide
                             fn-lzr-append-octets)
-                           (fn-lz-decode fn-lzr-seal fn-lzr-compress-p
+                           (fn-pzd-decode fn-lzr-seal fn-lzr-compress-p
                             fn-lzr-span-okp fn-lzr-u32p take nthcdr)))))
 
 ; KEYSTONE (PRF-952).  The refusal line the host prints for a read
@@ -405,5 +405,5 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-lzr-read-refusal-text fn-lzr-expand)
-                           (fn-lz-decode fn-lzr-parse fn-lzr-magicp take nthcdr
+                           (fn-pzd-decode fn-lzr-parse fn-lzr-magicp take nthcdr
                             assoc-equal)))))

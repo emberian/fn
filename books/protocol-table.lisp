@@ -1146,6 +1146,22 @@
              (580 :refused :auth :cannot "580 can not initiate TLS negotiation"))
    :faq "Turns on TLS on this connection before you log in.")
 
+  ("COMPRESS"
+   :rfc "RFC 8054 2.2" :dispatch :auth
+   :parser (fn-zc-algorithm-syntaxp)
+   :model (fn-auth-compress) :cat nil :xref nil
+   :live (("any" fn-auth-compress))
+   :framing :command
+   :fuzz ((:choice "DEFLATE" "LZ4" "SHRINK" "deflate" "" (:rep "D" 30)))
+   :replies ((206 :accepted :auth :started "206 compression active")
+             (480 :refused :auth :auth-required "480 authentication required")
+             (501 :refused :auth :syntax "501 syntax error")
+             (502 :refused :auth :running "502 compression is already active")
+             (502 :refused :auth :compressed
+                  "502 not permitted once a compression layer is active")
+             (503 :refused :auth :algorithm "503 compression algorithm not supported"))
+   :faq "Compresses this connection with DEFLATE (RFC 8054), after you log in.")
+
   ("XREDEEM"
    :rfc "fn extension, PRF-164" :dispatch :auth
    :parser (fn-auth-token-argp)

@@ -48,7 +48,7 @@
 (defun oclt-conclusion (cfg sub secret)
   (let* ((d (fn-own-sub-decision sub))
          (account (fn-own-sub-account sub))
-         (x (fn-ipp-injected-octets d secret (fn-own-sub-login sub) cfg))
+         (x (fn-ipp-injected-octets d secret (fn-own-sub-account sub) cfg))
          (fields (fn-ctl-received-fields x)))
     (equal (fn-own-sub-stored-octets cfg sub secret)
            (append (fn-cll-line *fn-cll-lock-head*
@@ -61,12 +61,12 @@
 
 ; Witness.
 (defconst *oclt-stored* (fn-own-sub-stored-octets nil *oclt-sub* *oclt-secret*))
-; PKT-597: under the login the injected octets carry the posting-account
+; PKT-597: under the account (PKT-786) the injected octets carry the posting-account
 ; parameter in their one Injection-Info line (books/injection-info-params.lisp);
 ; the lock goes in front of those.
 (defconst *oclt-with-params*
   (fn-ipp-injected-octets (fn-own-sub-decision *oclt-sub*) *oclt-secret*
-                          (fn-own-sub-login *oclt-sub*) nil))
+                          (fn-own-sub-account *oclt-sub*) nil))
 (assert-event
  (equal (len *oclt-with-params*)
         (+ (len *oclt-injected*) (len *fn-ipp-account-open*) 64 1)))
@@ -125,12 +125,12 @@
                    "Cancel-Lock: sha256:OWNLOCKOWNLOCKOWNLOCKOWNLOCKOWNLOCKOWNLOCK123="
                    "" "hello")))
 (defconst *oclt-tin-sub* (oclt-sub *oclt-tin* *oclt-alice*))
-; (no lock is added; the Injection-Info line carries the login's
+; (no lock is added; the Injection-Info line carries the account's
 ; posting-account parameter, PKT-597)
 (assert-event (equal (fn-own-sub-stored-octets nil *oclt-tin-sub* *oclt-secret*)
                      (fn-ipp-injected-octets (fn-own-sub-decision *oclt-tin-sub*)
                                              *oclt-secret*
-                                             (fn-own-sub-login *oclt-tin-sub*) nil)))
+                                             (fn-own-sub-account *oclt-tin-sub*) nil)))
 (assert-event (not (oclt-conclusion nil *oclt-tin-sub* *oclt-secret*)))
 (must-fail-checked (assert-event (oclt-conclusion nil *oclt-tin-sub* *oclt-secret*)))
 

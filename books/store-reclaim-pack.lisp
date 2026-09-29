@@ -471,9 +471,8 @@
 ; fnn-log-reclaim-steps).  If the record's article is named by an obligation
 ; of the lifetimes table, or its Store verdict needs its payload, or the rule
 ; is keep-forever and the expiry policy has not expired it, the rewrite
-; returns the same octets.  The context is the one fn-rclp-ctx-expiring
-; builds, its seventh element the article index (PRF-934).
-; fn-rclp-events-never-touch-a-held-article is its map over the history.
+; returns the same octets.  fn-rclp-events-never-touch-a-held-article is its
+; map over the history.
 (defthm fn-rclp-event-never-touches-a-held-article
   (let* ((m (fn-record-msgid (fn-record-result-record (fn-record-decode-exact o))))
          (article (fn-find-article m articles)))

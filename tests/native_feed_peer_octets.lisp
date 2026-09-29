@@ -5,10 +5,11 @@
 (in-package "ACL2")
 (defvar *the-live-state* nil)
 (defun f-get-global (name state) (declare (ignore name state)) nil)
+(load "tests/native_io_prelude.lisp")
 (load "host/native/io.lisp")
 (load "host/native/feed-service.lisp")
 
-(defun fnn-owner-serialized (service cid thunk)
+(defun fnn-owner-transit-serialized (service cid thunk)
   (declare (ignore service cid)) (funcall thunk))
 (defvar *peer-boundary-calls* nil)
 (defun fnn-core (name &rest args)

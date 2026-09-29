@@ -7,7 +7,6 @@ a claim about this source revision.
 """
 
 import re
-import sys
 import unittest
 
 from tests.native_harness import (
@@ -19,8 +18,6 @@ IMAGE = native_image("FN_NATIVE_HOST")
 # to start with FN_NATIVE_RECOVERY_FAULT in its environment (exit 5, host/native/io.lisp
 # `fnn-developer-selector-gate'), so every faulted step runs this image.
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
-sys.path.insert(0, str(ROOT / "tools"))
-import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
 
 
 def missing_enrollment_fixture():
@@ -98,6 +95,8 @@ class NativeRecoverySourceMapTests(unittest.TestCase):
             self.assertTrue(any(prefix.startswith(p) for p in prefixes),
                             "{} is staged but not swept".format(prefix))
 
+    @unittest.skipUnless(executable(DEVELOPER), "the developer image is absent: "
+                         "the fixture is encoded by its ACL2 session")
     def test_missing_enrollment_fixture_is_acl2_encoded_and_nonempty(self):
         self.assertTrue(missing_enrollment_fixture().startswith(b"\x44fn-e"))
 
@@ -282,11 +281,14 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         record = missing_enrollment_fixture()
         name = "records/00000000000000000000.txn"
         (archive / name).write_bytes(record)
-        # The archive's MANIFEST line for the record (b3sum's format, the
-        # lines fn-sxp-manifest renders), after the configuration lines.
+        # The archive's MANIFEST line for the record (b3sum's format), as
+        # ACL2 renders it (books/store-export.lisp fn-sxp-manifest-line),
+        # after the configuration lines.
+        with Acl2Session(DEVELOPER) as bridge:
+            line = acl2_octets(bridge.call("(fn-sxp-manifest-line (cons '%s '%s))" % (
+                Acl2Session.literal(name.encode("ascii")), Acl2Session.literal(record))))
         with open(archive / "MANIFEST", "ab") as manifest:
-            manifest.write(blake3_ref.blake3(record).hex().encode("ascii")
-                           + b"  " + name.encode("ascii") + b"\n")
+            manifest.write(line)
         before = {p.relative_to(archive): p.read_bytes()
                   for p in archive.rglob("*") if p.is_file()}
 

@@ -550,6 +550,12 @@ HEALTH_ADVICE = {
             "below what a write needs). Look at the device; free space. "
             "The node recovers by itself. (Provisional: this state and "
             "its code wait on a decision.)",
+    "checkpoint-deferred": "The node cannot write its automatic "
+                           "checkpoint: the file would be past the "
+                           "profile's checkpoint budget or the free "
+                           "space. Serving goes on, but every restart "
+                           "replays the whole log until one fits. Free "
+                           "space.",
 }
 
 

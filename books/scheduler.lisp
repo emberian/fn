@@ -932,7 +932,7 @@
     nil))
 
 ; -----------------------------------------------------------------------------
-; Export theory (docs/proof-style.md §2)
+; Export theory (docs/proof-style.md section 2)
 ;
 ; What leaves this book enabled: the keystones proved above, the record lemmas
 ; and the three forward-chaining shape facts of each of the five records, the

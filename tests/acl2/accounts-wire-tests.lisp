@@ -41,9 +41,11 @@
 ; KEYSTONE fn-auth-step-pinned-xredeem-before-tls-is-483
 ;   H1 sessionp  H2 not handshaking  H3 no subject  H4 protected-only
 ;   H5 not tlsp  H6 command input  H7 arguments at most  H8 XREDEEM keyword
+;   H9 no active COMPRESS layer (RFC 8054)
 (defmacro awt-483-hyps (as text)
   `(and (fn-auth-sessionp ,as)
         (not (fn-auth-session-handshakingp ,as))
+        (not (fn-zc-activep (fn-auth-session-compress ,as)))
         (not (fn-auth-session-subject ,as))
         (fn-auth-config-protected-onlyp (fn-auth-session-config ,as))
         (not (fn-auth-session-tlsp ,as))
@@ -78,14 +80,14 @@
 ; H2 removed: a holding session answers nothing.
 (defconst *awt-held*
   (fn-auth-make-session (fn-auth-session-base *awt-prot*) *awt-protected*
-                        nil nil nil t))
+                        nil nil nil t nil))
 (assert-event (and (fn-auth-sessionp *awt-held*)
                    (fn-auth-session-handshakingp *awt-held*)
                    (not (awt-483-concl *awt-held* *awt-redeem*))))
 ; H3 removed: an authenticated session is answered 502.
 (defconst *awt-authed*
   (fn-auth-make-session (fn-auth-session-base *awt-prot*) *awt-protected*
-                        nil (make-list 32 :initial-element 7) nil nil))
+                        nil (make-list 32 :initial-element 7) nil nil nil))
 (assert-event (and (fn-auth-sessionp *awt-authed*)
                    (fn-auth-session-subject *awt-authed*)
                    (equal (fn-post-result-effects
@@ -104,6 +106,17 @@
                                                 (append (awt-line "XREDEEM a")
                                                         '(0) (awt-line " b")))))
                                (awt-single *awt-483*)))))
+; H9 removed: under an active COMPRESS layer XREDEEM is 502 (RFC 8054
+; section 2.2.2), not 483.  Reachable by a source-address peer connection.
+(defconst *awt-compressed*
+  (fn-auth-make-session (fn-auth-session-base *awt-prot*) *awt-protected*
+                        nil nil nil nil '(:active :deflate)))
+(assert-event (and (fn-auth-sessionp *awt-compressed*)
+                   (fn-zc-activep (fn-auth-session-compress *awt-compressed*))
+                   (equal (fn-post-result-effects
+                           (in-arena-awt-step *sr-arena* *awt-compressed* (awt-cmd *awt-redeem*)))
+                          (awt-single "502 not permitted once a compression layer is active"))
+                   (not (awt-483-concl *awt-compressed* *awt-redeem*))))
 ; H7's removal: a line with more arguments than RFC 3977 allows is framed
 ; out before the arm; the bound is the tokenizer's (checked, not refuted
 ; here: every XREDEEM line the arm sees satisfies it).
@@ -139,7 +152,7 @@
 ; the cached exchange is refused 483 and nothing is held.
 (defconst *awt-381-clear*
   (fn-auth-make-session (fn-auth-session-base *awt-prot*) *awt-protected*
-                        (fn-auth-session-pending *awt-381*) nil nil nil))
+                        (fn-auth-session-pending *awt-381*) nil nil nil nil))
 (assert-event (and (fn-auth-sessionp *awt-381-clear*)
                    (not (fn-auth-redeem-waitp
                          (fn-post-result-session
@@ -187,3 +200,19 @@
                    (not (fn-auth-redeem-waitp *awt-held*))
                    (null (fn-post-result-effects
                           (in-arena-awt-step *sr-arena* *awt-held* '(:account-outcome :bound))))))
+
+; KEYSTONE fn-auth-step-pinned-xredeem-pass-holds-for-the-owner, the
+; hypothesis the COMPRESS layer added (no active layer): the 381 session
+; with a layer set answers the PASS 502 and holds nothing (RFC 8054 section
+; 2.2.2: no authentication after COMPRESS).
+(defconst *awt-381-compressed*
+  (fn-auth-make-session (fn-auth-session-base *awt-381*) (fn-auth-session-config *awt-381*)
+                        (fn-auth-session-pending *awt-381*) nil
+                        (fn-auth-session-tlsp *awt-381*) nil '(:active :deflate)))
+(assert-event (and (fn-auth-sessionp *awt-381-compressed*)
+                   (equal (fn-post-result-effects
+                           (in-arena-awt-step *sr-arena* *awt-381-compressed* (awt-cmd *awt-pass*)))
+                          (awt-single "502 not permitted once a compression layer is active"))
+                   (not (fn-auth-redeem-waitp
+                         (fn-post-result-session
+                          (in-arena-awt-step *sr-arena* *awt-381-compressed* (awt-cmd *awt-pass*)))))))

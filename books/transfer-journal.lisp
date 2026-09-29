@@ -358,7 +358,7 @@
         nil))))
 
 ; -----------------------------------------------------------------------------
-; Export theory (docs/proof-style.md §2).  What leaves this book enabled: the
+; Export theory (docs/proof-style.md section 2).  What leaves this book enabled: the
 ; record shape lemma `fn-tj-spec-for-is-spec-list`, and the list-recursive
 ; `fn-tj-records-okp` (the induction vocabulary of the frame keystones).  The
 ; accessors lose their definition rune only -- ground evaluation and type

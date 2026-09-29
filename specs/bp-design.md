@@ -891,8 +891,7 @@ surface and nowhere else:
 
 - `host/tcpcl-host.lisp` (`:program` wrappers over `fn-tcl-drive`,
   `fn-tcl-tick`, `fn-tcl-send`, `fn-tcl-terminate`, `fn-tcl-tcp-closed`, each
-  marshalling one session global keyed by session id, like
-  `fn-sched-host-install`).
+  marshalling one session global keyed by session id).
 - `host/bp-node-host.lisp` (wrappers over `books/bp-node`: endpoint IDs,
   configuration, send, receive, sequence recovery). The outbound lifecycle is
   `fn-bpnj-step`, called from `host/native/bp-service.lisp`; the design's
