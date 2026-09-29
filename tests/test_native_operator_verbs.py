@@ -616,6 +616,8 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
                    b"\r\n\r\n\r\n")
         stored = (room_left - (1083 + 261 * 10 + 3000 + 4096 + 1600)) // 9
         pad = stored - injected - bare
+        print("NATIVE-CROSSPOST room_left={} injected={} bare={} stored={} pad={} left={}"
+              .format(room_left, injected, bare, stored, pad, left))
         self.assertGreater(pad, 0, left)
         self.node.start()
         crosspost, _ = self.post_article("<xp-x10@example.invalid>", groups[:10],
