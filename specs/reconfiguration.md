@@ -10,7 +10,7 @@ fn today has no configuration. It has *constants*: the carried group list is a
 `defconst` in [`books/store-config.lisp`](../books/store-config.lisp), retention
 capacity is a `defconst` in [`host/store-host.lisp`](../host/store-host.lisp),
 the BP policy/terms/issuer identifiers and the inbound group map are `defconst`s
-in [`host/bp-ingress-host.lisp`](../host/bp-ingress-host.lisp), and
+in `host/bp-ingress-host.lisp` (retired: planning/retired-paths.json), and
 `tools/run_store.py` refuses to open a store whose JSON configuration is not
 `==` to `DEFAULT_CONFIG`. Adding a newsgroup means recompiling the core and
 rewriting every store's configuration file by hand.
