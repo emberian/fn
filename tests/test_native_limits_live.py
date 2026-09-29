@@ -18,6 +18,7 @@ reopens with the new T).
 """
 
 import hashlib
+import re
 
 from tests.native_harness import EXIT_OK
 from tests.test_native_checkpoint_auto import AutoCheckpointFixture
@@ -82,6 +83,11 @@ class LimitsLiveTests(AutoCheckpointFixture):
                       raised.stderr)
         # Served now: the same owner admits a post past the old T.
         self.assertEqual(self.post("within", 100), EXIT_OK)
+        # PRF-996, the owner's report: the running owner's `status' and
+        # `health' name the triple the reply named, from its carry.
+        line = "limit max-transactions requested=14 funded=14 ceiling=4294967295"
+        self.assertIn(line, self.op("status").stdout.decode())
+        self.assertIn(line, self.op("health").stdout.decode())
         self.node.stop(process=owner)
         self.assertEqual(self.config_digest(), sealed, "config.json is never rewritten")
 
@@ -98,6 +104,16 @@ class LimitsLiveTests(AutoCheckpointFixture):
         # sealed H it funded; only the requested value moved.
         self.assertIn(b"; limit max-history-octets requested=805306368 funded=", raised.stderr)
         self.assertNotIn(b"funded=805306368", raised.stderr)
+        # The running owner's report: requested moved, funded is the one it
+        # serves (a number, not none), the same line as the reply's.
+        replied = re.search(r"limit max-history-octets requested=\d+ funded=\d+ ceiling=\d+",
+                            raised.stderr.decode())
+        self.assertIsNotNone(replied, raised.stderr)
+        replied = replied.group(0)
+        for verb in ("status", "health"):
+            report = self.op(verb).stdout.decode()
+            self.assertIn(replied, report, verb)
+            self.assertNotIn("funded=none", report, verb)
         self.node.stop(process=owner)
         # Offline, `status' names the three values, funded=none.
         self.assertIn("limit max-history-octets requested=805306368 funded=none "

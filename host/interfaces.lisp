@@ -1550,6 +1550,12 @@
 (definterface fn-owner-known-abort
   :class ::program)
 
+(definterface fn-owner-limit-carried
+  :class ::program)
+
+(definterface fn-owner-limit-decided
+  :class ::program)
+
 (definterface fn-owner-live-post-config
   :class ::program)
 
