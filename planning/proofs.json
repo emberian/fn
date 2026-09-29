@@ -14120,7 +14120,7 @@
       "statement": "books/owner-maintenance-request.lisp. KEYSTONE fn-omr-inspect-live-is-the-offline-report: for any Message-ID octets and any lookup result FOUNDP, fn-omr-inspect-live-report of the reasoned reply's word (fn-nctrl-reason-word of fn-omr-inspect-word FOUNDP) equals fn-native-operator-inspect-report of FOUNDP: exit, verdict and printed line. fn-omr-inspect-status-is-the-offline-exit: the owner's reply status is :accepted exactly when the offline exit is 0. Subject: host/native/operator.lisp fnn-operator-execute-inspect-live, over the word host/native/admin.lisp fnn-owner-inspect-request answers (fnn-bridge-lookup-found-p under the owner mutex). Teeth: tests/acl2/owner-maintenance-request-tests.lisp (found, absent, a malformed word reads as absent).",
       "milestone": "M5",
       "requirements": [
-        "HST-034"
+        "HST-036"
       ],
       "depends_on": [],
       "assumptions": [],
@@ -14138,7 +14138,7 @@
       "statement": "books/owner-maintenance-request.lisp. KEYSTONE fn-omr-transactions-at-most-bounds-the-count: for natural COVERED, RECORDS and JOURNAL-OCTETS with RECORDS * *fn-omr-min-frame-octets* <= JOURNAL-OCTETS (every record frame is at least its header and trailer, 42 octets), COVERED + RECORDS <= fn-omr-transactions-at-most COVERED JOURNAL-OCTETS. fn-omr-stopped-line-is-header-and-octets-by-definition: the printed line is a function of the header's sequence field (fn-omr-covered-sequence, fn-scc-parse-header of the first 37 octets) and the journal's octets alone. Subject: host/native/io.lisp fnn-stopped-report (fnn-command-stopped-status, the health arm of host/native/operator.lisp fnn-operator-health-report). Teeth: the tests book's positive witness (12 covered, 5 records in 300 octets) and the removal of the octet premise (8 records cannot fit 300 octets and the bound does not cover them).",
       "milestone": "M5",
       "requirements": [
-        "HST-034"
+        "HST-036"
       ],
       "depends_on": [],
       "assumptions": [],
@@ -14156,7 +14156,7 @@
       "statement": "books/owner-control-post-reason.lisp. KEYSTONE fn-ocpr-line-names-the-reason-exactly-when-refused: fn-ocpr-log-line O WORD is fn-olog-control-post-line O WORD followed by ` reason=WORD' exactly when fn-own-control-outcome-result O WORD is :refused (and WORD a symbol), and the plain line for every other class. fn-ocpr-reason-is-the-word-when-refused-by-definition: the reply's reason is the Store's word for a refused completion, nil otherwise. Subjects: host/owner-host.lisp fn-owner-control-outcome (the line; the reason kept in fn-owner-control-reason) and host/native/owner.lisp's control reply site (the admission decision's reason, else this one). Teeth: tests/acl2/owner-control-post-reason-tests.lisp (the word for :refused, nothing for :accepted/:duplicate/:uncertain or a non-symbol; the plain line with no submission in flight); the positive witness is native (SCN-209).",
       "milestone": "M5",
       "requirements": [
-        "HST-034"
+        "HST-037"
       ],
       "depends_on": [],
       "assumptions": [],
