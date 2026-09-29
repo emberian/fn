@@ -347,8 +347,9 @@ policy change.
   host name, `hbox`), and the face's default is `localhost`, so a friend's
   posts from the web page carry `From: carol <carol@hbox>` until the
   operator edits the file and restarts. The honest default is the node's
-  `path-identity`, which the owner already holds as policy (web-config's
-  plan would take it from the owner at `run`).
+  `path-identity`, which the owner already holds as policy; done in this
+  lane (`fn-web-plan-domain`, books/web-config.lisp; the installer writes
+  no domain key any more).
 - `status`/`health` on a stopped store open it in full (2.0 s at 20k, 5.3 s
   after an import) on every call, so `status --watch` on a stopped node would replay the
   store every N seconds.
