@@ -1044,3 +1044,96 @@
            :in-theory (union-theories '(fn-bpnj-contact-next-is-the-two-scan-selection car-cons)
                                       (theory 'minimal-theory))))
   :rule-classes nil)
+
+;; KEYSTONES (PRF-103, over the selection the host asks: host/native/
+;; bp-service.lisp fnn-bpc-drive-contact calls fn-bpnjc-contact-next, equal
+;; to fn-bpnj-contact-next by fn-bpnjc-contact-next-is-the-head-scan).
+;; An offer names the first ready job: queued, for the peer, not offered on
+;; this contact, and, with routing in force, routed by fn-bprt-send-decision
+;; on its durable route, the offer carrying that decision's hop; so a job the
+;; table routes nowhere is never offered.  Along a contact the offered keys
+;; are distinct and none was offered before.
+(defthm fn-bpnj-contact-offer-is-the-routed-hop
+  (let* ((jobs (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+         (job (fn-bpnj-select jobs jobs peer routing offered))
+         (d (fn-bpnj-contact-next st peer routing offered))
+         (decision (fn-bprt-send-decision (fn-bpn-job-route job)
+                                          (fn-bpaj-eid-text peer) table)))
+    (implies (and (equal (car d) :offer)
+                  (equal routing (list :table table)))
+             (and (fn-bpnp-receipt-contact-event st peer)
+                  job
+                  (equal (fn-bpn-job-status job) :queued)
+                  (equal (fn-bpn-job-peer job) peer)
+                  (not (member-equal (fn-bpn-job-key job) offered))
+                  (equal (cadr d) (list :contact-job peer (fn-bpn-job-key job)))
+                  (equal (caddr d) (cons (fn-bpn-job-key job) offered))
+                  (equal (fn-bpn-nth 0 decision) :send)
+                  (equal (fn-bpn-nth 1 decision) (fn-bpn-job-route job))
+                  (equal (cadddr d) (fn-bpn-nth 3 decision)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnj-select-is-ready
+                  (rest (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+                  (jobs (fn-bpn-machine-state-jobs (fn-bpnf-base st))))
+                 (:instance fn-bpnj-ready-job-is-a-queued-job-for-the-peer
+                  (job (fn-bpnj-select (fn-bpn-machine-state-jobs (fn-bpnf-base st))
+                                       (fn-bpn-machine-state-jobs (fn-bpnf-base st))
+                                       peer routing offered))))
+           :in-theory (e/d (fn-bpnj-contact-next-is-the-two-scan-selection
+                            fn-bpnj-offerable fn-bpnj-member-is-member-equal)
+                           (fn-bpnj-select fn-bpnj-held fn-bprt-send-decision
+                            fn-bpnp-receipt-contact-event fn-bpnj-readyp)))))
+
+(local
+(defthm fn-bpnj-offer-threads-offered
+  (let ((d (fn-bpnj-contact-next st peer routing offered)))
+    (implies (equal (fn-bpn-nth 0 d) :offer)
+             (and (equal (fn-bpn-nth 2 d) (cons (fn-bpn-nth 0 (fn-bpn-nth 2 d)) offered))
+                  (not (member-equal (fn-bpn-nth 0 (fn-bpn-nth 2 d)) offered)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnj-select-is-ready
+                  (rest (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+                  (jobs (fn-bpn-machine-state-jobs (fn-bpnf-base st))))
+                 (:instance fn-bpnj-ready-job-is-a-queued-job-for-the-peer
+                  (job (fn-bpnj-select (fn-bpn-machine-state-jobs (fn-bpnf-base st))
+                                       (fn-bpn-machine-state-jobs (fn-bpnf-base st))
+                                       peer routing offered))))
+           :in-theory (e/d (fn-bpnj-contact-next-is-the-two-scan-selection
+                            fn-bpnj-member-is-member-equal)
+                           (fn-bpnj-select fn-bpnj-held fn-bpnj-offerable
+                            fn-bpnp-receipt-contact-event fn-bpnj-readyp))))))
+
+(local
+(defthm fn-bpnj-offer-extends-offered
+  (let ((d (fn-bpnj-contact-next st peer routing offered)))
+    (implies (equal (fn-bpn-nth 0 d) :offer)
+             (and (member-equal (fn-bpn-nth 0 (fn-bpn-nth 2 d)) (fn-bpn-nth 2 d))
+                  (implies (member-equal k offered)
+                           (member-equal k (fn-bpn-nth 2 d))))))
+  :hints (("Goal" :use fn-bpnj-offer-threads-offered
+           :in-theory (union-theories '(member-equal car-cons cdr-cons) (theory 'minimal-theory))))))
+
+(local
+(defthm fn-bpnj-offers-avoid-offered
+  (implies (member-equal k offered)
+           (not (member-equal k (fn-bpnj-contact-offers sts peer routing offered))))
+  :hints (("Goal" :induct (fn-bpnj-contact-offers sts peer routing offered)
+           :in-theory (union-theories '(fn-bpnj-contact-offers member-equal car-cons cdr-cons)
+                                      (theory 'minimal-theory)))
+          ("Subgoal *1/2" :use ((:instance fn-bpnj-offer-threads-offered (st (car sts))))))))
+
+(defthm fn-bpnj-contact-offers-each-job-at-most-once
+  (let ((offers (fn-bpnj-contact-offers sts peer routing offered)))
+    (and (no-duplicatesp-equal offers)
+         (implies (member-equal k offers)
+                  (not (member-equal k offered)))))
+  :hints (("Goal" :induct (fn-bpnj-contact-offers sts peer routing offered)
+           :in-theory (union-theories '(fn-bpnj-contact-offers member-equal no-duplicatesp-equal
+                                        car-cons cdr-cons)
+                                      (theory 'minimal-theory)))
+          ("Subgoal *1/2" :use ((:instance fn-bpnj-offer-threads-offered (st (car sts)))
+                                (:instance fn-bpnj-offer-extends-offered (st (car sts)))
+                                (:instance fn-bpnj-offers-avoid-offered
+                                 (k (fn-bpn-nth 0 (fn-bpn-nth 2 (fn-bpnj-contact-next (car sts) peer routing offered))))
+                                 (sts (cdr sts))
+                                 (offered (fn-bpn-nth 2 (fn-bpnj-contact-next (car sts) peer routing offered))))))))
