@@ -831,8 +831,12 @@ class Run:
 
 def run(scenario: Scenario, image: Path, work: Path, fault_hook: bool = True) -> tuple:
     """Run SCENARIO on IMAGE under WORK; (journal, verdict).  The journal is
-    WORK/journal.jsonl, beside the store, never inside it."""
+    WORK/journal.jsonl, beside the store, never inside it.  The `bp-node`
+    recipe (the receipt-observed point) is adapters/bp_node.py's."""
     Path(work).mkdir(parents=True, exist_ok=True)
+    if scenario.initial.get("recipe") == "bp-node":
+        from tools.resilience.adapters import bp_node
+        return bp_node.run_scenario(scenario, image, work, fault_hook)
     return Run(scenario, image, work, fault_hook).run()
 
 

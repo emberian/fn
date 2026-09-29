@@ -40,14 +40,15 @@ FAULT_CLASSES = ("contract-admissible", "assumption-challenging")
 STAGES = ("issued", "performed", "persisted", "observed")
 WITNESSES = ("post-accepted", "retry-reconciled", "read-completed",
              "read-during-competing-work", "reclaim-freed", "recovery-completed",
-             "memberships-listed", "checkpoint-installed")
+             "memberships-listed", "checkpoint-installed",
+             "receipt-delivered", "receipt-effect-once")
 REPLAY = ("exact", "timed", "image")
 CONTRACTS = ("local-commit-log",)
 CANDIDATE_RULES = ("absent", "present", "either")
 # The routes a post's cut is reached by; the registry carries each route's
 # column where they differ (design §5: `operator post' and `store post' are
 # a batch of one, the served POST a member of the owner's quantum).
-ROUTES = ("store-post", "operator-post", "served-post")
+ROUTES = ("store-post", "operator-post", "served-post", "bp-transit")
 HEALING_BOUND_KINDS = ("seconds", "experimental")
 EXPECTED = ("consistent", "violation", "inconclusive", "no-witness", "harness-failure",
             "healing-overran")
@@ -95,11 +96,17 @@ PENDING_BOUNDARIES = {
                                "is recorded and before the ADU/completion; prints 'BP APP "
                                "RECEIPT-OBSERVED HOLD release=PATH', released when the named "
                                "file appears; a signal there is the process-death form",
-                      "source": "lane/bp-remainder-codec 4247abc97 (READY f2e929ced)"},
-        "coordinate": "held form FN_APP_JOURNAL_TEST_HOLD_RECEIPT=decided (lane/bp-remainder-"
-                      "codec 4247abc97): the BP node runner that takes it is the next "
-                      "increment; until the selector is in this tree and that runner "
-                      "exists, pending"},
+                      "source": "lane/bp-remainder-codec 4247abc97 (READY f2e929ced; on dev "
+                                "since 96b3eb2e4)"},
+        # The runner that takes the held form (W7c-2a): with the selector in
+        # this tree and the runner present the point is executable, its
+        # actions the interleave at the hold and the death there.
+        "runner": "tools/resilience/adapters/bp_node.py",
+        "actions": ["interleave", "withhold-completion"],
+        "coordinate": "held form FN_APP_JOURNAL_TEST_HOLD_RECEIPT=decided (host/native/"
+                      "bp-app.lisp fnn-bpapp-pause-after-decision) driven by "
+                      "tools/resilience/adapters/bp_node.py (recipe bp-node): executable "
+                      "when both are in the tree, else pending"},
 }
 
 # Which operations reach each cut table, and the developer selector that
@@ -279,13 +286,20 @@ def boundary_registry() -> dict:
     selectors = io.read_text() if io.is_file() else ""
     for name, row in PENDING_BOUNDARIES.items():
         held = row.get("held_form")
-        registry[name] = {"source": "design §5 (pending)", "tables": [], "program": None,
+        held_in_tree = bool(held and held["selector"] in selectors)
+        runner = row.get("runner")
+        runner_in_tree = bool(runner and (ROOT / runner).is_file())
+        executable = held_in_tree and runner_in_tree
+        registry[name] = {"source": ("design §5 (held form + runner)" if executable
+                                     else "design §5 (pending)"),
+                          "tables": [], "program": None,
                           "book": None, "rule": None, "rules": {},
-                          "operations": list(row["operations"]), "actions": [],
+                          "operations": list(row["operations"]),
+                          "actions": list(row.get("actions", ())) if executable else [],
                           "selector": held["selector"] if held else None,
-                          "held_form": held,
-                          "held_in_tree": bool(held and held["selector"] in selectors),
-                          "executable": False, "note": row["note"],
+                          "held_form": held, "held_in_tree": held_in_tree,
+                          "runner": runner, "runner_in_tree": runner_in_tree,
+                          "executable": executable, "note": row["note"],
                           "owner": row["owner"], "kill_form": row["kill_form"],
                           "coordinate": row["coordinate"]}
     return registry

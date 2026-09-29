@@ -104,6 +104,28 @@ RULES = {
         "fn-orcn-swap-over-the-rebuild-keeps-conn-histories); no single theorem states "
         "old-or-new at the reader level (online-reclaim-8)",
         "fn-orcp-rerun-rewrites-nothing", "books/owner-reclaim-pass.lisp", None, "registered"),
+    "receipt-once": Rule(
+        "receipt-once",
+        "a BP application request whose decision is durable (:committed) is never "
+        "re-dispatched: a replay or a duplicate carrier of the same request answers only "
+        "(:return-receipt), so the request's effect (the stored article, the owed receipt) "
+        "happens once however many carriers arrive and survives the loss of its completion "
+        "(fn-bpaj-dispatch-committed-never-retries; the sender's obligation is released "
+        "only by a receipt naming exactly it: fn-bpah-released-receipt-names-exactly-its-"
+        "obligation, books/bp-release-authority.lisp, PRF-075)",
+        "fn-bpaj-dispatch-committed-never-retries", "books/bp-native-app.lisp", "PRF-132",
+        "registered"),
+    "receipt-policy-order": Rule(
+        "receipt-policy-order",
+        "a policy change after the decision is recorded does not re-decide it: the "
+        "article stays stored and the receipt stays owed; the receipt's forwarding follows "
+        "the route table of the pass that forwards it (host/native/bp-node.lisp reads "
+        "fn-owner-bp-route-table each pass): no route, the receipt is held and the pass "
+        "reports no-route; the route restored, it is sent (no theorem states the "
+        "pass-order property; the host's route read is measured by "
+        "tests/test_bp_node_native.py test_removed_route_keeps_transit_held_and_reports_"
+        "no_route)",
+        None, "host/native/bp-node.lisp", None, "pending"),
 }
 
 # Which rule a persisted-records fact (the image's scan) is judged by, per
@@ -120,13 +142,30 @@ def pending_rules(names) -> list:
     return sorted(n for n in set(names) if RULES[n].status == "pending")
 
 
+FATED = ("post", "receipt")      # the operations whose original attempt has a fate
+
+
+def fated(scenario) -> list:
+    return [o for o in scenario.operations if o.op in FATED]
+
+
 def histories(scenario, budget: int):
-    """Every assignment of a fate to each post's original attempt, or None
-    past BUDGET (the caller answers `inconclusive`, never `consistent`)."""
-    posts = [o.id for o in scenario.posts()]
-    if 2 ** len(posts) > budget:
+    """Every assignment of a fate to each post's (and each BP request
+    carrier's) original attempt, or None past BUDGET (the caller answers
+    `inconclusive`, never `consistent`)."""
+    ids = [o.id for o in fated(scenario)]
+    if 2 ** len(ids) > budget:
         return None
-    return [dict(zip(posts, fates)) for fates in itertools.product(FATES, repeat=len(posts))]
+    return [dict(zip(ids, fates)) for fates in itertools.product(FATES, repeat=len(ids))]
+
+
+def identity_committed_at(scenario, history: dict, identity: str, seq: int, journal) -> bool:
+    """Whether the BP request IDENTITY (a receipt operation's `bundle`) has
+    a committed carrier in HISTORY at SEQ: any carrier of it committed
+    (receipt-once: a second carrier of a committed request adds nothing)."""
+    return any(committed_at(scenario, history, o.id, seq, journal)
+               for o in scenario.operations
+               if o.op == "receipt" and o.args.get("bundle") == identity)
 
 
 def committed_at(scenario, history: dict, post_id: str, seq: int, journal) -> bool:
@@ -135,7 +174,7 @@ def committed_at(scenario, history: dict, post_id: str, seq: int, journal) -> bo
     the client saw accepted before SEQ (duplicate-is-no-op)."""
     if any(p["id"] == post_id for p in scenario.prior_posts()):
         return True
-    if history[post_id] == "committed":
+    if history.get(post_id) == "committed":
         return True
     for r in journal.of_kind("client"):
         if r["seq"] >= seq:
@@ -173,7 +212,38 @@ def narrow(scenario, history: dict, rec: dict, journal, registry: dict) -> tuple
                 if out == "accepted":
                     return not was, ("duplicate-is-no-op",)
                 return True, ()          # refused for another reason, or lost
+            if op.op == "receipt":
+                # The sender's transfer completed (its disposition durable):
+                # this carrier committed; interrupted: both fates survive.
+                if out == "accepted":
+                    return history[op.id] == "committed", ("receipt-once",)
+                return True, ()
             return True, ()
+        if ev == "probe":
+            # The receiver Store after healing: the identity present exactly
+            # when a carrier of it committed; the count is the committed
+            # identities (a duplicate carrier adds no article).
+            identity = rec["identity"]
+            is_in = identity_committed_at(scenario, history, identity, seq, journal)
+            identities = {o.args.get("bundle") for o in scenario.operations if o.op == "receipt"}
+            count = sum(1 for i in identities
+                        if identity_committed_at(scenario, history, i, seq, journal))
+            return (rec["present"] == is_in and rec["articles"] == count), ("receipt-once",)
+        if ev == "status":
+            # The sender's obligation released only by a receipt naming it:
+            # pinned=no needs a committed carrier of the request.
+            if rec.get("pinned") == "no":
+                return identity_committed_at(scenario, history, rec.get("identity", "bundle-1"),
+                                             seq, journal), ("receipt-once",)
+            return True, ()
+        if ev == "restart" and "forward" in rec:
+            # A dispatch pass after a policy change: without the route the
+            # owed receipt is held (no-route), never sent; with it, never
+            # reported no-route.  Which pass sends it is the host's.
+            forward, present = rec["forward"], rec.get("route_present", True)
+            if not present:
+                return forward != "sent", ("receipt-policy-order",)
+            return forward != "no-route", ("receipt-policy-order",)
         if ev == "read":
             art = rec["article"]
             is_in = committed_at(scenario, history, art, seq, journal)
@@ -243,7 +313,7 @@ def witnesses_observed(scenario, journal) -> set:
         ev = r.get("event")
         if ev == "reply":
             op = scenario.operation(r["operation"])
-            if r["outcome"] == "accepted":
+            if r["outcome"] == "accepted" and op.op in ("post", "retry"):
                 seen.add("post-accepted")
             if op.op == "retry" and r["outcome"] in ("duplicate", "accepted"):
                 seen.add("retry-reconciled")
@@ -259,4 +329,8 @@ def witnesses_observed(scenario, journal) -> set:
             seen.add("memberships-listed")
         if ev == "status" and str(r.get("open", "")).startswith("open=checkpoint:"):
             seen.add("checkpoint-installed")
+        if ev == "status" and r.get("receipt") == "accepted" and r.get("pinned") == "no":
+            seen.add("receipt-delivered")
+        if ev == "probe" and r.get("present") and r.get("articles") == 1:
+            seen.add("receipt-effect-once")
     return seen

@@ -165,9 +165,6 @@ if IMAGE_AVAILABLE:
             rows = {r["scenario"]: r for r in schedule_points.status()}
             pending = sorted(k for k, r in rows.items() if r["status"] == "pending")
             self.assertEqual(pending, ["schedule-page-read-outstanding",
-                                       "schedule-receipt-observed-duplicate",
-                                       "schedule-receipt-observed-lose-completion",
-                                       "schedule-receipt-observed-reorder",
                                        "schedule-reclaim-candidate-selected"],
                              "a pending point changed status: run it, or name why not")
             for s in schedule_points.scenarios():
