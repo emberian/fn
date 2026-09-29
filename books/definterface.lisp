@@ -20,8 +20,14 @@
 ;     [:keystones (THM | (THM :via CALLEE) ...)]
 ;     [:root :extract | :extract-extra] ; an extraction root, or one of the
 ;                                   ; extractor's EXTRA functions
-;     [:direct "why"])              ; the raw host applies it directly, not
+;     [:direct "why"]               ; the raw host applies it directly, not
 ;                                   ; through fnn-call's entry guard
+;     [:raw-with (THM ...)])        ; RAW DISPATCH (D40): the host calls the
+;                                   ; guard-verified definition, not its
+;                                   ; executable counterpart; THM ... is the
+;                                   ; named preservation argument for the
+;                                   ; guard conjuncts the entry guard does
+;                                   ; not evaluate
 ;
 ; Admitted, it checks, in the world as loaded (so a declaration cannot drift
 ; from the definition it declares):
@@ -38,7 +44,27 @@
 ;   * each keystone THM is a theorem whose formula calls NAME, or, for
 ;     (THM :via CALLEE), calls CALLEE and CALLEE is in NAME's call closure
 ;     (a :program entry cannot appear in a theorem; its keystones are about
-;     the logic functions it runs).
+;     the logic functions it runs);
+;   * :raw-with (D40, lane depth-debt-9): NAME is :common-lisp-compliant
+;     (guard verification is the condition for faithful raw execution: the
+;     raw definition is the logical function only where its guard holds);
+;     every guard conjunct that is not a kind check (fnn-entry-guard
+;     evaluates those before either dispatch) nor a stobj formal's own
+;     recognizer (the stobj discipline holds it) is over stobj formals only --
+;     a conjunct over an argument the host passes per call is refused, no
+;     preservation theorem can establish it; each such conjunct's head that
+;     the tree defines (a boot-strap primitive such as boundp-global fails
+;     loud in raw Lisp and is exempt) is the CONCLUSION of a named theorem;
+;     every named THM is a theorem of this world and mentions a function of
+;     that argument (the head, or a function a concluding theorem mentions:
+;     the establishing and per-transition theorems are stated over the
+;     carried relation, the bridge theorem concludes the head from it); and
+;     the guard has at least one such conjunct (a raw dispatch that skips
+;     nothing is refused: the annotation is a boundary claim, not a default).
+;     host/native/io.lisp fnn-install-raw-dispatch reads the table at image
+;     build and dispatches those entries raw; the developer selector
+;     FN_NATIVE_DISPATCH_COUNTERPART keeps the counterpart path for a native
+;     that compares both.
 ;
 ; and then records the declaration in the table `fn-interfaces'.  A failed
 ; check is a soft error naming the entry and the check.  The registry half
@@ -54,7 +80,8 @@
 
 (in-package "ACL2")
 
-(defconst *fn-di-keys* '(:class :kinds :exempt :keystones :root :direct :delegates))
+(defconst *fn-di-keys* '(:class :kinds :exempt :keystones :root :direct :delegates
+                         :raw-with))
 
 (defconst *fn-di-classes* '(:common-lisp-compliant :ideal :program))
 
@@ -107,6 +134,11 @@
     (and (fn-di-keystone-entryp (car x))
          (fn-di-keystones-formp (cdr x)))))
 
+(defun fn-di-raw-with-formp (x)
+  (declare (xargs :mode :program))
+  ; (THM ...): a non-empty list of theorem names
+  (and (consp x) (symbol-listp x) (not (member-eq nil x))))
+
 (defun fn-di-refusal (name kvs)
   (declare (xargs :mode :program))
   ; nil when the form is well-formed; else (REASON . DETAILS)
@@ -134,6 +166,9 @@
          (not (and (symbolp (fn-di-get :delegates kvs))
                    (fn-di-get :delegates kvs))))
     (list :bad-delegates (fn-di-get :delegates kvs)))
+   ((and (assoc-keyword :raw-with kvs)
+         (not (fn-di-raw-with-formp (fn-di-get :raw-with kvs))))
+    (list :bad-raw-with (fn-di-get :raw-with kvs)))
    (t nil)))
 
 ; -----------------------------------------------------------------------------
@@ -264,6 +299,207 @@
               name callee))
         (t nil)))
 
+; -----------------------------------------------------------------------------
+; :raw-with (D40).  The conjuncts raw dispatch leaves unevaluated are the
+; guard's conjuncts that are not kind checks; the annotation names the
+; theorems that establish and preserve them.
+
+(defun fn-di-conjunct-head (c)
+  (declare (xargs :mode :program))
+  ; the function symbol a translated conjunct applies (through a let's
+  ; lambda); nil for a variable or a constant
+  (cond ((atom c) nil)
+        ((eq (car c) 'quote) nil)
+        ((consp (car c)) (fn-di-conjunct-head (car (last (car c)))))
+        (t (car c))))
+
+(defun fn-di-non-stobj-vars (vars formals stobjs)
+  (declare (xargs :mode :program))
+  ; the variables of VARS that are formals the host passes (not stobjs)
+  (cond ((atom vars) nil)
+        ((and (member-eq (car vars) formals)
+              (null (nth (fn-di-position (car vars) formals 0) stobjs)))
+         (cons (car vars) (fn-di-non-stobj-vars (cdr vars) formals stobjs)))
+        (t (fn-di-non-stobj-vars (cdr vars) formals stobjs))))
+
+(defun fn-di-stobj-recognizer-conjunctp (c formals stobjs w)
+  (declare (xargs :mode :program))
+  ; (R v) with v a stobj formal and R a function of that stobj (its
+  ; recognizer, as :stobjs puts it in the guard): the stobj discipline
+  ; establishes it -- the live stobj is that stobj -- so raw dispatch skips
+  ; nothing here
+  (and (consp c) (symbolp (car c)) (consp (cdr c)) (null (cddr c))
+       (symbolp (cadr c)) (member-eq (cadr c) formals)
+       (nth (fn-di-position (cadr c) formals 0) stobjs)
+       (eq (getpropc (car c) 'stobj-function nil w) (cadr c))))
+
+(defun fn-di-invariant-conjuncts (conjuncts formals stobjs kinds w)
+  (declare (xargs :mode :program))
+  ; the conjuncts fnn-entry-guard does not evaluate and no discipline holds:
+  ; every conjunct that is neither a kind check on a non-stobj formal nor a
+  ; stobj formal's own recognizer
+  (cond ((atom conjuncts) nil)
+        ((or (fn-di-kind-checks (list (car conjuncts)) formals stobjs kinds)
+             (fn-di-stobj-recognizer-conjunctp (car conjuncts) formals stobjs w))
+         (fn-di-invariant-conjuncts (cdr conjuncts) formals stobjs kinds w))
+        (t (cons (car conjuncts)
+                 (fn-di-invariant-conjuncts (cdr conjuncts) formals stobjs kinds w)))))
+
+(defun fn-di-conjunct-over-argument (conjuncts formals stobjs)
+  (declare (xargs :mode :program))
+  ; the first invariant conjunct that constrains a host-passed argument, as
+  ; (CONJUNCT . VARIABLE); nil when every one is over stobjs alone
+  (cond ((atom conjuncts) nil)
+        ((fn-di-non-stobj-vars (all-vars (car conjuncts)) formals stobjs)
+         (cons (car conjuncts)
+               (car (fn-di-non-stobj-vars (all-vars (car conjuncts)) formals stobjs))))
+        (t (fn-di-conjunct-over-argument (cdr conjuncts) formals stobjs))))
+
+(defun fn-di-invariant-heads (conjuncts w)
+  (declare (xargs :mode :program))
+  ; the heads the tree defines, each once; a boot-strap primitive is exempt
+  (cond ((atom conjuncts) nil)
+        (t (let ((head (fn-di-conjunct-head (car conjuncts)))
+                 (rest (fn-di-invariant-heads (cdr conjuncts) w)))
+             (if (and head
+                      (not (getpropc head 'predefined nil w))
+                      (not (member-eq head rest)))
+                 (cons head rest)
+               rest)))))
+
+(defun fn-di-theorem-conclusion (formula)
+  (declare (xargs :mode :program))
+  (if (and (consp formula) (eq (car formula) 'implies))
+      (fn-di-theorem-conclusion (caddr formula))
+    formula))
+
+(defun fn-di-missing-theorem (thms w)
+  (declare (xargs :mode :program))
+  (cond ((atom thms) nil)
+        ((null (getpropc (car thms) 'theorem nil w)) (car thms))
+        (t (fn-di-missing-theorem (cdr thms) w))))
+
+(defun fn-di-positive-conclusion-headp (head formula)
+  (declare (xargs :mode :program))
+  ; Occurrence is not establishment: NOT, IFF and EQUAL can all mention
+  ; HEAD while concluding its failure. Only a positive top-level conjunct
+  ; counts here. This remains a declaration lint, not a guard proof.
+  (let ((conclusion (fn-di-theorem-conclusion formula)))
+    (and (consp conclusion) (eq (car conclusion) head))))
+
+(defun fn-di-concluding-theorems (head thms w)
+  (declare (xargs :mode :program))
+  ; the theorems of THMS whose conclusion applies HEAD
+  (cond ((atom thms) nil)
+        ((fn-di-positive-conclusion-headp
+          head (getpropc (car thms) 'theorem nil w))
+         (cons (car thms) (fn-di-concluding-theorems head (cdr thms) w)))
+        (t (fn-di-concluding-theorems head (cdr thms) w))))
+
+(defun fn-di-unconcluded-head (heads thms w)
+  (declare (xargs :mode :program))
+  (cond ((atom heads) nil)
+        ((null (fn-di-concluding-theorems (car heads) thms w)) (car heads))
+        (t (fn-di-unconcluded-head (cdr heads) thms w))))
+
+(defun fn-di-theorems-fnnames (thms w)
+  (declare (xargs :mode :program))
+  (if (atom thms)
+      nil
+    (append (all-fnnames (getpropc (car thms) 'theorem nil w))
+            (fn-di-theorems-fnnames (cdr thms) w))))
+
+(defun fn-di-guard-preservation-theoremp (name head formula guard)
+  (declare (xargs :mode :program))
+  ; A deliberately narrow lint: a positive conclusion about this entry,
+  ; with no hypothesis stronger than its literal guard. It does not establish
+  ; the initial invariant or identify the right returned stobj/effects.
+  (and (consp formula) (eq (car formula) 'implies)
+       (fn-di-positive-conclusion-headp head formula)
+       (member-eq name (all-fnnames (caddr formula)))
+       (subsetp-equal (fn-di-conjuncts (cadr formula))
+                     (fn-di-conjuncts guard))))
+
+(defun fn-di-has-guard-preservation (name head thms guard w)
+  (declare (xargs :mode :program))
+  (and (consp thms)
+       (or (fn-di-guard-preservation-theoremp
+            name head (getpropc (car thms) 'theorem nil w) guard)
+           (fn-di-has-guard-preservation name head (cdr thms) guard w))))
+
+(defun fn-di-unpreserved-head (name heads thms guard w)
+  (declare (xargs :mode :program))
+  (cond ((atom heads) nil)
+        ((not (fn-di-has-guard-preservation name (car heads) thms guard w))
+         (car heads))
+        (t (fn-di-unpreserved-head name (cdr heads) thms guard w))))
+
+(defun fn-di-related-fnnames (heads thms w)
+  (declare (xargs :mode :program))
+  ; the heads, and every function a theorem concluding one of them mentions:
+  ; what a named theorem must be about
+  (if (atom heads)
+      nil
+    (append (cons (car heads)
+                  (fn-di-theorems-fnnames (fn-di-concluding-theorems (car heads) thms w) w))
+            (fn-di-related-fnnames (cdr heads) thms w))))
+
+(defun fn-di-unrelated-theorem (thms related w)
+  (declare (xargs :mode :program))
+  (cond ((atom thms) nil)
+        ((null (intersection-eq (all-fnnames (getpropc (car thms) 'theorem nil w))
+                                related))
+         (car thms))
+        (t (fn-di-unrelated-theorem (cdr thms) related w))))
+
+(defun fn-di-raw-with-problem (name kvs w)
+  (declare (xargs :mode :program))
+  ; nil, or a msg naming the first check the world refutes
+  (let ((thms (fn-di-get :raw-with kvs)))
+    (if (null thms)
+        nil
+      (let* ((formals (getpropc name 'formals nil w))
+             (stobjs (getpropc name 'stobjs-in nil w))
+             (conjuncts (fn-di-invariant-conjuncts
+                         (fn-di-conjuncts (getpropc name 'guard *t* w))
+                         formals stobjs (fn-di-guard-kinds w) w))
+             (over-argument (fn-di-conjunct-over-argument conjuncts formals stobjs))
+             (heads (fn-di-invariant-heads conjuncts w))
+             (missing (fn-di-missing-theorem thms w))
+             (unconcluded (fn-di-unconcluded-head heads thms w))
+             (unpreserved (fn-di-unpreserved-head
+                           name heads thms (getpropc name 'guard *t* w) w))
+             (unrelated (fn-di-unrelated-theorem
+                         thms (fn-di-related-fnnames heads thms w) w)))
+        (cond
+         ((not (eq (fn-di-get :class kvs) :common-lisp-compliant))
+          (msg ":raw-with on ~x0, which is not :common-lisp-compliant: only a ~
+                guard-verified definition executes faithfully raw" name))
+         (over-argument
+          (msg ":raw-with on ~x0, whose guard conjunct ~x1 constrains the ~
+                host-passed argument ~x2: no preservation theorem establishes ~
+                a per-call argument, and raw dispatch would leave it unchecked"
+               name (car over-argument) (cdr over-argument)))
+         ((null heads)
+          (msg ":raw-with on ~x0, whose guard has no conjunct beyond its kind ~
+                checks and boot-strap primitives: raw dispatch would skip ~
+                nothing" name))
+         (missing
+          (msg ":raw-with names ~x0, which is not a theorem in this world" missing))
+         (unconcluded
+          (msg ":raw-with on ~x0: no named theorem concludes ~x1, a guard ~
+                conjunct raw dispatch leaves unevaluated (the named theorems ~
+                are ~&2)" name unconcluded thms))
+         (unpreserved
+          (msg ":raw-with on ~x0: no named positive preservation theorem for ~x1 ~
+                mentions this entry under no hypotheses stronger than its guard"
+               name unpreserved))
+         (unrelated
+          (msg ":raw-with names ~x0, which mentions no function of ~x1's ~
+                guard argument (~&2)" unrelated name
+               (fn-di-related-fnnames heads thms w)))
+         (t nil))))))
+
 (defun fn-di-problem (name kvs w)
   (declare (xargs :mode :program))
   ; nil, or a msg naming the first check the world refutes
@@ -280,6 +516,7 @@
                             (fn-di-world-kinds name w)))
      ((fn-di-keystones-problem name (fn-di-get :keystones kvs) w))
      ((fn-di-delegates-problem name (fn-di-get :delegates kvs) w))
+     ((fn-di-raw-with-problem name kvs w))
      (t nil))))
 
 (defun fn-di-refusal-text (reason)
@@ -290,6 +527,8 @@
                            (cdr reason) *fn-di-keys*))
     (:bad-root (msg ":root ~x0 is not :extract or :extract-extra." (cadr reason)))
     (:bad-delegates (msg ":delegates ~x0 is not a function name." (cadr reason)))
+    (:bad-raw-with (msg ":raw-with ~x0 is not a non-empty list of theorem names."
+                        (cadr reason)))
     (otherwise (msg "malformed form: ~x0." reason))))
 
 ; The events a checked declaration adds: the table entry, and for a declared

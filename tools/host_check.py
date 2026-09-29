@@ -682,7 +682,7 @@ def load_check(acl2: Path, files: list[str], timeout: int,
     with tempfile.TemporaryDirectory(prefix="fn-host-load-") as scratch:
         driver = Path(scratch) / "driver.lsp"
         driver.write_text(load_driver(files), encoding="utf-8")
-        session = ((world_session(world) + interface_world_forms(interface_names(declared))
+        session = ((world_session(world) + interface_world_forms(interface_names(declared, world))
                     if world is not None else "")
                    + "(defttag :fn-host-load-check)\n"
                    f'(progn! (set-raw-mode t) (load "{driver}"))\n(good-bye)\n')
@@ -767,9 +767,20 @@ def load_check(acl2: Path, files: list[str], timeout: int,
 IFACE_TAG = "HOSTCHECK-IFACE-UNDEFINED"
 
 
-def interface_names(decls: list[dict]) -> list[str]:
-    """The declared names a world check asks about (stobj creators aside)."""
-    return sorted({d["name"] for d in decls if not d["name"].startswith("create-")})
+def interface_names(decls: list[dict], world: list[object] | None = None) -> list[str]:
+    """The declared names to check in this world (stobj creators aside).
+
+    Extraction-only host entries are checked when their declaration file is
+    loaded. Native prefixes omit that file and its host-defined functions.
+    Keep ordinary declarations checked, including stale native declarations.
+    """
+    from ledger import head
+    extract_loaded = world is None or any(
+        head(form) == "ld" and len(form) >= 2
+        and form[1] == "host/interfaces-extract.lisp" for form in world)
+    return sorted({d["name"] for d in decls
+                   if not d["name"].startswith("create-")
+                   and (extract_loaded or d.get("source") != "host/interfaces-extract.lisp")})
 
 
 def interface_world_forms(names: list[str]) -> str:
@@ -1452,10 +1463,16 @@ def repository_definitions(root: Path = ROOT) -> dict[str, list[str]]:
 
 def book_holes(builds=WORLD_BUILDS, root: Path = ROOT,
                index: dict[str, list[str]] | None = None) -> list[str]:
-    """`BUILD: FILE:LINE: NAME ...` for each call in an ld host file of BUILD
-    to a name BUILD's world lacks and a repository book defines."""
+    """Missing repository definitions used by ld calls or loaded interfaces.
+
+    A compliant entry can be called directly by the raw host, without an
+    ACL2-mode call site. Its declaration still needs the defining book in
+    the actual image world, rather than merely somewhere in the repository.
+    """
     import build_lists_check
+    import interface_emit
     index = repository_definitions(root) if index is None else index
+    declarations = interface_emit.declarations(root)
     dtn_excused = {name for _, (_, names) in build_lists_check.DTN_OMITTED.items()
                    for name in names}
     found: list[str] = []
@@ -1463,7 +1480,18 @@ def book_holes(builds=WORLD_BUILDS, root: Path = ROOT,
         defined, _, _ = world_of(build, root)
         defined = {name.lower() for name in defined}
         excused = dtn_excused if build == build_lists_check.DTN_BUILD else set()
-        for relative in ld_sequence(build, root):
+        loaded = ld_sequence(build, root)
+        for declaration in declarations:
+            name = declaration["name"]
+            source = declaration["source"]
+            if source not in loaded or name in defined or name not in index:
+                continue
+            found.append(f"{build}: {source}:{declaration['line']}: declared {name} "
+                         f"is defined in {', '.join(index[name])}, which this image's "
+                         "world does not include: include-book it in the build's "
+                         "authoritative source (and regenerate the umbrellas: "
+                         "tools/extract/world.py)")
+        for relative in loaded:
             path = root / relative
             if not path.is_file():
                 continue
@@ -1608,26 +1636,27 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout-seconds", type=int, default=DEFAULT_TIMEOUT_SECONDS)
     parser.add_argument("--log-dir", default=None,
                         help="write each session's transcript here")
-    parser.add_argument("--load", action="store_true",
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--load", action="store_true",
                         help="load the raw host/native files in the build's order into one "
                              "bare ACL2 and report errors, arity, macro order and names "
                              "nothing defines (seconds; no image build).  Requires FN_ACL2 "
                              "(or acl2 on PATH): exit 2 NOT RUN without it")
-    parser.add_argument("--tables", action="store_true",
+    mode.add_argument("--tables", action="store_true",
                         help="static: refuse a global make-hash-table in host/ that is "
                              "neither :synchronized t nor declared thread-confined or "
                              "guarded-by a lock (no ACL2)")
-    parser.add_argument("--alone", action="store_true",
+    mode.add_argument("--alone", action="store_true",
                         help="load each FILE (default: every host file) alone in its own "
                              "ACL2: a diagnosis, not the gate (build order is the gate)")
-    parser.add_argument("--world", action="store_true",
+    mode.add_argument("--world", action="store_true",
                         help="static: every name a raw host/native file passes to fnn-core* "
                              "or fnn-call is defined in the world of the image that loads it "
                              "(build.lisp, build-dtn.lisp; FILEs name other build scripts)")
-    parser.add_argument("--interfaces", action="store_true",
+    mode.add_argument("--interfaces", action="store_true",
                         help="static: the declared-interface step (interface_emit --check's "
                              "findings, counts per touched host file); --load adds the world half")
-    parser.add_argument("--forward", action="store_true",
+    mode.add_argument("--forward", action="store_true",
                         help="static: a call in an ld host file of a name only a later "
                              "form of the ld files defines (no ACL2; --load runs it too)")
     parser.add_argument("--build", default=None,
@@ -1638,10 +1667,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--require-world", action="store_true",
                         help="with --load: exit 2 NOT RUN when the certified umbrella is "
                              "not available, rather than falling back to a bare ACL2")
-    parser.add_argument("--books", action="store_true",
+    mode.add_argument("--books", action="store_true",
                         help="static: every name an ld host file calls that a repository "
                              "book defines is in the image world (BUILD... default both)")
-    parser.add_argument("--read", action="store_true",
+    mode.add_argument("--read", action="store_true",
                         help="static: every host/ file (or FILE) reads as s-expressions "
                              "(no ACL2; half a second)")
     args = parser.parse_args(argv)

@@ -34,10 +34,21 @@
   (declare (xargs :guard t))
   (list active queue i n acc))
 
+; The shape a sweep state keeps between steps: what a step's guard needs of
+; it, never its cells (a 10 MiB canvas is not re-walked per quantum; the
+; finish, which consumes the cells, checks them once, fn-bpfr-finish).
+(defun fn-bpfr-statep (s)
+  (declare (xargs :guard t))
+  (and (true-listp s)
+       (true-list-listp (nth 0 s))
+       (fn-bpfw-fragment-listp (nth 1 s))
+       (natp (nth 2 s))
+       (natp (nth 3 s))))
+
 (defun fn-bpfr-step (active queue i n acc quantum)
   (declare (xargs :guard (and (true-list-listp active)
                               (fn-bpfw-fragment-listp queue)
-                              (natp i) (natp n) (true-listp acc)
+                              (natp i) (natp n)
                               (natp quantum))
                   :measure (nfix n) :verify-guards nil))
   (if (or (zp n) (zp quantum))
@@ -54,7 +65,7 @@
                                fn-bpfw-head-cell fn-bpfw-fragmentp))))
 
 (defun fn-bpfr-resume (s)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (fn-bpfr-statep s) (true-listp (nth 4 s)))))
   (fn-bpfw-sweep-acc (nth 0 s) (nth 1 s) (nth 2 s) (nth 3 s) (nth 4 s)))
 
 ; KEYSTONE.  One bounded step changes nothing about the sweep's result.
@@ -98,6 +109,28 @@
            :in-theory (disable fn-bpfw-admit fn-bpfw-advance
                                fn-bpfw-head-cell))))
 
+; The step keeps the shape, and the cells a true list: the host's loop
+; carries a well-shaped state from fn-bpfr-start to the finish without
+; re-walking it (books/bp-node-fragment-job fn-bpfj-step-keeps-jobp).
+(defthm fn-bpfr-step-keeps-statep
+  (implies (and (true-list-listp active) (fn-bpfw-fragment-listp queue)
+                (natp i) (natp n))
+           (fn-bpfr-statep (fn-bpfr-step active queue i n acc quantum)))
+  :hints (("Goal" :induct (fn-bpfr-step active queue i n acc quantum)
+           :in-theory (e/d (fn-bpfr-state)
+                           (fn-bpfw-admit fn-bpfw-advance fn-bpfw-head-cell
+                            fn-bpfw-fragmentp fn-bpfw-head-cell-is-active-cell
+                            mv-nth mod floor)))))
+
+(defthm fn-bpfr-step-keeps-cells-true-listp
+  (implies (true-listp acc)
+           (true-listp (nth 4 (fn-bpfr-step active queue i n acc quantum))))
+  :hints (("Goal" :induct (fn-bpfr-step active queue i n acc quantum)
+           :in-theory (e/d (fn-bpfr-state)
+                           (fn-bpfw-admit fn-bpfw-advance fn-bpfw-head-cell
+                            fn-bpfw-fragmentp fn-bpfw-head-cell-is-active-cell
+                            mv-nth mod floor)))))
+
 (defthm fn-bpfr-step-advances
   (implies (and (not (zp n)) (not (zp quantum)))
            (< (nfix (nth 3 (fn-bpfr-step active queue i n acc quantum)))
@@ -109,13 +142,17 @@
 
 ; Running steps of QUANTUM to the end.
 (defun fn-bpfr-run (s quantum)
-  (declare (xargs :guard t :verify-guards nil
+  (declare (xargs :guard (and (fn-bpfr-statep s) (natp quantum))
+                  :verify-guards nil
                   :measure (nfix (nth 3 s))))
   (if (or (zp (nth 3 s)) (zp quantum))
       s
     (fn-bpfr-run (fn-bpfr-step (nth 0 s) (nth 1 s) (nth 2 s) (nth 3 s)
                                (nth 4 s) quantum)
                  quantum)))
+
+(verify-guards fn-bpfr-run
+  :hints (("Goal" :in-theory (disable fn-bpfr-step fn-bpfw-fragmentp))))
 
 (defthm fn-bpfr-run-resumes
   (equal (fn-bpfr-resume (fn-bpfr-run s quantum)) (fn-bpfr-resume s))
@@ -138,14 +175,45 @@
 ; The state before the first position, and the outcome of a finished one:
 ; the reassembler's own sort and outcome function around the sweep.
 (defun fn-bpfr-start (fs total)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-bpfw-fragment-listp fs)))
   (fn-bpfr-state nil (fn-bpfw-sort fs) 0 total nil))
 
+(local
+ (defthm fn-bpfr-sweep-true-listp
+   (true-listp (fn-bpfw-sweep active queue i n))
+   :hints (("Goal" :induct (fn-bpfw-sweep active queue i n)
+            :in-theory (disable fn-bpfw-admit fn-bpfw-advance
+                                fn-bpfw-head-cell)))))
+
+(local
+ (defthm fn-bpfr-revappend-true-listp
+   (implies (true-listp y) (true-listp (revappend x y)))
+   :hints (("Goal" :in-theory (enable revappend)))))
+
+; A resumption over true-list cells is a true list (the finish's outcome
+; guard).
+(defthm fn-bpfr-resume-true-listp
+  (implies (true-listp (nth 4 s))
+           (true-listp (fn-bpfr-resume s)))
+  :hints (("Goal" :use ((:instance fn-bpfw-sweep-acc-is-sweep
+                                   (active (nth 0 s)) (queue (nth 1 s))
+                                   (i (nth 2 s)) (n (nth 3 s))
+                                   (acc (nth 4 s))))
+           :in-theory (e/d (fn-bpfr-resume)
+                           (fn-bpfw-sweep fn-bpfw-sweep-acc
+                            fn-bpfw-sweep-acc-is-sweep nth
+                            fn-bpfw-admit fn-bpfw-advance fn-bpfw-head-cell)))))
+
 (defun fn-bpfr-finish (fs total s)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (fn-bpfr-statep s) (true-listp (nth 4 s)))
+                  :verify-guards nil))
   (if (not (fn-bpfw-inputsp fs total))
       (list :invalid :bounds)
     (fn-bpfw-outcome (fn-bpfr-resume s))))
+
+(verify-guards fn-bpfr-finish
+  :hints (("Goal" :in-theory (disable fn-bpfr-resume fn-bpfw-outcome
+                                      fn-bpfw-inputsp nth))))
 
 ; KEYSTONE.  Steps of any positive QUANTUM, run to completion from the start,
 ; finish with the reassembler's outcome: the uncapped reference's.

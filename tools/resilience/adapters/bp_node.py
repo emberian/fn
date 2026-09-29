@@ -59,6 +59,7 @@ HOLD_LINE = b"BP APP RECEIPT-OBSERVED HOLD release="
 RELEASED_LINE = b"BP APP RECEIPT-OBSERVED RELEASED"
 QUEUED_LINE = b"BP node receipt queued"
 DELIVERED_LINE = b"BP node delivery receipt-accepted"
+CONTROL_LINE = b"BP NODE CONTROL "
 DISPOSITION = re.compile(rb"BP application handoff durable disposition=([a-z-]+)")
 # Lines the receipt path prints only past the hold point (bp-node.lisp's
 # outbox `receipt queued', bp-service.lisp's durable disposition): seen
@@ -100,6 +101,19 @@ ARTICLE = (
 
 class HarnessFailure(Exception):
     pass
+
+
+def control_path(output: bytes, expected: Path) -> str:
+    """Require the receiver's actual installed listener, with its Store path."""
+    lines = [line[len(CONTROL_LINE):] for line in output.splitlines()
+             if line.startswith(CONTROL_LINE)]
+    if not lines:
+        raise HarnessFailure("live-route-unavailable:BP NODE CONTROL announcement absent")
+    wanted = os.fsencode(expected)
+    if lines != [wanted]:
+        raise HarnessFailure("control-store-mismatch:expected={!r},observed={!r}".format(
+            wanted, lines))
+    return os.fsdecode(lines[0])
 
 
 class BpRun:
@@ -172,11 +186,9 @@ class BpRun:
                   listen_port, GROUP, "32768", "16", "contact", self.relay.port)
         self.must("route-add", "operator", config, "bp-route", "add", peer + "*", name)
 
-    def node(self, receiver: bool, once: bool, extra_env=None):
+    def node_argv(self, receiver: bool, once: bool, listen_port: int):
         node = RECEIVER if receiver else SENDER
         peer = SENDER if receiver else RECEIVER
-        listen_port = free_port()
-        self.trust(receiver, listen_port)
         argv = [str(self.image), "--fn", "bp-node", "serve", str(listen_port),
                 str(self.receiver_journal if receiver else self.sender_journal),
                 str(self.receiver_store if receiver else self.sender_store),
@@ -184,12 +196,31 @@ class BpRun:
                 str(self.receiver_workflow if receiver else self.sender_workflow),
                 node, peer, node, "native-policy", node, "127.0.0.1", str(self.relay.port),
                 "1" if once else "0", *BP_ARGS]
+        if receiver and self.variant() == "reorder":
+            # The same running node pumps route changes during its receipt
+            # hold.  Do not substitute a stopped-store policy edit.
+            argv.extend(("--control-config", str(self.configs[True])))
+        return argv
+
+    def node(self, receiver: bool, once: bool, extra_env=None):
+        listen_port = free_port()
+        self.trust(receiver, listen_port)
+        argv = self.node_argv(receiver, once, listen_port)
         process = start(argv, cwd=ROOT, env=environment(extra_env))
         self.procs.append(process)
         try:
             line = process.announcement(b"BP NODE LISTENING ", timeout=60)
         except Exception as e:      # the harness's fail: a deadline or an exit
             raise HarnessFailure("node-not-listening:{}".format(str(e)[:120]))
+        if receiver and self.variant() == "reorder":
+            # Read from birth: CONTROL may precede LISTENING and the native
+            # harness's announcement cursor already passed that line.
+            output, end = process.stdout.wait_for(_first_line_of((CONTROL_LINE,)),
+                                                  0, time.monotonic() + 60)
+            if end is None:
+                raise HarnessFailure("live-route-unavailable:BP NODE CONTROL announcement absent")
+            path = control_path(output, self.receiver_store / "control.sock")
+            self.j.environment("control-installed", path=path, owner="receiver-bp-node")
         return process, int(line.rsplit(b" ", 1)[1])
 
     def send(self, port: int, op_id: str):
@@ -246,7 +277,24 @@ class BpRun:
         verb = "add" if present else "remove"
         r = self.invoke("operator", self.configs[True], "bp-route", verb, *ROUTE)
         if r.returncode != EXIT.OK:
-            raise HarnessFailure("bp-route-{}:rc={}".format(verb, r.returncode))
+            # The operator's own words go into the cause.  On 444fb9f41 (run
+            # rf4-444f-2) `bp-route remove` at the hold is `refused store-held
+            # (a process holds the store lock and no control socket is there
+            # to reach it ...)`: the receiver is a `bp-node serve` process,
+            # which opens no control socket, and the owner service (`operator
+            # run`, host/native/owner.lisp) does not embed the BP node, so no
+            # live reconfiguration path (host/native/control.lisp :admin ->
+            # fnn-owner-live-admin-serialized) reaches it.  That is the image
+            # naming the missing form: pending by name, never a stopped node
+            # standing in for the running one.
+            words = " ".join(((r.stdout or b"") + b" " + (r.stderr or b""))
+                             .decode("ascii", "replace").split())
+            if "store-held" in words:
+                raise HarnessFailure(
+                    "live-route-unavailable:bp-route {} under a running `bp-node serve' "
+                    "(no control socket; the owner service does not embed the BP node): "
+                    "{}".format(verb, words[:160]))
+            raise HarnessFailure("bp-route-{}:rc={}:{}".format(verb, r.returncode, words[:160]))
         self.route_present = present
         self.j.client("policy-change", operation=op_id, what="receipt-policy",
                       change="route-restored" if present else "route-removed",
@@ -258,14 +306,28 @@ class BpRun:
             seen = True
         except Exception:
             seen = False
+        # The obligation's pin is a stopped-store observation: while the
+        # sender node runs it holds its store's lifecycle lock and
+        # `bp-obligation status` is refused (rc=1, pinned unknown: run
+        # rf5-444f-1, both variants no-witness on receipt-delivered); on the
+        # stopped store it reads `status=receipted pinned=no`.
+        sender_node.stop(grace=10)
         r = self.invoke("bp-obligation", "status", self.sender_store, self.sender_workflow, WORK)
         pinned = ("no" if b"pinned=no" in r.stdout else
                   "yes" if b"pinned=yes" in r.stdout else "unknown")
+        words = {} if r.returncode == EXIT.OK else {
+            "words": " ".join(((r.stdout or b"") + b" " + (r.stderr or b""))
+                              .decode("ascii", "replace").split())[:160]}
         self.j.client("status", operation=op_id, receipt="accepted" if seen else "absent",
-                      pinned=pinned, returncode=r.returncode)
+                      pinned=pinned, returncode=r.returncode, **words)
 
     def probe(self, op_id: str):
-        status = self.invoke("store", self.receiver_store, "status", timeout=300)
+        # `operator CONFIG status --replay': the counts over the replayed log
+        # (transactions= articles=); the plain stopped report (operability-2
+        # cbe0c1d7d) is the header only, and the store verb's `--replay'
+        # (operability-9) is not on 444fb9f41 (rf4-444f-2: store-status:rc=0).
+        # The receiver node is stopped by now (both variants).
+        status = self.invoke("operator", self.configs[True], "status", "--replay", timeout=300)
         counts = re.findall(rb"^transactions=[0-9]+ articles=([0-9]+) ", status.stdout,
                             re.MULTILINE)
         if status.returncode != EXIT.OK or len(counts) != 1:

@@ -258,3 +258,98 @@
                 "refused limit max-transactions=99 below-current-use: the store holds 100; limit max-transactions requested=128 funded=none ceiling=4294967295"))
 (assert! (equal (fn-lim-decision-line "max-history-octets" 4294967296 *lim-t-past* 0)
                 "refused limit max-history-octets=4294967296 above-representation-ceiling: the format carries at most 4294967295"))
+
+; -----------------------------------------------------------------------------
+; The running owner's carried triple (PRF-996's live report).
+
+; fn-lim-reported-triple-is-the-decisions.  REACHABLE (a recorded raise on a
+; live owner): every hypothesis holds, the reply is the decision sentence
+; then the report's line for the field, and that line is in the report.
+(defconst *lim-t-after* (fn-lim-carry-after "max-transactions" 4096 '(:at-restart 2688)
+                                            (cons *lim-t-p* *lim-t-funded*)))
+(defconst *lim-t-after-line*
+  (fn-lim-values-line "max-transactions" (fn-lim-carry-requested *lim-t-after*)
+                      (fn-lim-carry-funded *lim-t-after*)))
+(assert! (and (fn-lim-fieldp "max-transactions") *lim-t-p* *lim-t-funded*))
+(assert! (equal (fn-lim-reply-line "max-transactions" 4096 '(:at-restart 2688) 4200
+                                   *lim-t-p* *lim-t-funded*)
+                (concatenate 'string
+                             (fn-lim-decision-line "max-transactions" 4096 '(:at-restart 2688) 4200)
+                             "; " *lim-t-after-line*)))
+(assert! (member-equal *lim-t-after-line* (fn-lim-report-lines *lim-t-after*)))
+(assert! (equal *lim-t-after-line*
+                "limit max-transactions requested=4096 funded=120 ceiling=4294967295"))
+(assert! (equal (car (fn-lim-report-lines *lim-t-after*)) *lim-t-after-line*))
+(assert! (equal (take (+ 1 (length *lim-t-after-line*)) (fn-lim-report-octets *lim-t-after*))
+                (append (fn-record-string-octets *lim-t-after-line*) (list 10))))
+; HYPOTHESIS REMOVAL, FUNDED (offline: NIL).  The field is live and VALUES
+; given; an :applied decision's carry funds the candidate, but the offline
+; reply prints funded=none: the reply is not the report's line.
+(defconst *lim-t-after-offline* (fn-lim-carry-after "max-transactions" 129 '(:applied 2342)
+                                                    (cons *lim-t-p* nil)))
+(assert! (and (fn-lim-fieldp "max-transactions") *lim-t-p*))
+(assert! (not (equal (fn-lim-reply-line "max-transactions" 129 '(:applied 2342) 0 *lim-t-p* nil)
+                     (concatenate 'string
+                                  (fn-lim-decision-line "max-transactions" 129 '(:applied 2342) 0)
+                                  "; "
+                                  (fn-lim-values-line "max-transactions"
+                                                      (fn-lim-carry-requested *lim-t-after-offline*)
+                                                      (fn-lim-carry-funded *lim-t-after-offline*))))))
+; HYPOTHESIS REMOVAL, VALUES (nothing carried yet).  The field is live and
+; FUNDED given; a refusal leaves no requested profile, so the report has no
+; line to carry the reply's triple.
+(defconst *lim-t-after-none* (fn-lim-carry-after "max-transactions" 99
+                                                 '(:refused :below-current-use "max-transactions" 100)
+                                                 (cons nil *lim-t-funded*)))
+(assert! (and (fn-lim-fieldp "max-transactions") *lim-t-funded*))
+(assert! (equal (fn-lim-report-lines *lim-t-after-none*) nil))
+(assert! (not (member-equal (fn-lim-values-line "max-transactions"
+                                                (fn-lim-carry-requested *lim-t-after-none*)
+                                                (fn-lim-carry-funded *lim-t-after-none*))
+                            (fn-lim-report-lines *lim-t-after-none*))))
+; HYPOTHESIS REMOVAL, FIELDP.  VALUES and FUNDED given; a field that is not a
+; live limit has no line in the report.
+(defconst *lim-t-after-bogus* (fn-lim-carry-after "max-payload" 5
+                                                  '(:refused :not-a-live-limit "max-payload" 0)
+                                                  (cons *lim-t-p* *lim-t-funded*)))
+(assert! (and (not (fn-lim-fieldp "max-payload")) *lim-t-p* *lim-t-funded*))
+(assert! (not (member-equal (fn-lim-values-line "max-payload"
+                                                (fn-lim-carry-requested *lim-t-after-bogus*)
+                                                (fn-lim-carry-funded *lim-t-after-bogus*))
+                            (fn-lim-report-lines *lim-t-after-bogus*))))
+
+; fn-lim-carry-after-is-the-history.  REACHABLE: an open's carry (the
+; history's profile, here the sealed one under an empty history) and an
+; accepted recorded raise: the carry becomes the history the verb's record
+; ends; a refusal leaves it the history it was.
+(defconst *lim-t-rec* (fn-cfg-record-make 1 1 2 (fn-lim-deltas "max-transactions" 4096) nil))
+(assert! (equal (fn-lim-carry-requested (cons *lim-t-p* *lim-t-p*)) (fn-lim-effective *lim-t-p* nil)))
+(assert! (fn-lim-acceptedp '(:at-restart 2688)))
+(assert! (equal (fn-lim-carry-requested
+                 (fn-lim-carry-after "max-transactions" 4096 '(:at-restart 2688)
+                                     (cons *lim-t-p* *lim-t-p*)))
+                (fn-lim-effective *lim-t-p* (list *lim-t-rec*))))
+(assert! (not (equal (fn-lim-effective *lim-t-p* (list *lim-t-rec*)) *lim-t-p*)))
+(assert! (equal (fn-lim-carry-requested
+                 (fn-lim-carry-after "max-transactions" 99
+                                     '(:refused :below-current-use "max-transactions" 100)
+                                     (cons *lim-t-p* *lim-t-p*)))
+                (fn-lim-effective *lim-t-p* nil)))
+; HYPOTHESIS REMOVAL, THE CARRY IS THE HISTORY'S.  The field is live; a carry
+; that is not the history's stays not the history's (the conclusion fails).
+(assert! (not (equal (fn-lim-carry-requested (cons *lim-t-funded* *lim-t-p*))
+                     (fn-lim-effective *lim-t-p* nil))))
+(assert! (not (equal (fn-lim-carry-requested
+                      (fn-lim-carry-after "max-transactions" 99
+                                          '(:refused :below-current-use "max-transactions" 100)
+                                          (cons *lim-t-funded* *lim-t-p*)))
+                     (fn-lim-effective *lim-t-p* nil))))
+; HYPOTHESIS REMOVAL, FIELDP.  The carry is the history's; an accepted
+; decision over a slot that is not a live limit moves the carry (the row's
+; index is the article field's) while the history ignores the row.
+(defconst *lim-t-rec-bogus* (fn-cfg-record-make 1 1 2 (fn-lim-deltas "max-payload" 5) nil))
+(assert! (not (fn-lim-fieldp "max-payload")))
+(assert! (not (equal (fn-lim-carry-requested
+                      (fn-lim-carry-after "max-payload" 5 '(:applied 2342)
+                                          (cons *lim-t-p* *lim-t-p*)))
+                     (fn-lim-effective *lim-t-p* (list *lim-t-rec-bogus*)))))

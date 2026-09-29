@@ -359,12 +359,14 @@ def fault_env(registry: dict, fault: Fault, op_kind: str) -> dict:
     return {selector: "{}:{}".format(name, fault.action)}
 
 
-def _invoke(image, store, command, *arguments, env=None, cwd=ROOT):
+def _invoke(image, store, command, *arguments, env=None, cwd=ROOT, verb="store"):
+    """`store STORE COMMAND ...` (VERB "store", STORE the root) or `operator
+    CONFIG COMMAND ...` (VERB "operator", STORE the fn.toml)."""
     host_env = dict(os.environ)
     for k in FAULT_SELECTORS:
         host_env.pop(k, None)
     host_env.update(env or {})
-    return subprocess.run([str(image), "--fn", "store", str(store), command, *map(str, arguments)],
+    return subprocess.run([str(image), "--fn", verb, str(store), command, *map(str, arguments)],
                           cwd=cwd, env=host_env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                           check=False)
 
@@ -496,6 +498,12 @@ class Run:
         self.registry = boundary_registry()
         self.j = Journal(scenario.id)
         self.store = self.work / "store"
+        # The operator verb's configuration over the same store: `operator
+        # CONFIG status --replay` is the replayed report on every image
+        # (operability-2's operator verb); `store ROOT status --replay` is
+        # operability-9's and not on the 444fb9f41 set.
+        self.config = self.work / "fn.toml"
+        self.config.write_text('[store]\npath = "{}"\n'.format(self.store), encoding="ascii")
         self.payloads, self.symbols = {}, {}
         self.node = None
         for o in scenario.posts():
@@ -858,7 +866,13 @@ class Run:
         return r.returncode
 
     def status(self, op: Operation) -> str:
-        r = self.invoke("status")
+        # `operator CONFIG status --replay': the report over the replayed log
+        # (open=checkpoint:N suffix=M, or open=full-replay reason=R); since
+        # operability-2 cbe0c1d7d the plain stopped report reads only the
+        # checkpoint header (`stopped checkpoint=... transactions-at-most=`),
+        # and the store verb's `--replay' (operability-9) is not on 444fb9f41
+        # (there it prints the header again: 'which' read unknown, rf4-444f-2).
+        r = _invoke(self.image, self.config, "status", "--replay", verb="operator")
         lines = [ln for ln in r.stdout.decode("ascii", "replace").splitlines()
                  if ln.startswith("open=")]
         line = lines[0] if len(lines) == 1 else ""
@@ -889,7 +903,7 @@ class Run:
                 which = ("old" if line.startswith("open=checkpoint:3 ") else
                          "new" if line.startswith("open=checkpoint:5 ") else "unknown:" + line)
                 j.environment("checkpoint-installed", boundary=fault.boundary, which=which,
-                              source="store status")
+                              source="operator status --replay")
         j.stage("workload", "ended")
         j.stage("healing", "begun")
         started = time.monotonic()
@@ -916,6 +930,12 @@ def run(scenario: Scenario, image: Path, work: Path, fault_hook: bool = True) ->
     if scenario.initial.get("recipe") == "bp-node":
         from tools.resilience.adapters import bp_node
         return bp_node.run_scenario(scenario, image, work, fault_hook)
+    if scenario.initial.get("recipe") == "page-io":
+        from tools.resilience.adapters import page_io
+        return page_io.run_scenario(scenario, image, work, fault_hook)
+    if scenario.initial.get("recipe") == "reclaim-response-hold":
+        from tools.resilience.adapters import reclaim_hold
+        return reclaim_hold.run_scenario(scenario, image, work, fault_hook)
     return Run(scenario, image, work, fault_hook).run()
 
 

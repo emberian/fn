@@ -100,7 +100,7 @@ mount /var/fn
 To see a partition's format, as root:
 `dumpfs /dev/rsd0X | head -1` prints `FFS1` or `FFS2`. To move a store off
 FFS2: `store export`, make the FFS1 partition, then `store import`
-([moving data](install.md#4-reinstalling)).
+([moving a store](install.md#moving-a-store)).
 
 Also on OpenBSD:
 
@@ -688,6 +688,19 @@ the release first (`BP carry recovered waiver release work=WORK`).
 Copying while the node runs may miss the newest article. Keep the `keys`
 folder private: it holds the node's secret.
 
+A copy produced as a snapshot can be checked without starting it:
+
+```text
+fn operator /path/to/fn.toml store bless-snapshot /var/backups/fn-snapshot
+```
+
+This checks the copy's `SNAPSHOT` completion marker, opens its own store
+history read-only, and checks the node secret. It names a missing marker,
+a refused open (including `foreign-lineage`), or a missing secret; a valid
+copy prints `blessed snapshot=DIR transactions=N`. It does not check how
+recent the copy is. The running `store snapshot` producer is still under
+development; ordinary folder copies do not have its completion marker.
+
 **Restoring an older copy reissues article numbers.** Articles posted or
 fed after the backup are gone from the restored store, and the next ones
 take their numbers again. A reader who saw number 42 as one article now
@@ -725,7 +738,23 @@ the larger counter. It needs a row of its own before it is built.
 
 An **export** (`store export`) is different. It carries the store's history
 for moving to a new store, not the node's secrets or settings. Keep backups
-and exports both.
+and exports both. The node need not stop for it: on a running node the
+owner writes the archive itself, beside serving, and the command waits for
+the outcome:
+
+```text
+fn operator /path/to/fn.toml store export /var/backups/fn-2026-09-29
+fn operator /path/to/fn.toml store export --status
+```
+
+It prints `export requested archive=DIR ...` then `exported archive=DIR:
+complete ...`. The archive holds the articles the store had when the
+request arrived; posts accepted after it are not in it. It is refused by
+name while another export runs (`export-in-flight`) or when DIR exists
+(`archive-exists`), and `store export --status` names the running
+export's state or the last outcome (the node's log has `EXPORT done
+archive=DIR records=N configuration=M`). With the node stopped the same
+command runs to completion by itself.
 
 ### Move the node
 
@@ -777,19 +806,28 @@ drains there. If the node stops without writing its report, `retire` says
 
 ### New releases
 
-A new release is a fresh install. There is no upgrade in place and no going
-back to an older release over a newer store.
+A new release is installed beside the one that runs, and the node is
+switched to it. The store folder stays as it is. As root, from the unpacked
+new release:
 
-1. Stop the node.
-2. Install the new release. The program folder is replaced whole.
-3. Start the node. The store folder stays as it is.
+```sh
+sh fn/install.sh --upgrade
+```
+
+It prints the gap to expect (from the log's `run opened ms=N` line, the
+length of the node's last start), stops the node, asks the new release
+whether it opens the store, switches `/opt/fn/current`, starts the node and
+waits for `health`. Going back is `sh /opt/fn/current/install.sh --rollback`.
+See [upgrading and going back](install.md#4-upgrading-and-going-back).
 
 A release opens only a store of its own format; there are no migrations.
-If the new release refuses the store, the line says so:
+If the new release refuses the store, the upgrade stops and the node starts
+again on the release it ran; the line says so:
 `open refused reason=store-format: not an fn store of this release:
-redeploy fresh`. Set the node up again with `init`; the old store's data
-does not carry over. `store export` and `store import` move a store between
-installs of the same format (see [moving data](install.md#4-reinstalling)).
+redeploy fresh`. Then set the node up again with `init` under the new
+release; the old store's data does not carry over. `store export` and
+`store import` move a store between installs of the same format (see
+[moving a store](install.md#moving-a-store)).
 
 ### The node's secret key
 
@@ -1035,7 +1073,9 @@ fn operator /path/to/fn.toml store compact
 
 Stopped, it answers `compacted steps=checkpoint,drop records=N`. On a store
 of 40,000 short articles it took under three minutes. A running node needs
-its `[control]` socket for the request.
+its `[control]` socket for the request, as it does for `store export`,
+`store reclaim`, `store inspect` and `recover`, which answer on the running
+node the same way.
 
 ## 11. How much one node can handle
 

@@ -20,7 +20,16 @@ returned entries; validating individual object hashes does not prove no entries
 were omitted. An externally implemented index is part of the trust boundary until
 a suitable correspondence/checking argument exists.
 
-STO-027: The catalog is the served store's executable: the Message-ID binding, the local numbers, a row's visibility to a version and the retained octets are columns of `fn-cat` read in constant time, never rediscovered by a walk of the history (wave 5, D33; lane catalog-slice: the columns exist and are proved, the served path moves to them in the continuation).
+STO-027: The catalog is the served store's executable: the Message-ID binding, the local numbers, a row's visibility to a version and the retained octets are columns of `fn-cat` read in constant time, never rediscovered by a walk of the history (wave 5, D33).
+
+The Message-ID column's keyed page table has a bounded home/overflow probe
+and confirms exact Message-IDs against candidate rows. Its admission outcome
+`:mpx-saturated` is distinct from a reader's absence: the served POST refuses
+before staging and preserves the exact outcome into its named 441 reply
+([NNTP](nntp.md), PRF-1044). This column switch does not page the catalog's
+row storage. Served crafted-collision/saturation activation, rejection-to-reader
+composition and resource evidence for retained generations remain open at the
+current source; model bounds do not supply measured peak evidence.
 
 `HDR :fn-verified` (PRF-367, lane scale-reads) reads the catalog for its numbers and articles and the RECORDED verdict list for each line's verdict (SUB-006: the acceptance evidence, which a keyring change never rewrites), resolving a whole reply's verdicts in one pass over that list: O(R + V) for R lines and V recorded verdicts, where the reference was O(R x (N + V)). A catalog row's context verdict is NOT that evidence (it is decided under the keyring in force at its intern and a `:redecide` replaces it), so the verdict is not yet a constant-time column; that needs the row-to-evidence equation carried, or a recorded-verdict column.
 
@@ -90,7 +99,19 @@ refusal exactly when the reservation cannot hold the requested profile
 (`fn-lim-resource-refusal-is-the-reservations`), the same words a start that
 cannot fund its store refuses with. `policy set` replies with the decision
 and `limit FIELD requested=R funded=U ceiling=C`; an offline `status` prints
-that line for each field with `funded=none`.
+that line for each field with `funded=none`. Its inexpensive stopped report
+retains the sealed header's profile; `status --replay` opens the history and
+reports its effective limits. A restart installs that effective profile as
+both requested and funded. The live-limit parser accepts canonical decimal
+naturals including values beyond u32 so `fn-lim-decide` names the representation
+ceiling; malformed numbers remain a parser refusal.
+Replay admits a record under the history at its position, never under a
+limit value (PRF-1026, `fn-rhl-extend-open-is-limit-free`): the open's
+configuration fold is the same, up to the configuration's limits, for two
+histories that differ only in their `:set-limit` values, so an article
+accepted before A is lowered below its size is replayed after the lowering.
+What replay decides historically is the retention capacity (`:set-capacity`),
+carried in the node.
 
 STO-015: a namespace the store holds is bounded by the operator's profile,
 never by a constant (D27). Configuration generations and AUTHINFO
@@ -1433,6 +1454,47 @@ pack (the decision that dropped the derived checkpoint, published, selected and
 retired a pack generation, with its reclaim-* cuts), whose native steps
 PKT-838 deleted.
 
+#### Issued page reads across retirement (PRF-1057, SCN-216)
+
+A cold extent read issued off the owner mutex has an immutable process-local
+token: monotonically allocated read identity, original connection identity,
+file incarnation identity, entry offset, protected length and expected
+trailer. The token is distinct from an OS descriptor, a Message-ID, a
+connection slot and a durable transaction identity. ACL2 also derives fresh
+process-local incarnation names: successive admitted file allocations are
+distinct; failed opens spend their name and invalid carried counters refuse
+instead of resetting. Definite launch failure settles without a worker or
+buffer being created. Its ACL2 ownership row
+(`books/page-read-ownership.lisp`) begins `:issued`. Timeout or cancellation
+changes it to `:cancelled`, retaining its identity and worker ownership;
+neither observation establishes that pread stopped. Actual worker death observed by the owner and joined completion
+settles the matching row once. Only a still-issued matching completion whose
+full read passed the commitment verdict can publish into the verified
+extent cache. Cancelled success discards its data; short read, error or
+failed integrity check settles with a named fault; stale or duplicate
+completion publishes and releases nothing. A late store fault stops the
+owner even after its original request returned 403.
+
+Retirement additionally waits for every issued or cancelled worker naming
+the file. The generation-pin gate still applies independently. The host
+acquires issued ownership under the owner mutex at validated descriptor
+capture, before launching the worker or allowing retirement; it preserves deferred
+close groups and retries them after actual completion, after dropping the
+extent mutex. This is a stronger fn resource-ownership guarantee around
+RFC 3977 section 3.2.1's 403 reply, not an RFC descriptor-lifetime rule.
+The host's OS calls, mutexes, thread-launch outcome and faithful storage of
+ACL2's ownership rows remain in A-HOST. The theorem concerns the host-called
+completion and close decisions, not OS thread correctness.
+
+Scope: this increment does not establish funded admission for cold read
+buffers or workers. Repeated timeouts can still accumulate detached workers;
+this is a P12 blocker. The operator-supported resource vector must charge
+each issued worker, its buffer and shared file incarnation before allocation,
+retain charges through cancellation, refund worker resources only on actual
+settlement, and keep cached-buffer charges until eviction.
+No guessed ceiling on stored articles or a connection-count shortcut closes
+that obligation.
+
 ### The maintenance reservation (STO-019)
 
 STO-019: Admission leaves room for the release record and checks maintenance's temporary space against the disk, so a full store can always finish or safely abandon its own maintenance.
@@ -1720,4 +1782,3 @@ and init hold an exclusive flock on `ROOT.lock` for the whole program and
 re-check ROOT's absence under it immediately before rename(2); the residual
 (a process ignoring the lock creates an empty directory at ROOT in that
 window) is an operator constraint (docs/operator.md).
-

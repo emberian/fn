@@ -597,5 +597,48 @@ class NativeKeyStatementTests(unittest.TestCase):
         self.assertEqual(history, ["generation=1 state=active principal=" + P.hex()])
 
 
+    def test_a_forked_transit_pair_is_accepted_and_its_authority_named(self):
+        """W5b (PRF-1023/1024, books/peer-transit-authority.lisp): two transit
+        takes by the same enrolled principal, each accepted on its bytes, and
+        the transit log line names the AUTHORITY verdict beside the byte
+        decision (host/owner-host.lisp fn-owner-transit-decide, before the
+        durable intent; fn-owner-transit-log-line's `authority=' field).  On
+        a running node every group is UNGOVERNED: `store init' and the group
+        control words write the posting-policy identifier
+        (*fn-cfg-default-policy-id*), never a principal, so the gate answers
+        :ungoverned before it looks at the statement -- the second take is
+        the poster's fork on the store's index, whose :equivocation name is
+        witnessed on the same index in tests/acl2/stx-transit-tests.lisp
+        under a configuration whose group entry names a principal.  When a
+        group-authority binding lands (planning: decision W5b-1), the second
+        line's expected name is `equivocation' and nothing else here moves."""
+        b = self.node("b")
+        b.start()
+        try:
+            self.enrol_and_grant(b)
+            old = self.keys["old"]
+            ids = ("<fork-1@keys.invalid>", "<fork-2@keys.invalid>")
+            replies = []
+            for i, msgid in enumerate(ids):
+                article = self.carrier(self.principal_file, old, self.ordinary(msgid),
+                                       "fork{}".format(i + 1))
+                replies.append(self.ihave(b, msgid, article))
+            witness("fork IHAVE", [r.strip() for r in replies])
+            for reply in replies:
+                self.assertTrue(reply.startswith(b"235 "), reply)
+            lines = {}
+            for msgid in ids:
+                text = self.live_log(b, " message-id=" + msgid + " ")
+                lines[msgid] = [line for line in text.splitlines()
+                                if " transit " in line and " message-id=" + msgid + " " in line]
+            witness("fork transit log", lines)
+            for msgid in ids:
+                self.assertEqual(len(lines[msgid]), 1, self.log(b))
+                self.assertIn(" code=235 ", lines[msgid][0])
+                self.assertIn(" authority=ungoverned", lines[msgid][0])
+        finally:
+            b.stop()
+
+
 if __name__ == "__main__":
     unittest.main()

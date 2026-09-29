@@ -28,7 +28,9 @@
   (created-stamp (:prod (:enum :fn-clock-observation) (:u64) (:u64) (:u64) (:bool)))
   (retired-gen (:alt nil (:u32)))
   (policy-id (:string))
-  (next :u32))
+  (next :u32)
+  (authority (:string))
+  (authority-gen :u32))
 
 ; -----------------------------------------------------------------------------
 ; 1. The model's table operations are the keyed set's.
@@ -62,9 +64,9 @@
            (equal (fn-cfg-groups-create es gen stamp name policy)
                   (adt-kreplace :append 0
                                 (list name gen stamp nil policy
-                                      (if (adt-kmem 0 name es) (nth 5 (adt-kfind 0 name es)) 0))
+                                      (if (adt-kmem 0 name es) (nth 5 (adt-kfind 0 name es)) 0) "" 0)
                                 es)))
-  :hints (("Goal" :in-theory (enable fn-cfg-groups-create fn-cfg-group-make fn-cfg-group-name
+  :hints (("Goal" :in-theory (enable fn-cfg-groups-create fn-cfg-group-make fn-cfg-group-make-with-authority fn-cfg-group-name
                                      fn-cfg-group-next adt-kreplace adt-kinsert adt-kmem nth))))
 
 (defthm adt-key-of-kfind
@@ -82,7 +84,7 @@
 (defun cfgroup-retired (gen e)
   ; entry E with retired-gen GEN (fn-cfg-groups-retire's rebuilt entry)
   (declare (xargs :guard (true-listp e)))
-  (list (nth 0 e) (nth 1 e) (nth 2 e) gen (nth 4 e) (nth 5 e)))
+  (list (nth 0 e) (nth 1 e) (nth 2 e) gen (nth 4 e) (nth 5 e) (nth 6 e) (nth 7 e)))
 
 (defthm fn-cfg-groups-retire-is-kreplace-found
   (implies (true-listp es)
@@ -90,9 +92,9 @@
                   (if (adt-kmem 0 name es)
                       (adt-kreplace-found 0 (cfgroup-retired gen (adt-kfind 0 name es)) es)
                     es)))
-  :hints (("Goal" :in-theory (enable fn-cfg-groups-retire fn-cfg-group-make fn-cfg-group-name
+  :hints (("Goal" :in-theory (enable fn-cfg-groups-retire fn-cfg-group-make fn-cfg-group-make-with-authority fn-cfg-group-name
                                      fn-cfg-group-created-gen fn-cfg-group-created-stamp
-                                     fn-cfg-group-policy-id fn-cfg-group-next adt-kmem))))
+                                     fn-cfg-group-policy-id fn-cfg-group-next fn-cfg-group-authority fn-cfg-group-authority-gen fn-cfg-group-make-with-authority adt-kmem))))
 
 ; -----------------------------------------------------------------------------
 ; 2. Every model table is a value of the abstract stobj.
@@ -101,11 +103,11 @@
   (implies (fn-cfg-group-entryp e) (adt-nval :ks *cfgroup-nschema* e))
   :hints (("Goal" :in-theory (enable fn-cfg-group-entryp fn-cfg-group-shapep fn-cfg-group-name
                                      fn-cfg-group-created-gen fn-cfg-group-created-stamp
-                                     fn-cfg-group-retired-gen fn-cfg-group-policy-id fn-cfg-group-next
+                                     fn-cfg-group-retired-gen fn-cfg-group-policy-id fn-cfg-group-next fn-cfg-group-authority fn-cfg-group-authority-gen fn-cfg-group-make-with-authority
                                      fn-cfg-stampp fn-clock-observationp fn-clock-observation-shapep
                                      fn-clock-monotonic fn-clock-wall fn-clock-wall-error
                                      fn-clock-has-wall fn-record-group-namep fn-record-ascii-stringp
-                                     fn-cfg-labelp fn-record-uint32p fn-clock-timep adt-val-okp nth))))
+                                     fn-cfg-labelp fn-cfg-principal-hexp fn-record-uint32p fn-clock-timep adt-val-okp nth))))
 
 (defthm fn-cfg-group-listp-is-cfgroup-seq
   (implies (fn-cfg-group-listp es) (adt-nseq-p *cfgroup-nschema* es))
@@ -142,7 +144,7 @@
                                                          (j 0) (k name) (a cfgroup)))
                                  :in-theory (e/d (adt-val-okp) (adt-nseq-p-kfind))))))
   (let ((e (cfgroup-find name cfgroup)))
-    (cfgroup-replace (list name gen stamp nil policy (if e (nth 5 e) 0)) cfgroup)))
+    (cfgroup-replace (list name gen stamp nil policy (if e (nth 5 e) 0) "" 0) cfgroup)))
 
 (defthm cfgroup-create-is-the-model-step
   (implies (cfgroupp cfgroup)

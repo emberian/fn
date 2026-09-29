@@ -65,7 +65,7 @@
 (assert-event
  (let ((bs (car (bss-at-cut))) (ks (cdr (bss-at-cut))))
    (fn-bs-sweep-run-okp
-    (fn-bs-run bs ks (fn-bs-recover-sweep-program (list (bss-stage))) nil nil nil)
+    (fn-bs-run bs ks (fn-bs-recover-sweep-program (list (fn-record-string-octets (bss-stage)))) nil nil nil)
     ks (fn-bs-scan-store bs) 'nil)))
 
 ; Teeth.  The theorem is about :staging.  The same unlink in the root

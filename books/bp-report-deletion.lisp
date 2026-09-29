@@ -225,6 +225,7 @@
   :hints (("Goal" :in-theory (enable fn-bpn-report-held-delete-pendingp
                                       fn-bpn-report-tombstone-held))))
 
+(verify-guards fn-bpn-report-delete-with-intent)
 (verify-guards fn-bpn-report-delete-recordp)
 (verify-guards fn-bpn-report-held-delete-pendingp)
 (verify-guards fn-bpn-report-delete-matches-heldp

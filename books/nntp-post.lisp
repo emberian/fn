@@ -541,6 +541,9 @@
                        ;; test, books/owner-prepare-served.lisp
                        ;; fn-psrv-event-numberedp; PKT-615).
                        :article-numbers-exhausted
+                       ;; The keyed Message-ID table refused placement
+                       ;; before staging (fn-pak-post-admission, PRF-1044).
+                       :mpx-saturated
                        :storage-failed
                        ;; A signed POST refused at its FN-Authorship carrier
                        ;; (books/peer-authored-accept.lisp fn-pa-served-word):
@@ -583,6 +586,8 @@
     "the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)")
    ((equal kind :article-numbers-exhausted)
     "a group this article is posted to has no article number left (RFC 3977 section 6 ends at 2147483647), nothing was stored (article-numbers-exhausted)")
+   ((equal kind :mpx-saturated)
+    "the keyed Message-ID index cannot place this article, nothing was stored (mpx-saturated); the node's operator must rebuild the index")
    ((equal kind :storage-failed)
     "the store could not write the article, nothing was stored")
    ((equal kind :article)

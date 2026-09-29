@@ -602,6 +602,24 @@
                                    *fn-rck-require-path-slot*)))
        t))
 
+;; PRF-996: the N of `policy set LIVE-FIELD N': any decimal natural, no
+;; leading zero.  The parser caps no value: the representation ceiling is
+;; fn-lim-decide's decision (:above-representation-ceiling, refused by name
+;; with the ceiling), never a usage line.  The work is linear in the word,
+;; which the argv's own bound already bounds (books/native-control.lisp
+;; fn-nctrl-admin-argv-decode: each word within *fn-record-max-octets*).
+(defun fn-native-admin-naturalp (text)
+  (declare (xargs :guard t))
+  (if (not (stringp text)) nil
+    (let ((chars (coerce text 'list)))
+      (and (consp chars)
+           (not (and (consp (cdr chars)) (equal (car chars) #\0)))
+           (<= 0 (fn-native-admin-decimal-value chars))))))
+
+(local (defthm fn-native-admin-naturalp-is-a-string
+  (implies (fn-native-admin-naturalp text) (stringp text))
+  :rule-classes :forward-chaining))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t
@@ -610,6 +628,7 @@
                   ;; types, not their bodies (5.0 -> 2.6 s, 1.34M -> 460k
                   ;; steps, persvati REPL 2026-09-28).
                   (("Goal" :in-theory (disable fn-native-admin-decimalp
+                                               fn-native-admin-naturalp
                                                fn-native-admin-decimal-value
                                                fn-native-admin-words
                                                fn-record-octets-string
@@ -636,6 +655,19 @@
              (equal (cadr words) "create")
              (fn-record-group-namep (caddr words)))
         (fn-native-admin-result :accepted nil :create-group (caddr argv) 0 nil nil))
+       ((and (equal (len words) 4) (equal (car words) "group")
+             (equal (cadr words) "authority"))
+        (cond ((fn-native-admin-group-name-reservedp (caddr words))
+               (fn-native-admin-result :refused :reserved-group-name nil nil 0 nil nil))
+              ((not (fn-record-group-namep (caddr words)))
+               (fn-native-admin-result :refused :group-name nil nil 0 nil nil))
+              ((not (or (equal (cadddr words) "ungoverned")
+                        (fn-cfg-principal-hexp (cadddr words))))
+               (fn-native-admin-result :refused :principal nil nil 0 nil nil))
+              (t (fn-native-admin-result :accepted nil :set-group-authority
+                                        (caddr argv) 0 nil
+                                        (if (equal (cadddr words) "ungoverned") nil
+                                          (cadddr argv))))))
        ; O2 (books/group-status.lisp): `group policy NAME n|y' sets the
        ; group's LIST ACTIVE status (RFC 3977 section 7.6.3): "n" closes it
        ; to local posting, "y" opens it.  A durable :set-group-status
@@ -795,7 +827,7 @@
              (equal (cadr words) "set")
              (member-equal (caddr words) '("max-transactions" "max-history-octets"
                                            "max-article-octets"))
-             (fn-native-admin-decimalp (cadddr words)))
+             (fn-native-admin-naturalp (cadddr words)))
         (fn-native-admin-result :accepted nil :set-store-limit (caddr argv)
                                 (fn-native-admin-decimal-value
                                  (coerce (cadddr words) 'list))
@@ -997,6 +1029,21 @@
              (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest words)))))
         (fn-native-admin-result :accepted nil :request-inspect nil 0 nil
                                 (fn-ncfg-nth 2 words)))
+       ; Row S3b (lane operability-7): what `store export DIR' sends a
+       ; running owner (host/native/operator.lisp
+       ; fnn-operator-execute-export-live): a request for its own export of
+       ; the captured history into DIR (the operator's grammar admitted an
+       ; absolute path, fn-nop-archive-pathp), and the status poll that
+       ; follows it (books/owner-export-request.lisp fn-oex-request-word,
+       ; fn-oex-status-word).  No configuration record.
+       ((and (equal (fn-ncfg-first words) "export")
+             (equal (fn-ncfg-second words) "request")
+             (stringp (fn-ncfg-nth 2 words))
+             (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest words)))))
+        (fn-native-admin-result :accepted nil :request-export nil 0 nil
+                                (fn-ncfg-nth 2 words)))
+       ((equal words '("export" "status"))
+        (fn-native-admin-result :accepted nil :request-export-status nil 0 nil nil))
        ; Q16: what `store reclaim' sends a running owner
        ; (host/native/operator.lisp fnn-operator-execute-store-action): a
        ; request for its reclaim pass (books/owner-reclaim.lisp), no
@@ -1016,7 +1063,8 @@
   (and (equal (fn-native-admin-result-status result) :accepted)
        (member-equal (fn-native-admin-result-kind result)
                      '(:request-compaction :request-inspect :request-reclaim
-                       :request-reclaim-recorded :request-reclaim-dry-run))
+                       :request-reclaim-recorded :request-reclaim-dry-run
+                       :request-export :request-export-status))
        t))
 
 ; Row S3: the Message-ID an inspect request carries (its value field), or nil.
@@ -1027,8 +1075,22 @@
        (stringp (fn-native-admin-result-value result))
        (fn-native-admin-result-value result)))
 
+; Row S3b: the archive directory an export request carries (its value
+; field), or nil; and whether the request is the export status poll.
+(defun fn-native-admin-result-export-dir (result)
+  (declare (xargs :guard t))
+  (and (fn-native-admin-result-owner-requestp result)
+       (equal (fn-native-admin-result-kind result) :request-export)
+       (stringp (fn-native-admin-result-value result))
+       (fn-native-admin-result-value result)))
+
+(defun fn-native-admin-result-export-statusp (result)
+  (declare (xargs :guard t))
+  (and (fn-native-admin-result-owner-requestp result)
+       (equal (fn-native-admin-result-kind result) :request-export-status)))
+
 ; Q16: the reclaim pass's mode an accepted reclaim request names, or nil
-; (the compaction and inspect requests).
+; (the compaction, inspect and export requests).
 (defun fn-native-admin-result-reclaim-mode (result)
   (declare (xargs :guard t))
   (and (fn-native-admin-result-owner-requestp result)
@@ -1071,6 +1133,9 @@
              (list (fn-cfg-create-group name *fn-cfg-default-policy-id*)))
             ((equal kind :remove-group)
              (list (fn-cfg-remove-group name)))
+            ((equal kind :set-group-authority)
+             (list (fn-cfg-set-group-authority name
+                    (fn-record-octets-string (fn-native-admin-result-value plan)))))
             ((equal kind :set-capacity)
              (list (fn-cfg-set-capacity (fn-native-admin-result-capacity plan))))
             ((equal kind :set-retention)

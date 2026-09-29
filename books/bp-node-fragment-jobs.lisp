@@ -96,6 +96,27 @@
                          car-cons cdr-cons (:e equal))
                        (theory 'minimal-theory)))))
 
+;; Q4a increment B: the same for the kind-18 application over the
+;; host-carried job (fn-bpfj-apply, read by fn-bpfj-persist-step through
+;; fn-bpfj-apply-at), for ANY job: its :ready held list has the family
+;; apply's shape, so the relation holds of it on its own.
+(defthm fn-bpfj-apply-conserves-jobs
+  (implies (and (fn-bpnf-family-jobs-agreep (fn-bpnf-held-list st))
+                (equal (car (fn-bpfj-apply st record arrival job limit)) :ready))
+           (and (fn-bpnf-rows-job-onlyp
+                 (cadddr (fn-bpfj-apply st record arrival job limit)))
+                (fn-bpnf-reassembly-job-onlyp
+                 (caddr (fn-bpfj-apply st record arrival job limit)))
+                (fn-bpnf-family-jobs-agreep
+                 (cadr (fn-bpfj-apply st record arrival job limit)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn-bpfj-apply
+                         bpnfj-active-set-job-only bpnfj-agreep-of-retain
+                         bpnfj-new-row-job-only fn-bpnf-family-jobs-agreep
+                         car-cons cdr-cons (:e equal))
+                       (theory 'minimal-theory)))))
+
 (local
  (defthm bpnfj-held-of-state-with-arrival
   (and (equal (fn-bpnf-held-list
@@ -218,6 +239,90 @@
                                         (:e binary-+) natp zp)
                                       (theory 'minimal-theory))))))
 
+;; The twins over the host-carried job (books/bp-node-fragment-step
+;; fn-bpfj-propose-step / fn-bpfj-persist-step), the same shapes.
+(local
+ (defthm bpnfj-job-apply-shape
+  (and (true-listp (fn-bpfj-apply st record arrival job limit))
+       (consp (fn-bpfj-apply st record arrival job limit)))
+  :hints (("Goal" :in-theory (union-theories '(fn-bpfj-apply)
+                               (theory 'minimal-theory))))
+  :rule-classes nil))
+
+(local
+ (defthm bpnfj-job-apply-at-ready-is-apply
+  (implies (equal (fn-cbor-ag-car (fn-bpfj-apply-at st record arrival job limit))
+                  :ready)
+           (equal (fn-bpfj-apply-at st record arrival job limit)
+                  (fn-bpfj-apply st record arrival job limit)))
+  :hints (("Goal" :in-theory (union-theories '(fn-bpfj-apply-at
+                                               (:e fn-cbor-ag-car) (:e equal))
+                               (theory 'minimal-theory))))
+  :rule-classes nil))
+
+(local
+ (defthm bpnfj-job-apply-at-ready
+  (implies (and (fn-bpnf-family-jobs-agreep (fn-bpnf-held-list st))
+                (equal (fn-cbor-ag-car (fn-bpfj-apply-at st record arrival job limit))
+                       :ready))
+           (fn-bpnf-family-jobs-agreep
+            (fn-bpn-nth 1 (fn-bpfj-apply-at st record arrival job limit))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpfj-apply-conserves-jobs)
+                 (:instance bpnfj-job-apply-shape)
+                 (:instance bpnfj-job-apply-at-ready-is-apply))
+           :in-theory (union-theories '(fn-cbor-ag-car fn-bpn-nth-is-nth-on-true-lists bpnfj-nth-1
+                                        nth zp natp (:e natp) (:e zp) (:e fix)
+                                        (:e binary-+) (:e unary--) (:e equal) (:e not))
+                                      (theory 'minimal-theory))))))
+
+(local
+ (defthm bpnfj-job-persist-step
+  (implies (fn-bpnf-family-jobs-agreep (fn-bpnf-held-list st))
+           (fn-bpnf-family-jobs-agreep
+            (fn-bpnf-held-list
+             (fn-bpnf-answer-state
+              (fn-bpfj-persist-step st epoch op result job limit)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-bpfj-persist-step
+                                        bpnfj-held-of-state-with-arrival
+                                        bpnfj-job-apply-at-ready (:e fn-cbor-ag-car) (:e equal) (:e fn-bpn-nth))
+                                      (theory 'minimal-theory))))))
+
+(local
+ (defthm bpnfj-job-propose-step
+  (equal (fn-bpnf-held-list
+          (fn-bpnf-answer-state (fn-bpfj-propose-step st a obs job limit)))
+         (fn-bpnf-held-list st))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-bpfj-propose-step
+                                        bpnfj-held-of-state-with-arrival)
+                                      (theory 'minimal-theory))))))
+
+(local
+ (defthm bpnfj-job-propose-effects
+  (not (equal (fn-bpn-nth 0 (fn-bpn-nth 0 (fn-bpnf-answer-effects
+                                          (fn-bpfj-propose-step st a obs job limit))))
+              :persist-delivery))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-bpfj-propose-step bpnfj-answer-effects
+                                        fn-bpn-nth fn-cbor-ag-car car-cons cdr-cons
+                                        (:e fn-bpn-nth) (:e equal) (:e natp) (:e zp)
+                                        (:e binary-+) natp zp)
+                                      (theory 'minimal-theory))))))
+
+(local
+ (defthm bpnfj-job-persist-effects
+  (not (equal (fn-bpn-nth 0 (fn-bpn-nth 0 (fn-bpnf-answer-effects
+                                          (fn-bpfj-persist-step st e o r job limit))))
+              :persist-delivery))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-bpfj-persist-step bpnfj-answer-effects
+                                        fn-bpn-nth fn-cbor-ag-car car-cons cdr-cons
+                                        (:e fn-bpn-nth) (:e equal) (:e natp) (:e zp)
+                                        (:e binary-+) natp zp)
+                                      (theory 'minimal-theory))))))
+
 (local
  (defthm bpnfj-fragment-step
   (implies (and (fn-bpnf-family-jobs-agreep (fn-bpnf-held-list st))
@@ -232,6 +337,8 @@
                        '(fn-bpnf-fragment-step bpnfj-our-eventp
                          bpnfj-persist-step bpnfj-propose-step
                          bpnfj-propose-effects bpnfj-persist-effects
+                         bpnfj-job-persist-step bpnfj-job-propose-step
+                         bpnfj-job-propose-effects bpnfj-job-persist-effects
                          bpnfj-held-of-state-with-arrival bpnfj-answer-effects
                          (:e fn-bpn-nth) (:e fn-cbor-ag-car) (:e equal))
                        (theory 'minimal-theory))))))

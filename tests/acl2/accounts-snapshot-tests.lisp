@@ -106,3 +106,73 @@
                (fn-auth-config-creds
                 (as-snap (fn-cfg-apply-delta (as-v2) 3 *as-stamp*
                                              (fn-cfg-account-access "robin" "*" "*"))))))
+
+; -----------------------------------------------------------------------------
+; fn-auth-config-with-accounts-is-a-config (the snapshot the host's
+; connection takes is a policy).  Positive witness: auth.toml's policy and
+; the configuration with robin's redeemed row.
+(assert-event (fn-auth-configp (as-acfg)))
+(assert-event (fn-auth-configp (fn-auth-config-with-accounts (as-acfg) (as-v2))))
+; Hypothesis removed: a malformed policy stays malformed.
+(assert-event (not (fn-auth-configp :junk)))
+(must-fail-checked
+ (assert-event (fn-auth-configp (fn-auth-config-with-accounts :junk (as-v2)))))
+
+; fn-auth-account-creds-find-the-row.  Positive witness: robin's redeemed
+; row (n = 1, a well-formed credential), alone and ahead of another row.
+(defmacro as-row () '(car (fn-cfg-accounts (as-v2))))
+(defmacro as-row-login () '(fn-record-string-octets (fn-cfg-row-b (as-row))))
+(assert-event (and (equal (fn-cfg-row-n (as-row)) 1)
+                   (fn-auth-credp (fn-auth-account-cred (as-row)))))
+(assert-event (equal (fn-auth-find-cred (as-row-login) (fn-auth-account-creds (list (as-row))))
+                     (fn-auth-account-cred (as-row))))
+(assert-event (equal (fn-auth-find-cred (as-row-login)
+                                        (fn-auth-account-creds
+                                         (list (as-row) (car (fn-cfg-accounts (as-v1))))))
+                     (fn-auth-account-cred (as-row))))
+; Hypothesis (equal (fn-cfg-row-n row) 1) removed: the same row with state
+; 2 keeps a well-formed credential and is not found.
+(defmacro as-row-2 () '(update-nth 3 2 (as-row)))
+(assert-event (and (not (equal (fn-cfg-row-n (as-row-2)) 1))
+                   (fn-auth-credp (fn-auth-account-cred (as-row-2)))))
+(must-fail-checked
+ (assert-event (equal (fn-auth-find-cred (as-row-login) (fn-auth-account-creds (list (as-row-2))))
+                      (fn-auth-account-cred (as-row-2)))))
+; Hypothesis (fn-auth-credp (fn-auth-account-cred row)) removed: a redeemed
+; row whose verifier text does not decode is not found.
+(defmacro as-row-junk () '(update-nth 2 "junk" (as-row)))
+(assert-event (and (equal (fn-cfg-row-n (as-row-junk)) 1)
+                   (not (fn-auth-credp (fn-auth-account-cred (as-row-junk))))))
+(must-fail-checked
+ (assert-event (equal (fn-auth-find-cred (as-row-login) (fn-auth-account-creds (list (as-row-junk))))
+                      (fn-auth-account-cred (as-row-junk)))))
+
+; fn-acct-bound-row-succeeds.  Positive witness: robin's redeemed row is
+; bound, another invite is admitted at generation 3, and the row after it
+; is the same row (a successor).
+(defmacro as-digest () '(fn-acct-code-digest-text *as-code*))
+(defmacro as-invite-2 ()
+  '(fn-cfg-account-invite (fn-acct-code-digest-text (fn-record-string-octets "k3y-friend-0002-aaaa"))
+                          "operator" "2000000000"))
+(defmacro as-succeeds (v gen deltas)
+  `(fn-acct-row-successorp
+    (fn-cfg-account-row (fn-cfg-accounts ,v) (as-digest))
+    (fn-cfg-account-row (fn-cfg-accounts (fn-cfg-apply ,v ,gen *as-stamp* ,deltas)) (as-digest))))
+(assert-event (and (fn-acct-boundp (fn-cfg-accounts (as-v2)) (as-digest))
+                   (fn-cfg-admissiblep (as-v2) 3 *as-stamp* 0 510 (list (as-invite-2)))))
+(assert-event (as-succeeds (as-v2) 3 (list (as-invite-2))))
+; Hypothesis fn-acct-boundp removed: the pending row of generation 1 is not
+; bound; the admitted redeem changes it into a row that is no successor.
+(defmacro as-redeem () '(fn-acct-plan-delta (fn-acct-redeem-plan (as-v1) *as-stamp* *as-code*
+                                                                 *as-login* *as-password*
+                                                                 *as-salt* nil)))
+(assert-event (and (not (fn-acct-boundp (fn-cfg-accounts (as-v1)) (as-digest)))
+                   (fn-cfg-admissiblep (as-v1) 2 *as-stamp* 0 510 (list (as-redeem)))))
+(must-fail-checked (assert-event (as-succeeds (as-v1) 2 (list (as-redeem)))))
+; Hypothesis fn-cfg-admissiblep removed: re-inviting robin's digest is
+; refused (:account-digest-reused); applied anyway it replaces the bound row.
+(defmacro as-reinvite () '(fn-cfg-account-invite (as-digest) "operator" "2000000000"))
+(assert-event (and (fn-acct-boundp (fn-cfg-accounts (as-v2)) (as-digest))
+                   (equal (fn-cfg-admissible-reason (as-v2) 3 *as-stamp* 0 510 (list (as-reinvite)))
+                          :account-digest-reused)))
+(must-fail-checked (assert-event (as-succeeds (as-v2) 3 (list (as-reinvite)))))

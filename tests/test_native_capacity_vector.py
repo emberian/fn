@@ -107,7 +107,10 @@ class NativeCapacityVectorTests(_Bp):
         return node.config, node.port
 
     def status(self, cfg):
-        r = self.invoke("operator", cfg, "status")
+        # Row S3: the node is stopped at both calls; a stopped store's plain
+        # `status' is its checkpoint header, and `--replay' asks for the
+        # report over the replayed log (headroom, maintenance-reserve, reclaim).
+        r = self.invoke("operator", cfg, "status", "--replay")
         lines = r.stdout.decode(errors="replace").splitlines()
 
         def pick(word):

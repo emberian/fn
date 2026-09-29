@@ -602,6 +602,10 @@ three parts have three different owners of the *reply*, all of them ACL2.
    the conflict; the stored record keeps its injected fields;
    `books/poster-bytes-invariants.lisp`), `:malformed` (`fn-owner-prepare`'s `:invalid`),
    `:unaffordable` (the persisted profile or the transaction capacity),
+   `:mpx-saturated` (the keyed Message-ID table cannot place the offered
+   article; refused before buffer fill, transaction identity allocation or
+   prepare, and the exact word survives the host boundary into the named
+   441 reply),
    `:storage-failed` (a write that failed before publication, whose
    reservation `fn-owner-known-abort` consumed, so nothing was stored), the
    three control-message filing refusals of `fn-pa-filing-plan` (C1,
@@ -1807,6 +1811,49 @@ no-posters open: the open has no pending POST, and
 `fn-served-connp` is the structural connection invariant seeded by open and
 carried by the served path; it is theorem vocabulary, not a runtime
 whole-store check or an independent posting authority condition.
+
+## Resumable overview response ownership (PRF-1020, PRF-1059)
+
+OVER and XOVER range responses retain their original pinned view and range
+while the host writes the reply in scheduling quanta (RFC 3977 §8.3.2,
+RFC 2980 §2.8). Produced octets followed by the plan's residual rendering
+equal the original complete reply; a partial socket write retains its owned
+suffix and position. The connection owns one outstanding render plan,
+possibly containing several pipelined responses. It steps no subsequent
+input until that plan drains or is cancelled.
+
+Capture holds an arena-reader generation under the owner mutex, before
+the plan escapes. ACL2's `fn-rpin-step` owns the keyed hold and its
+multiplicity. The hold ends after every output window drains or the whole
+connection cancels, including service stop. Reclaim therefore refuses its
+catalog swap while a cursor still refers to the captured catalog; retirement
+retains its pages until that generation is settled. Web and pull consumers
+settle after rendering because their resulting byte vectors own the bytes.
+
+Each cursor quantum yields back to the connection scheduler before the
+next one, including an empty sparse-range quantum. The mux retains the
+exact plan, pending after-response action and reader hold, then resumes the
+plan after ACL2's positive `fn-splan-cursor-resume-ms` delay. It neither
+steps new input nor applies idle-close while this plan is outstanding.
+Web and pull worker threads yield after empty progress too. This bounds
+cursor chaining per I/O event; it preserves the existing complete-residual
+contract and introduces no new bytes into a response.
+
+The current quantum bounds numbers probed and overview rows formatted.
+It still parses a complete article and formats a complete overview row;
+byte-budgeted long-row continuation remains an identified Q5c/J1 obligation.
+This ownership increment does not complete that resource claim.
+
+PRF-1066 supplies an implementation component for that remaining claim:
+`fn-nbw-step` retains immutable cached strings plus an offset and emits at
+most its fuel in octets. Piece-end transitions consume fuel as well, so an
+empty field makes strict progress under a positive budget. The exact
+produced prefix plus remaining pieces is the original row; the cached-row
+abstraction connects those pieces to the article's complete NOV row under
+the maintained column relation. These functions are not yet the served
+cursor implementation. Integration, legacy rows without a decided NOV,
+the maintained codec bound on numeric setup and matched runtime cost
+measurement remain open; no complete long-row scheduling claim is made.
 
 ## Public exposure (NNT-031)
 
