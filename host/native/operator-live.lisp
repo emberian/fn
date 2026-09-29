@@ -294,9 +294,14 @@ answer (:live), or the refusal of a store whose lock an owner holds (:held)."
       (values (fnn-core 'fn-native-control-host-status-exit-code :refused) nil)
     (multiple-value-bind (status word)
         (fnn-control-admin control-path argv)
-      (let ((detail (fnn-operator-status-detail status word)))
+      (let ((detail (fnn-operator-status-detail status word))
+            ;; Row S1: an accepted reply that names a word (a limit
+            ;; decision, books/limits-live.lisp fn-lim-reply-note) prints it.
+            (note (and word (fnn-core 'fn-lim-reply-note status word))))
         (values (fnn-core 'fn-native-control-host-status-exit-code status)
-                (and (not (eq detail status)) detail))))))
+                (cond ((and (consp note) (fnn-octet-list-p note))
+                       (format nil "~a ~a" status (fnn-octets-string (fnn-octets note))))
+                      ((not (eq detail status)) detail)))))))
 
 (defun fnn-operator-live-request (control-path argv)
   "PKT-868: an administrative vector the live owner answers with a word of

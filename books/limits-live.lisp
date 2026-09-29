@@ -30,7 +30,8 @@
 
 (include-book "config")
 (include-book "byte-store-frame")
-(include-book "heap-figure")
+(include-book "heap-reservation")
+(include-book "native-control-reason")
 
 (defconst *fn-lim-fields*
   '("max-transactions" "max-history-octets" "max-article-octets"))
@@ -119,10 +120,14 @@
 
 ; USE is (TRANSACTIONS HISTORY-OCTETS): the store's committed transactions
 ; (store-budget.lisp fn-sbud-used) and the history octets charged
-; (fn-sbud's bytes).  RUN-MB is the dynamic space the running process was
-; started with (the launcher's heap=, observed by the host; 0 offline: no
-; process holds a reservation).  CORE, NURSERY and OBSERVATIONS are
-; heap-figure.lisp fn-heap-decide's.
+; (fn-sbud-bytes-used).  VALUES is the profile the configuration history
+; records (fn-lim-effective over it: a change recorded for the next start
+; is in it).  RUN-MB is the dynamic space the running process was started
+; with (0 offline: no process holds a reservation).  CORE, NURSERY,
+; OBSERVATIONS and OBSERVED are what the launcher's run reservation reads
+; (heap-reservation.lisp fn-heap-status-decide,
+; fn-heap-status-decide-is-the-launchers-run-reservation), so the figure
+; judged here is the one the next start reserves.
 ;
 ; Answers
 ;   (:applied MB)                   serve the new profile now
@@ -130,14 +135,14 @@
 ;   (:refused :not-a-live-limit FIELD 0)
 ;   (:refused :below-current-use FIELD USE)
 ;   (:refused :profile-invalid REASON 0)
-;   (:refused REASON MB MACHINE-MB)    heap-figure.lisp fn-heap-decide's refusal
+;   (:refused REASON MB MACHINE-MB)    the reservation's refusal
 (defun fn-lim-use-of (field use)
   (declare (xargs :guard t))
   (cond ((equal field "max-transactions") (nfix (fn-cfg-ag-car use)))
         ((equal field "max-history-octets") (nfix (fn-cfg-ag-car (fn-cfg-ag-cdr use))))
         (t 0)))
 
-(defun fn-lim-decide (field n values use run-mb core nursery observations)
+(defun fn-lim-decide (field n values use run-mb core nursery observations observed)
   (declare (xargs :guard t))
   (let ((candidate (fn-lim-apply-row values field n)))
     (cond ((not (fn-lim-fieldp field))
@@ -147,11 +152,13 @@
           ((not (fn-bs-profile-admittedp candidate))
            (list :refused :profile-invalid (fn-bs-profile-invalid-reason candidate) 0))
           (t
-           (let ((d (fn-heap-decide candidate core nursery observations)))
-             (if (not (equal (car d) :heap))
-                 ; heap-figure's reason: machine-cannot-hold-profile,
-                 ; -hold-image or machine-memory-unobserved.
-                 (list :refused (cadr d) (nfix (caddr d)) (nfix (cadddr d)))
+           (let ((d (fn-heap-status-decide candidate core nursery observations observed)))
+             (if (not (and (consp d) (equal (car d) :heap)))
+                 ; the reservation's reason: machine-cannot-hold-profile,
+                 ; -hold-image, -hold-threads or machine-memory-unobserved.
+                 (list :refused (fn-cfg-ag-car (fn-cfg-ag-cdr d))
+                       (nfix (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr d))))
+                       (nfix (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr d))))))
                (let ((mb (fn-heap-decision-mb d)))
                  (if (and (posp run-mb) (<= mb (nfix run-mb)))
                      (list :applied mb)
@@ -167,7 +174,7 @@
 ; admission (store-budget.lisp fn-sbud-admitp: used < T) keeps them there.
 ; An :applied change's figure fits the reservation the process holds.
 (defthm fn-lim-decide-accepted-keeps-use-within
-  (let ((d (fn-lim-decide field n values use run-mb core nursery observations))
+  (let ((d (fn-lim-decide field n values use run-mb core nursery observations observed))
         (p (fn-lim-apply-row values field n)))
     (implies (fn-lim-acceptedp d)
              (and (fn-lim-fieldp field)
@@ -176,9 +183,103 @@
                   (implies (equal (car d) :applied)
                            (<= (cadr d) (nfix run-mb))))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-lim-decide fn-lim-acceptedp)
-                                  (fn-bs-profile-admittedp fn-heap-decide fn-lim-apply-row
-                                   fn-lim-use-of fn-bs-profile-invalid-reason
-                                   fn-heap-decision-mb fn-lim-fieldp)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-lim-decide fn-lim-acceptedp car-cons cdr-cons
+                                                 nfix posp member-equal)
+                                               (theory 'minimal-theory)))))
+
+; -----------------------------------------------------------------------------
+; The words.  The reply line of `policy set FIELD N' for decision D; OPEN-MS
+; is how long the open this process made took (the next start's is about
+; that), observed by the host.  Exit 0 for an accepted change, 1 refused.
+
+(defun fn-lim-word (x)
+  (declare (xargs :guard t))
+  (cond ((stringp x) x)
+        ((symbolp x) (string-downcase (symbol-name x)))
+        (t (fn-heap-decimal x))))
+
+(defun fn-lim-decision-line (field n d open-ms)
+  (declare (xargs :guard t))
+  (let* ((d (true-list-fix d))
+         (f (fn-lim-word field))
+         (head (concatenate 'string "limit " f "=" (fn-heap-decimal n))))
+    (cond ((equal (car d) :applied)
+           (concatenate 'string "applied " head " heap=" (fn-heap-decimal (nth 1 d))
+                        " MB: served now, no data moved"))
+          ((equal (car d) :at-restart)
+           (concatenate 'string "recorded " head
+                        " effective-at-next-start: takes effect at the next restart (about "
+                        (fn-heap-decimal (+ 1 (floor (nfix open-ms) 1000)))
+                        " s), no data moved; the next start reserves heap="
+                        (fn-heap-decimal (nth 1 d)) " MB"))
+          ((equal (nth 1 d) :below-current-use)
+           (concatenate 'string "refused " head " below-current-use: the store holds "
+                        (fn-heap-decimal (nth 3 d))))
+          ((equal (nth 1 d) :profile-invalid)
+           (concatenate 'string "refused " head " profile-invalid: " (fn-lim-word (nth 2 d))))
+          ((equal (nth 1 d) :not-a-live-limit)
+           (concatenate 'string "refused " head " not-a-live-limit"))
+          (t
+           (concatenate 'string "refused " head " " (fn-lim-word (nth 1 d))
+                        ": heap=" (fn-heap-decimal (nth 2 d))
+                        " MB machine=" (fn-heap-decimal (nth 3 d)) " MB")))))
+
+(defthm fn-lim-decision-line-stringp
+  (stringp (fn-lim-decision-line field n d open-ms))
+  :rule-classes :type-prescription)
+
+(defun fn-lim-decision-exit (d)
+  (declare (xargs :guard t))
+  (if (fn-lim-acceptedp d) 0 1))
+
+; The same decision as one word, for the control reply's reason field
+; (books/native-control-reason.lisp: printable, no spaces, folded to lower
+; case): what a live owner answers the operator.  The owner's log carries
+; fn-lim-decision-line.
+(defun fn-lim-decision-word (field n d open-ms)
+  (declare (xargs :guard t))
+  (let* ((d (true-list-fix d))
+         (f (concatenate 'string (fn-lim-word field) "=" (fn-heap-decimal n))))
+    (cond ((equal (car d) :applied)
+           (concatenate 'string "applied:" f ":heap=" (fn-heap-decimal (nth 1 d))
+                        "mb:served-now:no-data-moved"))
+          ((equal (car d) :at-restart)
+           (concatenate 'string "recorded:" f
+                        ":effective-at-next-start:takes-effect-at-the-next-restart:about-"
+                        (fn-heap-decimal (+ 1 (floor (nfix open-ms) 1000)))
+                        "s:no-data-moved:next-start-heap="
+                        (fn-heap-decimal (nth 1 d)) "mb"))
+          ((equal (nth 1 d) :below-current-use)
+           (concatenate 'string "below-current-use:" f ":the-store-holds="
+                        (fn-heap-decimal (nth 3 d))))
+          ((equal (nth 1 d) :profile-invalid)
+           (concatenate 'string "profile-invalid:" f ":" (fn-lim-word (nth 2 d))))
+          ((equal (nth 1 d) :not-a-live-limit)
+           (concatenate 'string "not-a-live-limit:" f))
+          (t
+           (concatenate 'string (fn-lim-word (nth 1 d)) ":" f ":heap="
+                        (fn-heap-decimal (nth 2 d)) "mb:machine="
+                        (fn-heap-decimal (nth 3 d)) "mb")))))
+
+(defun fn-lim-decision-reason (field n d open-ms)
+  (declare (xargs :guard t))
+  (intern-in-package-of-symbol (fn-lim-decision-word field n d open-ms)
+                               'fn-lim-decide))
+
+; The control status a live owner answers for decision D.
+(defun fn-lim-decision-status (d)
+  (declare (xargs :guard t))
+  (if (fn-lim-acceptedp d) :accepted :refused))
+
+; What the operator's line carries after an ACCEPTED reply's status: the
+; owner's word when it named one (a limit decision), else nothing -- the
+; refusals' words are fn-native-control-reply-detail's.
+(defun fn-lim-reply-note (status word)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-control-status-class status) :accepted)
+           (consp word)
+           (not (equal word *fn-nctrl-no-reason-word*)))
+      word
+    nil))
 
 (in-theory (disable fn-lim-decide fn-lim-effective fn-lim-apply-deltas))

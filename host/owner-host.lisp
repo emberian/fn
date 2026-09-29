@@ -550,6 +550,34 @@
           (value :installed))
       (value :refused))))
 
+;; Row S1 (books/limits-live.lisp, PRF-940): the store's use a limit
+;; decision reads, (TRANSACTIONS HISTORY-OCTETS): the owner's committed
+;; record count (fn-sf-records-count-is-used-by-definition) and its carried
+;; record octets (fn-owner-record-octets; fn-sbud-bytes-used).
+(defun fn-owner-limit-use (fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
+    (let ((s (fn-owner-store state)))
+      (mv nil (list (fn-sf-records-count (fn-sn-files s)) bytes) fn-hist state))))
+
+;; Row S1: serve an applied limit's profile (the one the configuration
+;; history now records, fn-lim-effective, fn-lim-effective-of-append-record)
+;; as the owner's served bound, carried verdict and store profile.  The
+;; caches fn-owner-install-profile folds at open (record octets, debt,
+;; carried usage) are functions of the committed records, not of the
+;; profile, and stay valid.
+(defun fn-owner-apply-limit-profile (values state)
+  (declare (xargs :stobjs state :mode :program))
+  (mv-let (verdict next)
+    (fn-osb-install (fn-owner-core state) values)
+    (if (equal verdict :installed)
+        (let* ((state (fn-owner-replace-core next state))
+               (state (f-put-global 'fn-owner-store-profile values state))
+               (state (f-put-global 'fn-owner-profile-carry
+                                    (fn-pvc-make values) state)))
+          (value :installed))
+      (value :refused))))
+
 (defun fn-owner-store-profile (state)
   (declare (xargs :stobjs state :mode :program))
   (if (boundp-global 'fn-owner-store-profile state)

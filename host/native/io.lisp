@@ -1771,6 +1771,9 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; the served one, SEALED under the configuration history's limit rows
   ;; (fnn-load-config, books/limits-live.lisp).
   (sealed-config nil) (orphans nil) (orphans-more nil)
+  ;; Row S1: how long this open took, in milliseconds (an observation; the
+  ;; next start's open takes about as long): the limit verb's words read it.
+  (open-ms 0)
   (completion-pending nil)
   ;; P3: how the last open reached the Store state: (:checkpoint S K) or
   ;; (:full-replay REASON).  `operator status' prints it.
@@ -3295,9 +3298,13 @@ the records are read after the open by the verbs that need them
   (let ((store (make-fnn-store root :writable writable :fault fault)))
     (fnn-acquire store)
     (handler-case
-        (progn
+        (let ((before (get-internal-real-time)))
           (fnn-bridge-reset)
-          (values store (fnn-recover store)))
+          (let ((count (fnn-recover store)))
+            (setf (fnn-store-open-ms store)
+                  (floor (* 1000 (- (get-internal-real-time) before))
+                         internal-time-units-per-second))
+            (values store count)))
       (error (e) (fnn-store-close store) (error e)))))
 
 (defun fnn-orphan-report (store)

@@ -14,7 +14,7 @@
 (defconst *lim-t-p* *fn-bs-profile-development*)
 (defconst *lim-t-use* '(100 1000000))          ; 100 transactions, 1 MB charged
 (defconst *lim-t-run-mb*                       ; the reservation this profile's start took
-  (fn-heap-decision-mb (fn-heap-decide *lim-t-p* *lim-t-core* *lim-t-nursery* *lim-t-machine*)))
+  (fn-heap-decision-mb (fn-heap-status-decide *lim-t-p* *lim-t-core* *lim-t-nursery* *lim-t-machine* nil)))
 
 (assert! (equal (fn-bs-pf *fn-bs-pf-max-transactions* *lim-t-p*) 128))
 (assert! (posp *lim-t-run-mb*))
@@ -27,7 +27,7 @@
 ; new T (129), and the figure fits the running reservation.
 (defconst *lim-t-applied*
   (fn-lim-decide "max-transactions" 129 *lim-t-p* *lim-t-use*
-                 *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine*))
+                 *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine* nil))
 (assert! (equal (car *lim-t-applied*) :applied))
 (assert! (fn-lim-acceptedp *lim-t-applied*))
 (assert! (fn-lim-fieldp "max-transactions"))
@@ -39,7 +39,7 @@
 ; reservation: recorded, and the conclusion's first three conjuncts hold.
 (defconst *lim-t-later*
   (fn-lim-decide "max-transactions" 4096 *lim-t-p* *lim-t-use*
-                 *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine*))
+                 *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine* nil))
 (assert! (equal (car *lim-t-later*) :at-restart))
 (assert! (< *lim-t-run-mb* (cadr *lim-t-later*)))
 (assert! (fn-bs-profile-admittedp (fn-lim-apply-row *lim-t-p* "max-transactions" 4096)))
@@ -47,38 +47,38 @@
 ; Offline (no process holds a reservation: run-mb 0) every accepted change is
 ; :at-restart.
 (assert! (equal (car (fn-lim-decide "max-transactions" 129 *lim-t-p* *lim-t-use*
-                                    0 *lim-t-core* *lim-t-nursery* *lim-t-machine*))
+                                    0 *lim-t-core* *lim-t-nursery* *lim-t-machine* nil))
                 :at-restart))
 
 ; CONCLUSION FAILURE, refused below the current use: T = 99 < 100 committed.
 (assert! (equal (fn-lim-decide "max-transactions" 99 *lim-t-p* *lim-t-use*
-                               *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine*)
+                               *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine* nil)
                 '(:refused :below-current-use "max-transactions" 100)))
 (assert! (not (<= (fn-lim-use-of "max-transactions" *lim-t-use*) 99)))
 ; History octets likewise.
 (assert! (equal (fn-lim-decide "max-history-octets" 999999 *lim-t-p* *lim-t-use*
-                               *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine*)
+                               *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine* nil)
                 '(:refused :below-current-use "max-history-octets" 1000000)))
 ; A field that is not live (the log-scan bound R) is refused by name.
 (assert! (equal (fn-lim-decide "max-record-octets" 4096 *lim-t-p* *lim-t-use*
-                               *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine*)
+                               *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine* nil)
                 '(:refused :not-a-live-limit "max-record-octets" 0)))
 (assert! (not (fn-lim-fieldp "max-record-octets")))
 ; An invalid profile (T = 0 fails the resolution) is refused with its reason.
 (assert! (equal (car (fn-lim-decide "max-transactions" 0 *lim-t-p* '(0 0)
-                                    *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine*))
+                                    *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine* nil))
                 :refused))
 ; The machine cannot hold the figure: a 2 GiB machine refuses T = 4096 by the
-; heap figure's name, with both numbers.
+; reservation's name, with both numbers.
 (assert! (equal (cadr (fn-lim-decide "max-transactions" 4096 *lim-t-p* *lim-t-use* 0
                                      *lim-t-core* *lim-t-nursery*
-                                     (list (* 2048 *fn-heap-mib*))))
+                                     (list (* 2048 *fn-heap-mib*)) nil))
                 :machine-cannot-hold-profile))
 ; The :applied conjunct fails when the reservation is smaller than the
 ; figure: the same raise with run-mb one below it is :at-restart, not applied.
 (assert! (equal (car (fn-lim-decide "max-transactions" 129 *lim-t-p* *lim-t-use*
                                     (1- (cadr *lim-t-applied*))
-                                    *lim-t-core* *lim-t-nursery* *lim-t-machine*))
+                                    *lim-t-core* *lim-t-nursery* *lim-t-machine* nil))
                 :at-restart))
 
 ; -----------------------------------------------------------------------------
@@ -127,3 +127,40 @@
 (assert! (not (fn-lim-fieldp "max-record-octets")))
 (assert! (not (equal (fn-lim-apply-deltas *lim-t-p* (fn-lim-deltas "max-record-octets" 7))
                      (fn-lim-apply-row *lim-t-p* "max-record-octets" 7))))
+
+; -----------------------------------------------------------------------------
+; The words (fn-lim-decision-line) and the exit (fn-lim-decision-exit).
+(assert! (equal (fn-lim-decision-line "max-transactions" 129 *lim-t-applied* 4200)
+                (concatenate 'string "applied limit max-transactions=129 heap="
+                             (fn-heap-decimal (cadr *lim-t-applied*))
+                             " MB: served now, no data moved")))
+(assert! (equal (fn-lim-decision-line "max-transactions" 4096 '(:at-restart 2688) 4200)
+                "recorded limit max-transactions=4096 effective-at-next-start: takes effect at the next restart (about 5 s), no data moved; the next start reserves heap=2688 MB"))
+(assert! (equal (fn-lim-decision-line "max-transactions" 99
+                                      '(:refused :below-current-use "max-transactions" 100) 0)
+                "refused limit max-transactions=99 below-current-use: the store holds 100"))
+(assert! (equal (fn-lim-decision-line "max-transactions" 4096
+                                      '(:refused :machine-cannot-hold-profile 2688 2048) 0)
+                "refused limit max-transactions=4096 machine-cannot-hold-profile: heap=2688 MB machine=2048 MB"))
+(assert! (equal (fn-lim-decision-exit *lim-t-applied*) 0))
+(assert! (equal (fn-lim-decision-exit *lim-t-later*) 0))
+(assert! (equal (fn-lim-decision-exit '(:refused :below-current-use "max-transactions" 100)) 1))
+
+; The control reply's word (fn-lim-decision-word, one printable word) and
+; the note an accepted reply prints (fn-lim-reply-note).
+(assert! (equal (fn-lim-decision-word "max-transactions" 4096 '(:at-restart 2688) 4200)
+                "recorded:max-transactions=4096:effective-at-next-start:takes-effect-at-the-next-restart:about-5s:no-data-moved:next-start-heap=2688mb"))
+(assert! (equal (fn-lim-decision-word "max-transactions" 99
+                                      '(:refused :below-current-use "max-transactions" 100) 0)
+                "below-current-use:max-transactions=99:the-store-holds=100"))
+(assert! (consp (fn-nctrl-reason-word
+                 (fn-lim-decision-reason "max-transactions" 4096 '(:at-restart 2688) 4200))))
+(assert! (not (equal (fn-nctrl-reason-word
+                      (fn-lim-decision-reason "max-transactions" 4096 '(:at-restart 2688) 4200))
+                     *fn-nctrl-unnamed-reason-word*)))
+(assert! (equal (fn-lim-decision-status *lim-t-later*) :accepted))
+(assert! (equal (fn-lim-decision-status '(:refused :below-current-use "max-transactions" 100))
+                :refused))
+(assert! (equal (fn-lim-reply-note :accepted '(97 98)) '(97 98)))
+(assert! (null (fn-lim-reply-note :accepted *fn-nctrl-no-reason-word*)))
+(assert! (null (fn-lim-reply-note :refused '(97 98))))

@@ -101,6 +101,8 @@
                                 :set-exposure
                                 ;; PRF-235/236: a transit hygiene limit row.
                                 :set-transit-limit
+                                ;; S1: a store limit row (books/limits-live.lisp).
+                                :set-store-limit
                                 ;; O2: a group's LIST ACTIVE status.
                                 :set-group-status
                                 ;; P3: a group's moderation (code 23).
