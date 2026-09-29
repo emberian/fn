@@ -73,9 +73,9 @@
 ; the same Store events up to their payload handles: a live arena that
 ; sealed a payload for a POST refused after its seal numbers later handles
 ; differently from the fresh intern at the open.  The numbering reads no
-; payload, but no theorem here says so: the premise
-; (fn-sf-prefixp fenced recovered) is stated over rows, and its discharge
-; for runs with such a refusal is open (the lane's LANEDUMP names it).
+; payload: books/number-durability-handles.lisp proves the replay commutes
+; with erasing handles and restates the two extension keystones with the
+; premise up to handles (PKT-886).
 ; A crash inside a configuration write is the configuration program's; the
 ; configuration history is the same on both sides of a log cut.
 ; Teeth: tests/acl2/number-durability-tests.lisp.  PRF-903.

@@ -13398,6 +13398,22 @@
         {
           "kind": "theorem",
           "name": "fn-ndur-recovery-never-reissues-a-logged-txid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndh-replay-extension-keeps-every-number"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndh-recovery-keeps-every-visible-number"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndh-cpr-loop"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndh-cst-replay-node"
         }
       ]
     },
