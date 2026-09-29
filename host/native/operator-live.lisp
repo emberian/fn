@@ -292,15 +292,17 @@ read-only executor's own shared lock answers it), so it prints only the
 answer (:live), or the refusal of a store whose lock an owner holds (:held)."
   (if (eq liveness :held)
       (values (fnn-core 'fn-native-control-host-status-exit-code :refused) nil)
-    (multiple-value-bind (status word)
+    (multiple-value-bind (status word line)
         (fnn-control-admin control-path argv)
-      (let ((detail (fnn-operator-status-detail status word))
-            ;; Row S1: an accepted reply that names a word (a limit
-            ;; decision, books/limits-live.lisp fn-lim-reply-note) prints it.
-            (note (and word (fnn-core 'fn-lim-reply-note status word))))
+      ;; Row S1: a reply that carries the owner's line (a limit decision,
+      ;; books/native-control-line.lisp kind 23) prints that line, ACL2's
+      ;; octets (fn-native-control-printed-line-is-the-decisions).
+      (let ((printed (and line (fnn-core 'fn-native-control-host-lined-detail
+                                         (list :status status word line))))
+            (detail (fnn-operator-status-detail status word)))
         (values (fnn-core 'fn-native-control-host-status-exit-code status)
-                (cond ((and (consp note) (fnn-octet-list-p note))
-                       (format nil "~a ~a" status (fnn-octets-string (fnn-octets note))))
+                (cond ((fnn-octet-list-p printed)
+                       (format nil "~a ~a" status (fnn-octets-string (fnn-octets printed))))
                       ((not (eq detail status)) detail)))))))
 
 (defun fnn-operator-live-request (control-path argv)

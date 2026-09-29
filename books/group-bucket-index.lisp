@@ -35,18 +35,55 @@
         (fn-gidx-bucket-numbers group (cdr buckets)))
     nil))
 
-(defun fn-gidx-put (entry buckets)
+; Executes by a loop (lane depth-debt, PRF-919): it walks the buckets, one per configured newsgroup holding articles, operator
+; data with no fixed cap (D27), and the recursion took one control-stack frame
+; per element.  (mbe :logic <the recursion, unchanged> :exec <a loop>), equal
+; by the lemma after it (books/rev-onto.lisp fn-ag-rev-onto).
+(defun fn-gidx-put-loop (entry buckets acc)
   (declare (xargs :guard t))
   (let ((group (fn-index-entry-group entry)))
     (if (consp buckets)
         (if (equal group (fn-ag-car (fn-ag-car buckets)))
             (let ((bucket (fn-ag-cdr (fn-ag-car buckets))))
-              (cons (cons group
-                          (cons (cons entry (fn-ag-car bucket))
-                                (fn-gnix-add group entry (fn-ag-cdr bucket))))
-                    (cdr buckets)))
-          (cons (car buckets) (fn-gidx-put entry (cdr buckets))))
-      (list (cons group (cons (list entry) (fn-gnix-add group entry nil)))))))
+              (fn-ag-rev-onto
+               acc
+               (cons (cons group
+                           (cons (cons entry (fn-ag-car bucket))
+                                 (fn-gnix-add group entry (fn-ag-cdr bucket))))
+                     (cdr buckets))))
+          (fn-gidx-put-loop entry (cdr buckets) (cons (car buckets) acc)))
+      (fn-ag-rev-onto
+       acc (list (cons group (cons (list entry) (fn-gnix-add group entry nil))))))))
+
+(defun fn-gidx-put (entry buckets)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (let ((group (fn-index-entry-group entry)))
+         (if (consp buckets)
+             (if (equal group (fn-ag-car (fn-ag-car buckets)))
+                 (let ((bucket (fn-ag-cdr (fn-ag-car buckets))))
+                   (cons (cons group
+                               (cons (cons entry (fn-ag-car bucket))
+                                     (fn-gnix-add group entry (fn-ag-cdr bucket))))
+                         (cdr buckets)))
+               (cons (car buckets) (fn-gidx-put entry (cdr buckets))))
+           (list (cons group (cons (list entry) (fn-gnix-add group entry nil))))))
+       :exec (fn-gidx-put-loop entry buckets nil)))
+
+(defthm fn-gidx-put-loop-is-rev-onto
+  (equal (fn-gidx-put-loop entry buckets acc)
+         (fn-ag-rev-onto acc (fn-gidx-put entry buckets)))
+  :hints (("Goal" :induct (fn-gidx-put-loop entry buckets acc)
+                  :in-theory (union-theories
+                              '(fn-gidx-put-loop fn-gidx-put fn-ag-rev-onto
+                                car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-gidx-put
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-gidx-put fn-ag-rev-onto fn-gidx-put-loop-is-rev-onto car-cons cdr-cons)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; Executes by a loop (PKT-876, lane open-depth): one control-stack frame per
 ; retained article on the owner's open.  The :logic is the recursion,

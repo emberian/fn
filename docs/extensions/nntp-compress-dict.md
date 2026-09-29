@@ -105,7 +105,7 @@ The DEFLATE payload decoder takes a median of 148 us per article on hbox.
 The recipe's parameters (64-octet segments, 8-octet grams) measured best
 among 32/64/128 and 6/8/12.
 
-## Negotiation (wire; specified, not served)
+## Negotiation (wire; XFN-ZARTICLE served, dictionary sessions not yet)
 
 The negotiation is shaped after RFC 9842's `Available-Dictionary`, carried
 over NNTP. RFC 8054 is unchanged, and a client that knows nothing of this
@@ -127,24 +127,32 @@ extension sees plain `COMPRESS DEFLATE`.
   assume the dictionary sits directly before its first octet, but in a
   session the earlier traffic is in between. Its final block would also end
   the session. Carrying stored octets unchanged is therefore a separate fn
-  command: `XFN-ZARTICLE <message-id>` answers `220`-shaped with the
-  payload's DICT-ID and its raw stream as a dot-stuffed multi-line body. A
-  peer that holds that dictionary stores the stream as received, after
-  decoding it with the verified decoder and comparing it with the article's
-  identity. A peer that does not hold it asks with `ARTICLE`. The sender
-  never decodes anything to answer.
+  command, `XFN-ZARTICLE <message-id> <b3-hex> [<b3-hex> ...]`: the
+  request lists the digests of the dictionaries the asking peer holds, so
+  no session state is needed. When the store holds the article's payload
+  compressed under a listed dictionary, the answer is
+  `229 <b3-hex> <N> <CLEN>` and the stored block, never decoded here. N is
+  the payload's length and CLEN the block's. RFC 3977 section 3.1.1 allows
+  no NUL, CR or LF inside a block, so the block is escaped as yEnc escapes
+  (NUL, LF, CR and `=` become `=` and the octet plus 64), cut into lines
+  of 128 octets, and dot-stuffed. The receiver joins the lines, unescapes,
+  checks CLEN, decodes with the verified decoder and compares the result
+  with the article's identity before it stores anything. Otherwise the
+  answer is exactly ARTICLE's by Message-ID (220, 430, ...).
 
-The decisions are ACL2's (`books/nntp-compress-dict.lisp`, PRF-974):
-`fn-zdn-capability-line` makes the `XFN-DICT` line, `fn-zdn-request`
-parses `XFN-ZARTICLE <message-id> <b3-hex> [<b3-hex> ...]` (the request
-lists the digests the asking peer holds, so no session state is needed),
-and `fn-zdn-choose` decides each reply: the stored frame as it is stored
-when the peer listed the digest the shipped table records for the frame's
-DICT-ID, otherwise the article decoded here and sent as `ARTICLE` sends it
-(raw, or inside the connection's `COMPRESS DEFLATE` layer). Open for the
-wiring: the frame is binary, so the reply line carries its octet count and
-the receiver checks the unstuffed body against it (dot-stuffing alone is
-not octet-transparent at the body's end).
+The decisions are ACL2's. `books/nntp-compress-dict.lisp` (PRF-974) holds
+the `XFN-DICT` line (`fn-zdn-capability-line`, sent to connections that may
+negotiate COMPRESS), the request parse (`fn-zdn-request`), the choice
+(`fn-zdn-choose`) and the body codec (`fn-zdn-body-lines`, keystone
+`fn-zdn-body-round-trip`). `books/nntp-zarticle.lisp` serves the command:
+it is the XFN-ZARTICLE row of the protocol table, a `:pinned` arm. Its
+keystones are `fn-zar-decide-stored-denotes` (a stored answer names a
+listed digest, and its block decodes under that digest's dictionary to the
+article's octets) and `fn-zar-decide-complete`. The store's answer comes
+from the named assumption A-ARENA-STORED (`books/assumptions-stored.lisp`),
+which the host implements by reading the arena's extent without decoding.
+`COMPRESS DEFLATE <b3-hex>` dictionary sessions are not served yet: they
+need a deflater with a preset dictionary (see the lane record).
 
 Security (RFC 8054 section 7) is unchanged. A dictionary is public, and it
 adds no secret to the compressed lengths.

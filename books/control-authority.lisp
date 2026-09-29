@@ -96,15 +96,43 @@
 ; -----------------------------------------------------------------------------
 ; Grants.  The namespaces PRINCIPAL-HEX holds VERB over, in row order.
 
-(defun fn-ctl-grant-scope (principal verb rows)
+; Executes by a loop (lane depth-debt, PRF-919): it walks the configuration's authority grant rows, operator
+; data with no fixed cap (D27), and the recursion took one control-stack frame
+; per element.  (mbe :logic <the recursion, unchanged> :exec <a loop>), equal
+; by the lemma after it (books/rev-onto.lisp fn-ag-rev-onto).
+(defun fn-ctl-grant-scope-loop (principal verb rows acc)
   (declare (xargs :guard t))
   (if (consp rows)
-      (let ((rest (fn-ctl-grant-scope principal verb (cdr rows))))
-        (if (and (equal (fn-cfg-row-b (car rows)) principal)
-                 (equal (fn-cfg-row-c (car rows)) verb))
-            (cons (fn-cfg-row-a (car rows)) rest)
-          rest))
-    nil))
+      (fn-ctl-grant-scope-loop principal verb (cdr rows)
+       (if (and (equal (fn-cfg-row-b (car rows)) principal)
+            (equal (fn-cfg-row-c (car rows)) verb)) (cons (fn-cfg-row-a (car rows)) acc) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-ctl-grant-scope (principal verb rows)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp rows)
+           (let ((rest (fn-ctl-grant-scope principal verb (cdr rows))))
+             (if (and (equal (fn-cfg-row-b (car rows)) principal)
+                      (equal (fn-cfg-row-c (car rows)) verb))
+                 (cons (fn-cfg-row-a (car rows)) rest)
+               rest))
+         nil)
+       :exec (fn-ctl-grant-scope-loop principal verb rows nil)))
+
+(defthm fn-ctl-grant-scope-loop-is-rev-onto
+  (equal (fn-ctl-grant-scope-loop principal verb rows acc)
+         (fn-ag-rev-onto acc (fn-ctl-grant-scope principal verb rows)))
+  :hints (("Goal" :induct (fn-ctl-grant-scope-loop principal verb rows acc)
+                  :in-theory (union-theories
+                              '(fn-ctl-grant-scope-loop fn-ctl-grant-scope fn-ag-rev-onto not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-ctl-grant-scope
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-ctl-grant-scope fn-ag-rev-onto fn-ctl-grant-scope-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-ctl-holds-any-grant-p (principal rows)
   (declare (xargs :guard t))

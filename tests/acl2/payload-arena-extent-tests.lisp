@@ -10,6 +10,10 @@
 ;    octets is the host's, host/native/extent.lisp).
 ; 3. The keystone's teeth: a ground positive witness per conjunct, and a
 ;    must-fail per hypothesis.
+; 4. The file count (lane composed-owner-4, row A6): the run, a reachable
+;    positive witness of KEYSTONE fn-arx-files-unnamed-names-none, and a
+;    witness plus a must-fail per hypothesis (the correspondence one a
+;    CORRUPTED-STATE witness).
 
 (in-package "ACL2")
 (include-book "../../books/payload-arena-extent")
@@ -235,3 +239,179 @@
                   (equal (fn-durable-octets file poff plen) (fn-arena-payload h fn-arena)))
              (equal (fn-arena-reseat-extent h file eoff elen poff plen trailer fn-arena)
                     fn-arena))))))
+
+; -----------------------------------------------------------------------------
+; The file count (lane composed-owner-4, row A6): KEYSTONE
+; fn-arx-files-unnamed-names-none's teeth.
+
+(assert-event
+ (and (eq (symbol-class 'fn-arx-file-count (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-arx-files-unnamed-p (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-arx-files-move (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-arx-mark (w state)) :common-lisp-compliant)))
+
+; Run: an extent on file 7 at handle 0, a resident handle 1, then handle 0
+; reseated onto file 9.  File 7's count goes 1 -> 0, file 9's is 1.
+(defun paxt-files-run (fn-arena$x)
+  (declare (xargs :stobjs fn-arena$x :verify-guards nil))
+  (let* ((fn-arena$x (fn-arena$x-clear fn-arena$x))
+         (fn-arena$x (fn-arena$x-seal-extent 7 100 100 120 20 99 fn-arena$x))
+         (fn-arena$x (fn-arena$x-seal-list '(1 2) fn-arena$x))
+         (c7a (fn-arx-file-count 7 fn-arena$x))
+         (fn-arena$x (fn-arena$x-reseat-extent 0 9 0 50 10 20 5 fn-arena$x)))
+    (mv (list c7a
+              (fn-arx-file-count 7 fn-arena$x)
+              (fn-arx-file-count 9 fn-arena$x)
+              (fn-arx-files-unnamed-p '(7) fn-arena$x)
+              (fn-arx-files-unnamed-p '(7 9) fn-arena$x)
+              (fn-arx-entry-file (fn-arena$x-exti 0 fn-arena$x)))
+        fn-arena$x)))
+
+(defun paxt-files-run-result ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena$x
+    (mv-let (r fn-arena$x) (paxt-files-run fn-arena$x) r)))
+
+(assert-event (equal (paxt-files-run-result) '(1 0 1 t nil 9)))
+
+(defun-nx paxt-x3 ()
+  (fn-arena$x-reseat-extent 0 9 0 50 10 20 5
+    (fn-arena$x-seal-list '(1 2)
+      (fn-arena$x-seal-extent 7 100 100 120 20 99
+        (fn-arena$x-clear (create-fn-arena$x))))))
+
+(defun paxt-a3 ()
+  (fn-arena$a-reseat-extent 0 9 0 50 10 20 5
+    (fn-arena$a-seal-list '(1 2)
+      (fn-arena$a-seal-extent 7 100 100 120 20 99
+        (fn-arena$a-clear (create-fn-arena$a))))))
+
+; The run's state is reached through the exports alone, so it corresponds.
+(defthm paxt-x3-corresponds
+  (fn-arena$xcorr (paxt-x3) (paxt-a3))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (disable fn-arena$xcorr fn-arena$x-clear fn-arena$x-seal-extent
+                               fn-arena$x-seal-list fn-arena$x-reseat-extent create-fn-arena$x
+                               (:e fn-arena$x-clear) (:e fn-arena$x-seal-extent)
+                               (:e fn-arena$x-seal-list) (:e fn-arena$x-reseat-extent)
+                               (:e create-fn-arena$x))
+           :use ((:instance create-fn-arena-extent{correspondence})
+                 (:instance fn-arena-extent-clear{correspondence}
+                            (fn-arena$x (create-fn-arena$x)) (fn-arena-extent (create-fn-arena$a)))
+                 (:instance fn-arena-extent-seal-extent{correspondence}
+                            (file 7) (eoff 100) (elen 100) (poff 120) (plen 20) (trailer 99)
+                            (fn-arena$x (fn-arena$x-clear (create-fn-arena$x)))
+                            (fn-arena-extent (fn-arena$a-clear (create-fn-arena$a))))
+                 (:instance fn-arena-extent-seal-list{correspondence} (xs '(1 2))
+                            (fn-arena$x (fn-arena$x-seal-extent 7 100 100 120 20 99
+                                          (fn-arena$x-clear (create-fn-arena$x))))
+                            (fn-arena-extent (fn-arena$a-seal-extent 7 100 100 120 20 99
+                                               (fn-arena$a-clear (create-fn-arena$a)))))
+                 (:instance fn-arena-extent-reseat-extent{correspondence}
+                            (h 0) (file 9) (eoff 0) (elen 50) (poff 10) (plen 20) (trailer 5)
+                            (fn-arena$x (fn-arena$x-seal-list '(1 2)
+                                          (fn-arena$x-seal-extent 7 100 100 120 20 99
+                                            (fn-arena$x-clear (create-fn-arena$x)))))
+                            (fn-arena-extent (fn-arena$a-seal-list '(1 2)
+                                               (fn-arena$a-seal-extent 7 100 100 120 20 99
+                                                 (fn-arena$a-clear (create-fn-arena$a))))))))))
+
+(defthm paxt-x3-is-the-run
+  (equal (paxt-x3) (mv-nth 1 (paxt-files-run (create-fn-arena$x))))
+  :rule-classes nil)
+
+; Reachable positive witness: the complete antecedent and the conclusion.
+(defthm paxt-files-unnamed-positive
+  (and (fn-arena$xcorr (paxt-x3) (paxt-a3))
+       (nat-listp '(7))
+       (fn-arx-files-unnamed-p '(7) (paxt-x3))
+       (member-equal 7 '(7))
+       (not (equal (fn-arx-entry-file (nth 0 (nth *fn-arena$x-exti* (paxt-x3)))) 7))
+       (not (equal (fn-arx-entry-file (nth 1 (nth *fn-arena$x-exti* (paxt-x3)))) 7)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance paxt-x3-corresponds))
+           :in-theory (disable fn-arena$xcorr fn-arx-files-unnamed-names-none))))
+
+; Without the correspondence (CORRUPTED-STATE witness): an extent column
+; naming file 7 beside an empty count column.  Every other hypothesis holds,
+; the agreement (so the correspondence, for every abstract value) fails, and
+; so does the conclusion.
+(defthm paxt-files-without-corr-corrupted-state
+  (let ((x (list nil '((7 100 100 120 20 99)) nil nil)))
+    (and (not (fn-arx-files-agree (nth *fn-arena$x-exti* x) (nth *fn-arena$x-filesi* x)))
+         (not (fn-arena$xcorr x a))
+         (nat-listp '(7))
+         (fn-arx-files-unnamed-p '(7) x)
+         (member-equal 7 '(7))
+         (equal (fn-arx-entry-file (nth 0 (nth *fn-arena$x-exti* x))) 7)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-arx-files-agree-necc (f 7)
+                                   (ext '((7 100 100 120 20 99))) (files nil)))
+           :in-theory (e/d (fn-arx-files-get fn-arx-entry-file) (fn-arx-files-agree-necc)))))
+
+(local
+ (must-fail-checked
+  (with-prover-step-limit 50000 (defthm paxt-files-keystone-without-corr
+    (implies (and (nat-listp fs)
+                  (fn-arx-files-unnamed-p fs fn-arena$x)
+                  (member-equal f fs))
+             (not (equal (fn-arx-entry-file (nth h (nth *fn-arena$x-exti* fn-arena$x))) f)))))))
+
+; Without the count check: file 9 names handle 0 in the reachable state.
+(defthm paxt-files-without-unnamed
+  (and (fn-arena$xcorr (paxt-x3) (paxt-a3))
+       (nat-listp '(9))
+       (not (fn-arx-files-unnamed-p '(9) (paxt-x3)))
+       (member-equal 9 '(9))
+       (equal (fn-arx-entry-file (nth 0 (nth *fn-arena$x-exti* (paxt-x3)))) 9))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance paxt-x3-corresponds))
+           :in-theory (e/d (fn-arx-entry-file) (fn-arena$xcorr)))))
+
+(local
+ (must-fail-checked
+  (with-prover-step-limit 50000 (defthm paxt-files-keystone-without-unnamed
+    (implies (and (fn-arena$xcorr fn-arena$x fn-arena$a)
+                  (nat-listp fs)
+                  (member-equal f fs))
+             (not (equal (fn-arx-entry-file (nth h (nth *fn-arena$x-exti* fn-arena$x))) f)))))))
+
+; Without membership: the check passes for (7), and handle 0 names 9.
+(defthm paxt-files-without-member
+  (and (fn-arena$xcorr (paxt-x3) (paxt-a3))
+       (nat-listp '(7))
+       (fn-arx-files-unnamed-p '(7) (paxt-x3))
+       (not (member-equal 9 '(7)))
+       (equal (fn-arx-entry-file (nth 0 (nth *fn-arena$x-exti* (paxt-x3)))) 9))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance paxt-x3-corresponds))
+           :in-theory (e/d (fn-arx-entry-file) (fn-arena$xcorr)))))
+
+(local
+ (must-fail-checked
+  (with-prover-step-limit 50000 (defthm paxt-files-keystone-without-member
+    (implies (and (fn-arena$xcorr fn-arena$x fn-arena$a)
+                  (nat-listp fs)
+                  (fn-arx-files-unnamed-p fs fn-arena$x))
+             (not (equal (fn-arx-entry-file (nth h (nth *fn-arena$x-exti* fn-arena$x))) f)))))))
+
+; Without nat-listp: NIL is no file id, the check reads column 0 for it, and
+; the resident handle 1 names no file (NIL).
+(defthm paxt-files-without-nat-listp
+  (and (fn-arena$xcorr (paxt-x3) (paxt-a3))
+       (not (nat-listp '(nil)))
+       (fn-arx-files-unnamed-p '(nil) (paxt-x3))
+       (member-equal nil '(nil))
+       (equal (fn-arx-entry-file (nth 1 (nth *fn-arena$x-exti* (paxt-x3)))) nil))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance paxt-x3-corresponds))
+           :in-theory (e/d (fn-arx-entry-file) (fn-arena$xcorr)))))
+
+(local
+ (must-fail-checked
+  (with-prover-step-limit 50000 (defthm paxt-files-keystone-without-nat-listp
+    (implies (and (fn-arena$xcorr fn-arena$x fn-arena$a)
+                  (fn-arx-files-unnamed-p fs fn-arena$x)
+                  (member-equal f fs))
+             (not (equal (fn-arx-entry-file (nth h (nth *fn-arena$x-exti* fn-arena$x))) f)))))))

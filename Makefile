@@ -180,11 +180,15 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-control-tests \
 	books/native-control-reason \
 	tests/acl2/native-control-reason-tests \
+	books/native-control-line \
+	tests/acl2/native-control-line-tests \
 	tests/acl2/native-control-host-tests \
 	books/native-live-status \
 	tests/acl2/native-live-status-tests \
 	books/retention-figures \
 	books/control-evidence-grammar \
+	books/owner-inspect-group \
+	tests/acl2/owner-inspect-group-tests \
 	books/control-evidence \
 	tests/acl2/control-evidence-tests \
 	books/moderation-verbs \
@@ -289,6 +293,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/memory-credits-tests \
 	tests/acl2/heap-figure-tests \
 	tests/acl2/open-frontier-tests \
+	books/open-frontier-wire \
+	tests/acl2/open-frontier-wire-tests \
 	tests/acl2/limits-live-tests \
 	books/connection-budget \
 	tests/acl2/connection-budget-tests \
@@ -402,6 +408,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/feed-link-backoff-tests \
 	books/feed-pause \
 	tests/acl2/feed-pause-tests \
+	books/peer-set \
+	tests/acl2/peer-set-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
 	books/history-knowledge \
@@ -438,6 +446,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-walk-once-tests \
 	books/store-log-segments \
 	tests/acl2/store-log-segments-tests \
+	books/store-log-lineage \
+	tests/acl2/store-log-lineage-tests \
 	books/store-log-reclaim \
 	tests/acl2/store-log-reclaim-tests \
 	books/reclaim-instant \
@@ -451,6 +461,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reclaim-tests \
 	books/extent-retire \
 	tests/acl2/extent-retire-tests \
+	books/owner-reclaim-instant \
+	tests/acl2/owner-reclaim-instant-tests \
 	books/store-log-route-phases \
 	books/store-log-extend \
 	tests/acl2/store-log-extend-tests \
@@ -475,6 +487,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-lz-append \
 	tests/acl2/payload-lz-append-tests \
 	tests/acl2/deflate-inflate-tests \
+	books/deflate-pool-check \
+	tests/acl2/deflate-pool-tests \
+	books/nntp-compress-dict \
+	tests/acl2/nntp-compress-dict-tests \
+	tests/acl2/nntp-zarticle-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
@@ -561,12 +578,19 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-prepare-catalog-tests \
 	books/post-retain-carried \
 	tests/acl2/post-retain-carried-tests \
+	books/identity-retain-carried \
+	tests/acl2/identity-retain-carried-tests \
 	books/store-profile-carried \
 	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
 	books/store-finalize-incremental \
 	tests/acl2/store-finalize-incremental-tests \
+	books/store-finalize-published \
+	tests/acl2/store-finalize-published-tests \
+	books/store-finalize-carried-check \
+	tests/acl2/store-finalize-carried-check-tests \
+	books/assumptions-publication \
 	books/bp-fnbs-delivery-codec \
 	tests/acl2/bp-fnbs-delivery-codec-tests \
 	books/bp-fnbs-delivery-replay \
@@ -692,6 +716,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fnbs-inspect-tests \
 	books/bp-fnbs-codec-invariants \
 	tests/acl2/bp-fnbs-codec-tests \
+	books/bp-fnbs-codec-equivalence \
+	tests/acl2/bp-fnbs-codec-equivalence-tests \
 	books/bp-fnbs-byte-publisher \
 	books/bp-fnbs-byte-invariants \
 	books/bp-fnbs-replay \
@@ -882,8 +908,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/refused-offers \
 	books/peer-refused-offers \
 	tests/acl2/transit-hygiene-tests \
+	books/sasl \
 	books/nntp-auth \
 	tests/acl2/nntp-auth-tests \
+	books/nntp-auth-roles \
+	tests/acl2/nntp-auth-sasl-tests \
 	books/served \
 	books/served-tls-prefix \
 	books/served-implicit-tls \
@@ -1387,6 +1416,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-bars \
 	tests/acl2/owner-time-bars-tests \
 	tests/acl2/tls-handshake-budget-tests \
+	tests/acl2/owner-cold-line-tests \
+	books/arena-reader-pins \
+	tests/acl2/arena-reader-pins-tests \
 	books/feed-restart-domain \
 	tests/acl2/feed-restart-domain-tests \
 	books/web-request \
@@ -1423,13 +1455,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/packed-submission-tests \
 	tests/acl2/body-chunks-tests \
 	tests/acl2/bp-node-fragment-job-tests \
-	tests/acl2/deflate-pool-tests \
 	tests/acl2/native-operator-stage-tests \
-	tests/acl2/nntp-compress-dict-tests \
 	tests/acl2/owner-control-post-reason-tests \
 	tests/acl2/owner-export-request-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
+	books/state-globals \
 	books/reader-open-carried \
 	tests/acl2/reader-open-carried-tests \
 	tests/acl2/group-number-index-tests \
@@ -1560,6 +1591,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-records-disk \
 	books/store-records-field \
 	tests/acl2/history-records-disk-tests \
+	books/history-image-binding \
+	books/history-image-fold \
+	books/history-image-snapshot \
+	tests/acl2/history-image-binding-tests \
+	tests/acl2/history-image-campaign-tests \
 	books/image-world \
 	books/image-world-dtn \
 	books/image-world-store-test
@@ -1788,6 +1824,11 @@ check:
 # `python3 tools/teeth_check.py --evaluate` produces in about twenty minutes
 # of one ACL2.
 	@$(CHECK_STEP) $(PYTHON) tools/teeth_check.py --summary
+# An empty-result assertion (nil / null / endp / len 0) over a produced value
+# with no non-empty witness of the same function in the book pins a defect
+# as the expected value (stx-model: stx-policy's empty laces).  Warn-only;
+# tools/null_witness_allow.json names the accepted ones.
+	@$(CHECK_STEP) $(PYTHON) tools/null_witness_lint.py
 # Two static lints over the harness, both from the 2026-09-19 incident: a
 # host entry point gained a required keyword-only argument, two callers in
 # tests/ were never updated, and both integration labs were dead for a day
@@ -1826,6 +1867,12 @@ check:
 # lane serve-depth's head.
 	@$(CHECK_STEP) $(PYTHON) tools/depth_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_depth_check
+# The raw host code (host/native/*.lisp) runs on the same 1,024 KiB stack and
+# depth_check reads only ACL2 functions: every non-tail recursion there is in
+# tools/raw_depth_baseline.json with its bound named (lane depth-debt; the
+# mux's per-step re-entry and the BP effect chain were loops made here).
+	@$(CHECK_STEP) $(PYTHON) tools/raw_depth_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_raw_depth_check
 # Clock arithmetic goes through books/clock-unit.lisp (PRF-374, PRF-378):
 # arithmetic on an observation's fields at a call site assumed a unit twice
 # (bug M1; the vacuous record-level expiry).  tools/clock_unit_baseline.json
@@ -1884,7 +1931,7 @@ check:
 # The raw files loaded in build.lisp's order into one bare ACL2 with SBCL's
 # warnings on (seconds, no image build): errors, arity, macro order and names
 # nothing defines (lane tooling-leftovers).  No ACL2: NOT RUN, exit 2.
-	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --load
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --load --bare
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_load.ClassifyTests
 # Every tests/*.py ends with its `if __name__ == "__main__":` block and calls
 # unittest.main() nowhere else (obstructions-5 item 36: test_farm and

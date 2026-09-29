@@ -154,13 +154,18 @@
 ;; host/owner-host.lisp fn-owner-chunk-span-at through fn-oas-read-span): bob's
 ;; commands answered from the prepared cache are the per-command view's.
 
+; One verifier v2 (group-access-tests' literal): the SCRAM keys computed once.
+(defconst *gacct-verifier*
+  (let ((keys (fn-scram-keys (fn-nntp-string-octets "correct-horse")
+                             (make-list 16 :initial-element 3) 4096)))
+    (fn-authsec-verifier
+     (make-list 16 :initial-element 3)
+     '(42 82 187 10 181 221 230 125 199 188 135 91 193 55 205 245
+       177 50 208 139 71 236 67 86 54 24 223 76 55 144 61 51)
+     (car keys) (cadr keys))))
 (defun gacct-cred (name octet)
   (fn-auth-make-cred (fn-nntp-string-octets name) (make-list 32 :initial-element octet)
-                     (fn-authsec-verifier
-                      (make-list 16 :initial-element 3)
-                      '(42 82 187 10 181 221 230 125 199 188 135 91 193 55 205 245
-                        177 50 208 139 71 236 67 86 54 24 223 76 55 144 61 51))
-                     t))
+                     *gacct-verifier* t))
 (defconst *gacct-acfg*
   (fn-auth-make-config t nil t (list (gacct-cred "alice" 7) (gacct-cred "bob" 8))))
 (defconst *gacct-table*
@@ -177,7 +182,7 @@
 (defconst *gacct-bob*
   (fn-auth-make-session (fn-auth-session-base *gacct-anon*) *gacct-acfg*
                         (fn-nntp-string-octets "bob") (make-list 32 :initial-element 8)
-                        nil nil nil))
+                        nil nil nil nil))
 (assert-event (equal (fn-auth-access-read *gacct-bob* *gacct-config*) *gacct-text*))
 (assert-event (fn-scr-cached-view *gacct-bob* *gacct-config* *gacct-state* *gacct-pin* *gacct-c1*))
 (assert-event (null (fn-scr-cached-view *gacct-bob* *gacct-config* *gacct-state* *gacct-pin* nil)))

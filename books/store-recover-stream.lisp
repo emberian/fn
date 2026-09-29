@@ -32,16 +32,46 @@
 ; 1. The decode of a list of record octets (the host's fn-store-decode-records,
 ; now this function): every record decodes exactly to a wire event, else :bad.
 
-(defun fn-srs-decode (octet-records)
-  (declare (xargs :guard t :verify-guards nil))
+; Executes guard-verified by a loop (lane depth-debt-2, PRF-919): the host's
+; :program fn-store-decode-records called the unverified recursion's *1*,
+; one control-stack frame per record of the chunk.  The :logic is the walk,
+; unchanged; the :exec collects the events newest first and reverses them
+; once, and decodes each record through ec-call (the event codec's dispatch
+; is not guard-verified; it recurses on nothing).
+(defun fn-srs-decode-loop (octet-records acc)
+  (declare (xargs :guard t))
   (if (consp octet-records)
-      (let ((decoded (fn-store-event-decode-exact (car octet-records))))
+      (let ((decoded (ec-call (fn-store-event-decode-exact (car octet-records)))))
         (if (and (consp decoded) (equal (car decoded) :ok)
                  (consp (cdr decoded)) (fn-rcon-wire-event-p (car (cdr decoded))))
-            (let ((rest (fn-srs-decode (cdr octet-records))))
-              (if (equal rest :bad) :bad (cons (car (cdr decoded)) rest)))
+            (fn-srs-decode-loop (cdr octet-records) (cons (car (cdr decoded)) acc))
           :bad))
-    (if (null octet-records) nil :bad)))
+    (if (null octet-records) (fn-ag-rev-onto acc nil) :bad)))
+
+(defun fn-srs-decode (octet-records)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp octet-records)
+           (let ((decoded (fn-store-event-decode-exact (car octet-records))))
+             (if (and (consp decoded) (equal (car decoded) :ok)
+                      (consp (cdr decoded)) (fn-rcon-wire-event-p (car (cdr decoded))))
+                 (let ((rest (fn-srs-decode (cdr octet-records))))
+                   (if (equal rest :bad) :bad (cons (car (cdr decoded)) rest)))
+               :bad))
+         (if (null octet-records) nil :bad))
+       :exec (fn-srs-decode-loop octet-records nil)))
+
+(local
+ (defthm fn-srs-decode-loop-is-rev-onto
+   (equal (fn-srs-decode-loop octet-records acc)
+          (if (equal (fn-srs-decode octet-records) :bad)
+              :bad
+            (fn-ag-rev-onto acc (fn-srs-decode octet-records))))
+   :hints (("Goal" :induct (fn-srs-decode-loop octet-records acc)
+                   :in-theory (disable fn-store-event-decode-exact fn-rcon-wire-event-p)))))
+
+(verify-guards fn-srs-decode
+  :hints (("Goal" :in-theory (disable fn-store-event-decode-exact fn-rcon-wire-event-p))))
 
 ; The codec and the recognizer stay closed below: every fact here is about
 ; the list walk, not about what one record decodes to.

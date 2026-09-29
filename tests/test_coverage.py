@@ -6,6 +6,9 @@ small call graph, and the registries a tree would have around it.
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+from unittest import mock
 from pathlib import Path
 import sys
 import tempfile
@@ -416,54 +419,150 @@ class TwinsTests(unittest.TestCase):
 
 
 class DumpTests(unittest.TestCase):
-    """`coverage.py dump --host BOX`: image-world, then the host files, then the dump."""
+    """`coverage.py dump` (obstructions-6 item 46): remote_check ships the tree,
+    then one bare ACL2 on the LOAD-ONLY launcher reads the umbrella, the host
+    files, the dumper and the dump."""
 
-    def drive(self, fail_at=None):
-        import subprocess
+    def test_the_session_is_umbrella_host_lds_dumper_dump(self):
+        session = coverage.dump_session("/abs/world.json").splitlines()
+        self.assertEqual(session[0], '(ld "image-world.lisp")')
+        self.assertTrue(session[1].startswith("(if (boundp-global 'fn-image-world-books"))
+        lds = [line for line in session if line.startswith('(ld "../host/')]
+        self.assertGreater(len(lds), 10)
+        announce = session.index(lds[0]) - 1
+        self.assertIn(coverage.DUMP_LD, session[announce])
+        self.assertIn(lds[0].split('"')[1], session[announce])
+        self.assertEqual(session[-4:], ['(ld "../tools/coverage_dump.lisp")',
+                                        '(cov-dump "/abs/world.json" state)',
+                                        f'(value-triple (cw "{coverage.DUMP_DONE}~%"))',
+                                        "(good-bye)"])
+        bare = coverage.dump_session("/abs/w.json", with_host=False).splitlines()
+        self.assertFalse(any("../host/" in line for line in bare))
+
+    def test_findings_name_the_host_file_and_tls_exhaustion(self):
+        out = (f"{coverage.DUMP_LD} ../host/a.lisp\n{coverage.DUMP_LD} ../host/b.lisp\n"
+               "Thread local storage exhausted.\n")
+        findings, world, done = coverage.dump_findings(out)
+        self.assertEqual((world, done), (False, False))
+        self.assertTrue(findings[0].startswith("in ../host/b.lisp: Thread local storage"))
+        findings, world, done = coverage.dump_findings(
+            f"{coverage.DUMP_WORLD_OK}\n{coverage.DUMP_DONE}\n")
+        self.assertEqual((findings, world, done), ([], True, True))
+
+    def test_here_refuses_without_the_load_launcher_or_the_certificate(self):
+        import io, contextlib
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("FN_LOAD_ACL2", None)
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                self.assertEqual(coverage.dump_here(Path("/tmp/x.json"), True, 5), 2)
+            self.assertIn("FN_LOAD_ACL2 is unset", err.getvalue())
+
+    def test_here_installs_the_umbrella_set_first_and_moves_a_partial_dump_aside(self):
+        import io, contextlib, subprocess
+        calls = []
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / "world.json"
+
+            def run(argv, **kwargs):
+                calls.append(argv)
+                if "install-set" in argv:
+                    return subprocess.CompletedProcess(argv, 0, b"installed 700 missing 0")
+                out.write_text("{}")
+                return subprocess.CompletedProcess(
+                    argv, 0, f"{coverage.DUMP_WORLD_OK}\nACL2 Error in X\n".encode())
+            env = {"FN_LOAD_ACL2": "/l/tls256k", "FN_ACL2": "/l/tls64k"}
+            with mock.patch.dict(os.environ, env), \
+                    mock.patch.object(Path, "is_file", lambda self: True
+                                      if self.name == "image-world.cert"
+                                      else os.path.isfile(self)), \
+                    contextlib.redirect_stderr(io.StringIO()) as err:
+                code = coverage.dump_here(out, True, 5, run=run)
+            self.assertEqual(code, 1)
+            self.assertEqual(calls[0][-4:], ["--acl2", "/l/tls64k", "install-set",
+                                             "books/image-world"])
+            self.assertFalse(out.exists())
+            self.assertTrue((Path(directory) / "world.partial.json").exists())
+            self.assertIn("FAIL in tools/coverage_dump.lisp", err.getvalue())
+
+    def test_host_drives_remote_check_with_the_load_only_launcher(self):
+        import io, contextlib, subprocess
         from types import SimpleNamespace
         calls = []
 
         def run(argv, **kwargs):
-            calls.append((argv, kwargs.get("env", {}).get("FN_LANE")))
-            code = 1 if fail_at and any(fail_at in word for word in argv) else 0
-            return subprocess.CompletedProcess(argv, code, stdout="", stderr="")
-
-        with tempfile.TemporaryDirectory() as directory:
-            args = SimpleNamespace(host="hbox", lane="lanex", name=None, keep=False,
-                                   no_host_files=False, out=directory + "/world.json")
-            import io
-            import contextlib
-            with contextlib.redirect_stderr(io.StringIO()) as err:
-                code = coverage.dump_command(args, run=run)
-        return code, calls, err.getvalue()
-
-    def test_the_host_files_load_one_by_one_between_start_and_dump(self):
-        code, calls, err = self.drive()
-        self.assertEqual(code, 0, err)
-        words = [argv for argv, _ in calls]
-        repl = [w for w in words if w[0].endswith("python3") or "proof_repl.py" in " ".join(w)]
-        self.assertEqual(repl[0][2:5], ["start", "cov-lanex", "books/image-world"])
-        sent = [w[4] for w in repl if w[2] == "send"]
-        self.assertTrue(sent[0].startswith("(if (boundp-global 'fn-image-world-books"))
-        lds = [form for form in sent if form.startswith('(ld "../host/')]
-        self.assertGreater(len(lds), 10)
-        self.assertEqual(lds[0], '(ld "../host/store-host.lisp" :ld-error-action :error)')
-        self.assertTrue(any("FN_IMAGE_WORLD_CLOSED" in form for form in sent))
-        self.assertEqual(sent[-2], '(ld "../tools/coverage_dump.lisp")')
-        self.assertEqual(sent[-1], '(cov-dump "/tank/fn/gates/lanex-repl/build/coverage/world.json" state)')
-        self.assertEqual(words[-2][:2], ["scp", "-q"])
-        self.assertEqual(repl[-1][2:4], ["stop", "cov-lanex"])
-        self.assertTrue(all(lane == "lanex" for w, lane in calls if "proof_repl.py" in " ".join(w)))
-        self.assertIn("coverage.py build --world", err)
-
-    def test_a_failing_host_file_is_named_and_the_session_stopped(self):
-        code, calls, err = self.drive(fail_at="owner-host.lisp")
+            calls.append(argv)
+            return subprocess.CompletedProcess(argv, 1)
+        args = SimpleNamespace(host="persvati", out=str(coverage.DEFAULT_WORLD),
+                               timeout=1800, no_host_files=False)
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            code = coverage.dump_command(args, run=run)
         self.assertEqual(code, 1)
-        self.assertIn("FAILED at ../host/owner-host.lisp", err)
-        words = [argv for argv, _ in calls]
-        self.assertFalse(any(w[0] == "scp" for w in words))
-        self.assertFalse(any("cov-dump" in " ".join(w) for w in words))
-        self.assertEqual(words[-1][2:4], ["stop", "cov-lanex"])
+        self.assertIn("FAILED on persvati", err.getvalue())
+        argv = calls[0]
+        self.assertEqual(argv[2:4], ["persvati", "--cmd"])
+        self.assertIn("FN_LOAD_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls256k", argv[4])
+        self.assertIn("coverage.py dump --here", argv[4])
+        self.assertIn("build/coverage/world.json", argv)
+
+
+class EventLagTests(unittest.TestCase):
+    """Item 47: a new PRF's events count before `ledger.py --write` regenerates."""
+
+    def test_proof_events_are_read_directly_and_the_lag_is_named(self):
+        root = tree()
+        (root / "planning" / "proof-events.json").write_text(json.dumps({"targets": [
+            {"id": "PRF-1", "events": [{"kind": "theorem", "name": "fn-serve-answers"}]},
+            {"id": "PRF-2", "events": [{"kind": "theorem", "name": "fn-outer-refuses"},
+                                       {"kind": "theorem", "name": "fn-new-keystone"}]}]}))
+        registry = coverage.Registry(root)
+        self.assertEqual(registry.proofs_of_event["fn-new-keystone"], ["PRF-2"])
+        self.assertEqual(registry.event_lag, ["PRF-2"])
+        _, notes = coverage.check(None, root)
+        self.assertTrue(any("lag planning/proof-events.json for 1 target(s) (PRF-2)" in note
+                            and "regen the ledger" in note for note in notes), notes)
+
+    def test_without_proof_events_proofs_json_is_read(self):
+        registry = coverage.Registry(tree())
+        self.assertEqual(registry.proofs_of_event["fn-serve-answers"], ["PRF-1"])
+        self.assertEqual(registry.event_lag, [])
+
+
+class SourceRevisionTests(unittest.TestCase):
+    """Item 48: a tree without git names the dump's commit."""
+
+    def test_no_git_requires_the_flag_and_the_flag_is_recorded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(SystemExit) as refused:
+                coverage.source_revision(None, Path(directory))
+            self.assertIn("--source-revision SHA", str(refused.exception))
+            self.assertEqual(coverage.source_revision("33bb1ada7", Path(directory)),
+                             "33bb1ada7")
+            with self.assertRaises(SystemExit):
+                coverage.source_revision("HEAD~1", Path(directory))
+
+    def test_build_records_the_named_revision(self):
+        root = tree()
+        cov = coverage.build(root / "build" / "coverage" / "world.json", "persvati",
+                             root=root, revision="abc1234")
+        self.assertEqual(cov["coordinate"]["source_revision"], "abc1234")
+        self.assertEqual(cov["coordinate"]["box"], "persvati")
+
+
+class LoadOnlyTests(unittest.TestCase):
+    """The tls256k launcher loads; it never certifies (item 46)."""
+
+    def test_load_only_launcher_is_not_a_certifying_one(self):
+        import farm
+        for box, host in farm.HOSTS.items():
+            self.assertIn("tls256k", host["load_acl2"], box)
+            self.assertNotEqual(host["load_acl2"], host["acl2"], box)
+            self.assertNotEqual(host["load_acl2"], host["image_acl2"], box)
+
+    def test_only_load_sessions_name_it(self):
+        users = subprocess.run(["git", "grep", "-lF", '"load_acl2"', "--", "tools"],
+                               cwd=ROOT, capture_output=True, text=True).stdout.split()
+        self.assertEqual(sorted(users), ["tools/coverage.py", "tools/farm.py"])
 
 
 if __name__ == "__main__":

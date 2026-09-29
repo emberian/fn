@@ -599,8 +599,9 @@ fn operator /etc/fn/fn.toml peer distributions far fn,local
 ```
 
 If a peer's log line says `reason=mode-stream-refused`, that peer's server
-cannot stream. Stop the node, run `peer remove NAME`, add the peer again
-with `false` as the streaming word, and start the node.
+cannot stream. Run `peer set NAME --streaming false`; like `peer add`,
+`peer remove`, `peer pull` and `peer feed`, it applies to the running node
+(review item 8).
 
 Every node needs its own name, set once. Without it, fn cannot spot
 articles that loop back to it:
@@ -664,6 +665,31 @@ later arrivals get higher numbers (RFC 3977 section 6). fn does not yet
 detect or repair it. Restore only the newest backup of a node whose
 readers have seen its numbers, or tell its readers to reset their
 newsreader's record of what they have read for the node.
+
+A restored backup is a **new lineage** once it takes an article of its own.
+It serves, and it keeps every article the backup held; but from the point
+the two copies parted, each log carries its own ancestry, so a checkpoint
+file from one copy put beside the other copy's log is refused by name
+(`open refused reason=foreign-lineage`), never replayed as that copy's
+history. Keep one copy serving. What the node cannot tell you is that a
+restore happened at all: a complete restore of every file is an old,
+legitimate state of the node, and it starts, reissuing numbers as the
+paragraph above says. If that matters to you, keep a note of the newest
+article number outside the node before you restore.
+
+Proposed, not built: `store adopt`, for the deliberate fork. Rather than
+starting a restored copy as if nothing had happened, `adopt` would fence the
+old writer (the original copy stopped, and refused while a newer state of it
+can be reached), name the exact source and the point it parted from (the
+backup's segment and chain value), write a durable, attributed adoption
+record into the log -- a new branch identity with its parent and fork point,
+chained like every other record, so the same ancestry authenticates it --
+and report what continuity is lost: article numbers past the fork point may
+be reused (a branch label is not allocation evidence; tell your peers),
+obligations pending at the fork do not vanish, and the node's secret key and
+its peers' expectations are the old node's. Never a `--force` that inspects,
+adopts and continues in one step; never a merge of two forks by clock or by
+the larger counter. It needs a row of its own before it is built.
 
 An **export** (`store export`) is different. It carries the store's history
 for moving to a new store, not the node's secrets or settings. Keep backups
@@ -801,7 +827,9 @@ The memory refusals, and what to do:
   `MemoryMax`) gives. Raise the limit, or lower the store's limits to fit
   (`policy set max-transactions N`, `max-history-octets N` or
   `max-article-octets N`; a limit below what the store already holds is
-  refused, `below-current-use`).
+  refused, `below-current-use`). `store export`
+  takes the same check, so a store that fits nowhere here is not exported
+  here either (review item 4).
 - `fn: refused machine-cannot-hold-threads reservation=R MB machine=M MB`:
   the same, for the whole node with its threads. Raise the limit.
 - `refused connections-exceed-memory capacity=C holds=B ...`: the node
@@ -838,6 +866,23 @@ absent <never-posted@fn.example.invalid> nothing is stored here under this Messa
 
 `accepted` means it was saved (even if it was later withdrawn). `absent`
 means it was not. Tell the person which answer you got.
+
+### Which articles are in a group?
+
+`store inspect --group GROUP` lists a group's memberships: a first line
+`inspect group=GROUP members=N`, then one line per article number with its
+Message-ID, in number order. It answers while the node runs (the node
+reports the archive it serves) and while it is stopped (the store is opened
+read-only: the checkpoint and its suffix). A group the node does not carry
+is refused by name (`refused unknown-group group=GROUP ...`, exit 1).
+
+```text
+fn operator /path/to/fn.toml store inspect --group fn.test
+inspect group=fn.test members=3
+1 <auto-0@example.invalid>
+2 <auto-1@example.invalid>
+3 <auto-2@example.invalid>
+```
 
 ### Why was an article withdrawn?
 
@@ -1044,6 +1089,9 @@ with `policy set max-transactions N` (and `max-history-octets`,
   in batches (XFNCATCHUP), each batch checked against the peer's digest before
   any article is offered to this node's own verdict; the round resumes after a
   restart ([catching up](peering-with-a-friend.md#catching-up); spec peering 1.2.9).
-- `capacity N`: the room reserved for held articles.
+- `capacity N`: the retention ledger's size, in its units (one per record
+  plus one per 4,096 octets of article), shown by `status` as
+  `charge-capacity` next to `charge-reserved`, the part held articles use
+  (review item 15; [the ledger](operator-internals.md)).
 - `pins`, `obligations`: what the store is holding, and why.
 - `run`: what the service runs.

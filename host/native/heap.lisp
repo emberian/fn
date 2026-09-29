@@ -145,6 +145,18 @@ fn-heap-status-decide-is-the-launchers-run-reservation): one figure."
                                         (and profile
                                              (fnn-heap-history-observation root profile))))))))
 
+(defun fnn-lim-print-values (root)
+  "With no process running, `status' prints each live limit's three values
+(books/limits-live.lisp fn-lim-values-lines, PRF-996): requested (the
+configuration history's profile), funded=none (no process holds a
+reservation; the next start funds what the heap= line reserves) and the
+representation ceiling."
+  (when (stringp root)
+    (let ((requested (fnn-heap-store-profile root)))
+      (when requested
+        (dolist (line (fnn-core 'fn-lim-values-lines requested nil))
+          (fnn-out "~a" line))))))
+
 (defun fnn-heap-env-octets (name)
   "NAME's value in the environment as octets for ACL2 to read (at most 32
 of them: a longer value is refused there as malformed), or NIL when unset."

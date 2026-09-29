@@ -81,22 +81,50 @@
   (list (fn-bpn-nth 1 row) (fn-bpn-nth 2 row) (fn-bpn-nth 3 row)
         (fn-bpn-nth 4 row) (fn-bpn-nth 5 row)))
 
+; PROTECTED is the family frame (the held image in it), and an unverified
+; function's *1* appends it one frame per octet (the kind-5 persist's
+; BINARY-APPEND, lane depth-debt).  So the frame is guard-verified (lane
+; depth-debt-2, PRF-919): the :exec is the definition with this book's
+; unverified helpers called through ec-call (none of them walks data) and the
+; append in constant stack (fn-ag-append).
 (defun fn-bpnf-family-frame (row)
-  (declare (xargs :guard t))
-  (if (not (fn-bpnf-family-recordp row))
-      :bad
-    (let ((values (fn-bpnf-family-values row)))
-      (if (not (fn-frame-values-okp *fn-bpnf-family-fields* values))
-          :bad
-        (let ((payload (fn-frame-fields-octets
-                        *fn-bpnf-family-fields* values)))
-          (if (not (and (fn-cbor-octet-listp payload)
-                        (<= (len payload) *fn-bpn-lifecycle-max-payload*)))
-              :bad
-            (let ((protected (fn-frame-protected
-                              *fn-frame-magic-bundle-store* *fn-frame-version*
-                              *fn-bpnf-family-kind* payload)))
-              (append protected (fn-frame-trailer protected)))))))))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe
+   :logic
+   (if (not (fn-bpnf-family-recordp row))
+       :bad
+     (let ((values (fn-bpnf-family-values row)))
+       (if (not (fn-frame-values-okp *fn-bpnf-family-fields* values))
+           :bad
+         (let ((payload (fn-frame-fields-octets
+                         *fn-bpnf-family-fields* values)))
+           (if (not (and (fn-cbor-octet-listp payload)
+                         (<= (len payload) *fn-bpn-lifecycle-max-payload*)))
+               :bad
+             (let ((protected (fn-frame-protected
+                               *fn-frame-magic-bundle-store* *fn-frame-version*
+                               *fn-bpnf-family-kind* payload)))
+               (append protected (fn-frame-trailer protected))))))))
+   :exec
+   (if (not (ec-call (fn-bpnf-family-recordp row)))
+       :bad
+     (let ((values (ec-call (fn-bpnf-family-values row))))
+       (if (not (ec-call (fn-frame-values-okp *fn-bpnf-family-fields* values)))
+           :bad
+         (let ((payload (ec-call (fn-frame-fields-octets
+                                  *fn-bpnf-family-fields* values))))
+           (if (not (and (fn-cbor-octet-listp payload)
+                         (<= (len payload) *fn-bpn-lifecycle-max-payload*)))
+               :bad
+             (let ((protected (ec-call (fn-frame-protected
+                                        *fn-frame-magic-bundle-store* *fn-frame-version*
+                                        *fn-bpnf-family-kind* payload))))
+               (fn-ag-append protected (ec-call (fn-frame-trailer protected)))))))))))
+
+(verify-guards fn-bpnf-family-frame
+  :hints (("Goal" :in-theory (disable fn-bpnf-family-recordp fn-bpnf-family-values
+                                      fn-frame-values-okp fn-frame-fields-octets
+                                      fn-frame-protected fn-frame-trailer))))
 
 (defun fn-bpnf-family-from-values (values)
   (declare (xargs :guard t))

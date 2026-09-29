@@ -815,17 +815,13 @@
 ;; -----------------------------------------------------------------------------
 ;; The operator's replay (host/native/io.lisp `store ROOT journal'): the
 ;; file read back and replayed from fn-otm-init, one line.
-;; Executes by a loop (G4): the recursion took one control-stack frame per
-;; journal entry, and `store journal' after the fitness soak's 15,310 posts
-;; exhausted the served image's 1 MiB control stack in fn-otm-journal-report
-;; (exit 4, no report).  The :logic is the recursion, unchanged.
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of data with no fixed cap.  The :logic is
+; the recursion, unchanged; the :exec is the loop, equal by the lemma below.
 (defun fn-otm-journal-starts-loop (entries acc)
-  (declare (xargs :guard (natp acc)))
+  (declare (xargs :guard (acl2-numberp acc)))
   (if (consp entries)
-      (fn-otm-journal-starts-loop
-       (cdr entries)
-       (+ (if (and (consp (car entries)) (consp (cdar entries)) (equal (cadar entries) 0)) 1 0)
-          acc))
+      (fn-otm-journal-starts-loop (cdr entries) (+ acc (if (and (consp (car entries)) (consp (cdar entries)) (equal (cadar entries) 0)) 1 0)))
     acc))
 
 (defun fn-otm-journal-starts (entries)
@@ -837,13 +833,13 @@
          0)
        :exec (fn-otm-journal-starts-loop entries 0)))
 
-(encapsulate ()
-  (local
-   (defthm fn-otm-journal-starts-loop-is-acc-plus
-     (implies (natp acc)
-              (equal (fn-otm-journal-starts-loop entries acc)
-                     (+ acc (fn-otm-journal-starts entries))))))
-  (verify-guards fn-otm-journal-starts))
+(defthm fn-otm-journal-starts-loop-is-plus
+  (implies (acl2-numberp acc)
+           (equal (fn-otm-journal-starts-loop entries acc)
+                  (+ acc (fn-otm-journal-starts entries))))
+  :hints (("Goal" :induct (fn-otm-journal-starts-loop entries acc))))
+
+(verify-guards fn-otm-journal-starts)
 
 (defun fn-otm-verdict-text (verdict)
   (declare (xargs :guard t))

@@ -638,7 +638,8 @@ class NativeBpNodeTests(unittest.TestCase):
                 # The sender's code alone does not name the refusal; the
                 # receiving node's own line does.
                 self.fail((label, sent.returncode, sent.stderr, sent.stdout,
-                           receiver.output_since_cursor()))
+                           receiver.output_since_cursor(),
+                           receiver.stderr.since(0)))
         receiver.stop(grace=5)
         # The serving node's progress step may already dispatch a routed
         # transit carrier (kind 6 `:forward', specs/bp-node-machine.md §4.2,

@@ -252,6 +252,27 @@ each campaign's verdict comes from the checker over its journals; timed
 kills carry `replay: timed`; the old per-campaign asserts are gone or are
 observations. BEFORE THE CUT for the recovery and served-owner cuts (they
 are release cut coverage); AFTER for the rest.
+Status (lane resilience-framework-2, 2026-09-29): the recovery cuts (the
+real recovery killed at each `RECOVERY_CUTS` cut and at `log-truncated` /
+`log-recovered` over a torn candidate, its writes recorded, recovery
+again, the original commitments checked), the served owner's cuts (killed
+at each `POST_LOG_CUTS` cut with a two-group POST in flight on the
+listener; `operator recover`; memberships observed through LISTGROUP and
+STAT on the restarted node, bytes through ARTICLE), the owner's open killed
+at each recovery barrier, and the checkpoint cuts are
+`tools/resilience/adapters/native_cuts.py`'s five families; every scenario
+declares a healing bound (experimental until the contract names one) and
+the checker's `healing-overran` judges it. The offline per-group
+observation is `store inspect --group` (row S3d) and is pending by name on
+an image without it. Production-kill, the operator campaign and the block
+faults are still AFTER the cut. The schedule points of §5 are
+`tools/resilience/schedule_points.py`: seven scenarios executable, five
+pending by name (page read outstanding and reclaim candidate selected:
+lane online-reclaim-8, which owns reader generations since the pin port
+and whose kill form `reclaim-captured` exists; receipt observed:
+bp-remainder-3). incremental-finalize-3 confirmed (2026-09-29) that the
+capture adds no earlier prepared boundary: the NEXT bound is written inside
+the same staged checkpoint file, and the cuts stay STATE_CHECKPOINT_CUTS'.
 
 W7d **power_loss as a backend**. DONE: crash-image selection is an
 environment fact with the storage profile's ordering constraints made

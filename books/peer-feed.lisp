@@ -686,17 +686,74 @@
 ; Exponential backoff with a ceiling.  Stated recursively rather than with
 ; `expt' so that monotonicity is one induction and the value is bounded
 ; however the peer record is configured.
+; Executes by a loop (lane depth-debt, PRF-919): it walks ATTEMPTS, a count the peer's configured retry bound caps, operator
+; data with no fixed cap (D27), so the recursion took one control-stack
+; frame per element.  The :logic is the recursion, unchanged.
+; The loop doubles from the base up: STEP applied ATTEMPTS times.
+(defun fn-feed-backoff-step (d)
+  (declare (xargs :guard t))
+  (let ((d (nfix d)))
+    (if (<= *fn-feed-max-backoff* (* 2 d)) *fn-feed-max-backoff* (* 2 d))))
+
+(defun fn-feed-backoff-loop (k d)
+  (declare (xargs :guard t :measure (nfix k)))
+  (if (zp (nfix k)) d
+    (fn-feed-backoff-loop (- (nfix k) 1) (fn-feed-backoff-step d))))
+
 (defun fn-feed-backoff-delay (base attempts)
-  (declare (xargs :guard t :measure (nfix attempts)))
+  (declare (xargs :guard t :measure (nfix attempts) :verify-guards nil))
   ; `zp' has `(natp x)' for its guard, so the counter is nfixed at the test
   ; as well as at the recursive call: the guard conjecture is then
   ; unconditional and the measure is the same nat.
-  (if (zp (nfix attempts))
-      (if (<= *fn-feed-max-backoff* (nfix base)) *fn-feed-max-backoff*
-          (nfix base))
-      (let ((d (nfix (fn-feed-backoff-delay base (- (nfix attempts) 1)))))
-        (if (<= *fn-feed-max-backoff* (* 2 d)) *fn-feed-max-backoff*
-            (* 2 d)))))
+  (mbe :logic
+       (if (zp (nfix attempts))
+           (if (<= *fn-feed-max-backoff* (nfix base)) *fn-feed-max-backoff*
+               (nfix base))
+           (let ((d (nfix (fn-feed-backoff-delay base (- (nfix attempts) 1)))))
+             (if (<= *fn-feed-max-backoff* (* 2 d)) *fn-feed-max-backoff*
+                 (* 2 d))))
+       :exec (fn-feed-backoff-loop attempts
+                                   (if (<= *fn-feed-max-backoff* (nfix base))
+                                       *fn-feed-max-backoff*
+                                     (nfix base)))))
+
+(local
+ (defun fn-feed-backoff-induct (k j)
+   (if (zp k) j (fn-feed-backoff-induct (- k 1) (+ 1 j)))))
+
+(local
+ (defthm fn-feed-backoff-step-of-delay
+   (implies (natp j)
+            (equal (fn-feed-backoff-step (fn-feed-backoff-delay base j))
+                   (fn-feed-backoff-delay base (+ 1 j))))
+   :hints (("Goal" :expand ((fn-feed-backoff-delay base (+ 1 j)))
+                   :in-theory (disable fn-feed-backoff-delay)))))
+
+(defthm fn-feed-backoff-loop-is-delay
+  (implies (and (natp j) (natp k))
+           (equal (fn-feed-backoff-loop k (fn-feed-backoff-delay base j))
+                  (fn-feed-backoff-delay base (+ j k))))
+  :hints (("Goal" :induct (fn-feed-backoff-induct k j)
+                  :in-theory (disable fn-feed-backoff-delay fn-feed-backoff-step))))
+
+(local
+ (defthm fn-feed-backoff-loop-of-nfix
+   (equal (fn-feed-backoff-loop (nfix k) d) (fn-feed-backoff-loop k d))
+   :hints (("Goal" :expand ((fn-feed-backoff-loop (nfix k) d)
+                            (fn-feed-backoff-loop k d))))))
+
+(local
+ (defthm fn-feed-backoff-delay-of-nfix
+   (equal (fn-feed-backoff-delay base (nfix a)) (fn-feed-backoff-delay base a))
+   :hints (("Goal" :expand ((fn-feed-backoff-delay base (nfix a))
+                            (fn-feed-backoff-delay base a))))))
+
+(verify-guards fn-feed-backoff-delay
+  :hints (("Goal" :use ((:instance fn-feed-backoff-loop-is-delay
+                                   (k (nfix attempts)) (j 0)))
+                  :expand ((fn-feed-backoff-delay base 0))
+                  :in-theory (disable fn-feed-backoff-loop-is-delay
+                                      fn-feed-backoff-loop fn-feed-backoff-step))))
 
 ; -----------------------------------------------------------------------------
 ; The feed, an opaque record

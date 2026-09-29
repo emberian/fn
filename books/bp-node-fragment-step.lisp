@@ -366,18 +366,44 @@
           (fn-bpp-adu-key primary)
           (fn-bpnf-fragment-coherence-key primary))))
 
-(defun fn-bpnf-zero-family-keys (held)
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of the held rows (data, not a bound).  The :logic is
+; the recursion, unchanged; the :exec is a loop, equal by fn-bpnf-zero-family-keys-loop-is-rev-onto.
+(defun fn-bpnf-zero-family-keys-loop (held acc)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp held)
       (let ((h (car held)))
-        (if (and (fn-bpnf-fragment-candidatep h)
-                 (equal (fn-bpp-fragment-offset
-                         (fn-bpb-bundle-primary (fn-bpnf-held-bundle h)))
-                        0))
-            (cons (fn-bpnf-fragment-family-key h)
-                  (fn-bpnf-zero-family-keys (cdr held)))
-          (fn-bpnf-zero-family-keys (cdr held))))
-    nil))
+        (fn-bpnf-zero-family-keys-loop
+         (cdr held)
+         (if (and (fn-bpnf-fragment-candidatep h)
+                  (equal (fn-bpp-fragment-offset
+                          (fn-bpb-bundle-primary (fn-bpnf-held-bundle h)))
+                         0))
+             (cons (fn-bpnf-fragment-family-key h) acc)
+           acc)))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-bpnf-zero-family-keys (held)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp held)
+                  (let ((h (car held)))
+                    (if (and (fn-bpnf-fragment-candidatep h)
+                             (equal (fn-bpp-fragment-offset
+                                     (fn-bpb-bundle-primary (fn-bpnf-held-bundle h)))
+                                    0))
+                        (cons (fn-bpnf-fragment-family-key h)
+                              (fn-bpnf-zero-family-keys (cdr held)))
+                      (fn-bpnf-zero-family-keys (cdr held))))
+                nil)
+       :exec (fn-bpnf-zero-family-keys-loop held nil)))
+
+(defthm fn-bpnf-zero-family-keys-loop-is-rev-onto
+  (equal (fn-bpnf-zero-family-keys-loop held acc)
+         (fn-ag-rev-onto acc (fn-bpnf-zero-family-keys held)))
+  :hints (("Goal" :induct (fn-bpnf-zero-family-keys-loop held acc)
+                  :in-theory (union-theories
+                              '(fn-bpnf-zero-family-keys-loop fn-bpnf-zero-family-keys fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
 
 (defun fn-bpnf-family-select (st held observation tried zero)
   (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))

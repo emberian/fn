@@ -25,13 +25,35 @@
        (null (fn-bpn-nth 13 h))
        (null (fn-bpn-nth 14 h))))
 
-(defun fn-bpnp-replace-dispatched (arrival peer held)
+; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
+; node's held-bundle or job queue, data with no fixed cap (D27), one
+; control-stack frame per row before.
+(defun fn-bpnp-replace-dispatched-loop (arrival peer held acc)
   (declare (xargs :guard t :measure (acl2-count held)))
-  (if (atom held) nil
+  (if (atom held) (fn-ag-rev-onto acc nil)
     (if (equal arrival (fn-bpn-nth 3 (car held)))
-        (cons (fn-bpnp-dispatched-held (car held) peer) (cdr held))
-      (cons (car held)
-            (fn-bpnp-replace-dispatched arrival peer (cdr held))))))
+        (fn-ag-rev-onto acc (cons (fn-bpnp-dispatched-held (car held) peer) (cdr held)))
+      (fn-bpnp-replace-dispatched-loop arrival peer (cdr held) (cons (car held) acc)))))
+
+(defun fn-bpnp-replace-dispatched (arrival peer held)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count held)))
+  (mbe :logic
+       (if (atom held) nil
+         (if (equal arrival (fn-bpn-nth 3 (car held)))
+             (cons (fn-bpnp-dispatched-held (car held) peer) (cdr held))
+           (cons (car held)
+                 (fn-bpnp-replace-dispatched arrival peer (cdr held)))))
+       :exec (fn-bpnp-replace-dispatched-loop arrival peer held nil)))
+
+(defthm fn-bpnp-replace-dispatched-loop-is-rev-onto
+  (equal (fn-bpnp-replace-dispatched-loop arrival peer held acc)
+         (fn-ag-rev-onto acc (fn-bpnp-replace-dispatched arrival peer held)))
+  :hints (("Goal" :induct (fn-bpnp-replace-dispatched-loop arrival peer held acc)
+                  :in-theory (union-theories
+                              '(fn-bpnp-replace-dispatched-loop fn-bpnp-replace-dispatched fn-ag-rev-onto atom car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+
 
 (defun fn-bpnp-dispatch-apply (record held)
   (declare (xargs :guard t))
