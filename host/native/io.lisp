@@ -2465,23 +2465,37 @@ the checkpoint name, fence the root.  Before the rename a failure is known
 uncertain (exit 3): the next open reads the old or the new file, never a
 torn one (fn-bs-scp-program-crash-is-old-or-new), and a corrupt or missing
 one falls back to full replay."
+  (fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets)))
+
+(defun fnn-state-checkpoint-stage (store octets)
+  "fnn-state-checkpoint-write's first half: the staged file written and fenced
+(cuts created, written, staged-durable).  A failure is known: the old
+checkpoint stays.  Answers the staged path, for fnn-state-checkpoint-install
+(Q16's reclaim pass stages off the owner mutex and installs under it)."
   (let ((stage (fnn-join (fnn-staging store)
-                         (format nil ".stage-checkpoint-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
-        (attempted nil))
+                         (format nil ".stage-checkpoint-~d-~a" (sb-posix:getpid) (fnn-random-hex 12)))))
     (handler-case
         (progn
           (fnn-write-staged-at store stage octets
                                :state-checkpoint-created :state-checkpoint-written)
           (fnn-at store :state-checkpoint-staged-durable)
-          (setq attempted t)
-          (fnn-replace stage (fnn-state-checkpoint-path store))
-          (fnn-at store :state-checkpoint-replaced)
-          (fnn-fsync-dir (fnn-store-root store))
-          (fnn-at store :state-checkpoint-durable))
+          stage)
       (fnn-os-error (e)
-        (if attempted
-            (fnn-indeterminate "state checkpoint replacement is indeterminate: ~a" e)
-            (fnn-refuse-io "known failure before the state checkpoint replacement: ~a" e))))))
+        (fnn-refuse-io "known failure before the state checkpoint replacement: ~a" e)))))
+
+(defun fnn-state-checkpoint-install (store stage)
+  "fnn-state-checkpoint-write's second half: the staged file STAGE renamed
+onto the checkpoint name and the root fenced (cuts replaced, durable).  From
+the rename on the outcome is uncertain (the old or the new file, never a torn
+one: fn-bs-scp-program-crash-is-old-or-new)."
+  (handler-case
+      (progn
+        (fnn-replace stage (fnn-state-checkpoint-path store))
+        (fnn-at store :state-checkpoint-replaced)
+        (fnn-fsync-dir (fnn-store-root store))
+        (fnn-at store :state-checkpoint-durable))
+    (fnn-os-error (e)
+      (fnn-indeterminate "state checkpoint replacement is indeterminate: ~a" e))))
 
 (defun fnn-plan-p (plan &optional (st (fnn-live-octets)))
   "A state checkpoint plan (books/store-checkpoint-buffer.lisp fn-sccb-plan):

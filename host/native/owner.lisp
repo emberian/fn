@@ -3871,6 +3871,99 @@ reads run as a :control quantum; the thread's registration is the roster's."
                 (setf (fnn-owner-service-publisher service) thread)
                 (push thread (fnn-owner-service-workers service)))))))))))
 
+;;; Q16 (lane online-reclaim): `store reclaim --dry-run' on the running
+;;; owner (books/owner-reclaim.lisp; host/owner-host.lisp fn-owner-orc-*).
+
+(defun fnn-reclaim-counts-line (counts)
+  (unless (and (listp counts) (= (length counts) 5)
+               (every (lambda (n) (and (integerp n) (>= n 0))) counts))
+    (fnn-fault "ACL2 returned malformed reclaim counts"))
+  (destructuring-bind (reclaimable octets reclaimed freed held) counts
+    (format nil "reclaimable=~d reclaimable-octets=~d held=~d reclaimed=~d freed-octets=~d"
+            reclaimable octets held reclaimed freed)))
+
+(defparameter +fnn-reclaim-chunk-rows+ 1024
+  "Rows rewritten and folded per ACL2 call while a reclaim pass walks the
+captured history (a work quantum per call, never a bound on the store).")
+
+(defun fnn-owner-reclaim-walk (records ctx rewrite)
+  "The pass over the captured RECORDS in chunks of +fnn-reclaim-chunk-rows+
+(fn-owner-orc-chunk: fn-orc-chunk, whose rewrite is the offline rewrite and
+whose fold is the offline fold, fn-orc-rewrite-rows-of-append and
+fn-orc-fold-of-append joining the chunks).  Answers (values ACC REWRITTEN),
+REWRITTEN the rewritten rows in order when REWRITE, else nil."
+  (let ((acc (fnn-core 'fn-owner-orc-init)) (out nil) (rest records))
+    (loop while rest do
+      (let ((chunk (loop repeat +fnn-reclaim-chunk-rows+ while rest collect (pop rest))))
+        (let ((r (fnn-core 'fn-owner-orc-chunk chunk ctx acc (fnn-live-arena))))
+          (unless (and (consp r) (= (length r) 2) (listp (first r))
+                       (= (length (first r)) (length chunk)))
+            (fnn-fault "owner returned a malformed reclaim chunk"))
+          (setq acc (second r))
+          (when rewrite (push (first r) out)))))
+    (values acc (and rewrite (let ((all nil))
+                               (dolist (c out all) (setq all (nconc c all))))))))
+
+(defun fnn-owner-reclaim-dry-run (service free)
+  "The dry run on the running owner: under the owner mutex the capture
+(fn-owner-orc-capture: the rows by pointer, the configuration and the
+Store, the clock's stamp), then off it, on this thread, the context, the
+walk (fnn-owner-reclaim-walk), the classes and the decision
+(fn-owner-orc-decide: fn-lgr-decide-stream at the clock, as the offline
+dry run), the report to the owner's log in the offline verb's words; then
+the pass ends under the mutex (fn-owner-orc-finish).  Nothing is written.
+The arena is read below the captured count only, and the pass is counted
+as an off-mutex arena reader while it runs (no staged page is released
+under it).  Answers the reply word: :dry-run, or ACL2's refusal."
+  (let ((clock (fnn-store-prepare-observation)) (captured nil) (counted nil))
+    (unwind-protect
+         (progn
+           (fnn-owner-gated (service :control)
+             (setq captured (fnn-owner-core 'fn-owner-orc-capture :dry-run clock
+                                            (fnn-checkpoint-budget-test-override nil)
+                                            free (fnn-checkpoint-revision)))
+             (sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))
+             (setq counted t))
+           (unless (and (true-listp captured) (= (length captured) 12))
+             (fnn-fault "owner returned a malformed reclaim capture"))
+           (destructuring-bind (records count v s profile configs frontier budget free revision
+                                now record-octets)
+               captured
+             (declare (ignore configs frontier budget free revision record-octets))
+             (let* ((ctx (fnn-core 'fn-owner-orc-ctx :dry-run v s now (fnn-live-arena)))
+                    (classes (fnn-core 'fn-owner-orc-classes ctx (fnn-live-arena)))
+                    (acc (fnn-owner-reclaim-walk records ctx nil))
+                    (decision (fnn-core 'fn-owner-orc-decide :dry-run profile v s now acc
+                                        (fnn-live-arena)))
+                    (expired (if (and (listp classes) (= (length classes) 6)
+                                      (every (lambda (n) (and (integerp n) (>= n 0))) classes))
+                                 (second classes)
+                               (fnn-fault "ACL2 returned malformed reclaim classes"))))
+               (unless (and (consp decision) (member (first decision) '(:refused :none :dry-run)))
+                 (fnn-fault "ACL2 returned no reclaim decision"))
+               (case (first decision)
+                 (:refused
+                  (fnn-err "RECLAIM dry-run refused: ~(~a~)" (second decision))
+                  (second decision))
+                 (:none
+                  (fnn-err "RECLAIM dry-run records=~d would-reclaim=0 would-expire=~d ~a"
+                           count expired (fnn-reclaim-counts-line (second decision)))
+                  :dry-run)
+                 (:dry-run
+                  (destructuring-bind (msgids freed counts) (rest decision)
+                    (fnn-err "RECLAIM dry-run records=~d would-reclaim=~d would-expire=~d freed-octets=~d ~a"
+                             count (length msgids) expired freed
+                             (fnn-reclaim-counts-line counts))
+                    (dolist (m msgids)
+                      (fnn-err "RECLAIM would-reclaim ~a"
+                               (if (stringp m) m (fnn-fault "malformed msgid")))))
+                  :dry-run)))))
+      (when counted
+        (sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*)))
+      (when captured
+        (fnn-owner-gated (service :control)
+          (fnn-owner-core 'fn-owner-orc-finish))))))
+
 ;;; PKT-101: reopen `[log] path' when ACL2 says a SIGHUP is due
 ;;; (books/owner-log-reopen.lisp fn-olr-decide, through fn-owner-log-reopen).
 ;;; Append-only, created 0640, never through a symlink, as at run.  The

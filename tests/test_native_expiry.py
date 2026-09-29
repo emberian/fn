@@ -20,11 +20,18 @@ age rule honours at once, and size through the octets window):
 * the size window: the newest articles whose octets fit stay;
 * a process death at each state-checkpoint cut of an expiring reclaim: the
   store reopens and `store reclaim --recorded` (or a rerun) completes the
-  same expiry.
+  same expiry;
+* on the SERVING node (Q16, books/owner-reclaim.lisp): `store reclaim
+  --dry-run` is a request the owner answers (the fold over its rows off its
+  mutex; posts and reads continue), naming what the offline dry run names
+  once the node stops; `store reclaim` itself is refused by name
+  (offline-only) until the online pass lands.
 """
 from __future__ import annotations
 
+import re
 import shutil
+import time
 import unittest
 
 from tests.native_harness import EXIT, Client, Node, native_image, requires, scratch
@@ -165,6 +172,49 @@ class ExpiryMixin:
         self.assertIn(b"would-expire=2", dry.stdout, dry.stdout)
         listed = {l.strip() for l in dry.stdout.decode().split("would-reclaim ")[1:]}
         self.assertEqual(listed, {msgid("s0"), msgid("s1")}, dry.stdout)
+
+    def owner_lines(self, owner, pattern, count, deadline=60.0):
+        """The owner's stderr lines matching PATTERN once COUNT are there."""
+        end = time.monotonic() + deadline
+        while True:
+            found = [l for l in owner.stderr.since(0).splitlines() if pattern.search(l)]
+            if len(found) >= count or time.monotonic() > end:
+                return found
+            time.sleep(0.2)
+
+    def test_a_dry_run_on_the_serving_node(self):
+        node = self.filled()
+        owner = node.start(timeout=600)
+        try:
+            # The policy is written live (the owner publishes the record).
+            node.operator("retention", "expire", GROUP, "purge", "30", expect=EXIT.OK)
+            c = Client(node.port, timeout=300, greeting=None)
+            self.assertTrue(c.command("ARTICLE %s" % msgid("p0")).startswith(b"220"))
+            dry = self.reclaim(node, "--dry-run")
+            self.assertIn(b"reclaim dry-run", dry.stdout, dry.stdout)
+            summary = self.owner_lines(owner, re.compile(rb"RECLAIM dry-run records="), 1)
+            self.assertEqual(len(summary), 1, owner.stderr.since(0)[-2000:])
+            self.assertIn(b"would-reclaim=2 would-expire=2", summary[0], summary)
+            listed = {l.split(b"RECLAIM would-reclaim ", 1)[1].strip().decode()
+                      for l in self.owner_lines(owner, re.compile(rb"RECLAIM would-reclaim "), 2)}
+            self.assertEqual(listed, {msgid("p0"), msgid("p1")})
+            # Nothing was written: the expired article is still served, and a
+            # post and a read on the same connection continue.
+            self.assertTrue(c.command("ARTICLE %s" % msgid("p0")).startswith(b"220"))
+            first, final = c.post(article("n9", GROUP, None))
+            self.assertTrue((final or first).startswith(b"240"), (first, final))
+            self.assertTrue(c.command("STAT %s" % msgid("n9")).startswith(b"223"))
+            # `store reclaim' itself is refused by name while the owner runs.
+            refused = self.reclaim(node, expect=EXIT.REFUSED)
+            self.assertIn(b"reclaim offline-only", refused.stdout, refused.stdout)
+            c.close()
+        finally:
+            node.stop(expect=None, grace=300)
+        # Stopped, the offline dry run names the same articles.
+        offline = self.reclaim(node, "--dry-run")
+        self.assertIn(b"would-expire=2", offline.stdout, offline.stdout)
+        listed = {l.strip() for l in offline.stdout.decode().split("would-reclaim ")[1:]}
+        self.assertEqual(listed, {msgid("p0"), msgid("p1")}, offline.stdout)
 
 
 @requires(DEVELOPER)
