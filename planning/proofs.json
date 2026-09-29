@@ -15205,6 +15205,32 @@
           "name": "fn-bpn-evidence-successor-does-not-reuse-identity"
         }
       ]
+    },
+    {
+      "id": "PRF-985",
+      "title": "Outbound lifecycle publication is authorized exactly for the pending :persist of a ready, unfenced machine under the held lifecycle lock and an absent final name, and then carries the offered token and record",
+      "statement": "books/bp-node-machine-codec.lisp; host/bp-node-machine-host.lisp's fn-bpn-host-lifecycle-publication-authorize is an exact alias (a checked :delegates fn-bpn-lifecycle-publication-authorize, the generated equation fn-bpn-host-lifecycle-publication-authorize-is-fn-bpn-lifecycle-publication-authorize-by-definition), called by host/native/bp-service.lisp before it publishes a lifecycle record. KEYSTONE fn-bpn-lifecycle-publication-authorize-admits-exactly-the-pending-persist, two-sided: (fn-bpn-lifecycle-publication-operationp answer) iff the state is a machine state (fn-bpn-machine-statep), not fenced, with a pending operation whose token is the offered TOKEN, which is also the machine's next token, and whose record is the offered RECORD, and LOCK-OWNED and FINAL-ABSENT hold (the principal: the native caller holds the lifecycle lock; the evidence: the canonical final name observed absent); then the operation's token and record are the offered ones and its publication is (fn-jpub-initial t); otherwise the answer is exactly (:fault :lifecycle-publication-authority). With fn-bpn-lifecycle-pending-fields-of-statep (a ready state's pending operation carries a u64 token and a lifecycle record), proved with the state recognizer closed. Teeth: tests/acl2/bp-node-machine-tests.lisp (the positive witness with the antecedent by name and every conclusion conjunct; hypothesis-removal witnesses: a token that is not the pending one, a machine with nothing pending, the lock not held, the final name present, a record that is not the pending one).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/bp-node-machine-codec.lisp",
+        "host/bp-node-machine-host.lisp",
+        "host/interfaces.lisp",
+        "tests/acl2/bp-node-machine-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-4 (claimed by decision-keystones-3): the delegation callee's keystone; the host wrapper's :delegates declared under the strict rule.",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-lifecycle-publication-authorize-admits-exactly-the-pending-persist"
+        }
+      ]
     }
   ]
 }

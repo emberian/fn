@@ -14482,6 +14482,15 @@
           "name": "fn-bpn-evidence-successor-does-not-reuse-identity"
         }
       ]
+    },
+    {
+      "id": "PRF-985",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-lifecycle-publication-authorize-admits-exactly-the-pending-persist"
+        }
+      ]
     }
   ]
 }

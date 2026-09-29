@@ -2333,7 +2333,10 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-lifecycle-publication-authorize
-  :class ::ideal)
+  ; an exact alias; the callee's keystone is PRF-985
+  ; (fn-bpn-lifecycle-publication-authorize-admits-exactly-the-pending-persist)
+  :class ::ideal
+  :delegates fn-bpn-lifecycle-publication-authorize)
 
 (definterface fn-bpn-host-lifecycle-publication-operation-publication
   :class ::ideal)
