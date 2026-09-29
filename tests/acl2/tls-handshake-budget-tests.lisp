@@ -152,3 +152,51 @@
 (assert-event (and (not (<= (fn-cbud-handshake-slots t 2) 1))
                    (< (fn-cbud-slots-octets 1)
                       (* (len (fn-hsb-flight *hsbt-two*)) *fn-cbud-handshake-scratch-octets*))))
+
+; --- fn-hsb-mapped-address-is-one-source: ::ffff:192.0.2.1 is 192.0.2.1.
+(defconst *hsbt-a-mapped* '(:inet6 0 0 0 0 0 0 0 0 0 0 255 255 192 0 2 1))
+(assert-event (equal (fn-hsb-source-key *hsbt-a-mapped*) (fn-hsb-source-key *hsbt-a*)))
+(assert-event (equal (fn-hsb-normal-address *hsbt-a-mapped*) *hsbt-a*))
+; Decided as A itself: the same verdict, state and detail from the same state.
+(assert-event (equal (hsbt-admit (hsbt-s *hsbt-r2*) *hsbt-a-mapped* 1000 nil)
+                     (hsbt-admit (hsbt-s *hsbt-r2*) *hsbt-a* 1000 nil)))
+(assert-event (equal (fn-hsb-refusal-line :handshake-budget *hsbt-a-mapped*)
+                     "tls refused reason=handshake-budget source=192.0.2.1"))
+; Not mapped: a different prefix stays an IPv6 /64.
+(assert-event (equal (fn-hsb-source-key '(:inet6 0 0 0 0 0 0 0 0 0 0 255 254 192 0 2 1))
+                     '(:inet6 0 0 0 0 0 0 0 0)))
+
+;; --- KEYSTONE fn-hsb-buckets-are-bounded and the :sources-full refusal.
+;; N = 1 a minute (a row lives 60 s), L = 2 (R = 128): 64 sources, two a
+;; second, each take a row.  Then L is lowered live to 1 (R = 64): the 65th
+;; new source is refused :sources-full, the table stays at 64 and nobody's
+;; row is dropped; a source with a row is still decided by its own bucket.
+(defconst *hsbt-l2* (fn-hsb-limits 1 2 5000))
+(defconst *hsbt-l1* (fn-hsb-limits 1 1 5000))
+(defun hsbt-src (i) (list :inet 10 0 0 (nfix i)))
+(defun hsbt-events-from (i n)
+  (declare (xargs :measure (nfix (- (nfix n) (nfix i)))))
+  (if (< (nfix i) (nfix n))
+      (list* (list :admit *hsbt-l2* nil (hsbt-src i) (* 1000 (+ 1 (floor (nfix i) 2))) nil)
+             (list :done (+ 1 (nfix i)))
+             (hsbt-events-from (+ 1 (nfix i)) n))
+    nil))
+(defconst *hsbt-64* (hsbt-events-from 0 64))
+(defconst *hsbt-s64* (fn-hsb-run (fn-hsb-initial) *hsbt-64*))
+(assert-event (and (fn-hsb-events-under 2 *hsbt-64*)
+                   (equal (len (fn-hsb-buckets *hsbt-s64*)) 64)
+                   (<= (len (fn-hsb-buckets *hsbt-s64*))
+                       (max (len (fn-hsb-buckets (fn-hsb-initial))) (* 64 2)))))
+(defconst *hsbt-r65* (fn-hsb-admit *hsbt-s64* *hsbt-l1* nil (hsbt-src 64) 33000 nil))
+(assert-event (equal (fn-hsb-verdict *hsbt-r65*) :refuse))
+(assert-event (equal (fn-hsb-detail *hsbt-r65*) :sources-full))
+(assert-event (equal (fn-hsb-buckets (fn-hsb-state *hsbt-r65*)) (fn-hsb-buckets *hsbt-s64*)))
+(assert-event (equal (fn-hsb-refusal-line :sources-full (hsbt-src 64))
+                     "tls refused reason=sources-full source=10.0.0.64"))
+(assert-event (equal (fn-hsb-detail (fn-hsb-admit *hsbt-s64* *hsbt-l1* nil (hsbt-src 63) 33000 nil))
+                     :handshake-budget))
+;; Hypothesis removal: the same 64 admissions claimed under LMAX 0 are not
+;; under it, and 64 rows exceed max(0, 64 x 0).
+(assert-event (and (not (fn-hsb-events-under 0 *hsbt-64*))
+                   (< (max (len (fn-hsb-buckets (fn-hsb-initial))) (* 64 0))
+                      (len (fn-hsb-buckets *hsbt-s64*)))))

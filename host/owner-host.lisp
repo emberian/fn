@@ -3527,8 +3527,11 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((hl (fn-owner-handshake-limits state))
          (source (cons family address))
+         ;; An IPv4-mapped IPv6 peer is its IPv4 address, for the trusted
+         ;; range as for the budget (fn-hsb-mapped-address-is-one-source).
          (trustedp (fn-exp-trusted-addressp
-                    source (fn-exp-lim-trusted (fn-owner-exposure-limits state))))
+                    (fn-hsb-normal-address source)
+                    (fn-exp-lim-trusted (fn-owner-exposure-limits state))))
          (r (fn-hsb-admit (fn-owner-handshake-state state) hl trustedp source
                           (fn-owner-exposure-now state) queuedp))
          (state (f-put-global 'fn-owner-handshakes (fn-hsb-state r) state))

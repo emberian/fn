@@ -158,6 +158,41 @@
   :rule-classes :linear)
 
 ; -----------------------------------------------------------------------------
+; The table's size over any traffic (GPT-6's 2026-09-29 call: the
+; accounting structure is bounded, and the bound resets no source's
+; accounting: books/tls-handshake-decision.lisp fn-hsb-table-fullp).
+
+; The state after the events ES from S.
+(defun fn-hsb-run (s es)
+  (declare (xargs :guard t))
+  (if (consp es) (fn-hsb-run (fn-hsb-event s (car es)) (cdr es)) s))
+
+(local
+ (defthm fn-hsb-event-buckets-len
+   (implies (fn-hsb-event-under lmax e)
+            (<= (len (fn-hsb-buckets (fn-hsb-event s e)))
+                (max (len (fn-hsb-buckets s)) (* 64 (nfix lmax)))))
+   :hints (("Goal" :in-theory (e/d (fn-hsb-event fn-hsb-lim-sources)
+                                   (fn-hsb-admit-buckets-len))
+            :use ((:instance fn-hsb-admit-buckets-len
+                             (hl (fn-hsb-at 1 e)) (trustedp (fn-hsb-at 2 e))
+                             (address (fn-hsb-at 3 e)) (now (fn-hsb-at 4 e))
+                             (queuedp (fn-hsb-at 5 e))))))
+   :rule-classes :linear))
+
+; KEYSTONE: over any sequence of events from any state, the table holds at
+; most the larger of the rows it started with and 64 x L (the largest
+; in-flight limit the admissions were decided under, so a live change of L
+; is covered); the initial state has none.
+(defthm fn-hsb-buckets-are-bounded
+  (implies (fn-hsb-events-under lmax es)
+           (<= (len (fn-hsb-buckets (fn-hsb-run s es)))
+               (max (len (fn-hsb-buckets s)) (* 64 (nfix lmax)))))
+  :hints (("Goal" :induct (fn-hsb-run s es)
+                  :in-theory (disable fn-hsb-event-under)))
+  :rule-classes :linear)
+
+; -----------------------------------------------------------------------------
 ; The per-source bound.  Over events whose times are nondecreasing within
 ; [T0, T1], decided at one rate N, a source is admitted at most
 ; N + N x (T1 - T0) / 60,000 handshakes (the bucket's burst and its
@@ -298,14 +333,14 @@
                          (nfix now)
                          (fn-hsb-prune (fn-hsb-buckets s) (fn-hsb-lim-rate hl) now))
            (fn-hsb-buckets s)))
-  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-eff) (fn-hsb-level fn-hsb-level-by-dt fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap)))))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-eff) (fn-hsb-level fn-hsb-level-by-dt fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop)))))
 
 (defthm fn-hsb-admit-needs-a-handshake-of-level
   (implies (and (equal (fn-hsb-verdict (fn-hsb-admit s hl trustedp address now queuedp)) :admit)
                 (not trustedp))
            (<= *fn-hsb-window-ms*
                (fn-hsb-eff (fn-hsb-buckets s) (fn-hsb-source-key address) (fn-hsb-lim-rate hl) now)))
-  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-eff) (fn-hsb-level fn-hsb-level-by-dt fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap))))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-eff) (fn-hsb-level fn-hsb-level-by-dt fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop))))
   :rule-classes :linear)
 
 (defthm fn-hsb-buckets-of-done-leave
