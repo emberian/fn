@@ -15137,6 +15137,27 @@
           "name": "fn-mpxt-set-key-faithful-nil"
         }
       ]
+    },
+    {
+      "id": "PRF-1020",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-run-is-over-range-cat"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-run-is-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-progresses"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-window-at-most-w"
+        }
+      ]
     }
   ]
 }
