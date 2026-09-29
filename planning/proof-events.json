@@ -13545,10 +13545,6 @@
         {
           "kind": "theorem",
           "name": "fn-ocpr-line-names-the-reason-exactly-when-refused"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ocpr-reason-is-the-word-when-refused-by-definition"
         }
       ]
     },
