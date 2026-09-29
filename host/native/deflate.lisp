@@ -55,10 +55,6 @@
   (h sb-sys:system-area-pointer)
   (src (* sb-alien:unsigned-char)) (src-len sb-alien:long)
   (dst (* sb-alien:unsigned-char)) (dst-cap sb-alien:long))
-(sb-alien:define-alien-routine ("fn_deflate_payload" fnn-%deflate-payload) sb-alien:long
-  (dict (* sb-alien:unsigned-char)) (dict-len sb-alien:long)
-  (src (* sb-alien:unsigned-char)) (src-len sb-alien:long)
-  (dst (* sb-alien:unsigned-char)) (dst-cap sb-alien:long))
 (sb-alien:define-alien-routine ("fn_deflate_free" fnn-%deflate-free) sb-alien:void
   (h sb-sys:system-area-pointer))
 (sb-alien:define-alien-routine ("fn_deflate_version" fnn-%deflate-version) sb-alien:int)
@@ -128,8 +124,11 @@ unusable after it)."
                 (error 'fnn-owner-connection-fault :operation :compress
                        :cause "the stream is closed")))
          (src (coerce octets '(simple-array (unsigned-byte 8) (*))))
-         (cap (fnn-%deflate-bound h (length src))))
-    (unless (plusp cap)
+         ;; ACL2's room for one sync-flushed window (books/nntp-compress.lisp
+         ;; fn-zc-sync-output-octets): output that does not fit is
+         ;; fn_deflate_sync's -2, a fault on this connection, never a cut.
+         (cap (fnn-core 'fn-zc-sync-output-octets (length src))))
+    (unless (and (integerp cap) (plusp cap))
       (error 'fnn-owner-connection-fault :operation :compress
              :cause (format nil "no bound for ~a octets" (length src))))
     (let* ((dst (make-array cap :element-type '(unsigned-byte 8)))
@@ -150,31 +149,373 @@ unusable after it)."
 ;;; host/native/io.lisp fnn-log-compress).  UNTRUSTED: ACL2's decision
 ;;; (fn-lzr-append-decide) runs the proved decoder over it before anything
 ;;; is taken.
+;;;
+;;; The encoder is this image's own SBCL deflater (fnn-ldf-, lane compress-7;
+;;; ember's gate, planning/review-2026-09-29-gpt6-decisions.md section 6,
+;;; measured in planning/evidence/deflater-gate-2026-09-29/result.md: on the
+;;; 9,733 held-out 20news articles, baseline 1, one finished stream each, its
+;;; CPU cost is 1.84 x zlib 9's at a ratio of 2.1437 against 2.1432, every
+;;; stream inflating exactly).  RFC 1951 raw DEFLATE: LZ77 over hash chains
+;;; with zlib's lazy evaluation and level-9 search limits, then per block the
+;;; cheapest of dynamic Huffman, fixed Huffman and stored.  Bounds, by
+;;; construction: two 32 Ki-entry chain tables and a 16 Ki-symbol block
+;;; buffer per call, with the dictionary and the span copied once; at most
+;;; MAX-CHAIN candidates per position (a quarter once a GOOD-LENGTH match is
+;;; in hand), each compared over at most 258 octets.  It shares no state
+;;; across calls: the dictionary is the caller's, per call.  The wire's
+;;; COMPRESS stream stays zlib's (above).
 
+
+(deftype fnn-ldf-octets () '(simple-array (unsigned-byte 8) (*)))
+(deftype fnn-ldf-u16v () '(simple-array (unsigned-byte 16) (*)))
+(deftype fnn-ldf-fixv () '(simple-array fixnum (*)))
+(deftype fnn-ldf-idx () '(mod 1152921504606846976))
+
+(defconstant +fnn-ldf-wsize+ 32768)
+(defconstant +fnn-ldf-wmask+ 32767)
+(defconstant +fnn-ldf-hmask+ 32767)
+(defconstant +fnn-ldf-block-symbols+ 16384)
+
+;; (GOOD-LENGTH MAX-LAZY NICE-LENGTH MAX-CHAIN): zlib's configuration_table.
+(defparameter *fnn-ldf-levels*
+  #((4 4 8 4) (4 5 16 8) (4 6 32 32) (4 4 16 16) (8 16 32 32)
+    (8 16 128 128) (8 32 128 256) (32 128 258 1024) (32 258 258 4096)))
+(defvar *fnn-ldf-level* 9)
+
+;;; ---------------------------------------------------------------------------
+;;; Tables (RFC 1951 3.2.5)
+
+(defun fnn-ldf-make-u16 (n) (make-array n :element-type '(unsigned-byte 16) :initial-element 0))
+(defun fnn-ldf-make-fix (n) (make-array n :element-type 'fixnum :initial-element 0))
+
+(defparameter *fnn-ldf-len-base* (fnn-ldf-make-u16 29))
+(defparameter *fnn-ldf-len-extra* (fnn-ldf-make-u16 29))
+(defparameter *fnn-ldf-dist-base* (fnn-ldf-make-u16 30))
+(defparameter *fnn-ldf-dist-extra* (fnn-ldf-make-u16 30))
+(defparameter *fnn-ldf-len-code* (fnn-ldf-make-u16 256))     ; length-3 -> 0..28
+(defparameter *fnn-ldf-dist-small* (fnn-ldf-make-u16 256))   ; dist-1 < 256 -> code
+(defparameter *fnn-ldf-dist-large* (fnn-ldf-make-u16 256))   ; (dist-1)>>7 -> code
+
+(let ((base 3))
+  (dotimes (i 28)
+    (let ((e (if (< i 8) 0 (floor (- i 4) 4))))
+      (setf (aref *fnn-ldf-len-base* i) base (aref *fnn-ldf-len-extra* i) e)
+      (dotimes (k (ash 1 e)) (when (< (+ base k -3) 256) (setf (aref *fnn-ldf-len-code* (+ base k -3)) i)))
+      (incf base (ash 1 e))))
+  (setf (aref *fnn-ldf-len-base* 28) 258 (aref *fnn-ldf-len-extra* 28) 0 (aref *fnn-ldf-len-code* 255) 28))
+(let ((base 1))
+  (dotimes (i 30)
+    (let ((e (if (< i 4) 0 (floor (- i 2) 2))))
+      (setf (aref *fnn-ldf-dist-base* i) base (aref *fnn-ldf-dist-extra* i) e)
+      (dotimes (k (ash 1 e))
+        (let ((d1 (+ base k -1)))
+          (if (< d1 256)
+              (setf (aref *fnn-ldf-dist-small* d1) i)
+              (setf (aref *fnn-ldf-dist-large* (ash d1 -7)) i))))
+      (incf base (ash 1 e)))))
+
+(declaim (inline fnn-ldf-dist-code))
+(defun fnn-ldf-dist-code (d)
+  (declare (type (integer 1 32768) d))
+  (let ((d1 (1- d)))
+    (if (< d1 256) (aref (the fnn-ldf-u16v *fnn-ldf-dist-small*) d1) (aref (the fnn-ldf-u16v *fnn-ldf-dist-large*) (ash d1 -7)))))
+
+;;; ---------------------------------------------------------------------------
+;;; Bit output (LSB first)
+
+(defstruct (fnn-ldf-bw (:constructor fnn-ldf-make-bw (out)))
+  (out (make-array 0 :element-type '(unsigned-byte 8)) :type fnn-ldf-octets)
+  (pos 0 :type fnn-ldf-idx)
+  (buf 0 :type (unsigned-byte 62))
+  (cnt 0 :type (integer 0 62)))
+
+(declaim (inline fnn-ldf-put-bits))
+(defun fnn-ldf-put-bits (fnn-ldf-bw v n)
+  (declare (optimize (speed 3) (safety 1) (debug 0)))
+  (declare (type fnn-ldf-bw fnn-ldf-bw) (type (unsigned-byte 24) v) (type (integer 0 24) n))
+  (let ((buf (logior (fnn-ldf-bw-buf fnn-ldf-bw) (ash v (fnn-ldf-bw-cnt fnn-ldf-bw)))) (cnt (+ (fnn-ldf-bw-cnt fnn-ldf-bw) n)))
+    (declare (type (unsigned-byte 62) buf) (type (integer 0 62) cnt))
+    (loop while (>= cnt 8)
+          do (let ((out (fnn-ldf-bw-out fnn-ldf-bw)) (pos (fnn-ldf-bw-pos fnn-ldf-bw)))
+               (when (>= pos (length out))
+                 (let ((new (make-array (* 2 (max 64 (length out))) :element-type '(unsigned-byte 8))))
+                   (replace new out) (setf (fnn-ldf-bw-out fnn-ldf-bw) new out new)))
+               (setf (aref out pos) (logand buf 255) (fnn-ldf-bw-pos fnn-ldf-bw) (1+ pos))
+               (setf buf (ash buf -8) cnt (- cnt 8))))
+    (setf (fnn-ldf-bw-buf fnn-ldf-bw) buf (fnn-ldf-bw-cnt fnn-ldf-bw) cnt)))
+
+(defun fnn-ldf-align-byte (fnn-ldf-bw)
+  (when (plusp (fnn-ldf-bw-cnt fnn-ldf-bw)) (fnn-ldf-put-bits fnn-ldf-bw 0 (- 8 (fnn-ldf-bw-cnt fnn-ldf-bw)))))
+
+;;; ---------------------------------------------------------------------------
+;;; Huffman code lengths, limited to LIMIT bits
+
+(defun fnn-ldf-huffman-lengths (freq limit)
+  (declare (optimize (speed 3) (safety 1) (debug 0)))
+  "Code lengths for the symbols FREQ counts, none over LIMIT, at least two
+symbols coded (zlib's rule: a decoder may refuse a one-code tree)."
+  (declare (type fnn-ldf-fixv freq) (type (integer 1 15) limit))
+  (let* ((n (length freq))
+         (lens (make-array n :element-type '(unsigned-byte 8) :initial-element 0))
+         (syms (loop for s below n when (plusp (aref freq s)) collect s)))
+    (when (< (length syms) 2)
+      (setf syms (sort (remove-duplicates (append syms (list 0 1))) #'<))
+      (dolist (s syms) (setf (aref lens s) 1))
+      (return-from fnn-ldf-huffman-lengths lens))
+    (setf syms (sort syms (lambda (a b) (let ((fa (aref freq a)) (fb (aref freq b)))
+                                          (or (< fa fb) (and (= fa fb) (< a b)))))))
+    (let* ((m (length syms))
+           (weight (fnn-ldf-make-fix (* 2 m)))
+           (parent (fnn-ldf-make-fix (* 2 m)))
+           (depth (fnn-ldf-make-fix (* 2 m)))
+           (leaf 0) (inner m) (next m))
+      (declare (type fixnum m leaf inner next))
+      (loop for s in syms for i fixnum from 0 do (setf (aref weight i) (aref freq s)))
+      (flet ((fnn-ldf-take ()
+               (if (and (< leaf m) (or (>= inner next) (<= (aref weight leaf) (aref weight inner))))
+                   (prog1 leaf (incf leaf))
+                   (prog1 inner (incf inner)))))
+        (loop while (< next (1- (* 2 m)))
+              do (let ((a (fnn-ldf-take)) (b (fnn-ldf-take)))
+                   (setf (aref weight next) (+ (aref weight a) (aref weight b))
+                         (aref parent a) next (aref parent b) next)
+                   (incf next))))
+      (let ((root (- (* 2 m) 2)))
+        (setf (aref depth root) 0)
+        (loop for i from (1- root) downto 0
+              do (setf (aref depth i) (1+ (aref depth (aref parent i))))))
+      (loop for s in syms for i from 0 do (setf (aref lens s) (min limit (aref depth i))))
+      ;; Kraft repair: lengthen the fnn-ldf-longest codes still under LIMIT.
+      (let ((kraft (loop for s in syms sum (ash 1 (- limit (aref lens s))))))
+        (loop while (> kraft (ash 1 limit))
+              do (let ((best nil))
+                   (dolist (s syms)
+                     (when (and (< (aref lens s) limit)
+                                (or (null best) (> (aref lens s) (aref lens best))
+                                    (and (= (aref lens s) (aref lens best))
+                                         (< (aref freq s) (aref freq best)))))
+                       (setf best s)))
+                   (decf kraft (ash 1 (- limit (aref lens best) 1)))
+                   (incf (aref lens best)))))
+      lens)))
+
+(defun fnn-ldf-canonical-codes (lens)
+  "The bit-reversed canonical codes of LENS (RFC 1951 3.2.2), ready to emit LSB first."
+  (let* ((n (length lens)) (codes (fnn-ldf-make-u16 n)) (count (fnn-ldf-make-fix 16)) (next (fnn-ldf-make-fix 16)))
+    (loop for l across lens when (plusp l) do (incf (aref count l)))
+    (let ((code 0))
+      (loop for bits from 1 to 15
+            do (setf code (ash (+ code (aref count (1- bits))) 1)
+                     (aref next bits) code)))
+    (dotimes (s n)
+      (let ((l (aref lens s)))
+        (when (plusp l)
+          (let ((c (aref next l)) (r 0))
+            (incf (aref next l))
+            (dotimes (k l) (setf r (logior (ash r 1) (logand (ash c (- k)) 1))))
+            (setf (aref codes s) r)))))
+    codes))
+
+;;; ---------------------------------------------------------------------------
+;;; Blocks
+
+(defparameter *fnn-ldf-fixed-lit-lens*
+  (let ((l (make-array 288 :element-type '(unsigned-byte 8))))
+    (dotimes (i 288) (setf (aref l i) (cond ((< i 144) 8) ((< i 256) 9) ((< i 280) 7) (t 8))))
+    l))
+(defparameter *fnn-ldf-fixed-dist-lens* (make-array 30 :element-type '(unsigned-byte 8) :initial-element 5))
+(defparameter *fnn-ldf-fixed-lit-codes* (fnn-ldf-canonical-codes *fnn-ldf-fixed-lit-lens*))
+(defparameter *fnn-ldf-fixed-dist-codes* (fnn-ldf-canonical-codes *fnn-ldf-fixed-dist-lens*))
+(defparameter *fnn-ldf-clen-order* #(16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15))
+
+(defun fnn-ldf-rle-lengths (lens)
+  "The code-length alphabet's symbols for LENS: a list of (SYMBOL EXTRA-VALUE)."
+  (let ((out '()) (n (length lens)) (i 0))
+    (loop while (< i n)
+          do (let* ((l (aref lens i))
+                    (run (loop for j from i below n while (= (aref lens j) l) count t)))
+               (incf i run)
+               (if (zerop l)
+                   (progn
+                     (loop while (>= run 11) do (let ((k (min run 138))) (push (list 18 (- k 11)) out) (decf run k)))
+                     (when (>= run 3) (push (list 17 (- run 3)) out) (setf run 0))
+                     (loop repeat run do (push (list 0 0) out)))
+                   (progn
+                     (push (list l 0) out) (decf run)
+                     (loop while (>= run 3) do (let ((k (min run 6))) (push (list 16 (- k 3)) out) (decf run k)))
+                     (loop repeat run do (push (list l 0) out))))))
+    (nreverse out)))
+
+(defun fnn-ldf-clen-extra-bits (sym) (case sym (16 2) (17 3) (18 7) (t 0)))
+
+(defun fnn-ldf-emit-block (fnn-ldf-bw w start end lit dist nsym final)
+  (declare (optimize (speed 3) (safety 1) (debug 0)))
+  "Emit the NSYM symbols (LIT: literal/length-3+256 flag in DIST) covering
+W[START, END) as the cheapest of dynamic, fixed and stored."
+  (declare (type fnn-ldf-bw fnn-ldf-bw) (type fnn-ldf-octets w) (type fnn-ldf-idx start end nsym) (type fnn-ldf-u16v lit dist))
+  (let ((lf (fnn-ldf-make-fix 286)) (df (fnn-ldf-make-fix 30)) (extra 0))
+    (declare (type fixnum extra))
+    (dotimes (i nsym)
+      (let ((d (aref dist i)))
+        (if (zerop d)
+            (incf (aref lf (aref lit i)))
+            (let ((lc (aref (the fnn-ldf-u16v *fnn-ldf-len-code*) (aref lit i))) (dc (fnn-ldf-dist-code d)))
+              (incf (aref lf (+ 257 lc))) (incf (aref df dc))
+              (incf extra (+ (aref (the fnn-ldf-u16v *fnn-ldf-len-extra*) lc) (aref (the fnn-ldf-u16v *fnn-ldf-dist-extra*) dc)))))))
+    (setf (aref lf 256) 1)
+    (let* ((llens (fnn-ldf-huffman-lengths lf 15))
+           (dlens (fnn-ldf-huffman-lengths df 15))
+           (hlit (max 257 (1+ (or (position-if #'plusp llens :from-end t) 0))))
+           (hdist (max 1 (1+ (or (position-if #'plusp dlens :from-end t) 0))))
+           (all (concatenate '(simple-array (unsigned-byte 8) (*)) (subseq llens 0 hlit) (subseq dlens 0 hdist)))
+           (rle (fnn-ldf-rle-lengths all))
+           (cf (fnn-ldf-make-fix 19)))
+      (dolist (r rle) (incf (aref cf (first r))))
+      (let* ((clens (fnn-ldf-huffman-lengths cf 7))
+             (hclen (max 4 (1+ (or (position-if (lambda (s) (plusp (aref clens s))) *fnn-ldf-clen-order* :from-end t) 0))))
+             (dyn (+ 3 14 (* 3 hclen)
+                     (loop for r in rle sum (+ (aref clens (first r)) (fnn-ldf-clen-extra-bits (first r))))
+                     (loop for s below 286 sum (* (aref lf s) (aref llens s)))
+                     (loop for s below 30 sum (* (aref df s) (aref dlens s)))
+                     extra))
+             (fix (+ 3 (loop for s below 286 sum (* (aref lf s) (aref *fnn-ldf-fixed-lit-lens* s)))
+                     (* 5 (loop for s below 30 sum (aref df s))) extra))
+             (raw (- end start))
+             (sto (if (<= raw 65535) (+ (* 8 (ceiling (+ (fnn-ldf-bw-cnt fnn-ldf-bw) 3) 8)) 32 (* 8 raw) (- (fnn-ldf-bw-cnt fnn-ldf-bw))) nil)))
+        (cond
+          ((and sto (<= sto dyn) (<= sto fix))
+           (fnn-ldf-put-bits fnn-ldf-bw (if final 1 0) 3) (fnn-ldf-align-byte fnn-ldf-bw)
+           (fnn-ldf-put-bits fnn-ldf-bw (logand raw 65535) 16) (fnn-ldf-put-bits fnn-ldf-bw (logxor raw 65535) 16)
+           (loop for p from start below end do (fnn-ldf-put-bits fnn-ldf-bw (aref w p) 8)))
+          (t
+           (let (lcodes dcodes llen dlen)
+             (if (< dyn fix)
+                 (let ((ccodes (fnn-ldf-canonical-codes clens)))
+                   (fnn-ldf-put-bits fnn-ldf-bw (if final 5 4) 3)
+                   (fnn-ldf-put-bits fnn-ldf-bw (- hlit 257) 5) (fnn-ldf-put-bits fnn-ldf-bw (- hdist 1) 5) (fnn-ldf-put-bits fnn-ldf-bw (- hclen 4) 4)
+                   (dotimes (k hclen) (fnn-ldf-put-bits fnn-ldf-bw (aref clens (aref *fnn-ldf-clen-order* k)) 3))
+                   (dolist (r rle)
+                     (fnn-ldf-put-bits fnn-ldf-bw (aref ccodes (first r)) (aref clens (first r)))
+                     (let ((e (fnn-ldf-clen-extra-bits (first r)))) (when (plusp e) (fnn-ldf-put-bits fnn-ldf-bw (second r) e))))
+                   (setf lcodes (fnn-ldf-canonical-codes llens) dcodes (fnn-ldf-canonical-codes dlens) llen llens dlen dlens))
+                 (progn
+                   (fnn-ldf-put-bits fnn-ldf-bw (if final 3 2) 3)
+                   (setf lcodes *fnn-ldf-fixed-lit-codes* dcodes *fnn-ldf-fixed-dist-codes*
+                         llen *fnn-ldf-fixed-lit-lens* dlen *fnn-ldf-fixed-dist-lens*)))
+             (let ((lcodes lcodes) (dcodes dcodes) (llen llen) (dlen dlen))
+               (declare (type fnn-ldf-u16v lcodes dcodes) (type fnn-ldf-octets llen dlen))
+               (dotimes (i nsym)
+                 (let ((d (aref dist i)) (v (aref lit i)))
+                   (if (zerop d)
+                       (fnn-ldf-put-bits fnn-ldf-bw (aref lcodes v) (aref llen v))
+                       (let* ((lc (aref (the fnn-ldf-u16v *fnn-ldf-len-code*) v)) (dc (fnn-ldf-dist-code d))
+                              (le (aref (the fnn-ldf-u16v *fnn-ldf-len-extra*) lc)) (de (aref (the fnn-ldf-u16v *fnn-ldf-dist-extra*) dc)))
+                         (fnn-ldf-put-bits fnn-ldf-bw (aref lcodes (+ 257 lc)) (aref llen (+ 257 lc)))
+                         (when (plusp le) (fnn-ldf-put-bits fnn-ldf-bw (- (+ v 3) (aref (the fnn-ldf-u16v *fnn-ldf-len-base*) lc)) le))
+                         (fnn-ldf-put-bits fnn-ldf-bw (aref dcodes dc) (aref dlen dc))
+                         (when (plusp de) (fnn-ldf-put-bits fnn-ldf-bw (- d (aref (the fnn-ldf-u16v *fnn-ldf-dist-base*) dc)) de))))))
+               (fnn-ldf-put-bits fnn-ldf-bw (aref lcodes 256) (aref llen 256))))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; LZ77 with lazy evaluation (zlib's deflate_slow)
+
+(defun fnn-ldf-deflate-payload (dict src &key (level *fnn-ldf-level*))
+  (declare (optimize (speed 3) (safety 1) (debug 0)))
+  "Raw DEFLATE of SRC (fnn-ldf-octets) over the preset DICT (fnn-ldf-octets, at most 32 KiB
+used), finished (BFINAL on the last block): an octet vector."
+  (declare (type fnn-ldf-octets dict src))
+  (destructuring-bind (good-length max-lazy nice-length max-chain) (coerce (aref *fnn-ldf-levels* (1- level)) 'list)
+    (declare (type fixnum good-length max-lazy nice-length max-chain))
+    (let* ((dl (min (length dict) +fnn-ldf-wsize+))
+           (w (let ((v (make-array (+ dl (length src)) :element-type '(unsigned-byte 8))))
+                (replace v dict :start2 (- (length dict) dl)) (replace v src :start1 dl) v))
+           (n (length w))
+           (head (make-array (1+ +fnn-ldf-hmask+) :element-type 'fixnum :initial-element 0))
+           (prev (make-array +fnn-ldf-wsize+ :element-type 'fixnum :initial-element 0))
+           (lit (fnn-ldf-make-u16 +fnn-ldf-block-symbols+))
+           (dist (fnn-ldf-make-u16 +fnn-ldf-block-symbols+))
+           (nsym 0) (block-start dl)
+           (fnn-ldf-bw (fnn-ldf-make-bw (make-array (+ 64 (length src) (ash (length src) -3)) :element-type '(unsigned-byte 8)))))
+      (declare (type fnn-ldf-octets w) (type fnn-ldf-fixv head prev) (type fnn-ldf-u16v lit dist) (type fnn-ldf-idx n nsym block-start))
+      (labels ((fnn-ldf-hash (p) (declare (type fnn-ldf-idx p))
+                 (logand (logxor (ash (aref w p) 10) (ash (aref w (+ p 1)) 5) (aref w (+ p 2))) +fnn-ldf-hmask+))
+               (fnn-ldf-insert (p) (declare (type fnn-ldf-idx p))
+                 ;; the previous head for P's fnn-ldf-hash (P+1 stored; 0 = none), and P becomes the head
+                 (let* ((h (fnn-ldf-hash p)) (old (aref head h)))
+                   (setf (aref prev (logand p +fnn-ldf-wmask+)) old (aref head h) (1+ p))
+                   old))
+               (fnn-ldf-longest (p cand best)
+                 (declare (type fnn-ldf-idx p) (type fixnum cand best))
+                 (let* ((maxlen (min 258 (- n p)))
+                        (limit (- p +fnn-ldf-wsize+))
+                        (chain (if (>= best good-length) (ash max-chain -2) max-chain))
+                        (best-dist 0))
+                   (declare (type fixnum maxlen limit chain best-dist))
+                   (loop while (and (>= cand 0) (> cand limit) (plusp chain))
+                         do (when (and (< best maxlen)
+                                       (= (aref w (+ cand best)) (aref w (+ p best)))
+                                       (= (aref w cand) (aref w p)))
+                              (let ((len (loop for k fixnum from 0 below maxlen
+                                               while (= (aref w (+ cand k)) (aref w (+ p k)))
+                                               finally (return k))))
+                                (declare (type fixnum len))
+                                (when (> len best)
+                                  (setf best len best-dist (- p cand))
+                                  (when (>= len nice-length) (return)))))
+                            (decf chain)
+                            (let ((next (1- (aref prev (logand cand +fnn-ldf-wmask+)))))
+                              (declare (type fixnum next))
+                              (if (< next cand) (setf cand next) (return))))
+                   (values best best-dist)))
+               (fnn-ldf-flush (end final)
+                 (fnn-ldf-emit-block fnn-ldf-bw w block-start end lit dist nsym final)
+                 (setf nsym 0 block-start end))
+               (fnn-ldf-emit-lit (p) (declare (type fnn-ldf-idx p))
+                 (setf (aref lit nsym) (aref w p) (aref dist nsym) 0) (incf nsym)
+                 (when (= nsym +fnn-ldf-block-symbols+) (fnn-ldf-flush (1+ p) nil)))
+               (fnn-ldf-emit-match (p len d) (declare (type fnn-ldf-idx p len d))
+                 (setf (aref lit nsym) (- len 3) (aref dist nsym) d) (incf nsym)
+                 (when (= nsym +fnn-ldf-block-symbols+) (fnn-ldf-flush (+ p len) nil))))
+        (loop for p from (max 0 (- dl +fnn-ldf-wsize+)) below (- dl 2) do (fnn-ldf-insert p))
+        (let ((p dl) (prev-len 2) (prev-dist 0) (available nil))
+          (declare (type fixnum p prev-len prev-dist))
+          (loop while (< p n)
+                do (let ((cur-len 2) (cur-dist 0))
+                     (declare (type fixnum cur-len cur-dist))
+                     (when (< (+ p 2) n)
+                       (let ((cand (1- (fnn-ldf-insert p))))
+                         (when (and (>= cand 0) (< prev-len max-lazy) (<= (- p cand) +fnn-ldf-wsize+))
+                           (multiple-value-setq (cur-len cur-dist) (fnn-ldf-longest p cand 2))
+                           (when (and (= cur-len 3) (> cur-dist 4096)) (setf cur-len 2)))))
+                     (cond
+                       ((and (>= prev-len 3) (<= cur-len prev-len))
+                        (let ((mstart (1- p)))
+                          (fnn-ldf-emit-match mstart prev-len prev-dist)
+                          (loop for q from (1+ p) below (+ mstart prev-len)
+                                when (< (+ q 2) n) do (fnn-ldf-insert q))
+                          (setf p (+ mstart prev-len) available nil prev-len 2)))
+                       (available
+                        (fnn-ldf-emit-lit (1- p))
+                        (setf prev-len cur-len prev-dist cur-dist) (incf p))
+                       (t (setf available t prev-len cur-len prev-dist cur-dist) (incf p)))))
+          (when available (fnn-ldf-emit-lit (1- p)))
+          (fnn-ldf-flush n t)
+          (fnn-ldf-align-byte fnn-ldf-bw)
+          (subseq (fnn-ldf-bw-out fnn-ldf-bw) 0 (fnn-ldf-bw-pos fnn-ldf-bw)))))))
+
+;; `fnn-deflate-candidate' keeps its contract: SRC's octets [START,
+;; START+N) over the preset DICT, in at most CAP octets, else :NONE.
 (defun fnn-deflate-candidate (dict src start n cap)
-  "zlib's stream for SRC's octets [START, START+N) over the preset DICT (an
-octet vector), in at most CAP octets: an octet vector, :NONE when no stream
-fits CAP (ACL2's policy reads it as no gain), or a store fault naming
-zlib's failure (ACL2 planned the span, so that is a defect)."
-  (fnn-deflate-initialize)
+  "The stream for SRC's octets [START, START+N) over the preset DICT (an
+octet vector), in at most CAP octets: an octet vector, or :NONE when no
+stream fits CAP (ACL2's policy reads it as no gain)."
   (unless (and (integerp start) (integerp n) (<= 0 start) (<= 0 n) (<= (+ start n) (length src)))
     (fnn-fault "deflate-encoder: the span is not inside the record"))
   (when (<= cap 0) (return-from fnn-deflate-candidate :none))
-  (let* ((dst (make-array cap :element-type '(unsigned-byte 8)))
-         (src (coerce src '(simple-array (unsigned-byte 8) (*))))
-         (dict (coerce dict '(simple-array (unsigned-byte 8) (*))))
-         (got (sb-sys:with-pinned-objects (dict src dst)
-                (fnn-%deflate-payload
-                 (sb-alien:sap-alien (sb-sys:vector-sap dict) (* sb-alien:unsigned-char))
-                 (length dict)
-                 (sb-alien:sap-alien (sb-sys:sap+ (sb-sys:vector-sap src) start)
-                                     (* sb-alien:unsigned-char))
-                 n
-                 (sb-alien:sap-alien (sb-sys:vector-sap dst) (* sb-alien:unsigned-char))
-                 cap))))
-    (cond ((plusp got) (subseq dst 0 got))
-          ((eql got -2) :none)
-          (t (fnn-fault "deflate-encoder: zlib refused a planned span (code ~a)" got)))))
+  (let ((z (fnn-ldf-deflate-payload
+            (coerce dict '(simple-array (unsigned-byte 8) (*)))
+            (coerce (subseq src start (+ start n)) '(simple-array (unsigned-byte 8) (*))))))
+    (if (<= (length z) cap) z :none)))
 
 ;;; The served read of a stored payload (host/native/extent.lisp
 ;;; fn-durable-realize-lz): ACL2's payload decoder over buffers the host

@@ -317,6 +317,8 @@
 ; PRF-325 (NNT-053): XFNCATCHUP, a peer's batched catch-up stream over the
 ; pinned view (books/peer-catchup-serve.lisp).
 (include-book "peer-catchup-serve")
+; NNT-055 (lane compress-5): XFN-ZARTICLE, the pinned arm's :model.
+(include-book "nntp-zarticle")
 
 (defun fn-nntp-number-withdrawn-p (session archive index token)
   (declare (xargs :guard t))

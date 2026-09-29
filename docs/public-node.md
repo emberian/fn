@@ -62,10 +62,10 @@ is told `fn.announce`, `fn.general` and `local.general`.
 
 ## Peering
 
-Swapping articles with other nodes (peering) is coming, but not yet. A
-known problem in the current release stops a node that peers from taking
-its own users' posts after it has fed 1,024 articles on, so this node does
-not peer until the fix lands. Until then, what is posted here stays here.
+This node swaps articles with one other fn node: it takes that node's feed
+now, and sends its own posts back once the push in that direction lands
+(PKT-882). Peering with more nodes is by invitation
+([peering with a friend](peering-with-a-friend.md)).
 
 ## What to expect
 

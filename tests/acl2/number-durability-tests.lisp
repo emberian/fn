@@ -21,6 +21,13 @@
 (include-book "held-rows-tests")
 (include-book "std/testing/assert-bang" :dir :system)
 
+; ihs/quotient-remainder-lemmas (non-local through cbor-invariants) leaks a
+; :generalize rule; ndt-k2-without-fence's search induced on fn-own-take,
+; generalized through it into FLOOR/MOD and ground to the 300,000-step
+; limit (5.8 s on hbox).  Without it that must-fail fails in 11,444 steps.
+; Nothing here reasons about quotients.
+(local (in-theory (disable (:generalize mod-x-y-=-x+y-for-rationals))))
+
 (defconst *ndt-stamp* *fn-cfg-default-stamp*)
 (defconst *ndt-undertake*
   (fn-store-retention-event-make :undertake 0 0 0

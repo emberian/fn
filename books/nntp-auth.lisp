@@ -42,7 +42,7 @@
 ; THE SECRET IS A SALTED DIGEST.  RFC 4643 section 2.3 AUTHINFO USER/PASS is
 ; a cleartext password mechanism ON THE WIRE, and nothing here changes that.
 ; What the configuration holds is a verifier: books/auth-secret.lisp's
-; (:fn-authsec-v1 salt digest) over the tagged digest of salt || secret, and
+; (:fn-authsec-v2 salt digest stored-key server-key): the tagged digest of salt || secret, and SCRAM-SHA-256's keys; and
 ; fn-auth-checkp is fn-authsec-checkp on it.  The digest is the crypto
 ; seam's, executable since books/crypto-attach.lisp attached a realiser (BLAKE3,
 ; books/blake3.lisp, since store format 10; SHA-256 before), so the comparison runs on the served path and Python
@@ -64,6 +64,8 @@
 (include-book "principal")
 (include-book "accounts")
 (include-book "auth-secret")
+; AUTHINFO SASL (RFC 4643 section 2.4): PLAIN, SCRAM-SHA-256[-PLUS].
+(include-book "sasl")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -325,15 +327,43 @@
     (fn-auth-make-cred name (fn-acct-local-principal name)
                        (fn-acct-text-verifier (fn-cfg-row-c row)) t)))
 
-(defun fn-auth-account-creds (rows)
+; Executes by a loop (lane depth-debt, PRF-919): it walks the configuration's accounts rows, operator
+; data with no fixed cap (D27), and the recursion took one control-stack frame
+; per element.  (mbe :logic <the recursion, unchanged> :exec <a loop>), equal
+; by the lemma after it (books/rev-onto.lisp fn-ag-rev-onto).
+(defun fn-auth-account-creds-loop (rows acc)
   (declare (xargs :guard t))
   (if (consp rows)
-      (if (and (equal (fn-cfg-row-n (car rows)) 1)
-               (fn-auth-credp (fn-auth-account-cred (car rows))))
-          (cons (fn-auth-account-cred (car rows))
-                (fn-auth-account-creds (cdr rows)))
-        (fn-auth-account-creds (cdr rows)))
-    nil))
+      (fn-auth-account-creds-loop (cdr rows)
+       (if (and (equal (fn-cfg-row-n (car rows)) 1)
+            (fn-auth-credp (fn-auth-account-cred (car rows)))) (cons (fn-auth-account-cred (car rows)) acc) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-auth-account-creds (rows)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp rows)
+           (if (and (equal (fn-cfg-row-n (car rows)) 1)
+                    (fn-auth-credp (fn-auth-account-cred (car rows))))
+               (cons (fn-auth-account-cred (car rows))
+                     (fn-auth-account-creds (cdr rows)))
+             (fn-auth-account-creds (cdr rows)))
+         nil)
+       :exec (fn-auth-account-creds-loop rows nil)))
+
+(defthm fn-auth-account-creds-loop-is-rev-onto
+  (equal (fn-auth-account-creds-loop rows acc)
+         (fn-ag-rev-onto acc (fn-auth-account-creds rows)))
+  :hints (("Goal" :induct (fn-auth-account-creds-loop rows acc)
+                  :in-theory (union-theories
+                              '(fn-auth-account-creds-loop fn-auth-account-creds fn-ag-rev-onto not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-auth-account-creds
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-auth-account-creds fn-ag-rev-onto fn-auth-account-creds-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defthm fn-auth-account-creds-are-creds
   (fn-auth-cred-listp (fn-auth-account-creds rows))
@@ -459,10 +489,19 @@
 ;                (:owed ALG) after 206 until the host re-enters with the
 ;                same established event, then (:active ALG) for the rest of
 ;                the connection (RFC 8054 section 2.2.2).
+;   ctx          nil, or (:sasl-context SEED BINDING): what the host observed
+;                for this connection that SASL needs and no client octet can
+;                supply -- SEED, 32 octets of the host's CSPRNG the SCRAM
+;                server nonce is derived from (books/sasl.lisp), and BINDING,
+;                nil or the 32-octet RFC 9266 tls-exporter value of the TLS
+;                layer, for SCRAM-SHA-256-PLUS.  Installed by the host's
+;                (:sasl-context SEED BINDING) wire event, at open and again
+;                after every TLS handshake; cleared by 382, because nothing of
+;                the connection before the handshake is carried across it.
 
 (defun fn-auth-session-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 7)))
+  (and (true-listp x) (equal (len x) 8)))
 (defun fn-auth-session-base (x)
   (declare (xargs :guard t))
   (fn-inj-nth 0 x))
@@ -484,41 +523,48 @@
 (defun fn-auth-session-compress (x)
   (declare (xargs :guard t))
   (fn-inj-nth 6 x))
-(defun fn-auth-make-session (base config pending subject tlsp handshaking compress)
+(defun fn-auth-session-ctx (x)
   (declare (xargs :guard t))
-  (list base config pending subject tlsp handshaking compress))
+  (fn-inj-nth 7 x))
+(defun fn-auth-make-session (base config pending subject tlsp handshaking compress ctx)
+  (declare (xargs :guard t))
+  (list base config pending subject tlsp handshaking compress ctx))
 
 (defthm fn-auth-session-shapep-of-fn-auth-make-session
   (fn-auth-session-shapep
-   (fn-auth-make-session base config pending subject tlsp handshaking compress)))
+   (fn-auth-make-session base config pending subject tlsp handshaking compress ctx)))
 (defthm fn-auth-session-base-of-fn-auth-make-session
   (equal (fn-auth-session-base
-          (fn-auth-make-session base config pending subject tlsp handshaking compress))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
          base))
 (defthm fn-auth-session-config-of-fn-auth-make-session
   (equal (fn-auth-session-config
-          (fn-auth-make-session base config pending subject tlsp handshaking compress))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
          config))
 (defthm fn-auth-session-pending-of-fn-auth-make-session
   (equal (fn-auth-session-pending
-          (fn-auth-make-session base config pending subject tlsp handshaking compress))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
          pending))
 (defthm fn-auth-session-subject-of-fn-auth-make-session
   (equal (fn-auth-session-subject
-          (fn-auth-make-session base config pending subject tlsp handshaking compress))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
          subject))
 (defthm fn-auth-session-tlsp-of-fn-auth-make-session
   (equal (fn-auth-session-tlsp
-          (fn-auth-make-session base config pending subject tlsp handshaking compress))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
          tlsp))
 (defthm fn-auth-session-handshakingp-of-fn-auth-make-session
   (equal (fn-auth-session-handshakingp
-          (fn-auth-make-session base config pending subject tlsp handshaking compress))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
          handshaking))
 (defthm fn-auth-session-compress-of-fn-auth-make-session
   (equal (fn-auth-session-compress
-          (fn-auth-make-session base config pending subject tlsp handshaking compress))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
          compress))
+(defthm fn-auth-session-ctx-of-fn-auth-make-session
+  (equal (fn-auth-session-ctx
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
+         ctx))
 (defthm fn-auth-session-shapep-forward-shape
   (implies (fn-auth-session-shapep x) (and (consp x) (true-listp x)))
   :rule-classes :forward-chaining)
@@ -528,7 +574,8 @@
                     (:d fn-auth-session-pending) (:d fn-auth-session-subject)
                     (:d fn-auth-session-tlsp)
                     (:d fn-auth-session-handshakingp)
-                    (:d fn-auth-session-compress)))
+                    (:d fn-auth-session-compress)
+                    (:d fn-auth-session-ctx)))
 
 ; The two deeper reaches out of an auth session, named ONCE, for the same
 ; reason and in the same way as `fn-peer-reader-session'
@@ -576,10 +623,37 @@
                 (null (cddddr p))))))
 
 (defun fn-auth-pendingp (p)
+  ; A SASL exchange in progress keeps its state here too (books/sasl.lisp
+  ; fn-sasl-statep), for one exchange, in memory.
   (declare (xargs :guard t))
   (or (null p)
       (and (consp p) (true-listp p) (fn-nntp-printable-tokenp p))
-      (fn-auth-redeem-statep p)))
+      (fn-auth-redeem-statep p)
+      (fn-sasl-statep p)))
+
+; The connection's SASL context (see the session's `ctx' above).
+(defun fn-auth-ctxp (x)
+  (declare (xargs :guard t))
+  (or (null x)
+      (and (true-listp x) (equal (len x) 3)
+           (equal (car x) :sasl-context)
+           (fn-sasl-seedp (cadr x))
+           (or (null (caddr x)) (fn-sasl-bindingp (caddr x))))))
+
+(defthm fn-auth-ctxp-of-nil
+  (fn-auth-ctxp nil))
+
+; Closed: every transition but the context event carries the connection's
+; context unchanged, so the transition proofs never need its shape.
+(in-theory (disable fn-auth-ctxp))
+
+(defun fn-auth-ctx-seed (x)
+  (declare (xargs :guard t))
+  (fn-scram-nth 1 x))
+
+(defun fn-auth-ctx-binding (x)
+  (declare (xargs :guard t))
+  (fn-scram-nth 2 x))
 
 (defun fn-auth-sessionp (x)
   (declare (xargs :guard t :verify-guards nil))
@@ -591,11 +665,55 @@
            (fn-prin-idp (fn-auth-session-subject x)))
        (booleanp (fn-auth-session-tlsp x))
        (booleanp (fn-auth-session-handshakingp x))
-       (fn-zc-statep (fn-auth-session-compress x))))
+       (fn-zc-statep (fn-auth-session-compress x))
+       (fn-auth-ctxp (fn-auth-session-ctx x))))
 
 (defthm fn-auth-sessionp-forward-shape
   (implies (fn-auth-sessionp x) (and (consp x) (true-listp x)))
   :rule-classes :forward-chaining)
+
+; The recognizer over the constructor, field by field, and its fields read
+; back: with these two a transition's preservation proof keeps
+; fn-auth-sessionp closed on both sides (docs/proof-style.md, "Never open a
+; recognizer to prove a property of a transition").  Local: the includers
+; keep proving with the recognizer as they did.
+(local (defthm fn-auth-sessionp-of-make-session
+  (equal (fn-auth-sessionp
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
+         (and (fn-peer-sessionp base)
+              (fn-auth-configp config)
+              (fn-auth-pendingp pending)
+              (or (null subject) (fn-prin-idp subject))
+              (booleanp tlsp)
+              (booleanp handshaking)
+              (fn-zc-statep compress)
+              (fn-auth-ctxp ctx)))
+  :hints (("Goal" :in-theory (disable fn-peer-sessionp fn-auth-configp
+                                      fn-auth-pendingp fn-prin-idp fn-zc-statep)))))
+
+(local (defthm fn-auth-pendingp-cases
+  (and (fn-auth-pendingp nil)
+       (implies (and (consp p) (true-listp p) (fn-nntp-printable-tokenp p))
+                (fn-auth-pendingp p))
+       (implies (fn-auth-redeem-statep p) (fn-auth-pendingp p))
+       (implies (fn-sasl-statep p) (fn-auth-pendingp p)))
+  :hints (("Goal" :in-theory (disable fn-nntp-printable-tokenp
+                                      fn-auth-redeem-statep)))))
+
+(local (defthm fn-auth-sessionp-forward-fields
+  (implies (fn-auth-sessionp x)
+           (and (fn-peer-sessionp (fn-auth-session-base x))
+                (fn-auth-configp (fn-auth-session-config x))
+                (fn-auth-pendingp (fn-auth-session-pending x))
+                (or (null (fn-auth-session-subject x))
+                    (fn-prin-idp (fn-auth-session-subject x)))
+                (booleanp (fn-auth-session-tlsp x))
+                (booleanp (fn-auth-session-handshakingp x))
+                (fn-zc-statep (fn-auth-session-compress x))
+                (fn-auth-ctxp (fn-auth-session-ctx x))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (disable fn-peer-sessionp fn-auth-configp
+                                      fn-auth-pendingp fn-prin-idp fn-zc-statep)))))
 
 (defun fn-auth-session-consistentp (x archive)
   (declare (xargs :guard t :verify-guards nil))
@@ -620,7 +738,7 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-auth-make-session (fn-peer-open-session archive peer node cfg)
                         (if (fn-auth-configp acfg) acfg (fn-auth-open-config))
-                        nil nil (and tlsp t) nil nil))
+                        nil nil (and tlsp t) nil nil nil))
 
 (defthm fn-auth-open-session-is-consistent
   (fn-auth-session-consistentp (fn-auth-open-session archive peer node cfg
@@ -640,16 +758,38 @@
                         (fn-auth-session-subject as)
                         (fn-auth-session-tlsp as)
                         (fn-auth-session-handshakingp as)
-                        (fn-auth-session-compress as)))
+                        (fn-auth-session-compress as)
+                        (fn-auth-session-ctx as)))
+
+; Executes by a loop (lane depth-debt, PRF-919): it walks the configuration's peer rows, operator
+; data with no fixed cap (D27), and the recursion took one control-stack frame
+; per element.  (mbe :logic <the recursion, unchanged> :exec <a loop>), equal
+; by the lemma after it (books/rev-onto.lisp fn-ag-rev-onto).
+(defun fn-auth-principal-peer-count-loop (hex rows acc)
+  (declare (xargs :guard (acl2-numberp acc)))
+  (if (consp rows)
+      (fn-auth-principal-peer-count-loop hex (cdr rows) (+ acc (if (and (equal (fn-cfg-row-b (car rows)) "auth-principal")
+              (equal (fn-cfg-row-c (car rows)) hex)) 1 0)))
+    acc))
 
 (defun fn-auth-principal-peer-count (hex rows)
   "How many configured peer records bind HEX as their AUTHINFO principal."
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (+ (if (and (equal (fn-cfg-row-b (car rows)) "auth-principal")
-                  (equal (fn-cfg-row-c (car rows)) hex)) 1 0)
-         (fn-auth-principal-peer-count hex (cdr rows)))
-    0))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp rows)
+           (+ (if (and (equal (fn-cfg-row-b (car rows)) "auth-principal")
+                       (equal (fn-cfg-row-c (car rows)) hex)) 1 0)
+              (fn-auth-principal-peer-count hex (cdr rows)))
+         0)
+       :exec (fn-auth-principal-peer-count-loop hex rows 0)))
+
+(defthm fn-auth-principal-peer-count-loop-is-plus
+  (implies (acl2-numberp acc)
+           (equal (fn-auth-principal-peer-count-loop hex rows acc)
+                  (+ acc (fn-auth-principal-peer-count hex rows))))
+  :hints (("Goal" :induct (fn-auth-principal-peer-count-loop hex rows acc))))
+
+(verify-guards fn-auth-principal-peer-count)
 
 (defun fn-auth-principal-peer-name (hex rows)
   (declare (xargs :guard t))
@@ -691,7 +831,7 @@
 
 (defthm fn-auth-session-peer-of-fn-auth-make-session
   (equal (fn-auth-session-peer
-          (fn-auth-make-session base config pending subject tlsp handshaking compress))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
          (fn-peer-session-peer base)))
 
 (defthm fn-auth-session-peer-of-fn-auth-with-base
@@ -837,7 +977,8 @@
 ;   STARTTLS        advertised only when a certificate is configured and no
 ;                   TLS layer is active.  "MUST NOT be advertised once a TLS
 ;                   layer is active" (RFC 4642 section 2.1).
-;   AUTHINFO USER   advertised exactly while the connection is
+;   AUTHINFO USER   (the USER argument of the AUTHINFO label) advertised
+;                   exactly while the connection is
 ;                   unauthenticated AND the channel is not the one
 ;                   protected-only refuses AND the connection has a login to
 ;                   offer: a credential is in its snapshot, or the pinned
@@ -853,6 +994,17 @@
 ;                   connection that requires nothing and holds no credential
 ;                   keeps the label off: there is nothing to log in to and
 ;                   nothing to lift.
+;   AUTHINFO SASL   (the SASL argument) advertised exactly while the
+;                   connection is unauthenticated, has a login to offer, and
+;                   offers at least one mechanism; the label is ONE line,
+;                   "AUTHINFO USER SASL", "AUTHINFO USER" or "AUTHINFO SASL"
+;                   (RFC 4643 section 3.4's authinfo-capability).
+;   SASL m...       the mechanisms this connection offers (books/sasl.lisp
+;                   fn-sasl-offers: SCRAM-SHA-256-PLUS, SCRAM-SHA-256, PLAIN
+;                   by TLS, context and binding; none before TLS under
+;                   protected-only, where every AUTHINFO is 483).  RFC 4643
+;                   section 2.2: advertised with the same list after
+;                   authentication, so it does not depend on the subject.
 ;   POST            the reader's own label, which fn-nntp-capability-lines
 ;                   already gates on the posting bit.  On an authenticating
 ;                   connection that bit is the CONJUNCTION of the pinned
@@ -861,36 +1013,90 @@
 ;                   fn-auth-postingp, so the label, the greeting code and the
 ;                   440 all still say the same thing.
 
-(defun fn-auth-access-capability-lines (acfg subject tlsp)
+(defun fn-auth-login-offeredp (acfg)
+  ; The connection has a login to offer: a credential in its snapshot, or a
+  ; configuration that requires authentication (public-node-2, D1).
   (declare (xargs :guard t))
-  (append
-   (if (and (fn-auth-config-tls-availablep acfg) (not tlsp))
-       (list (fn-nntp-string-octets "STARTTLS"))
-     nil)
-   ; RFC 4643 section 2.1: the mechanisms this connection accepts
-   ; now.  Required authentication offers the mechanism even with
-   ; no credential redeemed yet (public-node-2, D1).
-   (if (or subject
-           (not (or (consp (fn-auth-config-creds acfg))
-                    (fn-auth-config-requiredp acfg)))
-           (and (fn-auth-config-protected-onlyp acfg) (not tlsp)))
-       nil
-     (list (fn-nntp-string-octets "AUTHINFO USER")))))
+  (and (or (consp (fn-auth-config-creds acfg))
+           (fn-auth-config-requiredp acfg))
+       t))
 
-(defun fn-auth-capability-lines-for-peer (acfg subject tlsp postingp record)
+(defun fn-auth-sasl-mechanisms (acfg tlsp ctx)
+  ; The mechanisms AUTHINFO SASL accepts on this connection now: none on a
+  ; channel protected-only refuses, else books/sasl.lisp's offer.
+  (declare (xargs :guard t))
+  (if (and (fn-auth-config-protected-onlyp acfg) (not tlsp))
+      nil
+    (fn-sasl-offers tlsp (fn-auth-ctx-seed ctx) (fn-auth-ctx-binding ctx))))
+
+(defun fn-auth-mechanism-words (mechs)
+  ; " M1 M2 ...": each mechanism name after one space.
+  (declare (xargs :guard t))
+  (if (consp mechs)
+      (cons 32 (append (fn-sasl-firstn 20 (fn-scram-octets (car mechs)))
+                       (fn-auth-mechanism-words (cdr mechs))))
+    nil))
+
+(defun fn-auth-sasl-capability-line (mechs)
+  (declare (xargs :guard t))
+  (append (fn-nntp-string-octets "SASL") (fn-auth-mechanism-words mechs)))
+
+(defun fn-auth-starttls-lines (acfg tlsp)
+  (declare (xargs :guard t))
+  (if (and (fn-auth-config-tls-availablep acfg) (not tlsp))
+      (list (fn-nntp-string-octets "STARTTLS"))
+    nil))
+
+(defun fn-auth-user-offeredp (acfg subject tlsp)
+  (declare (xargs :guard t))
+  (and (not subject) (fn-auth-login-offeredp acfg)
+       (not (and (fn-auth-config-protected-onlyp acfg) (not tlsp)))))
+
+(defun fn-auth-sasl-offeredp (acfg subject tlsp ctx)
+  (declare (xargs :guard t))
+  (and (not subject) (fn-auth-login-offeredp acfg)
+       (consp (fn-auth-sasl-mechanisms acfg tlsp ctx))))
+
+(defun fn-auth-authinfo-lines (acfg subject tlsp ctx)
+  ; RFC 4643 section 2.1: the AUTHINFO label, one line, naming the
+  ; arguments this connection accepts now.  Required authentication offers
+  ; them even with no credential redeemed yet (public-node-2, D1).
+  (declare (xargs :guard t))
+  (let ((user (fn-auth-user-offeredp acfg subject tlsp))
+        (sasl (fn-auth-sasl-offeredp acfg subject tlsp ctx)))
+    (cond ((and user sasl) (list (fn-nntp-string-octets "AUTHINFO USER SASL")))
+          (user (list (fn-nntp-string-octets "AUTHINFO USER")))
+          (sasl (list (fn-nntp-string-octets "AUTHINFO SASL")))
+          (t nil))))
+
+(defun fn-auth-sasl-lines (acfg tlsp ctx)
+  ; RFC 4643 sections 2.1 and 2.2: the SASL label, whatever the subject.
+  (declare (xargs :guard t))
+  (let ((mechs (fn-auth-sasl-mechanisms acfg tlsp ctx)))
+    (if (and (fn-auth-login-offeredp acfg) (consp mechs))
+        (list (fn-auth-sasl-capability-line mechs))
+      nil)))
+
+(defun fn-auth-access-capability-lines (acfg subject tlsp ctx)
+  (declare (xargs :guard t))
+  (append (fn-auth-starttls-lines acfg tlsp)
+          (fn-auth-authinfo-lines acfg subject tlsp ctx)
+          (fn-auth-sasl-lines acfg tlsp ctx)))
+
+(defun fn-auth-capability-lines-for-peer (acfg subject tlsp postingp record ctx)
   ; `record' is looked up from the peer session that the owner opened from
   ; the configured source role.  A missing record or missing inbound half
   ; therefore carries no transit promise; fn-peer-step gives the refusal.
   (declare (xargs :guard t))
   (append (fn-peer-capability-lines record postingp)
-          (fn-auth-access-capability-lines acfg subject tlsp)))
+          (fn-auth-access-capability-lines acfg subject tlsp ctx)))
 
-(defun fn-auth-capability-lines (acfg subject tlsp postingp)
+(defun fn-auth-capability-lines (acfg subject tlsp postingp ctx)
   ; The reader-facing compatibility entry.  The called path uses the peer
   ; aware function above; keeping this entry means reader facts and callers
   ; continue to name the same ordinary-reader list.
   (declare (xargs :guard t))
-  (fn-auth-capability-lines-for-peer acfg subject tlsp postingp nil))
+  (fn-auth-capability-lines-for-peer acfg subject tlsp postingp nil ctx))
 
 (defun fn-auth-peer-record (as)
   ; Peer identity is the source/configuration role pinned at accept, never an
@@ -966,7 +1172,9 @@
       ; is gated exactly as the other archive readers are.
       (fn-nntp-keywordp keyword "NEWNEWS")
       ; PRF-325: the catch-up stream serves stored articles.
-      (fn-nntp-keywordp keyword "XFNCATCHUP")))
+      (fn-nntp-keywordp keyword "XFNCATCHUP")
+      ; NNT-055: stored payloads, gated as ARTICLE is.
+      (fn-nntp-keywordp keyword "XFN-ZARTICLE")))
 
 (defun fn-auth-transit-keywordp (keyword)
   ; The three inbound-transfer verbs are peer policy, not reader policy.
@@ -1017,6 +1225,268 @@
   :hints (("Goal" :in-theory (e/d (fn-auth-token-argp)
                                   (fn-nntp-printable-tokenp))))))
 
+;; ---------------------------------------------------------------------------
+;; AUTHINFO SASL (RFC 4643 section 2.4)
+;;
+;;   AUTHINFO SASL MECH           383 = ; the exchange's state is kept in the
+;;                                pending slot and the next line is the
+;;                                client's first response
+;;   AUTHINFO SASL MECH INITIAL   the initial response, decided at once
+;;   <base64> / "=" / "*"         a response line while an exchange is kept:
+;;                                the next step, the empty response, the
+;;                                client's cancel (481)
+;;
+;; Replies: 383 CHALLENGE (continue), 281 (PLAIN accepted), 283 FINAL
+;; (SCRAM accepted, FINAL the server-final-message the client verifies),
+;; 481 (failed or cancelled; the reason is never on the wire), 483 (PLAIN
+;; before TLS; any AUTHINFO before TLS under protected-only), 501 (the
+;; command's own syntax), 502 (already authenticated), 503 (a mechanism
+;; this connection does not offer), 504 (a response that is not canonical
+;; base64: RFC 4643 section 2.4.2 "MUST reject ... with a 504").  Every
+;; refusal and every success leaves no exchange kept.
+;;
+;; A CHALLENGE is sent on one reply line of at most 512 octets.  RFC 4643
+;; section 2.4.1 lets a server exceed that; fn does not, so a server-first
+;; message that would not fit -- a client nonce of more than about 300
+;; octets -- fails the exchange with 481 rather than emitting a longer line
+;; (`fn-auth-sasl-line-okp').  RFC 5802 bounds no nonce; clients send 18 to
+;; 32 octets.
+
+(defun fn-auth-sasl-decode (token)
+  ; A client response: "=" is the empty response, anything else must be
+  ; canonical base64 (books/octet-text.lisp fn-ot-b64-decode refuses a
+  ; character outside the alphabet and a pad anywhere but the end).
+  ; (mv okp octets).
+  (declare (xargs :guard t))
+  (if (equal token (list 61))
+      (mv t nil)
+    (mv-let (err octets) (fn-ot-b64-decode (fn-scram-octets token))
+      (if (or err (not (consp token)))
+          (mv nil nil)
+        (mv t octets)))))
+
+(defun fn-auth-sasl-raw (code payload)
+  ; CODE SP base64(PAYLOAD), or CODE SP "=" for an empty payload.
+  (declare (xargs :guard t))
+  (append (fn-nntp-string-octets code) (list 32)
+          (if (consp payload)
+              (fn-ot-b64-encode (fn-scram-octets payload))
+            (list 61))))
+
+(defun fn-auth-sasl-line (code payload)
+  (declare (xargs :guard t))
+  (fn-nntp-crlf (fn-auth-sasl-raw code payload)))
+
+; Executable twins of books/nntp-effects.lisp's reply predicates, which are
+; logic-only there; each is proved equal to its original.
+(defun fn-auth-response-textp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (integerp (car xs)) (<= 1 (car xs)) (<= (car xs) 255)
+           (not (equal (car xs) 13)) (not (equal (car xs) 10))
+           (fn-auth-response-textp (cdr xs)))
+    (null xs)))
+
+(defthm fn-auth-response-textp-is-response-textp
+  (equal (fn-auth-response-textp xs) (fn-nntp-response-textp xs))
+  :hints (("Goal" :in-theory (enable fn-nntp-response-textp
+                                     fn-nntp-response-octetp))))
+
+(defun fn-auth-digitp (b)
+  (declare (xargs :guard t))
+  (and (integerp b) (<= 48 b) (<= b 57)))
+
+(defun fn-auth-status-linep (line)
+  (declare (xargs :guard t))
+  (and (consp line) (consp (cdr line)) (consp (cdr (cdr line)))
+       (fn-auth-digitp (car line))
+       (fn-auth-digitp (car (cdr line)))
+       (fn-auth-digitp (car (cdr (cdr line))))
+       (or (null (cdr (cdr (cdr line))))
+           (and (consp (cdr (cdr (cdr line))))
+                (equal (car (cdr (cdr (cdr line)))) 32)))))
+
+(defthm fn-auth-status-linep-is-initial-status-linep
+  (equal (fn-auth-status-linep line) (fn-nntp-initial-status-linep line))
+  :hints (("Goal" :in-theory (enable fn-nntp-initial-status-linep
+                                     fn-nntp-decimal-digitp))))
+
+(defun fn-auth-sasl-line-okp (code payload)
+  ; The reply is one well-formed initial line (books/nntp-effects.lisp
+  ; fn-nntp-replyp-of-single-line's three conditions).
+  (declare (xargs :guard t))
+  (let ((raw (fn-auth-sasl-raw code payload)))
+    (and (fn-octet-listp raw)
+         (fn-auth-response-textp raw)
+         (fn-auth-status-linep raw)
+         (<= (+ (len raw) 2) *fn-nntp-max-response-octets*)
+         t)))
+
+(defun fn-auth-sasl-effects (code payload)
+  (declare (xargs :guard t))
+  (list (fn-nntp-reply-effect (fn-auth-sasl-line code payload))))
+
+(defun fn-auth-sasl-refuse (as text)
+  ; A refusal that ends the exchange: TEXT, nothing kept.
+  (declare (xargs :guard t))
+  (fn-post-make-result
+   (fn-auth-make-session (fn-auth-session-base as) (fn-auth-session-config as)
+                         nil nil (fn-auth-session-tlsp as)
+                         (fn-auth-session-handshakingp as)
+                         (fn-auth-session-compress as) (fn-auth-session-ctx as))
+   (fn-auth-single as text)
+   nil))
+
+(defun fn-auth-sasl-finish (as st response)
+  ; One step of the exchange kept in ST (or the one an initial response
+  ; enters), on the client's decoded RESPONSE.  Phase one names the login;
+  ; the connection's snapshot gives its verifier; books/sasl.lisp decides.
+  (declare (xargs :guard t))
+  (let* ((acfg (fn-auth-session-config as))
+         (ctx (fn-auth-session-ctx as))
+         (login (fn-sasl-response-login st response))
+         (cred (fn-auth-find-cred login (fn-auth-config-creds acfg)))
+         (o (fn-sasl-step st response (fn-auth-cred-secret cred)
+                          (fn-auth-ctx-seed ctx) (fn-auth-ctx-binding ctx)))
+         (kind (fn-sasl-outcome-kind o))
+         (payload (fn-scram-nth 1 o)))
+    (cond
+     ((and (equal kind :success) (consp cred)
+           (or (not (consp payload)) (fn-auth-sasl-line-okp "283" payload)))
+      ; Exactly AUTHINFO PASS's acceptance: the credential's principal is
+      ; the subject, its login is kept (the moderation and posting-account
+      ; readers read it there), and the principal binds a peer role only
+      ; through fn-auth-bind-principal-peer.
+      (let* ((authenticated
+              (fn-auth-make-session (fn-auth-session-base as) acfg
+                                    (fn-auth-cred-name cred)
+                                    (fn-auth-cred-principal cred)
+                                    (fn-auth-session-tlsp as)
+                                    (fn-auth-session-handshakingp as)
+                                    (fn-auth-session-compress as) ctx))
+             (bound (fn-auth-bind-principal-peer
+                     authenticated (fn-auth-cred-principal cred))))
+        (fn-post-make-result
+         bound
+         (if (consp payload)
+             (fn-auth-sasl-effects "283" payload)
+           (fn-auth-single as (fn-proto-text "AUTHINFO" :accepted)))
+         nil)))
+     ((and (equal kind :continue) (fn-sasl-statep (fn-scram-nth 2 o))
+           (fn-auth-sasl-line-okp "383" payload))
+      (fn-post-make-result
+       (fn-auth-make-session (fn-auth-session-base as) acfg
+                             (fn-scram-nth 2 o) nil
+                             (fn-auth-session-tlsp as)
+                             (fn-auth-session-handshakingp as) (fn-auth-session-compress as) ctx)
+       (fn-auth-sasl-effects "383" payload)
+       nil))
+     (t (fn-auth-sasl-refuse as (fn-proto-text "AUTHINFO" :failed))))))
+
+(defun fn-auth-sasl-command (as margs)
+  ; AUTHINFO SASL MECH [INITIAL].  fn-auth-authinfo has already answered
+  ; 502 to an authenticated connection and 483 to a protected-only one
+  ; before TLS.
+  (declare (xargs :guard t))
+  (let* ((ctx (fn-auth-session-ctx as))
+         (tlsp (fn-auth-session-tlsp as))
+         (mech (and (consp margs) (fn-sasl-mech (car margs)))))
+    (cond
+     ((not (and (consp margs) (true-listp margs) (<= (len margs) 2)))
+      (fn-auth-sasl-refuse as (fn-proto-text * :syntax)))
+     ; RFC 4643 section 2.4.2: a mechanism that requires an encryption
+     ; layer is 483.
+     ((and (equal mech :plain) (not tlsp))
+      (fn-auth-sasl-refuse as (fn-proto-text * :protect)))
+     ; RFC 4643 section 2.4.2: an unsupported mechanism is 503.
+     ((not (fn-sasl-offeredp mech tlsp (fn-auth-ctx-seed ctx)
+                             (fn-auth-ctx-binding ctx)))
+      (fn-auth-sasl-refuse as (fn-proto-text "AUTHINFO" :no-mechanism)))
+     ((null (cdr margs))
+      ; RFC 4422 section 5.1: the mechanisms are client-first; the empty
+      ; challenge is "383 =" (RFC 4643 section 2.4.2).
+      (fn-post-make-result
+       (fn-auth-make-session (fn-auth-session-base as)
+                             (fn-auth-session-config as)
+                             (fn-sasl-initial-state mech) nil tlsp
+                             (fn-auth-session-handshakingp as) (fn-auth-session-compress as) ctx)
+       (fn-auth-sasl-effects "383" nil)
+       nil))
+     (t
+      (mv-let (okp response) (fn-auth-sasl-decode (cadr margs))
+        (if okp
+            (fn-auth-sasl-finish as (fn-sasl-initial-state mech) response)
+          (fn-auth-sasl-refuse as (fn-proto-text "AUTHINFO" :base64))))))))
+
+(defun fn-auth-sasl-waitingp (as)
+  ; An exchange is kept: the next command line is its response.
+  (declare (xargs :guard t))
+  (fn-sasl-statep (fn-auth-session-pending as)))
+
+(defun fn-auth-sasl-continue (as line)
+  ; A response line (RFC 4643 section 3.2's authinfo-sasl-383-continuation).
+  (declare (xargs :guard t))
+  (cond ; Unreachable in composition: an exchange is kept only after
+        ; fn-auth-authinfo's 502 and 483 arms let the command through, a
+        ; success replaces the kept state with the login, and only 382 moves
+        ; the channel, which clears it.  Checked again here so that the
+        ; binding keystones hold of this step alone.
+        ((fn-auth-session-subject as)
+         (fn-auth-sasl-refuse as (fn-proto-text * :already)))
+        ((and (fn-auth-config-protected-onlyp (fn-auth-session-config as))
+              (not (fn-auth-session-tlsp as)))
+         (fn-auth-sasl-refuse as (fn-proto-text * :protect)))
+        ((equal line (list 42))
+         (fn-auth-sasl-refuse as (fn-proto-text "AUTHINFO" :cancelled)))
+        (t (mv-let (okp response) (fn-auth-sasl-decode line)
+             (if okp
+                 (fn-auth-sasl-finish as (fn-auth-session-pending as) response)
+               (fn-auth-sasl-refuse as (fn-proto-text "AUTHINFO" :base64)))))))
+
+;; The host's (:sasl-context SEED BINDING) event: what SASL needs of the
+;; connection and no client octet supplies.  SEED that is not 32 octets
+;; installs no context (no SCRAM is offered); BINDING is kept only on a TLS
+;; connection and only when it is 32 octets.  No reply; nothing else moves.
+(defun fn-auth-context-eventp (wire-event)
+  (declare (xargs :guard t))
+  (and (consp wire-event)
+       (equal (car wire-event) :sasl-context)
+       (true-listp wire-event)
+       (equal (len wire-event) 3)))
+
+; EXPORTED: a command line is never the context event, so a theorem about a
+; (:command LINE) step reads that branch off without opening the recognizer.
+; EXPORTED: whether a session keeps a SASL exchange is its pending slot's
+; business alone, so a session built with no exchange keeps none.
+(defthm fn-auth-sasl-waitingp-of-make-session
+  (equal (fn-auth-sasl-waitingp
+          (fn-auth-make-session base config pending subject tlsp handshaking
+                                compress ctx))
+         (fn-sasl-statep pending)))
+
+(defthm fn-auth-context-eventp-of-a-command
+  (not (fn-auth-context-eventp (cons :command rest))))
+
+(defun fn-auth-install-context (as wire-event)
+  (declare (xargs :guard t))
+  (let* ((seed (fn-scram-nth 1 wire-event))
+         (binding (fn-scram-nth 2 wire-event))
+         (ctx (if (fn-sasl-seedp seed)
+                  (list :sasl-context seed
+                        (if (and (fn-auth-session-tlsp as)
+                                 (fn-sasl-bindingp binding))
+                            binding
+                          nil))
+                nil)))
+    (fn-post-make-result
+     (fn-auth-make-session (fn-auth-session-base as) (fn-auth-session-config as)
+                           (fn-auth-session-pending as)
+                           (fn-auth-session-subject as)
+                           (fn-auth-session-tlsp as)
+                           (fn-auth-session-handshakingp as)
+                           (fn-auth-session-compress as) ctx)
+     nil nil)))
+
 ; AUTHINFO (RFC 4643 section 2.3).
 (defun fn-auth-authinfo (as args)
   (declare (xargs :guard t))
@@ -1042,7 +1512,7 @@
                                (car (cdr args)) nil
                                (fn-auth-session-tlsp as)
                                (fn-auth-session-handshakingp as)
-                               (fn-auth-session-compress as))
+                               (fn-auth-session-compress as) (fn-auth-session-ctx as))
          (fn-auth-single as (fn-proto-text "AUTHINFO" :password))
          nil)))
      ((and (consp args) (fn-nntp-keywordp (car args) "PASS"))
@@ -1063,7 +1533,7 @@
                                                (fn-auth-cred-principal cred)
                                                (fn-auth-session-tlsp as)
                                                (fn-auth-session-handshakingp as)
-                                               (fn-auth-session-compress as)))
+                                               (fn-auth-session-compress as) (fn-auth-session-ctx as)))
                        (bound (fn-auth-bind-principal-peer
                                authenticated (fn-auth-cred-principal cred))))
                 (fn-post-make-result
@@ -1076,15 +1546,12 @@
                (fn-auth-make-session (fn-auth-session-base as) acfg nil nil
                                      (fn-auth-session-tlsp as)
                                      (fn-auth-session-handshakingp as)
-                                     (fn-auth-session-compress as))
+                                     (fn-auth-session-compress as) (fn-auth-session-ctx as))
                (fn-auth-single as (fn-proto-text "AUTHINFO" :failed))
                nil))))))
-     ; SASL (section 2.4) is DEFERRED, not refused: no mechanism is
-     ; implemented, so section 2.4.1 note [2]'s 502 is the honest answer and
-     ; the SASL capability argument is never advertised.
+     ; SASL (section 2.4): books/sasl.lisp's exchanges, above.
      ((and (consp args) (fn-nntp-keywordp (car args) "SASL"))
-      (fn-post-make-result as (fn-auth-single as (fn-proto-text "AUTHINFO" :no-sasl))
-                           nil))
+      (fn-auth-sasl-command as (cdr args)))
      (t (fn-post-make-result as (fn-auth-single as (fn-proto-text * :syntax)) nil)))))
 
 ;; XREDEEM (an fn extension; specs/nntp.md "Invitation-code accounts",
@@ -1131,7 +1598,7 @@
                                (list :xredeem-wait (cadr pending)
                                      (caddr pending) (car (cdr args)))
                                nil (fn-auth-session-tlsp as) t
-                               (fn-auth-session-compress as))
+                               (fn-auth-session-compress as) (fn-auth-session-ctx as))
          nil nil))))
      ((and (consp args)
            (fn-auth-wire-tokenp (car args))
@@ -1141,7 +1608,7 @@
                              (list :xredeem (car args) (car (cdr args)))
                              nil (fn-auth-session-tlsp as)
                              (fn-auth-session-handshakingp as)
-                             (fn-auth-session-compress as))
+                             (fn-auth-session-compress as) (fn-auth-session-ctx as))
        (fn-auth-single as (fn-proto-text "XREDEEM" :password))
        nil))
      (t (fn-post-make-result as (fn-auth-single as (fn-proto-text * :syntax)) nil)))))
@@ -1172,7 +1639,7 @@
        (fn-auth-make-session (fn-auth-session-base as)
                              (fn-auth-session-config as)
                              nil nil (fn-auth-session-tlsp as) nil
-                             (fn-auth-session-compress as))
+                             (fn-auth-session-compress as) (fn-auth-session-ctx as))
        (if (equal (cadr wire-event) :bound)
            (fn-auth-single
             as (fn-proto-text "XREDEEM" :bound))
@@ -1217,7 +1684,7 @@
     (fn-post-make-result
      (fn-auth-make-session (fn-auth-session-base cleared)
                            (fn-auth-session-config as) nil nil nil t
-                           (fn-auth-session-compress as))
+                           (fn-auth-session-compress as) nil)
      (append (fn-auth-single as (fn-proto-text "STARTTLS" :continue))
              (list (fn-auth-starttls-effect)))
      nil)))))
@@ -1239,11 +1706,13 @@
        (fn-auth-make-session (fn-auth-session-base as) (fn-auth-session-config as)
                              (fn-auth-session-pending as) (fn-auth-session-subject as)
                              (fn-auth-session-tlsp as) nil
-                             (fn-zc-established (fn-auth-session-compress as)))
+                             (fn-zc-established (fn-auth-session-compress as))
+                             (fn-auth-session-ctx as))
        nil nil)
     (fn-post-make-result
      (fn-auth-make-session (fn-auth-session-base as) (fn-auth-session-config as)
-                           nil nil t nil (fn-auth-session-compress as))
+                           nil nil t nil (fn-auth-session-compress as)
+                           (fn-auth-session-ctx as))
      nil nil)))
 
 (defun fn-auth-tls-eventp (wire-event)
@@ -1251,6 +1720,19 @@
   (and (consp wire-event)
        (equal (car wire-event) :tls-established)
        (null (cdr wire-event))))
+
+; The events a client's octets can make: books/wire.lisp's framer emits
+; exactly (:command LINE), (:article BODY) and (:reject REASON)
+; (fn-wire-command-event, fn-wire-article-event, fn-wire-reject-event).
+; Every other event is the host's own (:tls-established, :sasl-context,
+; :account-outcome) or no event at all, and no client caused it: the step
+; answers it with nothing rather than with a 501 the client never earned
+; (fn-auth-step-pinned-host-event-answers-nothing below).
+(defun fn-auth-client-eventp (wire-event)
+  (declare (xargs :guard t))
+  (and (consp wire-event)
+       (member-eq (car wire-event) '(:command :article :reject))
+       t))
 
 ; COMPRESS (RFC 8054 section 2.2).  Who may: an authenticated connection or
 ; one that speaks for a configured peer (fn-zc-may-startp, local policy: see
@@ -1278,7 +1760,7 @@
         (fn-auth-make-session (fn-auth-session-base as) (fn-auth-session-config as)
                               (fn-auth-session-pending as) (fn-auth-session-subject as)
                               (fn-auth-session-tlsp as) t
-                              (fn-zc-owed (cadr d)))
+                              (fn-zc-owed (cadr d)) (fn-auth-session-ctx as))
         (fn-auth-single as (fn-proto-text "COMPRESS" :started))
         nil)))))
 
@@ -1340,15 +1822,19 @@
       (fn-nntp-result-effects
       (fn-nntp-multi (fn-auth-reader-session as)
                      (fn-proto-text "CAPABILITIES" :list)
-                     (fn-zc-capability-lines
-                      (fn-auth-capability-lines-for-peer
-                       (fn-auth-session-config as)
-                       (fn-auth-session-subject as)
-                       (fn-auth-session-tlsp as)
-                       (and (fn-inj-config-allow config)
-                            (fn-auth-postingp as))
-                       (fn-auth-peer-record as))
-                      (fn-auth-session-compress as)
+                     ; NNT-055: XFN-DICT on the connections that may ask.
+                     (fn-zdn-capability-lines
+                      (fn-zc-capability-lines
+                       (fn-auth-capability-lines-for-peer
+                        (fn-auth-session-config as)
+                        (fn-auth-session-subject as)
+                        (fn-auth-session-tlsp as)
+                        (and (fn-inj-config-allow config)
+                             (fn-auth-postingp as))
+                        (fn-auth-peer-record as)
+                        (fn-auth-session-ctx as))
+                       (fn-auth-session-compress as)
+                       (fn-auth-compress-mayp as))
                       (fn-auth-compress-mayp as))))
      nil))
    (t nil)))
@@ -1438,6 +1924,15 @@
    ; branch is here so that the property holds of the step itself and not
    ; only of its caller.
    ((fn-auth-session-handshakingp as) (fn-post-make-result as nil nil))
+   ; The host's SASL context for this connection (books/sasl.lisp); it is
+   ; sent after (:tls-established), never during the handshake.
+   ((fn-auth-context-eventp wire-event) (fn-auth-install-context as wire-event))
+   ; RFC 4643 section 3.2: while a SASL exchange is kept, a line is its
+   ; response, never a command.
+   ((and (fn-auth-sasl-waitingp as)
+         (consp wire-event) (equal (car wire-event) :command)
+         (consp (cdr wire-event)) (null (cdr (cdr wire-event))))
+    (fn-auth-sasl-continue as (car (cdr wire-event))))
    ((and (consp wire-event)
          (equal (car wire-event) :command)
          (consp (cdr wire-event))
@@ -1452,7 +1947,11 @@
               (fn-auth-delegate as archive config observation injection
                                 wire-event fn-arena)))
         (fn-auth-delegate as archive config observation injection wire-event fn-arena))))
-   (t (fn-auth-delegate as archive config observation injection wire-event fn-arena))))
+   ((fn-auth-client-eventp wire-event)
+    (fn-auth-delegate as archive config observation injection wire-event fn-arena))
+   ; A host event the clauses above do not take (an owner outcome after the
+   ; hold has ended, a probe): no reply and nothing changed.
+   (t (fn-post-make-result as nil nil))))
 
 (verify-guards fn-auth-cred-shapep)
 (verify-guards fn-auth-make-cred)
@@ -1477,6 +1976,15 @@
 (verify-guards fn-auth-clear-principal-peer)
 (verify-guards fn-auth-single)
 (verify-guards fn-auth-starttls-effect)
+(verify-guards fn-auth-login-offeredp)
+(verify-guards fn-auth-sasl-mechanisms)
+(verify-guards fn-auth-mechanism-words)
+(verify-guards fn-auth-sasl-capability-line)
+(verify-guards fn-auth-starttls-lines)
+(verify-guards fn-auth-user-offeredp)
+(verify-guards fn-auth-sasl-offeredp)
+(verify-guards fn-auth-authinfo-lines)
+(verify-guards fn-auth-sasl-lines)
 (verify-guards fn-auth-access-capability-lines)
 (verify-guards fn-auth-capability-lines-for-peer)
 (verify-guards fn-auth-capability-lines)
@@ -1487,6 +1995,21 @@
 (verify-guards fn-auth-transit-keywordp)
 (verify-guards fn-auth-gatedp)
 (verify-guards fn-auth-token-argp)
+(verify-guards fn-auth-sasl-decode)
+(verify-guards fn-auth-sasl-line)
+(verify-guards fn-auth-sasl-raw)
+(verify-guards fn-auth-response-textp)
+(verify-guards fn-auth-digitp)
+(verify-guards fn-auth-status-linep)
+(verify-guards fn-auth-sasl-line-okp)
+(verify-guards fn-auth-sasl-effects)
+(verify-guards fn-auth-sasl-refuse)
+(verify-guards fn-auth-sasl-finish)
+(verify-guards fn-auth-sasl-command)
+(verify-guards fn-auth-sasl-waitingp)
+(verify-guards fn-auth-sasl-continue)
+(verify-guards fn-auth-context-eventp)
+(verify-guards fn-auth-install-context)
 (verify-guards fn-auth-authinfo)
 (verify-guards fn-auth-xredeem)
 (verify-guards fn-auth-redeem-waitp)
@@ -1562,28 +2085,211 @@
   (fn-auth-effectsp (list (fn-auth-starttls-effect)))
   :hints (("Goal" :in-theory (enable fn-auth-effectsp fn-auth-effectp))))
 
-(defthm fn-auth-capability-lines-are-block-text
-  (fn-nntp-block-textp
-   (fn-auth-capability-lines acfg subject tlsp postingp))
-  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines
-                                   fn-nntp-capability-lines)
-                                  nil))))
+(defthm fn-auth-sasl-capability-line-is-response-text
+  (fn-nntp-response-textp
+   (fn-auth-sasl-capability-line (fn-auth-sasl-mechanisms acfg tlsp ctx)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-mechanisms fn-sasl-offers)
+                                  (fn-sasl-offeredp))
+           :cases ((fn-sasl-offeredp :scram-plus tlsp (fn-auth-ctx-seed ctx)
+                                     (fn-auth-ctx-binding ctx))))
+          ("Subgoal 2" :cases ((fn-sasl-offeredp :scram tlsp (fn-auth-ctx-seed ctx)
+                                                 (fn-auth-ctx-binding ctx))))
+          ("Subgoal 1" :cases ((fn-sasl-offeredp :scram tlsp (fn-auth-ctx-seed ctx)
+                                                 (fn-auth-ctx-binding ctx))))))
+
+; The capability block, piece by piece.  Each helper's members are named
+; once here and the helpers are closed, so the keystones below read their
+; claims off these lemmas instead of splitting on every label at once.
+(local (defthm fn-auth-block-textp-of-append
+  (implies (and (fn-nntp-block-textp a) (fn-nntp-block-textp b))
+           (fn-nntp-block-textp (append a b)))
+  :hints (("Goal" :in-theory (enable fn-nntp-block-textp)))))
+
+(local (defthm fn-auth-member-of-append
+  (iff (member-equal x (append a b))
+       (or (member-equal x a) (member-equal x b)))))
+
+(local (defthm fn-auth-starttls-lines-facts
+  (and (fn-nntp-block-textp (fn-auth-starttls-lines acfg tlsp))
+       (iff (member-equal x (fn-auth-starttls-lines acfg tlsp))
+            (and (equal x (fn-scram-text "STARTTLS"))
+                 (fn-auth-config-tls-availablep acfg) (not tlsp))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-starttls-lines)
+                                  (fn-auth-config-tls-availablep))))))
+
+(local (defthm fn-auth-authinfo-lines-facts
+  (and (fn-nntp-block-textp (fn-auth-authinfo-lines acfg subject tlsp ctx))
+       (iff (member-equal x (fn-auth-authinfo-lines acfg subject tlsp ctx))
+            (or (and (equal x (fn-scram-text "AUTHINFO USER SASL"))
+                     (fn-auth-user-offeredp acfg subject tlsp)
+                     (fn-auth-sasl-offeredp acfg subject tlsp ctx))
+                (and (equal x (fn-scram-text "AUTHINFO USER"))
+                     (fn-auth-user-offeredp acfg subject tlsp)
+                     (not (fn-auth-sasl-offeredp acfg subject tlsp ctx)))
+                (and (equal x (fn-scram-text "AUTHINFO SASL"))
+                     (not (fn-auth-user-offeredp acfg subject tlsp))
+                     (fn-auth-sasl-offeredp acfg subject tlsp ctx)))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-authinfo-lines)
+                                  (fn-auth-user-offeredp
+                                   fn-auth-sasl-offeredp))))))
+
+(local (defthm fn-auth-sasl-capability-line-is-no-other-label
+  (let ((line (fn-auth-sasl-capability-line mechs)))
+    (and (not (equal line (fn-scram-text "AUTHINFO USER")))
+         (not (equal line (fn-scram-text "AUTHINFO SASL")))
+         (not (equal line (fn-scram-text "AUTHINFO USER SASL")))
+         (not (equal line (fn-scram-text "STARTTLS")))
+         (not (equal (fn-scram-text "AUTHINFO USER") line))
+         (not (equal (fn-scram-text "AUTHINFO SASL") line))
+         (not (equal (fn-scram-text "AUTHINFO USER SASL") line))
+         (not (equal (fn-scram-text "STARTTLS") line))))
+  :hints (("Goal" :in-theory (enable fn-auth-sasl-capability-line)))))
+
+(local (defthm fn-auth-sasl-lines-facts
+  (and (fn-nntp-block-textp (fn-auth-sasl-lines acfg tlsp ctx))
+       (iff (member-equal x (fn-auth-sasl-lines acfg tlsp ctx))
+            (and (equal x (fn-auth-sasl-capability-line
+                           (fn-auth-sasl-mechanisms acfg tlsp ctx)))
+                 (fn-auth-login-offeredp acfg)
+                 (consp (fn-auth-sasl-mechanisms acfg tlsp ctx)))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-lines fn-nntp-block-textp)
+                                  (fn-auth-sasl-capability-line
+                                   fn-auth-sasl-mechanisms
+                                   fn-auth-login-offeredp))))))
+
+(local (defthm fn-auth-peer-lines-carry-no-auth-label
+  (let ((lines (fn-peer-capability-lines record postingp)))
+    (and (fn-nntp-block-textp lines)
+         (not (member-equal (fn-scram-text "STARTTLS") lines))
+         (not (member-equal (fn-scram-text "AUTHINFO USER") lines))
+         (not (member-equal (fn-scram-text "AUTHINFO SASL") lines))
+         (not (member-equal (fn-scram-text "AUTHINFO USER SASL") lines))
+         (not (member-equal (fn-auth-sasl-capability-line mechs) lines))))
+  :hints (("Goal" :in-theory (e/d (fn-peer-capability-lines
+                                   fn-nntp-capability-lines
+                                   fn-auth-sasl-capability-line
+                                   fn-nntp-block-textp)
+                                  ((:d fn-cfg-peer-inbound)))))))
+
+(local (defthm fn-auth-sasl-mechanisms-when-refused
+  (implies (and (fn-auth-config-protected-onlyp acfg) (not tlsp))
+           (equal (fn-auth-sasl-mechanisms acfg tlsp ctx) nil))
+  :hints (("Goal" :in-theory (enable fn-auth-sasl-mechanisms)))))
+
+(in-theory (disable fn-auth-starttls-lines fn-auth-authinfo-lines
+                    fn-auth-sasl-lines))
+
+;; EXPORTED: the reader and transit labels of the block are exactly the peer
+;; list's; the access labels (STARTTLS, AUTHINFO, SASL) are none of them.
+;; books/served.lisp (POST) and books/nntp-xpat.lisp (XPAT) read these.
+(defthm fn-auth-capability-lines-for-peer-reader-labels
+  (and (iff (member-equal (fn-scram-text "POST")
+                          (fn-auth-capability-lines-for-peer
+                           acfg subject tlsp postingp record ctx))
+            (member-equal (fn-scram-text "POST")
+                          (fn-peer-capability-lines record postingp)))
+       (iff (member-equal (fn-scram-text "XPAT")
+                          (fn-auth-capability-lines-for-peer
+                           acfg subject tlsp postingp record ctx))
+            (member-equal (fn-scram-text "XPAT")
+                          (fn-peer-capability-lines record postingp))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines-for-peer
+                                   fn-auth-access-capability-lines
+                                   fn-auth-starttls-lines fn-auth-authinfo-lines
+                                   fn-auth-sasl-lines
+                                   fn-auth-sasl-capability-line)
+                                  (fn-peer-capability-lines
+                                   fn-auth-sasl-mechanisms
+                                   fn-auth-user-offeredp
+                                   fn-auth-sasl-offeredp)))))
 
 (defthm fn-auth-capability-lines-for-peer-are-block-text
   (fn-nntp-block-textp
-   (fn-auth-capability-lines-for-peer acfg subject tlsp postingp record))
+   (fn-auth-capability-lines-for-peer acfg subject tlsp postingp record ctx))
   :hints (("Goal"
            :in-theory (e/d (fn-auth-capability-lines-for-peer
-                            fn-auth-access-capability-lines
-                            fn-peer-capability-lines
-                            fn-nntp-capability-lines
-                            fn-nntp-block-textp)
-                           ((:d fn-cfg-peer-inbound))))))
+                            fn-auth-access-capability-lines)
+                           (fn-peer-capability-lines fn-nntp-block-textp)))))
+
+(defthm fn-auth-capability-lines-are-block-text
+  (fn-nntp-block-textp
+   (fn-auth-capability-lines acfg subject tlsp postingp ctx))
+  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines)
+                                  (fn-auth-capability-lines-for-peer
+                                   fn-nntp-block-textp)))))
+
+; AUTHINFO SASL's replies: a challenge or success line is emitted only once
+; fn-auth-sasl-line-okp has checked it is one well-formed reply line.
+(defthm fn-auth-sasl-effects-well-formed
+  (implies (fn-auth-sasl-line-okp code payload)
+           (fn-auth-effectsp (fn-auth-sasl-effects code payload)))
+  :hints (("Goal"
+           :use ((:instance fn-nntp-replyp-of-single-line
+                            (line (fn-auth-sasl-raw code payload))))
+           :in-theory (e/d (fn-auth-sasl-effects fn-auth-sasl-line
+                            fn-auth-sasl-line-okp fn-auth-effectsp
+                            fn-auth-effectp fn-nntp-effectp
+                            fn-nntp-reply-effect fn-nntp-crlf)
+                           (fn-nntp-replyp fn-auth-sasl-raw
+                            fn-nntp-replyp-of-single-line
+                            fn-nntp-response-textp
+                            fn-nntp-initial-status-linep)))))
+
+(defthm fn-auth-sasl-empty-challenge-line-okp
+  (fn-auth-sasl-line-okp "383" nil))
+
+(defthm fn-auth-sasl-refuse-effects-well-formed
+  (implies (and (fn-nntp-response-textp (fn-nntp-string-octets text))
+                (fn-nntp-initial-status-linep (fn-nntp-string-octets text))
+                (<= (+ (len (fn-nntp-string-octets text)) 2)
+                    *fn-nntp-max-response-octets*))
+           (fn-auth-effectsp (fn-post-result-effects (fn-auth-sasl-refuse as text))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-refuse)
+                                  (fn-auth-single fn-nntp-response-textp
+                                   fn-nntp-initial-status-linep
+                                   fn-nntp-string-octets))
+           :use ((:instance fn-auth-single-effects-well-formed)))))
+
+(defthm fn-auth-sasl-finish-effects-well-formed
+  (fn-auth-effectsp (fn-post-result-effects (fn-auth-sasl-finish as st response)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-finish)
+                                  (fn-auth-single fn-nntp-effectsp
+                                   fn-nntp-response-textp
+                                   fn-nntp-initial-status-linep
+                                   fn-auth-sasl-effects fn-auth-sasl-line-okp
+                                   fn-auth-sasl-refuse fn-sasl-step
+                                   fn-sasl-response-login fn-auth-find-cred
+                                   fn-auth-bind-principal-peer)))))
+
+(defthm fn-auth-sasl-command-effects-well-formed
+  (fn-auth-effectsp (fn-post-result-effects (fn-auth-sasl-command as margs)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-command)
+                                  (fn-auth-single fn-nntp-effectsp
+                                   fn-nntp-response-textp
+                                   fn-nntp-initial-status-linep
+                                   fn-auth-sasl-effects fn-auth-sasl-line-okp
+                                   fn-auth-sasl-refuse fn-auth-sasl-finish
+                                   fn-auth-sasl-decode fn-sasl-offeredp
+                                   fn-sasl-mech)))))
+
+(defthm fn-auth-sasl-continue-effects-well-formed
+  (fn-auth-effectsp (fn-post-result-effects (fn-auth-sasl-continue as line)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-continue)
+                                  (fn-auth-single fn-nntp-effectsp
+                                   fn-nntp-response-textp
+                                   fn-nntp-initial-status-linep
+                                   fn-auth-sasl-refuse fn-auth-sasl-finish
+                                   fn-auth-sasl-decode)))))
+
+(defthm fn-auth-install-context-effects-well-formed
+  (fn-auth-effectsp (fn-post-result-effects (fn-auth-install-context as wire-event)))
+  :hints (("Goal" :in-theory (enable fn-auth-install-context fn-auth-effectsp))))
 
 (defthm fn-auth-authinfo-effects-well-formed
   (fn-auth-effectsp (fn-post-result-effects (fn-auth-authinfo as args)))
   :hints (("Goal" :in-theory (e/d (fn-auth-authinfo)
                                   (fn-auth-single fn-nntp-effectsp
+                                   fn-auth-sasl-command
                                    fn-nntp-response-textp
                                    fn-nntp-initial-status-linep
                                    fn-nntp-keywordp fn-auth-token-argp
@@ -1724,7 +2430,7 @@
                                     (fn-auth-session-tlsp as)
                                     (and (fn-inj-config-allow config)
                                          (fn-auth-postingp as))
-                                    (fn-auth-peer-record as))))))))
+                                    (fn-auth-peer-record as) ctx)))))))
 
 (defthm fn-auth-step-effects-well-formed
   (implies (fn-auth-session-consistentp as archive)
@@ -1742,6 +2448,8 @@
                                    fn-nntp-keyword-tokenp
                                    fn-auth-tls-eventp fn-auth-tls-established
                                    fn-nntp-command-arguments-at-mostp
+                                   fn-auth-sasl-continue fn-auth-install-context
+                                   fn-auth-context-eventp fn-auth-sasl-waitingp
                                    fn-peer-session-consistentp)))))
 
 ; One preservation lemma per transition, each opening the recognizer over
@@ -1768,6 +2476,81 @@
   :hints (("Goal" :in-theory (e/d (fn-auth-principal-match)
                                   (fn-cfg-peer-find fn-digest-hex fn-cfgp))))))
 
+; AUTHINFO SASL's transitions, each on its own (see above).
+(local (defthm fn-auth-sasl-refuse-preserves-consistentp
+  (implies (fn-auth-session-consistentp as archive)
+           (fn-auth-session-consistentp
+            (fn-post-result-session (fn-auth-sasl-refuse as text)) archive))
+  :hints (("Goal"
+           :in-theory (e/d (fn-auth-sasl-refuse fn-auth-session-consistentp)
+                           (fn-peer-sessionp fn-peer-session-consistentp
+                            fn-auth-configp fn-auth-single fn-auth-ctxp fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
+
+(local (defthm fn-auth-find-cred-name-is-a-token
+  (implies (and (fn-auth-cred-listp creds)
+                (consp (fn-auth-find-cred name creds)))
+           (and (consp (fn-auth-cred-name (fn-auth-find-cred name creds)))
+                (true-listp (fn-auth-cred-name (fn-auth-find-cred name creds)))
+                (fn-nntp-printable-tokenp
+                 (fn-auth-cred-name (fn-auth-find-cred name creds)))))
+  :hints (("Goal" :use ((:instance fn-auth-find-cred-is-a-cred))
+           :in-theory (e/d (fn-auth-credp)
+                           (fn-auth-find-cred fn-auth-cred-listp
+                            fn-auth-find-cred-is-a-cred
+                            fn-nntp-printable-tokenp fn-prin-idp
+                            fn-authsec-verifierp))))))
+
+(local (defthm fn-auth-sasl-finish-preserves-consistentp
+  (implies (fn-auth-session-consistentp as archive)
+           (fn-auth-session-consistentp
+            (fn-post-result-session (fn-auth-sasl-finish as st response))
+            archive))
+  :hints (("Goal"
+           :in-theory (e/d (fn-auth-sasl-finish fn-auth-session-consistentp fn-auth-bind-principal-peer
+                            fn-auth-with-base)
+                           (fn-peer-sessionp fn-peer-session-consistentp
+                            fn-post-sessionp fn-post-session-consistentp
+                            fn-nntp-sessionp fn-nntp-session-consistentp
+                            fn-auth-configp fn-auth-single fn-nntp-single
+                            fn-auth-find-cred fn-auth-ctxp fn-sasl-step
+                            fn-sasl-response-login fn-sasl-statep
+                            fn-auth-sasl-effects fn-auth-sasl-line-okp
+                            fn-auth-sasl-refuse
+                            fn-nntp-printable-tokenp fn-prin-idp
+                            fn-auth-principal-match fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
+
+(local (defthm fn-auth-sasl-command-preserves-consistentp
+  (implies (fn-auth-session-consistentp as archive)
+           (fn-auth-session-consistentp
+            (fn-post-result-session (fn-auth-sasl-command as margs)) archive))
+  :hints (("Goal"
+           :in-theory (e/d (fn-auth-sasl-command fn-auth-session-consistentp)
+                           (fn-peer-sessionp fn-peer-session-consistentp
+                            fn-auth-configp fn-auth-ctxp fn-sasl-statep
+                            fn-sasl-initial-state fn-sasl-mech
+                            fn-sasl-offeredp fn-auth-sasl-decode
+                            fn-auth-sasl-finish fn-auth-sasl-refuse
+                            fn-auth-sasl-effects fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
+
+(local (defthm fn-auth-sasl-continue-preserves-consistentp
+  (implies (fn-auth-session-consistentp as archive)
+           (fn-auth-session-consistentp
+            (fn-post-result-session (fn-auth-sasl-continue as line)) archive))
+  :hints (("Goal"
+           :in-theory (e/d (fn-auth-sasl-continue)
+                           (fn-auth-session-consistentp fn-auth-sasl-decode
+                            fn-auth-sasl-finish fn-auth-sasl-refuse))))))
+
+(local (defthm fn-auth-install-context-preserves-consistentp
+  (implies (fn-auth-session-consistentp as archive)
+           (fn-auth-session-consistentp
+            (fn-post-result-session (fn-auth-install-context as wire-event))
+            archive))
+  :hints (("Goal"
+           :in-theory (e/d (fn-auth-install-context fn-auth-session-consistentp fn-auth-ctxp)
+                           (fn-peer-sessionp fn-peer-session-consistentp
+                            fn-auth-configp fn-sasl-seedp fn-sasl-bindingp fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
+
 (local (defthm fn-auth-authinfo-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
            (fn-auth-session-consistentp
@@ -1779,8 +2562,7 @@
   ; recognizer unfolds into a `true-listp' obligation on the NNTP session
   ; instead (hbox certify-20260922T084314Z-2803863).
   :hints (("Goal"
-           :in-theory (e/d (fn-auth-authinfo fn-auth-session-consistentp
-                            fn-auth-sessionp)
+           :in-theory (e/d (fn-auth-authinfo fn-auth-session-consistentp)
                            (fn-peer-sessionp fn-peer-session-consistentp
                             fn-post-sessionp fn-post-session-consistentp
                             fn-nntp-sessionp fn-nntp-session-consistentp
@@ -1788,7 +2570,8 @@
                             fn-auth-find-cred fn-auth-checkp
                             fn-auth-token-argp fn-nntp-keywordp
                             fn-nntp-printable-tokenp fn-prin-idp
-                            fn-auth-principal-match))))))
+                            fn-auth-sasl-command fn-auth-ctxp
+                            fn-auth-principal-match fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
 
 (local (defthm fn-auth-starttls-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
@@ -1799,13 +2582,12 @@
   ; configured reader shape, and the constructor rules books/peer-inbound.lisp
   ; exports carry it.
   :hints (("Goal"
-           :in-theory (e/d (fn-auth-starttls fn-auth-session-consistentp
-                            fn-auth-sessionp)
+           :in-theory (e/d (fn-auth-starttls fn-auth-session-consistentp)
                            (fn-peer-sessionp fn-peer-session-consistentp
                             fn-post-sessionp fn-post-session-consistentp
                             fn-nntp-sessionp fn-nntp-session-consistentp
                             fn-auth-configp fn-auth-single fn-nntp-single
-                            fn-nntp-printable-tokenp fn-prin-idp))))))
+                            fn-nntp-printable-tokenp fn-prin-idp fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
 
 (local (defthm fn-auth-compress-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
@@ -1829,21 +2611,20 @@
                             fn-auth-session-consistentp fn-auth-sessionp)
                            (fn-peer-sessionp fn-peer-session-consistentp
                             fn-auth-configp fn-nntp-printable-tokenp
-                            fn-prin-idp))))))
+                            fn-prin-idp fn-auth-pendingp fn-auth-ctxp))))))
 
 (local (defthm fn-auth-xredeem-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
            (fn-auth-session-consistentp
             (fn-post-result-session (fn-auth-xredeem as args)) archive))
   :hints (("Goal"
-           :in-theory (e/d (fn-auth-xredeem fn-auth-session-consistentp
-                            fn-auth-sessionp)
+           :in-theory (e/d (fn-auth-xredeem fn-auth-session-consistentp)
                            (fn-peer-sessionp fn-peer-session-consistentp
                             fn-post-sessionp fn-post-session-consistentp
                             fn-nntp-sessionp fn-nntp-session-consistentp
                             fn-auth-configp fn-auth-single fn-nntp-single
                             fn-auth-token-argp fn-nntp-keywordp
-                            fn-nntp-printable-tokenp fn-prin-idp))))))
+                            fn-nntp-printable-tokenp fn-prin-idp fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
 
 (local (defthm fn-auth-redeem-outcome-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
@@ -1851,11 +2632,10 @@
             (fn-post-result-session (fn-auth-redeem-outcome as wire-event))
             archive))
   :hints (("Goal"
-           :in-theory (e/d (fn-auth-redeem-outcome fn-auth-session-consistentp
-                            fn-auth-sessionp)
+           :in-theory (e/d (fn-auth-redeem-outcome fn-auth-session-consistentp)
                            (fn-peer-sessionp fn-peer-session-consistentp
                             fn-auth-configp fn-auth-single fn-nntp-single
-                            fn-nntp-printable-tokenp fn-prin-idp))))))
+                            fn-nntp-printable-tokenp fn-prin-idp fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
 
 (local (defthm fn-auth-command-preserves-consistentp
   (implies (and (fn-auth-session-consistentp as archive)
@@ -1867,6 +2647,7 @@
            :in-theory (e/d (fn-auth-command)
                            (fn-auth-authinfo fn-auth-starttls fn-auth-single
                             fn-auth-xredeem fn-auth-compress fn-zc-capability-lines
+                            fn-zdn-capability-lines
                             fn-auth-compressed-refusedp fn-auth-compress-mayp
                             fn-auth-gatedp fn-auth-postingp fn-nntp-keywordp
                             fn-nntp-keyword-tokenp fn-nntp-multi
@@ -1907,6 +2688,8 @@
                            (fn-peer-step fn-auth-delegate fn-auth-command
                             fn-auth-tls-established fn-auth-tls-eventp
                             fn-auth-sessionp fn-auth-session-consistentp
+                            fn-auth-sasl-continue fn-auth-install-context
+                            fn-auth-context-eventp fn-auth-sasl-waitingp
                             fn-nntp-keywordp fn-nntp-keyword-tokenp
                             fn-nntp-command-inputp fn-nntp-tokenize
                             fn-nntp-command-arguments-at-mostp)))))
@@ -1935,6 +2718,46 @@
 ; with every arm open, the keystone below split 180 ways on the AUTHINFO,
 ; STARTTLS and binding arms together (2.4 s in the certify log); each arm
 ; rebuilds the session from the config it was given, and that is the fact.
+(local (defthm fn-auth-sasl-refuse-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session (fn-auth-sasl-refuse as text)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (enable fn-auth-sasl-refuse)))))
+
+(local (defthm fn-auth-sasl-finish-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session (fn-auth-sasl-finish as st response)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-finish fn-auth-bind-principal-peer
+                                   fn-auth-with-base)
+                                  (fn-auth-single fn-auth-find-cred fn-sasl-step
+                                   fn-sasl-response-login fn-auth-sasl-refuse
+                                   fn-auth-sasl-effects fn-auth-sasl-line-okp
+                                   fn-auth-principal-match fn-node-statep))))))
+
+(local (defthm fn-auth-sasl-command-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session (fn-auth-sasl-command as margs)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-command)
+                                  (fn-auth-sasl-finish fn-auth-sasl-refuse
+                                   fn-auth-sasl-decode fn-sasl-mech
+                                   fn-sasl-offeredp))))))
+
+(local (defthm fn-auth-sasl-continue-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session (fn-auth-sasl-continue as line)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-continue)
+                                  (fn-auth-sasl-finish fn-auth-sasl-refuse
+                                   fn-auth-sasl-decode))))))
+
+(local (defthm fn-auth-install-context-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session (fn-auth-install-context as wire-event)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (enable fn-auth-install-context)))))
+
 (local (defthm fn-auth-authinfo-keeps-the-config
   (equal (fn-auth-session-config
           (fn-post-result-session (fn-auth-authinfo as args)))
@@ -1943,6 +2766,7 @@
                                    fn-auth-with-base)
                                   (fn-auth-single fn-auth-find-cred fn-auth-checkp
                                    fn-auth-token-argp fn-nntp-keywordp
+                                   fn-auth-sasl-command
                                    fn-auth-principal-match fn-node-statep))))))
 
 (local (defthm fn-auth-starttls-keeps-the-config
@@ -1988,7 +2812,8 @@
                             fn-auth-sessionp
                             fn-nntp-tokenize fn-nntp-command-inputp
                             fn-nntp-keyword-tokenp
-                            fn-nntp-command-arguments-at-mostp)))))
+                            fn-nntp-command-arguments-at-mostp
+                            fn-auth-sasl-continue fn-auth-install-context)))))
 
 ; The third fact the fold needs: a submission that leaves this step is the
 ; one fn-peer-step produced, so books/peer-inbound.lisp's
@@ -1999,10 +2824,36 @@
 ; No branch this book answers has a submission, one arm at a time, so the
 ; theorem below reads the step's dispatch with fn-auth-command closed instead
 ; of opening all of its arms (221-way split, 2.2 s in the certify log).
+(defthm fn-auth-sasl-finish-has-no-submission
+  (not (fn-post-result-submission (fn-auth-sasl-finish as st response)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-finish fn-auth-sasl-refuse)
+                                  (fn-auth-single fn-auth-find-cred fn-sasl-step
+                                   fn-sasl-response-login fn-auth-sasl-effects
+                                   fn-auth-sasl-line-okp
+                                   fn-auth-bind-principal-peer)))))
+
+(defthm fn-auth-sasl-command-has-no-submission
+  (not (fn-post-result-submission (fn-auth-sasl-command as margs)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-command fn-auth-sasl-refuse)
+                                  (fn-auth-sasl-finish fn-auth-sasl-decode
+                                   fn-auth-single fn-sasl-mech
+                                   fn-sasl-offeredp)))))
+
+(defthm fn-auth-sasl-continue-has-no-submission
+  (not (fn-post-result-submission (fn-auth-sasl-continue as line)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-continue fn-auth-sasl-refuse)
+                                  (fn-auth-sasl-finish fn-auth-sasl-decode
+                                   fn-auth-single)))))
+
+(defthm fn-auth-install-context-has-no-submission
+  (not (fn-post-result-submission (fn-auth-install-context as wire-event)))
+  :hints (("Goal" :in-theory (enable fn-auth-install-context))))
+
 (local (defthm fn-auth-authinfo-has-no-submission
   (not (fn-post-result-submission (fn-auth-authinfo as args)))
   :hints (("Goal" :in-theory (e/d (fn-auth-authinfo fn-auth-bind-principal-peer)
                                   (fn-auth-single fn-auth-find-cred fn-auth-checkp
+                                   fn-auth-sasl-command
                                    fn-auth-token-argp fn-nntp-keywordp
                                    fn-auth-principal-match fn-node-statep))))))
 
@@ -2038,7 +2889,8 @@
                                    fn-nntp-command-inputp
                                    fn-auth-tls-eventp
                                    fn-nntp-keyword-tokenp
-                                   fn-nntp-command-arguments-at-mostp)))))
+                                   fn-nntp-command-arguments-at-mostp
+                            fn-auth-sasl-continue fn-auth-install-context)))))
 
 ; KEYSTONE.  The outer auth dispatcher is transparent for the three inbound
 ; transit verbs.  The peer step is therefore the sole authorization decision:
@@ -2048,6 +2900,8 @@
 (defthm fn-auth-step-transit-command-delegates-to-peer
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                ; A line while a SASL exchange is kept is its response.
+                (not (fn-auth-sasl-waitingp as))
                 (fn-nntp-command-inputp line)
                 (consp (fn-nntp-tokenize line))
                 (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
@@ -2063,6 +2917,7 @@
            :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-gatedp
                             fn-auth-transit-keywordp fn-nntp-keywordp)
                            (fn-auth-delegate fn-peer-step fn-auth-sessionp
+                            fn-auth-sasl-waitingp fn-auth-sasl-continue
                             fn-auth-transit-keyword-is-not-reader-restricted
                             fn-auth-restricted-keywordp
                             fn-nntp-tokenize fn-nntp-command-inputp
@@ -2185,6 +3040,7 @@
 (defthm fn-auth-gated-command-is-refused-and-not-performed
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-sasl-waitingp as))
                 (fn-auth-config-requiredp (fn-auth-session-config as))
                 (not (fn-auth-session-subject as))
                 (fn-nntp-command-inputp line)
@@ -2214,7 +3070,8 @@
                             fn-nntp-tokenize fn-nntp-command-inputp
                             fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
-                            fn-nntp-begin-article-effect)))))
+                            fn-nntp-begin-article-effect
+                            fn-auth-sasl-continue fn-auth-install-context)))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE.  POST is never offered to a connection whose posting allowance
@@ -2254,6 +3111,7 @@
 (defthm fn-auth-step-post-without-permission-is-not-offered
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-sasl-waitingp as))
                 (not (fn-auth-postingp as))
                 (fn-nntp-command-inputp line)
                 (consp (fn-nntp-tokenize line))
@@ -2279,7 +3137,8 @@
                             fn-nntp-tokenize fn-nntp-command-inputp
                             fn-nntp-keyword-tokenp fn-nntp-keywordp
                             fn-post-offeredp
-                            fn-nntp-command-arguments-at-mostp))
+                            fn-nntp-command-arguments-at-mostp
+                            fn-auth-sasl-continue fn-auth-install-context))
            :use ((:instance fn-auth-post-without-permission-is-not-offered
                             (keyword (car (fn-nntp-tokenize line)))
                             (args (cdr (fn-nntp-tokenize line))))))))
@@ -2301,76 +3160,124 @@
 ; a client the owner resolved to a peer record -- which on one box is every
 ; client (PRF-039) -- outside the claim.
 
+;; The AUTHINFO label is one line; which of its three forms it takes is
+;; named here once, so the keystones below read as statements about the
+;; USER and SASL arguments rather than about string literals.
+(defun fn-auth-user-advertisedp (lines)
+  (declare (xargs :guard (true-listp lines)))
+  (or (member-equal (fn-nntp-string-octets "AUTHINFO USER") lines)
+      (member-equal (fn-nntp-string-octets "AUTHINFO USER SASL") lines)))
+
+(defun fn-auth-sasl-advertisedp (lines)
+  (declare (xargs :guard (true-listp lines)))
+  (or (member-equal (fn-nntp-string-octets "AUTHINFO SASL") lines)
+      (member-equal (fn-nntp-string-octets "AUTHINFO USER SASL") lines)))
+
+(defun fn-auth-authinfo-advertisedp (lines)
+  (declare (xargs :guard (true-listp lines)))
+  (or (fn-auth-user-advertisedp lines) (fn-auth-sasl-advertisedp lines)))
+
 (defthm fn-auth-starttls-is-not-advertised-under-tls-on-any-connection
   (implies tlsp
            (not (member-equal (fn-nntp-string-octets "STARTTLS")
                               (fn-auth-capability-lines-for-peer
-                               acfg subject tlsp postingp record))))
+                               acfg subject tlsp postingp record ctx))))
   :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines-for-peer
                                    fn-auth-access-capability-lines
-                                   fn-peer-capability-lines
-                                   fn-nntp-capability-lines)
-                                  (fn-auth-config-tls-availablep
+                                   fn-auth-user-advertisedp
+                                   fn-auth-sasl-advertisedp
+                                   fn-auth-authinfo-advertisedp
+                                   fn-auth-user-offeredp
+                                   fn-auth-sasl-offeredp)
+                                  (fn-peer-capability-lines
+                                   fn-auth-sasl-capability-line
+                                   fn-auth-sasl-mechanisms
+                                   fn-auth-config-tls-availablep
                                    fn-auth-config-protected-onlyp
-                                   fn-auth-config-creds
-                                   fn-cfg-peer-inbound)))))
+                                   fn-auth-config-requiredp
+                                   fn-auth-config-creds fn-auth-login-offeredp)))))
 
 (defthm fn-auth-starttls-is-not-advertised-under-tls
   (implies tlsp
            (not (member-equal (fn-nntp-string-octets "STARTTLS")
                               (fn-auth-capability-lines acfg subject tlsp
-                                                        postingp))))
-  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines) nil))))
+                                                        postingp ctx))))
+  :hints (("Goal" :use ((:instance
+                          fn-auth-starttls-is-not-advertised-under-tls-on-any-connection
+                          (record nil)))
+           :in-theory (e/d (fn-auth-capability-lines)
+                           (fn-auth-capability-lines-for-peer)))))
 
 (defthm fn-auth-authinfo-is-not-advertised-once-authenticated-on-any-connection
+  ; RFC 4643 section 2.2: "A server MUST NOT return the AUTHINFO capability
+  ; ... after successful authentication".
   (implies subject
-           (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
-                              (fn-auth-capability-lines-for-peer
-                               acfg subject tlsp postingp record))))
+           (not (fn-auth-authinfo-advertisedp
+                 (fn-auth-capability-lines-for-peer
+                  acfg subject tlsp postingp record ctx))))
   :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines-for-peer
                                    fn-auth-access-capability-lines
-                                   fn-peer-capability-lines
-                                   fn-nntp-capability-lines)
-                                  (fn-auth-config-tls-availablep
+                                   fn-auth-user-advertisedp
+                                   fn-auth-sasl-advertisedp
+                                   fn-auth-authinfo-advertisedp
+                                   fn-auth-user-offeredp
+                                   fn-auth-sasl-offeredp)
+                                  (fn-peer-capability-lines
+                                   fn-auth-sasl-capability-line
+                                   fn-auth-sasl-mechanisms
+                                   fn-auth-config-tls-availablep
                                    fn-auth-config-protected-onlyp
-                                   fn-auth-config-creds
-                                   fn-cfg-peer-inbound)))))
+                                   fn-auth-config-requiredp
+                                   fn-auth-config-creds fn-auth-login-offeredp)))))
 
 (defthm fn-auth-authinfo-is-not-advertised-once-authenticated
   (implies subject
-           (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
-                              (fn-auth-capability-lines acfg subject tlsp
-                                                        postingp))))
-  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines) nil))))
+           (not (fn-auth-authinfo-advertisedp
+                 (fn-auth-capability-lines acfg subject tlsp postingp ctx))))
+  :hints (("Goal"
+           :use ((:instance
+                  fn-auth-authinfo-is-not-advertised-once-authenticated-on-any-connection
+                  (record nil)))
+           :in-theory (e/d (fn-auth-capability-lines)
+                           (fn-auth-authinfo-advertisedp
+                            fn-auth-capability-lines-for-peer)))))
 
 ; The other half of protected-only, on the label rather than on the command:
 ; while the channel is the one section 2.3.2 refuses a cleartext mechanism
-; on, the mechanism is not offered either, so a client is never invited to
-; send a secret that would be answered 483.
+; on, no AUTHINFO argument is offered either (every AUTHINFO form is 483
+; there), so a client is never invited to send a secret that would be
+; answered 483.
 (defthm fn-auth-authinfo-is-not-advertised-before-tls-under-protected-only
   (implies (and (fn-auth-config-protected-onlyp acfg) (not tlsp))
-           (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
-                              (fn-auth-capability-lines-for-peer
-                               acfg subject tlsp postingp record))))
+           (not (fn-auth-authinfo-advertisedp
+                 (fn-auth-capability-lines-for-peer
+                  acfg subject tlsp postingp record ctx))))
   :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines-for-peer
                                    fn-auth-access-capability-lines
-                                   fn-peer-capability-lines
-                                   fn-nntp-capability-lines)
-                                  (fn-auth-config-tls-availablep
-                                   fn-auth-config-creds
-                                   fn-cfg-peer-inbound)))))
+                                   fn-auth-user-advertisedp
+                                   fn-auth-sasl-advertisedp
+                                   fn-auth-authinfo-advertisedp
+                                   fn-auth-user-offeredp
+                                   fn-auth-sasl-offeredp
+                                   fn-auth-sasl-mechanisms-when-refused)
+                                  (fn-peer-capability-lines
+                                   fn-auth-sasl-capability-line
+                                   fn-auth-sasl-mechanisms
+                                   fn-auth-config-tls-availablep
+                                   fn-auth-config-protected-onlyp
+                                   fn-auth-config-requiredp
+                                   fn-auth-config-creds fn-auth-login-offeredp)))))
 
 (defthm fn-auth-starttls-is-not-advertised-without-a-certificate
   (implies (not (fn-auth-config-tls-availablep acfg))
            (not (member-equal (fn-nntp-string-octets "STARTTLS")
                               (fn-auth-capability-lines acfg subject tlsp
-                                                        postingp))))
+                                                        postingp ctx))))
   :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines
                                    fn-auth-capability-lines-for-peer
-                                   fn-auth-access-capability-lines
-                                   fn-peer-capability-lines
-                                   fn-nntp-capability-lines)
-                                  nil))))
+                                   fn-auth-access-capability-lines)
+                                  (fn-peer-capability-lines
+                                   fn-auth-config-tls-availablep)))))
 
 ; The block the step emits is that list, and this equality is what makes the
 ; three keystones above claims about what a client sees rather than about a
@@ -2384,22 +3291,27 @@
                 (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
                 (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "CAPABILITIES")
-                (null (cdr (fn-nntp-tokenize line))))
+                (null (cdr (fn-nntp-tokenize line)))
+                ; A line while a SASL exchange is kept is its response.
+                (not (fn-auth-sasl-waitingp as)))
            (equal (fn-post-result-effects
                    (fn-auth-step as archive config observation injection
                                  (list :command line) fn-arena))
                   (fn-nntp-result-effects
                    (fn-nntp-multi (fn-auth-reader-session as)
                                   "101 capability list follows"
-                                  (fn-zc-capability-lines
-                                   (fn-auth-capability-lines-for-peer
-                                    (fn-auth-session-config as)
-                                    (fn-auth-session-subject as)
-                                    (fn-auth-session-tlsp as)
-                                    (and (fn-inj-config-allow config)
-                                         (fn-auth-postingp as))
-                                    (fn-auth-peer-record as))
-                                   (fn-auth-session-compress as)
+                                  (fn-zdn-capability-lines
+                                   (fn-zc-capability-lines
+                                    (fn-auth-capability-lines-for-peer
+                                     (fn-auth-session-config as)
+                                     (fn-auth-session-subject as)
+                                     (fn-auth-session-tlsp as)
+                                     (and (fn-inj-config-allow config)
+                                          (fn-auth-postingp as))
+                                     (fn-auth-peer-record as)
+                                     (fn-auth-session-ctx as))
+                                    (fn-auth-session-compress as)
+                                    (fn-auth-compress-mayp as))
                                    (fn-auth-compress-mayp as))))))
   :hints (("Goal"
            :do-not-induct t
@@ -2415,7 +3327,8 @@
                             fn-nntp-multi fn-inj-config-allow
                             fn-nntp-tokenize fn-nntp-command-inputp
                             fn-nntp-keyword-tokenp
-                            fn-nntp-command-arguments-at-mostp)))))
+                            fn-nntp-command-arguments-at-mostp
+                            fn-auth-sasl-continue fn-auth-install-context)))))
 
 ; KEYSTONE (public-node-2, D1).  Exactly where AUTHINFO USER is offered, on
 ; every connection: unauthenticated, on a channel protected-only does not
@@ -2428,22 +3341,97 @@
 ; the capability offered none.  The subject is the list the CAPABILITIES arm
 ; renders (fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines).
 (defthm fn-auth-authinfo-is-advertised-exactly-when-a-login-is-offered-on-any-connection
-  (iff (member-equal (fn-nntp-string-octets "AUTHINFO USER")
-                     (fn-auth-capability-lines-for-peer
-                      acfg subject tlsp postingp record))
+  (iff (fn-auth-user-advertisedp
+        (fn-auth-capability-lines-for-peer acfg subject tlsp postingp record ctx))
        (and (not subject)
             (or (consp (fn-auth-config-creds acfg))
                 (fn-auth-config-requiredp acfg))
             (or tlsp (not (fn-auth-config-protected-onlyp acfg)))))
   :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines-for-peer
                                    fn-auth-access-capability-lines
-                                   fn-peer-capability-lines
-                                   fn-nntp-capability-lines)
-                                  (fn-auth-config-tls-availablep
+                                   fn-auth-user-advertisedp
+                                   fn-auth-sasl-advertisedp
+                                   fn-auth-authinfo-advertisedp
+                                   fn-auth-user-offeredp
+                                   fn-auth-sasl-offeredp
+                                   fn-auth-login-offeredp)
+                                  (fn-peer-capability-lines
+                                   fn-auth-sasl-capability-line
+                                   fn-auth-sasl-mechanisms
+                                   fn-auth-config-tls-availablep
                                    fn-auth-config-protected-onlyp
                                    fn-auth-config-requiredp
-                                   fn-auth-config-creds
-                                   fn-cfg-peer-inbound)))))
+                                   fn-auth-config-creds)))))
+
+; KEYSTONE (NNT-056, RFC 4643 section 2.1).  Exactly where AUTHINFO SASL is
+; offered: unauthenticated, with a login to offer, and with a mechanism this
+; connection accepts now (fn-auth-sasl-mechanisms: none before TLS under
+; protected-only; else books/sasl.lisp fn-sasl-offers of TLS, the host's
+; seed and the exporter value).
+(defthm fn-auth-sasl-is-advertised-exactly-when-a-mechanism-is-offered
+  (iff (fn-auth-sasl-advertisedp
+        (fn-auth-capability-lines-for-peer acfg subject tlsp postingp record ctx))
+       (and (not subject)
+            (fn-auth-login-offeredp acfg)
+            (consp (fn-auth-sasl-mechanisms acfg tlsp ctx))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines-for-peer
+                                   fn-auth-access-capability-lines
+                                   fn-auth-user-advertisedp
+                                   fn-auth-sasl-advertisedp
+                                   fn-auth-authinfo-advertisedp
+                                   fn-auth-user-offeredp
+                                   fn-auth-sasl-offeredp)
+                                  (fn-peer-capability-lines
+                                   fn-auth-sasl-capability-line
+                                   fn-auth-sasl-mechanisms
+                                   fn-auth-config-tls-availablep
+                                   fn-auth-config-protected-onlyp
+                                   fn-auth-config-requiredp
+                                   fn-auth-config-creds fn-auth-login-offeredp)))))
+
+; KEYSTONE (RFC 4643 section 2.2: "the server MUST continue to advertise the
+; SASL capability ... with the same list of SASL mechanisms that it did
+; before authentication").  The SASL line is the connection's mechanism list
+; and does not depend on the subject: a client comparing it before and after
+; authentication sees the same line, which is how it detects an active
+; down-negotiation.
+(defthm fn-auth-sasl-line-is-the-same-before-and-after-authentication
+  (implies (and (fn-auth-login-offeredp acfg)
+                (consp (fn-auth-sasl-mechanisms acfg tlsp ctx)))
+           (and (member-equal (fn-auth-sasl-capability-line
+                               (fn-auth-sasl-mechanisms acfg tlsp ctx))
+                              (fn-auth-capability-lines-for-peer
+                               acfg subject tlsp postingp record ctx))
+                (member-equal (fn-auth-sasl-capability-line
+                               (fn-auth-sasl-mechanisms acfg tlsp ctx))
+                              (fn-auth-capability-lines-for-peer
+                               acfg other-subject tlsp postingp record ctx))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines-for-peer
+                                   fn-auth-access-capability-lines
+                                   fn-auth-user-advertisedp
+                                   fn-auth-sasl-advertisedp
+                                   fn-auth-authinfo-advertisedp
+                                   fn-auth-user-offeredp
+                                   fn-auth-sasl-offeredp)
+                                  (fn-peer-capability-lines
+                                   fn-auth-sasl-capability-line
+                                   fn-auth-sasl-mechanisms
+                                   fn-auth-config-tls-availablep
+                                   fn-auth-config-protected-onlyp
+                                   fn-auth-config-requiredp
+                                   fn-auth-config-creds fn-auth-login-offeredp)))))
+
+; The mechanisms offered, in terms of the connection: PLAIN never before
+; TLS, -PLUS only with the exporter value installed.
+(defthm fn-auth-sasl-mechanisms-never-offer-plain-before-tls
+  (implies (not tlsp)
+           (not (member-equal *fn-sasl-plain*
+                              (fn-auth-sasl-mechanisms acfg tlsp ctx))))
+  :hints (("Goal" :in-theory (enable fn-auth-sasl-mechanisms fn-sasl-offers
+                                     fn-sasl-offeredp))))
+
+(in-theory (disable fn-auth-user-advertisedp fn-auth-sasl-advertisedp
+                    fn-auth-authinfo-advertisedp))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE.  382 is emitted at most once per connection, from the one branch
@@ -2508,7 +3496,8 @@
                                    fn-auth-tls-eventp fn-auth-tls-established
                                    fn-nntp-tokenize fn-nntp-command-inputp
                                    fn-nntp-keyword-tokenp
-                                   fn-nntp-command-arguments-at-mostp)))))
+                                   fn-nntp-command-arguments-at-mostp
+                            fn-auth-sasl-continue fn-auth-install-context)))))
 
 ; The one transition that records a TLS layer, and it is the host's re-entry
 ; after the handshake: no client octet reaches it, because it is a wire
@@ -2531,7 +3520,8 @@
   :hints (("Goal" :in-theory (e/d (fn-auth-step fn-auth-tls-eventp
                                    fn-auth-tls-established)
                                   (fn-auth-sessionp fn-peer-step
-                                   fn-auth-delegate fn-auth-command)))))
+                                   fn-auth-delegate fn-auth-command
+                            fn-auth-sasl-continue fn-auth-install-context)))))
 
 ; KEYSTONE (RFC 8054 section 2.2.2, PRF-911).  After a 206 the same host
 ; event establishes the compression layer instead: the layer is active, the
@@ -2711,6 +3701,7 @@
 (defthm fn-auth-step-protected-only-refuses-authinfo-before-tls
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-sasl-waitingp as))
                 (not (fn-zc-activep (fn-auth-session-compress as)))
                 (not (fn-auth-session-subject as))
                 (fn-auth-config-protected-onlyp (fn-auth-session-config as))
@@ -2741,588 +3732,15 @@
                             fn-auth-sessionp
                             fn-nntp-tokenize fn-nntp-command-inputp
                             fn-nntp-keyword-tokenp
-                            fn-nntp-command-arguments-at-mostp))
+                            fn-nntp-command-arguments-at-mostp
+                            fn-auth-sasl-continue fn-auth-install-context))
            :use ((:instance fn-auth-protected-only-refuses-authinfo-before-tls
                             (args (cdr (fn-nntp-tokenize line))))))))
 
 ; -----------------------------------------------------------------------------
-; THE PEER ROLE A LOGIN BINDS (PRF-049).
-;
-; A connection the owner opens through fn-ocfg-open (host/owner-host.lisp
-; fn-owner-open) is a reader; books/owner-config.lisp
-; fn-ocfg-open-begins-unbound says so of every open, whatever the owner's
-; other connections have done.  The only transition that gives a reader a
-; peer role is AUTHINFO PASS, and only for a principal the pinned
-; configuration binds to exactly one peer record (fn-auth-principal-match).
-; Three keystones over fn-auth-step, the function books/served.lisp
-; fn-served-dispatch calls and host/owner-host.lisp fn-owner-chunk-span-at reaches
-; through fn-own-read and fn-served-step:
-;
-;   fn-auth-step-binds-a-peer-role-only-by-a-principal-login   (only way in)
-;   fn-auth-step-principal-login-binds-exactly-the-unique-match (the way in)
-;   fn-auth-step-starttls-clears-a-principal-role               (the way out)
-;
-; Protected-only is not restated here: fn-auth-step-protected-only-refuses-
-; authinfo-before-tls (PRF-031) says the session is unchanged by any AUTHINFO
-; before TLS, and the first keystone's fourth conjunct says the same thing
-; from the other side -- no step whatever binds a role on a cleartext
-; connection under that policy.
-
-; The peer half of fn-peer-step never moves the peer name: every branch
-; rebuilds the session with fn-peer-with-base or fn-peer-with-transfer.
-(local (defthm fn-auth-peer-step-keeps-the-peer
-  (equal (fn-peer-session-peer
-          (fn-post-result-session
-           (fn-peer-step ps archive config observation injection wire-event fn-arena)))
-         (fn-peer-session-peer ps))
-  :hints (("Goal"
-           :do-not-induct t
-           :in-theory (e/d (fn-peer-step fn-peer-command fn-peer-delegate
-                            fn-peer-with-base fn-peer-with-transfer)
-                           (fn-nntp-post-step fn-peer-sessionp
-                            fn-peer-decide-offer fn-peer-single
-                            fn-peer-echo-reply fn-peer-msgid-argp
-                            fn-peer-capability-lines fn-peer-check-code
-                            fn-peer-ihave-offer-line
-                            fn-nntp-multi fn-nntp-keywordp
-                            fn-nntp-tokenize fn-nntp-command-inputp
-                            fn-nntp-keyword-tokenp
-                            fn-nntp-command-arguments-at-mostp))))))
-
-(local (defthm fn-auth-authinfo-binds-only-on-an-accepted-pass
-  (implies (and (not (fn-auth-session-peer as))
-                (fn-auth-session-peer
-                 (fn-post-result-session (fn-auth-authinfo as args))))
-           (and (not (fn-auth-session-subject as))
-                (not (and (fn-auth-config-protected-onlyp
-                           (fn-auth-session-config as))
-                          (not (fn-auth-session-tlsp as))))
-                (fn-nntp-keywordp (car args) "PASS")
-                (fn-auth-token-argp (cdr args))
-                (fn-auth-session-pending as)
-                (fn-auth-checkp (fn-auth-find-cred
-                                 (fn-auth-session-pending as)
-                                 (fn-auth-config-creds
-                                  (fn-auth-session-config as)))
-                                (car (cdr args)))
-                (equal (fn-auth-session-subject
-                        (fn-post-result-session (fn-auth-authinfo as args)))
-                       (fn-auth-cred-principal
-                        (fn-auth-find-cred (fn-auth-session-pending as)
-                                           (fn-auth-config-creds
-                                            (fn-auth-session-config as)))))
-                (equal (fn-auth-session-peer
-                        (fn-post-result-session (fn-auth-authinfo as args)))
-                       (fn-auth-principal-match
-                        (fn-auth-cred-principal
-                         (fn-auth-find-cred (fn-auth-session-pending as)
-                                            (fn-auth-config-creds
-                                             (fn-auth-session-config as))))
-                        (fn-peer-session-cfg (fn-auth-session-base as))))
-                (fn-auth-principal-rolep
-                 (fn-post-result-session (fn-auth-authinfo as args)))))
-  :hints (("Goal"
-           :do-not-induct t
-           :in-theory (e/d (fn-auth-authinfo fn-auth-bind-principal-peer
-                            fn-auth-with-base fn-auth-session-peer
-                            fn-auth-principal-rolep fn-auth-principal-match)
-                           (fn-auth-single fn-auth-find-cred fn-auth-checkp
-                            fn-auth-token-argp fn-nntp-keywordp
-                            fn-nntp-single fn-cfg-peer-find fn-cfgp
-                            
-                            fn-digest-hex
-                            fn-node-statep))))))
-
-(local (defthm fn-auth-configured-session-has-a-node
-  (implies (and (fn-peer-sessionp x)
-                (fn-cfgp (fn-peer-session-cfg x)))
-           (fn-node-statep (fn-peer-session-node x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
-                                  ((:d fn-post-sessionp) (:d fn-peer-transferp)
-                                   (:d fn-node-statep) (:d fn-cfgp)))))))
-
-(local (defthm fn-auth-authinfo-accepted-pass-binds-the-match
-  (implies (and (fn-auth-sessionp as)
-                (not (fn-auth-session-peer as))
-                (not (fn-auth-session-subject as))
-                (not (and (fn-auth-config-protected-onlyp
-                           (fn-auth-session-config as))
-                          (not (fn-auth-session-tlsp as))))
-                (fn-nntp-keywordp (car args) "PASS")
-                (fn-auth-token-argp (cdr args))
-                (fn-auth-session-pending as)
-                (fn-auth-checkp (fn-auth-find-cred
-                                 (fn-auth-session-pending as)
-                                 (fn-auth-config-creds
-                                  (fn-auth-session-config as)))
-                                (car (cdr args))))
-           (and (equal (fn-post-result-effects (fn-auth-authinfo as args))
-                       (fn-auth-single as "281 authentication accepted"))
-                (equal (fn-auth-session-subject
-                        (fn-post-result-session (fn-auth-authinfo as args)))
-                       (fn-auth-cred-principal
-                        (fn-auth-find-cred (fn-auth-session-pending as)
-                                           (fn-auth-config-creds
-                                            (fn-auth-session-config as)))))
-                (equal (fn-auth-session-peer
-                        (fn-post-result-session (fn-auth-authinfo as args)))
-                       (fn-auth-principal-match
-                        (fn-auth-cred-principal
-                         (fn-auth-find-cred (fn-auth-session-pending as)
-                                            (fn-auth-config-creds
-                                             (fn-auth-session-config as))))
-                        (fn-peer-session-cfg (fn-auth-session-base as))))))
-  :hints (("Goal"
-           :do-not-induct t
-           ; The match stays closed: the conclusion names it, and the node
-           ; the binding tests comes from the configuration a match was
-           ; read out of (fn-auth-principal-match-means-a-configuration).
-           :in-theory (e/d (fn-auth-authinfo fn-auth-bind-principal-peer
-                            fn-auth-with-base fn-auth-session-peer
-                            fn-auth-sessionp)
-                           (fn-auth-single fn-auth-find-cred fn-auth-checkp
-                            fn-auth-token-argp fn-nntp-keywordp
-                            fn-nntp-single fn-cfg-peer-find fn-cfgp
-                            fn-auth-principal-match
-                            fn-digest-hex fn-peer-sessionp fn-auth-configp
-                            fn-nntp-printable-tokenp fn-prin-idp
-                            fn-node-statep))))))
-
-(local (defthm fn-auth-starttls-handshake-clears-a-principal-role
-  (implies (and (not (fn-auth-session-handshakingp as))
-                (fn-auth-session-handshakingp
-                 (fn-post-result-session (fn-auth-starttls as args))))
-           (and (null (fn-auth-session-subject
-                       (fn-post-result-session (fn-auth-starttls as args))))
-                (null (fn-auth-session-pending
-                       (fn-post-result-session (fn-auth-starttls as args))))
-                (not (fn-auth-principal-rolep
-                      (fn-post-result-session (fn-auth-starttls as args))))
-                (equal (fn-auth-session-peer
-                        (fn-post-result-session (fn-auth-starttls as args)))
-                       (if (fn-auth-principal-rolep as)
-                           nil
-                         (fn-auth-session-peer as)))))
-  :hints (("Goal"
-           :do-not-induct t
-           :in-theory (e/d (fn-auth-starttls fn-auth-clear-principal-peer
-                            fn-auth-with-base fn-auth-session-peer
-                            fn-auth-principal-rolep)
-                           (fn-auth-single fn-nntp-single fn-cfg-peer-find
-                            fn-cfgp))))))
-
-(local (defthm fn-auth-starttls-keeps-a-reader
-  (implies (not (fn-auth-session-peer as))
-           (not (fn-auth-session-peer
-                 (fn-post-result-session (fn-auth-starttls as args)))))
-  :hints (("Goal"
-           :do-not-induct t
-           :in-theory (e/d (fn-auth-starttls fn-auth-clear-principal-peer
-                            fn-auth-with-base fn-auth-session-peer
-                            fn-auth-principal-rolep)
-                           (fn-auth-single fn-nntp-single fn-cfg-peer-find
-                            fn-cfgp))))))
-
-(local (defthm fn-auth-delegate-keeps-the-role-and-the-handshake
-  (and (equal (fn-auth-session-peer
-               (fn-post-result-session
-                (fn-auth-delegate as archive config observation injection
-                                  wire-event fn-arena)))
-              (fn-auth-session-peer as))
-       (equal (fn-auth-session-handshakingp
-               (fn-post-result-session
-                (fn-auth-delegate as archive config observation injection
-                                  wire-event fn-arena)))
-              (fn-auth-session-handshakingp as)))
-  :hints (("Goal"
-           :in-theory (e/d (fn-auth-delegate fn-auth-with-base
-                            fn-auth-session-peer)
-                           (fn-peer-step))))))
-
-(local (defthm fn-auth-authinfo-keeps-the-handshake
-  (equal (fn-auth-session-handshakingp
-          (fn-post-result-session (fn-auth-authinfo as args)))
-         (fn-auth-session-handshakingp as))
-  :hints (("Goal"
-           :do-not-induct t
-           :in-theory (e/d (fn-auth-authinfo fn-auth-bind-principal-peer
-                            fn-auth-with-base)
-                           (fn-auth-single fn-auth-find-cred fn-auth-checkp
-                            fn-auth-token-argp fn-nntp-keywordp
-                            fn-nntp-single fn-auth-principal-match
-                            fn-node-statep))))))
-
-(local (defthmd fn-auth-session-peer-folds
-  (equal (fn-peer-session-peer (fn-auth-session-base as))
-         (fn-auth-session-peer as))))
-
-
-; KEYSTONE.  The only way a reader becomes a peer.
-;
-; No hypothesis about the session or the event beyond the role change
-; itself: for ANY session and ANY wire event, if the step's session has a
-; peer role and the session it was given had none, then the event was an
-; AUTHINFO PASS command line, sent on a well-formed, non-handshaking,
-; unauthenticated connection whose channel the policy accepts, after a
-; USER, whose one-token secret checks against the cached name's stored
-; verifier; the step installed that credential's principal as the subject;
-; the role it bound is fn-auth-principal-match of that principal under the
-; configuration pinned into the connection -- the one peer whose record says
-; (:principal HEX) and the only auth-principal row naming HEX -- and the role
-; is principal-derived, so the next keystone's STARTTLS clears it.
-;
-; Consequences read straight off it: a principal with no matching row
-; (mismatch) or two (duplicate) never gains a role on any step, since the
-; match is then nil; a protected-only connection without TLS never gains
-; one; a delegated reader command, a CAPABILITIES, a USER, a failed PASS, a
-; STARTTLS and the handshake re-entry never do.
-;
-; Two hypotheses, each with a violating value in
-; tests/acl2/nntp-auth-teeth-tests.lisp.
-(defthm fn-auth-step-binds-a-peer-role-only-by-a-principal-login
-  (implies (and (not (fn-auth-session-peer as))
-                (fn-auth-session-peer
-                 (fn-post-result-session
-                  (fn-auth-step as archive config observation injection
-                                wire-event fn-arena))))
-           (and (fn-auth-sessionp as)
-                (not (fn-auth-session-handshakingp as))
-                (not (fn-auth-session-subject as))
-                (not (and (fn-auth-config-protected-onlyp
-                           (fn-auth-session-config as))
-                          (not (fn-auth-session-tlsp as))))
-                (equal (car wire-event) :command)
-                (fn-nntp-keywordp (car (fn-nntp-tokenize (cadr wire-event)))
-                                  "AUTHINFO")
-                (fn-nntp-keywordp (cadr (fn-nntp-tokenize (cadr wire-event)))
-                                  "PASS")
-                (fn-auth-token-argp (cddr (fn-nntp-tokenize (cadr wire-event))))
-                (fn-auth-session-pending as)
-                (fn-auth-checkp
-                 (fn-auth-find-cred (fn-auth-session-pending as)
-                                    (fn-auth-config-creds
-                                     (fn-auth-session-config as)))
-                 (caddr (fn-nntp-tokenize (cadr wire-event))))
-                (equal (fn-auth-session-subject
-                        (fn-post-result-session
-                         (fn-auth-step as archive config observation injection
-                                       wire-event fn-arena)))
-                       (fn-auth-cred-principal
-                        (fn-auth-find-cred (fn-auth-session-pending as)
-                                           (fn-auth-config-creds
-                                            (fn-auth-session-config as)))))
-                (equal (fn-auth-session-peer
-                        (fn-post-result-session
-                         (fn-auth-step as archive config observation injection
-                                       wire-event fn-arena)))
-                       (fn-auth-principal-match
-                        (fn-auth-cred-principal
-                         (fn-auth-find-cred (fn-auth-session-pending as)
-                                            (fn-auth-config-creds
-                                             (fn-auth-session-config as))))
-                        (fn-peer-session-cfg (fn-auth-session-base as))))
-                (fn-auth-principal-rolep
-                 (fn-post-result-session
-                  (fn-auth-step as archive config observation injection
-                                wire-event fn-arena)))))
-  :rule-classes nil
-  :hints (("Goal"
-           :do-not-induct t
-           :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-tls-eventp fn-auth-session-peer-folds
-                            fn-auth-tls-established)
-                           (fn-peer-step fn-auth-delegate fn-auth-single
-                            fn-auth-authinfo fn-auth-starttls
-                            fn-auth-sessionp fn-auth-session-peer
-                            fn-auth-principal-rolep fn-auth-principal-match
-                            fn-auth-gatedp fn-auth-postingp
-                            fn-auth-find-cred fn-auth-checkp
-                            fn-auth-capability-lines-for-peer
-                            fn-auth-peer-record fn-nntp-multi
-                            fn-nntp-tokenize fn-nntp-command-inputp
-                            fn-nntp-keyword-tokenp fn-nntp-keywordp
-                            fn-nntp-command-arguments-at-mostp
-                            fn-auth-authinfo-binds-only-on-an-accepted-pass))
-           :use ((:instance fn-auth-authinfo-binds-only-on-an-accepted-pass
-                            (args (cdr (fn-nntp-tokenize
-                                        (cadr wire-event)))))))))
-
-; The line-length fact the next keystone needs so that it does not carry
-; `fn-nntp-command-arguments-at-mostp' as a hypothesis no value could
-; violate: a command line inside RFC 3977 section 3.1's 510 octets that
-; tokenizes to AUTHINFO PASS <one token> has a secret of at most 496
-; octets, inside the 497-octet argument bound.  `fn-auth-token-span' counts
-; each token with one separator; the tokenizer consumes at least that.
-(local (defun fn-auth-token-span (toks)
-  (if (consp toks)
-      (+ 1 (len (car toks)) (fn-auth-token-span (cdr toks)))
-    0)))
-
-(local (defthm fn-auth-token-span-of-append
-  (equal (fn-auth-token-span (append a b))
-         (+ (fn-auth-token-span a) (fn-auth-token-span b)))))
-
-(local (defthm fn-auth-token-span-of-rev
-  (equal (fn-auth-token-span (rev a)) (fn-auth-token-span a))))
-
-(local (defthm fn-auth-token-span-of-reverse
-  (equal (fn-auth-token-span (reverse a)) (fn-auth-token-span a))))
-
-(local (defthm fn-auth-tokenize-aux-span
-  (<= (fn-auth-token-span (fn-nntp-tokenize-aux xs word-rev words-rev))
-      (+ 1 (len xs) (len word-rev) (fn-auth-token-span words-rev)))
-  :rule-classes :linear
-  :hints (("Goal" :induct (fn-nntp-tokenize-aux xs word-rev words-rev)
-           :in-theory (enable fn-nntp-tokenize-aux)))))
-
-(local (defthm fn-auth-tokenize-span
-  (<= (fn-auth-token-span (fn-nntp-tokenize line)) (+ 1 (len line)))
-  :rule-classes :linear
-  :hints (("Goal" :in-theory (enable fn-nntp-tokenize)))))
-
-(local (defthm fn-auth-len-of-upcase-keyword
-  (equal (len (fn-nntp-upcase-keyword x)) (len x))
-  :hints (("Goal" :in-theory (enable fn-nntp-upcase-keyword)))))
-
-(local (defthm fn-auth-keyword-len
-  (implies (fn-nntp-keywordp k text)
-           (equal (len k) (len (fn-nntp-string-octets text))))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (e/d (fn-nntp-keywordp)
-                                  (fn-nntp-upcase-keyword
-                                   fn-auth-len-of-upcase-keyword))
-           :use ((:instance fn-auth-len-of-upcase-keyword (x k)))))))
-
-(local (defthm fn-auth-cbor-at-mostp-len
-  (implies (fn-cbor-at-mostp xs bound) (<= (len xs) (nfix bound)))
-  :rule-classes :linear
-  :hints (("Goal" :in-theory (enable fn-cbor-at-mostp)))))
-
-(local (defthmd fn-auth-pass-line-arguments-are-in-bounds
-  (implies (and (fn-nntp-command-inputp line)
-                (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "AUTHINFO")
-                (fn-nntp-keywordp (cadr (fn-nntp-tokenize line)) "PASS")
-                (fn-auth-token-argp (cddr (fn-nntp-tokenize line))))
-           (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line)))
-  :hints (("Goal"
-           :do-not-induct t
-           :use ((:instance fn-auth-tokenize-span))
-           :expand ((fn-auth-token-span (fn-nntp-tokenize line))
-                    (fn-auth-token-span (cdr (fn-nntp-tokenize line)))
-                    (fn-auth-token-span (cddr (fn-nntp-tokenize line))))
-           :in-theory (e/d (fn-nntp-command-arguments-at-mostp
-                            fn-nntp-argument-tokens
-                            fn-nntp-each-token-at-mostp
-                            fn-nntp-command-inputp fn-auth-token-argp)
-                           (fn-nntp-tokenize fn-nntp-keywordp
-                            fn-auth-tokenize-span fn-nntp-command-linep
-                            fn-nntp-contains-bomp fn-cbor-at-mostp
-                            fn-nntp-printable-tokenp))))))
-
-; KEYSTONE.  The way in: an accepted PASS binds exactly the unique match.
-;
-; On a reader connection that is well-formed, not handshaking,
-; unauthenticated and whose channel the policy accepts, an AUTHINFO PASS
-; line after a USER whose secret checks is answered 281, installs the
-; credential's principal, and leaves the connection with the peer role
-; fn-auth-principal-match computes: the configured peer when exactly one
-; auth-principal row names the principal's digest and that peer's record
-; says (:principal digest), and no role -- a reader, still authenticated --
-; when there are none (mismatch) or several (duplicate).  RFC 4643 section
-; 2.3.2's 281 is the same in every case: whether the login also names a
-; peer is not disclosed on the wire.
-;
-; Eleven hypotheses, each with a violating value in
-; tests/acl2/nntp-auth-teeth-tests.lisp.
-(defthm fn-auth-step-principal-login-binds-exactly-the-unique-match
-  (implies (and (fn-auth-sessionp as)
-                (not (fn-auth-session-handshakingp as))
-                (not (fn-zc-activep (fn-auth-session-compress as)))
-                (not (fn-auth-session-peer as))
-                (not (fn-auth-session-subject as))
-                (not (and (fn-auth-config-protected-onlyp
-                           (fn-auth-session-config as))
-                          (not (fn-auth-session-tlsp as))))
-                (fn-nntp-command-inputp line)
-                (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "AUTHINFO")
-                (fn-nntp-keywordp (cadr (fn-nntp-tokenize line)) "PASS")
-                (fn-auth-token-argp (cddr (fn-nntp-tokenize line)))
-                (fn-auth-session-pending as)
-                (fn-auth-checkp
-                 (fn-auth-find-cred (fn-auth-session-pending as)
-                                    (fn-auth-config-creds
-                                     (fn-auth-session-config as)))
-                 (caddr (fn-nntp-tokenize line))))
-           (and (equal (fn-post-result-effects
-                        (fn-auth-step as archive config observation injection
-                                      (list :command line) fn-arena))
-                       (fn-auth-single as "281 authentication accepted"))
-                (equal (fn-auth-session-subject
-                        (fn-post-result-session
-                         (fn-auth-step as archive config observation injection
-                                       (list :command line) fn-arena)))
-                       (fn-auth-cred-principal
-                        (fn-auth-find-cred (fn-auth-session-pending as)
-                                           (fn-auth-config-creds
-                                            (fn-auth-session-config as)))))
-                (equal (fn-auth-session-peer
-                        (fn-post-result-session
-                         (fn-auth-step as archive config observation injection
-                                       (list :command line) fn-arena)))
-                       (fn-auth-principal-match
-                        (fn-auth-cred-principal
-                         (fn-auth-find-cred (fn-auth-session-pending as)
-                                            (fn-auth-config-creds
-                                             (fn-auth-session-config as))))
-                        (fn-peer-session-cfg (fn-auth-session-base as))))))
-  :rule-classes nil
-  :hints (("Goal"
-           :do-not-induct t
-           :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-gatedp
-                            fn-auth-tls-eventp fn-auth-restricted-keywordp
-                            fn-nntp-keywordp)
-                           (fn-peer-step fn-auth-delegate fn-auth-single
-                            fn-auth-authinfo fn-auth-starttls
-                            fn-auth-sessionp fn-auth-session-peer
-                            fn-auth-principal-match fn-auth-find-cred
-                            fn-auth-checkp fn-auth-token-argp
-                            fn-nntp-tokenize fn-nntp-command-inputp
-                            fn-nntp-keyword-tokenp
-                            fn-nntp-command-arguments-at-mostp
-                            fn-auth-authinfo-accepted-pass-binds-the-match))
-           :use ((:instance fn-auth-authinfo-accepted-pass-binds-the-match
-                            (args (cdr (fn-nntp-tokenize line))))
-                 (:instance fn-auth-pass-line-arguments-are-in-bounds)))))
-
-; KEYSTONE.  The way out: STARTTLS clears a principal-derived role.
-;
-; For ANY session and ANY wire event: if the step entered the TLS handshake
-; (the session was not handshaking and is now), the new session carries no
-; subject, no cached name and no principal-derived role, and its peer role
-; is the old one exactly when that role was NOT principal-derived.  So a
-; peer the operator configured by source address (fn-own-open-peer) keeps
-; its role across the handshake, and a role a login bound -- principal-
-; derived by the first keystone -- is gone before the first octet of the
-; handshake, as RFC 4642 section 2.2.2's reset of the protocol state
-; requires.  The (:tls-established) re-entry keeps the base session
-; (fn-auth-tls-established), so the connection comes out of the handshake
-; a reader, and only a fresh AUTHINFO over TLS can bind again.
-;
-; Two hypotheses, each with a violating value in
-; tests/acl2/nntp-auth-teeth-tests.lisp.
-(defthm fn-auth-step-starttls-clears-a-principal-role
-  ; PRF-164: the session also holds while the owner publishes an XREDEEM
-  ; (fn-auth-redeem-waitp); that hold is the other theorem below
-  ; (fn-auth-step-redeem-hold-keeps-the-role), so this one is about the TLS
-  ; handshake exactly.
-  (implies (and (not (fn-auth-session-handshakingp as))
-                (fn-auth-session-handshakingp
-                 (fn-post-result-session
-                  (fn-auth-step as archive config observation injection
-                                wire-event fn-arena)))
-                (not (fn-auth-redeem-waitp
-                      (fn-post-result-session
-                       (fn-auth-step as archive config observation injection
-                                     wire-event fn-arena))))
-                ; the hold is not a COMPRESS layer's (RFC 8054: 206 keeps
-                ; the login; fn-auth-established-starts-the-owed-compression)
-                (not (fn-zc-owedp
-                      (fn-auth-session-compress
-                       (fn-post-result-session
-                        (fn-auth-step as archive config observation injection
-                                      wire-event fn-arena))))))
-           (and (null (fn-auth-session-subject
-                       (fn-post-result-session
-                        (fn-auth-step as archive config observation injection
-                                      wire-event fn-arena))))
-                (null (fn-auth-session-pending
-                       (fn-post-result-session
-                        (fn-auth-step as archive config observation injection
-                                      wire-event fn-arena))))
-                (not (fn-auth-principal-rolep
-                      (fn-post-result-session
-                       (fn-auth-step as archive config observation injection
-                                     wire-event fn-arena))))
-                (equal (fn-auth-session-peer
-                        (fn-post-result-session
-                         (fn-auth-step as archive config observation injection
-                                       wire-event fn-arena)))
-                       (if (fn-auth-principal-rolep as)
-                           nil
-                         (fn-auth-session-peer as)))))
-  :rule-classes nil
-  :hints (("Goal"
-           :do-not-induct t
-           :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-tls-eventp
-                            fn-auth-tls-established)
-                           (fn-peer-step fn-auth-delegate fn-auth-single
-                            fn-auth-authinfo fn-auth-starttls
-                            fn-auth-sessionp fn-auth-session-peer
-                            fn-auth-principal-rolep fn-auth-gatedp
-                            fn-auth-postingp fn-auth-find-cred
-                            fn-auth-capability-lines-for-peer
-                            fn-auth-peer-record fn-nntp-multi
-                            fn-nntp-tokenize fn-nntp-command-inputp
-                            fn-nntp-keyword-tokenp fn-nntp-keywordp
-                            fn-nntp-command-arguments-at-mostp
-                            fn-auth-starttls-handshake-clears-a-principal-role))
-           :use ((:instance fn-auth-starttls-handshake-clears-a-principal-role
-                            (args (cdr (fn-nntp-tokenize
-                                        (cadr wire-event)))))))))
-
-
-; The other hold (PRF-164).  Whenever a step enters the redemption hold,
-; the new session has no subject and keeps the connection's role: holding
-; for the owner's publication binds nobody.
-(defthm fn-auth-step-redeem-hold-keeps-the-role
-  (implies (and (not (fn-auth-session-handshakingp as))
-                (fn-auth-session-handshakingp
-                 (fn-post-result-session
-                  (fn-auth-step as archive config observation injection
-                                wire-event fn-arena)))
-                (fn-auth-redeem-waitp
-                 (fn-post-result-session
-                  (fn-auth-step as archive config observation injection
-                                wire-event fn-arena)))
-                (not (fn-zc-owedp
-                      (fn-auth-session-compress
-                       (fn-post-result-session
-                        (fn-auth-step as archive config observation injection
-                                      wire-event fn-arena))))))
-           (and (null (fn-auth-session-subject
-                       (fn-post-result-session
-                        (fn-auth-step as archive config observation injection
-                                      wire-event fn-arena))))
-                (equal (fn-auth-session-peer
-                        (fn-post-result-session
-                         (fn-auth-step as archive config observation injection
-                                       wire-event fn-arena)))
-                       (fn-auth-session-peer as))))
-  :rule-classes nil
-  :hints (("Goal"
-           :do-not-induct t
-           :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-tls-eventp
-                            fn-auth-redeem-waitp
-                            fn-auth-tls-established)
-                           (fn-peer-step fn-auth-delegate fn-auth-single
-                            fn-auth-authinfo fn-auth-starttls
-                            fn-auth-sessionp fn-auth-session-peer
-                            fn-auth-principal-rolep fn-auth-gatedp
-                            fn-auth-postingp fn-auth-find-cred
-                            fn-auth-capability-lines-for-peer
-                            fn-auth-peer-record fn-nntp-multi
-                            fn-nntp-tokenize fn-nntp-command-inputp
-                            fn-nntp-keyword-tokenp fn-nntp-keywordp
-                            fn-nntp-command-arguments-at-mostp
-                            fn-auth-starttls-handshake-clears-a-principal-role
-                            fn-auth-xredeem-holds-only-to-wait))
-           :use ((:instance fn-auth-xredeem-holds-only-to-wait
-                            (args (cdr (fn-nntp-tokenize
-                                        (cadr wire-event)))))
-                 (:instance fn-auth-starttls-handshake-clears-a-principal-role
-                            (args (cdr (fn-nntp-tokenize
-                                        (cadr wire-event)))))))))
-
+; THE PEER ROLE A LOGIN BINDS (PRF-049) and its SASL way in (NNT-056) are
+; books/nntp-auth-roles.lisp: the step-level keystones over fn-auth-step,
+; kept out of this book so its own proofs stay inside the ten-second rule.
 
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md section 2).  The keystones and the
@@ -3347,9 +3765,23 @@
     (:d fn-auth-tls-established) (:d fn-auth-tls-eventp)
     (:d fn-auth-command) (:d fn-auth-delegate) (:d fn-auth-step)
     (:d fn-auth-session-peer) (:d fn-auth-principal-match)
-    (:d fn-auth-principal-rolep)))
+    (:d fn-auth-principal-rolep)
+    ; AUTHINFO SASL (NNT-056)
+    (:d fn-auth-ctx-seed) (:d fn-auth-ctx-binding)
+    (:d fn-auth-login-offeredp) (:d fn-auth-sasl-mechanisms)
+    (:d fn-auth-mechanism-words) (:d fn-auth-sasl-capability-line)
+    (:d fn-auth-user-offeredp) (:d fn-auth-sasl-offeredp)
+    (:d fn-auth-sasl-decode) (:d fn-auth-sasl-raw) (:d fn-auth-sasl-line)
+    (:d fn-auth-response-textp) (:d fn-auth-digitp) (:d fn-auth-status-linep)
+    (:d fn-auth-sasl-line-okp) (:d fn-auth-sasl-effects)
+    (:d fn-auth-sasl-refuse) (:d fn-auth-sasl-finish)
+    (:d fn-auth-sasl-command) (:d fn-auth-sasl-waitingp)
+    (:d fn-auth-sasl-continue) (:d fn-auth-context-eventp)
+    (:d fn-auth-install-context)))
 
 (in-theory (disable fn-auth-vocabulary))
+; The event recognizer decides the pinned step's case split below.
+(local (in-theory (enable fn-auth-context-eventp)))
 
 ;; -----------------------------------------------------------------------------
 ;; Group access (PRF-222, NNT-046; books/group-access.lisp).
@@ -3572,6 +4004,11 @@
    ((and (fn-auth-redeem-eventp wire-event) (fn-auth-redeem-waitp as))
     (fn-auth-redeem-outcome as wire-event))
    ((fn-auth-session-handshakingp as) (fn-post-make-result as nil nil))
+   ((fn-auth-context-eventp wire-event) (fn-auth-install-context as wire-event))
+   ((and (fn-auth-sasl-waitingp as)
+         (consp wire-event) (equal (car wire-event) :command)
+         (consp (cdr wire-event)) (null (cdr (cdr wire-event))))
+    (fn-auth-sasl-continue as (car (cdr wire-event))))
    ((and (consp wire-event)
          (equal (car wire-event) :command)
          (consp (cdr wire-event))
@@ -3587,8 +4024,10 @@
                                         observation injection wire-event fn-arena)))
         (fn-auth-delegate-pinned as archive index verdicts config observation
                                   injection wire-event fn-arena))))
-   (t (fn-auth-delegate-pinned as archive index verdicts config observation
-                                injection wire-event fn-arena))))
+   ((fn-auth-client-eventp wire-event)
+    (fn-auth-delegate-pinned as archive index verdicts config observation
+                              injection wire-event fn-arena))
+   (t (fn-post-make-result as nil nil))))
 
 (verify-guards fn-auth-delegate-pinned)
 (verify-guards fn-auth-step-pinned)
@@ -3704,7 +4143,8 @@
                             fn-auth-session-consistentp fn-nntp-keywordp
                             fn-nntp-keyword-tokenp fn-nntp-command-inputp
                             fn-nntp-tokenize
-                            fn-nntp-command-arguments-at-mostp)))))
+                            fn-nntp-command-arguments-at-mostp
+                            fn-auth-sasl-continue fn-auth-install-context)))))
 
 ; The view's trie is the one built from the view's articles.
 (defthm fn-auth-view-trie-corresponds
@@ -3758,7 +4198,8 @@
                  fn-auth-effectsp fn-post-result-effects
                  fn-midx-correspondencep fn-nntp-keywordp
                  fn-nntp-keyword-tokenp fn-nntp-command-inputp
-                 fn-nntp-tokenize fn-nntp-command-arguments-at-mostp)))))
+                 fn-nntp-tokenize fn-nntp-command-arguments-at-mostp
+                            fn-auth-sasl-continue fn-auth-install-context)))))
 
 (defthm fn-auth-pinned-submission-is-the-delegated-submission
   (implies (fn-post-result-submission
@@ -3782,7 +4223,8 @@
                 (fn-peer-step-pinned fn-auth-command fn-auth-sessionp
                  fn-nntp-tokenize fn-nntp-command-inputp
                  fn-auth-tls-eventp fn-nntp-keyword-tokenp
-                 fn-nntp-command-arguments-at-mostp)))))
+                 fn-nntp-command-arguments-at-mostp
+                            fn-auth-sasl-continue fn-auth-install-context)))))
 
 (defthm fn-auth-view-session-is-a-session
   (implies (fn-auth-sessionp as)
@@ -3905,6 +4347,7 @@
 (defthm fn-auth-step-pinned-xredeem-before-tls-is-483
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-sasl-waitingp as))
                 (not (fn-zc-activep (fn-auth-session-compress as)))
                 (not (fn-auth-session-subject as))
                 (fn-auth-config-protected-onlyp (fn-auth-session-config as))
@@ -3938,7 +4381,8 @@
                             fn-auth-sessionp fn-auth-postingp
                             fn-nntp-tokenize fn-nntp-command-inputp
                             fn-nntp-keyword-tokenp
-                            fn-nntp-command-arguments-at-mostp)))))
+                            fn-nntp-command-arguments-at-mostp
+                            fn-auth-sasl-continue fn-auth-install-context)))))
 
 ; KEYSTONE (the hold).  After 381, `XREDEEM PASS PASSWORD' answers nothing
 ; and holds: the session keeps the code, the login and the password for
@@ -3948,6 +4392,7 @@
 (defthm fn-auth-step-pinned-xredeem-pass-holds-for-the-owner
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-sasl-waitingp as))
                 (not (fn-zc-activep (fn-auth-session-compress as)))
                 (not (fn-auth-session-subject as))
                 (or (not (fn-auth-config-protected-onlyp
@@ -3972,7 +4417,7 @@
                                (car (cddr (fn-nntp-tokenize line))))))))
   :hints (("Goal"
            :do-not-induct t
-           :in-theory (e/d (fn-auth-step-pinned fn-auth-command fn-auth-gatedp
+           :in-theory (e/d (fn-auth-sasl-waitingp fn-auth-step-pinned fn-auth-command fn-auth-gatedp
                             fn-auth-tls-eventp fn-auth-restricted-keywordp
                             fn-auth-xredeem fn-auth-redeem-waitp
                             fn-auth-redeem-request fn-nntp-keywordp
@@ -3984,7 +4429,8 @@
                             fn-auth-token-argp
                             fn-nntp-tokenize fn-nntp-command-inputp
                             fn-nntp-keyword-tokenp
-                            fn-nntp-command-arguments-at-mostp))
+                            fn-nntp-command-arguments-at-mostp
+                            fn-auth-sasl-continue fn-auth-install-context))
            :use ((:instance fn-auth-sessionp-gives-its-pending)))))
 
 ; KEYSTONE (the reply follows the word).  A waiting session answers the
@@ -4010,13 +4456,58 @@
                                                nil nil
                                                (fn-auth-session-tlsp as)
                                                nil
-                                               (fn-auth-session-compress as))))))
+                                               (fn-auth-session-compress as) (fn-auth-session-ctx as))))))
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-auth-step-pinned fn-auth-tls-eventp
                             fn-auth-redeem-outcome fn-auth-redeem-eventp)
                            (fn-auth-delegate-pinned fn-auth-single
-                            fn-auth-sessionp)))))
+                            fn-auth-sessionp
+                            fn-auth-sasl-continue fn-auth-install-context)))))
+
+;; KEYSTONE (no reply nobody asked for).  An event no client's octets made
+;; (fn-auth-client-eventp false: the owner's (:account-outcome WORD) after the
+;; hold has ended, :tls-established, :sasl-context, anything else) on a
+;; session that is not holding for the owner's word gets no reply and makes
+;; no submission.  Only the held session's outcome (the keystone above)
+;; answers a host event.  Before this clause a stray outcome reached the
+;; reader step, which answers every non-command event 501 (books/nntp.lisp
+;; fn-nntp-step): a syntax error the client never caused.
+(defthm fn-auth-step-pinned-host-event-answers-nothing
+  (implies (and (not (fn-auth-client-eventp wire-event))
+                (not (fn-auth-redeem-waitp as)))
+           (let ((r (fn-auth-step-pinned as archive index verdicts config
+                                         observation injection wire-event
+                                         fn-arena)))
+             (and (null (fn-post-result-effects r))
+                  (null (fn-post-result-submission r)))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step-pinned fn-auth-tls-established
+                            fn-auth-install-context)
+                           (fn-auth-delegate-pinned fn-auth-single
+                            fn-auth-sessionp fn-auth-redeem-outcome
+                            fn-auth-sasl-continue fn-auth-command
+                            fn-auth-make-session)))))
+
+;; And it leaves the session as it was, unless it is the host's own TLS or
+;; SASL-context event (which change only the TLS and context fields).
+(defthm fn-auth-step-pinned-stray-event-changes-nothing
+  (implies (and (not (fn-auth-client-eventp wire-event))
+                (not (fn-auth-redeem-waitp as))
+                (not (fn-auth-tls-eventp wire-event))
+                (not (fn-auth-context-eventp wire-event)))
+           (equal (fn-auth-step-pinned as archive index verdicts config
+                                       observation injection wire-event
+                                       fn-arena)
+                  (fn-post-make-result as nil nil)))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step-pinned)
+                           (fn-auth-delegate-pinned fn-auth-single
+                            fn-auth-sessionp fn-auth-redeem-outcome
+                            fn-auth-sasl-continue fn-auth-command
+                            fn-auth-tls-established fn-auth-install-context)))))
 
 ;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
 ;; Each is tried in includers' proofs and pays for its frames in

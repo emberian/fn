@@ -184,8 +184,9 @@ class NativeTopicLocalTest(unittest.TestCase):
                              (result.stdout + result.stderr).decode("utf-8", "replace"))
 
         def state(result):
-            # Row S3: the open's route and the stopped header are not the
-            # state (native_harness.stable_status_lines); every other line is.
+            # Row S3: the open's route, the stopped header and the checkpoint
+            # file's own line are not the state
+            # (native_harness.stable_status_lines); every other line is.
             return stable_status_lines(result.stdout)
         self.assertEqual(state(self.invoke("store", self.store, "status")),
                          state(before_status))

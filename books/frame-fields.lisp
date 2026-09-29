@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "frame-octets")
 (include-book "utf8")
+(include-book "acceptance-alloc")
 (local (include-book "arithmetic/top" :dir :system))
 
 (local (in-theory (enable fn-cbor-invariants-vocabulary)))
@@ -251,13 +252,23 @@
 
 (verify-guards fn-frame-values-okp)
 
+; A :blob field's octets are the value itself (a BP bundle's wire, tens of
+; KiB), and ACL2's `append' recurses on its first argument: one control-stack
+; frame per octet.  A 49,152-octet bundle's kind-5 persist died in
+; BINARY-APPEND at the deployed 1,024 KiB (native-reds, tests.test_native_bp_node).
+; The :exec appends through books/acceptance-alloc.lisp fn-ag-append, which
+; is `append' by its definition and executes in constant stack (lane
+; depth-debt, PRF-919).  The recursion over SPECS is a record's fixed field
+; list.
 (defun fn-frame-fields-octets (specs values)
   (declare (xargs :guard (and (fn-frame-spec-listp specs)
                               (fn-frame-values-okp specs values))
                   :verify-guards nil))
   (if (consp specs)
-      (append (fn-frame-field-octets (car specs) (car values))
-              (fn-frame-fields-octets (cdr specs) (cdr values)))
+      (mbe :logic (append (fn-frame-field-octets (car specs) (car values))
+                          (fn-frame-fields-octets (cdr specs) (cdr values)))
+           :exec (fn-ag-append (fn-frame-field-octets (car specs) (car values))
+                               (fn-frame-fields-octets (cdr specs) (cdr values))))
     nil))
 
 (verify-guards fn-frame-fields-octets)

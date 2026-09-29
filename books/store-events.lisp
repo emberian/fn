@@ -354,3 +354,63 @@
                     (:d fn-store-event-obligation-id)
                     (:d fn-store-event-subject) (:d fn-store-event-evidence)
                     (:d fn-store-event-charge)))
+
+; The wire vocabularies are disjoint, and a retained row (held or composite)
+; is none of them (PKT-745: proved here once, below both books/store-intern
+; and books/byte-store-scan, which each restated them).  Disabled here so the
+; books between this one and those two keep their theory; each of the two
+; enables them where it used to prove them.
+(defthm fn-hstxa-is-no-wire-event
+  (implies (fn-hstxa-p x)
+           (and (not (fn-record-p x)) (not (fn-store-retention-event-p x))
+                (not (fn-stxe-p x)) (not (fn-stxk-p x)) (not (fn-stxa-p x))
+                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
+  :hints (("Goal" :use ((:instance fn-hstxa-p-forward-shape))
+           :in-theory (e/d (fn-record-p fn-record-shapep fn-store-retention-event-p
+                            fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
+                            fn-stxa-p fn-stxa-shapep fn-cpe-eventp
+                            fn-th-topic-eventp fn-th-local-admin-eventp)
+                           (fn-hstxa-p)))))
+
+(defthm fn-held-is-no-wire-event
+  (implies (fn-held-p x)
+           (and (not (fn-record-p x)) (not (fn-store-retention-event-p x))
+                (not (fn-stxe-p x)) (not (fn-stxk-p x)) (not (fn-stxa-p x))
+                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
+  :hints (("Goal" :use ((:instance fn-held-p-forward-shape)
+                        (:instance fn-held-p-forward-natural-head))
+           :in-theory (e/d (fn-record-p fn-record-shapep fn-store-retention-event-p
+                            fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
+                            fn-stxa-p fn-stxa-shapep fn-cpe-eventp fn-held-shapep
+                            fn-th-topic-eventp fn-th-local-admin-eventp)
+                           (fn-held-p)))))
+
+(defthm fn-hstxa-is-not-held
+  (implies (fn-hstxa-p x) (not (fn-held-p x)))
+  :hints (("Goal" :use ((:instance fn-hstxa-p-forward-shape)
+                        (:instance fn-held-p-forward-natural-head))
+           :in-theory (disable fn-hstxa-p fn-held-p))))
+
+(defthm fn-stxa-is-no-other-wire-event
+  (implies (fn-stxa-p x)
+           (and (not (fn-record-p x)) (not (fn-store-retention-event-p x))
+                (not (fn-stxe-p x)) (not (fn-stxk-p x))
+                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
+  :hints (("Goal" :in-theory (enable fn-record-p fn-record-shapep fn-store-retention-event-p
+                                     fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
+                                     fn-stxa-p fn-stxa-shapep fn-cpe-eventp
+                                     fn-th-topic-eventp fn-th-local-admin-eventp))))
+
+(defthm fn-record-is-no-other-wire-event
+  (implies (fn-record-p x)
+           (and (not (fn-store-retention-event-p x))
+                (not (fn-stxe-p x)) (not (fn-stxk-p x))
+                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
+  :hints (("Goal" :in-theory (enable fn-record-p fn-record-shapep fn-store-retention-event-p
+                                     fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
+                                     fn-cpe-eventp
+                                     fn-th-topic-eventp fn-th-local-admin-eventp))))
+
+(in-theory (disable fn-hstxa-is-no-wire-event fn-held-is-no-wire-event
+                    fn-hstxa-is-not-held fn-stxa-is-no-other-wire-event
+                    fn-record-is-no-other-wire-event))

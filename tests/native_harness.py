@@ -929,9 +929,11 @@ IMAGE_DEFAULTS = {
 # without changing the store's state: the open's route (`open=checkpoint:S`
 # after it, a full replay before) and the header (`stopped checkpoint=N
 # journal-octets=B transactions-at-most=M` reads the checkpoint header the
-# compaction wrote; the exact count is `status --replay`'s).  One site for
+# compaction wrote; the exact count is `status --replay`'s) and the
+# checkpoint file's own line (`checkpoint-file octets=B modified=T`, the file
+# the compaction wrote).  One site for
 # every test comparing a report across a compaction (obstructions-7 item 66).
-STATUS_ACROSS_COMPACTION = ("open=", "stopped ")
+STATUS_ACROSS_COMPACTION = ("open=", "stopped ", "checkpoint-file ")
 
 
 def stable_status_lines(stdout, also=()):
@@ -1026,6 +1028,13 @@ def environment(extra=None, *, stack=True):
     env["ACL2_CUSTOMIZATION"] = "NONE"
     for name in ("ACL2_SYSTEM_BOOKS", "FN_HOST") + developer_selectors():
         env.pop(name, None)
+    # A diagnosis knob, not a selector the tests set: with
+    # FN_NATIVE_TEST_FAULT_BACKTRACE in the runner's environment, every
+    # started developer image reports a control-stack exhaustion as its
+    # run-length frame list (io.lisp fnn-stack-exhaustion-report).  A
+    # production image refuses the selector at its gate, as it should.
+    if os.environ.get("FN_NATIVE_TEST_FAULT_BACKTRACE"):
+        env["FN_NATIVE_FAULT_BACKTRACE"] = "1"
     for name, value in (extra or {}).items():
         if value is None:
             env.pop(name, None)

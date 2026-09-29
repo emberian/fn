@@ -7,9 +7,12 @@ reply leaves both fates; a later read, retry or listing narrows; B_t empty
 is a violation, reported with the record that emptied it and the last
 non-empty set.  Past its budget the checker answers `inconclusive`, never
 `consistent`.  A run is green only when the history is consistent AND the
-scenario's positive witnesses were observed (`no-witness` otherwise).  A
-fault that never fired, a stage begun and never ended, a truncated journal
-or a verdict whose digest no longer matches its fields is a
+scenario's positive witnesses were observed (`no-witness` otherwise) AND
+the healing phase finished within the scenario's declared bound
+(`healing-overran` otherwise; an experimental budget's overrun is listed,
+not a verdict: design §7).  A fault that never fired, a stage begun and
+never ended, a healing bound declared and never measured, a truncated
+journal or a verdict whose digest no longer matches its fields is a
 `harness-failure`, named.  Internal diagnostics never narrow: they are
 compared with the surviving histories and any conflict is listed.
 """
@@ -24,7 +27,8 @@ from . import contract
 from .journal import Journal
 from .scenario import Scenario, boundary_registry
 
-KINDS = ("consistent", "violation", "inconclusive", "no-witness", "harness-failure")
+KINDS = ("consistent", "violation", "inconclusive", "no-witness", "healing-overran",
+         "harness-failure")
 
 
 @dataclass
@@ -46,6 +50,7 @@ class Verdict:
     witnesses_missing: list = field(default_factory=list)
     pending_rules: list = field(default_factory=list)
     diagnostics: list = field(default_factory=list)
+    healing: dict | None = None             # {elapsed, bound} when a bound was declared
     budget: dict = field(default_factory=dict)
     digest: str = ""
 
@@ -82,6 +87,20 @@ def harness_failure(scenario: Scenario, journal: Journal, cause: str) -> Verdict
     return Verdict("harness-failure", scenario.id, journal.digest(), cause=cause).sign()
 
 
+def healing_measure(scenario: Scenario, journal: Journal) -> tuple:
+    """(healing dict or None, overran, harness cause or None) for the
+    scenario's declared bound against the healing stage's `elapsed`."""
+    bound = scenario.healing_bound
+    if not bound:
+        return None, False, None
+    ended = [r for r in journal.of_kind("stage")
+             if r.get("name") == "healing" and r.get("event") == "ended"]
+    if not ended or not isinstance(ended[-1].get("elapsed"), (int, float)):
+        return None, False, "healing-unmeasured"
+    elapsed = ended[-1]["elapsed"]
+    return ({"elapsed": elapsed, "bound": dict(bound)}, elapsed > bound["value"], None)
+
+
 def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
           registry: dict | None = None) -> Verdict:
     budget = budget or Budget()
@@ -108,6 +127,9 @@ def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
     # record is a suppressed workload, not a consistent empty history.
     if scenario.operations and not journal.of_kind("client"):
         return harness_failure(scenario, journal, "workload-suppressed")
+    healing, overran, unmeasured = healing_measure(scenario, journal)
+    if unmeasured:
+        return harness_failure(scenario, journal, unmeasured)
     narrowing = journal.narrowing()
     if len(narrowing) > budget.max_records:
         return Verdict("inconclusive", scenario.id, journal.digest(),
@@ -133,7 +155,7 @@ def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
                              "rules": sorted(here), "rules_used": sorted(used)},
                 surviving=0, pending_rules=contract.pending_rules(used),
                 witnesses_observed=sorted(contract.witnesses_observed(scenario, journal)),
-                budget=asdict(budget)).sign()
+                healing=healing, budget=asdict(budget)).sign()
         survivors = kept
     # Internal diagnostics against the survivors: listed, never a verdict.
     diagnostics = []
@@ -147,12 +169,19 @@ def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
                                    "commits it (seq {})".format(op, r["seq"]))
     observed = contract.witnesses_observed(scenario, journal)
     missing = sorted(set(scenario.witnesses) - observed)
+    common = dict(surviving=len(survivors), witnesses_observed=sorted(observed),
+                  witnesses_missing=missing, pending_rules=contract.pending_rules(used),
+                  diagnostics=diagnostics, healing=healing, budget=asdict(budget))
+    if overran:
+        note = "healing:{:.1f}s>{}s".format(healing["elapsed"], healing["bound"]["value"])
+        if healing["bound"]["kind"] == "seconds":
+            return Verdict("healing-overran", scenario.id, journal.digest(),
+                           cause=note, **common).sign()
+        diagnostics.append("experimental healing budget exceeded: " + note)
     kind = "no-witness" if missing else "consistent"
     return Verdict(kind, scenario.id, journal.digest(),
                    cause=("missing:" + ",".join(missing)) if missing else None,
-                   surviving=len(survivors), witnesses_observed=sorted(observed),
-                   witnesses_missing=missing, pending_rules=contract.pending_rules(used),
-                   diagnostics=diagnostics, budget=asdict(budget)).sign()
+                   **common).sign()
 
 
 def independent_per_membership(scenario: Scenario, journal: Journal) -> bool:

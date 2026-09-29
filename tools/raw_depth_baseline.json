@@ -1,0 +1,17 @@
+{
+ "_doc": "tools/raw_depth_check.py's classification of every non-tail recursion in the raw host code (host/native/*.lisp), with tools/depth_check.py's rules: bounded names its bound (a *constant* the tree defines, a number, or a structural bound); debt only shrinks; operator data is never a bound (D27).  Introduced empty of debt (lane depth-debt, 2026-09-28).",
+ "bounded": {
+  "fnn-clone-copy-tree": "the checkpoint clone's directory depth: it refuses past max-depth, fn-cpa-clone-max-depth = *fn-cpa-clone-max-depth* (books/checkpoint-auxiliary.lisp)",
+  "fnn-owner-feed-v1-peers": "the FNFD v1 namespace's directory depth: it faults past (fnn-feed-filename-max-v1-chunks) = *fn-ff-max-v1-chunks* (books/feed-filename.lisp)",
+  "fnn-export-sync-tree": "the export archive's directory layout: fn-sxd-program (books/store-export-durability.lisp) makes only config/ and records/ under the archive, so the depth is 2",
+  "fnn-dispatch": "recurses once, for a bare `fn', with the fixed argv (operator - help), which is not empty: depth 2",
+  "fnn-guard-conjuncts": "the if-nesting height of an entry's translated guard, a term the image's own source declares (fixed at build), not data",
+  "fnps-json": "the height of one prototype report plist, a fixed shape the tool writes (tools' page-store prototype; not on a node's path)",
+  "fnn-mux-begin-drain": "the mux connection state machine: fnn-mux-after never re-enters fnn-mux-work for the connection whose work loop is running (the working-connection mark it binds), and a TLS handshake started inside a call cannot finish inside it (SSL_accept needs the peer's Finished, a round trip): a fixed nesting, not per command or connection",
+  "fnn-mux-flush": "the mux connection state machine: fnn-mux-after never re-enters fnn-mux-work for the connection whose work loop is running (the working-connection mark it binds), and a TLS handshake started inside a call cannot finish inside it (SSL_accept needs the peer's Finished, a round trip): a fixed nesting, not per command or connection",
+  "fnn-mux-handshake-step": "the mux connection state machine: fnn-mux-after never re-enters fnn-mux-work for the connection whose work loop is running (the working-connection mark it binds), and a TLS handshake started inside a call cannot finish inside it (SSL_accept needs the peer's Finished, a round trip): a fixed nesting, not per command or connection",
+  "fnn-mux-start-waiting-handshake": "the mux connection state machine: fnn-mux-after never re-enters fnn-mux-work for the connection whose work loop is running (the working-connection mark it binds), and a TLS handshake started inside a call cannot finish inside it (SSL_accept needs the peer's Finished, a round trip): a fixed nesting, not per command or connection",
+  "fnn-mux-work": "the mux connection state machine: fnn-mux-after never re-enters fnn-mux-work for the connection whose work loop is running (the working-connection mark it binds), and a TLS handshake started inside a call cannot finish inside it (SSL_accept needs the peer's Finished, a round trip): a fixed nesting, not per command or connection"
+ },
+ "debt": {}
+}

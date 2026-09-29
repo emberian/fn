@@ -1,4 +1,4 @@
-"""The contract model the checker interprets: profile `local-commit-log`, v1.
+"""The contract model the checker interprets: profile `local-commit-log`, v2.
 
 This is the ONLY fn semantics in Python, and each rule is a transcription
 of a named theorem statement (or the cut table's verified column), cited
@@ -12,6 +12,9 @@ A HISTORY is one legal execution: the fate of each post's ORIGINAL attempt
 retry of an absent post commits it from the retry on; a retry of a
 committed post is a duplicate (no-op).  A committed post is a member of
 every group it named (atomic memberships) and serves exactly its bytes.
+Recovery, killed or complete, keeps the history; a checkpoint's
+publication, killed or complete, leaves the next open reading one whole
+checkpoint and reconstructing the same state.
 """
 from __future__ import annotations
 
@@ -40,8 +43,9 @@ RULES = {
         "fn-lg-batch-crash-is-a-prefix", "books/store-log-crash.lisp", None, "registered"),
     "boundary-fate": Rule(
         "boundary-fate",
-        "at a named cut of `store post' the candidate is absent, present or either, as "
-        "the cut table's column says (verified against the model program's steps)",
+        "at a named cut of a post the candidate is absent, present or either, as the "
+        "cut table's column for the post's route says (verified against the model "
+        "program's steps)",
         None, "tests/campaign/native_cuts.py", None, "verified-table"),
     "committed-serves-exact": Rule(
         "committed-serves-exact",
@@ -69,7 +73,42 @@ RULES = {
         "an accepted post is a member of every group it named and of none otherwise; "
         "no membership exists without the others (OBJ-005, STO-002)",
         None, None, "PRF-050", "pending"),
+    "recovery-keeps-history": Rule(
+        "recovery-keeps-history",
+        "recovery truncates only past the last complete record and completes: at every "
+        "cut of recovery, and after it, the history the next open reads is the killed "
+        "store's committed history",
+        "fn-lg-recovered-frontier-is-the-last-complete-record", "books/store-log-recover.lisp",
+        "PRF-245", "registered"),
+    "checkpoint-old-or-new": Rule(
+        "checkpoint-old-or-new",
+        "a death at a cut of the checkpoint's publication leaves the next open reading "
+        "one of the two whole checkpoints: the old before the rename, the new after the "
+        "root barrier, either at the rename (the cut table's column)",
+        "fn-bs-scp-program-crash-is-old-or-new",
+        "books/byte-store-state-checkpoint-program.lisp", "PRF-083", "registered"),
+    "checkpoint-open-equals-full-replay": Rule(
+        "checkpoint-open-equals-full-replay",
+        "an open from a checkpoint reconstructs the full replay's state: what is served "
+        "does not depend on which checkpoint the open read",
+        "fn-sn-recover-from-checkpoint-equals-full-recover", "books/store-checkpoint-open.lisp",
+        "PRF-083", "registered"),
+    "reclaim-old-or-new": Rule(
+        "reclaim-old-or-new",
+        "a death at a cut of the reclaim pass leaves the old publication before "
+        ":installed and the new one from it (host/native/owner.lisp +fnn-reclaim-cuts+; "
+        "the pass's book is owner-reclaim-pass.lisp; its theorem is not yet named here)",
+        None, "books/owner-reclaim-pass.lisp", None, "pending"),
 }
+
+# Which rule a persisted-records fact (the image's scan) is judged by, per
+# the phase the adapter records it in.
+PHASE_RULES = {"at-cut": "crash-prefix",
+               "after-killed-recovery": "recovery-keeps-history",
+               "after-recovery": "recovery-keeps-history",
+               "after-checkpoint": "checkpoint-open-equals-full-replay",
+               "final": "crash-prefix"}
+OLD_OR_NEW = {"old": ("old",), "new": ("new",), "either": ("old", "new")}
 
 
 def pending_rules(names) -> list:
@@ -101,6 +140,11 @@ def committed_at(scenario, history: dict, post_id: str, seq: int, journal) -> bo
             if op.op == "retry" and op.args.get("of") == post_id:
                 return True
     return False
+
+
+def _boundary_rule(registry: dict, boundary: str, route: str):
+    entry = registry.get(boundary, {})
+    return entry.get("rules", {}).get(route, entry.get("rule"))
 
 
 def narrow(scenario, history: dict, rec: dict, journal, registry: dict) -> tuple:
@@ -146,21 +190,43 @@ def narrow(scenario, history: dict, rec: dict, journal, registry: dict) -> tuple
                 if post_id not in declared:
                     return False, used   # a membership the post never named
             return True, used
+        if ev == "recover":
+            # A killed recovery (outcome lost) says nothing; the healing
+            # recovery completes, or the history was not kept.
+            if rec.get("phase") == "healing":
+                return rec.get("outcome") == "completed", ("recovery-keeps-history",)
+            return True, ()
         return True, ()
     if rec["kind"] == "environment":
         if ev == "fault-fired" and rec.get("action") == "kill":
-            rule = registry[rec["boundary"]]["rule"]
             op = scenario.operation(rec["operation"])
-            if op.op != "post" or rule is None:
-                return True, ()
-            allowed = {"absent": ("absent",), "present": ("committed",),
-                       "either": FATES}[rule]
-            return history[op.id] in allowed, ("boundary-fate", "crash-prefix")
+            if op.op == "post":
+                rule = _boundary_rule(registry, rec["boundary"], rec.get("route", "store-post"))
+                if rule is None:
+                    return True, ()
+                allowed = {"absent": ("absent",), "present": ("committed",),
+                           "either": FATES}[rule]
+                return history[op.id] in allowed, ("boundary-fate", "crash-prefix")
+            if op.op in ("recover", "restart"):
+                return True, ("recovery-keeps-history",)
+            if op.op == "checkpoint":
+                return True, ("checkpoint-old-or-new",)
+            if op.op == "reclaim":
+                return True, ("reclaim-old-or-new",)
+            return True, ()
         if ev == "persisted-records":
             count = len(scenario.prior_posts()) + sum(
                 1 for o in scenario.posts()
                 if committed_at(scenario, history, o.id, seq, journal))
-            return count == rec["count"], ("crash-prefix",)
+            rule = PHASE_RULES.get(rec.get("phase", "at-cut"), "crash-prefix")
+            return count == rec["count"], (rule,)
+        if ev == "checkpoint-installed":
+            # Which whole checkpoint the open read, against the cut's column:
+            # not a fact about any post's fate, so it empties B or leaves it.
+            rule = _boundary_rule(registry, rec["boundary"], "store-post")
+            if rule is None or rec.get("which") not in ("old", "new"):
+                return False, ("checkpoint-old-or-new",)
+            return rec["which"] in OLD_OR_NEW[rule], ("checkpoint-old-or-new",)
         return True, ()
     return True, ()
 
@@ -182,4 +248,10 @@ def witnesses_observed(scenario, journal) -> set:
             seen.add("read-during-competing-work")
         if ev == "reclaim" and r.get("freed"):
             seen.add("reclaim-freed")
+        if ev == "recover" and r.get("phase") == "healing" and r.get("outcome") == "completed":
+            seen.add("recovery-completed")
+        if ev == "list-group" and r.get("members"):
+            seen.add("memberships-listed")
+        if ev == "status" and str(r.get("open", "")).startswith("open=checkpoint:"):
+            seen.add("checkpoint-installed")
     return seen

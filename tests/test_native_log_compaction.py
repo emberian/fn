@@ -13,7 +13,7 @@ segments it covers.  The cases, each over a store the served node filled:
   second compaction drops the next segment; export then import of the
   compacted store gives the same archive;
 * a process death at each rotation and drop cut (developer image,
-  FN_NATIVE_LOG_FAULT = rotate-created | rotate-fenced | rotate-renamed |
+  FN_NATIVE_LOG_FAULT = rotate-created | rotate-fenced | rotate-renamed | rotate-headed |
   rotate-durable | drop-unlinked | drop-durable): the next writable open
   (`store recover`) serves every article as before, sweeps a spare that was
   never renamed, finishes an interrupted drop, and a later compaction
@@ -40,7 +40,7 @@ from tests.test_native_commit_log import Node, msgid, post_concurrently
 DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST", "")
 PRODUCTION = os.environ.get("FN_NATIVE_HOST", "")
 
-ROTATION_CUTS = ("rotate-created", "rotate-fenced", "rotate-renamed", "rotate-durable",
+ROTATION_CUTS = ("rotate-created", "rotate-fenced", "rotate-renamed", "rotate-headed", "rotate-durable",
                  "drop-unlinked", "drop-durable")
 # The spare's cuts: the next segment is staged, not yet named in journal/.
 SPARE_CUTS = ("rotate-created", "rotate-fenced")

@@ -17,8 +17,12 @@ file (the trust-tagged adapter, host/native/*.lisp: ledger.raw_host_paths)
 names -- fnn-call's, fnn-core's, the owner dispatchers' quoted entries and
 any other mention -- and everything those reach through tools/callgraph.py's
 mention edges (macros followed).  For each `defun' there, the EXECUTABLE
-body: an (mbe :logic L :exec E) runs E (the functions are guard-verified or
-:program, so raw Lisp runs the :exec branch), `mbt' runs as t.  A call is in
+body: an (mbe :logic L :exec E) runs E when the function is guard-verified
+or :program (raw Lisp runs the :exec branch), and L when it is a logic-mode
+function whose guards are not verified (the host calls through the
+executable counterpart, host/native/io.lisp fnn-call, and `*1*' of such a
+function evaluates its logic: a loop twin in its :exec never runs; lane
+depth-debt, `unverified'); `mbt' runs as t.  A call is in
 tail position when it is the body; a branch of an `if'/`cond'/`case' in tail
 position; the last form of a `let', `let*', `mv-let', `when', `unless',
 `progn$', `prog2$', `return-last' or lambda body in tail position; the last
@@ -171,14 +175,179 @@ def calls(term, tail: bool, out: list) -> None:
             calls(args[0], tail, out)
     elif name == "mbe":
         pairs = dict((_name(args[i]), args[i + 1]) for i in range(0, len(args) - 1, 2))
-        if ":exec" in pairs:
-            calls(pairs[":exec"], tail, out)
+        if _BRANCH[0] in pairs:
+            calls(pairs[_BRANCH[0]], tail, out)
     elif name == "mbt":
         return
     else:
         out.append((name, tail))
         for a in args:
             calls(a, False, out)
+
+
+# Which branch of an `mbe' runs: :exec for a guard-verified (or :program)
+# function, whose raw definition the host reaches; :logic for a logic-mode
+# function whose guards are not verified, since the host calls ACL2 through
+# the executable counterpart (host/native/io.lisp fnn-call, `*1*'), which
+# runs such a function's logic -- its :exec twin never runs (lane depth-debt).
+_BRANCH = [":exec"]
+_LOGIC_RUN: set[str] = set()  # closure()'s unverified logic-mode functions
+
+
+def body_calls(form, logic: bool) -> list:
+    """(callee, tailp) for FORM's body, reading the mbe branch that runs."""
+    out: list = []
+    _BRANCH[0] = ":logic" if logic else ":exec"
+    try:
+        seq(_body_forms(form[3:]), True, out)
+    finally:
+        _BRANCH[0] = ":exec"
+    return out
+
+
+# DATA-SIZED APPENDS (lane depth-debt-2).  `append' recurses on its first
+# argument, and a function whose guards are not verified runs its logic
+# through `*1*', where binary-append's own recursion runs too: one control-
+# stack frame per element of the first argument (the kind-5 persist's
+# 40,721 BINARY-APPEND frames, lane depth-debt).  Guard-verified code runs
+# the raw `append', a loop.  So on the closure, every `append' in a body that
+# runs its logic, whose first argument (every argument but the last) is not a
+# literal, a quoted constant, a `*constant*' or a `(list ...)' of fixed
+# arity, is a finding: verify the function's guards (so its raw code runs),
+# or list it under "append" -> "bounded" with the bound named.
+_SMALL_APPEND_HEADS = {"list", "quote"}
+
+
+def _small_first(arg) -> bool:
+    if isinstance(arg, (int, float)) or (isinstance(arg, str) and not isinstance(arg, Sym)):
+        return True
+    if isinstance(arg, Sym):
+        n = _name(arg)
+        return n in ("nil", "t") or bool(CONSTANT.fullmatch(n or ""))
+    if isinstance(arg, list) and arg:
+        if _name(arg[0]) == "coerce" and len(arg) > 1 and isinstance(arg[1], str) \
+                and not isinstance(arg[1], Sym):
+            return True  # (coerce "literal" 'list)
+        return _name(arg[0]) in _SMALL_APPEND_HEADS
+    return arg is None
+
+
+def appends(term, out: list) -> None:
+    """Append every data-sized first argument of an `append' in TERM (the
+    mbe branch that runs, as `calls' reads it)."""
+    if not isinstance(term, list) or not term:
+        return
+    op = term[0]
+    name = _name(op) if not isinstance(op, list) else None
+    if name in OPAQUE or name == "mbt":
+        return
+    if name == "mbe":
+        args = term[1:]
+        pairs = dict((_name(args[i]), args[i + 1]) for i in range(0, len(args) - 1, 2))
+        if _BRANCH[0] in pairs:
+            appends(pairs[_BRANCH[0]], out)
+        return
+    if name in ("append", "binary-append") and len(term) > 2:
+        for a in term[1:-1]:
+            if not _small_first(a):
+                out.append(a)
+    if name in ("let", "let*") and len(term) > 1 and isinstance(term[1], list):
+        for binding in term[1]:
+            if isinstance(binding, list) and len(binding) > 1:
+                appends(binding[1], out)
+        for a in term[2:]:
+            appends(a, out)
+        return
+    for a in (term if isinstance(op, list) else term[1:]):
+        appends(a, out)
+
+
+def _show(x) -> str:
+    if isinstance(x, list):
+        return "(" + " ".join(_show(a) for a in x) + ")"
+    return _name(x) if isinstance(x, Sym) else repr(x)
+
+
+def body_appends(form, logic: bool) -> list:
+    out: list = []
+    _BRANCH[0] = ":logic" if logic else ":exec"
+    try:
+        for f in _body_forms(form[3:]):
+            appends(f, out)
+    finally:
+        _BRANCH[0] = ":exec"
+    return out
+
+
+def append_findings(defs: dict) -> list[dict]:
+    rows = []
+    for name, d in sorted(defs.items()):
+        form = d.form
+        if name not in _LOGIC_RUN:
+            continue
+        if callgraph.head(form) not in callgraph.FUNCTION_HEADS or len(form) < 4:
+            continue
+        found = body_appends(form, True)
+        if found:
+            rows.append({"function": name, "where": "{}:{}".format(d.path, d.line),
+                         "first": [_show(a) for a in found]})
+    return rows
+
+
+def _xargs(form) -> dict:
+    """The keyword arguments of FORM's (declare (xargs ...)) forms."""
+    found: dict = {}
+    for item in form[3:]:
+        if not (isinstance(item, list) and item and _name(item[0]) == "declare"):
+            continue
+        for decl in item[1:]:
+            if isinstance(decl, list) and decl and _name(decl[0]) == "xargs":
+                rest = decl[1:]
+                for i in range(0, len(rest) - 1, 2):
+                    found[_name(rest[i])] = rest[i + 1]
+            elif isinstance(decl, list) and decl and _name(decl[0]) == "type":
+                found.setdefault(":guard", True)
+    return found
+
+
+_VERIFY = re.compile(r"\(verify-guards\s+([^\s()]+)", re.IGNORECASE)
+_EAGER0 = re.compile(r"\(set-verify-guards-eagerness\s+0\s*\)", re.IGNORECASE)
+_EAGER2 = re.compile(r"\(set-verify-guards-eagerness\s+2\s*\)", re.IGNORECASE)
+
+
+def unverified(defs: dict) -> set[str]:
+    """The logic-mode functions of DEFS whose guards are not verified: an
+    explicit `:verify-guards nil', no guard declared (eagerness 1 verifies only
+    a declared guard), or a book at eagerness 0 -- each unless a
+    `(verify-guards NAME' event names it somewhere in books/ or host/."""
+    events: set[str] = set()
+    eager: dict[str, int] = {}
+    for top in ("books", "host"):
+        for path in sorted((ROOT / top).rglob("*.lisp")):
+            text = path.read_text(encoding="utf-8", errors="replace")
+            events.update(m.lower() for m in _VERIFY.findall(text))
+            rel = path.relative_to(ROOT).as_posix()
+            eager[rel] = 0 if _EAGER0.search(text) else 2 if _EAGER2.search(text) else 1
+    out = set()
+    for name, d in defs.items():
+        form = d.form
+        if callgraph.head(form) not in callgraph.FUNCTION_HEADS or len(form) < 4:
+            continue
+        x = _xargs(form)
+        mode = x.get(":mode")
+        if isinstance(mode, Sym) and _name(mode) == ":program":
+            continue
+        vg = x.get(":verify-guards")
+        if isinstance(vg, Sym) and _name(vg) == "nil":
+            ok = False
+        elif vg is not None:
+            ok = True
+        else:
+            level = eager.get(d.path, 1)
+            ok = level == 2 or (level == 1 and (":guard" in x or ":stobjs" in x))
+        if not ok and name not in events:
+            out.add(name)
+    return out
 
 
 def seq(forms: list, tail: bool, out: list) -> None:
@@ -381,7 +550,8 @@ def closure() -> tuple[dict[str, callgraph.Definition], set[str]]:
     """(the ACL2 function definitions of the host-called closure, the roots).
 
     The walk follows what RUNS: a function's executable body's calls (its
-    mbe :exec branch, never :logic), a macro's every mention (its template
+    mbe :exec branch; the :logic branch of a logic-mode function whose guards
+    are not verified, which the host's *1* call runs), a macro's every mention (its template
     builds the calls), an abstract stobj export's :exec function and a
     constrained function's attachment."""
     tree = ledger.load_tree()
@@ -405,6 +575,9 @@ def closure() -> tuple[dict[str, callgraph.Definition], set[str]]:
         for form, _line in tree.hosts[relative].forms:
             callgraph.symbols(form, named)
     roots = {n for n in named if n in functions or n in extra}
+    logic_run = unverified(functions)
+    _LOGIC_RUN.clear()
+    _LOGIC_RUN.update(logic_run)
 
     def successors(name: str) -> set[str]:
         found: set[str] = set(extra.get(name, ()))
@@ -413,8 +586,7 @@ def closure() -> tuple[dict[str, callgraph.Definition], set[str]]:
         elif name in functions:
             d = functions[name]
             if callgraph.head(d.form) in callgraph.FUNCTION_HEADS and len(d.form) >= 4:
-                out: list = []
-                seq(_body_forms(d.form[3:]), True, out)
+                out = body_calls(d.form, name in logic_run)
                 found |= {c for c, _ in out}
             else:  # a record's generated definitions: every mention
                 found |= graph.edges.get(name, set())
@@ -439,14 +611,14 @@ def closure() -> tuple[dict[str, callgraph.Definition], set[str]]:
 def findings() -> tuple[list[dict], int, int]:
     """(every non-tail recursion on the closure, closure size, root count)."""
     defs, roots = closure()
+    _LAST_DEFS.clear()
+    _LAST_DEFS.update(defs)
     sites: dict[str, list] = {}
     for name, d in defs.items():
         form = d.form
         if callgraph.head(form) not in callgraph.FUNCTION_HEADS or len(form) < 4:
             continue
-        out: list = []
-        seq(_body_forms(form[3:]), True, out)
-        sites[name] = out
+        sites[name] = body_calls(form, name in _LOGIC_RUN)
     graph = {n: sorted({c for c, _ in s if c in sites}) for n, s in sites.items()}
     rows = []
     for comp in _sccs(graph):
@@ -460,6 +632,8 @@ def findings() -> tuple[list[dict], int, int]:
                 rows.append({"function": fn, "component": comp, "nontail_calls": bad,
                              "where": "{}:{}".format(d.path, d.line)})
     rows.sort(key=lambda r: r["function"])
+    _LAST_ROOTS.clear()
+    _LAST_ROOTS.update(roots)
     return rows, len(sites), len(roots)
 
 
@@ -624,9 +798,99 @@ def interpreted_report(rows: list[dict], source: str) -> list[str]:
     return lines
 
 
+_LAST_DEFS: dict = {}
+_LAST_ROOTS: set[str] = set()  # findings()'s host-called roots
+
+
+_EXTRACT_ROOTS = ROOT / "tools" / "extract" / "roots.sh"
+
+
+def extract_roots() -> set[str]:
+    """The extractor's declared roots (tools/extract/roots.sh): the entries
+    the extracted program's host calls, which no raw host file names."""
+    text = _EXTRACT_ROOTS.read_text(encoding="utf-8") if _EXTRACT_ROOTS.exists() else ""
+    out: set[str] = set()
+    for m in re.finditer(r'^FN_EXTRACT_(?:ROOTS|EXTRA)_DECLARED="([^"]*)"', text, re.MULTILINE):
+        out.update(w.lower() for w in m.group(1).split())
+    return out
+
+
+def program_entries(defs: dict, roots: set[str]) -> list[dict]:
+    """Every host-called entry (a raw host file's or the extractor's root) whose
+    definition is `:mode :program': no guard, so nothing the host establishes is
+    checked at the boundary and no theorem can mention it (AGENTS.md: every
+    host-called entry guard-verified).  Rows sorted by name."""
+    rows = []
+    for name in sorted(set(roots) | extract_roots()):
+        d = defs.get(name)
+        if d is None:
+            continue
+        form = d.form
+        if callgraph.head(form) not in callgraph.FUNCTION_HEADS or len(form) < 4:
+            continue
+        mode = _xargs(form).get(":mode")
+        if isinstance(mode, Sym) and _name(mode) == ":program":
+            rows.append({"function": name, "where": "{}:{}".format(d.path, d.line)})
+    return rows
+
+
+def check_program(rows: list[dict], baseline: dict) -> list[str]:
+    """The :program host-called entries only shrink: each is listed by name
+    under "program" in tools/depth_baseline.json with why it is still
+    :program (row K2), a new one is refused, and an entry that is no longer
+    :program (or no longer host-called) must leave the list."""
+    listed = baseline.get("program", {})
+    found = {r["function"] for r in rows}
+    problems = []
+    for r in rows:
+        fn = r["function"]
+        if fn not in listed:
+            problems.append(
+                "{} ({}): a :program host-called entry (nothing the host establishes is checked "
+                "at the boundary, and no theorem can mention it): make it :logic and verify its "
+                "guards, or split its ACL2 decision out as a guard-verified :logic entry it calls; "
+                "the survivors are listed by name under \"program\" in tools/depth_baseline.json "
+                "with why (that list only shrinks)".format(fn, r["where"]))
+    for fn in sorted(set(listed) - found):
+        problems.append("{}: listed under \"program\" in tools/depth_baseline.json but no longer a "
+                        ":program host-called entry: remove its entry (the list only shrinks)"
+                        .format(fn))
+    return problems
+
+
 def load_baseline(path: Path = BASELINE) -> dict:
     data = json.loads(path.read_text(encoding="utf-8"))
-    return {"bounded": dict(data.get("bounded", {})), "debt": dict(data.get("debt", {}))}
+    app = data.get("append", {})
+    return {"bounded": dict(data.get("bounded", {})), "debt": dict(data.get("debt", {})),
+            "append": {"bounded": dict(app.get("bounded", {})), "debt": dict(app.get("debt", {}))},
+            "program": dict(data.get("program", {}))}
+
+
+def check_appends(rows: list[dict], baseline: dict) -> list[str]:
+    """The data-sized append rule (see `appends'): the same only-shrinks
+    discipline as the recursions, under the baseline's "append" key."""
+    listed = baseline.get("append", {"bounded": {}, "debt": {}})
+    problems = []
+    found = {r["function"]: r for r in rows}
+    for fn, r in sorted(found.items()):
+        if fn in listed["bounded"] or fn in listed["debt"]:
+            continue
+        problems.append(
+            "{} ({}): appends onto {} in a body the host runs through *1* (its guards are "
+            "not verified), where binary-append recurses once per element of its first "
+            "argument.  Verify the function's guards (the raw append is a loop), or list it "
+            "under \"append\" -> \"bounded\" in tools/depth_baseline.json with the bound "
+            "named".format(fn, r["where"], ", ".join(r["first"])))
+    for kind in ("bounded", "debt"):
+        for fn in sorted(set(listed[kind]) - set(found)):
+            problems.append("{}: listed under \"append\" -> \"{}\" but no longer appends data "
+                            "through *1* on the closure: remove its entry".format(fn, kind))
+    for fn, why in sorted(listed["bounded"].items()):
+        text = why if isinstance(why, str) else ""
+        if not (CONSTANT.search(text) or LITERAL.search(text) or STRUCTURAL.search(text)):
+            problems.append("{}: its \"append\" -> \"bounded\" entry names no bound ({!r})".format(
+                fn, text))
+    return problems
 
 
 def check(rows: list[dict], baseline: dict, constants: set[str] | None = None) -> list[str]:
@@ -757,12 +1021,35 @@ def main(argv: list[str] | None = None) -> int:
         for r in rows:
             print("{:8s} {:45s} {}  {}".format(r["class"], r["function"], r["where"], r["why"]))
     problems = check(rows, baseline)
+    app_rows = append_findings(_LAST_DEFS)
+    if arguments.list:
+        listed = baseline["append"]
+        for r in app_rows:
+            cls = ("bounded" if r["function"] in listed["bounded"]
+                   else "debt" if r["function"] in listed["debt"] else "UNLISTED")
+            print("append-{:8s} {:45s} {}  {}".format(cls, r["function"], r["where"],
+                                                     " | ".join(r["first"])))
+    problems += check_appends(app_rows, baseline)
+    program_rows = program_entries(_LAST_DEFS, _LAST_ROOTS)
+    if arguments.list:
+        listed = baseline.get("program", {})
+        for r in program_rows:
+            print("program-{:8s} {:45s} {}  {}".format(
+                "listed" if r["function"] in listed else "UNLISTED", r["function"],
+                r["where"], listed.get(r["function"], "")))
+    problems += check_program(program_rows, baseline)
     for p in problems:
         print("depth_check: " + p, file=sys.stderr)
     print("depth_check: {} host-called root(s), {} function(s) in the closure, {} non-tail "
-          "recursion(s): {} bounded, {} debt, {} problem(s)".format(
+          "recursion(s): {} bounded, {} debt; {} data-sized append(s) through *1*: {} bounded, {} debt; "
+          "{} :program host-called entr{} ({} listed); {} problem(s)".format(
               roots, size, len(rows), sum(r["class"] == "bounded" for r in rows),
-              sum(r["class"] == "debt" for r in rows), len(problems)), file=sys.stderr)
+              sum(r["class"] == "debt" for r in rows), len(app_rows),
+              sum(r["function"] in baseline["append"]["bounded"] for r in app_rows),
+              sum(r["function"] in baseline["append"]["debt"] for r in app_rows),
+              len(program_rows), "y" if len(program_rows) == 1 else "ies",
+              sum(r["function"] in baseline.get("program", {}) for r in program_rows),
+              len(problems)), file=sys.stderr)
     return 1 if problems else 0
 
 

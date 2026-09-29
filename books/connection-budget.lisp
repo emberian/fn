@@ -172,6 +172,15 @@
   (<= (fn-zc-deflate-state-octets) *fn-cbud-compress-native-octets*)
   :rule-classes nil)
 
+; The heap term also holds the outbound side's buffer: one window's
+; compressed output under the flush schedule (books/nntp-compress.lisp
+; fn-zc-sync-output-octets of fn-zc-window-octets), next to the inflater.
+(defthm fn-cbud-compress-heap-covers-the-layer
+  (<= (+ *fn-zin-window* *fn-zin-tab-octets* (* 3 *fn-cbud-read-quantum*)
+         (fn-zc-sync-output-octets (fn-zc-window-octets)))
+      *fn-cbud-compress-heap-octets*)
+  :rule-classes nil)
+
 (defun fn-cbud-conn-heap-octets (article)
   (declare (xargs :guard t))
   (+ *fn-cbud-record-octets*

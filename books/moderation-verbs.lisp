@@ -93,14 +93,45 @@
   (fn-inj-append *fn-mvb-approved-field*
                  (fn-inj-append login (fn-inj-append *fn-inj-crlf* held))))
 
-(defun fn-mvb-join-groups (groups)
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of data with no fixed cap (D27).
+(local
+ (defthm fn-mvb-rev-onto-of-rev-onto
+   (equal (fn-ag-rev-onto (fn-ag-rev-onto a acc) b)
+          (fn-ag-rev-onto acc (append a b)))
+   :hints (("Goal" :induct (fn-ag-rev-onto a acc)))))
+
+; ACC holds the octets so far, reversed.
+(defun fn-mvb-join-groups-loop (groups acc)
   (declare (xargs :guard t))
   (if (consp groups)
-      (append (fn-record-string-octets (car groups))
-              (if (consp (cdr groups))
-                  (cons 44 (fn-mvb-join-groups (cdr groups)))
-                nil))
-    nil))
+      (let ((acc (fn-ag-rev-onto (fn-record-string-octets (car groups)) acc)))
+        (fn-mvb-join-groups-loop (cdr groups)
+                                 (if (consp (cdr groups)) (cons 44 acc) acc)))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-mvb-join-groups (groups)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp groups)
+                  (append (fn-record-string-octets (car groups))
+                          (if (consp (cdr groups))
+                              (cons 44 (fn-mvb-join-groups (cdr groups)))
+                            nil))
+                nil)
+       :exec (fn-mvb-join-groups-loop groups nil)))
+
+(defthm fn-mvb-join-groups-loop-is-rev-onto
+  (equal (fn-mvb-join-groups-loop groups acc)
+         (fn-ag-rev-onto acc (fn-mvb-join-groups groups)))
+  :hints (("Goal" :induct (fn-mvb-join-groups-loop groups acc)
+                  :in-theory (disable fn-record-string-octets))))
+
+(verify-guards fn-mvb-join-groups
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-mvb-join-groups fn-ag-rev-onto
+                                fn-mvb-join-groups-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
