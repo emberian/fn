@@ -5,7 +5,7 @@
     "declared": 1224,
     "declared_and_dispatched": 1207,
     "guard_verified": 550,
-    "with_keystone": 155
+    "with_keystone": 157
   },
   "entries": [
     {
@@ -12567,7 +12567,11 @@
       "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-report-observe-next-selects-exactly-the-least-yielding-row"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -12583,7 +12587,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-report-outbox-next-selects-exactly-the-least-yielding-row"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,

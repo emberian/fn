@@ -17459,6 +17459,42 @@
         "fn-bpn-lifecycle-record-bindingsp-pairs-the-records",
         "fn-bpn-replay-records-ready-advances-the-frontier-per-record"
       ]
+    },
+    {
+      "id": "PRF-1047",
+      "title": "fn-bpn-report-observe-next answers nil exactly when no held row after AFTER observes as a report for the node, else the answer of such a row with the least arrival",
+      "statement": "books/bp-report-observe.lisp, called by host/native/bp-node.lisp's report drive (the next observed report after the arrival it last consumed). A held row YIELDS (fn-bpn-report-observe-yieldsp) when its arrival is a natural after AFTER (nil: every arrival) and fn-bpn-report-observe-held answers for the node with a natural arrival. KEYSTONE fn-bpn-report-observe-next-selects-exactly-the-least-yielding-row, two-sided and hypothesis-free: the answer is non-nil iff some held row yields (fn-bpn-report-observe-any-yields); a non-nil answer is the answer of a yielding row (fn-bpn-report-observe-answer-of-a-yielding-row) whose arrival is at most every yielding row's (fn-bpn-report-observe-arrival-at-most-every-yield). Proved through the scan's invariant over its carried selection (fn-bpn-report-observe-next-aux-selects-the-least-yield). Teeth: tests/acl2/bp-report-observe-tests.lisp (the authored fixture's arrival-2 report for the local node; the nil side after 2 and for the peer; a mutation witness for a selector ignoring AFTER).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-005",
+        "REP-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-report-observe.lisp",
+        "tests/acl2/bp-report-observe-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-6: the bp book entries, one two-sided keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
+    },
+    {
+      "id": "PRF-1048",
+      "title": "fn-bpn-report-outbox-next answers nil exactly when no held row after AFTER has an outbox view, else the view of such a row with the least arrival under the scan's own comparison",
+      "statement": "books/bp-report-outbox.lisp, called by host/native/bp-node.lisp's report drive (the next outbox view after the arrival it last consumed). A held row YIELDS (fn-bpn-report-outbox-yieldsp) when its arrival is after AFTER (nil: every row) and fn-bpn-report-outbox-view answers (a tombstoned report with a decodable payload). KEYSTONE fn-bpn-report-outbox-next-selects-exactly-the-least-yielding-row, two-sided and hypothesis-free: the answer is non-nil iff some held row yields (fn-bpn-report-outbox-any-yields); a non-nil answer is the view of a yielding row (fn-bpn-report-outbox-view-of-a-yielding-row) and no yielding row's view has a smaller arrival under the scan's comparison (fn-bpn-report-outbox-arrival-at-most-every-yield). Proved through the scan's invariant over its carried selection (fn-bpn-report-outbox-next-aux-selects-the-least-yield). Teeth: tests/acl2/bp-report-outbox-tests.lisp (two tombstones at arrivals 1 then 0 in list order: least 0 with no AFTER, 1 after 0, nil after 1; a mutation witness for a list-order selector).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-005",
+        "REP-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-report-outbox.lisp",
+        "tests/acl2/bp-report-outbox-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-6: the bp book entries, one two-sided keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
     }
   ]
 }

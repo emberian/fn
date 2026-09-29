@@ -17091,6 +17091,32 @@
           "name": "fn-bpn-replay-records-ready-advances-the-frontier-per-record"
         }
       ]
+    },
+    {
+      "id": "PRF-1047",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-observe-next-selects-exactly-the-least-yielding-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-observe-next-aux-selects-the-least-yield"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1048",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-outbox-next-selects-exactly-the-least-yielding-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-outbox-next-aux-selects-the-least-yield"
+        }
+      ]
     }
   ]
 }

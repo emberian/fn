@@ -2503,10 +2503,12 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpn-report-observe-next
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-report-observe-next-selects-exactly-the-least-yielding-row))
 
 (definterface fn-bpn-report-outbox-next
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpn-report-outbox-next-selects-exactly-the-least-yielding-row))
 
 (definterface fn-bpn-report-outbox-peer-matchp
   :class ::ideal)
