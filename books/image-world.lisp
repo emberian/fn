@@ -84,6 +84,7 @@
 (include-book "feed-connection")
 (include-book "feed-connection-invariants")
 (include-book "native-operator")
+(include-book "native-operator-stage")
 (include-book "heap-figure")
 (include-book "heap-open-nursery")
 (include-book "heap-reservation")
