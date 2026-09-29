@@ -633,33 +633,48 @@ class AffectedByTests(unittest.TestCase):
     def test_dry_run_lists_the_affected_roots_in_requested_order(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
-            code, listed = repository.dry_run(ParallelScheduleTests.ORDER,
-                                              ["books/mid.lisp"])
+            repository.write_makefile(ParallelScheduleTests.ORDER)
+            code, listed = repository.dry_run([], ["books/mid.lisp"])
             self.assertEqual(code, 0)
             self.assertEqual(listed, ["books/mid", "books/leaf-a",
                                       "books/leaf-b", "books/leaf-c"])
-            self.assertEqual(repository.dry_run(ParallelScheduleTests.ORDER,
-                                                ["books/free-a"])[1],
+            self.assertEqual(repository.dry_run([], ["books/free-a"])[1],
                              ["books/free-a"])
-            # Two targets select the union, still in requested order.
-            self.assertEqual(repository.dry_run(ParallelScheduleTests.ORDER,
-                                                ["books/free-b", "books/leaf-a"])[1],
+            # Two targets select the union, still in Makefile order.
+            self.assertEqual(repository.dry_run([], ["books/free-b", "books/leaf-a"])[1],
                              ["books/leaf-a", "books/free-b"])
+
+    def test_named_roots_and_affected_by_are_a_union_not_a_filter(self):
+        # obstructions-2: `books/x --affected-by books/y` searched books/x
+        # alone -- the umbrellas that include books/y were silently omitted
+        # and books/x was dropped when it did not reach books/y.
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            repository.write_makefile(ParallelScheduleTests.ORDER)
+            code, listed = repository.dry_run(["books/free-a"], ["books/mid"])
+            self.assertEqual(code, 0)
+            self.assertEqual(listed, ["books/free-a", "books/mid", "books/leaf-a",
+                                      "books/leaf-b", "books/leaf-c"])
+            # A named root that is also affected appears once, where named.
+            self.assertEqual(repository.dry_run(["books/leaf-b"], ["books/mid"])[1],
+                             ["books/leaf-b", "books/mid", "books/leaf-a",
+                              "books/leaf-c"])
+        self.assertEqual(runner.affected_selection([], [], []), [])
 
     def test_a_deep_change_selects_every_root_above_it(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
-            self.assertEqual(repository.dry_run(ParallelScheduleTests.ORDER,
-                                                ["books/base"])[1],
+            repository.write_makefile(ParallelScheduleTests.ORDER)
+            self.assertEqual(repository.dry_run([], ["books/base"])[1],
                              ["books/base", "books/mid", "books/leaf-a",
                               "books/leaf-b", "books/leaf-c"])
 
     def test_only_the_affected_books_are_certified(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            repository.write_makefile(ParallelScheduleTests.ORDER)
             code, manifest = repository.certify(
-                ParallelScheduleTests.ORDER, jobs=4,
-                extra=["--affected-by", "books/leaf-a.lisp"])
+                [], jobs=4, extra=["--affected-by", "books/leaf-a.lisp"])
             self.assertEqual((code, manifest["status"]), (0, "passed"))
             self.assertEqual(manifest["requested_books"], ["books/leaf-a"])
             self.assertEqual(manifest["affected_by"], ["books/leaf-a.lisp"])
@@ -712,9 +727,10 @@ class MakefileRootsTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertEqual(listed, ["books/base", "books/mid", "books/leaf-a",
                                       "books/leaf-b", "books/leaf-c"])
-            stale = ["books/base", "books/mid", "books/leaf-a"]
-            self.assertEqual(repository.dry_run(stale, ["books/base"])[1], stale,
-                             "a named subset still bounds the search")
+            named = ["books/base", "books/mid", "books/leaf-a"]
+            self.assertEqual(repository.dry_run(named, ["books/base"])[1],
+                             named + ["books/leaf-b", "books/leaf-c"],
+                             "a named subset no longer bounds the search")
 
     def test_project_roots_are_certifiable_and_store_dependents_remain_selected(self):
         roots = runner.default_books()

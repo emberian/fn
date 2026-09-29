@@ -796,9 +796,12 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
         raise FarmError(f"{host}: {identifier} did not start under {remote}: "
                         f"ssh exited {started.returncode}: "
                         f"{started.stdout.strip() or '(no output)'}")
+    launched = re.search(r"FN_FARM_STARTED \S+ (\d+)", started.stdout or "")
     record = {
         "run_id": identifier,
         "host": host,
+        # The detached wrapper's PID on the box: what `cancel` stops.
+        "pid": int(launched.group(1)) if launched else None,
         "path": str(root),
         "remote_path": str(remote),
         "books": books,
@@ -1365,6 +1368,58 @@ print(json.dumps(rows))
 '''
 
 
+def cancel_script(root: Path, identifier: str, pid: int | None) -> str:
+    """Stop one run's process tree on the box and finalise it as killed.
+
+    Lanes killed their superseded runs by hand and then wrote
+    `build/farm/RUN.status` = 143 themselves, because until then `status`
+    and `wait` reported the run as still certifying (credits-stall, and
+    tooling-obstructions' ask).  The tree is collected first and signalled
+    at once, so the runner cannot start its next book in between.  Without a
+    recorded PID (a run submitted before 2026-09-29) the wrapper is found by
+    its log path; the bracketed pattern never matches this script's own
+    command line.
+    """
+    status_file = f"build/farm/{identifier}.status"
+    pattern = "[b]uild/farm/" + re.escape(identifier) + r"\.log"
+    finder = (str(pid) if pid else
+              f"$(ps -eo pid=,args= | grep {shlex.quote(pattern)} | awk '{{print $1}}')")
+    return (
+        f"cd {remote_quote(root)} 2>/dev/null || {{ echo NOROOT; exit 9; }}; "
+        f"if [ -s {status_file} ]; then echo ALREADY $(cat {status_file}); exit 0; fi; "
+        f"test -e build/farm/{identifier}.log || {{ echo UNKNOWN; exit 8; }}; "
+        "tree() { echo $1; for c in $(ps -eo pid=,ppid= | awk -v p=$1 '$2==p{print $1}'); "
+        "do tree $c; done; }; "
+        f"all=; for p in {finder}; do kill -0 $p 2>/dev/null && all=\"$all $(tree $p)\"; done; "
+        "[ -n \"$all\" ] && kill -TERM $all 2>/dev/null; sleep 2; "
+        "[ -n \"$all\" ] && kill -KILL $all 2>/dev/null; "
+        f"[ -s {status_file} ] || echo 143 > {status_file}; "
+        "echo CANCELLED $(echo $all | wc -w | tr -d ' ')"
+    )
+
+
+def cancel(host: str, identifier: str, root: Path, remote: str | None = None) -> int:
+    """`farm.py cancel HOST RUN`: stop the run and write the status 143 runners wrote by hand."""
+    record = run_record(root, identifier)
+    if record.get("host") and record["host"] != host:
+        raise FarmError(f"{identifier} was submitted to {record['host']}, not {host}")
+    where = remote_root(root, identifier, remote)
+    result = ssh(host, cancel_script(where, identifier, record.get("pid")), check=False)
+    said = result.stdout.strip().splitlines()[-1:] or [""]
+    word = said[0].split()
+    if not word or word[0] in ("NOROOT", "UNKNOWN"):
+        raise FarmError(f"{identifier} is not a run under {host}:{where} "
+                        f"({' '.join(word) or f'ssh exited {result.returncode}'}); "
+                        "pass --remote-root with the gate it ran in")
+    if word[0] == "ALREADY":
+        print(f"{identifier} on {host}: already finished (status {word[1:] and word[1]}); "
+              "nothing stopped")
+        return 0
+    print(f"{identifier} on {host}: stopped {word[1]} process(es); status 143 "
+          f"(killed, no verdict) written under {where}")
+    return 0
+
+
 def status_script(root: Path) -> str:
     """Read one remote snapshot; never start a proof or publish a pair."""
     return f"cd {remote_quote(root)} && python3 -c {shlex.quote(STATUS_SNAPSHOT)}"
@@ -1404,7 +1459,8 @@ def uncited_in_selection(root: Path, books: list[str], affected_by: list[str]) -
     import ledger  # noqa: E402
     roots = books or ledger.makefile_roots()
     if affected_by:
-        roots = certify_books.affected_roots(roots, affected_by)
+        roots = certify_books.affected_selection(books, ledger.makefile_roots(),
+                                                 affected_by)
     return certified_claims.uncited_books(root, certify_books.with_dependencies(roots))
 
 
@@ -1473,18 +1529,20 @@ def recertify_list(paths: list[str]) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("action", choices=("submit", "wait", "status"))
+    parser.add_argument("action", choices=("submit", "wait", "status", "cancel"))
     parser.add_argument("host", help="hbox or persvati; submit: 'auto' (or no box at "
                                      "all) picks the one with the lowest load per core")
     parser.add_argument("rest", nargs="*",
-                        help="submit: book roots; wait: the run id")
+                        help="submit: book roots; wait, cancel: the run id (farm.py wait BOX RUN)")
     parser.add_argument("--jobs", default=os.environ.get("FN_CERTIFY_JOBS", "auto"),
                         help="concurrent ACL2s on the box: a count, or auto / auto:N "
                              "(the default: the count that finishes the longest "
                              "include chain soonest, tools/chain_schedule.py)")
     parser.add_argument("--affected-by", action="append", default=[],
-                        help="certify the Makefile roots whose closure contains "
-                             "this book (repeatable)")
+                        help="also certify every Makefile root whose closure "
+                             "contains this book (repeatable).  With books named, "
+                             "the run certifies the UNION: the named books and "
+                             "every affected Makefile root (umbrellas included)")
     parser.add_argument("--closure", action="store_true",
                         help="also certify what those roots include, in "
                              "dependency order: the box then needs no "
@@ -1499,7 +1557,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="certify this book of the closure afresh instead of "
                              "installing its cached pair (repeatable; passed to "
                              "the cache preflight and the runner)")
-    parser.add_argument("--recertify-from", action="append", default=[], metavar="FILE",
+    parser.add_argument("--recertify-from", "--recertify-list", action="append",
+                        default=[], metavar="FILE", dest="recertify_from",
                         help="add to --recertify every book named in FILE (words "
                              "separated by whitespace or commas; `#' starts a "
                              "comment; `-' reads standard input), so a list "
@@ -1623,6 +1682,12 @@ def main(argv: list[str] | None = None) -> int:
             for line in verdict_lines(root, identifier, code):
                 print(line)
             return code
+        if arguments.action == "cancel":
+            if len(arguments.rest) != 1:
+                parser.error("cancel takes exactly one run id: farm.py cancel BOX RUN")
+            return cancel(arguments.host, arguments.rest[0], root,
+                          (str(expand_remote(arguments.host, arguments.remote_root))
+                           if arguments.remote_root else None))
         remote = (expand_remote(arguments.host, arguments.remote_root)
                   if arguments.remote_root else root)
         return status(arguments.host, remote, root)
