@@ -30,7 +30,7 @@
 ;                               operator's, `fn-exp-socket-cap')
 ;   exposure-per-address       connections held at once from one address
 ;   exposure-steps-per-second  served steps one address may start per
-;                               1000 ms quantum; a step is one fn-owner-chunk
+;                               1000 ms quantum; a step is one fn-owner-chunk-span-at
 ;                               over at most one host read (D27: work, not
 ;                               data).  Exhausted, the connection WAITS for
 ;                               the next quantum: backpressure, never a

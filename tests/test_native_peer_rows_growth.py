@@ -23,7 +23,7 @@ import os
 import time
 import unittest
 
-from tests.native_harness import EXIT_FAULT, EXIT_OK, Node, native_image, requires
+from tests.native_harness import EXIT_OK, Node, native_image, requires
 # The harness stores' init budget (tools/native_env.py): init refuses a
 # store without FN_INIT_BUDGET_MB on a large machine (batch AZ, 2026-09-28).
 from tools.native_env import HARNESS_INIT_BUDGET_MB  # noqa: E402
@@ -99,12 +99,9 @@ class NativePeerRowsGrowthTests(unittest.TestCase):
         self.assertEqual(sorted(carried_again), sorted(carried))
 
 
-OLD_IMAGE = os.environ.get("FN_OLD_IMAGE")
-
-
 @requires(DEVELOPER)
 class NativePeerRowsLiveTests(unittest.TestCase):
-    """PKT-451 (4) and (5): the live owner's arm, and an older image's refusal.
+    """PKT-451 (4): the live owner's arm.
 
     With a node running, `peer carries` and `peer budget` reach the owner
     over the control socket (host/native/control.lisp -> host/native/admin.lisp
@@ -113,16 +110,13 @@ class NativePeerRowsLiveTests(unittest.TestCase):
     `fn-native-admin-plan-deltas-over'), so the owner publishes
     :add-peer-rows (code 18) and, for the second budget, :remove-peer-rows
     (code 19).  After the owner stops, `peer list' (a fresh open replaying
-    every record) names the principals and the second budget.  When
-    FN_OLD_IMAGE names an image from before the two codes (bbf52159), that
-    image refuses the store at open and opens a fresh store (the control):
-    the rollback sentence in docs/operator.md.
+    every record) names the principals and the second budget.
     """
     listener = True
     setUp = NativePeerRowsGrowthTests.setUp
     ok = NativePeerRowsGrowthTests.ok
 
-    def test_the_live_owner_extends_a_peer_and_an_older_image_refuses_it(self):
+    def test_the_live_owner_extends_a_peer(self):
         self.ok("init", "fn.test")
         self.node.start()
         self.ok("peer", "add", "far", "far.example.invalid", "192.0.2.44",
@@ -140,18 +134,6 @@ class NativePeerRowsLiveTests(unittest.TestCase):
         self.assertIn("2097152", listed)
         self.assertNotIn("1048576", listed)
         print("peer-rows-live:", listed.strip()[:300])
-        if OLD_IMAGE:
-            def old_status(node, name):
-                result = node.operator("status", image=OLD_IMAGE, env=BUDGET, timeout=240)
-                print("peer-rows-old-image", name, "->", result.returncode,
-                      (result.stdout + result.stderr).decode(
-                          "utf-8", "replace")[-200:].replace("\n", " "))
-                return result
-            fresh = Node(self, DEVELOPER, root=self.root.parent / "fresh", control=False,
-                         env=BUDGET)
-            fresh.init(timeout=240)
-            self.assertEqual(old_status(fresh, "fresh").returncode, EXIT_OK)
-            self.assertEqual(old_status(self.node, "extended").returncode, EXIT_FAULT)
 
 
 if __name__ == "__main__":

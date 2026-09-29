@@ -100,6 +100,13 @@ class HostBindingTests(unittest.TestCase):
         self.assertTrue(any("fn-c is declared twice" in p for p in found), found)
 
 
+class GapTests(unittest.TestCase):
+    def test_subsystem_prefix_then_file(self):
+        self.assertEqual(interface_emit.subsystem("fn-owner-x", {"host/native/bp.lisp"}), "owner")
+        self.assertEqual(interface_emit.subsystem("fn-q", {"host/native/bp-node.lisp"}), "bp")
+        self.assertEqual(interface_emit.subsystem("fn-q", ()), "nntp/served")
+
+
 class LaptopRefusalTests(unittest.TestCase):
     """decision-keystones: `interface_emit --write` took minutes on the laptop."""
 
@@ -119,13 +126,6 @@ class LaptopRefusalTests(unittest.TestCase):
                                   side_effect=AssertionError("read the tree")):
             with self.assertRaises(SystemExit):
                 interface_emit.main(["--write"])
-
-
-class GapTests(unittest.TestCase):
-    def test_subsystem_prefix_then_file(self):
-        self.assertEqual(interface_emit.subsystem("fn-owner-x", {"host/native/bp.lisp"}), "owner")
-        self.assertEqual(interface_emit.subsystem("fn-q", {"host/native/bp-node.lisp"}), "bp")
-        self.assertEqual(interface_emit.subsystem("fn-q", ()), "nntp/served")
 
 
 if __name__ == "__main__":

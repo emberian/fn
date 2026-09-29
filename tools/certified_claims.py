@@ -4,11 +4,12 @@
 Event identity and ownership come from the ledger's parser and curated event
 map. Certification verdicts and include-closure compatibility come from
 green_check, which in turn uses certs' manifest pass rule. In addition, each
-`certified` row must cite, in its `evidence` list, at least one archived
-manifest under planning/evidence/manifests/, every cited manifest must exist,
-and for every event's defining book some cited manifest must record that book
-`passed` with the book's current source digest and an undrifted include
-closure. Any warning or failure exits 1. `--explain PRF-xxx` prints, for one
+`certified` row's event books must each be green at these bytes
+(green_check.green_at_these_bytes: green_check's verdict at the current source
+digest and include closure, from an archived manifest under
+planning/evidence/manifests/) -- the one meaning of "certified", from which
+tools/ledger.py generates the status (row R2); a manifest a row cites is
+provenance and must exist. Any warning or failure exits 1. `--explain PRF-xxx` prints, for one
 row, each event, its book, the book's current digest, and the newest manifest
 that certified that digest. This is a read-only claim audit, not an ACL2 run,
 guard audit, or saved-image qualification.
@@ -95,42 +96,38 @@ def uncited_books(root: Path, books, tracked_only: bool = True) -> list[str]:
 
 
 def manifest_failures(proofs: list[dict], owners: dict[str, set[str]],
-                      root: Path = ROOT) -> list[str]:
-    """A certified row names the archived run that certified each event book."""
+                      root: Path = ROOT, report: dict | None = None) -> list[str]:
+    """A certified row's event books are each green at these bytes.
+
+    One meaning (row R2): green_check's verdict at the book's current digest
+    and include closure, from an archived manifest
+    (green_check.green_at_these_bytes), the rule tools/ledger.py generates
+    the status from.  A manifest the row cites is provenance: it must exist
+    and be readable, but citing is not what certifies.
+    """
     rows = {str(proof.get("id")): proof for proof in proofs}
+    if report is None:
+        books = sorted(set().union(*owners.values())) if owners else []
+        report = green_check.audit(root, roots=books) if books else {"books_by_verdict": {}}
+    records = report.get("books_by_verdict", {})
     failures: list[str] = []
     for ident, books in sorted(owners.items()):
-        cited = cited_manifests(rows.get(ident, {}))
-        if not cited:
-            failures.append(f"{ident}: cites no manifest under "
-                            f"{evidence_manifests.ARCHIVE_REL}/")
-            continue
-        loaded: list[tuple[str, dict]] = []
-        for relative in cited:
+        for relative in cited_manifests(rows.get(ident, {})):
             path = root / relative
             if not path.is_file():
                 failures.append(f"{ident}: cited manifest {relative} is absent")
                 continue
             try:
-                value = certs.read_as_current(
-                    json.loads(path.read_text(encoding="utf-8")), root)
+                json.loads(path.read_text(encoding="utf-8"))
             except (OSError, ValueError) as error:
                 failures.append(f"{ident}: cited manifest {relative} is unreadable: {error}")
-                continue
-            if isinstance(value, dict):
-                loaded.append((Path(relative).stem, value))
         for book in sorted(books):
-            digest, listing = current_state(root, book)
-            reasons = []
-            for run_id, value in loaded:
-                ok, why = certifies(value, book, digest, listing)
-                if ok:
-                    break
-                reasons.append(f"{run_id} {why}")
-            else:
-                detail = "; ".join(reasons) or "no readable cited manifest"
-                failures.append(f"{ident}: no cited manifest certified {book} at its "
-                                f"current digest {digest[:12]}: {detail}")
+            record = records.get(book)
+            if not green_check.green_at_these_bytes(record):
+                note = (record or {}).get("note", "no verdict")
+                if record and record.get("verdict") == "green" and not record.get("certified_archived"):
+                    note = "green only in an unarchived local manifest; commit it (evidence_manifests.py add)"
+                failures.append(f"{ident}: {book} is not green at these bytes: {note}")
     return failures
 
 
@@ -248,7 +245,7 @@ def audit() -> tuple[int, int, list[str]]:
     books = sorted(set().union(*owners.values())) if owners else []
     report = green_check.audit(root, roots=books) if books else {"books_by_verdict": {}}
     warnings.extend(evidence_warnings(owners, report))
-    return len(owners), len(books), warnings, manifest_failures(proofs, owners, root)
+    return len(owners), len(books), warnings, manifest_failures(proofs, owners, root, report)
 
 
 def main(argv: list[str] | None = None) -> int:

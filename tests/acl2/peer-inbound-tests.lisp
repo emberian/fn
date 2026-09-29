@@ -8,6 +8,7 @@
 (include-book "../../books/peer-inbound-invariants")
 (include-book "../../books/codec-attach")
 (include-book "must-fail-checked")
+(include-book "../../books/article-line-bound")
 
 ; -----------------------------------------------------------------------------
 ; The peer record and the configuration (books/peer-config.lisp)
@@ -351,6 +352,51 @@
 (assert-event (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-posted* nil "ob" "s") (fn-peer-decision :want nil)))
 ; Unparsable octets are :proto-article, not :loop: the reasons separate.
 (assert-event (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* (pt-o "garbage") nil "ob" "s") (fn-peer-decision :refuse :proto-article)))
+;; I5: a transferred header line over RFC 5322 section 2.1.1's 998 octets is
+;; refused :line-length, by name (keystone
+;; fn-peer-decide-transfer-line-length-is-a-long-header-line: antecedent and
+;; conclusion both hold of it); a 998-octet Subject line is wanted; garbage
+;; stays :proto-article and is not a long line (the conclusion fails there).
+(defconst *pt-subject-989* (coerce (make-list 989 :initial-element #\s) 'string))
+(defun pt-subject-article (subject)
+  (declare (xargs :mode :program))
+  (fn-post-body-octets
+   (pt-lines (list "Path: inn.hbox.test!not-for-mail" "From: poster@example.invalid"
+                   "Newsgroups: fn.letters" (concatenate 'string "Subject: " subject)
+                   "Date: Sat, 19 Sep 2026 12:00:00 +0000"
+                   "Message-ID: <loop@example.invalid>" "" "Long."))))
+(defconst *pt-long-line* (pt-subject-article (concatenate 'string *pt-subject-989* "s")))
+(defconst *pt-long-decision*
+  (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-long-line* nil "ob" "s"))
+(assert-event (equal *pt-long-decision* (fn-peer-decision :refuse :line-length)))
+(assert-event (equal (fn-peer-decision-reason *pt-long-decision*) :line-length))
+(assert-event (fn-alb-long-header-linep *pt-long-line* (1+ *fn-article-max-octets*)))
+(assert-event (equal (fn-peer-reason-text :line-length)
+                     "a header line is longer than 998 octets (RFC 5322 section 2.1.1); fold it"))
+(assert-event (equal (fn-peer-intrinsic-refusal *pt-idloop* *pt-long-line*) :line-length))
+(assert-event (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop*
+                                              (pt-subject-article *pt-subject-989*) nil "ob" "s")
+                     (fn-peer-decision :want nil)))
+(assert-event (not (fn-alb-long-header-linep (pt-o "garbage") (1+ *fn-article-max-octets*))))
+;; I5: References whose value begins on a continuation line (RFC 5322
+;; section 2.2.3) is a valid transfer; a bare `References:' with no fold is
+;; still not a valid article (RFC 5536 section 2.2: no empty field).
+(defun pt-refs-article (refs)
+  (declare (xargs :mode :program))
+  (fn-post-body-octets
+   (pt-lines (append (list "Path: inn.hbox.test!not-for-mail" "From: poster@example.invalid"
+                           "Newsgroups: fn.letters" "Subject: folded")
+                     refs
+                     (list "Date: Sat, 19 Sep 2026 12:00:00 +0000"
+                           "Message-ID: <loop@example.invalid>" "" "Folded.")))))
+(assert-event (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop*
+                                              (pt-refs-article (list "References:" " <r1@example.invalid>"))
+                                              nil "ob" "s")
+                     (fn-peer-decision :want nil)))
+(assert-event (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop*
+                                              (pt-refs-article (list "References:"))
+                                              nil "ob" "s")
+                     (fn-peer-decision :refuse :proto-article)))
 ; The IHAVE transcript of a loop: 335, the article, 437 with the reason.
 (defconst *pt-l1* (in-arena-fn-peer-step *sr-arena* *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <loop@example.invalid>")))
 (defconst *pt-l2* (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-l1*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (list :article *pt-loop-lines*)))

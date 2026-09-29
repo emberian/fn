@@ -164,3 +164,50 @@
                     (:d fn-hsig-injected-carrier-octets)
                     (:d fn-hsig-authorized-injected-carried-submission-event)))
 (in-theory (disable (:d fn-hsig-injected-carrier-reason)))
+
+; KEYSTONE (PRF-943).  The host-called constructor (host/native/signatures.lisp)
+; decides at its own boundary: the event is nil unless the durable received
+; payload is byte for byte the injection this node's news agent decided for
+; the exact signed source; and an event, when there is one, binds
+; (fn-stxa-bindsp), was injected, is charged exactly for its payload, names
+; the enrolled keyring snapshot, and passed the conjunctive observed
+; verification of the source's signatures.  Eight outcome words, one
+; boundary.
+(defthm fn-hsig-authorized-injected-carried-submission-event-decides
+  (let ((event (fn-hsig-authorized-injected-carried-submission-event
+                sequence txid generation keyring-generation enrolled-snapshot
+                msgid source received groups obligation-id content-subject
+                release-evidence charge principal keys signatures observed-ml-key
+                ed25519-observation ml-dsa-65-observation config observation))
+        (carrier (fn-hsig-injected-carrier-octets
+                  source principal keys signatures config observation)))
+    (and (implies (not (equal received carrier)) (equal event nil))
+         (implies event
+                  (and (fn-stxa-bindsp event)
+                       (equal received carrier)
+                       (fn-inj-injectedp (fn-hsig-injected-carrier-plan
+                                          source principal keys signatures
+                                          config observation))
+                       (equal charge (fn-charge-for-payload (len received)))
+                       (equal enrolled-snapshot
+                              (fn-hsig-keyring-snapshot principal keys))
+                       (fn-hsig-authorize-at (fn-hsig-source-version source)
+                                             principal keys source signatures
+                                             observed-ml-key ed25519-observation
+                                             ml-dsa-65-observation)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-hsig-authorized-injected-carried-submission-event
+                            fn-hsig-authorized-carried-submission-event-base
+                            fn-hsig-injected-carrier-octets)
+                           (fn-hsig-injected-carrier-plan fn-inj-injectedp
+                            fn-inj-decision-octets fn-stxa-bindsp
+                            fn-stxa-make-carried fn-hsig-authorize-at
+                            fn-charge-for-payload fn-hsig-keyring-snapshot
+                            fn-record-make fn-stxe-make
+                            fn-stxe-encode fn-hsig-authored-source-fields
+                            fn-hsig-authored-source-id
+                            fn-hsig-carried-record-metadatap
+                            fn-hsig-source-filed-groups
+                            fn-record-stamp-of-observation fn-hsig-evidence-tag
+                            fn-record-string-octets fn-hsig-source-version)))))

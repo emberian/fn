@@ -421,25 +421,27 @@ class RegistryTests(unittest.TestCase):
 
 
 class GeneratedStatusTests(unittest.TestCase):
-    """A proof target's status is derived from the manifests it cites."""
+    """A proof target's status is generated from green at these bytes (R2)."""
 
     def status(self, names, books, manifest=None):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             (root / "books").mkdir()
             (root / "books/a.lisp").write_text('(in-package "ACL2")\n(defthm t1 t)\n')
             entry = {"id": "PRF-001", "evidence": []}
             if manifest is not None:
                 folder = root / "planning/evidence/manifests"
                 folder.mkdir(parents=True)
-                (folder / "certify-x.json").write_text(json.dumps(manifest(root)))
-                entry["evidence"].append("planning/evidence/manifests/certify-x.json")
+                (folder / "certify-20260901T010000Z-1.json").write_text(json.dumps(manifest(root)))
+                entry["evidence"].append("planning/evidence/manifests/certify-20260901T010000Z-1.json")
             return ledger.derived_status(entry, names, books, {}, root)
 
     def passed(self, root, digest=None):
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
         import certs
-        return {"book_results": {"books/a": "passed"},
+        return {"status": "passed", "requested_books": ["books/a"],
+                "certificate_digests_sha256": {"books/a": "c" * 64},
+                "book_results": {"books/a": "passed"},
                 "source_digests_sha256": {
                     "books/a.lisp": digest or certs.content_hash(root / "books/a.lisp")}}
 

@@ -253,6 +253,7 @@
 (defconst *fn-heap-open-list-copies* 2)
 (defconst *fn-heap-open-record-octets* 1024)
 (defconst *fn-heap-inflight-header-copies* 3)
+(defconst *fn-heap-message-id-octets* 250)       ; RFC 5536 section 3.1.3
 
 ; THE ARENA's cost, a named parameter: today's paged arena (arena-offheap
 ; stage 1): the payload octets, under one page of the last page's slack, and
@@ -590,12 +591,19 @@
      (* 2 *fn-heap-open-record-octets* (nfix on))))
 
 ; The request in flight and the two octet buffers.
+; And (lane chunked-body-2, B6b) the submission the committer took: the take
+; unpacks it (fn-own-take-submission), its octets, groups and Message-ID as
+; lists until the outcome, one at a time.
 (defun fn-heap-store-inflight-octets (profile)
   (declare (xargs :guard t))
   (+ (* 2 *fn-heap-list-octets-per-octet*
         (+ (nfix (fn-bs-profile-max-record-octets profile))
            (* *fn-heap-inflight-header-copies*
               (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile)))))
+     (* 2 *fn-heap-list-octets-per-octet*
+        (+ (nfix (fn-bs-profile-max-article-octets profile))
+           (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile))
+           *fn-heap-message-id-octets*))
      (* 2 (fn-ock-capture-budget profile))))
 
 ; THE ARTICLES IN FLIGHT (lane zero-copy-commit, 2026-09-28).  A connection
@@ -619,18 +627,51 @@
 (defconst *fn-heap-article-slots-most* 32)
 (defconst *fn-heap-article-line-octets* 512)
 
-; What one slot retains, the larger of its two forms: the body mid-article
-; (the wire's decoded lines, books/wire.lisp body-rev, and the partial line:
-; at most A + one line) and the queued submission (the decision: the
-; injected article, at most A, and the groups its Newsgroups header names,
-; at most the header bound HDR); octet lists, sixteen octets of heap per
-; octet, twice for the collector's copy.
+;; What one slot retains, the larger of its two forms (lane chunked-body-2,
+;; B6b; each an octet of heap about an octet, where the octet lists they
+;; replaced cost sixteen):
+;;   THE WIRE'S: the body mid-article, the wire's store of 512-octet packed
+;;   blocks (books/body-chunks.lisp), at most the body limit A and one octet
+;;   (books/wire.lisp fn-wire-line-room; KEYSTONE
+;;   fn-wire-statep-article-holds-at-most-the-body-limit).  A block is a
+;;   66-word bignum and a cons: *fn-heap-packed-block-octets*; the store's
+;;   own cells *fn-heap-packed-store-octets*.
+;;   THE QUEUE'S: the submission as fn-own-enqueue holds it
+;;   (books/packed-submission.lisp fn-psub-sub-heap): the article's octets one
+;;   natural (at most A, and a cons), the groups comma-joined into another (at
+;;   most the header bound HDR), the Message-ID an octet list of at most 250
+;;   (RFC 5536 section 3.1.3), the records' cells.
+;; Twice, for the collector's copy.  The article's LIST forms -- its lines at
+;; the terminator, the injection, and the submission the committer took and
+;; unpacked (one at a time: fn-own-take-submission requires none in flight)
+;; -- are the request in flight (fn-heap-store-inflight-octets), never a
+;; slot's.
+(defconst *fn-heap-packed-block-octets* 544)
+(defconst *fn-heap-packed-store-octets* 64)
+(defconst *fn-heap-packed-natural-octets* 48)
+(defconst *fn-heap-packed-groups-octets* 64)
+(defconst *fn-heap-submission-record-octets* 512)
+
+(defun fn-heap-article-wire-octets (profile)
+  (declare (xargs :guard t))
+  (+ (* *fn-heap-packed-block-octets*
+        (floor (+ (nfix (fn-bs-profile-max-article-octets profile)) *fn-heap-article-line-octets*)
+               *fn-heap-article-line-octets*))
+     *fn-heap-packed-store-octets*))
+
+(defun fn-heap-article-queued-octets (profile)
+  (declare (xargs :guard t))
+  (+ *fn-heap-submission-record-octets*
+     *fn-heap-packed-natural-octets*
+     (nfix (fn-bs-profile-max-article-octets profile))
+     *fn-heap-packed-groups-octets*
+     (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile))
+     (* *fn-heap-list-octets-per-octet* *fn-heap-message-id-octets*)))
+
 (defun fn-heap-article-reserve-octets (profile)
   (declare (xargs :guard t))
-  (* 2 *fn-heap-list-octets-per-octet*
-     (+ *fn-heap-article-line-octets*
-        (nfix (fn-bs-profile-max-article-octets profile))
-        (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile)))))
+  (* 2 (max (fn-heap-article-wire-octets profile)
+            (fn-heap-article-queued-octets profile))))
 
 ; The octets the figure holds for articles in flight: the budget, but at
 ; least one reserve and at most one per slot of the default capacity.
@@ -687,6 +728,43 @@
   :hints (("Goal" :in-theory (disable fn-heap-article-reserve-octets fn-heap-articles-octets)
            :nonlinearp t)))
 
+(local
+ (defthm fn-heap-floor-512-monotone
+   (implies (and (natp a) (natp b) (<= a b))
+            (<= (floor a 512) (floor b 512)))
+   :rule-classes nil))
+
+(local
+ (defthm fn-heap-article-wire-octets-monotone
+   (implies (<= (nfix (fn-bs-profile-max-article-octets p1))
+                (nfix (fn-bs-profile-max-article-octets p2)))
+            (<= (fn-heap-article-wire-octets p1) (fn-heap-article-wire-octets p2)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-heap-article-wire-octets)
+                                   (fn-bs-profile-max-article-octets))
+                   :use ((:instance fn-heap-floor-512-monotone
+                                    (a (nfix (fn-bs-profile-max-article-octets p1)))
+                                    (b (nfix (fn-bs-profile-max-article-octets p2)))))))))
+
+(local
+ (defthm fn-heap-article-reserve-octets-monotone
+   (implies (and (<= (nfix (fn-bs-profile-max-article-octets p1))
+                     (nfix (fn-bs-profile-max-article-octets p2)))
+                 (<= (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p1))
+                     (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p2))))
+            (<= (fn-heap-article-reserve-octets p1) (fn-heap-article-reserve-octets p2)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-heap-article-reserve-octets fn-heap-article-queued-octets)
+                                   (fn-heap-article-wire-octets
+                                    fn-bs-profile-max-article-octets fn-bs-profile-field))
+                   :use (fn-heap-article-wire-octets-monotone)))))
+
+(local
+ (defthm fn-heap-articles-of-reserve-monotone
+   (implies (and (natp r1) (natp r2) (<= r1 r2))
+            (<= (max r1 (min (* 32 r1) b)) (max r2 (min (* 32 r2) b))))
+   :rule-classes nil))
+
 (defthm fn-heap-articles-octets-monotone
   (implies (and (<= (nfix (fn-bs-profile-max-article-octets p1))
                     (nfix (fn-bs-profile-max-article-octets p2)))
@@ -694,9 +772,16 @@
                     (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p2))))
            (<= (fn-heap-articles-octets p1) (fn-heap-articles-octets p2)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-heap-articles-octets fn-heap-article-reserve-octets)
-                                  (fn-bs-profile-max-article-octets
-                                   fn-bs-profile-field)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-heap-articles-octets posp natp
+                                                fn-heap-article-reserve-octets-posp)
+                                              (theory 'minimal-theory))
+                  :use (fn-heap-article-reserve-octets-monotone
+                        (:instance fn-heap-article-reserve-octets-posp (profile p1))
+                        (:instance fn-heap-article-reserve-octets-posp (profile p2))
+                        (:instance fn-heap-articles-of-reserve-monotone
+                                   (r1 (fn-heap-article-reserve-octets p1))
+                                   (r2 (fn-heap-article-reserve-octets p2))
+                                   (b *fn-heap-article-slot-budget*))))))
 
 (in-theory (disable fn-heap-article-slots fn-heap-articles-octets
                     fn-heap-article-reserve-octets))

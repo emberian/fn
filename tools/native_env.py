@@ -157,9 +157,7 @@ MANUAL = {
     "FN_NATIVE_BP_NODE_HOST": "falls back to FN_NATIVE_DEVELOPER_HOST (the DTN developer image by --env)",
     "FN_NATIVE_READER_HOST": "falls back to FN_NATIVE_DEVELOPER_HOST",
     "FN_NATIVE_SOURCE_ROOT": "defaults to the tree the module runs from",
-    "FN_OLD_NATIVE_HOST": "an older image (upgrade cases)",
     "FN_SPAN_REFERENCE_HOST": "the base image of the ingress-span differential (SCN-110; built from the lane base, by --env)",
-    "FN_OLD_IMAGE": "an older image (upgrade cases)",
     "FN_INN_SRC": "an installed INN 2.7 tree",
     "FN_DTN7_REPO": "a dtn7-rs checkout",
 }

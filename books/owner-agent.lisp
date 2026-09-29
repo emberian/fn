@@ -25,7 +25,7 @@
 ;     pins the owner's installed configuration
 ;     (fn-oag-open-pins-the-owner-config; composed with the first as
 ;     fn-oag-configured-open-pins-the-path-identity)
-;   host/owner-host.lisp fn-owner-chunk -> fn-ocfg-read-tls-prefix: the
+;   host/owner-host.lisp fn-owner-chunk-span-at -> fn-ocfg-read-tls-prefix: the
 ;     submission a read hands the owner names the pinned agent
 ;     (fn-oag-served-post-names-the-pinned-agent), down through
 ;     fn-served-step, fn-served-feed, fn-served-dispatch, fn-auth-step,
@@ -666,7 +666,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                                     (fn-own-conn-config
                                      (fn-own-find-conn id (fn-own-conns o))))))))))
 
-; KEYSTONE.  The owner transition host/owner-host.lisp `fn-owner-chunk' calls
+; KEYSTONE.  The owner transition host/owner-host.lisp `fn-owner-chunk-span-at' runs
 ; for every observed socket region: the submission it hands the owner (the
 ; one fn-own-finish-read enqueues and `fn-owner-take' later reads the octets
 ; of) is, when it is an injected article, one whose Injection-Info names the
