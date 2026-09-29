@@ -14710,6 +14710,15 @@
       ]
     },
     {
+      "id": "PRF-1035",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets"
+        }
+      ]
+    },
+    {
       "id": "PRF-959",
       "events": [
         {

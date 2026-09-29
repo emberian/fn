@@ -15398,6 +15398,24 @@
       "progress_note": "Lane decision-keystones-5: a host wrapper moved into a certified book with its keystone (the bp-node-host-sequence pattern); REPL-admitted on persvati (guards verified, 0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
     },
     {
+      "id": "PRF-1035",
+      "title": "fn-bpnp-configured-budgets admits the operator's forwarding budgets exactly when the defaulted owner backoff and retry budget are frame naturals with a positive retry budget, and then carries exactly those values",
+      "statement": "books/bp-forward-attempt.lisp, called by host/native/bp-node.lisp's budget-row reader (which refuses the profile on nil). KEYSTONE fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets, two-sided: the answer is non-nil iff the owner backoff (the default *fn-bpnp-default-owner-backoff* when the row is absent) and the retry budget (the default *fn-bpnp-max-forward-retries* when absent) are frame naturals and the retry budget is positive; then the answer is a well-formed budgets record (fn-bpnp-budgetsp) equal to (fn-bpnp-budgets backoff retries) of those values, and fn-bpnp-budget-backoff and fn-bpnp-budget-retries read them back. Teeth: tests/acl2/bp-forward-attempt-tests.lisp (defaults by name; configured values carried and read back; a zero retry budget, a negative and an over-frame backoff refused).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-forward-attempt.lisp",
+        "tests/acl2/bp-forward-attempt-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-5: the bp book entries, one two-sided keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
+    },
+    {
       "id": "PRF-959",
       "title": "A state checkpoint's verifiable digest is a function of its prefix: the loaded file digests the same whatever image wrote it and whenever the log rotated",
       "statement": "books/store-checkpoint-digest.lisp fn-sckd-digest-of-written-file: under fn-scka-load-of-written-file's hypotheses (the file the writer produced for CONFIGS, RECORDS, a frontier and the payloads PS, with any REVISION and LOG in its F row), fn-sckd-digest of the tables fn-scka-load answers and fn-sdg-arena-pool of the arena it leaves equals fn-sckd-digest-of-prefix CONFIGS RECORDS FRONTIER PS, which reads neither REVISION nor LOG (fn-sckd-digest-ignores-revision-and-log). fn-sckd-digest is fn-sckd-combine of fn-sckd-tables-digest (schema, S, frontier, P, E, R) and the pool. host: fn-store-sco-decode-finish (host/store-node-host.lisp) calls fn-sckd-tables-digest on the loaded tables when `store ROOT digest' asked, and fn-store-sco-note-checkpoint-digest, called by fnn-state-checkpoint-load-arena (host/native/io.lisp) right after the load, calls fn-sckd-combine with fn-sdg-arena-pool; fn-store-sn-replay-digest-report prints `checkpoint-digest sequence=S HEX'. Scope: PKT-854 (planning/evidence/proto-determinism-2026-09-27.md N1); the digest is an abstract fn-digest (crypto-seam): equal digests imply nothing about preimages in this logic.",

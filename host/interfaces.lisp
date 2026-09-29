@@ -2683,7 +2683,8 @@
               fn-bpnjc-ask-position-bounds))
 
 (definterface fn-bpnp-configured-budgets
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets))
 
 (definterface fn-bpnp-delivery-view
   :class ::common-lisp-compliant)
