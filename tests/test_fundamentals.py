@@ -22,9 +22,9 @@ SCOREBOARD = ROOT / "planning" / "evidence" / "fundamentals-2026-09-27" / "out"
 
 def bars(**over):
     a = fundamentals.main.__globals__["argparse"].Namespace(
-        f1_slope_max=1.5, f1_reopen_mb=128, f1_reopen="hwm", f2_r_evidence=None, f3_fsync_max=1.0,
+        f1_slope_max=1.5, f1_anon_peak_mib=64, f2_r_evidence=None, f3_fsync_max=1.0, f3_design_per_post=0.125,
         f4_q_max_ms=None, f4_h_ms=None, f4_client_deadline_ms=10000, f6_bar_s=10,
-        f7_reading="as-written", f8_reserved_mb=256, f8_in_use_mb=128, f8_in_use="rss",
+        f7_reading="as-written", f8_reserved_mb=256, f8_accountable_mib=256, f8_working_set_mib=128,
         f8_reopen_mb=256, checklist=None, row_cores="20-23", f4_cores="16-19", tree=None)
     for k, v in over.items():
         setattr(a, k, v)
@@ -40,8 +40,13 @@ class ScoreboardTests(unittest.TestCase):
     def test_the_scoreboard_verdicts(self):
         r = rows()
         self.assertEqual({k: v.met for k, v in r.items()},
-                         {"F1": True, "F2": False, "F3": False, "F4": False,
-                          "F5": True, "F6": False, "F7": False, "F8": False})
+                         {"F1": False, "F2": False, "F3": False, "F4": False,
+                          "F5": True, "F6": False, "F7": False, "F8": True})
+        # F1: the scoreboard predates J2's anonymous-peak sample: not measurable, never met.
+        self.assertIsNone(r["F1"].clauses[-1][1])
+        # F8's split: 77.6 MiB accountable, 114.1 MiB working set, the 138 MB
+        # reopen floor; the old reserved verdict stays visible and unmet.
+        self.assertTrue(any("UNMET" in line for line in r["F8"].raw))
         self.assertTrue(all(v.measured for v in r.values()))
 
     def test_each_bar_is_its_parameter(self):
@@ -51,9 +56,42 @@ class ScoreboardTests(unittest.TestCase):
         self.assertTrue(rows(f7_reading="scn077-on-dtn")["F7"].met)
         # F1: a slope bar under the measured 1.27 B/octet is not met.
         self.assertFalse(rows(f1_slope_max=1.2)["F1"].met)
-        # F8: 138 MB reopen floor against a 128 MB bar.
-        self.assertFalse(rows(f8_reserved_mb=2000, f8_reopen_mb=128)["F8"].met)
-        self.assertTrue(rows(f8_reserved_mb=2000)["F8"].met)
+        # F8: 138 MB reopen floor against a 128 MB bar; 114.1 MiB working set against 100.
+        self.assertFalse(rows(f8_reopen_mb=128)["F8"].met)
+        self.assertFalse(rows(f8_working_set_mib=100)["F8"].met)
+        self.assertFalse(rows(f8_accountable_mib=64)["F8"].met)
+
+    def _with_floor(self, **reopen):
+        import json
+        d = tempfile.TemporaryDirectory()
+        self.addCleanup(d.cleanup)
+        out = Path(d.name) / "out"
+        shutil.copytree(SCOREBOARD, out)
+        f = out / "f8-floor-prod.json"
+        doc = json.loads(f.read_text())
+        doc["after_reopen"].update(reopen)
+        f.write_text(json.dumps(doc))
+        return out
+
+    def test_f1_judges_the_reopen_anonymous_peak(self):
+        at = self._with_floor(anon_peak_kib=60 * 1024, vmsize_kib=900 * 1024)
+        f1 = fundamentals.f1(at, bars())
+        self.assertTrue(f1.met, f1.clauses)
+        self.assertIn("virtual 900.0 MiB", f1.clauses[-1][2])
+        self.assertFalse(fundamentals.f1(self._with_floor(anon_peak_kib=65 * 1024), bars()).met)
+        self.assertFalse(fundamentals.f1(at, bars(f1_anon_peak_mib=59)).met)
+
+    def test_f3_bar_is_strict_and_the_batching_gap_is_a_finding(self):
+        f3 = fundamentals.f3(SCOREBOARD, bars())
+        clause = f3.clauses[0]
+        self.assertIn("at the named rate", clause[0])
+        self.assertIn("POST/s", clause[2])
+        finding = [line for line in f3.raw if "FINDING F3-G" in line]
+        self.assertEqual(len(finding), 1)
+        self.assertIn("OPEN", finding[0])
+        # exactly the bar is not under it
+        worst = float(clause[2].split("measured: ")[1].split()[0])
+        self.assertFalse(fundamentals.f3(SCOREBOARD, bars(f3_fsync_max=worst)).clauses[0][1])
 
     def test_f6_from_the_scale_curve_judges_the_next_point_up(self):
         import json
@@ -110,7 +148,8 @@ class ScoreboardTests(unittest.TestCase):
             after = fundamentals.table_rows(checklist.read_text())
             self.assertEqual(after["F6"], before["F6"])
             self.assertIn("fundamentals-test/F1.md", after["F1"][4])
-            self.assertEqual(after["F1"][3], "MET")
+            self.assertEqual(after["F1"][3], "OPEN")  # no anonymous peak in that evidence
+            self.assertEqual(after["F8"][3], "MET")
             self.assertEqual(after["F2"][3], "OPEN")
             self.assertFalse((ev / "F6.md").exists())
             self.assertIn("Verdict: MET", (ev / "F5.md").read_text())

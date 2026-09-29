@@ -345,7 +345,7 @@
 ;
 ; The two open arms are the carried opens (books/owner-open-carried.lisp),
 ; equal to fn-ocfg-open and fn-exp-open under fn-ocl-relation.
-;   :read            fn-owner-chunk                           fn-scar-ocfg-read-tls-prefix
+;   :read            fn-owner-chunk-span-at                   fn-scar-ocfg-read-tls-prefix
 ;   :fault           fn-owner-fault                           fn-ocfg-fault
 ;   :observe         fn-owner-observe                         fn-ocfg-observe
 ;

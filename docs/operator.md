@@ -317,7 +317,8 @@ fn operator CONFIG account list
    (`news.example.org:11563`). Add `--tls` and the port (`news.example.org:563`) for a
    node that speaks TLS from the start. `redeemed: the account carol is
    ready` means it worked. A newsreader cannot do this step; a program can
-   send `XREDEEM CODE LOGIN`, then `XREDEEM PASS PASSWORD`, over TLS.
+   send `XREDEEM CODE LOGIN` (the code itself, then the login), then
+   `XREDEEM PASS PASSWORD`, over TLS.
 4. From then on they log in normally. No restart is needed.
 
 `account list` shows accounts and unused codes, never passwords or codes.
@@ -373,8 +374,9 @@ Every post by a login carries a line like this:
 Injection-Info: news.example.org; posting-account="8c59...f172"; mail-complaints-to="abuse@example.org"
 ```
 
-The `posting-account` value is the same for every post by one login. So
-anyone can tell that two posts came from the same login. Nobody can work
+The `posting-account` value is the same for every post by one account
+(the principal a login signs in as; usually one login is one account). So
+anyone can tell that two posts came from the same account. Nobody can work
 out the login name from it without your node's secret key. Tell the
 people you give logins to.
 

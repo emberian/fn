@@ -47,6 +47,11 @@ are `:invalid-header`; a source over the codec ceiling or a physical line over
 which the injection decision refuses as `:line-length`, answered `441 posting
 failed; a header line is longer than 998 octets (RFC 5322 section 2.1.1); fold
 it` (PRF-905, PKT-506; `fn-inj-decide-line-length-is-a-long-header-line`).  A
+The peer path (IHAVE, TAKETHIS) names the same bound: `fn-peer-decide-transfer`
+refuses it `:line-length`, `437`/`439` with "a header line is longer than 998
+octets (RFC 5322 section 2.1.1); fold it"
+(`fn-peer-decide-transfer-line-length-is-a-long-header-line`,
+books/peer-refused-offers.lisp; row I5).  A
 References or Subject of any length folded within the line bound is admitted,
 up to the profile's header limits.  Parsing never interns a header name or
 invokes the Lisp reader.
@@ -56,15 +61,20 @@ invokes the Lisp reader.
 Header fields follow the RFC 5536 §2.2/RFC 5322 field-name shape used here:
 
 ```text
-field       = field-name ":" WSP field-body *(CRLF WSP field-body)
+field       = field-name ":" ( WSP field-body / "" ) *(CRLF WSP field-body)
 field-name  = 1*ftext
 ftext       = %d33-57 / %d59-126
 WSP         = SP / HTAB
 field-body  = *(WSP / VCHAR), containing at least one VCHAR
 ```
 
-Every initial field line therefore has a colon followed by WSP, and every
-continuation starts with WSP.  Header bytes are US-ASCII only: each is SP, HTAB,
+Every initial field line has a colon followed by WSP, or ends at the colon
+when its body begins on a continuation line (RFC 5322 §2.2.3 folding:
+`References:` CRLF ` <id>`, row I5); every continuation starts with WSP.  A
+field is closed (by the next field or the header's end) only once its unfolded
+value is non-empty (`fn-article-field-closedp`, one test on the carried
+field), so a bare `References:` with no continuation is still an empty body,
+rejected `:invalid-header` (RFC 5536 §2.2).  Header bytes are US-ASCII only: each is SP, HTAB,
 or VCHAR.  A continuation without a preceding field, an empty body, a control
 byte, a non-ASCII byte, or a malformed name is rejected.  This is deliberately
 stricter than RFC 5536's permission for receivers to accept a missing post-colon

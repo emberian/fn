@@ -703,7 +703,7 @@
                             *fn-t-served-peer-unpolicied*)))))
 
 ; What that is worth on the wire, through fn-served-step -- the function
-; host/owner-host.lisp fn-owner-chunk reaches through fn-own-read.  Two
+; host/owner-host.lisp fn-owner-chunk-span-at reaches through fn-own-read.  Two
 ; reads, because RFC 4643 section 2.3.2 caches the name on the first.
 (defun fn-t-served-line (conn text fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))

@@ -821,16 +821,29 @@
   :hints (("Goal" :in-theory (union-theories '(fn-otm-read-span fn-scj-tls-result-owner-of-make)
                                              (theory 'minimal-theory)))))
 
+(defthm fn-scj-view-of-otm-shed-ocfg
+  (and (equal (fn-own-view (fn-ocfg-owner (fn-otm-shed-ocfg oc id)))
+              (fn-own-view (fn-ocfg-owner oc)))
+       (equal (fn-own-view (fn-ocfg-owner (fn-otm-unshed-ocfg oc id allow)))
+              (fn-own-view (fn-ocfg-owner oc))))
+  :hints (("Goal" :in-theory (e/d (fn-otm-shed-ocfg fn-otm-unshed-ocfg fn-otm-owner-with-allow
+                                   fn-otm-ocfg-with-refused fn-own-set-conns fn-ocfg-with-owner)
+                                  (fn-otm-conn-with-allow fn-own-replace-conn fn-own-find-conn)))))
+
 ; KEYSTONE (the host's read entry keeps the invariant).
 (defthm fn-scj-invp-of-otm-read-span
   (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
-                (implies (consp views) (fn-scj-live-okp (car views) fn-arena fn-cat)))
+                (fn-scar-view-indexedp (fn-ocfg-owner oc))
+                (implies (consp views) (and (fn-scj-live-okp (car views) fn-arena fn-cat)
+                                            (fn-scj-trie-indexedp (car views)))))
            (fn-scj-invp (fn-ocfg-owner (fn-own-tls-result-owner
                                         (fn-otm-read-span oc views id i end cache s
                                                           fn-octets fn-arena fn-cat)))
                         fn-arena fn-cat))
-  :hints (("Goal" :in-theory (union-theories '(fn-scj-otm-read-span-owner) (theory 'minimal-theory))
+  :hints (("Goal" :in-theory (union-theories '(fn-scj-otm-read-span-owner fn-scj-view-of-otm-shed-ocfg
+                                               fn-scj-trie-indexedp-is-view-indexedp)
+                                             (theory 'minimal-theory))
            :use ((:instance fn-scj-invp-of-orr-read-span)
                  (:instance fn-scj-invp-of-orr-read-span (oc (fn-otm-shed-ocfg oc id)))
                  (:instance fn-scj-invp-of-otm-shed-ocfg)
@@ -869,7 +882,10 @@
                                              (theory 'minimal-theory))
            :use ((:instance fn-scj-catalogp-of-finish
                             (archive (fn-own-view-archive v))
-                            (index (if (fn-own-view-group-index v)
+                            (index (if (or (fn-own-view-group-index v)
+                                           (and (fn-own-view-control v)
+                                                (not (consp (fn-state-articles
+                                                             (fn-own-view-archive v))))))
                                        (fn-gidx-pin-with-control (fn-own-view-index v)
                                                                  (fn-own-view-group-index v)
                                                                  (fn-own-view-control v))

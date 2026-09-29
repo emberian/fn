@@ -158,7 +158,7 @@
                             fn-oct-line-end fn-otb-unavailable-line)))))
 
 ;; A connection not in command mode is not answered here.
-(defthm fn-ocln-unavailable-span-outside-command-mode
+(defthm fn-ocln-unavailable-span-outside-command-mode-by-definition
   (implies (not (fn-ocln-commandp oc id))
            (equal (fn-ocln-unavailable-span oc id i since now limit fn-octets) nil))
   :hints (("Goal" :in-theory (enable fn-ocln-unavailable-span))))

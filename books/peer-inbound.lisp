@@ -108,7 +108,10 @@
     ; PRF-230: the store profile's header limits, each by its field's name.
     :header-fields-limit :header-lines-limit :header-octets-limit
     ; PKT-858: the disk is slow (books/owner-time-admission.lisp).
-    :disk-slow))
+    :disk-slow
+    ; I5: RFC 5322 section 2.1.1's 998-octet line bound, by name, as POST
+    ; names it (books/injection.lisp fn-inj-parse-refusal).
+    :line-length))
 
 (defun fn-peer-decision-shapep (x)
   (declare (xargs :guard t))
@@ -161,6 +164,8 @@
         ((equal reason :loop) "path loop")
         ((equal reason :no-date) "no Injection-Date or Date")
         ((equal reason :proto-article) "not a valid article")
+        ((equal reason :line-length)
+         "a header line is longer than 998 octets (RFC 5322 section 2.1.1); fold it")
         ((equal reason :oversize) "article exceeds the configured size")
         ((equal reason :unapproved-moderated)
          "no Approved header field for a moderated newsgroup")
@@ -368,15 +373,27 @@
   (fn-inj-nth 2 check))
 
 (defconst *fn-peer-intrinsic-reasons*
-  '(:proto-article :message-id-syntax :no-date :path-syntax :date-syntax))
+  '(:proto-article :message-id-syntax :no-date :path-syntax :date-syntax
+    :line-length))
 
-(defun fn-peer-intrinsic-refusal-of (msgid okp article check)
+; The parse's refusal of a transferred article's octets: the codec's line
+; bound by name (books/article-line-bound.lisp: within the article ceiling a
+; :limit parse met a header line over 998 octets); over the ceiling, or any
+; other refusal, is not a valid article.  The ceiling test runs only after
+; the parse said :limit.
+(defun fn-peer-parse-limitp (parsed octets)
+  (declare (xargs :guard t))
+  (and (equal parsed '(:error :limit))
+       (fn-cbor-at-mostp octets *fn-article-max-octets*)))
+
+(defun fn-peer-intrinsic-refusal-of (msgid okp article check limitp)
   ; OKP, ARTICLE and CHECK are what fn-peer-decide-transfer binds from the
-  ; octets; nil when the article passes.
+  ; octets, LIMITP whether their parse was refused at the line bound
+  ; (fn-peer-parse-limitp); nil when the article passes.
   (declare (xargs :guard (or (not okp)
                              (and (fn-article-syntax-p article)
                                   (true-listp check)))))
-  (cond ((not okp) :proto-article)
+  (cond ((not okp) (if limitp :line-length :proto-article))
         ; 3.6 step 1: Newsgroups, Message-ID, and Injection-Date or Date.
         ; The proto-article check permits a missing Message-ID for POST;
         ; transit requires it, and requires it to equal the offered one.
@@ -407,8 +424,11 @@
   (declare (xargs :guard t))
   (let* ((article (fn-peer-article-of octets))
          (okp (and article (fn-article-syntax-p article)))
-         (check (if okp (fn-af-relayed-article-check article) nil)))
-    (fn-peer-intrinsic-refusal-of msgid okp article check)))
+         (check (if okp (fn-af-relayed-article-check article) nil))
+         ; Only a refused parse asks again, to name the line bound.
+         (limitp (and (not article)
+                      (fn-peer-parse-limitp (fn-article-parse octets) octets))))
+    (fn-peer-intrinsic-refusal-of msgid okp article check limitp)))
 
 ; The offer-time answer of the memory the session carries: a remembered
 ; reason, only when it is one the octets decide (so a memory built by
@@ -546,10 +566,12 @@
           ; 3.6 steps 1 and 4 and the proto-article check: the refusals the
           ; octets decide (PRF-235, PRF-236; the arms are
           ; fn-peer-intrinsic-refusal-of's).
-          ((fn-peer-intrinsic-refusal-of msgid okp article check)
+          ((fn-peer-intrinsic-refusal-of msgid okp article check
+                                         (fn-peer-parse-limitp parsed octets))
            (fn-peer-decision :refuse
                              (fn-peer-intrinsic-refusal-of msgid okp article
-                                                           check)))
+                                                           check
+                                                           (fn-peer-parse-limitp parsed octets))))
           ; 3.6 step 2: more than the operator's margin (at most 24 hours)
           ; into the future (PRF-236).
           ((fn-peer-date-futurep article cfg clock)

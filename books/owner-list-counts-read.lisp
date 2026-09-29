@@ -1,8 +1,9 @@
 ;; LIST COUNTS and the numbered Message-ID answer, stated over the served
 ;; step the host runs.
 ;;
-;; Host path (reader): host/native/owner.lisp calls fn-owner-chunk
-;; (host/owner-host.lisp), which runs fn-scar-ocfg-read-tls-prefix; the chain
+;; Host path (reader): host/native/owner.lisp calls fn-owner-chunk-span-at
+;; (host/owner-host.lisp), which runs fn-scar-ocfg-read-tls-prefix over the
+;; span (fn-scr-ocfg-read-span-is-reference-under-ocl-relation); the chain
 ;; recorded in books/owner-verdict-read.lisp equates that with fn-own-read on
 ;; the connection, and fn-own-read-is-served-step-on-pinned-prefix
 ;; (books/owner-invariants) with fn-served-step over the connection's pinned
@@ -29,6 +30,14 @@
            (equal (fn-served-conn-group-index conn)
                   (fn-gidx-build
                    (fn-state-articles (fn-served-conn-archive conn)))))))
+
+;; A view with no article builds no buckets: the control pin over an empty
+;; view (books/served.lisp fn-served-conn-pinned-index, PKT-443) corresponds.
+(local
+ (defthm fn-olc-gidx-build-of-no-articles
+   (implies (not (consp articles))
+            (equal (fn-gidx-build articles) nil))
+   :hints (("Goal" :in-theory (enable fn-gidx-build)))))
 
 (local
  (defthm fn-olc-pinned-index-corresponds

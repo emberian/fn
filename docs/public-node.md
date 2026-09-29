@@ -27,8 +27,9 @@ is for friends who want an account there.
    ```
 
    `redeemed: the account LOGIN is ready` means it worked. Without fn, a
-   program can do the same over TLS: send `XREDEEM CODE LOGIN`, then
-   `XREDEEM PASS PASSWORD`. A newsreader cannot do this step.
+   program can do the same over TLS: send `XREDEEM CODE LOGIN` (the code
+   itself, then your login), then `XREDEEM PASS PASSWORD`. A newsreader
+   cannot do this step.
 3. **Log in with your newsreader**, using that login and password. Start a
    new connection for it: the one that redeemed the code cannot log in.
 

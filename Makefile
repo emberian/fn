@@ -95,7 +95,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-stamp \
 	books/records-canonicality \
 	books/records-seam \
-	books/records-schema-v1 \
 	books/records-attach \
 	books/store-events \
 	tests/acl2/store-events-tests \
@@ -113,7 +112,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-poll-projection-tests \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
-	tests/acl2/records-schema-v1-teeth-tests \
 	tests/acl2/records-ceiling-tests \
 	tests/acl2/records-shape-tests \
 	books/provenance-codec \
@@ -291,11 +289,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-range-read \
 	tests/acl2/byte-store-state-checkpoint-program-tests \
 	books/store-node-resolution \
+	books/refusal-effect \
 	books/store-identity-sequence-invariants \
 	tests/acl2/store-identity-sequence-invariants-tests \
 	books/consumer-store-invariants \
 	tests/acl2/consumer-store-invariants-tests \
 	tests/acl2/store-node-resolution-tests \
+	tests/acl2/refusal-effect-tests \
 	tests/acl2/store-node-resolution-traces-tests \
 	tests/acl2/store-identity-traces-tests \
 	books/store-sweep \
@@ -437,6 +437,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-route-phases \
 	books/store-log-extend \
 	tests/acl2/store-log-extend-tests \
+	books/store-log-durable \
+	tests/acl2/store-log-durable-tests \
 	books/store-init-log-publication \
 	tests/acl2/store-init-log-publication-tests \
 	books/owner-feed-txid-reuse \
@@ -532,7 +534,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-signed-binding \
 	tests/acl2/bp-signed-binding-tests \
 	books/post-identity-index \
+	books/post-identity-catalog \
 	tests/acl2/post-identity-index-tests \
+	tests/acl2/post-identity-catalog-tests \
+	books/post-prepare-catalog \
+	tests/acl2/post-prepare-catalog-tests \
 	books/post-retain-carried \
 	tests/acl2/post-retain-carried-tests \
 	books/store-profile-carried \
@@ -930,6 +936,16 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-join-host-open \
 	books/served-catalog-join-host-identity \
 	books/served-catalog-join-host-complete \
+	books/served-catalog-join-host-identity-finish \
+	books/served-catalog-join-host-arms \
+	books/served-catalog-join-host-read \
+	books/served-catalog-join-host-exec \
+	books/served-catalog-join-host-entries \
+	books/served-catalog-join-host-columns \
+	books/served-catalog-join-host-columns-open \
+	books/served-catalog-join-host-views \
+	books/catalog-number-window \
+	books/served-chunk-live-free \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -973,6 +989,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-join-frame-store-tests \
 	tests/acl2/served-catalog-join-pinned-tests \
 	tests/acl2/served-catalog-join-inv-tests \
+	tests/acl2/served-catalog-join-host-tests \
+	tests/acl2/served-chunk-live-free-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
 	books/payload-kinds \
@@ -983,6 +1001,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/octet-window \
 	books/subject-id-buffer \
 	tests/acl2/subject-id-buffer-tests \
+	books/article-buffer \
+	tests/acl2/article-buffer-tests \
+	books/frame-buffer \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
@@ -1037,6 +1058,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-store-steps \
 	books/owner-log-ocl \
 	tests/acl2/owner-log-ocl-tests \
+	books/owner-outcome-pinned \
+	books/owner-host-relation \
+	tests/acl2/owner-host-relation-tests \
+	books/owner-host-relation-span \
 	books/config-owner-live-authorize \
 	tests/acl2/config-owner-live-authorize-tests \
 	books/store-number-bound \
@@ -1259,6 +1284,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/control-served-tests \
 	books/nntp-control \
 	tests/acl2/nntp-control-tests \
+	tests/acl2/served-empty-view-tests \
 	books/owner-control-read \
 	books/nntp-enrollment \
 	books/owner-enrollment-read \
@@ -1591,6 +1617,13 @@ check:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_shape_books
 # tools/rule_usage.py's graph simulation and log reading (lane fan-in-cuts).
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_rule_usage
+# The resource contract (docs/resource-contract.md, row R1): its generated
+# block is current, every theorem it cites exists in its book, every proof id
+# and record exists, and no cited book is red at its digest (green_check over
+# the cited books' closures); a cited book no held manifest certifies at its
+# current bytes is printed, and fails only under --strict (the release form).
+	@$(CHECK_STEP) $(PYTHON) tools/resource_contract.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_resource_contract
 # The website renders the guides' articles (site/build_site.py, stdlib only):
 # every article is well-formed (tools/docs_articles.py: its headers, its
 # Message-ID, 72 columns), every repository path it names exists, and every
@@ -1716,6 +1749,22 @@ check:
 # counts the sites left per file and only shrinks.
 	@$(CHECK_STEP) $(PYTHON) tools/clock_unit_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_clock_unit_check
+# Host-called octet-list codecs (D27, row Q2 of COMPLETE-BEFORE-6.6.0): a host
+# dispatch that hands a codec an octet list consed from a byte vector
+# (fnn-octet-list).  tools/list_codec_baseline.json counts the sites per host
+# file and only shrinks; the target is zero (books/article-buffer.lisp is the
+# pattern: a buffer twin and its boundary theorem).
+	@$(CHECK_STEP) $(PYTHON) tools/list_codec_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_list_codec_check
+# The owner's ACL2 state globals (row Q3c, lane owner-relation-2): the host
+# keeps one canonical owner in `fn-owner' and every other `fn-owner-*' state
+# global is a side channel the adapter-retirement record
+# (planning/evidence/adapter-retirement-2026-09-26.md) wants folded into the
+# owner value or a wrapper's result.  tools/owner_globals_baseline.json holds
+# the distinct names per host file (95 across 8 files at the baseline) and
+# only shrinks.  Source-level, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/owner_globals_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_owner_globals_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make
@@ -1828,7 +1877,17 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/keystone_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/interface_emit.py --check
+# What the certified world says about each host-called entry (lane
+# coverage-crawler, 2026-09-29): planning/coverage.json is built from a dump
+# tools/coverage_dump.lisp writes in an ACL2 session over books/image-world
+# (regenerated at convergence, not per commit); this refuses a decision
+# entry with no direct theorem that planning/coverage-baseline.json does not
+# list (shrink-only), an unfiled requirement in planning/families.json, and
+# a gaps file that is not what the coverage renders.
+	@$(CHECK_STEP) $(PYTHON) tools/coverage.py check
 	@$(CHECK_STEP) $(PYTHON) tools/event_emit.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/alphabet_check.py --summary --strict
+	@$(CHECK_STEP) $(PYTHON) tools/premise_audit.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/profile_limits.py --check
 # Which host entries walk retained state (PKT-334, answers 2026-09-26 §2): a
 # function called once per request that traverses the Store history, the
@@ -1918,7 +1977,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_test_budget tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \
 	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync \
-	    tests.test_extract_gate tests.test_cert_images
+	    tests.test_extract_gate tests.test_cert_images tests.test_coverage tests.test_resource_contract tests.test_premise_audit tests.test_alphabet_check
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 

@@ -4,7 +4,7 @@
 ; books/owner-invariants states most owner theorems over fn-own-step and
 ; fn-own-run.  The host reaches the owner through narrower entries:
 ; fn-owner-outcome calls fn-own-outcome directly (owner-host.lisp:1034),
-; fn-owner-chunk calls fn-ocfg-read-tls-prefix (:1240), fn-owner-open calls
+; fn-owner-chunk-span-at runs fn-ocfg-read-tls-prefix over the span, fn-owner-open calls
 ; fn-ocfg-open (:1218), fn-owner-fault calls fn-ocfg-fault (:1273), and the
 ; writer path runs (:take), (:store ...) and (:complete) through
 ; fn-owner-step, which is fn-ocfg-step (:209).  Each theorem here is stated
@@ -81,7 +81,7 @@
                                 (fn-peer-submission-octets d))
       (fn-cl-served-payload secret (fn-own-sub-account sub)
                             (fn-inj-decision-msgid d)
-                            (fn-ipp-injected-octets d secret (fn-own-sub-login sub)
+                            (fn-ipp-injected-octets d secret (fn-own-sub-account sub)
                                                     cfg)))))
 
 ;; The two arms, named by definition (they are not keystones).  A local or
@@ -98,7 +98,7 @@
                                         (fn-own-sub-msgid sub)
                                         (fn-ipp-injected-octets
                                          (fn-own-sub-decision sub) secret
-                                         (fn-own-sub-login sub) cfg))))
+                                         (fn-own-sub-account sub) cfg))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets fn-own-sub-octets
                                    fn-own-sub-msgid)
@@ -107,7 +107,7 @@
 (defthm fn-own-sub-stored-octets-without-an-account-by-definition
   (implies (and (not (fn-peer-submissionp (fn-own-sub-decision sub)))
                 (not (fn-cl-accountp (fn-own-sub-account sub)))
-                (not (fn-ipp-accountp secret (fn-own-sub-login sub)))
+                (not (fn-ipp-accountp secret (fn-own-sub-account sub)))
                 (not (fn-ipp-complaints cfg)))
            (equal (fn-own-sub-stored-octets cfg sub secret)
                   (fn-own-sub-octets sub)))
@@ -117,7 +117,7 @@
                                   (fn-ipp-injected-octets fn-ipp-complaints))
            :use ((:instance fn-ipp-injected-octets-without-parameters
                             (d (fn-own-sub-decision sub))
-                            (login (fn-own-sub-login sub)))))))
+                            (login (fn-own-sub-account sub)))))))
 
 (defthm fn-own-sub-stored-octets-of-a-transit-submission-by-definition
   (implies (fn-peer-submissionp (fn-own-sub-decision sub))
@@ -141,7 +141,7 @@
 (defthm fn-own-stored-octets-carry-the-account-lock
   (let* ((d (fn-own-sub-decision sub))
          (account (fn-own-sub-account sub))
-         (x (fn-ipp-injected-octets d secret (fn-own-sub-login sub) cfg))
+         (x (fn-ipp-injected-octets d secret (fn-own-sub-account sub) cfg))
          (fields (fn-ctl-received-fields x)))
     (implies (and (not (fn-peer-submissionp d))
                   (fn-cl-lock-wanted-p secret account fields))
@@ -164,7 +164,7 @@
                             (msgid (fn-inj-decision-msgid (fn-own-sub-decision sub)))
                             (payload (fn-ipp-injected-octets
                                       (fn-own-sub-decision sub) secret
-                                      (fn-own-sub-login sub) cfg)))))))
+                                      (fn-own-sub-account sub) cfg)))))))
 
 ; KEYSTONE (D25 restored, gpt-6's wave-5 review section 3; subject
 ; fn-own-sub-stored-octets).  Whatever the key ring and the account, the
@@ -176,7 +176,7 @@
 ; articles do (books/cancel-lock-d25.lisp states the verdicts).
 (defthm fn-own-stored-octets-keep-the-injected-octets
   (let* ((d (fn-own-sub-decision sub))
-         (x (fn-ipp-injected-octets d secret (fn-own-sub-login sub) cfg)))
+         (x (fn-ipp-injected-octets d secret (fn-own-sub-account sub) cfg)))
     (implies (and (not (fn-peer-submissionp d))
                   (not (equal (car x) 67)))
              (equal (fn-cll-skip (fn-own-sub-stored-octets cfg sub secret)) x)))
@@ -188,7 +188,7 @@
                             (msgid (fn-inj-decision-msgid (fn-own-sub-decision sub)))
                             (payload (fn-ipp-injected-octets
                                       (fn-own-sub-decision sub) secret
-                                      (fn-own-sub-login sub) cfg)))))))
+                                      (fn-own-sub-account sub) cfg)))))))
 
 ; The store retains ROWS (records-flip, books/store-intern.lisp): the
 ; completion record is a held row whose payload position is a handle into
@@ -432,8 +432,9 @@
 ; answered as before; a chunk whose GROUP or LISTGROUP succeeds now answers
 ; from the fresh view BY SPECIFICATION, and the read half holds per framed
 ; event for every other command (the corollary below); its chunk form (a
-; chunk framing no selection answers as before) is stated in the record and
-; not yet proved.
+; chunk framing no selection answers as before) is
+; fn-scl-host-chunk-selecting-nothing-survives-other-post
+; (books/served-chunk-live-free.lisp).
 (defthm fn-own-pinned-view-survives-other-post
   (implies (and (fn-ocfg-writer-eventsp events)
                 (not (equal id sub-id)))

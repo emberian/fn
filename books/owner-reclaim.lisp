@@ -230,7 +230,7 @@
   (declare (xargs :guard t))
   (if (member-eq word '(:blocked :no-recorded-instant)) :refused :accepted))
 
-(defthm fn-orc-one-pass-in-flight
+(defthm fn-orc-one-pass-in-flight-by-definition
   (implies pass
            (equal (fn-orc-request-word pass inflight blockedp recordedp) :in-flight)))
 
