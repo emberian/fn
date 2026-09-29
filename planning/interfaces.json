@@ -5,7 +5,7 @@
     "declared": 1117,
     "declared_and_dispatched": 1102,
     "guard_verified": 386,
-    "with_keystone": 129
+    "with_keystone": 134
   },
   "entries": [
     {
@@ -11371,7 +11371,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-host-authored-wire-name-names-the-reserved-sequence"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -12259,7 +12263,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -12275,7 +12283,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -12291,7 +12303,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -12307,7 +12323,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,

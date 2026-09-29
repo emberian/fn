@@ -13644,6 +13644,24 @@
           "name": "fn-bs-profile-logp-holds-exactly-for-a-valid-profile"
         }
       ]
+    },
+    {
+      "id": "PRF-983",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling"
+        }
+      ]
+    },
+    {
+      "id": "PRF-984",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-authored-wire-name-names-the-reserved-sequence"
+        }
+      ]
     }
   ]
 }
