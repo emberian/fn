@@ -129,7 +129,7 @@ fsync is never implemented as "none of the preceding writes happened".
 | Schedule point | Boundary (registry name) | Adversarial interleaving |
 |---|---|---|
 | Publication durable, client response pending | `log-fenced` (POST_LOG_CUTS) | lose the reply, restart, retry the original identity |
-| Page read outstanding | `page-read-outstanding` (pending: no host coordinate yet) | cancel the reader, retire the old generation, then deliver the read |
+| Page read outstanding | `page-read-outstanding` (issued-I/O source and adapter present; matching-image execution pending) | cancel the reader, retire the old generation, then deliver the read |
 | Reclaim candidate selected | `reclaim-candidate-selected` (pending) | acquire a new independent hold before the destructive action |
 | New checkpoint prepared | `state-checkpoint-staged-durable` .. `state-checkpoint-durable` (STATE_CHECKPOINT_CUTS) | crash before installation, during it, during cleanup |
 | Recovery has performed a repair write | `log-truncated`, `log-recovered`, `recovery-stage-unlinked` (RECOVERY/LOG_CUTS) | crash again before recovery completes |
@@ -247,10 +247,11 @@ checker's; a kill that did not happen is `harness-failure`;
 `tests/test_native_resilience_cuts.py` passes on hbox. BEFORE THE CUT.
 
 W7c **the other native campaigns adapted** (production-kill, operator
-campaign, block-fault, the recovery cuts, the served owner's cuts). DONE:
-each campaign's verdict comes from the checker over its journals; timed
-kills carry `replay: timed`; the old per-campaign asserts are gone or are
-observations. BEFORE THE CUT for the recovery and served-owner cuts (they
+campaign, block-fault, the recovery cuts, the served owner's cuts). IN PROGRESS:
+implemented cut families obtain their verdict from the checker over journals;
+timed kills carry `replay: timed`. The interleaving observers need matching-image
+qualification, and the campaigns after the cut remain open. BEFORE THE CUT for
+the recovery and served-owner cuts (they
 are release cut coverage); AFTER for the rest.
 Status (lane resilience-framework-2, 2026-09-29): the recovery cuts (the
 real recovery killed at each `RECOVERY_CUTS` cut and at `log-truncated` /
@@ -280,9 +281,9 @@ receiver only and requires the observed `BP NODE CONTROL Store/control.sock`
 before the held route mutation. Its existing journal checker requires the
 actual successful route removal, no-route dispatch, restored sent dispatch,
 receipt and unpinned obligation, and one application effect. This adapter
-wiring is unit-tested; the source catalog still names the live-route
-dependency as pending until that owner's source and a matching runner image
-execute this case. An announcement alone never activates the receipt fault.
+wiring is unit-tested and BP source0238f266f is integrated; the source catalog
+retains matching-image execution pending until the runner executes this case.
+An announcement alone never activates the receipt fault.
 
 Issued-page continuation: the page scenario now discards its cancelled
 token instead of expecting that cancelled request to finish productively.
