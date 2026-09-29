@@ -287,11 +287,21 @@ class HboxNativeDryRunTests(unittest.TestCase):
                     if line.startswith("tstep test-tests.test_native_bounds_join "))
         self.assertIn("FN_NATIVE_HOST=$T/build/fn-host ", join)
         self.assertIn("FN_NATIVE_DEVELOPER_HOST=$T/build/fn-host-developer ", join)
-        developer = dry("--allow-skips", "HEAD", "tests.test_native_bounds_join")
-        self.assertEqual(developer.returncode, 0, developer.stderr)
-        self.assertIn("reads FN_NATIVE_HOST through a tests/ helper", developer.stdout + developer.stderr)
-        self.assertNotIn("FN_NATIVE_HOST=", next(
-            line for line in developer.stdout.splitlines()
+        # Since dev 96b3eb2e4 the module USES tests.native_profile_fixture's
+        # IMAGE (FN_NATIVE_HOST), so the derived list adds production; the
+        # dtn-developer image it reads only through an imported helper stays
+        # a note, never a refusal.
+        derived = dry("--allow-skips", "HEAD", "tests.test_native_bounds_join")
+        self.assertEqual(derived.returncode, 0, derived.stderr)
+        text = derived.stdout + derived.stderr
+        self.assertIn("added production (tests.test_native_bounds_join reads FN_NATIVE_HOST "
+                      "(through tests.native_profile_fixture.IMAGE, which it uses))", text)
+        self.assertIn("FN_NATIVE_HOST=$T/build/fn-host ", next(
+            line for line in derived.stdout.splitlines()
+            if line.startswith("tstep test-tests.test_native_bounds_join ")))
+        self.assertIn("reads FN_NATIVE_DTN_DEVELOPER_HOST through a tests/ helper", text)
+        self.assertNotIn("FN_NATIVE_DTN_DEVELOPER_HOST=", next(
+            line for line in derived.stdout.splitlines()
             if line.startswith("tstep test-tests.test_native_bounds_join ")))
 
     def test_every_image_or_opt_in_variable_a_native_module_reads_is_classified(self):
