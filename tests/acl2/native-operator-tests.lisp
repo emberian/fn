@@ -441,7 +441,7 @@
 (assert-event (equal (fn-native-operator-result-archive-path-octets *fn-nop-init*) nil))
 (assert-event (equal (fn-native-operator-result-import-request *fn-nop-init*) nil))
 ; The store help names the two verbs and none of the retired ones.
-(assert-event (search "export ARCHIVE-DIR | export --status | bless-snapshot SNAPSHOT-DIR | import ARCHIVE-DIR [--FIELD N ...]"
+(assert-event (search "export ARCHIVE-DIR | export --status | snapshot SNAPSHOT-DIR | snapshot --status | bless-snapshot SNAPSHOT-DIR | import ARCHIVE-DIR [--FIELD N ...]"
                       (fn-nop-help-text "store")))
 (assert-event (not (search "upgrade" (fn-nop-help-text "store"))))
 
