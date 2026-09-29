@@ -4,8 +4,8 @@
   "coverage": {
     "declared": 1223,
     "declared_and_dispatched": 1206,
-    "guard_verified": 473,
-    "with_keystone": 138
+    "guard_verified": 474,
+    "with_keystone": 141
   },
   "entries": [
     {
@@ -11109,7 +11109,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpah-publication-authorize-admits-exactly-the-issued-pending-delivery"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -11615,13 +11619,13 @@
       "name": "fn-bpn-host-evidence-authorize",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": null,
+      "delegates": "fn-bpn-evidence-authorize",
       "dispatched_from": [
         "host/native/bp.lisp"
       ],
@@ -11781,7 +11785,7 @@
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": null,
+      "delegates": "fn-bpn-evidence-operationp",
       "dispatched_from": [
         "host/native/bp.lisp"
       ],
@@ -11898,7 +11902,7 @@
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": null,
+      "delegates": "fn-bpn-lifecycle-publication-authorize",
       "dispatched_from": [
         "host/native/bp-service.lisp"
       ],
@@ -12834,7 +12838,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpnf-delete-publication-authorize-admits-exactly-the-issued-pending-deletion"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -12946,7 +12954,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -14941,7 +14953,7 @@
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": null,
+      "delegates": "fn-tcl-encode",
       "dispatched_from": [
         "host/native/tcpcl.lisp"
       ],
