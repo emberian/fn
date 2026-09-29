@@ -205,6 +205,7 @@
 ;; wrappers call these; verified so that their wrappers can be.
 (verify-guards fn-bpnf-family-recordp)
 (verify-guards fn-bpnf-family-record)
+(verify-guards fn-bpnf-family-record-at)
 (verify-guards fn-bpnf-family-record-atp)
 (verify-guards fn-bpnf-family-v1-values)
 (verify-guards fn-bpnf-family-v1-frame)

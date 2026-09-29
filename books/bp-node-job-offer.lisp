@@ -1051,7 +1051,6 @@
 (verify-guards fn-bpnj-attempt-token)
 (verify-guards fn-bpnj-transfer-outcomep)
 (verify-guards fn-bpnj-unnamed-result-p)
-(verify-guards fn-bpnj-host-eventp)
 ;; KEYSTONES (PRF-103, over the selection the host asks: host/native/
 ;; bp-service.lisp fnn-bpc-drive-contact calls fn-bpnjc-contact-next, equal
 ;; to fn-bpnj-contact-next by fn-bpnjc-contact-next-is-the-head-scan).

@@ -2617,10 +2617,6 @@
 
 (definterface fn-bpnpf-bundle-octets
   :class ::common-lisp-compliant)
-(definterface fn-bpnf-family-next
-  :class ::common-lisp-compliant
-  :keystones (fn-bpnf-family-next-selects-exactly-the-first-ready-family))
-
 (definterface fn-bpnf-family-publication-authorize
   :class ::common-lisp-compliant
   :keystones (fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family))
@@ -2713,7 +2709,8 @@
   :keystones (fn-bpnj-host-refuses-an-unnamed-transport-result))
 
 (definterface fn-bpnj-step
-  :class ::ideal
+  :class ::common-lisp-compliant
+  :kinds ((event fn-bpnj-host-eventp))
   :keystones (fn-bpnj-step-preserves-guard-premises
               fn-bpnj-step-forwarded-needs-a-durable-finished-record
               fn-bpnj-stale-job-result-settles-nothing))

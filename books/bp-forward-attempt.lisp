@@ -447,6 +447,10 @@
 (verify-guards fn-bpnp-session-idp)
 (verify-guards fn-bpnp-transfer-outcomep)
 (verify-guards fn-bpnp-forward-outcomep)
+; Constructor guards belong in this book so codec certification sees them.
+(verify-guards fn-bpnp-forward-attempt-record)
+(verify-guards fn-bpnp-forward-result-record)
+(verify-guards fn-bpnp-deferral-record)
 (verify-guards fn-bpnp-forward-attempt-recordp)
 (verify-guards fn-bpnp-forward-result-recordp)
 (verify-guards fn-bpnp-deferral-recordp)
