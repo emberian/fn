@@ -136,3 +136,28 @@ class PlanTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TreeTests(unittest.TestCase):
+    """The committed image set on this tree: the batch BB defect, pinned."""
+
+    def test_the_umbrellas_never_start_from_an_image_that_defines_fn_arena(self):
+        root = Path(__file__).resolve().parents[1]
+        graph = cert_images.Graph(root)
+        images = cert_images.load_config(root)
+        for umbrella in ("books/image-world", "books/image-world-dtn",
+                         "books/image-world-store-test"):
+            self.assertIn("fn-arena", graph.attached(umbrella), umbrella)
+            for image in cert_images.applicable(umbrella, images, graph):
+                self.assertNotIn("fn-arena", graph.defines(
+                    cert_images.image_closure(image, graph)), (umbrella, image["name"]))
+            chosen = cert_images.image_for(umbrella, images, graph)
+            self.assertNotIn(chosen and chosen["name"], ("owner", "served-catalog-owner",
+                                                         "nntp-auth", "nntp"))
+        # A book above the owner that attaches nothing still starts from one.
+        for book in ("books/owner-invariants-relation", "books/owner-cold-line"):
+            if (root / f"{book}.lisp").is_file():
+                self.assertFalse(graph.attached(book) & graph.defines(
+                    cert_images.image_closure(cert_images.image_for(book, images, graph),
+                                              graph)), book)
+                self.assertIsNotNone(cert_images.image_for(book, images, graph), book)
