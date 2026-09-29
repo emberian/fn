@@ -4403,6 +4403,10 @@
         {
           "kind": "theorem",
           "name": "fn-pcb-admission-verdict-names-its-class"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-admission-verdict-names-a-revocation"
         }
       ]
     },
