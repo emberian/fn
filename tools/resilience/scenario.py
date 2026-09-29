@@ -445,12 +445,12 @@ def validate(scenario: Scenario, registry: dict | None = None) -> list:
 # nemesis needs does not.  Keyed by the operation's `op` and the recipe.
 PENDING_INTERLEAVES = {
     ("policy-change", "bp-node"): {
-        "coordinate": "live BP route control source integration and matching image pending: "
+        "coordinate": "live BP route control matching-image execution pending: "
                       "the adapter stages `bp-node serve ... --control-config CONFIG` and "
                       "requires actual BP NODE CONTROL for this Store; the earlier image "
                       "rf4-444f-2 refused live `bp-route remove` as store-held. "
-                      "The same serialized BP owner must pump the admin turn during the "
-                      "receipt decided hold; offline edits cannot stand in for it",
+                      "Source0238f266f provides the same serialized BP owner pump during the "
+                      "receipt decided hold; offline edits cannot stand in for its native run",
         "owner": "bp_resume (serialized live BP control); resilience (SCN-218 adapter)"},
 }
 

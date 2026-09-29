@@ -38,7 +38,7 @@ def example() -> Scenario:
     return validate(Scenario(
         id="schedule-page-read-outstanding",
         title="cancel an issued page read, retire its file, settle it, then read retained bytes",
-        contract="page-io-ownership", requirements=["STO-002"],
+        contract="page-io-ownership", requirements=["STO-017", "STO-002"],
         initial={"recipe": "page-io", "groups": [GROUP],
                  "prior": [{"id": "p0", "groups": [GROUP]},
                            {"id": "n0", "groups": [GROUP]}]}, actors=ACTORS,
