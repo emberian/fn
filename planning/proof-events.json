@@ -14602,6 +14602,67 @@
           "name": "fn-nls-live-report-is-the-offline-report"
         }
       ]
+    },
+    {
+      "id": "PRF-968",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-cpr-resume-carried-is-sco-cpr-resume"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-extend-open-carried-is-rii-extend-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-extend-open-carried-finalizes-the-extension"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-cpr-prefix-carried-car"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-cpr-prefix-carried-keeps-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-cpr-resume-carried-keeps-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-extend-open-carried-keeps-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-extend-open-carried-count-and-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-carry-is-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-carried-msgid-trie-is-the-rebuilt-trie"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-cpr-resume-carried-steps-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-cpr-prefix-carried-steps-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-extend-open-carried-is-extend-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-next-lower-total-is-next-lower"
+        }
+      ]
     }
   ]
 }
