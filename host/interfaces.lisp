@@ -2512,6 +2512,26 @@
 (definterface fn-bpnf-family-next
   :class ::common-lisp-compliant)
 
+;; Q4a increment B: the reassembly job the host carries between steps
+;; (books/bp-node-fragment-job, books/bp-node-fragment-step).
+(definterface fn-bpfj-next-candidate
+  :class ::ideal)
+
+(definterface fn-bpnf-find-arrival
+  :class ::common-lisp-compliant)
+
+(definterface fn-bpfj-start
+  :class ::common-lisp-compliant)
+
+(definterface fn-bpfj-step
+  :class ::common-lisp-compliant)
+
+(definterface fn-bpfj-finishedp
+  :class ::common-lisp-compliant)
+
+(definterface fn-bpnpf-bundle-octets
+  :class ::common-lisp-compliant)
+
 (definterface fn-bpnf-family-publication-authorize
   :class ::ideal)
 

@@ -676,7 +676,15 @@ its outcome, which is the refusal to the offering ingress."
          (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
          (fnn-bps-drive-effects
           service (fnn-bps-foundation-step
-                   service (list :persist-result epoch operation-id outcome)))))
+                   service
+                   ;; Q4a: the result carries the proposal's finished job and
+                   ;; limit, so fn-bpfj-persist-step reads the image out of
+                   ;; the job it was proposed from.
+                   (if *fnn-bps-fragment-job*
+                       (list :persist-result epoch operation-id outcome
+                             (car *fnn-bps-fragment-job*)
+                             (cdr *fnn-bps-fragment-job*))
+                     (list :persist-result epoch operation-id outcome))))))
       (:family-ready
        (fnn-out "BP fragment family durable")
        (fnn-bps-fragment-progress service))
@@ -980,20 +988,56 @@ octet is ACL2's."
         (ignore-errors (when (fnn-check-regular stage) (fnn-unlink stage)))))
     (fnn-core 'fn-bpnr-publish-outcome phase)))
 
+(defconstant +fnn-bps-fragment-quantum+ 4096
+  "Positions of the reassembly sweep one fn-bpfj-step walks
+(books/bp-node-fragment-job fn-bpfj-step-is-bounded): the work of one
+scheduling step, whatever the family holds.")
+
+(defvar *fnn-bps-fragment-job* nil
+  "The (JOB . LIMIT) of the family proposal in flight, so the kind-18
+:persist-result carries the same finished job the proposal read
+(fn-bpfj-persist-step reads the image out of it; nothing is reassembled
+again).")
+
 (defun fnn-bps-fragment-progress (service)
-  ;; The ACL2 selector chooses an exact ready family from the one held list.
-  ;; Each durable :family-ready retires at least one fragment and invokes
-  ;; this once more; a refusal/uncertainty does not loop.
-  (let* ((tally (fnn-bps-tally service))
-         (observation (fnn-bp-observation
-                       (fnn-bp-tally-wall tally)
-                       (fnn-bp-tally-wall-error tally)))
-         (candidate (fnn-core 'fn-bpnf-family-next
-                              (fnn-bps-state service) observation)))
-    (when (and (consp candidate) (eq (first candidate) :ready))
-      (fnn-bps-drive-effects
-       service (fnn-bps-foundation-step
-                service (list :family (second candidate) observation)))))
+  ;; Q4a increment B.  ACL2's fn-bpfj-next-candidate names a live family
+  ;; with an offset-zero source and reassembles nothing; the host starts that
+  ;; family's reassembly job (fn-bpfj-start), steps it a bounded quantum at a
+  ;; time (fn-bpfj-step) until fn-bpfj-finishedp, and offers the finished job
+  ;; with the profile's bundle octets to the :family step.  Its plan reads
+  ;; the image out of the job and refuses an image past the limit by name
+  ;; (fn-bpfj-plan-refuses-past-the-limit-by-name); a stale job plans as
+  ;; (:stale :job), which issues nothing.  A family whose proposal issues
+  ;; nothing is tried once per pass; each durable :family-ready retires at
+  ;; least one fragment and runs this again from drive-effects, so a pass
+  ;; that issued a proposal ends here.  A refusal/uncertainty does not loop.
+  (let ((tried nil)
+        (limit (fnn-core 'fn-bpnpf-bundle-octets (fnn-bps-profile service))))
+    (loop
+      (let* ((tally (fnn-bps-tally service))
+             (observation (fnn-bp-observation
+                           (fnn-bp-tally-wall tally)
+                           (fnn-bp-tally-wall-error tally)))
+             (candidate (fnn-core 'fn-bpfj-next-candidate
+                                  (fnn-bps-state service) observation tried)))
+        (unless (and (consp candidate) (eq (first candidate) :ready))
+          (return))
+        (let* ((state (fnn-bps-state service))
+               (anchor-arrival (second candidate))
+               (anchor (fnn-core 'fn-bpnf-find-arrival anchor-arrival
+                                 (fnn-core 'fn-bpnf-held-list state)))
+               (job (fnn-core 'fn-bpfj-start state anchor)))
+          (loop until (eq (fnn-core 'fn-bpfj-finishedp job) t)
+                do (setq job (fnn-core 'fn-bpfj-step job +fnn-bps-fragment-quantum+)))
+          (push (third candidate) tried)
+          (let* ((*fnn-bps-fragment-job* (cons job limit))
+                 (effects (fnn-bps-foundation-step
+                           service (list :family anchor-arrival observation
+                                         job limit))))
+            (fnn-bps-drive-effects service effects)
+            (when (and (consp effects) (consp (car effects))
+                       (eq (caar effects) :persist-family))
+              (return)))))))
   service)
 
 (defun fnn-bps-receive (service admission wire)
