@@ -273,6 +273,26 @@
                        '(fn-bpnf-subsetp-equal-reflexive
                          fn-bpnf-family-keys-not-readyp-of-nil)
                        (theory 'minimal-theory)))))
+;; The candidate selector the host calls (bp-service fnn-bps-fragment-effects;
+;; the *1* class, Q4a item 2): it reassembles nothing, so no plan obligations.
+(local
+ (defthm fn-bpnfg-zero-family-keys-true-listp
+   (true-listp (fn-bpnf-zero-family-keys held))
+   :hints (("Goal" :induct (fn-bpnf-zero-family-keys held)
+            :in-theory (e/d (fn-bpnf-zero-family-keys)
+                            (fn-bpnf-fragment-candidatep
+                             fn-bpnf-fragment-family-key))))))
+(verify-guards fn-bpfj-candidate
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn-bpnfg-candidate-primary true-listp)
+                       (theory 'minimal-theory)))))
+(verify-guards fn-bpfj-next-candidate
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn-bpnfg-zero-family-keys-true-listp true-listp)
+                       (theory 'minimal-theory)))))
+
 ;; Q4a increment B: the reassembly job's functions the host reaches
 ;; (host/native/bp-service.lisp fnn-bps-fragment-effects: fn-bpfj-start,
 ;; -step, -finishedp per quantum; the twins below read the finished job).

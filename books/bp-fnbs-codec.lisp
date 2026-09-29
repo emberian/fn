@@ -301,7 +301,7 @@
                                fn-frame-protected-prefix))))
 
 (defun fn-bpnf-stored-record-name-chars (epoch operation-id)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (append (fn-bs-txn-digits epoch)
           (cons #\- (append (fn-bs-txn-digits operation-id)
                              *fn-bpn-lifecycle-name-suffix*))))
@@ -317,3 +317,16 @@
                                    (n operation-id)))
            :in-theory (enable fn-bpnf-stored-record-name-chars
                               fn-bs-txn-name-chars))))
+
+;; The *1* class (Q4a item 2): the name is host-called (bp-service's
+;; publications, fn-bpnf-stored-record-name) and reached from every
+;; publication wrapper; verified, it and its appends run raw.
+(local
+ (defthm fn-bpnf-txn-digits-true-listp
+   (true-listp (fn-bs-txn-digits n))
+   :hints (("Goal" :use ((:instance fn-bs-txn-name-chars-characters))
+            :in-theory (enable fn-bs-txn-name-chars)))))
+(verify-guards fn-bpnf-stored-record-name-chars)
+(verify-guards fn-bpnf-stored-record-name
+  :hints (("Goal" :use ((:instance fn-bpnf-stored-record-name-chars-are-characters))
+           :in-theory (disable fn-bpnf-stored-record-name-chars))))
