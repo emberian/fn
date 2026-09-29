@@ -738,7 +738,7 @@ pair is a string and a non-empty octet list."
            (fnn-fault "owner refused recovered feed resolution")))
         (t (fnn-fault "unexpected feed reconciliation: ~a" resolution))))))
 
-(defun fnn-owner-recover-core (store records max-connections)
+(defun fnn-owner-recover-core (store records max-connections entry)
   "Install the owner from the Store open this process just ran.  The open
 (full replay, or the verified state checkpoint over the records after it) left
 its extended checkpoint E and ACL2's (fn-sco-store-open E ...) in the global
@@ -751,7 +751,11 @@ checkpoint's S, or NIL."
   (declare (ignore records))
   (let* ((mode (fnn-store-open-mode store))
          (s (and (eq (first mode) :checkpoint) (second mode)))
-         (result (fnn-owner-action 'fn-owner-recover-from-store-open max-connections)))
+         ;; THE SWITCH (PRF-1037): ENTRY is the node secret's current entry
+         ;; (fnn-owner-read-node-secret, read before this open); ACL2 derives
+         ;; the paged Message-ID table's key from it and installs it before
+         ;; the rows are loaded (fn-owner-install-extended).
+         (result (fnn-owner-action 'fn-owner-recover-from-store-open max-connections entry)))
     ;; A watermark past RFC 3977 section 6's bound is a damaged Store, refused
     ;; by name (books/owner-number-bound.lisp fn-onb-open-okp); the node does
     ;; not start on it.
@@ -781,7 +785,12 @@ checkpoint's S, or NIL."
 ;;; not regular, is readable or writable by group or others, or does not
 ;;; parse, or ACL2 does not accept the ring (fn-owner-install-node-secret
 ;;; answers :refused unless fn-ns-ringp).
-(defun fnn-owner-load-node-secret (store)
+(defun fnn-owner-read-node-secret (store)
+  "Read the ring's files: (CURRENT . RETAINED), the current entry first.
+Read BEFORE the recovery (fnn-owner-recover-core takes the current entry:
+THE SWITCH, PRF-1037, keys the catalog's paged Message-ID table from it at
+the open) and installed after it (fnn-owner-install-node-secret): one read,
+one ring, so the table's key and the served boundary's are one source."
   (let* ((path (fnn-node-secret-path store))
          (current (or (fnn-node-secret-read-entry path "node secret")
                       (fnn-refuse "node secret ~a is missing: run `store ~a node-secret create' once (a start never creates one)"
@@ -793,10 +802,14 @@ checkpoint's S, or NIL."
                            (or (fnn-node-secret-read-entry older "retained node secret")
                                (fnn-refuse "node secret retained epoch ~d missing: ~a"
                                            e older))))))
-    (unless (eq (fnn-owner-core 'fn-owner-install-node-secret (cons current retained))
-                :installed)
-      (fnn-refuse "node secret files in ~a do not form a key ring (epochs must decrease from the current one)"
-                  (fnn-node-secret-directory store)))))
+    (cons current retained)))
+
+(defun fnn-owner-install-node-secret (store ring)
+  "Hand the ring fnn-owner-read-node-secret read to the owner."
+  (unless (eq (fnn-owner-core 'fn-owner-install-node-secret ring)
+              :installed)
+    (fnn-refuse "node secret files in ~a do not form a key ring (epochs must decrease from the current one)"
+                (fnn-node-secret-directory store))))
 
 (defun fnn-owner-install (root max-connections &optional fault)
   (multiple-value-bind (store count) (fnn-open-live-store root t fault)
@@ -807,7 +820,12 @@ checkpoint's S, or NIL."
             ;; (books/store-mount-identity.lisp fn-smid-start-verdict),
             ;; before the owner serves anything.
             (fnn-check-filesystem-identity store t)
-            (fnn-owner-recover-core store count max-connections)
+            ;; SEC-006: the ring is READ before the recovery (its current
+            ;; entry keys the catalog's Message-ID table at the open) and
+            ;; INSTALLED after the recovery that builds the owner.
+            (let ((ring (fnn-owner-read-node-secret store)))
+              (fnn-owner-recover-core store count max-connections (car ring))
+              (fnn-owner-install-node-secret store ring))
             (fnn-err "OWNER-OPEN ~a" (fnn-open-report store))
             ;; The persisted profile ACL2 decoded at open, handed back once:
             ;; the owner's transaction budget is derived from it there.
@@ -815,9 +833,6 @@ checkpoint's S, or NIL."
                                         (fnn-store-config store))
                         :installed)
               (fnn-fault "owner refused the store profile"))
-            ;; SEC-006: the node secret, handed to the owner after the
-            ;; recovery that built it (fnn-owner-load-node-secret).
-            (fnn-owner-load-node-secret store)
             ;; The recovery barriers again (three, fnn-store-recovery-barriers):
             ;; fresh namespace observations, now delivered to fn-owner.
             (let ((phase nil))
@@ -4477,7 +4492,9 @@ publication).  Answers the reply word."
                         (hist (fnn-fresh-stobj 'fn-hist)))
                    (when (eq (second rebuilt) :fault)
                      (deferred :rebuild) (return-from pass))
-                   (fnn-call 'fn-owner-orcp-load-columns rows
+                   (fnn-call 'fn-owner-orcp-load-columns
+                             (fnn-owner-core 'fn-owner-orcp-key)
+                             rows
                              (fnn-core 'fn-owner-orcp-view-index (second rebuilt))
                              (fnn-owner-core 'fn-owner-orcp-salt)
                              (fnn-live-arena) cat hist)

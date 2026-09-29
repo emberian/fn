@@ -318,6 +318,73 @@ class NativeReaderIndexTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout)
         return result
 
+    def test_ten_thousand_similar_msgids_stay_flat_on_the_keyed_index(self):
+        # THE SWITCH (PRF-1037, PRF-1044): the catalog's Message-ID column is
+        # the keyed page table (books/catalog.lisp fn-cat-msgid-seqs over
+        # fn-mpxt, tagged with a BLAKE3 MAC under the node secret's key).
+        # The retired column was an SBCL `equal' hash table keyed by the
+        # Message-ID string; a poster who can steer that hash steers its
+        # buckets.  A 10,000-row family of maximally similar Message-IDs
+        # (one length, one shape, a counter in the last octets -- the family
+        # any prefix- or length-steered hash collapses) is placed flat on
+        # the keyed index: the operator's `health' line names 10,000
+        # entries, 0 unplaced (the fold never degraded to a scan) and 0
+        # stuck, and every 1,000th Message-ID resolves by STAT after a
+        # restart (the table is rebuilt from the rows under the same key).
+        # No SBCL sxhash collision family is crafted: sxhash is 62 bits and
+        # the old column is gone; the tooth is the index's own reading.
+        count = int(os.environ.get("FN_PH6_MSGID_FAMILY", "10000"))
+        owner = self.start_owner()
+        poster = self.reader()
+        width = len(str(count))
+        family = ["<f%0*d-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.invalid>" % (width, i)
+                  for i in range(count)]
+        started = time.monotonic()
+        for i, msgid in enumerate(family):
+            article = (b"From: family@example.invalid\r\n"
+                       b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
+                       b"Newsgroups: fn.test\r\n"
+                       b"Subject: family " + str(i).encode("ascii") + b"\r\n"
+                       b"Message-ID: " + msgid.encode("ascii") + b"\r\n\r\n"
+                       b"family member\r\n")
+            first, final = poster.post(article)
+            self.assertTrue(first.startswith(b"340"), (i, first))
+            self.assertTrue(final.startswith(b"240"), (i, final))
+        elapsed = time.monotonic() - started
+        poster.close(quit=False)
+        # health's exit code is the verdict's (books/native-health.lisp); the
+        # index line is read whatever the eight states say.
+        health = self.node.invoke("operator", self.config, "health")
+        line = [row for row in (health.stdout or b"").splitlines()
+                if row.startswith(b"msgid-index:")]
+        self.assertEqual(len(line), 1, health.stdout)
+        fields = dict(word.split(b"=", 1) for word in line[0].split()[1:])
+        self.assertEqual(fields[b"entries"], str(count).encode("ascii"), line)
+        self.assertEqual(fields[b"unplaced"], b"0", line)
+        self.assertEqual(fields[b"stuck"], b"0", line)
+        self.assertGreater(int(fields[b"pages"]), 0, line)
+        self.stop_owner(owner)
+
+        restarted = self.start_owner()
+        reader = self.reader()
+        self.assertTrue(self.command(reader, "GROUP fn.test")[0].startswith(b"211 "))
+        for i in range(0, count, max(1, count // 10)):
+            status = self.command(reader, "STAT " + family[i])[0]
+            self.assertTrue(status.startswith(b"223 "), (i, status))
+        self.assertTrue(self.command(reader, "STAT <f-not-a-member@example.invalid>")[0]
+                        .startswith(b"430"))
+        reader.close(quit=False)
+        after = self.node.invoke("operator", self.config, "health")
+        line = [row for row in (after.stdout or b"").splitlines()
+                if row.startswith(b"msgid-index:")]
+        self.assertEqual(len(line), 1, after.stdout)
+        fields = dict(word.split(b"=", 1) for word in line[0].split()[1:])
+        self.assertEqual(fields[b"entries"], str(count).encode("ascii"), line)
+        self.assertEqual(fields[b"unplaced"], b"0", line)
+        self.stop_owner(restarted)
+        print("msgid family: %d POSTs in %.1f s (%.1f ms each)" %
+              (count, elapsed, 1000.0 * elapsed / max(1, count)))
+
     def test_list_newsgroups_descriptions_and_motd_published_live(self):
         # PRF-195 (NNT-039): RFC 3977 section 7.6.6 descriptions and RFC 6048
         # section 2.5 LIST MOTD from the configuration's descriptions slot,
