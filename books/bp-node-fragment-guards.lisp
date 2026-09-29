@@ -249,4 +249,27 @@
                        '(fn-bpnf-subsetp-equal-reflexive
                          fn-bpnf-family-keys-not-readyp-of-nil)
                        (theory 'minimal-theory)))))
+;; Q4a increment B: the twins over the reassembly job have the family
+;; steps' obligations (fn-bpfj-plan-at / -apply-at are guarded by the same
+;; machine-state recognizer).
+(verify-guards fn-bpfj-propose-step
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpn-state-config-for-guard
+                            (st (fn-bpnf-base st)))
+                 (:instance fn-bpn-state-field-types-for-guard
+                            (st (fn-bpnf-base st))))
+           :in-theory (disable fn-bpn-machine-statep
+                               fn-bpn-machine-recordp
+                               fn-bpn-state-config-for-guard
+                               fn-bpn-state-field-types-for-guard
+                               fn-bpnf-family-plan fn-bpnf-family-apply
+                               fn-bpnf-family-frame))))
+
+(verify-guards fn-bpfj-persist-step
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-bpn-machine-statep
+                               fn-bpn-machine-recordp
+                               fn-bpnf-family-apply
+                               fn-bpnf-family-plan))))
+
 (verify-guards fn-bpnf-fragment-step)
