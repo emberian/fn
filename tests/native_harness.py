@@ -1046,6 +1046,15 @@ def class_case(cls):
     return case
 
 
+def durable_root():
+    """A directory on durable storage for stores that require it (a mission's
+    init refuses tmpfs: store-mount-identity): FN_TEST_DURABLE_TMP when set
+    (tools/hbox_native.sh sets hbox's local ext4), else the tree's build/test-tmp."""
+    root = Path(os.environ.get("FN_TEST_DURABLE_TMP") or ROOT / "build" / "test-tmp")
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
 def scratch(case, prefix="fn-native-"):
     """A temporary directory removed when CASE's test ends."""
     directory = tempfile.TemporaryDirectory(prefix=prefix)

@@ -5,6 +5,7 @@
     python3 tools/fixtures.py rebuild --image IMAGE --rev REV [--only NAME ...]
                                       [--root ROOT] [--work DIR] [--jobs N]
     python3 tools/fixtures.py check [--root ROOT] [--rev REV]
+    python3 tools/fixtures.py path NAME [--root ROOT]   (ROOT/NAME, verified; exit 1 if not)
     python3 tools/fixtures.py opens --image IMAGE [--only NAME ...] [--root ROOT] [--work DIR]
     python3 tools/fixtures.py post-suffix IMAGE STORE N   (a recipe's step: see
                                       recipe_checkpoint_suffix)
@@ -494,8 +495,11 @@ def recipe_bp_open(ctx: Context) -> None:
 
 class Fixture:
     def __init__(self, name, recipe=None, mem="40G", readme="", static=False,
-                 stores=("store",), tar=None):
+                 stores=("store",), tar=None, sums_sha256=None):
         self.name, self.recipe, self.mem, self.readme, self.static = name, recipe, mem, readme, static
+        # A static fixture's SHA256SUMS digest, pinned here: its own sums
+        # then cannot be rewritten to match changed files.
+        self.sums_sha256 = sums_sha256
         # The stores it holds (relative paths; "." is the directory itself),
         # inside TAR when it has one.
         self.stores, self.tar = stores, tar
@@ -574,9 +578,19 @@ REGISTRY = [
                    "every point has the same node, profile and payloads. build.json: the seed's "
                    "and each store's build seconds. Copy a store and touch writer.lock (mode "
                    "600) before use; scale_curve.py does."),
-    Fixture("usenet-20news-19997", static=True,
+    Fixture("usenet-20news-19997", static=True, stores=(),
+            sums_sha256="3439449135edfe88ca7d65817eb4fb02e3285f7b17ad415f4003c24c078f6668",
             readme="The 20 Newsgroups corpus (a corpus, not a store): verified, never rebuilt."),
+    # PKT-727: the glibc-floor SBCL runtime tests/friends_tarball.sh and
+    # tools/cut_release.sh bundle (FLOOR_RUNTIME); built by
+    # packaging/floor-runtime.sh on 2026-09-26, runtime sha256 50fcaa88...
+    Fixture("sbcl-floor-runtime-2.6.8", static=True, stores=(),
+            sums_sha256="5ccfc2ca13f59fbc53d6c84b3e61c91c2fb60da8f0dbd1df818a58b78b551743",
+            readme="SBCL 2.6.8's runtime rebuilt in debian:12 (glibc 2.36, the runpath floor) "
+                   "with SBCL's own build-id: sbcl, sbcl.core, build-id.inc, "
+                   "floor-runtime.txt, make.log. Verified, never rebuilt."),
 ]
+FLOOR_RUNTIME = ROOT / "sbcl-floor-runtime-2.6.8"
 BY_NAME = {f.name: f for f in REGISTRY}
 
 
@@ -612,10 +626,19 @@ def retire(root: Path, name: str) -> None:
     os.rename(current, previous)
 
 
+def verify_fixture(fixture: Fixture, where: Path) -> list[str]:
+    """verify_sums, plus SHA256SUMS itself against the pinned digest."""
+    bad = verify_sums(where)
+    sums = where / "SHA256SUMS"
+    if fixture.sums_sha256 and sums.is_file() and sha256_file(sums) != fixture.sums_sha256:
+        bad.insert(0, "SHA256SUMS (pinned {})".format(fixture.sums_sha256[:12]))
+    return bad
+
+
 def rebuild_one(fixture: Fixture, args, core_sha: str) -> tuple[str, str]:
     root = Path(args.root)
     if fixture.static:
-        bad = verify_sums(root / fixture.name)
+        bad = verify_fixture(fixture, root / fixture.name)
         return fixture.name, ("static, verified" if not bad else "static, MISMATCH " + ",".join(bad[:5]))
     work = Path(args.work) / fixture.name
     staging = root / ".staging" / fixture.name
@@ -690,7 +713,7 @@ def cmd_check(args) -> int:
             print("{}: MISSING".format(fixture.name))
             status = 1
             continue
-        bad = verify_sums(where)
+        bad = verify_fixture(fixture, where)
         row = manifest.get(fixture.name)
         if bad:
             status = 1
@@ -758,6 +781,22 @@ def cmd_list(_args) -> int:
     return 0
 
 
+def cmd_path(args) -> int:
+    """Print ROOT/NAME once it verifies (a consumer's one call before use)."""
+    fixture = BY_NAME.get(args.name)
+    if fixture is None:
+        print("fixtures: {} is not registered".format(args.name), file=sys.stderr)
+        return 2
+    where = Path(args.root) / fixture.name
+    bad = verify_fixture(fixture, where) if where.is_dir() else ["MISSING"]
+    if bad:
+        print("fixtures: {} at {}: {}".format(fixture.name, where, ", ".join(bad[:5])),
+              file=sys.stderr)
+        return 1
+    print(where)
+    return 0
+
+
 def _terminated(signum, _frame):
     # A SIGTERM (earlyoom, a stopped unit) unwinds through subprocess.run,
     # which kills the recipe's process instead of leaving it orphaned.
@@ -780,6 +819,9 @@ def main(argv=None) -> int:
     ck = sub.add_parser("check")
     ck.add_argument("--root", default=str(ROOT))
     ck.add_argument("--rev", default=None)
+    pa = sub.add_parser("path", help="print a verified fixture's directory")
+    pa.add_argument("name")
+    pa.add_argument("--root", default=str(ROOT))
     op = sub.add_parser("opens")
     op.add_argument("--image", required=True)
     op.add_argument("--only", nargs="+", default=None)
@@ -793,7 +835,7 @@ def main(argv=None) -> int:
     ps.add_argument("--json", required=True)
     args = p.parse_args(argv)
     return {"list": cmd_list, "rebuild": cmd_rebuild, "check": cmd_check,
-            "opens": cmd_opens, "post-suffix": cmd_post_suffix}[args.cmd](args)
+            "opens": cmd_opens, "path": cmd_path, "post-suffix": cmd_post_suffix}[args.cmd](args)
 
 
 if __name__ == "__main__":

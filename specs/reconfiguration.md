@@ -10,7 +10,7 @@ fn today has no configuration. It has *constants*: the carried group list is a
 `defconst` in [`books/store-config.lisp`](../books/store-config.lisp), retention
 capacity is a `defconst` in [`host/store-host.lisp`](../host/store-host.lisp),
 the BP policy/terms/issuer identifiers and the inbound group map are `defconst`s
-in [`host/bp-ingress-host.lisp`](../host/bp-ingress-host.lisp), and
+in `host/bp-ingress-host.lisp` (retired: planning/retired-paths.json), and
 `tools/run_store.py` refuses to open a store whose JSON configuration is not
 `==` to `DEFAULT_CONFIG`. Adding a newsgroup means recompiling the core and
 rewriting every store's configuration file by hand.
@@ -940,8 +940,8 @@ further events; the owner state shrinks by one slot rather than growing.*
 in §1.7's table; thread the store's configuration into the post boundary (landed
 as `fn-sbud-post-boundary` over the persisted profile, §1.7), the host's group
 lookups (landed as positions in the configured domain, `fn-store-group-codes`),
-the lab BP ingress host's policy and context (that host since
-retired, Q7k 2026-09-29); move the
+and the lab BP ingress host's policy and context (that host since retired,
+Q7k 2026-09-29); move the
 reader seed to `tests/acl2/reader-fixture.lisp`. `run_store.py` gains
 `reconfigure` (deltas in, D13 exit codes out) and `config` (print the generation
 and value); `run_owner.py` gains a `RECONFIGURE` control line. `DEFAULT_CONFIG`
