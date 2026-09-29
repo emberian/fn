@@ -106,3 +106,43 @@
                (fn-auth-config-creds
                 (as-snap (fn-cfg-apply-delta (as-v2) 3 *as-stamp*
                                              (fn-cfg-account-access "robin" "*" "*"))))))
+
+; -----------------------------------------------------------------------------
+; fn-auth-config-with-accounts-is-a-config (the snapshot the host's
+; connection takes is a policy).  Positive witness: auth.toml's policy and
+; the configuration with robin's redeemed row.
+(assert-event (fn-auth-configp (as-acfg)))
+(assert-event (fn-auth-configp (fn-auth-config-with-accounts (as-acfg) (as-v2))))
+; Hypothesis removed: a malformed policy stays malformed.
+(assert-event (not (fn-auth-configp :junk)))
+(must-fail-checked
+ (assert-event (fn-auth-configp (fn-auth-config-with-accounts :junk (as-v2)))))
+
+; fn-auth-account-creds-find-the-row.  Positive witness: robin's redeemed
+; row (n = 1, a well-formed credential), alone and ahead of another row.
+(defmacro as-row () '(car (fn-cfg-accounts (as-v2))))
+(defmacro as-row-login () '(fn-record-string-octets (fn-cfg-row-b (as-row))))
+(assert-event (and (equal (fn-cfg-row-n (as-row)) 1)
+                   (fn-auth-credp (fn-auth-account-cred (as-row)))))
+(assert-event (equal (fn-auth-find-cred (as-row-login) (fn-auth-account-creds (list (as-row))))
+                     (fn-auth-account-cred (as-row))))
+(assert-event (equal (fn-auth-find-cred (as-row-login)
+                                        (fn-auth-account-creds
+                                         (list (as-row) (car (fn-cfg-accounts (as-v1))))))
+                     (fn-auth-account-cred (as-row))))
+; Hypothesis (equal (fn-cfg-row-n row) 1) removed: the same row with state
+; 2 keeps a well-formed credential and is not found.
+(defmacro as-row-2 () '(update-nth 3 2 (as-row)))
+(assert-event (and (not (equal (fn-cfg-row-n (as-row-2)) 1))
+                   (fn-auth-credp (fn-auth-account-cred (as-row-2)))))
+(must-fail-checked
+ (assert-event (equal (fn-auth-find-cred (as-row-login) (fn-auth-account-creds (list (as-row-2))))
+                      (fn-auth-account-cred (as-row-2)))))
+; Hypothesis (fn-auth-credp (fn-auth-account-cred row)) removed: a redeemed
+; row whose verifier text does not decode is not found.
+(defmacro as-row-junk () '(update-nth 2 "junk" (as-row)))
+(assert-event (and (equal (fn-cfg-row-n (as-row-junk)) 1)
+                   (not (fn-auth-credp (fn-auth-account-cred (as-row-junk))))))
+(must-fail-checked
+ (assert-event (equal (fn-auth-find-cred (as-row-login) (fn-auth-account-creds (list (as-row-junk))))
+                      (fn-auth-account-cred (as-row-junk)))))
