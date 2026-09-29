@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (include-book "../../books/closure-open")
 (include-book "open-frontier-tests")
+(include-book "config-store-traces-tests")
 
 (defconst *clo-t-capture* (fn-sco-capture *ofr-t-configs* *ofr-t-events*))
 (defconst *clo-t-frontier* (fn-ofr-frontier *ofr-t-configs* *ofr-t-events* 0))
@@ -79,3 +80,34 @@
  (not (equal (fn-sco-finalize *clo-t-improper-capture* *clo-t-improper-configs*
                               *clo-t-improper-frontier*)
              (fn-sn-open-error :frontier))))
+
+; -----------------------------------------------------------------------------
+; fn-clo-observed-at-the-computed-frontier, positive: observed below the
+; recorded frontier 7, the computed frontier is 7 and a uint32.
+(assert-event (fn-sn-observed-historyp 7 *ofr-t-events*))
+(assert-event (fn-record-uint32p *clo-t-frontier*))
+(assert-event (fn-sn-observed-historyp *clo-t-frontier* *ofr-t-events*))
+; and with the recorded frontier's premises only
+; (fn-clo-capture-of-clean-stop-opens-or-identity): the same answer, :ok.
+(assert-event
+ (let ((answer (cadr (fn-sco-store-open *clo-t-capture* *ofr-t-configs* *clo-t-frontier*))))
+   (equal (fn-sn-open-kind answer) :ok)))
+
+; -----------------------------------------------------------------------------
+; fn-clo-relation-state-opens-or-identity, positive, on config-observed-tests'
+; ready state (fn-cst-relation holds of it, config-store-traces-tests): every
+; hypothesis, the conclusion, and which disjunct.
+(defconst *clo-t-st* *cpo-t-ready*)
+(defconst *clo-t-st-configs* (fn-sn-config-history *clo-t-st*))
+(defconst *clo-t-st-events* (fn-sf-records (fn-sn-files *clo-t-st*)))
+(defconst *clo-t-st-frontier* (fn-ofr-frontier *clo-t-st-configs* *clo-t-st-events* 0))
+(assert-event (fn-cst-relation *clo-t-st*))
+(assert-event (natp 0))
+(assert-event (consp *clo-t-st-configs*))
+(assert-event (fn-record-uint32p *clo-t-st-frontier*))
+(assert-event
+ (let ((answer (cadr (fn-sco-store-open (fn-sco-capture *clo-t-st-configs* *clo-t-st-events*)
+                                        *clo-t-st-configs* *clo-t-st-frontier*))))
+   (and (or (equal (fn-sn-open-kind answer) :ok)
+            (equal answer (fn-sn-open-error :identity)))
+        (equal (fn-sn-open-kind answer) :ok))))

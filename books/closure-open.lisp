@@ -25,9 +25,10 @@
 ; (host/store-host.lisp, program mode) is `fn-ofr-events-next' -- the config
 ; half is host-called (PRF-937); until the events half is equated, "the
 ; frontier the host passes" is `fn-ofr-frontier' by transcription, not by
-; theorem.  And `fn-sn-observed-historyp' at the computed frontier (the
-; :history arm) is a hypothesis here: the trace relation carries it at the
-; recorded frontier, not at the fold.
+; theorem.  The :history arm's premise, `fn-sn-observed-historyp' at the
+; computed frontier, is derived below from the same premise at the recorded
+; frontier (what the trace relation carries): the events fold is above every
+; event's txid, so only the uint32 bound on the computed frontier remains.
 (in-package "ACL2")
 (include-book "config-store-steps")
 (include-book "open-frontier")
@@ -170,3 +171,100 @@
            :in-theory (e/d (fn-sco-store-open)
                            (fn-clo-finalize-inner fn-sco-finalize fn-sn-open-kind
                             fn-sn-open-error fn-sco-capture)))))
+
+; -----------------------------------------------------------------------------
+; The :history arm at the computed frontier.  An observed history below the
+; recorded frontier is observed below the computed one: the frontier enters
+; `fn-sf-record-listp' only as the bound `(< txid frontier)', and the events
+; fold is above every event's txid.
+
+(defthm fn-clo-record-listp-later
+  (implies (and (fn-sf-record-listp records sequence lower f) (<= f g))
+           (fn-sf-record-listp records sequence lower g))
+  :hints (("Goal" :induct (fn-sf-record-listp records sequence lower f)
+           :in-theory (e/d (fn-sf-record-listp)
+                           (fn-store-event-p fn-store-event-sequence fn-store-event-txid
+                            fn-store-event-generation)))))
+(defthm fn-clo-record-listp-true-listp
+  (implies (fn-sf-record-listp records sequence lower f) (true-listp records))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-sf-record-listp records sequence lower f)
+           :in-theory (e/d (fn-sf-record-listp)
+                           (fn-store-event-p fn-store-event-sequence fn-store-event-txid
+                            fn-store-event-generation)))))
+(local (defun fn-clo-ind (records sequence lower acc)
+         (declare (xargs :measure (len records)))
+         (if (consp records)
+             (fn-clo-ind (cdr records) (1+ sequence) (1+ (fn-store-event-txid (car records)))
+                         (let ((txid (fn-store-event-txid (car records))))
+                           (if (natp txid) (max (nfix acc) (+ 1 txid)) (nfix acc))))
+           (list sequence lower acc))))
+(defthm fn-clo-record-listp-below-events-next
+  (implies (fn-sf-record-listp records sequence lower f)
+           (fn-sf-record-listp records sequence lower (fn-ofr-events-next records acc)))
+  :hints (("Goal" :induct (fn-clo-ind records sequence lower acc)
+           :in-theory (e/d (fn-sf-record-listp fn-ofr-events-next)
+                           (fn-store-event-p fn-store-event-sequence fn-store-event-txid
+                            fn-store-event-generation fn-ofr-events-next-of-cons)))))
+(defthm fn-clo-observed-at-the-computed-frontier
+  (implies (and (fn-sn-observed-historyp f events)
+                (fn-record-uint32p (fn-ofr-frontier configs events floor)))
+           (fn-sn-observed-historyp (fn-ofr-frontier configs events floor) events))
+  :hints (("Goal" :use ((:instance fn-clo-record-listp-below-events-next
+                                   (records events) (sequence 0) (lower 0) (acc floor))
+                        (:instance fn-clo-record-listp-later
+                                   (records events) (sequence 0) (lower 0)
+                                   (f (fn-ofr-events-next events floor))
+                                   (g (fn-ofr-frontier configs events floor))))
+           :in-theory (e/d (fn-sn-observed-historyp fn-ofr-frontier)
+                           (fn-sf-record-listp fn-ofr-events-next fn-ofr-configs-next
+                            fn-clo-record-listp-below-events-next fn-clo-record-listp-later
+                            fn-record-uint32p)))))
+
+; -----------------------------------------------------------------------------
+; The keystone with the recorded frontier's premises only, and of the state
+; the trace relation describes (books/config-store-traces `fn-cst-relation':
+; what the store steps carry): its history opens, or is refused :identity.
+
+(defthm fn-clo-observed-history-true-listp
+  (implies (fn-sn-observed-historyp f events) (true-listp events))
+  :rule-classes nil
+  :hints (("Goal" :use (:instance fn-clo-record-listp-true-listp
+                                  (records events) (sequence 0) (lower 0))
+           :in-theory (e/d (fn-sn-observed-historyp) (fn-sf-record-listp fn-record-uint32p)))))
+(defthm fn-clo-capture-of-clean-stop-opens-or-identity
+  (implies (and (fn-cst-recoverablep configs events frontier)
+                (fn-sn-observed-historyp frontier events)
+                (natp floor)
+                (consp configs)
+                (fn-record-uint32p (fn-ofr-frontier configs events floor)))
+           (let ((answer (cadr (fn-sco-store-open (fn-sco-capture configs events) configs
+                                                  (fn-ofr-frontier configs events floor)))))
+             (or (equal (fn-sn-open-kind answer) :ok)
+                 (equal answer (fn-sn-open-error :identity)))))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-clo-store-open-of-clean-stop-is-accepted-or-identity
+                        (:instance fn-clo-observed-at-the-computed-frontier (f frontier))
+                        (:instance fn-clo-observed-history-true-listp (f frontier)))
+           :in-theory (disable fn-clo-finalize-inner fn-sco-store-open fn-sco-capture
+                               fn-sn-open-kind fn-sn-open-error fn-sf-record-listp
+                               fn-record-uint32p fn-clo-observed-at-the-computed-frontier
+                               fn-clo-record-listp-later fn-clo-record-listp-below-events-next))))
+(defthm fn-clo-relation-state-opens-or-identity
+  (implies (and (fn-cst-relation st)
+                (natp floor)
+                (consp (fn-sn-config-history st))
+                (fn-record-uint32p (fn-ofr-frontier (fn-sn-config-history st)
+                                                    (fn-sf-records (fn-sn-files st)) floor)))
+           (let* ((configs (fn-sn-config-history st))
+                  (events (fn-sf-records (fn-sn-files st)))
+                  (answer (cadr (fn-sco-store-open (fn-sco-capture configs events) configs
+                                                   (fn-ofr-frontier configs events floor)))))
+             (or (equal (fn-sn-open-kind answer) :ok)
+                 (equal answer (fn-sn-open-error :identity)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-clo-capture-of-clean-stop-opens-or-identity
+                                   (configs (fn-sn-config-history st))
+                                   (events (fn-sf-records (fn-sn-files st)))
+                                   (frontier (fn-sf-frontier (fn-sn-files st)))))
+           :in-theory (union-theories (theory 'minimal-theory) '(fn-cst-relation)))))
