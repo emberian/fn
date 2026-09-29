@@ -1404,6 +1404,25 @@ def fixes(missing: list[str], jobs: int) -> list[str]:
     ]
 
 
+def runner_closure(book: str, graph: dict[str, list[str]], include_self: bool,
+                   cache: Path, identity: str, acl2: Path):
+    """The certify runner's own install of BOOK's dependencies, or None if short.
+
+    `start --certify-missing` ran `certify_books.py --incremental`, whose
+    install-partial chooses per book; it said "nothing left" while install-set
+    (one compatible set) still found none and `start` refused "no cached
+    certificate" (bp-remainder, persvati, twice).  The closure the runner
+    installed is the one it certifies against, so when install-partial covers
+    every dependency, compiled, the session takes it.
+    """
+    roots = [book] if include_self else sorted(graph.get(book, ()))
+    if not roots:
+        return None
+    with acl2_slots.slot(f"proof-repl cache {book}"):
+        report = certs.install_partial(ROOT, cache, roots, identity, acl2=acl2)
+    return None if report.uncached or report.uncompiled else report
+
+
 def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
                     log: Path | None = None,
                     include_self: bool = False) -> tuple[bool, str, list[str]]:
@@ -1480,12 +1499,25 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
             printed.append(f"  certify_books.py exit {done.returncode}"
                            + (f"; log {log}" if log else ""))
             report, required = attempt(from_source, purge=False)
-        if report is not None and report.artifact_set is None and auto == "ld":
+            if (report is not None and report.artifact_set is None
+                    and done.returncode == 0 and not from_source):
+                per_book = runner_closure(book, graph, include_self, cache,
+                                          fingerprint.identity, acl2)
+                if per_book is not None:
+                    printed.append(
+                        "proof-repl: install-set found no one compatible set after the "
+                        f"certify run (missing {', '.join(report.uncached)}); the runner's "
+                        "own per-book install (install-partial) covers the closure -- "
+                        "taking that")
+                    report = per_book
+        if (report is not None and report.artifact_set is None
+                and report.action != "install-partial" and auto == "ld"):
             from_source |= dependents_of(graph, report.uncached) - {book}
             printed.append("proof-repl: loading from source (proofs run in the session): "
                            + ", ".join(dependency_order(graph, from_source)))
             report, required = attempt(from_source, purge=False)
-        if report is not None and report.artifact_set is None:
+        if (report is not None and report.artifact_set is None
+                and report.action != "install-partial"):
             missing = sorted(report.uncached)
             # The refusal keeps the old contract: no local pair of the closure
             # survives a miss to stand in for a certificate later.
