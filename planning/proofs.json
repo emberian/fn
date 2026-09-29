@@ -17219,6 +17219,42 @@
         "fn-snc-initial-corresponds",
         "fn-snc-crash-preserves-correspondp-by-recomputation"
       ]
+    },
+    {
+      "id": "PRF-1016",
+      "title": "fn-bpnp-dispatch-publication-authorize authorizes the publication exactly for the issued pending dispatch of the offered epoch and operation id under the held lock and an absent final name, and then carries the record, its stored name and frame",
+      "statement": "books/bp-fnbs-dispatch-publication.lisp, called by host/native/bp-service.lisp fnn-bps-persist-dispatch. KEYSTONE fn-bpnp-dispatch-publication-authorize-admits-exactly-the-issued-pending-dispatch, two-sided: the answer is an operation (fn-bpnp-dispatch-publication-operationp) iff the state's issued operation is a well-formed pending :dispatch matching the offered epoch and operation id whose carried record is the offered one, the state's epoch is the offered epoch and its next operation id the offered one plus one, the record is a well-formed dispatch record (fn-bpnp-dispatch-recordp) carrying that epoch and id, LOCK-OWNED and FINAL-ABSENT hold (the principal: the caller holds the publication lock; the evidence: the canonical final name observed absent) and the record frames; then the operation carries the epoch, the id, the record, the stored record name of the epoch and id, the record's frame and (fn-jpub-initial t) as its name, frame and publisher accessors read them; otherwise the answer is exactly (:fault :dispatch-authority) or (:fault :dispatch-codec), the two answers the host maps to indeterminate and :refused. With fn-bpnp-dispatch-record-epoch-and-op-are-frame-nats (a dispatch record's epoch and id are frame naturals). Teeth: tests/acl2/bp-fnbs-dispatch-publication-tests.lisp (the positive witness is the pending dispatch the forwarding teeth fixture's outer host-called step issued, with the antecedent by name and every conclusion part; a wrong operation id, a withheld lock and a present final name answer the authority fault exactly; the codec fault needs a recognized record the frame codec refuses, which no reachable fixture produces).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-fnbs-dispatch-publication.lisp",
+        "tests/acl2/bp-fnbs-dispatch-publication-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-5: the bp publication-authorize family, the dispatch and forward keystones (the PRF-1013 shape); REPL-admitted with the test books loaded from source (persvati, 0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
+    },
+    {
+      "id": "PRF-1017",
+      "title": "fn-bpnp-forward-publication-authorize authorizes the publication exactly for the issued pending attempt, forward result or deferral of the offered epoch and operation id under the held lock and an absent final name, and then carries the record, its stored name and the issued kind's frame",
+      "statement": "books/bp-fnbs-forward-publication.lisp, called by host/native/bp-service.lisp fnn-bps-persist-forward (the authorization, then fn-bpnp-forward-publication-operationp on its answer). KEYSTONE fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward, two-sided: the answer is an operation (fn-bpnp-forward-publication-operationp, the left side of the iff) iff the state's issued operation is a well-formed pending operation of kind :attempt, :forward-result or :deferral matching the offered epoch and operation id whose carried record is the offered one, the state's epoch is the offered epoch and its next operation id the offered one plus one, the record carries that epoch and id, LOCK-OWNED and FINAL-ABSENT hold (the principal: the caller holds the publication lock; the evidence: the canonical final name observed absent) and the issued kind frames the record (fn-bpnp-forward-publication-frame is not :bad); then the operation carries the epoch, the id, the record, the stored record name of the epoch and id, that frame and (fn-jpub-initial t) as its name, octets and publisher accessors read them; otherwise the answer is exactly (:fault :forward-authority) or (:fault :forward-codec). The authorization checks only natp of the epoch and id (fn-bpnf-operationp) while the recognizer wants fn-frame-natp: fn-bpnp-forward-publication-frame-not-bad-implies-frame-nats closes that gap inside the function (each kind's frame is :bad unless its record recognizer holds, and every recognizer carries the record's epoch and id as frame naturals, which the :ok branch equates to the offered ones), so no host hypothesis is needed. Teeth: tests/acl2/bp-fnbs-forward-publication-tests.lisp (the positive witness is the pending attempt the retry fixture's outer host-called step issued, with the antecedent by name and every conclusion part; a wrong operation id, a withheld lock and a present final name answer the authority fault exactly; a MUTATION witness, an issued attempt whose record has no identity octets, answers the codec fault exactly and is labelled unreachable).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-fnbs-forward-publication.lisp",
+        "tests/acl2/bp-fnbs-forward-publication-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-5: the bp publication-authorize family, the dispatch and forward keystones (the PRF-1013 shape); REPL-admitted with the test books loaded from source (persvati, 0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
     }
   ]
 }

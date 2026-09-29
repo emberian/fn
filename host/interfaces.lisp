@@ -2687,7 +2687,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnp-dispatch-publication-authorize
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpnp-dispatch-publication-authorize-admits-exactly-the-issued-pending-dispatch))
 
 (definterface fn-bpnp-dispatch-publication-frame
   :class ::ideal)
@@ -2708,7 +2709,8 @@
               fn-bpnp-forward-plan-has-one-session-per-peer))
 
 (definterface fn-bpnp-forward-publication-authorize
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward))
 
 (definterface fn-bpnp-forward-publication-name
   :class ::ideal)
@@ -2717,7 +2719,8 @@
   :class ::ideal)
 
 (definterface fn-bpnp-forward-publication-operationp
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward))
 
 (definterface fn-bpnp-forward-publication-publisher
   :class ::ideal)
