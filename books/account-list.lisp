@@ -25,6 +25,7 @@
 ; Never a digest or a verifier.
 (in-package "ACL2")
 (include-book "accounts")
+(include-book "consumer-position")
 
 (defun fn-acct-row-kind (row)
   (declare (xargs :guard t))

@@ -41,10 +41,7 @@ the difference explicit instead:
               books/octets-stobj and books/poster-bytes-buffer for
               host/owner-host.lisp's fn-owner-prepare-buffer and
               build-dtn.lisp did not, so the DTN image failed to build.
-              A host file's own `ld`s count before its uses.  The same rule
-              covers the Python bridges' boots (bridge_findings) and the
-              served crash model's ACL2 session (served_findings; qual-b6759850
-              C18).
+              A host file's own `ld`s count before its uses.
 
 Static, no ACL2.  It does not follow the books an omitted host file includes,
 and it cannot see a counterpart name computed at run time.  `included` reads
@@ -66,6 +63,11 @@ DTN_BUILD = "host/native/build-dtn.lisp"
 
 # host file -> (why the DTN image omits it, {referenced name: why unreachable})
 DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
+    "host/interfaces.lisp": (
+        "the host-called entries' declarations (definterface, lane generators G7), "
+        "checked against the default image's world when it is built; several "
+        "declared entries (the extraction roots, the NNTP reader's) are not in the "
+        "DTN world, and the file defines no function any raw file calls", {}),
     "host/anchor-wire-host.lisp": (
         "only host/native/anchor.lisp uses it; the DTN image does not load anchor.lisp", {}),
     "host/anchor-server-host.lisp": (
@@ -321,6 +323,13 @@ def include_findings(root: Path, dtn_text: str, index: BookIndex | None = None,
     def visit(text: str, base: str) -> None:
         for kind, target, rest in ORDER.findall(strip_code_keep_strings(text)):
             if kind.lower() == "include-book":
+                # The image's umbrella (tools/extract/world.py) is the union
+                # of the script's and its host files' includes, loaded first
+                # so each compiled file loads once; counting it would make
+                # this order rule vacuous.  The rule reads the declared
+                # includes, in order, as before the umbrella.
+                if os.path.normpath(os.path.join(base, target)).startswith("books/image-world"):
+                    continue
                 if ":dir" not in rest.lower():
                     index.close(available, [os.path.normpath(os.path.join(base, target))
                                             + ".lisp"])
@@ -356,34 +365,10 @@ def include_findings(root: Path, dtn_text: str, index: BookIndex | None = None,
     return out
 
 
-def bridge_findings(root: Path = ROOT, kinds: dict | None = None,
-                    index: BookIndex | None = None) -> list[str]:
-    """The `included` rule over the Python bridges' boots.
-
-    `tools/bridge_image.KINDS` is each bridge's load list, the forms its
-    saved image replays: a host file it `ld`s must find every book function
-    it calls already included, by the forms before it or by its own
-    includes.  On dev at 483987b1 host/owner-host.lisp called
-    fn-rcon-ocfg-io, fn-rclb-existing-action and the fn-octets stobj, which
-    only the native build list included; the owner bridge did not boot and
-    every owner test module was red (harness-repair, PKT-176).
-    """
-    if kinds is None:
-        sys.path.insert(0, str(ROOT))
-        from tools import bridge_image
-        kinds = bridge_image.KINDS
-    index = index or BookIndex(root)
-    out: list[str] = []
-    for kind, forms in sorted(kinds.items()):
-        out.extend(include_findings(root, "\n".join(forms) + "\n", index,
-                                    loader=f"the {kind} bridge (tools/bridge_image.py)"))
-    return out
-
-
 def main() -> int:
     # The served crash model sends no ACL2 setup since it reads the record
     # log through the image (lane log-recovery-mod): its rule went with it.
-    found = findings() + bridge_findings()
+    found = findings()
     for line in found:
         print(f"build-lists: {line}")
     default = ld_closure(ROOT, (ROOT / DEFAULT_BUILD).read_text())

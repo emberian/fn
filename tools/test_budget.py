@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Run test modules one per process, report each one's wall time, fail over budget.
 
-    python3 tools/test_budget.py tests.test_store tests.test_checkpoint
+    python3 tools/test_budget.py tests.test_ledger tests.test_certs
     python3 tools/test_budget.py --discover          # every tests/test_*.py
     python3 tools/test_budget.py --budget 120 --json build/test-budget.json ...
-    python3 tools/test_budget.py --order reverse tests.test_auth   # order dependence
+    python3 tools/test_budget.py --order reverse tests.test_farm   # order dependence
 
 Iteration time is a property the suite must keep, not a side effect of it
 (PKT-163: three store modules had grown to 1,857 to 2,280 s each, and nothing

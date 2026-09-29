@@ -2,6 +2,8 @@
 (in-package "ACL2")
 (include-book "bp-fnbs-conflict-codec")
 (include-book "bp-fnbs-dispatch-invariants")
+(include-book "article")
+(include-book "consumer-position")
 
 (defthm fn-bpnf-conflict-record-values-ok
   (implies (fn-bpnf-conflict-recordp row)

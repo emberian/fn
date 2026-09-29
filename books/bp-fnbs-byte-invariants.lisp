@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (include-book "bp-fnbs-byte-publisher")
 (include-book "bp-fnbs-codec-invariants")
+(include-book "consumer-position")
 
 (defthm fn-bpnf-ops-for-name-of-append
   (equal (fn-bs-ops-for-name (append a b) dir name)

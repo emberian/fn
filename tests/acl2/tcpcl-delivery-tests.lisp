@@ -150,3 +150,26 @@
   (equal (fn-tcl-delivery-plan-status
           (fn-tcl-delivery-plan nil 0 '(:refused :capacity)))
          :refused)))
+
+; --- PKT-873 (lane durability-bugs): fn-tcl-acknowledged-custody-is-progressed-in-its-turn.
+; Reached positive witness: fn-tcl-complete's held END ACK, the callback's
+; durable custody (:accepted nil): the released messages carry the final ACK
+; for transfer 0, the result is :accepted, the plan names the progress point.
+(defconst *t-progress-accepted* (fn-tcl-delivery-plan *t-delivery-held* 0 '(:accepted nil)))
+(assert-event (fn-tcl-output-has-final-ackp
+               (fn-tcl-delivery-plan-messages *t-progress-accepted*) 0))
+(assert-event (equal (fn-tcl-delivery-plan-status *t-progress-accepted*) :accepted))
+(assert-event (fn-tcl-delivery-plan-progress-p *t-progress-accepted*))
+; Hypothesis removed (no final ACK released): a refusal and an uncertain
+; publication release none, and the conclusion fails -- no progress point.
+(defconst *t-progress-refused* (fn-tcl-delivery-plan *t-delivery-held* 0 '(:refused :capacity)))
+(assert-event (not (fn-tcl-output-has-final-ackp
+                    (fn-tcl-delivery-plan-messages *t-progress-refused*) 0)))
+(assert-event (not (fn-tcl-delivery-plan-progress-p *t-progress-refused*)))
+(defconst *t-progress-uncertain* (fn-tcl-delivery-plan *t-delivery-held* 0 '(:uncertain :publication)))
+(assert-event (not (fn-tcl-output-has-final-ackp
+                    (fn-tcl-delivery-plan-messages *t-progress-uncertain*) 0)))
+(assert-event (not (fn-tcl-delivery-plan-progress-p *t-progress-uncertain*)))
+; A fault (the held list lacks its final ACK): no ACK, no progress.
+(assert-event (not (fn-tcl-delivery-plan-progress-p
+                    (fn-tcl-delivery-plan (list (car *t-delivery-held*)) 0 '(:accepted nil)))))

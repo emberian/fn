@@ -14,7 +14,7 @@ verifies against it (trust 0).  slrn 1.0.3 verifies nothing (a client
 property, recorded).
 
 Every row's verdict is the node's reply line in the client's own transcript
-(v0_matrix.client_wire_outcomes); each row is printed as READER-CLIENT-ROW
+(reader_clients_phase.client_wire_outcomes); each row is printed as READER-CLIENT-ROW
 JSON on stderr, so the module log is the evidence.  Assertions are what the
 RFCs and specs/nntp.md require of the node; a known defect's assertion is an
 expectedFailure naming its packet, so the fix turns it into an unexpected
@@ -38,7 +38,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v0_matrix import client_wire_outcomes, reply_verdict  # noqa: E402
+from reader_clients_phase import client_wire_outcomes, reply_verdict  # noqa: E402
 
 IMAGES = [(name, path) for name, path in (
     ("production", os.environ.get("FN_NATIVE_HOST")),

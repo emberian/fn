@@ -381,6 +381,40 @@ class ProbeError(Exception):
 # ---------------------------------------------------------------------------
 # One point.
 
+@probe("served", variant=True)
+def heap(pt):
+    """F8 by curve (folded in from tools/fundamentals/f8_curve.py): the live
+    heap after a full collection, the collector's garbage, and the process's
+    resident set, anonymous memory and threads, on the owner that opened N
+    from its checkpoint.  Needs a heap image (tools/fundamentals/
+    build_heap_image.sh, whose hook FN_PROF_LOAD loads): on another image
+    the snapshot never answers and the probe says so.  tools/f8_breakdown.py
+    --curve reads these series."""
+    directory = Path(pt.env["FN_HEAP_DIR"])
+    tag = "gc-{}".format(pt.n)
+    (directory / "go").write_text(tag)
+    deadline = time.monotonic() + 600
+    while not (directory / ("done-" + tag)).exists():
+        if time.monotonic() > deadline:
+            raise ProbeError("the heap hook did not answer in 600 s (not a heap image?)")
+        time.sleep(0.05)
+    doc = {}
+    for line in (directory / ("heap-" + tag + ".txt")).read_text().splitlines():
+        words = line.split()
+        if len(words) == 2 and words[1].isdigit():
+            doc[words[0]] = int(words[1])
+    status = proc_status(pt.owner.pid)
+    try:
+        threads = len(os.listdir("/proc/{}/task".format(pt.owner.pid)))
+    except OSError:
+        threads = None
+    return {"live_bytes": doc.get("dynamic-usage-after-gc"),
+            "garbage_bytes": doc["dynamic-usage"] - doc["dynamic-usage-after-gc"]
+            if "dynamic-usage-after-gc" in doc and "dynamic-usage" in doc else None,
+            "rss_kib": status.get("VmRSS"), "hwm_kib": status.get("VmHWM"),
+            "anon_kib": status.get("RssAnon"), "threads": threads}
+
+
 def proc_status(pid):
     out = {}
     try:
@@ -575,6 +609,14 @@ def run_point(args) -> dict:
         env.pop(k, None)
     selected = args.probes.split(",")
     stages = args.stages.split(",")
+    if "heap" in selected:
+        # The heap image's hook (tools/fundamentals/hook.lisp) answers a tag
+        # written into FN_HEAP_DIR; the probe `heap` asks it.
+        heap_dir = Path(args.work) / "heap-n{}".format(args.n)
+        shutil.rmtree(heap_dir, ignore_errors=True)
+        heap_dir.mkdir(parents=True)
+        env["FN_HEAP_DIR"] = str(heap_dir)
+        env["FN_PROF_LOAD"] = str(tree / "tools" / "fundamentals" / "hook.lisp")
     result = {"n": args.n, "stages": stages, "load_start": open("/proc/loadavg").read().split()[:3],
               "values": {}, "errors": {}, "seconds": {}}
     started = time.monotonic()
