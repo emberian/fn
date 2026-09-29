@@ -105,9 +105,13 @@ class RemoteCheckTests(unittest.TestCase):
         done = self.run_check("--target", "gen", "--fetch", "out")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertEqual((self.lane / "out/a.txt").read_text(), "newer\n")
-        self.assertEqual((self.lane / "build/remote-check/fetched/out/a.txt").read_text(),
-                         "box\n")
-        self.assertIn("kept this worktree's out/a.txt", done.stderr)
+        sha = subprocess.run(["git", "-C", str(self.lane), "rev-parse", "HEAD"],
+                             capture_output=True, text=True).stdout.strip()
+        aside = f"build/remote-check/fetched/{sha[:12]}/out/a.txt"
+        self.assertEqual((self.lane / aside).read_text(), "box\n")
+        self.assertIn(f"KEPT this worktree's out/a.txt (changed here since the run shipped); "
+                      f"the box's copy is {aside}", done.stdout)
+        self.assertIn("1 fetched file(s) NOT written into this worktree", done.stdout)
         self.assertEqual((self.lane / "out/b.txt").read_text(), "box\n")
 
     def test_cmd_runs_one_command_in_the_box_tree(self):
@@ -151,6 +155,43 @@ class RemoteCheckTests(unittest.TestCase):
         self.assertIn("step output", (self.lane / "build/remote-check/hbox-cmd.log").read_text())
         self.assertNotIn("SHOULD-NOT-RUN", log.read_text())
 
+    def attach(self, *words):
+        return subprocess.run(["sh", str(SCRIPT), "attach", "hbox", *words], cwd=self.lane,
+                              env=self.env, capture_output=True, text=True, timeout=60)
+
+    def test_a_run_killed_on_the_box_is_reported_not_polled_forever(self):
+        # obstructions-9 item 77: the box pid is recorded beside the log.
+        done = self.run_check("--cmd", "echo started; kill -9 $PPID")
+        self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
+        self.assertIn("ended without a status line", done.stderr)
+        self.assertTrue((self.box / "my-lane-check.log.pid").read_text().strip().isdigit())
+
+    def test_attach_after_the_local_side_died_fetches_by_the_record(self):
+        # obstructions-9 item 77: a --cmd's local side died (exit 144) while
+        # the box ran on; attach takes the run's --fetch paths and digests
+        # from build/remote-check/hbox.run and writes the file, then keeps a
+        # later changed copy aside, naming where, and never overwrites it.
+        cmd = "mkdir -p out && echo box > out/f.txt"
+        done = self.run_check("--cmd", cmd, "--fetch", "out/f.txt")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("tools/remote_check.sh attach hbox waits for it and fetches out/f.txt",
+                      done.stdout)
+        (self.lane / "out/f.txt").unlink()  # as if this side died before its fetch
+        attached = self.attach()
+        self.assertEqual(attached.returncode, 0, attached.stdout + attached.stderr)
+        self.assertIn("this worktree's record of the run", attached.stdout)
+        self.assertIn("fetched out/f.txt", attached.stdout)
+        self.assertEqual((self.lane / "out/f.txt").read_text(), "box\n")
+        (self.lane / "out/f.txt").write_text("mine\n")
+        attached = self.attach()
+        self.assertIn("KEPT this worktree's out/f.txt", attached.stdout)
+        self.assertEqual((self.lane / "out/f.txt").read_text(), "mine\n")
+        (self.box / "my-lane-check/out/f.txt").write_text("box2\n")
+        attached = self.attach()
+        self.assertIn("NOT FETCHED out/f.txt", attached.stdout)
+        kept = list((self.lane / "build/remote-check/fetched").rglob("f.txt"))
+        self.assertEqual([k.read_text() for k in kept], ["box\n"])
+
     def test_attach_without_a_run_says_so(self):
         attached = subprocess.run(["sh", str(SCRIPT), "attach", "hbox"], cwd=self.lane,
                                   env=self.env, capture_output=True, text=True, timeout=60)
@@ -181,8 +222,12 @@ class RemoteCheckTests(unittest.TestCase):
             "    pathlib.Path('planning', n).write_text('regen ' + n)\n")
         (self.lane / "tools/current_view.py").write_text(
             "import pathlib\npathlib.Path('planning/current.md').write_text('regen current')\n")
+        (self.lane / "tools/hot_path_check.py").write_text(
+            "import pathlib, sys\nassert sys.argv[1:] == ['--refresh-stale']\n"
+            "pathlib.Path('planning/hot-path-findings.json').write_text('refreshed')\n")
         (self.lane / "planning").mkdir()
-        for name in ("ledger.json", "ledger.md", "proofs.json", "current.md"):
+        for name in ("ledger.json", "ledger.md", "proofs.json", "current.md",
+                     "hot-path-findings.json"):
             (self.lane / "planning" / name).write_text("old\n")
         git(self.lane, "add", ".")
         git(self.lane, "commit", "-q", "-m", "tools")
@@ -192,6 +237,7 @@ class RemoteCheckTests(unittest.TestCase):
         self.assertIn("== certs install:   installed 3", log)
         self.assertEqual((self.lane / "planning/current.md").read_text(), "regen current")
         self.assertEqual((self.lane / "planning/proofs.json").read_text(), "regen proofs.json")
+        self.assertEqual((self.lane / "planning/hot-path-findings.json").read_text(), "refreshed")
         skipped = self.run_check("--no-install-certs", "--cmd", "true")
         self.assertNotIn("certs install", (self.lane / "build/remote-check/hbox-cmd.log")
                          .read_text())

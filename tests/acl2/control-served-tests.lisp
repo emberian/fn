@@ -46,7 +46,7 @@
 ; target from its row's control fact (flip-L8-2); each row is interned from
 ; its article's bytes (handle = sequence).
 (defun csv-row (seq msgid bytes groups)
-  (fn-hrt-row-at (fn-record-make seq seq 1 msgid bytes groups "a" "s" "e" 2 :legacy) seq))
+  (fn-hrt-row-at (fn-record-make seq seq 1 msgid bytes groups "a" "s" "e" 2 0) seq))
 (defconst *csv-hist*
   (list (csv-row 0 "<t@example.invalid>" '(65) '("fn.mod.a"))
         (csv-row 1 "<o@example.invalid>" '(65) '("fn.mod.a"))

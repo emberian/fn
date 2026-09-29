@@ -1427,5 +1427,32 @@ class HandWrittenRecordLintTests(unittest.TestCase):
         self.assertFalse(ledger.exports_no_rule(book))
 
 
+class FlipLinesTests(unittest.TestCase):
+    """obstructions-8 item 71: a regen that uncertifies rows says why, and
+    whether this branch's own change is the cause."""
+
+    def test_causes_are_grouped_and_attributed(self):
+        records = {
+            "books/a": {"verdict": "green", "certified_archived": True,
+                        "deps_moved_since": ["books/store-log.lisp"]},
+            "books/b": {"verdict": "green", "certified_archived": True,
+                        "deps_moved_since": ["books/store-log.lisp", "books/other.lisp"]},
+            "books/c": {"verdict": "never"},
+            "books/d": {"verdict": "green", "certified_archived": False,
+                        "deps_moved_since": []},
+        }
+        lines = ledger.flip_lines(
+            [("PRF-1", {"books/a"}), ("PRF-2", {"books/b"}), ("PRF-3", {"books/c"}),
+             ("PRF-4", {"books/d"})], records, changed={"books/store-log.lisp"})
+        self.assertIn("4 row(s) certified -> uncertified-at-current-digest", lines[0])
+        self.assertEqual(lines[1], "  books/store-log.lisp: 2 row(s) (this branch changes it: "
+                                   "expected until it is certified): PRF-1, PRF-2")
+        text = "\n".join(lines)
+        self.assertIn("books/other.lisp: 1 row(s) (not changed by this branch vs origin/dev: "
+                      "investigate): PRF-2", text)
+        self.assertIn("books/c.lisp (never): 1 row(s)", text)
+        self.assertIn("books/d.lisp (green only in an unarchived local run): 1 row(s)", text)
+
+
 if __name__ == "__main__":
     unittest.main()
