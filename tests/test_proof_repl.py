@@ -2194,5 +2194,85 @@ class SameLaneTreeTests(unittest.TestCase):
         self.assertEqual(done.stdout.split(), ["s1"], done.stderr)
 
 
+class ChangedDependencyTests(unittest.TestCase):
+    """obstructions-9 item 82 (operability-7): a --host start on a book whose
+    closure holds a book this branch changed loads it from source, and says
+    so BEFORE the sync, instead of the box refusing after it."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = worktree(self.tmp.name + "/tree")
+
+        def g(*words):
+            subprocess.run(["git", "-C", str(self.root), "-c", "commit.gpgsign=false",
+                            "-c", "user.name=t", "-c", "user.email=t@t", *words],
+                           check=True, capture_output=True)
+        g("init", "-q", "-b", "lane")
+        g("add", ".")
+        g("commit", "-q", "-m", "base")
+        g("update-ref", "refs/remotes/origin/dev", "HEAD")
+        (self.root / "books" / "base.lisp").write_text(
+            (self.root / "books" / "base.lisp").read_text() + "; changed on the lane\n")
+        self.patch = mock.patch.object(proof_repl, "ROOT", self.root)
+        self.patch.start()
+
+    def tearDown(self):
+        self.patch.stop()
+        self.tmp.cleanup()
+
+    def test_the_changed_dependency_is_named_and_a_named_one_is_not(self):
+        self.assertEqual(proof_repl.changed_dependencies("tests/acl2/mid-tests"), ["books/base"])
+        self.assertEqual(proof_repl.changed_dependencies("tests/acl2/mid-tests", ["base"]), [])
+        # The session's own book is never a dependency of itself.
+        self.assertEqual(proof_repl.changed_dependencies("books/base"), [])
+
+    def test_a_host_start_forwards_it_as_ld_before_syncing(self):
+        seen, events, real_run = [], [], subprocess.run
+        args = SimpleNamespace(command="start", name="s82", lane="l", remote_tree=None,
+                               host="hbox", book="tests/acl2/mid-tests", ld=[],
+                               source_deps=None, ld_missing=False, certify_missing=False,
+                               no_sync=False, acl2=None)
+        out = io.StringIO()
+        with mock.patch.object(proof_repl, "box_settings",
+                               lambda host: {"acl2": "acl2", "cache": "/c"}), \
+                mock.patch.object(proof_repl, "refuse_or_wait_for_lease", lambda *a: None), \
+                mock.patch.object(proof_repl, "own_remote_tree", lambda a, h, l, t: t), \
+                mock.patch.object(proof_repl, "remember_host", lambda *a: None), \
+                mock.patch.object(proof_repl, "sync_to",
+                                  lambda host, tree, files: events.append(("sync", files)) or 0.0), \
+                mock.patch.object(proof_repl.subprocess, "run",
+                                  lambda command, **kw: real_run(command, **kw)
+                                  if command[0] == "git" else seen.append(command)
+                                  or SimpleNamespace(returncode=0)), \
+                contextlib.redirect_stdout(out):
+            proof_repl.run_remote(args, ["start", "s82", "tests/acl2/mid-tests",
+                                         "--host", "hbox"])
+        self.assertIn("1 dependency of tests/acl2/mid-tests changed on this branch (no box has "
+                      "their certificates): books/base; loading them from source", out.getvalue())
+        self.assertIn("books/base.lisp", events[0][1])
+        self.assertIn("--ld books/base", seen[-1][-1])
+
+    def test_certify_missing_or_bare_source_deps_leave_it_to_the_box(self):
+        for extra in ({"certify_missing": True}, {"source_deps": "*"}, {"ld_missing": True}):
+            args = dict(source_deps=None, ld_missing=False, certify_missing=False)
+            args.update(extra)
+            seen = []
+            with mock.patch.object(proof_repl, "box_settings",
+                                   lambda host: {"acl2": "acl2", "cache": "/c"}), \
+                    mock.patch.object(proof_repl, "refuse_or_wait_for_lease", lambda *a: None), \
+                    mock.patch.object(proof_repl, "own_remote_tree", lambda a, h, l, t: t), \
+                    mock.patch.object(proof_repl, "remember_host", lambda *a: None), \
+                    mock.patch.object(proof_repl, "sync_to", lambda *a: 0.0), \
+                    mock.patch.object(proof_repl.subprocess, "run",
+                                      lambda command, **kw: seen.append(command)
+                                      or SimpleNamespace(returncode=0)), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                proof_repl.run_remote(SimpleNamespace(
+                    command="start", name="s82", lane="l", remote_tree=None, host="hbox",
+                    book="tests/acl2/mid-tests", ld=[], no_sync=False, acl2=None, **args),
+                    ["start", "s82", "tests/acl2/mid-tests", "--host", "hbox"])
+            self.assertNotIn("--ld books/base", seen[-1][-1], extra)
+
+
 if __name__ == "__main__":
     unittest.main()

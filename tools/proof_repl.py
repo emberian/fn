@@ -87,7 +87,12 @@ events stay local -- the default since obstructions-5 item 32
 loads form by form, which names the refused event.  `--host BOX`
 (hbox, persvati) runs a command in the lane's tree on that box with the
 box's own ACL2 and cache after syncing tools/ and the book's closure; on a
-box itself FN_ACL2 and FN_CERT_CACHE default to that box's.
+box itself FN_ACL2 and FN_CERT_CACHE default to that box's.  Before that
+sync a `start` names the closure's books this branch changed (against the
+merge base with origin/dev) and loads them from source as `--ld` (item 82);
+a second live session of the lane on the box gets its own tree
+<lane>-repl-<NAME> (item 79); a bare book name (`--ld store-log`) resolves
+under books/ (item 78).
 
 Round 3 (lane tooling-leftovers, 2026-09-27): `start` sends each of the
 book's events under `with-prover-time-limit` too (`--load-limit S`, default
@@ -3550,6 +3555,36 @@ def own_remote_tree(args, host: str, lane: str | None, tree: str, runner=None) -
     return own
 
 
+def changed_dependencies(book: str, named=(), base_ref: str = "origin/dev") -> list[str]:
+    """The books of BOOK's closure (not BOOK) whose bytes here differ from
+    the merge base with BASE_REF, committed or not, less those NAMED.
+
+    obstructions-9 item 82 (operability-7): a lane that changed a WIDE book
+    (books/native-admin) needs it from source in every session on a book
+    that includes it, and a --host start learned so from the box's refusal
+    only after the sync.  No box cache holds a certificate for bytes only
+    this branch has, so `start --host` loads these from source (as --ld)
+    and says so before syncing.
+    """
+    book = normalize_book(book)
+    try:
+        graph = include_graph(ROOT, book)
+    except (OSError, certs.UnreadableBook, ValueError):
+        return []
+
+    def out(*words):
+        done = subprocess.run(["git", "-C", str(ROOT), *words], capture_output=True, text=True)
+        return done.stdout if done.returncode == 0 else None
+    base = (out("merge-base", "HEAD", base_ref) or "").strip()
+    if not base:
+        return []
+    changed = set((out("diff", "--name-only", base, "--") or "").split())
+    changed |= set((out("ls-files", "--others", "--exclude-standard") or "").split())
+    wanted = {normalize_book(one) for one in named}
+    return sorted(name for name in graph
+                  if name != book and f"{name}.lisp" in changed and name not in wanted)
+
+
 def run_remote(args, argv: list[str]) -> int:
     """This command, on args.host, in the lane's tree there, after syncing what it reads."""
     host = args.host
@@ -3567,6 +3602,19 @@ def run_remote(args, argv: list[str]) -> int:
         source_deps = getattr(args, "source_deps", None)
         if source_deps and source_deps != "*":
             books += [normalize_book(one.strip()) for one in source_deps.split(",") if one.strip()]
+        if not (source_deps == "*" or getattr(args, "ld_missing", False)
+                or getattr(args, "certify_missing", False)):
+            changed = changed_dependencies(args.book, books[1:])
+            if changed:
+                print(f"proof-repl --host {host}: {len(changed)} dependenc"
+                      f"{'y' if len(changed) == 1 else 'ies'} of {normalize_book(args.book)} "
+                      f"changed on this branch (no box has their certificates): "
+                      f"{', '.join(changed)}; loading them from source (as --ld; the books "
+                      "between that include them follow). --certify-missing certifies "
+                      "them instead (item 82)", flush=True)
+                books += changed
+                for one in changed:
+                    forwarded += ["--ld", one]
     elif command == "probe":
         record = session_dir(args.name) / "remote.json"
         try:
