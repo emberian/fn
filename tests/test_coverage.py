@@ -393,6 +393,28 @@ class DumpTests(unittest.TestCase):
         self.assertIn("build/coverage/world.json", argv)
 
 
+class EventLagTests(unittest.TestCase):
+    """Item 47: a new PRF's events count before `ledger.py --write` regenerates."""
+
+    def test_proof_events_are_read_directly_and_the_lag_is_named(self):
+        root = tree()
+        (root / "planning" / "proof-events.json").write_text(json.dumps({"targets": [
+            {"id": "PRF-1", "events": [{"kind": "theorem", "name": "fn-serve-answers"}]},
+            {"id": "PRF-2", "events": [{"kind": "theorem", "name": "fn-outer-refuses"},
+                                       {"kind": "theorem", "name": "fn-new-keystone"}]}]}))
+        registry = coverage.Registry(root)
+        self.assertEqual(registry.proofs_of_event["fn-new-keystone"], ["PRF-2"])
+        self.assertEqual(registry.event_lag, ["PRF-2"])
+        _, notes = coverage.check(None, root)
+        self.assertTrue(any("lag planning/proof-events.json for 1 target(s) (PRF-2)" in note
+                            and "regen the ledger" in note for note in notes), notes)
+
+    def test_without_proof_events_proofs_json_is_read(self):
+        registry = coverage.Registry(tree())
+        self.assertEqual(registry.proofs_of_event["fn-serve-answers"], ["PRF-1"])
+        self.assertEqual(registry.event_lag, [])
+
+
 class LoadOnlyTests(unittest.TestCase):
     """The tls256k launcher loads; it never certifies (item 46)."""
 

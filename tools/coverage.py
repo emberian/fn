@@ -40,8 +40,10 @@ WHAT A THEOREM SAYS ABOUT AN ENTRY E, from its translated formula (the
   nothing     no theorem of the tree's books mentions E, its callers or its
               callees.
 
-Every theorem is also read against planning/proofs.json (a cited theorem is
-an `events` entry of a proof; the proof's requirements file it under the
+Every theorem is also read against the registry (a cited theorem is an
+event of a proof in planning/proof-events.json -- read directly, since
+proofs.json's generated `events` lag it until `ledger.py --write`, which
+`check` names; the proof's requirements in planning/proofs.json file it under the
 property families of planning/families.json), so a query can ask "which
 entries has no storage-consistency theorem mentioned in a conclusion":
 
@@ -267,6 +269,21 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def events_of_proofs(root: Path = ROOT) -> dict[str, list[str]] | None:
+    """PRF id -> event names, from planning/proof-events.json (None: absent)."""
+    path = root / "planning" / "proof-events.json"
+    if not path.is_file():
+        return None
+    return {target["id"]: [event["name"] for event in target.get("events", [])]
+            for target in load_json(path).get("targets", [])}
+
+
+def event_lag(proofs: list[dict], curated: dict[str, list[str]]) -> list[str]:
+    """The ids whose generated proofs.json events differ from proof-events.json."""
+    return sorted(proof["id"] for proof in proofs
+                  if proof.get("events", []) != curated.get(proof["id"], []))
+
+
 class Registry:
     """proofs.json, requirements.json and families.json, inverted."""
 
@@ -282,9 +299,18 @@ class Registry:
                 self.family_of_requirement[rid].add(family)
         self.proofs_of_event: dict[str, list[str]] = collections.defaultdict(list)
         self.requirements_of_proof: dict[str, list[str]] = {}
+        # A proof's events come from planning/proof-events.json, the file
+        # lanes edit; proofs.json's `events` are generated from it by
+        # `ledger.py --write` and lag it until someone regenerates
+        # (decision-keystones-3: six delegations refused because a new
+        # PRF's callee theorems read uncited).  item 47.
+        curated = events_of_proofs(root)
+        self.event_lag = event_lag(proofs, curated) if curated is not None else []
         for proof in proofs:
             self.requirements_of_proof[proof["id"]] = list(proof.get("requirements", []))
-            for event in proof.get("events", []):
+            events = (curated.get(proof["id"], []) if curated is not None
+                      else proof.get("events", []))
+            for event in events:
                 self.proofs_of_event[event.lower()].append(proof["id"])
 
     def families_of_theorem(self, theorem: str) -> tuple[list[str], list[str]]:
@@ -648,8 +674,16 @@ def write_baseline(cov: dict, path: Path = BASELINE) -> None:
 
 def check(cov: dict | None, root: Path = ROOT) -> tuple[list[str], list[str]]:
     """(problems, notes): problems fail make check, notes only print."""
-    problems = Registry(root).problems()
+    registry = Registry(root)
+    problems = registry.problems()
     notes: list[str] = []
+    if registry.event_lag:
+        lag = registry.event_lag
+        notes.append("planning/proofs.json's generated events lag planning/proof-events.json "
+                     "for {} target(s) ({}{}): coverage reads proof-events.json, but regen "
+                     "the ledger (python3 tools/ledger.py --write, or tools/remote_check.sh "
+                     "BOX --regen) before committing".format(
+                         len(lag), ", ".join(lag[:6]), ", ..." if len(lag) > 6 else ""))
     if cov is None:
         notes.append("planning/coverage.json is missing: no world dump has been built yet")
         return problems, notes
