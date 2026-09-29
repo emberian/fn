@@ -419,6 +419,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-walk-once-tests \
 	books/store-log-segments \
 	tests/acl2/store-log-segments-tests \
+	books/store-log-lineage \
+	tests/acl2/store-log-lineage-tests \
 	books/store-log-reclaim \
 	tests/acl2/store-log-reclaim-tests \
 	books/reclaim-instant \
