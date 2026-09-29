@@ -2002,7 +2002,7 @@
     {
       "id": "PRF-043",
       "title": "FNFD bounded scanner progress and persistent uncertainty in phase traces",
-      "statement": "Whenever fn-feed-journal-scan returns :next, its safe offset advances strictly and by at most the ACL2 envelope bound; starting in an uncertain journal phase, fn-feed-journal-phase-run remains uncertain after any finite sequence of later observations.",
+      "statement": "Whenever fn-feed-journal-scan returns :next, its safe offset advances strictly and by at most the ACL2 envelope bound; starting in an uncertain journal phase, fn-feed-journal-phase-run remains uncertain after any finite sequence of later observations; and (PKT-825a) K >= 1 appends written from a ready journal leave it in :sync (not durable) until ONE append barrier returns it to :ready, so the START quantum's frames for a peer journal share one fsync (host/native/owner.lisp fnn-owner-feed-sync-batch).",
       "milestone": "M4",
       "requirements": [
         "STO-004",
@@ -2016,7 +2016,8 @@
       "status": "uncertified-at-current-digest",
       "events": [
         "fn-feed-journal-next-is-bounded-progress",
-        "fn-feed-journal-uncertainty-survives-all-later-observations"
+        "fn-feed-journal-uncertainty-survives-all-later-observations",
+        "fn-feed-journal-batch-is-durable-only-at-its-one-barrier"
       ],
       "evidence": [
         "books/feed-journal.lisp",
