@@ -481,7 +481,11 @@
 ; one here (stobj-attachment-restrictions: fn-cnode-statep reaches
 ; fn-digest, attached in books/crypto-attach.lisp), so that route needs an
 ; attachment-free node recognizer first.  A test drives the entries through
-; a :program wrapper, the served path.
+; a :program wrapper, the served path: there a wrong trie changes the
+; outcome, while in the logic the twin's inner mbe :logic sides answer from
+; the node -- the invariant is what makes the :exec path the :logic path,
+; and it is carried into the keystones from the twin's own
+; fn-rii-sco-cpr-prefix-is-sco-cpr-prefix, not removed here.
 ;
 ; What the extension still copies is the record list itself, `append' and
 ; `len' over (fn-sco-records c): O(|P|) list work, no node work.  The D27

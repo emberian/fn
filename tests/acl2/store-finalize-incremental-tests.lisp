@@ -270,12 +270,20 @@
         (equal (fn-sn-open-kind (cadr (caddr round-2))) :ok)
         (equal (fn-sf-next-lower (list *sfi-t-article-3*) next1) 10))))
 
-; HYPOTHESIS REMOVAL (1): the carried invariant.  The empty node's tries
-; stand in for the base's.  Retained: a configured pause.  Omitted: the
-; wrong Message-ID trie is not the rebuilt one, so fn-rii-okp fails
-; (fn-sfi-carried-msgid-trie-is-the-rebuilt-trie).  Conclusion: the served
-; path with the wrong trie ADMITS a duplicate Message-ID (a pause) that the
-; checkpoint's resume refuses; the carried trie refuses alike.
+; HYPOTHESIS REMOVAL (1): the carried invariant, on the SERVED PATH.  The
+; empty node's tries stand in for the base's.  Retained: a configured pause.
+; Omitted: the wrong Message-ID trie is not the rebuilt one, so fn-rii-okp
+; fails (fn-sfi-carried-msgid-trie-is-the-rebuilt-trie).  Conclusion: the
+; served path (:exec, raw) with the wrong trie ADMITS a duplicate
+; Message-ID (a pause) that the checkpoint's resume refuses; the carried
+; trie refuses alike.  In the logic this instance coincides: the twin's
+; inner mbe :logic sides answer from the node, so a ground defthm of the
+; weakened equality is PROVED (the first certify run proved it in 13 steps)
+; and none refutes it.  The invariant is therefore the guard's hypothesis
+; -- what makes the :exec path the :logic path -- carried into the keystone
+; from the twin's own fn-rii-sco-cpr-prefix-is-sco-cpr-prefix; whether the
+; logical equality holds without it is that book's question, and the
+; hypothesis is not removed here (a weakened theorem is proved first).
 (defconst *sfi-t-q-dup*
   (list (sfi-t-article 3 8 "<sfi@example.invalid>" "archive-sfi-dup")))
 (defconst *sfi-t-ix-wrong*
@@ -295,12 +303,6 @@
         (equal (fn-replay-result-kind
                 (car (sfi-t-raw-resume r0 *sfi-t-configs* *sfi-t-q-dup* *sfi-t-ix*)))
                :fault))))
-(must-fail-checked
- (defthm sfi-t-without-the-carried-invariant
-   (equal (car (fn-sfi-cpr-resume-carried (fn-sco-cpr *sfi-t-base*) *sfi-t-configs*
-                                          *sfi-t-q-dup* *sfi-t-ix-wrong*))
-          (fn-sco-cpr-resume (fn-sco-cpr *sfi-t-base*) *sfi-t-configs* *sfi-t-q-dup*))))
-
 ; HYPOTHESIS REMOVAL (2): the carried verdict.  The bad base carries (its
 ; pause is configured) and its verdict is not :ok; the carried open says :ok
 ; under the lie and differs from the twin.
