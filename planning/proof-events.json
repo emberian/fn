@@ -17304,6 +17304,10 @@
         {
           "kind": "theorem",
           "name": "fn-owner-retain-carry-of-other-global-put"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-put-frames-global-association"
         }
       ]
     },

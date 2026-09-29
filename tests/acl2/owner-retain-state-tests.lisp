@@ -34,3 +34,30 @@
 (make-event
  (mv-let (ok state) (fn-orst-live-effects-witness state)
    (value (list 'assert-event ok))))
+
+; Literal table-level frame teeth for the composed host guard repair.
+; GLOBAL-TABLE is the executable state accessor whose logical body is NTH 2.
+(defun fn-orst-live-association-witness (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((original (fn-owner-retain-carry state))
+         (key 'fn-orst-witness-other)
+         (old-other (if (boundp-global 'fn-orst-witness-other state)
+                        (f-get-global 'fn-orst-witness-other state) nil))
+         (state (f-put-global 'fn-orst-witness-other :present-other state))
+         (before (assoc-equal key (global-table state)))
+         (state (fn-owner-retain-carry-put '("ledger-a" . "index-a") state))
+         (positive (and (not (equal key 'fn-owner-retain-carry))
+                        (consp before)
+                        (equal (assoc-equal key (global-table state)) before)))
+         (key 'fn-owner-retain-carry)
+         (before (assoc-equal key (global-table state)))
+         (state (fn-owner-retain-carry-put '("ledger-b" . "index-b") state))
+         (negative (and (equal key 'fn-owner-retain-carry)
+                        (consp before)
+                        (not (equal (assoc-equal key (global-table state)) before))))
+         (state (f-put-global 'fn-orst-witness-other old-other state))
+         (state (fn-owner-retain-carry-put original state)))
+    (mv (and positive negative) state)))
+(make-event
+ (mv-let (ok state) (fn-orst-live-association-witness state)
+   (value (list 'assert-event ok))))

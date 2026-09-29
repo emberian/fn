@@ -17775,7 +17775,7 @@
     {
       "id": "PRF-1067",
       "title": "The owner retention carry state boundary writes exactly and frames unrelated globals",
-      "statement": "Subject: books/owner-retain-state.lisp fn-owner-retain-carry and fn-owner-retain-carry-put, called by host/owner-host.lisp fn-owner-prepare-buffer and the other carry writers. fn-owner-retain-carry-of-put: unconditionally, reading the state returned by the carry setter returns the supplied value. fn-owner-retain-carry-of-other-global-put: under key unequal to fn-owner-retain-carry, putting another global leaves the carry read unchanged. This is an exact state effects boundary, not a proof that a supplied carry satisfies fn-prc-carryp, that initialization supplies the proved value, or that a complete owner transition preserves its guard; raw owner entries stay disabled. Local policy; no RFC requirement.",
+      "statement": "Subject: books/owner-retain-state.lisp fn-owner-retain-carry and fn-owner-retain-carry-put, called by host/owner-host.lisp fn-owner-prepare-buffer and the other carry writers. fn-owner-retain-carry-of-put: unconditionally, reading the state returned by the carry setter returns the supplied value. fn-owner-retain-carry-of-other-global-put: under key unequal to fn-owner-retain-carry, putting another global leaves the carry read unchanged. This is an exact state effects boundary, not a proof that a supplied carry satisfies fn-prc-carryp, that initialization supplies the proved value, or that a complete owner transition preserves its guard; raw owner entries stay disabled. Local policy; no RFC requirement. fn-owner-retain-carry-put-frames-global-association: under key unequal to the carry global, the complete association in the returned global table is unchanged, preserving both binding and value after guard translation has opened boundp/get-global.",
       "depends_on": [],
       "milestone": "M5",
       "requirements": [
@@ -17787,10 +17787,11 @@
         "books/owner-retain-state.lisp",
         "tests/acl2/owner-retain-state-tests.lisp"
       ],
-      "progress_note": "Clean fresh REPL admits the exact getter/setter and frame theorems (583 prover steps for seven source forms). Live ACL2 state witness asserts both literal conclusions and the full frame antecedent; equal-key changed-value witness refutes removal of its only hypothesis. Matching union host load, certificate manifest and native remain pending.",
+      "progress_note": "Clean fresh REPL admits the exact getter/setter and frame theorems (583 prover steps for seven source forms). Live ACL2 state witness asserts both literal conclusions and the full frame antecedent; equal-key changed-value witness refutes removal of its only hypothesis. Matching union host load, certificate manifest and native remain pending. Dedicated D104 guard-repair replay uses the original ocfg/core/store/installer/finish definitions and unchanged guards/hints; fresh REPL finish guard verifies in 3641 steps with exact association frame. Matching full host load remains pending.",
       "events": [
         "fn-owner-retain-carry-of-put",
-        "fn-owner-retain-carry-of-other-global-put"
+        "fn-owner-retain-carry-of-other-global-put",
+        "fn-owner-retain-carry-put-frames-global-association"
       ]
     },
     {
