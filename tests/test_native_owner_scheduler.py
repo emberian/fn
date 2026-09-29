@@ -696,8 +696,13 @@ class SchedulerNativeTests(unittest.TestCase):
                 self.assertTrue(self.ask(peer, b"IHAVE " + mid).startswith(b"435"))
                 self.assertTrue(self.ask(peer, b"CHECK " + mid).startswith(b"438"))
                 self.ask(peer, b"QUIT")
-            self.assertTrue(self.stat(reader, msgid).startswith(b"223"))
-            self.assertEqual(self.stat(reader, b"a2-reset@example.invalid")[:3], b"430")
+            # The reader predates the post (its pinned view); a fresh one sees it.
+            fresh_conn, fresh = self.connect()
+            with fresh_conn:
+                self.assertTrue(self.stat(fresh, msgid).startswith(b"223"))
+                self.assertEqual(self.stat(fresh, b"a2-reset@example.invalid")[:3], b"430")
+                fresh.write(b"QUIT\r\n")
+                fresh.flush()
             for stream in (reader, poster):
                 stream.write(b"QUIT\r\n")
                 stream.flush()
@@ -749,21 +754,25 @@ class SchedulerNativeTests(unittest.TestCase):
         self.owner = self.start_owner(env, image=DEVELOPER)
         bodies = {}
 
+        def posted(i):
+            return (b"campaign article %d\r\n" % i + b"line %d of a longer body\r\n" % i * 40)[:-2]
+
         def body_of(i):
-            return b"campaign article %d\r\n" % i + b"line %d of a longer body\r\n" % i * 40
+            # what BODY answers: the posted lines, each CRLF-terminated
+            return posted(i) + b"\r\n"
 
         conn, writer = self.connect()
         with conn:
             for i in range(1, 7):
                 msgid = b"a6-%d@example.invalid" % i
-                self.post(writer, msgid, body_of(i))
+                self.post(writer, msgid, posted(i))
                 bodies[msgid] = body_of(i)
             old_conn, old = self.connect()
             with old_conn:
                 self.assertEqual(self.group_count(old), 6)
                 for i in range(7, 11):
                     msgid = b"a6-%d@example.invalid" % i
-                    self.post(writer, msgid, body_of(i))
+                    self.post(writer, msgid, posted(i))
                     bodies[msgid] = body_of(i)
                 asked = self.operator("store", "checkpoint")
                 self.assertEqual(asked.returncode, 0, asked.stderr.decode())
@@ -784,7 +793,7 @@ class SchedulerNativeTests(unittest.TestCase):
                         self.assertEqual(self.article_body(fresh, b"<" + msgid + b">")[1], body, msgid)
             # A completion held at its barrier when the owner dies.
             cut = b"a6-cut@example.invalid"
-            self.begin_post(writer, cut, body_of(11))
+            self.begin_post(writer, cut, posted(11))
             time.sleep(0.2)
             self.owner.kill()
         self.reap(self.owner)
