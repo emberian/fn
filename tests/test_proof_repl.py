@@ -1496,5 +1496,70 @@ class ObstructionsTwoTests(unittest.TestCase):
         self.assertIn("retrying with --certify-missing", out.getvalue())
 
 
+class SessionIncludeTests(unittest.TestCase):
+    """obstructions-3 item 23: a tests/acl2 book included from a books/ session."""
+
+    def tree(self, directory: str) -> pathlib.Path:
+        root = pathlib.Path(directory).resolve()
+        (root / "books").mkdir()
+        (root / "tests" / "acl2").mkdir(parents=True)
+        (root / "books" / "model.lisp").write_text('(in-package "ACL2")\n')
+        (root / "books" / "near.lisp").write_text('(in-package "ACL2")\n')
+        (root / "tests" / "acl2" / "fixture-tests.lisp").write_text(
+            '(in-package "ACL2")\n(include-book "../../books/model")\n')
+        return root
+
+    def test_a_root_relative_include_is_made_relative_to_the_session(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory)
+            with mock.patch.object(proof_repl, "ROOT", root):
+                books = root / "books"
+                form, target = proof_repl.rooted_include(
+                    '(include-book "tests/acl2/fixture-tests")', books)
+                self.assertEqual(form, '(include-book "../tests/acl2/fixture-tests")')
+                self.assertEqual(target, "tests/acl2/fixture-tests")
+                # Already relative to the session, a local include, a system book.
+                for sent, named in (('(include-book "near")', "books/near"),
+                                    ('(local (include-book "near"))', "books/near"),
+                                    ('(include-book "std/lists/rev" :dir :system)', None)):
+                    self.assertEqual(proof_repl.rooted_include(sent, books), (sent, named))
+
+    def test_send_rewrites_and_acquires_an_uncertified_included_book(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory)
+            acquired, sent = [], []
+            with mock.patch.object(proof_repl, "ROOT", root), \
+                    mock.patch.object(proof_repl, "read_state",
+                                      lambda name: {"book": "books/model"}), \
+                    contextlib.redirect_stdout(io.StringIO()) as out:
+                forms, ready = proof_repl.prepare_includes(
+                    "s", ['(include-book "tests/acl2/fixture-tests")', "(+ 1 2)"],
+                    acquire=lambda book: acquired.append(book) or (True, "installed", []))
+                self.assertTrue(ready)
+                self.assertEqual(forms, ['(include-book "../tests/acl2/fixture-tests")',
+                                         "(+ 1 2)"])
+                self.assertEqual(acquired, ["tests/acl2/fixture-tests"])
+                self.assertIn("made relative to the session's directory books/",
+                              out.getvalue())
+                # A certified include is sent as it is, nothing acquired.
+                (root / "tests/acl2/fixture-tests.cert").write_text(
+                    '(IN-PACKAGE "ACL2")\n:BEGIN-PORTCULLIS-CMDS\n')
+                acquired.clear()
+                with mock.patch.object(proof_repl.certs, "valid_looking", lambda p: True):
+                    proof_repl.prepare_includes(
+                        "s", ['(include-book "../tests/acl2/fixture-tests")'],
+                        acquire=lambda book: acquired.append(book))
+                self.assertEqual(acquired, [])
+                # One that cannot be acquired is not sent: send answers 1.
+                with mock.patch.object(proof_repl, "install_closure",
+                                       lambda *a, **k: (False, "no certificate", [])), \
+                        mock.patch.object(proof_repl, "ask",
+                                          lambda *a, **k: sent.append(a) or {}):
+                    code = proof_repl.send(argparse.Namespace(
+                        name="s", form='(include-book "tests/acl2/fixture-tests")',
+                        limit=None, full=False, allow_undo=False))
+                self.assertEqual((code, sent), (1, []))
+
+
 if __name__ == "__main__":
     unittest.main()
