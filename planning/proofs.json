@@ -17433,6 +17433,26 @@
         "fn-snc-refuse-reservation-preserves-correspondp",
         "fn-snc-known-abort-preserves-correspondp"
       ]
+    },
+    {
+      "id": "PRF-1046",
+      "title": "fn-bpn-host-lifecycle-recovery-agrees-p answers t for a :ready namespace recovery and the initial machine's :ready replay of the same records: both frontiers are the record count",
+      "statement": "books/bp-node-host-machine.lisp (the wrapper moved from host/bp-node-machine-host.lisp, an exact alias of fn-bpn-lifecycle-recovery-agrees-with-statep, guard-verified), called by host/native/bp-service.lisp's fnn-bps-open after the namespace recovery and the record replay (a nil answer is its fnn-indeterminate 'recovered namespace and machine frontier disagree'). KEYSTONE fn-bpn-host-lifecycle-recovery-agrees-with-the-replayed-machine: for a machine satisfying fn-bpn-machine-invariantp with frontier 0, a :ready fn-bpn-lifecycle-recovery of the observed names over the decoded records, and a :ready fn-bpn-replay-records of those records into that machine, the host's agreement is t, the recovery's next token is the record count and so is the replayed machine's frontier; the host's disagreement exit is unreachable when both recoveries succeed on the same records. Lemmas: the namespace plan's frontier counts its record names (hidden stages never advance it), a record binding pairs names and records one to one, a completed replay advances the frontier once per record. fn-bpn-lifecycle-recovery-agrees-with-statep and -next-token guard-verified in bp-node-machine-codec (the predicate now tests consp before car; the same value everywhere). Teeth: tests/acl2/bp-node-host-machine-tests.lisp (the authorization fixture's two persisted records under a namespace with a hidden stage; frontier-0, recovery-ready and replay-ready each removed).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-005",
+        "REP-006",
+        "RET-001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-node-host-machine.lisp",
+        "books/bp-node-machine-codec.lisp",
+        "tests/acl2/bp-node-host-machine-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-6: the bp book entries, one keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
     }
   ]
 }

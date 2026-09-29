@@ -17070,6 +17070,27 @@
           "note": "books/store-node-correspondence.lisp: fn-sn-known-abort (books/store-node-resolution) keeps the store (an aborted completion clears the pending) and the indexed rows."
         }
       ]
+    },
+    {
+      "id": "PRF-1046",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-lifecycle-recovery-agrees-with-the-replayed-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-lifecycle-namespace-plan-frontier-counts-the-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-lifecycle-record-bindingsp-pairs-the-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-replay-records-ready-advances-the-frontier-per-record"
+        }
+      ]
     }
   ]
 }
