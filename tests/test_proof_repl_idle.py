@@ -116,14 +116,14 @@ class DiffAndKeepGoingTests(unittest.TestCase):
             answer = {"output": "((F . :SAME) (F-ID . :DIFFERS) (F-ID-2 . :SAME) (G . :MACRO))\n"}
             out = io.StringIO()
             with mock.patch.object(proof_repl, "ask", lambda *a, **k: answer), contextlib.redirect_stdout(out):
-                rc = proof_repl.main(["diff", "s", str(book), "--host", "laptop"])
+                rc = proof_repl.diff(argparse.Namespace(name="s", book=str(book), all=False, limit=None))
             self.assertEqual(rc, 1)
             self.assertIn("DIFFERS    f-id", out.getvalue())
             self.assertIn("1 differs, 1 macro, 2 same of 4", out.getvalue())
             answer["output"] = "((F . :SAME) (F-ID . :SAME) (F-ID-2 . :SAME) (G . :MACRO))"
             with mock.patch.object(proof_repl, "ask", lambda *a, **k: answer), \
                     contextlib.redirect_stdout(io.StringIO()):
-                self.assertEqual(proof_repl.main(["diff", "s", str(book), "--host", "laptop"]), 0)
+                self.assertEqual(proof_repl.diff(argparse.Namespace(name="s", book=str(book), all=False, limit=None)), 0)
 
     def test_send_keep_going_sends_past_a_refusal(self):
         sent = []
@@ -132,11 +132,11 @@ class DiffAndKeepGoingTests(unittest.TestCase):
             sent.append(request["form"])
             return {"output": "", "error": len(sent) == 1}
         with mock.patch.object(proof_repl, "ask", fake_ask), contextlib.redirect_stdout(io.StringIO()):
-            rc = proof_repl.main(["send", "s", "(defthm a t) (defthm b t)", "--keep-going", "--host", "laptop"])
+            rc = proof_repl.send(argparse.Namespace(name="s", form="(defthm a t) (defthm b t)", limit=None, full=False, keep_going=True))
         self.assertEqual((rc, len(sent)), (1, 2))
         sent.clear()
         with mock.patch.object(proof_repl, "ask", fake_ask), contextlib.redirect_stdout(io.StringIO()):
-            proof_repl.main(["send", "s", "(defthm a t) (defthm b t)", "--host", "laptop"])
+            proof_repl.send(argparse.Namespace(name="s", form="(defthm a t) (defthm b t)", limit=None, full=False, keep_going=False))
         self.assertEqual(len(sent), 1)
 
 
