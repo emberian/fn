@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1657 |
-| Certification roots in the Makefile | 1595 |
-| Books inside the root closure | 1656 |
-| `defthm` and `defthmd` events | 27255 |
-| `defun` events | 17846 |
-| Functions with verified guards | 3330 |
+| Books read | 1659 |
+| Certification roots in the Makefile | 1597 |
+| Books inside the root closure | 1658 |
+| `defthm` and `defthmd` events | 27271 |
+| `defun` events | 17864 |
+| Functions with verified guards | 3342 |
 | Functions declared `:verify-guards nil` and never verified | 2064 |
-| Functions left at the default with an explicit guard | 9788 |
-| Functions left at the default with no guard | 2664 |
-| `assert-event` checks | 22524 |
+| Functions left at the default with an explicit guard | 9789 |
+| Functions left at the default with no guard | 2669 |
+| `assert-event` checks | 22571 |
 | `must-fail` checks | 2413 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
-| Theorems flagged SUSPECT by shape | 1204 |
+| Theorems flagged SUSPECT by shape | 1205 |
 | Export-hygiene warnings | 317 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 265 |
-| Include-hygiene warnings | 2357 |
-| Host-names warnings | 1990 |
+| Include-hygiene warnings | 2365 |
+| Host-names warnings | 1977 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -498,7 +498,7 @@ that `make certify` requests.
 | `books/hybrid-store.lisp` | closure | 23 | 25 | 2/0/23/0 | 0 | 0 | 1 |
 | `books/ideal.lisp` | root | 9 | 16 | 0/2/14/0 | 0 | 0 | 7 |
 | `books/identity-invariants.lisp` | root | 43 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/identity-retain-carried.lisp` | root | 15 | 14 | 12/0/2/0 | 0 | 0 | 1 |
+| `books/identity-retain-carried.lisp` | root | 30 | 26 | 23/0/3/0 | 0 | 0 | 2 |
 | `books/identity.lisp` | root | 2 | 22 | 4/0/18/0 | 0 | 0 | 0 |
 | `books/image-world-dtn.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world-store-test.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -1019,6 +1019,7 @@ that `make certify` requests.
 | `books/transfer-union.lisp` | root | 29 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `books/transfer-work.lisp` | root | 35 | 13 | 0/0/0/13 | 0 | 0 | 0 |
 | `books/transfer.lisp` | root | 14 | 67 | 58/0/9/0 | 0 | 0 | 0 |
+| `books/transit-authority-carried.lisp` | root | 1 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/transit-bound.lisp` | root | 26 | 1 | 0/0/1/0 | 0 | 0 | 2 |
 | `books/transit-header-limits.lisp` | root | 8 | 1 | 0/0/1/0 | 0 | 0 | 1 |
 | `books/utf8.lisp` | root | 5 | 21 | 21/0/0/0 | 0 | 0 | 0 |
@@ -1349,7 +1350,7 @@ that `make certify` requests.
 | `tests/acl2/hybrid-signature-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 14 | 0 |
 | `tests/acl2/hybrid-signature-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 16 | 4 | 0 |
 | `tests/acl2/hybrid-store-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 4 | 8 | 0 |
-| `tests/acl2/identity-retain-carried-tests.lisp` | root | 0 | 5 | 0/3/0/2 | 39 | 0 | 0 |
+| `tests/acl2/identity-retain-carried-tests.lisp` | root | 0 | 8 | 0/3/0/5 | 76 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/injection-info-params-tests.lisp` | root | 0 | 5 | 0/0/3/2 | 48 | 14 | 0 |
@@ -1729,6 +1730,7 @@ that `make certify` requests.
 | `tests/acl2/topic-history-v2-crash-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 1 | 0 |
 | `tests/acl2/transfer-journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 59 | 0 | 0 |
 | `tests/acl2/transfer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 0 | 0 |
+| `tests/acl2/transit-authority-carried-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 10 | 0 | 0 |
 | `tests/acl2/transit-header-limits-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 37 | 8 | 0 |
 | `tests/acl2/transit-hygiene-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 86 | 3 | 0 |
 | `tests/acl2/visibility-join-tests.lisp` | root | 0 | 6 | 0/3/0/3 | 23 | 5 | 0 |
@@ -2071,7 +2073,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-inj-instantp-opens` | `books/injection-invariants.lisp` | 313 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-inj-instantp |
 | `fn-ipp-v3-strip-optional` | `books/injection-info-params-invariants.lisp` | 984 | arm-of-definition: the hypotheses select one IF/COND arm of fn-inj-strip-optional and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-inj-strip-optional and the conclusion is that branch's value |
 | `fn-ipp-with-no-params` | `books/injection-info-params-invariants.lisp` | 359 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ipp-with-params and the conclusion is that arm's value |
-| `fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete` | `books/identity-retain-carried.lisp` | 422 | closed-theory-corollary: proved only by fn-ccar-ocfg-complete-is-ocfg-step-complete, fn-irc-rix-ocfg-complete-is-rix, fn-prc-carryp-of-refresh, fn-rix-ocfg-complete-is-ccar-ocfg-complete |
+| `fn-irc-retention-record-applies-as-retention-event` | `books/identity-retain-carried.lisp` | 719 | arm-of-definition: the hypotheses select one IF/COND arm of fn-replay-apply-record and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-replay-apply-record and the conclusion is that branch's value |
+| `fn-irc-rix-ocfg-complete-of-refresh-unfolds` | `books/identity-retain-carried.lisp` | 422 | closed-theory-corollary: proved only by fn-ccar-ocfg-complete-is-ocfg-step-complete, fn-irc-rix-ocfg-complete-is-rix, fn-prc-carryp-of-refresh, fn-rix-ocfg-complete-is-ccar-ocfg-complete |
 | `fn-lace-cross-canonical-self` | `books/lace-invariants.lisp` | 289 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-lace-canonicalp; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-lace-sign-fields` | `books/lace-invariants.lisp` | 448 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-lb-ocfg-gate-unfolds` | `books/login-binding-live.lisp` | 162 | definition-restated: the conclusion is the body of fn-lb-ocfg-gate |
@@ -2155,7 +2158,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-nntp-help-preserves-session` | `books/nntp-invariants.lisp` | 510 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-list-headers-preserves-session` | `books/nntp-invariants.lisp` | 347 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-list-overview-fmt-preserves-session` | `books/nntp-invariants.lisp` | 309 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-nntp-list-overview-fmt-served-preserves-session` | `books/nntp-xref.lisp` | 458 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-nntp-list-overview-fmt-served-preserves-session` | `books/nntp-xref.lisp` | 462 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-msgid-local-number-by-definition` | `books/nntp-list-counts.lisp` | 389 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-multi-keeps-projection` | `books/nntp-invariants.lisp` | 175 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-multi-octets-keeps-projection` | `books/nntp-invariants.lisp` | 180 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
