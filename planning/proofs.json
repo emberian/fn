@@ -14538,6 +14538,44 @@
         "books/owner-host-relation.lisp"
       ],
       "progress_note": "Lane owner-relation (Fable 5.1, 2026-09-29; row Q3c). REPL-admitted on persvati; certification pending."
+    },
+    {
+      "id": "PRF-931",
+      "title": "The peer open pins the transit connection at the live configuration and keeps the carried owner relation",
+      "statement": "books/owner-host-relation.lisp. fn-ohr-open-peer-preserves-ocl-relation: (fn-ocl-relation oc) implies (fn-ocl-relation (cdr (fn-ocfg-open-peer oc peer acfg))); fn-ohr-open-peer-preserves-carried-relation lifts it to fn-lgoc-invariantp. fn-ocfg-open-peer (books/owner-config.lisp) is the function host/owner-host.lisp fn-owner-open-peer installs (host/native/pull-service.lisp fnn-pull-local-open) and fn-exp-open's peer arm calls (fn-owner-exposure-open, host/native/mux.lisp); since PKT-888 it adds the new connection's pin at the live configuration as fn-ocfg-open does (before, no pin: the relation was false from the first peer connection on). The new connection's history clause is fn-ocl-unchanged-view-new-pin-is-historical over the owner's view fields, the live pin and a fresh session bounded by every domain (fn-ohr-open-peer-session-is-bounded); fn-ohr-exposure-open-preserves-ocl-relation now covers both arms. Teeth: tests/acl2/owner-host-relation-tests.lisp (a peer open on the served owner; the unpinned install fails the relation).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-926"
+      ],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/owner-host-relation.lisp",
+        "books/owner-config.lisp"
+      ],
+      "progress_note": "Lane owner-relation-2 (Fable 5.1, 2026-09-29; row Q3c, PKT-888). REPL-admitted on hbox; certification pending (owner-config is wide)."
+    },
+    {
+      "id": "PRF-932",
+      "title": "The served outcomes re-pin a durably advanced connection and keep the carried owner relation",
+      "statement": "books/owner-outcome-pinned.lisp and books/owner-host-relation.lisp. fn-oop-outcome-is-apc-own-outcome: the effects and the owner of (fn-oop-outcome oc id word icar carry) are fn-apc-own-outcome's on (fn-ocfg-owner oc), with no hypothesis; fn-oop-transit-outcome-is-own-transit-outcome likewise against fn-own-transit-outcome. fn-ohr-outcome-preserves-ocl-relation and fn-ohr-transit-outcome-preserves-ocl-relation: (fn-ocl-relation oc) implies the relation of the outcome's configured owner; the -carried-relation forms lift to fn-lgoc-invariantp. These are the functions host/owner-host.lisp fn-owner-outcome and fn-owner-transit-outcome install (fn-owner-install-ocfg); before PKT-889 the host installed the raw outcome's owner with fn-owner-replace-core, so a :durable completion's advance left the pin at the opening generation and the relation failed after a reconfiguration published while the connection was open. Teeth: tests/acl2/owner-host-relation-tests.lisp (a POST on a connection pinned at an older generation reaches :durable; the outcome keeps the relation and moves the pin; the old install fails it).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-926"
+      ],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/owner-outcome-pinned.lisp",
+        "books/owner-host-relation.lisp"
+      ],
+      "progress_note": "Lane owner-relation-2 (Fable 5.1, 2026-09-29; row Q3c, PKT-889). REPL-admitted on hbox; certification pending."
     }
   ]
 }
