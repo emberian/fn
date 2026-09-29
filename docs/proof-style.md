@@ -386,7 +386,11 @@ theorem fail make check.
 ### Shape books: what a change costs
 
 A certificate is content-hashed over its book and everything the book
-includes, so changing a book recertifies every book that includes it. Before
+includes, so changing a book recertifies every book that includes it. The
+hash is of the forms ACL2 reads, not the bytes: a comment or layout edit to a
+wide book recertifies nothing, in ACL2 and in the farm's cache
+(`tools/certs.py` `form_hash`); a docstring is part of a form and counts.
+Before
 choosing where a field or a column lives, look its book up
 (`python3 tools/shape_books.py --book books/<x>.lisp`); the table is the
 current top of that ranking over the Makefile roots' closure, the graph the

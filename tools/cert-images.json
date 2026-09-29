@@ -1,0 +1,53 @@
+{
+  "comment": "tools/cert_images.py plan --write; see that module",
+  "images": [
+    {
+      "name": "nntp-auth",
+      "roots": [
+        "books/nntp-auth"
+      ]
+    },
+    {
+      "name": "store-events",
+      "roots": [
+        "books/store-events"
+      ]
+    },
+    {
+      "name": "owner",
+      "roots": [
+        "books/owner"
+      ]
+    },
+    {
+      "name": "bp-app-handoff",
+      "roots": [
+        "books/bp-app-handoff"
+      ]
+    },
+    {
+      "name": "nntp",
+      "roots": [
+        "books/nntp"
+      ]
+    },
+    {
+      "name": "store-intern",
+      "roots": [
+        "books/store-intern"
+      ]
+    },
+    {
+      "name": "byte-store-frame",
+      "roots": [
+        "books/byte-store-frame"
+      ]
+    },
+    {
+      "name": "served-catalog-owner",
+      "roots": [
+        "books/served-catalog-owner"
+      ]
+    }
+  ]
+}
