@@ -31,30 +31,10 @@ MARK = re.compile(r"^# witness: (raw|needs-image|needs-acl2|helper|module (tests
 DRIVES = re.compile(r"tests/[A-Za-z0-9_.-]+\.lisp")
 CHECKLIST = "planning/release-v6.6.0.md"
 
-# script -> why it is allowed to fail a rule here.  Shrink-only.  At the
-# first run (2026-09-29) 17 witnesses were cited by no catalog row: each
-# needs the scenario it witnesses to name it (the owner of the host it
-# drives adds the citation when it next touches that scenario).
-UNCITED = "no scenario-catalog row cites it yet (2026-09-29): its scenario's owner cites it"
-KNOWN: dict[str, str] = {
-    "tests/test_deploy_fresh.sh": UNCITED,
-    "tests/test_native_admin_authorize_boundary.sh": UNCITED,
-    "tests/test_native_cli_launcher.sh": UNCITED,
-    "tests/test_native_consumer_peer_raw.sh": UNCITED,
-    "tests/test_native_consumer_poll_cli_raw.sh": UNCITED,
-    "tests/test_native_crypto_saved_image.sh": UNCITED,
-    "tests/test_native_distribution.sh": UNCITED,
-    "tests/test_native_feed_peer_octets.sh": UNCITED,
-    "tests/test_native_feed_service_raw.sh": UNCITED,
-    "tests/test_native_fnfd_budget.sh": UNCITED,
-    "tests/test_native_io_progress.sh": UNCITED,
-    "tests/test_native_live_config_cache_raw.sh": UNCITED,
-    "tests/test_native_owner_bound_commit_raw.sh": UNCITED,
-    "tests/test_native_owner_consumer_local_raw.sh": UNCITED,
-    "tests/test_native_owner_consumer_raw.sh": UNCITED,
-    "tests/test_native_owner_group_codes_raw.sh": UNCITED,
-    "tests/test_owner_feed_connection_host.sh": UNCITED,
-}
+# script -> why it is allowed to fail a rule here.  Shrink-only.  The 17
+# witnesses no catalog row cited at the first run (2026-09-29) are cited by
+# the scenario each witnesses (tooling-truth-3); the list is empty.
+KNOWN: dict[str, str] = {}
 
 
 def findings(root: pathlib.Path = ROOT, known: dict[str, str] = KNOWN) -> list[str]:
