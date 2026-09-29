@@ -262,6 +262,11 @@
                             fn-wire-held-octets))
            :use ((:instance fn-tb-served-run-preserves-wire-statep)
                  (:instance fn-tb-served-run-line-ceiling)
+                 (:instance fn-tb-served-run-keeps-the-body-limit)
+                 (:instance fn-wire-statep
+                            (x (fn-served-conn-wire
+                                (fn-served-result-conn
+                                 (fn-served-run conn chunks fn-arena)))))
                  (:instance fn-wire-statep-held-octets-bound
                             (x (fn-served-conn-wire
                                 (fn-served-result-conn
