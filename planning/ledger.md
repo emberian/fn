@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1657 |
-| Certification roots in the Makefile | 1595 |
-| Books inside the root closure | 1656 |
-| `defthm` and `defthmd` events | 27255 |
-| `defun` events | 17846 |
-| Functions with verified guards | 3330 |
+| Books read | 1658 |
+| Certification roots in the Makefile | 1596 |
+| Books inside the root closure | 1657 |
+| `defthm` and `defthmd` events | 27260 |
+| `defun` events | 17850 |
+| Functions with verified guards | 3335 |
 | Functions declared `:verify-guards nil` and never verified | 2064 |
-| Functions left at the default with an explicit guard | 9788 |
-| Functions left at the default with no guard | 2664 |
-| `assert-event` checks | 22524 |
-| `must-fail` checks | 2413 |
+| Functions left at the default with an explicit guard | 9785 |
+| Functions left at the default with no guard | 2666 |
+| `assert-event` checks | 22528 |
+| `must-fail` checks | 2415 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
 | Theorems flagged SUSPECT by shape | 1204 |
 | Export-hygiene warnings | 317 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 265 |
-| Include-hygiene warnings | 2357 |
-| Host-names warnings | 1990 |
+| Include-hygiene warnings | 2364 |
+| Host-names warnings | 1977 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -232,7 +232,7 @@ that `make certify` requests.
 | `books/bp-node-report-step.lisp` | root | 2 | 4 | 0/3/1/0 | 0 | 0 | 0 |
 | `books/bp-node-retire.lisp` | root | 18 | 21 | 7/4/10/0 | 0 | 0 | 0 |
 | `books/bp-node-rotation-buffer.lisp` | root | 23 | 13 | 4/1/7/1 | 0 | 0 | 1 |
-| `books/bp-node-rotation-codec.lisp` | root | 27 | 33 | 27/0/5/1 | 0 | 0 | 0 |
+| `books/bp-node-rotation-codec.lisp` | root | 32 | 35 | 32/0/2/1 | 0 | 0 | 0 |
 | `books/bp-node-rotation-due.lisp` | root | 6 | 3 | 0/1/2/0 | 0 | 0 | 0 |
 | `books/bp-node-rotation-slice.lisp` | root | 12 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/bp-node-rotation-step.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 1 |
@@ -1153,6 +1153,7 @@ that `make certify` requests.
 | `tests/acl2/bp-node-report-step-tests.lisp` | root | 0 | 5 | 0/5/0/0 | 9 | 1 | 0 |
 | `tests/acl2/bp-node-retire-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 2 | 2 | 0 |
 | `tests/acl2/bp-node-rotation-buffer-tests.lisp` | root | 0 | 9 | 0/9/0/0 | 8 | 0 | 0 |
+| `tests/acl2/bp-node-rotation-codec-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 4 | 2 | 0 |
 | `tests/acl2/bp-node-rotation-due-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 15 | 4 | 0 |
 | `tests/acl2/bp-node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 44 | 0 | 0 |
 | `tests/acl2/bp-outbound-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 35 | 0 | 0 |
@@ -2155,7 +2156,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-nntp-help-preserves-session` | `books/nntp-invariants.lisp` | 510 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-list-headers-preserves-session` | `books/nntp-invariants.lisp` | 347 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-list-overview-fmt-preserves-session` | `books/nntp-invariants.lisp` | 309 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-nntp-list-overview-fmt-served-preserves-session` | `books/nntp-xref.lisp` | 458 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-nntp-list-overview-fmt-served-preserves-session` | `books/nntp-xref.lisp` | 462 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-msgid-local-number-by-definition` | `books/nntp-list-counts.lisp` | 389 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-multi-keeps-projection` | `books/nntp-invariants.lisp` | 175 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-multi-octets-keeps-projection` | `books/nntp-invariants.lisp` | 180 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

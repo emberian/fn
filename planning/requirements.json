@@ -1116,7 +1116,8 @@
         "PRF-214",
         "PRF-215",
         "PRF-216",
-        "PRF-335"
+        "PRF-335",
+        "PRF-1039"
       ],
       "verification": [
         "proof",
@@ -1177,7 +1178,8 @@
         "PRF-1031",
         "PRF-1032",
         "PRF-1035",
-        "PRF-1036"
+        "PRF-1036",
+        "PRF-1039"
       ],
       "verification": [
         "proof",
