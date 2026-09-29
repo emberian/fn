@@ -1456,6 +1456,22 @@ class ObstructionsTwoTests(unittest.TestCase):
             proof_repl.main(["send", "n", "(+ 1 2)", "--host", "hbox", "--no-sync"])
         self.assertEqual(len(sent), 2)
 
+    def test_checkpoints_are_the_last_refused_forms(self):
+        log = "\n".join([
+            ">>> (defthm a t)", "Summary", ">>> (defthm b (foo x))",
+            "*** Key checkpoint at the top level: ***", "Goal'", "(FOO X)", "",
+            "*** Key checkpoint under a top-level induction: ***", "Subgoal *1/2",
+            "(BAR X)", "Summary", "******** FAILED ********",
+            ">>> (disabledp 'zp)", "T"])
+        form, found = proof_repl.last_checkpoints(log)
+        self.assertEqual(form, "(defthm b (foo x))")
+        self.assertEqual(len(found), 2)
+        self.assertEqual(found[0], ["*** Key checkpoint at the top level: ***", "Goal'",
+                                    "(FOO X)"])
+        self.assertEqual(proof_repl.last_checkpoints(">>> (defthm a t)\nSummary"),
+                         (None, []))
+        self.assertIn("checkpoints", proof_repl.SESSION_COMMANDS)
+
     def test_an_empty_range_is_refused_and_says_until_is_exclusive(self):
         forms = ["(defun a () 1)", "(defthm b t)", "(defthm c t)"]
         with self.assertRaises(SystemExit) as refused:

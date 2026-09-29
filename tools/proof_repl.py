@@ -1586,6 +1586,61 @@ def _start(args) -> int:
         os.close(lock_fd)
 
 
+REFUSAL_MARKS = ("******** FAILED ********", "ACL2 Error")
+
+
+def last_checkpoints(log_text: str, lines: int = 16) -> tuple[str | None, list[list[str]]]:
+    """(the refused form's first line, its key checkpoints) from a session log.
+
+    A multi-form `send` prints one line per form, and the checkpoints stayed
+    in the session log; decision-keystones grepped it over ssh three times.
+    The log holds `>>> FORM` before each form's output; the last form whose
+    output has a refusal mark is the one answered.
+    """
+    blocks: list[tuple[str, list[str]]] = []
+    for line in log_text.splitlines():
+        if line.startswith(">>> "):
+            blocks.append((line[4:], []))
+        elif blocks:
+            blocks[-1][1].append(line)
+    for form, output in reversed(blocks):
+        if not any(mark in line for line in output for mark in REFUSAL_MARKS):
+            continue
+        found: list[list[str]] = []
+        for index, line in enumerate(output):
+            if line.startswith("*** Key checkpoint"):
+                block = [line]
+                for follow in output[index + 1:]:
+                    if follow.startswith(("*** Key checkpoint", "Summary", "ACL2 Error",
+                                          "******** FAILED")):
+                        break
+                    block.append(follow)
+                while block and not block[-1].strip():
+                    block.pop()
+                found.append(block[:lines] + (["[...]"] if len(block) > lines else []))
+        return form, found
+    return None, []
+
+
+def checkpoints(args) -> int:
+    try:
+        text = (session_dir(args.name) / "log").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        print(f"proof-repl: no log for session {args.name!r}")
+        return 1
+    form, found = last_checkpoints(text, args.lines)
+    if form is None:
+        print(f"proof-repl {args.name}: no refused form in the session log")
+        return 0
+    print(f"proof-repl {args.name}: last refused form: {form[:120]}")
+    if not found:
+        print("  (no key checkpoint printed: the refusal is not a failed proof -- "
+              "`send ... --full` shows it)")
+    for block in found:
+        print("\n".join(block))
+    return 0
+
+
 def status(args) -> int:
     state_path = session_dir(args.name) / "state.json"
     if not state_path.exists():
@@ -2681,7 +2736,8 @@ def refuse_stale_remote(host: str, tree: str, relative: str,
 
 # The commands about one existing session: without --host they go to the
 # machine its start recorded.
-SESSION_COMMANDS = ("send", "send-range", "resync", "status", "stop", "probe")
+SESSION_COMMANDS = ("send", "send-range", "resync", "status", "stop", "probe",
+                    "checkpoints")
 
 # Minutes `start --host BOX` waits for another lane's reservation of BOX.
 # config-and-legacy and operations (2026-09-28) waited 10 and 13 minutes in
@@ -3045,6 +3101,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("name")
     add_remote_options(p)
     p.set_defaults(run=status)
+    p = sub.add_parser("checkpoints", help="the last refused form's key checkpoints "
+                                           "from the session log")
+    p.add_argument("name")
+    p.add_argument("--lines", type=int, default=16,
+                   help="lines kept per checkpoint (default 16)")
+    add_remote_options(p)
+    p.set_defaults(run=checkpoints)
     p = sub.add_parser("stop")
     p.add_argument("name")
     add_remote_options(p)
