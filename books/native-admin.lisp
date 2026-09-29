@@ -747,6 +747,21 @@
                                 (fn-native-admin-decimal-value
                                  (coerce (cadddr words) 'list))
                                 nil nil))
+       ; Row S1 (books/limits-live.lisp, PRF-940): the store's live limits,
+       ; `policy set max-transactions|max-history-octets|max-article-octets
+       ; N', one `:set-limit' row (FIELD, "") folded over the sealed profile
+       ; (fn-lim-effective).  The host asks ACL2's fn-lim-decide before it
+       ; stages anything: applied now, at the next start, or refused by name.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (member-equal (caddr words) '("max-transactions" "max-history-octets"
+                                           "max-article-octets"))
+             (fn-native-admin-decimalp (cadddr words)))
+        (fn-native-admin-result :accepted nil :set-store-limit (caddr argv)
+                                (fn-native-admin-decimal-value
+                                 (coerce (cadddr words) 'list))
+                                nil nil))
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
        ; D13 (STO-014): the operator's content-retention rule.  Two
@@ -994,7 +1009,7 @@
                  nil))))
             ((equal kind :set-expiry)
              (fn-xpy-deltas name (fn-native-admin-result-value plan)))
-            ((member-equal kind '(:set-exposure :set-transit-limit))
+            ((member-equal kind '(:set-exposure :set-transit-limit :set-store-limit))
              (list (fn-cfg-set-limit name (fn-native-admin-result-capacity plan))))
             ((equal kind :consumer-bind)
              (list (fn-cfg-consumer-bind

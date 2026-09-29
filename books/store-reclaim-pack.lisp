@@ -465,6 +465,45 @@
           (and stable-under-simplificationp
                '(:in-theory (enable fn-rclp-event)))))
 
+;  KEYSTONE (PRF-119, PRF-088: a held article is never touched), stated of
+; the per-record rewrite the host calls (host/checkpoint-host.lisp
+; fn-store-log-reclaim-event, per record from host/native/checkpoint.lisp
+; fnn-log-reclaim-steps).  If the record's article is named by an obligation
+; of the lifetimes table, or its Store verdict needs its payload, or the rule
+; is keep-forever and the expiry policy has not expired it, the rewrite
+; returns the same octets.  The context is the one fn-rclp-ctx-expiring
+; builds, its seventh element the article index (PRF-934).
+; fn-rclp-events-never-touch-a-held-article is its map over the history.
+(defthm fn-rclp-event-never-touches-a-held-article
+  (let* ((m (fn-record-msgid (fn-record-result-record (fn-record-decode-exact o))))
+         (article (fn-find-article m articles)))
+    (implies (or (fn-rcl-some-names-p (fn-rcl-obligations h)
+                                      (fn-article-msgid article)
+                                      (fn-article-memberships article))
+                 (fn-rcl-verdict-heldp (fn-article-msgid article) verdicts)
+                 (and (equal rule '(:keep-forever))
+                      (not (fn-xpy-expiredp (fn-article-msgid article) expired))))
+             (equal (fn-rclp-event o (list rule now h verdicts articles expired
+                                           (fn-rclp-article-index articles)))
+                    o)))
+  :hints (("Goal" :in-theory (disable fn-rclp-rewrites-p
+                                      fn-rcl-some-names-p fn-rcl-obligations
+                                      fn-rcl-verdict-heldp
+                                      rewrites-p-means-reclaimable)
+                  :use ((:instance rewrites-p-means-reclaimable (octets o))
+                        (:instance fn-xpy-releasablep-is-rule-or-expired-and-unheld
+                                   (article (fn-find-article
+                                             (fn-record-msgid
+                                              (fn-record-result-record
+                                               (fn-record-decode-exact o)))
+                                             articles)))
+                        (:instance fn-rcl-reclaimable-is-no-obligation-names-it
+                                   (article (fn-find-article
+                                             (fn-record-msgid
+                                              (fn-record-result-record
+                                               (fn-record-decode-exact o)))
+                                             articles)))))))
+
 ;  KEYSTONE (signed composites and every other kind are protected).  An
 ; event that is not a legacy article record -- an accepted-statement
 ; composite, a keyring snapshot, a statement verdict, a retention,

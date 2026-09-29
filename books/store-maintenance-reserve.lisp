@@ -51,7 +51,7 @@
                            fn-bs-publication-admissiblep fn-bs-profile-validp
                            fn-bs-profile-of fn-bs-profile-admittedp
                            fn-bs-profile-max-history-octets
-                           fn-sbud-article-figure)))
+                           fn-sbud-article-figure fn-sbud-article-gate-figure)))
 
 ; -----------------------------------------------------------------------------
 ; The reservation
@@ -99,7 +99,7 @@ figure, and the reservation after it."
                   :admissible)
            (fn-smr-roomp profile (+ 1 (nfix used))
                          (+ (nfix bytes-used)
-                            (fn-sbud-article-figure payload-length group-count))))
+                            (fn-sbud-article-gate-figure payload-length group-count))))
       :admissible
     :unaffordable))
 
@@ -110,7 +110,7 @@ figure, else 0 (the prepare refuses and the owner answers :unaffordable)."
   (declare (xargs :guard t))
   (if (fn-smr-roomp profile (+ 1 (nfix used))
                     (+ (nfix bytes-used)
-                       (fn-sbud-article-figure payload-length group-count)))
+                       (fn-sbud-article-gate-figure payload-length group-count)))
       (fn-sbud-article-budget profile bytes-used payload-length group-count)
     0))
 
@@ -213,7 +213,7 @@ figure, else 0 (the prepare refuses and the owner answers :unaffordable)."
   :hints (("Goal" :use ((:instance fn-smr-roomp-antitone-in-octets
                                    (used (+ 1 (fn-sbud-used (fn-sbud-oc-store oc))))
                                    (b (+ bytes-used
-                                         (fn-sbud-article-figure
+                                         (fn-sbud-article-gate-figure
                                           (len (fn-record-payload record))
                                           (len (fn-record-groups record)))))
                                    (b2 (+ bytes-used (len (fn-record-encode record)))))
@@ -253,7 +253,7 @@ figure, else 0 (the prepare refuses and the owner answers :unaffordable)."
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-smr-roomp-antitone-in-octets
                                    (used (+ 1 used))
-                                   (b (+ bytes-used (fn-sbud-article-figure
+                                   (b (+ bytes-used (fn-sbud-article-gate-figure
                                                      payload-length group-count)))
                                    (b2 (+ bytes-used (len (fn-record-encode record)))))
                         (:instance fn-sbud-article-figure-bounds-the-record)
