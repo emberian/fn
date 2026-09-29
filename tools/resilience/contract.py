@@ -25,6 +25,41 @@ PROFILE = "local-commit-log"
 FATES = ("committed", "absent")
 
 
+def response_holds_model_step(state, operation):
+    """Independent interpretation of fn-rpin-step and fn-arpn-step.
+
+    PRF-1059 funds each response separately. Reaping follows arena-reader-pins
+    fn-arpn-clear-through-p, not merely the disappearance of one owner.
+    This bounded model fixture is not a composed native ownership theorem.
+    """
+    state = dict(state, owners=dict(state["owners"]), pending=list(state["pending"]), released=0)
+    owner = operation.args.get("owner")
+    if operation.op == "acquire-hold":
+        state["answer"] = ":DUPLICATE" if owner in state["owners"] else ":ACQUIRED"
+        if owner not in state["owners"]:
+            state["owners"][owner] = state["generation"]
+    elif operation.op == "release-hold":
+        state["answer"] = ":RELEASED" if owner in state["owners"] else ":ABSENT"
+        state["owners"].pop(owner, None)
+    elif operation.op == "begin-compaction":
+        state["answer"] = str(state["generation"])
+        state["pending"].append(state["generation"])
+        state["generation"] += 1
+    else:
+        keep = [stamp for stamp in state["pending"]
+                if any(g <= stamp for g in state["owners"].values())]
+        state["released"] = len(state["pending"]) - len(keep)
+        state["pending"] = keep
+        state["answer"] = str(state["released"])
+    return state
+
+
+def response_holds_model_view(state):
+    return dict(g=str(state["generation"]), h=str(len(state["owners"])),
+                q=str(sum(1 << owner for owner in state["owners"])),
+                p=str(len(state["pending"])), r=str(state["released"]), a=state["answer"])
+
+
 def acceptance_model_step(state: dict, operation) -> dict:
     """Independent checker for the bounded A/B acceptance-model fixture.
 

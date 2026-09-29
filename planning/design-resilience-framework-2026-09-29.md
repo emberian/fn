@@ -341,8 +341,9 @@ suite executes 100 schedules over two proposals, durable/aborted/indeterminate
 completion, matching/stale generation and repeated recovery. It compares the
 actual acceptance transitions with the separate four-field ACL2 oracle at
 every step. This is executable model evidence, not certification or evidence
-about the served host. It does not yet cover two independent holds or a general
-IR-driven backend. Schedule plans and separate oracle records accompany the
+about the served host. Bounded IR backends now cover acceptance and two
+independent response holds; broader lifecycle operations remain open. Schedule
+plans and separate oracle records accompany the
 traces; the driver must consume every planned step exactly once before it
 accepts the result.
 
@@ -359,13 +360,27 @@ completion/generation, not inferred from a requested selector. The independent
 Python contract interpretation is explicitly a model check, with the composed
 fixture rule marked pending; the separate ACL2 oracle is also checked at every
 step. Native page buffers, descriptors and generation leases are outside this
-fixture. Two independent holds and broader lifecycle IR remain open. The
+fixture. Broader lifecycle IR remains open. The
 tester mutations cover child death, missing operations, suppressed workload,
 disabled fault records, universal refusal, omitted terminal ownership,
 truncated journals, edited verdicts and corrupted oracle observations.
 The historical box failure was launcher configuration: the command replaced
 the real FN_ACL2 with tools/acl2, whose recursion refusal exited 2 before any
 scenario executed. Preserve that non-green result; it was not a model failure.
+
+The separate `response-holds-model` backend maps bounded IR to the actual
+host-called `fn-rpin-step` and `fn-arpn-step`. Its two owners acquire generation0,
+a retirement is selected, owner0 releases, and reaping must remain blocked by
+owner1. A duplicate release0 must actually return :ABSENT. Healing releases
+owner1 and reaps the retirement; the terminal view has no owners or pending
+retirements. An independent Python contract interpretation checks every
+observed generation, hold count, owner mask, pending retirement count, release
+count and answer, retaining separate oracle records. Its composition rule is
+pending; it proves nothing about native worker death, file close or sector
+release. Missing/duplicate steps, child death, wrong dispatch, premature reap,
+universal refusal, disabled fault activation and missing terminal ownership
+cannot pass the tester fixtures. Evidence:
+`planning/evidence/resilience-response-model-2026-09-29.md`.
 AFTER THE original cut prerequisites; still part of the complete-all portfolio.
 
 W7g **Hypothesis rule-based generation + dependency-aware shrinking**.

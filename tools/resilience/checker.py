@@ -132,6 +132,8 @@ def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
         return harness_failure(scenario, journal, unmeasured)
     if scenario.contract == "acceptance-model":
         return check_acceptance_model(scenario, journal, budget, healing, overran)
+    if scenario.contract == "response-holds-model":
+        return check_response_holds_model(scenario, journal, budget, healing, overran)
     if scenario.contract == "page-io-ownership":
         return check_page_io(scenario, journal, budget, healing, overran)
     if scenario.contract == "reclaim-response-hold":
@@ -375,6 +377,49 @@ def check_page_io(scenario, journal, budget, healing, overran):
                    pending_rules=["page-io-native-composition"], healing=healing,
                    diagnostics=["new socket is not native CID-reuse evidence; worker thread death unclaimed"],
                    budget=asdict(budget)).sign()
+
+
+def check_response_holds_model(scenario, journal, budget, healing, overran):
+    rows = [r for r in journal.of_kind("client") if r.get("event") == "response-model-step"]
+    oracles = [r for r in journal.of_kind("internal") if r.get("event") == "response-model-oracle"]
+    if len(rows) > budget.max_records or budget.max_histories < 1:
+        return Verdict("inconclusive", scenario.id, journal.digest(),
+                       cause="budget:response-model", budget=asdict(budget)).sign()
+    if ([r.get("operation") for r in rows] != [o.id for o in scenario.operations]
+            or [r.get("operation") for r in oracles] != [o.id for o in scenario.operations]):
+        return harness_failure(scenario, journal, "response-model-schedule-incomplete")
+    state = dict(generation=0, owners={}, pending=[], released=0, answer="-")
+    expected = contract.response_holds_model_view(state)
+    observed = set()
+    for operation, row, oracle in zip(scenario.operations, rows, oracles):
+        state = contract.response_holds_model_step(state, operation)
+        expected = contract.response_holds_model_view(state)
+        if any(row.get(k) != v or oracle.get(k) != v for k, v in expected.items()):
+            return Verdict("violation", scenario.id, journal.digest(),
+                explanation=dict(record=row, oracle=oracle, expected=expected, rule="response-model-step"),
+                pending_rules=["response-holds-model-composition"]).sign()
+        if len(state["owners"]) == 2:
+            observed.add("two-model-holds")
+        if operation.op == "reclaim" and len(state["owners"]) == 1 and state["pending"]:
+            observed.add("one-model-hold-blocks")
+        if state["released"]:
+            observed.add("model-retirement-released")
+        for fault in scenario.faults:
+            if fault.operation == operation.id and row["a"] != ":ABSENT":
+                return harness_failure(scenario, journal, "response-model-fault-not-activated")
+    terminal = [r for r in journal.of_kind("environment") if r.get("event") == "response-model-terminal"]
+    if len(terminal) != 1 or any(terminal[0].get(k) != v for k, v in expected.items()):
+        return harness_failure(scenario, journal, "response-model-terminal-unobserved")
+    if not state["owners"] and not state["pending"]:
+        observed.add("model-settled")
+    missing = sorted(set(scenario.witnesses) - observed)
+    kind = "healing-overran" if overran and healing["bound"]["kind"] == "seconds" else (
+        "no-witness" if missing else "consistent")
+    return Verdict(kind, scenario.id, journal.digest(), surviving=1,
+        witnesses_observed=sorted(observed), witnesses_missing=missing,
+        pending_rules=["response-holds-model-composition"], healing=healing,
+        diagnostics=["Logical response holds and retirement only; no native I/O or sectors."],
+        budget=asdict(budget)).sign()
 
 
 def check_acceptance_model(scenario, journal, budget, healing, overran):

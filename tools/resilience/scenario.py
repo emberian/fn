@@ -51,9 +51,10 @@ WITNESSES = ("post-accepted", "retry-reconciled", "read-completed",
              "relay-normalized", "loop-refused", "duplicate-refused",
              "model-prepared", "model-published", "model-settled",
              "issued-read-held", "cancelled-read-settled", "retired-file-closed",
-             "independent-response-held", "response-hold-settled")
+             "independent-response-held", "response-hold-settled", "two-model-holds",
+             "one-model-hold-blocks", "model-retirement-released")
 REPLAY = ("exact", "timed", "image")
-CONTRACTS = ("local-commit-log", "acceptance-model", "page-io-ownership", "reclaim-response-hold")
+CONTRACTS = ("local-commit-log", "acceptance-model", "response-holds-model", "page-io-ownership", "reclaim-response-hold")
 CANDIDATE_RULES = ("absent", "present", "either")
 # The routes a post's cut is reached by; the registry carries each route's
 # column where they differ (design §5: `operator post' and `store post' are
@@ -256,7 +257,11 @@ def boundary_registry() -> dict:
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))
     from tests.campaign import native_cuts  # noqa: E402
-    registry = {"model-completion-delivery": {
+    registry = {"model-response-release": {
+        "source": "books/response-plan-pins.lisp:fn-rpin-step",
+        "operations": ["release-hold"], "actions": ["deliver-stale-completion"],
+        "executable": True, "backend": "response-holds-model",
+        "rule": None, "rules": {}, "tables": []}, "model-completion-delivery": {
         "source": "books/acceptance.lisp:fn-accept-complete/fn-accept-recover",
         "operations": ["model-complete", "model-recover"],
         "actions": ["report-error", "deliver-stale-completion"],
@@ -398,6 +403,14 @@ def validate(scenario: Scenario, registry: dict | None = None) -> list:
                 problems.append(o.id + ": invalid model result")
         elif scenario.contract == "acceptance-model":
             problems.append(o.id + ": acceptance-model requires model operations")
+        if scenario.contract == "response-holds-model":
+            if o.op not in ("acquire-hold", "release-hold", "begin-compaction", "reclaim"):
+                problems.append(o.id + ": unsupported response model operation")
+            elif o.op in ("acquire-hold", "release-hold"):
+                if set(o.args) != {"owner"} or type(o.args.get("owner")) is not int or o.args["owner"] not in (0, 1):
+                    problems.append(o.id + ": response fixture owner must be natural 0 or 1")
+            elif o.args:
+                problems.append(o.id + ": response model operation takes no arguments")
         if o.op == "post" and not o.args.get("groups"):
             problems.append("{}: a post names its groups".format(o.id))
         if o.op == "retry":
