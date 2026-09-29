@@ -928,7 +928,11 @@
 ; source revision and NOW (CLOCK's stamp: a dry run's instant; a reclaim
 ; decides at V's recorded one).  A reclaim is also the publication in flight
 ; (fn-owner-sco-inflight at COUNT, so no automatic one starts and a
-; compaction request coalesces), and its attempt is COUNT.
+; compaction request coalesces).  It does not take the publication's attempt
+; (fn-owner-sco-attempted): a pass that installs nothing publishes nothing, and
+; had it taken COUNT, the next `store checkpoint' at that count would answer
+; nothing-to-compact with a suffix past the durable checkpoint (the install
+; notes the attempt itself, fn-owner-orcp-swap).
 (defun fn-owner-orc-capture (mode clock override free revision state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((st (fn-own-store (fn-owner-core state)))
@@ -938,7 +942,6 @@
          (v (fn-cfg-value (fn-ocfg-config (fn-owner-ocfg state))))
          (dry (eq mode :dry-run))
          (state (f-put-global 'fn-owner-orc-pass mode state))
-         (state (if dry state (f-put-global 'fn-owner-sco-attempted count state)))
          (state (if dry state (f-put-global 'fn-owner-sco-inflight count state)))
          (stamp (fn-record-stamp-of-observation clock)))
     (value (list records count v st profile

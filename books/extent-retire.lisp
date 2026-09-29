@@ -46,6 +46,7 @@
 (include-book "payload-commit-extent")
 (include-book "payload-arena-extent")
 (include-book "store-checkpoint-reader")
+(include-book "arena-reader-pins")
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -282,3 +283,38 @@
                  (:instance fn-arx-files-unnamed-names-none (fs (list f)))
                  (:instance fn-arx-files-unnamed-p (fs (list f)))
                  (:instance fn-arx-files-unnamed-p (fs nil))))))
+
+; -----------------------------------------------------------------------------
+; 3. The release: a file a publication dropped comes back.
+;
+; The retirement check keeps out only a file some log member or some extent
+; entry names; the pending group it goes into closes once no reader other
+; than the asking publication is pinned at or below its stamp
+; (host/native/owner.lisp fnn-owner-release-extents: fn-xrt-quiet-files, then
+; fnn-arena-clear-p S PIN = fn-arpn-step's (:clear-except S PIN)).
+
+(defthm fn-xrt-quiet-files-keeps-every-unnamed-retired-file
+  (implies (and (member f retired)
+                (not (member f named))
+                (equal (fn-arx-file-count f fn-arena$x) 0))
+           (member f (fn-xrt-quiet-files retired named fn-arena$x)))
+  :hints (("Goal" :in-theory (disable fn-arx-file-count))))
+
+; KEYSTONE (PRF-930, the release).  A retired file no log member in flight
+; or fenced names and no entry of the extent column counts is quiet, and
+; with no live reader pinned but the publication's own pin OWN, the pending
+; group at any stamp S is clear: the host closes the file's descriptor in
+; the same release (its blocks come back while the owner serves).
+(defthm fn-xrt-dropped-file-is-released
+  (implies (and (member f retired)
+                (not (member f named))
+                (equal (fn-arx-file-count f fn-arena$x) 0)
+                (natp s)
+                (natp own)
+                (fn-arpn-held-p own (second st))
+                (atom (fn-arpn-unpin-at own (second st))))
+           (and (member f (fn-xrt-quiet-files retired named fn-arena$x))
+                (equal (mv-nth 1 (fn-arpn-step st (list :clear-except s own))) t)))
+  :hints (("Goal" :in-theory (disable fn-xrt-quiet-files fn-arx-file-count
+                                      fn-arpn-unpin-at fn-arpn-held-p)
+           :use ((:instance fn-xrt-quiet-files-keeps-every-unnamed-retired-file)))))

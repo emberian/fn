@@ -164,10 +164,6 @@
   :kinds ((msgid-octets fn-cbor-octet-listp) (group-octets fn-octet-list-listp))
   :exempt ((payload "the received article's buffer (host/native/hybrid-control.lisp)")))
 
-(definterface fn-store-sco-publish-setup
-  :class :program
-  :exempt ((segment-octets "a segment descriptor, not bytes")))
-
 (definterface fn-native-health-host-exit
   :class :program
   :exempt ((octets "the health report's summary structure (fnn-operator-health-report)")))
@@ -1675,9 +1671,6 @@
   :class ::program)
 
 (definterface fn-owner-sco-note-durable
-  :class ::program)
-
-(definterface fn-owner-sco-prepare
   :class ::program)
 
 (definterface fn-owner-sco-publication-done
@@ -3343,12 +3336,6 @@
 (definterface fn-native-operator-host-result-command
   :class ::program)
 
-(definterface fn-native-operator-host-result-compaction-argv
-  :class ::program)
-
-(definterface fn-native-operator-host-result-compaction-control-path-octets
-  :class ::program)
-
 (definterface fn-native-operator-host-result-config-mission
   :class ::program)
 
@@ -3818,3 +3805,154 @@
 
 (definterface fn-tlsr-host-reply-encode
   :class ::program)
+
+; -----------------------------------------------------------------------------
+; The online reclaim (row Q16: fn-owner-orc-/orcp-, owner-host.lisp), the
+; history image the publication writes (fn-his-, fn-owner-sco-next/-setup-of,
+; fn-store-sco-publish-next/-setup-of), the arena reader pins (fn-arpn-) and
+; the retirement of the files a publication drops (fn-xrt-, extent-retire).
+
+(definterface fn-arpn-initial
+  :class ::common-lisp-compliant)
+
+(definterface fn-arpn-step
+  :class ::common-lisp-compliant)
+
+(definterface fn-arx-file-count
+  :class ::common-lisp-compliant)
+
+(definterface fn-crqw-request-word
+  :class ::common-lisp-compliant)
+
+(definterface fn-his-base-octets
+  :class ::common-lisp-compliant)
+
+(definterface fn-his-binding
+  :class ::common-lisp-compliant)
+
+(definterface fn-his-file-octets
+  :class ::program
+  :exempt ((stream-octets "a count of octets (the stream region's length), not bytes")))
+
+(definterface fn-his-image-header
+  :class ::common-lisp-compliant)
+
+(definterface fn-his-image-header-np
+  :class ::common-lisp-compliant)
+
+(definterface fn-his-np
+  :class ::common-lisp-compliant)
+
+(definterface fn-his-release
+  :class ::common-lisp-compliant)
+
+(definterface fn-his-skip-octets
+  :class ::common-lisp-compliant)
+
+(definterface fn-his-snapshot
+  :class ::common-lisp-compliant)
+
+(definterface fn-his-stream-free
+  :class ::program)
+
+(definterface fn-his-words
+  :class ::common-lisp-compliant)
+
+(definterface fn-native-admin-host-reclaim-mode
+  :class ::program)
+
+(definterface fn-oct-line-end
+  :class ::common-lisp-compliant)
+
+(definterface fn-otb-dependency-step
+  :class ::common-lisp-compliant)
+
+(definterface fn-owner-orc-capture
+  :class ::program)
+
+(definterface fn-owner-orc-chunk
+  :class ::program)
+
+(definterface fn-owner-orc-classes
+  :class ::program)
+
+(definterface fn-owner-orc-ctx
+  :class ::program)
+
+(definterface fn-owner-orc-decide
+  :class ::program)
+
+(definterface fn-owner-orc-finish
+  :class ::program)
+
+(definterface fn-owner-orc-init
+  :class ::program)
+
+(definterface fn-owner-orc-request
+  :class ::program)
+
+(definterface fn-owner-orc-request-status
+  :class ::program)
+
+(definterface fn-owner-orcp-capture
+  :class ::program)
+
+(definterface fn-owner-orcp-finish
+  :class ::program)
+
+(definterface fn-owner-orcp-intern-chunk
+  :class ::program)
+
+(definterface fn-owner-orcp-keyring
+  :class ::program)
+
+(definterface fn-owner-orcp-load-columns
+  :class ::program)
+
+(definterface fn-owner-orcp-rebuild
+  :class ::program)
+
+(definterface fn-owner-orcp-salt
+  :class ::program)
+
+(definterface fn-owner-orcp-swap
+  :class ::program)
+
+(definterface fn-owner-orcp-swap-word
+  :class ::program)
+
+(definterface fn-owner-orcp-view-index
+  :class ::program)
+
+(definterface fn-owner-sco-next
+  :class ::program)
+
+(definterface fn-owner-sco-setup-of
+  :class ::program)
+
+(definterface fn-sco-records
+  :class ::common-lisp-compliant)
+
+(definterface fn-store-genesis-ident
+  :class ::program)
+
+(definterface fn-store-sco-image-open
+  :class ::program)
+
+(definterface fn-store-sco-publish-next
+  :class ::program)
+
+(definterface fn-store-sco-publish-setup-of
+  :class ::program
+  :exempt ((segment-octets "a segment descriptor, not bytes")))
+
+(definterface fn-xrt-quiet-files
+  :class ::common-lisp-compliant
+  :keystones ((fn-xrt-quiet-files-are-unnamed)))
+
+(definterface fn-xrt-reseat-checkpoint-frame
+  :class ::common-lisp-compliant
+  :keystones ((fn-xrt-reseat-checkpoint-frame-keeps-the-arena)))
+
+(definterface fn-xrt-step-handles
+  :class ::common-lisp-compliant)

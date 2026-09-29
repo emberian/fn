@@ -13131,6 +13131,10 @@
         {
           "kind": "theorem",
           "name": "fn-xrt-quiet-files-are-unnamed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-dropped-file-is-released"
         }
       ]
     },

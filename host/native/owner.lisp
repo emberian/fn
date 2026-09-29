@@ -3832,9 +3832,15 @@ or pending (closed by a later release) and serving continues."
                       (setf (svref st 1) 0
                             (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))))))))
           (fnn-owner-gated (service :control)
-            (let ((quiet (fnn-call 'fn-xrt-quiet-files *fnn-extent-retired*
-                                   (fnn-log-member-files (fnn-store-log store)) arena)))
-              (unless (listp quiet) (fnn-fault "ACL2 returned a malformed quiet set"))
+            ;; fnn-call answers the values as a list: the quiet set is its
+            ;; first (the whole list was taken for the set once, so no
+            ;; dropped file ever closed: KEYSTONE fn-xrt-dropped-file-is-
+            ;; released says which do).
+            (let ((quiet (first (fnn-call 'fn-xrt-quiet-files *fnn-extent-retired*
+                                          (fnn-log-member-files (fnn-store-log store))
+                                          arena))))
+              (unless (and (listp quiet) (every #'integerp quiet))
+                (fnn-fault "ACL2 returned a malformed quiet set"))
               (when quiet
                 (setq *fnn-extent-pending*
                       (append *fnn-extent-pending* (list (cons (fnn-arena-stamp) quiet)))
@@ -3851,7 +3857,7 @@ or pending (closed by a later release) and serving continues."
               (let ((members (fnn-log-member-files (fnn-store-log store))))
                 (setq named-detail
                       (loop for id in *fnn-extent-retired*
-                            collect (list id (fnn-call 'fn-arx-file-count id arena)
+                            collect (list id (first (fnn-call 'fn-arx-file-count id arena))
                                           (if (member id members) 1 0)))))))
           (fnn-err "CHECKPOINT release reseated=~d incomplete=~d closed=~d retired=~d open=~d~@[ held=~(~a~)~]~@[ named=~{~{~d:~d:~d~}~^,~}~]"
                    reseated incomplete closed
