@@ -63,8 +63,9 @@ first publishes any pair this tree's own manifests vouch for (a lane's own
 uncertified, the books that miss only because they include one, and the
 fixes: `--certify-missing` certifies them (certify_books.py --incremental,
 under swarm-build where it exists) and starts; `--source-deps` (or
-`--ld-missing`) loads them from source in the session; `--ld BOOK` /
-`--source-deps A,B` loads named ones.  A from-source book's proofs run in the
+`--ld-missing`) loads them from source in the session; `--ld DEPENDENCY`
+(a book the session's book includes, never the book itself) / `--source-deps
+A,B` loads named ones.  A from-source book's proofs run in the
 session and `status` marks it "from source (not certified)"; the books of the
 closure that include it are loaded from source too, since their
 certificates name its other bytes.
@@ -1408,7 +1409,7 @@ def fixes(missing: list[str], jobs: int) -> list[str]:
             str(shutil.which("swarm-build")), "swarm-build"),
         "  start ... --source-deps       load them from source in the session (their proofs",
         "                                run in it; that is not a certificate)",
-        f"  start ... --ld BOOK           load one named dependency from source (the books of "
+        f"  start ... --ld DEPENDENCY     load one book it includes from source (the books of "
         f"the closure that include it follow); missing: {roots}",
     ]
 
@@ -1453,10 +1454,18 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
     except (OSError, certs.UnreadableBook, ValueError) as error:
         return False, f"proof-repl: cannot read {book}'s closure: {error}", []
     wanted = [normalize_book(name) for name in ld]
-    outside = [name for name in wanted if name not in graph or name == book]
+    if book in wanted:
+        # bp-remainder-2 read the old "outside this book's dependencies" as
+        # "--ld takes the test book" (obstructions-5 item 42).
+        return False, (f"proof-repl: --ld takes a DEPENDENCY of the session's book, not the book "
+                       f"itself: {book} already loads form by form from source; name the book "
+                       f"it includes that you changed (`start NAME {book} --ld books/X`)"), []
+    outside = [name for name in wanted if name not in graph]
     if outside:
-        return False, ("proof-repl: --ld names books outside this book's dependencies: "
-                       + ", ".join(outside)), []
+        return False, (f"proof-repl: --ld takes a DEPENDENCY of {book} (a book it includes, "
+                       f"directly or not) to load from source; {book} does not include "
+                       + ", ".join(outside)
+                       + f" (start the session on a book that does, or drop the --ld)"), []
     printed: list[str] = []
     configured = os.environ.get("FN_ACL2", "acl2")
     found = (configured if "/" in configured else shutil.which(configured))
@@ -3296,9 +3305,10 @@ def main(argv: list[str] | None = None) -> int:
                    help="stop the session after MIN minutes with no send (default "
                         f"$FN_REPL_IDLE_MIN, else {DEFAULT_IDLE_MINUTES:g}; 0: never)")
     p.add_argument("--idle-seconds", type=float, default=None, help=argparse.SUPPRESS)
-    p.add_argument("--ld", action="append", default=[], metavar="BOOK",
-                   help="load this dependency from source, not from a certificate "
-                        "(repeatable); the closure's books that include it follow")
+    p.add_argument("--ld", action="append", default=[], metavar="DEPENDENCY",
+                   help="a book the session's book INCLUDES (not the book itself): load it "
+                        "from source, not from a certificate (repeatable); the closure's "
+                        "books that include it follow")
     p.add_argument("--ld-missing", action="store_true",
                    help="load every dependency the cache lacks from source")
     p.add_argument("--source-deps", nargs="?", const="*", default=None, metavar="A,B",
@@ -3397,8 +3407,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--form", default=None,
                    help="prove this form, or several (helper lemmas, then the target), "
                         "at the event's place instead; `-` reads them from stdin")
-    p.add_argument("--ld", action="append", default=[], metavar="BOOK",
-                   help="also load this dependency from source")
+    p.add_argument("--ld", action="append", default=[], metavar="DEPENDENCY",
+                   help="also load this dependency (a book the session's book includes) "
+                        "from source")
     p.add_argument("--limit", type=float, default=None)
     p.add_argument("--load-timeout", type=float, default=600.0)
     p.add_argument("--idle-timeout", type=float, default=None, metavar="MIN",

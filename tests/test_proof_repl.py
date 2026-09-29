@@ -758,7 +758,19 @@ class SourceDependencyTests(unittest.TestCase):
         self.assertEqual(order, ["books/base", "books/mid"])
         self.assertIn("from source, in this order: books/base, books/mid", detail)
         self.assertFalse(refused)
-        self.assertIn("outside this book's dependencies", why)
+        self.assertIn("--ld takes a DEPENDENCY of books/mid", why)
+        self.assertIn("books/mid does not include tests/acl2/mid-tests", why)
+
+    def test_ld_of_the_session_book_itself_says_it_takes_a_dependency(self):
+        # obstructions-5 item 42 (bp-remainder-2 read the old text the other way).
+        with tempfile.TemporaryDirectory() as temporary:
+            root = worktree(temporary + "/tree")
+            with mock.patch.object(proof_repl, "ROOT", root):
+                refused, why, _ = proof_repl.install_closure(
+                    "tests/acl2/mid-tests", ["tests/acl2/mid-tests"])
+        self.assertFalse(refused)
+        self.assertIn("not the book itself", why)
+        self.assertIn("--ld books/X", why)
 
 
 class RefusalHeadlineTests(unittest.TestCase):
