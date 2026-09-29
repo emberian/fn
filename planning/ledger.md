@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1654 |
-| Certification roots in the Makefile | 1592 |
-| Books inside the root closure | 1653 |
-| `defthm` and `defthmd` events | 27173 |
-| `defun` events | 17824 |
+| Books read | 1658 |
+| Certification roots in the Makefile | 1596 |
+| Books inside the root closure | 1657 |
+| `defthm` and `defthmd` events | 27176 |
+| `defun` events | 17828 |
 | Functions with verified guards | 3329 |
 | Functions declared `:verify-guards nil` and never verified | 2067 |
-| Functions left at the default with an explicit guard | 9770 |
+| Functions left at the default with an explicit guard | 9774 |
 | Functions left at the default with no guard | 2658 |
-| `assert-event` checks | 22514 |
-| `must-fail` checks | 2409 |
+| `assert-event` checks | 22522 |
+| `must-fail` checks | 2412 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
 | Theorems flagged SUSPECT by shape | 1204 |
 | Export-hygiene warnings | 317 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 265 |
-| Include-hygiene warnings | 2343 |
-| Host-names warnings | 1999 |
+| Include-hygiene warnings | 2354 |
+| Host-names warnings | 1996 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -138,6 +138,7 @@ that `make certify` requests.
 | `books/bp-clock-domain.lisp` | root | 16 | 19 | 4/0/15/0 | 0 | 0 | 2 |
 | `books/bp-contact-service.lisp` | root | 3 | 5 | 5/0/0/0 | 0 | 0 | 1 |
 | `books/bp-eid-shape.lisp` | root | 11 | 14 | 0/0/14/0 | 0 | 0 | 0 |
+| `books/bp-evidence-host-names.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-byte-invariants.lisp` | root | 12 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-byte-publisher.lisp` | root | 0 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-codec-equivalence.lisp` | root | 4 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -165,7 +166,7 @@ that `make certify` requests.
 | `books/bp-fnbs-replay-append.lisp` | root | 3 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/bp-fnbs-replay-invariants.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-replay.lisp` | root | 1 | 6 | 0/0/6/0 | 0 | 0 | 0 |
-| `books/bp-forward-attempt.lisp` | root | 3 | 42 | 0/3/39/0 | 0 | 0 | 0 |
+| `books/bp-forward-attempt.lisp` | root | 4 | 42 | 0/3/39/0 | 0 | 0 | 0 |
 | `books/bp-forward-image.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-fragment-fast.lisp` | root | 15 | 8 | 6/0/0/2 | 0 | 0 | 0 |
 | `books/bp-fragment-invariants.lisp` | root | 62 | 3 | 0/0/0/3 | 0 | 0 | 5 |
@@ -204,6 +205,7 @@ that `make certify` requests.
 | `books/bp-node-fragment-plan.lisp` | root | 4 | 4 | 2/2/0/0 | 0 | 0 | 1 |
 | `books/bp-node-fragment-replacement.lisp` | root | 3 | 7 | 0/2/5/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-step.lisp` | root | 29 | 18 | 0/15/3/0 | 0 | 0 | 0 |
+| `books/bp-node-host-machine.lisp` | root | 1 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/bp-node-host-sequence.lisp` | closure | 7 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-node-host-transfer.lisp` | closure | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-node-job-cursor.lisp` | root | 103 | 32 | 1/16/15/0 | 0 | 0 | 2 |
@@ -1075,6 +1077,7 @@ that `make certify` requests.
 | `tests/acl2/bp-channel-ingress-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 6 | 0 |
 | `tests/acl2/bp-clock-domain-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 26 | 3 | 0 |
 | `tests/acl2/bp-contact-service-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 4 | 0 |
+| `tests/acl2/bp-evidence-host-names-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 1 | 0 |
 | `tests/acl2/bp-fnbs-byte-counterexamples.lisp` | root | 2 | 5 | 0/0/0/5 | 3 | 2 | 0 |
 | `tests/acl2/bp-fnbs-byte-publisher-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 17 | 2 | 0 |
 | `tests/acl2/bp-fnbs-codec-equivalence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
@@ -1096,7 +1099,7 @@ that `make certify` requests.
 | `tests/acl2/bp-fnbs-namespace-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 12 | 1 | 0 |
 | `tests/acl2/bp-fnbs-publication-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 10 | 1 | 0 |
 | `tests/acl2/bp-fnbs-replay-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 24 | 1 | 0 |
-| `tests/acl2/bp-forward-attempt-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
+| `tests/acl2/bp-forward-attempt-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-forward-image-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/bp-forward-live-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 13 | 0 | 0 |
 | `tests/acl2/bp-fragment-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
@@ -1134,6 +1137,7 @@ that `make certify` requests.
 | `tests/acl2/bp-node-fragment-plan-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-replacement-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-step-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 28 | 2 | 0 |
+| `tests/acl2/bp-node-host-machine-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 1 | 0 |
 | `tests/acl2/bp-node-host-sequence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/bp-node-host-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 27 | 0 | 0 |
 | `tests/acl2/bp-node-job-cursor-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 11 | 1 | 0 |
@@ -2547,7 +2551,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-scka-select-named-refuses-the-arena-by-name` | `books/store-checkpoint-arena-load.lisp` | 748 | arm-of-definition: constant arguments select one IF/COND arm of fn-scka-select-named and the conclusion is that arm's value |
 | `fn-scka-select-named-unfolds` | `books/store-checkpoint-arena-load.lisp` | 752 | arm-of-definition: the hypotheses select one IF/COND arm of fn-scka-select-named and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-scka-select-named and the conclusion is that branch's value |
 | `fn-scka-strip-base-keeps-the-records` | `books/store-checkpoint-arena-writer.lisp` | 969 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sckd-digest-ignores-revision-and-log` | `books/store-checkpoint-digest.lisp` | 57 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sckd-digest-ignores-revision-and-log-by-definition` | `books/store-checkpoint-digest.lisp` | 57 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sckd-verifiable-of-tables-of-capture` | `books/store-checkpoint-digest.lisp` | 49 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scl-haltedp-of-with-live` | `books/served-chunk-live-free.lisp` | 115 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scl-reader-live-session-is-its-own-by-definition` | `books/served-chunk-live-free.lisp` | 213 | arm-of-definition: the hypotheses select one IF/COND arm of fn-own-conn-live-session and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value |

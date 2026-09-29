@@ -2694,7 +2694,8 @@
         "fn-tcl-late-refusal-gets-no-final-ack",
         "fn-tcl-uncertain-delivery-withholds-final-ack",
         "fn-tcl-drive-delivery-events",
-        "fn-tcl-delivery-events-imply-held-final"
+        "fn-tcl-delivery-events-imply-held-final",
+        "fn-tcl-host-drive-bundle-has-held-final"
       ]
     },
     {
@@ -17276,12 +17277,15 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "proposed",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-host-machine.lisp",
         "tests/acl2/bp-node-host-machine-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones-5: a host wrapper moved into a certified book with its keystone (the bp-node-host-sequence pattern); REPL-admitted on persvati (guards verified, 0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
+      "progress_note": "Lane decision-keystones-5: a host wrapper moved into a certified book with its keystone (the bp-node-host-sequence pattern); REPL-admitted on persvati (guards verified, 0 refused), certified by the tree's background cite (the 2026-09-29 mode).",
+      "events": [
+        "fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence"
+      ]
     },
     {
       "id": "PRF-1032",
@@ -17294,12 +17298,15 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "proposed",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-evidence-host-names.lisp",
         "tests/acl2/bp-evidence-host-names-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones-5: a host wrapper moved into a certified book with its keystone (the bp-node-host-sequence pattern); REPL-admitted on persvati (guards verified, 0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
+      "progress_note": "Lane decision-keystones-5: a host wrapper moved into a certified book with its keystone (the bp-node-host-sequence pattern); REPL-admitted on persvati (guards verified, 0 refused), certified by the tree's background cite (the 2026-09-29 mode).",
+      "events": [
+        "fn-bpn-host-evidence-next-result-name-names-exactly-the-next-record"
+      ]
     },
     {
       "id": "PRF-1035",
@@ -17312,12 +17319,15 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "proposed",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-forward-attempt.lisp",
         "tests/acl2/bp-forward-attempt-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones-5: the bp book entries, one two-sided keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
+      "progress_note": "Lane decision-keystones-5: the bp book entries, one two-sided keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode).",
+      "events": [
+        "fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets"
+      ]
     }
   ]
 }

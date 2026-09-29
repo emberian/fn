@@ -3,6 +3,7 @@
 ; records and frames without giving the host a second transition function.
 
 (in-package "ACL2")
+(include-book "../books/bp-node-host-machine")
 
 (defun fn-bpn-host-ready-peers (st)
   ; fnn-bps-open checks the initial invariant once.  Its only later state

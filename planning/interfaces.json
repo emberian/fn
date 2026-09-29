@@ -4,8 +4,8 @@
   "coverage": {
     "declared": 1225,
     "declared_and_dispatched": 1207,
-    "guard_verified": 479,
-    "with_keystone": 145
+    "guard_verified": 483,
+    "with_keystone": 152
   },
   "entries": [
     {
@@ -11082,7 +11082,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpah-handoff-report-is-application-disposition"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -11704,10 +11708,14 @@
       "name": "fn-bpn-host-evidence-next-result-name",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-host-evidence-next-result-name-names-exactly-the-next-record"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -11864,10 +11872,14 @@
       "name": "fn-bpn-host-existing-sequence",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -11882,10 +11894,14 @@
       "name": "fn-bpn-host-existing-sequence-p",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -11900,10 +11916,14 @@
       "name": "fn-bpn-host-existing-sequence-value",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -13525,7 +13545,11 @@
       "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -14983,7 +15007,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-tcl-host-drive-bundle-has-held-final"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,

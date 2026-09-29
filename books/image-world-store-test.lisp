@@ -96,6 +96,7 @@
 (include-book "store-checkpoint-tables-reader")
 (include-book "store-checkpoint-digest")
 (include-book "store-checkpoint-arena-load")
+(include-book "store-finalize-incremental")
 (include-book "store-checkpoint-arena-writer")
 (include-book "owner-checkpoint-pipeline")
 (include-book "store-open-pre-c1")
