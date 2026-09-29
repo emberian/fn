@@ -5,8 +5,8 @@ certified world (a dump tools/coverage_dump.lisp wrote in an ACL2 session
 over books/image-world) says about each declared entry of
 planning/interfaces.json.  Do not edit; regenerate at convergence.
 
-Coordinate: source revision 7ea6abebda756a466362978755fa2511b2992b52, box hbox, 2026-09-28; 13360 theorems of the tree's books,
-14216 functions.  The rule for a decision entry and each level are in
+Coordinate: source revision None, box persvati, 2026-09-29; 13381 theorems of the tree's books,
+14260 functions.  The rule for a decision entry and each level are in
 tools/coverage.py's docstring: `direct` is a theorem whose conclusion names
 the entry; `via-caller` a theorem about a function whose definition reaches
 it (opened = the proof's hints name it; otherwise by name only);
@@ -17,54 +17,36 @@ theorem.  `decision uncovered` is the shrink-only figure
 
 | subsystem | declared | decision | decision direct | decision uncovered | plumbing | direct | hyps-only | via-caller (opened) | callee-only | nothing | absent | :program |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| store | 280 | 100 | 32 | 68 | 180 | 103 | 5 | 21 (3) | 99 | 52 | 0 | 75 |
-| owner | 190 | 107 | 3 | 104 | 83 | 27 | 2 | 1 (0) | 145 | 15 | 0 | 155 |
+| store | 280 | 90 | 40 | 50 | 190 | 111 | 4 | 21 (3) | 97 | 47 | 0 | 75 |
+| owner | 190 | 107 | 4 | 103 | 83 | 28 | 2 | 0 (0) | 145 | 15 | 0 | 155 |
 | nntp/served | 33 | 22 | 4 | 18 | 11 | 4 | 0 | 0 (0) | 23 | 6 | 0 | 28 |
-| peer/feed | 90 | 26 | 7 | 19 | 64 | 17 | 4 | 3 (0) | 50 | 16 | 0 | 39 |
-| bp | 245 | 52 | 11 | 41 | 193 | 61 | 7 | 5 (2) | 101 | 71 | 0 | 25 |
+| peer/feed | 90 | 26 | 9 | 17 | 64 | 20 | 3 | 3 (0) | 49 | 15 | 0 | 39 |
+| bp | 245 | 49 | 15 | 34 | 196 | 67 | 7 | 5 (2) | 100 | 66 | 0 | 25 |
 | web | 21 | 4 | 0 | 4 | 17 | 0 | 0 | 0 (0) | 13 | 8 | 0 | 20 |
 | admin/operator | 181 | 57 | 8 | 49 | 124 | 20 | 1 | 2 (1) | 138 | 20 | 0 | 122 |
 | control | 77 | 28 | 1 | 27 | 49 | 7 | 0 | 0 (0) | 61 | 9 | 0 | 66 |
-| all | 1117 | 396 | 66 | 330 | 721 | 239 | 19 | 32 (6) | 630 | 197 | 0 | 530 |
+| all | 1117 | 383 | 81 | 302 | 734 | 257 | 17 | 31 (6) | 626 | 186 | 0 | 530 |
 
-## store: 68 decision entries with no direct theorem, of 100 decision entries
+## store: 50 decision entries with no direct theorem, of 90 decision entries
 
 | entry | subsystem | kind | mode | status | direct | via caller (opened) | why |
 |---|---|---|---|---|---|---|---|
-| `fn-bs-init-pub-admission` | store | decision | common-lisp-compliant | hyps-only |  | 0 (0) | branches; constructs an admission (fn-bs-init-pub-admission) |
 | `fn-lg-workload-record` | store | decision | ideal | callee-only |  | 0 (0) | branches; constructs a charge (fn-record-charge) |
 | `fn-lgb-decode-next` | store | decision | common-lisp-compliant | callee-only |  | 0 (0) | branches; constructs a verdict (fn-stxa-verdict-event), a charge (fn-record-charge) |
-| `fn-lgdm-refusal-text` | store | decision | common-lisp-compliant | callee-only |  | 0 (0) | branches; constructs a refusal (fn-lgdm-refusal-text) |
-| `fn-lzr-append-refusal-text` | store | decision | common-lisp-compliant | nothing |  | 0 (0) | branches; constructs a refusal (fn-lzr-append-refusal-text) |
-| `fn-lzr-read-refusal-text` | store | decision | common-lisp-compliant | nothing |  | 0 (0) | branches; constructs a refusal (fn-lzr-read-refusal-text) |
-| `fn-smid-durability-warning` | store | decision | common-lisp-compliant | callee-only |  | 0 (0) | branches; constructs a refusal reason (fn-smid-unsafe-reason) |
 | `fn-store-cfg-native-admin-authorize` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a verdict (fn-hc-verdict), an admission (fn-retain-admit), an admission (fn-th-admission), an acceptance (fn-accept-complete), a grant (fn-cfg-grant-verb), an authorization (fn-cvec-native-admin-authorize), a refusal reason (fn-bs-profile-invalid-reason), a charge (fn-charge-for-payload), a reservation (fn-hc-no-other-reservedp), an allocation (fn-allocate-memberships), a capacity figure (fn-cfg-capacity), a fence (fn-fencedp) |
 | `fn-store-cfg-native-admin-authorize-carried` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a verdict (fn-hc-verdict), an admission (fn-retain-admit), an admission (fn-th-admission), an acceptance (fn-accept-complete), a grant (fn-cfg-grant-verb), an authorization (fn-cfgc-cvec-native-admin-authorize), a refusal reason (fn-bs-profile-invalid-reason), a charge (fn-charge-for-payload), a reservation (fn-hc-no-other-reservedp), an allocation (fn-allocate-memberships), a capacity figure (fn-cfg-capacity), a fence (fn-fencedp) |
-| `fn-store-charge` | store | decision | ideal | callee-only |  | 0 (0) | branches; constructs a charge (fn-charge-for-payload) |
 | `fn-store-checkpoint-clone-phase` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a verdict (pgs-dir-verdict), an acceptance (fn-node-acceptance) |
 | `fn-store-checkpoint-rollover-proposal` | store | decision | program | callee-only |  | 0 (0) | branches; constructs an acceptance (fn-node-acceptance) |
 | `fn-store-config-observation-limit` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a refusal reason (fn-bs-profile-invalid-reason) |
 | `fn-store-decode-records` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a verdict (fn-stxa-verdict-event), a charge (fn-record-charge) |
-| `fn-store-genesis-octets` | store | decision | ideal | callee-only |  | 0 (0) | branches; constructs a refusal reason (fn-bs-profile-invalid-reason) |
-| `fn-store-genesis-refusal-text` | store | decision | ideal | nothing |  | 0 (0) | branches; constructs a refusal (fn-gen-refusal-text) |
 | `fn-store-log-next-txid-of-events` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a verdict (fn-stxa-verdict-event), a charge (fn-record-charge) |
 | `fn-store-log-next-txid-step` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a verdict (fn-stxa-verdict-event), a charge (fn-record-charge) |
 | `fn-store-log-reclaim-decide-recorded` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a verdict (fn-rcl-held-verdicts), a decision (fn-lgr-decide-stream), an admission (fn-bs-profile-admittedp), an acceptance (fn-node-acceptance), a refusal reason (fn-bs-profile-invalid-reason) |
 | `fn-store-log-reclaim-decide-stream` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a verdict (fn-rcl-held-verdicts), a decision (fn-lgr-decide-stream), an admission (fn-bs-profile-admittedp), an acceptance (fn-node-acceptance), a refusal reason (fn-bs-profile-invalid-reason) |
 | `fn-store-log-reclaim-event` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a verdict (fn-rcl-standing-verdict), a charge (fn-record-charge) |
-| `fn-store-metadata-config-decode` | store | decision | ideal | callee-only |  | 0 (0) | branches; constructs a refusal reason (fn-bs-profile-invalid-reason) |
-| `fn-store-metadata-config-frame` | store | decision | ideal | nothing |  | 0 (0) | branches; constructs a verdict (fn-bs-profile-init-verdict) |
-| `fn-store-metadata-config-open` | store | decision | ideal | callee-only |  | 0 (0) | branches; constructs a refusal reason (fn-bs-profile-invalid-reason) |
-| `fn-store-metadata-config-refusal-text` | store | decision | ideal | nothing |  | 0 (0) | branches; constructs a refusal (fn-spo-refusal-text) |
 | `fn-store-open-refusal-text` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a refusal (fn-sopc-refusal-text) |
-| `fn-store-profile-admittedp` | store | decision | ideal | callee-only |  | 0 (0) | branches; constructs an admission (fn-bs-profile-admittedp), a refusal reason (fn-bs-profile-invalid-reason) |
-| `fn-store-profile-logp` | store | decision | ideal | callee-only |  | 0 (0) | branches; constructs a refusal reason (fn-bs-profile-invalid-reason) |
-| `fn-store-profile-max-record-octets` | store | decision | ideal | callee-only |  | 0 (0) | branches; constructs a refusal reason (fn-bs-profile-invalid-reason) |
-| `fn-store-profile-read-bound` | store | decision | ideal | callee-only |  | 0 (0) | branches; constructs a refusal reason (fn-bs-profile-invalid-reason) |
-| `fn-store-profile-report` | store | decision | ideal | callee-only |  | 0 (0) | branches; constructs a refusal reason (fn-bs-profile-invalid-reason) |
 | `fn-store-prov-for-msgid` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a refusal reason (fn-prov-local-reason) |
 | `fn-store-prov-post` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a refusal reason (fn-prov-local-reason) |
-| `fn-store-publication-admissibility` | store | decision | ideal | callee-only |  | 0 (0) | branches; constructs an admission (fn-bs-profile-admittedp), a refusal reason (fn-bs-profile-invalid-reason) |
 | `fn-store-reclaim-context` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a verdict (fn-sn-verdicts), an acceptance (fn-node-acceptance) |
 | `fn-store-reclaim-context-recorded` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a verdict (fn-sn-verdicts), an acceptance (fn-node-acceptance) |
 | `fn-store-reclaim-ctx-classes` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a verdict (fn-rcl-held-verdicts) |
@@ -100,7 +82,7 @@ theorem.  `decision uncovered` is the shrink-only figure
 | `fn-store-sn-reserved` | store | decision | program | callee-only |  | 0 (0) | branches; constructs a reservation (fn-retain-reserved) |
 | `fn-sxi-final` | store | decision | common-lisp-compliant | via-caller |  | 1 (1) | branches; constructs a refusal reason (fn-bs-profile-invalid-reason) |
 
-### store: plumbing (180), by kind
+### store: plumbing (190), by kind
 
 | entry | kind | mode | status | why |
 |---|---|---|---|---|
@@ -240,6 +222,16 @@ theorem.  `decision uncovered` is the shrink-only figure
 | `fn-otm-peer-read-class` | delegates | common-lisp-compliant | direct | its decision is another entry's: fn-otm-admit-post |
 | `fn-otm-peer-read-proceeds-p` | delegates | common-lisp-compliant | hyps-only | its decision is another entry's: fn-otm-admit-post |
 | `fn-srs-intern-step` | delegates | common-lisp-compliant | direct | its decision is another entry's: fn-intern-events |
+| `fn-store-genesis-octets` | delegates | ideal | callee-only | its decision is fn-gen-octets-for's: the entry is exactly a call of it (declared :delegates); fn-gen-octets-for's direct theorems: fn-gen-open-of-octets-for |
+| `fn-store-genesis-refusal-text` | delegates | ideal | callee-only | its decision is fn-gen-refusal-text's: the entry is exactly a call of it (declared :delegates); fn-gen-refusal-text's direct theorems: fn-gen-refusal-text-refuses-exactly-a-refused-open |
+| `fn-store-metadata-config-decode` | delegates | ideal | callee-only | its decision is fn-bs-config-decode's: the entry is exactly a call of it (declared :delegates); fn-bs-config-decode's direct theorems: fn-bs-config-decode-of-encode, fn-spo-refusal-text-refuses-exactly-the-foreign-format |
+| `fn-store-metadata-config-frame` | delegates | ideal | callee-only | its decision is fn-bs-config-frame-for-profile's: the entry is exactly a call of it (declared :delegates); fn-bs-config-frame-for-profile's direct theorems: fn-bs-config-frame-for-profile-is-what-the-open-opens |
+| `fn-store-metadata-config-open` | delegates | ideal | callee-only | its decision is fn-spo-config-open's: the entry is exactly a call of it (declared :delegates); fn-spo-config-open's direct theorems: fn-bs-config-frame-for-profile-is-what-the-open-opens, fn-spo-config-open-store-format-is-exactly-a-foreign-frame, fn-spo-open-of-a-valid-profile-opens-it |
+| `fn-store-metadata-config-refusal-text` | delegates | ideal | callee-only | its decision is fn-spo-refusal-text's: the entry is exactly a call of it (declared :delegates); fn-spo-refusal-text's direct theorems: fn-spo-refusal-text-refuses-exactly-the-foreign-format |
+| `fn-store-profile-admittedp` | delegates | ideal | callee-only | its decision is fn-bs-profile-admittedp's: the entry is exactly a call of it (declared :delegates); fn-bs-profile-admittedp's direct theorems: fn-bs-profile-field-is-pvc-pf, fn-heap-decide-admits-every-store-the-profile-admits, fn-heap-init-decide-fits-the-budget-and-the-machine |
+| `fn-store-profile-logp` | delegates | ideal | callee-only | its decision is fn-bs-profile-logp's: the entry is exactly a call of it (declared :delegates); fn-bs-profile-logp's direct theorems: fn-bs-profile-logp-holds-exactly-for-a-valid-profile |
+| `fn-store-profile-max-record-octets` | delegates | ideal | callee-only | its decision is fn-bs-profile-max-record-octets's: the entry is exactly a call of it (declared :delegates); fn-bs-profile-max-record-octets's direct theorems: fn-bs-profile-admits-every-article-record, fn-bs-profile-valid-record-fits-a-poll-reply, fn-bs-profile-validp-codecs-accept |
+| `fn-store-profile-report` | delegates | ideal | callee-only | its decision is fn-bs-profile-report's: the entry is exactly a call of it (declared :delegates); fn-bs-profile-report's direct theorems: fn-bs-profile-report-names-the-format-exactly-for-a-valid-profile |
 | `fn-store-sco-pass-step` | delegates | program | nothing | its decision is another entry's: fn-scka-srcs-n |
 | `create-fn-arena` | straight-line | common-lisp-compliant | direct | no branch in its private closure |
 | `create-fn-octets-lg` | straight-line | common-lisp-compliant | callee-only | no branch in its private closure |
@@ -285,11 +277,10 @@ theorem.  `decision uncovered` is the shrink-only figure
 | `fn-store-sn-staging-observation-limit` | straight-line | program | callee-only | no branch in its private closure |
 | `fn-sxi-same-verdict` | straight-line | common-lisp-compliant | nothing | no branch in its private closure |
 
-## owner: 104 decision entries with no direct theorem, of 107 decision entries
+## owner: 103 decision entries with no direct theorem, of 107 decision entries
 
 | entry | subsystem | kind | mode | status | direct | via caller (opened) | why |
 |---|---|---|---|---|---|---|---|
-| `fn-otb-answer-early` | owner | decision | common-lisp-compliant | via-caller |  | 2 (0) | branches; constructs an answer (fn-otb-answer-early) |
 | `fn-owner-account-outcome` | owner | decision | program | callee-only |  | 0 (0) | branches; constructs a refusal (fn-article-census-refusal), a rejection (fn-wire-reject-event), a reply (fn-cu-serve-reply), a verdict (fn-ctl-lookup-verdict), an outcome class (fn-auth-redeem-outcome), a decision (fn-inj-decide), an admission (fn-retain-admit), an acceptance (fn-acceptedp), a grant (fn-ctl-grant-scope), an authorization (fn-ctl-node-authorizesp), a refusal reason (fn-ctl-unverified-reason), a charge (fn-charge-for-payload), a reservation (fn-retain-reserved), a capacity figure (fn-cfg-capacity), a fence (fn-fencedp) |
 | `fn-owner-app-refusal-log` | owner | decision | program | callee-only |  | 0 (0) | branches; constructs a refusal (fn-olog-bp-app-refusal-line) |
 | `fn-owner-bound-commit-gate` | owner | decision | program | callee-only |  | 0 (0) | branches; constructs an acceptance (fn-node-acceptance) |
@@ -521,18 +512,16 @@ theorem.  `decision uncovered` is the shrink-only figure
 | `fn-reader-observe-clock` | straight-line | program | nothing | no branch in its private closure |
 | `fn-tlsr-host-facts` | straight-line | program | nothing | no branch in its private closure |
 
-## peer/feed: 19 decision entries with no direct theorem, of 26 decision entries
+## peer/feed: 17 decision entries with no direct theorem, of 26 decision entries
 
 | entry | subsystem | kind | mode | status | direct | via caller (opened) | why |
 |---|---|---|---|---|---|---|---|
 | `fn-anchor-host-accept` | peer/feed | decision | program | callee-only |  | 0 (0) | branches; constructs an outcome class (fn-anchor-outcome), an acceptance (fn-anchor-host-accept), a refusal reason (fn-anchor-reason) |
-| `fn-anchor-rp-outcome` | peer/feed | decision | common-lisp-compliant | nothing |  | 0 (0) | branches; constructs an outcome class (fn-anchor-rp-outcome) |
 | `fn-anchor-wire-host-parse` | peer/feed | decision | program | callee-only |  | 0 (0) | branches; constructs a refusal reason (fn-anchor-wire-result-reason) |
 | `fn-anchor-wire-host-request` | peer/feed | decision | program | callee-only |  | 0 (0) | branches; constructs a refusal reason (fn-anchor-wire-result-reason) |
 | `fn-cu-session-begin-pair` | peer/feed | decision | common-lisp-compliant | callee-only |  | 0 (0) | branches; constructs a refusal (fn-pull-session-refusal), a verdict (fn-pull-plan-verdict) |
 | `fn-cu-session-log-line` | peer/feed | decision | common-lisp-compliant | callee-only |  | 0 (0) | branches; constructs a refusal (fn-cu-r-refusal) |
 | `fn-cu-session-step-pair` | peer/feed | decision | common-lisp-compliant | callee-only |  | 0 (0) | branches; constructs a refusal (fn-cu-r-refusal), a rejection (fn-wire-reject-event) |
-| `fn-hsig-authorized-injected-carried-submission-event` | peer/feed | decision | common-lisp-compliant | callee-only |  | 0 (0) | branches; constructs a refusal (fn-article-census-refusal), a verdict (fn-stxa-verdict-event), a decision (fn-inj-decide), an acceptance (fn-mbx-accept), an authorization (fn-hsig-authorize-at), a refusal reason (fn-inj-mandatory-reason), a charge (fn-charge-for-payload), a reservation (fn-hc-reserved-namep) |
 | `fn-hsig-host-authored-source-fields` | peer/feed | decision | program | callee-only |  | 0 (0) | branches; constructs an acceptance (fn-mbx-accept), a refusal reason (fn-inj-mandatory-reason) |
 | `fn-hsig-host-authorize` | peer/feed | decision | program | callee-only |  | 0 (0) | branches; constructs an authorization (fn-hsig-authorize-at) |
 | `fn-hsig-host-received-carrier-plan` | peer/feed | decision | program | callee-only |  | 0 (0) | branches; constructs a reservation (fn-hc-no-other-reservedp) |
@@ -551,7 +540,7 @@ theorem.  `decision uncovered` is the shrink-only figure
 |---|---|---|---|---|
 | `fn-anchor-rp-action` | branches | common-lisp-compliant | nothing | branches, names no outcome |
 | `fn-anchor-rp-recover-start` | branches | common-lisp-compliant | hyps-only | branches, names no outcome |
-| `fn-anchor-rp-step` | branches | common-lisp-compliant | hyps-only | branches, names no outcome |
+| `fn-anchor-rp-step` | branches | common-lisp-compliant | direct | branches, names no outcome |
 | `fn-anchor-server-host-select` | branches | program | callee-only | branches, names no outcome |
 | `fn-feed-filename-host-observation-remaining` | branches | program | nothing | branches, names no outcome |
 | `fn-feed-journal-phase-step` | branches | common-lisp-compliant | via-caller | branches, names no outcome |
@@ -614,7 +603,7 @@ theorem.  `decision uncovered` is the shrink-only figure
 | `fn-pull-fresh-cursor` | straight-line | common-lisp-compliant | callee-only | no branch in its private closure |
 | `fn-pull-journal-prefix-size` | straight-line | common-lisp-compliant | nothing | no branch in its private closure |
 
-## bp: 41 decision entries with no direct theorem, of 52 decision entries
+## bp: 34 decision entries with no direct theorem, of 49 decision entries
 
 | entry | subsystem | kind | mode | status | direct | via caller (opened) | why |
 |---|---|---|---|---|---|---|---|
@@ -623,17 +612,12 @@ theorem.  `decision uncovered` is the shrink-only figure
 | `fn-bpapp-receive` | bp | decision | program | callee-only |  | 0 (0) | branches; constructs a refusal (fn-bpn-refused), an outcome class (fn-bpn-outcome-bundle), an acceptance (fn-bpn-accepted), a refusal reason (fn-bpn-outcome-reason) |
 | `fn-bpapp-receive-outcome` | bp | decision | program | nothing |  | 0 (0) | branches; constructs an outcome class (fn-bpapp-receive-outcome) |
 | `fn-bpapp-receive-reason` | bp | decision | program | nothing |  | 0 (0) | branches; constructs a refusal reason (fn-bpapp-receive-reason) |
-| `fn-bpn-host-authored-wire-authorize` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs an authorization (fn-bpn-authored-wire-authorize), a reservation (fn-bpn-sequence-reservation-sequence) |
 | `fn-bpn-host-authored-wire-name` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs a reservation (fn-bpn-authored-wire-name-for-reservation) |
-| `fn-bpn-host-evidence-authorize` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs an outcome class (fn-bpn-evidence-outcomep), an authorization (fn-bpn-evidence-authorize) |
 | `fn-bpn-host-evidence-next-result-name` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs an outcome class (fn-bpn-evidence-outcomep) |
 | `fn-bpn-host-evidence-operationp` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs an outcome class (fn-jpub-outcome) |
 | `fn-bpn-host-existing-sequence` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs a refusal (fn-bpn-pending-refusal-effect), a fence (fn-bpn-machine-state-fenced) |
 | `fn-bpn-host-lifecycle-publication-authorize` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs a refusal (fn-bpn-pending-refusal-effect), an authorization (fn-bpn-host-lifecycle-publication-authorize), a fence (fn-bpn-machine-state-fenced) |
 | `fn-bpn-host-lifecycle-recovery-agrees-p` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs a refusal (fn-bpn-pending-refusal-effect), a fence (fn-bpn-machine-state-fenced) |
-| `fn-bpn-host-receive` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs a refusal (fn-bpn-refused), an outcome class (fn-bpn-outcome-bundle), an acceptance (fn-bpn-accepted), a refusal reason (fn-bpn-outcome-reason) |
-| `fn-bpn-host-receive-outcome` | bp | decision | ideal | nothing |  | 0 (0) | branches; constructs an outcome class (fn-bpn-host-receive-outcome) |
-| `fn-bpn-host-receive-reason` | bp | decision | ideal | nothing |  | 0 (0) | branches; constructs a refusal reason (fn-bpn-host-receive-reason) |
 | `fn-bpn-host-sequence-reservation-frame` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs a reservation (fn-bpn-host-sequence-reservation-frame) |
 | `fn-bpn-host-sequence-reservation-sequence` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs a reservation (fn-bpn-host-sequence-reservation-sequence) |
 | `fn-bpn-host-sequence-reservationp` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs a reservation (fn-bpn-host-sequence-reservationp) |
@@ -643,11 +627,10 @@ theorem.  `decision uncovered` is the shrink-only figure
 | `fn-bpnf-delete-publication-authorize` | bp | decision | ideal | hyps-only |  | 0 (0) | branches; constructs an authorization (fn-bpnf-delete-publication-authorize) |
 | `fn-bpnf-family-next` | bp | decision | common-lisp-compliant | callee-only |  | 0 (0) | branches; constructs an outcome class (fn-bpfw-outcome), an admission (fn-bpfw-admit) |
 | `fn-bpnf-family-publication-authorize` | bp | decision | ideal | hyps-only |  | 0 (0) | branches; constructs an authorization (fn-bpnf-family-publication-authorize) |
-| `fn-bpnp-configured-budgets` | bp | decision | common-lisp-compliant | nothing |  | 0 (0) | branches; constructs a budget (fn-bpnp-budgets) |
+| `fn-bpnp-configured-budgets` | bp | decision | common-lisp-compliant | callee-only |  | 0 (0) | branches; constructs a budget (fn-bpnp-budgets) |
 | `fn-bpnp-dispatch-publication-authorize` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs an authorization (fn-bpnp-dispatch-publication-authorize) |
 | `fn-bpnp-forward-publication-authorize` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs an outcome class (fn-bpnp-forward-outcomep), an authorization (fn-bpnp-forward-publication-authorize) |
 | `fn-bpnp-forward-publication-operationp` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs an outcome class (fn-bpnp-forward-outcomep) |
-| `fn-bpnp-tcpcl-outcome` | bp | decision | common-lisp-compliant | nothing |  | 0 (0) | branches; constructs an outcome class (fn-bpnp-tcpcl-outcome) |
 | `fn-bpnr-publish-outcome` | bp | decision | ideal | nothing |  | 0 (0) | branches; constructs an outcome class (fn-bpnr-publish-outcome) |
 | `fn-bprj-apply` | bp | decision | program | callee-only |  | 0 (0) | branches; constructs a verdict (fn-hc-verdict), an acceptance (fn-bpaj-bpr-accept-projected-ref-fast), a charge (fn-held-charge) |
 | `fn-bprj-install` | bp | decision | program | callee-only |  | 0 (0) | branches; constructs a verdict (fn-hc-verdict), an admission (fn-retain-admit), an acceptance (fn-acceptedp), a refusal reason (fn-prov-local-reason), a charge (fn-held-charge), a reservation (fn-retain-reserved), a capacity figure (fn-retain-capacity), a fence (fn-fencedp) |
@@ -656,11 +639,10 @@ theorem.  `decision uncovered` is the shrink-only figure
 | `fn-bprj-request-transit-context-record` | bp | decision | program | callee-only |  | 0 (0) | branches; constructs a charge (fn-record-charge) |
 | `fn-tcl-delivery-plan` | bp | decision | common-lisp-compliant | callee-only |  | 0 (0) | branches; constructs a refusal (fn-tcl-delivery-refuse-reason), a refusal reason (fn-tcl-delivery-refuse-reason) |
 | `fn-tcl-host-drive` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs a refusal (fn-tcl-decode-refuse), a rejection (fn-tcl-decode-reject), an acceptance (fn-tcl-init-acceptablep), a refusal reason (fn-tcl-msg-reject-reason) |
-| `fn-tcl-host-encode` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs a refusal (fn-tcl-encode-refuse-body), a rejection (fn-tcl-encode-reject-body), a refusal reason (fn-tcl-msg-reject-reason) |
 | `fn-tcl-host-event-digests` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs a refusal (fn-tcl-encode-refuse-body), a rejection (fn-tcl-encode-reject-body), a refusal reason (fn-tcl-msg-reject-reason) |
 | `fn-tcl-host-replay` | bp | decision | ideal | callee-only |  | 0 (0) | branches; constructs a refusal (fn-tcl-decode-refuse), a rejection (fn-tcl-decode-reject), an acceptance (fn-tcl-init-acceptablep), a refusal reason (fn-tcl-msg-reject-reason) |
 
-### bp: plumbing (193), by kind
+### bp: plumbing (196), by kind
 
 | entry | kind | mode | status | why |
 |---|---|---|---|---|
@@ -697,7 +679,6 @@ theorem.  `decision uncovered` is the shrink-only figure
 | `fn-bpn-host-lifecycle-recovery-stages` | branches | ideal | nothing | branches, names no outcome |
 | `fn-bpn-host-node-idp` | branches | ideal | callee-only | branches, names no outcome |
 | `fn-bpn-host-observation` | branches | ideal | callee-only | branches, names no outcome |
-| `fn-bpn-host-receive-adu` | branches | ideal | nothing | branches, names no outcome |
 | `fn-bpn-host-sequence-frontier` | branches | ideal | callee-only | branches, names no outcome |
 | `fn-bpn-host-sequence-ready-p` | branches | ideal | callee-only | branches, names no outcome |
 | `fn-bpn-report-outbox-peer-matchp` | branches | ideal | callee-only | branches, names no outcome |
@@ -768,7 +749,8 @@ theorem.  `decision uncovered` is the shrink-only figure
 | `fn-bpn-host-lifecycle-record-unframe` | codec | ideal | callee-only | branches only over fn-bpb-decode, fn-bpb-decode-block, fn-bpb-decode-blocks |
 | `fn-bpn-host-lifecycle-recovery` | codec | ideal | callee-only | branches only over fn-bpb-encode, fn-bpb-encode-block, fn-bpb-encode-block-with-crc |
 | `fn-bpn-host-ready-peers` | codec | ideal | callee-only | branches only over fn-cbor-ag-car, fn-cbor-ag-cdr |
-| `fn-bpn-host-send` | codec | ideal | callee-only | branches only over fn-bpb-encode, fn-bpb-encode-block, fn-bpb-encode-block-with-crc |
+| `fn-bpn-host-receive-adu` | codec | common-lisp-compliant | direct | branches only over fn-cbor-ag-car, fn-cbor-ag-cdr |
+| `fn-bpn-host-send` | codec | common-lisp-compliant | direct | branches only over fn-bpb-encode, fn-bpb-encode-block, fn-bpb-encode-block-with-crc |
 | `fn-bpn-host-sent-summary` | codec | ideal | callee-only | branches only over fn-cbor-ag-car, fn-cbor-ag-cdr, fn-cbor-octet-listp |
 | `fn-bpn-host-sequence-recover` | codec | ideal | callee-only | branches only over fn-cbor-at-mostp, fn-cbor-octet-listp, fn-cbor-octetp |
 | `fn-bpn-nth` | codec | common-lisp-compliant | direct | branches only over fn-cbor-ag-car |
@@ -824,6 +806,9 @@ theorem.  `decision uncovered` is the shrink-only figure
 | `fn-tcl-negotiated-peer-node-id` | codec | common-lisp-compliant | direct | branches only over fn-cbor-ag-car, fn-cbor-ag-cdr |
 | `fn-tcl-negotiated-transfer-mtu` | codec | common-lisp-compliant | direct | branches only over fn-cbor-ag-car, fn-cbor-ag-cdr |
 | `fn-tcl-session-negotiated` | codec | common-lisp-compliant | direct | branches only over fn-cbor-ag-car, fn-cbor-ag-cdr |
+| `fn-bpn-host-authored-wire-authorize` | delegates | ideal | callee-only | its decision is fn-bpn-authored-wire-authorize's: the entry is exactly a call of it (declared :delegates); fn-bpn-authored-wire-authorize's direct theorems: fn-bpn-authored-wire-authorize-carries-reservation |
+| `fn-bpn-host-evidence-authorize` | delegates | ideal | callee-only | its decision is fn-bpn-evidence-authorize's: the entry is exactly a call of it (declared :delegates); fn-bpn-evidence-authorize's direct theorems: fn-bpn-evidence-authorize-produces-operation, fn-bpn-evidence-successor-does-not-reuse-identity |
+| `fn-tcl-host-encode` | delegates | ideal | callee-only | its decision is fn-tcl-encode's: the entry is exactly a call of it (declared :delegates); fn-tcl-encode's direct theorems: fn-tcl-accepted-contact-is-canonical, fn-tcl-accepted-message-is-canonical, fn-tcl-decode-contact-of-encode |
 | `fn-bpcc-journal-config` | straight-line | common-lisp-compliant | nothing | no branch in its private closure |
 | `fn-bpcd-final-name` | straight-line | common-lisp-compliant | nothing | no branch in its private closure |
 | `fn-bpcd-frame-limit` | straight-line | common-lisp-compliant | direct | no branch in its private closure |
