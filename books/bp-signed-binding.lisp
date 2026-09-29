@@ -48,6 +48,7 @@
 ;; authored source (PRF-127); the D23 source decision is PRF-117.
 (in-package "ACL2")
 (include-book "bp-native-app-fast")
+(include-book "byte-store-scan")
 
 ;; The Message-ID the dispatcher's lookup reads: the relaying agent's check
 ;; (every intent is a transit intent, D34, PKT-646).

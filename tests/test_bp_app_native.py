@@ -4,9 +4,8 @@ import re
 import unittest
 
 from tests.native_harness import (
-    EXIT, ROOT, Node, acl2_octets, environment, free_port, native_image, requires,
-    run, scratch, start)
-from tools import run_bp_ingress, run_store
+    EXIT, ROOT, Acl2Session, Node, environment, free_port, native_image,
+    requires, run, scratch, start)
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
 # connection lost after it existed is EXIT.INTERRUPTED (connection-local:
@@ -36,30 +35,8 @@ class NativeBpApplicationTests(unittest.TestCase):
             b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n"
             b"Message-ID: " + self.msgid + b"\r\n\r\nbody over BP\r\n"
         )
-        bridge = run_bp_ingress.Acl2BpIngress()
-        try:
-            bridge.call('(include-book "books/bp-adu")')
-            extracted = bridge.extract_message_id(self.article)
-            self.assertEqual(extracted, self.msgid)
-            _archive, subject, _provenance = run_store.metadata(
-                self.msgid, self.article)
-
-            def text(value):
-                return "(fn-store-octets->string '" + bridge.literal(value) + ")"
-
-            fields = [
-                b"work-native-bp", subject, b"dtn://sender/",
-                b"dtn://receiver/", b"native-policy", b"origin-native",
-                b"wire-auth", b"terms-native",
-            ]
-            form = (
-                "(fn-bpa-encode (fn-bpa-make-request "
-                + " ".join(text(value) for value in fields)
-                + " '" + bridge.literal(self.article) + "))"
-            )
-            self.request_path.write_bytes(acl2_octets(bridge.call(form)))
-        finally:
-            bridge.close()
+        self.request_path.write_bytes(self.request_for(
+            self.article, self.msgid, b"work-native-bp"))
 
     def enroll_sender_boundary(self):
         """Admit dtn://sender/ as a BP boundary principal of the receiving Store.
@@ -138,15 +115,12 @@ class NativeBpApplicationTests(unittest.TestCase):
         return int(status[0][0]), int(status[0][1]), int(pins[0])
 
     def recovered_provenance(self):
-        """The provenance the Store's retention pin records for the article.
-        ACL2 decides it (books/provenance-inspect.lisp fn-provi-of-msgid,
-        called by host/store-node-host.lisp fn-store-prov-for-msgid), but no
-        verb of the native image prints it: `store PATH inspect' writes the
-        article's octets only and `status'/`retention' carry no evidence.
-        Decoding the exported records here would re-derive it in Python."""
-        self.fail("no native store verb reports an article's provenance "
-                  "(fn-provi-of-msgid); the check needs one, e.g. "
-                  "`store PATH provenance MSGID'")
+        """The provenance the Store's retention pin records for the article,
+        from the node's own read-only open: `store PATH provenance MSGID'
+        (host/native/io.lisp fnn-command-provenance) relays the octets ACL2
+        describes (books/provenance-inspect.lisp fn-provi-of-msgid, through
+        host/store-node-host.lisp fn-store-prov-for-msgid)."""
+        return self.store_verb("provenance", self.msgid.decode("ascii"))
 
     def prepare_sender_obligation(self):
         sender_store = self.temp / "sender-store"
@@ -236,29 +210,18 @@ class NativeBpApplicationTests(unittest.TestCase):
         self.assertNotIn(b"BP application accepted", receiver_out)
         self.assertEqual(self.recovered_counts()[1], 0)
 
-    def request_for(self, article, msgid):
-        """The BP application request carrying ARTICLE (setUp's encoding)."""
-        bridge = run_bp_ingress.Acl2BpIngress()
-        try:
-            bridge.call('(include-book "books/bp-adu")')
-            _archive, subject, _provenance = run_store.metadata(msgid, article)
-
-            def text(value):
-                return "(fn-store-octets->string '" + bridge.literal(value) + ")"
-
+    def request_for(self, article, msgid, work=None):
+        """The BP application request carrying ARTICLE, encoded by the image's
+        own ACL2 (`fn acl2 session`: fn-bpa-encode over ARTICLE's subject)."""
+        if work is None:
+            work = b"work-native-bp-" + msgid.strip(b"<>").split(b"@")[0]
+        with Acl2Session(IMAGE) as acl2:
             fields = [
-                b"work-native-bp-" + msgid.strip(b"<>").split(b"@")[0], subject,
-                b"dtn://sender/", b"dtn://receiver/", b"native-policy",
-                b"origin-native", b"wire-auth", b"terms-native",
+                work, acl2.subject(msgid, article), b"dtn://sender/",
+                b"dtn://receiver/", b"native-policy", b"origin-native",
+                b"wire-auth", b"terms-native",
             ]
-            form = (
-                "(fn-bpa-encode (fn-bpa-make-request "
-                + " ".join(text(value) for value in fields)
-                + " '" + bridge.literal(article) + "))"
-            )
-            return acl2_octets(bridge.call(form))
-        finally:
-            bridge.close()
+            return acl2.bp_request(fields, article)
 
     def exchange(self):
         receiver, port = self.start_receiver()

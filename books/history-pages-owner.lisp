@@ -49,7 +49,9 @@
                                    fn-sf-records fn-sf-records-field fn-sf-make fn-sf-make-fields)
                                   (fn-sn-statep fn-sco-cpr-finish fn-cnode-statep fn-replay-advance-okp
                                    fn-sn-observed-historyp fn-sn-observed-seed fn-replay-advance-txid
-                                   fn-stxk-context-kind fn-th-at fn-sl-of fn-sl-list))))))
+                                   fn-stxk-context-kind fn-th-at fn-sl-of fn-sl-list
+                                   ; with fn-sf-make open, its canonical-fields rule loops
+                                   fn-sf-make-fields-canonical-is-make))))))
 
 (local
  (defthm fn-hpo-own-start-store

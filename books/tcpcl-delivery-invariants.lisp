@@ -223,3 +223,58 @@
                   messages))
   :hints (("Goal" :in-theory (enable fn-tcl-delivery-plan
                                      fn-tcl-delivery-plan-messages))))
+
+; The ACK and the progress point.  A plan's messages carry the transfer's
+; final END acknowledgement only for an :accepted callback result (the
+; custody the callback made durable), and exactly then the plan names the
+; in-session progress point (PKT-873).
+(local
+ (defthm fn-tcl-held-prior-messages-have-no-final-ack
+   (implies (fn-tcl-held-final-ackp messages xfer-id)
+            (not (fn-tcl-output-has-final-ackp
+                  (fn-tcl-held-prior-messages messages) xfer-id)))
+   :hints (("Goal" :induct (fn-tcl-held-final-ackp messages xfer-id)
+            :in-theory (enable fn-tcl-held-final-ackp fn-tcl-held-prior-messages
+                               fn-tcl-held-prior-messagep fn-tcl-output-has-final-ackp)))))
+
+(local
+ (defthm fn-tcl-final-ack-not-in-a-refuse-tail
+   (not (fn-tcl-output-has-final-ackp
+         (list (fn-tcl-make-xfer-refuse reason xfer-id)) x))
+   :hints (("Goal" :in-theory (enable fn-tcl-output-has-final-ackp
+                                      fn-tcl-make-xfer-refuse fn-tcl-xfer-ack-shapep
+                                      fn-tcl-msg-kind)))))
+
+(local
+ (defthm fn-tcl-output-has-final-ackp-of-append
+   (equal (fn-tcl-output-has-final-ackp (append a b) x)
+          (or (fn-tcl-output-has-final-ackp a x) (fn-tcl-output-has-final-ackp b x)))
+   :hints (("Goal" :in-theory (enable fn-tcl-output-has-final-ackp)))))
+
+; KEYSTONE (PKT-873).  The subject is fn-tcl-delivery-plan with
+; fn-tcl-delivery-plan-progress-p, both called by host/native/tcpcl.lisp
+; fnn-tcl-act on every completed inbound transfer.  If the messages the plan
+; releases carry the transfer's final END ACK, the callback's result was
+; (:accepted PATH) -- durable custody -- and the plan names the progress
+; point, so the node runs that custody's delivery at the session's first
+; quiet read timeout (or, if the peer ends the session first, in the
+; between-sessions pass).  No acknowledged custody waits for its session to
+; close.
+(defthm fn-tcl-acknowledged-custody-is-progressed-in-its-turn
+  (let ((plan (fn-tcl-delivery-plan messages xfer-id result)))
+    (implies (fn-tcl-output-has-final-ackp (fn-tcl-delivery-plan-messages plan) xfer-id)
+             (and (equal (car result) :accepted)
+                  (equal (fn-tcl-delivery-plan-status plan) :accepted)
+                  (fn-tcl-delivery-plan-progress-p plan))))
+  :hints (("Goal" :in-theory (enable fn-tcl-delivery-plan fn-tcl-delivery-plan-messages
+                                     fn-tcl-delivery-plan-status
+                                     fn-tcl-delivery-plan-progress-p))))
+
+; And the converse: a refusal, an uncertain publication and a fault name no
+; progress point (nothing was taken into custody).
+(defthm fn-tcl-unaccepted-delivery-names-no-progress
+  (implies (not (equal (car result) :accepted))
+           (not (fn-tcl-delivery-plan-progress-p
+                 (fn-tcl-delivery-plan messages xfer-id result))))
+  :hints (("Goal" :in-theory (enable fn-tcl-delivery-plan fn-tcl-delivery-plan-status
+                                     fn-tcl-delivery-plan-progress-p))))

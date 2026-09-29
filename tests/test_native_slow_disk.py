@@ -108,7 +108,19 @@ class SlowDiskSourceTests(unittest.TestCase):
         shed = owner[owner.index("(defun fnn-owner-shed-queued-locked "):]
         self.assertIn("'fn-owner-shed-outcome", shed[:2000])
         wrapper = (ROOT / "host" / "owner-host.lisp").read_text()
-        self.assertIn("(fn-otm-read-span\n", wrapper)
+        # The served read is the credit read over the slots' read over the
+        # time model's (lanes zero-copy-commit, admission-gap, credits):
+        # the disk's classification runs first, and a POST the slots refuse
+        # while the disk sheds is told the disk's reason
+        # (books/owner-article-slots.lisp fn-oas-refusal-line).
+        self.assertIn("(fn-mca-read-span\n", wrapper)
+        credits = (ROOT / "books" / "owner-credits.lisp").read_text()
+        self.assertIn("(r0 (fn-oas-read-span oc views id i end s slots", credits)
+        slots = (ROOT / "books" / "owner-article-slots.lisp").read_text()
+        body = slots[slots.index("(defun fn-oas-read-span "):]
+        self.assertIn("(let ((r (fn-otm-read-span oc views id i end s", body[:900])
+        self.assertIn("(fn-otm-post-command-reply s)",
+                      slots[slots.index("(defun fn-oas-refusal-line "):][:400])
         self.assertIn("(fn-otm-shed-reply s)", wrapper)
         self.assertIn("(fn-owner-outcome id :refused state)", wrapper)
         live = (ROOT / "host" / "native-live-status-host.lisp").read_text()
@@ -146,7 +158,14 @@ class SlowDiskNativeTests(unittest.TestCase):
         self.node = Node(self, DEVELOPER)
         self.root, self.store, self.port = self.node.root, self.node.store_path, self.node.port
         self.stall = self.root / "stall"
-        init = self.operator("init", "--max-article-octets", "1048576", "fn.test")
+        # A = 64 KiB: this class tests the disk, and its stop case holds 17
+        # articles in flight at once (8 mid-article, 8 mid-commit, the warm
+        # one).  An article credit is the article's worst case as octet
+        # lists (books/heap-store-figure.lisp fn-heap-article-reserve-octets,
+        # 32 x (512 + A + HDR)): at A = 64 KiB and HDR = 16 KiB, 2,637,824
+        # octets, 25 in the 64 MiB pool; at A = 1 MiB, 34,095,104 octets,
+        # ONE (planning/evidence/credits-stall-2026-09-28.md).
+        init = self.operator("init", "--max-article-octets", "65536", "fn.test")
         self.assertEqual(init.returncode, 0, init.stderr.decode())
         # Registered after the node, so it runs before the node's stop: a
         # stalled barrier never holds the stop.

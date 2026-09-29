@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "byte-store-frame")
+(include-book "byte-store-txn-seam") ; the naming seam it attaches (fn-bs-txn-name)
 (local (include-book "arithmetic/top" :dir :system))
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).

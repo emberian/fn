@@ -153,7 +153,11 @@ and 440 in slice 2: 436 is not a POST response.
   batch (a 64 x 4 MiB batch on a spinning disk) raises it; D27: admission
   policy belongs to the operator's profile, and an unset row is ACL2's
   default, never a host constant.
-- **H, the stall deadline** (`barrier-stall-ms`, slice 2; default 60,000 ms).
+- **H, the stall deadline** (`barrier-stall-ms`, slice 2; default **30,000
+  ms**). This document proposed 60,000 ms; ember adopted 30 s on 2026-09-28
+  (section 4b). That is an explicit change of the default, not a
+  description of what was built before: `*fn-otm-stall-default-ms*` in
+  books/owner-time-model.lisp is 30,000.
 - **Q, the work bound per quantum**, the owner's own CPU work: already the
   batch bound (`log-batch-records`, `log-batch-octets`), the exposure charge
   (PRF-161) and the render windows. Q is separate from I/O waits because no
@@ -169,7 +173,7 @@ and 440 in slice 2: 436 is not a POST response.
 |---|---|---|---|---|
 | healthy | `disk ok: last barrier N ms, max M ms, slow episodes K` | the same line | nothing | nothing |
 | slow | `disk slow: barrier N ms pending (deadline D ms)`; new POSTs refused | the same line | `disk slow: barrier pending past D ms` once, `disk recovered after N ms` once | look at the device (iostat, zpool status); raise D if the profile is simply slow; nothing to restart |
-| stalled (slice 2) | `disk stalled: ...`, health exit 1 | the same | per member answered uncertain | as above; clients check with STAT |
+| stalled (slice 2) | `disk stalled: ...`, health exit 28 | the same | per member answered uncertain | as above; a client settles its uncertain POST by re-sending the SAME article (same Message-ID; NNT-019), never by STAT (section 4b) |
 | full / read-only (slice 3) | `disk full` / `disk read-only`, exit 1 | the same | the refusal | free space or remount; the node resumes at the next successful barrier, no restart |
 | failed | the node stopped, exit 3 | n/a | the recovery event | `fn recover`, as today |
 
@@ -293,6 +297,93 @@ named as the exception, with its measured tail.
 The 10 s client deadline stays as the qualification's observable; the bar is
 F4-R and F4-W with their hypotheses stated next to the numbers.
 
+## 4b. The adopted bars (ember, 2026-09-28)
+
+Ember adopted the targets of planning/review-2026-09-28-gpt6.md ("F4
+calls") as the F4 bars (planning/release-v6.6.0.md section 2b, step 9).
+Lane time-bars (PRF-384, PRF-385, HST-031) put each in the model; the
+timings are measured once, at the prerelease convergence checklist, and the
+natives assert each bar's classification
+(tests/test_native_slow_disk.py
+`test_the_adopted_default_bars_classify_an_unresolved_write`).
+
+| bar | value | where it is decided | what is proved |
+|---|---|---|---|
+| D, disk `slow` | 5,000 ms (`barrier-deadline-ms`) | fn-otm-deadline-of-limit | fn-otm-shed-iff-slow, fn-otm-wait-reaches-the-deadline |
+| H, unresolved-write notification | 30,000 ms (`barrier-stall-ms`), plus at most 1,000 ms slack | fn-otm-stall-of-limit; the committer's wait targets H exactly (fn-otm-wait-stays-within-the-stall) | fn-otm-f4w-stall-within-h: notified at a reading at most since + H + L; the slack bar is L <= 1,000 ms, L the lateness of one committer wake, a host scheduling assumption measured at convergence |
+| cached health / inspection | p99 <= 250 ms; <= 1 s under the injected disk stall | an :inspect quantum never waits on the barrier (PKT-828) | fn-otm-barrier-reader-bound (only :inspect and :commit quanta run while a barrier is pending) |
+| bounded warm reads | <= 1 s | a :reader quantum reads the reader view, never the batch in flight | fn-otm-barrier-reader-bound; PRF-288/PRF-296 |
+| cold, page-dependent reads | a declared dependency deadline, 5,000 ms (`read-dependency-ms`), then a NAMED unavailable outcome, 403, never 430/423 | fn-otb-dependency-step, fn-otb-unavailable-line (books/owner-time-bars.lisp) | fn-otb-a-late-page-is-unavailable-never-absent |
+
+**Deadlines are notification events, never cancellations.** The barrier
+keeps running past D and past H; its completion arrives when the device
+returns. What the deadline changes is admission (try-later) and what the
+node says (slow; unresolved), never what it concludes about durability
+(section 3.1 rule 3; review "F4 calls": "A time alarm changes admission and
+notification, not whether a pending write succeeded").
+
+**A late completion is consumed exactly once, into its own generation**
+(books/owner-time-bars.lisp, the ledger (GEN OPEN TOLD) the committer asks,
+host/native/owner.lisp fnn-owner-commit-pipeline):
+
+- every barrier is issued under a fresh generation (fn-otb-issue; refused
+  while one is open) and its syncer reports the generation with its word;
+- the stall's uncertain release, and every stop's, is an EARLY ANSWER: the
+  connections not already told, each once, recorded as told
+  (fn-otb-answer-early);
+- the completion applies only at its own generation, while it is open; it
+  answers exactly the members not told early, and closes the ledger
+  (fn-otb-complete). Another generation's completion is `:stale`, a second
+  one `:consumed`; the host faults on either (a defect: one completion per
+  issue). Keystones: fn-otb-a-member-is-answered-once (no second,
+  contradictory reply; every member answered once),
+  fn-otb-a-late-completion-is-consumed-once;
+- no early release of I/O-owned memory: an early answer leaves the request
+  open at its generation (fn-otb-a-deadline-keeps-the-io-owned); the sealed
+  batch's buffer is released (fnn-log-sync-collected) only after the
+  completion's `:apply`;
+- no descriptor reuse: a member is named by its connection id, which the
+  owner allocates from a counter and never reuses within a process
+  (books/owner.lisp fn-own-open, `fn-own-next-id`); a told connection is
+  closed after its reply and its id is never answered again.
+
+**The notification does not wait for the stalled disk.** The uncertain
+reply is a socket write; the stall's journal entry is offered to the
+service-log writer's queue (never waited on, never fsynced; a full queue
+drops and counts, HST-028/HST-030); nothing the stall does is a record
+(fn-otm-disk-event-keeps-the-pipeline). The native stalls exactly the
+barrier's fdatasync and the poster is told at H.
+
+**Settling an unresolved write: the same artifact, not STAT.** A STAT (or
+ARTICLE) that answers 430 while the barrier is pending proves nothing: the
+barrier may still complete, and the article then IS stored (the documented
+ambiguity). The poster re-sends the SAME article under the SAME Message-ID
+(NNT-019, D25): while the disk sheds it is refused try-later (440, nothing
+stored twice); after the completion it is answered `441 posting failed;
+this article is already stored here` (acceptance evidence) or `240` (the one
+acceptance), never an absence. tools/fn_client.py `reconcile` does exactly
+this.
+
+**The restart's clock domain.** A monotonic reading means nothing in
+another process: SBCL's get-internal-real-time starts near zero in each.
+Nothing a new run decides reads a reading of an earlier run:
+
+- the decision journal's start entry records the semantic observation, the
+  wall reading and whether it is usable, with no monotonic origin
+  (fn-otm-start-line WALL USABLE), and the replay starts each segment from
+  fn-otm-init (fn-otb-a-restart-forgets-the-previous-clock-domain);
+- no in-memory deadline survives a restart: the owner reopens with no
+  clock (books/owner.lisp fn-own-reopen) and the disk value from
+  fn-otm-init; an unresolved write is resolved by recovery from the record
+  log (stored or not), which is the semantic observation that crosses;
+- the push feed's back-off deadline was a monotonic value rebuilt by the
+  replay of the feed journal (:feed-retry and :feed-lost carry the old
+  run's readings) and kept by fn-feed-restart, so a peer that was backing
+  off before a restart was not fed for about the previous run's uptime.
+  fn-feed-restart now forgets it (PRF-385,
+  fn-feed-restart-forgets-the-previous-clock-domain); the retry count, the
+  semantic observation, is kept and sets the next back-off.
+
 ## 5. What carries over (proofs)
 
 - Every scheduler keystone carries over unchanged: the new top value's pick
@@ -347,13 +438,16 @@ F4-R and F4-W with their hypotheses stated next to the numbers.
   and restarts into the same slow disk.
 - **Answering in-flight posters uncertain at D.** D is a latency figure an
   operator tunes for throughput; H is the honesty deadline. Conflating them
-  would turn every slow batch into "check with STAT".
+  would turn every slow batch into "settle by re-sending the same article".
 - **O_DIRECT / async fsync (io_uring) now.** The request/completion model
   is the prerequisite; the mechanism under it is a later choice, and the
   syncer thread already gives the owner the asynchrony.
 - **436 for POST.** Not a POST response (RFC 3977 section 6.3.1).
 
 ## 8. Open decisions for ember (packets)
+
+Decided 2026-09-28 (section 4b): D = 5 s, H = 30 s with <= 1 s slack,
+health exit 28 in `stalled` and 0 in `slow`, F4 as the bars of section 4b.
 
 - **PKT-853 (a) the default D.** 5,000 ms proposed (a healthy batch is
   milliseconds on hbox's pool; 5 s is well past any healthy fdatasync and
