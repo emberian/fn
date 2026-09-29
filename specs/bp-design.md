@@ -862,8 +862,7 @@ surface and nowhere else:
 
 - `host/tcpcl-host.lisp` (`:program` wrappers over `fn-tcl-drive`,
   `fn-tcl-tick`, `fn-tcl-send`, `fn-tcl-terminate`, `fn-tcl-tcp-closed`, each
-  marshalling one session global keyed by session id, like
-  `fn-sched-host-install`).
+  marshalling one session global keyed by session id).
 - `host/bp-node-host.lisp` (wrappers over `fn-bpn-step`, threading the
   workflow and scheduler globals read-only for `fn-bpn-obligation-openp`).
 - `host/native/tcpcl.lisp` (raw): `fnn-tcl-listen port`, `fnn-tcl-connect
