@@ -87,7 +87,7 @@ observed empty registry, matching the existing operator behavior.
 
 Credentials and policy are loaded once after Store/feed recovery and before
 the listener opens. Each accepted connection then pins the resulting existing
-`fn-auth-config` in its served session. Credential replacement while the
+`fn-auth-configp` record in its served session. Credential replacement while the
 process is running is not a reload operation in this version; a restart is
 required, and no live-generation claim follows from atomic file replacement.
 The TLS context is likewise loaded once and shared across connection-specific
