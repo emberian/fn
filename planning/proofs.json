@@ -3622,6 +3622,7 @@
         "fn-sco-capture-of-later-configs",
         "fn-cpr-loop-append",
         "fn-replay-identity-append",
+        "fn-replay-identity-append-of-true-lists",
         "fn-cpe-projection-replay-append",
         "fn-th-prefix-project-append",
         "fn-cei-build-append",
@@ -3734,7 +3735,8 @@
         "fn-nntp-hdr-fn-control-status-is-the-model-status",
         "fn-own-read-archive-command-is-the-pinned-dispatcher",
         "fn-own-related-conn-control",
-        "fn-ctl-served-status-is-control-status"
+        "fn-ctl-served-status-is-control-status",
+        "fn-own-read-of-a-withdrawn-article-answers-430-withdrawn"
       ]
     },
     {
@@ -4710,7 +4712,8 @@
         "fn-ks-reopen-is-blind-to-later-configuration",
         "fn-ks-a-decline-replays-as-a-decline",
         "fn-ks-recorded-recovery-completes-the-cut",
-        "fn-pcb-admission-verdict-names-its-class"
+        "fn-pcb-admission-verdict-names-its-class",
+        "fn-pcb-admission-verdict-names-a-revocation"
       ]
     },
     {
@@ -5565,7 +5568,7 @@
         "PRF-133"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-sct-load-is-decode-file",
         "fn-sctr-run-decode-is-run-decode",
@@ -6339,7 +6342,8 @@
         "fn-nh-starting-clears-on-listening",
         "fn-native-control-printed-reason-is-the-decisions",
         "fn-nctrl-reasoned-read-of-encode",
-        "fn-nctrl-reason-word-of-a-reason-is-not-none"
+        "fn-nctrl-reason-word-of-a-reason-is-not-none",
+        "fn-native-control-host-refusal-names-its-class"
       ]
     },
     {
@@ -9241,7 +9245,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-batch.lisp",
         "tests/acl2/owner-batch-tests.lisp",
@@ -9272,7 +9276,7 @@
         "PRF-245"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-batch.lisp",
         "tests/acl2/owner-batch-tests.lisp",
@@ -9320,7 +9324,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-batch.lisp",
         "tests/acl2/owner-batch-tests.lisp",
@@ -12482,7 +12486,7 @@
         "PRF-205"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-genesis.lisp",
         "tests/acl2/store-genesis-tests.lisp",
@@ -13072,7 +13076,7 @@
         "PRF-332"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-status-columns.lisp",
         "tests/acl2/native-status-columns-tests.lisp",
@@ -13629,7 +13633,7 @@
       "assumptions": [
         "A-PGS-HOST-IO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/history-image-binding.lisp",
         "tests/acl2/history-image-binding-tests.lisp",
@@ -13664,7 +13668,7 @@
         "PRF-372"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/history-image-fold.lisp",
         "tests/acl2/history-image-binding-tests.lisp",
@@ -14249,7 +14253,12 @@
         "tests/acl2/nntp-post-tests.lisp",
         "planning/evidence/pkt-615-number-bound-2026-09-28.md"
       ],
-      "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound."
+      "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound.",
+      "events": [
+        "fn-snb-replay-apply-record-keeps-nexts-bounded",
+        "fn-snb-replay-keeps-nexts-bounded",
+        "fn-snb-replayed-acceptance-is-projection"
+      ]
     },
     {
       "id": "PRF-941",
@@ -14982,7 +14991,33 @@
         "fn-onb-store-boundp-of-finish",
         "fn-onb-boundp-of-refresh",
         "fn-onb-boundp-of-psrv-prepare",
-        "fn-onb-boundp-at-owner-prepare-buffer"
+        "fn-onb-boundp-at-owner-prepare-buffer",
+        "fn-onb-boundp-at-owner-prepare-identity",
+        "fn-onb-boundp-when-open-okp",
+        "fn-onbj-boundp-of-ocfg-step-owner-event",
+        "fn-onbj-boundp-at-owner-begin",
+        "fn-onbj-boundp-at-owner-declare-group",
+        "fn-onbj-boundp-at-owner-observe",
+        "fn-onbj-boundp-at-owner-node-secret",
+        "fn-onbj-boundp-at-owner-install-profile",
+        "fn-onbj-arm-acar-outcome",
+        "fn-onbj-boundp-at-owner-open-peer",
+        "fn-onbj-boundp-at-owner-log-reserve",
+        "fn-onbj-boundp-at-owner-log-order",
+        "fn-onbj-boundp-at-owner-open",
+        "fn-onbj-boundp-at-owner-open-captured",
+        "fn-onbj-boundp-at-owner-exposure-open",
+        "fn-onbj-boundp-at-owner-read-step",
+        "fn-onbj-boundp-at-owner-chunk-span",
+        "fn-onbj-boundp-at-owner-chunk-span-carried",
+        "fn-onbj-boundp-at-owner-chunk-span-fully-carried",
+        "fn-onbj-boundp-at-owner-known-abort",
+        "fn-onbj-boundp-at-owner-refuse-reservation",
+        "fn-onbj-boundp-of-ccar-ocfg-complete",
+        "fn-onbj-boundp-at-host-article-finish",
+        "fn-onbj-boundp-at-owner-prepare-buffer",
+        "fn-onbj-boundp-at-owner-reconfigure-complete",
+        "fn-onbj-open-okp-is-boundp-when-idle"
       ]
     },
     {
@@ -15225,7 +15260,7 @@
         "PRF-356"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": "tests/acl2/store-checkpoint-digest-tests.lisp (two writers of one prefix with different revision and log: tables differ, digests equal; not constant in frontier, prefix, pool); tests/test_native_replay_determinism.py test_b (the two copies' checkpoint-digest lines agree, a full replay prints none).",
       "progress_note": "correctness-remainder-4, 2026-09-29: PKT-854 landed; REPL-admitted on persvati; certification at READY.",
       "events": [
@@ -15304,7 +15339,7 @@
         "PRF-926"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-host-relation.lisp",
         "books/owner-config.lisp"
@@ -15328,7 +15363,7 @@
         "PRF-926"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-outcome-pinned.lisp",
         "books/owner-host-relation.lisp"
@@ -15423,7 +15458,7 @@
         "PRF-368"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-status-columns.lisp",
         "books/native-live-status.lisp",
@@ -15586,7 +15621,7 @@
         "PRF-326"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/deflate-pool.lisp",
         "books/deflate-pool-check.lisp",
@@ -15636,7 +15671,7 @@
         "PRF-911"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/nntp-compress-dict.lisp",
         "tests/acl2/nntp-compress-dict-tests.lisp"
@@ -15661,7 +15696,7 @@
         "PRF-102"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-host-boundary.lisp",
         "tests/acl2/store-host-boundary-tests.lisp"
@@ -15686,7 +15721,7 @@
         "PRF-961"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/definterface.lisp",
         "tools/coverage.py",
