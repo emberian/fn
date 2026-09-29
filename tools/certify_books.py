@@ -1245,7 +1245,7 @@ def main() -> int:
             and cert_images.load_config()):
         images = cert_images.Runner(
             ROOT, run_dir, acl2, args.books,
-            run=lambda executable, driver, timeout: run_acl2(executable, driver, timeout),
+            run=lambda image_acl2, driver, timeout: run_acl2(image_acl2, driver, timeout),
             slot=acl2_slots.slot, timeout=args.timeout_seconds)
 
     outputs: dict[str, str] = {}
@@ -1285,13 +1285,13 @@ def main() -> int:
                 # is not occupying one, and the schedule tests read this order.
                 start_order.append(book)
                 slot_wait_seconds[book] = held.seconds
-            executable, driver = acl2, drivers[book]
+            launcher, driver = acl2, drivers[book]
             chosen = images.choose(book) if images is not None else None
             if chosen is not None:
                 # The image's include-books are this certificate's portcullis
                 # (certify-book's second argument counts them); FIXUP first
                 # (tools/cert_images.py says why).
-                executable = chosen[0]
+                launcher = chosen[0]
                 driver = cert_images.FIXUP + make_driver(book, nonce, portcullis=chosen[1])
                 driver_path = run_dir / (book.replace("/", "--") + ".certify.lsp")
                 driver_path.write_text(driver, encoding="utf-8")
@@ -1300,7 +1300,7 @@ def main() -> int:
             load_started = load_average()
             started = time.monotonic()
             try:
-                result = run_acl2(executable, driver, args.timeout_seconds,
+                result = run_acl2(launcher, driver, args.timeout_seconds,
                                   log_path=log_path, book=book)
                 output = result.stdout.decode("utf-8", errors="replace")
                 code: int | str = result.returncode
