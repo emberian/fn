@@ -179,7 +179,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **disconnected exchange.** A request carried by a relay listed on the receiver's boundary is judged as its author's own direct request; an unlisted carrier is refused.
 
-- Host-called subject: `fn-bpah-request-trustedp` at host/bp-native-app-host.lisp:34.
+- Host-called subject: `fn-bpah-request-trustedp` at host/bp-native-app-host.lisp:49.
 - Keystone: `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` (books/bp-transit-join.lisp:249; PRF-075 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260929T063140Z-3488990` passed this source of `books/bp-transit-join.lisp`, and since then `books/accounts.lisp`, `books/article-header-census.lisp`, `books/article-properties.lisp` and 74 more changed.
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile dtn developer and production images, frozen (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/bp-transit-join.lisp`, `host/bp-native-app-host.lisp`.
 - Deployed: no: the node runs default, this needs dtn.

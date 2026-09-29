@@ -1345,9 +1345,6 @@
   :class :common-lisp-compliant
   :kinds ((group-octets fn-octet-list-listp)))
 
-(definterface fn-owner-bp-listener-ports
-  :class ::program)
-
 (definterface fn-owner-bp-receipt-gatep
   :class ::program)
 
