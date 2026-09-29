@@ -13675,10 +13675,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-orc-one-pass-in-flight-by-definition"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-orc-never-past-a-deferral"
         }
       ]
@@ -13798,10 +13794,6 @@
         {
           "kind": "theorem",
           "name": "fn-ocln-a-cold-line-is-answered-unavailable"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ocln-unavailable-span-outside-command-mode-by-definition"
         }
       ]
     },

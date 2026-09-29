@@ -8592,7 +8592,8 @@
       "direct": null,
       "dispatched_from": [
         "host/native/auth.lisp",
-        "host/native/login-bindings.lisp"
+        "host/native/login-bindings.lisp",
+        "host/native/operator.lisp"
       ],
       "applied_directly_in": []
     },

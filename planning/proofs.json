@@ -3735,7 +3735,8 @@
         "fn-nntp-hdr-fn-control-status-is-the-model-status",
         "fn-own-read-archive-command-is-the-pinned-dispatcher",
         "fn-own-related-conn-control",
-        "fn-ctl-served-status-is-control-status"
+        "fn-ctl-served-status-is-control-status",
+        "fn-own-read-of-a-withdrawn-article-answers-430-withdrawn"
       ]
     },
     {
@@ -6343,7 +6344,8 @@
         "fn-nh-starting-clears-on-listening",
         "fn-native-control-printed-reason-is-the-decisions",
         "fn-nctrl-reasoned-read-of-encode",
-        "fn-nctrl-reason-word-of-a-reason-is-not-none"
+        "fn-nctrl-reason-word-of-a-reason-is-not-none",
+        "fn-native-control-host-refusal-names-its-class"
       ]
     },
     {
