@@ -15717,7 +15717,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-tcl-passive-version-mismatch-closes-without-reject"
       ],
@@ -16984,7 +16984,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tcpcl-octets.lisp",
         "host/tcpcl-host.lisp",
