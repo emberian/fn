@@ -772,6 +772,24 @@ class SourceDependencyTests(unittest.TestCase):
         self.assertIn("not the book itself", why)
         self.assertIn("--ld books/X", why)
 
+    def test_a_bare_book_name_resolves_under_books(self):
+        # obstructions-9 item 78: `--source-deps base` lost three sessions.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = worktree(temporary + "/tree")
+            (root / "books" / "sub").mkdir()
+            (root / "books" / "sub" / "deep.lisp").write_text("(in-package \"ACL2\")\n")
+            with mock.patch.object(proof_repl, "ROOT", root), \
+                 mock.patch.dict(os.environ, {"FN_ACL2": temporary + "/acl2"}), \
+                 mock.patch.object(proof_repl.certs, "cache_directory",
+                                   return_value=pathlib.Path(temporary) / "cache"):
+                names = [proof_repl.normalize_book(one)
+                         for one in ("base", "base.lisp", "deep", "books/mid", "nowhere")]
+                ok, detail, order = proof_repl.install_closure("tests/acl2/mid-tests", ["base"])
+        self.assertEqual(names, ["books/base", "books/base", "books/sub/deep", "books/mid",
+                                 "nowhere"])
+        self.assertTrue(ok, detail)
+        self.assertEqual(order, ["books/base", "books/mid"])
+
 
 class RefusalHeadlineTests(unittest.TestCase):
     """Item 27: a refused start says `--ld books/X` on its first line."""

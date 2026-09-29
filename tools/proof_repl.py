@@ -1341,11 +1341,21 @@ def ask(name: str, request: dict, timeout: float = 3600,
 
 
 def normalize_book(name: str) -> str:
+    """A book's tree-relative name without .lisp.  A bare name (`store-log`,
+    no directory) that is not a file at the root resolves under books/, or to
+    the one book of that name below books/ (obstructions-9 item 78: three
+    sessions were lost to `--source-deps store-log`)."""
     name = name[:-len(".lisp")] if name.endswith(".lisp") else name
     path = Path(name)
     if path.is_absolute():
         with contextlib.suppress(ValueError):
             name = path.resolve().relative_to(ROOT.resolve()).as_posix()
+    elif "/" not in name and name and not (ROOT / f"{name}.lisp").is_file():
+        if (ROOT / "books" / f"{name}.lisp").is_file():
+            return f"books/{name}"
+        found = sorted((ROOT / "books").rglob(f"{name}.lisp")) if (ROOT / "books").is_dir() else []
+        if len(found) == 1:
+            return found[0].relative_to(ROOT).with_suffix("").as_posix()
     return name
 
 
@@ -3492,10 +3502,10 @@ def run_remote(args, argv: list[str]) -> int:
         # holds it and until when at once, and wait only --lease-wait minutes
         # (`--host auto` already skipped it).
         refuse_or_wait_for_lease(host, getattr(args, "lease_wait", DEFAULT_LEASE_WAIT))
-        books = [args.book, *(getattr(args, "ld", None) or [])]
+        books = [args.book, *(normalize_book(one) for one in getattr(args, "ld", None) or [])]
         source_deps = getattr(args, "source_deps", None)
         if source_deps and source_deps != "*":
-            books += [one.strip() for one in source_deps.split(",") if one.strip()]
+            books += [normalize_book(one.strip()) for one in source_deps.split(",") if one.strip()]
     elif command == "probe":
         record = session_dir(args.name) / "remote.json"
         try:
