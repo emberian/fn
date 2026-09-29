@@ -284,6 +284,17 @@ wiring is unit-tested; the source catalog still names the live-route
 dependency as pending until that owner's source and a matching runner image
 execute this case. An announcement alone never activates the receipt fault.
 
+Issued-page continuation: the page scenario now discards its cancelled
+token instead of expecting that cancelled request to finish productively.
+Its actual backend is `adapters/page_io.py`, using
+`FN_NATIVE_PAGE_IO_HOLD=RELEASE-FILE` after token/fd/buffer acquisition.
+The journal checker correlates the six-field issued token, cancellation,
+blocked retirement, CANCELLED settlement and later close; a different
+retained `n0` ARTICLE and PUBLISH token prove useful work completes.
+The row stays pending until a matching-image native run. A new socket does
+not establish native CID reuse, and completion/close logs alone do not
+establish worker thread death. The reclaim owner owns that join extension.
+
 W7d **power_loss as a backend**. DONE: crash-image selection is an
 environment fact with the storage profile's ordering constraints made
 explicit (preflush/FUA semantics from dm-log-writes); `classify`/`bindings`
