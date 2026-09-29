@@ -77,6 +77,9 @@ class LimitsLiveTests(AutoCheckpointFixture):
         self.assertEqual(raised.returncode, EXIT_OK, raised.stderr.decode())
         self.assertIn(b"applied limit max-transactions=14 heap=", raised.stderr)
         self.assertIn(b"MB: served now, no data moved", raised.stderr)
+        # PRF-996: applied, so requested and funded move together.
+        self.assertIn(b"; limit max-transactions requested=14 funded=14 ceiling=4294967295",
+                      raised.stderr)
         # Served now: the same owner admits a post past the old T.
         self.assertEqual(self.post("within", 100), EXIT_OK)
         self.node.stop(process=owner)
@@ -91,7 +94,14 @@ class LimitsLiveTests(AutoCheckpointFixture):
         self.assertIn(b"recorded limit max-history-octets=805306368 effective-at-next-start: "
                       b"takes effect at the next restart (about ", raised.stderr)
         self.assertIn(b"no data moved; the next start reserves heap=", raised.stderr)
+        # PRF-996: recorded, so the running owner still admits under the
+        # sealed H it funded; only the requested value moved.
+        self.assertIn(b"; limit max-history-octets requested=805306368 funded=", raised.stderr)
+        self.assertNotIn(b"funded=805306368", raised.stderr)
         self.node.stop(process=owner)
+        # Offline, `status' names the three values, funded=none.
+        self.assertIn("limit max-history-octets requested=805306368 funded=none "
+                      "ceiling=4294967295", self.op("status").stdout.decode())
         # The next open serves the recorded profile.
         lines = self.status_lines()
         self.assertTrue(any("history-bound=805306368" in line for line in lines), lines)
@@ -119,6 +129,8 @@ class LimitsLiveTests(AutoCheckpointFixture):
         self.assertIn(b"recorded limit max-transactions=16 effective-at-next-start: "
                       b"takes effect at the next restart (about ", changed.stdout)
         self.assertIn(b"no data moved", changed.stdout)
+        self.assertIn(b"; limit max-transactions requested=16 funded=none ceiling=4294967295",
+                      changed.stdout)
         first = self.budget()
         owner = self.start_owner()
         self.node.stop(process=owner)
@@ -127,6 +139,17 @@ class LimitsLiveTests(AutoCheckpointFixture):
         self.node.stop(process=owner)
         self.assertEqual((first, second, self.budget()), (first, first, first))
         self.assertGreater(first, 0)
+
+    def test_a_value_past_the_representation_ceiling_is_refused_by_name(self):
+        # PRF-996: the verb's row carries N in a u32; past it the change is
+        # refused as the representation's, with the ceiling, nothing staged.
+        self.init_small()
+        before = sorted(p.name for p in (self.store / "config").iterdir())
+        past = self.policy("max-history-octets", 4294967296)
+        self.assertEqual(past.returncode, 1, past.stderr.decode())
+        self.assertIn(b"refused limit max-history-octets=4294967296 above-representation-ceiling: the format carries at most 4294967295",
+                      past.stderr)
+        self.assertEqual(sorted(p.name for p in (self.store / "config").iterdir()), before)
 
     def test_a_kill_after_the_durable_record_reopens_with_the_new_budget(self):
         self.init_small()

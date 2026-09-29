@@ -607,7 +607,10 @@ nothing answers and nothing holds the lock."
                         :not-running))
            (fnn-write-report (fnn-core 'fn-native-health-host-not-running-lines
                                        (fnn-operator-last-run result))))
-         (fnn-command-live-report root kind))
+         (let ((code (fnn-command-live-report root kind)))
+           (when (and (eq kind :status) (eql code +fnn-exit-ok+))
+             (fnn-lim-print-values root))
+           code))
         (:refused +fnn-exit-refused+)
         (t +fnn-exit-uncertain+)))))
 

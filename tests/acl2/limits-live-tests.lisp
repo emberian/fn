@@ -159,3 +159,102 @@
 (assert! (equal (fn-lim-decision-status *lim-t-later*) :accepted))
 (assert! (equal (fn-lim-decision-status '(:refused :below-current-use "max-transactions" 100))
                 :refused))
+
+; -----------------------------------------------------------------------------
+; Three values (PRF-996): requested, funded, ceiling.
+
+; fn-lim-ceiling: the configuration row's u32 bounds every live field; A the
+; article codec below it.
+(assert! (equal (fn-lim-ceiling "max-transactions") 4294967295))
+(assert! (equal (fn-lim-ceiling "max-history-octets") 4294967295))
+(assert! (equal (fn-lim-ceiling "max-article-octets") *fn-record-max-payload*))
+(assert! (< *fn-record-max-payload* 4294967295))
+; Past the ceiling: refused by name with the ceiling, before the profile or
+; the machine is consulted (the u32 row could not carry it).
+(defconst *lim-t-past* (fn-lim-decide "max-history-octets" 4294967296 *lim-t-p* *lim-t-use*
+                                      *lim-t-run-mb* *lim-t-core* *lim-t-nursery*
+                                      *lim-t-machine* nil))
+(assert! (equal *lim-t-past*
+                '(:refused :above-representation-ceiling "max-history-octets" 4294967295)))
+(assert! (not (fn-record-uint32p 4294967296)))
+; At the ceiling the representation does not refuse (the machine decides).
+(assert! (not (equal (cadr (fn-lim-decide "max-history-octets" 4294967295 *lim-t-p* *lim-t-use*
+                                          *lim-t-run-mb* *lim-t-core* *lim-t-nursery*
+                                          *lim-t-machine* nil))
+                     :above-representation-ceiling)))
+
+; fn-lim-funded-after-decide.  REACHABLE, :applied: the served profile after
+; is the candidate, admitted, within use and ceiling, its figure within the
+; reservation.
+(defconst *lim-t-c129* (fn-lim-apply-row *lim-t-p* "max-transactions" 129))
+(defconst *lim-t-funded* (fn-lim-apply-row *lim-t-p* "max-transactions" 120)) ; a sentinel: what the owner served before
+(assert! (equal (fn-lim-funded-after *lim-t-applied* *lim-t-funded* *lim-t-c129*) *lim-t-c129*))
+(assert! (fn-bs-profile-admittedp *lim-t-c129*))
+(assert! (<= (fn-lim-use-of "max-transactions" *lim-t-use*) 129))
+(assert! (<= 129 (fn-lim-ceiling "max-transactions")))
+(assert! (<= (cadr *lim-t-applied*) *lim-t-run-mb*))
+; REACHABLE, :at-restart (a recorded raise): the process keeps what it
+; served; the recorded candidate differs from it, so the conclusion is not
+; vacuous.
+(defconst *lim-t-c4096* (fn-lim-apply-row *lim-t-p* "max-transactions" 4096))
+(assert! (equal (fn-lim-funded-after *lim-t-later* *lim-t-funded* *lim-t-c4096*) *lim-t-funded*))
+(assert! (not (equal *lim-t-funded* *lim-t-c4096*)))
+; CONCLUSION FAILURE of the :applied arm off its hypothesis: the recorded
+; decision's served profile is not the candidate.
+(assert! (not (equal (fn-lim-funded-after *lim-t-later* *lim-t-funded* *lim-t-c4096*)
+                     *lim-t-c4096*)))
+; Refused: nothing is funded anew.
+(assert! (equal (fn-lim-funded-after *lim-t-past* *lim-t-funded* *lim-t-c4096*) *lim-t-funded*))
+
+; fn-lim-resource-refusal-is-the-reservations.  REACHABLE, :resource: a 2 GiB
+; machine refuses T = 4096; every right-hand conjunct holds.
+(defconst *lim-t-small* (list (* 2048 *fn-heap-mib*)))
+(defconst *lim-t-res* (fn-lim-decide "max-transactions" 4096 *lim-t-p* *lim-t-use* 0
+                                     *lim-t-core* *lim-t-nursery* *lim-t-small* nil))
+(assert! (equal (fn-lim-refusal-class *lim-t-res*) :resource))
+(assert! (fn-lim-fieldp "max-transactions"))
+(assert! (<= 4096 (fn-lim-ceiling "max-transactions")))
+(assert! (fn-bs-profile-admittedp *lim-t-c4096*))
+(assert! (not (equal (car (fn-heap-status-decide *lim-t-c4096* *lim-t-core* *lim-t-nursery*
+                                                 *lim-t-small* nil))
+                     :heap)))
+; Each other class fails exactly one conjunct: the policy (below use), the
+; representation (past the ceiling; an invalid profile), and on the 64 GiB
+; machine the reservation answers a heap.
+(assert! (equal (fn-lim-refusal-class '(:refused :below-current-use "max-transactions" 100)) :policy))
+(assert! (equal (fn-lim-refusal-class
+                 (fn-lim-decide "max-record-octets" 4096 *lim-t-p* *lim-t-use*
+                                *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine* nil))
+                :policy))
+(assert! (equal (fn-lim-refusal-class *lim-t-past*) :representation))
+(assert! (not (<= 4294967296 (fn-lim-ceiling "max-history-octets"))))
+(assert! (equal (fn-lim-refusal-class
+                 (fn-lim-decide "max-transactions" 0 *lim-t-p* '(0 0)
+                                *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine* nil))
+                :representation))
+(assert! (equal (fn-lim-refusal-class *lim-t-later*) nil))
+(assert! (equal (car (fn-heap-status-decide *lim-t-c4096* *lim-t-core* *lim-t-nursery*
+                                            *lim-t-machine* nil))
+                :heap))
+
+; The operator's lines.
+(assert! (equal (fn-lim-values-line "max-transactions" *lim-t-c4096* *lim-t-funded*)
+                "limit max-transactions requested=4096 funded=120 ceiling=4294967295"))
+(assert! (equal (fn-lim-values-line "max-transactions" *lim-t-c4096* nil)
+                "limit max-transactions requested=4096 funded=none ceiling=4294967295"))
+(assert! (equal (len (fn-lim-values-lines *lim-t-p* nil)) 3))
+; A recorded raise on a live owner: requested moves, funded does not.
+(assert! (equal (fn-lim-reply-line "max-transactions" 4096 '(:at-restart 2688) 4200
+                                   *lim-t-funded* *lim-t-funded*)
+                "recorded limit max-transactions=4096 effective-at-next-start: takes effect at the next restart (about 5 s), no data moved; the next start reserves heap=2688 MB; limit max-transactions requested=4096 funded=120 ceiling=4294967295"))
+; Applied: both move.
+(assert! (equal (fn-lim-reply-line "max-transactions" 129 '(:applied 2342) 4200
+                                   *lim-t-p* *lim-t-p*)
+                "applied limit max-transactions=129 heap=2342 MB: served now, no data moved; limit max-transactions requested=129 funded=129 ceiling=4294967295"))
+; Refused: neither moves.
+(assert! (equal (fn-lim-reply-line "max-transactions" 99
+                                   '(:refused :below-current-use "max-transactions" 100) 0
+                                   *lim-t-p* nil)
+                "refused limit max-transactions=99 below-current-use: the store holds 100; limit max-transactions requested=128 funded=none ceiling=4294967295"))
+(assert! (equal (fn-lim-decision-line "max-history-octets" 4294967296 *lim-t-past* 0)
+                "refused limit max-history-octets=4294967296 above-representation-ceiling: the format carries at most 4294967295"))

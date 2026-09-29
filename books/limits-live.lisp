@@ -131,15 +131,34 @@
 ;
 ; Answers
 ;   (:applied MB)                   serve the new profile now
+;   (:refused :above-representation-ceiling FIELD CEILING)
 ;   (:at-restart MB)                recorded; the next start reserves MB
 ;   (:refused :not-a-live-limit FIELD 0)
 ;   (:refused :below-current-use FIELD USE)
 ;   (:refused :profile-invalid REASON 0)
-;   (:refused REASON MB MACHINE-MB)    the reservation's refusal
+;   (:refused REASON MB MACHINE-MB :resource)    the reservation's refusal
 (defun fn-lim-use-of (field use)
   (declare (xargs :guard t))
   (cond ((equal field "max-transactions") (nfix (fn-cfg-ag-car use)))
         ((equal field "max-history-octets") (nfix (fn-cfg-ag-car (fn-cfg-ag-cdr use))))
+        (t 0)))
+
+; The immutable representation ceiling of a live field: the largest N the
+; format can carry for it, whatever the machine or the policy.  The verb's
+; row carries N in the configuration delta's u32 (config.lisp fn-cfg-deltap,
+; fn-record-uint32p), so no live field passes *fn-cbor-max-uint*; T is
+; further the txid width and A the article codec's
+; (byte-store-frame.lisp fn-bs-profile-invalid-reason).  H's profile frame
+; field is a :nat (eight octets), so a store initialised past 4 GiB of
+; history keeps its sealed H but cannot raise it live: widening the row is a
+; format change (D34), not a policy one.
+(defun fn-lim-ceiling (field)
+  (declare (xargs :guard t))
+  (cond ((equal field "max-transactions")
+         (min *fn-cbor-max-uint* *fn-bs-profile-transaction-ceiling*))
+        ((equal field "max-history-octets") *fn-cbor-max-uint*)
+        ((equal field "max-article-octets")
+         (min *fn-cbor-max-uint* *fn-bs-profile-article-ceiling-codec*))
         (t 0)))
 
 (defun fn-lim-decide (field n values use run-mb core nursery observations observed)
@@ -147,6 +166,8 @@
   (let ((candidate (fn-lim-apply-row values field n)))
     (cond ((not (fn-lim-fieldp field))
            (list :refused :not-a-live-limit field 0))
+          ((< (fn-lim-ceiling field) (nfix n))
+           (list :refused :above-representation-ceiling field (fn-lim-ceiling field)))
           ((< (nfix n) (fn-lim-use-of field use))
            (list :refused :below-current-use field (fn-lim-use-of field use)))
           ((not (fn-bs-profile-admittedp candidate))
@@ -158,7 +179,8 @@
                  ; -hold-image, -hold-threads or machine-memory-unobserved.
                  (list :refused (fn-cfg-ag-car (fn-cfg-ag-cdr d))
                        (nfix (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr d))))
-                       (nfix (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr d))))))
+                       (nfix (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr d)))))
+                       :resource)
                (let ((mb (fn-heap-decision-mb d)))
                  (if (and (posp run-mb) (<= mb (nfix run-mb)))
                      (list :applied mb)
@@ -180,6 +202,7 @@
              (and (fn-lim-fieldp field)
                   (fn-bs-profile-admittedp p)
                   (<= (fn-lim-use-of field use) (nfix n))
+                  (<= (nfix n) (fn-lim-ceiling field))
                   (implies (equal (car d) :applied)
                            (<= (cadr d) (nfix run-mb))))))
   :rule-classes nil
@@ -219,6 +242,10 @@
            (concatenate 'string "refused " head " profile-invalid: " (fn-lim-word (nth 2 d))))
           ((equal (nth 1 d) :not-a-live-limit)
            (concatenate 'string "refused " head " not-a-live-limit"))
+          ((equal (nth 1 d) :above-representation-ceiling)
+           (concatenate 'string "refused " head
+                        " above-representation-ceiling: the format carries at most "
+                        (fn-heap-decimal (nth 3 d))))
           (t
            (concatenate 'string "refused " head " " (fn-lim-word (nth 1 d))
                         ": heap=" (fn-heap-decimal (nth 2 d))
@@ -251,5 +278,123 @@
 (defun fn-lim-decision-status (d)
   (declare (xargs :guard t))
   (if (fn-lim-acceptedp d) :accepted :refused))
+
+;; -----------------------------------------------------------------------------
+;; Three values (GPT-6, planning/review-2026-09-29-gpt6-decisions.md section 7,
+;; PRF-996).  For each live field the operator is shown
+;;   requested  the configured policy: fn-lim-effective over the configuration
+;;              history (a change recorded for the next start is in it);
+;;   funded     the limit the running process admits under: the profile its
+;;              owner installed at its open or at an :applied change, which
+;;              its reservation holds; NIL with no process;
+;;   ceiling    the representation's (fn-lim-ceiling), immutable.
+;; Admission reads the funded profile only (the owner's served bound,
+;; fn-owner-apply-limit-profile); a recorded raise does not fund.
+
+;; The profile the running owner serves after decision D, FUNDED before it,
+;; CANDIDATE the requested profile D judged (fn-lim-apply-row over the
+;; history's).  The host installs exactly this (host/native/admin.lisp
+;; fnn-owner-limit-serialized).
+(defun fn-lim-funded-after (d funded candidate)
+  (declare (xargs :guard t))
+  (if (and (consp d) (equal (car d) :applied)) candidate funded))
+
+;; KEYSTONE (a recorded change does not make the process own that memory).
+;; Whatever the live owner decides, the profile it serves afterwards is the
+;; one it served before unless the decision is :applied, and an :applied one
+;; is the requested candidate, admitted, within the use and the ceiling,
+;; whose heap figure fits the reservation this process runs in.
+(defthm fn-lim-funded-after-decide
+  (let* ((d (fn-lim-decide field n values use run-mb core nursery observations observed))
+         (c (fn-lim-apply-row values field n))
+         (f (fn-lim-funded-after d funded c)))
+    (and (implies (not (equal (car d) :applied)) (equal f funded))
+         (implies (equal (car d) :applied)
+                  (and (equal f c)
+                       (fn-bs-profile-admittedp c)
+                       (<= (fn-lim-use-of field use) (nfix n))
+                       (<= (nfix n) (fn-lim-ceiling field))
+                       (<= (cadr d) (nfix run-mb))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-lim-decide fn-lim-funded-after car-cons cdr-cons
+                                                 nfix posp)
+                                               (theory 'minimal-theory)))))
+
+;; The class of a refusal: the operator's POLICY (not a live field, below
+;; the store's use), the REPRESENTATION (past the ceiling, an invalid
+;; profile), or a RESOURCE (the machine or the reservation cannot hold it:
+;; the same words a start that cannot fund its store refuses with,
+;; heap-reservation.lisp fn-heap-reserve-report-line).  NIL when accepted.
+(defun fn-lim-refusal-class (d)
+  (declare (xargs :guard t))
+  (let ((d (true-list-fix d)))
+    (cond ((not (equal (car d) :refused)) nil)
+          ((equal (nth 4 d) :resource) :resource)
+          ((member-equal (nth 1 d) '(:not-a-live-limit :below-current-use)) :policy)
+          (t :representation))))
+
+;; KEYSTONE (a resource refusal is never a policy or format verdict): the
+;; decision is refused as a resource exactly when the field is live, within
+;; its ceiling and the store's use, the requested profile is admitted, and
+;; the reservation (fn-heap-status-decide, the launcher's run reservation)
+;; does not answer a heap.
+(defthm fn-lim-resource-refusal-is-the-reservations
+  (let ((c (fn-lim-apply-row values field n)))
+    (equal (equal (fn-lim-refusal-class
+                   (fn-lim-decide field n values use run-mb core nursery observations observed))
+                  :resource)
+           (and (fn-lim-fieldp field)
+                (<= (nfix n) (fn-lim-ceiling field))
+                (<= (fn-lim-use-of field use) (nfix n))
+                (fn-bs-profile-admittedp c)
+                (not (and (consp (fn-heap-status-decide c core nursery observations observed))
+                          (equal (car (fn-heap-status-decide c core nursery observations observed))
+                                 :heap))))))
+  :hints (("Goal" :in-theory (union-theories '(fn-lim-decide fn-lim-refusal-class true-list-fix
+                                                 true-listp car-cons cdr-cons nth nfix
+                                                 member-equal (:e zp) zp)
+                                               (theory 'minimal-theory)))))
+
+(defun fn-lim-field-value (field profile)
+  (declare (xargs :guard t))
+  (fn-bs-pf (fn-lim-field-index field) profile))
+
+;; One field's three values, as the operator reads them:
+;;   limit max-transactions requested=R funded=U ceiling=C
+;; with `funded=none' when no process runs (FUNDED NIL).
+(defun fn-lim-values-line (field requested funded)
+  (declare (xargs :guard t))
+  (concatenate 'string "limit " (fn-lim-word field)
+               " requested=" (fn-heap-decimal (fn-lim-field-value field requested))
+               " funded=" (if funded (fn-heap-decimal (fn-lim-field-value field funded)) "none")
+               " ceiling=" (fn-heap-decimal (fn-lim-ceiling field))))
+
+(defthm fn-lim-values-line-stringp
+  (stringp (fn-lim-values-line field requested funded))
+  :rule-classes :type-prescription)
+
+(defun fn-lim-values-lines (requested funded)
+  (declare (xargs :guard t))
+  (list (fn-lim-values-line "max-transactions" requested funded)
+        (fn-lim-values-line "max-history-octets" requested funded)
+        (fn-lim-values-line "max-article-octets" requested funded)))
+
+;; The reply of `policy set FIELD N': ACL2's decision sentence, then the
+;; field's three values after it (VALUES the history's requested profile
+;; before it, FUNDED the running owner's served profile, NIL offline).
+(defun fn-lim-reply-line (field n d open-ms values funded)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-lim-apply-row fn-lim-decision-line
+                                                            fn-lim-values-line fn-lim-funded-after
+                                                            fn-lim-acceptedp)))))
+  (let* ((c (fn-lim-apply-row values field n))
+         (requested (if (fn-lim-acceptedp d) c values)))
+    (concatenate 'string (fn-lim-decision-line field n d open-ms) "; "
+                 (fn-lim-values-line field requested
+                                     (and funded (fn-lim-funded-after d funded c))))))
+
+(defthm fn-lim-reply-line-stringp
+  (stringp (fn-lim-reply-line field n d open-ms values funded))
+  :rule-classes :type-prescription)
 
 (in-theory (disable fn-lim-decide fn-lim-effective fn-lim-apply-deltas))

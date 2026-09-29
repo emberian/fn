@@ -375,9 +375,13 @@ every :set-limit row (ACL2's fn-store-lim-effective over the records)."
 (defun fnn-lim-reason (decision)
   (fnn-core 'fn-lim-decision-reason decision))
 
-(defun fnn-lim-line (plan decision store)
-  (fnn-core 'fn-lim-decision-line (fnn-lim-plan-field plan) (fnn-lim-plan-n plan)
-            decision (fnn-store-open-ms store)))
+(defun fnn-lim-line (plan decision store values funded)
+  "ACL2's reply: the decision's sentence and the field's three values after
+it (books/limits-live.lisp fn-lim-reply-line: requested over VALUES, funded
+from FUNDED, the profile the running owner serves, NIL offline, and the
+representation ceiling)."
+  (fnn-core 'fn-lim-reply-line (fnn-lim-plan-field plan) (fnn-lim-plan-n plan)
+            decision (fnn-store-open-ms store) values funded))
 
 (defun fnn-owner-limit-serialized (service plan)
   "The live owner's limit change: decided under the owner mutex (the
@@ -393,10 +397,13 @@ ordinary live reconfiguration, and on :applied served at once."
      (lambda ()
        (let* ((values (fnn-lim-recorded-profile store))
               (use (fnn-owner-core 'fn-owner-limit-use))
-              (d (fnn-lim-decision store plan values use run-mb core observations)))
-         (fnn-err "LIMIT ~a" (fnn-lim-line plan d store))
+              (d (fnn-lim-decision store plan values use run-mb core observations))
+              ;; What this process serves and admits under before D.
+              (funded (fnn-store-config store))
+              (line (fnn-lim-line plan d store values funded)))
+         (fnn-err "LIMIT ~a" line)
          (if (not (eq (fnn-core 'fn-lim-decision-status d) :accepted))
-             (list :reason :refused (fnn-lim-reason d) (fnn-lim-line plan d store))
+             (list :reason :refused (fnn-lim-reason d) line)
            (multiple-value-bind (word reason)
                (fnn-owner-live-reconfigure-locked
                 service
@@ -406,18 +413,23 @@ ordinary live reconfiguration, and on :applied served at once."
              (cond
                ((eq word :refused) (list :reason :refused reason))
                (t
-                (when (eq (first d) :applied)
-                  ;; The profile every later open computes from the history
-                  ;; this record ended (fn-lim-effective-of-append-record).
-                  (let ((served (fnn-core 'fn-lim-apply-row values
-                                          (fnn-lim-plan-field plan) (fnn-lim-plan-n plan))))
+                ;; ACL2's served profile after D (fn-lim-funded-after,
+                ;; fn-lim-funded-after-decide): the requested candidate on
+                ;; :applied -- the profile every later open computes from the
+                ;; history this record ended (fn-lim-effective-of-append-
+                ;; record) -- else the one already served: a recorded change
+                ;; does not fund.
+                (let ((served (fnn-core 'fn-lim-funded-after d funded
+                                        (fnn-core 'fn-lim-apply-row values
+                                                  (fnn-lim-plan-field plan)
+                                                  (fnn-lim-plan-n plan)))))
+                  (unless (eq served funded)
                     (unless (eq (fnn-owner-core 'fn-owner-apply-limit-profile served)
                                 :installed)
                       (fnn-indeterminate
                        "owner refused a durably recorded limit's profile"))
                     (setf (fnn-store-config store) served)))
-                (list :reason :accepted (fnn-lim-reason d)
-                      (fnn-lim-line plan d store)))))))))))
+                (list :reason :accepted (fnn-lim-reason d) line))))))))))
 
 (defun fnn-admin-execute-limit (store plan)
   "The offline limit change: no process holds a reservation (run-mb 0), so an
@@ -426,7 +438,7 @@ accepted change is recorded for the next start.  Prints ACL2's line."
          (use (fnn-core-state 'fn-store-lim-use))
          (d (fnn-lim-decision store plan values use 0
                               (fnn-heap-image-observation) (fnn-heap-observations)))
-         (line (fnn-lim-line plan d store)))
+         (line (fnn-lim-line plan d store values nil)))
     (unless (eq (fnn-core 'fn-lim-decision-status d) :accepted)
       (fnn-refuse "~a" line))
     (multiple-value-bind (record reason) (fnn-admin-reconfigure plan (fnn-admin-clock-plan))
