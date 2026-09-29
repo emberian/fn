@@ -12834,6 +12834,71 @@
           "name": "fn-lb-an-account-binding-survives-the-next-start"
         }
       ]
+    },
+    {
+      "id": "PRF-920",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hib-adopt-establishes",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-open-is-log-prefix",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-open-binds-prefix",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-replay-extends",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-fill-rel",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-get-keeps",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-hrecs-get-fuel-enough",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-complete-keeps",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-complete-stale",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-evict-keeps",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-undone-evict",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-complete-progress",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        }
+      ]
     }
   ]
 }
