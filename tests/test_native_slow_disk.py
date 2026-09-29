@@ -31,6 +31,7 @@ import select
 import shutil
 import signal
 import socket
+import threading
 import time
 import unittest
 
@@ -241,6 +242,76 @@ class SlowDiskNativeTests(unittest.TestCase):
         started = time.monotonic()
         result = self.operator(word, timeout=60)
         return time.monotonic() - started, result
+
+    def test_a_cold_read_on_a_stalled_disk_answers_403_while_cached_reads_stay_flat(self):
+        """Row A4 (c) (lane composed-owner-3; books/owner-cold-line.lisp,
+        PRF-933).  Two articles are stored and the owner restarted, so both
+        payloads are cold extents.  B is read once (warm).  The read device
+        then stalls (FN_NATIVE_TEST_READ_STALL_FILE: a pread does not return).
+        On connection 1 three pipelined commands, DATE, ARTICLE <A>, DATE,
+        are answered IN ORDER: 111, then 403 (temporarily unavailable, not
+        430) after the 5,000 ms dependency deadline and within a bound of
+        it, then 111 (the session unchanged).  Meanwhile connection 2's
+        cached ARTICLE <B> reads stay flat (each well under the deadline:
+        neither the owner mutex nor the realizer's lock is held by the
+        stalled read).  When the device comes back, ARTICLE <A> answers 220."""
+        with node_log_on_failure(self.owner):
+            conn, stream = self.connect()
+            self.addCleanup(conn.close)
+            self.send_article(stream, b"cold-a@example.invalid", b"article A")
+            self.assertTrue(stream.readline().startswith(b"240"))
+            self.send_article(stream, b"warm-b@example.invalid", b"article B")
+            self.assertTrue(stream.readline().startswith(b"240"))
+            conn.close()
+            self.reap(self.owner)
+            readstall = self.root / "readstall"
+            self.addCleanup(lambda: readstall.unlink() if readstall.exists() else None)
+            self.owner = self.start_owner({"FN_NATIVE_TEST_READ_STALL_FILE": str(readstall)})
+            c1, s1 = self.connect()
+            self.addCleanup(c1.close)
+            c2, s2 = self.connect()
+            self.addCleanup(c2.close)
+            self.timed_read(s2, b"ARTICLE <warm-b@example.invalid>\r\n", b"220", multiline=True)
+            readstall.write_bytes(b"")
+            warm = []
+            stop = threading.Event()
+
+            def cached_reads():
+                while not stop.is_set():
+                    warm.append(self.timed_read(s2, b"ARTICLE <warm-b@example.invalid>\r\n",
+                                                b"220", multiline=True))
+                    time.sleep(0.1)
+
+            reader = threading.Thread(target=cached_reads)
+            reader.start()
+            try:
+                started = time.monotonic()
+                s1.write(b"DATE\r\nARTICLE <cold-a@example.invalid>\r\nDATE\r\n")
+                s1.flush()
+                self.assertTrue(s1.readline().startswith(b"111"))
+                line = s1.readline()
+                waited = time.monotonic() - started
+                self.assertTrue(line.startswith(b"403 article temporarily unavailable"), line)
+                self.assertGreaterEqual(waited, 4.5, waited)
+                self.assertLess(waited, 15.0, waited)
+                self.assertTrue(s1.readline().startswith(b"111"))
+            finally:
+                stop.set()
+                reader.join(timeout=30)
+            self.assertGreaterEqual(len(warm), 5, warm)
+            self.assertLess(max(warm), 1.5, warm)
+            readstall.unlink()
+            deadline = time.monotonic() + 30
+            while True:
+                s1.write(b"ARTICLE <cold-a@example.invalid>\r\n")
+                s1.flush()
+                line = s1.readline()
+                if line.startswith(b"220"):
+                    self.multiline(s1)
+                    break
+                self.assertTrue(line.startswith(b"403"), line)
+                self.assertLess(time.monotonic(), deadline, "the page never came back")
+                time.sleep(0.5)
 
     def test_reads_and_control_stay_flat_while_the_disk_stalls_and_posts_are_refused_try_later(self):
         # Slice 2: H far past this test's stall (the posters of a batch
