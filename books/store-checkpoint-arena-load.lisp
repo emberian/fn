@@ -540,6 +540,24 @@
           ; R tables' strings are the E rows', as the full replay's are.
           (fn-sshr-share loaded))))))
 
+; An :ok open's bounds are what fn-scka-seal-n's guard asks (naturals,
+; ordered, within the octets): fn-scka-load's guard obligation.
+(defthm fn-scka-open-run-ok-shape
+  (implies (and (fn-octets-p fn-octets)
+                (eq (car (fn-scka-open-run plan fn-octets)) :ok))
+           (let ((o (fn-scka-open-run plan fn-octets)))
+             (and (natp (nth 1 o)) (natp (nth 2 o)) (natp (nth 3 o))
+                  (<= (nth 1 o) (nth 2 o))
+                  (<= (nth 2 o) (len fn-octets)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-sctr-restp-of-plan)
+                 (:instance fn-sctr-next-run-ok-shape (rest plan)
+                            (s (nth 3 (fn-scc-parse-header (fn-sccr-at 0 (car plan))))))
+                 (:instance fn-sccr-read-nat-facts
+                            (i (+ 4 (nth 1 (fn-sctr-next-run plan (nth 3 (fn-scc-parse-header (fn-sccr-at 0 (car plan)))) fn-octets))))
+                            (end (nth 2 (fn-sctr-next-run plan (nth 3 (fn-scc-parse-header (fn-sccr-at 0 (car plan)))) fn-octets)))))
+           :in-theory (disable fn-sctr-next-run-ok-shape fn-sctr-restp-of-plan fn-sccr-read-nat-facts fn-scc-parse-header fn-sccr-planp))))
+
 (defun fn-scka-load (plan fn-octets fn-arena)
   (declare (xargs :stobjs (fn-octets fn-arena) :verify-guards nil))
   (let ((o (fn-scka-open-run plan fn-octets)))
@@ -551,7 +569,9 @@
           (if (not ok)
               (mv (list :refused :arena) fn-arena)
             (mv (fn-scka-finish (nth 4 o) (nth 5 o) i (nth 2 o) fn-octets) fn-arena)))))))
-(verify-guards fn-scka-load)
+(verify-guards fn-scka-load
+  :hints (("Goal" :use ((:instance fn-scka-open-run-ok-shape))
+           :in-theory (disable fn-scka-open-run fn-scka-open-run-ok-shape))))
 
 (local
  (defthm fn-scka-f-of-tables-of-capture
