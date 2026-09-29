@@ -94,18 +94,61 @@
       (equal (bsk0r-scan-f (bsk0r-lose (bsk0r-replaced))) 1)))
 
 ; recovery-stage-unlinked: the sweep of the staging orphan the linked cut
-; left, from the last pair of the host's run; its cut pair is related.
+; left, from the last pair of the host's run; its cut pair is related.  The
+; names are the ones the recovered node's own sweep round returns for the
+; host's observation of that orphan (its octets, io.lisp
+; fnn-bridge-sweep-round), as the host unlinks them.
+(defconst *bsk0r-orphan* '(46 115 116 97 103 101 45 107 53 45 50)) ; .stage-k5-2
+(defun bsk0r-recovered ()
+  (let ((s (fn-sn-open-state (bsk0r-open *bsk0r-configs* (bsk0r-keep (bsk0r-linked))))))
+    (fn-sn-io (fn-sn-io (fn-sn-io s :recovery-barrier :ok) :recovery-barrier :ok)
+              :recovery-barrier :ok)))
+(defun bsk0r-round (observed)
+  (fn-sn-sweep-round (bsk0r-recovered) observed nil nil))
 (defun bsk0r-sweep-run ()
   (let ((image (bsk0r-keep (bsk0r-linked))))
     (bsk0r-sweep (nth 10 (bsk0r-run image (bsk0r-host *bsk0r-configs* image)
                                     *bsk5-groups* *bsk5-capacity*))
-                 (list ".stage-k5-2"))))
+                 (cadr (bsk0r-round (list *bsk0r-orphan*))))))
+; fn-bs-sweep-round-unlinks-each-removal-by-its-name, the positive witness:
+; the octet observation, the round's removal of the orphan, the program's
+; unlink of ".stage-k5-2", and the name giving the octets back; then the run
+; itself: the orphan is there before and gone at the cut, which is related.
+(assert-event
+ (let ((observed (list *bsk0r-orphan*)))
+   (and (fn-octet-list-listp observed)
+        (equal (bsk0r-round observed) (list :done (list *bsk0r-orphan*)))
+        (member-equal *bsk0r-orphan* (cadr (bsk0r-round observed)))
+        (equal (fn-bs-octets-name *bsk0r-orphan*) ".stage-k5-2")
+        (member-equal (list :unlink :staging ".stage-k5-2")
+                      (fn-bs-recover-sweep-program (cadr (bsk0r-round observed))))
+        (fn-bs-namep (fn-bs-octets-name *bsk0r-orphan*))
+        (equal (fn-record-string-octets (fn-bs-octets-name *bsk0r-orphan*)) *bsk0r-orphan*))))
 (assert-event
  (let ((run (bsk0r-sweep-run)))
    (and (fn-bs-lookup (bsk0r-keep (bsk0r-linked)) :staging ".stage-k5-2")
         (equal (len run) 2)
         (not (fn-bs-lookup (car (nth 1 run)) :staging ".stage-k5-2"))
         (bsk0r-related-at run 1))))
+; Drop (fn-octet-list-listp observed): a staging name whose tail is not
+; octets.  The round still removes it (the retained hypothesis holds), but
+; its byte name does not give it back (the conclusion fails).
+(defconst *bsk0r-not-octets* '(46 115 116 97 103 101 45 x))
+(assert-event
+ (let ((observed (list *bsk0r-not-octets*)))
+   (and (not (fn-octet-list-listp observed))
+        (member-equal *bsk0r-not-octets* (cadr (bsk0r-round observed)))
+        (not (equal (fn-record-string-octets (fn-bs-octets-name *bsk0r-not-octets*))
+                    *bsk0r-not-octets*)))))
+; Mutation (the defect B29 found): the octet name handed to the byte model
+; unconverted is no fn-bs-namep, its unlink answers :enoent, and the orphan
+; stays.
+(assert-event
+ (let ((bs (bsk0r-keep (bsk0r-linked))))
+   (and (not (fn-bs-namep *bsk0r-orphan*))
+        (equal (mv-let (r bs1) (fn-bs-unlink bs :staging *bsk0r-orphan* :ok)
+                 (declare (ignore bs1)) r)
+               :enoent))))
 
 ; ---------------------------------------------------------------------------
 ; Drop the relation.  The empty byte store is its own crash image and no

@@ -1722,6 +1722,11 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-bs-sweep-round-unlinks-each-removal-by-its-name",
+          "note": "The byte run of fn-sn-sweep-round's removals unlinks each in :staging by its byte-model name (fn-bs-octets-name), which gives the octet name back (fn-bs-octets-name-inverts): the model removes the file the sweep chose (row B29, online-reclaim-10)."
+        },
+        {
+          "kind": "theorem",
           "name": "fn-sn-sweep-round-removes-only-unheld-staging-names"
         },
         {
