@@ -103,16 +103,46 @@
   (declare (xargs :guard t))
   (if (and (natp i) (true-listp x)) (nth i x) nil))
 
-; The operator's rows as the host read them (nil when absent).
-(defun fn-hsb-limits (per-source in-flight deadline-ms)
+; The operator's rows as the host read them (nil when absent), and the
+; override list (fn-hsb-override-add below): (KEY . N) pairs, a source key
+; and its own handshakes per minute.
+(defun fn-hsb-limits-with (per-source in-flight deadline-ms overrides)
   (declare (xargs :guard t))
   (list (fn-hsb-pos-or per-source *fn-hsb-default-per-source*)
         (fn-hsb-pos-or in-flight *fn-hsb-default-in-flight*)
-        (fn-hsb-pos-or deadline-ms *fn-hsb-default-deadline-ms*)))
+        (fn-hsb-pos-or deadline-ms *fn-hsb-default-deadline-ms*)
+        overrides))
+
+(defun fn-hsb-limits (per-source in-flight deadline-ms)
+  (declare (xargs :guard t))
+  (fn-hsb-limits-with per-source in-flight deadline-ms nil))
 
 (defun fn-hsb-lim-rate (hl)
   (declare (xargs :guard t))
   (fn-hsb-pos-or (fn-hsb-at 0 hl) *fn-hsb-default-per-source*))
+(defthm fn-hsb-lim-rate-posp (posp (fn-hsb-lim-rate hl)) :rule-classes :type-prescription)
+; THE CGNAT OVERRIDE (GPT-6's 2026-09-29 call: finite overrides for known
+; shared addresses, every global limit retained).  A source on the list has
+; its own per-source rate; the node-wide in-flight, per-second and waiting
+; bounds, and the table's, are the same for it as for any source.
+(defun fn-hsb-override-of (key overrides)
+  (declare (xargs :guard t))
+  (if (consp overrides)
+      (if (and (consp (car overrides)) (equal (car (car overrides)) key))
+          (cdr (car overrides))
+        (fn-hsb-override-of key (cdr overrides)))
+    nil))
+
+(defun fn-hsb-source-rate (hl key)
+  (declare (xargs :guard t))
+  (let ((n (fn-hsb-override-of key (fn-hsb-at 3 hl))))
+    (if (posp n) n (fn-hsb-lim-rate hl))))
+
+(defthm fn-hsb-source-rate-posp (posp (fn-hsb-source-rate hl key))
+  :rule-classes :type-prescription)
+
+(in-theory (disable fn-hsb-source-rate))
+
 (defun fn-hsb-lim-in-flight (hl)
   (declare (xargs :guard t))
   (fn-hsb-pos-or (fn-hsb-at 1 hl) *fn-hsb-default-in-flight*))
@@ -126,7 +156,7 @@
   (declare (xargs :guard t))
   (* 64 (fn-hsb-lim-in-flight hl)))
 
-(defthm fn-hsb-lim-rate-posp (posp (fn-hsb-lim-rate hl)) :rule-classes :type-prescription)
+
 (defthm fn-hsb-lim-in-flight-posp (posp (fn-hsb-lim-in-flight hl)) :rule-classes :type-prescription)
 (defthm fn-hsb-lim-deadline-posp (posp (fn-hsb-lim-deadline hl)) :rule-classes :type-prescription)
 
@@ -188,6 +218,76 @@
   (equal (fn-hsb-source-key (cons :inet6 (append *fn-hsb-v4-mapped-prefix* (list a b c d))))
          (fn-hsb-source-key (list :inet a b c d))))
 
+;; THE OVERRIDE LIST, as the operator writes it: the policy row
+;; `tls-handshake-source-overrides' holds `none' or a comma-separated list of
+;; ADDRESS=N or ADDRESS/64=N (an IPv4 address, an IPv6 address standing for
+;; its /64), N a positive handshakes-per-minute.  At most the profile's
+;; `tls-handshake-source-overrides' entries (MOST); one more is refused by
+;; name, :overrides-full; a word that does not parse, :override-address.
+(defconst *fn-hsb-overrides-slot* "tls-handshake-source-overrides")
+
+(defun fn-hsb-override-entry (text)
+  ; TEXT is the octets of one entry; (KEY . N), or :bad.
+  (declare (xargs :guard t))
+  (let* ((sides (fn-ncfg-split-on text 61))
+         (n (fn-ncfg-decimal (fn-ncfg-trim (fn-ncfg-first (fn-ncfg-rest sides)))))
+         (parts (fn-ncfg-split-on (fn-ncfg-trim (fn-ncfg-first sides)) 47))
+         (addr (fn-ncfg-first parts))
+         (width (fn-ncfg-rest parts))
+         (v4 (fn-native-config-ipv4-address addr))
+         (v6 (if (equal v4 :bad) (fn-native-config-ipv6-literal addr) :bad)))
+    (cond ((or (not (posp n)) (consp (fn-ncfg-rest (fn-ncfg-rest sides)))) :bad)
+          ((and (not (equal v4 :bad)) (not (consp width)))
+           (cons (fn-hsb-source-key (cons :inet v4)) n))
+          ((and (not (equal v6 :bad)) (true-listp v6) (equal (len v6) 16)
+                (or (not (consp width))
+                    (and (equal (fn-ncfg-decimal (fn-ncfg-first width)) 64)
+                         (not (consp (fn-ncfg-rest width))))))
+           (cons (fn-hsb-source-key (cons :inet6 v6)) n))
+          (t :bad))))
+
+(defun fn-hsb-override-entries (fields)
+  (declare (xargs :guard t))
+  (if (consp fields)
+      (let ((e (fn-hsb-override-entry (fn-ncfg-trim (car fields))))
+            (rest (fn-hsb-override-entries (cdr fields))))
+        (if (or (equal e :bad) (equal rest :bad)) :bad (cons e rest)))
+    nil))
+
+;; The row's word -> the list, or the refusal's name.
+(defun fn-hsb-overrides-of-word (word most)
+  (declare (xargs :guard t))
+  (cond ((not (stringp word)) :override-address)
+        ((equal word "none") nil)
+        (t (let ((es (fn-hsb-override-entries
+                      (fn-ncfg-split-on (fn-record-string-octets word) 44))))
+             (cond ((equal es :bad) :override-address)
+                   ((< (nfix most) (len es)) :overrides-full)
+                   (t es))))))
+
+;; The live configuration's list (the host's read: fn-owner-handshake-limits).
+;; An absent row, `none', or a row that does not parse (no plan writes one:
+;; the admission refuses it by name) lists nothing.
+(defun fn-hsb-config-overrides (v)
+  (declare (xargs :guard t))
+  (let* ((word (fn-cfg-policy v *fn-hsb-overrides-slot*))
+         (r (if (equal word "") nil
+              (fn-hsb-overrides-of-word word (fn-profile-limit :tls-handshake-source-overrides)))))
+    (if (symbolp r) nil r)))
+
+(defthm fn-hsb-override-entries-shape
+  (implies (not (equal (fn-hsb-override-entries fields) :bad))
+           (and (true-listp (fn-hsb-override-entries fields))
+                (alistp (fn-hsb-override-entries fields)))))
+
+;; The list is finite by construction: every list the row admits holds at
+;; most MOST entries, each a positive rate for a source key.
+(defthm fn-hsb-overrides-of-word-is-bounded
+  (let ((r (fn-hsb-overrides-of-word word most)))
+    (implies (not (member-equal r '(:override-address :overrides-full)))
+             (and (true-listp r) (<= (len r) (nfix most)))))
+  :hints (("Goal" :in-theory (disable fn-hsb-override-entries))))
+
 ; -----------------------------------------------------------------------------
 ; The buckets: an alist SOURCE -> (LEVEL . STAMP).
 
@@ -218,13 +318,13 @@
   (<= (fn-hsb-cap rate) (fn-hsb-level row rate now)))
 
 ; Drop the rows that refilled to full by NOW (they are the absent row).
-(defun fn-hsb-prune (rows rate now)
+(defun fn-hsb-prune (rows hl now)
   (declare (xargs :guard t))
   (if (consp rows)
       (if (and (consp (car rows))
-               (not (fn-hsb-fullp (cdr (car rows)) rate now)))
-          (cons (car rows) (fn-hsb-prune (cdr rows) rate now))
-        (fn-hsb-prune (cdr rows) rate now))
+               (not (fn-hsb-fullp (cdr (car rows)) (fn-hsb-source-rate hl (car (car rows))) now)))
+          (cons (car rows) (fn-hsb-prune (cdr rows) hl now))
+        (fn-hsb-prune (cdr rows) hl now))
     nil))
 
 (defun fn-hsb-drop (key rows)
@@ -259,14 +359,14 @@
 ; proved; what is proved is the bound itself over any traffic and any live
 ; change of L (fn-hsb-buckets-are-bounded, books/tls-handshake-budget.lisp).
 (defthm fn-hsb-len-of-prune
-  (<= (len (fn-hsb-prune rows rate now)) (len rows))
+  (<= (len (fn-hsb-prune rows hl now)) (len rows))
   :hints (("Goal" :in-theory (disable fn-hsb-fullp)))
   :rule-classes :linear)
 
 ; No room for KEY: it has no row after the prune, and R rows remain.
-(defun fn-hsb-table-fullp (key rows rate now hl)
+(defun fn-hsb-table-fullp (key rows now hl)
   (declare (xargs :guard t))
-  (let ((pruned (fn-hsb-prune rows rate now)))
+  (let ((pruned (fn-hsb-prune rows hl now)))
     (and (not (fn-hsb-has key pruned))
          (<= (fn-hsb-lim-sources hl) (len pruned)))))
 
@@ -321,9 +421,9 @@
 
 (defun fn-hsb-admit (s hl trustedp address now queuedp)
   (declare (xargs :guard t))
-  (let* ((rate (fn-hsb-lim-rate hl))
+  (let* ((key (fn-hsb-source-key address))
+         (rate (fn-hsb-source-rate hl key))
          (lmax (fn-hsb-lim-in-flight hl))
-         (key (fn-hsb-source-key address))
          (now-tick (fn-hsb-now-tick now))
          (tick (max (fn-hsb-tick s) now-tick))
          (started (if (< (fn-hsb-tick s) now-tick) 0 (fn-hsb-started s)))
@@ -343,7 +443,7 @@
                   (list :wait (fn-hsb-make next tick started flight (+ 1 waiting) rows) nil))
                  (t (list :refuse (fn-hsb-make next tick started flight waiting rows)
                           :busy))))
-          ((and (not trustedp) (fn-hsb-table-fullp key rows rate now hl))
+          ((and (not trustedp) (fn-hsb-table-fullp key rows now hl))
            (list :refuse (fn-hsb-make next tick started flight left rows)
                  :sources-full))
           (t (list :admit
@@ -352,7 +452,7 @@
                                 (if trustedp
                                     rows
                                   (fn-hsb-put key (- level *fn-hsb-window-ms*) (nfix now)
-                                              (fn-hsb-prune rows rate now))))
+                                              (fn-hsb-prune rows hl now))))
                    next)))))
 
 (defun fn-hsb-verdict (r) (declare (xargs :guard t)) (fn-hsb-at 0 r))
@@ -486,21 +586,21 @@
 (defthm fn-hsb-admit-tick
   (equal (fn-hsb-tick (fn-hsb-state (fn-hsb-admit s hl trustedp address now queuedp)))
          (max (fn-hsb-tick s) (fn-hsb-now-tick now)))
-  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop)))))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop fn-hsb-source-rate)))))
 
 (defthm fn-hsb-admit-started
   (equal (fn-hsb-started (fn-hsb-state (fn-hsb-admit s hl trustedp address now queuedp)))
          (+ (if (< (fn-hsb-tick s) (fn-hsb-now-tick now)) 0 (fn-hsb-started s))
             (if (equal (fn-hsb-verdict (fn-hsb-admit s hl trustedp address now queuedp)) :admit)
                 1 0)))
-  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop)))))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop fn-hsb-source-rate)))))
 
 (defthm fn-hsb-admit-flight
   (equal (fn-hsb-flight (fn-hsb-state (fn-hsb-admit s hl trustedp address now queuedp)))
          (if (equal (fn-hsb-verdict (fn-hsb-admit s hl trustedp address now queuedp)) :admit)
              (cons (cons (fn-hsb-next s) (fn-hsb-source-key address)) (fn-hsb-flight s))
            (fn-hsb-flight s)))
-  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop)))))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop fn-hsb-source-rate)))))
 
 (defthm fn-hsb-admit-admits-under-the-limits
   (implies (equal (fn-hsb-verdict (fn-hsb-admit s hl trustedp address now queuedp)) :admit)
@@ -509,20 +609,20 @@
                    (fn-hsb-lim-in-flight hl))
                 (equal (fn-hsb-detail (fn-hsb-admit s hl trustedp address now queuedp))
                        (fn-hsb-next s))))
-  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop))))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop fn-hsb-source-rate))))
   :rule-classes nil)
 
 (defthm fn-hsb-admit-waiting
   (implies (<= (fn-hsb-waiting s) (fn-hsb-lim-queue hl))
            (<= (fn-hsb-waiting (fn-hsb-state (fn-hsb-admit s hl trustedp address now queuedp)))
                (fn-hsb-lim-queue hl)))
-  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop))))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop fn-hsb-source-rate))))
   :rule-classes :linear)
 
 ; The table: one decision adds at most one row, and only below R.
 (defthm fn-hsb-len-of-charge
-  (implies (not (fn-hsb-table-fullp key rows rate now hl))
-           (<= (len (fn-hsb-put key lvl stamp (fn-hsb-prune rows rate now)))
+  (implies (not (fn-hsb-table-fullp key rows now hl))
+           (<= (len (fn-hsb-put key lvl stamp (fn-hsb-prune rows hl now)))
                (max (len rows) (fn-hsb-lim-sources hl))))
   :hints (("Goal" :in-theory (e/d (fn-hsb-table-fullp) (fn-hsb-put fn-hsb-drop fn-hsb-prune fn-hsb-has fn-hsb-lim-sources))))
   :rule-classes :linear)
@@ -530,7 +630,7 @@
 (defthm fn-hsb-admit-buckets-len
   (<= (len (fn-hsb-buckets (fn-hsb-state (fn-hsb-admit s hl trustedp address now queuedp))))
       (max (len (fn-hsb-buckets s)) (fn-hsb-lim-sources hl)))
-  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-drop fn-hsb-has fn-hsb-lim-sources fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune))))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-drop fn-hsb-has fn-hsb-lim-sources fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-source-rate))))
   :rule-classes :linear)
 
 (defthm fn-hsb-tick-natp (natp (fn-hsb-tick s)) :rule-classes :type-prescription

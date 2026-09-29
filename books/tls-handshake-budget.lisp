@@ -301,9 +301,9 @@
 ; Pruning never raises a level: a dropped row was full.
 (local
  (defthm fn-hsb-eff-of-prune
-   (<= (fn-hsb-eff (fn-hsb-prune rows rate now) key rate now)
-       (fn-hsb-eff rows key rate now))
-   :hints (("Goal" :induct (fn-hsb-prune rows rate now)
+   (<= (fn-hsb-eff (fn-hsb-prune rows hl now) key (fn-hsb-source-rate hl key) now)
+       (fn-hsb-eff rows key (fn-hsb-source-rate hl key) now))
+   :hints (("Goal" :induct (fn-hsb-prune rows hl now)
                    :in-theory (e/d (fn-hsb-fullp) (fn-hsb-level fn-hsb-level-by-dt fn-hsb-cap))))
    :rule-classes :linear))
 
@@ -319,6 +319,13 @@
                    (if (equal key k2) lv (fn-hsb-eff rows key rate now))))
    :hints (("Goal" :in-theory (disable fn-hsb-put fn-hsb-cap)))))
 
+(local
+ (defthm fn-hsb-eff-of-put-other
+   (implies (not (equal key k2))
+            (equal (fn-hsb-eff (fn-hsb-put k2 lv st rows) key rate now)
+                   (fn-hsb-eff rows key rate now)))
+   :hints (("Goal" :in-theory (disable fn-hsb-put fn-hsb-cap fn-hsb-level fn-hsb-level-by-dt)))))
+
 (in-theory (disable fn-hsb-eff))
 
 ; What an admission does to the buckets.
@@ -328,19 +335,20 @@
                   (not trustedp))
              (fn-hsb-put (fn-hsb-source-key address)
                          (- (fn-hsb-eff (fn-hsb-buckets s) (fn-hsb-source-key address)
-                                        (fn-hsb-lim-rate hl) now)
+                                        (fn-hsb-source-rate hl (fn-hsb-source-key address)) now)
                             *fn-hsb-window-ms*)
                          (nfix now)
-                         (fn-hsb-prune (fn-hsb-buckets s) (fn-hsb-lim-rate hl) now))
+                         (fn-hsb-prune (fn-hsb-buckets s) hl now))
            (fn-hsb-buckets s)))
-  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-eff) (fn-hsb-level fn-hsb-level-by-dt fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop)))))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-eff) (fn-hsb-level fn-hsb-level-by-dt fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop fn-hsb-source-rate)))))
 
 (defthm fn-hsb-admit-needs-a-handshake-of-level
   (implies (and (equal (fn-hsb-verdict (fn-hsb-admit s hl trustedp address now queuedp)) :admit)
                 (not trustedp))
            (<= *fn-hsb-window-ms*
-               (fn-hsb-eff (fn-hsb-buckets s) (fn-hsb-source-key address) (fn-hsb-lim-rate hl) now)))
-  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-eff) (fn-hsb-level fn-hsb-level-by-dt fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop))))
+               (fn-hsb-eff (fn-hsb-buckets s) (fn-hsb-source-key address)
+                           (fn-hsb-source-rate hl (fn-hsb-source-key address)) now)))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-eff) (fn-hsb-level fn-hsb-level-by-dt fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap fn-hsb-lim-sources fn-hsb-lim-queue fn-hsb-table-fullp fn-hsb-len-of-put fn-hsb-len-of-drop fn-hsb-len-of-prune fn-hsb-len-of-drop-when-has fn-hsb-has fn-hsb-drop fn-hsb-source-rate))))
   :rule-classes :linear)
 
 (defthm fn-hsb-buckets-of-done-leave
@@ -360,18 +368,19 @@
          (fn-hsb-source-admits key (fn-hsb-event s (car es)) (cdr es)))
     0))
 
-; Every admission event decided at rate N, at a time within [PREV, T1] and
-; no earlier than the one before it.
-(defun fn-hsb-events-timed (es prev t1 n)
+; Every admission event decided at rate N for source KEY (the operator's
+; per-source rate, or KEY's override), at a time within [PREV, T1] and no
+; earlier than the one before it.
+(defun fn-hsb-events-timed (es prev t1 n key)
   (declare (xargs :guard t))
   (if (consp es)
       (if (and (consp (car es)) (equal (car (car es)) :admit))
           (and (natp (fn-hsb-at 4 (car es)))
                (<= (nfix prev) (fn-hsb-at 4 (car es)))
                (<= (fn-hsb-at 4 (car es)) (nfix t1))
-               (equal (fn-hsb-lim-rate (fn-hsb-at 1 (car es))) n)
-               (fn-hsb-events-timed (cdr es) (fn-hsb-at 4 (car es)) t1 n))
-        (fn-hsb-events-timed (cdr es) prev t1 n))
+               (equal (fn-hsb-source-rate (fn-hsb-at 1 (car es)) key) n)
+               (fn-hsb-events-timed (cdr es) (fn-hsb-at 4 (car es)) t1 n key))
+        (fn-hsb-events-timed (cdr es) prev t1 n key))
     t))
 
 ; One admission event, for source KEY: its admission is paid from the level.
@@ -379,7 +388,7 @@
  (defthm fn-hsb-event-source-step
    (implies (and (consp e) (equal (car e) :admit)
                  (equal (fn-hsb-at 4 e) now) (natp now)
-                 (equal (fn-hsb-lim-rate (fn-hsb-at 1 e)) n))
+                 (equal (fn-hsb-source-rate (fn-hsb-at 1 e) key) n))
             (<= (+ (if (and (fn-hsb-admittedp s e)
                             (not (fn-hsb-at 2 e))
                             (equal (fn-hsb-source-key (fn-hsb-at 3 e)) key))
@@ -407,7 +416,7 @@
  (defthm fn-hsb-source-admit-case
    (implies (and (natp tt) (consp e) (equal (car e) :admit)
                  (natp now) (equal (fn-hsb-at 4 e) now) (<= tt now)
-                 (equal (fn-hsb-lim-rate (fn-hsb-at 1 e)) n) (natp n)
+                 (equal (fn-hsb-source-rate (fn-hsb-at 1 e) key) n) (natp n)
                  (<= (* *fn-hsb-window-ms* c)
                      (+ (fn-hsb-eff (fn-hsb-buckets (fn-hsb-event s e)) key n now)
                         (* n (- t1 now)))))
@@ -434,7 +443,7 @@
 
 (local
  (defthm fn-hsb-source-admits-general
-   (implies (and (natp tt) (fn-hsb-events-timed es tt t1 n) (natp t1) (<= tt t1) (natp n))
+   (implies (and (natp tt) (fn-hsb-events-timed es tt t1 n key) (natp t1) (<= tt t1) (natp n))
             (<= (* *fn-hsb-window-ms* (fn-hsb-source-admits key s es))
                 (+ (fn-hsb-eff (fn-hsb-buckets s) key n tt) (* n (- t1 tt)))))
    :hints (("Goal" :induct (fn-hsb-source-induct s es tt)
@@ -449,16 +458,17 @@
 
 (local
  (defthm fn-hsb-events-timed-of-nfix
-   (equal (fn-hsb-events-timed es (nfix t0) (nfix t1) n)
-          (fn-hsb-events-timed es t0 t1 n))))
+   (equal (fn-hsb-events-timed es (nfix t0) (nfix t1) n key)
+          (fn-hsb-events-timed es t0 t1 n key))))
 
 ; KEYSTONE: from ANY state, over any events whose times are nondecreasing
-; within [T0, T1], decided at rate N, one untrusted source is admitted at
+; within [T0, T1], decided at rate N for the source (its override when the
+; operator lists it, CGNAT), one untrusted source is admitted at
 ; most N + N x (T1 - T0) / 60,000 handshakes (stated in token-milliseconds;
 ; the times are the recorded clock's naturals, as fn-hsb-events-timed reads
 ; them).
 (defthm fn-hsb-source-admits-are-bounded
-  (implies (and (fn-hsb-events-timed es t0 t1 n) (<= (nfix t0) (nfix t1)) (natp n))
+  (implies (and (fn-hsb-events-timed es t0 t1 n key) (<= (nfix t0) (nfix t1)) (natp n))
            (<= (* *fn-hsb-window-ms* (fn-hsb-source-admits key s es))
                (+ (* n *fn-hsb-window-ms*) (* n (- (nfix t1) (nfix t0))))))
   :hints (("Goal" :in-theory (disable fn-hsb-source-admits fn-hsb-events-timed)

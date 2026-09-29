@@ -97,7 +97,7 @@
         (list :admit *hsbt-hl* nil *hsbt-a* 0 nil) (list :done 2)
         (list :admit *hsbt-hl* nil *hsbt-a* 1000 nil) (list :done 3)
         (list :admit *hsbt-hl* nil *hsbt-a* 1000 nil)))
-(assert-event (and (fn-hsb-events-timed *hsbt-flood* 0 1000 3) (<= 0 1000) (natp 3)))
+(assert-event (and (fn-hsb-events-timed *hsbt-flood* 0 1000 3 (fn-hsb-source-key *hsbt-a*)) (<= 0 1000) (natp 3)))
 (assert-event (equal (fn-hsb-source-admits (fn-hsb-source-key *hsbt-a*) (fn-hsb-initial) *hsbt-flood*) 3))
 (assert-event (<= (* 60000 3) (+ (* 3 60000) (* 3 (- 1000 0)))))
 ; Hypothesis removal, each retained hypothesis holding and the omitted one
@@ -109,20 +109,20 @@
         (list :admit *hsbt-hl* nil *hsbt-a* 0 nil) (list :done 2)
         (list :admit *hsbt-hl* nil *hsbt-a* 1000 nil) (list :done 3)
         (list :admit *hsbt-hl* nil *hsbt-a* 180000 nil)))
-(assert-event (and (not (fn-hsb-events-timed *hsbt-slow* 0 1000 3))
-                   (fn-hsb-events-timed *hsbt-slow* 0 180000 3)))
+(assert-event (and (not (fn-hsb-events-timed *hsbt-slow* 0 1000 3 (fn-hsb-source-key *hsbt-a*)))
+                   (fn-hsb-events-timed *hsbt-slow* 0 180000 3 (fn-hsb-source-key *hsbt-a*))))
 (assert-event (< (+ (* 3 60000) (* 3 1000))
                  (* 60000 (fn-hsb-source-admits (fn-hsb-source-key *hsbt-a*) (fn-hsb-initial) *hsbt-slow*))))
 ; (b) the rate: decided at N = 3, claimed at N = 1: not timed at 1, and
 ;     3 admissions exceed 1 x 60,000 + 1 x 1,000.
-(assert-event (not (fn-hsb-events-timed *hsbt-flood* 0 1000 1)))
+(assert-event (not (fn-hsb-events-timed *hsbt-flood* 0 1000 1 (fn-hsb-source-key *hsbt-a*))))
 (assert-event (< (+ 60000 1000)
                  (* 60000 (fn-hsb-source-admits (fn-hsb-source-key *hsbt-a*) (fn-hsb-initial) *hsbt-flood*))))
 ; (c) T0 <= T1: no events, T0 = 100,000 > T1 = 0: the bound is negative.
-(assert-event (and (fn-hsb-events-timed nil 100000 0 3) (not (<= 100000 0))))
+(assert-event (and (fn-hsb-events-timed nil 100000 0 3 (fn-hsb-source-key *hsbt-a*)) (not (<= 100000 0))))
 (assert-event (< (+ (* 3 60000) (* 3 (- 0 100000))) 0))
 ; (d) (natp n): no events, N = -1: timed holds, the bound is negative.
-(assert-event (and (fn-hsb-events-timed nil 0 1000 -1) (not (natp -1))))
+(assert-event (and (fn-hsb-events-timed nil 0 1000 -1 (fn-hsb-source-key *hsbt-a*)) (not (natp -1))))
 (assert-event (< (+ (* -1 60000) (* -1 (- 1000 0))) 0))
 
 ; --- fn-hsb-scratch-within-the-machine-term (PRF-986's term of PRF-223's
@@ -200,3 +200,45 @@
 (assert-event (and (not (fn-hsb-events-under 0 *hsbt-64*))
                    (< (max (len (fn-hsb-buckets (fn-hsb-initial))) (* 64 0))
                       (len (fn-hsb-buckets *hsbt-s64*)))))
+
+; --- The CGNAT override (fn-hsb-source-rate; fn-hsb-overrides-of-word).
+; A carrier NAT 203.0.113.9 listed at 600 a minute; 2001:db8::/64 at 90.
+(defconst *hsbt-ov* (fn-hsb-overrides-of-word "203.0.113.9=600, 2001:db8::1/64=90" 64))
+(assert-event (equal *hsbt-ov* '(((:inet 203 0 113 9) . 600)
+                                 ((:inet6 32 1 13 184 0 0 0 0) . 90))))
+(assert-event (equal (fn-hsb-overrides-of-word "none" 64) nil))
+(assert-event (equal (fn-hsb-overrides-of-word "203.0.113.9=0" 64) :override-address))
+(assert-event (equal (fn-hsb-overrides-of-word "203.0.113.9/24=5" 64) :override-address))
+(assert-event (equal (fn-hsb-overrides-of-word "not-an-address=5" 64) :override-address))
+; fn-hsb-overrides-of-word-is-bounded: two entries past a MOST of 1 are
+; refused by name (the list is full), within 2 accepted.
+(assert-event (equal (fn-hsb-overrides-of-word "203.0.113.9=600,192.0.2.1=5" 1) :overrides-full))
+(assert-event (<= (len (fn-hsb-overrides-of-word "203.0.113.9=600,192.0.2.1=5" 2)) 2))
+; The listed source's rate is its own; any other source keeps N; every
+; global limit is the same (L, D, the queue, the table).
+(defconst *hsbt-hlov* (fn-hsb-limits-with 3 2 5000 *hsbt-ov*))
+(assert-event (equal (fn-hsb-source-rate *hsbt-hlov* '(:inet 203 0 113 9)) 600))
+(assert-event (equal (fn-hsb-source-rate *hsbt-hlov* (fn-hsb-source-key *hsbt-a*)) 3))
+(assert-event (equal (fn-hsb-source-rate *hsbt-hlov*
+                                         (fn-hsb-source-key '(:inet6 32 1 13 184 0 0 0 0 1 2 3 4 5 6 7 8)))
+                     90))
+(assert-event (and (equal (fn-hsb-lim-in-flight *hsbt-hlov*) 2)
+                   (equal (fn-hsb-lim-deadline *hsbt-hlov*) 5000)
+                   (equal (fn-hsb-lim-sources *hsbt-hlov*) 128)))
+; KEYSTONE fn-hsb-source-admits-are-bounded at the override: the NAT offers
+; five handshakes a second apart (a slot freed after each): all five admitted
+; (N = 3 would admit three), within 600 x 60,000 -- decided at its rate.
+(defconst *hsbt-nat* '(:inet 203 0 113 9))
+(defconst *hsbt-natflood*
+  (list (list :admit *hsbt-hlov* nil *hsbt-nat* 0 nil) (list :done 1)
+        (list :admit *hsbt-hlov* nil *hsbt-nat* 1000 nil) (list :done 2)
+        (list :admit *hsbt-hlov* nil *hsbt-nat* 2000 nil) (list :done 3)
+        (list :admit *hsbt-hlov* nil *hsbt-nat* 3000 nil) (list :done 4)
+        (list :admit *hsbt-hlov* nil *hsbt-nat* 4000 nil)))
+(assert-event (fn-hsb-events-timed *hsbt-natflood* 0 4000 600 *hsbt-nat*))
+(assert-event (equal (fn-hsb-source-admits *hsbt-nat* (fn-hsb-initial) *hsbt-natflood*) 5))
+; Hypothesis removal: claimed at N = 3 the events are not timed (decided at
+; 600), and five admissions exceed 3 x 60,000 + 3 x 4,000.
+(assert-event (not (fn-hsb-events-timed *hsbt-natflood* 0 4000 3 *hsbt-nat*)))
+(assert-event (< (+ (* 3 60000) (* 3 4000))
+                 (* 60000 (fn-hsb-source-admits *hsbt-nat* (fn-hsb-initial) *hsbt-natflood*))))

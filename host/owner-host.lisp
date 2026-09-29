@@ -3513,9 +3513,12 @@
 (defun fn-owner-handshake-limits (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((v (fn-cfg-value (fn-owner-config state))))
-    (fn-hsb-limits (fn-cfg-limit v "tls-handshakes-per-source-per-minute")
-                   (fn-cfg-limit v "tls-handshakes-in-flight")
-                   (fn-cfg-limit v "tls-handshake-ms"))))
+    (fn-hsb-limits-with (fn-cfg-limit v "tls-handshakes-per-source-per-minute")
+                        (fn-cfg-limit v "tls-handshakes-in-flight")
+                        (fn-cfg-limit v "tls-handshake-ms")
+                        ;; The CGNAT override list (policy row
+                        ;; tls-handshake-source-overrides).
+                        (fn-hsb-config-overrides v))))
 
 ;; Before any handshake work on a socket from (FAMILY . ADDRESS): QUEUEDP
 ;; when the socket is one that waited for a slot.  The value is
