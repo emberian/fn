@@ -1754,5 +1754,99 @@ class PruneTests(unittest.TestCase):
                 certs.main(["prune", "--cache", temporary])
 
 
+
+
+class PairFactMemoTests(unittest.TestCase):
+    """The certificate-alist probe's verdicts are kept in the cache, keyed by
+    the two certificates' bytes (obstructions-7 item 58: every hbox_native
+    build run re-probed the closure, about 20 CPU-minutes)."""
+
+    def test_second_run_probes_nothing_and_new_bytes_probe_again(self):
+        calls = []
+
+        def fake(paths, pairs, acl2, root):
+            calls.append(list(pairs))
+            return {pair: (True, pair[0] != 2) for pair in pairs}
+
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            cache = base / "cache"
+            cache.mkdir()
+            certs_ = []
+            for index, text in enumerate(("parent", "child", "other")):
+                path = base / f"c{index}.cert"
+                path.write_text(text)
+                certs_.append(path)
+            acl2 = base / "acl2"
+            acl2.write_text("")
+            check = certs.memoized_pair_checker(cache, fake)
+            first = check(certs_, [(0, 1), (2, 1)], acl2, base)
+            self.assertEqual(first, {(0, 1): (True, True), (2, 1): (True, False)})
+            self.assertEqual((check.hits, check.probed), (0, 2))
+            again = certs.memoized_pair_checker(cache, fake)
+            self.assertEqual(again(certs_, [(0, 1), (2, 1)], acl2, base), first)
+            self.assertEqual((again.hits, again.probed), (2, 0))
+            self.assertEqual(len(calls), 1)
+            # A torn or foreign line is never trusted.
+            with (cache / certs.PAIR_FACTS).open("a") as handle:
+                handle.write('{"acl2": "x", "parent"\n')
+            certs_[1].write_text("child, recertified")
+            third = certs.memoized_pair_checker(cache, fake)
+            third(certs_, [(0, 1)], acl2, base)
+            self.assertEqual((third.hits, third.probed), (0, 1))
+            # Another prover's verdicts are not this one's.
+            other = base / "acl2-other"
+            other.write_text("")
+            fourth = certs.memoized_pair_checker(cache, fake)
+            fourth(certs_, [(2, 1)], other, base)
+            self.assertEqual(fourth.probed, 1)
+
+    def test_install_partial_uses_the_memo_by_default(self):
+        import inspect
+        source = inspect.getsource(certs.install_partial)
+        self.assertIn("memoized_pair_checker(cache)", source)
+        self.assertIn("memoized_pair_checker(cache)", inspect.getsource(certs.artifact_sets))
+
+
+class InstallUmbrellasTests(unittest.TestCase):
+    """obstructions-7 item 64: the image umbrellas install as ONE set after
+    remote_check's per-book install, falling back to fewer umbrellas."""
+
+    def test_order_and_fallback(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "books").mkdir()
+            for stem in ("image-world-store-test", "image-world-dtn", "image-world", "other"):
+                (root / "books" / f"{stem}.lisp").write_text("")
+            self.assertEqual(certs.umbrella_roots(root),
+                             ["books/image-world", "books/image-world-dtn",
+                              "books/image-world-store-test"])
+            asked = []
+
+            def installer(roots):
+                asked.append(list(roots))
+                ok = len(roots) == 2
+                return SimpleReport(object() if ok else None)
+            chosen, lines = certs.install_umbrellas(root, root / "cache", root / "acl2", installer)
+            self.assertEqual(chosen, ["books/image-world", "books/image-world-dtn"])
+            self.assertEqual(asked, [certs.umbrella_roots(root),
+                                     ["books/image-world", "books/image-world-dtn"]])
+            self.assertIn("installed as one set", lines[-1])
+            chosen, lines = certs.install_umbrellas(root, root / "cache", root / "acl2",
+                                                    lambda roots: SimpleReport(None))
+            self.assertEqual(chosen, [])
+            self.assertIn("NOT installed", lines[-1])
+
+    def test_remote_check_runs_it_after_the_per_book_install(self):
+        text = (TOOLS / "remote_check.sh").read_text()
+        self.assertLess(text.index("tools/certs.py install 2>&1"),
+                        text.index("tools/certs.py install-umbrellas"))
+
+
+class SimpleReport:
+    def __init__(self, artifact_set):
+        self.artifact_set = artifact_set
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1660,9 +1660,12 @@ check-lane:
 # gate: `make check` stays the gate.  Registry reciprocity, spec and reach
 # citations, the ledger and the current view (with FN_LANE_CHECK, as
 # check-fast-lane sets it, the ledger is regenerated into a temporary
-# directory and only printed, as in check-lane), and docs_check.
+# directory and only printed, as in check-lane), docs_check, and every host/
+# file reads (host_check --read, half a second: stx-model-2's paren on a
+# comment line reached an image build; obstructions-9 item 80).
 check-fast:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --read
 	@$(CHECK_STEP) $(PYTHON) tools/merge_registry.py --reciprocate --check
 	@$(CHECK_STEP) $(PYTHON) tools/spec_cite_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
@@ -1958,6 +1961,7 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --world
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_world
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_forward
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_read
 # Every host/ definition some file reaches (a raw file, a book, a bridge, a
 # launcher, a registry row): a new one nothing calls is WARNED, not refused,
 # unless tools/host_callers_baseline.json names why it stays (lane

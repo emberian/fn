@@ -4,8 +4,19 @@
     python3 tools/host_check.py                 # both images' ld prefixes, build order
     python3 tools/host_check.py --load          # the raw files, build order, bare ACL2
     python3 tools/host_check.py --tables        # static: global hash tables
+    python3 tools/host_check.py --interfaces    # static: declared vs dispatched entries
     python3 tools/host_check.py --world         # static: counterparts in the image world
     python3 tools/host_check.py --alone FILE... # one file alone (a diagnosis, not a gate)
+    python3 tools/host_check.py --read [FILE...] # static: every host/ file reads (half a second)
+
+`--read` (obstructions-9 item 80; `make check-fast` runs it) reads every
+host/**/*.lisp with tools/ledger.py's Reader, which never interns or
+evaluates.  stx-model-2's closing paren landed on a trailing COMMENT line of
+host/owner-host.lisp and reached an image build before `--load` read it.  A
+file that does not read is named with the reader's error and, when a
+top-level form is left open, the line it starts on and the first later line
+that begins a form at column 0 while it is still open -- where the missing
+paren belongs, or a comment took it.
 
 THE DEFAULT (lane lane-tools-2, 2026-09-28) is the ACL2-mode prefix of
 host/native/build.lisp and of host/native/build-dtn.lisp -- every
@@ -648,12 +659,22 @@ def certificate_trouble(output: str) -> str:
 def load_check(acl2: Path, files: list[str], timeout: int,
                log_dir: Path | None = None, world: list[object] | None = None,
                world_note: str = "BARE ACL2", require_world: bool = False,
-               bare_acl2: Path | None = None, reinstall: bool = True) -> int:
+               bare_acl2: Path | None = None, reinstall: bool = True,
+               declared: list[dict] | None = None) -> int:
     import tempfile
+    if declared is None:
+        declared = []
+        if world is not None:
+            try:
+                import interface_emit
+                declared = interface_emit.declarations(ROOT)
+            except Exception as error:  # the step below reports it
+                print(f"host_check --load: interfaces unread ({error})", flush=True)
     with tempfile.TemporaryDirectory(prefix="fn-host-load-") as scratch:
         driver = Path(scratch) / "driver.lsp"
         driver.write_text(load_driver(files), encoding="utf-8")
-        session = ((world_session(world) if world is not None else "")
+        session = ((world_session(world) + interface_world_forms(interface_names(declared))
+                    if world is not None else "")
                    + "(defttag :fn-host-load-check)\n"
                    f'(progn! (set-raw-mode t) (load "{driver}"))\n(good-bye)\n')
         started = time.monotonic()
@@ -682,7 +703,8 @@ def load_check(acl2: Path, files: list[str], timeout: int,
                   + (f" -- {why}" if why else "") + "; retrying", flush=True)
             if not why:
                 return load_check(acl2, files, timeout, log_dir, world, world_note,
-                                  require_world, bare_acl2, reinstall=False)
+                                  require_world, bare_acl2, reinstall=False,
+                                  declared=declared)
         if trouble:
             if log_dir is not None:
                 (log_dir / "load-world.log").write_text(output)
@@ -703,6 +725,8 @@ def load_check(acl2: Path, files: list[str], timeout: int,
             findings.insert(0, "world: the build's ACL2-mode prefix did not reach its end "
                                "marker (see the transcript's tail)")
     print(f"host_check --load: WORLD {world_note}")
+    findings += interface_step(interface_world_undefined(output) if world is not None else None,
+                               echo=False, static_always=False)
     for finding in findings:
         print(f"FAIL {finding}")
     if not completed:
@@ -718,6 +742,140 @@ def load_check(acl2: Path, files: list[str], timeout: int,
           f"{' (not loaded here)' if world is None else ''}; {counts['warnings']} other "
           "compiler warnings")
     return 1 if findings or not completed else 0
+
+
+# --- the DECLARED-INTERFACE step (obstructions-7 item 59) ----------------
+#
+# Every entry host/interfaces.lisp declares must be a function of the world,
+# and every entry the raw host dispatches must be declared.  A stale
+# declaration (fn-store-log-next-txid-of-events, deleted by PRF-976) surfaced
+# only at the image build and cost limits-live-6 a run.  The static half is
+# tools/interface_emit.py --check's findings; the world half asks ACL2, in
+# the --load session over the certified umbrella, which declared names are
+# not function symbols there.  Counts are printed per host file this branch
+# touched (against origin/dev), so a lane sees its own files first.
+
+IFACE_TAG = "HOSTCHECK-IFACE-UNDEFINED"
+
+
+def interface_names(decls: list[dict]) -> list[str]:
+    """The declared names a world check asks about (stobj creators aside)."""
+    return sorted({d["name"] for d in decls if not d["name"].startswith("create-")})
+
+
+def interface_world_forms(names: list[str]) -> str:
+    """ACL2 forms printing the declared names that are not functions here."""
+    if not names:
+        return ""
+    quoted = " ".join(names)
+    return ("(defun fn-hostcheck-undefined (names w)\n"
+            "  (declare (xargs :mode :program))\n"
+            "  (cond ((endp names) nil)\n"
+            "        ((function-symbolp (car names) w) (fn-hostcheck-undefined (cdr names) w))\n"
+            "        (t (cons (car names) (fn-hostcheck-undefined (cdr names) w)))))\n"
+            f'(value-triple (cw "{IFACE_TAG} ~x0~%" (fn-hostcheck-undefined \'({quoted}) (w state))))\n')
+
+
+def interface_world_undefined(output: str) -> list[str] | None:
+    """The names the world session reported undefined; None if it never ran."""
+    for line in output.splitlines():
+        if IFACE_TAG + " " in line:
+            text = line.split(IFACE_TAG + " ", 1)[1].strip()
+            if text.upper() == "NIL":
+                return []
+            return [name.lower().strip("|") for name in text.strip("()").split()]
+    return None
+
+
+def touched_host_files(root: Path = ROOT, base: str = "origin/dev") -> list[str] | None:
+    """Host files this branch changed against BASE (None without git)."""
+    try:
+        merge = subprocess.run(["git", "merge-base", "HEAD", base], cwd=root,
+                               capture_output=True, text=True, timeout=30)
+        if merge.returncode:
+            return None
+        changed = subprocess.run(["git", "diff", "--name-only", merge.stdout.strip(), "--",
+                                  "host/"], cwd=root, capture_output=True, text=True,
+                                 timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if changed.returncode:
+        return None
+    return sorted(line for line in changed.stdout.splitlines() if line.endswith(".lisp"))
+
+
+def interface_report(decls: list[dict], reading: dict, static: list[str],
+                     touched: list[str] | None,
+                     undefined: list[str] | None) -> tuple[list[str], list[str]]:
+    """(summary lines, findings) of the declared-interface step."""
+    declared = {d["name"] for d in decls}
+    findings = [f"interfaces: {one}" for one in static]
+    if undefined:
+        findings += [f"interfaces: {name} is declared in host/interfaces.lisp and is not a "
+                     "function of the certified world" for name in sorted(undefined)]
+    lines = [f"host_check interfaces: {len(decls)} declared; "
+             f"{sum(1 for n in reading['dispatched'] if n in declared)} of the raw host's "
+             f"{len(reading['dispatched'])} dispatched entries declared; "
+             + ("world: not evaluated (no certified umbrella)" if undefined is None
+                else f"world: {len(undefined)} declared name(s) not a function")
+             + f"; {len(findings)} finding(s)"]
+    if touched is None:
+        lines.append("host_check interfaces: no git base here; per-file counts over every "
+                     "dispatching file")
+        files = sorted({f for fs in reading["dispatched"].values() for f in fs})
+    else:
+        files = touched
+        if not touched:
+            lines.append("host_check interfaces: this branch touches no host file")
+    for relative in files:
+        names = sorted(n for n, fs in reading["dispatched"].items() if relative in fs)
+        missing = [n for n in names if n not in declared]
+        lines.append(f"  {relative}: {len(names)} dispatched, {len(names) - len(missing)} "
+                     f"declared, {len(missing)} undeclared"
+                     + (f" ({', '.join(missing[:8])}{' ...' if len(missing) > 8 else ''})"
+                        if missing else ""))
+    return lines, findings
+
+
+def interface_step(undefined: list[str] | None = None, root: Path = ROOT,
+                   echo: bool = True, static_always: bool = True) -> list[str]:
+    """Print the step's report; return its findings.
+
+    The static half reads the whole tree (ledger.load_tree: minutes cold on a
+    box), so inside --load (STATIC_ALWAYS false) it runs only when this branch
+    touched a host file or git cannot say; the world half always runs there."""
+    import interface_emit
+    decls = interface_emit.declarations(root)
+    touched = touched_host_files(root)
+    if not static_always and touched == []:
+        undefined_names = sorted(undefined or [])
+        findings = [f"interfaces: {name} is declared in host/interfaces.lisp and is not a "
+                    "function of the certified world" for name in undefined_names]
+        print(f"host_check interfaces: {len(decls)} declared; "
+              + ("world: not evaluated (no certified umbrella)" if undefined is None
+                 else f"world: {len(undefined_names)} declared name(s) not a function")
+              + "; static half skipped (this branch touches no host file; "
+                "`host_check.py --interfaces` runs it)")
+        for finding in findings if echo else ():
+            print(f"FAIL {finding}")
+        return findings
+    reading = interface_emit.host_reading(root)
+    static = interface_emit.findings(decls, reading, root)
+    if not static_always:
+        # Inside --load a static finding fails only for a host file this
+        # branch touched (dev's own interface debt is `--interfaces`' and
+        # make check's to report); the rest are printed as warnings.
+        mine = [one for one in static if touched and any(f in one for f in touched)]
+        for one in static:
+            if one not in mine:
+                print(f"warn interfaces: {one}")
+        static = mine
+    lines, findings = interface_report(decls, reading, static, touched, undefined)
+    for line in lines:
+        print(line)
+    for finding in findings if echo else ():
+        print(f"FAIL {finding}")
+    return findings
 
 
 # --- --tables: unsynchronised global mutable tables ----------------------
@@ -1314,6 +1472,67 @@ def world_stale(runner=None) -> list[str]:
     return found
 
 
+def _open_at_column_zero(text: str) -> tuple[int, int] | None:
+    """(the line an unclosed top-level form starts on, the first later line
+    starting with `(` at column 0 while it is open), or None."""
+    depth, start, i, n, line = 0, 0, 0, len(text), 1
+    at_line_start = True
+    while i < n:
+        c = text[i]
+        if at_line_start and c == "(" and depth > 0:
+            return start, line
+        at_line_start = False
+        if c == "\n":
+            line, at_line_start = line + 1, True
+        elif c == ";":
+            j = text.find("\n", i)
+            i = n if j < 0 else j
+            continue
+        elif text.startswith("#|", i):
+            j = text.find("|#", i + 2)
+            line += text.count("\n", i, n if j < 0 else j)
+            i = n if j < 0 else j + 2
+            continue
+        elif text.startswith("#\\", i):
+            i += 3
+            continue
+        elif c == '"':
+            i += 1
+            while i < n and text[i] != '"':
+                if text[i] == "\n":
+                    line += 1
+                i += 2 if text[i] == "\\" else 1
+        elif c == "(":
+            if depth == 0:
+                start = line
+            depth += 1
+        elif c == ")":
+            depth = max(depth - 1, 0)
+        i += 1
+    return None
+
+
+def read_check(files: list[str]) -> list[str]:
+    """One finding per host file the reader refuses."""
+    import ledger
+    paths = [ROOT / name for name in files] if files else sorted((ROOT / "host").rglob("*.lisp"))
+    findings = []
+    for path in paths:
+        shown = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
+        try:
+            text = path.read_text(encoding="utf-8")
+            ledger.Reader(text).top_level()
+        except (OSError, UnicodeDecodeError) as error:
+            findings.append(f"{shown}: unreadable: {error}")
+        except ledger.ReadError as error:
+            where = _open_at_column_zero(text)
+            hint = (f"; the form at line {where[0]} is still open where line {where[1]} "
+                    "starts a form at column 0 (its closing paren is missing, or sits in "
+                    "a comment)" if where else "")
+            findings.append(f"{shown}: {error}{hint}")
+    return findings
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -1338,6 +1557,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="static: every name a raw host/native file passes to fnn-core* "
                              "or fnn-call is defined in the world of the image that loads it "
                              "(build.lisp, build-dtn.lisp; FILEs name other build scripts)")
+    parser.add_argument("--interfaces", action="store_true",
+                        help="static: the declared-interface step (interface_emit --check's "
+                             "findings, counts per touched host file); --load adds the world half")
     parser.add_argument("--forward", action="store_true",
                         help="static: a call in an ld host file of a name only a later "
                              "form of the ld files defines (no ACL2; --load runs it too)")
@@ -1349,10 +1571,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--require-world", action="store_true",
                         help="with --load: exit 2 NOT RUN when the certified umbrella is "
                              "not available, rather than falling back to a bare ACL2")
+    parser.add_argument("--read", action="store_true",
+                        help="static: every host/ file (or FILE) reads as s-expressions "
+                             "(no ACL2; half a second)")
     args = parser.parse_args(argv)
 
+    if args.read:
+        findings = read_check(args.files)
+        for one in findings:
+            print(f"FAIL {one}")
+        print(f"host_check --read: {len(findings)} host file(s) that do not read")
+        return 1 if findings else 0
     if args.tables:
         return tables_main(args.files)
+    if args.interfaces:
+        return 1 if interface_step() else 0
     if args.world:
         return world_main(args.files)
     if args.forward or args.load:
