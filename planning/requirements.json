@@ -191,7 +191,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-005",
-        "PRF-062"
+        "PRF-062",
+        "PRF-1006"
       ],
       "verification": [
         "proof",
@@ -745,7 +746,12 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-007",
-        "PRF-034"
+        "PRF-034",
+        "PRF-1007",
+        "PRF-985",
+        "PRF-1013",
+        "PRF-1014",
+        "PRF-1015"
       ],
       "verification": [
         "proof",
@@ -1153,7 +1159,13 @@
         "PRF-944",
         "PRF-956",
         "PRF-983",
-        "PRF-984"
+        "PRF-984",
+        "PRF-1006",
+        "PRF-1007",
+        "PRF-985",
+        "PRF-1013",
+        "PRF-1014",
+        "PRF-1015"
       ],
       "verification": [
         "proof",
