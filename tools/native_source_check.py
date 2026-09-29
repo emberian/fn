@@ -98,10 +98,9 @@ def scrubbed_env(env: dict[str, str] | None = None) -> dict[str, str]:
     clean = {k: v for k, v in source.items() if not k.startswith("FN_")}
     sbcl = toolchain_sbcl(source)
     if sbcl:
+        # FN_SBCL only: an SBCL_HOME here would be read by every other SBCL
+        # the modules start (a `sbcl' on PATH), with the wrong core.
         clean["FN_SBCL"] = sbcl
-        home = Path(sbcl).resolve().parent.parent / "lib" / "sbcl"
-        if home.is_dir() and "SBCL_HOME" not in clean:
-            clean["SBCL_HOME"] = str(home) + "/"
     clean["PYTHONDONTWRITEBYTECODE"] = "1"
     return clean
 

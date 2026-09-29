@@ -2,4 +2,4 @@
 # witness: raw
 set -eu
 cd "$(dirname "$0")/.."
-exec sbcl --noinform --script tests/native_admin_authorize_boundary.lisp
+exec "${FN_SBCL:-sbcl}" --noinform --script tests/native_admin_authorize_boundary.lisp
