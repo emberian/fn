@@ -171,6 +171,19 @@ class StateCheckpointSourceTests(unittest.TestCase):
 # ends every FNSC segment.
 FRAME_TRAILER_OCTETS = 32
 
+# books/history-image-snapshot.lisp: the file opens with the history image
+# region ("FNSI", version, NP u64, base u64, zeros; page A at base + 16 KiB *
+# A), and the framed segments start after its NP pages.
+IMAGE_BASE = 16384
+
+
+def framed_start(data):
+    """The offset of the first FNSC segment: after the image region, if any."""
+    if data[:4] == b"FNSI":
+        np = int.from_bytes(data[5:13], "little")
+        return IMAGE_BASE * (np + 1)
+    return 0
+
 
 class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
     image = IMAGE
@@ -343,7 +356,9 @@ class StateCheckpointTests(StateCheckpointFixture):
         `corrupt', replays the journal, and reconstructs the same state."""
         self.init_with_checkpoint_at_three()
         expected = self.observation()
-        data = self.path().read_bytes()
+        whole = self.path().read_bytes()
+        start = framed_start(whole)
+        data = whole[start:]
         # FNSC segment: magic(4) schema(1) index count length sequence (u64 LE
         # each), the chunk, the 32-octet trailer; the first segment's count
         # is the arena run's segment count.
@@ -355,7 +370,7 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertEqual(data[:4], b"FNSC")
         self.assertEqual(data[37:41], b"fnA1")
         self.assertEqual(data[at:at + 4], b"FNSC")
-        self.path().write_bytes(data[at:])
+        self.path().write_bytes(whole[:start] + data[at:])
         self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
         self.assertEqual(self.open_line(), "open=full-replay reason=checkpoint-arena")
         self.assertEqual(self.observation(), expected)
@@ -368,8 +383,9 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.init_with_checkpoint_at_three()
         expected = self.observation()
         good = self.path().read_bytes()
+        start = framed_start(good)
         data = bytearray(good)
-        data[21:29] = b"\xff" * 8
+        data[start + 21:start + 29] = b"\xff" * 8
         self.path().write_bytes(bytes(data))
         self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
         self.assertEqual(self.open_line(),
@@ -377,12 +393,51 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertEqual(self.observation(), expected)
         # A LENGTH within the segment bound but not the chunk's: corrupt.
         data = bytearray(good)
-        data[21] ^= 0x01
+        data[start + 21] ^= 0x01
         self.path().write_bytes(bytes(data))
         self.assertEqual(self.open_line(), "open=full-replay reason=corrupt")
         self.path().write_bytes(good)
         self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
         self.assertEqual(self.observation(), expected)
+
+    def test_the_checkpoint_carries_its_history_image_and_the_open_adopts_it(self):
+        """Lane composed-owner (books/history-image-snapshot.lisp): the file
+        opens with the history image of the checkpoint's records on a page
+        store, its binding in the F row's log position; the open checks the
+        binding against this store's genesis, the log's chain value and the
+        codec, adopts the image (page 0 read and digest-checked, the header
+        from it) and compares its last row with the checkpoint's last record.
+        One file, one rename: no crash between two publications exists."""
+        self.init_with_checkpoint_at_three()
+        data = self.path().read_bytes()
+        self.assertEqual(data[:4], b"FNSI")
+        np = int.from_bytes(data[5:13], "little")
+        self.assertGreater(np, 1)
+        self.assertEqual(int.from_bytes(data[13:21], "little"), IMAGE_BASE)
+        self.assertEqual(data[framed_start(data):framed_start(data) + 4], b"FNSC")
+        status = self.op("status")
+        self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
+        self.assertNotIn(b"checkpoint image refused", status.stderr)
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
+
+    def test_a_damaged_history_image_is_refused_by_name(self):
+        """Page 0 of the image changed in the file: the adoption's digest
+        check refuses it by name -- (:page-damaged 0 PHYS) -- and the
+        checkpoint is unusable, as a corrupt one is: never an empty history,
+        never a silent answer."""
+        self.init_with_checkpoint_at_three()
+        expected = self.observation()
+        good = self.path().read_bytes()
+        data = bytearray(good)
+        data[IMAGE_BASE + 8 * 7] ^= 0x01   # page 0, word 7 (the header's region count)
+        self.path().write_bytes(bytes(data))
+        status = self.op("status")
+        self.assertIn(b"checkpoint image refused reason=(:page-damaged 0", status.stderr)
+        self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
+        self.assertEqual(self.open_line(), "open=full-replay reason=corrupt")
+        self.assertEqual(self.observation(), expected)
+        self.path().write_bytes(good)
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
 
     def test_a_running_owner_refuses_the_verb(self):
         self.init_with_checkpoint_at_three()
