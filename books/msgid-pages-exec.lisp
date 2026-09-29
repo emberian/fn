@@ -161,6 +161,9 @@
   (fn-mpxt-pages :type (integer 0 *) :initially 0)
   (fn-mpxt-count :type (integer 0 *) :initially 0)
   (fn-mpxt-key :type (array (unsigned-byte 8) (32)) :initially 0)
+  ;; STUCK: 1 once a generation could not be built (fn-mpxt-add); the
+  ;; grow is not attempted again until a rebuild (fn-mpxt-set-key).
+  (fn-mpxt-stuck :type (integer 0 1) :initially 0)
   :inline t)
 
 ;; The stobj's facts, stated over its accessors.
@@ -214,7 +217,9 @@
                 (implies (natp n) (fn-mpxtp (update-fn-mpxt-pages n fn-mpxt)))
                 (implies (natp n) (fn-mpxtp (update-fn-mpxt-count n fn-mpxt)))
                 (implies (and (natp i) (< i *fn-mpxt-key-octets*) (unsigned-byte-p 8 v))
-                         (fn-mpxtp (update-fn-mpxt-keyi i v fn-mpxt))))))
+                         (fn-mpxtp (update-fn-mpxt-keyi i v fn-mpxt)))
+                (implies (or (equal n 0) (equal n 1))
+                         (fn-mpxtp (update-fn-mpxt-stuck n fn-mpxt))))))
 
 (defthm fn-mpxt-key-length-is-32
   (implies (fn-mpxtp fn-mpxt)
@@ -230,7 +235,15 @@
        (equal (fn-mpxt-w-length (resize-fn-mpxt-w n fn-mpxt)) (nfix n))
        (equal (fn-mpxt-w-length (update-fn-mpxt-pages n fn-mpxt)) (fn-mpxt-w-length fn-mpxt))
        (equal (fn-mpxt-w-length (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-w-length fn-mpxt))
-       (equal (fn-mpxt-w-length (update-fn-mpxt-keyi i v fn-mpxt)) (fn-mpxt-w-length fn-mpxt))))
+       (equal (fn-mpxt-w-length (update-fn-mpxt-keyi i v fn-mpxt)) (fn-mpxt-w-length fn-mpxt))
+       (equal (fn-mpxt-w-length (update-fn-mpxt-stuck n fn-mpxt)) (fn-mpxt-w-length fn-mpxt))))
+
+(defthm fn-mpxt-stuck-is-a-bit
+  (implies (fn-mpxtp fn-mpxt)
+           (and (natp (fn-mpxt-stuck fn-mpxt)) (<= (fn-mpxt-stuck fn-mpxt) 1)))
+  :rule-classes ((:rewrite)
+                 (:type-prescription :corollary (implies (fn-mpxtp fn-mpxt) (natp (fn-mpxt-stuck fn-mpxt))))
+                 (:linear :corollary (implies (fn-mpxtp fn-mpxt) (<= (fn-mpxt-stuck fn-mpxt) 1)))))
 
 (defthm fn-mpxt-fields-natp
   (implies (fn-mpxtp fn-mpxt)
@@ -262,12 +275,24 @@
                        (if (equal i j) v (fn-mpxt-keyi i fn-mpxt))))
        (implies (and (natp i) (natp j))
                 (equal (fn-mpxt-wi i (update-fn-mpxt-wi j v fn-mpxt))
-                       (if (equal i j) v (fn-mpxt-wi i fn-mpxt))))))
+                       (if (equal i j) v (fn-mpxt-wi i fn-mpxt))))
+       ;; the stuck bit against every other write, and every field against it
+       (equal (fn-mpxt-stuck (update-fn-mpxt-wi i v fn-mpxt)) (fn-mpxt-stuck fn-mpxt))
+       (equal (fn-mpxt-stuck (resize-fn-mpxt-w n fn-mpxt)) (fn-mpxt-stuck fn-mpxt))
+       (equal (fn-mpxt-stuck (update-fn-mpxt-pages n fn-mpxt)) (fn-mpxt-stuck fn-mpxt))
+       (equal (fn-mpxt-stuck (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-stuck fn-mpxt))
+       (equal (fn-mpxt-stuck (update-fn-mpxt-keyi j v fn-mpxt)) (fn-mpxt-stuck fn-mpxt))
+       (equal (fn-mpxt-stuck (update-fn-mpxt-stuck n fn-mpxt)) n)
+       (equal (fn-mpxt-wi i (update-fn-mpxt-stuck n fn-mpxt)) (fn-mpxt-wi i fn-mpxt))
+       (equal (fn-mpxt-pages (update-fn-mpxt-stuck n fn-mpxt)) (fn-mpxt-pages fn-mpxt))
+       (equal (fn-mpxt-count (update-fn-mpxt-stuck n fn-mpxt)) (fn-mpxt-count fn-mpxt))
+       (equal (fn-mpxt-keyi i (update-fn-mpxt-stuck n fn-mpxt)) (fn-mpxt-keyi i fn-mpxt))))
 
 ;; The primitives are closed from here on: every fact about them is above.
 (in-theory (disable fn-mpxtp fn-mpxt-wi update-fn-mpxt-wi fn-mpxt-w-length resize-fn-mpxt-w
                     fn-mpxt-pages update-fn-mpxt-pages fn-mpxt-count update-fn-mpxt-count
-                    fn-mpxt-keyi update-fn-mpxt-keyi fn-mpxt-key-length))
+                    fn-mpxt-keyi update-fn-mpxt-keyi fn-mpxt-key-length
+                    fn-mpxt-stuck update-fn-mpxt-stuck))
 
 ; The table's key, as the list of its 32 octets from index I.
 (defun fn-mpxt-key-from (i fn-mpxt)
@@ -286,13 +311,15 @@
   (and (equal (fn-mpxt-key-from i (update-fn-mpxt-wi j v fn-mpxt)) (fn-mpxt-key-from i fn-mpxt))
        (equal (fn-mpxt-key-from i (resize-fn-mpxt-w n fn-mpxt)) (fn-mpxt-key-from i fn-mpxt))
        (equal (fn-mpxt-key-from i (update-fn-mpxt-pages n fn-mpxt)) (fn-mpxt-key-from i fn-mpxt))
-       (equal (fn-mpxt-key-from i (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-key-from i fn-mpxt))))
+       (equal (fn-mpxt-key-from i (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-key-from i fn-mpxt))
+       (equal (fn-mpxt-key-from i (update-fn-mpxt-stuck n fn-mpxt)) (fn-mpxt-key-from i fn-mpxt))))
 
 (defthm fn-mpxt-key-octets-of-updates
   (and (equal (fn-mpxt-key-octets (update-fn-mpxt-wi j v fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))
        (equal (fn-mpxt-key-octets (resize-fn-mpxt-w n fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))
        (equal (fn-mpxt-key-octets (update-fn-mpxt-pages n fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))
-       (equal (fn-mpxt-key-octets (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))))
+       (equal (fn-mpxt-key-octets (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))
+       (equal (fn-mpxt-key-octets (update-fn-mpxt-stuck n fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))))
 
 (in-theory (disable fn-mpxt-key-octets))
 
@@ -774,7 +801,8 @@
 (defthm fn-mpxt-write-slot-frame
   (and (equal (fn-mpxt-pages (fn-mpxt-write-slot p j tag seq fn-mpxt)) (fn-mpxt-pages fn-mpxt))
        (equal (fn-mpxt-count (fn-mpxt-write-slot p j tag seq fn-mpxt)) (fn-mpxt-count fn-mpxt))
-       (equal (fn-mpxt-key-octets (fn-mpxt-write-slot p j tag seq fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))))
+       (equal (fn-mpxt-key-octets (fn-mpxt-write-slot p j tag seq fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))
+       (equal (fn-mpxt-stuck (fn-mpxt-write-slot p j tag seq fn-mpxt)) (fn-mpxt-stuck fn-mpxt))))
 
 (defthm fn-mpxt-write-slot-shape
   (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-slot-guardp p j fn-mpxt)
@@ -806,7 +834,8 @@
 (defthm fn-mpxt-put-run-frame
   (and (equal (fn-mpxt-pages (mv-nth 1 (fn-mpxt-put-run tag seq p k fn-mpxt))) (fn-mpxt-pages fn-mpxt))
        (equal (fn-mpxt-count (mv-nth 1 (fn-mpxt-put-run tag seq p k fn-mpxt))) (fn-mpxt-count fn-mpxt))
-       (equal (fn-mpxt-key-octets (mv-nth 1 (fn-mpxt-put-run tag seq p k fn-mpxt))) (fn-mpxt-key-octets fn-mpxt))))
+       (equal (fn-mpxt-key-octets (mv-nth 1 (fn-mpxt-put-run tag seq p k fn-mpxt))) (fn-mpxt-key-octets fn-mpxt))
+       (equal (fn-mpxt-stuck (mv-nth 1 (fn-mpxt-put-run tag seq p k fn-mpxt))) (fn-mpxt-stuck fn-mpxt))))
 
 (defthm fn-mpxt-put-run-shape
   (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt)
@@ -846,7 +875,8 @@
 (defthm fn-mpxt-put-frame
   (and (equal (fn-mpxt-pages (mv-nth 1 (fn-mpxt-put tag seq fn-mpxt))) (fn-mpxt-pages fn-mpxt))
        (equal (fn-mpxt-count (mv-nth 1 (fn-mpxt-put tag seq fn-mpxt))) (fn-mpxt-count fn-mpxt))
-       (equal (fn-mpxt-key-octets (mv-nth 1 (fn-mpxt-put tag seq fn-mpxt))) (fn-mpxt-key-octets fn-mpxt))))
+       (equal (fn-mpxt-key-octets (mv-nth 1 (fn-mpxt-put tag seq fn-mpxt))) (fn-mpxt-key-octets fn-mpxt))
+       (equal (fn-mpxt-stuck (mv-nth 1 (fn-mpxt-put tag seq fn-mpxt))) (fn-mpxt-stuck fn-mpxt))))
 
 (defthm fn-mpxt-put-shape
   (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt)
@@ -905,6 +935,7 @@
   (declare (xargs :stobjs fn-mpxt))
   (let* ((fn-mpxt (update-fn-mpxt-pages 0 fn-mpxt))
          (fn-mpxt (update-fn-mpxt-count 0 fn-mpxt))
+         (fn-mpxt (update-fn-mpxt-stuck 0 fn-mpxt))
          (fn-mpxt (resize-fn-mpxt-w 0 fn-mpxt)))
     fn-mpxt))
 
@@ -913,6 +944,7 @@
            (and (fn-mpxtp (fn-mpxt-clear fn-mpxt))
                 (equal (fn-mpxt-pages (fn-mpxt-clear fn-mpxt)) 0)
                 (equal (fn-mpxt-count (fn-mpxt-clear fn-mpxt)) 0)
+                (equal (fn-mpxt-stuck (fn-mpxt-clear fn-mpxt)) 0)
                 (equal (fn-mpxt-w-length (fn-mpxt-clear fn-mpxt)) 0)
                 (equal (fn-mpxt-key-octets (fn-mpxt-clear fn-mpxt)) (fn-mpxt-key-octets fn-mpxt)))))
 
@@ -926,6 +958,7 @@
   (fn-mpxt2-pages :type (integer 0 *) :initially 0)
   (fn-mpxt2-count :type (integer 0 *) :initially 0)
   (fn-mpxt2-key :type (array (unsigned-byte 8) (32)) :initially 0)
+  (fn-mpxt2-stuck :type (integer 0 1) :initially 0)
   :inline t
   :congruent-to fn-mpxt)
 
@@ -956,7 +989,8 @@
 (defthm fn-mpxt-put-all-checked-frame
   (and (equal (fn-mpxt-pages (mv-nth 1 (fn-mpxt-put-all-checked es fn-mpxt))) (fn-mpxt-pages fn-mpxt))
        (equal (fn-mpxt-count (mv-nth 1 (fn-mpxt-put-all-checked es fn-mpxt))) (fn-mpxt-count fn-mpxt))
-       (equal (fn-mpxt-key-octets (mv-nth 1 (fn-mpxt-put-all-checked es fn-mpxt))) (fn-mpxt-key-octets fn-mpxt))))
+       (equal (fn-mpxt-key-octets (mv-nth 1 (fn-mpxt-put-all-checked es fn-mpxt))) (fn-mpxt-key-octets fn-mpxt))
+       (equal (fn-mpxt-stuck (mv-nth 1 (fn-mpxt-put-all-checked es fn-mpxt))) (fn-mpxt-stuck fn-mpxt))))
 
 (defthm fn-mpxt-put-all-checked-shape
   (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt) (fn-mpxt-entriesp es))
@@ -979,7 +1013,8 @@
            (and (fn-mpxtp (fn-mpxt-copy-key i fn-mpxt fn-mpxt2))
                 (equal (fn-mpxt-pages (fn-mpxt-copy-key i fn-mpxt fn-mpxt2)) (fn-mpxt-pages fn-mpxt2))
                 (equal (fn-mpxt-count (fn-mpxt-copy-key i fn-mpxt fn-mpxt2)) (fn-mpxt-count fn-mpxt2))
-                (equal (fn-mpxt-w-length (fn-mpxt-copy-key i fn-mpxt fn-mpxt2)) (fn-mpxt-w-length fn-mpxt2))))
+                (equal (fn-mpxt-w-length (fn-mpxt-copy-key i fn-mpxt fn-mpxt2)) (fn-mpxt-w-length fn-mpxt2))
+                (equal (fn-mpxt-stuck (fn-mpxt-copy-key i fn-mpxt fn-mpxt2)) (fn-mpxt-stuck fn-mpxt2))))
   :hints (("Goal" :induct (fn-mpxt-copy-key i fn-mpxt fn-mpxt2))))
 
 (defthm fn-mpxt-keyi-of-copy-key-below
@@ -1026,7 +1061,8 @@
                           (if (zp (fn-mpxt-pages fn-mpxt)) 1 (* 2 (fn-mpxt-pages fn-mpxt)))))
                 (equal (fn-mpxt-count (mv-nth 1 (fn-mpxt-grow-into fn-mpxt fn-mpxt2))) (fn-mpxt-count fn-mpxt))
                 (equal (fn-mpxt-key-octets (mv-nth 1 (fn-mpxt-grow-into fn-mpxt fn-mpxt2)))
-                       (fn-mpxt-key-octets fn-mpxt))))
+                       (fn-mpxt-key-octets fn-mpxt))
+                (equal (fn-mpxt-stuck (mv-nth 1 (fn-mpxt-grow-into fn-mpxt fn-mpxt2))) 0)))
   :hints (("Goal" :in-theory (disable fn-mpxt-entries fn-mpxt-put-all-checked fn-mpxt-copy-key))))
 
 (in-theory (disable fn-mpxt-grow-into))
@@ -1047,7 +1083,8 @@
                 (equal (fn-mpxt-w-length (fn-mpxt-copy-words i fn-mpxt2 fn-mpxt)) (fn-mpxt-w-length fn-mpxt))
                 (equal (fn-mpxt-pages (fn-mpxt-copy-words i fn-mpxt2 fn-mpxt)) (fn-mpxt-pages fn-mpxt))
                 (equal (fn-mpxt-count (fn-mpxt-copy-words i fn-mpxt2 fn-mpxt)) (fn-mpxt-count fn-mpxt))
-                (equal (fn-mpxt-key-octets (fn-mpxt-copy-words i fn-mpxt2 fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))))
+                (equal (fn-mpxt-key-octets (fn-mpxt-copy-words i fn-mpxt2 fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))
+                (equal (fn-mpxt-stuck (fn-mpxt-copy-words i fn-mpxt2 fn-mpxt)) (fn-mpxt-stuck fn-mpxt))))
   :hints (("Goal" :induct (fn-mpxt-copy-words i fn-mpxt2 fn-mpxt))))
 
 ; ADOPT the generation in FN-MPXT2: its words, pages and count become the
@@ -1068,7 +1105,8 @@
                 (equal (fn-mpxt-w-length (fn-mpxt-adopt fn-mpxt2 fn-mpxt)) (fn-mpxt-w-length fn-mpxt2))
                 (equal (fn-mpxt-pages (fn-mpxt-adopt fn-mpxt2 fn-mpxt)) (fn-mpxt-pages fn-mpxt2))
                 (equal (fn-mpxt-count (fn-mpxt-adopt fn-mpxt2 fn-mpxt)) (fn-mpxt-count fn-mpxt2))
-                (equal (fn-mpxt-key-octets (fn-mpxt-adopt fn-mpxt2 fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))))
+                (equal (fn-mpxt-key-octets (fn-mpxt-adopt fn-mpxt2 fn-mpxt)) (fn-mpxt-key-octets fn-mpxt))
+                (equal (fn-mpxt-stuck (fn-mpxt-adopt fn-mpxt2 fn-mpxt)) (fn-mpxt-stuck fn-mpxt))))
   :hints (("Goal" :in-theory (disable fn-mpxt-copy-words))))
 
 (in-theory (disable fn-mpxt-adopt))
@@ -1092,34 +1130,88 @@
                     (fn-mpxt-w-length (mv-nth 1 (fn-mpxt-grow fn-mpxt fn-mpxt2))))
                 (equal (fn-mpxt-count (mv-nth 1 (fn-mpxt-grow fn-mpxt fn-mpxt2))) (fn-mpxt-count fn-mpxt))
                 (equal (fn-mpxt-key-octets (mv-nth 1 (fn-mpxt-grow fn-mpxt fn-mpxt2))) (fn-mpxt-key-octets fn-mpxt))
+                (equal (fn-mpxt-stuck (mv-nth 1 (fn-mpxt-grow fn-mpxt fn-mpxt2))) (fn-mpxt-stuck fn-mpxt))
                 (implies (not (mv-nth 0 (fn-mpxt-grow fn-mpxt fn-mpxt2)))
                          (equal (mv-nth 1 (fn-mpxt-grow fn-mpxt fn-mpxt2)) fn-mpxt)))))
 
 (in-theory (disable fn-mpxt-grow))
 
-; ADD (TAG, SEQ) as the N-th entry: grow at half the slots, then place;
-; (mv outcome fn-mpxt fn-mpxt2), the outcome :placed, or :mpx-saturated with
-; the table unchanged (a grow that could not re-place every entry, or a
-; home page and its overflow both full).
+; THE FIRST PAGE, made in place from a table of no pages: the words
+; resized from none (so every slot is empty), one page.
+(defun fn-mpxt-first-page (fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt))
+  (let* ((fn-mpxt (resize-fn-mpxt-w 0 fn-mpxt))
+         (fn-mpxt (resize-fn-mpxt-w *fn-mpxt-page-words* fn-mpxt))
+         (fn-mpxt (update-fn-mpxt-pages 1 fn-mpxt)))
+    fn-mpxt))
+
+(defthm fn-mpxt-first-page-shape
+  (implies (fn-mpxtp fn-mpxt)
+           (and (fn-mpxtp (fn-mpxt-first-page fn-mpxt))
+                (equal (fn-mpxt-pages (fn-mpxt-first-page fn-mpxt)) 1)
+                (equal (fn-mpxt-w-length (fn-mpxt-first-page fn-mpxt)) *fn-mpxt-page-words*)
+                (equal (fn-mpxt-count (fn-mpxt-first-page fn-mpxt)) (fn-mpxt-count fn-mpxt))
+                (equal (fn-mpxt-stuck (fn-mpxt-first-page fn-mpxt)) (fn-mpxt-stuck fn-mpxt))
+                (equal (fn-mpxt-key-octets (fn-mpxt-first-page fn-mpxt)) (fn-mpxt-key-octets fn-mpxt)))))
+
+(in-theory (disable fn-mpxt-first-page))
+
+; ADD (TAG, SEQ) as the N-th entry: place, count, then grow at half the
+; slots -- the next generation beside the table, adopted only when every
+; entry landed; a generation that could not be built marks the table STUCK
+; and is not attempted again before a rebuild (the health state names it).
+; From no pages the first page is made first.  (mv outcome fn-mpxt
+; fn-mpxt2): :placed, or :mpx-saturated with the table unchanged (the home
+; page and its overflow both full).  The outcome is decided by
+; `fn-mpxt-saturatedp' of the table as it is (fn-mpxt-add-places-iff-not-
+; saturated, section 7): the served POST asks it before durable acceptance.
+;; `mv-nth' stays closed from here: a rule about the first value of a
+;; multiple value is stated and matched as (mv-nth 0 ...), never as (car ...).
+(local (in-theory (disable mv-nth)))
+
+; SETTLE after a placement: count it; at half the slots grow, unless stuck;
+; a generation that could not be built sets the stuck bit.
+(defun fn-mpxt-settle (fn-mpxt fn-mpxt2)
+  (declare (xargs :stobjs (fn-mpxt fn-mpxt2) :guard (fn-mpxt-wfp fn-mpxt)
+                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-grow)))))
+  (let ((fn-mpxt (update-fn-mpxt-count (+ 1 (fn-mpxt-count fn-mpxt)) fn-mpxt)))
+    (if (and (>= (* 2 (fn-mpxt-count fn-mpxt))
+                 (* *fn-mpxt-page-slots* (fn-mpxt-pages fn-mpxt)))
+             (eql 0 (fn-mpxt-stuck fn-mpxt)))
+        (mv-let (ok fn-mpxt fn-mpxt2)
+          (fn-mpxt-grow fn-mpxt fn-mpxt2)
+          (if ok
+              (mv fn-mpxt fn-mpxt2)
+            (let ((fn-mpxt (update-fn-mpxt-stuck 1 fn-mpxt)))
+              (mv fn-mpxt fn-mpxt2))))
+      (mv fn-mpxt fn-mpxt2))))
+
+(defthm fn-mpxt-settle-shape
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt) (fn-mpxtp fn-mpxt2))
+           (and (fn-mpxtp (mv-nth 0 (fn-mpxt-settle fn-mpxt fn-mpxt2)))
+                (fn-mpxtp (mv-nth 1 (fn-mpxt-settle fn-mpxt fn-mpxt2)))
+                (<= (* *fn-mpxt-page-words* (fn-mpxt-pages (mv-nth 0 (fn-mpxt-settle fn-mpxt fn-mpxt2))))
+                    (fn-mpxt-w-length (mv-nth 0 (fn-mpxt-settle fn-mpxt fn-mpxt2))))
+                (equal (fn-mpxt-count (mv-nth 0 (fn-mpxt-settle fn-mpxt fn-mpxt2))) (+ 1 (fn-mpxt-count fn-mpxt)))
+                (equal (fn-mpxt-key-octets (mv-nth 0 (fn-mpxt-settle fn-mpxt fn-mpxt2))) (fn-mpxt-key-octets fn-mpxt))))
+  :hints (("Goal" :in-theory (disable fn-mpxt-grow))))
+
+(in-theory (disable fn-mpxt-settle))
+
 (defun fn-mpxt-add (tag seq fn-mpxt fn-mpxt2)
   (declare (xargs :stobjs (fn-mpxt fn-mpxt2)
                   :guard (and (natp tag) (< tag *fn-mpxt-word-limit*)
                               (natp seq) (< (+ 1 seq) *fn-mpxt-word-limit*)
                               (fn-mpxt-wfp fn-mpxt))
-                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-grow fn-mpxt-put)))))
-  (mv-let (ok fn-mpxt fn-mpxt2)
-    (if (>= (* 2 (fn-mpxt-count fn-mpxt))
-            (* *fn-mpxt-page-slots* (fn-mpxt-pages fn-mpxt)))
-        (fn-mpxt-grow fn-mpxt fn-mpxt2)
-      (mv t fn-mpxt fn-mpxt2))
-    (if (not ok)
-        (mv :mpx-saturated fn-mpxt fn-mpxt2)
-      (mv-let (placed fn-mpxt)
-        (fn-mpxt-put tag seq fn-mpxt)
-        (if placed
-            (let ((fn-mpxt (update-fn-mpxt-count (+ 1 (fn-mpxt-count fn-mpxt)) fn-mpxt)))
-              (mv :placed fn-mpxt fn-mpxt2))
-          (mv :mpx-saturated fn-mpxt fn-mpxt2))))))
+                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-settle fn-mpxt-put)))))
+  (let ((fn-mpxt (if (zp (fn-mpxt-pages fn-mpxt)) (fn-mpxt-first-page fn-mpxt) fn-mpxt)))
+    (mv-let (placed fn-mpxt)
+      (fn-mpxt-put tag seq fn-mpxt)
+      (if (not placed)
+          (mv :mpx-saturated fn-mpxt fn-mpxt2)
+        (mv-let (fn-mpxt fn-mpxt2)
+          (fn-mpxt-settle fn-mpxt fn-mpxt2)
+          (mv :placed fn-mpxt fn-mpxt2))))))
 
 (defthm fn-mpxt-add-shape
   (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt) (fn-mpxtp fn-mpxt2)
@@ -1129,28 +1221,26 @@
                 (fn-mpxtp (mv-nth 2 (fn-mpxt-add tag seq fn-mpxt fn-mpxt2)))
                 (<= (* *fn-mpxt-page-words* (fn-mpxt-pages (mv-nth 1 (fn-mpxt-add tag seq fn-mpxt fn-mpxt2))))
                     (fn-mpxt-w-length (mv-nth 1 (fn-mpxt-add tag seq fn-mpxt fn-mpxt2))))))
-  :hints (("Goal" :in-theory (disable fn-mpxt-put fn-mpxt-grow))))
+  :hints (("Goal" :in-theory (disable fn-mpxt-put fn-mpxt-settle))))
 
 (defthm fn-mpxt-add-key
-  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt) (fn-mpxtp fn-mpxt2))
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt) (fn-mpxtp fn-mpxt2)
+                (natp tag) (< tag *fn-mpxt-word-limit*)
+                (natp seq) (< (+ 1 seq) *fn-mpxt-word-limit*))
            (equal (fn-mpxt-key-octets (mv-nth 1 (fn-mpxt-add tag seq fn-mpxt fn-mpxt2))) (fn-mpxt-key-octets fn-mpxt)))
-  :hints (("Goal" :in-theory (disable fn-mpxt-put fn-mpxt-grow))))
+  :hints (("Goal" :in-theory (disable fn-mpxt-put fn-mpxt-settle))))
 
-; SATURATED keeps the table: nothing is counted, and unless a generation
-; was adopted first (the grow re-placed every entry and the placement then
-; found the home page and its overflow full) the table is literally
-; unchanged.  That the adopted generation holds every mapping is the grow's
-; preservation theorem (the next READY).
+; SATURATED keeps the table: nothing is placed, nothing is counted, no
+; generation is attempted; a table with pages is literally unchanged.
 (defthm fn-mpxt-add-saturated-keeps-the-table
   (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt) (fn-mpxtp fn-mpxt2)
                 (not (equal (mv-nth 0 (fn-mpxt-add tag seq fn-mpxt fn-mpxt2)) :placed)))
            (and (equal (fn-mpxt-count (mv-nth 1 (fn-mpxt-add tag seq fn-mpxt fn-mpxt2)))
                        (fn-mpxt-count fn-mpxt))
-                (implies (or (< (* 2 (fn-mpxt-count fn-mpxt))
-                                (* *fn-mpxt-page-slots* (fn-mpxt-pages fn-mpxt)))
-                             (not (mv-nth 0 (fn-mpxt-grow fn-mpxt fn-mpxt2))))
+                (equal (mv-nth 2 (fn-mpxt-add tag seq fn-mpxt fn-mpxt2)) fn-mpxt2)
+                (implies (posp (fn-mpxt-pages fn-mpxt))
                          (equal (mv-nth 1 (fn-mpxt-add tag seq fn-mpxt fn-mpxt2)) fn-mpxt))))
-  :hints (("Goal" :in-theory (disable fn-mpxt-put fn-mpxt-grow))))
+  :hints (("Goal" :in-theory (disable fn-mpxt-put fn-mpxt-settle))))
 
 (in-theory (disable fn-mpxt-add))
 
@@ -1181,6 +1271,7 @@
 (defthm fn-mpxt-set-key-from-frame
   (and (equal (fn-mpxt-pages (fn-mpxt-set-key-from i key fn-mpxt)) (fn-mpxt-pages fn-mpxt))
        (equal (fn-mpxt-count (fn-mpxt-set-key-from i key fn-mpxt)) (fn-mpxt-count fn-mpxt))
+       (equal (fn-mpxt-stuck (fn-mpxt-set-key-from i key fn-mpxt)) (fn-mpxt-stuck fn-mpxt))
        (equal (fn-mpxt-w-length (fn-mpxt-set-key-from i key fn-mpxt)) (fn-mpxt-w-length fn-mpxt)))
   :hints (("Goal" :induct (fn-mpxt-set-key-from i key fn-mpxt))))
 
@@ -1196,6 +1287,7 @@
            (and (fn-mpxtp (fn-mpxt-set-key key fn-mpxt))
                 (equal (fn-mpxt-pages (fn-mpxt-set-key key fn-mpxt)) 0)
                 (equal (fn-mpxt-count (fn-mpxt-set-key key fn-mpxt)) 0)
+                (equal (fn-mpxt-stuck (fn-mpxt-set-key key fn-mpxt)) 0)
                 (equal (fn-mpxt-w-length (fn-mpxt-set-key key fn-mpxt)) 0))))
 
 (defthm fn-mpxt-set-key-faithful-nil
@@ -1729,3 +1821,543 @@
            :use ((:instance fn-mpxt-no-adjacent-fullp-page
                             (np (fn-mpxt-pages fn-mpxt))
                             (q (fn-mpx-home tag (fn-mpxt-pages fn-mpxt))))))))
+
+; -----------------------------------------------------------------------------
+; 7. GROW'S PRESERVATION, THE ADD'S, AND THE FOLD (lane paged-history-4, row
+; P2: THE SWITCH).  The catalog's table is the fold of `fn-mpxt-add' over
+; its rows from the set-keyed empty table (`fn-mpxt-build'); a fold whose
+; every step placed is faithful (`fn-mpxt-build-faithful'), and the served
+; reader answers the row walk under it (books/catalog.lisp's
+; correspondence).
+
+; 7a. THE READER READS ONLY THE PAGES' WORDS: two tables whose pages and
+; page words agree answer alike (the count, the stuck bit and -- for the
+; candidates -- the key are never read).  `fn-mpxt2' stands for the second
+; table (any value, in the logic).
+(defun fn-mpxt-words-agree (i fn-mpxt fn-mpxt2)
+  (declare (xargs :stobjs (fn-mpxt fn-mpxt2) :measure (nfix i) :verify-guards nil))
+  (if (zp i)
+      t
+    (and (equal (fn-mpxt-wi (1- i) fn-mpxt) (fn-mpxt-wi (1- i) fn-mpxt2))
+         (fn-mpxt-words-agree (1- i) fn-mpxt fn-mpxt2))))
+
+(defthm fn-mpxt-words-agree-wi
+  (implies (and (fn-mpxt-words-agree n fn-mpxt fn-mpxt2) (natp k) (natp n) (< k n))
+           (equal (fn-mpxt-wi k fn-mpxt) (fn-mpxt-wi k fn-mpxt2))))
+
+(defun fn-mpxt-same-pages (fn-mpxt fn-mpxt2)
+  (declare (xargs :stobjs (fn-mpxt fn-mpxt2) :verify-guards nil))
+  (and (equal (fn-mpxt-pages fn-mpxt) (fn-mpxt-pages fn-mpxt2))
+       (fn-mpxt-words-agree (* *fn-mpxt-page-words* (fn-mpxt-pages fn-mpxt)) fn-mpxt fn-mpxt2)))
+
+(defthm fn-mpxt-same-pages-pages
+  (implies (fn-mpxt-same-pages fn-mpxt fn-mpxt2)
+           (equal (fn-mpxt-pages fn-mpxt2) (fn-mpxt-pages fn-mpxt))))
+
+(defthm fn-mpxt-same-pages-tag-at
+  (implies (and (fn-mpxt-same-pages fn-mpxt fn-mpxt2) (natp (fn-mpxt-pages fn-mpxt))
+                (natp p) (< p (fn-mpxt-pages fn-mpxt)) (natp j) (< j *fn-mpxt-page-slots*))
+           (and (equal (fn-mpxt-tag-at p j fn-mpxt2) (fn-mpxt-tag-at p j fn-mpxt))
+                (equal (fn-mpxt-seq-at p j fn-mpxt2) (fn-mpxt-seq-at p j fn-mpxt))))
+  :hints (("Goal" :in-theory (enable fn-mpxt-tag-at fn-mpxt-seq-at fn-mpxt-slot)
+           :use ((:instance fn-mpxt-words-agree-wi (n (* *fn-mpxt-page-words* (fn-mpxt-pages fn-mpxt)))
+                            (k (+ (* *fn-mpxt-page-words* p) j)))
+                 (:instance fn-mpxt-words-agree-wi (n (* *fn-mpxt-page-words* (fn-mpxt-pages fn-mpxt)))
+                            (k (+ *fn-mpxt-page-slots* (* *fn-mpxt-page-words* p) j)))))))
+
+(local (in-theory (disable fn-mpxt-same-pages)))
+
+(defthm fn-mpxt-same-pages-scan
+  (implies (and (fn-mpxt-same-pages fn-mpxt fn-mpxt2) (natp (fn-mpxt-pages fn-mpxt))
+                (natp p) (< p (fn-mpxt-pages fn-mpxt)) (natp j) (<= j *fn-mpxt-page-slots*))
+           (equal (fn-mpxt-scan tag p j acc fn-mpxt2) (fn-mpxt-scan tag p j acc fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-scan tag p j acc fn-mpxt))))
+
+(defthm fn-mpxt-same-pages-page-fullp
+  (implies (and (fn-mpxt-same-pages fn-mpxt fn-mpxt2) (natp (fn-mpxt-pages fn-mpxt))
+                (natp p) (< p (fn-mpxt-pages fn-mpxt)) (natp j) (<= j *fn-mpxt-page-slots*))
+           (equal (fn-mpxt-page-fullp p j fn-mpxt2) (fn-mpxt-page-fullp p j fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-page-fullp p j fn-mpxt))))
+
+(defthm fn-mpxt-same-pages-run
+  (implies (and (fn-mpxt-same-pages fn-mpxt fn-mpxt2) (natp (fn-mpxt-pages fn-mpxt))
+                (natp p) (< p (fn-mpxt-pages fn-mpxt)))
+           (equal (fn-mpxt-run tag p k acc fn-mpxt2) (fn-mpxt-run tag p k acc fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-run tag p k acc fn-mpxt)
+           :in-theory (disable fn-mpxt-scan fn-mpxt-page-fullp))))
+
+(defthm fn-mpxt-same-pages-candidates
+  (implies (and (fn-mpxt-same-pages fn-mpxt fn-mpxt2) (natp (fn-mpxt-pages fn-mpxt)) (natp tag))
+           (equal (fn-mpxt-candidates tag fn-mpxt2) (fn-mpxt-candidates tag fn-mpxt)))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-candidates) (fn-mpxt-run)))))
+
+(defthm fn-mpxt-same-pages-page-okp
+  (implies (and (fn-mpxt-same-pages fn-mpxt fn-mpxt2) (natp (fn-mpxt-pages fn-mpxt))
+                (natp p) (< p (fn-mpxt-pages fn-mpxt)) (natp j) (<= j *fn-mpxt-page-slots*))
+           (equal (fn-mpxt-page-okp p j n fn-mpxt2) (fn-mpxt-page-okp p j n fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-page-okp p j n fn-mpxt))))
+
+(defthm fn-mpxt-same-pages-pages-okp
+  (implies (and (fn-mpxt-same-pages fn-mpxt fn-mpxt2) (natp (fn-mpxt-pages fn-mpxt))
+                (natp p) (<= p (fn-mpxt-pages fn-mpxt)))
+           (equal (fn-mpxt-pages-okp p n fn-mpxt2) (fn-mpxt-pages-okp p n fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-pages-okp p n fn-mpxt)
+           :in-theory (disable fn-mpxt-page-okp))))
+
+(defthm fn-mpxt-same-pages-okp
+  (implies (and (fn-mpxt-same-pages fn-mpxt fn-mpxt2) (natp (fn-mpxt-pages fn-mpxt)))
+           (equal (fn-mpxt-okp n fn-mpxt2) (fn-mpxt-okp n fn-mpxt)))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-okp) (fn-mpxt-pages-okp)))))
+
+(defthm fn-mpxt-same-pages-faithful-from
+  (implies (and (fn-mpxt-same-pages fn-mpxt fn-mpxt2) (natp (fn-mpxt-pages fn-mpxt))
+                (equal (fn-mpxt-key-octets fn-mpxt2) (fn-mpxt-key-octets fn-mpxt)))
+           (equal (fn-mpxt-faithful-from i rows fn-mpxt2) (fn-mpxt-faithful-from i rows fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-faithful-from i rows fn-mpxt)
+           :in-theory (disable fn-mpxt-candidates))))
+
+(defthm fn-mpxt-same-pages-faithful
+  (implies (and (fn-mpxt-same-pages fn-mpxt fn-mpxt2) (natp (fn-mpxt-pages fn-mpxt))
+                (equal (fn-mpxt-key-octets fn-mpxt2) (fn-mpxt-key-octets fn-mpxt)))
+           (equal (fn-mpxt-faithful rows fn-mpxt2) (fn-mpxt-faithful rows fn-mpxt)))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-faithful) (fn-mpxt-okp fn-mpxt-faithful-from)))))
+
+(defthm fn-mpxt-same-pages-saturatedp
+  (implies (and (fn-mpxt-same-pages fn-mpxt fn-mpxt2) (natp (fn-mpxt-pages fn-mpxt)) (natp tag))
+           (equal (fn-mpxt-saturatedp tag fn-mpxt2) (fn-mpxt-saturatedp tag fn-mpxt)))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-saturatedp fn-mpxt-next) (fn-mpxt-page-fullp)))))
+
+; The count and the stuck bit are not pages.
+(defthm fn-mpxt-words-agree-refl
+  (fn-mpxt-words-agree i fn-mpxt fn-mpxt))
+
+(defthm fn-mpxt-words-agree-of-scalar-updates
+  (and (fn-mpxt-words-agree i (update-fn-mpxt-count n fn-mpxt) fn-mpxt)
+       (fn-mpxt-words-agree i (update-fn-mpxt-stuck n fn-mpxt) fn-mpxt)
+       (fn-mpxt-words-agree i (update-fn-mpxt-keyi j v fn-mpxt) fn-mpxt))
+  :hints (("Goal" :induct (fn-mpxt-words-agree i fn-mpxt fn-mpxt))))
+
+(defthm fn-mpxt-same-pages-of-scalar-updates
+  (and (fn-mpxt-same-pages (update-fn-mpxt-count n fn-mpxt) fn-mpxt)
+       (fn-mpxt-same-pages (update-fn-mpxt-stuck n fn-mpxt) fn-mpxt))
+  :hints (("Goal" :in-theory (enable fn-mpxt-same-pages))))
+
+(defthm fn-mpxt-reader-of-scalar-updates
+  (implies (and (natp (fn-mpxt-pages fn-mpxt)) (natp tag))
+           (and (equal (fn-mpxt-candidates tag (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-candidates tag fn-mpxt))
+                (equal (fn-mpxt-candidates tag (update-fn-mpxt-stuck n fn-mpxt)) (fn-mpxt-candidates tag fn-mpxt))
+                (equal (fn-mpxt-okp m (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-okp m fn-mpxt))
+                (equal (fn-mpxt-okp m (update-fn-mpxt-stuck n fn-mpxt)) (fn-mpxt-okp m fn-mpxt))
+                (equal (fn-mpxt-faithful rows (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-faithful rows fn-mpxt))
+                (equal (fn-mpxt-faithful rows (update-fn-mpxt-stuck n fn-mpxt)) (fn-mpxt-faithful rows fn-mpxt))
+                (equal (fn-mpxt-saturatedp tag (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-saturatedp tag fn-mpxt))
+                (equal (fn-mpxt-saturatedp tag (update-fn-mpxt-stuck n fn-mpxt)) (fn-mpxt-saturatedp tag fn-mpxt))))
+  :hints (("Goal" :use ((:instance fn-mpxt-same-pages-candidates (fn-mpxt2 fn-mpxt) (fn-mpxt (update-fn-mpxt-count n fn-mpxt)))
+                        (:instance fn-mpxt-same-pages-candidates (fn-mpxt2 fn-mpxt) (fn-mpxt (update-fn-mpxt-stuck n fn-mpxt)))
+                        (:instance fn-mpxt-same-pages-okp (n m) (fn-mpxt2 fn-mpxt) (fn-mpxt (update-fn-mpxt-count n fn-mpxt)))
+                        (:instance fn-mpxt-same-pages-okp (n m) (fn-mpxt2 fn-mpxt) (fn-mpxt (update-fn-mpxt-stuck n fn-mpxt)))
+                        (:instance fn-mpxt-same-pages-faithful (fn-mpxt2 fn-mpxt) (fn-mpxt (update-fn-mpxt-count n fn-mpxt)))
+                        (:instance fn-mpxt-same-pages-faithful (fn-mpxt2 fn-mpxt) (fn-mpxt (update-fn-mpxt-stuck n fn-mpxt)))
+                        (:instance fn-mpxt-same-pages-saturatedp (fn-mpxt2 fn-mpxt) (fn-mpxt (update-fn-mpxt-count n fn-mpxt)))
+                        (:instance fn-mpxt-same-pages-saturatedp (fn-mpxt2 fn-mpxt) (fn-mpxt (update-fn-mpxt-stuck n fn-mpxt))))
+           :in-theory (disable fn-mpxt-same-pages-candidates fn-mpxt-same-pages-okp fn-mpxt-same-pages-faithful
+                               fn-mpxt-same-pages-saturatedp fn-mpxt-candidates fn-mpxt-okp fn-mpxt-faithful
+                               fn-mpxt-saturatedp))))
+
+; ADOPT reads as the generation it adopted: its words below its length.
+(defthm fn-mpxt-wi-of-copy-words
+  (implies (and (natp k) (natp i) (< k (fn-mpxt-w-length fn-mpxt)) (<= i (fn-mpxt-w-length fn-mpxt)))
+           (equal (fn-mpxt-wi k (fn-mpxt-copy-words i fn-mpxt2 fn-mpxt))
+                  (if (< k i) (fn-mpxt-wi k fn-mpxt2) (fn-mpxt-wi k fn-mpxt))))
+  :hints (("Goal" :induct (fn-mpxt-copy-words i fn-mpxt2 fn-mpxt))))
+
+(defthm fn-mpxt-w-length-of-copy-words
+  (implies (<= i (fn-mpxt-w-length fn-mpxt))
+           (equal (fn-mpxt-w-length (fn-mpxt-copy-words i fn-mpxt2 fn-mpxt)) (fn-mpxt-w-length fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-copy-words i fn-mpxt2 fn-mpxt))))
+
+(defthm fn-mpxt-wi-of-adopt
+  (implies (and (natp k) (< k (fn-mpxt-w-length fn-mpxt2)))
+           (equal (fn-mpxt-wi k (fn-mpxt-adopt fn-mpxt2 fn-mpxt)) (fn-mpxt-wi k fn-mpxt2)))
+  :hints (("Goal" :in-theory (enable fn-mpxt-adopt))))
+
+(defthm fn-mpxt-words-agree-adopt
+  (implies (and (natp i) (<= i (fn-mpxt-w-length fn-mpxt2)))
+           (fn-mpxt-words-agree i (fn-mpxt-adopt fn-mpxt2 fn-mpxt) fn-mpxt2))
+  :hints (("Goal" :induct (fn-mpxt-words-agree i (fn-mpxt-adopt fn-mpxt2 fn-mpxt) fn-mpxt2)
+           :in-theory (disable fn-mpxt-adopt))))
+
+(defthm fn-mpxt-same-pages-adopt
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxtp fn-mpxt2) (fn-mpxt-wfp fn-mpxt2))
+           (fn-mpxt-same-pages (fn-mpxt-adopt fn-mpxt2 fn-mpxt) fn-mpxt2))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-same-pages) (fn-mpxt-adopt fn-mpxt-words-agree)))))
+
+(defthm fn-mpxt-faithful-of-adopt
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxtp fn-mpxt2) (fn-mpxt-wfp fn-mpxt2)
+                (equal (fn-mpxt-key-octets fn-mpxt2) (fn-mpxt-key-octets fn-mpxt)))
+           (equal (fn-mpxt-faithful rows (fn-mpxt-adopt fn-mpxt2 fn-mpxt)) (fn-mpxt-faithful rows fn-mpxt2)))
+  :hints (("Goal" :use ((:instance fn-mpxt-same-pages-faithful (fn-mpxt (fn-mpxt-adopt fn-mpxt2 fn-mpxt))))
+           :in-theory (disable fn-mpxt-same-pages-faithful fn-mpxt-faithful fn-mpxt-adopt))))
+
+; 7b. EMPTY SLOTS: a table whose words below N are 0 has no entry, no full
+; page and satisfies every slot invariant there; the first page and a
+; fresh generation are such tables.
+(defun fn-mpxt-zero-below (i fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt :measure (nfix i) :verify-guards nil))
+  (if (zp i)
+      t
+    (and (equal (fn-mpxt-wi (1- i) fn-mpxt) 0)
+         (fn-mpxt-zero-below (1- i) fn-mpxt))))
+
+(defthm fn-mpxt-zero-below-wi
+  (implies (and (fn-mpxt-zero-below n fn-mpxt) (natp k) (natp n) (< k n))
+           (equal (fn-mpxt-wi k fn-mpxt) 0)))
+
+(local (defun fn-mpxt-nth-resize-ind (i n)
+  (if (or (zp i) (zp n)) nil (fn-mpxt-nth-resize-ind (1- i) (1- n)))))
+(local (defthm fn-mpxt-nth-of-resize-list-nil
+  (implies (and (natp i) (< i (nfix n)))
+           (equal (nth i (resize-list nil n 0)) 0))
+  :hints (("Goal" :induct (fn-mpxt-nth-resize-ind i n)
+           :in-theory (enable resize-list nth)))))
+
+(local (defthm fn-mpxt-resize-list-of-atom
+  (implies (and (not (consp l)) (syntaxp (not (equal l ''nil))))
+           (equal (resize-list l n 0) (resize-list nil n 0)))
+  :hints (("Goal" :induct (resize-list nil n 0) :in-theory (enable resize-list)))))
+(local (defthm fn-mpxt-len-zero-atom
+  (implies (equal (len l) 0) (not (consp l)))
+  :rule-classes :forward-chaining))
+
+(defthm fn-mpxt-wi-of-resize-from-none
+  (implies (and (natp i) (< i (nfix n)) (equal (fn-mpxt-w-length fn-mpxt) 0))
+           (equal (fn-mpxt-wi i (resize-fn-mpxt-w n fn-mpxt)) 0))
+  :hints (("Goal" :in-theory (enable fn-mpxt-wi resize-fn-mpxt-w fn-mpxt-w-length))))
+
+(defthm fn-mpxt-zero-below-of-resize-from-none
+  (implies (and (natp i) (<= i (nfix n)) (equal (fn-mpxt-w-length fn-mpxt) 0))
+           (fn-mpxt-zero-below i (resize-fn-mpxt-w n fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-zero-below i (resize-fn-mpxt-w n fn-mpxt)))))
+
+(defthm fn-mpxt-zero-below-of-scalar-updates
+  (and (equal (fn-mpxt-zero-below i (update-fn-mpxt-pages n fn-mpxt)) (fn-mpxt-zero-below i fn-mpxt))
+       (equal (fn-mpxt-zero-below i (update-fn-mpxt-count n fn-mpxt)) (fn-mpxt-zero-below i fn-mpxt))
+       (equal (fn-mpxt-zero-below i (update-fn-mpxt-stuck n fn-mpxt)) (fn-mpxt-zero-below i fn-mpxt))
+       (equal (fn-mpxt-zero-below i (update-fn-mpxt-keyi j v fn-mpxt)) (fn-mpxt-zero-below i fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-zero-below i fn-mpxt))))
+
+(defthm fn-mpxt-wi-of-copy-key
+  (equal (fn-mpxt-wi k (fn-mpxt-copy-key i fn-mpxt fn-mpxt2)) (fn-mpxt-wi k fn-mpxt2))
+  :hints (("Goal" :induct (fn-mpxt-copy-key i fn-mpxt fn-mpxt2))))
+
+(defthm fn-mpxt-zero-below-of-copy-key
+  (equal (fn-mpxt-zero-below n (fn-mpxt-copy-key i fn-mpxt fn-mpxt2)) (fn-mpxt-zero-below n fn-mpxt2))
+  :hints (("Goal" :induct (fn-mpxt-zero-below n fn-mpxt2)
+           :in-theory (disable fn-mpxt-copy-key))))
+
+(local (in-theory (disable fn-mpxt-zero-below)))
+
+(defthm fn-mpxt-zero-below-slot
+  (implies (and (fn-mpxt-zero-below n fn-mpxt) (natp n) (natp p) (natp j) (< j *fn-mpxt-page-slots*)
+                (<= (* *fn-mpxt-page-words* (+ 1 p)) n))
+           (and (equal (fn-mpxt-tag-at p j fn-mpxt) 0)
+                (equal (fn-mpxt-seq-at p j fn-mpxt) 0)))
+  :hints (("Goal" :in-theory (enable fn-mpxt-tag-at fn-mpxt-seq-at fn-mpxt-slot))))
+
+(defthm fn-mpxt-zero-below-page-okp
+  (implies (and (fn-mpxt-zero-below n fn-mpxt) (natp n) (natp p) (natp j) (<= j *fn-mpxt-page-slots*)
+                (<= (* *fn-mpxt-page-words* (+ 1 p)) n))
+           (fn-mpxt-page-okp p j m fn-mpxt))
+  :hints (("Goal" :induct (fn-mpxt-page-okp p j m fn-mpxt))))
+
+(defthm fn-mpxt-zero-below-pages-okp
+  (implies (and (fn-mpxt-zero-below n fn-mpxt) (natp n) (natp p)
+                (<= (* *fn-mpxt-page-words* p) n))
+           (fn-mpxt-pages-okp p m fn-mpxt))
+  :hints (("Goal" :induct (fn-mpxt-pages-okp p m fn-mpxt)
+           :in-theory (disable fn-mpxt-page-okp))))
+
+(defthm fn-mpxt-zero-below-not-full
+  (implies (and (fn-mpxt-zero-below n fn-mpxt) (natp n) (natp p) (posp j) (<= j *fn-mpxt-page-slots*)
+                (<= (* *fn-mpxt-page-words* (+ 1 p)) n))
+           (not (fn-mpxt-page-fullp p j fn-mpxt)))
+  :hints (("Goal" :expand ((fn-mpxt-page-fullp p j fn-mpxt)))))
+
+(defthm fn-mpxt-first-page-zero
+  (fn-mpxt-zero-below *fn-mpxt-page-words* (fn-mpxt-first-page fn-mpxt))
+  :hints (("Goal" :in-theory (enable fn-mpxt-first-page))))
+
+(defthm fn-mpxt-first-page-frame
+  (and (equal (fn-mpxt-pages (fn-mpxt-first-page fn-mpxt)) 1)
+       (equal (fn-mpxt-w-length (fn-mpxt-first-page fn-mpxt)) *fn-mpxt-page-words*)
+       (equal (fn-mpxt-count (fn-mpxt-first-page fn-mpxt)) (fn-mpxt-count fn-mpxt))
+       (equal (fn-mpxt-stuck (fn-mpxt-first-page fn-mpxt)) (fn-mpxt-stuck fn-mpxt))
+       (equal (fn-mpxt-key-octets (fn-mpxt-first-page fn-mpxt)) (fn-mpxt-key-octets fn-mpxt)))
+  :hints (("Goal" :in-theory (enable fn-mpxt-first-page))))
+
+(defthm fn-mpxt-first-page-okp
+  (fn-mpxt-okp n (fn-mpxt-first-page fn-mpxt))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-okp) (fn-mpxt-pages-okp))
+           :use ((:instance fn-mpxt-zero-below-pages-okp (n *fn-mpxt-page-words*) (m n) (p 1)
+                            (fn-mpxt (fn-mpxt-first-page fn-mpxt)))))))
+
+(defthm fn-mpxt-first-page-faithful-nil
+  (fn-mpxt-faithful nil (fn-mpxt-first-page fn-mpxt))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-faithful) (fn-mpxt-okp fn-mpxt-first-page)))))
+
+(defthm fn-mpxt-first-page-not-saturated
+  (implies (natp tag)
+           (not (fn-mpxt-saturatedp tag (fn-mpxt-first-page fn-mpxt))))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-saturatedp fn-mpxt-next fn-mpx-home) (fn-mpxt-page-fullp fn-mpxt-first-page))
+           :use ((:instance fn-mpxt-zero-below-not-full (n *fn-mpxt-page-words*) (p 0) (j *fn-mpxt-page-slots*)
+                            (fn-mpxt (fn-mpxt-first-page fn-mpxt)))))))
+
+(defthm fn-mpxt-saturatedp-no-pages
+  (implies (zp (fn-mpxt-pages fn-mpxt))
+           (not (fn-mpxt-saturatedp tag fn-mpxt)))
+  :hints (("Goal" :in-theory (enable fn-mpxt-saturatedp))))
+
+(defthm fn-mpxt-faithful-no-pages
+  (implies (and (zp (fn-mpxt-pages fn-mpxt)) (true-listp rows) (fn-mpxt-faithful rows fn-mpxt))
+           (equal rows nil))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-mpxt-faithful fn-mpxt-candidates)
+           :expand ((fn-mpxt-faithful-from 0 rows fn-mpxt)))))
+
+; 7c. THE ADD'S OUTCOME is the table's `fn-mpxt-saturatedp' of the tag, as
+; the table is before the add: the served POST decides the refusal there.
+(defthm fn-mpxt-add-places-iff-not-saturated
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt) (natp tag))
+           (iff (equal (mv-nth 0 (fn-mpxt-add tag seq fn-mpxt fn-mpxt2)) :placed)
+                (not (fn-mpxt-saturatedp tag fn-mpxt))))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-add) (fn-mpxt-put fn-mpxt-settle fn-mpxt-first-page fn-mpxt-saturatedp
+                                                 fn-mpxt-put-places-iff-not-saturated))
+           :use ((:instance fn-mpxt-put-places-iff-not-saturated)
+                 (:instance fn-mpxt-put-places-iff-not-saturated (fn-mpxt (fn-mpxt-first-page fn-mpxt)))))))
+
+; 7d. GROW'S PRESERVATION.  A candidate is a slot's entry, so every row of
+; a faithful table is in its entries list; the checked re-placement finds
+; every entry of its list and keeps every candidate it had; a fresh
+; generation satisfies the slot invariant, and re-placing entries below N
+; keeps it.  An adopted generation is faithful to the old table's rows.
+
+; Some slot of page P below J holds entry E.
+(defun fn-mpxt-slot-holds (e p j fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt :measure (nfix j) :verify-guards nil))
+  (if (zp j)
+      nil
+    (let ((j (1- j)))
+      (or (and (not (equal 0 (fn-mpxt-tag-at p j fn-mpxt)))
+               (<= 1 (fn-mpxt-seq-at p j fn-mpxt))
+               (equal e (cons (fn-mpxt-tag-at p j fn-mpxt) (1- (fn-mpxt-seq-at p j fn-mpxt)))))
+          (fn-mpxt-slot-holds e p j fn-mpxt)))))
+
+(defthm fn-mpxt-page-entries-member
+  (iff (member-equal e (fn-mpxt-page-entries p j acc fn-mpxt))
+       (or (member-equal e acc) (fn-mpxt-slot-holds e p j fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-page-entries p j acc fn-mpxt))))
+
+(defthm fn-mpxt-scan-member-holds
+  (implies (and (member-equal s (fn-mpxt-scan tag p j acc fn-mpxt)) (nat-listp acc) (posp tag)
+                (not (member-equal s acc)))
+           (fn-mpxt-slot-holds (cons tag s) p j fn-mpxt))
+  :hints (("Goal" :induct (fn-mpxt-scan tag p j acc fn-mpxt))))
+
+; Some page below NP holds E.
+(defun fn-mpxt-held-below (e np fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt :measure (nfix np) :verify-guards nil))
+  (if (zp np)
+      nil
+    (or (fn-mpxt-slot-holds e (1- np) *fn-mpxt-page-slots* fn-mpxt)
+        (fn-mpxt-held-below e (1- np) fn-mpxt))))
+
+(defthm fn-mpxt-entries-member
+  (iff (member-equal e (fn-mpxt-entries np acc fn-mpxt))
+       (or (member-equal e acc) (fn-mpxt-held-below e np fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-entries np acc fn-mpxt)
+           :in-theory (disable fn-mpxt-page-entries fn-mpxt-slot-holds))))
+
+(defthm fn-mpxt-held-below-page
+  (implies (and (fn-mpxt-slot-holds e p *fn-mpxt-page-slots* fn-mpxt) (natp p) (natp np) (< p np))
+           (fn-mpxt-held-below e np fn-mpxt))
+  :hints (("Goal" :induct (fn-mpxt-held-below e np fn-mpxt)
+           :in-theory (disable fn-mpxt-slot-holds))))
+
+(local (in-theory (disable fn-mpxt-slot-holds fn-mpxt-held-below)))
+
+(defthm fn-mpxt-scan-member-held-below
+  (implies (and (member-equal s (fn-mpxt-scan tag p *fn-mpxt-page-slots* acc fn-mpxt)) (nat-listp acc) (posp tag)
+                (natp p) (natp np) (< p np) (not (member-equal s acc)))
+           (fn-mpxt-held-below (cons tag s) np fn-mpxt))
+  :hints (("Goal" :use ((:instance fn-mpxt-scan-member-holds (j *fn-mpxt-page-slots*))
+                        (:instance fn-mpxt-held-below-page (e (cons tag s))))
+           :in-theory (disable fn-mpxt-scan-member-holds fn-mpxt-held-below-page fn-mpxt-scan))))
+
+(defthm fn-mpxt-run-member-held
+  (implies (and (member-equal s (fn-mpxt-run tag p k acc fn-mpxt)) (nat-listp acc) (posp tag)
+                (natp p) (< p (fn-mpxt-pages fn-mpxt)) (natp (fn-mpxt-pages fn-mpxt))
+                (not (member-equal s acc)))
+           (fn-mpxt-held-below (cons tag s) (fn-mpxt-pages fn-mpxt) fn-mpxt))
+  :hints (("Goal" :induct (fn-mpxt-run tag p k acc fn-mpxt)
+           :in-theory (e/d (fn-mpxt-next) (fn-mpxt-scan fn-mpxt-page-fullp)))))
+
+(defthm fn-mpxt-candidates-entry
+  (implies (and (member-equal s (fn-mpxt-candidates tag fn-mpxt)) (posp tag) (natp (fn-mpxt-pages fn-mpxt)))
+           (member-equal (cons tag s) (fn-mpxt-entries (fn-mpxt-pages fn-mpxt) nil fn-mpxt)))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-candidates) (fn-mpxt-run fn-mpxt-entries))
+           :use ((:instance fn-mpxt-run-member-held (p (fn-mpx-home tag (fn-mpxt-pages fn-mpxt)))
+                            (k (fn-mpxt-reach (fn-mpxt-pages fn-mpxt))) (acc nil))))))
+
+; Entries with positive tags (every entry a page holds).
+(defun fn-mpxt-entries-livep (es)
+  (declare (xargs :guard (fn-mpxt-entriesp es)))
+  (if (consp es)
+      (and (posp (caar es)) (fn-mpxt-entries-livep (cdr es)))
+    t))
+
+(defthm fn-mpxt-page-entries-livep
+  (implies (fn-mpxt-entries-livep acc)
+           (fn-mpxt-entries-livep (fn-mpxt-page-entries p j acc fn-mpxt))))
+
+(defthm fn-mpxt-entries-livep-of-entries
+  (implies (fn-mpxt-entries-livep acc)
+           (fn-mpxt-entries-livep (fn-mpxt-entries np acc fn-mpxt)))
+  :hints (("Goal" :in-theory (disable fn-mpxt-page-entries))))
+
+(defthm fn-mpxt-put-keeps-candidate
+  (implies (and (natp (fn-mpxt-pages fn-mpxt)) (posp tag) (posp wtag) (natp seq)
+                (member-equal s (fn-mpxt-candidates tag fn-mpxt)))
+           (member-equal s (fn-mpxt-candidates tag (mv-nth 1 (fn-mpxt-put wtag seq fn-mpxt)))))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-put fn-mpxt-candidates) (fn-mpxt-run fn-mpxt-put-run))
+           :use ((:instance fn-mpxt-put-run-run-member
+                            (q (fn-mpx-home tag (fn-mpxt-pages fn-mpxt))) (p (fn-mpx-home wtag (fn-mpxt-pages fn-mpxt)))
+                            (k (fn-mpxt-reach (fn-mpxt-pages fn-mpxt))) (k2 (fn-mpxt-reach (fn-mpxt-pages fn-mpxt)))
+                            (acc nil))))))
+
+(defthm fn-mpxt-put-all-checked-keeps-candidate
+  (implies (and (natp (fn-mpxt-pages fn-mpxt)) (posp tag) (fn-mpxt-entriesp es) (fn-mpxt-entries-livep es)
+                (member-equal s (fn-mpxt-candidates tag fn-mpxt)))
+           (member-equal s (fn-mpxt-candidates tag (mv-nth 1 (fn-mpxt-put-all-checked es fn-mpxt)))))
+  :hints (("Goal" :induct (fn-mpxt-put-all-checked es fn-mpxt)
+           :in-theory (disable fn-mpxt-put fn-mpxt-candidates))))
+
+(defthm fn-mpxt-put-finds
+  (implies (and (posp (fn-mpxt-pages fn-mpxt)) (posp tag) (natp seq)
+                (mv-nth 0 (fn-mpxt-put tag seq fn-mpxt)))
+           (member-equal seq (fn-mpxt-candidates tag (mv-nth 1 (fn-mpxt-put tag seq fn-mpxt)))))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-put fn-mpxt-candidates) (fn-mpxt-run fn-mpxt-put-run))
+           :use ((:instance fn-mpxt-put-run-finds (wtag tag) (p (fn-mpx-home tag (fn-mpxt-pages fn-mpxt)))
+                            (k (fn-mpxt-reach (fn-mpxt-pages fn-mpxt))))))))
+
+(defthm fn-mpxt-put-all-checked-finds
+  (implies (and (posp (fn-mpxt-pages fn-mpxt)) (fn-mpxt-entriesp es) (fn-mpxt-entries-livep es)
+                (mv-nth 0 (fn-mpxt-put-all-checked es fn-mpxt)) (member-equal (cons tag s) es))
+           (member-equal s (fn-mpxt-candidates tag (mv-nth 1 (fn-mpxt-put-all-checked es fn-mpxt)))))
+  :hints (("Goal" :induct (fn-mpxt-put-all-checked es fn-mpxt)
+           :in-theory (disable fn-mpxt-put fn-mpxt-candidates))))
+
+; The slot invariant under re-placement of entries below N.
+(defun fn-mpxt-entries-below (es n)
+  (declare (xargs :guard (and (fn-mpxt-entriesp es) (natp n))))
+  (if (consp es)
+      (and (<= (+ 1 (cdar es)) n) (fn-mpxt-entries-below (cdr es) n))
+    t))
+
+(defthm fn-mpxt-put-keeps-okp
+  (implies (and (natp (fn-mpxt-pages fn-mpxt)) (posp wtag) (natp seq) (natp n) (<= (+ 1 seq) n)
+                (fn-mpxt-okp n fn-mpxt))
+           (fn-mpxt-okp n (mv-nth 1 (fn-mpxt-put wtag seq fn-mpxt))))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-put fn-mpxt-okp) (fn-mpxt-pages-okp fn-mpxt-put-run))
+           :use ((:instance fn-mpxt-pages-okp-of-put-run (p (fn-mpx-home wtag (fn-mpxt-pages fn-mpxt)))
+                            (k (fn-mpxt-reach (fn-mpxt-pages fn-mpxt))) (np (fn-mpxt-pages fn-mpxt)) (n2 n))))))
+
+(defthm fn-mpxt-put-all-checked-keeps-okp
+  (implies (and (natp (fn-mpxt-pages fn-mpxt)) (fn-mpxt-entriesp es) (fn-mpxt-entries-livep es)
+                (fn-mpxt-entries-below es n) (natp n) (fn-mpxt-okp n fn-mpxt))
+           (fn-mpxt-okp n (mv-nth 1 (fn-mpxt-put-all-checked es fn-mpxt))))
+  :hints (("Goal" :induct (fn-mpxt-put-all-checked es fn-mpxt)
+           :in-theory (disable fn-mpxt-put fn-mpxt-okp))))
+
+(defthm fn-mpxt-page-entries-below
+  (implies (and (fn-mpxt-page-okp p j n fn-mpxt) (fn-mpxt-entries-below acc n))
+           (fn-mpxt-entries-below (fn-mpxt-page-entries p j acc fn-mpxt) n))
+  :hints (("Goal" :induct (fn-mpxt-page-entries p j acc fn-mpxt))))
+
+(defthm fn-mpxt-entries-below-of-entries
+  (implies (and (fn-mpxt-pages-okp np n fn-mpxt) (fn-mpxt-entries-below acc n))
+           (fn-mpxt-entries-below (fn-mpxt-entries np acc fn-mpxt) n))
+  :hints (("Goal" :induct (fn-mpxt-entries np acc fn-mpxt)
+           :in-theory (disable fn-mpxt-page-entries fn-mpxt-page-okp))))
+
+; Faithfulness transfers to a table that re-placed a superset of the entries.
+(defthm fn-mpxt-faithful-from-transfer
+  (implies (and (fn-mpxt-faithful-from i rows fn-mpxt) (natp (fn-mpxt-pages fn-mpxt))
+                (posp (fn-mpxt-pages fn-mpxt2))
+                (equal (fn-mpxt-key-octets fn-mpxt2) (fn-mpxt-key-octets fn-mpxt))
+                (fn-mpxt-entriesp es) (fn-mpxt-entries-livep es)
+                (subsetp-equal (fn-mpxt-entries (fn-mpxt-pages fn-mpxt) nil fn-mpxt) es)
+                (mv-nth 0 (fn-mpxt-put-all-checked es fn-mpxt2)))
+           (fn-mpxt-faithful-from i rows (mv-nth 1 (fn-mpxt-put-all-checked es fn-mpxt2))))
+  :hints (("Goal" :induct (fn-mpxt-faithful-from i rows fn-mpxt)
+           :in-theory (disable fn-mpxt-candidates fn-mpxt-put-all-checked fn-mpxt-entries
+                               fn-mpxt-entries-member))))
+
+; The fresh generation before its entries are re-placed: every slot empty.
+(defthm fn-mpxt-fresh-zero
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxtp fn-mpxt2) (natp n) (<= n (nfix m)))
+           (fn-mpxt-zero-below n (resize-fn-mpxt-w m (fn-mpxt-copy-key 0 fn-mpxt (fn-mpxt-clear fn-mpxt2)))))
+  :hints (("Goal" :in-theory (disable fn-mpxt-clear fn-mpxt-copy-key))))
+
+(defthm fn-mpxt-fresh-okp
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxtp fn-mpxt2) (natp p) (equal m (* *fn-mpxt-page-words* p)))
+           (fn-mpxt-okp n (update-fn-mpxt-count c (update-fn-mpxt-pages p (resize-fn-mpxt-w m (fn-mpxt-copy-key 0 fn-mpxt (fn-mpxt-clear fn-mpxt2)))))))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-okp) (fn-mpxt-clear fn-mpxt-copy-key fn-mpxt-pages-okp fn-mpxt-zero-below-pages-okp))
+           :use ((:instance fn-mpxt-zero-below-pages-okp
+                            (n (* *fn-mpxt-page-words* p)) (m n)
+                            (fn-mpxt (update-fn-mpxt-pages p (resize-fn-mpxt-w m (fn-mpxt-copy-key 0 fn-mpxt (fn-mpxt-clear fn-mpxt2))))))))))
+
+(defthm fn-mpxt-okp-pages-okp
+  (implies (fn-mpxt-okp n fn-mpxt)
+           (fn-mpxt-pages-okp (fn-mpxt-pages fn-mpxt) n fn-mpxt))
+  :hints (("Goal" :in-theory (enable fn-mpxt-okp))))
+
+(defthm fn-mpxt-grow-into-faithful
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt) (fn-mpxtp fn-mpxt2) (true-listp rows)
+                (fn-mpxt-faithful rows fn-mpxt) (mv-nth 0 (fn-mpxt-grow-into fn-mpxt fn-mpxt2)))
+           (fn-mpxt-faithful rows (mv-nth 1 (fn-mpxt-grow-into fn-mpxt fn-mpxt2))))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-grow-into fn-mpxt-faithful)
+                                  (fn-mpxt-entries fn-mpxt-put-all-checked fn-mpxt-copy-key fn-mpxt-clear
+                                   fn-mpxt-okp fn-mpxt-pages-okp fn-mpxt-faithful-from fn-mpxt-entries-member
+                                   fn-mpxt-zero-below-pages-okp))
+           :expand ((fn-mpxt-entries 0 nil fn-mpxt)
+                    (:free (n) (fn-mpxt-pages-okp 0 n fn-mpxt)))
+           :do-not-induct t)))
+
+(defthm fn-mpxt-grow-preserves-faithful
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt) (fn-mpxtp fn-mpxt2) (true-listp rows)
+                (fn-mpxt-faithful rows fn-mpxt))
+           (fn-mpxt-faithful rows (mv-nth 1 (fn-mpxt-grow fn-mpxt fn-mpxt2))))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-grow) (fn-mpxt-grow-into fn-mpxt-adopt fn-mpxt-faithful)))))
+
+; 7e. THE ADD'S PRESERVATION: a placed row is a candidate of its tag.
+(defthm fn-mpxt-settle-preserves-faithful
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt) (fn-mpxtp fn-mpxt2) (true-listp rows)
+                (fn-mpxt-faithful rows fn-mpxt))
+           (fn-mpxt-faithful rows (mv-nth 0 (fn-mpxt-settle fn-mpxt fn-mpxt2))))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-settle) (fn-mpxt-grow fn-mpxt-faithful)))))
+
+(defthm fn-mpxt-add-preserves-faithful
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt) (fn-mpxtp fn-mpxt2) (true-listp rows)
+                (< (+ 1 (len rows)) *fn-mpxt-word-limit*)
+                (fn-mpxt-faithful rows fn-mpxt)
+                (equal (mv-nth 0 (fn-mpxt-add (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets fn-mpxt))
+                                              (len rows) fn-mpxt fn-mpxt2))
+                       :placed))
+           (fn-mpxt-faithful (append rows (list h))
+                             (mv-nth 1 (fn-mpxt-add (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets fn-mpxt))
+                                                    (len rows) fn-mpxt fn-mpxt2))))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-add) (fn-mpxt-put fn-mpxt-settle fn-mpxt-first-page fn-mpxt-faithful
+                                                 fn-mpxt-put-preserves-faithful))
+           :use ((:instance fn-mpxt-faithful-no-pages)
+                 (:instance fn-mpxt-put-preserves-faithful)
+                 (:instance fn-mpxt-put-preserves-faithful (fn-mpxt (fn-mpxt-first-page fn-mpxt)))))))
