@@ -241,6 +241,7 @@
 (include-book "owner-results")
 (include-book "owner-served-bound")
 (include-book "topic-history-local-proposals")
+(include-book "article-buffer")
 (include-book "feed-journal")
 (include-book "peer-pull")
 (include-book "peer-pull-session")
