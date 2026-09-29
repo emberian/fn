@@ -13607,7 +13607,11 @@
         "fn-mpxt-faithful-from-complete",
         "fn-mpxt-candidates-ascending",
         "fn-mpxt-candidates-below",
-        "fn-mpxt-candidates-nat-listp"
+        "fn-mpxt-candidates-nat-listp",
+        "fn-mpxt-put-preserves-faithful",
+        "fn-mpxt-put-run-finds",
+        "fn-mpxt-pages-okp-of-put-run",
+        "fn-mpxt-faithful-from-of-put-run"
       ]
     },
     {

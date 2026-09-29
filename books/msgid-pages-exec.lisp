@@ -1064,3 +1064,118 @@
                           (fn-mpxt-scan tag q k2 acc (mv-nth 1 (fn-mpxt-put-run wtag seq p k fn-mpxt)))))
   :hints (("Goal" :induct (fn-mpxt-put-run wtag seq p k fn-mpxt)
            :in-theory (disable fn-mpxt-scan))))
+
+(defthm fn-mpxt-run-first-scan-subsetp
+  (implies (and (not (zp k)) (nat-listp acc)
+                (subsetp-equal a (fn-mpxt-scan tag p *fn-mpxt-page-slots* acc fn-mpxt)))
+           (subsetp-equal a (fn-mpxt-run tag p k acc fn-mpxt)))
+  :hints (("Goal" :expand ((fn-mpxt-run tag p k acc fn-mpxt))
+           :in-theory (disable fn-mpxt-scan fn-mpxt-page-fullp fn-mpxt-run))))
+(defthm fn-mpxt-put-run-run-subsetp
+  (implies (and (natp q) (natp p) (< p (fn-mpxt-pages fn-mpxt)) (natp (fn-mpxt-pages fn-mpxt))
+                (posp tag) (posp wtag) (natp seq) (nat-listp acc))
+           (subsetp-equal (fn-mpxt-run tag q k2 acc fn-mpxt)
+                          (fn-mpxt-run tag q k2 acc (mv-nth 1 (fn-mpxt-put-run wtag seq p k fn-mpxt)))))
+  :hints (("Goal" :induct (fn-mpxt-run tag q k2 acc fn-mpxt)
+           :expand ((fn-mpxt-run tag q k2 acc (mv-nth 1 (fn-mpxt-put-run wtag seq p k fn-mpxt))))
+           :in-theory (disable fn-mpxt-scan fn-mpxt-page-fullp fn-mpxt-put-run fn-mpxt-ins))))
+(defthm fn-mpxt-put-run-run-member
+  (implies (and (natp q) (natp p) (< p (fn-mpxt-pages fn-mpxt)) (natp (fn-mpxt-pages fn-mpxt))
+                (posp tag) (posp wtag) (natp seq) (nat-listp acc)
+                (member-equal s (fn-mpxt-run tag q k2 acc fn-mpxt)))
+           (member-equal s (fn-mpxt-run tag q k2 acc (mv-nth 1 (fn-mpxt-put-run wtag seq p k fn-mpxt)))))
+  :hints (("Goal" :use fn-mpxt-put-run-run-subsetp
+           :in-theory (disable fn-mpxt-put-run-run-subsetp fn-mpxt-run fn-mpxt-put-run))))
+
+(defthm fn-mpxt-page-okp-of-write-slot
+  (implies (and (natp q) (natp p) (natp j) (< j *fn-mpxt-page-slots*) (natp k2) (<= k2 *fn-mpxt-page-slots*)
+                (posp wtag) (natp seq) (natp n) (natp n2) (<= n n2) (<= (+ 1 seq) n2)
+                (fn-mpxt-page-okp q k2 n fn-mpxt))
+           (fn-mpxt-page-okp q k2 n2 (fn-mpxt-write-slot p j wtag seq fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-page-okp q k2 n fn-mpxt))))
+(defthm fn-mpxt-pages-okp-of-write-slot
+  (implies (and (natp np) (natp p) (natp j) (< j *fn-mpxt-page-slots*)
+                (posp wtag) (natp seq) (natp n) (natp n2) (<= n n2) (<= (+ 1 seq) n2)
+                (fn-mpxt-pages-okp np n fn-mpxt))
+           (fn-mpxt-pages-okp np n2 (fn-mpxt-write-slot p j wtag seq fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-pages-okp np n fn-mpxt)
+           :in-theory (disable fn-mpxt-page-okp))))
+(defthm fn-mpxt-faithful-from-of-put-run
+  (implies (and (natp p) (< p (fn-mpxt-pages fn-mpxt)) (natp (fn-mpxt-pages fn-mpxt))
+                (posp wtag) (natp seq)
+                (fn-mpxt-faithful-from i rows fn-mpxt))
+           (fn-mpxt-faithful-from i rows (mv-nth 1 (fn-mpxt-put-run wtag seq p k fn-mpxt))))
+  :hints (("Goal" :induct (fn-mpxt-faithful-from i rows fn-mpxt)
+           :in-theory (e/d (fn-mpxt-candidates) (fn-mpxt-run fn-mpxt-put-run)))))
+
+(defthm fn-mpxt-page-okp-mono
+  (implies (and (natp n) (natp n2) (<= n n2) (fn-mpxt-page-okp q k2 n fn-mpxt))
+           (fn-mpxt-page-okp q k2 n2 fn-mpxt))
+  :hints (("Goal" :induct (fn-mpxt-page-okp q k2 n fn-mpxt))))
+(defthm fn-mpxt-pages-okp-mono
+  (implies (and (natp n) (natp n2) (<= n n2) (fn-mpxt-pages-okp np n fn-mpxt))
+           (fn-mpxt-pages-okp np n2 fn-mpxt))
+  :hints (("Goal" :induct (fn-mpxt-pages-okp np n fn-mpxt)
+           :in-theory (disable fn-mpxt-page-okp))))
+(defthm fn-mpxt-pages-okp-of-put-run
+  (implies (and (natp p) (< p (fn-mpxt-pages fn-mpxt)) (natp (fn-mpxt-pages fn-mpxt)) (natp np)
+                (posp wtag) (natp seq) (natp n) (natp n2) (<= n n2) (<= (+ 1 seq) n2)
+                (fn-mpxt-pages-okp np n fn-mpxt))
+           (fn-mpxt-pages-okp np n2 (mv-nth 1 (fn-mpxt-put-run wtag seq p k fn-mpxt))))
+  :hints (("Goal" :induct (fn-mpxt-put-run wtag seq p k fn-mpxt)
+           :in-theory (disable fn-mpxt-pages-okp))))
+(defthm fn-mpxt-run-member-from-nil
+  (implies (and (nat-listp acc) (member-equal s (fn-mpxt-run tag p k nil fn-mpxt)))
+           (member-equal s (fn-mpxt-run tag p k acc fn-mpxt)))
+  :hints (("Goal" :use ((:instance fn-mpxt-run-subsetp (a nil) (b acc)))
+           :in-theory (disable fn-mpxt-run-subsetp fn-mpxt-run))))
+(defthm fn-mpxt-put-run-finds
+  (implies (and (natp p) (< p (fn-mpxt-pages fn-mpxt)) (natp (fn-mpxt-pages fn-mpxt))
+                (posp wtag) (natp seq)
+                (mv-nth 0 (fn-mpxt-put-run wtag seq p k fn-mpxt)))
+           (member-equal seq (fn-mpxt-run wtag p k nil (mv-nth 1 (fn-mpxt-put-run wtag seq p k fn-mpxt)))))
+  :hints (("Goal" :induct (fn-mpxt-put-run wtag seq p k fn-mpxt)
+           :expand ((:free (x) (fn-mpxt-run wtag p k nil x)))
+           :in-theory (disable fn-mpxt-scan fn-mpxt-page-fullp fn-mpxt-run fn-mpxt-ins))))
+
+(defthm fn-mpxt-faithful-from-beyond
+  (implies (>= (nfix i) (len rows))
+           (fn-mpxt-faithful-from i rows fn-mpxt)))
+(local
+ (defthm fn-mpxt-len-append
+   (equal (len (append a b)) (+ (len a) (len b)))))
+(defthm fn-mpxt-faithful-from-append
+  (implies (and (true-listp rows) (natp i)
+                (fn-mpxt-faithful-from i rows fn-mpxt)
+                (member-equal (len rows) (fn-mpxt-candidates (fn-mpxt-tag (fn-record-msgid h)) fn-mpxt)))
+           (fn-mpxt-faithful-from i (append rows (list h)) fn-mpxt))
+  :hints (("Goal" :induct (fn-mpxt-faithful-from i (append rows (list h)) fn-mpxt)
+           :in-theory (disable fn-mpxt-candidates))))
+
+; KEYSTONE (the writer): placing the new row's entry keeps the table faithful
+; to the rows with that row appended -- the commit path's obligation.  (Growth's
+; preservation, a slot-counting argument, is the next READY: LANEDUMP NEXT 1.)
+(defthm fn-mpxt-put-preserves-faithful
+  (implies (and (true-listp rows) (natp (fn-mpxt-pages fn-mpxt))
+                (fn-mpxt-faithful rows fn-mpxt)
+                (mv-nth 0 (fn-mpxt-put (fn-mpxt-tag (fn-record-msgid h)) (len rows) fn-mpxt)))
+           (fn-mpxt-faithful (append rows (list h))
+                             (mv-nth 1 (fn-mpxt-put (fn-mpxt-tag (fn-record-msgid h)) (len rows) fn-mpxt))))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-put fn-mpxt-faithful fn-mpxt-okp fn-mpxt-candidates)
+                                  (fn-mpxt-put-run fn-mpxt-run fn-mpxt-pages-okp fn-mpxt-faithful-from
+                                   fn-mpxt-faithful-from-append fn-mpxt-pages-okp-of-put-run))
+           :do-not-induct t
+           :use ((:instance fn-mpxt-put-run-finds
+                            (wtag (fn-mpxt-tag (fn-record-msgid h))) (seq (len rows))
+                            (p (fn-mpx-home (fn-mpxt-tag (fn-record-msgid h)) (fn-mpxt-pages fn-mpxt)))
+                            (k (fn-mpxt-pages fn-mpxt)))
+                 (:instance fn-mpxt-pages-okp-of-put-run
+                            (wtag (fn-mpxt-tag (fn-record-msgid h))) (seq (len rows))
+                            (p (fn-mpx-home (fn-mpxt-tag (fn-record-msgid h)) (fn-mpxt-pages fn-mpxt)))
+                            (k (fn-mpxt-pages fn-mpxt)) (np (fn-mpxt-pages fn-mpxt))
+                            (n (len rows)) (n2 (+ 1 (len rows))))
+                 (:instance fn-mpxt-faithful-from-append
+                            (i 0)
+                            (fn-mpxt (mv-nth 1 (fn-mpxt-put-run (fn-mpxt-tag (fn-record-msgid h)) (len rows)
+                                                                (fn-mpx-home (fn-mpxt-tag (fn-record-msgid h)) (fn-mpxt-pages fn-mpxt))
+                                                                (fn-mpxt-pages fn-mpxt) fn-mpxt))))))))
