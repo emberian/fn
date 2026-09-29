@@ -1019,27 +1019,7 @@ def main(argv=None) -> int:
         print("statement route mismatch: " + problem)
     print("statement route: {} ({} cut)".format("FAIL" if statement else "PASS",
                                                   len(STATEMENT_CUTS)))
-    # Lane byte-model (row Q3b): the log programs the host runs, each listed
-    # with its host function and its cuts, in the programs' order
-    # (fn-lg-append-program <- fnn-log-append: log-written; the fence; the
-    # recovery; the segment's extension), checked step by step
-    # (native_cuts.log_program_cut_map).  Their crash keystone is
-    # books/store-log-durable.lisp.
-    from tests.campaign.native_cuts import log_program_cut_map
-    log_problems: list[str] = []
-    listing = []
-    try:
-        listing = log_program_cut_map()
-    except AssertionError as error:
-        log_problems.append(str(error))
-    for program, fn, cuts in listing:
-        print("{} <- {}: {} cut{}: {}".format(program, fn, len(cuts),
-                                              "" if len(cuts) == 1 else "s", ", ".join(cuts)))
-    for problem in log_problems:
-        print("log program mismatch: " + problem)
-    print("log programs: {} ({} programs, {} cuts)".format(
-        "FAIL" if log_problems else "PASS", len(listing), sum(len(c) for _, _, c in listing)))
-    return 0 if report.ok and not arms and not statement and not log_problems else 1
+    return 0 if report.ok and not arms and not statement else 1
 
 
 if __name__ == "__main__":

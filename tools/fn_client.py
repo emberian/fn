@@ -140,7 +140,7 @@ class Client:
         except (OSError, Disconnected) as exc:
             # `Disconnected` and not only `OSError`: a node whose owner has
             # stopped behind a forwarder -- the `ssh -L` tunnel of
-            # docs/operator.md -- accepts the connection and then closes it
+            # docs/operator-internals.md -- accepts the connection and then closes it
             # before the greeting, which is a reachability failure and must
             # land on uncertain like any other, never on a traceback.
             raise Stop(UNCERTAIN, "could not connect to %s: %s" % (self.node, exc))
@@ -532,7 +532,7 @@ def split_node(text: str):
 
     RFC 3986 section 3.2.2 puts an IPv6 literal in brackets precisely so a
     colon can still separate a port, and `[listener] host` admits `::1`
-    (docs/operator.md).  A bare token holding more than one colon therefore
+    (docs/operator-internals.md).  A bare token holding more than one colon therefore
     has exactly one reading -- the address, with the default port -- and
     `::1` must never be taken apart into the host `::` at port 1.
     """
