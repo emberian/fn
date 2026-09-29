@@ -20,6 +20,8 @@
 (include-book "public-exposure-reply")
 (include-book "served-reply-buffer")
 (include-book "served-plan")
+(include-book "served-plan-cursor")
+(include-book "response-plan-pins")
 (include-book "owner-scheduler")
 (include-book "owner-commit-class")
 (include-book "owner-commit-steps")

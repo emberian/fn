@@ -5800,6 +5800,11 @@ tree root), or stop the build."
 ;;; not (review of the dabebb84 campaign, F4 to F6).
 (defparameter +fnn-developer-selectors+
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
+    ;; lane join-f2-13: the OVER/XOVER cursor quantum (numbers per hold of
+    ;; the owner mutex) for the natives; ACL2's fn-splan-cursor-window
+    ;; decides the value (books/served-plan-cursor.lisp).
+    "FN_NATIVE_OVER_WINDOW"
+    "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM"
     ;; the extraction gate's stateful differential (tools/extract/stateful.py):
     ;; a recorded clock observation and a recorded entropy stream, the
     ;; environment readings the image and the extracted program then share.

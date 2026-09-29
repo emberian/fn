@@ -1013,6 +1013,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-join-host-columns-open \
 	books/served-catalog-join-host-views \
 	books/catalog-number-window \
+	books/over-window \
 	books/served-chunk-live-free \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
@@ -1045,6 +1046,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-entries-tests \
 	tests/acl2/catalog-refresh-tests \
 	tests/acl2/served-catalog-tests \
+	tests/acl2/over-window-tests \
 	tests/acl2/served-catalog-view-tests \
 	tests/acl2/served-catalog-chain-tests \
 	tests/acl2/served-catalog-scan-tests \
@@ -1397,6 +1399,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-reply-buffer-tests \
 	books/served-plan \
 	tests/acl2/served-plan-tests \
+	books/served-plan-cursor \
+	tests/acl2/served-plan-cursor-tests \
 	books/owner-scheduler \
 	tests/acl2/owner-scheduler-tests \
 	books/owner-commit-class \
@@ -1435,6 +1439,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-cold-line-tests \
 	books/arena-reader-pins \
 	tests/acl2/arena-reader-pins-tests \
+	books/response-plan-pins \
+	tests/acl2/response-plan-pins-tests \
 	books/feed-restart-domain \
 	tests/acl2/feed-restart-domain-tests \
 	books/web-request \

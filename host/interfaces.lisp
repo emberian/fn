@@ -1849,6 +1849,21 @@
   :kinds ((w natp))
   :keystones (fn-splan-window-is-a-prefix-of-the-reply))
 
+(definterface fn-splan-at-cursorp
+  :class ::common-lisp-compliant
+  :keystones (fn-splan-window-size-is-positive-until-done))
+
+(definterface fn-splan-cursor-step
+  :class ::common-lisp-compliant
+  :kinds ((w natp))
+  ;; The keystone must call the entry: this one does (fn-splan-cw-drain-is-the-
+  ;; expanded-reply calls it only through fn-splan-cw-drain; hbox host-ld at
+  ;; 899634977 refused that).
+  :keystones (fn-splan-cursor-step-keeps-cw-remaining))
+
+(definterface fn-splan-cursor-window
+  :class ::common-lisp-compliant)
+
 (definterface fn-splan-window-size
   :class ::common-lisp-compliant
   :keystones (fn-splan-window-size-is-positive-until-done))
@@ -3958,6 +3973,10 @@
 ; host/native/io.lisp dispatches it (lane composed-owner-5).
 (definterface fn-arpn-step
   :class ::common-lisp-compliant)
+
+(definterface fn-rpin-step
+  :class :common-lisp-compliant
+  :keystones (fn-rpin-step-preserves-funded-ownership))
 
 ;; books/control-request-word.lisp
 

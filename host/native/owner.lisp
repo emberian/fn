@@ -63,6 +63,10 @@
   ;; publication to the accept threads: host lists, not owner state, so
   ;; their edits never queue at the gate.
   (gate nil) (roster (sb-thread:make-mutex :name "fn owner roster"))
+  ;; A response's arena generation is held from capture under LOCK until
+  ;; its output drains or its connection cancels.  In particular a cursor
+  ;; must not see online reclaim's replacement catalog between quanta.
+  (response-pins nil)
   ;; The checkpoint publication's thread while one runs (fnn-owner-maybe-publish).
   (publisher nil)
   ;; Row S3b: the export's thread while one runs (fnn-owner-export-request),
@@ -262,11 +266,18 @@ rate reaches the next read)."
   (fn-octets$c-reserve n (create-fn-octets$c)))
 
 (defun fnn-owner-render-next (plan &optional compressedp)
-  "Render the next window of PLAN: (values OCTETS PLAN-REST DONEP), OCTETS a
-fresh vector (empty only when nothing remained), DONEP when nothing remains
-after it.  COMPRESSEDP: the connection has a COMPRESS layer, and the window
-is ACL2's flush-schedule window (books/nntp-compress.lisp
-fn-zc-render-window-size), each one sync flush."
+  "Render the next window of PLAN: (values OCTETS PLAN-REST DONEP CURSORP),
+OCTETS a fresh vector (empty only when nothing remained, or at a cursor),
+DONEP when nothing remains after it.  COMPRESSEDP: the connection has a
+COMPRESS layer, and the window is ACL2's flush-schedule window
+(books/nntp-compress.lisp fn-zc-render-window-size), each one sync flush.
+CURSORP (lane join-f2-13, PRF-1020): the plan's next window is a cursor's
+quantum (books/served-plan.lisp fn-splan-at-cursorp: a served OVER/XOVER
+range), which the caller runs under the owner mutex
+(fnn-owner-cursor-step) before it renders again; nothing is rendered here."
+  (when (fnn-core 'fn-splan-at-cursorp plan)
+    (return-from fnn-owner-render-next
+      (values (fnn-make-octets 0) plan nil t)))
   (let ((size (if compressedp
                   (fnn-core 'fn-zc-render-window-size
                             (fnn-core 'fn-splan-window-size plan))
@@ -275,14 +286,103 @@ fn-zc-render-window-size), each one sync flush."
       (fnn-fault "owner returned a malformed render window size"))
     (destructuring-bind (status rest buf)
         (fnn-call 'fn-splan-window plan size (fnn-make-render-buffer size))
-      (unless (eq status :ok)
+      ;; :cursor (lane join-f2-13): the window ended in front of a cursor
+      ;; effect, its octets written; the size above never reaches one (it
+      ;; is the octets of the effect the window starts in), so the status
+      ;; is :ok here, but a window that met one is whole as well.
+      (unless (member status '(:ok :cursor))
         (fnn-fault "owner returned non-octets in its served reply"))
       (let ((array (svref buf 0)) (fill (svref buf 1)))
         (values (if (= fill (length array))
                     (the fnn-octets array)
                   (subseq (the fnn-octets array) 0 fill))
                 rest
-                (and (fnn-core 'fn-splan-donep rest) t))))))
+                (and (fnn-core 'fn-splan-donep rest) t)
+                nil)))))
+
+;;; The cursor quantum (lane join-f2-13, PRF-1020; books/served-plan-cursor.lisp).
+;;; A served OVER/XOVER range's step answers a CURSOR (books/served-catalog.lisp
+;;; fn-nntp-over-range-ovw: the range parsed and clamped once, no number
+;;; probed); the plan stops in front of it and each quantum below probes at
+;;; most W numbers and builds at most W NOV lines (books/over-window.lisp
+;;; fn-ovw-step-window-at-most-w) under the owner mutex, admitted by the gate
+;;; as the connection's class like its steps (D27: bounded work per hold, the
+;;; range's size never).  ACL2 decides W (fn-splan-cursor-window: its constant,
+;;; or a developer image's FN_NATIVE_OVER_WINDOW for the natives).  The
+;;; keystone fn-splan-cw-drain-is-the-expanded-reply says the windows and
+;;; quanta together write the reply the served machine decided, expanded
+;;; (fn-ovw-expand), for every W and however the socket paced them; with
+;;; fn-ovw-run-is-over-range-cat that is the unbounded reader's reply.
+(defun fnn-owner-over-window ()
+  "ACL2's cursor quantum, the developer selector's override passed through."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")))
+    (fnn-core 'fn-splan-cursor-window
+              (and raw (> (length raw) 0)
+                   (every #'digit-char-p raw)
+                   (parse-integer raw)))))
+
+(defun fnn-owner-response-pin (service cid)
+  "Hold ACL2's arena-reader generation for CID's response.  The caller
+holds the owner mutex, before returning its captured plan.  Only one
+outstanding response belongs to this connection."
+  (unless (eq (fnn-owner-response-pin-step service (list :acquire cid)) :acquired)
+    (fnn-fault "connection ~a could not capture its response ownership" cid)))
+
+(defun fnn-owner-response-unpin (service cid)
+  "CID's captured response drained or was cancelled.  Idempotent cleanup,
+including a service stop; no owner semantic operation is needed."
+  (unless (member (fnn-owner-response-pin-step service (list :release cid))
+                  '(:released :absent))
+    (fnn-fault "connection ~a could not settle its response ownership" cid)))
+
+(defun fnn-owner-response-pin-step (service event)
+  "ACL2 alone updates response ownership and the shared arena-pin table.
+The same lock protects both this call and every other arena pin event."
+  (sb-thread:with-mutex (*fnn-arena-pins-lock*)
+    (destructuring-bind (owners pins status)
+        (fnn-call 'fn-rpin-step (fnn-owner-service-response-pins service)
+                  (or *fnn-arena-pins* (fnn-core 'fn-arpn-initial)) event)
+      (setf (fnn-owner-service-response-pins service) owners
+            *fnn-arena-pins* pins)
+      (when (and (eq status :released)
+                 (fnn-developer-selector "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM"))
+        (fnn-err "OVER response-settled cid=~d status=released" (second event)))
+      status)))
+
+(defun fnn-owner-cursor-step (service cid plan class)
+  "One quantum of PLAN's cursor under the owner mutex: the plan with the
+quantum's reply in the cursor's place (and the cursor that remains)."
+  (fnn-owner-serialized
+   service cid
+   (lambda ()
+     (destructuring-bind (status rest)
+         (fnn-call 'fn-splan-cursor-step plan (fnn-owner-over-window)
+                   (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat))
+       (unless (eq status :ok)
+         (fnn-fault "owner returned a malformed cursor in its served reply"))
+       rest))
+   class))
+
+(defun fnn-owner-render-next-quantum (service cid plan class &optional compressedp)
+  "fnn-owner-render-next, the plan's cursor quantum run first (under the
+owner mutex, as CID's CLASS) whenever the plan is at one: (values OCTETS
+PLAN-REST DONEP).  Each mutex hold covers at most one quantum; a sparse
+range can require several empty quanta before the next write."
+  (loop
+    (multiple-value-bind (octets rest donep cursorp)
+        (fnn-owner-render-next plan compressedp)
+      (unless cursorp
+        (return (values octets rest donep)))
+      (setq plan (fnn-owner-cursor-step service cid rest class))
+      ;; A deterministic native witness: pause OFF the owner mutex while
+      ;; the response still owns its generation, before rendering/writing.
+      ;; Production refuses this selector (host/native/io.lisp).
+      (let ((stall (fnn-developer-selector "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM")))
+        (when (and stall (plusp (length stall)) (probe-file stall))
+          (fnn-err "OVER quantum-held cid=~d" cid)
+          (loop while (and (probe-file stall)
+                           (not (fnn-owner-service-stopping service)))
+                do (sleep 0.05)))))))
 
 (defun fnn-owner-list-global (name)
   "An ACL2 octet list left in NAME, as the list (no vector is made)."
@@ -3723,6 +3823,11 @@ EPIPE and the client saw a bare close)."
          (fnn-owner-refresh-read-octets service)
          (unless (fnn-core 'fn-splan-step-p step)
            (fnn-fault "owner returned a malformed served step"))
+         ;; Capture the response's lifetime before leaving this quantum.
+         ;; Reclaim's swap excludes every live arena reader, including this
+         ;; pin while a later cursor quantum still uses the original catalog.
+         ;; :await and :redeem keep it too; their plans contain this STEP.
+         (fnn-owner-response-pin service cid)
          ;; One ACL2-rendered line per 441 this read sends (books/owner-log.lisp
          ;; fn-olog-served-refusal-lines): a POST refused before it became a
          ;; submission has no outcome line of its own.

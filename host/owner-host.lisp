@@ -156,6 +156,10 @@
 (include-book "../books/store-reclaim-buffer")
 ; HST-023 (PRF-248): the served step's typed result and render plan.
 (include-book "../books/served-plan")
+; Lane join-f2-13 (PRF-1020): the plan's cursor quantum (fn-splan-cursor-step,
+; the continuation of a served OVER/XOVER range; host/native/owner.lisp
+; fnn-owner-cursor-step).
+(include-book "../books/served-plan-cursor")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
@@ -224,6 +228,7 @@
 ; lane composed-owner-5 (PRF-941, row A6): the arena readers' generation
 ; pins (host/native/io.lisp fnn-arena-pins-step).
 (include-book "../books/arena-reader-pins")
+(include-book "../books/response-plan-pins")
 (include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
