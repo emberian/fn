@@ -567,3 +567,14 @@
                                      *oft-seen-path*)))
 (must-fail-checked (assert-event
   (oft-loop-conclusion *oft-bad-loop-table* "nodeB" nil *oft-seen-path*)))
+
+; KEYSTONE fn-own-feed-distribution-targets-member (PRF-237; an iff, no
+; hypothesis), by name: nodeB, named and unfiltered, is a target (both sides
+; true); nodeC, not named, is not (both sides false).
+(assert-event
+ (and (member-equal "nodeB" (fn-own-feed-distribution-targets '("nodeB") *oft-tbl* :absent))
+      (member-equal "nodeB" '("nodeB"))
+      (fn-own-feed-distribution-admitsp (fn-own-feed-dists-of "nodeB" *oft-tbl*) :absent)))
+(assert-event
+ (and (not (member-equal "nodeC" (fn-own-feed-distribution-targets '("nodeB") *oft-tbl* :absent)))
+      (not (member-equal "nodeC" '("nodeB")))))
