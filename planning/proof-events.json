@@ -10752,6 +10752,41 @@
           "kind": "theorem",
           "name": "fn-sjh-files-okp-exec-is-files-okp",
           "note": "The executable twin of fn-sjh-okp's store side (S and LINK) is the predicate; evaluated in tests/acl2/served-catalog-join-host-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-log-reserve",
+          "note": "KEYSTONE (join-f2-2). fn-owner-io :log-reserve (fn-olr-ocfg-reserve, the io route composed)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-log-order",
+          "note": "KEYSTONE (join-f2-2). fn-owner-io :log-order."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-reconfigure-complete",
+          "note": "KEYSTONE (join-f2-2). fn-owner-reconfigure-complete (fn-oclc-publish): the carried configure keeps the store's files, verdicts and acceptance articles."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-open",
+          "note": "KEYSTONE (join-f2-2). fn-owner-open with no capture (fn-ocar-ocfg-open)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-open-captured",
+          "note": "KEYSTONE (join-f2-2). fn-owner-open at a captured reader view, the working view put back; fn-sjh-views-okp named."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-exposure-open",
+          "note": "KEYSTONE (join-f2-2). fn-owner-exposure-open (fn-ocar-exp-open)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-read-step",
+          "note": "KEYSTONE (join-f2-2). fn-owner-tls-established and fn-owner-account-outcome (fn-ocfg-read-step)."
         }
       ]
     },
