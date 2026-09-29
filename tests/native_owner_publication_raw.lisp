@@ -166,4 +166,4 @@
 
 (nop-refusal-then-valid)
 (nop-uncertain-and-fault-stay-fenced)
-(format t "FN-NATIVE-OWNER-PUBLICATION-PASS~%")
+(format t "native owner publication: 3 boundary cases passed~%")

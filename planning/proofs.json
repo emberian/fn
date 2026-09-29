@@ -2351,7 +2351,7 @@
         "tests/test_native_hybrid_author.py",
         "tests/acl2/store-identity-traces-tests.lisp",
         "tests/acl2/store-identity-sequence-invariants-tests.lisp",
-        "tests/native_owner_publication.lisp",
+        "tests/native_owner_publication_raw.lisp",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
       "pending_subject": "The carried journal sequence is preserved by initial, prepare, I/O, refusal, abort, finish and recovery transitions, but its invariant has not been joined to every actual owner publication path or the physical publication/recovery cuts. Prove the kind-4 snapshot/article/verdict binding over the host-called completion and recovery paths. The raw witness establishes condition routing and reservation cleanup only; it does not prove filesystem durability or cryptographic primitive correctness.",

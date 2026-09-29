@@ -926,10 +926,10 @@
       ],
       "evidence": [
         "tests/acl2/store-identity-traces-tests.lisp",
-        "tests/native_owner_publication.lisp"
+        "tests/native_owner_publication_raw.lisp"
       ],
       "execution_scope": "The existing ACL2 source trace executes fn-sn transitions and reopen, and the raw SBCL witness executes the shared publication helper with controlled observations. The new schema-1 codec, constructor and substitution witnesses certify separately; the modified native hybrid-author/restart witness still needs a combined saved image. These results do not establish filesystem durability, cryptographic primitive correctness or arbitrary-trace preservation; PRF-050 remains in progress. The negative missing-enrollment composed trace evaluates from ACL2 sources, with no native corrupted-store startup claim.",
-      "note": "assurance-triage 2026-09-26: returned to specified: no recorded run of the SBCL witness (tests/native_owner_publication.lisp) or any native run; only the ACL2 book tests/acl2/store-identity-traces-tests is certified. correctness-remainder-8 (2026-09-29): the witness had rotted (it loaded io.lisp whole, whose load calls ACL2); it now loads the deployed fnn-owner-publish-prepared and its conditions and structs by name (the extraction pattern of tests/native_owner_bound_commit_raw.lisp) and step 2 is re-specified to the record log (the per-file allocator is retired); run recorded in planning/evidence/correctness-remainder-8-2026-09-29.md. Steps 1, 3 and 5 stay as the ACL2 source trace executes them; no native restart run."
+      "note": "assurance-triage 2026-09-26: returned to specified: no recorded run of the SBCL witness (tests/native_owner_publication_raw.lisp) or any native run; only the ACL2 book tests/acl2/store-identity-traces-tests is certified. correctness-remainder-8 (2026-09-29): the witness had rotted (it loaded io.lisp whole, whose load calls ACL2); it now loads the deployed fnn-owner-publish-prepared and its conditions and structs by name (the extraction pattern of tests/native_owner_bound_commit_raw.lisp) and step 2 is re-specified to the record log (the per-file allocator is retired); run recorded in planning/evidence/correctness-remainder-8-2026-09-29.md. Steps 1, 3 and 5 stay as the ACL2 source trace executes them; no native restart run."
     },
     {
       "id": "SCN-028",
