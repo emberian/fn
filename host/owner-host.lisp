@@ -1201,6 +1201,21 @@
       (f-get-global 'fn-owner-parse-carry state)
     nil))
 
+;; PKT-789: the configuration the take staged the in-flight submission's
+;; octets under (fn-apc-take's CFG).  The article completion names the
+;; submission by those octets (fn-own-completion-names-submission-p over
+;; fn-own-sub-stored-octets CFG), so it must be handed the take's
+;; configuration, not the live one: a published change between the take and
+;; the completion (a complaints-to, a Path identity) otherwise recomputes
+;; different octets and answers a durable POST 441-uncertain.  The take is
+;; this global's only writer and fn-owner-finish-submission-synced its only
+;; reader; before any take it is the live configuration.
+(defun fn-owner-take-config (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-take-config state)
+      (f-get-global 'fn-owner-take-config state)
+    (fn-owner-config state)))
+
 ;; Lane commit-onto-log: the owner as it is now, a value (the commit quantum
 ;; keeps it before each member's outcome, and renders from it only when the
 ;; batch's barrier fails).
@@ -1852,7 +1867,8 @@
 ; post): the word is fn-own-finish's (books/owner-served-invariants.lisp),
 ; :durable only when fn-sn-finish consumed an enabled completion whose record
 ; carries this submission's Message-ID and the octets fn-owner-take staged for
-; it (fn-own-sub-stored-octets under the live configuration: for transit, the
+; it (fn-own-sub-stored-octets under the take's configuration, fn-owner-take-config
+; (PKT-789): for transit, the
 ; Path-updated fn-peer-relayed-octets), and the owner installed is its
 ; (fn-own-complete o).  That is the subject of
 ; fn-own-240-follows-consumed-completion, so the host no longer decides the
@@ -1894,7 +1910,9 @@
              ; fn-ccar-own-finish with the stored octets' Cancel-Lock fields
              ; read from the take's parse and the completion's refresh over the
              ; Store's event index (post-alloc-2).
-             (result (fn-apc-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc)
+             ; The configuration is the take's (fn-owner-take-config, PKT-789):
+             ; the octets staged are fn-own-sub-stored-octets under it.
+             (result (fn-apc-own-finish (fn-ocfg-owner oc) (fn-owner-take-config state)
                                         fn-arena fn-hist (fn-owner-parse-carry state)))
              (state (fn-owner-replace-core (cdr result) state))
              (pending (f-get-global 'fn-owner-cat-pending state)))
@@ -2011,8 +2029,9 @@
       ; of fn-own-sub-stored-octets, and the intent is fn-icar-carry-of).
       ; A served POST under a login gets its RFC 8315 Cancel-Lock in the
       ; stored octets (SEC-006, PRF-210): the owner's node secret.
-      (let* ((tk (fn-apc-take (fn-owner-config state) sub
-                              (fn-own-node-secret after)))
+      (let* ((take-config (fn-owner-config state))
+             (tk (fn-apc-take take-config sub (fn-own-node-secret after)))
+             (state (f-put-global 'fn-owner-take-config take-config state))
              (intent (fn-apc-icar-carry-of sub (cdr tk)))
              (state (f-put-global 'fn-owner-submit-intent intent state))
              (state (f-put-global 'fn-owner-parse-carry (cdr tk) state))
