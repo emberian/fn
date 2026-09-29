@@ -113,7 +113,9 @@ def world_books(build, extra_hosts=()):
 # the read-only store open as ACL2 :program code over the host primitives.
 # They include no book (world-host.lisp's closure check fails if one does).
 EXTRA_HOSTS = ["host/store-open-host.lisp",
-               # its extraction root's declaration (definterface; lane generators)
+               # the writable store verbs (lane extract-writable)
+               "host/store-write-host.lisp",
+               # the extraction roots' declarations (definterface; lane generators)
                "host/interfaces-extract.lisp"]
 
 

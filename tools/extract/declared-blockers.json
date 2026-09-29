@@ -1,7 +1,4 @@
 {
- "about": "Extractor blockers (tools/extract/frontend.lisp: a function with no executable body, no attachment, not a primitive) that the gate (tools/extract/gate.py) accepts. chicken.py compiles each to a procedure that faults by name when called; the gate fails on any blocker not declared here, and every declared one is listed in the run's extraction manifest.",
- "blockers": [
-  {"name": "ACL2::FN-SIG-VERIFY",
-   "why": "constrained signature verification with no attachment in the image's world (the verifier is a named assumption); reached from the probe root fn-intern-events, and the image itself refuses a call to an unattached constrained function; no transcript reaches it (planning/evidence/extract-2-2026-09-28.md)"}
- ]
+ "about": "Extractor blockers (tools/extract/frontend.lisp: a function with no executable body, no attachment, not a primitive) that the gate (tools/extract/gate.py) accepts. chicken.py compiles each to a procedure that faults by name when called; the gate fails on any blocker not declared here, and every declared one is listed in the run's extraction manifest. Empty since lane extract-writable: ACL2::FN-SIG-VERIFY, the last one, is bound to the image's ML-DSA-65 verifier in both the image (host/native/signatures.lisp) and the program (tools/extract/native.scm), A-SIG-NATIVE.",
+ "blockers": []
 }
