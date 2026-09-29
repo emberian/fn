@@ -4610,3 +4610,6 @@
 
 (definterface fn-osp-fold-begin :class :common-lisp-compliant)
 (definterface fn-osp-fold-tick :class :common-lisp-compliant)
+
+(definterface fn-osp-canon-begin :class :common-lisp-compliant)
+(definterface fn-osp-canon-tick :class :common-lisp-compliant)

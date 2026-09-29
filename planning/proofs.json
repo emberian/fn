@@ -17836,8 +17836,8 @@
     },
     {
       "id": "PRF-1077",
-      "title": "Resumable snapshot summary preparation retains exact paused/configured and identity/consumer/topic/index fold values",
-      "statement": "Host-called subjects fn-osp-cpr-tick and fn-osp-fold-tick, through fnn-snapshot-prepare-configured-fold and fnn-snapshot-prepare-summary-folds. The configured tick retains exact fn-sco-cpr-prefix including every refusal/position and unconsumed later configurations; each continue consumes exactly one config or event with carried configured-state preservation. The four-summary cursor retains exact identity/consumer/topic/event-index continuation values under valid event-list and normalized consumer-result hypotheses, consumes one event, and preserves its natural counter; a redundant natural-counter theorem hypothesis was removed only after the weakened result was proved (the executable subject still requires its natural counter guard). Neither input-transition progress is a byte/work bound for the inner operations. Canonical-row and history-image/commit preparation, funded lifetime and controller composition remain required before full producer completion.",
+      "title": "Resumable snapshot preparation retains paused/configured, summary and canonical-row continuation values",
+      "statement": "Host-called subjects fn-osp-cpr-tick, fn-osp-fold-tick and fn-osp-canon-tick, through fnn-snapshot-prepare-configured-fold, fnn-snapshot-prepare-summary-folds and fnn-snapshot-prepare-canonical-rows. The configured tick retains exact fn-sco-cpr-prefix including every refusal/position and unconsumed later configurations; each continue consumes exactly one config or event with carried configured-state preservation. The four-summary cursor retains exact identity/consumer/topic/event-index continuation values under valid event-list and normalized consumer-result hypotheses, consumes one event, and preserves its natural counter; a redundant natural-counter theorem hypothesis was removed only after the weakened result was proved (the executable subject still requires its natural counter guard). The canonical-row cursor retains exact fn-scka-canon-rows continuation under legal phase and proper remaining-list hypotheses; a tick canonicalizes one row or reverses one list cell, and preserves its executable cursor. Redundant natural-counter and accumulated/output-list semantic hypotheses were removed only after the weakened theorem was proved. Input-transition progress is not a byte/work bound for the inner operations. History-image/commit preparation, funded lifetime and controller composition remain required before full producer completion.",
       "milestone": "M5",
       "requirements": [
         "HST-040"
@@ -17851,14 +17851,17 @@
         "fn-osp-cpr-continue-preserves-configured-state",
         "fn-osp-fold-tick-retains-the-four-summary-values",
         "fn-osp-fold-continue-is-exactly-one-record",
-        "fn-osp-fold-natural-counter-is-preserved"
+        "fn-osp-fold-natural-counter-is-preserved",
+        "fn-osp-canon-tick-is-the-canonical-rows-continuation",
+        "fn-osp-canon-continue-is-one-row-or-one-reverse-cell",
+        "fn-osp-canon-continue-keeps-the-executable-cursor"
       ],
       "evidence": [
         "books/snapshot-prepare.lisp",
         "tests/acl2/snapshot-prepare-tests.lisp",
         "host/native/owner.lisp"
       ],
-      "progress_note": "Clean persvati ospf62: source snapshot-prepare encapsulated, 23 nonempty/later-config/retention summary tooth forms, zero refused, ACL2 1.59s/502892 steps; cpr and four-summary host-called ticks guard-verified. Native, source host check for this increment and certificate pending."
+      "progress_note": "Clean proper-local persvati ospc62: source snapshot-prepare encapsulated, 29 tooth forms including actual interned ARTICLE rows with orphan arena and corrupted cursor witnesses, zero refused, ACL2 1.91s/536539 steps; all three host-called ticks guard-verified. Source host-check at prior f565 was 42/42 raw loads zero findings; new canonical interface/source check and matching native/certificate pending."
     }
   ]
 }

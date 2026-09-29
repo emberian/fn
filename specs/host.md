@@ -1680,3 +1680,12 @@ relations, never a served whole-history validation. Full image/commit and
 canonical-row preparation remain pending. The inherited event-index codec
 addresses only its existing unsigned-32 sequence range; this component
 copies that format behavior and does not qualify larger operator profiles.
+
+The S7 canonical preparation component `fn-osp-canon-tick` retains the
+existing canonical writer's exact row continuation through two phases:
+one captured row per canonicalization tick, then one list cell per reversal
+tick. Its host helper yields between ticks and requires the captured arena
+lease for the entire read. Real interned article rows with an orphan payload
+witness the changed canonical handles. This is row-transition progress;
+inner row conversion still requires a supported allocation/work bound, and
+the actual controller, page/hash preparation and funded lifetime remain open.

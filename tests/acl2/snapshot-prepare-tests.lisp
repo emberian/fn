@@ -104,3 +104,82 @@
                   (list :ok (fn-sco-at 1 (fn-sco-at 2 *osp-bad-consumer*)))))
       (not (equal (fn-osp-fold-value *osp-bad-consumer*)
                   (nth 1 (fn-osp-fold-tick *osp-bad-consumer*))))))
+
+; Reachable article rows are interned into an arena containing an orphan;
+; canonical handles must differ from the source handles while alpha stays.
+(defconst *osp-canon-wire*
+  (list (fn-record-make 0 0 0 "<snapshot-one@example>" '(1 2 3)
+                        '("fn.test") "p" "c" "r" 1 841000000)
+        (fn-record-make 1 1 0 "<snapshot-two@example>" '(65 66)
+                        '("fn.test") "p" "c" "r" 1 841000001)))
+(defun osp-canon-test-run (cursor fuel fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil :measure (nfix fuel)))
+  (if (zp fuel) :fuel-exhausted
+    (let ((tick (fn-osp-canon-tick cursor fn-arena)))
+      (if (equal (car tick) :continue)
+          (osp-canon-test-run (nth 1 tick) (- fuel 1) fn-arena)
+        tick))))
+(defun osp-canon-positive-tooth ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (out fn-arena)
+      (let ((fn-arena (fn-arena-seal-list '(99 99) fn-arena)))
+        (mv-let (rows fn-arena)
+          (fn-intern-events *osp-canon-wire* nil 0 fn-arena)
+          (let* ((cursor (fn-osp-canon-begin rows))
+                 (tick (fn-osp-canon-tick cursor fn-arena))
+                 (next (nth 1 tick))
+                 (all (osp-canon-test-run cursor 8 fn-arena)))
+            (mv
+             (and (equal (fn-record-payload (car rows)) 1)
+                  ; Literal complete refinement antecedent/conclusion.
+                  (member-equal (fn-sco-at 0 cursor) '(:canon :reverse))
+                  (true-listp (fn-sco-at 1 cursor))
+                  (true-listp (fn-sco-at 3 cursor))
+                  (equal (fn-osp-canon-value cursor fn-arena)
+                         (if (equal (car tick) :continue)
+                             (fn-osp-canon-value next fn-arena) (nth 1 tick)))
+                  ; Row progress: the entire positive row branch.
+                  (equal (car tick) :continue)
+                  (equal (fn-sco-at 0 cursor) :canon)
+                  (consp (fn-sco-at 1 cursor))
+                  (equal (fn-sco-at 0 next) :canon)
+                  (equal (fn-sco-at 1 next) (cdr (fn-sco-at 1 cursor)))
+                  ; Complete executable-cursor preservation witness.
+                  (natp (fn-sco-at 2 cursor))
+                  (true-listp (fn-sco-at 4 cursor))
+                  (natp (fn-sco-at 2 next))
+                  (true-listp (fn-sco-at 1 next))
+                  (true-listp (fn-sco-at 3 next))
+                  (true-listp (fn-sco-at 4 next))
+                  ; All ticks, including cell-wise reverse, equal old writer.
+                  (equal (car all) :done)
+                  (equal (nth 1 all) (fn-scka-canon-rows rows fn-arena 0))
+                  (equal (fn-record-payload (car (nth 1 all))) 0)
+                  (equal (fn-rows-wire-of (nth 1 all) fn-arena)
+                         (fn-rows-wire-of (fn-scka-canon-rows rows fn-arena 0) fn-arena)))
+             fn-arena))))
+      out)))
+(assert-event (osp-canon-positive-tooth))
+; Corrupted private cursor: remaining-list hypothesis removed.  All other
+; refinement hypotheses are affirmed, and the exact conclusion fails.
+(assert-event
+ (let* ((cursor '(:canon 7 0 nil nil))
+        (tick (fn-osp-canon-tick cursor fn-arena)))
+   (and (member-equal (fn-sco-at 0 cursor) '(:canon :reverse))
+        (true-listp (fn-sco-at 3 cursor))
+        (not (true-listp (fn-sco-at 1 cursor)))
+        (not (equal (fn-osp-canon-value cursor fn-arena)
+                    (if (equal (car tick) :continue)
+                        (fn-osp-canon-value (nth 1 tick) fn-arena) (nth 1 tick)))))))
+; Corrupted phase: remaining-list hypothesis retained, phase fails and the
+; exact refinement conclusion fails; no externally reachable-state claim.
+(assert-event
+ (let* ((cursor '(:bad nil 0 nil nil))
+        (tick (fn-osp-canon-tick cursor fn-arena)))
+   (and (true-listp (fn-sco-at 1 cursor))
+        (true-listp (fn-sco-at 3 cursor))
+        (not (member-equal (fn-sco-at 0 cursor) '(:canon :reverse)))
+        (not (equal (fn-osp-canon-value cursor fn-arena)
+                    (if (equal (car tick) :continue)
+                        (fn-osp-canon-value (nth 1 tick) fn-arena) (nth 1 tick)))))))

@@ -5,6 +5,7 @@
 ; folds, canonical rows and page commit must also become funded/resumable.
 (in-package "ACL2")
 (include-book "store-checkpoint-open")
+(include-book "store-checkpoint-arena")
 (defun fn-osp-cpr-tick (cn configs events config-sequence event-sequence)
   (declare (xargs :guard (fn-cnode-statep cn) :verify-guards nil
                   ))
@@ -207,3 +208,114 @@
   :hints (("Goal" :in-theory (e/d (fn-osp-fold-tick fn-sco-at)
                                   (fn-replay-identity-step fn-cpe-projection-step
                                    fn-th-prefix-step fn-cei-put)))))
+
+; Canonical row preparation and its final reversal are separate resumable
+; phases.  One tick canonicalizes one row or reverses one list cell; no
+; terminal reverse of the whole captured prefix on a scheduling tick.
+(defun fn-osp-canon-begin (records)
+  (declare (xargs :guard t))
+  (list :canon records 0 nil nil))
+(defun fn-osp-canon-tick (cursor fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (natp (fn-sco-at 2 cursor))))
+  (let ((phase (fn-sco-at 0 cursor))
+        (remaining (fn-sco-at 1 cursor))
+        (h (fn-sco-at 2 cursor))
+        (rev (fn-sco-at 3 cursor))
+        (out (fn-sco-at 4 cursor)))
+    (cond
+     ((equal phase :canon)
+      (if (consp remaining)
+          (let* ((w (fn-row-wire-of (car remaining) fn-arena))
+                 (row (fn-scka-intern-one w h)))
+            (if (equal row :bad) (list :done :bad)
+              (list :continue
+                    (list :canon (cdr remaining)
+                          (if (fn-scka-sealsp w) (+ 1 h) h)
+                          (cons row rev) out))))
+        (if (null remaining)
+            (list :continue (list :reverse rev h nil nil))
+          (list :refused :improper-records))))
+     ((equal phase :reverse)
+      (if (consp remaining)
+          (list :continue (list :reverse (cdr remaining) h nil
+                                (cons (car remaining) out)))
+        (if (null remaining) (list :done out)
+          (list :refused :improper-reverse))))
+     (t (list :refused :phase)))))
+(defun fn-osp-canon-value (cursor fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (if (equal (fn-sco-at 0 cursor) :canon)
+      (let ((r (fn-scka-canon-rows (fn-sco-at 1 cursor) fn-arena
+                                  (fn-sco-at 2 cursor))))
+        (if (equal r :bad) :bad (revappend (fn-sco-at 3 cursor) r)))
+    (revappend (fn-sco-at 1 cursor) (fn-sco-at 4 cursor))))
+(local
+ (defthm fn-osp-canon-rows-one-step-by-definition
+   (equal (fn-scka-canon-rows rows fn-arena h)
+          (if (atom rows) nil
+            (let* ((w (fn-row-wire-of (car rows) fn-arena))
+                   (row (fn-scka-intern-one w h)))
+              (if (equal row :bad) :bad
+                (let ((rest (fn-scka-canon-rows
+                             (cdr rows) fn-arena
+                             (if (fn-scka-sealsp w) (+ 1 h) h))))
+                  (if (equal rest :bad) :bad (cons row rest)))))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :expand ((fn-scka-canon-rows rows fn-arena h))
+            :in-theory (disable fn-scka-canon-rows
+                         fn-scka-canon-rows-is-intern-at-of-alpha
+                         fn-scka-intern-one fn-scka-sealsp fn-row-wire-of)))))
+(defthm fn-osp-canon-tick-is-the-canonical-rows-continuation
+  (implies (and (member-equal (fn-sco-at 0 cursor) '(:canon :reverse))
+                (true-listp (fn-sco-at 1 cursor)))
+           (let ((tick (fn-osp-canon-tick cursor fn-arena)))
+             (equal (fn-osp-canon-value cursor fn-arena)
+                    (if (equal (car tick) :continue)
+                        (fn-osp-canon-value (nth 1 tick) fn-arena)
+                      (nth 1 tick)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-osp-canon-rows-one-step-by-definition
+                            (rows (fn-sco-at 1 cursor))
+                            (h (fn-sco-at 2 cursor))))
+           :in-theory (e/d (fn-osp-canon-tick fn-osp-canon-value fn-sco-at revappend)
+                            (fn-scka-canon-rows fn-scka-intern-one
+                             fn-scka-canon-rows-is-intern-at-of-alpha
+                             fn-scka-intern-at fn-rows-wire-of revappend-removal
+                             fn-scka-sealsp fn-row-wire-of)))))
+
+(defthm fn-osp-canon-continue-is-one-row-or-one-reverse-cell
+  (let ((tick (fn-osp-canon-tick cursor fn-arena)))
+    (implies (equal (car tick) :continue)
+             (or (and (equal (fn-sco-at 0 cursor) :canon)
+                      (consp (fn-sco-at 1 cursor))
+                      (equal (fn-sco-at 0 (nth 1 tick)) :canon)
+                      (equal (fn-sco-at 1 (nth 1 tick)) (cdr (fn-sco-at 1 cursor))))
+                 (and (equal (fn-sco-at 0 cursor) :canon)
+                      (null (fn-sco-at 1 cursor))
+                      (equal (nth 1 tick)
+                             (list :reverse (fn-sco-at 3 cursor)
+                                   (fn-sco-at 2 cursor) nil nil)))
+                 (and (equal (fn-sco-at 0 cursor) :reverse)
+                      (consp (fn-sco-at 1 cursor))
+                      (equal (fn-sco-at 0 (nth 1 tick)) :reverse)
+                      (equal (fn-sco-at 1 (nth 1 tick)) (cdr (fn-sco-at 1 cursor)))
+                      (equal (fn-sco-at 4 (nth 1 tick))
+                             (cons (car (fn-sco-at 1 cursor))
+                                   (fn-sco-at 4 cursor)))))))
+  :hints (("Goal" :in-theory (e/d (fn-osp-canon-tick fn-sco-at)
+                                  (fn-scka-intern-one fn-row-wire-of fn-scka-sealsp)))))
+(defthm fn-osp-canon-continue-keeps-the-executable-cursor
+  (implies (and (natp (fn-sco-at 2 cursor))
+                (true-listp (fn-sco-at 1 cursor))
+                (true-listp (fn-sco-at 3 cursor))
+                (true-listp (fn-sco-at 4 cursor))
+                (equal (car (fn-osp-canon-tick cursor fn-arena)) :continue))
+           (let ((next (nth 1 (fn-osp-canon-tick cursor fn-arena))))
+             (and (natp (fn-sco-at 2 next))
+                  (true-listp (fn-sco-at 1 next))
+                  (true-listp (fn-sco-at 3 next))
+                  (true-listp (fn-sco-at 4 next)))))
+  :hints (("Goal" :in-theory (e/d (fn-osp-canon-tick fn-sco-at)
+                                  (fn-scka-intern-one fn-row-wire-of fn-scka-sealsp)))))

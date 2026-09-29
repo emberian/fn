@@ -4425,6 +4425,20 @@ four carried accumulators; it never copies an accumulated record prefix."
           (:refused (fnn-refuse-io "snapshot summary preparation refused: ~a" (second tick)))
           (otherwise (fnn-fault "invalid summary snapshot preparation tick")))))))
 
+(defun fnn-snapshot-prepare-canonical-rows (records)
+  "Resume canonicalization one captured row, then one reversal cell, per tick.
+The arena lease must cover this entire read; the inner row conversion still
+needs the supported profile's allocation/work bound before producer dispatch."
+  (let ((cursor (fnn-core 'fn-osp-canon-begin records)))
+    (loop
+      (fnn-checkpoint-yield "snapshot-prepare-canonical" nil)
+      (let ((tick (fnn-core 'fn-osp-canon-tick cursor)))
+        (case (first tick)
+          (:done (return (second tick)))
+          (:continue (setq cursor (second tick)))
+          (:refused (fnn-refuse-io "snapshot canonical preparation refused: ~a" (second tick)))
+          (otherwise (fnn-fault "invalid canonical snapshot preparation tick")))))))
+
 (defun fnn-snapshot-write-captured-checkpoint (target captured position profile)
   "Write the captured whole Store into TARGET's complete checkpoint.
 Caller owns the shared publication scratch, pins the captured arena/version
