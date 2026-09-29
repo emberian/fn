@@ -909,11 +909,7 @@ C=/var/fn/fn.toml
 useradd -d /var/fn -s /sbin/nologin -c fn-node _fn
 install -d -o _fn -g _fn -m 0700 /var/fn /var/fn/tls /var/fn/log
 cd /var/fn
-su -s /bin/sh _fn -c "$F operator $C mission small-community --host 10.0.2.15 --port 11563"
-openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3650 \
-  -subj /CN=fnbsd.friends.fn.invalid -addext subjectAltName=IP:10.0.2.15 \
-  -keyout /var/fn/tls/key.pem -out /var/fn/tls/cert.pem
-chown _fn:_fn /var/fn/tls/*.pem && chmod 600 /var/fn/tls/key.pem
+su -s /bin/sh _fn -c "$F operator $C mission small-community --host 10.0.2.15 --port 11563 --tls-name 10.0.2.15"
 su -s /bin/sh _fn -c "$F operator $C init"
 su -s /bin/sh _fn -c "$F operator $C policy set path-identity fnbsd.friends.fn.invalid"
 su -s /bin/sh _fn -c "$F operator $C principal set-password ember --posting"
@@ -2677,21 +2673,21 @@ tar xzf fn-8fb3768e8439-linux-x86_64.tar.gz
 F=$N/fn-8fb3768e8439/bin/fn
 C=$N/node/fn.toml
 mkdir -p node
-$F operator $C mission small-community --host 192.168.50.120 --port 11990
+$F operator $C mission small-community --host 192.168.50.120 --port 11990 --tls-name 192.168.50.120
 ```
 
 `mission` writes `fn.toml`: the listener on that address, `[auth] required`
 and `protected_only` (a login is needed, and only after STARTTLS), a TLS
-pair under `node/tls/`, the log under `node/log/`. It does not make the TLS
-pair. Make one whose subjectAltName is the address the other node will dial
-(the other node verifies the handshake against this certificate and that
-name):
+pair under `node/tls/`, the log under `node/log/`. With `--tls-name` it
+makes that pair (row Q10a, books/tls-self-signed.lisp): the image generates
+a P-256 key, ACL2 renders the certificate body (subject, validity, a
+subjectAltName entry per name), the image signs it and writes both files,
+the key at 0600. Name the address the other node will dial (the other node
+verifies the handshake against this certificate and that name). For a node
+written without `--tls-name`:
 
 ```sh
-openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3650 \
-  -subj /CN=persvati.friends.fn.invalid -addext subjectAltName=IP:192.168.50.120 \
-  -keyout node/tls/key.pem -out node/tls/cert.pem
-chmod 600 node/tls/key.pem
+$F operator $C tls self-signed 192.168.50.120        # docs-check: skip (no tls_cert in the grammar book configuration)
 $F operator $C init                                   # local.general, local.test
 $F operator $C policy set path-identity persvati.friends.fn.invalid
 printf 'PASSWORD\nPASSWORD\n' | $F operator $C principal set-password ember --posting

@@ -92,12 +92,16 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
    `su -s /bin/sh _fn -c 'cd /var/fn && PATH=/usr/local/fn/bin:$PATH exec sh'`.
 
 2. Write the settings file. Put your server's own address after `--host`
-   (`0.0.0.0` is refused: name the address you mean) and the port after
-   `--port`:
+   (`0.0.0.0` is refused: name the address you mean), the port after
+   `--port`, and after each `--tls-name` a name or address people will
+   dial:
 
    ```sh
-   fn operator /var/lib/fn/fn.toml mission small-community --host 203.0.113.7 --port 119
+   fn operator /var/lib/fn/fn.toml mission small-community --host 203.0.113.7 --port 119 --tls-name news.example.org --tls-name 203.0.113.7
    ```
+
+   Add `--tls-port 563` to serve NNTP over TLS on that port as well
+   (STARTTLS on `--port` is always there).
 
    `small-community` means: logins are required, only over an encrypted
    connection, and the groups `local.general` and `local.test` are served,
@@ -106,15 +110,18 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
    On OpenBSD the service runs as `_fn`, which cannot use a port below
    1024. Use a port like `11563` there.
 
-3. Give the node a TLS certificate. Copy one you have (for example from
-   Let's Encrypt) to `tls/cert.pem` and `tls/key.pem`, with the key at mode
-   0600. Or make your own. Use the name or address people will dial, and
-   give them the certificate file:
+3. The node's TLS certificate. With `--tls-name`, `mission` made a
+   self-signed one in `tls/cert.pem` (the key in `tls/key.pem`, mode 0600;
+   no `openssl` program is needed), naming each `--tls-name`, valid for 365
+   days. Give people `tls/cert.pem` to trust. To use one you have (for
+   example from Let's Encrypt), copy it and its key over those two files
+   instead. A node written without `--tls-name` makes its pair with:
 
    ```sh
-   openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3650 -subj /CN=news.example.org -addext subjectAltName=DNS:news.example.org,IP:203.0.113.7 -keyout tls/key.pem -out tls/cert.pem
-   chmod 600 tls/key.pem
+   fn operator /var/lib/fn/fn.toml tls self-signed news.example.org 203.0.113.7   # docs-check: skip (the grammar book configuration names no tls_cert)
    ```
+
+   It is refused (`exists`) while either file is there.
 
 4. Create the store, name the node, and add a login that may post. The
    password is asked twice:

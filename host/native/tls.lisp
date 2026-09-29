@@ -135,7 +135,15 @@ FN_OPENSSL_PREFIX is optional: unset, the system's pair is used."
     "X509_get_ext" "X509_EXTENSION_get_data"
     ;; SCRAM-SHA-256-PLUS (RFC 9266 tls-exporter): the negotiated version and
     ;; the exporter.  OpenSSL 1.1.1+ and LibreSSL 2.x+ export both.
-    "SSL_version" "SSL_export_keying_material"))
+    "SSL_version" "SSL_export_keying_material"
+    ;; Row Q10a: the self-signed pair the image makes (fnn-tls-self-signed-write).
+    ;; OpenSSL 3 and LibreSSL 3.3.6 export every one (the macOS
+    ;; /usr/lib/libcrypto.46.dylib's export table, 2026-09-29); EVP_DigestSign
+    ;; is not in LibreSSL 3.3, so the signature is Init + Update + Final.
+    "EVP_PKEY_CTX_new_id" "EVP_PKEY_keygen_init" "EVP_PKEY_CTX_ctrl"
+    "EVP_PKEY_keygen" "EVP_PKEY_CTX_free" "EVP_PKEY_free" "i2d_PUBKEY"
+    "i2d_PrivateKey" "EVP_MD_CTX_new" "EVP_MD_CTX_free" "EVP_sha256"
+    "EVP_DigestSignInit" "EVP_DigestUpdate" "EVP_DigestSignFinal" "RAND_bytes"))
 
 (defun fnn-tls-missing-symbols ()
   (remove-if #'sb-sys:find-foreign-symbol-address *fnn-tls-required-symbols*))
@@ -904,3 +912,162 @@ the caller to replay the already-applied ACL2 transition."
       (error 'fnn-tls-io-error
              :detail "plaintext bytes changed between peek and exact consume"))
     actual))
+
+
+;;; ---------------------------------------------------------------------------
+;;; Row Q10a: a self-signed pair made by the image, no `openssl' binary.
+;;; ACL2 decides the certificate (books/tls-self-signed.lisp): the host makes
+;;; a P-256 key, reads sixteen random octets and the wall clock, asks
+;;; fn-tls-self-signed-host-plan for the body, signs exactly those octets
+;;; (ECDSA with SHA-256) and writes the two files ACL2 renders.
+
+(defconstant +fnn-evp-pkey-ec+ 408)
+(defconstant +fnn-nid-prime256v1+ 415)
+(defconstant +fnn-evp-pkey-op-paramgen-keygen+ (logior 2 4))
+(defconstant +fnn-evp-pkey-ctrl-ec-paramgen-curve-nid+ #x1001)
+
+(sb-alien:define-alien-routine ("EVP_PKEY_CTX_new_id" fnn-%evp-pkey-ctx-new-id) (* t)
+  (id sb-alien:int) (engine (* t)))
+(sb-alien:define-alien-routine ("EVP_PKEY_keygen_init" fnn-%evp-pkey-keygen-init) sb-alien:int
+  (ctx (* t)))
+(sb-alien:define-alien-routine ("EVP_PKEY_CTX_ctrl" fnn-%evp-pkey-ctx-ctrl) sb-alien:int
+  (ctx (* t)) (keytype sb-alien:int) (optype sb-alien:int) (cmd sb-alien:int)
+  (p1 sb-alien:int) (p2 (* t)))
+(sb-alien:define-alien-routine ("EVP_PKEY_keygen" fnn-%evp-pkey-keygen) sb-alien:int
+  (ctx (* t)) (ppkey (* (* t))))
+(sb-alien:define-alien-routine ("EVP_PKEY_CTX_free" fnn-%evp-pkey-ctx-free) sb-alien:void
+  (ctx (* t)))
+(sb-alien:define-alien-routine ("EVP_PKEY_free" fnn-%evp-pkey-free) sb-alien:void
+  (pkey (* t)))
+(sb-alien:define-alien-routine ("i2d_PUBKEY" fnn-%i2d-pubkey) sb-alien:int
+  (pkey (* t)) (pp (* (* sb-alien:unsigned-char))))
+(sb-alien:define-alien-routine ("i2d_PrivateKey" fnn-%i2d-private-key) sb-alien:int
+  (pkey (* t)) (pp (* (* sb-alien:unsigned-char))))
+(sb-alien:define-alien-routine ("EVP_MD_CTX_new" fnn-%evp-md-ctx-new) (* t))
+(sb-alien:define-alien-routine ("EVP_MD_CTX_free" fnn-%evp-md-ctx-free) sb-alien:void
+  (ctx (* t)))
+(sb-alien:define-alien-routine ("EVP_sha256" fnn-%evp-sha256) (* t))
+(sb-alien:define-alien-routine ("EVP_DigestSignInit" fnn-%evp-digest-sign-init) sb-alien:int
+  (ctx (* t)) (pctx (* t)) (md (* t)) (engine (* t)) (pkey (* t)))
+(sb-alien:define-alien-routine ("EVP_DigestUpdate" fnn-%evp-digest-update) sb-alien:int
+  (ctx (* t)) (data (* sb-alien:unsigned-char)) (count sb-alien:unsigned-long))
+(sb-alien:define-alien-routine ("EVP_DigestSignFinal" fnn-%evp-digest-sign-final) sb-alien:int
+  (ctx (* t)) (sig (* sb-alien:unsigned-char)) (siglen (* sb-alien:unsigned-long)))
+(sb-alien:define-alien-routine ("RAND_bytes" fnn-%rand-bytes) sb-alien:int
+  (buffer (* sb-alien:unsigned-char)) (count sb-alien:int))
+
+(defun fnn-tls-ssc-fail (what)
+  (error 'fnn-tls-unavailable
+         :detail (format nil "~a failed~@[: ~a~]" what (first (fnn-tls-error-stack)))))
+
+(defun fnn-tls-ssc-generate-key ()
+  "A fresh P-256 key (EVP_PKEY *); the caller frees it."
+  (let ((ctx (fnn-%evp-pkey-ctx-new-id +fnn-evp-pkey-ec+ (fnn-tls-null-pointer))))
+    (when (fnn-tls-null-pointer-p ctx) (fnn-tls-ssc-fail "EVP_PKEY_CTX_new_id"))
+    (unwind-protect
+         (sb-alien:with-alien ((pkey (* t) (fnn-tls-null-pointer)))
+           (unless (= 1 (fnn-%evp-pkey-keygen-init ctx))
+             (fnn-tls-ssc-fail "EVP_PKEY_keygen_init"))
+           (unless (< 0 (fnn-%evp-pkey-ctx-ctrl ctx +fnn-evp-pkey-ec+
+                                                +fnn-evp-pkey-op-paramgen-keygen+
+                                                +fnn-evp-pkey-ctrl-ec-paramgen-curve-nid+
+                                                +fnn-nid-prime256v1+ (fnn-tls-null-pointer)))
+             (fnn-tls-ssc-fail "the P-256 curve selection"))
+           (unless (= 1 (fnn-%evp-pkey-keygen ctx (sb-alien:addr pkey)))
+             (fnn-tls-ssc-fail "EVP_PKEY_keygen"))
+           (when (fnn-tls-null-pointer-p pkey) (fnn-tls-ssc-fail "EVP_PKEY_keygen"))
+           pkey)
+      (fnn-%evp-pkey-ctx-free ctx))))
+
+(defun fnn-tls-ssc-i2d (function pkey what)
+  "The DER octets FUNCTION (i2d_PUBKEY or i2d_PrivateKey) writes for PKEY."
+  (let ((length (funcall function pkey
+                         (sb-alien:sap-alien (sb-sys:int-sap 0)
+                                             (* (* sb-alien:unsigned-char))))))
+    (unless (< 0 length) (fnn-tls-ssc-fail what))
+    (let ((buffer (fnn-make-octets length)))
+      (sb-sys:with-pinned-objects (buffer)
+        (sb-alien:with-alien ((cursor (* sb-alien:unsigned-char) (fnn-tls-pointer buffer)))
+          (unless (= length (funcall function pkey (sb-alien:addr cursor)))
+            (fnn-tls-ssc-fail what))))
+      buffer)))
+
+(defun fnn-tls-ssc-random (count)
+  (let ((buffer (fnn-make-octets count)))
+    (sb-sys:with-pinned-objects (buffer)
+      (unless (= 1 (fnn-%rand-bytes (fnn-tls-pointer buffer) count))
+        (fnn-tls-ssc-fail "RAND_bytes")))
+    buffer))
+
+(defun fnn-tls-ssc-sign (pkey octets)
+  "ECDSA over SHA-256 of OCTETS with PKEY: the DER ECDSA-Sig-Value."
+  (let ((ctx (fnn-%evp-md-ctx-new)))
+    (when (fnn-tls-null-pointer-p ctx) (fnn-tls-ssc-fail "EVP_MD_CTX_new"))
+    (unwind-protect
+         (sb-sys:with-pinned-objects (octets)
+           (unless (= 1 (fnn-%evp-digest-sign-init ctx (fnn-tls-null-pointer) (fnn-%evp-sha256)
+                                                   (fnn-tls-null-pointer) pkey))
+             (fnn-tls-ssc-fail "EVP_DigestSignInit"))
+           (unless (= 1 (fnn-%evp-digest-update ctx (fnn-tls-pointer octets) (length octets)))
+             (fnn-tls-ssc-fail "EVP_DigestUpdate"))
+           (sb-alien:with-alien ((size sb-alien:unsigned-long 0))
+             (unless (= 1 (fnn-%evp-digest-sign-final
+                           ctx (sb-alien:sap-alien (sb-sys:int-sap 0) (* sb-alien:unsigned-char))
+                           (sb-alien:addr size)))
+               (fnn-tls-ssc-fail "EVP_DigestSignFinal"))
+             (let ((signature (fnn-make-octets size)))
+               (sb-sys:with-pinned-objects (signature)
+                 (unless (= 1 (fnn-%evp-digest-sign-final ctx (fnn-tls-pointer signature)
+                                                          (sb-alien:addr size)))
+                   (fnn-tls-ssc-fail "EVP_DigestSignFinal")))
+               (subseq signature 0 size))))
+      (fnn-%evp-md-ctx-free ctx))))
+
+(defun fnn-tls-ssc-write-new (path octets mode)
+  "Create PATH exclusively (a racing writer is refused by open(2)), write
+OCTETS and fsync."
+  (let ((fd (fnn-open path (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl
+                                   +fnn-o-nofollow+)
+                      mode)))
+    (unwind-protect
+         (progn (fnn-write-all fd (fnn-octets octets))
+                (fnn-fsync-file fd))
+      (fnn-close fd))))
+
+(defun fnn-tls-self-signed-write (names days cert-path key-path)
+  "Make the pair ACL2 decides for NAMES and DAYS and write it at CERT-PATH
+and KEY-PATH (neither exists: the caller's ACL2 outcome refused that).
+Returns :written, or ACL2's refusal word."
+  (fnn-tls-initialize)
+  (let ((pkey (fnn-tls-ssc-generate-key)))
+    (unwind-protect
+         (let* ((spki (fnn-tls-ssc-i2d #'fnn-%i2d-pubkey pkey "i2d_PUBKEY"))
+                (key-der (fnn-tls-ssc-i2d #'fnn-%i2d-private-key pkey "i2d_PrivateKey"))
+                (serial (fnn-tls-ssc-random
+                         (fnn-core 'fn-tls-self-signed-host-serial-octets))))
+           (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
+             (let ((plan (fnn-core 'fn-tls-self-signed-host-plan names days wall has-wall
+                                   (fnn-octet-list serial) (fnn-octet-list spki))))
+               (if (not (eq (first plan) :accepted))
+                   (second plan)
+                 (let* ((tbs (second plan))
+                        (signature (fnn-tls-ssc-sign pkey (fnn-octets tbs)))
+                        (cert (fnn-core 'fn-tls-self-signed-host-certificate-pem
+                                        tbs (fnn-octet-list signature)))
+                        (key (fnn-core 'fn-tls-self-signed-host-key-pem
+                                       (fnn-octet-list key-der))))
+                   (cond ((not (eq (first cert) :accepted)) (second cert))
+                         ((not (eq (first key) :accepted)) (second key))
+                         ((not (and (fnn-octet-list-p (second cert))
+                                    (fnn-octet-list-p (second key))))
+                          (fnn-fault "ACL2 returned a malformed certificate or key"))
+                         (t (fnn-tls-ssc-write-new key-path (second key) #o600)
+                            ;; A key without its certificate is no pair: the
+                            ;; key this call created goes if the certificate
+                            ;; cannot be written.
+                            (handler-bind ((error (lambda (condition)
+                                                    (declare (ignore condition))
+                                                    (ignore-errors (sb-posix:unlink key-path)))))
+                              (fnn-tls-ssc-write-new cert-path (second cert) #o644))
+                            :written)))))))
+      (fnn-%evp-pkey-free pkey))))

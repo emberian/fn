@@ -37,7 +37,7 @@
 ; directory: the operator's octets load as the configuration with every
 ; path under the node, and that configuration is one `run' accepts.
 (defconst *ncpt-node* "/tank/fn/scratch/operator-config/relay")
-(defconst *ncpt-plan* (fn-native-mission-plan "relay" *ncpt-node* "127.0.0.1" 11942))
+(defconst *ncpt-plan* (fn-native-mission-plan "relay" *ncpt-node* "127.0.0.1" 11942 nil))
 (defconst *ncpt-octets* (caddr *ncpt-plan*))
 (defconst *ncpt-written* (cadr *ncpt-plan*))
 (defconst *ncpt-resolved* (fn-ncpath-resolve-config *ncpt-written* *ncpt-node*))

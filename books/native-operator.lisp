@@ -14,6 +14,7 @@
 (include-book "accounts")
 (include-book "native-auth-admin")
 (include-book "native-retire")
+(include-book "tls-self-signed")
 (include-book "byte-store-frame")
 (include-book "outcome-class")
 ; PKT-209: `control log' and `control evidence MESSAGE-ID'.
@@ -657,7 +658,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "show")
          "usage: fn operator CONFIG show [TABLE KEY] (the normalized configuration as fn.toml, or one key's value)")
         ((equal subject "mission")
-         "usage: fn operator NODE/fn.toml mission small-community|relay|archive [--host H] [--port P] (writes a new fn.toml; then init)")
+         "usage: fn operator NODE/fn.toml mission small-community|relay|archive [--host H] [--port P] [--tls-port P] [--tls-name NAME ...] (writes a new fn.toml; then init; with --tls-port or --tls-name the image makes a self-signed certificate and its key in NODE/tls/ naming each NAME, a DNS name or an IP address, default the --host address, valid 365 days; with --tls-port the node also serves NNTP over TLS on that port, STARTTLS always)")
         ((equal subject "post")
          "usage: fn operator CONFIG post --message-id ID --payload PATH --group GROUP [--group GROUP]")
         ((equal subject "status")
@@ -700,7 +701,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "keys")
          "usage: fn operator CONFIG keys redecide MSGID (re-decide a stored key statement under the grants in force now; the running owner decides it over the control socket; refused when MSGID is no stored key statement or its change is already made; spec peering 7.4)")
         ((equal subject "tls")
-         "usage: fn operator CONFIG tls reload (the running owner re-reads its tls_cert and tls_key and serves them to new connections; sessions already open keep theirs; refused by name, the old certificate still served, when the files do not load, the key does not match, the certificate is not valid now, or it drops a name the served one has)")
+         "usage: fn operator CONFIG tls reload | tls self-signed NAME [NAME ...] [--days N] (self-signed: the image makes a P-256 key and a certificate naming each NAME, a DNS name or an IP address, the first its subject, valid from an hour ago for N days, default 365, and writes them at tls_cert and tls_key; refused when either file exists; then run, or tls reload on a running node. reload: the running owner re-reads its tls_cert and tls_key and serves them to new connections; sessions already open keep theirs; refused by name, the old certificate still served, when the files do not load, the key does not match, the certificate is not valid now, or it drops a name the served one has)")
         ((equal subject "carry")
          "usage: fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK [--abandon] REASON...} (the BP carry obligations in the FNWF workflow journal at the absolute path JOURNAL: list and inspect print each work's message, peer, status, Store pin, hold and last attempt; pause stops the requests for WORK (* every work) until resume; drop stops carrying WORK for REASON, final; the Store pin stays until the receipt releases it, or, with --abandon, the operator waives the obligation: the waiver (your uid, REASON) is durable and the Store pin is released now, refused unless the pin is held; the store must not be served)")
         ((equal subject "retire")
@@ -775,12 +776,47 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ; PRF-212: `tls reload'.  Whether the owner takes the new files is the
 ; owner's (books/tls-reload.lisp fn-tlsr-decide, asked by
 ; host/native/tls-reload.lisp over the control socket).
+; Row Q10a: a name list books/tls-self-signed.lisp refuses, by the word the
+; operator reads (mission and tls self-signed alike).
+(defun fn-nop-self-signed-refusal-word (reason)
+  (declare (xargs :guard t))
+  (if (equal reason :common-name-length) :tls-common-name-length :tls-name))
+
+; Row Q10a: `tls self-signed NAME [NAME ...] [--days N]' (NAMES-REV newest
+; first; DAYS NIL until given).
+(defun fn-nop-self-signed-words (words names-rev days)
+  (declare (xargs :guard t :measure (len words)))
+  (cond ((atom words) (list (fn-ncfg-reverse names-rev) days))
+        ((equal (car words) "--days")
+         (if (and (consp (cdr words)) (null days) (fn-nop-profile-decimal (cadr words)))
+             (fn-nop-self-signed-words (cddr words) names-rev
+                                       (fn-nop-profile-decimal (cadr words)))
+           :bad))
+        ((stringp (car words))
+         (fn-nop-self-signed-words (cdr words) (cons (car words) names-rev) days))
+        (t :bad)))
+
 (defun fn-nop-parse-tls (words config)
   (declare (xargs :guard t))
-  (if (and (equal (fn-ncfg-first words) "reload")
-           (null (fn-ncfg-rest words)))
-      (fn-nop-result :accepted :plan "tls" config (list :tls "reload"))
-    (fn-nop-usage :invalid-tls-command "tls" config words)))
+  (cond ((and (equal (fn-ncfg-first words) "reload")
+              (null (fn-ncfg-rest words)))
+         (fn-nop-result :accepted :plan "tls" config (list :tls "reload")))
+        ((equal (fn-ncfg-first words) "self-signed")
+         (let ((parsed (fn-nop-self-signed-words (fn-ncfg-rest words) nil nil)))
+           (if (or (equal parsed :bad) (atom (fn-ncfg-first parsed)))
+               (fn-nop-usage :invalid-tls-command "tls" config words)
+             (let* ((names (fn-ncfg-first parsed))
+                    (days (or (fn-ncfg-second parsed) *fn-ssc-default-days*))
+                    (names-refusal (fn-ssc-names-refusal names)))
+               (cond (names-refusal
+                      (fn-nop-refused (fn-nop-self-signed-refusal-word names-refusal)
+                                      "tls" config words))
+                     ((not (and (stringp (fn-native-config-tls-cert config))
+                                (stringp (fn-native-config-tls-key config))))
+                      (fn-nop-refused :no-tls-files "tls" config words))
+                     (t (fn-nop-result :accepted :plan "tls" config
+                                       (list :tls-self-signed names days))))))))
+        (t (fn-nop-usage :invalid-tls-command "tls" config words))))
 
 ; PKT-869: `carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|*
 ; | drop WORK REASON...}' over the FNWF workflow journal at the absolute path
@@ -1095,15 +1131,39 @@ so malformed argv and help syntax remain ACL2-owned before any host file I/O."
 ; PKT-097: `mission NAME [--host H] [--port P]' writes the mission's fn.toml
 ; at the configuration path, which does not exist yet.  PATH is that path's
 ; octets; the node directory is everything before its last `/'.
-(defun fn-nop-mission-options (words host port)
+; Row Q10a: `--tls-port P' and each `--tls-name NAME' (NAMES-REV, newest
+; first).
+(defun fn-nop-mission-options (words host port tls-port names-rev)
   (declare (xargs :guard t :measure (len words)))
-  (cond ((atom words) (list host port))
+  (cond ((atom words) (list host port tls-port (fn-ncfg-reverse names-rev)))
         ((and (equal (car words) "--host") (consp (cdr words)) (stringp (cadr words)))
-         (fn-nop-mission-options (cddr words) (cadr words) port))
+         (fn-nop-mission-options (cddr words) (cadr words) port tls-port names-rev))
         ((and (equal (car words) "--port") (consp (cdr words))
               (fn-nop-profile-decimal (cadr words)))
-         (fn-nop-mission-options (cddr words) host (fn-nop-profile-decimal (cadr words))))
+         (fn-nop-mission-options (cddr words) host (fn-nop-profile-decimal (cadr words))
+                                 tls-port names-rev))
+        ((and (equal (car words) "--tls-port") (consp (cdr words))
+              (fn-nop-profile-decimal (cadr words)))
+         (fn-nop-mission-options (cddr words) host port (fn-nop-profile-decimal (cadr words))
+                                 names-rev))
+        ((and (equal (car words) "--tls-name") (consp (cdr words)) (stringp (cadr words)))
+         (fn-nop-mission-options (cddr words) host port tls-port
+                                 (cons (cadr words) names-rev)))
         (t :bad)))
+
+; The request for the pair a mission makes: NIL without --tls-port or
+; --tls-name (a mission without TLS words makes no pair; `tls self-signed'
+; makes one later), else
+; (NAMES DAYS CERT-PATH KEY-PATH), the paths the absolute octets of the files
+; the configuration names (tls/cert.pem and tls/key.pem beside fn.toml).
+(defun fn-nop-mission-self-signed (node host tls-port names)
+  (declare (xargs :guard t))
+  (and (or tls-port (consp names))
+       (list (if (consp names) names (list host))
+             *fn-ssc-default-days*
+             (fn-record-string-octets (fn-ncfg-join-path node "/tls/cert.pem"))
+             (fn-record-string-octets (fn-ncfg-join-path node "/tls/key.pem")))))
+
 
 (defun fn-nop-dirname-rev (rev)
   ; REV is a path reversed: drop through the last `/'.
@@ -1124,20 +1184,31 @@ so malformed argv and help syntax remain ACL2-owned before any host file I/O."
         (fn-nop-usage :invalid-mission "mission" nil nil)
       (let ((options (fn-nop-mission-options (fn-ncfg-rest (fn-ncfg-rest words))
                                              *fn-ncfg-default-listener-host*
-                                             *fn-ncfg-default-listener-port*))
+                                             *fn-ncfg-default-listener-port*
+                                             nil nil))
             (node (fn-record-octets-string
                    (fn-ncfg-reverse (fn-nop-dirname-rev (fn-ncfg-reverse path-octets)))))
             (name (fn-ncfg-second words)))
         (if (equal options :bad)
             (fn-nop-usage :invalid-mission-options "mission" nil (fn-ncfg-rest words))
-          (let ((plan (fn-native-mission-plan name node (fn-ncfg-first options)
-                                              (fn-ncfg-second options))))
-            (if (equal (fn-ncfg-first plan) :accepted)
-                (fn-nop-result :accepted :plan "mission" nil
-                               (list :mission name
-                                     (fn-ncfg-third plan)
-                                     (fn-native-mission-directories node)))
-              (fn-nop-refused (fn-ncfg-second plan) "mission" nil (fn-ncfg-rest words)))))))))
+          (let* ((self-signed (fn-nop-mission-self-signed node (fn-ncfg-first options)
+                                                          (fn-ncfg-third options)
+                                                          (fn-ncfg-nth 3 options)))
+                 (names-refusal (and self-signed
+                                     (fn-ssc-names-refusal (fn-ncfg-first self-signed))))
+                 (plan (fn-native-mission-plan name node (fn-ncfg-first options)
+                                               (fn-ncfg-second options)
+                                               (fn-ncfg-third options))))
+            (cond ((not (equal (fn-ncfg-first plan) :accepted))
+                   (fn-nop-refused (fn-ncfg-second plan) "mission" nil (fn-ncfg-rest words)))
+                  (names-refusal
+                   (fn-nop-refused (fn-nop-self-signed-refusal-word names-refusal)
+                                   "mission" nil (fn-ncfg-rest words)))
+                  (t (fn-nop-result :accepted :plan "mission" nil
+                                    (list :mission name
+                                          (fn-ncfg-third plan)
+                                          (fn-native-mission-directories node)
+                                          self-signed))))))))))
 
 ; The host's lstat of the configuration path: an existing file is refused;
 ; a mission writes a new node only.
@@ -1942,6 +2013,10 @@ when that store already exists is `fn-native-operator-init-outcome'."
           ((equal (fn-native-operator-result-command result) "principal") :principal)
           ((equal (fn-native-operator-result-command result) "keys") :keys)
           ((equal (fn-native-operator-result-command result) "carry") :carry)
+          ((and (equal (fn-native-operator-result-command result) "tls")
+                (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                       :tls-self-signed))
+           :tls-self-signed)
           ((equal (fn-native-operator-result-command result) "tls") :tls)
           ((equal (fn-native-operator-result-command result) "show") :show)
           ((equal (fn-native-operator-result-command result) "mission") :mission)
@@ -2780,6 +2855,44 @@ when that store already exists is `fn-native-operator-init-outcome'."
       (fn-native-operator-post-group-octets
        (fn-ncfg-nth 3 (fn-native-operator-result-arguments result)))
     nil))
+
+; Row Q10a: the self-signed pair an accepted `mission --tls-port' or `tls
+; self-signed' asks the image to make: (NAMES DAYS CERT-PATH KEY-PATH), the
+; paths as octets, or NIL.
+(defun fn-native-operator-result-self-signed (result)
+  (declare (xargs :guard t))
+  (cond ((not (equal (fn-native-operator-result-status result) :accepted)) nil)
+        ((equal (fn-native-operator-result-command result) "mission")
+         (fn-ncfg-nth 4 (fn-native-operator-result-arguments result)))
+        ((and (equal (fn-native-operator-result-command result) "tls")
+              (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                     :tls-self-signed))
+         (let ((config (fn-native-operator-result-config result)))
+           (list (fn-ncfg-second (fn-native-operator-result-arguments result))
+                 (fn-ncfg-third (fn-native-operator-result-arguments result))
+                 (fn-record-string-octets (fn-native-config-tls-cert config))
+                 (fn-record-string-octets (fn-native-config-tls-key config)))))
+        (t nil)))
+
+; The host's lstat of the two files: an existing one is refused by name
+; (`exists'); the image never overwrites a certificate or a key.
+(defun fn-native-operator-self-signed-outcome (result cert-exists key-exists)
+  (declare (xargs :guard t))
+  (if (and (fn-native-operator-result-self-signed result) (or cert-exists key-exists))
+      (fn-nop-refused :exists (fn-native-operator-result-command result)
+                      (fn-native-operator-result-config result) nil)
+    result))
+
+;   The refusal the image's pair answered with (a fn-ssc-plan word such as
+;   :clock, or :spki / :signature / :key from the host's octets), by name.
+(defun fn-native-operator-self-signed-refused (result reason)
+  (declare (xargs :guard t))
+  (fn-nop-refused (if (member-equal reason '(:no-names :name :common-name-length :clock :days
+                                             :serial :spki :too-long :body :signature :key))
+                      reason
+                    :self-signed)
+                  (fn-native-operator-result-command result)
+                  (fn-native-operator-result-config result) nil))
 
 (defun fn-native-operator-result-show-octets (result)
   (declare (xargs :guard t))

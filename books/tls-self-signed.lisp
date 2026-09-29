@@ -216,6 +216,8 @@
 
 (defconst *fn-ssc-backdate-ms* 3600000)
 (defconst *fn-ssc-day-ms* 86400000)
+; The validity `mission --tls-port' and `tls self-signed' without --days use.
+(defconst *fn-ssc-default-days* 365)
 
 (defun fn-ssc-time (ms)
   (declare (xargs :guard t))

@@ -343,3 +343,36 @@
 (defun fn-native-operator-host-result-tls-control-path-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-tls-control-path-octets result))
+
+;; Row Q10a: the self-signed pair (books/tls-self-signed.lisp).  The host
+;; generates the key, reads sixteen random octets and the wall clock, signs
+;; the body ACL2 renders and writes the two PEM files ACL2 renders.
+(defun fn-native-operator-host-result-self-signed (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-self-signed result))
+
+(defun fn-native-operator-host-self-signed-outcome (result cert-exists key-exists)
+  (declare (xargs :mode :program))
+  (fn-native-operator-self-signed-outcome result cert-exists key-exists))
+
+(defun fn-tls-self-signed-host-plan (names days now-ms has-wall serial spki)
+  (declare (xargs :mode :program
+                  :guard (and (fn-cbor-octet-listp serial) (fn-cbor-octet-listp spki))))
+  (fn-ssc-plan names days now-ms has-wall serial spki))
+
+(defun fn-tls-self-signed-host-serial-octets ()
+  (declare (xargs :mode :program))
+  *fn-ssc-serial-octets*)
+
+(defun fn-tls-self-signed-host-certificate-pem (tbs sig)
+  (declare (xargs :mode :program
+                  :guard (and (fn-cbor-octet-listp tbs) (fn-cbor-octet-listp sig))))
+  (fn-ssc-certificate-pem tbs sig))
+
+(defun fn-tls-self-signed-host-key-pem (der)
+  (declare (xargs :mode :program :guard (fn-cbor-octet-listp der)))
+  (fn-ssc-key-pem der))
+
+(defun fn-native-operator-host-self-signed-refused (result reason)
+  (declare (xargs :mode :program))
+  (fn-native-operator-self-signed-refused result reason))

@@ -486,6 +486,26 @@ the certificate in use:
 tls names=fn.fg-goose.online not-after=2026-12-25T22:23:43Z
 ```
 
+### A self-signed certificate, made by fn
+
+`mission ... --tls-name NAME` makes one when it writes `fn.toml`. For a
+node that has none, or to replace one you have removed:
+
+```sh
+fn operator /etc/fn/fn.toml tls self-signed news.example.org 203.0.113.7 --days 365   # docs-check: skip (the grammar book configuration names no tls_cert)
+```
+
+fn makes a P-256 key and a certificate naming each name (a DNS name or an
+IP address; the first is also its subject), valid from an hour ago for
+`--days` days (365 when not given), and writes them at `tls_cert` and
+`tls_key`, the key at mode 0600. No `openssl` program is needed. It is
+refused, and writes nothing, when either file is there (`exists`), when a
+name is not a DNS name or an address (`tls-name`; `0.0.0.0` and `::` are
+nobody's name), or when the first name is over 64 octets
+(`tls-common-name-length`). Give people the certificate file to trust.
+Then start the node, or `tls reload` a running one when the names are the
+same as the old certificate's.
+
 ### A certificate from a public authority
 
 A certificate from an authority such as Let's Encrypt works as it comes,

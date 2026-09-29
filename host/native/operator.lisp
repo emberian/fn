@@ -137,6 +137,41 @@ the one tagged result line."
     (fnn-operator-emit-status :accepted "show")
     +fnn-exit-ok+))
 
+;;; Row Q10a: the self-signed pair ACL2 asks for (books/tls-self-signed.lisp;
+;;; host/native/tls.lisp fnn-tls-self-signed-write).  NIL when there is none
+;;; to make or it was written; else ACL2's refusal, to emit.
+(defun fnn-operator-make-self-signed (result)
+  (let ((request (fnn-core 'fn-native-operator-host-result-self-signed result)))
+    (when request
+      (destructuring-bind (names days cert-octets key-octets) request
+        (unless (and (fnn-octet-list-p cert-octets) (fnn-octet-list-p key-octets))
+          (fnn-fault "ACL2 returned malformed self-signed paths"))
+        (let* ((cert-path (fnn-octets-string (fnn-octets cert-octets)))
+               (key-path (fnn-octets-string (fnn-octets key-octets)))
+               (outcome (fnn-core 'fn-native-operator-host-self-signed-outcome result
+                                  (and (fnn-lstat cert-path) t)
+                                  (and (fnn-lstat key-path) t))))
+          (if (not (eq (fnn-core 'fn-native-operator-host-result-status outcome) :accepted))
+              outcome
+            (let ((written (fnn-tls-self-signed-write names days cert-path key-path)))
+              (if (eq written :written)
+                  (progn (fnn-out "wrote ~a and ~a" cert-path key-path) nil)
+                (fnn-core 'fn-native-operator-host-self-signed-refused result written)))))))))
+
+(defun fnn-operator-execute-tls-self-signed (result)
+  "`tls self-signed NAME... [--days N]': the pair at tls_cert and tls_key."
+  (handler-case
+      (let ((refused (fnn-operator-make-self-signed result)))
+        (if refused
+            (progn (fnn-operator-emit-result refused)
+                   (fnn-core 'fn-native-operator-host-result-exit-code refused))
+          (progn (fnn-operator-emit-status :accepted "tls")
+                 +fnn-exit-ok+)))
+    (error (condition)
+      (let ((code (fnn-exit-code-for condition)))
+        (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "tls" condition)
+        code))))
+
 (defun fnn-operator-execute-mission (result config-path)
   "Write the mission's fn.toml, ACL2's rendering, at CONFIG-PATH (PKT-097).
 
@@ -165,6 +200,13 @@ overwritten.  The directories ACL2 names are created if absent."
                 (dolist (dir dirs)
                   (let ((path (fnn-octets-string (fnn-octets dir))))
                     (unless (fnn-lstat path) (fnn-mkdir path #o700))))
+                ;; Row Q10a: `--tls-port' -- the pair first, so fn.toml never
+                ;; names files the image did not make.
+                (let ((refused (fnn-operator-make-self-signed result)))
+                  (when refused
+                    (fnn-operator-emit-result refused)
+                    (return-from fnn-operator-execute-mission
+                      (fnn-core 'fn-native-operator-host-result-exit-code refused))))
                 (let ((fd (fnn-open config-path
                                     (logior sb-posix:o-wronly sb-posix:o-creat
                                             sb-posix:o-excl +fnn-o-nofollow+)
@@ -970,6 +1012,7 @@ answer that is neither the report nor a refusal (the transport) is uncertain."
         (case action
           (:help (fnn-operator-execute-help result))
           (:show (fnn-operator-execute-show result))
+          (:tls-self-signed (fnn-operator-execute-tls-self-signed result))
           (:init (fnn-operator-execute-init result))
           (:status (fnn-operator-execute-status result))
           (:health (fnn-operator-execute-health result))
