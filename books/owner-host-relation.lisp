@@ -11,6 +11,42 @@
 ; the open), stated over F with the arguments as the host passes them.
 ; Where the theorem already exists it is cited by a corollary named
 ; `fn-ohr-<entry>-...-by-<theorem>'; where it did not, it is proved here.
+;
+; COVERAGE: host entry (host/owner-host.lisp) -> the ACL2 function it installs
+; -> the theorem that carries fn-lgoc-invariantp (or fn-ocl-relation) across it.
+;   fn-owner-recover-from-store-open  fn-ock-install         fn-ohr-store-open-installs-the-carried-relation (PRF-926)
+;   fn-owner-recover-extended         fn-ock-recover-extended fn-lgoc-recover-installs-invariant (PRF-286)
+;   fn-owner-fault                    fn-ocfg-fault          fn-ohr-fault-preserves-carried-relation (PRF-924)
+;   fn-owner-step (:reconfigure)      fn-ocfg-reconfigure    fn-ohr-step-reconfigure-preserves-carried-relation (PRF-924)
+;   fn-owner-step (:close)            fn-ocfg-close          fn-ohr-step-close-preserves-carried-relation (fn-ocl-close-preserves-historical-relation)
+;   fn-owner-step (:advance)          fn-ocfg-advance        fn-ohr-step-advance-preserves-carried-relation (fn-ocl-advance-preserves-historical-relation)
+;   fn-owner-step (:take :control-submit :operator-submit :feed-replay :control-outcome
+;                  :bp-transit-outcome :feeds :feed-conn)    fn-ohr-step-<event>-preserves-carried-relation (PRF-925)
+;   fn-owner-posting-configure        fn-own-configure       fn-ohr-configure-preserves-carried-relation (PRF-925)
+;   fn-owner-install-profile          fn-osb-install         fn-ohr-osb-install-preserves-carried-relation (PRF-925)
+;   fn-owner-feed-install-port-result fn-own-with-feeds      fn-ohr-with-feeds-preserves-carried-relation (PRF-925)
+;   fn-owner-install-node-secret      fn-own-with-node-secret fn-ohr-with-node-secret-preserves-carried-relation (PRF-925)
+;   fn-owner-reconfigure-complete     fn-oclc-publish        fn-lgoc-publish-preserves-invariant (PRF-286)
+;   fn-owner-reconfigure-unstage      fn-psrv-unstage        fn-psrv-unstage-preserves-invariant (PRF-290)
+;   fn-owner-io                       fn-olr-ocfg-order/-reserve, fn-rcon-ocfg-io  fn-lgoc-log-order/-log-reserve/-rcon-io-preserves-invariant (PRF-286)
+;   fn-owner-prepare, -prepare-buffer fn-pout-prepare-article (= fn-psrv-prepare)  fn-psrv-prepare-preserves-invariant (PRF-290)
+;   fn-owner-prepare-identity         fn-pout-prepare-identity (= fn-oiis-prepare-identity)  fn-oiis-prepare-identity-preserves-invariant
+;   fn-owner-prepare-topic            fn-pout-prepare-topic  fn-psrv-prepare-topic-preserves-invariant
+;   fn-owner-prepare-retention/-consumer, -refuse-reservation, -known-abort
+;                                     fn-ocfg-step (:store ...)  fn-psrv-prepare-retention/-consumer-, fn-lgoc-refuse-reservation-, fn-psrv-known-abort-preserves-invariant
+;   fn-owner-finish-submission-synced fn-apc-own-finish (= fn-ccar-own-finish)  fn-lgoc-finish-preserves-invariant (PRF-286)
+;   fn-owner-open-at                  fn-ocar-ocfg-open (= fn-ocfg-open)  fn-ocl-open-preserves-historical-relation
+;   fn-owner-observe                  fn-ocfg-observe        fn-ocl-observe-preserves-historical-relation
+;   fn-owner-at-reader-view/-working-view  fn-ocfg-with-view  fn-orr-relation-of-with-view, fn-ocl-relation-of-a-view-captured-before-appends
+;   fn-owner-chunk                    fn-scar-ocfg-read-tls-prefix (= fn-ocfg-read-tls-prefix = fn-ocfg-read of the consumed prefix)  fn-ocl-read-preserves-historical-relation [composite owed]
+;   fn-owner-chunk-span-at            fn-oas-read-span       [owed: join-f2's fn-otm-read-span arm]
+;   fn-owner-exposure-open            fn-ocar-exp-open (= fn-exp-open)  [owed: composite over fn-ocfg-open / fn-ocfg-open-peer]
+;   fn-owner-finish-synced            fn-rix-ocfg-complete (= fn-ccar-ocfg-complete)  [owed]
+;   fn-owner-begin, -declare-group    fn-pout-begin, fn-pout-declare-group  [owed: :begin keeps control; :declare-group appends a fact]
+;   fn-owner-tls-established          fn-ocfg-read-step (:tls-established)  [owed]
+;   fn-owner-open-peer, fn-exp-open's peer branch  fn-ocfg-open-peer  NOT PRESERVED: no pin (PKT-888)
+;   fn-owner-outcome, -transit-outcome  fn-apc-own-outcome (= fn-own-outcome), fn-own-transit-outcome
+;                                     a :durable completion advances the connection without re-pinning (PKT-889)
 
 (in-package "ACL2")
 
@@ -665,7 +701,8 @@
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-step oc (list :advance id) fn-arena)))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
-                                   (x (fn-ocfg-step oc (list :advance id) fn-arena))))
+                                   (x (fn-ocfg-step oc (list :advance id) fn-arena)))
+                 fn-ocl-advance-preserves-historical-relation)
            :in-theory (e/d (fn-ocfg-step) (fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner fn-lgoc-invariantp)))))
 (defthm fn-ohr-step-take-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
