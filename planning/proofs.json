@@ -4035,7 +4035,7 @@
       "progress_note": "Open: the durable `store reclaim` byte program and its `--dry-run` verb in books/native-operator (design B, reclaim through the compaction pack: planning/evidence/reclaim-host-2026-09-25.md); the reclaimed record's own replay step; holders: the consumer reading is conservative (a lagging consumer holds every article), feed state and FNBS rows are not read, reader pins have no durable form (offline reclaim needs none); the retention charge released with the payload; articles with a verdict other than :absent are held; the buffer's source digest slices the two ranges of the D32 description into one list on the resend-of-a-reclaimed-article path (a two-range buffer digest reader would remove it); native N=5,000 run and cut campaign (SCN-048). audit-fixes rcl (2026-09-27): since the acceptance flip the reclaim counts (status's reclaim line, the reclaim verbs' reports) read each article's HANDLE as its octets, so reclaimable-octets and freed-octets were 0 and a tombstoned article counted reclaimable again. fn-rcl-store-counts now takes the arena (host: fn-native-live-status-host-offline/-answer, fn-store-reclaim-decide(-stream), fn-store-log-reclaim-decide-stream pass the live fn-arena) and reads lengths and the tombstone head through it; KEYSTONE fn-rcl-store-counts-is-the-model-over-alpha: the counts are fn-rcl-summary / fn-rcl-held-count over ALPHA of the Store's articles (tests/acl2/store-reclaim-holders-tests.lisp).",
       "events": [
         "fn-rcl-reclaimable-is-no-obligation-names-it",
-        "fn-rcl-reclaim-never-touches-a-held-article",
+        "fn-rclp-event-never-touches-a-held-article",
         "fn-rcl-reclaim-keeps-the-duplicate-history",
         "fn-rcl-reclaim-keeps-every-binding",
         "fn-rcl-reclaim-keeps-the-numbering",
@@ -4798,7 +4798,9 @@
         "fn-sbud-article-verdict-keeps-history",
         "fn-sbud-prepare-under-article-budget-keeps-history",
         "fn-post-admitted-article-keeps-history",
-        "fn-sbud-article-figure-bounds-the-record"
+        "fn-sbud-article-figure-bounds-the-record",
+        "fn-sbud-article-gate-figure-bounds-every-record",
+        "fn-sbud-article-verdict-keeps-history-for-every-record"
       ]
     },
     {
@@ -5041,8 +5043,7 @@
         "fn-bpfw-cell-at-of-sort",
         "fn-bpfw-sortedp-of-sort",
         "fn-bpnf-family-apply-conserves-jobs",
-        "fn-bpnp-step-family-events-keep-jobs-agreeing",
-        "fn-bpfj-apply-conserves-jobs"
+        "fn-bpnp-step-family-events-keep-jobs-agreeing"
       ]
     },
     {
@@ -5086,7 +5087,7 @@
         "fn-rclp-events-keep-the-summary-shape",
         "fn-rclp-a-reclaimed-event-stays-reclaimed",
         "fn-rclp-events-idempotent",
-        "fn-rclp-events-never-touch-a-held-article",
+        "fn-rclp-event-never-touches-a-held-article",
         "fn-rclp-events-keep-every-other-kind",
         "fn-rclp-freed-octets-account",
         "fn-rclp-freed-is-the-admission-count",
@@ -7558,7 +7559,8 @@
         "fn-heap-store-history-holds-payload-and-memberships",
         "fn-heap-arena-octets-slope",
         "fn-heap-records-retained-within-the-terms",
-        "fn-heap-small-profile-run-fits-a-two-gib-machine"
+        "fn-heap-small-profile-run-fits-a-two-gib-machine",
+        "fn-heap-record-charge-is-the-budgets-charge"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -9008,7 +9010,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-bpah-handoff-report-is-application-disposition",
         "fn-bpah-persist-delivery-reports-the-record",
@@ -9099,17 +9101,14 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-bpfr-step-resumes",
         "fn-bpfr-run-is-reassemble",
         "fn-bpfr-step-is-bounded",
         "fn-bpfr-finished-state-is-the-sweep",
         "fn-bpfr-run-resumes",
-        "fn-bpfr-run-finishes",
-        "fn-bpfr-step-keeps-statep",
-        "fn-bpfr-step-keeps-cells-true-listp",
-        "fn-bpfr-resume-true-listp"
+        "fn-bpfr-run-finishes"
       ],
       "evidence": [
         "books/bp-fragment-resume.lisp",
@@ -11403,7 +11402,8 @@
         "fn-cvec-statement-admission-keeps-the-vector",
         "fn-cvec-statement-row-within-its-figure",
         "fn-pvc-statement-verdict-carried-is-cvec-statement-verdict-at",
-        "fn-oii-publication-group-count-is-the-rows"
+        "fn-oii-publication-group-count-is-the-rows",
+        "fn-cvec-held-row-within-its-figure"
       ]
     },
     {
@@ -12500,7 +12500,7 @@
       "events": [
         "fn-web-session-route-needs-its-session",
         "fn-web-session-sends-only-to-its-connection",
-        "fn-web-sessions-bound-by-281",
+        "fn-web-step-admits-no-session-but-by-281",
         "fn-wss-body-cannot-end-the-article",
         "fn-wss-emit-body-is-stuff"
       ]
@@ -14828,9 +14828,7 @@
         "fn-bpfj-plan-is-the-plan-within-the-limit",
         "fn-bpfj-plan-at-is-the-plan-at",
         "fn-bpfj-apply-is-the-apply",
-        "fn-bpfj-apply-at-is-the-apply-at",
-        "fn-bpfj-start-is-readable",
-        "fn-bpfj-step-keeps-readable"
+        "fn-bpfj-apply-at-is-the-apply-at"
       ],
       "evidence": [
         "books/bp-node-fragment-job.lisp",
@@ -15176,7 +15174,11 @@
       ],
       "assumptions": [],
       "status": "uncertified-at-current-digest",
-      "events": [],
+      "events": [
+        "fn-bpfj-record-anchor-of-family-record-at",
+        "fn-bpfj-propose-step-is-the-propose-step",
+        "fn-bpfj-plan-at-ready-binds-live-source-rows"
+      ],
       "evidence": [
         "books/bp-node-fragment-step.lisp",
         "tests/acl2/bp-node-fragment-step-job-tests.lisp"
@@ -15196,7 +15198,9 @@
       ],
       "assumptions": [],
       "status": "uncertified-at-current-digest",
-      "events": [],
+      "events": [
+        "fn-bpfj-persist-step-is-the-persist-step"
+      ],
       "evidence": [
         "books/bp-node-fragment-step.lisp",
         "tests/acl2/bp-node-fragment-step-job-tests.lisp"
@@ -17612,7 +17616,8 @@
       "statement": "Host-called subjects books/bp-node-control.lisp fn-bpnc-startup and fn-bpnc-turn-plan, called by host/native/bp-control.lisp fnn-bpnc-start and fnn-bpnc-handle. A ready startup implies the actual native-config load was accepted and its parsed Store octets equal the supplied Store argument. An execute grant implies same-owner evidence, an admin projection, and exactly the accepted native-admin plan whose kind is set-bp-route or remove-bp-route. This boundary restricts the existing durable owner admin path; it does not itself prove disk honesty or listener rebinding. Complete positive and hypothesis-removal teeth use parsed valid config and route vectors; mutation teeth refuse nonowner and unrelated group admin.",
       "milestone": "M4",
       "requirements": [
-        "HST-007"
+        "HST-002",
+        "HST-010"
       ],
       "depends_on": [],
       "assumptions": [],
@@ -17634,7 +17639,8 @@
       "statement": "Host-called subjects fn-bpnc-socket-initial, fn-bpnc-socket-action and fn-bpnc-socket-step, called by fnn-bpnc-start/step/retire. The composed open run reaches live exactly when the startup is ready and both bind and install completions succeed. From prepared, bound or live, stop produces an actual retire effect; its completion reaches closed on success or fenced otherwise, with no next effect. Raw listener, lease and installed inode ownership are retained until retirement. Teeth assert the entire equivalence for successful open and both failed completions; positive retirement success/failure and corrupt-phase hypothesis removal. Scope is the explicit control listener; BP transport listener rebinding remains open.",
       "milestone": "M4",
       "requirements": [
-        "HST-007"
+        "HST-002",
+        "HST-010"
       ],
       "depends_on": [],
       "assumptions": [],
