@@ -71,7 +71,7 @@
          (equal (nth 6 *dpt-forged*) t)
          (not (and (equal (car (nth 3 *dpt-forged*)) (car d))
                    (equal (nth 5 *dpt-forged*) (cadr d))))))
-  :hints (("Goal" :in-theory (enable fn-zpl-pool-okp (:e fn-pzd-decode))))
+  :hints (("Goal" :in-theory (e/d (fn-zpl-pool-okp (:e fn-pzd-decode)) (fn-zpl-ready-h))))
   :rule-classes nil)
 
 (must-fail-checked
