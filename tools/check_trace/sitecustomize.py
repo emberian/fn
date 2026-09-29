@@ -127,9 +127,9 @@ def _install(directory: str) -> None:
                     emit(["x", f"python child isolated from the tracer: {' '.join(argv)[:120]}"])
             else:
                 emit(["x", f"child process {program}"])
-        elif event in ("os.system", "os.posix_spawn", "os.spawn", "os.exec", "os.fork"):
-            if event != "os.fork":
-                emit(["x", f"{event}"])
+        elif event in ("os.system", "os.posix_spawn", "os.spawn", "os.exec", "sqlite3.connect",
+                       "ctypes.dlopen"):
+            emit(["x", event])
 
     real_stat, real_lstat = os.stat, os.lstat
 
