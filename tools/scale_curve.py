@@ -316,6 +316,79 @@ def post_one(c, tag, i):
     return time.perf_counter() - t
 
 
+# ML-DSA-65 key generation needs OpenSSL 3.5; hbox's toolchain has it.
+OPENSSL = os.environ.get("FN_OPENSSL", "/tank/fn/toolchains/openssl-3.5.8/bin/openssl")
+SIGNED_K = 20
+
+
+def owner_cpu_s(pid):
+    f = Path("/proc/%d/stat" % pid).read_text().rsplit(")", 1)[1].split()
+    return (int(f[11]) + int(f[12])) / os.sysconf("SC_CLK_TCK")
+
+
+@probe("served", variant=True)
+def signed_posts(pt):
+    """K = 20 serial hybrid-signed POSTs of about 2 KiB (Q5b; the harness of
+    planning/evidence/signed-post-linear-2026-09-26/prof_signed.py): one
+    author enrolled through the control socket, K + 1 carriers signed by the
+    image's own hybrid-sign-carrier (not timed), one warm signed POST, then K
+    on one connection opened before them: the latency from POST to 240 and
+    the owner's CPU (utime + stime) per POST over the batch."""
+    keys = pt.work / "signed-keys"
+    keys.mkdir(exist_ok=True)
+    principal = keys / "principal.bin"
+    principal.write_bytes(bytes([0x55]) * 32)
+    edp, eds = keys / "ed-public.bin", keys / "ed-secret.bin"
+    # RFC 8032 section 7.1 test 1.
+    edp.write_bytes(bytes.fromhex("d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+    eds.write_bytes(bytes.fromhex("9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
+                                  "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+    mlpriv, mlpub = keys / "ml-private.pem", keys / "ml-public.pem"
+    for argv in ([OPENSSL, "genpkey", "-algorithm", "ML-DSA-65", "-out", str(mlpriv)],
+                 [OPENSSL, "pkey", "-in", str(mlpriv), "-pubout", "-out", str(mlpub)]):
+        r = subprocess.run(argv, env=pt.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if r.returncode:
+            raise ProbeError("openssl: " + r.stderr.decode("utf-8", "replace")[-300:])
+
+    def fn(*args):
+        r = pt.timed_process([str(pt.image), "--fn"] + [str(a) for a in args])
+        if r["rc"]:
+            raise ProbeError("{} -> {}: {}".format(args[0], r["rc"], r["stderr"][-400:]))
+
+    fn("hybrid-enroll", pt.work / "control.sock", "1", principal, edp, mlpub)
+    body = b"".join(b"signed curve line %05d " % i + b"x" * 50 + b"\r\n" for i in range(22))
+    carriers = []
+    for i in range(SIGNED_K + 1):
+        src, out = keys / ("s%d.eml" % i), keys / ("s%d-carried.eml" % i)
+        src.write_bytes(b"From: curve <c@curve.invalid>\r\nDate: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
+                        b"Newsgroups: fn.test\r\nSubject: signed curve %d\r\n"
+                        b"Message-ID: <signed-curve-%d-%d-%d@curve.invalid>\r\n\r\n"
+                        % (i, pt.n, i, os.getpid()) + body)
+        fn("hybrid-sign-carrier", principal, edp, eds, mlpub, mlpriv, src, out)
+        carriers.append(b"".join((b"." + l if l.startswith(b".") else l)
+                                 for l in out.read_bytes().splitlines(keepends=True)))
+
+    def post(c, octets):
+        t = time.perf_counter()
+        r = c.cmd("POST")
+        if r.startswith("340"):
+            c.sock.sendall(octets + b".\r\n")
+            r = c.line()
+        if not r.startswith("240"):
+            raise ProbeError("signed POST: " + r)
+        return time.perf_counter() - t
+
+    with pt.client() as c:
+        post(c, carriers[0])
+    with pt.client() as c:
+        c0 = owner_cpu_s(pt.owner.pid)
+        seconds = [post(c, x) for x in carriers[1:]]
+        c1 = owner_cpu_s(pt.owner.pid)
+    out = summary("signed_post", seconds)
+    out["owner_cpu_ms_per_post"] = 1000.0 * (c1 - c0) / SIGNED_K
+    return out
+
+
 @probe("served", variant=True)
 def pinned_reader(pt):
     """An old reader: client A selects the group and reads its first article, then
