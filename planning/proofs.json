@@ -16965,6 +16965,74 @@
         "fn-lgl-fork-refused",
         "fn-lgl-accepted-shares-lineage"
       ]
+    },
+    {
+      "id": "PRF-1022",
+      "title": "The carried index's policy column is fn-pol-current over the lace (W5b)",
+      "statement": "fn-stx-index-policy-agrees: the policy column of the index of an article list (per (group . authority) the greatest-slot policy statement and whether a distinct one shares its slot, maintained by fn-stx-index-add1 in one comparison) answers, through fn-stx-index-policy-current, exactly fn-pol-current over the lace of the same articles under the same keyring. The keyring drops out because every member of the lace of the store is verified under it.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-004"
+      ],
+      "depends_on": [
+        "PRF-023"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/stx-index.lisp",
+        "tests/acl2/stx-transit-tests.lisp"
+      ],
+      "planning_note": "Lane stx-model-2 (Fable), 2026-09-29, row W5b: the transit gate on a host path.",
+      "note": "Proved through an order-independent characterisation of the fold (a maximal candidate plus a fork flag) against fn-pol-latest-is-maximal and fn-pol-same-slot-conflictp; the column rides in fn-sn-indexedp (the index is the fold of the rows' contexts) with no new preservation obligation.",
+      "events": []
+    },
+    {
+      "id": "PRF-1023",
+      "title": "The served transit authority verdict is the policy gate over the rows' lace (W5b)",
+      "statement": "fn-pta-admitted-is-the-gate-over-the-rows: under the carried index invariant fn-sn-indexedp and the rows' context invariant fn-rows-contexts-okp, fn-pta-group-verdict over the store's index, keyring, group, authority and a statement is :admitted iff the group has an authority, fn-pol-admitp holds over the retained rows' lace fn-sn-lace-of-rows, and the poster has not forked (no recorded equivocator at the statement's incarnation, no distinct statement at its slot). The verdict reads the index only: no walk of the store, no re-parse of a retained article.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-004"
+      ],
+      "depends_on": [
+        "PRF-1022",
+        "PRF-024",
+        "PRF-022"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/peer-transit-authority.lisp",
+        "tests/acl2/stx-transit-tests.lisp",
+        "specs/substrate-transport.md"
+      ],
+      "planning_note": "Lane stx-model-2 (Fable), 2026-09-29, row W5b: the transit gate on a host path.",
+      "note": "The closed enumeration *fn-pta-verdicts* keeps :admitted, :ungoverned, :no-statement, :unverified, :not-a-post, :equivocation, :authority-equivocation, :no-policy and :unauthorized distinct (spec section 2.3: the refusal is of authority, not of bytes). The node-lace form of the gate (fn-stx-transit-authority-ok) is reached through PRF-995 and its correspondence hypothesis. The group's authority is the live group entry's policy-id when it is a principal id; D11's portable authority is M4 work.",
+      "events": []
+    },
+    {
+      "id": "PRF-1024",
+      "title": "The host's transit decision carries the authority verdict, decided before any durable intent (W5b)",
+      "statement": "fn-pta-decide-admits-iff-every-governed-group-admits: on a :want byte decision, the verdict fn-pta-decide returns beside it is :admitted iff some scoped group is governed and every governed scoped group's verdict over the carried index is :admitted (fn-pta-groups-verdict-is-admitted-iff); fn-pta-decide-keeps-the-byte-decision-by-definition names that the byte decision is fn-peer-decide-transfer-under's, unchanged, and fn-pta-verdict-only-on-want-by-definition that no verdict exists otherwise. host/owner-host.lisp fn-owner-transit-decide calls fn-pta-decide and stores the verdict (fn-owner-transit-authority) before fn-owner-submission-intent; the transit log line carries authority=NAME.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-004"
+      ],
+      "depends_on": [
+        "PRF-1023",
+        "PRF-042"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/peer-transit-authority.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_key_statements.py"
+      ],
+      "planning_note": "Lane stx-model-2 (Fable), 2026-09-29, row W5b: the transit gate on a host path.",
+      "note": "Teeth over the composed decision (a configuration whose group entry names a principal) and hypothesis-removal must-fails over a store-node fixture are open (NEXT of lane stx-model-2).",
+      "events": []
     }
   ]
 }

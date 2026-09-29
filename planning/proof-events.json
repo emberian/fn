@@ -16735,6 +16735,56 @@
           "name": "fn-lgl-accepted-shares-lineage"
         }
       ]
+    },
+    {
+      "id": "PRF-1022",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-stx-index-policy-agrees",
+          "note": "books/stx-index.lisp: fn-stx-index-policy-current of the index of an article list equals fn-pol-current over the lace of the store of the same articles under the same keyring. fn-stx-policies-of-add1 is the column's one-step equation."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1023",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pta-admitted-is-the-gate-over-the-rows",
+          "note": "books/peer-transit-authority.lisp: under fn-sn-indexedp and fn-rows-contexts-okp, :admitted iff an authority, fn-pol-admitp over fn-sn-lace-of-rows, and no poster fork (no recorded equivocator at the incarnation, no distinct statement at the slot)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pta-group-verdict-is-one-of-the-verdicts",
+          "note": "books/peer-transit-authority.lisp: every verdict is a member of the closed enumeration *fn-pta-verdicts*."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1024",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pta-decide-admits-iff-every-governed-group-admits",
+          "note": "books/peer-transit-authority.lisp: on a :want, the verdict beside the decision is :admitted iff some scoped group is governed and every governed scoped group's verdict is :admitted."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pta-groups-verdict-is-admitted-iff",
+          "note": "books/peer-transit-authority.lisp: the article-level verdict's specification, member by member over the scoped groups."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pta-decide-keeps-the-byte-decision-by-definition",
+          "note": "books/peer-transit-authority.lisp: the byte decision is fn-peer-decide-transfer-under's, unchanged (named -by-definition; not cited)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pta-verdict-only-on-want-by-definition",
+          "note": "books/peer-transit-authority.lisp: no verdict unless the bytes are wanted (named -by-definition; not cited)."
+        }
+      ]
     }
   ]
 }

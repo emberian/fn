@@ -1781,6 +1781,9 @@
 (definterface fn-owner-transit-reason
   :class ::program)
 
+(definterface fn-owner-transit-authority
+  :class ::program)
+
 (definterface fn-owner-transit-refusal-class
   :class ::program)
 
