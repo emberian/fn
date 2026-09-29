@@ -16155,7 +16155,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-own-feed-peer-names-loop-is-rev-onto"
+          "name": "fn-cfg-peer-names-loop-is-rev-onto"
         },
         {
           "kind": "theorem",

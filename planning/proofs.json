@@ -16583,7 +16583,7 @@
         "fn-own-feed-intent-records-loop-is-rev-onto",
         "fn-own-feed-names-loop-is-rev-onto",
         "fn-own-feed-new-targets-loop-is-rev-onto",
-        "fn-own-feed-peer-names-loop-is-rev-onto",
+        "fn-cfg-peer-names-loop-is-rev-onto",
         "fn-own-feed-port-restart-fold-loop-is-fold",
         "fn-own-feed-put-loop-is-rev-onto",
         "fn-own-feed-resolution-records-loop-is-rev-onto",
