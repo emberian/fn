@@ -232,6 +232,26 @@ class FreshInitTests(Harness, unittest.TestCase):
               .format(word, sizing, reservation, budget))
         return word, sizing, reservation, budget
 
+    def test_a_bare_init_on_the_friends_2_gb_machine_is_accepted_and_runs(self):
+        """The OpenBSD friend's machine: 2 GB of memory, 1,536 MB after the
+        system's share (fn-heap-os-reserve-octets), named here as the init
+        budget.  A bare init is ACCEPTED (lane heap-pool, B9: the header state
+        charged to the history budget; under lane heap-bounds' uncharged
+        term the small floor's first run was 1,872 MB and this was refused),
+        within 1,536 MB, and the store runs and takes POSTs."""
+        config, port = self.config("friend")
+        made = self.run_fn("operator", config, "init", "local.test",
+                           env={"FN_INIT_BUDGET_MB": "1536"})
+        self.assertEqual(made.returncode, EXIT_OK, text(made))
+        word, sizing, reservation, budget = self.init_line(made)
+        self.assertEqual(sizing, "conservative")
+        self.assertIn(word, ("custom", "small"))
+        self.assertEqual(budget, 1536)
+        self.assertLessEqual(reservation, 1536)
+        self.start()
+        self.post(port, ["<friend-{}@example.invalid>".format(n) for n in range(3)])
+        self.stop()
+
     def test_a_bare_init_is_conservative_printed_and_runs(self):
         config, port = self.config("fresh")
         made = self.run_fn("operator", config, "init", "local.test")

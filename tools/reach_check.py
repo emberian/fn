@@ -441,6 +441,17 @@ class Graph:
                     parts += sorted(by_logic.get((impl, logic), ()))
                 self.book_defs.setdefault(export, (
                     entry["file"], "(defabsstobj-export %s %s)" % (export, " ".join(parts))))
+        # A plain `defstobj' has no exports to read, but its creator is a
+        # function ACL2 defines and runs: it is what an abstract stobj's
+        # :creator executes (`:exec create-fn-arena$p'), so the edge from that
+        # export reaches it, and a theorem concluding of `(create-NAME)' is
+        # concluded of a reached function -- the premise audit's
+        # establishment by the creator (tools/premise_audit.py).
+        for sname, entry in self.stobjs.items():
+            if entry["exports"]:
+                continue
+            self.book_defs.setdefault("create-" + sname, (
+                entry["file"], "(defstobj-creator create-%s)" % sname))
         self.known = set(self.book_defs) | set(host_defs) | set(attached)
 
         bodies = {n: f for n, (_, f) in self.book_defs.items()}

@@ -278,6 +278,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/memory-credits \
 	tests/acl2/memory-credits-tests \
 	tests/acl2/heap-figure-tests \
+	tests/acl2/open-frontier-tests \
+	tests/acl2/limits-live-tests \
 	books/connection-budget \
 	tests/acl2/connection-budget-tests \
 	books/store-open-pre-c1 \
@@ -292,12 +294,15 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-state-checkpoint-program-tests \
 	books/store-node-resolution \
 	books/refusal-effect \
+	books/closure-open \
 	books/store-identity-sequence-invariants \
 	tests/acl2/store-identity-sequence-invariants-tests \
 	books/consumer-store-invariants \
 	tests/acl2/consumer-store-invariants-tests \
 	tests/acl2/store-node-resolution-tests \
 	tests/acl2/refusal-effect-tests \
+	tests/acl2/closure-open-tests \
+	tests/acl2/closure-export-tests \
 	tests/acl2/store-node-resolution-traces-tests \
 	tests/acl2/store-identity-traces-tests \
 	books/store-sweep \
@@ -545,6 +550,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
+	books/store-finalize-incremental \
+	tests/acl2/store-finalize-incremental-tests \
 	books/bp-fnbs-delivery-codec \
 	tests/acl2/bp-fnbs-delivery-codec-tests \
 	books/bp-fnbs-delivery-replay \
@@ -1148,6 +1155,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-event-index \
 	tests/acl2/consumer-event-index-tests \
 	books/history-columns \
+	books/msgid-pages \
+	tests/acl2/msgid-pages-tests \
+	books/msgid-pages-exec \
+	books/msgid-pages-catalog \
+	tests/acl2/msgid-pages-exec-tests \
 	books/history-columns-relation \
 	tests/acl2/history-columns-relation-tests \
 	tests/acl2/history-columns-tests \
@@ -1369,6 +1381,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-carry-frame \
 	books/bp-carry-control \
 	tests/acl2/bp-carry-control-tests \
+	books/bp-carry-waiver \
+	tests/acl2/bp-carry-waiver-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/reader-open-carried \
