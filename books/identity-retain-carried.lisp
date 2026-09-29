@@ -449,9 +449,6 @@
            (or (fn-stxe-p event) (fn-stxk-p event) (fn-hstxa-p event))
            (eq (car (fn-ccar-cpe-projection-step
                      (fn-sn-consumer s) event (fn-sn-identity-next s))) :ok)
-           (or (not (fn-hstxa-p event))
-               (not (equal (fn-record-stamp (fn-replay-composite-held event))
-                           :legacy)))
            (consp (fn-irc-apply-record (fn-sn-node s) event carry))
            (equal (fn-stxk-context-kind
                    (fn-replay-identity-step (fn-sn-identity-context s) event))
@@ -839,7 +836,6 @@
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (fn-th-topic-eventp event)
-           (not (fn-th-topic-v1-anchorp event))
            (eq (fn-th-at 0 (fn-th-prefix-step (fn-sn-topic s) event)) :ok)
            (consp (fn-irc-apply-record (fn-sn-node s) event carry)))
       (let ((files (fn-pcar-stage-record (fn-sn-files s) event)))
