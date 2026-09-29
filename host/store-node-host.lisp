@@ -41,6 +41,10 @@
 ; PKT-854: `store ROOT digest' reads fn-sckd-tables-digest (the checkpoint's
 ; tables digest) at the open; no other host file brings it into the world.
 (include-book "../books/store-checkpoint-digest")
+; PRF-992 (incremental-finalize-3): fn-store-sn-recover-from-checkpoint calls
+; fn-sfi-extend-open; no other host file brings it into the world (a regen of
+; the umbrellas from the host files dropped it: the image's host-ld failed).
+(include-book "../books/store-finalize-incremental")
 (include-book "../books/store-checkpoint-arena-writer")
 (include-book "../books/owner-checkpoint-pipeline")
 ; PKT-444 (1): the open names a pre-C1 control record instead of faulting.
