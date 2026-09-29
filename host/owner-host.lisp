@@ -1306,16 +1306,8 @@
                  ; fn-pout-prepare-article-answers-the-store-change).
                  (outcome (if (equal record :clock-unusable)
                               nil
-                            ; join-f2-midx: the same prepare with its duplicate
-                            ; test decided from the catalog
-                            ; (books/post-prepare-catalog.lisp KEYSTONE
-                            ; fn-ppc-pout-prepare-article-cat-is-pout-prepare-
-                            ; article: both values are fn-pout-prepare-article's
-                            ; under the join, fn-ppc-pout-prepare-article-cat-
-                            ; of-live-owner at the host's owner).
                             (mv-let (word next)
-                              (fn-ppc-pout-prepare-article-cat before row budget carry
-                                                               fn-arena fn-cat)
+                              (fn-pout-prepare-article before row budget carry)
                               ; Lane membership-budget: an :unaffordable
                               ; that the membership charge alone caused is
                               ; :memberships (books/store-capacity-vector.lisp
@@ -1470,8 +1462,16 @@
                  ; relays it.
                  (outcome (if (equal record :clock-unusable)
                               nil
+                            ; join-f2-midx: the same prepare with its duplicate
+                            ; test decided from the catalog
+                            ; (books/post-prepare-catalog.lisp KEYSTONE
+                            ; fn-ppc-pout-prepare-article-cat-is-pout-prepare-
+                            ; article: both values are fn-pout-prepare-article's
+                            ; under the join, fn-ppc-pout-prepare-article-cat-
+                            ; of-live-owner at the host's owner).
                             (mv-let (word next)
-                              (fn-pout-prepare-article before row budget carry)
+                              (fn-ppc-pout-prepare-article-cat before row budget carry
+                                                               fn-arena fn-cat)
                               ; Lane membership-budget: an :unaffordable
                               ; that the membership charge alone caused is
                               ; :memberships (books/store-capacity-vector.lisp
