@@ -65,11 +65,11 @@ class PublicationReaderCountTests(unittest.TestCase):
         owner = (ROOT / "host" / "native" / "owner.lisp").read_text(encoding="utf-8")
         maybe = host_function(owner, "fnn-owner-maybe-publish-quantum")
         publish = host_function(owner, "fnn-owner-publish-captured")
-        incf = "(sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))"
-        decf = "(sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*))"
+        incf = "(fnn-arena-pin)"
+        decf = "(fnn-arena-unpin pin)"
         self.assertIn("(fnn-owner-gated (service :control)", maybe)
         self.assertLess(maybe.index(incf), maybe.index("(sb-thread:make-thread"))
-        self.assertIn(decf, maybe)  # a thread never made returns its count
+        self.assertIn(decf, maybe)  # a thread never made returns its pin
         self.assertNotIn(incf, publish)
         self.assertEqual(len(re.findall(re.escape(decf), publish)), 1)
 

@@ -13572,15 +13572,17 @@
     },
     {
       "id": "PRF-930",
-      "title": "A running owner gives the disk blocks of the files a checkpoint publication dropped back while serving: every live payload the installed checkpoint holds is reseated at its frame without changing the arena, and a dropped file's descriptor closes only when no extent, no log member in flight and no off-mutex reader names it",
-      "statement": "Subject: host/native/owner.lisp fnn-owner-release-extents (called by fnn-owner-publish-captured after a durable install) calls books/extent-retire.lisp fn-xrt-reseat-checkpoint-frame per payload frame the arena run wrote (host/native/io.lisp fnn-checkpoint-write-arena-steps records each frame's entry offset and fn-xrt-step-handles), fn-xrt-scan in bounded calls (started when fn-xrt-scan-may-start), and fn-xrt-close-set; host/native/extent.lisp fnn-extent-close closes what it names. fn-xrt-reseat-frame-keeps-the-arena (KEYSTONE): when the file durably holds, at the frame entry's offset, the octets the buffer holds (A-DURABLE-EXTENT's faithful file), the reseat leaves the arena (every handle's payload) unchanged; each payload is the commit's reseat (PRF-309 fn-arx-commit-reseat) with R the payload's own octets, so a wrong pairing reseats nothing. fn-xrt-first-naming-none (KEYSTONE): a scan answering none over [LO, END) means no extent entry there names a retired file; fn-xrt-first-naming-compose: the bounded calls are one scan. fn-xrt-close-set-is-safe: a closed file is retired, named by no member in flight, and closes only after a clean scan with no other off-mutex arena reader. Before this every extent descriptor was held for the process's life, so the online compaction (PKT-868) freed no disk until restart. Scope: the realizer file table and descriptors are host state; the reseat's progress (every checkpoint payload found in its frame) is observed by the native (df shrinks), not proved.",
+      "title": "A running owner gives the disk blocks of the files a checkpoint publication dropped back while serving: every live payload the installed checkpoint holds is reseated at its frame without changing the arena, and a dropped file's descriptor closes only when no extent and no log member in flight names it and no off-mutex reader pinned before that was found still runs",
+      "statement": "Subject: host/native/owner.lisp fnn-owner-release-extents (called by fnn-owner-publish-captured after a durable install) calls books/extent-retire.lisp fn-xrt-reseat-checkpoint-frame per payload frame the arena run wrote (host/native/io.lisp fnn-checkpoint-write-arena-steps records each frame's entry offset and fn-xrt-step-handles), then, in one owner-mutex hold, fn-xrt-quiet-files over the concrete arena's file count column (one read per retired file, never a walk of the extent column; lane composed-owner-4's fn-arx-file-count), the quiet files pending at a fresh arena-reader stamp S (host/native/io.lisp fnn-arena-stamp, books/arena-reader-pins.lisp PRF-941); host/native/extent.lisp fnn-extent-close closes a pending group once fnn-arena-clear-p S answers that no other off-mutex reader is pinned at or below S. fn-xrt-reseat-frame-keeps-the-arena (KEYSTONE): when the file durably holds, at the frame entry's offset, the octets the buffer holds (A-DURABLE-EXTENT's faithful file), the reseat leaves the arena (every handle's payload) unchanged; each payload is the commit's reseat (PRF-309 fn-arx-commit-reseat) with R the payload's own octets, so a wrong pairing reseats nothing. fn-xrt-quiet-files-are-unnamed (KEYSTONE): under the arena's correspondence (fn-arena$xcorr, kept by every export), a quiet file is retired, named by no log member in flight, and named by no extent entry at any handle, so a reader pinned after S never reaches it; a reader pinned at or below S may hold an older entry and the close waits for it (fn-arpn-clear-through-p). Before this every extent descriptor was held for the process's life, so the online compaction (PKT-868) freed no disk until restart. Scope: the realizer file table and descriptors are host state; the reseat's progress (every checkpoint payload found in its frame) is observed by the native (df shrinks), not proved.",
       "milestone": "M5",
       "requirements": [
         "RET-008",
         "STO-017"
       ],
       "depends_on": [
-        "PRF-309"
+        "PRF-309",
+        "PRF-938",
+        "PRF-941"
       ],
       "assumptions": [],
       "status": "uncertified-at-current-digest",
@@ -13595,10 +13597,7 @@
       "events": [
         "fn-xrt-reseat-frame-keeps-the-arena",
         "fn-xrt-reseat-checkpoint-frame-keeps-the-arena",
-        "fn-xrt-first-naming-none",
-        "fn-xrt-first-naming-found",
-        "fn-xrt-first-naming-compose",
-        "fn-xrt-close-set-is-safe"
+        "fn-xrt-quiet-files-are-unnamed"
       ]
     },
     {
@@ -14204,6 +14203,144 @@
       "events": [
         "fn-crqw-request-word-names-the-outcome"
       ]
+    },
+    {
+      "id": "PRF-920",
+      "title": "The history image adopted from its committed root and bound to the exact log prefix: adoption ESTABLISHES the history's faithfulness (header from page 0, the root's tables, a narrow digest bound instead of the unestablished disk-faithful relation), the binding identifies the prefix by the log's chain value (not its count), a page request's late completion is refused by name, eviction respecting pins keeps faithfulness and progress",
+      "statement": "books/history-image-binding.lisp. ROOT-HOLDS fn-hib-root-holds H C: every entry of the loaded table names the digest of H's placed image page. DISK-BOUND fn-hib-disk-bound FILE H C: the page file holds no BLAKE3 second preimage of an image page at the address the table names (the narrow cryptographic-failure hypothesis on the actual file; collision bound 2^-128 per pair). KEYSTONES: fn-hib-fill-rel (a fill of the words the file holds keeps fn-hrs-rel with ROOT-HOLDS and DISK-BOUND, no fn-hrecs-disk-faithful); fn-hib-get-keeps (the retry loop fn-hrc-get keeps them; :ok is record SEQ); fn-hib-hrecs-get-fuel-enough (fn-hrecs-get never stops for fuel with the open pages as fuel, with no relation to the disk); fn-hib-adopt-establishes (fn-hib-adopt: the page store opened at the root, page 0 filled and checked, the header read from page 0, its count checked; when it lands and the root is H's image under the digest bound, fn-hrs-rel H, ROOT-HOLDS and DISK-BOUND hold and the count is (len H)); fn-hib-open-binds-prefix (fn-hib-open accepts a binding (:hib NODE CODEC COUNT TRAIL REC SALT) only when TRAIL is the log's chain value at the prefix: with the snapshot's TRAIL the chain of its entries EW, the log's that of its entries EL, and fn-hib-chain-distinct (the narrow chain bound), EW = EL); fn-hib-open-is-log-prefix (the adopted concrete holds the snapshot's history HW, of exactly the log's prefix); fn-hib-replay-extends (replaying the suffix Q holds HW ++ Q); fn-hib-complete-keeps / fn-hib-complete-stale (a page request (:page-request OP ROOT P PHYS DIGEST) completed with the file's words keeps the relations; a late completion -- root or entry changed -- changes nothing and is refused :stale-root / :stale-page); fn-hib-evict-keeps, fn-hib-undone-evict, fn-hib-complete-progress (eviction of an unpinned page keeps the relations; an operation's measure fn-hib-undone is bounded by the page count, unmoved by evictions respecting its pins, dropped by each of its completions). Scope: not host-called yet (the served checkpoint writes no image, the served open adopts none); the eviction frees no memory in this representation.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-035"
+      ],
+      "depends_on": [
+        "PRF-373",
+        "PRF-372",
+        "PRF-344"
+      ],
+      "assumptions": [
+        "A-PGS-HOST-IO"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/history-image-binding.lisp",
+        "tests/acl2/history-image-binding-tests.lisp",
+        "planning/evidence/composed-owner-2026-09-29.md"
+      ],
+      "progress_note": "Lane composed-owner, 2026-09-29 (rows A2-A4 of build/coordinator/COMPLETE-BEFORE-6.6.0.md; GPT-6's review of 2026-09-28). Teeth (tests/acl2/history-image-binding-tests.lisp): LIVE-RUN witnesses over committed page files (an alist attached to fn-pgs-page-words / fn-pgs-fill-realize; two histories of equal length, the first committed in two generations): positive (every hypothesis of fn-hib-open-is-log-prefix executed; every row reads H); removal of root-is-image, of the binding's trail and of the log's trail (each conclusion fails); row A3: equal-count image/binding swaps (:root-absent, (:dir-damaged 1), (:refused :prefix 40)), another store / salt / codec, a count mismatch ((:refused :count 40 39)), an old root over a newer table generation ((:table-damaged ...); copy-on-write keeps the old root readable), a late fill after the root changed ((:refused :stale-root 1 2), nothing changed, the new root answers), a stale entry at the same txid ((:refused :stale-page P)), a crash between the two publications (old root selected and read; out of order :root-absent), damage at first touch ((:page-damaged P PHYS), never an answer or absence), page 0 damaged (adoption refused), eviction (pinned refused, evicted page asked for again, the row still read). No removal witness for the digest bound or the chain bound: removing either while keeping the rest needs a BLAKE3 collision or second preimage.",
+      "events": [
+        "fn-hib-adopt-establishes",
+        "fn-hib-open-is-log-prefix",
+        "fn-hib-open-binds-prefix",
+        "fn-hib-replay-extends",
+        "fn-hib-fill-rel",
+        "fn-hib-get-keeps",
+        "fn-hib-hrecs-get-fuel-enough",
+        "fn-hib-complete-keeps",
+        "fn-hib-complete-stale",
+        "fn-hib-evict-keeps",
+        "fn-hib-undone-evict",
+        "fn-hib-complete-progress"
+      ]
+    },
+    {
+      "id": "PRF-923",
+      "title": "Readers of the history image by access pattern: one paged fold, proved once over a constrained step and instantiated per reader, that reads without filling, stops at the first unverified row with its cursor and accumulator (so the page is served outside the owner) and resumes; the composed runs fold exactly the rows read",
+      "statement": "books/history-image-fold.lisp. fn-hif-run I U ACC C: rows [I, U) of the concrete read with fn-hrc-at (no fill, no I/O), the constrained step fn-hif-f applied to each while it reads (:ok); answers (mv VERDICT CURSOR ACC). KEYSTONE fn-hif-run-is-foldl: over a concrete that holds H (fn-hrs-rel, fn-hrc-wfp) and U <= (len H): I <= CURSOR <= U; ACC is fn-hif-foldl of H's rows [I, CURSOR) (fn-hif-seg); VERDICT is :done exactly when CURSOR = U; any other VERDICT is a need-verdict. fn-hif-run-resume: a run stopped at J with A, resumed at J with A, folds H's rows [I, K). fn-hif-def-fold NAME STEP FOLDL instantiates the run and its keystone per reader by functional instance (two instances in the book, witnessed by tests/acl2/history-image-binding-tests.lisp). Patterns: indexed = fn-hrc-get (PRF-920 fn-hib-get-keeps), count = fn-hrc-count, fold / bounded cursor = this run. Scope: no served reader calls it yet (the served open does not adopt the image).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-035"
+      ],
+      "depends_on": [
+        "PRF-920",
+        "PRF-372"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/history-image-fold.lisp",
+        "tests/acl2/history-image-binding-tests.lisp",
+        "planning/evidence/composed-owner-2026-09-29.md"
+      ],
+      "progress_note": "Lane composed-owner, 2026-09-29 (row A5). Teeth (tests/acl2/history-image-binding-tests.lisp): a live run over an adopted committed image: the first run stops at a need at cursor 0 with nothing folded; the composed loop (request, completion outside the owner, resume at the cursor) ends :done at 40 with the fold of every row, after at most one completion per image page; over a file with a damaged page the fold stops by name (:page-damaged) with exactly the rows before it folded. The executed readers of the record list are classified in the evidence record (section 6).",
+      "events": [
+        "fn-hif-run-is-foldl",
+        "fn-hif-run-resume"
+      ]
+    },
+    {
+      "id": "PRF-933",
+      "milestone": "M5",
+      "requirements": [
+        "HST-031"
+      ],
+      "depends_on": [
+        "PRF-384"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "title": "A served read's cold line past the dependency deadline is answered 403 with the session unchanged; pipelined lines are answered in order (row A4, option (c))",
+      "statement": "Subject (books/owner-cold-line.lisp): fn-ocln-unavailable-span, which host/owner-host.lisp fn-owner-unavailable-line-at calls from host/native/owner.lisp fnn-owner-unavailable-line once fn-otb-dependency-step answers :unavailable for the cold first line of a span aborted in the realizer's no-I/O mode (fnn-owner-chunk-span-no-io, fnn-owner-cold-line). KEYSTONE fn-ocln-a-cold-line-is-answered-unavailable: for a connection in command mode and I within the buffer, the result consumes exactly the octets up to and including the line's LF (fn-oct-line-end; at least one when any remain), carries one reply, fn-otb-unavailable-line (code 403), and its owner is OC with only that connection's wire reset to the start of a line in command mode with its limits kept. fn-ocln-unavailable-span-outside-command-mode: otherwise nil (the host faults).",
+      "evidence": [
+        "books/owner-cold-line.lisp",
+        "tests/acl2/owner-cold-line-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/extent.lisp",
+        "tests/test_native_slow_disk.py"
+      ],
+      "events": [
+        "fn-ocln-a-cold-line-is-answered-unavailable",
+        "fn-ocln-unavailable-span-outside-command-mode"
+      ],
+      "progress_note": "Lane composed-owner-3 (Opus 5.5, 2026-09-29). REPL-admitted on persvati. Teeth tests/acl2/owner-cold-line-tests.lisp (oclnt-): pipelined positive witness (GROUP warm, ARTICLE cold 403 consuming its 11 octets only, STAT answered exactly as without the cold line, owner unchanged), a line split across reads (wire reset, session kept, next command as from the owner that never saw the line), hypothesis removal (article mode: nil), a whole-buffer mutation must-fail. Native: tests/test_native_slow_disk.py test_a_cold_read_on_a_stalled_disk_answers_403_while_cached_reads_stay_flat."
+    },
+    {
+      "id": "PRF-938",
+      "milestone": "M5",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-294"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "title": "The payload arena counts, per durable file, the extent entries naming it; a file whose count is 0 is named by no handle (row A6, the file count for online disk release)",
+      "statement": "Subject (books/payload-arena-extent.lisp): fn-arx-files-unnamed-p over the live arena's concrete fn-arena$x, which the owner's checkpoint release (host/native/owner.lisp, lane online-reclaim-3, replacing the bounded fn-xrt-scan walk) calls under the owner mutex before closing a retired file's descriptor. The count column fn-arena$x-files is kept by fn-arx-mark (every seal, reseat and lz variant: the replaced entry's file loses one, the written entry's file gains one) and emptied by fn-arena$x-clear; fn-arena$xcorr carries fn-arx-files-agree (the column equals the tally of the extent column for every file id), so every export of the abstract stobj preserves it and the live arena satisfies it. KEYSTONE fn-arx-files-unnamed-names-none: under the correspondence, for FS a list of file ids the check passes, no entry at any handle H names a file of FS (fn-arx-entry-file, which is the file the realizer reads: fn-arx-entry-file-of-extent-by-definition). fn-arx-file-count-zero-names-none: the same for one file whose count is 0.",
+      "evidence": [
+        "books/payload-arena-extent.lisp",
+        "tests/acl2/payload-arena-extent-tests.lisp"
+      ],
+      "events": [
+        "fn-arx-files-unnamed-names-none",
+        "fn-arx-file-count-zero-names-none",
+        "fn-arx-files-agree-of-mark"
+      ],
+      "progress_note": "Lane composed-owner-4 (Opus 5.5, 2026-09-29). REPL-admitted on persvati (the whole book and the teeth). Teeth tests/acl2/payload-arena-extent-tests.lisp section 4 (paxt-files-): the run (file 7's count 1 then 0 after the reseat onto 9), a reachable positive witness (paxt-files-unnamed-positive, the state reached through the exports: paxt-x3-corresponds), a witness and a must-fail per hypothesis; the correspondence one is a CORRUPTED-STATE witness. natp H was proved redundant and removed. Host caller: online-reclaim-3's checkpoint release (not on this branch)."
+    },
+    {
+      "id": "PRF-941",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "title": "The live arena's off-mutex readers pin a generation; a retirement is released only when every live reader pinned after it (row A6, the generation pin)",
+      "statement": "Subject (books/arena-reader-pins.lisp): fn-arpn-step, which the host calls for every event of the arena readers' generation state (host/native/io.lisp fnn-arena-pins-step under its own lock; fnn-arena-pin/-unpin around a checkpoint publication's thread, host/native/owner.lisp fnn-owner-maybe-publish and fnn-owner-publish-captured; fnn-arena-retire and fnn-arena-release-due in the COMPLETE's reseat, fnn-log-reseat-fenced; fnn-arena-stamp/-clear-p for the installing reclaim pass). The state is (CUR PINS PEND): the current generation, the live pins as a strictly ascending table of (G . N) with every G <= CUR (fn-arpn-okp, established by fn-arpn-initial and preserved by every event: fn-arpn-step-preserves-okp), and the pending retirements (S . ITEMS). A :pin answers CUR (fn-arpn-pin-answers-the-generation); a :retire stamps CUR, which is at or above every live pin, and advances the generation (fn-arpn-retire-stamp-covers-every-live-pin; fn-arpn-step-generation-never-decreases). KEYSTONE fn-arpn-release-postdates-every-live-pin: every retirement :release answers was pending and its stamp is below every live pin, so no reader live at the retirement is live at its release; fn-arpn-release-keeps-every-covered-retirement: a retirement some live reader is pinned at or below stays pending. Generalizes the single off-mutex reader count (*fnn-arena-off-mutex-readers*, removed): an old retirement is released as soon as the readers older than it end, whatever newer readers run.",
+      "evidence": [
+        "books/arena-reader-pins.lisp",
+        "tests/acl2/arena-reader-pins-tests.lisp"
+      ],
+      "events": [
+        "fn-arpn-release-postdates-every-live-pin",
+        "fn-arpn-release-keeps-every-covered-retirement",
+        "fn-arpn-retire-stamp-covers-every-live-pin",
+        "fn-arpn-step-preserves-okp"
+      ],
+      "progress_note": "Lane composed-owner-5 (Opus 5.5, 2026-09-29). REPL-admitted on persvati (book and teeth). Teeth tests/acl2/arena-reader-pins-tests.lisp: the reached run (reader A pins 0, a retirement at 0, reader B pins 1, a retirement at 1, A ends: the release answers the stamp-0 retirement while B runs and keeps the stamp-1 one), a reachable positive witness (arpnt-release-positive), a witness and a must-fail per hypothesis (the okp one a CORRUPTED-STATE witness: an out-of-order pin table), and a mutation (a release of every pending retirement). Host callers on this branch: the checkpoint publication's pin and the COMPLETE's staged-page release; the installing reclaim pass (online-reclaim-4) is the next caller."
     }
   ]
 }

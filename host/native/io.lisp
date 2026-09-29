@@ -2264,6 +2264,11 @@ store; anything else is left to the ordinary open."
         (incf at got)))
     data))
 
+;; thread-confined: the open (the state checkpoint's plan and load)
+(defvar *fnn-checkpoint-image* nil
+  "(PATH NP BASE) of the history image region the last plan found at the
+checkpoint file's start, or NIL.")
+
 (defun fnn-state-checkpoint-plan (store)
   "(values :absent NIL), (values :ok PLAN) or (values :refused REASON), REASON
 one of :not-regular, :truncated, :header, :exceeds-bound.
@@ -2278,6 +2283,7 @@ chunk as the buffer's cells A..B, the frames contiguous.  No octet list of
 the file is built (rep-wave-d-3): the decoder reads the buffer by index
 (books/store-checkpoint-reader.lisp fn-sccr-decode-plan)."
   (let ((path (fnn-state-checkpoint-path store)))
+    (setq *fnn-checkpoint-image* nil)
     (unless (fnn-check-regular path)
       (return-from fnn-state-checkpoint-plan (values :absent nil)))
     (let ((header-octets (fnn-core 'fn-store-sco-segment-header-octets))
@@ -2305,6 +2311,19 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
                  (let ((rest (fnn-read-exact-fd fd (1- header-octets))))
                    (unless rest
                      (return-from fnn-state-checkpoint-plan (values :refused :truncated)))
+                  (let ((np (and (= at 0) (null frames)
+                                 (fnn-core 'fn-his-image-header-np
+                                           (fnn-octet-list
+                                            (concatenate '(vector (unsigned-byte 8)) first rest))))))
+                   ;; The history image region (books/history-image-snapshot.lisp):
+                   ;; ACL2 recognized its header at the file's start; the framed
+                   ;; segments begin after it.  Its pages are not read here: the
+                   ;; open adopts the image and reads a page at first touch.
+                   (if (integerp np)
+                       (progn
+                         (sb-posix:lseek fd (+ header-octets (fnn-core 'fn-his-skip-octets np))
+                                         sb-posix:seek-set)
+                         (setq *fnn-checkpoint-image* (list path np (fnn-core 'fn-his-base-octets))))
                    (let* ((header (fnn-octet-list
                                    (concatenate '(vector (unsigned-byte 8)) first rest)))
                           (admission (fnn-core 'fn-store-sco-segment-admit
@@ -2333,7 +2352,7 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
                              (push (list header a (+ a chunk-octets) (fnn-octet-list trailer))
                                    frames)
                              (incf at chunk-octets)
-                             (incf total extent)))))))))
+                             (incf total extent)))))))))))
              (values :ok (nreverse frames)))
         (fnn-close fd)))))
 
@@ -2353,11 +2372,41 @@ fn-scka-select-named."
       (t (let ((answer (fnn-core-buffer-state 'fn-store-sco-decode value)))
            (if (and (consp answer) (eq (first answer) :arena) (= (length answer) 4)
                     (every (lambda (x) (and (integerp x) (>= x 0))) (rest answer)))
-               (fnn-state-checkpoint-load-arena (second answer) (third answer)
-                                                (fourth answer))
+               (multiple-value-bind (st s)
+                   (fnn-state-checkpoint-load-arena (second answer) (third answer)
+                                                    (fourth answer))
+                 (if (and (eq st :ok) *fnn-checkpoint-image*)
+                     (fnn-state-checkpoint-adopt-image store s)
+                     (values st s)))
                ;; A file without the arena run (tables-only, written before
                ;; the flip) is refused by name: reason=checkpoint-arena.
                (values (if (equal answer '(:refused :arena)) :arena :refused) 0)))))))
+
+(defun fnn-state-checkpoint-adopt-image (store s)
+  "The checkpoint's history image adopted (host/store-node-host.lisp
+fn-store-sco-image-open over the live fn-hrecs$c: the binding checked against
+this store's genesis, the log position and the codec; page 0 read and
+checked; the last row compared with the checkpoint's last record): (values
+:ok S), or the checkpoint is unusable, refused BY NAME on stderr, (values
+:refused 0), and the open goes on as for a corrupt checkpoint."
+  (destructuring-bind (path np base) *fnn-checkpoint-image*
+    (declare (ignore np))
+    (fnn-genesis-open store)
+    (let* ((file (fnn-extent-register-at path base))
+           (answer (fnn-call 'fn-store-sco-image-open file (fnn-live-hrecs) *the-live-state*))
+           (verdict (second answer)))
+      (unless (and (consp answer) (null (first answer)))
+        (fnn-fault "ACL2 error in fn-store-sco-image-open"))
+      ;; checked; the adopted words are not kept (nothing reads them yet)
+      (fnn-call 'fn-his-release (fnn-live-hrecs))
+      (if (null verdict)
+          (values :ok s)
+          (progn
+            ;; ~s: the verdict's keywords keep their colons, so
+            ;; (:refused :store-identity) is told apart from a symbol list.
+            (fnn-err "checkpoint image refused reason=~(~s~)" verdict)
+            (fnn-core-state 'fn-store-sco-clear)
+            (values :refused 0))))))
 
 (defconstant +fnn-checkpoint-load-batch-payloads+ 1024
   "Payloads sealed into the arena per call while a state checkpoint loads
@@ -2989,6 +3038,81 @@ the publication buffer ST."
             (when (and fault (= steps (1+ fault)))
               (sb-posix:kill (sb-posix:getpid) sb-posix:sigkill))))))))
 
+;;; The history image region of the state checkpoint's file (lane
+;;; composed-owner; books/history-image-snapshot.lisp).  The file opens with
+;;; the image of the checkpoint's records on a page store: ACL2 builds and
+;;; commits it (fn-his-snapshot over the live fn-hrecs$c) and answers the
+;;; pages to write (ADDR SEL A); the host writes the region's header
+;;; (fn-his-image-header), zeros to the region's base, then page ADDR's 2048
+;;; words (fn-his-words) little-endian at base + 16 KiB * ADDR, zeros where
+;;; no page is named.  The binding (fn-his-binding) goes into the F row's log
+;;; position, so the image and the fold state are one file, one rename.  The
+;;; host computes no address, digest or length: every one is ACL2's.
+
+(defvar *fnn-live-hrecs* nil)
+
+(defun fnn-live-hrecs ()
+  (or *fnn-live-hrecs*
+      (setq *fnn-live-hrecs*
+            (or (cdr (assoc 'fn-hrecs$c (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the history image stobj is not in this image")))))
+
+(defun fnn-history-image-build (records node salt position)
+  "The image of RECORDS for a publication whose log POSITION is (K TRAIL):
+(values POSITION' IMAGE), POSITION' = (K TRAIL BINDING) and IMAGE = (NP
+WRITES); with no position, (values POSITION NIL): no binding, no image."
+  (if (null position)
+      (values position nil)
+      (let ((answer (fnn-call 'fn-his-snapshot records salt (fnn-live-hrecs))))
+        (unless (and (consp answer) (>= (length answer) 3))
+          (fnn-fault "ACL2 returned a malformed history image"))
+        (destructuring-bind (verdict rec writes &rest ignored) answer
+          (declare (ignore ignored))
+          (unless (eq verdict :ok)
+            (fnn-refuse-io "history image refused by name: ~a" verdict))
+          (let ((binding (fnn-core 'fn-his-binding node salt (length records) (second position) rec))
+                (np (fnn-core 'fn-his-np writes 0)))
+            (unless (and (integerp np) (> np 0))
+              (fnn-fault "ACL2 returned a malformed history image page count"))
+            (values (list (first position) (second position) binding) (list np writes)))))))
+
+(defun fnn-history-image-np (image)
+  "IMAGE's page count, or NIL for a publication without an image: what
+ACL2's fn-his-stream-free and fn-his-file-octets (host/store-node-host.lisp)
+take for the image region."
+  (and image (first image)))
+
+(defun fnn-history-image-write (fd image)
+  "Write IMAGE's region at FD's current position (the file's start)."
+  (when image
+    (destructuring-bind (np writes) image
+      (let ((header (fnn-octets (fnn-core 'fn-his-image-header np)))
+            (skip (fnn-core 'fn-his-skip-octets np))
+            (by-addr (make-hash-table))
+            (zeros (make-array 16384 :element-type '(unsigned-byte 8) :initial-element 0))
+            (page (make-array 16384 :element-type '(unsigned-byte 8))))
+        (dolist (w writes) (setf (gethash (first w) by-addr) (rest w)))
+        (fnn-write-range fd header 0 (length header))
+        ;; zeros to the base: SKIP less the pages
+        (let ((pad (- skip (* 16384 np))))
+          (loop while (> pad 0) do
+            (let ((k (min pad 16384))) (fnn-write-range fd zeros 0 k) (decf pad k))))
+        (dotimes (addr np)
+          (let ((w (gethash addr by-addr)))
+            (if (null w)
+                (fnn-write-range fd zeros 0 16384)
+                (let ((words (fnn-core 'fn-his-words (first w) (second w) (fnn-live-hrecs))))
+                  (unless (and (listp words) (= (length words) 2048))
+                    (fnn-fault "ACL2 returned a malformed history image page"))
+                  (let ((i 0))
+                    (dolist (x words)
+                      (dotimes (b 8)
+                        (setf (aref page (+ i b)) (ldb (byte 8 (* 8 b)) x)))
+                      (incf i 8)))
+                  (fnn-write-range fd page 0 16384)))))
+        ;; the image's words are not kept past the write
+        (fnn-call 'fn-his-release (fnn-live-hrecs))))))
+
 (defun fnn-checkpoint-write-steps (fd setup segment sequence profile st arun)
   "Write the file's frames to FD step by step: the arena run ARUN first
 (fnn-checkpoint-write-arena-steps), then the four tables (fn-ockp-step); the
@@ -3052,9 +3176,22 @@ it covers are dropped (fnn-log-drop; T8)."
                    (loop until (fnn-core-arena-state 'fn-store-sco-pass-step
                                                      +fnn-checkpoint-batch-rows+))
                    t))
-         (answer (fnn-core-arena-state 'fn-store-sco-publish-setup segment budget
-                                       (fnn-disk-free-octets store)
-                                       (fnn-checkpoint-revision) position)))
+         ;; the setup's first half (NEXT), then the history image of NEXT's
+         ;; records (its binding into the F row's position), then the
+         ;; second half over the position and the space left after the image
+         (prepared (fnn-core-arena-state 'fn-store-sco-publish-next))
+         (ident (fnn-core-state 'fn-store-genesis-ident))
+         (image nil)
+         (answer (multiple-value-bind (position2 image2)
+                     (if prepared
+                         (fnn-history-image-build (fnn-core 'fn-sco-records (first prepared))
+                                                  (first ident) (second ident) position)
+                         (values position nil))
+                   (setq image image2)
+                   (fnn-core-state 'fn-store-sco-publish-setup-of prepared segment budget
+                                   (fnn-core 'fn-his-stream-free (fnn-disk-free-octets store)
+                                             (fnn-history-image-np image))
+                                   (fnn-checkpoint-revision) position2))))
     (declare (ignore walked))
     (unless (and (consp answer) (= (length answer) 3)
                  (consp (first answer)) (integerp (second answer))
@@ -3075,6 +3212,7 @@ it covers are dropped (fnn-log-drop; T8)."
                 (fnn-state-checkpoint-write
                  store
                  (lambda (fd)
+                   (fnn-history-image-write fd image)
                    (setq steps (fnn-checkpoint-write-steps fd setup segment sequence
                                                            profile st arun))))
              (fnn-octets-pub-release))
@@ -3084,7 +3222,9 @@ it covers are dropped (fnn-log-drop; T8)."
                (fnn-os-error (e)
                  (fnn-indeterminate "the drop of covered log segments is uncertain: ~a" e))))
            (format nil "checkpoint sequence=~d octets=~d steps=~d~@[ segment=~d~]~:[~; dropped=~d~] ~a"
-                   sequence (second verdict) steps (first position) position dropped
+                   sequence (fnn-core 'fn-his-file-octets (fnn-history-image-np image)
+                                      (second verdict))
+                   steps (first position) position dropped
                    (fnn-open-report store))))
         (t (fnn-fault "ACL2 returned a malformed checkpoint verdict"))))))
 
@@ -5486,7 +5626,7 @@ tree root), or stop the build."
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
     "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
-    "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN" "FN_NATIVE_OWNER_TEST_BARRIER_MS" "FN_NATIVE_TEST_DISK_STALL_FILE" "FN_NATIVE_TEST_JOURNAL_FAIL_FILE" "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE" "FN_NATIVE_FAULT_BACKTRACE"
+    "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN" "FN_NATIVE_OWNER_TEST_BARRIER_MS" "FN_NATIVE_TEST_DISK_STALL_FILE" "FN_NATIVE_TEST_READ_STALL_FILE" "FN_NATIVE_TEST_JOURNAL_FAIL_FILE" "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE" "FN_NATIVE_FAULT_BACKTRACE"
     "FN_NATIVE_COUNT_LOOKUPS"
     "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT"
     "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER" "FN_BP_TEST_DELIVER_FAULT"
@@ -6191,22 +6331,83 @@ entries).  Nothing is placed when ACL2 answers none."
                   do (push (list (car m) (fnn-log-extent-file log) place (cdr m))
                            (fnn-log-inflight log))))))))
 
-(defvar *fnn-release-pending* nil
-  "Reseated handles whose staged pages wait for their release.")
+(defvar *fnn-arena-pins-lock* (sb-thread:make-mutex :name "fn arena pins")
+  "Serializes every event of *fnn-arena-pins* (its own lock: a reader ends,
+and unpins, outside the owner's mutex).")
 
-(defvar *fnn-arena-off-mutex-readers* (list 0)
-  "The count of threads reading the live arena outside the owner's mutex (a
-checkpoint publication, host/native/owner.lisp fnn-owner-publish-captured,
-counted under the mutex before its thread starts by fnn-owner-maybe-publish
-and uncounted when it ends); a staged page is released only while it is 0.")
+(defvar *fnn-arena-pins* nil
+  "ACL2's arena-reader generation state (books/arena-reader-pins.lisp,
+PRF-941: (CUR PINS PEND)), NIL before its first event.  A thread that reads
+the live arena outside the owner's mutex (a checkpoint publication,
+host/native/owner.lisp fnn-owner-publish-captured; the installing reclaim
+pass) PINS the current generation under the mutex before it starts and
+UNPINS it when it ends; what is taken away from the arena (a COMPLETE's
+reseated staged pages, fnn-log-reseat-fenced) is RETIRED at a stamp and
+RELEASED once no live pin is at or below the stamp (KEYSTONE
+fn-arpn-release-postdates-every-live-pin): an old retirement goes as soon as
+the readers older than it end, whatever newer readers run.")
+
+(defun fnn-arena-pins-step (event)
+  "One EVENT of ACL2's fn-arpn-step over *fnn-arena-pins*, under its lock;
+answers the step's answer."
+  (sb-thread:with-mutex (*fnn-arena-pins-lock*)
+    (destructuring-bind (st answer)
+        (fnn-call 'fn-arpn-step (or *fnn-arena-pins* (fnn-core 'fn-arpn-initial)) event)
+      (setq *fnn-arena-pins* st)
+      answer)))
+
+(defun fnn-arena-pin ()
+  "Pin the current generation for a reader of the live arena outside the
+owner's mutex (taken under the mutex, before the reader runs).  Answers G,
+which the reader passes to fnn-arena-unpin when it ends."
+  (let ((g (fnn-arena-pins-step '(:pin))))
+    (unless (integerp g) (fnn-fault "ACL2 returned a malformed arena pin"))
+    g))
+
+(defun fnn-arena-unpin (g)
+  "The reader pinned at G ended."
+  (unless (eq (fnn-arena-pins-step (list :unpin g)) :ok)
+    (fnn-fault "ACL2 refused an arena unpin at generation ~a" g)))
+
+(defun fnn-arena-retire (items)
+  "ITEMS (a list) taken away from the arena now: pending at the stamp ACL2
+answers, released by fnn-arena-release-due."
+  (let ((s (fnn-arena-pins-step (list :retire items))))
+    (unless (integerp s) (fnn-fault "ACL2 returned a malformed arena stamp"))
+    s))
+
+(defun fnn-arena-stamp ()
+  "A stamp for a retirement the caller keeps itself (the generation
+advances): release it once (fnn-arena-clear-p S)."
+  (let ((s (fnn-arena-pins-step '(:stamp))))
+    (unless (integerp s) (fnn-fault "ACL2 returned a malformed arena stamp"))
+    s))
+
+(defun fnn-arena-clear-p (s &optional own)
+  "Whether no reader is pinned at or below the stamp S; OWN, when given, the
+asking reader's own pin, not counted."
+  (let ((answer (fnn-arena-pins-step (if own (list :clear-except s own) (list :clear s)))))
+    (when (eq answer :refused) (fnn-fault "ACL2 refused an arena clear test"))
+    answer))
+
+(defun fnn-arena-reader-count ()
+  "The live off-mutex arena readers."
+  (fnn-arena-pins-step '(:count)))
+
+(defun fnn-arena-release-due ()
+  "The pending retirements ACL2 releases now, ((S . ITEMS) ...)."
+  (let ((due (fnn-arena-pins-step '(:release))))
+    (unless (listp due) (fnn-fault "ACL2 returned a malformed arena release"))
+    due))
 
 (defun fnn-log-reseat-fenced (log)
   "The COMPLETE's reseat (PRF-309): each fenced staged member's handle is
 re-pointed at the log extent that now durably holds its payload, as ACL2
 decides it (fn-arx-commit-reseats: KEYSTONE fn-arx-commit-reseats-keep-the-
-arena); the staged pages are then released (fn-arena-release) unless a
-reader outside the owner's mutex (a checkpoint publication) is running, in
-which case they wait for the next COMPLETE."
+arena); the staged pages are then retired, and released (fn-arena-release)
+once no reader outside the owner's mutex (a checkpoint publication) that
+pinned before them runs (books/arena-reader-pins.lisp); until then they wait
+for a later COMPLETE."
   (let ((fenced (fnn-log-with-kernel (log)
                   (prog1 (reverse (fnn-log-fenced log)) (setf (fnn-log-fenced log) nil)))))
     (when fenced
@@ -6218,11 +6419,12 @@ which case they wait for the next COMPLETE."
             ;; plain reseat.
             (fnn-call 'fn-lzr-commit-reseats fenced (fnn-lz-dicts) arena)
           (fnn-call 'fn-arx-commit-reseats fenced arena))
-        (setq *fnn-release-pending* (nconc (mapcar #'first fenced) *fnn-release-pending*))))
-    (when (and *fnn-release-pending* (zerop (car *fnn-arena-off-mutex-readers*)))
-      (let ((arena (fnn-live-arena)))
-        (dolist (h *fnn-release-pending*) (fnn-call 'fn-arena-release h arena))
-        (setq *fnn-release-pending* nil)))))
+        (fnn-arena-retire (mapcar #'first fenced))))
+    (let ((due (fnn-arena-release-due)))
+      (when due
+        (let ((arena (fnn-live-arena)))
+          (dolist (entry due)
+            (dolist (h (cdr entry)) (fnn-call 'fn-arena-release h arena))))))))
 
 
 (defun fnn-log-member-files (log)

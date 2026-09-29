@@ -23,16 +23,13 @@
 ;      handle's payload -- is unchanged.
 ;
 ;   2. RETIRE.  A dropped file's descriptor closes only when no handle names
-;      it: `fn-xrt-scan' walks the concrete extent column a bounded number of
-;      handles per call (never the whole arena under the mutex), answering
-;      the first handle that still names a retired file.  KEYSTONE
-;      `fn-xrt-first-naming-none': a scan that answers none over [LO, END)
-;      means no entry there names a retired file, and scans compose
-;      (`fn-xrt-first-naming-compose').  The close itself
-;      (`fn-xrt-close-set') further excludes every file an in-flight or
-;      fenced log member names and waits for no off-mutex arena reader
-;      (the pin discipline of the staged-page release,
-;      host/native/io.lisp *fnn-arena-off-mutex-readers*).
+;      it: `fn-xrt-quiet-files' reads the concrete arena's file count column
+;      (one read per retired file under the owner mutex, never a walk of the
+;      arena) and excludes every file an in-flight or fenced log member
+;      names.  KEYSTONE `fn-xrt-quiet-files-are-unnamed': a quiet file is
+;      named by no entry at any handle.  The host closes it once no
+;      off-mutex arena reader pinned at or below the generation stamped when
+;      it was found quiet still runs (books/arena-reader-pins.lisp).
 ;
 ; The checkpoint frame as an extent: frame k >= 1 of the arena run is
 ; HEADER (37 octets), CHUNK, TRAILER with TRAILER = the frame digest of
@@ -232,105 +229,56 @@
   :hints (("Goal" :in-theory (disable fn-xrt-reseat-frame))))
 
 ; -----------------------------------------------------------------------------
-; 2. The retirement scan over the concrete extent column.
+; 2. The retirement check, over the concrete arena's file count column
+;    (books/payload-arena-extent.lisp fn-arx-file-count, lane composed-owner-4,
+;    A6): one read per retired file under the owner mutex, never a walk of
+;    the extent column.
 
-; Whether the extent entry E names one of FILES.
-(defun fn-xrt-entry-names (e files)
-  (declare (xargs :guard (nat-listp files)))
-  (and (or (fn-arn-extentp e) (fn-arn-lz-extentp e))
-       (consp e)
-       (member (car e) files)
-       t))
-
-(defun fn-xrt-first-naming (files h end fn-arena$x)
+; The retired files no log member in flight or fenced names (their COMPLETE
+; reseats them there) and no entry of the extent column names (count 0).
+(defun fn-xrt-quiet-files (retired named fn-arena$x)
   (declare (xargs :stobjs fn-arena$x
-                  :guard (and (nat-listp files) (natp h) (natp end)
-                              (<= end (fn-arena$x-ext-length fn-arena$x)))
-                  :measure (nfix (- (nfix end) (nfix h)))))
-  (if (or (not (natp h)) (not (natp end)) (<= end h))
-      nil
-    (if (fn-xrt-entry-names (fn-arena$x-exti h fn-arena$x) files)
-        h
-      (fn-xrt-first-naming files (+ 1 h) end fn-arena$x))))
-
-; KEYSTONE (PRF-930).  A scan that finds none over [LO, END) means no entry
-; there names a retired file.
-(defthm fn-xrt-first-naming-none
-  (implies (and (not (fn-xrt-first-naming files lo end fn-arena$x))
-                (natp lo) (natp end) (natp k) (<= lo k) (< k end))
-           (not (fn-xrt-entry-names (fn-arena$x-exti k fn-arena$x) files)))
-  :hints (("Goal" :induct (fn-xrt-first-naming files lo end fn-arena$x)
-           :in-theory (disable fn-xrt-entry-names))))
-
-; A found handle names a retired file.
-(defthm fn-xrt-first-naming-found
-  (implies (fn-xrt-first-naming files lo end fn-arena$x)
-           (fn-xrt-entry-names
-            (fn-arena$x-exti (fn-xrt-first-naming files lo end fn-arena$x) fn-arena$x)
-            files))
-  :hints (("Goal" :induct (fn-xrt-first-naming files lo end fn-arena$x)
-           :in-theory (disable fn-xrt-entry-names))))
-
-; Scans compose: the host's bounded calls are one scan.
-(defthm fn-xrt-first-naming-compose
-  (implies (and (natp a) (natp b) (natp c) (<= a b) (<= b c)
-                (not (fn-xrt-first-naming files a b fn-arena$x))
-                (not (fn-xrt-first-naming files b c fn-arena$x)))
-           (not (fn-xrt-first-naming files a c fn-arena$x)))
-  :hints (("Goal" :induct (fn-xrt-first-naming files a c fn-arena$x)
-           :in-theory (disable fn-xrt-entry-names))))
-
-; One bounded call: at most K entries from H.  (:found H'), (:next H'') or
-; :done at the column's end.
-(defun fn-xrt-scan (files h k fn-arena$x)
-  (declare (xargs :stobjs fn-arena$x
-                  :guard (and (nat-listp files) (natp h) (natp k))))
-  (let* ((n (fn-arena$x-ext-length fn-arena$x))
-         (end (min n (+ (nfix h) (nfix k)))))
-    (if (<= end (nfix h))
-        :done
-      (let ((found (fn-xrt-first-naming files (nfix h) end fn-arena$x)))
-        (if found
-            (list :found found)
-          (if (<= n end) :done (list :next end)))))))
-
-; -----------------------------------------------------------------------------
-; 3. The close decision.
-
-(defun fn-xrt-remove-named (retired named)
-  (declare (xargs :guard (and (nat-listp retired) (true-listp named))))
+                  :guard (and (nat-listp retired) (true-listp named))))
   (cond ((atom retired) nil)
-        ((member (car retired) named) (fn-xrt-remove-named (cdr retired) named))
-        (t (cons (car retired) (fn-xrt-remove-named (cdr retired) named)))))
+        ((and (not (member (car retired) named))
+              (equal (fn-arx-file-count (car retired) fn-arena$x) 0))
+         (cons (car retired) (fn-xrt-quiet-files (cdr retired) named fn-arena$x)))
+        (t (fn-xrt-quiet-files (cdr retired) named fn-arena$x))))
 
-; A scan starts only when no log member in flight or fenced names a retired
-; file: a COMPLETE after it then reseats only into files the scan does not
-; retire (the active segment is never retired), so the handles it passed
-; stay clean.
-(defun fn-xrt-scan-may-start (retired named)
-  (declare (xargs :guard (and (nat-listp retired) (true-listp named))))
-  (not (intersectp-equal retired named)))
+(local
+ (defthm fn-xrt-quiet-files-member
+   (implies (member f (fn-xrt-quiet-files retired named fn-arena$x))
+            (and (member f retired)
+                 (not (member f named))
+                 (equal (fn-arx-file-count f fn-arena$x) 0)))
+   :hints (("Goal" :in-theory (disable fn-arx-file-count)))))
 
-; RETIRED the dropped files' ids; SCANNED whether a scan of the whole column,
-; started when fn-xrt-scan-may-start said so, found none of them; NAMED the files the log
-; members in flight or fenced name (their COMPLETE reseats them there);
-; READERS the off-mutex arena readers.  The files to close.
-(defun fn-xrt-close-set (retired scanned named readers)
-  (declare (xargs :guard (and (nat-listp retired) (true-listp named))))
-  (if (and scanned (equal readers 0))
-      (fn-xrt-remove-named retired named)
-    nil))
+(local
+ (defthm fn-xrt-quiet-files-natp
+   (implies (and (nat-listp retired)
+                 (member f (fn-xrt-quiet-files retired named fn-arena$x)))
+            (natp f))
+   :rule-classes :forward-chaining))
 
-(defthm fn-xrt-remove-named-member
-  (iff (member f (fn-xrt-remove-named retired named))
-       (and (member f retired) (not (member f named)))))
-
-; KEYSTONE (PRF-930).  A closed file is retired, named by no member in
-; flight, and closes only after a clean scan with no off-mutex reader.
-(defthm fn-xrt-close-set-is-safe
-  (implies (member f (fn-xrt-close-set retired scanned named readers))
+; KEYSTONE (PRF-930).  Under the arena's correspondence (every export keeps
+; it), a quiet file is retired, named by no log member in flight, and named
+; by no entry of the extent column at any handle H: no realizer call reads
+; it again once the readers that could hold an older entry are gone
+; (host/native/owner.lisp fnn-owner-release-extents: the file waits at the
+; generation stamped when it was found quiet until fnn-arena-clear-p,
+; books/arena-reader-pins.lisp fn-arpn-clear-through-p).
+(defthm fn-xrt-quiet-files-are-unnamed
+  (implies (and (fn-arena$xcorr fn-arena$x fn-arena$a)
+                (nat-listp retired)
+                (member f (fn-xrt-quiet-files retired named fn-arena$x)))
            (and (member f retired)
                 (not (member f named))
-                scanned
-                (equal readers 0)))
-  :rule-classes nil)
+                (not (equal (fn-arx-entry-file (nth h (nth *fn-arena$x-exti* fn-arena$x)))
+                            f))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-xrt-quiet-files fn-arena$xcorr fn-arx-file-count
+                               fn-arx-files-unnamed-names-none fn-arx-file-count-is-files-get)
+           :use ((:instance fn-xrt-quiet-files-member)
+                 (:instance fn-arx-files-unnamed-names-none (fs (list f)))
+                 (:instance fn-arx-files-unnamed-p (fs (list f)))
+                 (:instance fn-arx-files-unnamed-p (fs nil))))))

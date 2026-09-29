@@ -16,6 +16,7 @@
 (include-book "../books/store-budget")
 (include-book "../books/store-budget-article")
 (include-book "../books/store-maintenance-reserve")
+(include-book "../books/history-image-snapshot")
 (include-book "../books/store-capacity-vector")
 (include-book "../books/store-carried-folds")
 ; PKT-220: the retention figures `operator CONFIG obligations' opens with.
@@ -792,19 +793,21 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; fn-ockp-run-writes-the-file (the tables').  LOG: the record log's
 ; position at S (a store rotated at this capture; NIL otherwise),
 ; the F row's (fn-sct-log-positionp).
-(defun fn-store-sco-publish-setup (segment-octets budget free revision log fn-arena state)
+(defun fn-store-sco-publish-next (fn-arena state)
+  ; The first half of the setup below: NEXT (and the walk's lengths and
+  ; sources), or NIL when the history is not encodable.  The pass is kept
+  ; for the second half.  READS the arena only.
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let* ((st (f-get-global 'fn-store-sn state))
          (records (fn-sf-records (fn-sn-files st)))
          (configs (fn-sn-config-history st))
          (pass (and (boundp-global 'fn-store-sco-pass state)
                     (f-get-global 'fn-store-sco-pass state)))
-         (state (f-put-global 'fn-store-sco-pass nil state))
          (opened (and (boundp-global 'fn-store-sco-open state)
                       (f-get-global 'fn-store-sco-open state)))
          (e (car opened)))
     (if (not (and (consp pass) (atom (nth 0 pass))))
-        (value (list (list :unencodable nil nil nil nil 0 0) 0 nil))
+        (value nil)
       (let* ((lens (reverse (nth 1 pass)))
              (srcs (reverse (nth 2 pass)))
              (next0 (and opened (equal (len (fn-sco-records e)) (len records))
@@ -813,15 +816,60 @@ reopen predicate, writer-lock observation and observed final namespace."
                        (let ((canon (fn-scka-canon-rows records fn-arena 0)))
                          (if (equal canon :bad) :bad (fn-sco-capture configs canon)))
                      next0)))
-        (if (equal next :bad)
-            (value (list (list :unencodable nil nil nil nil 0 0) 0 nil))
-          (let* ((ws (fn-scka-lens-setup lens segment-octets))
-                 (setup (fn-scka-publication-setup next (fn-sf-frontier (fn-sn-files st))
-                                                   revision log segment-octets budget free
-                                                   (nth 3 ws))))
-            (value (list setup (fn-sco-sequence next)
-                         (list (nth 0 ws) (nth 2 ws)
-                               (fn-scka-initial-state srcs (nth 1 ws) 0))))))))))
+        (value (if (equal next :bad) nil (list next lens srcs)))))))
+
+(defun fn-store-sco-publish-setup-of (prepared segment-octets budget free revision log state)
+  ; The second half: PREPARED from fn-store-sco-publish-next, LOG the F
+  ; row's log position (with the history image's binding when the
+  ; publication carries one).
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((st (f-get-global 'fn-store-sn state))
+         (state (f-put-global 'fn-store-sco-pass nil state)))
+    (if (not (consp prepared))
+        (value (list (list :unencodable nil nil nil nil 0 0) 0 nil))
+      (let* ((next (nth 0 prepared)) (lens (nth 1 prepared)) (srcs (nth 2 prepared))
+             (ws (fn-scka-lens-setup lens segment-octets))
+             (setup (fn-scka-publication-setup next (fn-sf-frontier (fn-sn-files st))
+                                               revision log segment-octets budget free
+                                               (nth 3 ws))))
+        (value (list setup (fn-sco-sequence next)
+                     (list (nth 0 ws) (nth 2 ws)
+                           (fn-scka-initial-state srcs (nth 1 ws) 0))))))))
+
+(defun fn-store-sco-publish-setup (segment-octets budget free revision log fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (er-let* ((prepared (fn-store-sco-publish-next fn-arena state)))
+    (fn-store-sco-publish-setup-of prepared segment-octets budget free revision log state)))
+
+; The history image of the checkpoint the open read (lane composed-owner;
+; books/history-image-snapshot.lisp): the binding its F row's log position
+; carries, checked against this store (the genesis record's node identity
+; and salt), the log (the position's chain value) and the codec, the image
+; adopted from FILE (the checkpoint file's image region, registered by the
+; host), and its last row read and compared with the checkpoint's last
+; record.  (mv erp VERDICT fn-hrecs$c state): NIL when adopted, else the
+; refusal by name; the open then treats the checkpoint as unusable.
+(defun fn-store-sco-image-open (file fn-hrecs$c state)
+  (declare (xargs :stobjs (fn-hrecs$c state) :mode :program))
+  (let* ((pos (and (boundp-global 'fn-store-sco-log-position state)
+                   (f-get-global 'fn-store-sco-log-position state)))
+         (log (car pos))
+         (binding (and (consp log) (consp (cdr log)) (consp (cddr log)) (caddr log)))
+         (v (and (boundp-global 'fn-store-genesis state) (f-get-global 'fn-store-genesis state)))
+         (node (if (and (consp v) (equal (car v) :genesis) (consp (cdr v))) (fn-gen-node (cadr v)) nil))
+         (salt (fn-gen-verdict-salt v))
+         (records (fn-sco-records (fn-store-sco-current state))))
+    (if (null binding)
+        (mv nil (list :refused :no-binding) fn-hrecs$c state)
+      (mv-let (verdict fn-hrecs$c)
+        (fn-his-open binding node salt (cadr log) file fn-hrecs$c)
+        (if verdict
+            (mv nil verdict fn-hrecs$c state)
+          (if (atom records)
+              (mv nil nil fn-hrecs$c state)
+            (mv-let (cv fn-hrecs$c)
+              (fn-his-check-row (1- (len records)) (car (last records)) file fn-hrecs$c)
+              (mv nil (if (eq cv :ok) nil cv) fn-hrecs$c state))))))))
 
 (defun fn-store-sn-domain (state)
   ; The allocation domain the live node carries: every name ever created.
@@ -1621,3 +1669,21 @@ reopen predicate, writer-lock observation and observed final namespace."
                     "genesis"
                     (fn-sdg-digest (and (boundp-global 'fn-store-genesis state)
                                         (f-get-global 'fn-store-genesis state))))))))
+
+; The checkpoint file of a publication that carries a history image
+; (lane composed-owner; books/history-image-snapshot.lisp): the image
+; region (fn-his-region-octets NP: the header, zeros to the base, NP pages)
+; first, then the checkpoint stream the setup planned.  IMAGE-NP is the
+; region's page count, or NIL for a publication without an image.
+; fn-his-stream-free: the free octets the setup's decision is made over,
+; the region's octets taken first.  fn-his-file-octets: the file's octets,
+; the figure the CHECKPOINT line reports (the file on disk has exactly these).
+(defun fn-his-stream-free (free image-np)
+  (declare (xargs :guard t))
+  (let ((region (if (natp image-np) (fn-his-region-octets image-np) 0)))
+    (nfix (- (nfix free) region))))
+
+(defun fn-his-file-octets (image-np stream-octets)
+  (declare (xargs :guard t))
+  (+ (if (natp image-np) (fn-his-region-octets image-np) 0)
+     (nfix stream-octets)))

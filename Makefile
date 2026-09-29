@@ -1318,6 +1318,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-stop-drain-tests \
 	books/owner-time-bars \
 	tests/acl2/owner-time-bars-tests \
+	tests/acl2/owner-cold-line-tests \
+	books/arena-reader-pins \
+	tests/acl2/arena-reader-pins-tests \
 	books/feed-restart-domain \
 	tests/acl2/feed-restart-domain-tests \
 	books/web-request \
@@ -1474,6 +1477,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-records-disk \
 	books/store-records-field \
 	tests/acl2/history-records-disk-tests \
+	books/history-image-binding \
+	books/history-image-fold \
+	books/history-image-snapshot \
+	tests/acl2/history-image-binding-tests \
+	tests/acl2/history-image-campaign-tests \
 	books/image-world \
 	books/image-world-dtn \
 	books/image-world-store-test

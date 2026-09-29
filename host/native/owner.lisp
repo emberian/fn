@@ -3437,7 +3437,99 @@ CLOSING STARTTLS CONSUMED)."
          (declare (ignore tag))
          (values :await step (and waiting (fnn-owner-redeem-quantum service cid))
                  closing starttls consumed)))
+      (:fnn-extent-cold
+       (fnn-owner-cold-line service cid incoming socket class peerp (second results)))
       (t (values-list results)))))
+
+;;; Row A4, option (c) (lane composed-owner-3; books/owner-cold-line.lisp,
+;;; PRF-933).  The served read span is pure over its stobjs, so it runs with
+;;; the extent realizer in its no-I/O mode (host/native/extent.lisp
+;;; *fnn-extent-no-io*): a payload extent not in the realizer's cache throws
+;;; the entry it needs and nothing of the span is kept.  Then the span is
+;;; re-run limited to its FIRST LINE (ACL2's fn-oct-line-end): a warm first
+;;; line is answered as its own read (the caller feeds the rest of INCOMING
+;;; as the next read, exactly as after a submission's yield, PKT-600), so
+;;; pipelined lines are answered in order.  A cold first line comes back as
+;;; (:fnn-extent-cold FILE EOFF ELEN TRAILER).  The per-line re-run happens
+;;; only after a cold abort: a warm span runs once, as before.  With the
+;;; realizer's cache off (limit 0) the mode is never used and a cold extent
+;;; is read under the owner as before.
+(defun fnn-owner-chunk-span-no-io (cid incoming sched)
+  (flet ((try (end)
+           (catch 'fnn-extent-cold
+             (let ((*fnn-extent-no-io* t))
+               (list :warm (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 end sched))))))
+    (if (not (fnn-extent-no-io-usable-p))
+        (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming) sched)
+      (let ((whole (try (length incoming))))
+        (if (eq (car whole) :warm)
+            (second whole)
+          (let* ((line-end (first (fnn-call 'fn-oct-line-end 0 (fnn-live-octets))))
+                 (first-line (try line-end)))
+            (unless (and (integerp line-end) (< 0 line-end) (<= line-end (length incoming)))
+              (fnn-fault "owner returned a malformed line end"))
+            (if (eq (car first-line) :warm)
+                (second first-line)
+              (cons :fnn-extent-cold first-line))))))))
+
+;;; The cold line's page, read OFF the owner mutex in a thread of its own
+;;; (fnn-extent-prefetch: its pread holds no lock), waited for at most ACL2's
+;;; dependency deadline (books/owner-time-bars.lisp fn-otb-dependency-step,
+;;; `read-dependency-ms', 5,000 ms by default: the operator's limit row is not
+;;; in the configuration yet, so the default is passed as nil).  :serve --
+;;; the page came: the read runs again, warm.  :unavailable -- the line is
+;;; answered by ACL2 (fnn-owner-unavailable-line): 403, the line consumed,
+;;; the session unchanged; the prefetch keeps running and its page is kept
+;;; for a later read.  A store fault the prefetch met (a short read, a digest
+;;; mismatch) is signalled here, in the owner's thread, as the synchronous
+;;; read signalled it.  Other connections are served meanwhile: nothing here
+;;; holds the owner mutex or the realizer's lock.
+(defun fnn-owner-cold-line (service cid incoming socket class peerp entry)
+  (let* ((since (fnn-owner-monotonic-ms))
+         (limit nil)
+         (thread (sb-thread:make-thread
+                  (lambda ()
+                    (handler-case (apply #'fnn-extent-prefetch entry)
+                      (serious-condition (c) c)))
+                  :name "fn cold extent")))
+    (loop
+      (let* ((now (fnn-owner-monotonic-ms))
+             (done (not (sb-thread:thread-alive-p thread)))
+             (decision (fnn-core 'fn-otb-dependency-step since now limit done)))
+        (cond ((eq decision :serve)
+               (let ((got (sb-thread:join-thread thread :default nil)))
+                 (when (typep got 'serious-condition) (error got)))
+               (return (fnn-owner-handle-chunk service cid incoming socket class peerp)))
+              ((eq decision :unavailable)
+               (return (fnn-owner-unavailable-line service cid incoming since now limit class)))
+              ((and (consp decision) (eq (car decision) :wait)
+                    (integerp (second decision)) (plusp (second decision)))
+               (sb-thread:join-thread thread :default nil :timeout (/ (second decision) 1000)))
+              (t (fnn-fault "owner returned a malformed dependency step")))))))
+
+;;; ACL2's answer to the cold line past its deadline (host/owner-host.lisp
+;;; fn-owner-unavailable-line-at over fn-ocln-unavailable-span), under the
+;;; owner mutex; the values are fnn-owner-handle-chunk-read's.
+(defun fnn-owner-unavailable-line (service cid incoming since now limit class)
+  (fnn-owner-serialized
+   service cid
+   (lambda ()
+     (fnn-octets-fill incoming)
+     (let ((step (fnn-core-buffer-state 'fn-owner-unavailable-line-at cid 0 since now limit)))
+       (when (eq step :unknown)
+         (fnn-refuse "owner no longer knows connection ~d" cid))
+       (unless (fnn-core 'fn-splan-step-p step)
+         (fnn-fault "owner returned a malformed cold-line step ~a" step))
+       (fnn-owner-refresh-read-octets service)
+       (let ((consumed (fnn-core 'fn-splan-step-consumed step)))
+         (unless (and (integerp consumed) (< 0 consumed) (<= consumed (length incoming)))
+           (fnn-fault "owner returned a malformed cold-line count"))
+         (values (fnn-core 'fn-splan-step-plan step nil nil)
+                 (or (fnn-core 'fn-splan-step-closep step)
+                     (fnn-core 'fn-splan-step-exposure-close step))
+                 (fnn-core 'fn-splan-step-handshake-owed step)
+                 consumed nil nil))))
+   class))
 
 
 (defun fnn-owner-handle-chunk-read (service cid incoming socket class &optional peerp)
@@ -3511,7 +3603,11 @@ EPIPE and the client saw a bare close)."
        ;; step's typed result carries the effects, the plan the caller
        ;; renders off the mutex.
        (fnn-octets-fill incoming)
-       (let ((step (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming) sched)))
+       (let ((step (fnn-owner-chunk-span-no-io cid incoming sched)))
+         ;; Row A4 (c): the first line needs a page not in memory; its read
+         ;; happens off the mutex (fnn-owner-handle-chunk, fnn-owner-cold-line).
+         (when (and (consp step) (eq (car step) :fnn-extent-cold))
+           (return-from step (values :fnn-extent-cold (cdr step))))
          (when (eq step :unknown)
            (fnn-refuse "owner no longer knows connection ~d" cid))
          (fnn-owner-refresh-read-octets service)
@@ -3690,11 +3786,7 @@ resident set the owner serves from is its live heap, not the recovery's
 high-water mark.  Work proportional to the live heap, once per start."
   (sb-ext:gc :full t))
 
-(defconstant +fnn-extent-scan-batch+ 4096
-  "Extent entries one retirement scan call reads under the owner mutex
-(fn-xrt-scan): a work bound per step, never a bound on the arena.")
-
-(defun fnn-owner-release-extents (service store frames dropped-paths)
+(defun fnn-owner-release-extents (service store frames dropped-paths pin)
   "Give the disk blocks of the files a durable checkpoint publication dropped
 back while serving (row Q16, PRF-930, books/extent-retire.lisp): register
 the installed checkpoint with the extent realizer; per payload frame the
@@ -3702,15 +3794,16 @@ publication wrote (FRAMES, newest first: (EOFF ELEN HANDLES)), read the
 frame's entry through the realizer (checked against its trailer) off the
 mutex and reseat its payloads under the mutex (fn-xrt-reseat-checkpoint-
 frame, KEYSTONE fn-xrt-reseat-frame-keeps-the-arena); retire the dropped
-segments (DROPPED-PATHS) and the previous checkpoint; scan the extent column
-a bounded number of entries per mutex hold (fn-xrt-scan, started when
-fn-xrt-scan-may-start); close what fn-xrt-close-set names.  Runs on the
-publication's thread, which is itself counted as an off-mutex arena reader
-but reads the arena only under the mutex here, so the readers the close
-decision sees are the others.  A failure leaves the files retired (closed by
-a later publication) and serving continues."
-  (let ((arena (fnn-live-arena)) (new-id nil) (reseated 0) (incomplete 0)
-        (scanned nil) (held nil) (closed 0))
+segments (DROPPED-PATHS) and the previous checkpoint.  Then, in ONE mutex
+hold, the retired files ACL2 finds quiet (fn-xrt-quiet-files over the
+arena's file count column, one read per file: KEYSTONE fn-xrt-quiet-files-
+are-unnamed) become pending at a fresh arena-reader stamp S: a reader that
+pins after S never sees an entry naming them.  Every pending group whose
+stamp no other reader is pinned at or below (fnn-arena-clear-p S PIN, PIN
+this thread's own pin) is closed.  Runs on a thread that is itself an
+off-mutex arena reader pinned at PIN.  A failure leaves the files retired
+or pending (closed by a later release) and serving continues."
+  (let ((arena (fnn-live-arena)) (new-id nil) (reseated 0) (incomplete 0) (closed 0))
     (handler-case
         (progn
           (setq new-id (fnn-extent-register (fnn-state-checkpoint-path store)))
@@ -3737,38 +3830,30 @@ a later publication) and serving continues."
                            (if (eq (first answer) t) (incf reseated) (incf incomplete)))
                       (setf (svref st 1) 0
                             (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))))))))
-          (let ((h 0))
-            (loop
-              (let ((answer
-                      (fnn-owner-gated (service :control)
-                        (let ((named (fnn-log-member-files (fnn-store-log store))))
-                          (cond ((null *fnn-extent-retired*) :done)
-                                ((and (zerop h)
-                                      (not (fnn-core 'fn-xrt-scan-may-start
-                                                     *fnn-extent-retired* named)))
-                                 :named)
-                                (t (first (fnn-call 'fn-xrt-scan *fnn-extent-retired* h
-                                                    +fnn-extent-scan-batch+ arena))))))))
-                (cond ((eq answer :done) (setq scanned t) (return))
-                      ((eq answer :named) (setq held :in-flight) (return))
-                      ((and (consp answer) (eq (first answer) :next)) (setq h (second answer)))
-                      ((and (consp answer) (eq (first answer) :found))
-                       (setq held (list :handle (second answer))) (return))
-                      (t (fnn-fault "ACL2 returned a malformed retirement scan"))))))
           (fnn-owner-gated (service :control)
-            (let ((close (fnn-core 'fn-xrt-close-set *fnn-extent-retired* scanned
-                                   (fnn-log-member-files (fnn-store-log store))
-                                   (max 0 (1- (car *fnn-arena-off-mutex-readers*))))))
-              (unless (listp close) (fnn-fault "ACL2 returned a malformed close set"))
-              (setq closed (fnn-extent-close close)
-                    *fnn-extent-retired* (set-difference *fnn-extent-retired* close))))
+            (let ((quiet (fnn-call 'fn-xrt-quiet-files *fnn-extent-retired*
+                                   (fnn-log-member-files (fnn-store-log store)) arena)))
+              (unless (listp quiet) (fnn-fault "ACL2 returned a malformed quiet set"))
+              (when quiet
+                (setq *fnn-extent-pending*
+                      (append *fnn-extent-pending* (list (cons (fnn-arena-stamp) quiet)))
+                      *fnn-extent-retired* (set-difference *fnn-extent-retired* quiet)))
+              (let ((keep nil))
+                (dolist (entry *fnn-extent-pending*)
+                  (if (fnn-arena-clear-p (car entry) pin)
+                      (incf closed (fnn-extent-close (cdr entry)))
+                      (push entry keep)))
+                (setq *fnn-extent-pending* (nreverse keep)))))
           (fnn-err "CHECKPOINT release reseated=~d incomplete=~d closed=~d retired=~d open=~d~@[ held=~(~a~)~]"
-                   reseated incomplete closed (length *fnn-extent-retired*)
-                   (fnn-extent-open-count) held))
+                   reseated incomplete closed
+                   (+ (length *fnn-extent-retired*)
+                      (reduce #'+ *fnn-extent-pending* :key (lambda (e) (length (cdr e)))))
+                   (fnn-extent-open-count)
+                   (cond (*fnn-extent-retired* :named) (*fnn-extent-pending* :readers))))
       (serious-condition (e)
         (fnn-err "CHECKPOINT release failed (files stay retired): ~a" e)))))
 
-(defun fnn-owner-publish-captured (service captured &optional position)
+(defun fnn-owner-publish-captured (service captured &optional position pin)
   "The publication's thread: ACL2's fn-ock-next-checkpoint over the values
 captured under the owner mutex (NEXT, the capture of the history at the
 capture point: fn-ock-next-checkpoint-is-the-capture), then fn-ockp-setup
@@ -3786,17 +3871,18 @@ the crash keystone) and serving continues."
   ;; The publication allocates in proportion to the history: the open's
   ;; trigger while it runs, the service trigger again when it ends.
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
-  ;; It reads the live arena outside the owner's mutex: no staged page is
-  ;; released while it runs (host/native/io.lisp fnn-log-reseat-fenced).
-  ;; Its caller counted it under the mutex, before this thread existed
-  ;; (fnn-owner-maybe-publish); the count is returned below.
+  ;; It reads the live arena outside the owner's mutex: no staged page
+  ;; retired while it runs is released until it ends (host/native/io.lisp
+  ;; fnn-log-reseat-fenced, books/arena-reader-pins.lisp).  Its caller
+  ;; pinned the generation PIN under the mutex, before this thread existed
+  ;; (fnn-owner-maybe-publish); it is unpinned below.
   (unwind-protect
   (destructuring-bind (base configs records record-octets count suffix budget frontier free revision
-                        base-payloads)
+                        base-payloads ident)
       captured
     (declare (ignore count))
     (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil)
-          (payloads nil) (dropped-paths nil)
+          (payloads nil) (dropped-paths nil) (image nil)
           ;; the payload frames the arena run writes, for the reseat after
           ;; the install (fnn-owner-release-extents)
           (*fnn-checkpoint-frames* nil)
@@ -3813,10 +3899,22 @@ the crash keystone) and serving continues."
               ;; canonical rows and the file opens with their canonical
               ;; payloads (host/owner-host.lisp fn-owner-sco-prepare, which
               ;; READS the live arena below the captured count).
+              ;; NEXT (fn-owner-sco-next), the history image of NEXT's
+              ;; records with its binding into the F row's position
+              ;; (host/native/io.lisp fnn-history-image-build), then the
+              ;; setup over that position and the space the image leaves
+              ;; (fn-owner-sco-setup-of): fn-owner-sco-prepare in two halves.
               (destructuring-bind (setup prepared-next n arun)
-                  (fnn-core 'fn-owner-sco-prepare base base-payloads configs records
-                            frontier revision position segment budget free
-                            (fnn-checkpoint-walk records) (fnn-live-arena))
+                  (let ((prepared (fnn-core 'fn-owner-sco-next base base-payloads configs records
+                                            (fnn-checkpoint-walk records) segment (fnn-live-arena))))
+                    (multiple-value-bind (position2 image2)
+                        (if prepared
+                            (fnn-history-image-build (fnn-core 'fn-sco-records (first prepared))
+                                                     (first ident) (second ident) position)
+                            (values position nil))
+                      (setq image image2)
+                      (fnn-core 'fn-owner-sco-setup-of prepared frontier revision position2 segment
+                                budget (fnn-core 'fn-his-stream-free free (fnn-history-image-np image)))))
                 (unless (and (consp setup) (= (length setup) 7))
                   (fnn-fault "owner returned a malformed checkpoint setup"))
                 (setq next prepared-next payloads n)
@@ -3832,7 +3930,9 @@ the crash keystone) and serving continues."
                             (elapsed)))
                   ((and (consp verdict) (eq (first verdict) :plan) (= (length verdict) 2)
                         (integerp (second verdict)))
-                   (let ((octets (second verdict)) (steps 0)
+                   (let ((octets (fnn-core 'fn-his-file-octets (fnn-history-image-np image)
+                                           (second verdict)))
+                         (steps 0)
                          (store (fnn-owner-service-store service)))
                      (handler-case
                          (progn
@@ -3845,6 +3945,7 @@ the crash keystone) and serving continues."
                                 (fnn-state-checkpoint-write
                                  store
                                  (lambda (fd)
+                                   (fnn-history-image-write fd image)
                                    (setq steps (fnn-checkpoint-write-steps
                                                 fd setup segment sequence (fnn-store-config store)
                                                 (fnn-live-octets-pub) arun))))
@@ -3884,13 +3985,13 @@ the crash keystone) and serving continues."
           ;; Q16 (b): the dropped files' blocks back while serving.
           (when durablep
             (fnn-owner-release-extents service (fnn-owner-service-store service)
-                                       *fnn-checkpoint-frames* dropped-paths)))
+                                       *fnn-checkpoint-frames* dropped-paths pin)))
         (fnn-with-roster (service)
           (setf (fnn-owner-service-publisher service) nil
                 (fnn-owner-service-workers service)
                 (delete sb-thread:*current-thread*
                         (fnn-owner-service-workers service) :test #'eq))))))
-    (sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*))
+    (when pin (fnn-arena-unpin pin))
     (fnn-owner-service-nursery))
   ;; PKT-583 (b): the publication finished; decide again from the newest
   ;; committed frontier now, not at the next accept (a load's tail has
@@ -3982,19 +4083,18 @@ reads run as a :control quantum; the thread's registration is the roster's."
                                                 (fnn-checkpoint-budget-test-override nil)
                                                 free (fnn-checkpoint-revision)))))
             (unless (or (eq position :failed)
-                        (and (true-listp captured) (= (length captured) 11)))
+                        (and (true-listp captured) (= (length captured) 12)))
               (fnn-fault "owner returned a malformed checkpoint capture"))
             ;; The publication reads the live arena outside the mutex, so it
-            ;; is counted as such a reader here, under the mutex, before its
-            ;; thread starts: counted on its own thread, a commit completing
-            ;; between this capture and that count could release a staged
-            ;; page it reads (fnn-log-reseat-fenced runs under the mutex).
-            ;; The thread returns the count when it ends; a thread that was
-            ;; never made returns it here.
+            ;; pins the generation as such a reader here, under the mutex,
+            ;; before its thread starts: pinned on its own thread, a commit
+            ;; completing between this capture and that pin could release a
+            ;; staged page it reads (fnn-log-reseat-fenced runs under the
+            ;; mutex).  The thread unpins when it ends; a thread that was
+            ;; never made unpins here.
             (fnn-with-roster (service)
               (let ((thread (and (not (eq position :failed))
-                                 (let ((made nil))
-                                   (sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))
+                                 (let ((made nil) (pin (fnn-arena-pin)))
                                    (unwind-protect
                                         (setq made (sb-thread:make-thread
                                                     (lambda ()
@@ -4007,10 +4107,9 @@ reads run as a :control quantum; the thread's registration is the roster's."
                                                                   (fnn-owner-service-stopping
                                                                    service)))))
                                                         (fnn-owner-publish-captured
-                                                         service captured position)))
+                                                         service captured position pin)))
                                                     :name "fn owner checkpoint"))
-                                     (unless made
-                                       (sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*))))))))
+                                     (unless made (fnn-arena-unpin pin)))))))
                 (setf (fnn-owner-service-publisher service) thread)
                 (push thread (fnn-owner-service-workers service)))))))))))
 
@@ -4057,16 +4156,16 @@ dry run), the report to the owner's log in the offline verb's words; then
 the pass ends under the mutex (fn-owner-orc-finish).  Nothing is written.
 The arena is read below the captured count only, and the pass is counted
 as an off-mutex arena reader while it runs (no staged page is released
-under it).  Answers the reply word: :dry-run, or ACL2's refusal."
-  (let ((clock (fnn-store-prepare-observation)) (captured nil) (counted nil))
+under it: its arena-reader pin, books/arena-reader-pins.lisp).  Answers
+the reply word: :dry-run, or ACL2's refusal."
+  (let ((clock (fnn-store-prepare-observation)) (captured nil) (pin nil))
     (unwind-protect
          (progn
            (fnn-owner-gated (service :control)
              (setq captured (fnn-owner-core 'fn-owner-orc-capture :dry-run clock
                                             (fnn-checkpoint-budget-test-override nil)
                                             free (fnn-checkpoint-revision)))
-             (sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))
-             (setq counted t))
+             (setq pin (fnn-arena-pin)))
            (unless (and (true-listp captured) (= (length captured) 12))
              (fnn-fault "owner returned a malformed reclaim capture"))
            (destructuring-bind (records count v s profile configs frontier budget free revision
@@ -4101,8 +4200,7 @@ under it).  Answers the reply word: :dry-run, or ACL2's refusal."
                       (fnn-err "RECLAIM would-reclaim ~a"
                                (if (stringp m) m (fnn-fault "malformed msgid")))))
                   :dry-run)))))
-      (when counted
-        (sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*)))
+      (when pin (fnn-arena-unpin pin))
       (when captured
         (fnn-owner-gated (service :control)
           (fnn-owner-core 'fn-owner-orc-finish))))))
@@ -4210,8 +4308,9 @@ the install is a recovery event (the service stops; the open reads the new
 publication).  Answers the reply word."
   (let* ((store (fnn-owner-service-store service))
          (clock (fnn-store-prepare-observation))
-         (answer nil) (captured nil) (counted nil) (position nil) (stage nil)
+         (answer nil) (captured nil) (pin nil) (position nil) (stage nil) (ident nil)
          (installed nil) (swapped nil) (word :failed) (*fnn-checkpoint-frames* nil)
+         (image nil)
          (started (get-internal-real-time)))
     (flet ((ms () (round (* 1000 (- (get-internal-real-time) started))
                          internal-time-units-per-second))
@@ -4228,8 +4327,10 @@ publication).  Answers the reply word."
                (when (eq (first answer) :captured)
                  (setq captured (second answer))
                  (setq position (fnn-log-rotate store))
-                 (sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))
-                 (setq counted t)))
+                 ;; the history image's binding: the store's node and salt
+                 (setq ident (fnn-owner-core 'fn-store-genesis-ident))
+                 ;; an off-mutex arena reader from here (arena-reader-pins)
+                 (setq pin (fnn-arena-pin))))
              (unless captured
                (unless (and (eq (first answer) :deferred) (integerp (third answer)))
                  (fnn-fault "owner returned a malformed reclaim capture"))
@@ -4259,10 +4360,24 @@ publication).  Answers the reply word."
                  ;; the reclaimed checkpoint, staged off the mutex
                  (let ((segment (fnn-core 'fn-ockp-segment-octets record-octets
                                           +fnn-checkpoint-batch-octets+)))
+                   ;; as a publication stages it (fnn-owner-publish-captured):
+                   ;; NEXT, the history image of NEXT's records with its
+                   ;; binding into the F row's position, then the setup
                    (destructuring-bind (setup next n arun)
-                       (fnn-core 'fn-owner-sco-prepare nil nil configs rows frontier revision
-                                 position segment budget free* (fnn-checkpoint-walk rows)
-                                 (fnn-live-arena))
+                       (let ((prepared (fnn-core 'fn-owner-sco-next nil nil configs rows
+                                                 (fnn-checkpoint-walk rows) segment
+                                                 (fnn-live-arena))))
+                         (multiple-value-bind (position2 image2)
+                             (if prepared
+                                 (fnn-history-image-build
+                                  (fnn-core 'fn-sco-records (first prepared))
+                                  (first ident) (second ident) position)
+                                 (values position nil))
+                           (setq image image2)
+                           (fnn-core 'fn-owner-sco-setup-of prepared frontier revision position2
+                                     segment budget
+                                     (fnn-core 'fn-his-stream-free free*
+                                               (fnn-history-image-np image)))))
                      (declare (ignore next n))
                      (let ((verdict (first setup)))
                        (cond ((and (consp verdict) (eq (first verdict) :plan)))
@@ -4274,6 +4389,7 @@ publication).  Answers the reply word."
                           (setq stage (fnn-state-checkpoint-stage
                                        store
                                        (lambda (fd)
+                                         (fnn-history-image-write fd image)
                                          (fnn-checkpoint-write-steps
                                           fd setup segment (length rows) (fnn-store-config store)
                                           (fnn-live-octets-pub) arun))))
@@ -4298,7 +4414,7 @@ publication).  Answers the reply word."
                    (dotimes (round +fnn-reclaim-swap-rounds+)
                      (let ((sw (fnn-owner-gated (service :control)
                                  (let ((w (fnn-owner-core 'fn-owner-orcp-swap-word count frontier s
-                                                          (max 0 (1- (car *fnn-arena-off-mutex-readers*)))
+                                                          (1- (fnn-arena-reader-count))
                                                           rebuilt)))
                                    (when (eq w :swap)
                                      ;; the commit point, then the swap, in one quantum
@@ -4332,9 +4448,9 @@ publication).  Answers the reply word."
                           (dropped (fnn-log-drop store covered)))
                      (fnn-err "RECLAIM installed records=~d reclaimed=~d dropped=~d ms=~d"
                               count (length (second decision)) dropped (ms))
-                     (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths))
+                     (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths pin))
                    (fnn-reclaim-cut :released)))))
-        (when counted (sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*)))
+        (when pin (fnn-arena-unpin pin))
         ;; Installed and not swapped: the durable publication is the new one
         ;; and the served state the old one -- never served on: a recovery
         ;; event (the service stops, the open reads the new publication).
