@@ -734,7 +734,14 @@
                                            ;; PRF-359: the operator's free-space
                                            ;; reserve (books/owner-time-model.lisp
                                            ;; fn-otm-space-need).
-                                           "disk-reserve-octets"))
+                                           "disk-reserve-octets"
+                                           ;; PRF-986 (PKT-639): the TLS
+                                           ;; handshake budget
+                                           ;; (books/tls-handshake-budget.lisp
+                                           ;; fn-hsb-limits), each positive.
+                                           "tls-handshakes-per-source-per-minute"
+                                           "tls-handshakes-in-flight"
+                                           "tls-handshake-ms"))
              (fn-native-admin-decimalp (cadddr words))
              ; Lane compression-extents-2 (PRF-341): `compress-min-octets'
              ; (books/payload-lz-append.lisp fn-lzr-config-min) also admits

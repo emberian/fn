@@ -55,12 +55,13 @@
 ;     every decision, release and leave keeps it: at most L in flight, at
 ;     most L started in the tick, at most 32 x L waiting.
 ;   KEYSTONE fn-hsb-admits-per-tick-are-bounded: over ANY sequence of
-;     events (any sources, any order, any number), the handshakes admitted
-;     in one tick are at most L (the largest L the events were decided
-;     under, so a live change is covered).
-;   KEYSTONE fn-hsb-source-admits-are-bounded: over any sequence of events
-;     whose times are nondecreasing and within [T0, T1], one untrusted
-;     source is admitted at most N + N x (T1 - T0) / 60,000 handshakes.
+;     events (any sources, any order, any number) from ANY state, the
+;     handshakes admitted in one tick are at most L (the largest L the
+;     events were decided under, so a live change is covered).
+;   KEYSTONE fn-hsb-source-admits-are-bounded: from ANY state, over any
+;     sequence of events whose times are nondecreasing and within [T0, T1],
+;     one untrusted source is admitted at most N + N x (T1 - T0) / 60,000
+;     handshakes.
 ;   fn-hsb-scratch-within-the-reservation: the handshakes in flight hold at
 ;     most L x *fn-hsb-scratch-octets* of native crypto scratch.
 ;
@@ -569,7 +570,7 @@
 ;; K; the whole limit once K is past, when nothing more is admitted in it).
 (defun fn-hsb-used (k s lmax)
   (declare (xargs :guard t))
-  (cond ((equal (fn-hsb-tick s) (nfix k)) (fn-hsb-started s))
+  (cond ((equal (fn-hsb-tick s) (nfix k)) (min (fn-hsb-started s) (nfix lmax)))
         ((< (fn-hsb-tick s) (nfix k)) 0)
         (t (nfix lmax))))
 
@@ -580,14 +581,12 @@
 
 (local
  (defthm fn-hsb-event-step
-   (implies (and (<= (fn-hsb-started s) (nfix lmax))
-                 (fn-hsb-event-under lmax e))
-            (and (<= (fn-hsb-started (fn-hsb-event s e)) (nfix lmax))
-                 (<= (+ (if (and (fn-hsb-admittedp s e)
-                                 (equal (fn-hsb-tick (fn-hsb-event s e)) (nfix k)))
-                            1 0)
-                        (fn-hsb-used k s lmax))
-                     (fn-hsb-used k (fn-hsb-event s e) lmax))))
+   (implies (fn-hsb-event-under lmax e)
+            (<= (+ (if (and (fn-hsb-admittedp s e)
+                            (equal (fn-hsb-tick (fn-hsb-event s e)) (nfix k)))
+                       1 0)
+                   (fn-hsb-used k s lmax))
+                (fn-hsb-used k (fn-hsb-event s e) lmax)))
    :hints (("Goal" :use ((:instance fn-hsb-admitted-under-the-limit)
                          (:instance fn-hsb-event-started-in-tick)
                          (:instance fn-hsb-event-started-in-a-new-tick)
@@ -597,8 +596,7 @@
 
 (local
  (defthm fn-hsb-used-bounded
-   (implies (<= (fn-hsb-started s) (nfix lmax))
-            (<= (fn-hsb-used k s lmax) (nfix lmax)))
+   (<= (fn-hsb-used k s lmax) (nfix lmax))
    :rule-classes :linear))
 
 (defthm fn-hsb-events-under-opens
@@ -611,8 +609,7 @@
 
 (local
  (defthm fn-hsb-admits-in-tick-general
-   (implies (and (fn-hsb-events-under lmax es)
-                 (<= (fn-hsb-started s) (nfix lmax)))
+   (implies (fn-hsb-events-under lmax es)
             (<= (+ (fn-hsb-admits-in-tick k s es) (fn-hsb-used k s lmax))
                 (nfix lmax)))
    :hints (("Goal" :induct (fn-hsb-admits-in-tick k s es)
@@ -621,10 +618,10 @@
    :rule-classes nil))
 
 ; KEYSTONE: the handshakes admitted in any one tick, over any sequence of
-; events from any state within the bound, are at most L.
+; events from any state, are at most L (the largest in-flight limit the
+; admissions were decided under).
 (defthm fn-hsb-admits-per-tick-are-bounded
-  (implies (and (fn-hsb-events-under lmax es)
-                (<= (fn-hsb-started s) (nfix lmax)))
+  (implies (fn-hsb-events-under lmax es)
            (<= (fn-hsb-admits-in-tick k s es) (nfix lmax)))
   :hints (("Goal" :use fn-hsb-admits-in-tick-general
                   :in-theory (disable fn-hsb-admits-in-tick fn-hsb-events-under)))
@@ -634,110 +631,26 @@
 ; The per-source bound.  Over events whose times are nondecreasing within
 ; [T0, T1], decided at one rate N, a source is admitted at most
 ; N + N x (T1 - T0) / 60,000 handshakes (the bucket's burst and its
-; refill), whatever else is offered.  The invariant: 60,000 x (the source's
-; admissions so far) + (its bucket's level now) <= N x 60,000 + N x (now - T0).
+; refill), whatever else is offered, from ANY state: a bucket never holds
+; more than N x 60,000.  The invariant: 60,000 x (the source's admissions
+; from now on) <= (its bucket's level now) + N x (T1 - now).
 
 ; The source's bucket level at NOW in the rows.
 (defun fn-hsb-eff (rows key rate now)
   (declare (xargs :guard t))
   (fn-hsb-level (fn-hsb-lookup key rows) rate now))
 
-(defun fn-hsb-keys (rows)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (if (consp (car rows))
-          (cons (car (car rows)) (fn-hsb-keys (cdr rows)))
-        (fn-hsb-keys (cdr rows)))
-    nil))
-
-; The rows are keyed once each, and no stamp is later than NOW.
-(defun fn-hsb-stamps-by (rows now)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (and (consp (car rows))
-           (consp (cdr (car rows)))
-           (natp (car (cdr (car rows))))
-           (natp (cdr (cdr (car rows))))
-           (<= (cdr (cdr (car rows))) (nfix now))
-           (fn-hsb-stamps-by (cdr rows) now))
-    t))
-
-(defun fn-hsb-rows-okp (rows now)
-  (declare (xargs :guard t))
-  (and (fn-hsb-stamps-by rows now)
-       (no-duplicatesp-equal (fn-hsb-keys rows))))
-
-(local (in-theory (enable fn-hsb-lookup fn-hsb-prune fn-hsb-put)))
-
-(local
- (defthm fn-hsb-stamps-by-later
-   (implies (and (fn-hsb-stamps-by rows a) (<= (nfix a) (nfix b)))
-            (fn-hsb-stamps-by rows b))))
-
-(local
- (defthm fn-hsb-lookup-stamped
-   (implies (and (fn-hsb-stamps-by rows now) (fn-hsb-lookup key rows))
-            (and (consp (fn-hsb-lookup key rows))
-                 (natp (car (fn-hsb-lookup key rows)))
-                 (natp (cdr (fn-hsb-lookup key rows)))
-                 (<= (cdr (fn-hsb-lookup key rows)) (nfix now))))))
-
-; Refill: from T to NOW >= T the level rises by at most N x (NOW - T).
-(local
- (defthm fn-hsb-lookup-absent
-   (implies (not (member-equal key (fn-hsb-keys rows)))
-            (and (equal (fn-hsb-lookup key rows) nil)
-                 (not (member-equal key (fn-hsb-keys (fn-hsb-prune rows rate now))))))))
-
-(local
- (defthm fn-hsb-lookup-of-prune
-   (implies (no-duplicatesp-equal (fn-hsb-keys rows))
-            (equal (fn-hsb-lookup key (fn-hsb-prune rows rate now))
-                   (if (fn-hsb-fullp (fn-hsb-lookup key rows) rate now)
-                       nil
-                     (fn-hsb-lookup key rows))))
-   :hints (("Goal" :induct (fn-hsb-prune rows rate now)
-                   :in-theory (disable fn-hsb-fullp)))))
+(local (in-theory (enable fn-hsb-lookup fn-hsb-prune fn-hsb-put fn-hsb-drop)))
 
 (local
  (defthm fn-hsb-lookup-of-drop
    (equal (fn-hsb-lookup key (fn-hsb-drop k2 rows))
-          (if (equal key k2) nil (fn-hsb-lookup key rows)))
-   :hints (("Goal" :in-theory (enable fn-hsb-drop)))))
+          (if (equal key k2) nil (fn-hsb-lookup key rows)))))
 
 (local
  (defthm fn-hsb-lookup-of-put
    (equal (fn-hsb-lookup key (fn-hsb-put k2 lv st rows))
           (if (equal key k2) (cons lv st) (fn-hsb-lookup key rows)))))
-
-(local
- (defthm fn-hsb-keys-of-drop-1
-   (not (member-equal k (fn-hsb-keys (fn-hsb-drop k rows))))
-   :hints (("Goal" :in-theory (enable fn-hsb-drop)))))
-
-(local
- (defthm fn-hsb-keys-of-drop-2
-   (implies (not (member-equal x (fn-hsb-keys rows)))
-            (not (member-equal x (fn-hsb-keys (fn-hsb-drop k rows)))))
-   :hints (("Goal" :in-theory (enable fn-hsb-drop)))))
-
-(local
- (defthm fn-hsb-keys-of-drop
-   (implies (no-duplicatesp-equal (fn-hsb-keys rows))
-            (no-duplicatesp-equal (fn-hsb-keys (fn-hsb-drop k rows))))
-   :hints (("Goal" :in-theory (enable fn-hsb-drop)))))
-
-(local
- (defthm fn-hsb-keys-of-prune
-   (implies (no-duplicatesp-equal (fn-hsb-keys rows))
-            (no-duplicatesp-equal (fn-hsb-keys (fn-hsb-prune rows rate now))))))
-
-(local
- (defthm fn-hsb-stamps-by-of-drop-prune
-   (implies (fn-hsb-stamps-by rows now)
-            (and (fn-hsb-stamps-by (fn-hsb-drop k rows) now)
-                 (fn-hsb-stamps-by (fn-hsb-prune rows rate x) now)))
-   :hints (("Goal" :in-theory (enable fn-hsb-drop)))))
 
 (local (include-book "arithmetic-5/top" :dir :system))
 
@@ -748,59 +661,100 @@
    :hints (("Goal" :nonlinearp t))
    :rule-classes :linear))
 
-(local (in-theory (enable fn-hsb-level fn-hsb-lookup fn-hsb-prune fn-hsb-put)))
+(local
+ (defthm fn-hsb-level-at-most-cap
+   (<= (fn-hsb-level row rate now) (fn-hsb-cap rate))
+   :hints (("Goal" :in-theory (enable fn-hsb-level)))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-hsb-level-natp
+   (natp (fn-hsb-level row rate now))
+   :hints (("Goal" :in-theory (enable fn-hsb-level fn-hsb-cap)))
+   :rule-classes :type-prescription))
+
+(local
+ (defthm fn-hsb-eff-at-most-cap
+   (<= (fn-hsb-eff rows key rate now) (fn-hsb-cap rate))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-hsb-eff-natp
+   (natp (fn-hsb-eff rows key rate now))
+   :rule-classes :type-prescription))
+
+; Refill: from TT to NOW >= TT any row's level rises by at most N x (NOW - TT).
+(local
+ (defun fn-hsb-dt (stamp now)
+   (if (< (nfix stamp) (nfix now)) (- (nfix now) (nfix stamp)) 0)))
+
+(local
+ (defthm fn-hsb-dt-grows
+   (implies (and (natp tt) (natp now) (<= tt now))
+            (and (natp (fn-hsb-dt st now))
+                 (natp (fn-hsb-dt st tt))
+                 (<= (fn-hsb-dt st now) (+ (fn-hsb-dt st tt) (- now tt)))))
+   :rule-classes nil))
+
+(local
+ (defthm fn-hsb-level-by-dt
+   (equal (fn-hsb-level row rate now)
+          (if (consp row)
+              (min (fn-hsb-cap rate)
+                   (+ (nfix (car row)) (* (nfix rate) (fn-hsb-dt (cdr row) now))))
+            (fn-hsb-cap rate)))
+   :hints (("Goal" :in-theory (enable fn-hsb-level)))))
+
+(local
+ (defthm fn-hsb-dt-self
+   (implies (<= (nfix now) (nfix st)) (equal (fn-hsb-dt st now) 0))
+   :hints (("Goal" :in-theory (enable fn-hsb-dt)))))
+
+(local (in-theory (disable fn-hsb-dt)))
+
 (local
  (defthm fn-hsb-level-refill
-   (implies (and (consp row) (natp (car row)) (natp (cdr row)) (<= (cdr row) tt)
-                 (natp tt) (natp now) (<= tt now) (natp rate))
+   (implies (and (natp tt) (natp now) (<= tt now) (natp rate))
             (<= (fn-hsb-level row rate now)
                 (+ (fn-hsb-level row rate tt) (* rate (- now tt)))))
-   :hints (("Goal" :in-theory (enable fn-hsb-cap)
-                   :use ((:instance fn-hsb-times-monotone (n rate) (a tt) (b now))
-                         (:instance fn-hsb-times-monotone (n rate) (a (cdr row)) (b tt)))))
+   :hints (("Goal" :in-theory (disable fn-hsb-cap)
+                   :use ((:instance fn-hsb-dt-grows (st (cdr row)))
+                         (:instance fn-hsb-times-monotone (n rate)
+                                    (a (fn-hsb-dt (cdr row) now))
+                                    (b (+ (fn-hsb-dt (cdr row) tt) (- now tt))))
+                         (:instance fn-hsb-times-monotone (n rate) (a tt) (b now)))))
    :rule-classes nil))
 
 (local
  (defthm fn-hsb-eff-refill
-   (implies (and (fn-hsb-stamps-by rows tt) (natp tt) (natp now) (<= tt now) (natp rate))
+   (implies (and (natp tt) (natp now) (<= tt now) (natp rate))
             (<= (fn-hsb-eff rows key rate now)
                 (+ (fn-hsb-eff rows key rate tt) (* rate (- now tt)))))
-   :hints (("Goal" :in-theory (disable fn-hsb-lookup fn-hsb-level)
-                   :cases ((fn-hsb-lookup key rows)))
-           ("Subgoal 1" :use ((:instance fn-hsb-level-refill (row (fn-hsb-lookup key rows)))
-                              (:instance fn-hsb-lookup-stamped (now tt))))
-           ("Subgoal 2" :in-theory (enable fn-hsb-level fn-hsb-cap)))
+   :hints (("Goal" :use ((:instance fn-hsb-level-refill (row (fn-hsb-lookup key rows))))))
    :rule-classes nil))
 
+; Pruning never raises a level: a dropped row was full.
 (local
- (defthm fn-hsb-eff-natp
-   (implies (fn-hsb-stamps-by rows now)
-            (natp (fn-hsb-eff rows key rate tt)))
-   :rule-classes :type-prescription))
-
-; Pruning at NOW keeps every source's level at NOW (a dropped row was full).
-(local
- (defthm fn-hsb-level-at-most-cap
-   (<= (fn-hsb-level row rate now) (fn-hsb-cap rate))
+ (defthm fn-hsb-eff-of-prune
+   (<= (fn-hsb-eff (fn-hsb-prune rows rate now) key rate now)
+       (fn-hsb-eff rows key rate now))
+   :hints (("Goal" :induct (fn-hsb-prune rows rate now)
+                   :in-theory (e/d (fn-hsb-fullp) (fn-hsb-level fn-hsb-level-by-dt fn-hsb-cap))))
    :rule-classes :linear))
 
 (local
- (defthm fn-hsb-level-of-no-row
-   (implies (not (consp row))
-            (equal (fn-hsb-level row rate now) (fn-hsb-cap rate)))))
+ (defthm fn-hsb-level-of-fresh
+   (implies (and (natp lv) (natp now) (<= lv (fn-hsb-cap rate)))
+            (equal (fn-hsb-level (cons lv now) rate now) lv))))
 
 (local
- (defthm fn-hsb-eff-of-prune
-   (implies (no-duplicatesp-equal (fn-hsb-keys rows))
-            (equal (fn-hsb-eff (fn-hsb-prune rows rate now) key rate now)
-                   (fn-hsb-eff rows key rate now)))
-   :hints (("Goal" :do-not-induct t
-                   :in-theory (e/d (fn-hsb-fullp) (fn-hsb-prune fn-hsb-level fn-hsb-cap))))))
+ (defthm fn-hsb-eff-of-put
+   (implies (and (natp lv) (natp now) (<= lv (fn-hsb-cap rate)))
+            (equal (fn-hsb-eff (fn-hsb-put k2 lv now rows) key rate now)
+                   (if (equal key k2) lv (fn-hsb-eff rows key rate now))))
+   :hints (("Goal" :in-theory (disable fn-hsb-put fn-hsb-cap)))))
 
-(defthm fn-hsb-rows-okp-of-put-prune
-  (implies (and (fn-hsb-rows-okp rows now) (natp lv) (natp st) (<= st (nfix now)))
-           (fn-hsb-rows-okp (fn-hsb-put k lv st (fn-hsb-prune rows rate x)) now))
-  :hints (("Goal" :in-theory (disable fn-hsb-prune fn-hsb-drop))))
+(in-theory (disable fn-hsb-eff))
 
 ; What an admission does to the buckets.
 (defthm fn-hsb-buckets-of-admit
@@ -814,14 +768,14 @@
                          (nfix now)
                          (fn-hsb-prune (fn-hsb-buckets s) (fn-hsb-lim-rate hl) now))
            (fn-hsb-buckets s)))
-  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-eff) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap)))))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-eff) (fn-hsb-level fn-hsb-level-by-dt fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap)))))
 
 (defthm fn-hsb-admit-needs-a-handshake-of-level
   (implies (and (equal (fn-hsb-verdict (fn-hsb-admit s hl trustedp address now queuedp)) :admit)
                 (not trustedp))
            (<= *fn-hsb-window-ms*
                (fn-hsb-eff (fn-hsb-buckets s) (fn-hsb-source-key address) (fn-hsb-lim-rate hl) now)))
-  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-eff) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap))))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-eff) (fn-hsb-level fn-hsb-level-by-dt fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap))))
   :rule-classes :linear)
 
 (defthm fn-hsb-buckets-of-done-leave
@@ -829,18 +783,6 @@
        (equal (fn-hsb-buckets (fn-hsb-leave s)) (fn-hsb-buckets s))))
 
 (in-theory (disable fn-hsb-admit fn-hsb-state fn-hsb-verdict fn-hsb-detail))
-
-(defthm fn-hsb-rows-okp-of-admit
-  (implies (and (fn-hsb-rows-okp (fn-hsb-buckets s) now) (natp now))
-           (fn-hsb-rows-okp (fn-hsb-buckets (fn-hsb-state (fn-hsb-admit s hl trustedp address now queuedp)))
-                            now))
-  :hints (("Goal" :in-theory (disable fn-hsb-put fn-hsb-prune fn-hsb-lookup fn-hsb-level
-                                      fn-hsb-rows-okp fn-hsb-eff)
-                  :use ((:instance fn-hsb-eff-natp (rows (fn-hsb-buckets s))
-                                   (key (fn-hsb-source-key address))
-                                   (rate (fn-hsb-lim-rate hl)) (tt now))
-                        fn-hsb-admit-needs-a-handshake-of-level))
-          ("Goal'" :in-theory (enable fn-hsb-rows-okp))))
 
 ; The handshakes admitted from untrusted source KEY over the events ES.
 (defun fn-hsb-source-admits (key s es)
@@ -867,39 +809,26 @@
         (fn-hsb-events-timed (cdr es) prev t1 n))
     t))
 
-(local
- (defthm fn-hsb-eff-of-put
-   (implies (and (natp lv) (natp now) (<= lv (fn-hsb-cap rate)))
-            (equal (fn-hsb-eff (fn-hsb-put k2 lv now rows) key rate now)
-                   (if (equal key k2) lv (fn-hsb-eff rows key rate now))))
-   :hints (("Goal" :in-theory (disable fn-hsb-put fn-hsb-cap)))))
-
-(local
- (defthm fn-hsb-eff-at-most-cap
-   (<= (fn-hsb-eff rows key rate now) (fn-hsb-cap rate))
-   :rule-classes :linear))
-
-; One event, for source KEY: its admission is paid from the level.
+; One admission event, for source KEY: its admission is paid from the level.
 (local
  (defthm fn-hsb-event-source-step
-   (implies (and (fn-hsb-rows-okp (fn-hsb-buckets s) now)
-                 (consp e) (equal (car e) :admit)
+   (implies (and (consp e) (equal (car e) :admit)
                  (equal (fn-hsb-at 4 e) now) (natp now)
                  (equal (fn-hsb-lim-rate (fn-hsb-at 1 e)) n))
-            (and (fn-hsb-rows-okp (fn-hsb-buckets (fn-hsb-event s e)) now)
-                 (equal (+ (if (and (fn-hsb-admittedp s e)
-                                    (not (fn-hsb-at 2 e))
-                                    (equal (fn-hsb-source-key (fn-hsb-at 3 e)) key))
-                               *fn-hsb-window-ms* 0)
-                           (fn-hsb-eff (fn-hsb-buckets (fn-hsb-event s e)) key n now))
-                        (fn-hsb-eff (fn-hsb-buckets s) key n now))))
+            (<= (+ (if (and (fn-hsb-admittedp s e)
+                            (not (fn-hsb-at 2 e))
+                            (equal (fn-hsb-source-key (fn-hsb-at 3 e)) key))
+                       *fn-hsb-window-ms* 0)
+                   (fn-hsb-eff (fn-hsb-buckets (fn-hsb-event s e)) key n now))
+                (fn-hsb-eff (fn-hsb-buckets s) key n now)))
    :hints (("Goal" :in-theory (e/d (fn-hsb-event fn-hsb-admittedp)
-                                   (fn-hsb-put fn-hsb-prune fn-hsb-lookup
-                                    fn-hsb-level fn-hsb-eff fn-hsb-cap))
+                                   (fn-hsb-put fn-hsb-prune fn-hsb-lookup fn-hsb-level fn-hsb-cap))
                    :use ((:instance fn-hsb-admit-needs-a-handshake-of-level
                                     (hl (fn-hsb-at 1 e)) (trustedp (fn-hsb-at 2 e))
                                     (address (fn-hsb-at 3 e)) (now (fn-hsb-at 4 e))
-                                    (queuedp (fn-hsb-at 5 e))))))
+                                    (queuedp (fn-hsb-at 5 e)))
+                         (:instance fn-hsb-eff-at-most-cap (rows (fn-hsb-buckets s))
+                                    (key (fn-hsb-source-key (fn-hsb-at 3 e))) (rate n)))))
    :rule-classes nil))
 
 (local
@@ -910,14 +839,8 @@
    :hints (("Goal" :in-theory (enable fn-hsb-event fn-hsb-admittedp)))))
 
 (local
- (defthm fn-hsb-rows-okp-later
-   (implies (and (fn-hsb-rows-okp rows a) (<= (nfix a) (nfix b)))
-            (fn-hsb-rows-okp rows b))))
-
-(local
  (defthm fn-hsb-source-admit-case
-   (implies (and (fn-hsb-rows-okp (fn-hsb-buckets s) tt) (natp tt)
-                 (consp e) (equal (car e) :admit)
+   (implies (and (natp tt) (consp e) (equal (car e) :admit)
                  (natp now) (equal (fn-hsb-at 4 e) now) (<= tt now)
                  (equal (fn-hsb-lim-rate (fn-hsb-at 1 e)) n) (natp n)
                  (<= (* *fn-hsb-window-ms* c)
@@ -930,26 +853,9 @@
                           1 0)
                       c))
                 (+ (fn-hsb-eff (fn-hsb-buckets s) key n tt) (* n (- t1 tt)))))
-   :hints (("Goal" :in-theory (disable fn-hsb-eff fn-hsb-event fn-hsb-admittedp)
+   :hints (("Goal" :in-theory (disable fn-hsb-event fn-hsb-admittedp)
                    :use ((:instance fn-hsb-event-source-step)
-                         (:instance fn-hsb-eff-refill (rows (fn-hsb-buckets s)) (rate n))
-                         (:instance fn-hsb-rows-okp-later (rows (fn-hsb-buckets s))
-                                    (a tt) (b now)))))
-   :rule-classes nil))
-
-(local
- (defthm fn-hsb-rows-okp-of-event
-   (implies (and (fn-hsb-rows-okp (fn-hsb-buckets s) tt) (natp tt)
-                 (consp e) (equal (car e) :admit)
-                 (natp (fn-hsb-at 4 e)) (<= tt (fn-hsb-at 4 e)))
-            (fn-hsb-rows-okp (fn-hsb-buckets (fn-hsb-event s e)) (fn-hsb-at 4 e)))
-   :hints (("Goal" :in-theory (e/d (fn-hsb-event) (fn-hsb-rows-okp fn-hsb-buckets-of-admit))
-                   :use ((:instance fn-hsb-rows-okp-later (rows (fn-hsb-buckets s))
-                                    (a tt) (b (fn-hsb-at 4 e)))
-                         (:instance fn-hsb-rows-okp-of-admit
-                                    (hl (fn-hsb-at 1 e)) (trustedp (fn-hsb-at 2 e))
-                                    (address (fn-hsb-at 3 e)) (now (fn-hsb-at 4 e))
-                                    (queuedp (fn-hsb-at 5 e))))))
+                         (:instance fn-hsb-eff-refill (rows (fn-hsb-buckets s)) (rate n)))))
    :rule-classes nil))
 
 (local
@@ -963,44 +869,36 @@
 
 (local
  (defthm fn-hsb-source-admits-general
-   (implies (and (fn-hsb-rows-okp (fn-hsb-buckets s) tt) (natp tt)
-                 (fn-hsb-events-timed es tt t1 n) (natp t1) (<= tt t1) (natp n))
+   (implies (and (natp tt) (fn-hsb-events-timed es tt t1 n) (natp t1) (<= tt t1) (natp n))
             (<= (* *fn-hsb-window-ms* (fn-hsb-source-admits key s es))
                 (+ (fn-hsb-eff (fn-hsb-buckets s) key n tt) (* n (- t1 tt)))))
    :hints (("Goal" :induct (fn-hsb-source-induct s es tt)
-                   :in-theory (disable fn-hsb-eff fn-hsb-rows-okp fn-hsb-event fn-hsb-admittedp))
-           ("Subgoal *1/1" :use ((:instance fn-hsb-rows-okp-of-event (e (car es)))
-                                 (:instance fn-hsb-source-admit-case (e (car es))
+                   :in-theory (disable fn-hsb-event fn-hsb-admittedp))
+           ("Subgoal *1/1" :use ((:instance fn-hsb-source-admit-case (e (car es))
                                             (now (fn-hsb-at 4 (car es)))
                                             (c (fn-hsb-source-admits key (fn-hsb-event s (car es))
-                                                                     (cdr es))))
-                                 (:instance fn-hsb-eff-natp (rows (fn-hsb-buckets (fn-hsb-event s (car es))))
-                                            (rate n) (now (fn-hsb-at 4 (car es)))
-                                            (tt (fn-hsb-at 4 (car es))))))
+                                                                     (cdr es))))))
            ("Subgoal *1/2" :use ((:instance fn-hsb-event-other-step (e (car es)))))
-           ("Subgoal *1/3" :in-theory (enable fn-hsb-rows-okp)
-                           :use ((:instance fn-hsb-times-monotone (n n) (a tt) (b t1))
-                                 (:instance fn-hsb-eff-natp (rows (fn-hsb-buckets s))
-                                            (rate n) (now tt)))))
+           ("Subgoal *1/3" :use ((:instance fn-hsb-times-monotone (n n) (a tt) (b t1)))))
    :rule-classes nil))
 
-; KEYSTONE: over any events whose times are nondecreasing within [T0, T1],
-; decided at rate N, from a state whose buckets are well formed at T0 (the
-; initial state's are), one untrusted source is admitted at most
-; N x 60,000 + N x (T1 - T0) token-milliseconds' worth: N + N x (T1 - T0) /
-; 60,000 handshakes.
-(defthm fn-hsb-source-admits-are-bounded
-  (implies (and (fn-hsb-rows-okp (fn-hsb-buckets s) t0) (natp t0)
-                (fn-hsb-events-timed es t0 t1 n) (natp t1) (<= t0 t1) (natp n))
-           (<= (* *fn-hsb-window-ms* (fn-hsb-source-admits key s es))
-               (+ (* n *fn-hsb-window-ms*) (* n (- t1 t0)))))
-  :hints (("Goal" :in-theory (disable fn-hsb-eff fn-hsb-rows-okp fn-hsb-source-admits
-                                      fn-hsb-events-timed)
-                  :use ((:instance fn-hsb-source-admits-general (tt t0))
-                        (:instance fn-hsb-eff-at-most-cap (rows (fn-hsb-buckets s)) (rate n)
-                                   (now t0))))
-          ("Goal'" :in-theory (enable fn-hsb-cap))))
+(local
+ (defthm fn-hsb-events-timed-of-nfix
+   (equal (fn-hsb-events-timed es (nfix t0) (nfix t1) n)
+          (fn-hsb-events-timed es t0 t1 n))))
 
-(defthm fn-hsb-initial-rows-okp
-  (fn-hsb-rows-okp (fn-hsb-buckets (fn-hsb-initial)) t0)
-  :hints (("Goal" :in-theory (enable fn-hsb-buckets fn-hsb-initial fn-hsb-make))))
+; KEYSTONE: from ANY state, over any events whose times are nondecreasing
+; within [T0, T1], decided at rate N, one untrusted source is admitted at
+; most N + N x (T1 - T0) / 60,000 handshakes (stated in token-milliseconds;
+; the times are the recorded clock's naturals, as fn-hsb-events-timed reads
+; them).
+(defthm fn-hsb-source-admits-are-bounded
+  (implies (and (fn-hsb-events-timed es t0 t1 n) (<= (nfix t0) (nfix t1)) (natp n))
+           (<= (* *fn-hsb-window-ms* (fn-hsb-source-admits key s es))
+               (+ (* n *fn-hsb-window-ms*) (* n (- (nfix t1) (nfix t0))))))
+  :hints (("Goal" :in-theory (disable fn-hsb-source-admits fn-hsb-events-timed)
+                  :use ((:instance fn-hsb-source-admits-general (tt (nfix t0)) (t1 (nfix t1)))
+                        (:instance fn-hsb-events-timed-of-nfix)
+                        (:instance fn-hsb-eff-at-most-cap (rows (fn-hsb-buckets s)) (rate n)
+                                   (now (nfix t0)))))
+          ("Goal'" :in-theory (enable fn-hsb-cap))))

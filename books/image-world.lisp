@@ -259,6 +259,7 @@
 (include-book "owner-ack-after-barrier")
 (include-book "login-binding-live")
 (include-book "connection-budget")
+(include-book "tls-handshake-budget") ; PRF-986: the TLS handshake admission (PKT-639)
 (include-book "owner-stop-drain")
 (include-book "owner-time-journal-writer")
 (include-book "owner-time-bars")
