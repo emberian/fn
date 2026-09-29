@@ -16990,6 +16990,23 @@
       ]
     },
     {
+      "id": "PRF-1039",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-publish-outcome-is-pending-exactly-while-the-loop-runs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-publish-outcome-names-the-stopped-phase"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-publish-action-of-run-is-dispatched"
+        }
+      ]
+    },
+    {
       "id": "PRF-1037",
       "events": [
         {
