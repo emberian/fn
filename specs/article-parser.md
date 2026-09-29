@@ -14,7 +14,7 @@ these local resource limits:
 | --- | ---: | --- |
 | complete source | 32,768 octets | local policy |
 | header section before the blank separator | profile field 15 `max-header-octets` (default 16,384) | operator's (D27, STO-030) |
-| physical header line excluding CRLF | 998 octets | local policy, aligned with RFC 5536 §2.2's generation limit |
+| physical header line excluding CRLF | 998 octets | RFC 5322 §2.1.1 (a MUST; RFC 5536 §2.1); a field of any length is admitted folded (§2.2.3) |
 | physical header lines | profile field 14 `max-header-lines` (default 256) | operator's (D27, STO-030) |
 | header fields | profile field 13 `max-header-fields` (default 64) | operator's (D27, STO-030) |
 
@@ -41,8 +41,15 @@ validation claim.
 
 The first empty CRLF-framed line terminates the header section.  Absence of that
 separator is `:missing-separator`; invalid header syntax and mixed line endings
-are `:invalid-header`; a source, header, line, field, or physical-line limit is
-`:limit`.  Parsing never interns a header name or invokes the Lisp reader.
+are `:invalid-header`; a source over the codec ceiling or a physical line over
+998 octets is `:limit`.  Within the ceiling a `:limit` is exactly a long line
+(books/article-line-bound.lisp `fn-article-parse-under-limit-is-a-long-header-line`),
+which the injection decision refuses as `:line-length`, answered `441 posting
+failed; a header line is longer than 998 octets (RFC 5322 section 2.1.1); fold
+it` (PRF-905, PKT-506; `fn-inj-decide-line-length-is-a-long-header-line`).  A
+References or Subject of any length folded within the line bound is admitted,
+up to the profile's header limits.  Parsing never interns a header name or
+invokes the Lisp reader.
 
 ## Header syntax and retained views
 

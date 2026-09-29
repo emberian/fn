@@ -571,16 +571,53 @@
           (mv entries stobjs)
         (xt-walk-closed (append seeds new) (1- n) w)))))
 
+; The host ports (lane extract-writable): a function of host/store-write-host.lisp
+; (name FN-XW-...) is io.lisp's raw host code written in :program, and io.lisp
+; calls every ACL2 entry through fnn-call.  So each fn- core function such a
+; port function calls directly is a boundary function too: its guard is
+; checked where the port calls it (tools/extract/chicken.py, port callers).
+(defun xt-prefixp (prefix name)
+  (and (<= (length prefix) (length name))
+       (equal (subseq name 0 (length prefix)) prefix)))
+
+(defun xt-port-fn-p (fn)
+  (xt-prefixp "FN-XW-" (symbol-name fn)))
+
+(defun xt-core-fn-p (fn w)
+  (let ((n (symbol-name fn)))
+    (and (xt-prefixp "FN-" n)
+         (not (xt-prefixp "FN-XW-" n)) (not (xt-prefixp "FN-XO-" n)) (not (xt-prefixp "FN-HX-" n))
+         (getpropc fn 'formals nil w)
+         (not (getpropc fn 'constrainedp nil w)))))
+
+(defun xt-core-callees (fns w acc)
+  (cond ((endp fns) acc)
+        ((or (member-eq (car fns) acc) (not (xt-core-fn-p (car fns) w)))
+         (xt-core-callees (cdr fns) w acc))
+        (t (xt-core-callees (cdr fns) w (cons (car fns) acc)))))
+
+(defun xt-port-callees (entries w acc)
+  (if (endp entries) (reverse acc)
+    (let ((e (car entries)))
+      (xt-port-callees (cdr entries) w
+                       (if (and (eq (cadr e) :defun) (xt-port-fn-p (car e)))
+                           (xt-core-callees (xt-callees (caddr e) nil) w acc)
+                         acc)))))
+
 (defun xt-extract-with (roots extra path state)
   (let ((w (w state)))
-    (mv-let (entries stobjs)
+    (mv-let (entries0 stobjs0)
       (xt-walk-closed (append roots extra (xt-boundary-extra roots w nil)) 4 w)
+      (declare (ignore stobjs0))
+     (let ((boundary (append roots (set-difference-eq (xt-port-callees entries0 w nil) roots))))
+     (mv-let (entries stobjs)
+      (xt-walk-closed (append roots extra (xt-boundary-extra boundary w nil)) 4 w)
       (mv-let (channel state)
         (open-output-channel path :character state)
         (let* ((state (princ$ "{\"roots\":" channel state))
                (state (xt-json-symlist roots channel state))
                (state (princ$ ",\"boundary\":[" channel state))
-               (state (xt-json-boundary roots t channel state))
+               (state (xt-json-boundary boundary t channel state))
                (state (princ$ "],\"functions\":[" channel state))
                (state (xt-json-entries entries t channel state))
                (state (princ$ "],\"stobjs\":[" channel state))
@@ -588,7 +625,7 @@
                (state (princ$ "]}" channel state))
                (state (newline channel state))
                (state (close-output-channel channel state)))
-          (value (len entries)))))))
+          (value (len entries)))))))))
 
 (defun xt-extract (roots path state)
   (xt-extract-with roots nil path state))

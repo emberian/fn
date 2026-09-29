@@ -458,7 +458,7 @@
 
 (defthm fn-nntp-list-counts-command-preserves-session
   (equal (fn-nntp-result-session
-          (fn-nntp-list-counts-command session archive args))
+          (fn-nntp-list-counts-command session archive closed args))
          session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary

@@ -696,12 +696,17 @@ def verify_log_cut_map() -> None:
 # The log's segment programs (lane log-recovery; books/store-log-segments.lisp):
 # the rotation at a checkpoint's capture and the drop after its install.
 SEGMENT_BOOK = "store-log-segments.lisp"
+# The rotation is three programs (lane operations): the spare made off the
+# owner mutex, the rename under it, journal/'s fence off it again.
 SEGMENT_PROGRAM_HOSTS = {
+    "fn-lgs-spare-program": "fnn-log-prepare-spare",
     "fn-lgs-rotate-program": "fnn-log-rotate",
+    "fn-lgs-rotate-durable-program": "fnn-log-make-durable",
     "fn-lgs-drop-program": "fnn-log-drop",
 }
 SEGMENT_STEP_HOST = {"create": "(fnn-open path", "fsync-file": "(fnn-fsync-file ",
-                     "fsync-dir": "(fnn-fsync-dir ", "unlink": "(fnn-unlink "}
+                     "fsync-dir": "(fnn-fsync-dir ", "unlink": "(fnn-unlink ",
+                     "rename": "(fnn-rename-no-replace "}
 
 
 def verify_log_segment_cut_map() -> None:
@@ -723,6 +728,22 @@ def verify_log_segment_cut_map() -> None:
         cuts = set(re.findall(r"\(fnn-log-at :([a-z-]+)\)", body))
         if cuts != set(model_cut_names(program, SEGMENT_BOOK)):
             raise AssertionError("{} cuts {} are not {}'s".format(host, sorted(cuts), program))
+    # The switch under the owner mutex is a rename and nothing else of the
+    # disk; the new segment's name is durable before a member in it is
+    # acknowledged (the fence) and before a checkpoint names it.
+    rotate = host_function(source, "fnn-log-rotate")
+    for needle in ("(fnn-open ", "(fnn-fsync-file ", "(fnn-fsync-dir ", "(fnn-log-preallocate "):
+        if needle in rotate:
+            raise AssertionError("fnn-log-rotate performs {} under the owner mutex".format(needle))
+    fence = host_function(source, "fnn-log-fence")
+    durable, barrier = fence.find("(fnn-log-make-durable log)"), fence.find("(fnn-log-fdatasync ")
+    if not (0 <= durable < barrier):
+        raise AssertionError("fnn-log-fence does not fence journal/ before a rotated segment's first barrier")
+    owner = (ROOT / "host/native/owner.lisp").read_text()
+    publish = host_function(owner, "fnn-owner-publish-captured")
+    durable, write = publish.find("(fnn-log-make-durable "), publish.find("(fnn-state-checkpoint-write")
+    if not (0 <= durable < write):
+        raise AssertionError("the publication writes a checkpoint before the rotated segment's name is durable")
 
 
 def verify_post_log_cut_map() -> None:

@@ -56,7 +56,8 @@
   :hints (("Goal" :do-not-induct t
            :in-theory '(fn-sbud-oc-store fn-oiis-prepare-identity fn-psrv-prepare-identity
                         (:e equal) fn-sjh-ccar-ocfg-prepare-identity-store)
-           :use ((:instance fn-pout-prepare-identity-answers-the-store-change)))))
+           :use ((:instance fn-pout-prepare-identity-answers-the-store-change)
+                 (:instance fn-pout-identity-refusal-kind-is-a-refusal)))))
 
 (defthm fn-sjh-identity-prepared-staging
   (let* ((s (fn-own-store (fn-ocfg-owner oc)))

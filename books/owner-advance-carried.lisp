@@ -72,14 +72,14 @@
 ; fn-article-listp reads every article.  The re-pin opens a session on the
 ; view archive after every durable POST, so that recognizer ran once per POST
 ; over a value the owner's relation already describes.  The carried
-; recognizer keeps the three remaining conjuncts: the group list and the
-; next-number table (both O(G)) and the article count (O(N) pointer steps).
+; recognizer keeps the two remaining conjuncts: the group list and the
+; next-number table (both O(G)); no article is visited (the whole-archive
+; count left fn-nntp-projectionp with PKT-615).
 
 (defun fn-acar-nntp-projectionp (archive)
   (declare (xargs :guard t))
   (and (fn-nntp-safe-group-listp (fn-state-groups archive))
-       (fn-nntp-nexts-boundedp (fn-state-nexts archive))
-       (<= (len (fn-state-articles archive)) *fn-nntp-max-article-number*)))
+       (fn-nntp-nexts-boundedp (fn-state-nexts archive))))
 
 (defthm fn-acar-nntp-projectionp-is-nntp-projectionp
   (implies (fn-statep archive)

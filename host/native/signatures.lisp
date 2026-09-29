@@ -120,6 +120,10 @@ build/lib for a built image, the frozen or installed directory's lib/."
 (defun fnn-hsig-initialize ()
   "Load libsodium (Ed25519) and the ML-DSA-65 library once; check their ABI."
   (fnn-crypto-initialize)
+  (fnn-hsig-mldsa-initialize))
+
+(defun fnn-hsig-mldsa-initialize ()
+  "Load the ML-DSA-65 library once and check its ABI (no libsodium)."
   (sb-thread:with-mutex (*fnn-hsig-mldsa-lock*)
     (case *fnn-hsig-mldsa-state*
       (:ready t)
@@ -335,3 +339,45 @@ authorization check binds its observed key bytes to the carrier's key set."
          (first observations)
          (if (consp ml-observation) (first ml-observation) ml-observation)
          config observation)))))
+
+;;; A-SIG-NATIVE (specs/failures.md; lane extract-writable): the realizer of
+;;; books/crypto-seam.lisp's constrained `fn-sig-verify', the ML-DSA-65
+;;; verifier of this file's library (lib/libfn-mldsa65, the vendored PQClean
+;;; FIPS 204 code behind host/native/fn-mldsa65.c): pure ML-DSA-65, empty
+;;; context.  The answer is T exactly when PK is a list of 1952 octets, SIG
+;;; a list of 3309 octets, M an octet list, and ML-DSA-65.Verify(PK, M, SIG)
+;;; accepts; NIL for any other shape (a key or signature of another width is
+;;; not this suite's and verifies nothing).  A library fault (the library
+;;; cannot load, or answers neither 0 nor 1) is an error, never a verdict.
+;;; The extracted program binds the same function of the same library
+;;; (tools/extract/native.scm a-native-sig-verify), so the two answer alike
+;;; on every input; the probes compare them (tools/extract/probes.py).
+;;; `fn-sig-sign' and `fn-sig-public-key' stay unattached: nothing the host
+;;; calls signs a statement.
+
+(defun fnn-sig-octets-of-length-p (x n)
+  (and (true-listp x)
+       (= (length x) n)
+       (every (lambda (o) (typep o '(unsigned-byte 8))) x)))
+
+(defun fn-sig-verify (pk m sig)
+  (if (and (fnn-sig-octets-of-length-p pk +fnn-hsig-ml-public-key-octets+)
+           (fnn-sig-octets-of-length-p sig +fnn-hsig-ml-signature-octets+)
+           (true-listp m)
+           (every (lambda (o) (typep o '(unsigned-byte 8))) m))
+      (progn
+        (fnn-hsig-mldsa-initialize)
+        (let ((text (coerce m '(simple-array (unsigned-byte 8) (*))))
+              (s (coerce sig '(simple-array (unsigned-byte 8) (*))))
+              (raw (coerce pk '(simple-array (unsigned-byte 8) (*)))))
+          (sb-sys:with-pinned-objects (text s raw)
+            (let ((code (fnn-%hsig-ml-verify (fnn-hsig-pointer s) (length s)
+                                             (fnn-hsig-pointer text) (length text)
+                                             (fnn-hsig-pointer raw))))
+              (cond ((= code 0) t)
+                    ((= code 1) nil)
+                    (t (fnn-hsig-ml-fault code "ML-DSA-65 verification")))))))
+    nil))
+
+(defun acl2_*1*_acl2::fn-sig-verify (pk m sig)
+  (fn-sig-verify pk m sig))
