@@ -43,7 +43,8 @@ running node takes each at once:
         --principal PRINCIPAL-HEX --posting
     fn operator CONFIG peer set friend --send 'local.*' --tls starttls \
         --server-name 198.51.100.9 --anchor /var/lib/fn/friend-cert.pem
-    fn operator CONFIG peer login friend me-node /var/lib/fn/friend.fnauth
+    fn operator CONFIG peer login friend me-node \
+        /var/lib/fn/friend.fnauth
     fn operator CONFIG peer pull friend 20
 
 *Check:* Post on one; read on the other. The log says:
