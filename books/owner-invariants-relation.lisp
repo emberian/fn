@@ -971,7 +971,7 @@
 ; node; the two wire theorems beside it say the reply to IHAVE and CHECK is
 ; that decision; this says which node the served path supplies, and it is
 ; the owner's own, not the one the connection opened with.  The host line is
-; host/owner-host.lisp fn-owner-chunk -> fn-own-read.
+; host/owner-host.lisp fn-owner-chunk-span-at -> fn-own-read.
 ; A peer session whose role is bound carries a configuration: `fn-peer-sessionp'
 ; (books/peer-inbound) demands `fn-cfgp' of it on the peer arm, and `fn-cfgp'
 ; demands a cons.  `64a80197' bound the inbound peer role to an authenticated

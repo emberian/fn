@@ -513,6 +513,23 @@ def affected_roots(books: list[str], targets: list[str]) -> list[str]:
     return selected
 
 
+def affected_selection(named: list[str], makefile_roots: list[str],
+                       targets: list[str]) -> list[str]:
+    """The roots a run with `--affected-by` certifies: a union, never a filter.
+
+    Every named book, then every Makefile root that is, or transitively
+    includes, a target, in Makefile order.  Until 2026-09-29 the named books
+    were the only candidates, so `certify_books.py books/x --affected-by
+    books/y` searched books/x alone: the umbrellas that include books/y were
+    silently left out, and books/x itself was dropped when it did not reach
+    books/y (three lanes, obstructions-2).  A named book not in the Makefile
+    is searched too, so naming a new book still selects what includes it.
+    """
+    extra = [book for book in named if book not in set(makefile_roots)]
+    affected = affected_roots(list(makefile_roots) + extra, targets)
+    return list(dict.fromkeys(list(named) + affected))
+
+
 def install_from_cache(roots: list[str], toolchain_identity: str,
                        acl2: Path, recertify: list[str] = ()) -> certs.Report:
     """Install what the cache holds of the roots' closure (`--incremental`).
@@ -881,8 +898,9 @@ def main() -> int:
         default=[],
         metavar="BOOK",
         help=(
-            "certify only the requested books that are, or transitively "
-            "include, this book (repeatable; .lisp optional)"
+            "also certify every Makefile root that is, or transitively "
+            "includes, this book (repeatable; .lisp optional); named books "
+            "are certified as well: the selection is the union"
         ),
     )
     parser.add_argument(
@@ -982,11 +1000,15 @@ def main() -> int:
         print(f"certify_books: on {box}: FN_ACL2={os.environ['FN_ACL2']} "
               f"FN_CERT_CACHE={os.environ['FN_CERT_CACHE']} (farm.py HOSTS; "
               "set either to override)", file=sys.stderr, flush=True)
-    if not args.books:
+    named_books = [book[:-len(".lisp")] if book.endswith(".lisp") else book
+                   for book in args.books]
+    if not args.books or args.affected_by:
         try:
-            args.books = default_books()
+            makefile_roots = default_books()
         except (OSError, ValueError) as error:
             parser.error(f"cannot read the Makefile's ACL2_BOOKS: {error}")
+        if not args.books:
+            args.books = list(makefile_roots)
 
     invalid = [book for book in args.books if not BOOK_NAME.fullmatch(book)]
     if invalid:
@@ -1036,7 +1058,8 @@ def main() -> int:
     requested_before_filter = list(args.books)
     if args.affected_by:
         try:
-            args.books = affected_roots(args.books, args.affected_by)
+            args.books = affected_selection(named_books, makefile_roots,
+                                            args.affected_by)
         except ValueError as error:
             parser.error(str(error))
     roots = list(args.books)
@@ -1071,6 +1094,11 @@ def main() -> int:
             print("certify_books: in no Makefile root's closure (add it to ACL2_BOOKS "
                   "in the Makefile, or include it from a root): " + ", ".join(orphans),
                   file=sys.stderr)
+            hosts = [book for book in orphans if book.startswith("host/")]
+            if hosts:
+                print("certify_books: no book includes " + ", ".join(hosts) + ": no "
+                      "certification exercises it; `python3 tools/host_check.py --load` "
+                      "checks host files", file=sys.stderr)
             return 2
     if args.dry_run:
         for book in args.books:

@@ -1527,3 +1527,21 @@
 (assert-event (not (fn-native-admin-result-queryp *fn-na-compaction*)))
 (assert-event (not (fn-native-admin-result-owner-requestp
                     (fn-native-admin-plan (fn-na-test-argv '("compaction" "now"))))))
+; Q16: the reclaim requests `store reclaim' sends a running owner are owner
+; requests too, each naming its mode; the compaction request names none.
+(assert-event (null (fn-native-admin-result-reclaim-mode *fn-na-compaction*)))
+(assert-event (equal (fn-native-admin-result-reclaim-mode
+                      (fn-native-admin-plan (fn-na-test-argv '("reclaim" "request"))))
+                     :reclaim))
+(assert-event (equal (fn-native-admin-result-reclaim-mode
+                      (fn-native-admin-plan (fn-na-test-argv '("reclaim" "recorded"))))
+                     :recorded))
+(assert-event (equal (fn-native-admin-result-reclaim-mode
+                      (fn-native-admin-plan (fn-na-test-argv '("reclaim" "dry-run"))))
+                     :dry-run))
+(assert-event (fn-native-admin-result-owner-requestp
+               (fn-native-admin-plan (fn-na-test-argv '("reclaim" "dry-run")))))
+(assert-event (null (fn-native-admin-plan-deltas
+                     (fn-native-admin-plan (fn-na-test-argv '("reclaim" "request"))))))
+(assert-event (not (fn-native-admin-result-owner-requestp
+                    (fn-native-admin-plan (fn-na-test-argv '("reclaim" "now"))))))

@@ -1020,7 +1020,7 @@
 (assert-event (equal (fn-own-conns *own-control-queued*)
                      (fn-own-conns *own-after-post*)))
 (assert-event (equal (fn-inj-decision-octets
-                      (fn-own-sub-decision (car (fn-own-queue *own-control-queued*))))
+                      (fn-own-sub-queued-decision (car (fn-own-queue *own-control-queued*))))
                      *own-control-source*))
 (defconst *own-control-taken* (fn-own-take-submission *own-control-queued*))
 (assert-event (fn-own-control-submissionp (fn-own-inflight *own-control-taken*)))
@@ -1388,7 +1388,7 @@
 ; clock is refused as a clock fault and not as an article verdict.
 ;
 ; The subject is fn-own-read, which is what host/owner-host.lisp
-; `fn-owner-chunk' calls on every socket chunk; connection 4 has already had
+; `fn-owner-chunk-span-at' calls on every socket chunk; connection 4 has already had
 ; one 240 above and is re-pinned to the committed view.
 
 (defconst *own-article-2*

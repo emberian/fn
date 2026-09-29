@@ -2,8 +2,8 @@
 ; (D27; REP-012; PRF-181).
 ;
 ; books/owner-served-carried.lisp closes the served fold at the owner:
-; fn-scar-ocfg-read-tls-prefix is the read host/owner-host.lisp fn-owner-chunk
-; calls with the socket observation AS A LIST (a 512-element cons list per
+; fn-scar-ocfg-read-tls-prefix is the read the retired host/owner-host.lisp
+; fn-owner-chunk called with the socket observation AS A LIST (a 512-element cons list per
 ; socket read, coerced by host/native/owner.lisp fnn-octet-list).  This book is
 ; the same read over a range [i, end) of the octet buffer: host/owner-host.lisp
 ; fn-owner-chunk-span calls fn-scar-ocfg-read-span after

@@ -11,6 +11,8 @@
 (defun fn-native-admin-host-queryp (result) (fn-native-admin-result-queryp result))
 (defun fn-native-admin-host-owner-requestp (result)
   (fn-native-admin-result-owner-requestp result))
+(defun fn-native-admin-host-reclaim-mode (result)
+  (fn-native-admin-result-reclaim-mode result))
 (defun fn-native-admin-host-report-kind (result)
   (fn-native-admin-result-report-kind result))
 (defun fn-native-admin-host-query-report (plan state)

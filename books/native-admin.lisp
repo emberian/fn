@@ -971,6 +971,16 @@
              (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest words)))))
         (fn-native-admin-result :accepted nil :request-inspect nil 0 nil
                                 (fn-ncfg-nth 2 words)))
+       ; Q16: what `store reclaim' sends a running owner
+       ; (host/native/operator.lisp fnn-operator-execute-store-action): a
+       ; request for its reclaim pass (books/owner-reclaim.lisp), no
+       ; configuration record of the plan's own.
+       ((equal words '("reclaim" "request"))
+        (fn-native-admin-result :accepted nil :request-reclaim nil 0 nil nil))
+       ((equal words '("reclaim" "recorded"))
+        (fn-native-admin-result :accepted nil :request-reclaim-recorded nil 0 nil nil))
+       ((equal words '("reclaim" "dry-run"))
+        (fn-native-admin-result :accepted nil :request-reclaim-dry-run nil 0 nil nil))
        (t (fn-native-admin-result :refused :syntax nil nil nil nil nil))))))
 
 ; PKT-868: an accepted plan the live owner answers from its own state, not by
@@ -979,7 +989,8 @@
   (declare (xargs :guard t))
   (and (equal (fn-native-admin-result-status result) :accepted)
        (member-equal (fn-native-admin-result-kind result)
-                     '(:request-compaction :request-inspect))
+                     '(:request-compaction :request-inspect :request-reclaim
+                       :request-reclaim-recorded :request-reclaim-dry-run))
        t))
 
 ; Row S3: the Message-ID an inspect request carries (its value field), or nil.
@@ -989,6 +1000,17 @@
        (equal (fn-native-admin-result-kind result) :request-inspect)
        (stringp (fn-native-admin-result-value result))
        (fn-native-admin-result-value result)))
+
+; Q16: the reclaim pass's mode an accepted reclaim request names, or nil
+; (the compaction and inspect requests).
+(defun fn-native-admin-result-reclaim-mode (result)
+  (declare (xargs :guard t))
+  (and (fn-native-admin-result-owner-requestp result)
+       (let ((kind (fn-native-admin-result-kind result)))
+         (cond ((equal kind :request-reclaim) :reclaim)
+               ((equal kind :request-reclaim-recorded) :recorded)
+               ((equal kind :request-reclaim-dry-run) :dry-run)
+               (t nil)))))
 
 ; The delta list the LIVE owner stages for an accepted plan.
 ;

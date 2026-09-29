@@ -590,6 +590,9 @@ Three functions, one decision.
   '(:not-a-peer :no-inbound :message-id-syntax :history :staged :busy :fenced
     :inflight-limit :capacity :out-of-scope :loop :no-date :date-future :no-clock
     :proto-article :oversize :unknown-group :date-cutoff))
+;; (books/peer-inbound.lisp is the authority; it adds, among others,
+;; :line-length, a header line over RFC 5322 section 2.1.1's 998 octets,
+;; refused by that name as POST refuses it: row I5.)
 
 (defun fn-peer-decision (kind reason) (list kind reason))
 (defun fn-peer-decision-kind   (d) (car d))
@@ -1895,7 +1898,7 @@ current administrative authority stay separate facts (the mandate §5.4);
 `:fn-control` remains the only answer about authority. The theorem over the
 host-called read is `fn-own-read-hdr-fn-enrollment-is-the-pinned-enrollment`
 (books/owner-enrollment-read.lisp; host line host/owner-host.lisp
-`fn-owner-chunk`).
+`fn-owner-chunk-span-at`).
 
 NNT-036: a reader is told the current enrollment, in the node's pinned
 keyring view, of the principal a historical verdict names, as a fact
@@ -2616,7 +2619,7 @@ open.
 | §3.1 "`:tick` is the scheduler's tick for that peer" | `fn-own-feed-tick-peer`, one `fn-feed-tick-step` per peer under that peer's own `fn-sched-contactp` | **Difference, recorded.** The owner's feed tick does NOT route through `fn-sched-table-tick`. `fn-sched-tick-step` selects an `fn-sched-item` work and drives a BP attempt; its effects are `fn-bp-result-effects` and its queue is not the feed queue, so routing the feed through it would add a table that decides nothing about the feed and would make `fn-sched-table-tick-is-the-peer-tick` a decoration. What the feed does take from the scheduler is the contact model: `fn-feed-selection` gates on `fn-sched-contact-holdsp` of the feed's own contact, whose peer the table binds to the key. |
 | §3.3 "(:feed-restart peer) on open, before any offer" | `fn-own-reopen` restarts every feed; `fn-owner-feed-restart` writes one record per peer | The restart is in the owner's crash-recovery transition itself, so it cannot be forgotten by the host. |
 | "an ACL2-side `fn-feed-parse-response`" (w6 status, open) | `fn-own-feed-response-code` and `fn-own-feed-parse-response` | **Closed.** RFC 3977 §3.2's three-digit split is ACL2's; `tools/run_feed.py`'s `status()` was deleted for it and the driver itself is gone (`w11/harness-health`, 2026-09-21), so the owner's bridge is the only reader. The Message-ID a CHECK or TAKETHIS reply echoes is not read back at all: at most one entry is in flight per peer (`fn-feedp`), so the owner's own in-flight Message-ID is the unambiguous subject. |
-| "the peer enumeration" (host `:program` twin) | `fn-cfg-peer-names` (`books/peer-config.lisp`) | **Closed for the host, one logic-mode copy left.** `host/store-node-host.lisp`'s `fn-store-cfg-peer-name-list` was a `:program`-mode copy and is deleted, and so is its one caller, the retired Python host's peer listing: the operator's `peer list` report calls the book's fold. `fn-own-feed-peer-names` is the same fold over the same rows and is still written out in `books/owner-feed.lisp`; it collapses into this one when owner-feed is next recertified. |
+| "the peer enumeration" (host `:program` twin) | `fn-cfg-peer-names` (`books/peer-config.lisp`) | **Closed.** `host/store-node-host.lisp`'s `fn-store-cfg-peer-name-list` was a `:program`-mode copy and is deleted, and so is its one caller, the retired Python host's peer listing: the operator's `peer list` report calls the book's fold. `books/owner-feed.lisp`'s own copy of this fold is deleted too (lane small-rows, D3); `fn-own-feed-reconfigure` installs over `fn-cfg-peer-names`, the one enumeration. |
 
 The keystones, each stated over the function the owner calls:
 
