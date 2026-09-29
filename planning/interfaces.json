@@ -4,8 +4,8 @@
   "coverage": {
     "declared": 1223,
     "declared_and_dispatched": 1206,
-    "guard_verified": 471,
-    "with_keystone": 140
+    "guard_verified": 478,
+    "with_keystone": 141
   },
   "entries": [
     {
@@ -7031,7 +7031,7 @@
       "name": "fn-owner-consumer-local-wait-admit",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -7844,7 +7844,7 @@
       "name": "fn-owner-key-statement-redecide-log-line",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -7876,7 +7876,7 @@
       "name": "fn-owner-key-statement-request",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -8754,7 +8754,7 @@
       "name": "fn-owner-statement-fence",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -11109,7 +11109,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpah-publication-authorize-admits-exactly-the-issued-pending-delivery"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -11615,13 +11619,13 @@
       "name": "fn-bpn-host-evidence-authorize",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": null,
+      "delegates": "fn-bpn-evidence-authorize",
       "dispatched_from": [
         "host/native/bp.lisp"
       ],
@@ -11781,7 +11785,7 @@
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": null,
+      "delegates": "fn-bpn-evidence-operationp",
       "dispatched_from": [
         "host/native/bp.lisp"
       ],
@@ -11898,7 +11902,7 @@
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": null,
+      "delegates": "fn-bpn-lifecycle-publication-authorize",
       "dispatched_from": [
         "host/native/bp-service.lisp"
       ],
@@ -12834,7 +12838,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpnf-delete-publication-authorize-admits-exactly-the-issued-pending-deletion"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -12946,7 +12954,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -14941,7 +14953,7 @@
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": null,
+      "delegates": "fn-tcl-encode",
       "dispatched_from": [
         "host/native/tcpcl.lisp"
       ],
@@ -19781,12 +19793,7 @@
         ]
       ],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-xrt-quiet-files-are-unnamed",
-          "via": "fn-xrt-quiet-files"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -19815,12 +19822,7 @@
         ]
       ],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-xrt-reseat-checkpoint-frame-keeps-the-arena",
-          "via": "fn-xrt-reseat-checkpoint-frame"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -20755,7 +20757,7 @@
       "name": "fn-native-admin-host-reclaim-mode",
       "subsystem": "admin/operator",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "ideal",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -21369,11 +21371,9 @@
       "name": "fn-his-file-octets",
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
-      "exempt": {
-        "stream-octets": "a count of octets (the stream region's length), not bytes"
-      },
+      "exempt": {},
       "keystones": [],
       "extraction": null,
       "direct": null,
@@ -21388,7 +21388,7 @@
       "name": "fn-his-stream-free",
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
