@@ -65,10 +65,16 @@
 ; a call that stops at the end of its input (:more) or of its budget
 ; (:yield), resumed on the rest, is the call that saw everything at once.
 ;
-; REACHABILITY.  `fn-zin-stored-stream' is an encoder (stored blocks, as a
-; sync flush writes them); KEYSTONE `fn-zin-inflates-stored-stream': its
-; output inflates to its input from the initial state, so the success arm is
-; reached by every octet string.
+; REACHABILITY.  The success arm is reached by zlib's own streams: the
+; witnesses (tests/acl2/deflate-inflate-tests.lisp) decode zlib's fixed,
+; dynamic and stored blocks and a preset-dictionary stream to their octets.
+;
+; THE PAYLOAD DECODER.  `fn-zin-payload-with' (the store's: a payload is
+; decoded whole) runs the same machine through `fn-zin-loop-ahead', which
+; reads ahead and runs `fn-zin-fast' (zlib's inflate_fast: whole symbols in
+; typed locals) between the symbols of a Huffman block.  Its octets are what
+; a seal compares with the payload's; the witnesses check it against the
+; wire's decoder on every vector.
 
 (in-package "ACL2")
 (include-book "octets-stobj")
