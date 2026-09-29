@@ -29,7 +29,7 @@
 ; traversal; magic/version/group count are checked before the remaining record
 ; is parsed or constructed.
 
-; THE SEAM (plan 2026-09-22 §4.1, step T1).  This book is the codec's
+; THE SEAM (plan 2026-09-22 section 4.1, step T1).  This book is the codec's
 ; implementation: `fn-record-encode-impl' and `fn-record-decode-exact-impl'.
 ; No book above the codec calls them.  `books/records-seam.lisp' constrains
 ; `fn-record-encode' and `fn-record-decode-exact' by exactly the properties
@@ -65,7 +65,7 @@
                           fn-record-len-of-take-within-list)))
 
 ; -----------------------------------------------------------------------------
-; The record's byte-string item codec (D27, design 2026-09-25-bounds §2.3).
+; The record's byte-string item codec (D27, design 2026-09-25-bounds section 2.3).
 ;
 ; Every byte-string field is encoded and read through the CBOR bounded API at
 ; the record's own width, `*fn-record-max-octets*' (the FNST LENGTH field's
@@ -691,7 +691,7 @@
   :rule-classes nil)
 
 ; The same vector as exact wire octets: the concrete conformance fact the
-; seam cannot carry (review 2026-09-22-bp-node-machine-2 §4: a round trip
+; seam cannot carry (review 2026-09-22-bp-node-machine-2 section 4: a round trip
 ; and canonicality hold of any length-preserving permutation of the
 ; encodings, so they do not identify this wire language).  Magic h'44666e2d72'
 ; ("fn-r"), schema 0, sequence 1, txid 2, generation 3, msgid h'433c613e'

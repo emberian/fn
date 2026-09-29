@@ -518,6 +518,8 @@ class Book:
     in_theory_forms: list[object] = field(default_factory=list)
     # Each ``must-fail`` as (line, arguments), for the teeth-form lint.
     must_fail_forms: list[tuple[int, list]] = field(default_factory=list)
+    # defmacro name -> its body forms (after the lambda list).
+    macro_bodies: dict[str, list] = field(default_factory=dict)
     # The theorem names of must-fails a ``defkeystone`` generated beside a
     # ground counterexample (its removal or mutant witness).
     paired_must_fails: set[str] = field(default_factory=set)
@@ -1125,6 +1127,9 @@ def record(book: Book, form: object, line: int, *, local: bool,
         book.defmacros += 1
         if len(form) >= 2 and isinstance(form[1], Sym):
             book.definitions.add(str(form[1]))
+            # The body, for the teeth-form lint: a must-fail over a macro
+            # names what the macro's expansion names (PKT-364).
+            book.macro_bodies[str(form[1])] = form[3:]
             book.macros.add(str(form[1]))
         return
     if name in ("defun-sk", "defstobj", "defabsstobj", "defabbrev") and len(form) >= 2 \
@@ -2069,8 +2074,54 @@ def statement_of(body: object) -> object:
     return body[index] if isinstance(body, list) and len(body) > index else None
 
 
-def concrete_witness(form: object) -> bool:
-    """Does this form mention a constant: a literal, a keyword, a defconst?"""
+def _template(form: object) -> object:
+    """A macro body's backquoted template with its unquoted parts dropped:
+    what every expansion contains whatever the arguments."""
+    if isinstance(form, list):
+        if head(form) in ("unquote", "unquote-splicing"):
+            return None
+        return [_template(item) for item in form]
+    return form
+
+
+def macro_witness(body: list, macros: dict, depth: int = 0) -> bool:
+    """Does every expansion of a macro with BODY name a constant?  Its
+    backquoted templates are read (the unquoted arguments are the caller's);
+    a body without a template is read whole less its keywords and lambda
+    keywords, which are the macro's plumbing, not a value."""
+    templates: list = []
+
+    def collect(form: object) -> None:
+        if isinstance(form, list):
+            if head(form) == "quasiquote" and len(form) > 1:
+                templates.append(_template(form[1]))
+                return
+            for item in form:
+                collect(item)
+    for item in body:
+        collect(item)
+    if templates:
+        return any(concrete_witness(t, macros, depth + 1) for t in templates)
+
+    def plain(form: object) -> object:
+        if isinstance(form, list):
+            if head(form) == "declare":
+                return None
+            return [plain(item) for item in form]
+        if isinstance(form, Sym) and str(form).startswith((":", "&")):
+            return None
+        if isinstance(form, str) and not isinstance(form, Sym):
+            return None  # a documentation string
+        return form
+    return any(concrete_witness(plain(item), macros, depth + 1) for item in body[-1:])
+
+
+def concrete_witness(form: object, macros: "dict | None" = None, depth: int = 0) -> bool:
+    """Does this form mention a constant: a literal, a keyword, a defconst?
+    A call of one of MACROS (name -> body) mentions what its expansion does
+    (PKT-364: a witness whose constant sits inside a macro read as bare)."""
+    if form is None:
+        return False
     if isinstance(form, Sym):
         text = str(form)
         if text.startswith(":"):
@@ -2083,13 +2134,21 @@ def concrete_witness(form: object) -> bool:
     if isinstance(form, list):
         if head(form) == "quote":
             return True
-        return any(concrete_witness(item) for item in form)
+        if (macros and depth < 8 and form and isinstance(form[0], Sym)
+                and str(form[0]) in macros
+                and macro_witness(macros[str(form[0])], macros, depth)):
+            return True
+        return any(concrete_witness(item, macros, depth) for item in form)
     return False
 
 
 def teeth_form(tree: "Tree") -> list[dict]:
     """``must-fail`` bodies that are general claims rather than witnesses."""
     findings: list[dict] = []
+    macros: dict = {}
+    for book in tree.books.values():
+        for name, body in book.macro_bodies.items():
+            macros.setdefault(name, body)
     for book in sorted(tree.books.values(), key=lambda b: b.path):
         for line, arguments in book.must_fail_forms:
             body = next((item for item in arguments
@@ -2097,7 +2156,7 @@ def teeth_form(tree: "Tree") -> list[dict]:
                         None)
             if head(body) not in ("thm", "defthm", "defthmd"):
                 continue
-            if concrete_witness(statement_of(body)):
+            if concrete_witness(statement_of(body), macros):
                 continue
             if (head(body) != "thm" and len(body) > 1
                     and str(body[1]) in book.paired_must_fails):
