@@ -193,6 +193,7 @@ from pathlib import Path
 import queue
 import re
 import shutil
+import shlex
 import signal
 import socket
 import subprocess
@@ -3489,6 +3490,66 @@ def remote_lane_and_tree(args, host: str) -> tuple[str | None, str]:
     return lane, remote_tree(host, lane, override)
 
 
+# Run on the box (python3, no tools/ needed): each session of TREE other than
+# NAME whose lock record names a live proof_repl.py start/serve/probe of it.
+LIVE_SIBLINGS_SCRIPT = r"""
+import json, os, sys
+tree, name = sys.argv[1], sys.argv[2]
+locks = os.path.join(tree, "build", "proof-repl", ".locks")
+try:
+    entries = sorted(os.listdir(locks))
+except OSError:
+    entries = []
+for other in entries:
+    base = other[:-len(".probe")] if other.endswith(".probe") else other
+    if base == name:
+        continue
+    try:
+        pid = int(json.load(open(os.path.join(locks, other))).get("pid") or 0)
+        words = open("/proc/%d/cmdline" % pid, "rb").read().decode().split("\0")
+    except (OSError, ValueError, AttributeError):
+        continue
+    if any(w.endswith("proof_repl.py") for w in words) and base in words:
+        print(base)
+"""
+
+
+def live_siblings(host: str, tree: str, name: str, runner=None) -> list[str] | None:
+    """The other live sessions in HOST's TREE (None: the box did not answer)."""
+    script = (f"python3 - {shlex.quote(tree)} {shlex.quote(name)} <<'FN_SIBLINGS'\n"
+              f"{LIVE_SIBLINGS_SCRIPT}\nFN_SIBLINGS")
+    try:
+        done = (runner or subprocess.run)(ssh_command(host, script), stdin=subprocess.DEVNULL,
+                                          text=True, capture_output=True, timeout=60)
+    except subprocess.TimeoutExpired:
+        return None
+    if done.returncode:
+        return None
+    return sorted({line.strip() for line in done.stdout.splitlines() if line.strip()})
+
+
+def own_remote_tree(args, host: str, lane: str | None, tree: str, runner=None) -> str:
+    """The tree a remote `start` of args.name uses (obstructions-9 item 79).
+
+    Two sessions of one lane on one box shared <lane>-repl: each start's
+    rsync rewrote the books and tools/ under the other's load.  When another
+    session is live in the lane's tree, this start takes its own tree
+    <lane>-repl-<NAME> and says so; an explicit --remote-tree is refused by
+    name instead, since its owner chose that directory.
+    """
+    others = live_siblings(host, tree, args.name, runner)
+    if not others:
+        return tree
+    if getattr(args, "remote_tree", None):
+        raise SystemExit(f"proof-repl: --host {host}: session(s) {', '.join(others)} are live "
+                         f"in {tree}; a second session there races their sync and load. "
+                         f"Stop them, or pass another --remote-tree")
+    own = f"{tree}-{args.name}"
+    print(f"proof-repl --host {host}: session(s) {', '.join(others)} of lane {lane} are live "
+          f"in {tree}; session {args.name!r} gets its own tree {own} (item 79)", flush=True)
+    return own
+
+
 def run_remote(args, argv: list[str]) -> int:
     """This command, on args.host, in the lane's tree there, after syncing what it reads."""
     host = args.host
@@ -3549,6 +3610,7 @@ def run_remote(args, argv: list[str]) -> int:
         if getattr(args, "no_sync", False):
             refuse_stale_remote(host, tree, relative)
     if command == "start":
+        tree = own_remote_tree(args, host, lane, tree)
         remember_host(args.name, host, tree, normalize_book(args.book), lane)
     if (books or extra) and not getattr(args, "no_sync", False):
         files = sync_files(books, extra)

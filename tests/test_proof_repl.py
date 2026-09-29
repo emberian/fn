@@ -2130,5 +2130,69 @@ class SendFileTests(unittest.TestCase):
         self.assertEqual(sent, [])
 
 
+class SameLaneTreeTests(unittest.TestCase):
+    """obstructions-9 item 79: a second live session of the lane on one box
+    takes its own tree instead of racing the first's sync and load."""
+
+    def args(self, **extra):
+        return SimpleNamespace(command="start", name="s2", remote_tree=None, **extra)
+
+    def runner(self, stdout, code=0):
+        seen = []
+
+        def run(command, **kwargs):
+            seen.append(command)
+            return subprocess.CompletedProcess(command, code, stdout=stdout, stderr="")
+        return run, seen
+
+    def test_no_live_sibling_keeps_the_lane_tree(self):
+        run, seen = self.runner("")
+        self.assertEqual(proof_repl.own_remote_tree(self.args(), "hbox", "l",
+                                                    "/tank/fn/gates/l-repl", run),
+                         "/tank/fn/gates/l-repl")
+        self.assertIn("/tank/fn/gates/l-repl s2", seen[0][-1])
+
+    def test_a_live_sibling_suffixes_the_tree_and_says_why(self):
+        run, _ = self.runner("s1\n")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            tree = proof_repl.own_remote_tree(self.args(), "hbox", "l", "/tank/fn/gates/l-repl",
+                                              run)
+        self.assertEqual(tree, "/tank/fn/gates/l-repl-s2")
+        self.assertIn("session(s) s1 of lane l are live in /tank/fn/gates/l-repl; session "
+                      "'s2' gets its own tree /tank/fn/gates/l-repl-s2", out.getvalue())
+
+    def test_an_explicit_remote_tree_with_a_live_sibling_is_refused_by_name(self):
+        run, _ = self.runner("s1\n")
+        args = self.args()
+        args.remote_tree = "/x/t"
+        with self.assertRaises(SystemExit) as refused:
+            proof_repl.own_remote_tree(args, "hbox", "l", "/x/t", run)
+        self.assertIn("session(s) s1 are live in /x/t", str(refused.exception))
+
+    def test_a_box_that_does_not_answer_keeps_the_tree(self):
+        run, _ = self.runner("", code=255)
+        self.assertEqual(proof_repl.own_remote_tree(self.args(), "hbox", "l", "/t", run), "/t")
+
+    @unittest.skipUnless(os.path.isdir("/proc/self"), "the box-side script reads /proc")
+    def test_the_box_script_names_a_live_holder_only(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            locks = pathlib.Path(temporary, "build", "proof-repl", ".locks")
+            locks.mkdir(parents=True)
+            holder = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)",
+                                       "proof_repl.py", "serve", "s1"])
+            try:
+                (locks / "s1").write_text(json.dumps({"pid": holder.pid}))
+                (locks / "gone").write_text(json.dumps({"pid": 999999999}))
+                (locks / "s2").write_text(json.dumps({"pid": holder.pid}))
+                done = subprocess.run([sys.executable, "-", temporary, "s2"],
+                                      input=proof_repl.LIVE_SIBLINGS_SCRIPT, text=True,
+                                      capture_output=True)
+            finally:
+                holder.kill()
+                holder.wait()
+        self.assertEqual(done.stdout.split(), ["s1"], done.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
