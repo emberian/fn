@@ -17112,6 +17112,19 @@
           "name": "fn-bpn-report-outbox-next-aux-selects-the-least-yield"
         }
       ]
+    },
+    {
+      "id": "PRF-1051",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-next-selects-exactly-the-first-ready-family"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-next-aux-answers-the-first-ready-row"
+        }
+      ]
     }
   ]
 }

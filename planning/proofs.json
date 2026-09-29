@@ -17504,6 +17504,24 @@
         "fn-bpn-report-outbox-next-selects-exactly-the-least-yielding-row",
         "fn-bpn-report-outbox-next-aux-selects-the-least-yield"
       ]
+    },
+    {
+      "id": "PRF-1051",
+      "title": "fn-bpnf-family-next answers nil exactly when a family is issued, the machine waits, the next arrival is out of frame or no held row is ready, else the arrival of a ready held row before which no held row is ready",
+      "statement": "books/bp-node-fragment-step.lisp, called by host/native/bp-service.lisp's fnn-bps-fragment-effects (a :ready answer names the family the host proposes). A held row is READY (fn-bpnf-family-ready-rowp) when it is an active fragment, its arrival is unique among the held rows and its family's plan under the observation is :ready. KEYSTONE fn-bpnf-family-next-selects-exactly-the-first-ready-family, two-sided and hypothesis-free: the answer is non-nil iff nothing is issued, nothing waits, the next arrival is a frame natural and some held row is ready (fn-bpnf-any-family-ready-row); a non-nil answer is (:ready arrival) where a ready held row has that arrival (fn-bpnf-family-ready-row-with-arrival) and no held row before the first row with it is ready (fn-bpnf-rows-before-arrival). Proved over the reference scan (fn-bpnf-family-next-aux-answers-the-first-ready-row); the executed memoized selector is that scan by fn-bpnf-family-select-is-aux. Teeth: tests/acl2/bp-node-fragment-step-tests.lisp (the family fixture's (:ready 0); the no-offset-zero state's nil; the issued gate removed).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-005",
+        "REP-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-node-fragment-step.lisp",
+        "tests/acl2/bp-node-fragment-step-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-6: the bp book entries, one two-sided keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
     }
   ]
 }

@@ -4,8 +4,8 @@
   "coverage": {
     "declared": 1224,
     "declared_and_dispatched": 1207,
-    "guard_verified": 550,
-    "with_keystone": 157
+    "guard_verified": 551,
+    "with_keystone": 158
   },
   "entries": [
     {
@@ -12584,7 +12584,7 @@
       "name": "fn-bpn-report-outbox-next",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
@@ -12993,7 +12993,11 @@
       "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpnf-family-next-selects-exactly-the-first-ready-family"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,

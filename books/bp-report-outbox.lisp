@@ -28,14 +28,21 @@
               (fn-record-string-octets "status") 0)
       nil)))
 
+; The scan reads a row's view before its arrival: a view is a held row's
+; (fn-bpnf-heldp, so its arrival is a natural), which is what the arrival
+; comparison's guard needs (verified in bp-report-guards); the value is the
+; original's, the conjuncts being pure.
 (defun fn-bpn-report-outbox-next-aux (held-list after selected)
-  (declare (xargs :guard t :measure (acl2-count held-list)))
+  (declare (xargs :guard (or (null selected) (natp (fn-bpn-nth 1 selected)))
+                  :measure (acl2-count held-list)))
   (if (atom held-list)
       selected
     (let* ((h (car held-list))
-           (view (and (or (null after)
+           (v (fn-bpn-report-outbox-view h))
+           (view (and v
+                      (or (null after)
                           (and (natp after) (< after (fn-bpn-nth 3 h))))
-                      (fn-bpn-report-outbox-view h))))
+                      v)))
       (fn-bpn-report-outbox-next-aux
        (cdr held-list) after
        (if (and view
