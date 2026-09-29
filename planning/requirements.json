@@ -5119,6 +5119,7 @@
         "specs/nntp.md",
         "books/nntp-compress-dict.lisp",
         "tests/acl2/nntp-compress-dict-tests.lisp",
+        "tests/acl2/nntp-zarticle-tests.lisp",
         "books/nntp-zarticle.lisp",
         "books/assumptions-stored.lisp"
       ]

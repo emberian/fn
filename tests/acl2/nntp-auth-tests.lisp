@@ -606,12 +606,12 @@
 (assert-event
  (equal (in-arena-au-reply *sr-arena* (au-authed) "CAPABILITIES")
         (au-block "101 capability list follows"
-                  (append *au-reader-lines-posting* '("STARTTLS" "COMPRESS DEFLATE")))))
+                  (append *au-reader-lines-posting* '("STARTTLS" "COMPRESS DEFLATE" "XFN-DICT 845aa5e18680ef219a9b0f0d0b959cd8886d5eabc12236aae19f301aed9de75e")))))
 ; Authenticated as the read-only principal: no POST label.
 (assert-event
  (equal (in-arena-au-reply *sr-arena* (au-authed-ro) "CAPABILITIES")
         (au-block "101 capability list follows"
-                  (append *au-reader-lines* '("STARTTLS" "COMPRESS DEFLATE")))))
+                  (append *au-reader-lines* '("STARTTLS" "COMPRESS DEFLATE" "XFN-DICT 845aa5e18680ef219a9b0f0d0b959cd8886d5eabc12236aae19f301aed9de75e")))))
 ; No certificate and nothing required: the reader's own block, unchanged
 ; from before this book existed.
 (assert-event
@@ -630,7 +630,7 @@
 (assert-event
  (equal (in-arena-au-peer-reply *sr-arena* *au-s-peer-req* "CAPABILITIES")
         (au-block "101 capability list follows"
-                  (append *au-peer-lines* '("STARTTLS" "AUTHINFO USER" "COMPRESS DEFLATE")))))
+                  (append *au-peer-lines* '("STARTTLS" "AUTHINFO USER" "COMPRESS DEFLATE" "XFN-DICT 845aa5e18680ef219a9b0f0d0b959cd8886d5eabc12236aae19f301aed9de75e")))))
 ; The optional keyword argument of section 5.2.1 is accepted and changes
 ; nothing.
 (assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "CAPABILITIES READER")
