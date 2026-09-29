@@ -10,8 +10,15 @@
 # drop) while the box kept going: it starts nothing, polls the lane's run
 # log on BOX (the same --log default) to its end, copies it here and exits
 # with make's status, naming the commit and target the run recorded
-# (<log>.head).  A --fetch then keeps any file already here aside, since the
-# shipped copy is not known (obstructions-5 item 41).
+# (<log>.head).  Every run leaves a record here, build/remote-check/BOX.run/
+# (its commit and target, the --fetch paths and the digest of each as
+# shipped), and the box's pid beside its log (<log>.pid): attach takes the
+# record's --fetch paths when it is given none and, for the same commit, its
+# digests, so a --cmd whose local side died (exit 144 with the box still
+# running) fetches exactly as the run would have; without a matching record a
+# fetched file that exists here is kept aside.  A poll that finds the box's
+# pid gone with no status line reports the run died (exit 3), rather than
+# polling forever (obstructions-9 item 77).
 #
 # BOX is hbox, persvati or auto (tools/boxes.sh --pick: the lower load per
 # core now among the boxes nobody has reserved; it prints both loads and the
@@ -55,8 +62,11 @@
 #      worktree, and exits with make's own status.  A fetched file is written
 #      here only when this worktree's copy is still the one shipped in step 4:
 #      one edited, committed or merged here while the box ran is kept, and the
-#      box's copy goes to build/remote-check/fetched/PATH (a fetch clobbered a
-#      lane's newer ledger files, 2026-09-28).
+#      box's copy goes to build/remote-check/fetched/SHA/PATH (SHA the run's
+#      commit, 12 digits), never over an earlier different copy there, and
+#      the fetch names each such file on stdout and in its last line (a
+#      fetch clobbered a lane's newer ledger files, 2026-09-28; a later one
+#      kept a lane's copy aside with only a line on stderr, item 77).
 # <base> is /tank/fn/scratch on hbox and ~/fn-gates on persvati (hbox's
 # mirror was seeded by `git clone --bare` of a box repo; seeding avoids the
 # first run's whole-history bundle).  LANE is
@@ -172,6 +182,14 @@ if [ $ATTACH = 1 ]; then
     TARGET=${2:-$TARGET}
     RUN="the run of $HEAD_SHA ($TARGET)"
     echo "remote_check: attach: $RUN in $BOX:$TREE (log $BOX:$LOG)"
+    RECORDED=$ROOT/build/remote-check/$BOX.run
+    if [ -f "$RECORDED/head" ] && [ "$(cut -d' ' -f1 "$RECORDED/head")" = "$HEAD_SHA" ]; then
+        [ -n "$FETCH" ] || FETCH=$(cat "$RECORDED/fetch" 2>/dev/null)
+        cp "$RECORDED/shipped" "$WORK/shipped" 2>/dev/null
+        echo "remote_check: attach: this worktree's record of the run (build/remote-check/$BOX.run): $(wc -l < "$WORK/shipped" | tr -d ' ') shipped digest(s); fetch:${FETCH:- none}"
+    elif [ -f "$RECORDED/head" ]; then
+        echo "remote_check: attach: build/remote-check/$BOX.run records $(cut -d' ' -f1 "$RECORDED/head"), not $HEAD_SHA: a fetched file that exists here is kept aside"
+    fi
 else
 # 1. What the mirror already has, so the bundle carries only the rest.
 KNOWN=$(remote "git -C $MIRROR for-each-ref --format='%(objectname)' 2>/dev/null || true") || {
@@ -264,18 +282,35 @@ echo "remote_check: $RUN in $BOX:$TREE (log $BOX:$LOG)"
 remote "cat > $LOG.run.sh" <<RUNSCRIPT || { echo "remote_check: cannot write the run script on $BOX" >&2; exit 3; }
 cd $TREE && $ENVS; eval "\$(python3 tools/native_env.py sbcl --export 2>/dev/null)"; export FN_CERTIFY_JOBS=${FN_CERTIFY_JOBS:-auto}; [ -n "\${FN_ACL2:-}" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)'; exit 3; }; { echo "== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)"; if [ -f tools/native_env.py ] && ! python3 tools/native_env.py sbcl-check; then echo "== make exit 3"; exit 3; fi; if [ $INSTALL = 1 ] && [ -f tools/certs.py ]; then echo "== certs install: \$(python3 tools/certs.py install 2>&1 | grep -E '^ *installed' | tail -n 1)"; echo "== certs install-umbrellas: \$(python3 tools/certs.py install-umbrellas 2>&1 | tail -n 1)"; fi; $WRAP $RUN 2>&1; echo "== make exit \$?"; } > $LOG 2>&1
 RUNSCRIPT
-remote "rm -f $LOG; echo $HEAD_SHA $TARGET > $LOG.head; nohup sh $LOG.run.sh > $LOG 2>&1 < /dev/null &" || {
+# The local record attach reads when this side dies (item 77).
+RECORDED=$ROOT/build/remote-check/$BOX.run
+rm -rf "$RECORDED" && mkdir -p "$RECORDED" && echo "$HEAD_SHA $TARGET" > "$RECORDED/head" \
+    && cp "$WORK/shipped" "$RECORDED/shipped" && echo "$FETCH" > "$RECORDED/fetch" \
+    && echo "$BOX $TREE $LOG" > "$RECORDED/box"
+remote "rm -f $LOG $LOG.pid; echo $HEAD_SHA $TARGET > $LOG.head; nohup sh $LOG.run.sh > $LOG 2>&1 < /dev/null & echo \$! > $LOG.pid" || {
     echo "remote_check: cannot start make on $BOX" >&2; exit 3; }
+echo "remote_check: if this side dies, the box run goes on: tools/remote_check.sh attach $BOX waits for it and fetches$FETCH"
 fi
 FAILS=0
 while :; do
     sleep "${FN_REMOTE_CHECK_POLL:-15}"
-    LAST=$(remote "tail -n 1 $LOG 2>/dev/null" 2>/dev/null) || {
+    # The log's last line, then GONE when the box's pid has ended.
+    POLL=$(remote "tail -n 1 $LOG 2>/dev/null; p=\$(cat $LOG.pid 2>/dev/null); [ -z \"\$p\" ] || kill -0 \$p 2>/dev/null || { echo; echo '== run pid gone'; }" 2>/dev/null) || {
         FAILS=$((FAILS + 1))
         [ $FAILS -lt 40 ] || { echo "remote_check: lost $BOX for 40 polls; make may still run (log $LOG; recover it with: tools/remote_check.sh attach $BOX)" >&2; exit 3; }
         continue; }
     FAILS=0
+    LAST=$(printf '%s\n' "$POLL" | head -n 1)
     case $LAST in "== make exit "*) break ;; esac
+    if printf '%s\n' "$POLL" | grep -q '^== run pid gone$'; then
+        LAST=$(remote "tail -n 1 $LOG 2>/dev/null" 2>/dev/null)
+        case $LAST in "== make exit "*) break ;; esac
+        remote "cat $LOG" > "$WORK/log" 2>/dev/null
+        mkdir -p "$ROOT/build/remote-check" && cp "$WORK/log" "$ROOT/build/remote-check/$BOX-$TARGET.log"
+        tail -n 20 "$WORK/log"
+        echo "remote_check: the run on $BOX ended without a status line (pid $(remote "cat $LOG.pid" 2>/dev/null) gone; killed?); log build/remote-check/$BOX-$TARGET.log; nothing fetched" >&2
+        exit 3
+    fi
     remote "grep -q '^remote_check: no FN_ACL2' $LOG 2>/dev/null" 2>/dev/null && break
 done
 case $LAST in "== make exit 0") STATUS=0 ;; *) STATUS=1 ;; esac
@@ -293,6 +328,8 @@ fi
 
 # 6. Generated files back into this worktree.
 mkdir -p "$WORK/fetched"
+: > "$WORK/kept"
+ASIDE=build/remote-check/fetched/$(printf '%.12s' "$HEAD_SHA")
 for path in $FETCH; do
     case $path in /*|*..*) echo "remote_check: --fetch $path: a path inside the tree" >&2; continue ;; esac
     remote "cd $TREE && tar cf - '$path'" | tar xf - -C "$WORK/fetched" \
@@ -302,13 +339,20 @@ for path in $FETCH; do
         if [ "$(digest "$f")" = "${was:-absent}" ]; then
             mkdir -p "$ROOT/$(dirname "$f")" && cp "$WORK/fetched/$f" "$ROOT/$f" \
                 && echo "remote_check: fetched $f"
+        elif [ -f "$ROOT/$ASIDE/$f" ] && ! cmp -s "$WORK/fetched/$f" "$ROOT/$ASIDE/$f"; then
+            echo "remote_check: NOT FETCHED $f: this worktree's copy changed since the run shipped, and $ASIDE/$f already holds a different copy (not overwritten; the box's is $BOX:$TREE/$f)"
+            echo "$f" >> "$WORK/kept"
         else
-            mkdir -p "$ROOT/build/remote-check/fetched/$(dirname "$f")"
-            cp "$WORK/fetched/$f" "$ROOT/build/remote-check/fetched/$f"
-            echo "remote_check: kept this worktree's $f (changed here since the run shipped); the box's copy is build/remote-check/fetched/$f" >&2
+            mkdir -p "$ROOT/$ASIDE/$(dirname "$f")"
+            cp "$WORK/fetched/$f" "$ROOT/$ASIDE/$f"
+            echo "remote_check: KEPT this worktree's $f (changed here since the run shipped); the box's copy is $ASIDE/$f"
+            echo "$f" >> "$WORK/kept"
         fi
     done
 done
+if [ -s "$WORK/kept" ]; then
+    echo "remote_check: $(wc -l < "$WORK/kept" | tr -d ' ') fetched file(s) NOT written into this worktree (the box's copies are under $ASIDE/): $(tr '\n' ' ' < "$WORK/kept")"
+fi
 echo "remote_check: $BOX $RUN exit $MAKE_EXIT at $HEAD_SHA; log build/remote-check/$BOX-$TARGET.log"
 exit "$MAKE_EXIT"
 }
