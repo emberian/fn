@@ -245,6 +245,9 @@
 (ld "host/config-host.lisp" :ld-error-action :error)
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
+; host/native/operator.lisp (loaded below) asks fn-native-auth-host-max-octets
+; for `operator account-hash's credential file bound.
+(ld "host/native-auth-host.lisp" :ld-error-action :error)
 (ld "host/feed-filename-host.lisp" :ld-error-action :error)
 (ld "host/native-operator-host.lisp" :ld-error-action :error)
 ; The status report, offline and from the running owner.

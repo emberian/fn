@@ -1,9 +1,9 @@
 ; Teeth of books/bp-node-job-offer.lisp and books/bp-node-job-offer-progress.lisp
 ; (PRF-120).  Reachable states from the lower machine's own events: two base
 ; jobs queued for one peer, the older one routed on a hop the table no longer
-; names (held :route-changed) or already offered on this contact.  The
-; previous driver (fn-bpnp-contact-next) ends the contact there; the fair
-; selection offers the younger job.  Then the named attempt: a stale result
+; names (held :route-changed) or already offered on this contact.  A driver
+; that stopped at the first job ended the contact there; the fair selection
+; offers the younger job.  Then the named attempt: a stale result
 ; settles nothing, the current one records the transport outcome, only the
 ; durable :finished record reports :forwarded, and an encoder refusal
 ; settles the pending record.  One reachable witness per keystone and one
@@ -55,21 +55,21 @@
                    (fn-bpnp-receipt-contact-event *jo-st* *jo-peer*)))
 
 ;; The starvation the fair selection removes.  The older job's durable route
-;; is not the hop the table names now: the previous driver holds it and ends
-;; the contact; the younger job is never offered.
+;; is not the hop the table names now: it is not ready (a driver that stopped
+;; at the first job held it and ended the contact); the younger job is
+;; offered.
 (assert-event
- (equal (fn-bpnp-contact-next *jo-st* *jo-peer* *jo-routing* nil)
-        (list :held *jo-key1* :route-changed)))
+ (not (fn-bpnj-readyp (fn-bpn-find-job *jo-key1* *jo-jobs*) *jo-peer* *jo-routing* nil)))
 (assert-event
  (equal (car (fn-bpnj-contact-next *jo-st* *jo-peer* *jo-routing* nil)) :offer))
 (assert-event
  (equal (cadr (fn-bpnj-contact-next *jo-st* *jo-peer* *jo-routing* nil))
         (list :contact-job *jo-peer* *jo-key2*)))
 ;; Without routing, an older job this contact already offered (a transfer
-;; that was not accepted) ends the previous driver's contact; the fair one
-;; offers the younger job.
+;; that was not accepted) is not ready; the fair selection offers the younger
+;; job.
 (assert-event
- (equal (fn-bpnp-contact-next *jo-st* *jo-peer* nil (list *jo-key1*)) (list :close)))
+ (not (fn-bpnj-readyp (fn-bpn-find-job *jo-key1* *jo-jobs*) *jo-peer* nil (list *jo-key1*))))
 (assert-event
  (equal (cadr (fn-bpnj-contact-next *jo-st* *jo-peer* nil (list *jo-key1*)))
         (list :contact-job *jo-peer* *jo-key2*)))

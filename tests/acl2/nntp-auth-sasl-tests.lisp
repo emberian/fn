@@ -14,6 +14,7 @@
 (include-book "../../books/nntp-auth-roles")
 (include-book "../../books/codec-attach")
 (include-book "arena-lift")
+(include-book "must-fail-checked")
 
 (local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                           fn-nntp-projection-vocabulary
@@ -496,3 +497,339 @@
 (sa-504-for "XREDEEM code reader")       ; XREDEEM's 483 and hold
 (sa-504-for "IHAVE <x@example.invalid>") ; the transit delegation
 (sa-504-for "NOSUCHCOMMAND")             ; HELP's 500
+
+; -----------------------------------------------------------------------------
+; Teeth of the PRF-916 / PRF-917 keystones the host's AUTHINFO SASL arm
+; reaches (books/nntp-auth.lisp fn-auth-step -> fn-auth-sasl-finish ->
+; fn-sasl-step; the offer through fn-auth-sasl-mechanisms), each stated
+; literally over the scenario's credential.  Macros where the fast digest
+; (an attachment) is evaluated.
+
+; fn-sasl-plain-succeeds-exactly-on-the-stored-check
+(defmacro sa-s1-lhs (response verifier)
+  `(fn-sasl-successp (fn-sasl-step (list :sasl-plain) ,response ,verifier
+                                   *sa-seed* *sa-binding*)))
+;; nth under guard t: the logical car/cadr/caddr of the parse, which is the
+;; keyword :bad when the message does not parse.
+(defun sa-nth-t (n x)
+  (declare (xargs :guard (natp n)))
+  (if (consp x) (if (zp n) (car x) (sa-nth-t (1- n) (cdr x))) nil))
+(defmacro sa-s1-rhs (response verifier)
+  `(let ((p (fn-sasl-plain-parse ,response)))
+     (and (or (not (sa-nth-t 0 p)) (equal (sa-nth-t 0 p) (sa-nth-t 1 p)))
+          (fn-authsec-checkp ,verifier (sa-nth-t 2 p)))))
+(defmacro sa-s1-holds (response verifier)
+  `(equal (sa-s1-lhs ,response ,verifier) (sa-s1-rhs ,response ,verifier)))
+; Positive witness, both sides true: the enrolled password, no authzid.
+(assert-event (not (equal (fn-sasl-plain-parse *sa-plain-good*) :bad)))
+(assert-event (and (sa-s1-lhs *sa-plain-good* *sa-verifier*)
+                   (sa-s1-rhs *sa-plain-good* *sa-verifier*)))
+; Both sides false: the wrong password; the authzid that is not the authcid.
+(assert-event (and (not (sa-s1-lhs *sa-plain-bad* *sa-verifier*))
+                   (sa-s1-holds *sa-plain-bad* *sa-verifier*)))
+(defconst *sa-plain-other-authz*
+  (append (fn-nntp-string-octets "other") *sa-plain-good*))
+(assert-event (and (not (equal (fn-sasl-plain-parse *sa-plain-other-authz*) :bad))
+                   (not (sa-s1-rhs *sa-plain-other-authz* *sa-verifier*))
+                   (sa-s1-holds *sa-plain-other-authz* *sa-verifier*)))
+; Hypothesis (not (equal (fn-sasl-plain-parse response) :bad)) removed: a
+; message with no NUL does not parse, and against the verifier enrolled
+; with the empty password the stored check of the parse's (empty) password
+; holds while the step fails.
+(defconst *sa-no-nul* (fn-nntp-string-octets "readercorrect-horse"))
+(assert-event (equal (fn-sasl-plain-parse *sa-no-nul*) :bad))
+(defmacro sa-empty-verifier () '(fn-authsec-enrol *sa-salt* nil))
+(assert-event (and (sa-s1-rhs *sa-no-nul* (sa-empty-verifier))
+                   (not (sa-s1-lhs *sa-no-nul* (sa-empty-verifier)))))
+(must-fail-checked (assert-event (sa-s1-holds *sa-no-nul* (sa-empty-verifier))))
+
+; fn-sasl-plain-honest-client-succeeds
+(defun sa-s1c-hyps (salt login pw)
+  (and (fn-authsec-saltp salt)
+       (fn-sha256-octet-listp login) (consp login) (<= (len login) 255)
+       (fn-sasl-no-nulp login)
+       (fn-sha256-octet-listp pw) (consp pw) (<= (len pw) 255)
+       (fn-sasl-no-nulp pw)))
+(defmacro sa-s1c-concl (salt login pw)
+  `(fn-sasl-successp
+    (fn-sasl-step (list :sasl-plain) (fn-sasl-plain-message nil ,login ,pw)
+                  (fn-authsec-enrol ,salt ,pw) *sa-seed* *sa-binding*)))
+; Positive witness: the scenario's login and password.
+(assert-event (sa-s1c-hyps *sa-salt* *sa-name* *sa-secret*))
+(assert-event (sa-s1c-concl *sa-salt* *sa-name* *sa-secret*))
+; One removal per hypothesis that has a counter-witness; each keeps the
+; others (checked) and fails the omitted one and the conclusion.
+;   salt: 15 octets, so the stored verifier is not a verifier
+(defconst *sa-short-salt* (make-list 15 :initial-element 3))
+(assert-event (not (fn-authsec-saltp *sa-short-salt*)))
+(assert-event (sa-s1c-hyps *sa-salt* *sa-name* *sa-secret*))
+(must-fail-checked (assert-event (sa-s1c-concl *sa-short-salt* *sa-name* *sa-secret*)))
+;   login empty
+(assert-event (and (not (consp nil)) (fn-sasl-no-nulp nil) (fn-sha256-octet-listp nil)))
+(must-fail-checked (assert-event (sa-s1c-concl *sa-salt* nil *sa-secret*)))
+;   login past 255 octets
+(defconst *sa-long* (make-list 256 :initial-element 114))
+(assert-event (and (not (<= (len *sa-long*) 255)) (consp *sa-long*)
+                   (fn-sasl-no-nulp *sa-long*) (fn-sha256-octet-listp *sa-long*)))
+(must-fail-checked (assert-event (sa-s1c-concl *sa-salt* *sa-long* *sa-secret*)))
+;   login with a NUL
+(defconst *sa-nul-login* (append *sa-name* '(0) *sa-name*))
+(assert-event (and (not (fn-sasl-no-nulp *sa-nul-login*)) (consp *sa-nul-login*)
+                   (<= (len *sa-nul-login*) 255) (fn-sha256-octet-listp *sa-nul-login*)))
+(must-fail-checked (assert-event (sa-s1c-concl *sa-salt* *sa-nul-login* *sa-secret*)))
+;   login not octets: a symbol where an octet stands (the message's
+;   coercion makes it another login than the parse reads back)
+(defconst *sa-sym-login* (list 'a 101))
+(assert-event (and (not (fn-sha256-octet-listp *sa-sym-login*)) (consp *sa-sym-login*)
+                   (<= (len *sa-sym-login*) 255) (fn-sasl-no-nulp *sa-sym-login*)))
+(must-fail-checked (assert-event (sa-s1c-concl *sa-salt* *sa-sym-login* *sa-secret*)))
+;   password not octets: 300 is no octet
+(defconst *sa-wide-pw* (list 300 101))
+(assert-event (and (not (fn-sha256-octet-listp *sa-wide-pw*)) (consp *sa-wide-pw*)
+                   (<= (len *sa-wide-pw*) 255) (fn-sasl-no-nulp *sa-wide-pw*)))
+(must-fail-checked (assert-event (sa-s1c-concl *sa-salt* *sa-name* *sa-wide-pw*)))
+;   password empty
+(must-fail-checked (assert-event (sa-s1c-concl *sa-salt* *sa-name* nil)))
+;   password past 255 octets
+(must-fail-checked (assert-event (sa-s1c-concl *sa-salt* *sa-name* *sa-long*)))
+;   password with a NUL
+(must-fail-checked (assert-event (sa-s1c-concl *sa-salt* *sa-name* *sa-nul-login*)))
+
+; fn-authsec-enrolled-secret-proves-by-scram (no hypotheses)
+(defconst *sa-k5-message* (fn-nntp-string-octets "n=reader,r=abc,r=abcdef,s=AwMD,i=4096,c=biws,r=abcdef"))
+(defconst *sa-enrolled-proof*
+  (fn-scram-client-proof *sa-secret* *sa-salt* *fn-scram-iterations* *sa-k5-message*))
+(assert-event (equal (fn-authsec-ver-salt *sa-verifier*) *sa-salt*))
+(assert-event (fn-scram-proof-validp (fn-authsec-ver-stored-key *sa-verifier*)
+                                     *sa-k5-message* *sa-enrolled-proof*))
+; Contrast (not a hypothesis): a proof from another password fails.
+(must-fail-checked
+ (assert-event (fn-scram-proof-validp (fn-authsec-ver-stored-key *sa-verifier*)
+                                      *sa-k5-message*
+                                      (fn-scram-client-proof
+                                       (fn-nntp-string-octets "correct-horsf") *sa-salt*
+                                       *fn-scram-iterations* *sa-k5-message*))))
+
+; fn-acct-text-verifier-of-verifier-text
+(assert-event (fn-authsec-verifierp *sa-verifier*))
+(assert-event (equal (fn-acct-text-verifier (fn-acct-verifier-text *sa-verifier*))
+                     *sa-verifier*))
+; Hypothesis (fn-authsec-verifierp ver) removed: a verifier whose salt is
+; 15 octets does not come back from its text.
+(defconst *sa-bad-verifier* (update-nth 1 *sa-short-salt* *sa-verifier*))
+(assert-event (not (fn-authsec-verifierp *sa-bad-verifier*)))
+(must-fail-checked
+ (assert-event (equal (fn-acct-text-verifier (fn-acct-verifier-text *sa-bad-verifier*))
+                      *sa-bad-verifier*)))
+
+; fn-auth-sasl-mechanisms-never-offer-plain-before-tls
+(defconst *sa-plain-acfg* (fn-auth-session-config *sa-plain-ctx*))
+(defconst *sa-tls-ctx-value* (fn-auth-session-ctx *sa-tls-ctx*))
+; Positive witness: no TLS, the context of a TLS session (seed and binding
+; installed): SCRAM is offered, PLAIN is not.
+(assert-event (consp (fn-auth-sasl-mechanisms *sa-plain-acfg* nil *sa-tls-ctx-value*)))
+(assert-event (not (member-equal *fn-sasl-plain*
+                                 (fn-auth-sasl-mechanisms *sa-plain-acfg* nil
+                                                          *sa-tls-ctx-value*))))
+; Hypothesis (not tlsp) removed: on TLS PLAIN is offered.
+(must-fail-checked
+ (assert-event (not (member-equal *fn-sasl-plain*
+                                  (fn-auth-sasl-mechanisms *sa-plain-acfg* t
+                                                           *sa-tls-ctx-value*)))))
+
+
+; fn-sasl-scram-honest-client-completes
+(defun sa-hc-hyps (salt login cn seed)
+  (and (fn-authsec-saltp salt)
+       (consp login) (fn-sha256-octet-listp login) (fn-scram-no-nulp login)
+       (fn-scram-noncep cn) (fn-sasl-seedp seed)))
+(defmacro sa-hc-concl (salt login cn seed pw)
+  `(let* ((v (fn-authsec-enrol ,salt ,pw))
+          (o1 (fn-sasl-step '(:sasl-scram-first nil)
+                            (append (fn-scram-text "n,,n=")
+                                    (fn-scram-saslname-encode ,login)
+                                    (fn-scram-text ",r=") ,cn)
+                            v ,seed nil))
+          (st (fn-scram-nth 2 o1)))
+     (and (equal (fn-sasl-outcome-kind o1) :continue)
+          (fn-sasl-successp
+           (fn-sasl-step st
+                         (fn-scram-client-final ,pw ,salt 4096 :n
+                                                (fn-scram-text "n,,")
+                                                nil (fn-sasl-st 5 st)
+                                                (fn-sasl-st 6 st)
+                                                (fn-scram-nth 1 o1))
+                         v ,seed nil)))))
+; Positive witness: the scenario's login, nonce, seed and password.
+(assert-event (sa-hc-hyps *sa-salt* *sa-name* *sa-cnonce* *sa-seed*))
+(assert-event (sa-hc-concl *sa-salt* *sa-name* *sa-cnonce* *sa-seed* *sa-secret*))
+;   salt: 15 octets
+(assert-event (and (not (fn-authsec-saltp *sa-short-salt*))
+                   (sa-hc-hyps *sa-salt* *sa-name* *sa-cnonce* *sa-seed*)))
+(must-fail-checked
+ (assert-event (sa-hc-concl *sa-short-salt* *sa-name* *sa-cnonce* *sa-seed* *sa-secret*)))
+;   login empty
+(assert-event (and (fn-sha256-octet-listp nil) (fn-scram-no-nulp nil)))
+(must-fail-checked
+ (assert-event (sa-hc-concl *sa-salt* nil *sa-cnonce* *sa-seed* *sa-secret*)))
+;   login not octets
+(assert-event (and (not (fn-sha256-octet-listp *sa-sym-login*)) (fn-scram-no-nulp *sa-sym-login*)))
+(must-fail-checked
+ (assert-event (sa-hc-concl *sa-salt* *sa-sym-login* *sa-cnonce* *sa-seed* *sa-secret*)))
+;   login with a NUL
+(assert-event (and (not (fn-scram-no-nulp *sa-nul-login*)) (fn-sha256-octet-listp *sa-nul-login*)))
+(must-fail-checked
+ (assert-event (sa-hc-concl *sa-salt* *sa-nul-login* *sa-cnonce* *sa-seed* *sa-secret*)))
+;   client nonce with a comma: not a nonce
+(defconst *sa-comma-nonce* (fn-nntp-string-octets "rOprNG,wEbeRWgbNEkqO"))
+(assert-event (not (fn-scram-noncep *sa-comma-nonce*)))
+(must-fail-checked
+ (assert-event (sa-hc-concl *sa-salt* *sa-name* *sa-comma-nonce* *sa-seed* *sa-secret*)))
+;   seed of 31 octets
+(defconst *sa-short-seed* (make-list 31 :initial-element 9))
+(assert-event (not (fn-sasl-seedp *sa-short-seed*)))
+(must-fail-checked
+ (assert-event (sa-hc-concl *sa-salt* *sa-name* *sa-cnonce* *sa-short-seed* *sa-secret*)))
+
+; fn-sasl-scram-unknown-login-never-succeeds
+(defconst *sa-st1* (fn-auth-session-pending (fn-post-result-session *sa-r1*)))
+; Positive witness: the honest final message against no verifier.
+(assert-event (not (fn-authsec-verifierp nil)))
+(assert-event (not (fn-sasl-successp (fn-sasl-scram-final-step *sa-st1* *sa-final-good* nil nil))))
+; Hypothesis removed: against the enrolled verifier it succeeds.
+(assert-event (fn-authsec-verifierp *sa-verifier*))
+(must-fail-checked
+ (assert-event (not (fn-sasl-successp
+                     (fn-sasl-scram-final-step *sa-st1* *sa-final-good* *sa-verifier* nil)))))
+
+; fn-sasl-scram-final-success-is-bound-to-the-exchange
+(defmacro sa-s4-concl (st response verifier binding)
+  `(and (equal (fn-scram-cfin-nonce (fn-scram-parse-client-final ,response))
+               (fn-scram-octets (fn-sasl-st 5 ,st)))
+        (equal (fn-scram-cfin-cbind (fn-scram-parse-client-final ,response))
+               (fn-scram-expected-cbind (fn-sasl-st 2 ,st) (fn-sasl-st 3 ,st) ,binding))
+        (fn-authsec-verifierp ,verifier)))
+; Positive witness: the honest exchange succeeds; its nonce and binding are
+; this exchange's.
+(assert-event (fn-sasl-successp (fn-sasl-scram-final-step *sa-st1* *sa-final-good* *sa-verifier* nil)))
+(assert-event (sa-s4-concl *sa-st1* *sa-final-good* *sa-verifier* nil))
+; Hypothesis removed: a final message with another nonce fails, and its
+; nonce is not the exchange's.
+(defconst *sa-final-other-nonce*
+  (sa-final *sa-secret* :n (fn-nntp-string-octets "n,,") nil
+            (append *sa-nonce* (fn-nntp-string-octets "x")) *sa-bare* *sa-server-first*))
+(assert-event (not (fn-sasl-successp
+                    (fn-sasl-scram-final-step *sa-st1* *sa-final-other-nonce* *sa-verifier* nil))))
+(must-fail-checked (assert-event (sa-s4-concl *sa-st1* *sa-final-other-nonce* *sa-verifier* nil)))
+
+; fn-sasl-scram-y-flag-with-a-binding-is-refused
+(defconst *sa-y-first* (append (fn-nntp-string-octets "y,,n=reader,r=") *sa-cnonce*))
+(defun sa-y-hyps (response binding)
+  (and (fn-sasl-bindingp binding)
+       (not (fn-scram-failp (fn-scram-parse-client-first response)))
+       (equal (fn-scram-cf-flag (fn-scram-parse-client-first response)) :y)))
+(defmacro sa-y-concl (plusp response binding)
+  `(equal (fn-sasl-scram-first-step ,plusp ,response *sa-verifier* *sa-seed* ,binding)
+          (if ,plusp (list :fail :binding-required) (list :fail :downgrade))))
+; Positive witnesses, both arms.
+(assert-event (sa-y-hyps *sa-y-first* *sa-binding*))
+(assert-event (sa-y-concl t *sa-y-first* *sa-binding*))
+(assert-event (sa-y-concl nil *sa-y-first* *sa-binding*))
+;   no binding installed: "y" is honest (the server offers no -PLUS)
+(assert-event (and (not (fn-sasl-bindingp nil))
+                   (not (fn-scram-failp (fn-scram-parse-client-first *sa-y-first*)))))
+(must-fail-checked (assert-event (sa-y-concl nil *sa-y-first* nil)))
+;   the "n" flag
+(assert-event (and (fn-sasl-bindingp *sa-binding*)
+                   (not (fn-scram-failp (fn-scram-parse-client-first *sa-client-first*)))
+                   (not (equal (fn-scram-cf-flag (fn-scram-parse-client-first *sa-client-first*)) :y))))
+(must-fail-checked (assert-event (sa-y-concl nil *sa-client-first* *sa-binding*)))
+;   (not (fn-scram-failp ...)): NO counter-witness.  The flag of a failed
+;   parse is its reason (fn-scram-cf-flag is its second element), e.g.
+;   :invalid-username-encoding for "y,,n=,r=abc", never :y; so the flag
+;   hypothesis already excludes every failure seen.  Not proved redundant.
+(assert-event (equal (fn-scram-cf-flag (fn-scram-parse-client-first
+                                        (fn-nntp-string-octets "y,,n=,r=abc")))
+                     :invalid-username-encoding))
+
+; fn-auth-step-preserves-consistent-session (the served step itself)
+; Positive witnesses: a consistent session stays consistent across a
+; command and across the first SCRAM message.
+(assert-event (fn-auth-session-consistentp *sa-tls-ctx* *sa-archive*))
+(assert-event (fn-auth-session-consistentp
+               (fn-post-result-session (sa-send *sa-tls-ctx* "CAPABILITIES")) *sa-archive*))
+(assert-event (fn-auth-session-consistentp *sa-plain-ctx* *sa-archive*))
+(assert-event (fn-auth-session-consistentp (fn-post-result-session *sa-r1*) *sa-archive*))
+; Hypothesis removed: from a value that is no session the step's session is
+; not consistent.
+(assert-event (not (fn-auth-session-consistentp nil *sa-archive*)))
+(must-fail-checked
+ (assert-event (fn-auth-session-consistentp
+                (fn-post-result-session (sa-send nil "CAPABILITIES")) *sa-archive*)))
+
+; fn-auth-sasl-finish-binds-only-on-success, at the call the host's step
+; makes (books/nntp-auth.lisp fn-auth-step's kept exchange:
+; (fn-auth-sasl-finish as (fn-auth-session-pending as) response)).
+(defconst *sa-q-as* (fn-post-result-session *sa-q1*))
+(defconst *sa-q-st* (fn-auth-session-pending *sa-q-as*))
+(defconst *sa-q-nonce* (sa-field-value (car (fn-scram-split *sa-q-sf*))))
+(defconst *sa-q-final*
+  (sa-final *sa-secret* :n (fn-nntp-string-octets "n,,") nil *sa-q-nonce* *sa-bare* *sa-q-sf*))
+(defconst *sa-q-final-bad*
+  (sa-final (fn-nntp-string-octets "correct-horsf") :n (fn-nntp-string-octets "n,,") nil
+            *sa-q-nonce* *sa-bare* *sa-q-sf*))
+(defmacro sa-fin-hyps (as st response)
+  `(and (not (fn-auth-session-peer ,as))
+        (fn-auth-session-peer
+         (fn-post-result-session (fn-auth-sasl-finish ,as ,st ,response)))))
+(defmacro sa-fin-concl (as st response)
+  `(let* ((acfg (fn-auth-session-config ,as))
+          (ctx (fn-auth-session-ctx ,as))
+          (cred (fn-auth-find-cred (fn-sasl-response-login ,st ,response)
+                                   (fn-auth-config-creds acfg)))
+          (next (fn-post-result-session (fn-auth-sasl-finish ,as ,st ,response))))
+     (and (consp cred)
+          (fn-sasl-successp
+           (fn-sasl-step ,st ,response (fn-auth-cred-secret cred)
+                         (fn-auth-ctx-seed ctx) (fn-auth-ctx-binding ctx)))
+          (equal (fn-auth-session-pending next) (fn-auth-cred-name cred))
+          (equal (fn-auth-session-subject next) (fn-auth-cred-principal cred))
+          (equal (fn-auth-session-peer next)
+                 (fn-auth-principal-match
+                  (fn-auth-cred-principal cred)
+                  (fn-peer-session-cfg (fn-auth-session-base ,as))))
+          (fn-auth-principal-rolep next))))
+; Positive witness: the pinned principal's honest SCRAM final binds the
+; peer role "principal-peer".
+(assert-event (sa-fin-hyps *sa-q-as* *sa-q-st* *sa-q-final*))
+(assert-event (equal (fn-auth-session-peer
+                      (fn-post-result-session (fn-auth-sasl-finish *sa-q-as* *sa-q-st* *sa-q-final*)))
+                     "principal-peer"))
+(assert-event (sa-fin-concl *sa-q-as* *sa-q-st* *sa-q-final*))
+; Hypothesis "the step's session has a peer" removed: the wrong password
+; binds nothing (the first hypothesis kept) and nothing succeeded.
+(assert-event (and (not (fn-auth-session-peer *sa-q-as*))
+                   (not (fn-auth-session-peer
+                         (fn-post-result-session
+                          (fn-auth-sasl-finish *sa-q-as* *sa-q-st* *sa-q-final-bad*))))))
+(must-fail-checked (assert-event (sa-fin-concl *sa-q-as* *sa-q-st* *sa-q-final-bad*)))
+; Hypothesis "no peer before" removed: a session that already holds the
+; role keeps it through a refused exchange (the second hypothesis holds),
+; and nothing succeeded.
+(defconst *sa-q-peer-as* (fn-post-result-session *sa-q2*))
+(assert-event (and (fn-auth-session-peer *sa-q-peer-as*)
+                   (fn-auth-session-peer
+                    (fn-post-result-session
+                     (fn-auth-sasl-finish *sa-q-peer-as* *sa-q-st* *sa-q-final-bad*)))))
+(must-fail-checked (assert-event (sa-fin-concl *sa-q-peer-as* *sa-q-st* *sa-q-final-bad*)))
+
+; The recognisers the removals above assert false, anchored true on the
+; scenario's values.
+(assert-event (fn-sasl-bindingp *sa-binding*))
+(assert-event (fn-sasl-seedp *sa-seed*))
+(assert-event (fn-scram-noncep *sa-cnonce*))
+(assert-event (fn-sha256-octet-listp *sa-name*))
+(assert-event (fn-scram-no-nulp *sa-name*))
+(assert-event (fn-sasl-no-nulp *sa-secret*))
+(assert-event (fn-scram-failp (fn-scram-parse-client-first
+                               (fn-nntp-string-octets "y,,n=,r=abc"))))
