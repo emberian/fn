@@ -1018,8 +1018,11 @@ class SessionTests(unittest.TestCase):
     def test_1_start_loads_up_to_the_first_refused_form_and_reports_it(self):
         result = self.cli("start", self.name, "build/proof-repl-test/scratch",
                           "--limit", "5", "--load-timeout", "20")
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.returncode, proof_repl.PARTIAL_LOAD,
+                         result.stdout + result.stderr)
         self.assertIn("stopped at bad", result.stdout)
+        self.assertIn("PARTIAL LOAD -- stopped at bad",
+                      result.stdout.strip().splitlines()[-1])
         state = json.loads((proof_repl.SESSIONS / self.name / "state.json").read_text())
         self.assertEqual(state["loaded"], ["in-package", "f"])
         self.assertTrue(state["ready"])
@@ -1201,7 +1204,9 @@ class RealAcl2Tests(unittest.TestCase):
             started = cli("start", name, "build/proof-repl-real-ld/top",
                           "--ld", "build/proof-repl-real-ld/dep", "--ld-local",
                           "--load-limit", "0.001")
-            self.assertEqual(started.returncode, 0, started.stdout + started.stderr)
+            # Stopped at `slow`: a partial load (item 25).
+            self.assertEqual(started.returncode, proof_repl.PARTIAL_LOAD,
+                             started.stdout + started.stderr)
             self.assertIn("in one encapsulate", started.stdout)
             self.assertIn("stopped at slow", started.stdout)
             self.assertIn("over the per-form prover limit (0.001 s", started.stdout)
