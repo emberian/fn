@@ -41,6 +41,7 @@
 ; S3b: the native export request/status decisions belong to the full image.
 (include-book "../books/owner-export-request")
 (include-book "../books/snapshot-capture-lease")
+(include-book "../books/owner-snapshot-recovery")
 (include-book "../books/snapshot-prepare")
 ; Row S10 (lane operability-2): a refused control post completion names the
 ; Store's word on the reply and the line.
@@ -920,7 +921,7 @@
       (let* ((state (f-put-global 'fn-owner-osn-next-ticket (nth 3 admit) state))
              (state (f-put-global 'fn-owner-osn-lease (nth 2 admit) state))
              (state (f-put-global 'fn-owner-sco-inflight count state)))
-        (value (list :captured (nth 2 admit) st
+        (value (list :captured (nth 2 admit) (fn-osr-capture st)
                      (fn-owner-store-profile state)
                      (fn-owner-sco-global 'fn-store-genesis state)
                      (fn-own-node-secret owner)))))))
