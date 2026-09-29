@@ -1544,7 +1544,8 @@
         "PRF-1005",
         "PRF-1011",
         "PRF-1012",
-        "PRF-1060"
+        "PRF-1060",
+        "PRF-1067"
       ],
       "verification": [
         "proof",

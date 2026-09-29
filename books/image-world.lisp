@@ -234,6 +234,7 @@
 (include-book "anchor-invariants")
 (include-book "state-globals")
 (include-book "owner-config")
+(include-book "owner-retain-state")
 (include-book "deflate-inflate")
 (include-book "owner-checkpoint-open")
 (include-book "owner-control-post-reason")

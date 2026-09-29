@@ -29,6 +29,7 @@
 ; exception in the serve loop ended the process for every connection.
 (include-book "../books/owner-config")
 (include-book "../books/state-globals")
+(include-book "../books/owner-retain-state")
 ; The compression threshold (fn-owner-compress-min-octets; PRF-341).
 (include-book "../books/payload-lz-append")
 ;; RFC 8054 COMPRESS DEFLATE: the inflater the host calls per connection
@@ -415,8 +416,7 @@
              ; owner opens with (books/post-retain-carried.lisp
              ; fn-prc-refresh of nil; fn-prc-carryp-of-refresh), so the
              ; first POST's refresh is a delta, not a build.
-             (state (f-put-global
-                     'fn-owner-retain-carry
+             (state (fn-owner-retain-carry-put
                      (fn-prc-refresh nil (fn-node-retention
                                           (fn-sn-node
                                            (fn-own-store (fn-owner-core state)))))
@@ -1568,14 +1568,11 @@
 ;; global's writers are fn-owner-install-extended (every recovery: the
 ;; refresh of nil, so the first POST pays no build), fn-owner-prepare-buffer
 ;; and fn-owner-prepare, which store fn-prc-refresh of the value read here;
-;; so it always satisfies fn-prc-carryp (fn-prc-carryp-of-refresh; nil by
-;; fn-prc-carryp-when-atom).  The recognizer names no owner state, so no
-;; owner step between two POSTs can falsify it.
-(defun fn-owner-retain-carry (state)
-  (declare (xargs :stobjs state :guard t))
-  (if (boundp-global 'fn-owner-retain-carry state)
-      (f-get-global 'fn-owner-retain-carry state)
-    nil))
+;; and prepare-identity/finish-synced refresh it; orcp-swap installs the
+;; rebuild's field 2. The getter/setter effects are proved in
+;; books/owner-retain-state.lisp. Complete initialization and transition
+;; preservation remain obligations; raw owner entries stay disabled.
+; Defined under the same name by books/owner-retain-state.lisp.
 
 ; THE OWNER'S POST ENTRY (records-flip).  The duplicate test is the Store's
 ; entry over the arena (fn-store-existing-action, KEYSTONE
@@ -1676,8 +1673,7 @@
                                     next))))
                  (state (if (equal record :clock-unusable)
                             state
-                          (let ((state (f-put-global 'fn-owner-retain-carry
-                                                     carry state)))
+                          (let ((state (fn-owner-retain-carry-put carry state)))
                             (fn-owner-install-ocfg (cdr outcome) state)))))
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena fn-hist state)
@@ -1841,8 +1837,7 @@
                                     next))))
                  (state (if (equal record :clock-unusable)
                             state
-                          (let ((state (f-put-global 'fn-owner-retain-carry
-                                                     carry state)))
+                          (let ((state (fn-owner-retain-carry-put carry state)))
                             (fn-owner-install-ocfg (cdr outcome) state)))))
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena fn-hist state)
@@ -1940,7 +1935,7 @@
                                       (fn-arena-count fn-arena) carry)
       (let* ((row (fn-oii-identity-row event (fn-sn-keyring s) (fn-sn-keyring-generation s)
                                        (fn-arena-count fn-arena)))
-             (state (f-put-global 'fn-owner-retain-carry carry state))
+             (state (fn-owner-retain-carry-put carry state))
              (state (fn-owner-install-ocfg next state)))
         (cond ((not (equal word :prepared)) (value word))
               ((fn-oii-identity-sealsp event)
@@ -2163,12 +2158,13 @@
          ;; fn-irc-rix-ocfg-complete (books/identity-retain-carried.lisp),
          ;; its gate and finish applying an identity, consumer or topic
          ;; record through the carried obligation-id trie brought to the
-         ;; Store node's ledger (KEYSTONE
-         ;; fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete).
+         ;; Store node's ledger (boundary fn-irc-rix-ocfg-complete-is-rix,
+         ;; then derived composition
+         ;; fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete-by-definition).
          (carry (fn-prc-refresh (fn-owner-retain-carry state)
                                 (fn-node-retention
                                  (fn-sn-node (fn-own-store before)))))
-         (state (f-put-global 'fn-owner-retain-carry carry state))
+         (state (fn-owner-retain-carry-put carry state))
          (state (fn-owner-install-ocfg
                  (fn-irc-rix-ocfg-complete (fn-owner-ocfg state) fn-hist carry)
                  state))
@@ -4834,7 +4830,7 @@ existing port only after fn-fc has made this connection ready."
          (swapped (fn-ocfg-owner next))
          (state (fn-owner-install-ocfg next state))
          (count (fn-sf-records-count (fn-sn-files (fn-own-store swapped))))
-         (state (f-put-global 'fn-owner-retain-carry (nth 2 rebuilt) state))
+         (state (fn-owner-retain-carry-put (nth 2 rebuilt) state))
          (state (f-put-global 'fn-owner-record-octets (nth 3 rebuilt) state))
          (state (f-put-global 'fn-owner-record-debt (nth 4 rebuilt) state))
          (state (f-put-global 'fn-owner-carried-usage (nth 5 rebuilt) state))

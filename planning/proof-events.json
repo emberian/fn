@@ -17164,6 +17164,19 @@
           "name": "fn-sca-load-held-rows-keyed-is-load-held-rows"
         }
       ]
+    },
+    {
+      "id": "PRF-1067",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-of-put"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-of-other-global-put"
+        }
+      ]
     }
   ]
 }
