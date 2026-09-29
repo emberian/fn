@@ -112,6 +112,93 @@ class ClassifyTests(unittest.TestCase):
 
 
 @unittest.skipUnless(shutil.which("acl2"), "no acl2 on PATH")
+class WorldTests(unittest.TestCase):
+    """Item 40: --load over the build's certified prefix, saying which world."""
+
+    def scratch(self) -> tuple[pathlib.Path, str]:
+        scratch = ROOT / "build" / "host-check-world-test"
+        scratch.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, scratch, True)
+        rel = scratch.relative_to(ROOT).as_posix()
+        (scratch / "build.lisp").write_text(
+            f'(include-book "{rel}/umbrella")\n(ld "{rel}/h.lisp" :ld-error-action :error)\n'
+            f'(defttag :x)\n(progn! (set-raw-mode t) (load "{rel}/r.lisp"))\n')
+        return scratch, rel
+
+    def test_certified_prefix_is_loaded_first_and_named(self):
+        scratch, rel = self.scratch()
+        (scratch / "umbrella.cert").write_text("")
+        forms, note = host_check.choose_world(f"{rel}/build.lisp", pathlib.Path("acl2"),
+                                              bare=False)
+        self.assertIsNotNone(forms)
+        self.assertIn("CERTIFIED UMBRELLA", note)
+        self.assertIn(f"{rel}/umbrella and 1 host lds", note)
+        session = host_check.world_session(forms)
+        self.assertIn(f'(value-triple (cw "{host_check.WORLD_LD} ~s0~%" "{rel}/h.lisp"))',
+                      session)
+        self.assertTrue(session.rstrip().endswith(f'(cw "{host_check.WORLD_OK}~%"))'))
+        self.assertNotIn("defttag", session.lower())
+
+    def test_missing_certificates_fall_back_bare_and_say_why(self):
+        _, rel = self.scratch()
+        calls = []
+
+        class Done:
+            stdout, stderr = "install-set: missing 1", ""
+
+        def runner(argv):
+            calls.append(argv)
+            return Done()
+        forms, note = host_check.choose_world(f"{rel}/build.lisp", pathlib.Path("acl2"),
+                                              bare=False, runner=runner)
+        if host_check.certificate_cache() is None:
+            self.assertIn("no certificate cache", note)
+        else:
+            self.assertEqual(calls[0][-2:], ["install-set", f"{rel}/umbrella"])
+            self.assertIn("have no certificate here", note)
+        self.assertIsNone(forms)
+        self.assertIn("BARE ACL2", note)
+        self.assertIn("NOT evaluated", note)
+        _, note = host_check.choose_world(f"{rel}/build.lisp", pathlib.Path("acl2"),
+                                          bare=True)
+        self.assertIn("BARE ACL2 (--bare)", note)
+
+    def test_require_world_is_not_run_when_the_umbrella_is_absent(self):
+        _, rel = self.scratch()
+        (ROOT / rel / "r.lisp").write_text("(defun fnn-r () 1)\n")
+        err = io.StringIO()
+        original = host_check.install_world
+        host_check.install_world = lambda forms, acl2, runner=None: "no cache (test)"
+        self.addCleanup(setattr, host_check, "install_world", original)
+        original_exe = host_check.executable
+        host_check.executable = lambda: pathlib.Path("/bin/true")
+        self.addCleanup(setattr, host_check, "executable", original_exe)
+        original_stale = host_check.world_stale
+        host_check.world_stale = lambda runner=None: []
+        self.addCleanup(setattr, host_check, "world_stale", original_stale)
+        with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            code = host_check.main(["--load", "--require-world", "--build",
+                                    f"{rel}/build.lisp"])
+        self.assertEqual(code, 2)
+        self.assertIn("NOT RUN -- BARE ACL2 -- the certified umbrella is not available: "
+                      "no cache (test)", err.getvalue())
+
+    def test_a_prefix_error_names_its_host_file(self):
+        tag = host_check.WORLD_LD
+        output = ("ACL2 !>\n"
+                  f"{tag} host/a.lisp\n"
+                  f"{tag} host/b.lisp\n"
+                  "ACL2 Error [Failure] in ( DEFINTERFACE FN-X ...):  The declared\n"
+                  "class ::ideal is not the entry's common-lisp-compliant.\n"
+                  f"{host_check.WORLD_OK}\n")
+        findings, reached = host_check.world_findings(output)
+        self.assertTrue(reached)
+        self.assertEqual(len(findings), 1)
+        self.assertTrue(findings[0].startswith("world: in host/b.lisp: ACL2 Error"))
+        self.assertIn("::ideal", findings[0])
+        self.assertEqual(host_check.world_findings("ACL2 !>\n")[1], False)
+
+
 class RealLoadTests(unittest.TestCase):
     def test_each_seeded_fault_is_named_and_the_world_is_not(self):
         scratch = ROOT / "build" / "host-check-load-test"

@@ -74,7 +74,17 @@ build scripts; a stale umbrella is a FAIL: limits-live-5's host include-book
 passed --load and died in the image build's acquire).  `make
 host-convert-check FILE=...` (tools/host_convert_check.py) runs this with
 every other pre-image gate, including the certified-world class check.
-What it cannot see: the arity of a call into a book function (the bare image
+THE WORLD (obstructions-6 item 40): when the build script's include-books
+have certificates in the tree -- or `certs.py install-set` can install them
+from FN_CERT_CACHE / the box's farm cache -- --load first runs the build's
+ACL2-mode prefix (image-world and the host `ld`s, where definterface checks
+each declaration and generates its `-by-definition` equations) and loads the
+raw files over it; an error in the prefix is a FAIL naming its host file.
+Its first line says which world it ran in: `WORLD CERTIFIED UMBRELLA ...` or
+`WORLD BARE ACL2 -- ...` with the reason.  `--bare` forces the seconds-scale
+bare load (make check's, whose default step runs the prefix already);
+`--require-world` makes an unavailable umbrella NOT RUN (exit 2).
+In a bare load it cannot see: the arity of a call into a book function (the bare image
 does not know it), anything the FFI initializers do (`fnn-crypto-initialize'
 and its siblings are build.lisp's calls, not the files'), and translate
 errors in the ACL2-mode host files (tools/host_translate_check.py).  Exit 0
@@ -474,13 +484,130 @@ def classify_load(output: str, world_defined: set[str], world_source: str,
     return findings, counts, completed
 
 
+# --- --load's world (obstructions-6 item 40) ---------------------------------
+#
+# A bare ACL2 never evaluates the ACL2-mode prefix of the build script: the
+# include of books/image-world and the host `ld`s, where definterface checks
+# each declaration against the certified world and generates its
+# `-by-definition` equations.  decision-keystones-3's `::ideal` declaration of
+# five common-lisp-compliant entries passed a bare --load and failed the
+# 25-minute hbox image build.  So --load runs the raw files OVER that prefix
+# whenever its certificates are here or in the box's certificate cache, and
+# says which world it ran in; --bare keeps the seconds-scale check.
+
+WORLD_OK = LOAD_TAG + "-WORLD-OK"
+WORLD_LD = LOAD_TAG + "-LD"
+
+
+def world_prefix(build: str) -> list[object]:
+    import host_translate_check
+    return host_translate_check.prefix(ROOT / build)
+
+
+def world_missing(forms: list[object]) -> list[str]:
+    import host_translate_check
+    return host_translate_check.uncertified(forms)
+
+
+def world_session(forms: list[object]) -> str:
+    """The build's ACL2-mode prefix as a piped session, each `ld` announced so
+    an error inside it names its host file, then the world marker."""
+    import host_translate_check
+    from ledger import head
+    lines = []
+    for form in forms:
+        if head(form) == "ld" and len(form) >= 2 and isinstance(form[1], str):
+            lines.append(f'(value-triple (cw "{WORLD_LD} ~s0~%" "{form[1]}"))')
+        lines.append(host_translate_check.text(form))
+    lines.append(f'(value-triple (cw "{WORLD_OK}~%"))')
+    return "\n".join(lines) + "\n"
+
+
+def world_findings(output: str) -> tuple[list[str], bool]:
+    """(the prefix's errors, each naming the host `ld` it was in; did the
+    prefix reach its end marker)."""
+    import host_translate_check
+    findings, current, reached = [], "the include-books", False
+    lines = output.splitlines()
+    for index, line in enumerate(lines):
+        if line.startswith(WORLD_LD + " ") or (WORLD_LD + " ") in line:
+            current = line.split(WORLD_LD + " ", 1)[1].strip()
+        elif WORLD_OK in line:
+            reached = True
+            break
+        elif any(marker in line for marker in host_translate_check.ERRORS):
+            detail = " ".join(part.strip() for part in lines[index:index + 3])
+            findings.append(f"world: in {current}: {detail[:400]}")
+    return findings, reached
+
+
+def certificate_cache() -> Path | None:
+    """FN_CERT_CACHE, else this box's farm cache, else ~/.cache/fn-certs."""
+    candidates = [os.environ.get("FN_CERT_CACHE", "")]
+    try:
+        import farm
+        candidates += [host["cache"] for host in farm.HOSTS.values()]
+    except Exception:  # noqa: BLE001  farm imports the world of tools; optional here
+        pass
+    candidates.append("~/.cache/fn-certs")
+    for candidate in candidates:
+        if candidate and Path(candidate).expanduser().is_dir():
+            return Path(candidate).expanduser()
+    return None
+
+
+def install_world(forms: list[object], acl2: Path, runner=None) -> str:
+    """Install the prefix's books from the certificate cache; '' or why not."""
+    from ledger import head
+    cache = certificate_cache()
+    if cache is None:
+        return "no certificate cache on this machine (FN_CERT_CACHE unset)"
+    roots = [form[1] for form in forms
+             if head(form) == "include-book" and len(form) >= 2 and isinstance(form[1], str)]
+    argv = [sys.executable, str(ROOT / "tools" / "certs.py"), "--root", str(ROOT),
+            "--cache", str(cache), "--acl2", str(acl2), "install-set", *roots]
+    if runner is None:
+        runner = lambda argv: subprocess.run(argv, cwd=ROOT, capture_output=True, text=True)
+    done = runner(argv)
+    missing = world_missing(forms)
+    if missing:
+        tail = " ".join((done.stdout + done.stderr).split()[-30:])
+        return (f"{len(missing)} of its books have no certificate here or in {cache} "
+                f"(e.g. {missing[0]}; certs.py install-set said: {tail})")
+    return ""
+
+
+def choose_world(build: str, acl2: Path, bare: bool, install: bool = True,
+                 runner=None) -> tuple[list[object] | None, str]:
+    """(the prefix forms to load first, or None; the sentence naming the world)."""
+    if bare:
+        return None, "BARE ACL2 (--bare): definterface's checks NOT evaluated"
+    forms = world_prefix(build)
+    from ledger import head as _head
+    if not any(_head(form) == "include-book" for form in forms):
+        return None, f"BARE ACL2 -- {build} includes no book (no certified world to load)"
+    if world_missing(forms):
+        why = install_world(forms, acl2, runner) if install else "certificates not installed"
+        if why:
+            return None, (f"BARE ACL2 -- the certified umbrella is not available: {why}; "
+                          "definterface's checks and the -by-definition equations were "
+                          "NOT evaluated")
+    from ledger import head
+    includes = [form[1] for form in forms if head(form) == "include-book"]
+    lds = sum(1 for form in forms if head(form) == "ld")
+    return forms, (f"CERTIFIED UMBRELLA -- {', '.join(includes)} and {lds} host lds "
+                   f"of {build}, in order (definterface's checks evaluated)")
+
+
 def load_check(acl2: Path, files: list[str], timeout: int,
-               log_dir: Path | None = None) -> int:
+               log_dir: Path | None = None, world: list[object] | None = None,
+               world_note: str = "BARE ACL2") -> int:
     import tempfile
     with tempfile.TemporaryDirectory(prefix="fn-host-load-") as scratch:
         driver = Path(scratch) / "driver.lsp"
         driver.write_text(load_driver(files), encoding="utf-8")
-        session = ("(defttag :fn-host-load-check)\n"
+        session = ((world_session(world) if world is not None else "")
+                   + "(defttag :fn-host-load-check)\n"
                    f'(progn! (set-raw-mode t) (load "{driver}"))\n(good-bye)\n')
         started = time.monotonic()
         try:
@@ -498,6 +625,13 @@ def load_check(acl2: Path, files: list[str], timeout: int,
     source = world_text()
     findings, counts, completed = classify_load(output, world_names(source), source,
                                                 raw_definers())
+    if world is not None:
+        prefix_findings, reached = world_findings(output)
+        findings = prefix_findings + findings
+        if not reached:
+            findings.insert(0, "world: the build's ACL2-mode prefix did not reach its end "
+                               "marker (see the transcript's tail)")
+    print(f"host_check --load: WORLD {world_note}")
     for finding in findings:
         print(f"FAIL {finding}")
     if not completed:
@@ -505,9 +639,12 @@ def load_check(acl2: Path, files: list[str], timeout: int,
               "the transcript's tail:")
         print("\n".join(output.splitlines()[-25:]))
     print(f"host_check --load: {counts['files']} of {len(files)} raw files loaded in one "
-          f"bare {acl2.name} in {elapsed:.1f} s; {len(findings)} finding(s); "
+          f"{'bare ' if world is None else ''}{acl2.name}"
+          f"{'' if world is None else ' over the certified umbrella'} in {elapsed:.1f} s; "
+          f"{len(findings)} finding(s); "
           f"{counts['world']} undefined names and {counts['world_calls']} load-time calls "
-          f"belong to the certified world (not loaded here); {counts['warnings']} other "
+          f"belong to the certified world"
+          f"{' (not loaded here)' if world is None else ''}; {counts['warnings']} other "
           "compiler warnings")
     return 1 if findings or not completed else 0
 
@@ -1131,6 +1268,12 @@ def main(argv: list[str] | None = None) -> int:
                              "form of the ld files defines (no ACL2; --load runs it too)")
     parser.add_argument("--build", default=None,
                         help="with --load: the build script whose raw load order to use")
+    parser.add_argument("--bare", action="store_true",
+                        help="with --load: a bare ACL2 (seconds), not the build's "
+                             "certified prefix; definterface's checks are NOT evaluated")
+    parser.add_argument("--require-world", action="store_true",
+                        help="with --load: exit 2 NOT RUN when the certified umbrella is "
+                             "not available, rather than falling back to a bare ACL2")
     args = parser.parse_args(argv)
 
     if args.tables:
@@ -1172,7 +1315,18 @@ def main(argv: list[str] | None = None) -> int:
         log_dir = Path(args.log_dir).resolve() if args.log_dir else None
         if log_dir is not None:
             log_dir.mkdir(parents=True, exist_ok=True)
-        loaded = load_check(acl2, files, args.timeout_seconds, log_dir)
+        build = args.build or BUILD_SCRIPT
+        world, note = choose_world(build, acl2, args.bare)
+        if world is None and args.require_world and not args.bare:
+            print(f"host_check --load: NOT RUN -- {note}", file=sys.stderr)
+            return 2
+        if world is not None and os.environ.get("FN_IMAGE_ACL2"):
+            # The image's launcher (tls64k): the production prefix exhausts
+            # SBCL's default thread-local storage (host_translate_check).
+            image = Path(os.environ["FN_IMAGE_ACL2"])
+            if image.is_file():
+                acl2 = image
+        loaded = load_check(acl2, files, args.timeout_seconds, log_dir, world, note)
         return 1 if (forward or stale) and loaded == 0 else loaded
     if not args.alone:
         if args.files:
