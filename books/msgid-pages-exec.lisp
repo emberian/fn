@@ -767,8 +767,8 @@
 
 ; -----------------------------------------------------------------------------
 ; 4. The writer: put at the first empty slot of the first non-full page of
-; the run; grow at a load of 1/2.  (Preservation of `fn-mpxt-faithful': the
-; next READY.)
+; the run; grow at a load of 1/2.  (Preservation of `fn-mpxt-faithful':
+; section 7.)
 
 ; The least empty slot at or after J on page P, or nil.
 (defun fn-mpxt-find-empty (p j fn-mpxt)
@@ -1296,7 +1296,7 @@
 
 ; -----------------------------------------------------------------------------
 ; 5. The writer's frame: what a write into an empty slot does to the
-; reader (toward `fn-mpxt-put-preserves-faithful', the next READY).
+; reader (toward `fn-mpxt-put-preserves-faithful').
 
 
 (defthm fn-mpxt-wi-of-write-slot
@@ -2361,3 +2361,157 @@
            :use ((:instance fn-mpxt-faithful-no-pages)
                  (:instance fn-mpxt-put-preserves-faithful)
                  (:instance fn-mpxt-put-preserves-faithful (fn-mpxt (fn-mpxt-first-page fn-mpxt)))))))
+
+; 7f. THE FOLD: the table the catalog holds is the fold of the add over its
+; rows from the set-keyed empty table (books/catalog.lisp's correspondence
+; clause), the unplaced count its second value; a fold whose every step
+; placed is faithful.  The fold is the logic's function; its executable
+; twin is the catalog's commit, one add per row.
+(defun fn-mpxt-build-from (i u rows fn-mpxt fn-mpxt2)
+  (declare (xargs :stobjs (fn-mpxt fn-mpxt2) :verify-guards nil
+                  :measure (nfix (- (len rows) (nfix i)))))
+  (if (>= (nfix i) (len rows))
+      (mv u fn-mpxt fn-mpxt2)
+    (mv-let (r fn-mpxt fn-mpxt2)
+      (fn-mpxt-add (fn-mpxt-tag (fn-record-msgid (nth (nfix i) rows)) (fn-mpxt-key-octets fn-mpxt))
+                   (nfix i) fn-mpxt fn-mpxt2)
+      (fn-mpxt-build-from (1+ (nfix i)) (if (equal r :placed) u (1+ u)) rows fn-mpxt fn-mpxt2))))
+
+(defun-nx fn-mpxt-build (key rows)
+  (mv-nth 1 (fn-mpxt-build-from 0 0 rows (fn-mpxt-set-key key (create-fn-mpxt)) (create-fn-mpxt2))))
+
+(defun-nx fn-mpxt-build-unplaced (key rows)
+  (mv-nth 0 (fn-mpxt-build-from 0 0 rows (fn-mpxt-set-key key (create-fn-mpxt)) (create-fn-mpxt2))))
+
+; The first I rows.
+(defun fn-mpxt-prefix (i rows)
+  (declare (xargs :guard (and (natp i) (true-listp rows))))
+  (if (or (zp i) (atom rows))
+      nil
+    (cons (car rows) (fn-mpxt-prefix (1- i) (cdr rows)))))
+
+(defthm fn-mpxt-prefix-len
+  (implies (and (natp i) (<= i (len rows)))
+           (equal (len (fn-mpxt-prefix i rows)) i)))
+
+(defthm fn-mpxt-prefix-true-listp
+  (true-listp (fn-mpxt-prefix i rows)))
+
+(defthm fn-mpxt-prefix-all
+  (implies (true-listp rows)
+           (equal (fn-mpxt-prefix (len rows) rows) rows)))
+
+(defthm fn-mpxt-prefix-next
+  (implies (and (natp i) (< i (len rows)))
+           (equal (fn-mpxt-prefix (+ 1 i) rows)
+                  (append (fn-mpxt-prefix i rows) (list (nth i rows)))))
+  :hints (("Goal" :induct (fn-mpxt-prefix i rows))))
+
+(defthm fn-mpxt-build-from-shape
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt) (fn-mpxtp fn-mpxt2)
+                (< (+ 1 (len rows)) *fn-mpxt-word-limit*))
+           (and (fn-mpxtp (mv-nth 1 (fn-mpxt-build-from i u rows fn-mpxt fn-mpxt2)))
+                (fn-mpxt-wfp (mv-nth 1 (fn-mpxt-build-from i u rows fn-mpxt fn-mpxt2)))
+                (fn-mpxtp (mv-nth 2 (fn-mpxt-build-from i u rows fn-mpxt fn-mpxt2)))
+                (equal (fn-mpxt-key-octets (mv-nth 1 (fn-mpxt-build-from i u rows fn-mpxt fn-mpxt2)))
+                       (fn-mpxt-key-octets fn-mpxt))))
+  :hints (("Goal" :induct (fn-mpxt-build-from i u rows fn-mpxt fn-mpxt2)
+           :in-theory (disable fn-mpxt-add))))
+
+(defthm fn-mpxt-build-from-count
+  (implies (natp u)
+           (and (natp (mv-nth 0 (fn-mpxt-build-from i u rows fn-mpxt fn-mpxt2)))
+                (<= u (mv-nth 0 (fn-mpxt-build-from i u rows fn-mpxt fn-mpxt2)))))
+  :rule-classes ((:rewrite) (:linear :corollary (implies (natp u) (<= u (mv-nth 0 (fn-mpxt-build-from i u rows fn-mpxt fn-mpxt2))))))
+  :hints (("Goal" :induct (fn-mpxt-build-from i u rows fn-mpxt fn-mpxt2)
+           :in-theory (disable fn-mpxt-add))))
+
+(defthm fn-mpxt-build-from-faithful
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt) (fn-mpxtp fn-mpxt2) (true-listp rows)
+                (< (+ 1 (len rows)) *fn-mpxt-word-limit*)
+                (natp i) (<= i (len rows)) (natp u)
+                (fn-mpxt-faithful (fn-mpxt-prefix i rows) fn-mpxt)
+                (equal (mv-nth 0 (fn-mpxt-build-from i u rows fn-mpxt fn-mpxt2)) u))
+           (fn-mpxt-faithful rows (mv-nth 1 (fn-mpxt-build-from i u rows fn-mpxt fn-mpxt2))))
+  :hints (("Goal" :induct (fn-mpxt-build-from i u rows fn-mpxt fn-mpxt2)
+           :in-theory (disable fn-mpxt-add fn-mpxt-faithful fn-mpxt-prefix fn-mpxt-add-preserves-faithful))
+          ("Subgoal *1/2" :use ((:instance fn-mpxt-add-preserves-faithful
+                                           (rows (fn-mpxt-prefix i rows)) (h (nth i rows)))))))
+
+(defthm fn-mpxt-create-is-a-table
+  (and (fn-mpxtp (create-fn-mpxt)) (fn-mpxtp (create-fn-mpxt2)))
+  :hints (("Goal" :in-theory (enable fn-mpxtp fn-mpxt2p))))
+
+(defthm fn-mpxt-build-shape
+  (implies (< (+ 1 (len rows)) *fn-mpxt-word-limit*)
+           (and (fn-mpxtp (fn-mpxt-build key rows))
+                (fn-mpxt-wfp (fn-mpxt-build key rows))
+                (natp (fn-mpxt-build-unplaced key rows))
+                (equal (fn-mpxt-key-octets (fn-mpxt-build key rows))
+                       (fn-mpxt-key-octets (fn-mpxt-set-key key (create-fn-mpxt))))))
+  :hints (("Goal" :in-theory (disable fn-mpxt-build-from fn-mpxt-set-key))))
+
+; KEYSTONE: a fold that placed every row is faithful to the rows.
+(defthm fn-mpxt-build-faithful
+  (implies (and (true-listp rows) (< (+ 1 (len rows)) *fn-mpxt-word-limit*)
+                (equal (fn-mpxt-build-unplaced key rows) 0))
+           (fn-mpxt-faithful rows (fn-mpxt-build key rows)))
+  :hints (("Goal" :in-theory (disable fn-mpxt-build-from fn-mpxt-set-key fn-mpxt-faithful fn-mpxt-build-from-faithful)
+           :use ((:instance fn-mpxt-build-from-faithful (i 0) (u 0)
+                            (fn-mpxt (fn-mpxt-set-key key (create-fn-mpxt))) (fn-mpxt2 (create-fn-mpxt2)))))))
+
+; The fold over one more row is one more add (the catalog's commit).
+(local (defthm fn-mpxt-nth-of-append-below
+  (implies (and (natp i) (< i (len a)))
+           (equal (nth i (append a b)) (nth i a)))))
+(local (defthm fn-mpxt-nth-of-append-at-end
+  (implies (and (natp i) (equal i (len a)))
+           (equal (nth i (append a (list h))) h))))
+(local (defthm fn-mpxt-len-of-append-one
+  (equal (len (append a (list h))) (+ 1 (len a)))))
+
+(local (defthm fn-mpxt-build-from-append-base
+  (equal (fn-mpxt-build-from (len rows) u (append rows (list h)) fn-mpxt fn-mpxt2)
+         (mv-let (r fn-mpxt fn-mpxt2)
+           (fn-mpxt-add (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets fn-mpxt))
+                        (len rows) fn-mpxt fn-mpxt2)
+           (mv (if (equal r :placed) u (1+ u)) fn-mpxt fn-mpxt2)))
+  :hints (("Goal" :expand ((fn-mpxt-build-from (len rows) u (append rows (list h)) fn-mpxt fn-mpxt2)
+                           (:free (u a b) (fn-mpxt-build-from (+ 1 (len rows)) u (append rows (list h)) a b)))
+           :in-theory (disable fn-mpxt-add)))))
+
+(defthm fn-mpxt-build-from-append
+  (implies (and (natp i) (<= i (len rows)))
+           (equal (fn-mpxt-build-from i u (append rows (list h)) fn-mpxt fn-mpxt2)
+                  (mv-let (u2 fn-mpxt fn-mpxt2)
+                    (fn-mpxt-build-from i u rows fn-mpxt fn-mpxt2)
+                    (mv-let (r fn-mpxt fn-mpxt2)
+                      (fn-mpxt-add (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets fn-mpxt))
+                                   (len rows) fn-mpxt fn-mpxt2)
+                      (mv (if (equal r :placed) u2 (1+ u2)) fn-mpxt fn-mpxt2)))))
+  :hints (("Goal" :induct (fn-mpxt-build-from i u rows fn-mpxt fn-mpxt2)
+           :in-theory (disable fn-mpxt-add))
+          ("Subgoal *1/2" :expand ((fn-mpxt-build-from i u (append rows (list h)) fn-mpxt fn-mpxt2)))))
+
+(defun-nx fn-mpxt-build-buffer (key rows)
+  (mv-nth 2 (fn-mpxt-build-from 0 0 rows (fn-mpxt-set-key key (create-fn-mpxt)) (create-fn-mpxt2))))
+
+(defthm fn-mpxt-build-append
+  (and (equal (fn-mpxt-build key (append rows (list h)))
+              (mv-nth 1 (fn-mpxt-add (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets (fn-mpxt-build key rows)))
+                                     (len rows) (fn-mpxt-build key rows) (fn-mpxt-build-buffer key rows))))
+       (equal (fn-mpxt-build-unplaced key (append rows (list h)))
+              (if (equal (mv-nth 0 (fn-mpxt-add (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets (fn-mpxt-build key rows)))
+                                                (len rows) (fn-mpxt-build key rows) (fn-mpxt-build-buffer key rows)))
+                         :placed)
+                  (fn-mpxt-build-unplaced key rows)
+                (+ 1 (fn-mpxt-build-unplaced key rows))))
+       (equal (fn-mpxt-build-buffer key (append rows (list h)))
+              (mv-nth 2 (fn-mpxt-add (fn-mpxt-tag (fn-record-msgid h) (fn-mpxt-key-octets (fn-mpxt-build key rows)))
+                                     (len rows) (fn-mpxt-build key rows) (fn-mpxt-build-buffer key rows)))))
+  :hints (("Goal" :in-theory (disable fn-mpxt-build-from fn-mpxt-add fn-mpxt-set-key))))
+
+(defthm fn-mpxt-build-nil
+  (and (equal (fn-mpxt-build key nil) (fn-mpxt-set-key key (create-fn-mpxt)))
+       (equal (fn-mpxt-build-unplaced key nil) 0)
+       (equal (fn-mpxt-build-buffer key nil) (create-fn-mpxt2))))

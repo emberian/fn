@@ -15013,6 +15013,28 @@
         "fn-sfi-identity-loop-keeps-snapshots",
         "fn-sfi-carried-verdict-facts"
       ]
+    },
+    {
+      "id": "PRF-1018",
+      "title": "The Message-ID table's writer preserves faithfulness through the grow and the fold builds a faithful table (lane paged-history-4, row P2, THE SWITCH's logic): the add places then settles, the outcome is fn-mpxt-saturatedp of the table as it is, an adopted generation is faithful to the old table's rows, and a fold of adds from the set-keyed empty table whose every step placed is faithful to the rows",
+      "statement": "Subjects: books/msgid-pages-exec.lisp section 7 (fn-mpxt-settle, the put-first fn-mpxt-add, fn-mpxt-first-page, the stuck bit). (1) fn-mpxt-add-places-iff-not-saturated: the add's outcome is :placed exactly when fn-mpxt-saturatedp of the tag is false in the table BEFORE the add (so the served POST can decide the refusal without mutating anything; from no pages the first page is made in place). (2) fn-mpxt-grow-preserves-faithful: for every wf table and buffer, fn-mpxt-faithful rows table implies fn-mpxt-faithful rows (mv-nth 1 (fn-mpxt-grow table buffer)) -- an adopted generation holds every mapping (fn-mpxt-grow-into-faithful over the entries list: a candidate is a slot's entry, fn-mpxt-candidates-entry; the checked re-placement finds every entry of its list, fn-mpxt-put-all-checked-finds, and keeps every candidate, fn-mpxt-put-all-checked-keeps-candidate; the fresh generation satisfies the slot invariant, fn-mpxt-fresh-okp, and re-placing entries below N keeps it, fn-mpxt-put-all-checked-keeps-okp), and a generation that could not be built leaves the table (the stuck bit set; never retried before a rebuild). (3) fn-mpxt-add-preserves-faithful: faithful rows table and a :placed add of row H at seq (len rows) give faithful (append rows (list H)) of the result. (4) THE FOLD fn-mpxt-build key rows (the fold of fn-mpxt-add from (fn-mpxt-set-key key (create-fn-mpxt)); fn-mpxt-build-unplaced its unplaced count): KEYSTONE fn-mpxt-build-faithful -- unplaced 0 implies fn-mpxt-faithful rows (fn-mpxt-build key rows); fn-mpxt-build-append -- the fold over one more row is one more add (the catalog's commit step); fn-mpxt-build-nil. The reader-projection congruence fn-mpxt-same-pages-faithful (the reader reads only the pages' words: count, stuck bit and buffer are never read) carries the count and stuck updates and the adopt. Scope: the logical fold; the catalog's correspondence clause table = fn-mpxt-build key rows and the served :mpx-saturated refusal are THE SWITCH (row P2, open in the LANEDUMP NEXT). Hypotheses: fn-mpxtp and fn-mpxt-wfp of the table, fn-mpxtp of the buffer, true-listp rows, (< (+ 1 (len rows)) 2^64) (the seq word).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-969",
+        "PRF-991"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/msgid-pages-exec.lisp",
+        "tests/acl2/msgid-pages-exec-tests.lisp",
+        "planning/design-paged-history-2026-09-29.md"
+      ],
+      "progress_note": "2026-09-29 lane paged-history-4: REPL-admitted on hbox (proof_repl ph4x, the whole book through fn-mpxt-build-nil; the fixture book's forms in the same session, mpxe-saturated-witness restated: the 2,048th placement grows 4 pages to 8). Landed under ember's LAND-AND-FIX-FORWARD mode (no lane cite; the tree's background cite certifies). THE SWITCH itself (books/catalog.lisp) is the successor's, design in build/coordinator/lanedumps/paged-history-4.md NEXT.",
+      "events": []
     }
   ]
 }
