@@ -1509,7 +1509,8 @@
 ;; The carried obligation-id trie (books/post-retain-carried.lisp): the
 ;; global's writers are fn-owner-install-extended (every recovery: the
 ;; refresh of nil, so the first POST pays no build), fn-owner-prepare-buffer
-;; fn-owner-prepare and fn-owner-transit-decide, which store fn-prc-refresh
+;; fn-owner-prepare, fn-owner-prepare-retention, fn-owner-prepare-topic and
+;; fn-owner-transit-decide, which store fn-prc-refresh
 ;; of the value read here;
 ;; so it always satisfies fn-prc-carryp (fn-prc-carryp-of-refresh; nil by
 ;; fn-prc-carryp-when-atom).  The recognizer names no owner state, so no
@@ -1821,11 +1822,20 @@
                      (fn-store-octets->string subject-octets)
                      (fn-store-octets->string evidence-octets) charge)))
         ; fn-pout-prepare-retention: (:store (:prepare-retention E)) and its
-        ; word (KEYSTONE fn-pout-prepare-retention-answers-the-store-change).
-        (mv-let (word next)
-          (fn-pout-prepare-retention (fn-owner-ocfg state) event fn-arena)
-          (let ((state (fn-owner-install-ocfg next state)))
-            (value word)))))))
+        ; word (KEYSTONE fn-pout-prepare-retention-answers-the-store-change),
+        ; called as fn-irc-pout-prepare-retention with the carried
+        ; obligation-id trie refreshed to the Store node's ledger: the
+        ; undertaking's admission is a trie lookup, not a scan of every pin
+        ; and release (KEYSTONE
+        ; fn-irc-pout-prepare-retention-of-refresh-is-pout: the word and
+        ; owner are fn-pout-prepare-retention's for every carry).
+        (let* ((carry (fn-prc-refresh (fn-owner-retain-carry state)
+                                      (fn-node-retention node)))
+               (state (f-put-global 'fn-owner-retain-carry carry state)))
+          (mv-let (word next)
+            (fn-irc-pout-prepare-retention (fn-owner-ocfg state) event carry)
+            (let ((state (fn-owner-install-ocfg next state)))
+              (value word))))))))
 
 ; The caller supplies an ACL2-constructed kind-3 or kind-4 event.  This
 ; boundary deliberately accepts no separate profile, key, article, or verdict
@@ -1924,10 +1934,18 @@
     ; fn-psrv-prepare-topic-preserves-invariant); fn-pout-prepare-topic
     ; answers its word (KEYSTONE
     ; fn-pout-prepare-topic-answers-the-store-change).
-    (mv-let (word next)
-      (fn-pout-prepare-topic (fn-owner-ocfg state) event)
-      (let ((state (fn-owner-install-ocfg next state)))
-        (value word)))))
+    ; The topic record's application reads the carried obligation-id trie,
+    ; refreshed to the Store node's ledger (KEYSTONE
+    ; fn-irc-pout-prepare-topic-of-refresh-is-pout: fn-pout-prepare-topic's
+    ; word and owner for every carry).
+    (let* ((carry (fn-prc-refresh (fn-owner-retain-carry state)
+                                  (fn-node-retention
+                                   (fn-sn-node (fn-owner-store state)))))
+           (state (f-put-global 'fn-owner-retain-carry carry state)))
+      (mv-let (word next)
+        (fn-irc-pout-prepare-topic (fn-owner-ocfg state) event carry)
+        (let ((state (fn-owner-install-ocfg next state)))
+          (value word))))))
 
 ; This is the one owner-side proposal read. ACL2 selects an exact earlier T10
 ; event and snapshot from the carried topic projection; neither the control

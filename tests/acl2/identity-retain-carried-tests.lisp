@@ -12,6 +12,7 @@
 (include-book "owner-identity-served-tests")
 (include-book "post-retain-carried-tests")
 (include-book "peer-inbound-tests")
+(include-book "owner-prepare-outcome-tests")
 
 (defun irct-retention (oc)
   (fn-node-retention (fn-sn-node (fn-own-store (fn-ocfg-owner oc)))))
@@ -239,3 +240,59 @@
   (equal (fn-irc-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop*
                                       *pt-noloop* nil "ob" "s" *irct-tbad*)
          (fn-peer-decision :refuse :capacity))))
+
+; -----------------------------------------------------------------------------
+; fn-irc-pout-prepare-retention-of-refresh-is-pout and
+; fn-irc-pout-prepare-topic-of-refresh-is-pout (Q5a-2: the host's retention and
+; topic prepares).  owner-prepare-outcome-tests' reserved owner *lgt-reserved*,
+; its retention event *pst-ret-event* and topic event *pse-topic-event*; the
+; references' answers are that book's *pot-ret* and *pot-topic* (:prepared).
+(defun irct-ret (oc e carry)
+  (mv-let (w n) (fn-irc-pout-prepare-retention oc e carry) (list w n)))
+(defun irct-topic (oc e carry)
+  (mv-let (w n) (fn-irc-pout-prepare-topic oc e carry) (list w n)))
+(defconst *irct-lr* (fn-node-retention (fn-sn-node (lgt-store *lgt-reserved*))))
+(defconst *irct-lc* (fn-prc-refresh nil *irct-lr*))
+(assert-event (and (fn-prc-carryp *irct-lc*) (equal (car *irct-lc*) *irct-lr*)))
+; The keystones' other premise: the Store relation holds of the owner's Store.
+(assert-event (fn-snt-relation (lgt-store *lgt-reserved*)))
+(assert-event (fn-snt-relation (lgt-store *lgt-oc0*)))
+; REACHABLE POSITIVE WITNESSES: with the host's refreshed carry each stages
+; (without the appended-history replay: fn-pcar-stage-record),
+; word and owner equal to the reference's.
+(assert-event (equal (first (irct-ret *lgt-reserved* *pst-ret-event* *irct-lc*)) :prepared))
+(assert-event (equal (irct-ret *lgt-reserved* *pst-ret-event* *irct-lc*) *pot-ret*))
+(assert-event (equal (first (irct-topic *lgt-reserved* *pse-topic-event* *irct-lc*)) :prepared))
+(assert-event (equal (irct-topic *lgt-reserved* *pse-topic-event* *irct-lc*) *pot-topic*))
+; The refused arm (no reservation: the owner at :ready), equal to the reference.
+(assert-event
+ (equal (irct-ret *lgt-oc0* *pst-ret-event*
+                  (fn-prc-refresh nil (fn-node-retention (fn-sn-node (lgt-store *lgt-oc0*)))))
+        *pot-ret-r*))
+(assert-event (equal (first *pot-ret-r*) :refused))
+; HYPOTHESIS-REMOVAL WITNESS (fn-prc-carryp omitted), retention: the ledger's
+; carry with a trie that also names the event's obligation id.  The omitted
+; hypothesis fails, the refresh keeps it, and the conclusion fails: the twin
+; refuses the undertaking the reference stages.
+(defconst *irct-ret-id* (fn-store-event-obligation-id *pst-ret-event*))
+(assert-event (stringp *irct-ret-id*))
+(assert-event (not (fn-rii-knownp *irct-ret-id* *irct-lr*)))
+(defconst *irct-lbad* (cons *irct-lr* (fn-prc-add *irct-ret-id* (cdr *irct-lc*))))
+(assert-event (not (fn-prc-carryp *irct-lbad*)))
+(assert-event (equal (fn-prc-refresh *irct-lbad* *irct-lr*) *irct-lbad*))
+(assert-event
+ (with-guard-checking :none
+  (equal (first (irct-ret *lgt-reserved* *pst-ret-event* *irct-lbad*)) :refused)))
+(assert-event
+ (with-guard-checking :none
+  (not (equal (irct-ret *lgt-reserved* *pst-ret-event* *irct-lbad*) *pot-ret*))))
+; The topic keystone has no hypothesis-removal witness: a topic record's
+; application never reaches the retention admission (fn-replay-apply-record's
+; retention arm is for retention records), so no carry changes its answer.
+; Its twin exists for the served chain: fn-owner-prepare-topic no longer
+; reaches fn-retain-admissiblep through fn-replay-apply-record.
+(assert-event
+ (with-guard-checking :none
+  (equal (irct-topic *lgt-reserved* *pse-topic-event*
+                     (cons *irct-lr* (fn-prc-add "x" (cdr *irct-lc*))))
+         *pot-topic*)))

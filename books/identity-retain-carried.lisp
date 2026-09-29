@@ -695,3 +695,254 @@
 
 (in-theory (disable fn-irc-peer-decide-transfer
                     fn-irc-peer-decide-transfer-under))
+
+; -----------------------------------------------------------------------------
+; The retention and topic prepares the host calls (host/owner-host.lisp
+; fn-owner-prepare-retention: every BP undertake/release commit;
+; fn-owner-prepare-topic) with the gate's record application through the
+; carry (Q5a-2): books/store-node.lisp fn-sn-prepare-retention and
+; fn-sn-prepare-topic, reached through fn-ocfg-step's (:store ...) arm and
+; fn-psrv-prepare-topic, and books/owner-prepare-outcome.lisp's words.
+
+(defun fn-irc-sn-prepare-retention (s event carry)
+  (declare (xargs :guard (and (fn-sn-statep s) (fn-prc-carryp carry))
+                  :verify-guards nil))
+  (if (and (mbe :logic (fn-sn-statep s) :exec t)
+           (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+           (fn-store-retention-event-p event)
+           (eq (car (fn-ccar-cpe-projection-step
+                     (fn-sn-consumer s) event (fn-sn-identity-next s))) :ok)
+           (consp (fn-irc-apply-retention-event (fn-sn-node s) event carry)))
+      (let ((files (fn-pcar-stage-record (fn-sn-files s) event)))
+        (if (equal (fn-sf-phase files) :record-staged)
+            (fn-sn-update s files (fn-sn-node s))
+          s))
+    s))
+
+(local
+ (defthm fn-irc-retention-record-applies-as-retention-event
+   (implies (fn-store-retention-event-p event)
+            (equal (fn-replay-apply-record node event)
+                   (fn-replay-apply-retention-event node event)))
+   :hints (("Goal" :in-theory '(fn-replay-apply-record)))))
+
+(local
+ (defthm fn-irc-retention-event-is-a-store-event
+   (implies (fn-store-retention-event-p event)
+            (and (fn-store-event-p event) (true-listp event)))
+   :hints (("Goal" :in-theory (enable fn-store-retention-event-p
+                                      fn-store-event-p)))))
+
+; KEYSTONE (sn level): the retention prepare with the admission through the
+; carry and the appended-history replay carried by the relation, as
+; fn-ccar-sn-prepare-identity's (fn-spc-related-identity-candidate-is-recoverable
+; holds of any event the live node applies): fn-sn-prepare-retention's on
+; every store fn-snt-relation admits, for every fn-prc-carryp carry.
+(defthm fn-irc-sn-prepare-retention-is-reference
+  (implies (and (fn-prc-carryp carry) (fn-snt-relation s))
+           (equal (fn-irc-sn-prepare-retention s event carry)
+                  (fn-sn-prepare-retention s event)))
+  :hints (("Goal"
+           :use (fn-snt-relation-implies-structural-state
+                 (:instance fn-snt-typed-store-components)
+                 (:instance fn-spc-related-identity-candidate-is-recoverable))
+           :in-theory (union-theories
+                       '(fn-irc-sn-prepare-retention fn-sn-prepare-retention
+                         fn-sf-prepare-record fn-spc-stage-record
+                         fn-pcar-stage-record-is-stage-record
+                         fn-evc-carried-definitions
+                         fn-ccar-cpe-projection-step-is-cpe-projection-step
+                         fn-irc-apply-retention-event-is-reference
+                         fn-irc-retention-record-applies-as-retention-event
+                         fn-irc-retention-event-is-a-store-event)
+                       (theory 'minimal-theory)))))
+
+(verify-guards fn-irc-sn-prepare-retention
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep fn-irc-retention-event-is-a-store-event)
+                                  (fn-sf-statep fn-node-statep fn-store-event-p
+                                   fn-store-retention-event-p fn-prc-carryp
+                                   fn-replay-apply-retention-event
+                                   fn-irc-apply-retention-event
+                                   fn-spc-stage-record fn-pcar-stage-record)))))
+
+(defun fn-irc-ocfg-prepare-retention (oc event carry)
+  (declare (xargs :guard (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+                              (fn-prc-carryp carry))
+                  :verify-guards nil))
+  (let ((o (fn-ocfg-owner oc)))
+    (fn-ocfg-with-owner
+     oc
+     (fn-own-refresh
+      (fn-own-make (fn-irc-sn-prepare-retention (fn-own-store o) event carry)
+                   (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+                   (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
+                   (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
+                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
+                   (fn-own-node-secret o) (fn-own-refused o))))))
+
+(defthm fn-irc-ocfg-prepare-retention-is-ocfg-step
+  (implies (and (fn-prc-carryp carry) (fn-snt-relation (fn-own-store (fn-ocfg-owner oc))))
+           (equal (fn-irc-ocfg-prepare-retention oc event carry)
+                  (fn-ocfg-step oc (list :store (list :prepare-retention event))
+                                fn-arena)))
+  :hints (("Goal"
+           :in-theory (union-theories
+                       '(fn-irc-ocfg-prepare-retention fn-ocfg-step
+                         fn-ocfg-pass fn-own-step fn-own-store-step
+                         fn-snrt-step
+                         fn-irc-sn-prepare-retention-is-reference)
+                       (theory 'ground-zero)))))
+
+(verify-guards fn-irc-ocfg-prepare-retention
+  :hints (("Goal" :in-theory (e/d (fn-irc-sn-prepare-retention-is-reference)
+                                  (fn-sn-statep fn-prc-carryp fn-own-refresh
+                                   fn-sn-prepare-retention
+                                   fn-irc-sn-prepare-retention)))))
+
+(defun fn-irc-pout-prepare-retention (oc e carry)
+  (declare (xargs :guard (and (fn-sn-statep (fn-sbud-oc-store oc))
+                              (fn-prc-carryp carry))
+                  :verify-guards nil))
+  (let ((next (fn-irc-ocfg-prepare-retention oc e carry)))
+    (mv (if (fn-pout-stagedp (fn-sbud-oc-store oc) (fn-sbud-oc-store next))
+            :prepared
+          :refused)
+        next)))
+
+(verify-guards fn-irc-pout-prepare-retention
+  :hints (("Goal" :in-theory (e/d (fn-sbud-oc-store)
+                                  (fn-sn-statep fn-prc-carryp
+                                   fn-irc-ocfg-prepare-retention)))))
+
+; KEYSTONE (host line): host/owner-host.lisp fn-owner-prepare-retention calls
+; the left-hand side with the carry refreshed to the Store node's ledger; its
+; word and owner are fn-pout-prepare-retention's, for every carry the host
+; holds, on every owner whose Store the maintained store relation admits
+; (fn-snt-relation, which fn-own-relation conjoins: the identity prepare's
+; premise, fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation): no
+; appended-history replay and no ledger scan.
+(defthm fn-irc-pout-prepare-retention-of-refresh-is-pout
+  (implies (and (fn-prc-carryp carry) (fn-snt-relation (fn-own-store (fn-ocfg-owner oc))))
+           (equal (fn-irc-pout-prepare-retention oc e (fn-prc-refresh carry ledger))
+                  (fn-pout-prepare-retention oc e fn-arena)))
+  :hints (("Goal" :in-theory '(fn-irc-pout-prepare-retention
+                               fn-pout-prepare-retention
+                               fn-prc-carryp-of-refresh
+                               fn-irc-ocfg-prepare-retention-is-ocfg-step))))
+
+(in-theory (disable fn-irc-sn-prepare-retention fn-irc-ocfg-prepare-retention
+                    fn-irc-pout-prepare-retention))
+
+(defun fn-irc-sn-prepare-topic (s event carry)
+  (declare (xargs :guard (and (fn-sn-statep s) (fn-prc-carryp carry))
+                  :verify-guards nil))
+  (if (and (mbe :logic (fn-sn-statep s) :exec t)
+           (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+           (fn-th-topic-eventp event)
+           (not (fn-th-topic-v1-anchorp event))
+           (eq (fn-th-at 0 (fn-th-prefix-step (fn-sn-topic s) event)) :ok)
+           (consp (fn-irc-apply-record (fn-sn-node s) event carry)))
+      (let ((files (fn-pcar-stage-record (fn-sn-files s) event)))
+        (if (equal (fn-sf-phase files) :record-staged)
+            (fn-sn-update s files (fn-sn-node s))
+          s))
+    s))
+
+(local
+ (defthm fn-irc-topic-event-is-a-store-event
+   (implies (fn-th-topic-eventp event)
+            (and (fn-store-event-p event) (true-listp event)))
+   :hints (("Goal" :in-theory (enable fn-th-topic-eventp fn-store-event-p)))))
+
+; KEYSTONE (sn level): the topic prepare with the appended-history replay
+; carried by the relation (fn-spc-related-identity-candidate-is-recoverable),
+; fn-sn-prepare-topic's on every store fn-snt-relation admits.
+(defthm fn-irc-sn-prepare-topic-is-reference
+  (implies (and (fn-prc-carryp carry) (fn-snt-relation s))
+           (equal (fn-irc-sn-prepare-topic s event carry)
+                  (fn-sn-prepare-topic s event)))
+  :hints (("Goal"
+           :use (fn-snt-relation-implies-structural-state
+                 (:instance fn-snt-typed-store-components)
+                 (:instance fn-spc-related-identity-candidate-is-recoverable))
+           :in-theory (union-theories
+                       '(fn-irc-sn-prepare-topic fn-sn-prepare-topic
+                         fn-sf-prepare-record fn-spc-stage-record
+                         fn-pcar-stage-record-is-stage-record
+                         fn-evc-carried-definitions
+                         fn-irc-apply-record-is-replay-apply-record
+                         fn-irc-topic-event-is-a-store-event)
+                       (theory 'minimal-theory)))))
+
+(verify-guards fn-irc-sn-prepare-topic
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep fn-irc-topic-event-is-a-store-event)
+                                  (fn-sf-statep fn-node-statep fn-store-event-p
+                                   fn-th-topic-eventp fn-prc-carryp
+                                   fn-replay-apply-record fn-irc-apply-record
+                                   fn-spc-stage-record fn-pcar-stage-record)))))
+
+(defun fn-irc-psrv-prepare-topic (oc event carry)
+  (declare (xargs :guard (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+                              (fn-prc-carryp carry))
+                  :verify-guards nil))
+  (let* ((o (fn-ocfg-owner oc))
+         (s (fn-own-store o)))
+    (if (and (fn-store-event-p event)
+             (eq (car (fn-ccar-cpe-projection-step
+                       (fn-sn-consumer s) event (fn-sn-identity-next s)))
+                 :ok))
+        (fn-ocfg-with-owner
+         oc
+         (fn-own-refresh
+          (fn-own-make (fn-irc-sn-prepare-topic s event carry)
+                       (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+                       (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
+                       (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
+                       (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
+                       (fn-own-node-secret o) (fn-own-refused o))))
+      oc)))
+
+(defthm fn-irc-psrv-prepare-topic-is-psrv
+  (implies (and (fn-prc-carryp carry) (fn-snt-relation (fn-own-store (fn-ocfg-owner oc))))
+           (equal (fn-irc-psrv-prepare-topic oc event carry)
+                  (fn-psrv-prepare-topic oc event)))
+  :hints (("Goal" :in-theory '(fn-irc-psrv-prepare-topic
+                               fn-psrv-prepare-topic
+                               fn-irc-sn-prepare-topic-is-reference))))
+
+(verify-guards fn-irc-psrv-prepare-topic
+  :hints (("Goal" :use ((:guard-theorem fn-psrv-prepare-topic))
+                  :in-theory (e/d (fn-irc-sn-prepare-topic-is-reference)
+                                  (fn-sn-statep fn-prc-carryp fn-own-refresh
+                                   fn-sn-prepare-topic fn-irc-sn-prepare-topic)))))
+
+(defun fn-irc-pout-prepare-topic (oc e carry)
+  (declare (xargs :guard (and (fn-sn-statep (fn-sbud-oc-store oc))
+                              (fn-prc-carryp carry))
+                  :verify-guards nil))
+  (let ((next (fn-irc-psrv-prepare-topic oc e carry)))
+    (mv (if (fn-pout-stagedp (fn-sbud-oc-store oc) (fn-sbud-oc-store next))
+            :prepared
+          :refused)
+        next)))
+
+(verify-guards fn-irc-pout-prepare-topic
+  :hints (("Goal" :in-theory (e/d (fn-sbud-oc-store)
+                                  (fn-sn-statep fn-prc-carryp
+                                   fn-irc-psrv-prepare-topic)))))
+
+; KEYSTONE (host line): host/owner-host.lisp fn-owner-prepare-topic calls the
+; left-hand side with the carry refreshed to the Store node's ledger; its word
+; and owner are fn-pout-prepare-topic's, for every carry the host holds, on
+; every owner whose Store fn-snt-relation admits: no appended-history replay.
+(defthm fn-irc-pout-prepare-topic-of-refresh-is-pout
+  (implies (and (fn-prc-carryp carry) (fn-snt-relation (fn-own-store (fn-ocfg-owner oc))))
+           (equal (fn-irc-pout-prepare-topic oc e (fn-prc-refresh carry ledger))
+                  (fn-pout-prepare-topic oc e)))
+  :hints (("Goal" :in-theory '(fn-irc-pout-prepare-topic
+                               fn-pout-prepare-topic
+                               fn-prc-carryp-of-refresh
+                               fn-irc-psrv-prepare-topic-is-psrv))))
+
+(in-theory (disable fn-irc-sn-prepare-topic fn-irc-psrv-prepare-topic
+                    fn-irc-pout-prepare-topic))

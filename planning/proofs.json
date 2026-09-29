@@ -17109,6 +17109,34 @@
       ]
     },
     {
+      "id": "PRF-1033",
+      "title": "The retention and topic prepares answer without the appended-history replay and with the carried obligation-id trie",
+      "statement": "books/identity-retain-carried.lisp (Q5a-2, and Q5a-1 chain (e)'s prepare half). KEYSTONES fn-irc-pout-prepare-retention-of-refresh-is-pout and fn-irc-pout-prepare-topic-of-refresh-is-pout: for every carry satisfying fn-prc-carryp (PRF-289), every ledger, and every configured owner whose Store satisfies fn-snt-relation (the premise fn-own-relation conjoins, as PRF-144's identity prepare), fn-irc-pout-prepare-retention / -topic over (fn-prc-refresh carry ledger) return fn-pout-prepare-retention's / fn-pout-prepare-topic's word and owner. The Store level: fn-irc-sn-prepare-retention-is-reference and fn-irc-sn-prepare-topic-is-reference stage through fn-pcar-stage-record, not fn-sf-prepare-record's replay of the whole appended history (fn-spc-related-identity-candidate-is-recoverable), and the retention admission through fn-prc-admissiblep. Subject: host/owner-host.lisp fn-owner-prepare-retention and fn-owner-prepare-topic call the twins with the carry refreshed to the Store node's ledger and store it back. Local policy (cost); no RFC requirement.",
+      "depends_on": [
+        "PRF-289",
+        "PRF-144"
+      ],
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/identity-retain-carried.lisp",
+        "tests/acl2/identity-retain-carried-tests.lisp"
+      ],
+      "progress_note": "Lane served-costs-5 (2026-09-29): REPL-admitted on persvati (book 54/54, tests 74/74); certification with the runner's background cite.",
+      "events": [
+        "fn-irc-pout-prepare-retention-of-refresh-is-pout",
+        "fn-irc-pout-prepare-topic-of-refresh-is-pout",
+        "fn-irc-sn-prepare-retention-is-reference",
+        "fn-irc-sn-prepare-topic-is-reference",
+        "fn-irc-ocfg-prepare-retention-is-ocfg-step",
+        "fn-irc-psrv-prepare-topic-is-psrv"
+      ]
+    },
+    {
       "id": "PRF-979",
       "title": "A checkpoint the open accepts shares the log's lineage: every segment K >= 2 opens with a rotation entry chained from the closed segment's last trailer, the F row's GENESIS is its trailer, and the open decides over segment K's head before it scans -- a fork's checkpoint (a restored backup that diverged, the same store identity, an equal count, an empty suffix) is refused :foreign-lineage by name",
       "statement": "books/store-log-lineage.lisp (lane store-lineage, row A2's last piece: composed-owner-6's G1 finding). The rotation entry fn-lgl-rotation-frame P K: an FNLG frame of kind 3 (*fn-lg-rotation-kind*) over P (the closed segment's last trailer, the claimed predecessor) and K as u32, no records; fn-lgl-open K G HEAD T0 MAX: the open's lineage decision over the F row's (K G) and segment K's head -- nil, or (:refused :foreign-lineage) when the head is a readable rotation entry naming K whose trailer is not G, (:refused :segment-head-damaged) when it is not a readable rotation entry, (:refused :segment-misnamed) when it names another index; segment 1 must carry T0. KEYSTONE fn-lgl-open-of-rotated-segment: over segment K as the rotation wrote it from P (the entry, then anything -- records or nothing) the open accepts (K G) exactly when G is the entry's trailer. fn-lgl-fork-refused: with G the trailer of a rotation entry from another chain value Q, the open refuses :foreign-lineage, under the per-pair hypothesis fn-lgl-trailer-distinct (two rotation entries naming K with equal trailers continue from the same value; its failure is a BLAKE3 collision between the two frames, the pessimistic figure 2^-128 per pair). fn-lgl-accepted-shares-lineage (the composed statement over publish, recover and open): with P the chain value of the segments the log held below K and Q that of the segments the checkpoint's capture covered, an accepted checkpoint covered exactly the log's segments, under fn-lgl-trailer-distinct and fn-lgl-chain-distinct (fn-hib-chain-distinct's shape over segments). Scope at READY 1: the model; the host's rotation and open follow it in READY 2 (books/store-log.lisp kind 3, fn-lgc-rotate KS K, host/native/io.lisp fnn-log-rotate / fnn-recover-log).",

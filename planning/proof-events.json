@@ -16839,6 +16839,35 @@
       ]
     },
     {
+      "id": "PRF-1033",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-irc-pout-prepare-retention-of-refresh-is-pout"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-pout-prepare-topic-of-refresh-is-pout"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-sn-prepare-retention-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-sn-prepare-topic-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-ocfg-prepare-retention-is-ocfg-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-psrv-prepare-topic-is-psrv"
+        }
+      ]
+    },
+    {
       "id": "PRF-979",
       "events": [
         {
