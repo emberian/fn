@@ -106,8 +106,10 @@ class NativeBpApplicationTests(unittest.TestCase):
         articles) and `store PATH retention' (pins=, the replayed ledger's
         pin count).  The Python Store (tools/run_store.py) reads another
         layout and is not this Store's readback."""
+        # Row S3: `status --replay' (a stopped store's plain `status' is its
+        # checkpoint header alone; fn-omr-store-status-word).
         status = re.findall(rb"^transactions=([0-9]+) articles=([0-9]+) ",
-                            self.store_verb("status"), re.MULTILINE)
+                            self.store_verb("status", "--replay"), re.MULTILINE)
         self.assertEqual(len(status), 1)
         pins = re.findall(rb"^pins=([0-9]+) ", self.store_verb("retention"),
                           re.MULTILINE)

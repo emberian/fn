@@ -682,7 +682,7 @@ def load_check(acl2: Path, files: list[str], timeout: int,
     with tempfile.TemporaryDirectory(prefix="fn-host-load-") as scratch:
         driver = Path(scratch) / "driver.lsp"
         driver.write_text(load_driver(files), encoding="utf-8")
-        session = ((world_session(world) + interface_world_forms(interface_names(declared))
+        session = ((world_session(world) + interface_world_forms(interface_names(declared, world))
                     if world is not None else "")
                    + "(defttag :fn-host-load-check)\n"
                    f'(progn! (set-raw-mode t) (load "{driver}"))\n(good-bye)\n')
@@ -767,9 +767,20 @@ def load_check(acl2: Path, files: list[str], timeout: int,
 IFACE_TAG = "HOSTCHECK-IFACE-UNDEFINED"
 
 
-def interface_names(decls: list[dict]) -> list[str]:
-    """The declared names a world check asks about (stobj creators aside)."""
-    return sorted({d["name"] for d in decls if not d["name"].startswith("create-")})
+def interface_names(decls: list[dict], world: list[object] | None = None) -> list[str]:
+    """The declared names to check in this world (stobj creators aside).
+
+    Extraction-only host entries are checked when their declaration file is
+    loaded. Native prefixes omit that file and its host-defined functions.
+    Keep ordinary declarations checked, including stale native declarations.
+    """
+    from ledger import head
+    extract_loaded = world is None or any(
+        head(form) == "ld" and len(form) >= 2
+        and form[1] == "host/interfaces-extract.lisp" for form in world)
+    return sorted({d["name"] for d in decls
+                   if not d["name"].startswith("create-")
+                   and (extract_loaded or d.get("source") != "host/interfaces-extract.lisp")})
 
 
 def interface_world_forms(names: list[str]) -> str:

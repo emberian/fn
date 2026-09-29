@@ -926,7 +926,10 @@ class NativeBpNodeTests(unittest.TestCase):
         fn-nls-report's `articles=' word): it replays the record log
         the way the served path does.  The Python Store (tools/run_store.py)
         reads another layout and is not this Store's readback."""
-        status = self.invoke("store", self.receiver_store, "status", timeout=300)
+        # Row S3: a stopped store's `status' is its checkpoint header;
+        # `--replay' (the operator verb's decision, fn-omr-store-status-word)
+        # asks for the report over the replayed log, whose counts these are.
+        status = self.invoke("store", self.receiver_store, "status", "--replay", timeout=300)
         self.assertEqual(status.returncode, EXIT.OK, (status.stdout, status.stderr))
         counts = re.findall(rb"^transactions=[0-9]+ articles=([0-9]+) ",
                             status.stdout, re.MULTILINE)

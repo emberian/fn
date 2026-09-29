@@ -46,15 +46,22 @@
 ;                checkpoint base's canonical rows beside the live ones):
 ;                *fn-heap-record-header-octet-cost* (32) a header octet, the
 ;                control words' 2 x 16;
-;              - per MESSAGE-ID octet, more: the owner view's Message-ID trie
-;                (a cons and a list cell a character, 32), its rebuild while
-;                a checkpoint is published (the base's event index,
-;                fn-scka-restore-base, 32 more) and the two strings that name
-;                it in the row and the overview (4 each, twice posting): 80
-;                an octet, *fn-heap-record-msgid-octet-cost* (48) over the
+;              - per MESSAGE-ID octet, more: the two strings that name it in
+;                the row and the overview (4 each, twice posting): 48 an
+;                octet, *fn-heap-record-msgid-octet-cost* (16) over the
 ;                header octet's 32, for at most *fn-record-max-msgid* (RFC
 ;                5536 3.1.3's 250, which every admission checks:
-;                fn-af-message-idp, fn-record-msgidp).
+;                fn-af-message-idp, fn-record-msgidp).  THE SWITCH (PRF-1037,
+;                lane paged-history-6, row P2): the catalog's Message-ID
+;                column is the keyed page table (books/msgid-pages-exec),
+;                at most 8 u64 words a record whatever the Message-ID's
+;                length -- *fn-heap-record-msgid-index-octets* (64) a
+;                record, in the fixed part -- where the retired `equal'
+;                hash table and the view trie it fed cost 32 an octet with
+;                their rebuild at a checkpoint: 2 x 48 x 250 x 16,384
+;                records = 375 MiB of the small profile's state, now
+;                2 x 64 x 16,384 = 2.0 MiB (a model term, not a measured
+;                peak).
 ;              Against f8-reservation's long-header curve (250-octet
 ;              Message-IDs, 900-octet Subjects): 222 Message-ID octets x 80
 ;              and 872 Subject octets x 8 is 24.7 KB a record over the short
@@ -249,13 +256,20 @@
 ; part, a header octet's columns, and a Message-ID octet's trie and names.
 (defconst *fn-heap-record-fixed-octets* 4096)
 (defconst *fn-heap-record-header-octet-cost* 32)
-(defconst *fn-heap-record-msgid-octet-cost* 48)
+(defconst *fn-heap-record-msgid-octet-cost* 16)
+; THE SWITCH (PRF-1037): the keyed Message-ID page table's words a record,
+; at most 8 (books/msgid-pages-exec.lisp; 32 octets at a load of 1/4),
+; whatever the Message-ID's length.
+(defconst *fn-heap-record-msgid-index-octets* 64)
 ; The part of a record's state no header octet moves (lane heap-pool: the
-; Message-ID's is charged with the header now).
-(defconst *fn-heap-record-octets* *fn-heap-record-fixed-octets*)
+; Message-ID's octets are charged with the header now; its index entry is
+; here).
+(defconst *fn-heap-record-octets*
+  (+ *fn-heap-record-fixed-octets* *fn-heap-record-msgid-index-octets*))
 ; The heap a charged history octet of header costs, the collector's copy
-; included: 2 x 32 / 8 for a header octet, 2 x (32 + 48) / (8 + 12) for a
-; Message-ID octet; both 8 (fn-heap-record-charge-covers-the-state).
+; included: 2 x 32 / 8 for a header octet, 2 x (32 + 16) / (8 + 12) for a
+; Message-ID octet; the header octet's 8 bounds both
+; (fn-heap-record-charge-covers-the-state).
 (defconst *fn-heap-charge-heap-octets* 8)
 (defconst *fn-heap-membership-octets* 320)
 (defconst *fn-heap-open-chunk-octets* 1048576)      ; *fn-srs-chunk-octets*
@@ -338,10 +352,13 @@
 
 ; ONE RECORD's retained state: MID octets of Message-ID among HDR header
 ; octets (the Message-ID's octets are header octets too, so a Message-ID
-; octet costs the header octet's and the trie's).
+; octet costs the header octet's and its two strings'), and the keyed
+; index's words a record (THE SWITCH: *fn-heap-record-msgid-index-octets*,
+; a constant of the record, not of the Message-ID's length).
 (defun fn-heap-record-retained-octets (mid hdr)
   (declare (xargs :guard t))
   (+ *fn-heap-record-fixed-octets*
+     *fn-heap-record-msgid-index-octets*
      (* *fn-heap-record-header-octet-cost* (nfix hdr))
      (* *fn-heap-record-msgid-octet-cost* (nfix mid))))
 

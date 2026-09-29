@@ -133,6 +133,8 @@
     ("docs/operator.md#tls-handshakes-what-the-node-resists-on-its-own" 2 "policy" "set" "tls-handshakes-in-flight" "16")
     ("docs/operator.md#tls-handshakes-what-the-node-resists-on-its-own" 3 "policy" "set" "tls-handshake-ms" "5000")
     ("docs/operator.md#articles-carried-over-bp" 1 "carry" "/srv/fn/workflow" "list")
+    ("docs/operator.md#back-up" 1 "store" "export" "/var/backups/fn-2026-09-29")
+    ("docs/operator.md#back-up" 2 "store" "export" "--status")
     ("docs/operator.md#a-damaged-record-log" 1 "recover" "--repair" "truncate" "000001.log:4096")
     ("docs/operator.md#the-node-does-not-start" 1 "policy" "set" "exposure-connections" "1000")
     ("docs/operator.md#which-articles-are-in-a-group" 1 "store" "inspect" "--group" "fn.test")
