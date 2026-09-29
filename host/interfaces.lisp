@@ -207,7 +207,7 @@
 
 ; Not guard-verified (:ideal): the host's call runs the logic definition.
 (definterface fn-bpnf-inspect-adu
-  :class :ideal
+  :class :common-lisp-compliant
   :exempt ((frame "total unframe (fn-bpnf-stored-recordp gates it)")))
 
 (definterface fn-bpnpf-node-profile-write-octets

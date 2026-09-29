@@ -183,7 +183,13 @@
   "fn-otb-minus": "walks a batch's member connection ids (or the ledger's told ids): at most two batches in flight, each at most the operator's log-batch-records row (a profile field, D27), never store data",
   "fn-otb-dedup": "walks a batch's member connection ids (or the ledger's told ids): at most two batches in flight, each at most the operator's log-batch-records row (a profile field, D27), never store data"
  },
- "debt": {},
+ "debt": {
+  "fn-orc-rewrite-rows": "a non-tail recursion that arrived with dev 33bb1ada7 (lane online-reclaim, books/owner-reclaim.lisp) after C4 reached 0 debt: the owning lane bounds it by name or executes it by a loop (PRF-919 pattern); listed at the seam by depth-debt-4",
+  "fn-psub-pack-dc": "a non-tail recursion that arrived with dev 33bb1ada7 (lane online-reclaim, books/packed-submission.lisp) after C4 reached 0 debt: the owning lane bounds it by name or executes it by a loop (PRF-919 pattern); listed at the seam by depth-debt-4",
+  "fn-psub-pack-small": "a non-tail recursion that arrived with dev 33bb1ada7 (lane online-reclaim, books/packed-submission.lisp) after C4 reached 0 debt: the owning lane bounds it by name or executes it by a loop (PRF-919 pattern); listed at the seam by depth-debt-4",
+  "fn-xrt-remove-named": "a non-tail recursion that arrived with dev 33bb1ada7 (lane online-reclaim, books/extent-retire.lisp) after C4 reached 0 debt: the owning lane bounds it by name or executes it by a loop (PRF-919 pattern); listed at the seam by depth-debt-4",
+  "fn-xrt-srcs-handles": "a non-tail recursion that arrived with dev 33bb1ada7 (lane online-reclaim, books/extent-retire.lisp) after C4 reached 0 debt: the owning lane bounds it by name or executes it by a loop (PRF-919 pattern); listed at the seam by depth-debt-4"
+ },
  "append": {
   "_doc": "tools/depth_check.py's data-sized append rule (lane depth-debt-2): an `append' whose first argument is not a literal, a constant or a (list ...), in a function on the host-called closure whose guards are not verified (so the host's *1* call runs binary-append's recursion, one frame per element of that argument). bounded names the bound as the recursions' entries do; debt only shrinks (verify the function's guards).",
   "bounded": {
@@ -790,6 +796,17 @@
   "fn-workflow-reset": "bp: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/workflow-host.lisp)",
   "fn-workflow-take-submit": "bp: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/workflow-host.lisp)",
   "fn-workflow-undertake-record": "bp: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/workflow-host.lisp)",
-  "fn-workflow-work-status": "bp: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/workflow-host.lisp)"
+  "fn-workflow-work-status": "bp: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/workflow-host.lisp)",
+  "fn-native-operator-host-result-reclaim-argv": "admin: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/native-operator-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
+  "fn-native-operator-host-result-reclaim-control-path-octets": "admin: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/native-operator-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
+  "fn-owner-orc-capture": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
+  "fn-owner-orc-chunk": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
+  "fn-owner-orc-classes": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
+  "fn-owner-orc-ctx": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
+  "fn-owner-orc-decide": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
+  "fn-owner-orc-finish": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
+  "fn-owner-orc-init": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
+  "fn-owner-orc-request": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
+  "fn-owner-orc-request-status": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)"
  }
 }
