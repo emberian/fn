@@ -49,6 +49,20 @@ class GraphTests(unittest.TestCase):
         books/byte-store-txn-name.lisp `defattach`es to fn-bs-txn-name-impl."""
         self.assertIn("fn-bs-txn-name-impl", self.graph.reachable)
 
+    def test_a_defstobj_creator_is_reached_through_the_abstract_creator(self):
+        """books/payload-arena-paged.lisp `(defstobj fn-arena$p ...)' is the
+        foundation of `fn-arena-paged', whose :creator runs `:exec
+        create-fn-arena$p'; the paged arena is reached through the live
+        extent arena's seal (host/bp-ingress-host.lisp -> fn-arena-seal-list
+        -> ... -> fn-arena-paged-seal-list), so its creator ran too: a
+        theorem concluding of `(create-fn-arena$p)' is concluded of a
+        reached function (the premise audit's establishment by the
+        creator)."""
+        self.assertIn("create-fn-arena$p", self.graph.book_defs)
+        self.assertNotIn("create-fn-arena$p", self.graph.stobj_names)
+        self.assertIn("create-fn-arena$p", self.graph.reachable)
+        self.assertIn("create-fn-arena-paged", self.graph.host_chain("create-fn-arena$p"))
+
     def test_the_bridges_count_as_host_lines(self):
         """tools/run_owner.py drives the owner by building ACL2 forms as
         text. A symbol named only there is still called by the host."""
