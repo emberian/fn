@@ -213,6 +213,7 @@
 (include-book "store-checkpoint-open")
 (include-book "store-checkpoint-digest")
 (include-book "store-checkpoint-arena-load")
+(include-book "store-checkpoint-digest")
 (include-book "store-checkpoint-arena-writer")
 (include-book "store-open-pre-c1")
 (include-book "store-open-replay-refusal")
