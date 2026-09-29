@@ -1,4 +1,12 @@
 PYTHON ?= python3
+# On a box, the toolchain SBCL (tools/farm.py HOSTS) first on PATH and as
+# FN_SBCL for every recipe: hbox's system /usr/bin/sbcl is 2.2.9 and a check
+# running `sbcl` by name got it (obstructions-5 item 41).  Off a box: nothing.
+TOOLCHAIN_SBCL := $(shell $(PYTHON) tools/native_env.py sbcl 2>/dev/null)
+ifneq ($(TOOLCHAIN_SBCL),)
+export FN_SBCL := $(TOOLCHAIN_SBCL)
+export PATH := $(patsubst %/,%,$(dir $(TOOLCHAIN_SBCL))):$(PATH)
+endif
 # Maximum concurrent ACL2 processes. Books still certify in local
 # include-book dependency order; 1 reproduces the sequential run.
 FN_CERTIFY_JOBS ?= 1
@@ -1532,7 +1540,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/image-world-dtn \
 	books/image-world-store-test
 
-.PHONY: extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
+.PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -1567,6 +1575,13 @@ site:
 # (printed, never failing) instead of against the committed files, which a
 # lane must not commit.  Their generation still has to succeed, and every
 # other check is the same.
+# Every pre-image gate for a host-code conversion, as one target (item 34):
+# world.py --check, interface_emit --check, host_check --forward/--world/
+# --load FILE, and the certified-world class check (host_check's default).
+# On a box: tools/remote_check.sh auto --cmd 'make host-convert-check FILE=host/native/x.lisp'
+host-convert-check:
+	@$(PYTHON) tools/host_convert_check.py $(FILE)
+
 check-lane:
 	FN_LANE_CHECK=1 FN_LANE_CHECK_DIR=$$(mktemp -d "$${TMPDIR:-/tmp}/fn-lane-check.XXXXXX") $(MAKE) check
 
@@ -1586,6 +1601,8 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/main_last_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_main_last_check
 	@$(CHECK_EXECUTE)
 
 check-fast-lane:
@@ -1835,6 +1852,11 @@ check:
 # nothing defines (lane tooling-leftovers).  No ACL2: NOT RUN, exit 2.
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --load
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_load.ClassifyTests
+# Every tests/*.py ends with its `if __name__ == "__main__":` block and calls
+# unittest.main() nowhere else (obstructions-5 item 36: test_farm and
+# test_native_bounds_blob ran nothing after a mid-file block).
+	@$(CHECK_STEP) $(PYTHON) tools/main_last_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_main_last_check
 # Every global hash table in host/ is :synchronized t, or declared
 # thread-confined or guarded-by a lock the file takes (static, no ACL2; lane
 # host-lints, after entry-guards-2's owner stop on an unsynchronized table).

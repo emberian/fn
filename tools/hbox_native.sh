@@ -89,7 +89,10 @@
 # identity source is the one RUN's log names; `tools/image_set.py link-run`),
 # --env NAME=VALUE (repeatable; paths may use $T, the tree),
 # --deadline S (default 5400), --dry-run (print the box script; the refusal
-# and the per-module environment show there).  Options may come before or
+# and the per-module environment show there), --allow-skips (run a module
+# whose opt-in gate -- FN_RUN_*_E2E, FN_INN_SRC ... -- is unset; without it
+# such a module is refused at launch, naming the variable, not skipped after
+# the build).  Options may come before or
 # after REV and the modules.
 #
 # A box reserved for a measurement (tools/boxes.sh reserve) is waited for before
@@ -126,6 +129,7 @@ MODULE_JOBS=1
 BUILD=1
 DETACH=0
 DRY=0
+ALLOW_SKIPS=
 DEADLINE=5400
 ENVS=
 IMAGES_GIVEN=0
@@ -156,6 +160,9 @@ while [ $# -gt 0 ]; do
             BUILD=0; shift 2 ;;
         --detach) DETACH=1; shift ;;
         --dry-run) DRY=1; shift ;;
+        # A module gated by an unset opt-in (FN_RUN_*_E2E ...) is refused at
+        # launch unless this is given (tools/native_env.py plan; item 45).
+        --allow-skips) ALLOW_SKIPS=--allow-skips; shift ;;
         --deadline) DEADLINE=$2; shift 2 ;;
         # The ACL2 wrapper the IMAGE builds run under (certification keeps
         # the toolchain's, whose identity the cache keys on).  The world is
@@ -238,7 +245,7 @@ fi
 # What each module reads, against what this run builds (PKT-437 (2)).
 ENVARGS=
 for assignment in $ENVS; do ENVARGS="$ENVARGS --env $assignment"; done
-PLAN=$(python3 "$HERE/tools/native_env.py" plan --images "$IMAGES" $ENVARGS "$@") || exit 2
+PLAN=$(python3 "$HERE/tools/native_env.py" plan --images "$IMAGES" $ENVARGS $ALLOW_SKIPS "$@") || exit 2
 if [ "$REV" = . ]; then
     # The image's declared source: HEAD, marked +dirty for uncommitted edits
     # (before 2026-09-27 FN_NATIVE_IMAGE_SOURCE_SHA was the literal ".").
@@ -308,6 +315,12 @@ finish() {
 }
 echo "== source $SOURCE"
 echo "== load at start: \$(uptime)"
+# The toolchain SBCL (tools/farm.py HOSTS) first on PATH and as FN_SBCL:
+# hbox's system /usr/bin/sbcl is 2.2.9, and a test running \`sbcl\` by name
+# got it (tooling-truth-2's KNOWN_RED list).  A bare sbcl that is not the
+# toolchain's is refused before any step (obstructions-5 item 41).
+eval "\$(python3 tools/native_env.py sbcl --export)"
+step sbcl-check python3 tools/native_env.py sbcl-check
 BOX
     if [ $BUILD -eq 1 ]; then
         cat <<BOX
@@ -322,6 +335,12 @@ sort -u -o \$L/roots.txt \$L/roots.txt
 BOX
         fi
         cat <<BOX
+# The static pre-image gates first (seconds; make host-convert-check runs
+# them with the ACL2 ones): a stale umbrella or interface registry used to
+# surface only after the certify step, in acquire or the image build
+# (limits-live-5, decision-keystones-3; obstructions-5 item 34).
+step world-check python3 tools/extract/world.py --check
+step interfaces-check python3 tools/interface_emit.py --check
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 step certify swarm-build python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)

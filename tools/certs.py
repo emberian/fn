@@ -982,6 +982,31 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
     return sorted(candidates, key=order, reverse=True)
 
 
+def why_no_entry(root: Path, cache: Path, name: str,
+                 toolchain_identity: str | None = None) -> str:
+    """Why no artifact set holds NAME: what its cache entries at these bytes
+    are, by the filters `artifact_sets` applies (obstructions-5 item 44: an
+    acquire refusal named no book and no reason)."""
+    entries = book_entries(root, cache, name)
+    if not entries:
+        return "no certificate in the cache for these bytes"
+    target = str(root.resolve())
+    counts = {"unusable origin": 0, "no .fasl (uncompiled)": 0, "another toolchain": 0}
+    for directory, meta in entries:
+        if not usable_origin(meta, target):
+            counts["unusable origin"] += 1
+        elif not compiled_here(directory, meta, root / f"{name}.lisp"):
+            counts["no .fasl (uncompiled)"] += 1
+        elif toolchain_identity and meta.get("toolchain_identity") != toolchain_identity:
+            counts["another toolchain"] += 1
+    parts = [f"{count} {why}" for why, count in counts.items() if count]
+    usable = len(entries) - sum(counts.values())
+    if usable:
+        parts.append(f"{usable} usable but incompatible with the rest of the set "
+                     "(certificate post-alists)")
+    return f"{len(entries)} cache entr{'y' if len(entries) == 1 else 'ies'}: " + ", ".join(parts)
+
+
 def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
                          toolchain_identity: str | None = None,
                          reject: Iterable[str] = (),

@@ -48,6 +48,7 @@ from __future__ import annotations
 import argparse
 import collections
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -224,7 +225,55 @@ def chain_report(affected_by: list[str] = (), through: str | None = None,
     return lines
 
 
+REEXEC_MARK = "FN_SHAPE_BOOKS_TREE"
+
+
+def fn_tree(start: Path) -> Path | None:
+    """The fn tree (a directory with tools/shape_books.py and a Makefile)
+    containing START, walking up; None outside every one."""
+    start = start.resolve()
+    for candidate in (start, *start.parents):
+        if (candidate / "tools" / "shape_books.py").is_file() and (candidate / "Makefile").is_file():
+            return candidate
+    return None
+
+
+def own_tree(argv: list[str], cwd: Path, root: Path = ROOT) -> Path | None:
+    """The tree whose own graph answers ARGV, when it is not ROOT's.
+
+    `python3 ~/dev/fn/tools/shape_books.py --book X` run from a lane worktree
+    read the MAIN checkout's Makefile and sources: a book new on the branch
+    was "not in the closure", an absolute path into the worktree "outside
+    the repository", and a moved include gave main's count (composed-owner-6
+    and store-lineage, 2026-09-29).  The answer belongs to the branch: an
+    absolute book path inside another fn tree names that tree, else the
+    tree the shell stands in.  None when that is ROOT itself.
+    """
+    words = iter(argv)
+    for word in words:
+        value = None
+        if word in ("--book", "--affected-by", "--chain"):
+            value = next(words, None)
+        elif word.startswith(("--book=", "--affected-by=", "--chain=")):
+            value = word.split("=", 1)[1]
+        if value and Path(value).is_absolute():
+            tree = fn_tree(Path(value).parent)
+            if tree is not None:
+                return None if tree == root.resolve() else tree
+    tree = fn_tree(cwd)
+    return None if tree is None or tree == root.resolve() else tree
+
+
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if not os.environ.get(REEXEC_MARK):
+        tree = own_tree(argv, Path.cwd())
+        if tree is not None:
+            print(f"shape_books: answering from {tree} (the tree this names), "
+                  f"not {ROOT}", file=sys.stderr, flush=True)
+            os.environ[REEXEC_MARK] = str(tree)
+            os.execv(sys.executable, [sys.executable, str(tree / "tools" / "shape_books.py"),
+                                      *argv])
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--top", type=int, default=40)
     parser.add_argument("--book", action="append", default=[],

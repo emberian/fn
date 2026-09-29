@@ -107,5 +107,56 @@ class ResolveAndDispatchTests(unittest.TestCase):
         self.assertIn("books/top.lisp", out.getvalue())
 
 
+class OwnTreeTests(unittest.TestCase):
+    """obstructions-5 item 33: run from a lane worktree (or naming a book in
+    one), the answer comes from that tree's own Makefile and sources."""
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        base = Path(self.tmp.name)
+        self.main, self.lane = base / "fn", base / "fn" / "build" / "lanes" / "l"
+        for tree in (self.main, self.lane):
+            (tree / "tools").mkdir(parents=True)
+            (tree / "tools" / "shape_books.py").write_text("")
+            (tree / "Makefile").write_text("")
+            (tree / "books").mkdir()
+
+    def test_the_lane_the_shell_stands_in_answers(self):
+        self.assertEqual(shape_books.own_tree(["--book", "store-log"], self.lane / "books",
+                                              root=self.main), self.lane.resolve())
+
+    def test_the_tools_own_tree_answers_itself(self):
+        self.assertIsNone(shape_books.own_tree(["--book", "x"], self.main / "books",
+                                               root=self.main))
+
+    def test_an_absolute_book_path_names_its_tree(self):
+        book = str(self.lane / "books" / "new.lisp")
+        self.assertEqual(shape_books.own_tree(["--book", book], self.main, root=self.main),
+                         self.lane.resolve())
+        self.assertEqual(shape_books.own_tree([f"--affected-by={book}"], Path("/"),
+                                              root=self.main), self.lane.resolve())
+
+    def test_outside_every_tree_nothing_moves(self):
+        self.assertIsNone(shape_books.own_tree(["--top", "3"], Path("/"), root=self.main))
+
+    def test_main_reexecs_the_lane_tool_once(self):
+        import os
+        from unittest import mock
+        calls = []
+        with mock.patch.dict(os.environ, {}, clear=False), \
+                mock.patch.object(shape_books.os, "execv",
+                                  lambda exe, argv: calls.append(argv)
+                                  or (_ for _ in ()).throw(SystemExit(0))), \
+                mock.patch.object(shape_books.Path, "cwd", lambda: self.lane):
+            os.environ.pop(shape_books.REEXEC_MARK, None)
+            with self.assertRaises(SystemExit):
+                shape_books.main(["--book", "store-log"])
+            self.assertEqual(os.environ[shape_books.REEXEC_MARK], str(self.lane.resolve()))
+        self.assertEqual(calls[0][1:], [str(self.lane.resolve() / "tools" / "shape_books.py"),
+                                        "--book", "store-log"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -517,7 +517,7 @@ class LaneAskTests(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()) as out:
             proof_repl.status(proof_repl.argparse.Namespace(name="w"))
         self.assertIn("WARNING: 1 from-source book(s) loaded form by form", out.getvalue())
-        self.assertIn("--ld-local", out.getvalue())
+        self.assertIn("--ld-leak", out.getvalue())
 
 
 class RemoteTests(unittest.TestCase):
@@ -758,7 +758,19 @@ class SourceDependencyTests(unittest.TestCase):
         self.assertEqual(order, ["books/base", "books/mid"])
         self.assertIn("from source, in this order: books/base, books/mid", detail)
         self.assertFalse(refused)
-        self.assertIn("outside this book's dependencies", why)
+        self.assertIn("--ld takes a DEPENDENCY of books/mid", why)
+        self.assertIn("books/mid does not include tests/acl2/mid-tests", why)
+
+    def test_ld_of_the_session_book_itself_says_it_takes_a_dependency(self):
+        # obstructions-5 item 42 (bp-remainder-2 read the old text the other way).
+        with tempfile.TemporaryDirectory() as temporary:
+            root = worktree(temporary + "/tree")
+            with mock.patch.object(proof_repl, "ROOT", root):
+                refused, why, _ = proof_repl.install_closure(
+                    "tests/acl2/mid-tests", ["tests/acl2/mid-tests"])
+        self.assertFalse(refused)
+        self.assertIn("not the book itself", why)
+        self.assertIn("--ld books/X", why)
 
 
 class RefusalHeadlineTests(unittest.TestCase):
@@ -1338,8 +1350,8 @@ class RealAcl2Tests(unittest.TestCase):
             capture_output=True, text=True, cwd=ROOT, timeout=300)
         try:
             started = cli("start", name, "build/proof-repl-real-ld/top",
-                          "--ld", "build/proof-repl-real-ld/dep", "--ld-local",
-                          "--load-limit", "0.001")
+                          "--ld", "build/proof-repl-real-ld/dep",
+                          "--load-limit", "0.001")  # encapsulated by default (item 32)
             # Stopped at `slow`: a partial load (item 25).
             self.assertEqual(started.returncode, proof_repl.PARTIAL_LOAD,
                              started.stdout + started.stderr)
@@ -1763,6 +1775,105 @@ class PartialLoadTests(unittest.TestCase):
                 code = proof_repl._start(args)
             self.assertEqual(code, proof_repl.PARTIAL_LOAD)
             self.assertIn("PARTIAL LOAD -- stopped at c", out.getvalue().splitlines()[-1])
+
+
+class SessionRecordLaneTests(unittest.TestCase):
+    """obstructions-5 item 31: a --host subcommand finds its lane and tree in
+    the record `start` wrote, with no FN_LANE in the environment."""
+
+    def setUp(self):
+        self.sessions = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.sessions, ignore_errors=True)
+        patcher = mock.patch.object(proof_repl, "SESSIONS", self.sessions)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        env = mock.patch.dict(os.environ, {}, clear=False)
+        env.start()
+        self.addCleanup(env.stop)
+        os.environ.pop("FN_LANE", None)
+        # From the main checkout: the tree's path names no lane.
+        lane = mock.patch.object(proof_repl, "ROOT", pathlib.Path("/main/fn"))
+        lane.start()
+        self.addCleanup(lane.stop)
+
+    def args(self, command, **extra):
+        return SimpleNamespace(command=command, name="s31", lane=None, remote_tree=None, **extra)
+
+    def test_send_reads_the_lane_and_tree_start_recorded(self):
+        proof_repl.remember_host("s31", "persvati", "fn-gates/mylane-repl", "books/x", "mylane")
+        lane, tree = proof_repl.remote_lane_and_tree(self.args("send"), "persvati")
+        self.assertEqual((lane, tree), ("mylane", "fn-gates/mylane-repl"))
+
+    def test_without_a_record_it_still_refuses_to_guess(self):
+        with self.assertRaises(SystemExit):
+            proof_repl.remote_lane_and_tree(self.args("status"), "persvati")
+
+    def test_a_record_for_another_box_is_not_used(self):
+        proof_repl.remember_host("s31", "hbox", "/tank/fn/gates/mylane-repl", "books/x", "mylane")
+        with self.assertRaises(SystemExit):
+            proof_repl.remote_lane_and_tree(self.args("stop"), "persvati")
+
+    def test_explicit_lane_wins_over_the_record(self):
+        proof_repl.remember_host("s31", "persvati", "fn-gates/mylane-repl", "books/x", "mylane")
+        args = self.args("send")
+        args.lane = "other"
+        self.assertEqual(proof_repl.remote_lane_and_tree(args, "persvati"),
+                         ("other", "fn-gates/other-repl"))
+
+    def test_start_never_reads_an_old_record(self):
+        proof_repl.remember_host("s31", "persvati", "fn-gates/old-repl", "books/x", "old")
+        with self.assertRaises(SystemExit):
+            proof_repl.remote_lane_and_tree(self.args("start"), "persvati")
+
+    def test_run_remote_sends_status_to_the_recorded_tree(self):
+        proof_repl.remember_host("s31", "persvati", "fn-gates/mylane-repl", "books/x", "mylane")
+        seen = []
+        with mock.patch.object(proof_repl, "box_settings",
+                               lambda host: {"acl2": "acl2", "cache": "/c"}), \
+                mock.patch.object(proof_repl.subprocess, "run",
+                                  lambda command, **kw: seen.append(command)
+                                  or SimpleNamespace(returncode=0)):
+            proof_repl.run_remote(SimpleNamespace(command="status", name="s31", lane=None,
+                                                  remote_tree=None, host="persvati"),
+                                  ["status", "s31", "--host", "persvati"])
+        script = seen[-1][-1]
+        self.assertIn("cd fn-gates/mylane-repl ", script)
+        self.assertIn("FN_LANE=mylane", script)
+
+
+class LdHonoursLocalTests(unittest.TestCase):
+    """obstructions-5 item 32: `start --ld` loads inside one encapsulate by
+    default (store-log-extend's local lemmas turned global form by form)."""
+
+    def parsed(self, *words):
+        seen = []
+        with mock.patch.object(proof_repl, "start", lambda args: seen.append(args) or 0):
+            proof_repl.main(["start", "n", "books/x", *words])
+        return seen[0]
+
+    def test_ld_is_encapsulated_by_default(self):
+        self.assertTrue(self.parsed("--ld", "books/store-log-extend").ld_local)
+
+    def test_ld_local_is_still_accepted(self):
+        self.assertTrue(self.parsed("--ld", "books/y", "--ld-local").ld_local)
+
+    def test_ld_leak_loads_form_by_form(self):
+        self.assertFalse(self.parsed("--ld", "books/y", "--ld-leak").ld_local)
+
+    def test_an_encapsulated_refusal_names_ld_leak(self):
+        class Refusing:
+            def send(self, form, timeout):
+                return ("ACL2 Error in ( ENCAPSULATE NIL ...): failed\n"
+                        if form.startswith("(encapsulate") else ""), False
+        scratch = ROOT / "build" / "proof-repl-ld32"
+        scratch.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, scratch, True)
+        (scratch / "dep.lisp").write_text('(in-package "ACL2")\n(local (defthm l (equal x x)))\n')
+        state = {"ld_loaded": {}}
+        ok = proof_repl.load_book(Refusing(), "build/proof-repl-ld32/dep", state, 10, set(),
+                                  record=False, encapsulate=True)
+        self.assertFalse(ok)
+        self.assertIn("--ld-leak", state["stopped_at"])
 
 
 if __name__ == "__main__":
