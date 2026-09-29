@@ -144,7 +144,8 @@ that, every `restart` is quietly refused while looking like success. Run
 If you move the store or log folder, add the new place to `ReadWritePaths`
 in the service file. Otherwise the service cannot write there.
 
-On a Mac, install `share/fn/launchd/net.fn.plist` as
+No release targets macOS. From a checkout on a Mac, render
+`packaging/net.fn.native.plist.in` (replace `@PREFIX@`) into
 `/Library/LaunchDaemons/net.fn.plist`, then run
 `sudo launchctl bootstrap system /Library/LaunchDaemons/net.fn.plist`.
 
@@ -407,8 +408,9 @@ Every post by a login carries a line like this:
 Injection-Info: news.example.org; posting-account="8c59...f172"; mail-complaints-to="abuse@example.org"
 ```
 
-The `posting-account` value is the same for every post by one login. So
-anyone can tell that two posts came from the same login. Nobody can work
+The `posting-account` value is the same for every post by one account
+(the principal a login signs in as; usually one login is one account). So
+anyone can tell that two posts came from the same account. Nobody can work
 out the login name from it without your node's secret key. Tell the
 people you give logins to.
 

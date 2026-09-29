@@ -6,7 +6,7 @@
 ; values.  Neither is a codec.  The codec that turns an item list into octets
 ; and back is `books/statement-codec.lisp' (the implementation) behind
 ; `books/statement-seam.lisp' (the constrained functions every book above it
-; calls); plan 2026-09-22 §4.1, step T1.
+; calls); plan 2026-09-22 section 4.1, step T1.
 
 (in-package "ACL2")
 (include-book "crypto-seam")

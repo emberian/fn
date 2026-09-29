@@ -790,6 +790,7 @@
                                 (fn-native-admin-decimal-value
                                  (coerce (cadddr words) 'list))
                                 nil nil))
+
        ; Row S10 (lane operability-2): `policy set KEY VALUE' that no arm
        ; above took is refused by name, not by the usage line: a counted
        ; key with a value that is no decimal count, else a key the node

@@ -207,5 +207,39 @@ class ThroughputGateTests(unittest.TestCase):
         self.assertEqual(sc.dot_stuff(b"a\r\n.b\r\n"), b"a\r\n..b\r\n")
 
 
+class FrozenLauncherTests(unittest.TestCase):
+    """PKT-566: the gate runs the frozen image it qualifies."""
+
+    def test_a_frozen_launchers_here_is_its_own_directory(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            image = Path(d) / "fn-host-developer"
+            image.write_text(
+                "#!/bin/sh\n# fn frozen image launcher v2\n"
+                'here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\n'
+                'export SBCL_HOME="$here/runtime/sbcl-home/"\n'
+                'export LD_LIBRARY_PATH="$here/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"\n'
+                'exec "$here/runtime/sbcl" --tls-limit 65536 --core "$here/fn-host-developer.core"'
+                ' --end-runtime-options ${SBCL_USER_ARGS} --no-userinit "$@"\n')
+            here = str(Path(d).resolve())
+            argv = tg.runtime_argv(image)
+            self.assertEqual(argv[0], here + "/runtime/sbcl")
+            self.assertIn(here + "/fn-host-developer.core", argv)
+            self.assertEqual(argv[-1], "--end-runtime-options")
+            env = tg.runtime_env(image)
+            self.assertEqual(env["SBCL_HOME"], here + "/runtime/sbcl-home/")
+            self.assertTrue(env["LD_LIBRARY_PATH"].startswith(here + "/lib"))
+
+    def test_a_source_launcher_keeps_its_literal_home(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            image = Path(d) / "fn-host"
+            image.write_text("#!/bin/sh\nexport SBCL_HOME='/opt/sbcl/lib/sbcl/'\n"
+                             'exec "/opt/sbcl/bin/sbcl" --core "/x/fn-host.core"'
+                             " --end-runtime-options --no-userinit\n")
+            self.assertEqual(tg.runtime_argv(image)[0], "/opt/sbcl/bin/sbcl")
+            self.assertEqual(tg.runtime_env(image), {"SBCL_HOME": "/opt/sbcl/lib/sbcl/"})
+
+
 if __name__ == "__main__":
     unittest.main()

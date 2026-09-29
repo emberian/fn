@@ -24,11 +24,12 @@ details, the measured envelope.
 Everything the node runs is `bin/fn` (a shell script), the frozen launcher
 and the saved Lisp image it execs; no Python runs on a deployed node
 (D35, `tools/runpath_check.py`). Python remains for clients on other
-machines and for the tests. The sections "Install" and "Run it as a service"
-and the per-user `~/fn-live` service further down still describe the older
-Python development service (the Python `bin/fn` in a checkout), which was
-retired on 2026-09-28 (python-diet T5); a release never had it, and its verbs
-are `fn operator CONFIG VERB ...`.
+machines and for the tests. The served product is the SBCL core without
+ACL2 (the production image); the ACL2 image is the proof reference and the
+developer tool, never a deployed dependency. The Python development host
+(`bin/fn` in a checkout, `tools/run_store.py` and its siblings) was retired
+on 2026-09-28 (python-diet T5); every verb below is the image's,
+`fn operator CONFIG VERB ...`.
 
 ## Native component entry
 
@@ -1015,7 +1016,7 @@ which answers nothing on a production image.
 | `FN_NATIVE_OWNER_TEST_PIPELINE_TRACE` | any value | one stderr line per START (`start: seal=S bmax=N members=K`) and per batch prepared behind a barrier (`pipeline: K members prepared behind the barrier`) |
 | `FN_NATIVE_FAULT_BACKTRACE` | any value | a diagnostic, not a fault: a serious condition other than a store error inside an owner action (`fnn-owner-shared-action-locked`) prints `fault backtrace: CONDITION` and 80 frames to stderr where it is signalled, before the handler unwinds it into exit 4; a control-stack exhaustion on any thread prints `fault backtrace (thread NAME): control stack exhausted` and every frame as run-length rows `frames FUNCTION xDEPTH`, innermost first (a per-line recursion is one deep row; the rows under it are its callers) |
 | `FN_NATIVE_COUNT_LOOKUPS` | any value | a diagnostic, not a fault (release row F2): the catalog and index lookup functions of `+fnn-lookup-functions+` (host/native/io.lisp: the pinned view's bisection probes `fn-scr-mid`, the catalog tables `fn-cat$c-*`, the finders `fn-cnx-view-seq` and `fn-cat-view-last-visible`, the trie `fn-midx-lookup`, and the entries of every archive walk) are wrapped with counters at startup, and each served read (`fn-owner-chunk-span`) first prints `lookups window K: NAME=N ...` to stderr, the counts of the read before it; `planning/evidence/fundamentals-2026-09-27/harness/f2_lookups.py` reads them per command |
-| `FN_NATIVE_IMPORT_COMPRESS_MIN_TEST` | N | `store ROOT import` appends the archive's records through the compressed append at threshold N (books/payload-lz-append.lisp: ACL2 plans, the LZ4 encoder offers a candidate, the proved decoder checks it) instead of as they are; tools/fixtures.py's compressed fixtures |
+| `FN_NATIVE_IMPORT_COMPRESS_MIN_TEST` | N | `store ROOT import` appends the archive's records through the compressed append at threshold N (books/payload-lz-append.lisp: ACL2 plans, the zlib encoder offers a DEFLATE candidate over the shipped dictionary, the proved decoder checks it) instead of as they are; tools/fixtures.py's compressed fixtures |
 | `store ROOT post ... FAULT ...` | one of the four `+fnn-cli-faults+` names | the same four store faults as `FN_NATIVE_CONTROL_FAULT`, for one `store post` |
 
 `FN_NATIVE_FAULT_BACKTRACE` changes no outcome: the fence, the exit code and
@@ -1208,20 +1209,32 @@ recovery; only a receipt releases it.
 
 ## Install
 
-The development service needs Python 3.11 or newer (for `tomllib`) and ACL2 8.7 with a certified
-copy of this repository's books. The ACL2 core is not optional: every
-acceptance, refusal and recovery decision below is a call into it.
+A node needs no Python, no ACL2 and no repository: the release tarball
+carries `bin/fn`, the frozen launcher and the production core
+(`libexec/fn/`), the libraries they load, `share/fn/fn.toml.example` and
+the service template. [Installing fn](install.md) is the path from the
+download to a running node, and
+[From the release tarball](#from-the-release-tarball) says what the tarball
+holds and how it is checked.
 
-1. Put the repository somewhere stable, for example `/usr/local/lib/fn`. The
-   service runs from the repository root: `bin/fn` finds `tools/`, `books/`
-   and `host/` relative to itself.
-2. Install ACL2 8.7 and note its executable path. `fn` passes it to every
-   tool as `FN_ACL2`.
-3. Certify the books once on the box: `make certify`. Certification is
-   memory-bound; `[acl2] slots` caps how many ACL2 processes the machine
-   runs at once (`tools/acl2_slots.py`).
-4. Create an unprivileged account that owns the store, for example `fn` on
-   Linux or `_fn` on macOS.
+1. Unpack the release somewhere stable, for example `/opt/fn`, and install
+   it with its own `install.sh`: it creates the service account, the node
+   directory (`fn.toml`, `store/`, `tls/`, `log/`) and renders the service
+   template (`share/fn/systemd/fn.service.in`, or the rc.d script on
+   OpenBSD).
+2. Write the configuration from `share/fn/fn.toml.example`. The tables are
+   `[store]`, `[listener]`, `[auth]`, `[posting]`, `[log]` and `[control]`
+   (and `[web]`, `[alerts]`, `[ops]` where used); the retired Python
+   host's `[anchor]` and `[acl2]` tables, and `[posting] agent`, are refused
+   by `run` by name (`UNSUPPORTED-PROFILE anchor`, `acl2`, `agent`;
+   books/native-config.lisp `fn-native-config-unsupported-key`).
+3. Initialize the store ([Initialize](#initialize)) and start the service
+   ([Run it as a service](#run-it-as-a-service)).
+
+Building the images from a checkout is a developer's step, not an
+operator's: `tools/build_native_host.sh` certifies the books with ACL2 and
+saves the production image (`build/fn-host`); `packaging/fn` runs it from
+the checkout ([Install the native production entry](#install-the-native-production-entry)).
 
 ## Storage requirements
 
@@ -1302,12 +1315,11 @@ groups named; the configuration file itself (`[store]`, `[listener]`, `[log]`,
 `[control]`) is written by the operator beforehand (`packaging/fn.toml.example`).
 [`packaging/fn.toml.example`](../packaging/fn.toml.example) documents every
 table: `[store] path`, `[listener] host port`, `[posting] enabled`,
-`[anchor] server`, `[acl2] path slots`, `[log] path`, `[control] path`. This
-development `fn init` also writes `[posting] agent` from `--agent`, and
-`[anchor]`/`[acl2]` from their flags; the native `operator CONFIG run`
-refuses all three by name (see [Native component entry](#native-component-entry)),
-so delete those lines from a file this command wrote before handing it to
-the native image, and set `policy set path-identity` for the agent.
+`[log] path`, `[control] path`. The injecting agent is not a
+configuration key: `run` refuses `[posting] agent` (and the retired
+Python host's `[anchor]` and `[acl2]` tables) by name (see
+[Native component entry](#native-component-entry)); set
+`policy set path-identity` for the agent instead.
 
 The groups are **not** in the configuration file. They are durable
 configuration records inside the store, which ACL2 replays at every open;
@@ -1398,11 +1410,11 @@ changed `host` takes effect when the node restarts.
 
 ## Run it as a service
 
-`fn run` is the service. It is a foreground process that takes the store's
+`fn operator CONFIG run` is the service. It is a foreground process that takes the store's
 **exclusive** writer lock for its whole lifetime, serves NNTP readers on the
 configured port, and accepts a local Unix control socket (`[control] path`,
 by default `<store>/control.sock`) for posting and administration. Exactly
-one `fn run` may hold a store.
+one `run` may hold a store.
 
 The control socket is an operator endpoint created with mode 0600. Its holder
 may administer the node; `[posting] enabled = false` disables article posting,
@@ -1412,7 +1424,8 @@ to grant posting access; use its separately configured NNTP posting principal.
 - native systemd: install the rendered `share/fn/systemd/fn.service` as
   `/etc/systemd/system/fn.service`, then
   `systemctl daemon-reload && systemctl enable --now fn`.
-- native launchd: install the rendered `share/fn/launchd/net.fn.plist` as
+- launchd (macOS, from a checkout; no release targets macOS): render
+  `packaging/net.fn.native.plist.in` (replace `@PREFIX@`) into
   `/Library/LaunchDaemons/net.fn.plist`, then
   `sudo launchctl bootstrap system /Library/LaunchDaemons/net.fn.plist`.
 
@@ -1655,8 +1668,8 @@ What the policy does, and every decision below is ACL2's
   and that login passes the gate and still gets `440` for POST, and the
   `POST` capability label is not offered to it.
 - `[auth] protected_only = true` answers `483` to AUTHINFO until TLS is
-  active. Set `[listener] tls_cert`/`tls_key` — `fn init --tls-cert --tls-key`
-  writes them — and the node advertises `STARTTLS` (RFC 4642 §2.1) and drops
+  active. Set `[listener] tls_cert`/`tls_key` in the configuration
+  ([TLS](#renew-the-certificate-without-a-restart-tls-reload)) and the node advertises `STARTTLS` (RFC 4642 §2.1) and drops
   the label once the layer is up. USER/PASS crosses in the clear otherwise.
 - `[listener] tls_port = 1563` opens a second listener beside `port` whose
   connections begin TLS at connect (the port-563 practice RFC 4642 §1
@@ -1753,8 +1766,10 @@ packaging/fn-native operator /etc/fn/fn.toml account hash alice
 ```
 
 It prints the value `alice`'s posts carry (it reads the node secret, with
-the same permission checks as the owner; the secret itself is never
-printed). Articles relayed from peers keep the peer's own `Injection-Info`
+the same permission checks as the owner, and the credential file: the value
+is keyed by alice's account, the principal her credential names, or for an
+invitation-code account its login's local principal; the secret itself is
+never printed; `books/native-operator.lisp` `fn-nop-account-hash`). Articles relayed from peers keep the peer's own `Injection-Info`
 untouched. The decision is ACL2's (`books/injection-info-params.lisp`,
 `specs/nntp.md` "Injection-Info parameters").
 
@@ -1768,9 +1783,8 @@ packaging/fn-native operator /etc/fn/fn.toml principal bind alice PRINCIPAL-HEX 
 packaging/fn-native operator /etc/fn/fn.toml policy set posting-policy bound-logins
 ```
 
-These are the native operator's verbs (`fn-host --fn operator CONFIG ...`);
-the Python `bin/fn principal` has only `new`, `list` and `set-password`. The
-native operator loads the hybrid-signature library (libsodium and
+These are the native operator's verbs (`fn-host --fn operator CONFIG ...`).
+The native operator loads the hybrid-signature library (libsodium and
 `lib/libfn-mldsa65` beside the core), as the node does. A later `policy set posting-policy
 open` takes effect: a policy slot holds the value set last
 (`fn-cfg-set-policy-sets-the-policy`, books/config-invariants.lisp; until
@@ -2367,15 +2381,19 @@ not measured on a hot copy. Stopping first avoids the question.
 Keep `STORE/keys/` with the copy, privately.
 
 What a copy does not give you is freshness. A restored image cannot tell by
-itself that it is not an old snapshot, which is what `fn anchor` and the
-freshness check inside `fn recover` are for. Record an anchor before the
-backup and check it after the restore.
+itself that it is not an old snapshot. The retired Python host queried a
+Roughtime server for an anchor (`fn anchor`); the image has no anchor source
+yet (host/native/anchor.lisp is the acquisition seam, without a server
+manifest), so `recover` answers `anchor=none` for a store that never
+recorded one and `anchor=uncertain [no anchor source in the native host]`
+for one that did (host/native/io.lisp `fnn-anchor-report`). Keep your own
+record of which copy is newest.
 
 ## Recover after a crash
 
 A crash needs no special action: the next start reads the checkpoint and
 replays the log after it through ACL2, streaming one entry at a time
-(log-open-stream), and reopens. Run `fn recover` first when you want the report
+(log-open-stream), and reopens. Run `recover` first when you want the report
 before the service starts.
 
 An owner killed without its cleanup (SIGKILL, a power cut) leaves its
@@ -2392,11 +2410,11 @@ fn operator /etc/fn/fn.toml recover
 
 It prints the recovered transaction and article counts, any staging orphans
 an interrupted publication left behind (those are named, not hidden), and
-the freshness verdict. Its exit code is the freshness verdict's: `accepted`
-when the store is demonstrably not a stale image, `uncertain` when no anchor
-server could be reached, `refused` when the anchor says the image is older
-than the one its own records stand under. A refused recover is a signal to
-stop and work out which image you are holding, not to retry.
+the anchor line above. Its exit code is the anchor report's: `accepted`
+(0) with `anchor=none`, `uncertain` (3) when the store holds an anchor the
+image cannot check. A `log-damaged` refusal names the damaged segment and
+the one repair, `recover --repair truncate SEGMENT:OFFSET` (the segment is
+kept under `quarantine/`).
 
 (Historical: a store written by a release before 2026-09-25 is format 8,
 refused at open by `reason=store-format` before this check can run.) A store
@@ -2409,10 +2427,10 @@ exit 1. Nothing is changed or replayed. The repair verb
 undecided (PKT-444)`) until what such a repair means is decided; keep the
 store as it is until then.
 
-`fn status` reports what the store is: the configuration generation, the
+`fn operator CONFIG status` reports what the store is: the configuration generation, the
 transaction and article counts, the last recorded anchor, and whether an
 owner is live. While an owner holds the store no other process can take the
-lock, so with the service running `fn status` reports what the control
+lock, so with the service running `status` reports what the control
 channel answers; since 2026-09-25 that is the owner's own status report
 (see [Status while the owner runs](#status-while-the-owner-runs)), not
 `owner-held`.
@@ -2473,7 +2491,7 @@ When you see it:
    is a second attempt at the same Message-ID; fn will report it as a
    duplicate if the first one landed, which is safe, but the same is not
    true of scripts that treat exit 3 as exit 1 and take a different action.
-2. **Stop the service and run `fn recover`.** Recovery replays the journal
+2. **Stop the service and run `fn operator CONFIG recover`.** Recovery replays the journal
    and tells you what is actually there. An article that reached durability
    is in the recovered counts and readable with an NNTP client; one that did
    not is absent, and you may post it again.

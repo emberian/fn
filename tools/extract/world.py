@@ -61,6 +61,20 @@ EPILOGUE = ("(assert-event (equal (len (global-val 'include-book-alist (w state)
             "                  (cw \"FN_IMAGE_WORLD_CLOSED ~x0~%\" (@ fn-image-world-books))",
             "                (cw \"FN_IMAGE_WORLD_OPEN~%\")))")
 
+# world-host.lisp's own prologue: when world.lisp ran first (world_image.sh,
+# the extraction) its PROLOGUE already assigned these and nothing changes;
+# ld'd alone into a session over the umbrella (coverage.py dump, proof_repl
+# start cov books/image-world) it assigns them itself, so the closure check
+# at its end has its reference (coverage-crawler's ask, 2026-09-29).
+HOST_PROLOGUE = (
+    "(if (boundp-global 'fn-image-world-books state)",
+    "    (value :fn-image-world-prologue-already-run)",
+    "  (pprogn (f-put-global 'fn-image-world-books",
+    "                        (len (global-val 'include-book-alist (w state))) state)",
+    "          (f-put-global 'fn-image-world-compiler (@ compiler-enabled) state)",
+    "          (set-compiler-enabled nil state)",
+    "          (value :fn-image-world-prologue)))")
+
 
 def prefix_text(build):
     text = (ROOT / build).read_text()
@@ -150,6 +164,7 @@ def render():
              + "".join(line + "\n" for line in PROLOGUE)
              + "".join('(include-book "../../%s")\n' % b for b in books))
     host = (head.replace("certified books", "host :program files (ld)") + '(in-package "ACL2")\n'
+            + "".join(line + "\n" for line in HOST_PROLOGUE)
             + "".join('(ld "../../%s" :ld-error-action :error)\n' % h for h in hosts)
             + "".join(line + "\n" for line in EPILOGUE))
     out[OUT / "world.lisp"] = world
@@ -157,7 +172,81 @@ def render():
     return out
 
 
+def lds_followed(root, rel):
+    """REL and every file its `ld's reach, in first-visit order."""
+    out, seen = [], set()
+
+    def visit(path):
+        path = path.resolve()
+        if path in seen or not path.is_file():
+            return
+        seen.add(path)
+        out.append(path)
+        for m in re.finditer(r'^\s*\(ld "([^"]+)"', path.read_text(), re.M):
+            visit(path.parent / m.group(1))
+
+    visit(root / rel)
+    return out
+
+
+def included_books(root, rel):
+    """The books a world file includes, with their include closures (names)."""
+    sys.path.insert(0, str(ROOT / "tools"))  # this tool's own certs.py; ROOT may differ
+    import certs  # noqa: E402
+    path = root / rel
+    names = []
+    for m in re.finditer(r'^\(include-book "([^"]+)"\)', path.read_text(), re.M):
+        target = (path.parent / m.group(1)).resolve()
+        name = target.relative_to(root.resolve()).as_posix()
+        for one in certs.closure(root, name):
+            if one not in names:
+                names.append(one)
+    return names
+
+
+def digest(root, acl2=None):
+    """The world's cache key (world_image.sh): SHA-256 over the two world
+    files, every host file they load (lds followed), and the certificate and
+    compiled file of every book in their include closure, with the ACL2 the
+    image is saved under.  A changed book, certificate or host file is a new
+    key.  A missing certificate is keyed as missing (the load then fails)."""
+    import hashlib
+    root = Path(root).resolve()
+    h = hashlib.sha256()
+
+    def add(label, path):
+        h.update(label.encode() + b"\0")
+        h.update(path.read_bytes() if path.is_file() else b"<missing>")
+        h.update(b"\0")
+
+    files = []
+    for world in ("tools/extract/world.lisp", "tools/extract/world-host.lisp"):
+        for path in lds_followed(root, world):
+            if path not in files:
+                files.append(path)
+    for path in files:
+        add("file " + path.relative_to(root).as_posix(), path)
+    for name in included_books(root, "tools/extract/world.lisp"):
+        for suffix in (".cert", ".fasl"):
+            add("artifact " + name + suffix, root / (name + suffix))
+    if acl2:
+        h.update(b"acl2 " + str(acl2).encode())
+    return h.hexdigest()
+
+
 if __name__ == "__main__":
+    if "--digest" in sys.argv:
+        # tools/extract/world.py --digest TREE [--acl2 PATH]: print the key;
+        # never write (before 2026-09-29 world_image.sh called this flag,
+        # which did not exist, and the call REGENERATED the world files).
+        rest = [a for a in sys.argv[1:] if a != "--digest"]
+        acl2 = None
+        if "--acl2" in rest:
+            i = rest.index("--acl2")
+            acl2 = rest[i + 1]
+            del rest[i:i + 2]
+        print(digest(Path(rest[0]) if rest else ROOT, acl2))
+        sys.exit(0)
     check = "--check" in sys.argv
     bad = 0
     for path, text in render().items():

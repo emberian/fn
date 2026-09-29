@@ -3,7 +3,15 @@
 #
 #   tools/remote_check.sh BOX [--target T | --cmd 'COMMAND' | --regen]
 #                             [--fetch PATH]... [--no-dirty] [--no-install-certs]
-#                             [--tree BOXPATH] [--log BOXPATH]
+#                             [--tree BOXPATH] [--log BOXPATH] [--ship PATH]...
+#   tools/remote_check.sh attach BOX [--log BOXPATH] [--fetch PATH]...
+#
+# `attach` recovers a run whose local side died (a session limit, an ssh
+# drop) while the box kept going: it starts nothing, polls the lane's run
+# log on BOX (the same --log default) to its end, copies it here and exits
+# with make's status, naming the commit and target the run recorded
+# (<log>.head).  A --fetch then keeps any file already here aside, since the
+# shipped copy is not known (obstructions-5 item 41).
 #
 # BOX is hbox, persvati or auto (tools/boxes.sh --pick: the lower load per
 # core now among the boxes nobody has reserved; it prints both loads and the
@@ -18,7 +26,10 @@
 #      kept), so a regeneration left over from the last run can never keep
 #      make on an old head (batch AX, 2026-09-28);
 #   4. applies this worktree's uncommitted tracked changes (git diff HEAD) on
-#      top, unless --no-dirty; untracked files are named, never shipped;
+#      top, unless --no-dirty; untracked files are named, never shipped,
+#      except each --ship PATH (a file or directory of this worktree, e.g.
+#      an uncommitted helper script the --cmd runs), copied in as it is here
+#      (obstructions-5 item 38);
 #   5. first installs the box cache's certificates for the tree's bytes
 #      (tools/certs.py install; its summary heads the log; --no-install-certs
 #      skips it): without them make check's host_check prints NOT RUN for both
@@ -30,6 +41,8 @@
 #      FN_ACL2 and FN_CERT_CACHE (tools/farm.py HOSTS), under swarm-build on
 #      hbox, logging to --log BOXPATH (a path ON THE BOX; default
 #      <base>/LANE-check.log; the copy here is build/remote-check/BOX-T.log);
+#      the toolchain SBCL first on PATH and as FN_SBCL (tools/native_env.py
+#      sbcl; a bare sbcl that is not the toolchain's is refused, exit 3);
 #      a `make certify` there plans its job count (FN_CERTIFY_JOBS, default
 #      auto: tools/chain_schedule.py) unless this shell sets FN_CERTIFY_JOBS;
 #   6. prints the log's step table, copies the log to
@@ -57,15 +70,22 @@ set -u
 {
 
 usage() {
-    sed -n '2,47p' "$0" | sed 's/^# \{0,1\}//' >&2
+    sed -n '2,/^# bundle, fetch or checkout failed/p' "$0" | sed 's/^# \{0,1\}//' >&2
     exit 2
 }
 
 [ $# -ge 1 ] || usage
+ATTACH=0
+if [ "$1" = attach ]; then
+    [ $# -ge 2 ] || usage
+    ATTACH=1
+    shift
+fi
 BOX=$1
 shift
 TARGET=check-lane
 FETCH=
+SHIP=
 DIRTY=1
 INSTALL=1
 TREE=
@@ -76,6 +96,9 @@ while [ $# -gt 0 ]; do
     case $1 in
         --target) [ $# -ge 2 ] || usage; TARGET=$2; shift 2 ;;
         --fetch) [ $# -ge 2 ] || usage; FETCH="$FETCH $2"; shift 2 ;;
+        --ship) [ $# -ge 2 ] || usage
+            case $2 in /*|*..*|*' '*) echo "remote_check: --ship $2: a path inside the tree, no spaces" >&2; exit 2 ;; esac
+            SHIP="$SHIP $2"; shift 2 ;;
         --no-dirty) DIRTY=0; shift ;;
         --install-certs) INSTALL=1; shift ;;
         --no-install-certs) INSTALL=0; shift ;;
@@ -107,7 +130,7 @@ esac
 # A box reserved for a measurement (tools/boxes.sh reserve): auto already
 # picked the other box; a named box waits for the lease, printing its holder.
 # The tests' local box (FN_REMOTE_CHECK_BASE) has no lease.
-if [ -z "${FN_REMOTE_CHECK_BASE:-}" ]; then
+if [ -z "${FN_REMOTE_CHECK_BASE:-}" ] && [ $ATTACH = 0 ]; then
     sh "$(dirname "$0")/boxes.sh" wait "$BOX" || exit 3
 fi
 # The tests point these at a local directory and a local shell.
@@ -117,6 +140,9 @@ SSH=${FN_REMOTE_CHECK_SSH:-ssh -o ServerAliveInterval=30 -o ControlMaster=auto -
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
     echo "remote_check: not inside a git worktree" >&2; exit 2; }
+for path in $SHIP; do
+    [ -f "$ROOT/$path" ] || { echo "remote_check: --ship $path: no such file here" >&2; exit 2; }
+done
 LANE=${FN_LANE:-$(basename "$ROOT")}
 case $LANE in *[!A-Za-z0-9._-]*|'') echo "remote_check: lane name '$LANE' is not a plain word" >&2; exit 2 ;; esac
 TREE=${TREE:-$BASE/$LANE-check}
@@ -128,7 +154,19 @@ WORK=$(mktemp -d "${TMPDIR:-/tmp}/remote-check.XXXXXX") || exit 3
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
 remote() { $SSH "$BOX" "$1"; }
+digest() { if [ -f "$ROOT/$1" ]; then cksum < "$ROOT/$1" | tr ' \t' '--'; else echo absent; fi; }
+: > "$WORK/shipped"
 
+if [ $ATTACH = 1 ]; then
+    RECORD=$(remote "cat $LOG.head 2>/dev/null") || RECORD=
+    [ -n "$RECORD" ] || remote "test -f $LOG.run.sh" 2>/dev/null || {
+        echo "remote_check: attach: no run of lane $LANE on $BOX ($LOG.run.sh absent)" >&2; exit 3; }
+    set -- $RECORD
+    HEAD_SHA=${1:-unknown}
+    TARGET=${2:-$TARGET}
+    RUN="the run of $HEAD_SHA ($TARGET)"
+    echo "remote_check: attach: $RUN in $BOX:$TREE (log $BOX:$LOG)"
+else
 # 1. What the mirror already has, so the bundle carries only the rest.
 KNOWN=$(remote "git -C $MIRROR for-each-ref --format='%(objectname)' 2>/dev/null || true") || {
     echo "remote_check: cannot reach $BOX" >&2; exit 3; }
@@ -170,8 +208,6 @@ git fetch -q origin '+$REF:$REF' && git checkout -q -f --detach $HEAD_SHA \
 
 # What each --fetch path is here as shipped: step 6 writes a fetched file
 # only over this same content (or its absence).
-digest() { if [ -f "$ROOT/$1" ]; then cksum < "$ROOT/$1" | tr ' \t' '--'; else echo absent; fi; }
-: > "$WORK/shipped"
 for path in $FETCH; do
     [ -d "$ROOT/$path" ] && (cd "$ROOT" && find "$path" -type f) | while IFS= read -r f; do
         echo "$(digest "$f") $f"; done >> "$WORK/shipped"
@@ -187,7 +223,26 @@ if [ "$DIRTY" = 1 ]; then
             echo "remote_check: the uncommitted changes did not apply on $BOX" >&2; exit 3; }
     fi
 fi
-UNTRACKED=$(git -C "$ROOT" ls-files --others --exclude-standard | grep -v '^LANEDUMP.md$' | head -20)
+# --ship PATH: named untracked (or changed) files ride along as they are here.
+if [ -n "$SHIP" ]; then
+    for path in $SHIP; do
+        [ -e "$ROOT/$path" ] || { echo "remote_check: --ship $path: not in this worktree" >&2; exit 2; }
+    done
+    # shellcheck disable=SC2086
+    (cd "$ROOT" && tar cf - $SHIP) | remote "cd $TREE && tar xf -" || {
+        echo "remote_check: --ship could not copy $SHIP to $BOX" >&2; exit 3; }
+    echo "remote_check: shipped$SHIP"
+fi
+not_shipped() {
+    while IFS= read -r f; do
+        keep=1
+        for path in $SHIP; do
+            case $f in "$path"|"$path"/*) keep=0 ;; esac
+        done
+        [ $keep = 0 ] || echo "$f"
+    done
+}
+UNTRACKED=$(git -C "$ROOT" ls-files --others --exclude-standard | grep -v '^LANEDUMP.md$' | not_shipped | head -20)
 [ -z "$UNTRACKED" ] || { echo "remote_check: untracked here, NOT shipped:"; echo "$UNTRACKED" | sed 's/^/  /'; }
 
 # 5. make there, with the box's own toolchain.
@@ -201,16 +256,17 @@ echo "remote_check: $RUN in $BOX:$TREE (log $BOX:$LOG)"
 # reported as make's status while make kept running (scale-latency,
 # 2026-09-28).  A poll that cannot reach the box is retried.
 remote "cat > $LOG.run.sh" <<RUNSCRIPT || { echo "remote_check: cannot write the run script on $BOX" >&2; exit 3; }
-cd $TREE && $ENVS; export FN_CERTIFY_JOBS=${FN_CERTIFY_JOBS:-auto}; [ -n "\${FN_ACL2:-}" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)'; exit 3; }; { echo "== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)"; if [ $INSTALL = 1 ] && [ -f tools/certs.py ]; then echo "== certs install: \$(python3 tools/certs.py install 2>&1 | grep -E '^ *installed' | tail -n 1)"; fi; $WRAP $RUN 2>&1; echo "== make exit \$?"; } > $LOG 2>&1
+cd $TREE && $ENVS; eval "\$(python3 tools/native_env.py sbcl --export 2>/dev/null)"; export FN_CERTIFY_JOBS=${FN_CERTIFY_JOBS:-auto}; [ -n "\${FN_ACL2:-}" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)'; exit 3; }; { echo "== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)"; if [ -f tools/native_env.py ] && ! python3 tools/native_env.py sbcl-check; then echo "== make exit 3"; exit 3; fi; if [ $INSTALL = 1 ] && [ -f tools/certs.py ]; then echo "== certs install: \$(python3 tools/certs.py install 2>&1 | grep -E '^ *installed' | tail -n 1)"; fi; $WRAP $RUN 2>&1; echo "== make exit \$?"; } > $LOG 2>&1
 RUNSCRIPT
-remote "rm -f $LOG; nohup sh $LOG.run.sh > $LOG 2>&1 < /dev/null &" || {
+remote "rm -f $LOG; echo $HEAD_SHA $TARGET > $LOG.head; nohup sh $LOG.run.sh > $LOG 2>&1 < /dev/null &" || {
     echo "remote_check: cannot start make on $BOX" >&2; exit 3; }
+fi
 FAILS=0
 while :; do
     sleep "${FN_REMOTE_CHECK_POLL:-15}"
     LAST=$(remote "tail -n 1 $LOG 2>/dev/null" 2>/dev/null) || {
         FAILS=$((FAILS + 1))
-        [ $FAILS -lt 40 ] || { echo "remote_check: lost $BOX for 40 polls; make may still run (log $LOG)" >&2; exit 3; }
+        [ $FAILS -lt 40 ] || { echo "remote_check: lost $BOX for 40 polls; make may still run (log $LOG; recover it with: tools/remote_check.sh attach $BOX)" >&2; exit 3; }
         continue; }
     FAILS=0
     case $LAST in "== make exit "*) break ;; esac

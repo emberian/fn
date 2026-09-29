@@ -30,6 +30,9 @@
 (include-book "../books/owner-config")
 ; The compression threshold (fn-owner-compress-min-octets; PRF-341).
 (include-book "../books/payload-lz-append")
+;; RFC 8054 COMPRESS DEFLATE: the inflater the host calls per connection
+;; (host/native/deflate.lisp fnn-zin-inflate calls fn-zin-feed).
+(include-book "../books/deflate-inflate")
 ; P3 owner open and publication (fn-ock-).
 (include-book "../books/owner-checkpoint-open")
 ; PKT-868: the operator's compaction request on a running owner.
@@ -138,6 +141,7 @@
 ;; books/store-reclaim-buffer's fn-rclb-same-articlep (D13, STO-014).
 (include-book "../books/records-concrete-owner")
 (include-book "../books/octets-stobj")
+(include-book "../books/article-buffer")
 (include-book "../books/store-reclaim-buffer")
 ; HST-023 (PRF-248): the served step's typed result and render plan.
 (include-book "../books/served-plan")
@@ -367,8 +371,17 @@
 ;; next publication (`fn-owner-sco-base').
 (defun fn-owner-install-extended (oc extended fn-arena fn-cat fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
-  (if (equal oc :fault)
-        (mv nil :fault fn-arena fn-cat fn-hist state)
+  (cond
+   ((equal oc :fault)
+    (mv nil :fault fn-arena fn-cat fn-hist state))
+   ; THE OPEN's number bound (books/owner-number-bound.lisp fn-onb-open-okp,
+   ; KEYSTONE fn-onb-boundp-when-open-okp): a recovered owner whose
+   ; watermarks pass RFC 3977 section 6's bound is a damaged Store, refused
+   ; by name before anything is installed.  O(groups); the served path then
+   ; carries the bound (fn-onb-boundp), never revalidating it.
+   ((not (fn-onb-open-okp (fn-ocfg-owner oc)))
+    (mv nil :article-numbers-damaged fn-arena fn-cat fn-hist state))
+   (t
       (let* ((state (fn-owner-install-ocfg oc state))
              ; PRF-289: the carried obligation-id trie for the ledger the
              ; owner opens with (books/post-retain-carried.lisp
@@ -444,7 +457,7 @@
                                         (and (boundp-global 'fn-store-genesis state)
                                              (f-get-global 'fn-store-genesis state)))
                                        fn-hist)))
-            (mv nil :recovering fn-arena fn-cat fn-hist state))))))
+            (mv nil :recovering fn-arena fn-cat fn-hist state)))))))
 
 (defun fn-owner-recover-extended (extended config-records frontier max-conns fn-arena fn-cat fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
@@ -1362,6 +1375,21 @@
       (f-get-global 'fn-owner-parse-carry state)
     nil))
 
+;; PKT-789: the configuration the take staged the in-flight submission's
+;; octets under (fn-apc-take's CFG).  The article completion names the
+;; submission by those octets (fn-own-completion-names-submission-p over
+;; fn-own-sub-stored-octets CFG), so it must be handed the take's
+;; configuration, not the live one: a published change between the take and
+;; the completion (a complaints-to, a Path identity) otherwise recomputes
+;; different octets and answers a durable POST 441-uncertain.  The take is
+;; this global's only writer and fn-owner-finish-submission-synced its only
+;; reader; before any take it is the live configuration.
+(defun fn-owner-take-config (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-take-config state)
+      (f-get-global 'fn-owner-take-config state)
+    (fn-owner-config state)))
+
 ;; Lane commit-onto-log: the owner as it is now, a value (the commit quantum
 ;; keeps it before each member's outcome, and renders from it only when the
 ;; batch's barrier fails).
@@ -2013,7 +2041,8 @@
 ; post): the word is fn-own-finish's (books/owner-served-invariants.lisp),
 ; :durable only when fn-sn-finish consumed an enabled completion whose record
 ; carries this submission's Message-ID and the octets fn-owner-take staged for
-; it (fn-own-sub-stored-octets under the live configuration: for transit, the
+; it (fn-own-sub-stored-octets under the take's configuration, fn-owner-take-config
+; (PKT-789): for transit, the
 ; Path-updated fn-peer-relayed-octets), and the owner installed is its
 ; (fn-own-complete o).  That is the subject of
 ; fn-own-240-follows-consumed-completion, so the host no longer decides the
@@ -2055,7 +2084,9 @@
              ; fn-ccar-own-finish with the stored octets' Cancel-Lock fields
              ; read from the take's parse and the completion's refresh over the
              ; Store's event index (post-alloc-2).
-             (result (fn-apc-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc)
+             ; The configuration is the take's (fn-owner-take-config, PKT-789):
+             ; the octets staged are fn-own-sub-stored-octets under it.
+             (result (fn-apc-own-finish (fn-ocfg-owner oc) (fn-owner-take-config state)
                                         fn-arena fn-hist (fn-owner-parse-carry state)))
              (state (fn-owner-replace-core (cdr result) state))
              (pending (f-get-global 'fn-owner-cat-pending state)))
@@ -2175,8 +2206,9 @@
       ; of fn-own-sub-stored-octets, and the intent is fn-icar-carry-of).
       ; A served POST under a login gets its RFC 8315 Cancel-Lock in the
       ; stored octets (SEC-006, PRF-210): the owner's node secret.
-      (let* ((tk (fn-apc-take (fn-owner-config state) sub
-                              (fn-own-node-secret after)))
+      (let* ((take-config (fn-owner-config state))
+             (tk (fn-apc-take take-config sub (fn-own-node-secret after)))
+             (state (f-put-global 'fn-owner-take-config take-config state))
              (intent (fn-apc-icar-carry-of sub (cdr tk)))
              (state (f-put-global 'fn-owner-submit-intent intent state))
              (state (f-put-global 'fn-owner-parse-carry (cdr tk) state))
@@ -2759,11 +2791,18 @@
 ; `(:feed-enqueue ...)` records a POST does: a relayed article is fed
 ; onward (RFC 5537 sec. 3.6) and the entry must survive the process that
 ; accepted it.  Read before the outcome moves the owner, as for POST.
+; The call is fn-oop-transit-outcome (books/owner-outcome-pinned.lisp): the
+; transit outcome over the configured owner, whose effects and owner are
+; fn-own-transit-outcome's (fn-oop-transit-outcome-is-own-transit-outcome)
+; and whose pin table follows a durable completion's advance, as
+; fn-ocfg-advance's does (PKT-889: fn-owner-replace-core kept the pin the
+; connection was opened under, so the carried relation was false after a
+; durable transfer on a connection older than the live configuration;
+; books/owner-host-relation.lisp fn-ohr-transit-outcome-preserves-carried-relation).
 (defun fn-owner-transit-outcome (id kind reason word state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((owner (fn-owner-core state))
-         (result (fn-own-transit-outcome owner id kind reason word))
-         (state (fn-owner-replace-core (cdr result) state))
+  (let* ((result (fn-oop-transit-outcome (fn-owner-ocfg state) id kind reason word))
+         (state (fn-owner-install-ocfg (cdr result) state))
          (state (fn-owner-install-effects (car result) state)))
     (value :fed)))
 
@@ -2826,9 +2865,18 @@
          ; under the intent and parse carries fn-owner-take wrote
          ; (fn-apc-own-outcome-is-acar-own-outcome): the durable article's
          ; feed targets from the carried Path and parse, not a reparse.
-         (result (fn-apc-own-outcome owner id word (fn-owner-intent-carry state)
-                                     (fn-owner-parse-carry state)))
-         (state (fn-owner-replace-core (cdr result) state))
+         ; owner-relation-2 (PKT-889): the call is fn-oop-outcome
+         ; (books/owner-outcome-pinned.lisp), fn-apc-own-outcome over the
+         ; configured owner with the same effects and owner
+         ; (fn-oop-outcome-is-apc-own-outcome) and the pin table following a
+         ; durable completion's advance, as fn-ocfg-advance's does;
+         ; fn-owner-replace-core kept the pin the connection was opened
+         ; under (books/owner-host-relation.lisp
+         ; fn-ohr-outcome-preserves-carried-relation).
+         (result (fn-oop-outcome (fn-owner-ocfg state) id word
+                                 (fn-owner-intent-carry state)
+                                 (fn-owner-parse-carry state)))
+         (state (fn-owner-install-ocfg (cdr result) state))
          (state (fn-owner-install-effects (car result) state))
          (state (f-put-global 'fn-owner-shared-resolution-id nil state)))
     (value :fed)))
@@ -3086,7 +3134,7 @@
 ; (books/peer-carriage.lisp fn-pcb-refusal-class): :no-local-binding,
 ; :unsupported-profile, :signature-failed or :malformed, or nil.  ED and ML
 ; are the host's two primitive outcomes (nil when not observed).
-; PKT-240: through the seven-class verdict, whose refusal arm is
+; PKT-240: through the eight-class verdict, whose refusal arm is
 ; fn-pcb-refusal-class on every input
 ; (fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class).
 (defun fn-owner-transit-refusal-class (received transitp ed ml state)
@@ -3325,6 +3373,41 @@
                      (fn-owner-core state) fn-arena fn-cat)))
         (value (if action action :absent))))))
 
+; The received article in the octet buffer (books/article-buffer.lisp, D27
+; boundary 9): the served POST's login gate and the transit attempt's four
+; article calls, each the buffer twin of the list entry above it, equal to
+; it over the buffer's value (fn-ars-lb-ocfg-gate-is-reference,
+; fn-ars-filing-plan-is-reference, fn-ars-carrier-form-is-reference,
+; fn-ars-current-plan-is-reference), so no list of the article is built for
+; them.  Called by host/native/owner.lisp fnn-owner-attempt-served and
+; fnn-owner-attempt-transit through fnn-core-buffer-state after
+; fnn-octets-fill of the payload.
+(defun fn-owner-login-gate-buffer (fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (let* ((verdict (fn-ars-lb-ocfg-gate (fn-owner-ocfg state) fn-octets))
+         (state (f-put-global 'fn-owner-login-log-line
+                              (fn-lb-verdict-line verdict) state)))
+    (value verdict)))
+
+(defun fn-owner-control-filing-buffer (group-octets fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program
+                  :guard (fn-octet-list-listp group-octets)))
+  (value (fn-ars-filing-plan
+          group-octets
+          (fn-state-groups (fn-node-acceptance (fn-owner-node state)))
+          fn-octets)))
+
+(defun fn-owner-peer-carrier-form-buffer (fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (value (fn-ars-carrier-form fn-octets)))
+
+(defun fn-owner-peer-carrier-plan-buffer (transitp fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (value (fn-ars-current-plan
+          (fn-sn-keyring-snapshots (fn-owner-store state))
+          (fn-owner-transit-carried-list transitp state)
+          (and transitp t) fn-octets)))
+
 ; The subject identity of the payload in the octet buffer is
 ; books/subject-id-buffer.lisp fn-sidb-subject-id-bounded, which host/native/io.lisp
 ; fnn-subject-id-buffer calls directly: a guard-verified entry, so no :program
@@ -3368,6 +3451,19 @@
              (state (fn-owner-install-ocfg (cdr result) state))
              (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))
+
+;; RFC 8054 (lane compress): the compression layer this connection's session
+;; owes the host after a 206 (books/nntp-auth.lisp fn-auth-compress): the
+;; algorithm (:deflate), or nil.  The host installs the layer once the 206's
+;; CRLF is written and re-enters with fn-owner-tls-established, which the
+;; session reads as the owed layer established (fn-auth-tls-established).
+;; A question about ACL2's session, never about the octets.
+(defun fn-owner-compress-owed (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))))
+    (value (and conn
+                (let ((z (fn-auth-session-compress (fn-own-conn-session conn))))
+                  (and (fn-zc-owedp z) (cadr z)))))))
 
 ; Open pins the committed view and opens one served connection over it
 ; (fn-own-open); the greeting is the effect list it returns.  A refused open

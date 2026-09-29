@@ -58,7 +58,7 @@
                     (nht-crlf-lines
                      '("100 help text follows"
                        "CAPABILITIES HELP QUIT MODE DATE POST"
-                       "AUTHINFO STARTTLS XREDEEM"
+                       "AUTHINFO STARTTLS XREDEEM COMPRESS"
                        "GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS"
                        "ARTICLE HEAD BODY STAT"
                        "OVER XOVER HDR XHDR XPAT"
@@ -71,7 +71,7 @@
 ; step, alone on the line, on a served session.
 (defconst *nht-listed*
   '("CAPABILITIES" "HELP" "QUIT" "MODE" "DATE" "POST" "AUTHINFO" "STARTTLS"
-    "XREDEEM" "GROUP" "LISTGROUP" "LIST" "NEXT" "LAST" "NEWGROUPS" "NEWNEWS"
+    "XREDEEM" "COMPRESS" "GROUP" "LISTGROUP" "LIST" "NEXT" "LAST" "NEWGROUPS" "NEWNEWS"
     "ARTICLE" "HEAD" "BODY" "STAT" "OVER" "XOVER" "HDR" "XHDR" "XPAT"
     "IHAVE" "CHECK" "TAKETHIS" "XFNCATCHUP"))
 (defun nht-all-served (keywords fn-arena)
@@ -84,9 +84,9 @@
     t))
 (bpr-lift nht-all-served 1)
 (assert-event (in-arena-nht-all-served *sr-arena* *nht-listed*))
-; The list is the whole table: 29 keywords, and a lower-case spelling is
+; The list is the whole table: 30 keywords, and a lower-case spelling is
 ; the same keyword (RFC 3977 section 3.1: case-insensitive).
-(assert-event (equal (len *nht-listed*) 29))
+(assert-event (equal (len *nht-listed*) 30))
 (defun nht-flatten (rows)
   (if (consp rows) (append (car rows) (nht-flatten (cdr rows))) nil))
 (assert-event (equal (nht-flatten *fn-nntp-served-command-table*) *nht-listed*))
@@ -169,7 +169,7 @@
 ; is served until the handshake ends.
 (defconst *nht-handshaking*
   (fn-auth-make-session (fn-auth-session-base *nht-s*)
-                        (fn-auth-session-config *nht-s*) nil nil nil t))
+                        (fn-auth-session-config *nht-s*) nil nil nil t nil))
 (assert-event (in-arena-nht-retained-but *sr-arena* 2 *nht-handshaking* *nht-xpath*))
 (assert-event (null (fn-post-result-effects (in-arena-nht-step *sr-arena* *nht-handshaking* *nht-xpath*))))
 ; (4) awaiting a POST body: after 340 the next line is article data.

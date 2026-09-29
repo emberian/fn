@@ -94,7 +94,21 @@ class InitPublicationTests(InitFixture):
         self.assertEqual(refused.returncode, EXIT_REFUSED, text)
         self.assertIn("init refused reason=interrupted-init stage={}".format(leftover), text)
         self.assertFalse(self.store.exists())
+        # PKT-781 (1), PRF-971: the other store actions name the stage too
+        # (fn-nsst-store-outcome), never NO-STORE's "run init", which init
+        # itself refuses while the stage remains.
+        for verb in ("status", "recover"):
+            answer = self.op(verb)
+            text = (answer.stdout + answer.stderr).decode()
+            self.assertEqual(answer.returncode, EXIT_REFUSED, text)
+            self.assertIn("INTERRUPTED-INIT", text.upper(), text)
+            self.assertNotIn("NO-STORE", text.upper(), text)
+            self.assertIn("its stage {} remains".format(leftover), text)
+            self.assertFalse(self.store.exists())
         leftover.rmdir()
+        bare = self.op("status")
+        self.assertEqual(bare.returncode, EXIT_REFUSED, bare.stderr.decode())
+        self.assertIn("NO-STORE", (bare.stdout + bare.stderr).decode().upper())
 
         created = self.init_words()
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())

@@ -89,8 +89,10 @@
         (fn-nctrl-seal *fn-ncl-request-kind* payload)
       :bad)))
 
-(defun fn-ncl-request-decode (octets)
-  (let ((opened (fn-nctrl-open octets *fn-ncl-request-kind*)))
+; The payload grammar over an opened frame; the decode below is the open
+; (fn-nctrl-open) followed by it, and books/native-control-buffer.lisp opens
+; the frame in place and calls the grammar.
+(defun fn-ncl-request-payload-decode (opened)
     (if (not (fn-frame-result-okp opened)) (list :refused :frame)
       (let ((payload (fn-frame-result-payload opened)))
         (if (or (not (consp payload))
@@ -145,7 +147,10 @@
                      (list :consumer :bound-ack (fn-cp-nth 2 one)
                            (fn-cp-nth 1 one))
                    (list :refused :cursor)))))
-            (otherwise (list :refused :kind)))))))))
+            (otherwise (list :refused :kind))))))))
+
+(defun fn-ncl-request-decode (octets)
+  (fn-ncl-request-payload-decode (fn-nctrl-open octets *fn-ncl-request-kind*)))
 
 (defun fn-ncl-status-code (status)
   (case status (:accepted 0) (:refused 1) (:uncertain 2)
@@ -548,6 +553,7 @@ docs/agents.md, Local consumers")
 (verify-guards fn-ncl-read-secret)
 (verify-guards fn-ncl-secret-of-file)
 (verify-guards fn-ncl-request-encode)
+(verify-guards fn-ncl-request-payload-decode)
 (verify-guards fn-ncl-request-decode)
 (verify-guards fn-ncl-reply-encode)
 (verify-guards fn-ncl-reply-decode)

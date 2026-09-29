@@ -65,6 +65,31 @@
             (:defer (list :busy (fn-peer-decision-reason decision)))
             (otherwise (list :refused (fn-peer-decision-reason decision)))))))))
 
+;; PKT-771 (Q4e): the transit plan under the owner's header limits (PRF-230,
+;; PKT-660: every admission receives the limits a POST does).  Before, a
+;; past-limit article was refused only at the Store submission, AFTER the
+;; request-transit intent was durable; now the plan the host installs is
+;; this one, so a past-limit article is refused by the limit's name and no
+;; intent is built (fn-bpaj-transit-intent-from-plan answers NIL on a
+;; refused plan).  The census is of the octets the node would store
+;; (fn-peer-header-limit-refusal: the Path-updated relay projection), as
+;; for IHAVE/TAKETHIS (fn-peer-decide-transfer-under).  A duplicate (:have)
+;; stays a duplicate, exactly as the peer path keeps one.
+;; Host: host/bp-native-app-host.lisp fn-owner-app-plan-install, with
+;; (fn-own-config-header-limits (fn-own-config owner)).
+(defun fn-bpaj-transit-plan-under
+    (node cfg ingress source-eid request-octets clock limits)
+  (declare (xargs :guard t))
+  (let ((plan (fn-bpaj-transit-plan node cfg ingress source-eid
+                                    request-octets clock)))
+    (if (member-equal (car plan) '(:submit :busy))
+        (let* ((request (fn-bpaj-request request-octets))
+               (limit (fn-peer-header-limit-refusal
+                       cfg (fn-bpaj-ingress-peer cfg ingress source-eid)
+                       (fn-bpa-request-article request) limits)))
+          (if limit (list :refused limit) plan))
+      plan)))
+
 (defun fn-bpaj-transit-stored-octets (plan)
   (declare (xargs :guard t))
   (if (member-equal (car plan) '(:submit :have))
@@ -115,6 +140,50 @@
                         (fn-record-string-octets (fn-bpaj-nth 7 r))
                         (fn-record-string-octets (fn-bpaj-nth 8 r))))
          (fn-bpaj-transit-intentp r) r)))
+
+;; KEYSTONE (PKT-771): past the limits, a plan that would submit or defer is
+;; refused by the limit's name, and no request-transit intent is built from
+;; it -- the refusal precedes any durable intent.
+(defthm fn-bpaj-transit-plan-under-refuses-past-the-limits-before-any-intent
+  (let ((plan (fn-bpaj-transit-plan node cfg ingress source-eid
+                                    request-octets clock))
+        (limit (fn-peer-header-limit-refusal
+                cfg (fn-bpaj-ingress-peer cfg ingress source-eid)
+                (fn-bpa-request-article (fn-bpaj-request request-octets))
+                limits))
+        (under (fn-bpaj-transit-plan-under node cfg ingress source-eid
+                                           request-octets clock limits)))
+    (implies (and (member-equal (car plan) '(:submit :busy))
+                  limit)
+             (and (equal under (list :refused limit))
+                  (not (fn-bpaj-transit-intent-from-plan
+                        cfg inbound-id request-octets generation txid result
+                        under)))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpaj-transit-plan-under
+                                fn-bpaj-transit-intent-from-plan
+                                member-equal car-cons)
+                              (theory 'minimal-theory)))))
+
+;; Within the limits (and for every plan that neither submits nor defers)
+;; the host's plan is the transit plan every theorem below is about.
+(defthm fn-bpaj-transit-plan-under-is-the-plan-within-the-limits
+  (implies (or (not (member-equal
+                     (car (fn-bpaj-transit-plan node cfg ingress source-eid
+                                                request-octets clock))
+                     '(:submit :busy)))
+               (not (fn-peer-header-limit-refusal
+                     cfg (fn-bpaj-ingress-peer cfg ingress source-eid)
+                     (fn-bpa-request-article (fn-bpaj-request request-octets))
+                     limits)))
+           (equal (fn-bpaj-transit-plan-under node cfg ingress source-eid
+                                              request-octets clock limits)
+                  (fn-bpaj-transit-plan node cfg ingress source-eid
+                                        request-octets clock)))
+  :hints (("Goal" :in-theory (union-theories '(fn-bpaj-transit-plan-under)
+                                             (theory 'minimal-theory)))))
+
+(in-theory (disable fn-bpaj-transit-plan-under))
 
 ;; -----------------------------------------------------------------------------
 ;; D23 over the functions the host calls.  host/native/bp-node.lisp's

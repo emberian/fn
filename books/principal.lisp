@@ -58,7 +58,7 @@
   ; The guard needs only that the preimage is an octet list
   ; (`fn-stmt-encode-items-is-octet-list'); the item encoder's cons equation,
   ; which the statement seam exports enabled, would take the preimage apart
-  ; into CBOR encodings this book opens (plan 2026-09-22 §4.1).
+  ; into CBOR encodings this book opens (plan 2026-09-22 section 4.1).
   (declare (xargs :guard (and (fn-sig-public-key-p pk)
                               (fn-prin-tokenp token))
                   :guard-hints (("Goal" :in-theory

@@ -8,8 +8,8 @@
 ;   Z = 'fn-z' head (5) ++ u32 DICT-ID ++ u32 K ++ u32 N ++ u32 |STUB|
 ;       ++ STUB ++ C
 ;
-; where [K, K+N) is R's payload span, STUB is R without it and C is an LZ4
-; block (books/payload-lz.lisp) that decodes, against dictionary DICT-ID, to
+; where [K, K+N) is R's payload span, STUB is R without it and C is a DEFLATE
+; stream (books/payload-deflate.lisp) that decodes, against dictionary DICT-ID, to
 ; exactly those N octets.  `fn-lzr-expand' gives R back:
 ; STUB[0,K) ++ decode(C) ++ STUB[K..].  The frame sits between the record
 ; codec and the log: the codec, its seam (books/records-seam.lisp), the
@@ -17,7 +17,7 @@
 ; record that is not a frame passes through unchanged.
 ;
 ; THE SEAL.  `fn-lzr-seal' is the one producer of a frame.  It runs the
-; proved decoder over the host's CANDIDATE (liblz4-HC's output: untrusted)
+; proved decoder over the host's CANDIDATE (zlib's output: untrusted)
 ; and frames R only when the candidate decodes to R's span, the span is at
 ; least the profile's threshold MIN (0: never) and the frame is shorter than
 ; R (`fn-lzr-compress-p'); otherwise R is kept.  KEYSTONE
@@ -35,7 +35,7 @@
 ; authored article.  The log's frame trailer (books/store-log.lisp) covers Z:
 ; the durable octets.  The seal is what ties C to R.
 ;
-; DICTIONARIES.  A table of (ID . OCTETS), each at most the LZ4 window
+; DICTIONARIES.  A table of (ID . OCTETS), each at most 64 KiB
 ; (`fn-lzr-dictsp'); ID 0 is the empty dictionary.  `fn-lzr-dicts-add'
 ; refuses to rebind an ID to other octets (a dictionary is immutable once
 ; named: `fn-lzr-dicts-add-keeps-bindings').
@@ -52,6 +52,7 @@
 
 (in-package "ACL2")
 (include-book "payload-lz-value")
+(include-book "payload-lz-dicts")
 (include-book "payload-commit-extent")
 (include-book "records-seam")
 
@@ -176,7 +177,7 @@
 ; -----------------------------------------------------------------------------
 ; 2. Dictionaries.
 
-(defconst *fn-lzr-dict-max* 65536) ; the LZ4 window: an offset reaches 65,535 back
+(defconst *fn-lzr-dict-max* 65536) ; the table's bound (the inflater presets the last 32 KiB)
 
 (defun fn-lzr-dictp (d)
   (declare (xargs :guard t))
@@ -198,10 +199,16 @@
   (implies (and (fn-lzr-dictsp dicts) (assoc-equal id dicts))
            (fn-cbor-octet-listp (cdr (assoc-equal id dicts)))))
 
-; The initial table: ID 0, the empty dictionary.
+; The initial table: the release's shipped dictionaries (books/payload-lz-
+; dicts.lisp): ID 0, the empty dictionary, and each shipped one under the
+; first four octets of its BLAKE3 digest.
 (defun fn-lzr-dicts-initial ()
   (declare (xargs :guard t))
-  (list (cons 0 nil)))
+  (fn-lzd-table))
+
+(defthm fn-lzr-dicts-initial-dictsp
+  (fn-lzr-dictsp (fn-lzr-dicts-initial))
+  :hints (("Goal" :in-theory (enable fn-lzd-table))))
 
 ; Bind ID to OCTETS: (:ok DICTS') or a named refusal.  An ID already bound
 ; to the same octets is the same table; to other octets, refused.
@@ -255,16 +262,16 @@
               (fn-lzr-u32p (len r))
               (<= (+ k n) (len r))
               (fn-lzr-compress-p min n (len candidate))
-              (equal (fn-lz-decode dict candidate n) (list :ok (take n (nthcdr k r)))))
+              (equal (fn-pzd-decode dict candidate n) (list :ok (take n (nthcdr k r)))))
          (fn-lzr-frame dict-id k n (append (take k r) (nthcdr (+ k n) r)) candidate))
         ((and (fn-lzr-magicp r) (fn-lzr-u32p dict-id) (fn-lzr-u32p (len r)))
          ;; R begins with the frame's head: an empty span keeps it unambiguous.
-         (fn-lzr-frame dict-id 0 0 r (fn-lz-literal-block nil)))
+         (fn-lzr-frame dict-id 0 0 r nil))
         (t r)))
 
 (defun fn-lzr-expand (dicts z)
   (declare (xargs :guard (and (fn-lzr-dictsp dicts) (fn-cbor-octet-listp z))
-                  :guard-hints (("Goal" :in-theory (disable fn-lz-decode take nthcdr assoc-equal
+                  :guard-hints (("Goal" :in-theory (disable fn-pzd-decode take nthcdr assoc-equal
                                                             fn-lzr-dictsp fn-lzr-magicp)))))
   (if (not (fn-lzr-magicp z))
       (list :ok z)
@@ -274,7 +281,7 @@
         (let ((e (assoc-equal (nth 0 p) dicts)))
           (if (not e)
               (list :refused :lz-dictionary)
-            (let ((r (fn-lz-decode (cdr e) (nth 4 p) (nfix (nth 2 p))))
+            (let ((r (fn-pzd-decode (cdr e) (nth 4 p) (nfix (nth 2 p))))
                   (k (nfix (nth 1 p)))
                   (stub (nth 3 p)))
               (if (eq (car r) :ok)
@@ -374,9 +381,9 @@
                   (:instance fn-lzr-nthcdr-nthcdr))))))
 
 (local
- (defthm fn-lzr-decode-empty-literal
-   (equal (fn-lz-decode dict '(0) 0) (list :ok nil))
-   :hints (("Goal" :use ((:instance fn-lz-decode-of-literal-block (x nil)))))))
+ (defthm fn-lzr-decode-empty-stream
+   (equal (fn-pzd-decode dict nil 0) (list :ok nil))
+   :hints (("Goal" :use ((:instance fn-pzd-decode-of-empty))))))
 
 (local
  (defthm fn-lzr-expand-of-compressed
@@ -384,7 +391,7 @@
                  (fn-lzr-u32p dict-id) (fn-lzr-u32p k) (fn-lzr-u32p n) (fn-lzr-u32p (len r))
                  (<= (+ k n) (len r))
                  (true-listp r)
-                 (equal (fn-lz-decode dict candidate n) (list :ok (take n (nthcdr k r)))))
+                 (equal (fn-pzd-decode dict candidate n) (list :ok (take n (nthcdr k r)))))
             (equal (fn-lzr-expand dicts (fn-lzr-frame dict-id k n
                                                       (append (take k r) (nthcdr (+ k n) r))
                                                       candidate))
@@ -396,7 +403,7 @@
  (defthm fn-lzr-expand-of-escape
    (implies (and (equal (assoc-equal dict-id dicts) (cons dict-id dict))
                  (fn-lzr-u32p dict-id) (fn-lzr-u32p (len r)) (true-listp r))
-            (equal (fn-lzr-expand dicts (fn-lzr-frame dict-id 0 0 r '(0)))
+            (equal (fn-lzr-expand dicts (fn-lzr-frame dict-id 0 0 r nil))
                    (list :ok r)))
    :hints (("Goal" :in-theory (disable fn-lzr-magicp take nthcdr)))))
 
@@ -512,7 +519,7 @@
                  (<= (+ roff rlen *fn-frame-trailer-octets*) (+ start n))
                  (true-listp payload)
                  (equal (len payload) (nfix (nth 2 p)))
-                 (equal (fn-lz-decode (cdr e) c (nfix (nth 2 p))) (list :ok payload)))
+                 (equal (fn-pzd-decode (cdr e) c (nfix (nth 2 p))) (list :ok payload)))
             (list (nfix file) start (- n *fn-frame-trailer-octets*)
                   (+ roff (- rlen clen)) clen 0 (nfix (nth 2 p)) (nth 0 p))
           nil)))))
@@ -520,13 +527,13 @@
 (defthm fn-lzr-extent-of-extentp
   (implies (fn-lzr-extent-of file position z payload dicts)
            (fn-lzr-extentp (fn-lzr-extent-of file position z payload dicts)))
-  :hints (("Goal" :in-theory (disable fn-lzr-magicp take nthcdr fn-lz-decode))))
+  :hints (("Goal" :in-theory (disable fn-lzr-magicp take nthcdr fn-pzd-decode))))
 
 ; The served read of a compressed extent: the decode of C's durable octets
 ; (read by the host's realizer, which checks the entry's trailer first).
 (defun fn-lzr-read (dict c n)
   (declare (xargs :guard (and (fn-cbor-octet-listp dict) (fn-cbor-octet-listp c) (natp n))))
-  (let ((r (fn-lz-decode dict c n)))
+  (let ((r (fn-pzd-decode dict c n)))
     (if (equal (car r) :ok) r (list :refused :lz-decode))))
 
 (local
@@ -547,7 +554,7 @@
                                  (fn-durable-octets (nth 0 e) (nth 3 e) (nth 4 e))
                                  (nth 6 e))
                     (list :ok payload))))
-  :hints (("Goal" :in-theory (e/d () (fn-lzr-magicp take nthcdr fn-lz-decode
+  :hints (("Goal" :in-theory (e/d () (fn-lzr-magicp take nthcdr fn-pzd-decode
                                       fn-lzr-parse-c-is-the-tail fn-arx-durable-slice))
            :use ((:instance fn-lzr-parse-c-is-the-tail)
                  (:instance fn-arx-durable-slice
@@ -559,7 +566,7 @@
 (local
  (defthm fn-lzr-read-ok-is-the-decode
    (implies (equal (fn-lzr-read d c n) (list :ok p))
-            (equal (fn-lz-decode d c n) (list :ok p)))
+            (equal (fn-pzd-decode d c n) (list :ok p)))
    :rule-classes nil))
 
 (defthm fn-lzr-extent-of-payload-shape
@@ -567,7 +574,7 @@
            (and (true-listp payload)
                 (equal (len payload) (nth 6 (fn-lzr-extent-of file position z payload dicts)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-lzr-magicp take nthcdr fn-lz-decode fn-lzr-parse-shape))))
+  :hints (("Goal" :in-theory (disable fn-lzr-magicp take nthcdr fn-pzd-decode fn-lzr-parse-shape))))
 
 (defthm fn-lzr-extent-of-lz-value
   (let ((e (fn-lzr-extent-of file position z payload dicts)))
@@ -579,7 +586,7 @@
                                      (nth 6 e))
                     payload)))
   :hints (("Goal" :in-theory (disable fn-lzr-extent-of fn-lzr-extent-read-denotes fn-lzr-read
-                                      fn-lzr-lz-value-of-decode fn-lz-decode)
+                                      fn-lzr-lz-value-of-decode fn-pzd-decode)
            :use (fn-lzr-extent-read-denotes
                  fn-lzr-extent-of-payload-shape
                  (:instance fn-lzr-read-ok-is-the-decode
@@ -604,7 +611,7 @@
   (implies (and (fn-lzr-extent-of file position z payload dicts) (fn-lzr-dictsp dicts))
            (fn-cbor-octet-listp
             (cdr (assoc-equal (nth 7 (fn-lzr-extent-of file position z payload dicts)) dicts))))
-  :hints (("Goal" :in-theory (disable fn-lzr-magicp take nthcdr fn-lz-decode))))
+  :hints (("Goal" :in-theory (disable fn-lzr-magicp take nthcdr fn-pzd-decode))))
 
 (in-theory (disable fn-lzr-extent-of))
 
@@ -615,7 +622,7 @@
 ; the value A-DURABLE-LZ names.
 (defun fn-lzr-lz-read (dict c n)
   (declare (xargs :guard (and (fn-cbor-octet-listp dict) (fn-cbor-octet-listp c) (natp n))))
-  (let ((r (fn-lz-decode dict c n)))
+  (let ((r (fn-pzd-decode dict c n)))
     (if (and (eq (car r) :ok) (true-listp (cadr r)) (equal (len (cadr r)) (nfix n)))
         (list :ok (cadr r))
       (list :refused :lz-decode))))
@@ -624,4 +631,20 @@
   (implies (equal (car (fn-lzr-lz-read dict c n)) :ok)
            (equal (cadr (fn-lzr-lz-read dict c n)) (fn-lzr-lz-value dict c n)))
   :hints (("Goal" :in-theory (enable fn-lzr-lz-value))))
+
+; KEYSTONE (the served read's boundary).  The host's realizer runs the
+; payload decoder over its pooled buffers (host/native/deflate.lisp
+; fnn-pzd-decode: fn-pzd-decode-bufs): an :ok answer leaves in its output
+; buffer exactly the value A-DURABLE-LZ names.
+(defthm fn-lzr-decode-bufs-is-the-lz-value
+  (implies (and (fn-cbor-octet-listp c) (fn-cbor-octet-listp dict) (natp n)
+                (equal (car (car (fn-pzd-decode-bufs dict (len c) n c fn-zin-win fn-zin-tab
+                                                     fn-zin-out)))
+                       :ok))
+           (equal (mv-nth 3 (fn-pzd-decode-bufs dict (len c) n c fn-zin-win fn-zin-tab
+                                                fn-zin-out))
+                  (fn-lzr-lz-value dict c n)))
+  :hints (("Goal" :use ((:instance fn-pzd-decode-bufs-is-decode))
+           :in-theory (e/d (fn-lzr-lz-value)
+                           (fn-pzd-decode-bufs fn-pzd-decode-bufs-is-decode)))))
 
