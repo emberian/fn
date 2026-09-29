@@ -742,9 +742,24 @@ class Run:
                 elif o.op == "read":
                     self.served_read(o, c)
                 elif o.op == "retry":
-                    # The served retry: the same proto-article POSTed again on
-                    # the running node; 240 commits it, the 441 names it stored.
-                    self.served_post(o, "served-post", of=o.args["of"], c=c)
+                    # A retry takes its original's route: the served route
+                    # stores the injected article and the store verb the
+                    # payload as posted, so a retry across routes is refused
+                    # as a different article under the same Message-ID (the
+                    # identity is the bytes).  Served: the same proto-article
+                    # POSTed again on the running node, 240 commits it, the
+                    # 441 names it stored.  Store: after the owner is stopped.
+                    original = self.s.operation(o.args["of"])
+                    if original.args.get("route", "served-post") == "store-post":
+                        if c is not None:
+                            c.close()
+                            c = None
+                        if owner is not None:
+                            self.node.stop_owner(owner)
+                            owner = None
+                        self.store_retry(o)
+                    else:
+                        self.served_post(o, "served-post", of=o.args["of"], c=c)
         finally:
             if c is not None:
                 c.close()
