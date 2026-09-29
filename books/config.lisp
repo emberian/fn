@@ -31,6 +31,7 @@
 (include-book "records-invariants")
 (include-book "rev-onto") ; the loop twins' step (PKT-877)
 (include-book "clock-unit")
+(include-book "defevent") ; the delta kinds' stable codes, one form
 
 ; Nothing in this book opens the CBOR or record codec: every definition here
 ; is `:guard t', and the ground witnesses at the end are decided by
@@ -881,69 +882,29 @@
     :consumer-bind
     :set-default-subscriptions :withdraw-article :account-delete))
 
-(defun fn-cfg-kind-code (kind)
-  (declare (xargs :guard t))
-  (cond ((equal kind :create-group) 1)
-        ((equal kind :remove-group) 2)
-        ((equal kind :set-capacity) 3)
-        ((equal kind :set-quota) 4)
-        ((equal kind :set-policy) 5)
-        ((equal kind :set-listeners) 6)
-        ((equal kind :set-peers) 7)
-        ((equal kind :set-limit) 8)
-        ((equal kind :set-peer) 9)
-        ((equal kind :remove-peer) 10)
-        ((equal kind :grant-control) 11)
-        ((equal kind :revoke-control) 12)
-        ((equal kind :issue-invitation) 13)
-        ((equal kind :consume-invitation) 14)
-        ((equal kind :account-invite) 15)
-        ((equal kind :account-redeem) 16)
-        ((equal kind :login-binding) 17)
-        ((equal kind :add-peer-rows) 18)
-        ((equal kind :remove-peer-rows) 19)
-        ((equal kind :set-group-description) 20)
-        ((equal kind :set-group-status) 21)
-        ((equal kind :account-access) 22)
-        ((equal kind :set-group-moderation) 23)
-        ((equal kind :consumer-bind) 24)
-        ((equal kind :set-default-subscriptions) 25)
-        ; PKT-575 (CT3): the operator's withdrawal authorization.
-        ((equal kind :withdraw-article) 26)
-        ; public-node-2: an account's deletion (its tombstone, mark 7).
-        ((equal kind :account-delete) 27)
-        (t 0)))
-
-(defun fn-cfg-code-kind (code)
-  (declare (xargs :guard t))
-  (cond ((equal code 1) :create-group)
-        ((equal code 2) :remove-group)
-        ((equal code 3) :set-capacity)
-        ((equal code 4) :set-quota)
-        ((equal code 5) :set-policy)
-        ((equal code 6) :set-listeners)
-        ((equal code 7) :set-peers)
-        ((equal code 8) :set-limit)
-        ((equal code 9) :set-peer)
-        ((equal code 10) :remove-peer)
-        ((equal code 11) :grant-control)
-        ((equal code 12) :revoke-control)
-        ((equal code 13) :issue-invitation)
-        ((equal code 14) :consume-invitation)
-        ((equal code 15) :account-invite)
-        ((equal code 16) :account-redeem)
-        ((equal code 17) :login-binding)
-        ((equal code 18) :add-peer-rows)
-        ((equal code 19) :remove-peer-rows)
-        ((equal code 20) :set-group-description)
-        ((equal code 21) :set-group-status)
-        ((equal code 22) :account-access)
-        ((equal code 23) :set-group-moderation)
-        ((equal code 24) :consumer-bind)
-        ((equal code 25) :set-default-subscriptions)
-        ((equal code 26) :withdraw-article)
-        ((equal code 27) :account-delete)
-        (t nil)))
+;; The delta kinds' stable codes are one form (books/defevent.lisp): it
+;; generates the encoder fn-cfg-kind-code and the decoder fn-cfg-code-kind as
+;; they were written by hand (their round trip is asserted at expansion, so
+;; the book's theorem set is unchanged) and the registry row
+;; (tools/event_emit.py, planning/events.json) that keeps each code's meaning
+;; stable across versions.  26 is PKT-575 (CT3), the operator's withdrawal
+;; authorization; 27 is public-node-2's account deletion (its tombstone,
+;; mark 7).
+(defevent fn-cfg-delta-kind
+  :version 1
+  :var kind
+  :codes ((:create-group 1) (:remove-group 2) (:set-capacity 3) (:set-quota 4)
+          (:set-policy 5) (:set-listeners 6) (:set-peers 7) (:set-limit 8)
+          (:set-peer 9) (:remove-peer 10) (:grant-control 11) (:revoke-control 12)
+          (:issue-invitation 13) (:consume-invitation 14) (:account-invite 15)
+          (:account-redeem 16) (:login-binding 17) (:add-peer-rows 18)
+          (:remove-peer-rows 19) (:set-group-description 20) (:set-group-status 21)
+          (:account-access 22) (:set-group-moderation 23) (:consumer-bind 24)
+          (:set-default-subscriptions 25) (:withdraw-article 26) (:account-delete 27))
+  :otherwise 0
+  :encode fn-cfg-kind-code
+  :decode fn-cfg-code-kind
+  :code-var code)
 
 (defun fn-cfg-deltap (d)
   (declare (xargs :guard t))
