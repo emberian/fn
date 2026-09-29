@@ -14162,6 +14162,25 @@
         "fn-bs-read-ranges-read-the-whole-file",
         "fn-lgs-open-plan-scan-ignores-covered"
       ]
+    },
+    {
+      "id": "PRF-957",
+      "title": "The Message-ID index on pages: a lookup that reads the tag's home page and its overflow page, merges their sequence numbers and confirms each against the row is the history's Message-ID reader, for every tag function (lane paged-history, row P2)",
+      "statement": "Subjects: books/msgid-pages.lisp fn-mpx-records (the paged reader: fn-mpx-confirm over fn-mpx-candidates of the Message-ID's tag) against fn-hist$a-msgid-records (the logic of the host-called fn-hist-msgid-records, books/history-columns; = fn-cei-article-records-for). No host line reads the pages at this revision: the executable half (the pages as page-store words, the BLAKE3 tag by functional instantiation of fn-mpx-tag, the suffix index and its merge at the checkpoint) and the host switch of fn-cat-view-find / fn-pidx-existing-action / the -hx twins are the next READYs of the row. KEYSTONE fn-mpx-confirm-is-the-records-for (the indexed-access refinement, reusable by every paged index): for any candidate list of sequence numbers that is a nat-listp, strictly ascending (fn-mpx-ascendingp), below the history's length (fn-mpx-below-p) and complete (fn-mpx-complete-from 0: every sequence whose row is a held article with the Message-ID is a member), fn-mpx-confirm (the records at the candidates whose Message-ID is the one asked, in candidate order) equals fn-cei-article-records-for. KEYSTONE fn-mpx-records-is-the-records-for: under fn-mpx-tablep and fn-mpx-faithful (every page's seqs ascending and below the length; every held row's sequence among its own tag's candidates), fn-mpx-records equals fn-cei-article-records-for; fn-mpx-records-is-hist-msgid-records restates it against fn-hist$a-msgid-records. fn-mpx-candidates-ascending / -below / -nat-listp: the merge of the home and overflow pages' seqs for a tag inherits the pages' order and bound. The tag is a constrained function (encapsulate, local witness 1): the theorems hold for every tag because correctness is the confirmation's. Teeth: tests/acl2/msgid-pages-tests.lisp attaches a colliding tag (FNV-32 mod 3), checks the complete antecedent and conclusion on a four-row history (two records under one Message-ID in history order, one, none), an overflow placement and a labelled stale entry, and drops fn-mpx-table-okp (order fails) and fn-mpx-faithful-from (completeness fails) in turn with the conclusion failing.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-027"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/msgid-pages.lisp",
+        "tests/acl2/msgid-pages-tests.lisp",
+        "planning/design-paged-history-2026-09-29.md"
+      ],
+      "progress_note": "2026-09-29 lane paged-history: the logical book and its teeth REPL-admitted on persvati; certification manifest at the READY sha. Not yet on a host path: a model with its equality theorem, the first of row P2's READYs (planning/design-paged-history-2026-09-29.md C).",
+      "events": []
     }
   ]
 }
