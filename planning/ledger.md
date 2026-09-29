@@ -13,22 +13,22 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1659 |
 | Certification roots in the Makefile | 1597 |
 | Books inside the root closure | 1658 |
-| `defthm` and `defthmd` events | 27323 |
-| `defun` events | 17853 |
-| Functions with verified guards | 3335 |
+| `defthm` and `defthmd` events | 27330 |
+| `defun` events | 17854 |
+| Functions with verified guards | 3338 |
 | Functions declared `:verify-guards nil` and never verified | 2066 |
-| Functions left at the default with an explicit guard | 9785 |
+| Functions left at the default with an explicit guard | 9783 |
 | Functions left at the default with no guard | 2667 |
-| `assert-event` checks | 22599 |
-| `must-fail` checks | 2415 |
+| `assert-event` checks | 22603 |
+| `must-fail` checks | 2418 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
 | Theorems flagged SUSPECT by shape | 1206 |
 | Export-hygiene warnings | 317 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 265 |
-| Include-hygiene warnings | 2367 |
-| Host-names warnings | 1977 |
+| Include-hygiene warnings | 2368 |
+| Host-names warnings | 1964 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -205,14 +205,14 @@ that `make certify` requests.
 | `books/bp-node-fragment-plan.lisp` | root | 4 | 4 | 2/2/0/0 | 0 | 0 | 1 |
 | `books/bp-node-fragment-replacement.lisp` | root | 3 | 7 | 0/2/5/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-step.lisp` | root | 29 | 18 | 0/15/3/0 | 0 | 0 | 0 |
-| `books/bp-node-host-machine.lisp` | root | 1 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/bp-node-host-machine.lisp` | root | 8 | 4 | 1/0/3/0 | 0 | 0 | 0 |
 | `books/bp-node-host-sequence.lisp` | closure | 7 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-node-host-transfer.lisp` | closure | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-node-job-cursor.lisp` | root | 103 | 32 | 1/16/15/0 | 0 | 0 | 2 |
 | `books/bp-node-job-offer-progress.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-job-offer.lisp` | root | 61 | 26 | 0/6/20/0 | 0 | 0 | 1 |
 | `books/bp-node-machine-authorization.lisp` | root | 30 | 4 | 0/4/0/0 | 0 | 0 | 0 |
-| `books/bp-node-machine-codec.lisp` | root | 3 | 35 | 2/0/33/0 | 0 | 0 | 0 |
+| `books/bp-node-machine-codec.lisp` | root | 3 | 35 | 4/0/31/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-gaps.lisp` | root | 25 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/bp-node-machine-guards.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-invariants.lisp` | root | 83 | 1 | 0/1/0/0 | 0 | 0 | 11 |
@@ -1136,7 +1136,7 @@ that `make certify` requests.
 | `tests/acl2/bp-node-fragment-plan-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-replacement-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-step-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 28 | 2 | 0 |
-| `tests/acl2/bp-node-host-machine-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 1 | 0 |
+| `tests/acl2/bp-node-host-machine-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 4 | 0 |
 | `tests/acl2/bp-node-host-sequence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/bp-node-host-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 27 | 0 | 0 |
 | `tests/acl2/bp-node-job-cursor-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 11 | 1 | 0 |

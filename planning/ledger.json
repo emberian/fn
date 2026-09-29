@@ -1604,24 +1604,24 @@
     "books": 1659,
     "books_in_root_closure": 1658,
     "roots": 1597,
-    "theorems": 27323,
-    "functions": 17853,
-    "assert_events": 22599,
-    "must_fails": 2415,
+    "theorems": 27330,
+    "functions": 17854,
+    "assert_events": 22603,
+    "must_fails": 2418,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
-      "verified": 3335,
+      "verified": 3338,
       "declared-off": 2066,
-      "default-guarded": 9785,
+      "default-guarded": 9783,
       "default-unguarded": 2667
     },
     "suspect_theorems": 1206,
     "export_hygiene_warnings": 317,
     "enabled_projection_warnings": 52,
     "teeth_form_warnings": 265,
-    "include_hygiene_warnings": 2367,
-    "host_names_warnings": 1977,
+    "include_hygiene_warnings": 2368,
+    "host_names_warnings": 1964,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -4987,15 +4987,15 @@
       "book": "books/bp-node-host-machine.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
-      "functions": 3,
+      "theorems": 8,
+      "functions": 4,
       "guards": {
-        "verified": 0,
+        "verified": 1,
         "declared-off": 0,
         "default-guarded": 3,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 1,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -5003,6 +5003,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "bp-node-machine-codec",
         "bp-node-machine-guards"
       ],
       "system_includes": [],
@@ -5181,12 +5182,12 @@
       "theorems": 3,
       "functions": 35,
       "guards": {
-        "verified": 2,
+        "verified": 4,
         "declared-off": 0,
-        "default-guarded": 33,
+        "default-guarded": 31,
         "default-unguarded": 0
       },
-      "verify_guards_events": 2,
+      "verify_guards_events": 4,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -33041,10 +33042,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 4,
-      "must_fails": 1,
+      "assert_events": 8,
+      "must_fails": 4,
       "prover_refusals": 0,
-      "defconsts": 2,
+      "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -64599,6 +64600,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bp-node-host-machine.lisp",
+        "line": 10,
+        "include": "bp-node-machine-codec",
+        "included": "books/bp-node-machine-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bp-node-job-offer.lisp",
         "line": 4,
         "include": "bp-node-contact-driver",
@@ -80741,97 +80749,6 @@
         "name": "character-listp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/bp-node-machine-host.lisp",
-        "line": 17,
-        "name": "fn-bpn-lifecycle-record-frame",
-        "source": "books/bp-node-machine-codec.lisp",
-        "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-node-machine-host.lisp",
-        "line": 22,
-        "name": "fn-bpn-lifecycle-record-unframe",
-        "source": "books/bp-node-machine-codec.lisp",
-        "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-node-machine-host.lisp",
-        "line": 27,
-        "name": "fn-bpn-lifecycle-frame-limit",
-        "source": "books/bp-node-machine-codec.lisp",
-        "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-node-machine-host.lisp",
-        "line": 30,
-        "name": "fn-bpn-lifecycle-record-name",
-        "source": "books/bp-node-machine-codec.lisp",
-        "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-node-machine-host.lisp",
-        "line": 33,
-        "name": "fn-bpn-lifecycle-recovery",
-        "source": "books/bp-node-machine-codec.lisp",
-        "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-node-machine-host.lisp",
-        "line": 39,
-        "name": "fn-bpn-lifecycle-recovery-records",
-        "source": "books/bp-node-machine-codec.lisp",
-        "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-node-machine-host.lisp",
-        "line": 42,
-        "name": "fn-bpn-lifecycle-recovery-stages",
-        "source": "books/bp-node-machine-codec.lisp",
-        "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-node-machine-host.lisp",
-        "line": 45,
-        "name": "fn-bpn-lifecycle-recovery-agrees-with-statep",
-        "source": "books/bp-node-machine-codec.lisp",
-        "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-node-machine-host.lisp",
-        "line": 48,
-        "name": "fn-bpn-lifecycle-publication-authorize",
-        "source": "books/bp-node-machine-codec.lisp",
-        "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-node-machine-host.lisp",
-        "line": 53,
-        "name": "fn-bpn-lifecycle-publication-operationp",
-        "source": "books/bp-node-machine-codec.lisp",
-        "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-node-machine-host.lisp",
-        "line": 56,
-        "name": "fn-bpn-lifecycle-publication-operation-token",
-        "source": "books/bp-node-machine-codec.lisp",
-        "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-node-machine-host.lisp",
-        "line": 59,
-        "name": "fn-bpn-lifecycle-publication-operation-record",
-        "source": "books/bp-node-machine-codec.lisp",
-        "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-node-machine-host.lisp",
-        "line": 62,
-        "name": "fn-bpn-lifecycle-publication-operation-publication",
-        "source": "books/bp-node-machine-codec.lisp",
-        "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-receipt-journal-host.lisp",
