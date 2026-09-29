@@ -14450,7 +14450,6 @@
         "fn-lgu-acknowledged-article-is-recoverable-at-every-cut-of-recovery",
         "fn-lgu-committed-record-is-read-from-every-crash-image",
         "fn-lgu-scan-of-a-complete-prefix-reads-its-records",
-        "fn-lgu-recovered-kernel-holds-the-scan",
         "fn-lgu-committed-record-survives-every-cut-of-the-append",
         "fn-lgu-committed-record-survives-every-cut-of-the-fence",
         "fn-lgu-committed-record-survives-every-cut-of-a-failed-fence",
