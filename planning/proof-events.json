@@ -17302,6 +17302,23 @@
           "name": "fn-pio-close-waits-for-every-worker"
         }
       ]
+    },
+    {
+      "id": "PRF-1072",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-prepare-identity-preserves-retain-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-prepare-identity-preserves-retain-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-finish-synced-preserves-retain-carry"
+        }
+      ]
     }
   ]
 }

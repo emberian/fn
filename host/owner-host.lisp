@@ -31,6 +31,7 @@
 (include-book "../books/owner-state-accessors")
 (include-book "../books/state-globals")
 (include-book "../books/owner-retain-state")
+(include-book "../books/owner-retain-transitions")
 (include-book "../books/owner-obligation-state")
 ; The compression threshold (fn-owner-compress-min-octets; PRF-341).
 (include-book "../books/payload-lz-append")
@@ -1942,57 +1943,7 @@
 ;; fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record).
 ;; Guard-verified under fn-sn-statep of the store, which fn-ocl-relation
 ;; carries.
-(defun fn-owner-prepare-identity (event fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :guard (and (boundp-global 'fn-owner state)
-                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))
-                              (fn-prc-carryp (fn-owner-retain-carry state)))
-                  :guard-hints (("Goal" :in-theory (enable fn-sn-statep fn-sbud-oc-store fn-arena-count-is-len)))))
-  (let ((s (fn-owner-store state)))
-    (if (not (or (fn-stxk-p event) (fn-stxa-p event)))
-        (value :invalid)
-      ;; fn-oiis-prepare-identity (books/owner-identity-served.lisp): the
-      ;; owner's identity prepare over the ROW the intern makes of EVENT at
-      ;; the arena's count (signed-post: fn-oii-identity-row, KEYSTONE
-      ;; fn-oii-ocfg-prepare-identity-is-intern-then-step), when the row's
-      ;; article groups are served (prepare-served's test over the row --
-      ;; over the wire event it answered t for every composite; KEYSTONE
-      ;; fn-oiis-prepare-identity-preserves-invariant), and the owner
-      ;; unchanged otherwise.
-      ;; fn-pout-prepare-identity (books/owner-prepare-outcome.lisp) answers
-      ;; its word (KEYSTONE fn-pout-prepare-identity-answers-the-store-change).
-      ;; served-costs-4 (Q5b): the prepare the host calls is
-      ;; fn-irc-pout-prepare-identity (books/identity-retain-carried.lisp)
-      ;; with the carried obligation-id trie brought to the Store node's
-      ;; ledger, as the article prepare above: the gate's record application
-      ;; answers the retention admission from the trie instead of scanning
-      ;; every pin and release (KEYSTONE
-      ;; fn-irc-pout-prepare-identity-of-refresh-is-pout: its word and owner
-      ;; are fn-pout-prepare-identity's for every carry the host holds).
-      (let ((carry (fn-prc-refresh (fn-owner-retain-carry state)
-                                   (fn-node-retention (fn-sn-node s)))))
-      (mv-let (word next)
-        (fn-irc-pout-prepare-identity (fn-owner-ocfg state) event
-                                      (fn-arena-count fn-arena) carry)
-      (let* ((row (fn-oii-identity-row event (fn-sn-keyring s) (fn-sn-keyring-generation s)
-                                       (fn-arena-count fn-arena)))
-             (state (fn-owner-retain-carry-put carry state))
-             (state (fn-owner-install-ocfg next state)))
-        (cond ((not (equal word :prepared)) (value word))
-              ((fn-oii-identity-sealsp event)
-               ; The catalog (signed-post's red, catalog-columns): the article
-               ; this event serves and its held row -- the row itself for a
-               ; plain record, the held row inside the composite for a signed
-               ; one -- kept for the catalog's prepare after the host's seal
-               ; (fn-owner-cat-prepare-sealed), completed by
-               ; fn-owner-finish-identity (T4 then T2, as a POST).
-               (let ((state (f-put-global
-                             'fn-owner-cat-candidate
-                             (if (fn-hstxa-p row)
-                                 (cons (fn-replay-composite-record event) (fn-hstxa-held row))
-                               (cons event row))
-                             state)))
-                 (value (list :seal (fn-oii-identity-payload event)))))
-              (t (value :prepared)))))))))
+; Defined under the same host-called name in books/owner-retain-transitions.lisp.
 
 ; The consumer proposal is constructed by ACL2.  The host carries this exact
 ; bounded event into Store; it does not rebuild the scope, epoch or cursor.
@@ -2187,35 +2138,7 @@
 ;; fn-sn-finish searched the whole history and re-recognized the record for
 ;; every field it read.  The signed POST's composite, keyring snapshots,
 ;; retention, consumer and topic events complete here.
-(defun fn-owner-finish-synced (fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :guard (and (boundp-global 'fn-owner state)
-                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))
-                              (fn-prc-carryp (fn-owner-retain-carry state)))
-                  :guard-hints (("Goal" :in-theory (enable fn-sbud-oc-store)))))
-  (let* ((before (fn-owner-core state))
-         (before-files (fn-sn-files (fn-own-store before)))
-         ;; served-costs-4 (Q5b): the completion the host calls is
-         ;; fn-irc-rix-ocfg-complete (books/identity-retain-carried.lisp),
-         ;; its gate and finish applying an identity, consumer or topic
-         ;; record through the carried obligation-id trie brought to the
-         ;; Store node's ledger (boundary fn-irc-rix-ocfg-complete-is-rix,
-         ;; then derived composition
-         ;; fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete-by-definition).
-         (carry (fn-prc-refresh (fn-owner-retain-carry state)
-                                (fn-node-retention
-                                 (fn-sn-node (fn-own-store before)))))
-         (state (fn-owner-retain-carry-put carry state))
-         (state (fn-owner-install-ocfg
-                 (fn-irc-rix-ocfg-complete (fn-owner-ocfg state) fn-hist carry)
-                 state))
-         (after (fn-owner-core state))
-         (after-files (fn-sn-files (fn-own-store after))))
-    (if (and (equal (fn-sf-phase before-files) :completing)
-             (equal (fn-sf-phase after-files) :ready)
-             (equal (fn-own-ledger-count after)
-                    (1+ (fn-own-ledger-count before))))
-        (value :durable)
-      (value :fault))))
+; Defined under the same host-called name in books/owner-retain-transitions.lisp.
 
 ; The completion over the history stobj refreshed against the owner's Store
 ; (R at the read: fn-hist-refresh-is-the-history; the finish keeps the
