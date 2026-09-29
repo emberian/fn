@@ -1142,7 +1142,9 @@ configuration generation of the profile's `max-config-generations`; a
 refused publication refuses the reclaim before any rewrite.
 
 The host streams the history one record at a time into ACL2's fold
-(`fn-rcls-step` under the store's context `fn-rclp-ctx`) and keeps each
+(`fn-rcls-step` under the store's context `fn-rclp-ctx`, which carries its
+articles indexed by Message-ID so a record's step is one hashed lookup and
+never a walk of the article list: PRF-934, row A8) and keeps each
 record's rewrite (`fn-rclp-event`); `fn-lgr-decide-stream` then answers over
 the fold (KEYSTONE `fn-lgr-decide-stream-is-lgr-decide`: the whole-history
 decision, whose rewritten history is those rewrites): nothing
