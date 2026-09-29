@@ -30,12 +30,16 @@ import os
 import re
 import signal
 import shutil
+import sys
 import unittest
 
 from tests.campaign import native_cuts
 from tests import test_native_operator_verbs as verbs
 from tests.native_harness import (
     EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, ROOT, executable, native_image)
+
+sys.path.insert(0, str(ROOT / "tools" / "fixtures"))
+import damaged_checkpoint  # noqa: E402
 
 IMAGE = native_image("FN_NATIVE_HOST")
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
@@ -393,6 +397,38 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.path().write_bytes(good)
         self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
         self.assertEqual(self.observation(), expected)
+
+    def test_a_watermark_past_the_bound_refuses_the_start_by_name(self):
+        """The open's article-number check (books/owner-number-bound.lisp
+        fn-onb-open-okp, host/owner-host.lisp fn-owner-install-extended,
+        host/native/owner.lisp fnn-owner-recover-core).  No verb sets a
+        watermark and replay only increments one, so the damaged store is
+        the published checkpoint re-written by ACL2 with the group's next
+        article number at 2147483648 (tools/fixtures/damaged_checkpoint.py).
+        The file still decodes and verifies -- the Store opens from it --
+        and the owner refuses to start on it BY NAME; the same file with the
+        watermark at the bound, 2147483647, starts."""
+        self.init_with_checkpoint_at_three()
+        good = self.path().read_bytes()
+        try:
+            damaged_checkpoint.acl2_executable()
+        except damaged_checkpoint.FixtureError as error:
+            self.skipTest(str(error))
+        group, old = damaged_checkpoint.damage(self.path(), 2147483648)
+        self.assertTrue(0 < old < 2147483647, (group, old))
+        self.assertNotEqual(self.path().read_bytes(), good)
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
+        process, err = self.node.try_start()
+        self.assertEqual(process.returncode, EXIT_REFUSED, err)
+        self.assertIn("is damaged: an article-number watermark exceeds RFC 3977's bound "
+                      "(2147483647)", err)
+        # At the bound: the same re-write, the start proceeds.
+        self.path().write_bytes(good)
+        self.assertEqual(damaged_checkpoint.damage(self.path(), 2147483647), (group, old))
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
+        process, err = self.node.try_start()
+        self.assertIsNone(err, "a watermark at the bound starts")
+        self.node.stop(process=process)
 
     def test_a_running_owner_refuses_the_verb(self):
         self.init_with_checkpoint_at_three()
