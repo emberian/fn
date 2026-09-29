@@ -9,9 +9,9 @@ that function, from a dump tools/coverage_dump.lisp writes inside an ACL2
 session over books/image-world (its certificates) and the host :program
 files -- never from source text:
 
-    python3 tools/proof_repl.py --host BOX start cov books/image-world --lane LANE
-    python3 tools/proof_repl.py --host BOX send cov '(ld "../tools/coverage_dump.lisp")'
-    python3 tools/proof_repl.py --host BOX send cov '(cov-dump "/abs/world.json" state)'
+    python3 tools/coverage.py dump --host BOX     # remote_check ships the tree;
+        # on BOX one bare ACL2 on the LOAD-ONLY tls256k launcher (farm HOSTS
+        # load_acl2) reads the umbrella, world-host.lisp's host lds, the dumper
     python3 tools/coverage.py build --world build/coverage/world.json --write
 
 `build --write` writes planning/coverage.json (one row per declared entry,
@@ -106,6 +106,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -761,82 +762,139 @@ def host_forms() -> list[str]:
     return out
 
 
-def dump_steps(host: str, name: str, remote_json: str,
-               with_host: bool = True) -> list[tuple[str, list[str]]]:
-    """(what, proof_repl argv) for one dump, in order."""
-    repl = [sys.executable, str(ROOT / "tools" / "proof_repl.py")]
-    steps = [("start the session over books/image-world",
-              repl + ["start", name, "books/image-world", "--host", host])]
+DUMP_LD = "FNCOV-LD"
+DUMP_WORLD_OK = "FNCOV-WORLD-OK"
+DUMP_DONE = "FNCOV-DONE"
+DUMP_ERRORS = ("ACL2 Error", "HARD ACL2 ERROR", "ABORTING from raw Lisp",
+               "Thread local storage exhausted")
+
+
+def dump_session(remote_json: str, with_host: bool = True) -> str:
+    """The form file a bare ACL2 reads on stdin from books/ (obstructions-6
+    item 46; decision-keystones-3's recipe): the certified umbrella, each
+    world-host.lisp form (every host `ld` announced, so an error names its
+    file), the dumper, the dump, an end marker."""
+    lines = ['(ld "image-world.lisp")']
     if with_host:
         for form in host_forms():
-            what = (form.split('"')[1] if form.startswith("(ld ") else
-                    "the prologue" if form.startswith("(if ") else
-                    "restore the compiler" if form.startswith("(set-compiler") else
-                    "the closure check")
-            steps.append((what, repl + ["send", name, form, "--host", host,
-                                        "--limit", "1200"]))
-    steps.append(("load tools/coverage_dump.lisp",
-                  repl + ["send", name, '(ld "../tools/coverage_dump.lisp")', "--host", host]))
-    steps.append(("dump the world",
-                  repl + ["send", name, f'(cov-dump "{remote_json}" state)', "--host", host,
-                          "--limit", "1800"]))
-    return steps
+            if form.startswith("(ld "):
+                lines.append(f'(value-triple (cw "{DUMP_LD} ~s0~%" "{form.split(chr(34))[1]}"))')
+            lines.append(form)
+    lines += [f'(value-triple (cw "{DUMP_WORLD_OK}~%"))',
+              '(ld "../tools/coverage_dump.lisp")',
+              f'(cov-dump "{remote_json}" state)',
+              f'(value-triple (cw "{DUMP_DONE}~%"))',
+              "(good-bye)"]
+    return "\n".join(lines) + "\n"
+
+
+def dump_findings(output: str) -> tuple[list[str], bool, bool]:
+    """(errors, each naming the host `ld` it was in; world reached; done)."""
+    findings, current, world, done = [], "books/image-world", False, False
+    lines = output.splitlines()
+    for index, line in enumerate(lines):
+        if DUMP_LD + " " in line:
+            current = line.split(DUMP_LD + " ", 1)[1].strip()
+        elif DUMP_WORLD_OK in line:
+            world, current = True, "tools/coverage_dump.lisp / cov-dump"
+        elif DUMP_DONE in line:
+            done = True
+        elif any(marker in line for marker in DUMP_ERRORS):
+            detail = " ".join(part.strip() for part in lines[index:index + 3])
+            findings.append(f"in {current}: {detail[:400]}")
+    return findings, world, done
+
+
+def load_launcher() -> str | None:
+    """The LOAD-ONLY launcher (farm HOSTS load_acl2, via FN_LOAD_ACL2)."""
+    return os.environ.get("FN_LOAD_ACL2") or None
+
+
+def dump_here(out: Path, with_host: bool, timeout: int, run=subprocess.run) -> int:
+    """`coverage.py dump --here` (on the box, in a tree whose certificates are
+    installed): one bare ACL2 on the LOAD-ONLY launcher reads dump_session."""
+    launcher = load_launcher()
+    if not launcher:
+        print("coverage dump --here: NOT RUN -- FN_LOAD_ACL2 is unset (the LOAD-ONLY "
+              "launcher; farm HOSTS load_acl2; `coverage.py dump --host BOX` sets it)",
+              file=sys.stderr)
+        return 2
+    if not (ROOT / "books" / "image-world.cert").is_file():
+        print("coverage dump --here: NOT RUN -- books/image-world has no certificate in "
+              "this tree (python3 tools/certs.py install-set books/image-world, with the "
+              "CERTIFYING launcher's --acl2)", file=sys.stderr)
+        return 2
+    out = out if out.is_absolute() else (ROOT / out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if out.exists():
+        out.unlink()
+    log = out.with_suffix(".log")
+    env = dict(os.environ, FN_ACL2=launcher, ACL2_CUSTOMIZATION="NONE",
+               ACL2_BOOK_HASH_ALISTP="NIL")
+    env.pop("ACL2_SYSTEM_BOOKS", None)
+    started = time.monotonic()
+    done = run([sys.executable, str(ROOT / "tools" / "acl2"), "--timeout", str(timeout),
+                "--label", "coverage-dump"], cwd=ROOT / "books",
+               input=dump_session(str(out), with_host).encode(), stdout=subprocess.PIPE,
+               stderr=subprocess.STDOUT, env=env, check=False)
+    output = (done.stdout or b"").decode("utf-8", "replace")
+    log.write_text(output, encoding="utf-8")
+    findings, world, finished = dump_findings(output)
+    for finding in findings:
+        print(f"coverage dump --here: FAIL {finding}", file=sys.stderr)
+    ok = not findings and world and finished and out.is_file()
+    print(f"coverage dump --here: {'ok' if ok else 'FAILED'} in "
+          f"{time.monotonic() - started:.0f} s on {launcher} "
+          f"({'with' if with_host else 'WITHOUT'} the host files); "
+          f"world {'reached' if world else 'NOT reached'}; transcript {log}",
+          file=sys.stderr)
+    return 0 if ok else 1
 
 
 def dump_command(args, run=subprocess.run) -> int:
     """`coverage.py dump --host BOX`: the recipe nobody should re-derive.
 
-    A session over books/image-world alone lists every host entry ABSENT
-    (661 of them; decision-keystones-2 reverted a baseline built that way),
-    and ld-ing world-host.lisp whole from a session ended it on an inner
-    error.  So: start, send world-host.lisp's forms one at a time (a failure
-    names its host file and stops), load the dumper, dump on the box, copy
-    the JSON home, stop the session.
+    decision-keystones-3 (2026-09-29): a proof_repl session on the fleet's
+    tls64k launcher dies "Thread local storage exhausted" at the 14th host
+    `ld`, and a session on any other launcher is a different toolchain
+    identity, so proof_repl refuses the certificate cache.  So: remote_check
+    ships this tree to BOX and installs the cache's certificates under the
+    CERTIFYING launcher (its step 5), then `coverage.py dump --here` feeds one
+    bare ACL2 on BOX's LOAD-ONLY launcher (farm HOSTS load_acl2, tls256k) the
+    umbrella, world-host.lisp's forms, the dumper and the dump, and the JSON
+    comes back as a remote_check --fetch.
     """
     sys.path.insert(0, str(ROOT / "tools"))
-    import proof_repl  # noqa: E402
-    lane = args.lane or proof_repl.default_lane()
-    if not lane:
-        raise SystemExit("coverage: dump needs --lane (or run from build/lanes/NAME)")
-    host, name = args.host, args.name or f"cov-{lane}"
-    tree = proof_repl.remote_tree(host, lane)
-    # cov-dump writes an absolute path; a relative gates root is under $HOME.
-    remote_json = f"{tree}/build/coverage/world.json"
-    absolute = remote_json if remote_json.startswith("/") else None
-    if absolute is None:
-        home = run(["ssh", host, "echo $HOME"], capture_output=True, text=True)
-        absolute = f"{(home.stdout or '').strip()}/{remote_json}"
-    env = dict(os.environ, FN_LANE=lane)
+    import farm  # noqa: E402
+    host = args.host
+    launcher = farm.HOSTS.get(host, {}).get("load_acl2")
+    if not launcher:
+        print(f"coverage dump: {host} names no load_acl2 launcher in farm HOSTS",
+              file=sys.stderr)
+        return 2
+    relative = DEFAULT_WORLD.relative_to(ROOT).as_posix()
+    inner = (f"FN_LOAD_ACL2={launcher} python3 tools/coverage.py dump --here "
+             f"--out {relative} --timeout {args.timeout}"
+             + (" --no-host-files" if args.no_host_files else ""))
+    argv = ["sh", str(ROOT / "tools" / "remote_check.sh"), host, "--cmd", inner,
+            "--fetch", relative, "--fetch", relative[:-len(".json")] + ".log"]
+    print(f"coverage dump: {' '.join(argv[2:])}", file=sys.stderr, flush=True)
+    done = run(argv, cwd=ROOT)
+    fetched = DEFAULT_WORLD
+    if done.returncode != 0 or not fetched.is_file():
+        print(f"coverage dump: FAILED on {host} (exit {done.returncode}); nothing was "
+              f"dumped here; the transcript is {relative[:-len('.json')]}.log",
+              file=sys.stderr)
+        return 1
     out = Path(args.out)
-    code, started = 0, False
-    try:
-        run(["ssh", host, f"mkdir -p {absolute.rsplit('/', 1)[0]}"])
-        for what, argv in dump_steps(host, name, absolute, not args.no_host_files):
-            print(f"coverage dump: {what}", file=sys.stderr, flush=True)
-            done = run(argv, cwd=ROOT, env=env)
-            if argv[2] == "start":
-                started = done.returncode == 0
-            if done.returncode != 0:
-                print(f"coverage dump: FAILED at {what} (exit {done.returncode}); "
-                      "nothing was dumped", file=sys.stderr)
-                code = 1
-                break
-        if code == 0:
-            out.parent.mkdir(parents=True, exist_ok=True)
-            if run(["scp", "-q", f"{host}:{absolute}", str(out)]).returncode != 0:
-                print(f"coverage dump: the dump is on {host}:{absolute} and did not copy",
-                      file=sys.stderr)
-                code = 1
-            else:
-                print(f"coverage dump: {out} ({host}, "
-                      f"{'WITHOUT' if args.no_host_files else 'with'} the host files); next: "
-                      f"python3 tools/coverage.py build --world {out} --box {host} --write",
-                      file=sys.stderr)
-    finally:
-        if started and not args.keep:
-            run([sys.executable, str(ROOT / "tools" / "proof_repl.py"), "stop", name,
-                 "--host", host], cwd=ROOT, env=env)
-    return code
+    if out.resolve() != fetched.resolve():
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(fetched.read_bytes())
+    print(f"coverage dump: {out} ({host}, {launcher}, "
+          f"{'WITHOUT' if args.no_host_files else 'with'} the host files); next: "
+          f"python3 tools/coverage.py build --world {out} --box {host} --write",
+          file=sys.stderr)
+    return 0
 
 
 def main(argv=None) -> int:
@@ -848,13 +906,15 @@ def main(argv=None) -> int:
     b.add_argument("--write", action="store_true", help="write coverage.json and the gaps file")
     b.add_argument("--baseline", action="store_true", help="also rewrite coverage-baseline.json")
     d = sub.add_parser("dump", help="dump the world (image-world + the host files) on a box")
-    d.add_argument("--host", required=True, metavar="BOX")
-    d.add_argument("--lane", default=None)
-    d.add_argument("--name", default=None, help="the proof_repl session (default cov-LANE)")
+    where = d.add_mutually_exclusive_group(required=True)
+    where.add_argument("--host", metavar="BOX", help="ship this tree to BOX and dump there")
+    where.add_argument("--here", action="store_true",
+                       help="dump in this tree (the box side; needs FN_LOAD_ACL2 and "
+                            "books/image-world's certificate)")
     d.add_argument("--out", default=str(DEFAULT_WORLD))
+    d.add_argument("--timeout", type=int, default=1800)
     d.add_argument("--no-host-files", action="store_true",
                    help="the umbrella alone (every host entry then reads ABSENT)")
-    d.add_argument("--keep", action="store_true", help="leave the session running")
     q = sub.add_parser("query", help="ask the coverage")
     q.add_argument("--family", default=None)
     q.add_argument("--subsystem", default=None, choices=SUBSYSTEMS)
@@ -919,6 +979,8 @@ def main(argv=None) -> int:
     if args.command == "twins":
         return twins_command(args)
     if args.command == "dump":
+        if args.here:
+            return dump_here(Path(args.out), not args.no_host_files, args.timeout)
         return dump_command(args)
     if args.command == "summary":
         cov = load_coverage()

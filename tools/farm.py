@@ -106,6 +106,13 @@ HOSTS = {
         "image_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
         # The toolchain SBCL by absolute path, ahead of any system sbcl on
         # PATH (tools/native_env.py sbcl; hbox's /usr/bin/sbcl is 2.2.9).
+        # LOAD-ONLY (obstructions-6 item 46): the same ACL2 at --tls-limit
+        # 262144, for sessions that LOAD the certified umbrella plus every
+        # host file (coverage.py dump --here): tls64k dies "Thread local
+        # storage exhausted" at the 14th host ld (decision-keystones-3).  A
+        # different launcher is a different toolchain identity: it never
+        # certifies, publishes or acquires (tests/test_farm LoadOnlyTests).
+        "load_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls256k",
         "sbcl": "/tank/fn/sbcl/bin/sbcl",
         "cache": "~/fn-certcache",
         "wrap": "",
@@ -116,6 +123,7 @@ HOSTS = {
         # SBCL's default thread-local storage (tools/hbox_native.sh IMAGE_ACL2;
         # packaging/release-tarball.sh FN_IMAGE_ACL2).
         "image_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+        "load_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls256k",  # LOAD-ONLY; see persvati's
         "sbcl": "/tank/fn/sbcl/bin/sbcl",  # not /usr/bin/sbcl (2.2.9); see persvati's
         "cache": "/tank/fn/certcache",
         # hbox is shared with another project's build; swarm-build is the
