@@ -70,8 +70,13 @@ class AttachStobjTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             graph = cert_images.Graph(tree(directory))
             images = [{"name": "arena", "roots": ["books/arena"]},
-                      {"name": "mid", "roots": ["books/mid"]}]
+                      {"name": "mid", "roots": ["books/mid"]},
+                      {"name": "attached", "roots": ["books/arena-attach"]}]
             self.assertEqual(graph.attached("books/umbrella"), {"st"})
+            # An image that made the attachment itself is fine.
+            self.assertEqual(cert_images.image_for("books/umbrella", images, graph)["name"],
+                             "attached")
+            images = images[:2]
             self.assertEqual(graph.defines(graph.nonlocal_closure("books/arena")), {"st"})
             self.assertEqual([i["name"] for i in cert_images.applicable(
                 "books/umbrella", images, graph)], ["mid"])

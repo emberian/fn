@@ -39,9 +39,9 @@ What ACL2 does with an image (measured, planning/evidence/cert-images-2026-09-28
   books/payload-arena.  An image that already holds the stobj's defining
   book makes a later `attach-stobj` fail ("The name FN-ARENA is in use, so
   it cannot serve here as an attachable stobj"; batch BB, the image-world
-  umbrellas).  So an image is never used for a book whose closure (local
-  includes too, and the book itself) attaches a stobj the image defines
-  (`Graph.attached`, `Graph.stobjs`).
+  umbrellas).  So an image is never used for a book whose certification
+  world (local includes too, and the book itself) makes, outside the image,
+  an attachment of a stobj the image defines (`applicable`).
 * SBCL's save-lisp-and-die coalesces numbers, so after restart a bignum
   defconst's value is no longer `eq` to the value ACL2 recorded for it, and
   reloading that book's compiled file (which ACL2 does for a redundant
@@ -236,14 +236,22 @@ def applicable(book: str, images: list[dict], graph: Graph) -> list[dict]:
     if book_directory(book) is None:
         return []
     reach = graph.nonlocal_closure(book)
-    attached = graph.attached(book)
+    world = graph.closure(book)
     found = []
     for image in images:
         roots = image["roots"]
         if book in roots or not all(root in reach for root in roots):
             continue
         closure = image_closure(image, graph)
-        if book in closure or attached & graph.defines(closure):
+        if book in closure:
+            continue
+        # The attachments this certification would make on top of the image
+        # (by books the image does not already hold) must not name a stobj
+        # the image has defined.  An image that holds the attaching book made
+        # the attachment itself, first (composed-owner-3 at ae64a5c42 found the
+        # same defect and allows exactly that case).
+        attached = frozenset().union(*(graph.attaches[name] for name in world - closure))
+        if attached & graph.defines(closure):
             continue
         found.append((-graph.include_cost(closure), image["name"], image))
     return [image for _, _, image in sorted(found, key=lambda item: item[:2])]
