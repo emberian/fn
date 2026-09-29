@@ -3,8 +3,10 @@
 ;
 ; The tables are built by the writer (`fn-mpxt-add': the tag of each row's
 ; Message-ID, the row's sequence) under `with-local-stobj', so they run on
-; the live arrays; each driver returns the values the keystone names and a
-; theorem asserts them.  The teeth:
+; the live arrays; each driver returns the values the keystone names and an
+; `assert-event' checks them at certification (the tag is BLAKE3 through
+; `fn-digest''s attachment, which a proof never evaluates: so the witnesses
+; are evaluations, as the -1 lane's teeth are).  The teeth:
 ;   1. POSITIVE: three rows, <a@x> at 0 and 2; the table is faithful; the
 ;      reader answers (0 2), (1) and nil, each the walk's answer.
 ;   2. GROW: 520 rows (the count passes half the slots at 512, so the table
@@ -20,6 +22,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/msgid-pages-catalog")
+(include-book "../../books/crypto-attach")   ; fn-digest executes as BLAKE3
 
 ; --- the rows: held rows as the catalog holds them (the -1 lane's fixture) ---
 
@@ -57,6 +60,12 @@
                 (fn-mpxt-wfp (mpxe-build i rows fn-mpxt))))
   :hints (("Goal" :induct (mpxe-build i rows fn-mpxt))))
 
+(defthm mpxe-build-wfp
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt))
+           (<= (* *fn-mpxt-page-words* (fn-mpxt-pages (mpxe-build i rows fn-mpxt)))
+               (fn-mpxt-w-length (mpxe-build i rows fn-mpxt))))
+  :hints (("Goal" :use mpxe-build-shape :in-theory (disable mpxe-build-shape))))
+
 (in-theory (disable mpxe-build))
 
 ; 1. POSITIVE: (faithful  seqs-a  spec-a  seqs-b  spec-b  seqs-none  spec-none  pages)
@@ -74,17 +83,15 @@
             fn-mpxt))
       result)))
 
-(defthm mpxe-positive-witness
+(assert-event ; mpxe-positive-witness
   (equal (mpxe-positive *mpxe-rows*)
-         '(t (0 2) (0 2) (1) (1) nil nil 1))
-  :rule-classes nil)
+         '(t (0 2) (0 2) (1) (1) nil nil 1)))
 
 ; 5. The catalog bridge: the abstract export's logic function agrees.
-(defthm mpxe-catalog-witness
+(assert-event ; mpxe-catalog-witness
   (and (equal (fn-cat$a-msgid-seqs "<a@x>" *mpxe-rows*) '(0 2))
        (equal (fn-cat$a-msgid-seqs "<b@x>" *mpxe-rows*) '(1))
-       (equal (fn-cat$a-msgid-seqs "<none@x>" *mpxe-rows*) nil))
-  :rule-classes nil)
+       (equal (fn-cat$a-msgid-seqs "<none@x>" *mpxe-rows*) nil)))
 
 ; 2. GROW: 520 rows <n@x>; (faithful  pages  count  seqs-519  spec-519  seqs-7  spec-7)
 (defun mpxe-msgid (n)
@@ -110,10 +117,9 @@
             fn-mpxt))
       result)))
 
-(defthm mpxe-grow-witness
+(assert-event ; mpxe-grow-witness
   (equal (mpxe-grown *mpxe-rows-520* (mpxe-msgid 519) (mpxe-msgid 7))
-         '(t 2 520 (519) (519) (7) (7)))
-  :rule-classes nil)
+         '(t 2 520 (519) (519) (7) (7))))
 
 ; 3. faithful-from REMOVED: the writer skipped row 2 (a mutation of the load).
 ;    (okp  faithful-from  seqs-a  spec-a)
@@ -130,10 +136,9 @@
             fn-mpxt))
       result)))
 
-(defthm mpxe-unindexed-witness
+(assert-event ; mpxe-unindexed-witness
   (equal (mpxe-unindexed *mpxe-rows*)
-         '(t nil (0) (0 2)))
-  :rule-classes nil)
+         '(t nil (0) (0 2))))
 
 ; 4. okp REMOVED: a stale entry (tag 1, sequence 5) beyond the three rows;
 ;    tag 1 is the empty key's tag, and the row beyond the rows has no
@@ -156,7 +161,6 @@
               fn-mpxt)))
       result)))
 
-(defthm mpxe-stale-witness
+(assert-event ; mpxe-stale-witness
   (equal (mpxe-stale *mpxe-rows*)
-         '(t t nil (5) nil (0 2)))
-  :rule-classes nil)
+         '(t t nil (5) nil (0 2))))
