@@ -20,6 +20,10 @@
 
 (in-package "ACL2")
 (include-book "../books/definterface")
+; Keystones the declarations below name, in books no host file otherwise
+; brings into the image world (decision-keystones-5; host_check --books).
+(include-book "../books/bp-handoff-report")
+(include-book "../books/tcpcl-delivery-invariants")
 
 ; -----------------------------------------------------------------------------
 ; The extraction roots: the functions the extracted served program's driver
