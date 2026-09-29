@@ -228,7 +228,7 @@
                                 (fn-peer-submission-octets d))
       (fn-apc-cl-served-payload secret (fn-own-sub-account sub)
                                 (fn-inj-decision-msgid d)
-                                (fn-ipp-injected-octets d secret (fn-own-sub-login sub)
+                                (fn-ipp-injected-octets d secret (fn-own-sub-account sub)
                                                         cfg)
                                 carry))))
 
@@ -254,7 +254,7 @@
         (let ((stored (fn-peer-relayed-octets cfg (fn-peer-submission-peer d)
                                               (fn-peer-submission-octets d))))
           (cons stored (fn-apc-extend stored carry)))
-      (let* ((injected (fn-ipp-injected-octets d secret (fn-own-sub-login sub)
+      (let* ((injected (fn-ipp-injected-octets d secret (fn-own-sub-account sub)
                                                cfg))
              (carry (fn-apc-extend injected carry))
              (stored (fn-apc-cl-served-payload secret (fn-own-sub-account sub)
@@ -273,7 +273,7 @@
                             (carry (fn-apc-extend
                                     (fn-ipp-injected-octets
                                      (fn-own-sub-decision sub) secret
-                                     (fn-own-sub-login sub) cfg)
+                                     (fn-own-sub-account sub) cfg)
                                     (fn-apc-extend (fn-own-sub-octets sub)
                                                    nil))))))))
 
