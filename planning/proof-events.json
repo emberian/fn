@@ -13513,6 +13513,51 @@
           "name": "fn-bpcc-frame-decode-of-sealed"
         }
       ]
+    },
+    {
+      "id": "PRF-946",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-extend-open-is-rii-extend-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-extend-open-finalizes-the-extension"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-historyp-extend-is-observed-historyp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-sf-record-listp-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-sf-record-listp-refrontier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-finalize-carried-is-finalize-configured"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-sn-statep-carried-is-rii-sn-statep-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-verdict-pairs-are-verdicts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-identity-loop-keeps-snapshots"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-carried-verdict-facts"
+        }
+      ]
     }
   ]
 }

@@ -14113,6 +14113,26 @@
         "planning/evidence/pkt-615-number-bound-2026-09-28.md"
       ],
       "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound."
+    },
+    {
+      "id": "PRF-946",
+      "title": "The Store's open and the online-reclaim swap finalize an extension from the base's carried verdict: the suffix walked once, the prefix never",
+      "statement": "books/store-finalize-incremental.lisp (fn-sfi-, row A9). Subject: fn-sfi-extend-open (c configs suffix frontier next), the served open's fused extension-and-open (fn-rii-sco-extend-open, host/store-node-host.lisp fn-store-sn-recover-rows and fn-store-sn-recover-from-checkpoint) with the finalize taken from the carried verdict. KEYSTONE fn-sfi-extend-open-is-rii-extend-open: whenever the base finalized :ok at any frontier f0 ((fn-sn-open-kind (fn-sco-finalize c configs f0)) = :ok, f0 free) and next = (fn-sf-next-lower (fn-sco-records c) 0), (fn-sfi-extend-open c configs suffix frontier next) = (fn-rii-sco-extend-open c configs suffix frontier) for every configuration list, suffix and frontier; hence (fn-rii-sco-extend-open-is-extend-then-open, fn-rii-classified-open-is-classified-open) the extension fn-sco-extend and its classified open. Corollary fn-sfi-extend-open-finalizes-the-extension (online-reclaim-3's statement): the open's second component is (fn-sco-finalize (fn-sco-extend c configs suffix) configs frontier) when the pre-C1 refusal is absent. The carried finalize fn-sfi-finalize-carried walks the suffix only: fn-sfi-historyp-extend (count next frontier suffix) = uint32p frontier, next <= frontier, fn-sf-record-listp of the suffix from sequence count and bound next; fn-sfi-historyp-extend-is-observed-historyp: from the prefix's verdict at f0 it decides fn-sn-observed-historyp of prefix ++ suffix at f1 (fn-sfi-sf-record-listp-append splits the walk at |P| with the bound P leaves; fn-sfi-sf-record-listp-refrontier: a valid prefix is valid at another frontier iff its bound is at most it). The opened Store's recognizer is fn-sfi-sn-statep-carried (the configuration served, three naturals); fn-sfi-sn-statep-carried-is-rii-sn-statep-carried under what the construction proves: fn-sfi-verdict-pairs-are-verdicts (every verdict list of fn-replay-verdict-pairs, no hypothesis), fn-sfi-identity-loop-keeps-snapshots (the identity fold keeps a keyring-snapshot list), fn-sfi-recovering-files-carried, fn-sfi-opened-fields. fn-sfi-carried-verdict-facts: a :ok finalize gives the history at its frontier and the snapshot list. Both executable functions guard-verified. Cost beyond the folds' resume: O(|suffix|) + O(configuration) + O(1); the two carried quantities are O(1) for the swap (the rebuild's count and last transaction) and the open (the checkpoint's carried count and last record). Not changed: the resume's paused-node check and tries (fn-rii-sco-cpr-resume), fn-stx-index-of-store over the opened store, and the empty-suffix path's one node check (fn-sco-cpr-finish: a guard does not cross a host call). Teeth: tests/acl2/store-finalize-incremental-tests.lisp.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-025",
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-242"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/store-finalize-incremental.lisp",
+        "tests/acl2/store-finalize-incremental-tests.lisp"
+      ],
+      "progress_note": "Lane incremental-finalize (Claude Fable 5.1, 2026-09-29): REPL-admitted on the box (every form, both guards; the keystone 232k steps, 0.4 s); early certify hbox run-20260929T042235Z-19e0. Wired into the host open: NOT YET (the open's carried verdict needs the checkpoint's frontier/count/last record beside the trailer, composed-owner-4's A5 discipline); online-reclaim-4 cites the corollary for the swap's delta. Teeth: the twin book's history; positive witness (both hypotheses, the conclusion, the open :ok, the corollary's shape); the empty suffix; four suffix-only refusals decided alike (at the frontier, out of sequence, a repeated transaction, a frontier below the bound); two hypothesis-removal witnesses (a base that never finalizes :ok; the bound omitted) each affirming the retained hypothesis, the omitted one failing and the conclusion failing, plus must-fail-checked ground defthms; a corrupted carried bound labelled as a mutation witness (refuses more, never admits more)."
     }
   ]
 }
