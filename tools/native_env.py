@@ -328,15 +328,23 @@ def plan_missing(images, given, modules) -> list[tuple[str, str, str]]:
     return _plan(images, given, modules)[3]
 
 
-def plan(images: list[str], given: dict[str, str], modules: list[str]
-         ) -> tuple[list[str], list[str], list[str]]:
-    """(lines, refusals, notes) for these modules and this run's images."""
-    lines, refusals, notes, _ = _plan(images, given, modules)
+def plan(images: list[str], given: dict[str, str], modules: list[str],
+         allow_skips: bool = False) -> tuple[list[str], list[str], list[str]]:
+    """(lines, refusals, notes) for these modules and this run's images.
+
+    A module whose own source reads a MANUAL gate (FN_RUN_*_E2E, FN_INN_SRC,
+    ...) that this run leaves unset is REFUSED, naming the variable, unless
+    ALLOW_SKIPS (hbox_native --allow-skips): operability-4 built 25 minutes
+    of images twice for a module that then skipped (obstructions-5 item 45).
+    """
+    lines, refusals, notes, _ = _plan(images, given, modules, allow_skips)
     return lines, refusals, notes
 
 
-def _plan(images: list[str], given: dict[str, str], modules: list[str]):
+def _plan(images: list[str], given: dict[str, str], modules: list[str],
+          allow_skips: bool = True):
     lines, notes = [], []
+    gated: list[str] = []
     missing: list[tuple[str, str, str]] = []
     for module in modules:
         stem = module_file(module).stem
@@ -375,12 +383,17 @@ def _plan(images: list[str], given: dict[str, str], modules: list[str]):
             elif name in FIXED:
                 assignments.append(f"{name}={FIXED[name][0]}")
             elif name in MANUAL and not MANUAL[name].startswith(("falls back", "defaults")):
-                notes.append(f"{module} reads {name} (not set: {MANUAL[name]}; "
-                             f"pass --env {name}=... to run what it gates)")
+                if allow_skips or name not in own:
+                    notes.append(f"{module} reads {name} (not set: {MANUAL[name]}; "
+                                 f"pass --env {name}=... to run what it gates)")
+                else:
+                    gated.append(f"{module} is gated by {name}, which this run leaves unset "
+                                 f"({MANUAL[name]}): its gated tests would build the images "
+                                 f"and then skip. Pass --env {name}=..., or --allow-skips")
         lines.append(" ".join([module, *assignments]))
     wanted = join_images(images, *(image for _, _, image in missing))
     refusals = [f"{module} reads {name}: build the {image} image with --images {wanted}"
-                for module, name, image in missing]
+                for module, name, image in missing] + gated
     return lines, refusals, notes, missing
 
 
@@ -466,6 +479,8 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("plan", help="per-module assignments, or a refusal by name")
     p.add_argument("--images", default="developer")
     p.add_argument("--env", action="append", default=[], help="NAME=VALUE the caller set")
+    p.add_argument("--allow-skips", action="store_true",
+                   help="note, do not refuse, a module whose opt-in gate is unset")
     p.add_argument("modules", nargs="+")
     p = sub.add_parser("images", help="the image list these modules read, over --images")
     p.add_argument("--images", default="developer")
@@ -532,7 +547,8 @@ def main(argv: list[str] | None = None) -> int:
                   f"--images {wanted}; added " + "; ".join(why), file=sys.stderr)
         print(wanted)
         return 0
-    lines, refusals, notes = plan(images, given, arguments.modules)
+    lines, refusals, notes = plan(images, given, arguments.modules,
+                                  allow_skips=getattr(arguments, "allow_skips", False))
     for note in notes:
         print(f"hbox_native: note: {note}", file=sys.stderr)
     if refusals:

@@ -89,7 +89,10 @@
 # identity source is the one RUN's log names; `tools/image_set.py link-run`),
 # --env NAME=VALUE (repeatable; paths may use $T, the tree),
 # --deadline S (default 5400), --dry-run (print the box script; the refusal
-# and the per-module environment show there).  Options may come before or
+# and the per-module environment show there), --allow-skips (run a module
+# whose opt-in gate -- FN_RUN_*_E2E, FN_INN_SRC ... -- is unset; without it
+# such a module is refused at launch, naming the variable, not skipped after
+# the build).  Options may come before or
 # after REV and the modules.
 #
 # A box reserved for a measurement (tools/boxes.sh reserve) is waited for before
@@ -126,6 +129,7 @@ MODULE_JOBS=1
 BUILD=1
 DETACH=0
 DRY=0
+ALLOW_SKIPS=
 DEADLINE=5400
 ENVS=
 IMAGES_GIVEN=0
@@ -156,6 +160,9 @@ while [ $# -gt 0 ]; do
             BUILD=0; shift 2 ;;
         --detach) DETACH=1; shift ;;
         --dry-run) DRY=1; shift ;;
+        # A module gated by an unset opt-in (FN_RUN_*_E2E ...) is refused at
+        # launch unless this is given (tools/native_env.py plan; item 45).
+        --allow-skips) ALLOW_SKIPS=--allow-skips; shift ;;
         --deadline) DEADLINE=$2; shift 2 ;;
         # The ACL2 wrapper the IMAGE builds run under (certification keeps
         # the toolchain's, whose identity the cache keys on).  The world is
@@ -238,7 +245,7 @@ fi
 # What each module reads, against what this run builds (PKT-437 (2)).
 ENVARGS=
 for assignment in $ENVS; do ENVARGS="$ENVARGS --env $assignment"; done
-PLAN=$(python3 "$HERE/tools/native_env.py" plan --images "$IMAGES" $ENVARGS "$@") || exit 2
+PLAN=$(python3 "$HERE/tools/native_env.py" plan --images "$IMAGES" $ENVARGS $ALLOW_SKIPS "$@") || exit 2
 if [ "$REV" = . ]; then
     # The image's declared source: HEAD, marked +dirty for uncommitted edits
     # (before 2026-09-27 FN_NATIVE_IMAGE_SOURCE_SHA was the literal ".").
