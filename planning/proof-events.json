@@ -17030,6 +17030,46 @@
           "name": "fn-cat-clear-keyed-is-nil"
         }
       ]
+    },
+    {
+      "id": "PRF-1034",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-snc-finish-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: under fn-sn-statep and fn-sn-completion-is-last-p a corresponding state corresponds after fn-sn-finish (one theorem, the five arms as cases)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-recover-preserves-correspondp-by-recomputation",
+          "note": "books/store-node-correspondence.lisp: a corresponding state corresponds after fn-sn-recover (the replayed node's articles are the history's article rows, newest first; -by-recomputation)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-prepare-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: fn-sn-prepare keeps the store and the indexed rows."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-io-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: fn-sn-io keeps the store and the indexed rows."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-set-keyring-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: fn-sn-set-keyring recontexts the rows and keeps their Message-IDs and handles."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-refuse-reservation-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: fn-sn-refuse-reservation (books/store-node-resolution) keeps the store and the indexed rows."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-known-abort-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: fn-sn-known-abort (books/store-node-resolution) keeps the store (an aborted completion clears the pending) and the indexed rows."
+        }
+      ]
     }
   ]
 }
