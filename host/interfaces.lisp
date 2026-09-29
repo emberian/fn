@@ -2247,7 +2247,8 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-authored-wire-authorize
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bpn-authored-wire-authorize)
 
 (definterface fn-bpn-host-authored-wire-name
   :class ::ideal)
@@ -2274,7 +2275,8 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-evidence-authorize
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bpn-evidence-authorize)
 
 (definterface fn-bpn-host-evidence-directory-name
   :class ::ideal)
@@ -2906,7 +2908,8 @@
   :class ::ideal)
 
 (definterface fn-tcl-host-encode
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-tcl-encode)
 
 (definterface fn-tcl-host-event-digests
   :class ::ideal)

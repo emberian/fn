@@ -99,3 +99,20 @@
                      10))
 (assert-event (not (fn-bs-profile-validp nil)))
 (assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report nil))) 0))
+
+; fn-bs-config-frame-for-profile-is-what-the-open-opens: each preset's frame
+; opens as that preset; a word that names no preset has no frame (init
+; refuses it).
+(assert-event (equal (fn-spo-config-open (fn-bs-config-frame-for-profile :development))
+                     (list :opened (fn-bs-config-for-profile :development))))
+(assert-event (equal (fn-spo-config-open (fn-bs-config-frame-for-profile :scale))
+                     (list :opened (fn-bs-config-for-profile :scale))))
+(assert-event (equal (fn-spo-config-open (fn-bs-config-frame-for-profile :default))
+                     (list :opened (fn-bs-config-for-profile :default))))
+(assert-event (null (fn-bs-config-frame-for-profile :no-such-preset)))
+(assert-event (equal (car (fn-bs-profile-init-verdict :no-such-preset)) :refused))
+
+; fn-bs-profile-logp-holds-exactly-for-a-valid-profile
+(assert-event (and (fn-bs-profile-validp *shbt-profile*) (fn-bs-profile-logp *shbt-profile*)))
+(assert-event (and (not (fn-bs-profile-validp nil)) (not (fn-bs-profile-logp nil))))
+(assert-event (and (not (fn-bs-profile-validp '(1 2 3))) (not (fn-bs-profile-logp '(1 2 3)))))

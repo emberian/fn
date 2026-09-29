@@ -11,6 +11,7 @@
 (in-package "ACL2")
 (include-book "byte-store-frame")
 (include-book "store-profile-open")
+(include-book "store-profile-facts")
 (include-book "store-genesis")
 (include-book "identity-invariants")
 (include-book "container")
@@ -135,6 +136,46 @@
                                    fn-gen-image-schema-digest
                                    fn-gen-profile-digest
                                    fn-gen-profile-digest-of fn-gen-trailer)))))
+
+; fn-store-metadata-config-frame is fn-bs-config-frame-for-profile: what
+; `init' writes for a preset word, the open opens as that preset's values
+; (through fn-bs-config-decode-of-encode; the executable counterparts stay
+; off because the frame's digest is a constrained function).
+
+(defthm fn-bs-config-frame-for-profile-is-what-the-open-opens
+  (implies (member-equal profile '(:development :scale :default))
+           (equal (fn-spo-config-open (fn-bs-config-frame-for-profile profile))
+                  (list :opened (fn-bs-config-for-profile profile))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-config-decode-of-encode
+                            (values *fn-bs-profile-development*))
+                 (:instance fn-bs-config-decode-of-encode
+                            (values *fn-bs-profile-scale*))
+                 (:instance fn-bs-config-decode-of-encode
+                            (values *fn-bs-profile-defaults*)))
+           :in-theory (e/d (fn-bs-config-frame-for-profile
+                            fn-bs-profile-init-verdict fn-spo-config-open
+                            fn-bs-config-for-profile)
+                           (fn-bs-config-encode fn-bs-config-decode
+                            fn-spo-foreign-formatp
+                            (:executable-counterpart fn-bs-profile-init-verdict)
+                            (:executable-counterpart fn-bs-config-frame-for-profile)
+                            (:executable-counterpart fn-bs-config-encode)
+                            (:executable-counterpart fn-bs-config-decode)
+                            (:executable-counterpart fn-spo-config-open)
+                            (:executable-counterpart fn-spo-foreign-formatp))))))
+
+; fn-store-profile-logp is fn-bs-profile-logp: the commit route is the
+; record log exactly for a valid profile (one format, D34: an invalid value
+; never commits through the log).
+
+(defthm fn-bs-profile-logp-holds-exactly-for-a-valid-profile
+  (iff (fn-bs-profile-logp values) (fn-bs-profile-validp values))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-bs-profile-logp fn-bs-profile-of
+                                     fn-bs-profile-validp
+                                     fn-bs-profile-invalid-reason))))
 
 ; fn-store-profile-report is fn-bs-profile-report: an alist whose "format"
 ; is this release's format word exactly for a valid profile and 0 otherwise.

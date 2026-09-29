@@ -13634,6 +13634,14 @@
         {
           "kind": "theorem",
           "name": "fn-bs-profile-report-names-the-format-exactly-for-a-valid-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-config-frame-for-profile-is-what-the-open-opens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-logp-holds-exactly-for-a-valid-profile"
         }
       ]
     }
