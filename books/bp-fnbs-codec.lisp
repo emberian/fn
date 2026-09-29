@@ -92,15 +92,20 @@
 
 ; A held record is a true list (fn-bpnf-heldp's first conjunct) whose bundle
 ; is a bundle (its sixth): the recognizer's reads and its reconstruction
-; through fn-bpnf-frame-held ask exactly these.
-(defthm fn-bpnf-heldp-is-a-true-list
-  (implies (fn-bpnf-heldp h) (true-listp h))
-  :hints (("Goal" :in-theory (enable fn-bpnf-heldp))))
+; through fn-bpnf-frame-held ask exactly these.  Local: as rewrite rules
+; they would make every includer's (true-listp X) backchain into
+; fn-bpnf-heldp (books/bp-report-guards' verify-guards ran past 6,800
+; subgoals with them exported).
+(local
+ (defthm fn-bpnf-heldp-is-a-true-list
+   (implies (fn-bpnf-heldp h) (true-listp h))
+   :hints (("Goal" :in-theory (enable fn-bpnf-heldp)))))
 
-(defthm fn-bpnf-heldp-bundle-is-a-bundle
-  (implies (fn-bpnf-heldp h)
-           (fn-bpb-bundlep (fn-bpnf-held-bundle h)))
-  :hints (("Goal" :in-theory (enable fn-bpnf-heldp))))
+(local
+ (defthm fn-bpnf-heldp-bundle-is-a-bundle
+   (implies (fn-bpnf-heldp h)
+            (fn-bpb-bundlep (fn-bpnf-held-bundle h)))
+   :hints (("Goal" :in-theory (enable fn-bpnf-heldp)))))
 
 (verify-guards fn-bpnf-stored-recordp
   :hints (("Goal" :in-theory (disable fn-bpnf-heldp fn-bpnf-frame-ingressp
@@ -123,6 +128,11 @@
            :expand ((fn-bpn-nth 3 record) (fn-bpn-nth 2 (cdr record))
                     (fn-bpn-nth 1 (cddr record))
                     (fn-bpn-nth 0 (cdddr record))))))
+
+; Off by default: its hypothesis is the whole recognizer, which an includer's
+; rewriter would otherwise try to establish for every bundlep it meets.
+; fn-bpnf-inspect-adu's guard proof enables it.
+(in-theory (disable fn-bpnf-stored-recordp-held-bundle-is-a-bundle))
 
 (defun fn-bpnf-stored-record-values (record)
   (declare (xargs :guard t))
