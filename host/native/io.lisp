@@ -1252,7 +1252,7 @@ execution-boundary fault, never a claim that the core refused an input."
 
 (defparameter +fnn-actions+
   '(:ready :prepared :durable :aborted :indeterminate :duplicate :conflict :absent :invalid
-    :refused :fault :recovering :frontier-staged :frontier-data-durable :frontier-attempted
+    :refused :article-numbers-exhausted :fault :recovering :frontier-staged :frontier-data-durable :frontier-attempted
     :record-staged :record-data-durable :record-attempted :reserved :aborting :completing
     :fenced-frontier :fenced-record :fenced-recovery))
 

@@ -190,6 +190,8 @@
                      (fn-tp-line "441 posting failed; the store is full: no capacity for this article (unaffordable); the node's operator can raise it")))
 (assert-event (equal (fn-tp-outcome-line :memberships)
                      (fn-tp-line "441 posting failed; the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)")))
+(assert-event (equal (fn-tp-outcome-line :article-numbers-exhausted)
+                     (fn-tp-line "441 posting failed; a group this article is posted to has no article number left (RFC 3977 section 6 ends at 2147483647), nothing was stored (article-numbers-exhausted)")))
 (assert-event (equal (fn-tp-outcome-line :storage-failed)
                      (fn-tp-line "441 posting failed; the store could not write the article, nothing was stored")))
 ; A word that is no refusal kind is uncertain, never a refusal.

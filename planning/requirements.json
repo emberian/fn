@@ -5208,6 +5208,34 @@
         "tests/test_bp_obligation_native.py"
       ],
       "implementation_note": "Lane operations (PKT-869). `fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK REASON...}' over the FNWF workflow journal, offline beside the store as the other obligation verbs are (a served store refuses). The controls are durable records of their own application journal (domain :carry at JOURNAL/carry, frame FNCC: books/bp-carry-frame.lisp), replayed over the workflow image, never FNWF kinds: books/frame-journal.lisp has about 1,100 dependents and each FNWF kind doubled books/frame's fn-frame-workflow-protected guard proof (476k to 874k steps for one). A drop stops the carrying and keeps the Store pin: books/retention.lisp releases a pin only with the evidence it was undertaken against (the receipt's), so an operator's abandonment of the pin is a new evidence kind, a decision for the register. Open: the verbs act on a stopped BP node; the application journals' lifetime namespace (app-journal.lisp *fn-aj-max-records* 4096, 16 MiB for FNWF) is a BP data cap (bounds inventory 1.4)."
+    },
+    {
+      "id": "NNT-057",
+      "title": "An article whose number in any of its groups would pass RFC 3977 section 6's 2,147,483,647 is refused by name at admission; the served path counts no articles",
+      "specification": "specs/nntp-audit.md#the-served-path-carries-its-projection-verdict",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-921"
+      ],
+      "verification": [
+        "proof"
+      ],
+      "evidence": [
+        "books/store-number-bound.lisp",
+        "books/store-number-projection.lisp",
+        "books/owner-prepare-served.lisp",
+        "books/store-prepare-served.lisp",
+        "books/nntp-session.lisp",
+        "tests/acl2/store-number-bound-tests.lisp",
+        "tests/acl2/owner-prepare-served-tests.lisp",
+        "tests/acl2/owner-prepare-outcome-tests.lisp",
+        "tests/acl2/store-prepare-served-tests.lisp",
+        "tests/acl2/nntp-post-tests.lisp",
+        "planning/evidence/pkt-615-number-bound-2026-09-28.md"
+      ],
+      "implementation_note": "RFC 3977 section 6 requirement (article numbers 1..2,147,483,647), enforced as a protocol bound, not an implementation ceiling (D27): admission refuses (:article-numbers-exhausted; POST 441 with reason, IHAVE 437, TAKETHIS 439) instead of allocating a number past it. The whole-archive article-count conjunct of fn-nntp-projectionp (no RFC basis; an O(N) walk at every re-pin) is removed. Local policy: the last number assigned in a group is 2,147,483,646, so the watermark after it (rendered as an emptied group's low number, RFC 3977 section 6.1.1.2) is itself an article number.",
+      "note": "PKT-615 as the coordinator decided it (lane join-f2-615, 2026-09-28). Scenario: no native scenario reaches the bound (2^31 articles); the refusal is exercised by the ACL2 teeth at constructed boundary states, labelled as such."
     }
   ]
 }
