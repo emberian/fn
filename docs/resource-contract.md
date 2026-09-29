@@ -28,13 +28,21 @@ those books are certified at their current bytes is asked of
 `tools/green_check.py` every time `make check` runs
 (`python3 tools/resource_contract.py --check`) and is never written into this
 file, because an archived manifest or an edited book would put it out of
-date. At the revision this document was written against (origin/dev
-`f286c0204`), `planning/proofs.json` marked 6 of 353 proofs `certified` and
-320 `uncertified-at-current-digest`; of the proofs this contract cites only
-PRF-257 (the LZ4 decoder, row **W5**) was among the six. The others have
-been certified at some earlier digest by some held manifest (`--table`
-prints which); that is strictly more than a commit message says and strictly
-less than "certified now". No row here claims an image or a deployment.
+date. Two notions of "certified" exist in the tree and the tool prints
+both, because they disagree. `tools/green_check.py` judges a BOOK at its
+current bytes against every held manifest: at the revision this document
+was written against (origin/dev `f286c0204`) every book this contract cites
+was green, certified that day by the batch's union cites on persvati and
+hbox (`--table` names the run for each). `planning/proofs.json` judges a
+PROOF against the manifests its own entry cites, which are the manifests the
+lane that wrote it recorded: at the same revision it marked 6 of 353 proofs
+`certified` and 320 `uncertified-at-current-digest`, and of the proofs this
+contract cites only PRF-257 (the LZ4 decoder, row **W5**) was among the
+six. A row's theorem is therefore certified at these bytes in the first
+sense and, in the registry's sense, certified only by an older run until
+the entry cites the newer one. Both are strictly more than a commit message
+says and strictly less than "the served image runs these bytes": no row
+here claims an image or a deployment.
 
 Three kinds of evidence appear, and a row is labelled with exactly one:
 
