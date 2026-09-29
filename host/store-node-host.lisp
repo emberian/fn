@@ -11,6 +11,7 @@
 (include-book "../books/poster-bytes")
 (include-book "../books/native-config-observation")
 (include-book "../books/store-sweep")
+(include-book "../books/limits-live")
 (include-book "../books/store-node-resolution")
 (include-book "../books/store-prepare-correspondence")
 (include-book "../books/store-budget")
@@ -276,6 +277,16 @@
        (let ((txid (fn-cfg-record-txid (car records))))
          (if (natp txid) (max acc (+ 1 txid)) acc)))
     acc))
+
+; The profile the store is served under (books/limits-live.lisp, row S1):
+; the sealed frame SEALED under the configuration history's live limit rows.
+; :bad records answer SEALED: the open refuses them itself.
+(defun fn-store-lim-effective (sealed octet-records)
+  (declare (xargs :mode :program))
+  (let ((records (fn-store-cfg-decode-records octet-records)))
+    (if (equal records :bad)
+        sealed
+      (fn-lim-effective sealed records))))
 
 (defun fn-store-cfg-next-txid (octet-records acc)
   (declare (xargs :mode :program))

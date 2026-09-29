@@ -1726,7 +1726,11 @@ resolves the names against `domain' and the host carries that list verbatim."
 (defvar *fnn-log-batch* nil)
 
 (defstruct (fnn-store (:constructor %make-fnn-store))
-  root writable lock-fd config frontier fenced (orphans nil) (orphans-more nil)
+  root writable lock-fd config frontier fenced
+  ;; The profile config.json seals (the genesis digest's subject); CONFIG is
+  ;; the served one, SEALED under the configuration history's limit rows
+  ;; (fnn-load-config, books/limits-live.lisp).
+  (sealed-config nil) (orphans nil) (orphans-more nil)
   (completion-pending nil)
   ;; P3: how the last open reached the Store state: (:checkpoint S K) or
   ;; (:full-replay REASON).  `operator status' prints it.
@@ -2086,7 +2090,19 @@ store; anything else is left to the ordinary open."
   (let ((raw (handler-case
                  (fnn-read-regular-bounded (fnn-config-path store) 16384)
                (fnn-os-error (e) (fnn-fault "invalid durable config: ~a" e)))))
-    (setf (fnn-store-config store) (fnn-metadata-config-decode raw))))
+    (let ((sealed (fnn-metadata-config-decode raw)))
+      (setf (fnn-store-sealed-config store) sealed
+            (fnn-store-config store) sealed)
+      ;; The live limits (row S1): the configuration history's :set-limit
+      ;; rows over the sealed profile, read before any bound of the log
+      ;; applies (the history's own readdir bound is a sealed field).
+      (when (let ((st (fnn-lstat (fnn-config-dir store))))
+              (and st (fnn-directory-p st) (not (fnn-symlink-p st))))
+        (let ((observation (fnn-config-record-observation store)))
+          (when observation
+            (setf (fnn-store-config store)
+                  (fnn-core 'fn-store-lim-effective sealed
+                            (mapcar #'fnn-octet-list (mapcar #'cdr observation))))))))))
 
 (defun fnn-initialize (store &optional (groups +fnn-default-groups+) (profile :development))
   ;; One durable configuration record at generation 1, built and admitted by
@@ -6271,7 +6287,8 @@ re-run init completes, never redraws: EEXIST at the link)."
   (fnn-fsync-dir (fnn-journal-dir store))
   (fnn-init-cut store "init-genesis-journal-fenced"))
 
-(defun fnn-genesis-open (store &optional (profile (fnn-store-config store)))
+(defun fnn-genesis-open (store &optional (profile (or (fnn-store-sealed-config store)
+                                                      (fnn-store-config store))))
   "Every open of a format-10 store: ACL2's open of journal/000000.log under
 the profile the store opened (fn-gen-open, books/store-genesis.lisp),
 refused by name (genesis-damaged, genesis-format, schema-digest,
