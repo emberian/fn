@@ -14714,6 +14714,29 @@
       "events": [
         "fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct"
       ]
+    },
+    {
+      "id": "PRF-990",
+      "title": "An article within the persisted profile's payload bound is charged within u32, so the POST boundary never refuses it :charge-bound: the u32 charge is a representable-profile fact, not a data cap (SCN-047, STO-013)",
+      "statement": "Subject: fn-sbud-post-boundary (books/store-budget-naming.lisp), which the host calls as fn-owner-post-boundary (host/owner-host.lisp; equal to it by fn-pvc-post-boundary-carried-is-sbud-post-boundary, PRF-284) from host/native/owner.lisp fnn-owner-attempt-transit and the POST path, with the charge host/native/io.lisp fnn-charge takes from fn-store-charge (host/store-host.lisp), fn-charge-for-payload of the payload's length. KEYSTONE fn-sbud-post-boundary-never-refuses-an-admitted-payloads-charge (books/record-width-producers.lisp): for a natural PAYLOAD-LENGTH at most fn-sbud-payload-bound PROFILE, fn-charge-for-payload PAYLOAD-LENGTH is at most 2^32 - 1 and fn-sbud-post-boundary PROFILE MSGID LENGTH COUNT (fn-charge-for-payload LENGTH) is not :charge-bound, for every PROFILE (a profile's bound is at most the record codec's payload ceiling, fn-sbud-payload-bound-within-record-codec, and the charge is monotone, fn-charge-for-payload-monotone). The :charge-bound refusal stays by name for a charge no admitted article produces; widening the charge to u64 would change no admitted article's record.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-013"
+      ],
+      "depends_on": [
+        "PRF-123",
+        "PRF-284"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/record-width-producers.lisp",
+        "tests/acl2/record-width-producers-tests.lisp"
+      ],
+      "progress_note": "Lane correctness-remainder-7 (Opus 5.5, 2026-09-29; SCN-047, coordinator decision (a)). REPL-admitted on hbox over the book (dependencies from source at the lane's served.lisp bytes). Teeth (tests/acl2/record-width-producers-tests.lisp): the scale profile's largest admitted article is charged within u32 and admitted :ok; the codec's payload ceiling is charged within u32; hypothesis removed: a 2^45-octet length fails the bound and the first conclusion and is refused :payload-bound; the named :charge-bound refusal of a 2^40 charge at an admitted length.",
+      "events": [
+        "fn-sbud-post-boundary-never-refuses-an-admitted-payloads-charge"
+      ]
     }
   ]
 }

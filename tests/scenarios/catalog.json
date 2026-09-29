@@ -1677,25 +1677,30 @@
     },
     {
       "id": "SCN-047",
-      "title": "A store written by an image before the u64 record codec opens under the new image with the same records and bytes; a u64 charge commits as schema 2",
+      "title": "A charge above 2^32 - 1 is refused at the POST boundary by name (STO-013): the u32 charge covers every admissible article, a representable-profile fact and not a data cap",
       "milestone": "M5",
       "status": "specified",
       "requirements": [
         "STO-013"
       ],
       "steps": [
-        "With the previous image, init a store and post two articles; hash every file.",
-        "Open it with the new image (recover, status) and hash every file again.",
-        "With the new image post an article with charge 2^40 and recover."
+        "Evaluate the POST boundary the host calls (fn-owner-post-boundary, equal to fn-sbud-post-boundary by PRF-284) under the scale profile at its largest admitted length with that length's charge.",
+        "Evaluate the POST boundary the host calls (fn-owner-post-boundary, equal to fn-sbud-post-boundary by PRF-284) at an admitted length with a charge of 2^40.",
+        "Evaluate it at a length past the profile's payload bound whose charge is past 2^32 - 1."
       ],
       "expected": [
-        "The new image recovers the same transaction and article counts; every file hash is unchanged by the open.",
-        "The u64 charge commits (schema-2 record) and recovers; the previous image refuses the store's new record fail-closed by its version octet."
+        "The boundary admits it (:ok) and its charge (fn-charge-for-payload of its length) is within u32; no admitted article's charge can exceed u32 under any profile (fn-sbud-post-boundary-never-refuses-an-admitted-payloads-charge, PRF-990: every profile's payload bound is at most the record codec's payload ceiling, whose charge is within u32), so the node writes schema-1 records.",
+        "The boundary refuses by name, :charge-bound (\"charge must be a positive uint32\"; books/store-budget-naming.lisp fn-sbud-post-boundary, fn-sbud-post-boundary-admits-a-u32-charge): the writers are 32-bit by design (STO-013's implementation note), so no image writes a schema-2 record for a charge.",
+        "The boundary refuses by the payload bound (:payload-bound), before the charge: the profile's article limit is the operator's admission limit (D27), and the u32 charge covers every article any supported profile admits."
       ],
       "evidence": [
+        "books/record-width-producers.lisp",
+        "tests/acl2/record-width-producers-tests.lisp",
+        "books/store-budget-naming.lisp",
         "planning/evidence/bounds-p6-2026-09-25.md"
       ],
-      "note": "assurance-triage 2026-09-26: returned to specified: the only recorded native run (planning/evidence/bounds-p6-2026-09-25.md, the u64 charge) refused the 2^40 charge (\"charge must be a positive uint32\") and wrote no schema-2 record, the opposite of the expected result; no test or script is committed."
+      "note": "2026-09-29 correctness-remainder-7: re-specified under the coordinator's decision (a) (PKT-367): the POST boundary refuses a charge above 2^32 - 1 by design (STO-013), so the earlier expectation (a u64 charge commits as schema 2) cannot hold and is withdrawn; the earlier note: assurance-triage 2026-09-26: returned to specified: the only recorded native run (planning/evidence/bounds-p6-2026-09-25.md, the u64 charge) refused the 2^40 charge (\"charge must be a positive uint32\") and wrote no schema-2 record, the opposite of the expected result; no test or script is committed.",
+      "execution_scope": "Every step is a ground evaluation of the boundary function in tests/acl2/record-width-producers-tests.lisp, and PRF-990's theorem covers every profile; no native POST of 2^40 octets is claimed, since no supported profile admits one. The schema-2 decode of a u64 record stays PRF-086's (the codec's width), not a producible record. The previous-image half of this scenario is retired: no migrations (all nodes redeploy fresh at 6.6.0; one format)."
     },
     {
       "id": "SCN-056",
