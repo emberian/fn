@@ -556,5 +556,70 @@ class DetachedByDefaultTests(unittest.TestCase):
         self.assertEqual(dry("--wait", "HEAD", "tests.test_native_owner").returncode, 0)
 
 
+class HelperImageUseTests(unittest.TestCase):
+    """obstructions-7 item 62: a helper's image read counts for a module
+    through the helper names the module uses; a scope's reads are
+    alternatives; unmet -> refused up front, not 25 minutes of build then
+    every test skipped."""
+
+    def fake_tree(self, directory):
+        import sys
+        sys.path.insert(0, str(ROOT / "tools"))
+        import native_env
+        base = Path(directory)
+        files = {
+            "tests.test_x": "from tests.helper import starts_dtn, harmless\n"
+                            "import tests.other as other\n"
+                            "def test_a():\n    starts_dtn()\n    other.both()\n",
+            "tests.helper": "import os\nfrom tests.deep import deep_start\n"
+                            "def starts_dtn():\n    return deep_start()\n"
+                            "def harmless():\n    return 1\n"
+                            "def unused():\n    return native_image(\"FN_NATIVE_HOST\")\n",
+            "tests.deep": "def deep_start():\n    return native_image(\"FN_NATIVE_DTN_HOST\")\n",
+            "tests.other": "def both():\n    image = native_image(\"FN_NATIVE_DEVELOPER_HOST\")\n"
+                           "    return image or native_image(\"FN_NATIVE_DTN_DEVELOPER_HOST\")\n",
+        }
+        paths = {}
+        for name, text in files.items():
+            path = base / (name.replace(".", "_") + ".py")
+            path.write_text(text)
+            paths[name] = path
+
+        def module_file(name):
+            if name in paths:
+                return paths[name]
+            raise SystemExit("none")
+        return native_env, module_file
+
+    def test_scopes_follow_the_names_the_module_uses(self):
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as directory:
+            native_env, module_file = self.fake_tree(directory)
+            with mock.patch.object(native_env, "module_file", module_file):
+                scopes = native_env.helper_scopes("tests.test_x")
+        self.assertEqual(scopes, [
+            ("tests.deep", "deep_start", frozenset({"FN_NATIVE_DTN_HOST"})),
+            ("tests.other", "both", frozenset({"FN_NATIVE_DEVELOPER_HOST",
+                                               "FN_NATIVE_DTN_DEVELOPER_HOST"}))])
+        # `unused` reads FN_NATIVE_HOST, but test_x never refers to it.
+
+    def test_plan_refuses_an_unmet_scope_and_accepts_an_alternative(self):
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as directory:
+            native_env, module_file = self.fake_tree(directory)
+            with mock.patch.object(native_env, "module_file", module_file):
+                _, refusals, notes = native_env.plan(["developer"], {}, ["tests.test_x"])
+                self.assertEqual(len(refusals), 1, refusals)
+                self.assertIn("FN_NATIVE_DTN_HOST (through tests.deep.deep_start", refusals[0])
+                self.assertIn("--images developer,dtn", refusals[0])
+                # The developer image meets `both` (its dtn-developer read is
+                # the fallback): noted, not refused.
+                self.assertTrue(any("FN_NATIVE_DTN_DEVELOPER_HOST" in n for n in notes), notes)
+                _, refusals, _ = native_env.plan(["developer", "dtn"], {}, ["tests.test_x"])
+                self.assertEqual(refusals, [])
+
+
 if __name__ == "__main__":
     unittest.main()
