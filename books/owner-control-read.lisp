@@ -256,7 +256,7 @@
 
 (local
  (defthm fn-octl-list-counts-effects-true-listp
-   (true-listp (fn-nntp-result-effects (fn-nntp-list-counts session archive groups)))
+   (true-listp (fn-nntp-result-effects (fn-nntp-list-counts session archive groups closed)))
    :hints (("Goal" :do-not-induct t
                    :in-theory (e/d (fn-nntp-list-counts fn-nntp-single fn-nntp-multi
                                     fn-nntp-multi-octets fn-nntp-make-result)
@@ -264,7 +264,7 @@
 
 (local
  (defthm fn-octl-list-counts-command-effects-true-listp
-   (true-listp (fn-nntp-result-effects (fn-nntp-list-counts-command session archive args)))
+   (true-listp (fn-nntp-result-effects (fn-nntp-list-counts-command session archive closed args)))
    :hints (("Goal" :do-not-induct t
                    :in-theory (e/d (fn-nntp-list-counts-command fn-nntp-single fn-nntp-multi
                                     fn-nntp-multi-octets fn-nntp-make-result)
@@ -387,7 +387,7 @@
 
 (local
  (defthm fn-octl-gidx-list-counts-command-effects-true-listp
-   (true-listp (fn-nntp-result-effects (fn-gidx-list-counts-command session archive buckets args)))
+   (true-listp (fn-nntp-result-effects (fn-gidx-list-counts-command session archive buckets closed args)))
    ; As above: 414k prover steps with the wildmat decoder, 44k without.
    :hints (("Goal" :do-not-induct t
                    :in-theory (e/d (fn-gidx-list-counts-command fn-nntp-single fn-nntp-multi

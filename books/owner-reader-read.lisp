@@ -54,21 +54,21 @@
 ; -----------------------------------------------------------------------------
 ; The host's reader entry (host/owner-host.lisp fn-owner-chunk-span).
 
-(defun fn-orr-read-span (oc views id i end fn-octets fn-arena fn-cat)
+(defun fn-orr-read-span (oc views id i end cache fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (natp i) (natp end) (<= i end)
                               (<= end (fn-octets-len fn-octets))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
   (if (consp views)
       (let ((result (fn-scr-ocfg-read-span (fn-ocfg-at-reader-view oc views)
-                                           id i end fn-octets fn-arena fn-cat)))
+                                           id i end cache fn-octets fn-arena fn-cat)))
         (fn-own-tls-make-result
          (fn-own-tls-result-consumed result)
          (fn-own-tls-result-effects result)
          (fn-ocfg-with-view (fn-own-tls-result-owner result)
                             (fn-own-view (fn-ocfg-owner oc)))
          (fn-own-tls-result-repinned result)))
-    (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)))
+    (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)))
 
 ; -----------------------------------------------------------------------------
 ; The view exchange touches the view and nothing else.
@@ -185,9 +185,9 @@
 (defthm fn-orr-span-read-is-historical-read
   (implies (and (fn-ocri-relation x)
                 (fn-scr-owner-catalogp (fn-ocfg-owner x) id fn-arena fn-cat)
-                (fn-scol-okp fn-arena fn-cat)
+                (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (natp i) (natp end))
-           (let* ((r (fn-scr-ocfg-read-span x id i end fn-octets fn-arena fn-cat))
+           (let* ((r (fn-scr-ocfg-read-span x id i end cache fn-octets fn-arena fn-cat))
                   (full (fn-ocfg-read x id (take (fn-own-tls-result-consumed r)
                                                  (fn-oct-slice-list i end fn-octets))
                                       fn-arena)))
@@ -202,10 +202,10 @@
 (defthm fn-orr-span-read-keeps-the-reader-relation-and-the-rest
   (implies (and (fn-ocri-relation x)
                 (fn-scr-owner-catalogp (fn-ocfg-owner x) id fn-arena fn-cat)
-                (fn-scol-okp fn-arena fn-cat)
+                (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (natp i) (natp end))
            (let* ((x2 (fn-own-tls-result-owner
-                       (fn-scr-ocfg-read-span x id i end fn-octets fn-arena fn-cat))))
+                       (fn-scr-ocfg-read-span x id i end cache fn-octets fn-arena fn-cat))))
              (and (fn-ocri-relation x2)
                   (equal (fn-own-view (fn-ocfg-owner x2)) (fn-own-view (fn-ocfg-owner x)))
                   (equal (fn-own-store (fn-ocfg-owner x2)) (fn-own-store (fn-ocfg-owner x)))
@@ -221,12 +221,12 @@
                         (:instance fn-ocri-read-preserves-historical-reader-relation
                                    (oc x)
                                    (octets (take (fn-own-tls-result-consumed
-                                                  (fn-scr-ocfg-read-span x id i end fn-octets fn-arena fn-cat))
+                                                  (fn-scr-ocfg-read-span x id i end cache fn-octets fn-arena fn-cat))
                                                  (fn-oct-slice-list i end fn-octets))))
                         (:instance fn-orr-ocfg-read-keeps-the-rest
                                    (oc x)
                                    (octets (take (fn-own-tls-result-consumed
-                                                  (fn-scr-ocfg-read-span x id i end fn-octets fn-arena fn-cat))
+                                                  (fn-scr-ocfg-read-span x id i end cache fn-octets fn-arena fn-cat))
                                                  (fn-oct-slice-list i end fn-octets)))))
            :in-theory (union-theories '() (theory 'minimal-theory)))))
 
@@ -305,9 +305,9 @@
                 (equal (fn-ocfg-config oc) (fn-ocfg-config oc0))
                 (fn-scr-owner-catalogp (fn-ocfg-owner (fn-ocfg-with-view oc (car views)))
                                        id fn-arena fn-cat)
-                (fn-scol-okp fn-arena fn-cat)
+                (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (natp i) (natp end))
-           (let* ((r (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat))
+           (let* ((r (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat))
                   (oc2 (fn-own-tls-result-owner r))
                   (o2 (fn-ocfg-owner oc2))
                   (o (fn-ocfg-owner oc)))
@@ -335,7 +335,7 @@
                         (:instance fn-orr-restoring-the-working-view-keeps-the-reader-relation
                                    (x2 (fn-own-tls-result-owner
                                         (fn-scr-ocfg-read-span (fn-ocfg-with-view oc (car views))
-                                                               id i end fn-octets fn-arena fn-cat)))))
+                                                               id i end cache fn-octets fn-arena fn-cat)))))
            :in-theory (union-theories '(fn-orr-read-span fn-ocfg-at-reader-view fn-ocv-reader-view
                                         fn-orr-tls-result-of-make fn-orr-with-view-fields)
                                       (theory 'minimal-theory)))))
@@ -344,8 +344,8 @@
 ; keeps the reader relation and everything but the connections.
 (defthm fn-orr-read-span-without-a-capture-is-the-span-read-by-definition
   (implies (not (consp views))
-           (equal (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat)
-                  (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)))
+           (equal (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat)
+                  (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)))
   :hints (("Goal" :in-theory (union-theories '(fn-orr-read-span) (theory 'minimal-theory)))))
 
 (in-theory (disable fn-orr-read-span))

@@ -319,8 +319,36 @@ Returns the ACL2-rendered reply octets for CID."
         (fnn-fault "owner rejected the redeem outcome"))
       (fnn-owner-octets-global 'fn-owner-output))))
 
+(defun fnn-owner-compaction-request (service)
+  "PKT-868: the operator's compaction request on the running owner.  ACL2
+answers it (host/owner-host.lisp fn-owner-sco-request, books/owner-compact-
+request.lisp fn-ock-request-word) under the owner mutex, from the free space
+read before (statvfs is I/O: never under the mutex); a request it answers
+:requested starts the owner's publication now, off the mutex
+(fnn-owner-maybe-publish: the spare, the capture, the bounded batches, the
+install, the drop).  The reply names the word; :blocked is a refusal (a
+deferral stands, and `status' names it)."
+  (let* ((free (fnn-disk-free-octets (fnn-owner-service-store service)))
+         (word (fnn-owner-serialized
+                service nil
+                (lambda ()
+                  (fnn-owner-core 'fn-owner-sco-request
+                                  (fnn-checkpoint-budget-test-override nil) free)))))
+    (unless (member word '(:requested :coalesced :nothing-to-compact :blocked))
+      (fnn-fault "owner returned a malformed compaction answer ~a" word))
+    (fnn-err "COMPACTION request answer=~(~a~)" word)
+    (when (eq word :requested)
+      (fnn-owner-maybe-publish service))
+    (list :reason (fnn-core 'fn-ock-request-status word) word)))
+
 (defun fnn-owner-live-admin-serialized (service argv)
-  "Publish one ACL2-planned configuration mutation through the live owner."
+  "Publish one ACL2-planned configuration mutation through the live owner,
+or answer the one owner request an admin vector carries (PKT-868: the
+compaction request; ACL2's fn-native-admin-result-owner-requestp)."
+  (when (fnn-core 'fn-native-admin-host-owner-requestp
+                  (fnn-core 'fn-native-admin-host-plan argv))
+    (return-from fnn-owner-live-admin-serialized
+      (fnn-owner-compaction-request service)))
   (fnn-owner-serialized
    service nil
    (lambda ()

@@ -217,47 +217,50 @@
 ; fn-gidx-list-counts-command-is-the-archive-fold (books/nntp-list-counts)
 ; equates the reply with fn-nntp-list-counts-command's under the carried
 ; bucket relation.
-(defun fn-gidx-counts-line (archive buckets group)
+(defun fn-gidx-counts-line (archive buckets group closed)
   (fn-nntp-counts-summary-line
-   group (fn-gidx-group-summary archive buckets group)))
+   group (fn-gidx-group-summary archive buckets group) closed))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-gidx-counts-lines-loop (archive buckets groups acc)
+(defun fn-gidx-counts-lines-loop (archive buckets groups closed acc)
   (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp groups)
       (fn-gidx-counts-lines-loop archive
                                  buckets
                                  (cdr groups)
+                                 closed
                                  (cons (fn-gidx-counts-line archive
                                                             buckets
-                                                            (car groups))
+                                                            (car groups)
+                                                            closed)
                                        acc))
     (revappend acc nil)))
 
-(defun fn-gidx-counts-lines (archive buckets groups)
+(defun fn-gidx-counts-lines (archive buckets groups closed)
   (mbe :logic
        (if (consp groups)
-           (cons (fn-gidx-counts-line archive buckets (car groups))
-                 (fn-gidx-counts-lines archive buckets (cdr groups)))
+           (cons (fn-gidx-counts-line archive buckets (car groups) closed)
+                 (fn-gidx-counts-lines archive buckets (cdr groups) closed))
          nil)
-       :exec (fn-gidx-counts-lines-loop archive buckets groups nil)))
+       :exec (fn-gidx-counts-lines-loop archive buckets groups closed nil)))
 
 (local
  (defthm fn-gidx-counts-lines-loop-is-revappend
-   (equal (fn-gidx-counts-lines-loop archive buckets groups acc)
-          (revappend acc (fn-gidx-counts-lines archive buckets groups)))
-   :hints (("Goal" :induct (fn-gidx-counts-lines-loop archive buckets groups acc)
+   (equal (fn-gidx-counts-lines-loop archive buckets groups closed acc)
+          (revappend acc (fn-gidx-counts-lines archive buckets groups closed)))
+   :hints (("Goal" :induct (fn-gidx-counts-lines-loop archive buckets groups closed acc)
                    :in-theory (union-theories '(fn-gidx-counts-lines-loop fn-gidx-counts-lines revappend car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
 
-(defun fn-gidx-list-counts-command (session archive buckets args)
+(defun fn-gidx-list-counts-command (session archive buckets closed args)
   (if (null args)
       (fn-nntp-multi session (fn-proto-text "LIST" :newsgroups)
                      (fn-gidx-counts-lines archive buckets
-                                           (fn-state-groups archive)))
+                                           (fn-state-groups archive)
+                                           closed))
     (if (and (consp args) (null (cdr args)))
         (let ((parsed (fn-wildmat-parse (car args))))
           (if (fn-wildmat-result-okp parsed)
@@ -266,7 +269,8 @@
                               archive buckets
                               (fn-nntp-filter-groups-by-wildmat
                                (fn-wildmat-result-value parsed)
-                               (fn-state-groups archive))))
+                               (fn-state-groups archive))
+                              closed))
             (fn-nntp-single session (fn-proto-text "LIST" :syntax))))
       (fn-nntp-single session (fn-proto-text "LIST" :syntax)))))
 
@@ -285,7 +289,7 @@
 
 (defthm fn-gidx-list-counts-command-preserves-session
   (equal (fn-nntp-result-session
-          (fn-gidx-list-counts-command session archive buckets args))
+          (fn-gidx-list-counts-command session archive buckets closed args))
          session)
   :hints (("Goal" :in-theory (e/d (fn-gidx-list-counts-command)
                                   (fn-gidx-counts-lines)))))
@@ -402,7 +406,8 @@
              (fn-nntp-keyword-tokenp (car args))
              (fn-nntp-keywordp (car args) "COUNTS"))
         (fn-gidx-list-counts-command
-         session archive (fn-gidx-pin-buckets index) (cdr args)))
+         session archive (fn-gidx-pin-buckets index) (fn-nntp-env-closed env)
+         (cdr args)))
        ((and (or (fn-nntp-keywordp keyword "ARTICLE")
                  (fn-nntp-keywordp keyword "HEAD")
                  (fn-nntp-keywordp keyword "BODY")

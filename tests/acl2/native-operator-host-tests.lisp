@@ -12,8 +12,6 @@
   (fn-native-operator-host-run *fn-nop-host-config* *fn-nop-host-status-argv*))
 (assert-event (equal (fn-native-operator-result-status *fn-nop-host-result*) :accepted))
 (assert-event (equal (fn-native-operator-result-command *fn-nop-host-result*) "status"))
-(assert-event (equal (fn-native-operator-host-argv-max-arguments) 32))
-(assert-event (equal (fn-native-operator-host-argv-max-octets) 512))
 (assert-event (equal (fn-native-operator-host-result-native-action *fn-nop-host-result*)
                      :status))
 (assert-event (equal (fn-native-operator-host-result-exit-code *fn-nop-host-result*) 0))

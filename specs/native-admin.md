@@ -5,8 +5,14 @@ only durable `group create`, `group retire`, and `capacity` changes.  It does
 not add a second public command grammar: public operator/control integration
 must consume the same ACL2 plan and projections.
 
-`fn-native-admin-plan` accepts at most sixteen nonempty ASCII words, each at
-most 512 octets:
+`fn-native-admin-plan` accepts any number of nonempty ASCII words of any
+length (PKT-867, D27: no word count or word length bound).  What bounds one
+command is the control frame that carries it, which the owner reads under the
+profile's bound (`fn-nctrl-read-bound-for`); every walk over the argv runs as
+a loop (a loop twin, `tools/depth_check.py`), so the work is linear in the
+argv and the stack constant.  The same holds for `fn native operator`
+(`fn-native-operator-command-preflight`): the kernel admits the argv, and a
+malformed word (empty or not ASCII) is refused by name (`ARGV-MALFORMED`):
 
 ```
 group create NAME
