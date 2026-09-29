@@ -1529,12 +1529,25 @@ to sxhash multicollisions: a bucket walk linear in the adversary's
 Message-IDs) and over the trie of Q5c. The tag is `fn-ns-mac' (BLAKE3
 keyed_hash) of the Message-ID's octets under a purpose key of the node
 secret ("fn/msgid-index/v1", derived like the cancel-lock key, kept with
-the node secrets, never the plain hash); a lookup reads the tag's home page
-and the run of full pages after it, so its work is bounded by pages for
-every tag (PRF-991 `fn-mpxt-candidates-page-need'), at most two under the
-table condition; a home page whose overflow is full is refused BY NAME
-(`:mpx-skew', evidence of crafted tags under a leaked key: rotate the node
-secret; the table is rebuilt under the new key at the open), never a scan.
+the node secrets, never the plain hash), ONE KEY PER INDEX GENERATION
+(GPT-6's 2026-09-29 call: stable across ordinary checkpoints, never per
+checkpoint; a generation changes only by a controlled rebuild beside the
+old or on compromise; a key derived from a compromised secret restores
+nothing -- a rotation is a fresh node-secret epoch and a rebuild; the
+persisted index binds the key identifier into its manifest, row P8).
+THE STRUCTURAL BOUND is the guarantee: a lookup reads the tag's home page
+and, only when it is full, its overflow page, and confirms at most 2,048
+exact Message-IDs, for every tag, key known or not (PRF-991
+`fn-mpxt-candidates-page-need'). Admission capacity is separate: 2,049
+Message-IDs whose tags share a home page cannot be admitted however empty
+the rest is -- an implementation limit stated as such, not slipped under
+D27 -- and the index's fourth outcome, INDEX-SATURATED (`:mpx-saturated'),
+is refused BY NAME before durable acceptance with the table unchanged:
+never a false absence, a dropped insert or a fallback scan; the next
+generation is built beside the old and adopted only when every entry
+landed. Under an unpredictable key saturation is a Poisson tail (two pages
+of 1,024 where the mean is 512), so it is evidence of crafted tags under a
+leaked key: rotate the node secret and rebuild.
 Consequences: the catalog's `fn-cat$c-msgids' hash goes with THE SWITCH
 (row P2); the figure's Message-ID term (books/heap-store-figure) becomes the
 table's words; the 10k crafted-collision native lands with the switch.

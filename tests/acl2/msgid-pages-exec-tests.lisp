@@ -23,9 +23,9 @@
 ;      pages are the need, 1 + the full run, at most the page count, at most
 ;      two under the condition, and no tag is skewed; SKEW: 2,048 entries
 ;      under one tag fill a home page and its overflow (a leaked key's
-;      crafted tags): the tag is skewed, its need is three pages, the
-;      condition fails, and the entry still lands (the reader is complete
-;      whatever the tags).
+;      crafted tags): the tag is saturated, its need is two pages (the
+;      structural bound), the condition fails, and the next placement is
+;      refused with the table unchanged (never a dropped insert).
 
 (in-package "ACL2")
 (include-book "../../books/msgid-pages-catalog")
@@ -59,18 +59,43 @@
                    (fn-mpxt-tag "<a@x>" (fn-mpxt-key-of-entry (fn-ns-create-entry '(116 101 115 116) (make-list 32 :initial-element 8))))))
        (not (equal *mpxe-key* (fn-ns-cancel-lock-key *mpxe-entry*)))))
 
+; One add with a fresh generation buffer (the catalog keeps one beside the
+; table; a test allocates one per add): (mv outcome fn-mpxt).
+(defthm mpxe-fresh-generation
+  (fn-mpxtp (create-fn-mpxt2))
+  :hints (("Goal" :in-theory (enable fn-mpxtp))))
+
+(defun mpxe-add1 (tag seq fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt
+                  :guard (and (natp tag) (< tag *fn-mpxt-word-limit*)
+                              (natp seq) (< (+ 1 seq) *fn-mpxt-word-limit*) (fn-mpxt-wfp fn-mpxt))
+                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-add)))))
+  (with-local-stobj fn-mpxt2
+    (mv-let (outcome fn-mpxt fn-mpxt2)
+      (fn-mpxt-add tag seq fn-mpxt fn-mpxt2)
+      (mv outcome fn-mpxt))))
+
+(defthm mpxe-add1-shape
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt) (natp tag) (< tag *fn-mpxt-word-limit*)
+                (natp seq) (< (+ 1 seq) *fn-mpxt-word-limit*))
+           (and (fn-mpxtp (mv-nth 1 (mpxe-add1 tag seq fn-mpxt)))
+                (<= (* *fn-mpxt-page-words* (fn-mpxt-pages (mv-nth 1 (mpxe-add1 tag seq fn-mpxt))))
+                    (fn-mpxt-w-length (mv-nth 1 (mpxe-add1 tag seq fn-mpxt))))))
+  :hints (("Goal" :in-theory (disable fn-mpxt-add))))
+
+(in-theory (disable mpxe-add1))
+
 ; The writer the host runs at load: add rows I.. under their own tags.
 (defun mpxe-build (i rows fn-mpxt)
   (declare (xargs :stobjs fn-mpxt
                   :guard (and (natp i) (true-listp rows) (fn-mpxt-wfp fn-mpxt))
-                  :measure (nfix (- (len rows) (nfix i)))
-                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-add)))))
+                  :measure (nfix (- (len rows) (nfix i)))))
   (if (or (>= (nfix i) (len rows)) (>= (+ 1 (nfix i)) *fn-mpxt-word-limit*))
       fn-mpxt
-    (mv-let (placed fn-mpxt)
-      (fn-mpxt-add (fn-mpxt-tag (fn-record-msgid (nth (nfix i) rows)) (fn-mpxt-key-octets fn-mpxt))
-                   (nfix i) fn-mpxt)
-      (declare (ignore placed))
+    (mv-let (outcome fn-mpxt)
+      (mpxe-add1 (fn-mpxt-tag (fn-record-msgid (nth (nfix i) rows)) (fn-mpxt-key-octets fn-mpxt))
+                 (nfix i) fn-mpxt)
+      (declare (ignore outcome))
       (mpxe-build (1+ (nfix i)) rows fn-mpxt))))
 
 (defthm mpxe-build-shape
@@ -190,12 +215,11 @@
 
 ; 6. PAGE NEED and SKEW.
 ; For each Message-ID: (counted-candidates = candidates, counted-pages = need,
-;                       need = 1 + full-run, need <= pages, need <= 2, skewed)
+;                       need <= pages, need <= 2, saturated)
 (defun mpxe-need-each (msgids fn-mpxt)
   (declare (xargs :stobjs fn-mpxt :guard (true-listp msgids)
                   :guard-hints (("Goal" :in-theory (disable fn-mpxt-candidates-counted fn-mpxt-candidates
-                                                            fn-mpxt-candidates-pages fn-mpxt-full-run
-                                                            fn-mpxt-skewp)))))
+                                                            fn-mpxt-candidates-pages                                                             fn-mpxt-saturatedp)))))
   (if (consp msgids)
       (let* ((tag (fn-mpxt-tag (car msgids) (fn-mpxt-key-octets fn-mpxt)))
              (np (fn-mpxt-pages fn-mpxt)))
@@ -203,18 +227,16 @@
           (fn-mpxt-candidates-counted tag fn-mpxt)
           (cons (list (equal cands (fn-mpxt-candidates tag fn-mpxt))
                       (equal pages (fn-mpxt-candidates-pages tag fn-mpxt))
-                      (equal pages (if (zp np) 0 (+ 1 (fn-mpxt-full-run (fn-mpx-home tag np) (1- np) fn-mpxt))))
                       (<= pages np)
                       (<= pages 2)
-                      (fn-mpxt-skewp tag fn-mpxt))
+                      (fn-mpxt-saturatedp tag fn-mpxt))
                 (mpxe-need-each (cdr msgids) fn-mpxt))))
     nil))
 
 (defun mpxe-need (rows msgids)
   (declare (xargs :guard (and (true-listp rows) (true-listp msgids))
                   :guard-hints (("Goal" :in-theory (disable fn-mpxt-candidates-counted fn-mpxt-candidates
-                                                            fn-mpxt-candidates-pages fn-mpxt-full-run
-                                                            fn-mpxt-skewp fn-mpxt-no-adjacent-fullp)))))
+                                                            fn-mpxt-candidates-pages                                                             fn-mpxt-saturatedp fn-mpxt-no-adjacent-fullp)))))
   (with-local-stobj fn-mpxt
     (mv-let (result fn-mpxt)
       (let* ((fn-mpxt (fn-mpxt-set-key *mpxe-key* fn-mpxt))
@@ -235,19 +257,18 @@
 (assert-event ; mpxe-page-need-witness: the grown table (2 pages) satisfies the condition; every need is 1
   (and (equal (mpxe-condition *mpxe-rows-520*) '(2 t))
        (equal (mpxe-need *mpxe-rows-520* (list (mpxe-msgid 0) (mpxe-msgid 7) (mpxe-msgid 519) "<none@x>"))
-              '((t t t t t nil) (t t t t t nil) (t t t t t nil) (t t t t t nil)))))
+              '((t t t t nil) (t t t t nil) (t t t t nil) (t t t t nil)))))
 
 ; N entries under one TAG from sequence I (a leaked key's crafted tags).
 (defun mpxe-add-same (tag n i fn-mpxt)
   (declare (xargs :stobjs fn-mpxt :measure (nfix (- n (nfix i)))
                   :guard (and (natp tag) (< tag *fn-mpxt-word-limit*) (natp n) (natp i)
-                              (< (+ 1 n) *fn-mpxt-word-limit*) (fn-mpxt-wfp fn-mpxt))
-                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-add)))))
+                              (< (+ 1 n) *fn-mpxt-word-limit*) (fn-mpxt-wfp fn-mpxt))))
   (if (>= (nfix i) (nfix n))
       fn-mpxt
-    (mv-let (placed fn-mpxt)
-      (fn-mpxt-add tag (nfix i) fn-mpxt)
-      (declare (ignore placed))
+    (mv-let (outcome fn-mpxt)
+      (mpxe-add1 tag (nfix i) fn-mpxt)
+      (declare (ignore outcome))
       (mpxe-add-same tag n (1+ (nfix i)) fn-mpxt))))
 
 (defthm mpxe-add-same-shape
@@ -260,26 +281,26 @@
 
 (in-theory (disable mpxe-add-same))
 
-; (pages count skewed-7 need-7 condition skewed-6 need-6 placed-7 need-7-after)
+; (pages count saturated-7 need-7 condition saturated-6 need-6 placed-7 need-7-after)
 (defun mpxe-skew (n)
   (declare (xargs :guard (and (natp n) (< (+ 1 n) *fn-mpxt-word-limit*))
-                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-candidates-pages fn-mpxt-skewp fn-mpxt-put
+                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-candidates-pages fn-mpxt-saturatedp fn-mpxt-put
                                                             fn-mpxt-no-adjacent-fullp)))))
   (with-local-stobj fn-mpxt
     (mv-let (result fn-mpxt)
       (let* ((fn-mpxt (fn-mpxt-set-key *mpxe-key* fn-mpxt))
              (fn-mpxt (mpxe-add-same 7 n 0 fn-mpxt))
              (before (list (fn-mpxt-pages fn-mpxt) (fn-mpxt-count fn-mpxt)
-                           (fn-mpxt-skewp 7 fn-mpxt) (fn-mpxt-candidates-pages 7 fn-mpxt)
+                           (fn-mpxt-saturatedp 7 fn-mpxt) (fn-mpxt-candidates-pages 7 fn-mpxt)
                            (fn-mpxt-no-adjacent-fullp (fn-mpxt-pages fn-mpxt) fn-mpxt)
-                           (fn-mpxt-skewp 6 fn-mpxt) (fn-mpxt-candidates-pages 6 fn-mpxt))))
+                           (fn-mpxt-saturatedp 6 fn-mpxt) (fn-mpxt-candidates-pages 6 fn-mpxt))))
         (mv-let (placed fn-mpxt)
           (fn-mpxt-put 7 n fn-mpxt)
           (mv (append before (list placed (fn-mpxt-candidates-pages 7 fn-mpxt))) fn-mpxt)))
       result)))
 
-(assert-event ; mpxe-skew-witness: 2,048 entries under tag 7 in 8 pages fill page 7 and page 0
-  (equal (mpxe-skew 2048) '(8 2048 t 3 nil nil 1 t 3)))
+(assert-event ; mpxe-saturated-witness: 2,048 entries under tag 7 in 4 pages fill page 3 and page 0
+  (equal (mpxe-skew 2048) '(4 2048 t 2 nil nil 1 nil 2)))
 
 (assert-event ; mpxe-not-skewed-witness: 1,000 entries under tag 7 (2 pages: page 1 not full)
   (equal (mpxe-skew 1000) '(2 1000 nil 1 t nil 1 t 1)))
