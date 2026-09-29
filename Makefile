@@ -1517,7 +1517,7 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) tools/ledger.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
-	@$(PYTHON) tools/check_steps.py summary $(CHECK_STEPS_DIR)
+	@$(CHECK_EXECUTE)
 
 check-fast-lane:
 	FN_LANE_CHECK=1 FN_LANE_CHECK_DIR=$$(mktemp -d "$${TMPDIR:-/tmp}/fn-lane-check.XXXXXX") $(MAKE) check-fast
@@ -1525,9 +1525,23 @@ check-fast-lane:
 # `make check` runs every step even when one fails, then prints a table of
 # them (step, exit, seconds, first finding) and fails if any step failed:
 # make stops a recipe at its first red line, and one sibling's red step used
-# to hide every check after it (tools/check_steps.py).
+# to hide every check after it (tools/check_steps.py).  The recipe's lines
+# only PLAN the steps; its last line runs them (tools/check_steps.py execute):
+#   - in parallel over CHECK_JOBS workers (default half the cores; CHECK_JOBS=1
+#     is serial), steps that write what another reads first and alone, each
+#     step's output printed whole and kept in build/check-steps/logs/;
+#   - skipping a step whose traced inputs (the files it opened, the
+#     directories it listed, the paths it stat'ed, its git commands' output)
+#     are unchanged since its last PASS: "cached (inputs unchanged since
+#     <sha>)", from build/check-cache/ (never committed).  A step that starts
+#     ACL2 or another untraceable process always runs.
+# `make check FORCE=1` runs every step whatever the cache says.  The batch
+# runner's full pass at a pushed head runs ONCE with FORCE=1: that pass is the
+# gate's evidence and must not rest on another tree's cached verdicts.
 CHECK_STEPS_DIR ?= build/check-steps
-CHECK_STEP = $(PYTHON) tools/check_steps.py run $(CHECK_STEPS_DIR) --
+CHECK_STEP = $(PYTHON) tools/check_steps.py add $(CHECK_STEPS_DIR) --
+CHECK_EXECUTE = $(PYTHON) tools/check_steps.py execute $(CHECK_STEPS_DIR) \
+	$(if $(CHECK_JOBS),--jobs $(CHECK_JOBS)) $(if $(filter 1 yes true,$(FORCE)),--no-cache)
 
 check:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
@@ -1813,7 +1827,7 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/green_check.py --summary
 	@$(CHECK_STEP) $(PYTHON) tools/theory_check.py --summary
 	@$(CHECK_STEP) $(PYTHON) tools/theory_check.py --strict --books $(THEORY_STRICT_BOOKS)
-	@$(PYTHON) tools/check_steps.py summary $(CHECK_STEPS_DIR)
+	@$(CHECK_EXECUTE)
 
 # The integration labs.  Deliberately NOT part of `check`: the quick tier is
 # about two and a half minutes and the box tier is hours, while `check` is
