@@ -246,12 +246,24 @@ class BpRun:
         verb = "add" if present else "remove"
         r = self.invoke("operator", self.configs[True], "bp-route", verb, *ROUTE)
         if r.returncode != EXIT.OK:
-            # The operator's own words go into the cause: on the 444fb9f41
-            # image `bp-route remove` at the hold exited 1 (the receiver
-            # holds the writer lock; operability-2 refuses by name).
-            words = ((r.stdout or b"") + b" " + (r.stderr or b"")).decode("ascii", "replace")
-            raise HarnessFailure("bp-route-{}:rc={}:{}".format(
-                verb, r.returncode, " ".join(words.split())[:160]))
+            # The operator's own words go into the cause.  On 444fb9f41 (run
+            # rf4-444f-2) `bp-route remove` at the hold is `refused store-held
+            # (a process holds the store lock and no control socket is there
+            # to reach it ...)`: the receiver is a `bp-node serve` process,
+            # which opens no control socket, and the owner service (`operator
+            # run`, host/native/owner.lisp) does not embed the BP node, so no
+            # live reconfiguration path (host/native/control.lisp :admin ->
+            # fnn-owner-live-admin-serialized) reaches it.  That is the image
+            # naming the missing form: pending by name, never a stopped node
+            # standing in for the running one.
+            words = " ".join(((r.stdout or b"") + b" " + (r.stderr or b""))
+                             .decode("ascii", "replace").split())
+            if "store-held" in words:
+                raise HarnessFailure(
+                    "live-route-unavailable:bp-route {} under a running `bp-node serve' "
+                    "(no control socket; the owner service does not embed the BP node): "
+                    "{}".format(verb, words[:160]))
+            raise HarnessFailure("bp-route-{}:rc={}:{}".format(verb, r.returncode, words[:160]))
         self.route_present = present
         self.j.client("policy-change", operation=op_id, what="receipt-policy",
                       change="route-restored" if present else "route-removed",
@@ -270,9 +282,12 @@ class BpRun:
                       pinned=pinned, returncode=r.returncode)
 
     def probe(self, op_id: str):
-        # `--replay': the counts over the replayed log (transactions= articles=);
-        # the plain stopped report (operability-2 cbe0c1d7d) is the header only.
-        status = self.invoke("store", self.receiver_store, "status", "--replay", timeout=300)
+        # `operator CONFIG status --replay': the counts over the replayed log
+        # (transactions= articles=); the plain stopped report (operability-2
+        # cbe0c1d7d) is the header only, and the store verb's `--replay'
+        # (operability-9) is not on 444fb9f41 (rf4-444f-2: store-status:rc=0).
+        # The receiver node is stopped by now (both variants).
+        status = self.invoke("operator", self.configs[True], "status", "--replay", timeout=300)
         counts = re.findall(rb"^transactions=[0-9]+ articles=([0-9]+) ", status.stdout,
                             re.MULTILINE)
         if status.returncode != EXIT.OK or len(counts) != 1:

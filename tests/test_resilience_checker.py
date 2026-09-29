@@ -90,6 +90,8 @@ class ScenarioIRTests(unittest.TestCase):
             if any(f.boundary in PENDING_BOUNDARIES for f in s.faults):
                 self.assertEqual(validate(s, REGISTRY), [], s.id)
                 pending = {f.boundary for f in s.faults if not REGISTRY[f.boundary]["executable"]}
+                # The reorder variant's nemesis verb has no live path (PENDING_INTERLEAVES).
+                pending |= {"interleave"} if s.id == "schedule-receipt-observed-reorder" else set()
                 self.assertEqual(executable_on_native(s, REGISTRY), not pending, s.id)
                 self.assertEqual(bool(pending_reasons(s, REGISTRY)), bool(pending), s.id)
         # A post does not reach a reader's boundary: the category error is named.
@@ -451,11 +453,16 @@ class SchedulePointTests(unittest.TestCase):
                           "native-recovery-log-truncated", "native-recovery-log-recovered",
                           "native-recovery-recovery-stage-unlinked",
                           "schedule-receipt-observed-duplicate",
-                          "schedule-receipt-observed-reorder",
                           "schedule-receipt-observed-lose-completion"})
         pending = {r["scenario"]: r for r in rows if r["status"] == "pending"}
         self.assertEqual(set(pending), {"schedule-page-read-outstanding",
-                                        "schedule-reclaim-candidate-selected"})
+                                        "schedule-reclaim-candidate-selected",
+                                        "schedule-receipt-observed-reorder"})
+        # The reorder variant: its held form exists; the nemesis verb (a live
+        # `bp-route remove` under the running receiver) has no host path.
+        self.assertIn("no live path", pending["schedule-receipt-observed-reorder"]["reasons"][0])
+        self.assertEqual(pending["schedule-receipt-observed-reorder"]["owner"],
+                         "coordinator (finding, resilience-framework-5)")
         self.assertEqual(pending["schedule-page-read-outstanding"]["owner"], "online-reclaim-8")
         self.assertEqual(pending["schedule-reclaim-candidate-selected"]["owner"],
                          "online-reclaim-8")
@@ -588,7 +595,11 @@ class ReceiptPointTests(unittest.TestCase):
             if s.id.startswith("schedule-receipt-observed-"):
                 self.assertEqual(s.initial["recipe"], "bp-node")
                 self.assertEqual(validate(s, REGISTRY), [], s.id)
-                self.assertTrue(executable_on_native(s, REGISTRY), s.id)
+                # The held form is in the tree for all three; the reorder
+                # variant's nemesis verb (a live `bp-route remove` under the
+                # running receiver) has no host path: pending by name.
+                self.assertEqual(executable_on_native(s, REGISTRY),
+                                 s.id != "schedule-receipt-observed-reorder", s.id)
                 self.assertEqual(s.witnesses, ["receipt-delivered", "receipt-effect-once"])
 
 
