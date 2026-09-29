@@ -14913,6 +14913,48 @@
         "tests/acl2/store-finalize-incremental-tests.lisp"
       ],
       "progress_note": "Lane incremental-finalize (Claude Fable 5.1, 2026-09-29): REPL-admitted on the box (every form, both guards; the keystone 232k steps, 0.4 s); early certify hbox run-20260929T042235Z-19e0. Wired into the host open: NOT YET (the open's carried verdict needs the checkpoint's frontier/count/last record beside the trailer, composed-owner-4's A5 discipline); online-reclaim-4 cites the corollary for the swap's delta. Teeth: the twin book's history; positive witness (both hypotheses, the conclusion, the open :ok, the corollary's shape); the empty suffix; four suffix-only refusals decided alike (at the frontier, out of sequence, a repeated transaction, a frontier below the bound); two hypothesis-removal witnesses (a base that never finalizes :ok; the bound omitted) each affirming the retained hypothesis, the omitted one failing and the conclusion failing, plus must-fail-checked ground defthms; a corrupted carried bound labelled as a mutation witness (refuses more, never admits more)."
+    },
+    {
+      "id": "PRF-969",
+      "title": "The Message-ID table, executable: the reader over the table stobj's page-store words (whole home page, the run of full pages after it, candidates ascending by construction, the BLAKE3 tag) confirmed against the rows is the ascending walk of the rows carrying the Message-ID (lane paged-history-2, row P2)",
+      "statement": "Subjects: books/msgid-pages-exec.lisp fn-mpxt-seqs (the executable paged reader: fn-mpxt-confirm over fn-mpxt-candidates of fn-mpxt-tag, the first eight octets of fn-digest of the Message-ID's octets floored at 1; the table a defstobj fn-mpxt of u64 words in 2048-word page-store pages, 1,024 two-word slots (TAG, SEQ+1) a page, 0 the empty slot) against fn-mpxt-spec-from 0 (the walk: the sequences of the rows whose fn-record-msgid is the Message-ID, ascending). KEYSTONE fn-mpxt-seqs-is-spec-from: under fn-mpxt-faithful (fn-mpxt-okp: every slot's SEQ word in 1..the row count; fn-mpxt-faithful-from 0: every row's own sequence among its tag's candidates) the reader equals the walk, for every table and every key. Structure by construction: fn-mpxt-candidates-ascending and -nat-listp (each match is inserted into an ascending list, fn-mpxt-ins), fn-mpxt-candidates-below (under okp), fn-mpxt-faithful-from-complete; the refinement fn-mpxt-confirm-is-the-spec (an ascending, below, complete candidate list confirmed is the walk). The reader scans the tag's home page whole and continues only past a FULL page, so no placement invariant is assumed: the page need is one page plus the run of full pages (expected one at the writer's load of at most 1/2; correct and bounded by the page count in every store, design B.3's L-MPX-OVERFLOW). The writer (fn-mpxt-put at the first empty slot of the first non-full page of the run; fn-mpxt-add grows at half the slots, doubling and re-placing every entry) is guard-verified with its shape lemmas; its preservation of fn-mpxt-faithful is the row's next READY. No host line reads the table at this revision: the catalog's concrete reader fn-cat$c-msgid-seqs switches to it in the catalog's next edit (PRF-970 is the bridge). Teeth tests/acl2/msgid-pages-exec-tests.lisp: a positive witness on three rows (two under one Message-ID) built by the writer on the live stobj, a 520-row build that grows to two pages, faithful-from removed (an unindexed row: the reader misses it) and okp removed (a stale sequence beyond the rows under the empty key's tag: the reader answers a sequence no row has), each with every retained hypothesis checked. The writer's preservation (the second READY): fn-mpxt-put-preserves-faithful -- under fn-mpxt-faithful over ROWS, placing (fn-mpxt-tag (fn-record-msgid h), (len rows)) by fn-mpxt-put keeps fn-mpxt-faithful over (append rows (list h)); by fn-mpxt-put-run-finds (the run of the written tag from its home page reaches the written entry: put-run and the reader walk the same pages, a page that was full stays full), fn-mpxt-put-run-run-subsetp (a write into an empty slot only grows every tag's candidates), fn-mpxt-pages-okp-of-put-run and fn-mpxt-faithful-from-of-put-run. Growth's preservation (fn-mpxt-grow, the rehash) is open: a slot-counting argument (LANEDUMP NEXT). The page layout is two columns a page (slot J's TAG at word J, its SEQ+1 at word 1024+J) so every slot-disjointness fact is linear arithmetic.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-957"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/msgid-pages-exec.lisp",
+        "tests/acl2/msgid-pages-exec-tests.lisp",
+        "planning/design-paged-history-2026-09-29.md"
+      ],
+      "progress_note": "2026-09-29 lane paged-history-2: the executable table and its reader keystone REPL-admitted on persvati; certification manifest at the READY sha. Not yet on a host path: the catalog's concrete stobj adopts the table in the row's next edit (the switch and the deletion of fn-cat$c-msgids are one edit: the reader is behind the abstract stobj, no host line names it).",
+      "events": []
+    },
+    {
+      "id": "PRF-970",
+      "title": "The paged Message-ID reader is the catalog's Message-ID column: fn-mpxt-seqs equals fn-cat$a-msgid-seqs, the logic of the host-served fn-cat-msgid-seqs, under fn-mpxt-faithful (lane paged-history-2, row P2)",
+      "statement": "Subjects: books/msgid-pages-catalog.lisp fn-mpxt-seqs (books/msgid-pages-exec) against fn-cat$a-msgid-seqs (books/catalog: the logic function of the abstract stobj export fn-cat-msgid-seqs that every served Message-ID finder calls: served-columns fn-scol-find-row, served-catalog fn-scat-msgid-article, served-catalog-owner). KEYSTONE fn-mpxt-seqs-is-cat-msgid-seqs: under fn-mpxt-faithful over the catalog's rows, the paged reader's answer is the column's (fn-cat-seqs-for from 0), by fn-mpxt-spec-from-is-cat-seqs-for (the nth-walk from I is the catalog's cdr-walk over the rows from I) composed with PRF-969's keystone. The theorem the catalog's {correspondence} obligation for fn-cat-msgid-seqs cites once fn-cat$c-msgid-seqs reads a nested fn-mpxt instead of the hash fn-cat$c-msgids (design B.6, the 5u method: the export's logic is unchanged, so no served book changes). Teeth: tests/acl2/msgid-pages-exec-tests.lisp mpxe-catalog-witness (fn-cat$a-msgid-seqs on the positive fixture equals the reader's answers).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-969"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/msgid-pages-catalog.lisp",
+        "tests/acl2/msgid-pages-exec-tests.lisp",
+        "planning/design-paged-history-2026-09-29.md"
+      ],
+      "progress_note": "2026-09-29 lane paged-history-2: REPL-admitted on persvati with the exec book; certification manifest at the READY sha. The catalog's concrete edit that cites it is the row's next READY.",
+      "events": []
     }
   ]
 }

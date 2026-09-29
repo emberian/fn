@@ -1154,6 +1154,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-columns \
 	books/msgid-pages \
 	tests/acl2/msgid-pages-tests \
+	books/msgid-pages-exec \
+	books/msgid-pages-catalog \
+	tests/acl2/msgid-pages-exec-tests \
 	books/history-columns-relation \
 	tests/acl2/history-columns-relation-tests \
 	tests/acl2/history-columns-tests \

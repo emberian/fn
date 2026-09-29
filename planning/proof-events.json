@@ -14281,6 +14281,28 @@
           "name": "fn-sfi-carried-verdict-facts"
         }
       ]
+    },
+    {
+      "id": "PRF-969",
+      "events": [
+        "fn-mpxt-seqs-is-spec-from",
+        "fn-mpxt-confirm-is-the-spec",
+        "fn-mpxt-faithful-from-complete",
+        "fn-mpxt-candidates-ascending",
+        "fn-mpxt-candidates-below",
+        "fn-mpxt-candidates-nat-listp",
+        "fn-mpxt-put-preserves-faithful",
+        "fn-mpxt-put-run-finds",
+        "fn-mpxt-pages-okp-of-put-run",
+        "fn-mpxt-faithful-from-of-put-run"
+      ]
+    },
+    {
+      "id": "PRF-970",
+      "events": [
+        "fn-mpxt-seqs-is-cat-msgid-seqs",
+        "fn-mpxt-spec-from-is-cat-seqs-for"
+      ]
     }
   ]
 }
