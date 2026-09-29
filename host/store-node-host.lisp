@@ -41,6 +41,8 @@
 ; PKT-854: `store ROOT digest' reads fn-sckd-tables-digest (the checkpoint's
 ; tables digest) at the open; no other host file brings it into the world.
 (include-book "../books/store-checkpoint-digest")
+; fn-store-sn-refuse-reservation: fn-irc-sn-refuse-reservation.
+(include-book "../books/identity-retain-carried")
 (include-book "../books/store-checkpoint-arena-writer")
 (include-book "../books/owner-checkpoint-pipeline")
 ; PKT-444 (1): the open names a pre-C1 control record instead of faulting.
@@ -1391,7 +1393,9 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (let* ((s (f-get-global 'fn-store-sn state))
          (files (fn-sn-files s))
-         (next (fn-sn-refuse-reservation s (1- (fn-sf-frontier files)))))
+         ; fn-irc-sn-refuse-reservation-is-reference: the Store's refusal,
+         ; its gate without the whole-node recognizer (no hypothesis).
+         (next (fn-irc-sn-refuse-reservation s (1- (fn-sf-frontier files)))))
     (if (and (equal (fn-sf-phase files) :reserved)
              (not (equal next s))
              (equal (fn-sf-phase (fn-sn-files next)) :ready))

@@ -1659,9 +1659,14 @@
 ; :fault (KEYSTONE fn-pout-refuse-reservation-answers-the-host-test: the word
 ; the before/after comparison this entry used to make).
 (defun fn-owner-refuse-reservation (fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :mode :program)
+           (ignorable fn-arena))
+  ; fn-irc-pout-refuse-reservation (books/identity-retain-carried.lisp): the
+  ; gate without the whole-node recognizer its fn-sn-statep already implies
+  ; (KEYSTONE fn-irc-pout-refuse-reservation-is-pout: fn-pout-refuse-
+  ; reservation's word and owner, no hypothesis).
   (mv-let (word next)
-    (fn-pout-refuse-reservation (fn-owner-ocfg state) fn-arena)
+    (fn-irc-pout-refuse-reservation (fn-owner-ocfg state))
     (let* ((state (fn-owner-install-ocfg next state))
            ; The store holds no transaction now, so the catalog holds no
            ; pending row either (books/served-catalog-join-host-post.lisp

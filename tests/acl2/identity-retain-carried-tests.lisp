@@ -296,3 +296,23 @@
   (equal (irct-topic *lgt-reserved* *pse-topic-event*
                      (cons *irct-lr* (fn-prc-add "x" (cdr *irct-lc*))))
          *pot-topic*)))
+
+; -----------------------------------------------------------------------------
+; fn-irc-pout-refuse-reservation-is-pout (no hypothesis) and
+; fn-irc-sn-refuse-reservation-is-reference.  REACHABLE POSITIVE WITNESSES:
+; the reserved owner refuses (:refused, the owner back at :ready) and the
+; ready owner faults, each equal to owner-prepare-outcome-tests' reference
+; answers; the Store's refusal (the store host's entry) equals the reference.
+(defun irct-refuse (oc)
+  (mv-let (w n) (fn-irc-pout-refuse-reservation oc) (list w n)))
+(assert-event (equal (irct-refuse *lgt-reserved*) *pot-refuse*))
+(assert-event (equal (first (irct-refuse *lgt-reserved*)) :refused))
+(assert-event (equal (lgt-phase (second (irct-refuse *lgt-reserved*))) :ready))
+(assert-event (equal (irct-refuse *lgt-oc0*) *pot-refuse-f*))
+(assert-event (equal (first (irct-refuse *lgt-oc0*)) :fault))
+(defconst *irct-rs* (lgt-store *lgt-reserved*))
+(defconst *irct-rtx* (1- (fn-sf-frontier (fn-sn-files *irct-rs*))))
+(assert-event (fn-irc-sn-refuse-reservation-enabledp *irct-rs* *irct-rtx*))
+(assert-event (not (equal (fn-irc-sn-refuse-reservation *irct-rs* *irct-rtx*) *irct-rs*)))
+(assert-event (equal (fn-irc-sn-refuse-reservation *irct-rs* *irct-rtx*)
+                     (fn-sn-refuse-reservation *irct-rs* *irct-rtx*)))

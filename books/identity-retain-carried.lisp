@@ -946,3 +946,124 @@
 
 (in-theory (disable fn-irc-sn-prepare-topic fn-irc-psrv-prepare-topic
                     fn-irc-pout-prepare-topic))
+
+; -----------------------------------------------------------------------------
+; The reservation refusal the host calls (host/owner-host.lisp
+; fn-owner-refuse-reservation, host/store-node-host.lisp
+; fn-store-sn-refuse-reservation; Q5a-1 chain (c)).  Its gate
+; (books/store-node-resolution.lisp fn-sn-refuse-reservation-enabledp) asked
+; fn-replay-advance-okp of the Store's node, whose first conjunct is the
+; whole-node recognizer fn-node-statep: every article, pin, release and
+; binding, per refusal.  Under the gate's own (fn-sn-statep s) the node is a
+; node state already, so the twin reads only the advance's four fields.  No
+; hypothesis: where fn-sn-statep fails both gates are nil.
+
+(defun fn-irc-sn-refuse-reservation-enabledp (s txid)
+  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
+  (and (mbe :logic (fn-sn-statep s) :exec t)
+       (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+       (natp txid)
+       (equal (1+ txid) (fn-sf-frontier (fn-sn-files s)))
+       (let ((node (fn-sn-node s))
+             (frontier (fn-sf-frontier (fn-sn-files s))))
+         (and (natp frontier)
+              (null (fn-node-stage node))
+              (null (fn-state-pending (fn-node-acceptance node)))
+              (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+              (<= (fn-state-next-txid (fn-node-acceptance node)) frontier)))))
+
+(defthm fn-irc-sn-refuse-reservation-enabledp-is-reference
+  (equal (fn-irc-sn-refuse-reservation-enabledp s txid)
+         (fn-sn-refuse-reservation-enabledp s txid))
+  :hints (("Goal" :in-theory (e/d (fn-irc-sn-refuse-reservation-enabledp
+                                   fn-sn-refuse-reservation-enabledp
+                                   fn-replay-advance-okp fn-sn-statep)
+                                  (fn-node-statep fn-sf-statep)))))
+
+(verify-guards fn-irc-sn-refuse-reservation-enabledp
+  :hints (("Goal" :use ((:instance (:guard-theorem fn-replay-advance-okp)
+                                   (node (fn-sn-node s))
+                                   (recorded-txid (fn-sf-frontier (fn-sn-files s)))))
+                  :in-theory (e/d (fn-sn-statep) (fn-sf-statep fn-node-statep)))))
+
+(defun fn-irc-sn-refuse-reservation (s txid)
+  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
+  (if (fn-irc-sn-refuse-reservation-enabledp s txid)
+      (fn-sn-update
+       s
+       (fn-sf-refuse-reservation (fn-sn-files s) txid)
+       (fn-replay-advance-txid
+        (fn-sn-node s) (fn-sf-frontier (fn-sn-files s))))
+    s))
+
+(defthm fn-irc-sn-refuse-reservation-is-reference
+  (equal (fn-irc-sn-refuse-reservation s txid)
+         (fn-sn-refuse-reservation s txid))
+  :hints (("Goal" :in-theory '(fn-irc-sn-refuse-reservation
+                               fn-sn-refuse-reservation
+                               fn-irc-sn-refuse-reservation-enabledp-is-reference))))
+
+(verify-guards fn-irc-sn-refuse-reservation
+  :hints (("Goal" :use ((:guard-theorem fn-sn-refuse-reservation))
+                  :in-theory (e/d (fn-irc-sn-refuse-reservation-enabledp-is-reference)
+                                  (fn-sn-statep fn-sf-statep fn-node-statep
+                                   fn-irc-sn-refuse-reservation-enabledp)))))
+
+(defun fn-irc-ocfg-refuse-reservation (oc txid)
+  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+                  :verify-guards nil))
+  (let ((o (fn-ocfg-owner oc)))
+    (fn-ocfg-with-owner
+     oc
+     (fn-own-refresh
+      (fn-own-make (fn-irc-sn-refuse-reservation (fn-own-store o) txid)
+                   (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+                   (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
+                   (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
+                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
+                   (fn-own-node-secret o) (fn-own-refused o))))))
+
+(defthm fn-irc-ocfg-refuse-reservation-is-ocfg-step
+  (equal (fn-irc-ocfg-refuse-reservation oc txid)
+         (fn-ocfg-step oc (list :store (list :refuse-reservation txid)) fn-arena))
+  :hints (("Goal"
+           :in-theory (union-theories
+                       '(fn-irc-ocfg-refuse-reservation fn-ocfg-step
+                         fn-ocfg-pass fn-own-step fn-own-store-step
+                         fn-snrt-step fn-irc-sn-refuse-reservation-is-reference)
+                       (theory 'ground-zero)))))
+
+(verify-guards fn-irc-ocfg-refuse-reservation
+  :hints (("Goal" :in-theory (e/d (fn-irc-sn-refuse-reservation-is-reference)
+                                  (fn-sn-statep fn-own-refresh
+                                   fn-sn-refuse-reservation
+                                   fn-irc-sn-refuse-reservation)))))
+
+(defun fn-irc-pout-refuse-reservation (oc)
+  (declare (xargs :guard (fn-sn-statep (fn-sbud-oc-store oc))
+                  :verify-guards nil))
+  (let ((txid (1- (fn-sf-frontier (fn-sn-files (fn-sbud-oc-store oc))))))
+    (mv (if (fn-irc-sn-refuse-reservation-enabledp (fn-sbud-oc-store oc) txid)
+            :refused
+          :fault)
+        (fn-irc-ocfg-refuse-reservation oc txid))))
+
+(verify-guards fn-irc-pout-refuse-reservation
+  :hints (("Goal" :in-theory (e/d (fn-sbud-oc-store)
+                                  (fn-sn-statep fn-irc-ocfg-refuse-reservation
+                                   fn-irc-sn-refuse-reservation-enabledp)))))
+
+; KEYSTONE (host line): host/owner-host.lisp fn-owner-refuse-reservation calls
+; the left-hand side; its word and owner are fn-pout-refuse-reservation's on
+; every configured owner.  No hypothesis.
+(defthm fn-irc-pout-refuse-reservation-is-pout
+  (equal (fn-irc-pout-refuse-reservation oc)
+         (fn-pout-refuse-reservation oc fn-arena))
+  :hints (("Goal" :in-theory '(fn-irc-pout-refuse-reservation
+                               fn-pout-refuse-reservation
+                               fn-irc-sn-refuse-reservation-enabledp-is-reference
+                               fn-irc-ocfg-refuse-reservation-is-ocfg-step))))
+
+(in-theory (disable fn-irc-sn-refuse-reservation-enabledp
+                    fn-irc-sn-refuse-reservation fn-irc-ocfg-refuse-reservation
+                    fn-irc-pout-refuse-reservation))

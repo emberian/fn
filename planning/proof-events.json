@@ -16868,6 +16868,27 @@
       ]
     },
     {
+      "id": "PRF-1038",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-irc-pout-refuse-reservation-is-pout"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-sn-refuse-reservation-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-sn-refuse-reservation-enabledp-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-ocfg-refuse-reservation-is-ocfg-step"
+        }
+      ]
+    },
+    {
       "id": "PRF-979",
       "events": [
         {
