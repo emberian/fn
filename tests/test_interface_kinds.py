@@ -42,6 +42,14 @@ BOOK = """(defun fn-k-a (x n state)
 
 EAGER = """(set-verify-guards-eagerness 2)
 (defun fn-k-eager (x) x)
+(set-verify-guards-eagerness 0)
+(defun fn-k-lazy (x) (declare (xargs :guard t)) x)
+(defun fn-k-lazy-t (x) (declare (xargs :guard t :verify-guards t)) x)
+(program)
+(defun fn-k-host (x) (declare (xargs :guard (natp x))) x)
+(defun fn-k-host-logic (x) (declare (xargs :mode :logic :guard (natp x))) x)
+(logic)
+(defun fn-k-back (x) (declare (xargs :guard t :verify-guards t)) x)
 """
 
 
@@ -91,6 +99,11 @@ class KindsTests(unittest.TestCase):
         self.assertEqual(self.klass("fn-k-later"), "ideal")
         self.assertEqual(self.klass("fn-k-prog"), "program")
         self.assertEqual(self.klass("fn-k-eager"), "common-lisp-compliant")
+        self.assertEqual(self.klass("fn-k-lazy"), "ideal")  # eagerness 0
+        self.assertEqual(self.klass("fn-k-lazy-t"), "common-lisp-compliant")
+        self.assertEqual(self.klass("fn-k-host"), "program")  # (program) default
+        self.assertEqual(self.klass("fn-k-host-logic"), "ideal")  # eagerness 0 still
+        self.assertEqual(self.klass("fn-k-back"), "common-lisp-compliant")
         self.assertEqual(self.klass("fn-k-odd"), "common-lisp-compliant")  # its clique's event
 
 

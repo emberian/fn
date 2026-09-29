@@ -17,11 +17,13 @@ key of *fn-entry-guard-kinds* (books/payload-kinds.lisp) and whose formal is
 not a stobj, as (FORMAL RECOGNIZER) sorted by the formal's position -- ties
 in REVERSE conjunct order, as fn-di-sort's insertion leaves them.
 
-THE CLASS: :program for `:mode :program'; :common-lisp-compliant when the
+THE CLASS: :program for `:mode :program' or a `(program)' default earlier
+in its file; :common-lisp-compliant when the
 guards are verified (`:verify-guards t', or a guard / type declaration /
 :stobjs / :guard-hints under the default eagerness, or eagerness 2 in the
 file, or a `(verify-guards NAME)' event -- for any function of NAME's
-mutual-recursion clique); :ideal otherwise.
+mutual-recursion clique; eagerness 0 in the file verifies only those
+two); :ideal otherwise.
 
 It is an ESTIMATE, and says when it cannot judge: a guard conjunct whose head
 is a macro defined in the tree, a type it does not translate, a
@@ -65,7 +67,8 @@ class Definition:
     name: str
     where: str
     form: list
-    eager: bool = False            # (set-verify-guards-eagerness 2) earlier in its file
+    eagerness: int = 1             # the file's set-verify-guards-eagerness before it
+    program: bool = False          # the file's default defun-mode is :program ((program))
     clique: tuple = ()             # its mutual-recursion clique (names), else ()
 
 
@@ -82,7 +85,8 @@ def read_source(files: list[tuple[str, str]]) -> Source:
     """FILES: (relative path, text).  Every definition, guard event and macro."""
     out = Source()
     for relative, text in files:
-        eager = [False]
+        eagerness = [1]
+        program = [False]
 
         def visit(form, line, clique=()):
             name = ledger.head(form)
@@ -96,12 +100,18 @@ def read_source(files: list[tuple[str, str]]) -> Source:
                 for item in form[1:]:
                     visit(item, line, clique)
                 return
-            if name == "set-verify-guards-eagerness" and len(form) > 1 and _s(form[1]) == "2":
-                eager[0] = True
+            if name in ("program", "logic") and len(form) == 1:
+                program[0] = name == "program"
+            elif (name == "set-default-defun-mode" and len(form) > 1
+                    and _s(form[1]) in (":program", ":logic")):
+                program[0] = _s(form[1]) == ":program"
+            elif (name == "set-verify-guards-eagerness" and len(form) > 1
+                    and _s(form[1]) in ("0", "1", "2")):
+                eagerness[0] = int(_s(form[1]))
             elif name in DEFUN_HEADS and len(form) >= 4 and isinstance(form[1], ledger.Sym):
                 fn = _s(form[1])
                 out.definitions.setdefault(fn, Definition(
-                    fn, "{}:{}".format(relative, line), form, eager[0], clique))
+                    fn, "{}:{}".format(relative, line), form, eagerness[0], program[0], clique))
             elif name == "verify-guards" and len(form) > 1:
                 out.verified.add(_s(form[1]))
             elif name == "verify-termination" and len(form) > 1:
@@ -231,7 +241,8 @@ def symbol_class(definition: Definition, source: Source) -> str:
     if definition.name in source.terminated:
         raise CannotJudge("verify-termination")
     xargs = dict(value for kind, value in _declarations(definition.form) if kind == "xargs")
-    if _s(xargs.get(":mode", "")) == ":program":
+    mode = _s(xargs.get(":mode", ":program" if definition.program else ":logic"))
+    if mode == ":program":
         return "program"
     verified_event = any(n in source.verified for n in (definition.name, *definition.clique))
     setting = _s(xargs.get(":verify-guards", "")) if ":verify-guards" in xargs else None
@@ -241,7 +252,9 @@ def symbol_class(definition: Definition, source: Source) -> str:
         return "ideal"
     guarded = (any(kind == "type" for kind, _ in _declarations(definition.form))
                or any(k in xargs for k in (":guard", ":stobjs", ":guard-hints")))
-    return "common-lisp-compliant" if (guarded or definition.eager) else "ideal"
+    if definition.eagerness == 2 or (definition.eagerness == 1 and guarded):
+        return "common-lisp-compliant"
+    return "ideal"
 
 
 def judge(decls: list[dict], source: Source) -> tuple[list[str], int]:
