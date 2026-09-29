@@ -431,6 +431,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-route-phases \
 	books/store-log-extend \
 	tests/acl2/store-log-extend-tests \
+	books/store-log-durable \
+	tests/acl2/store-log-durable-tests \
 	books/store-init-log-publication \
 	tests/acl2/store-init-log-publication-tests \
 	books/owner-feed-txid-reuse \

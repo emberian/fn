@@ -647,16 +647,29 @@ class and quotes what has been measured with its scope.
   step (PKT-842).
 
 **D4** — on-disk growth per accepted article.
-- Bounded: nothing. Every bound the tree proves is in record octets against
-  H (**D1**, **M2**), not in bytes on disk; no theorem relates an accepted
-  article's size to the bytes the log, the checkpoint and the indexes grow
-  by.
-- Mechanism: none.
-- Evidence: OPEN. MEASURED example: 40,000 articles of 2 KiB gave a 268 MB
-  log and a 129 MB checkpoint (specs/storage.md). The service log is
-  append-only and never rotated (docs/operator.md); the Message-ID history
-  is kept forever and the anti-resurrection summary that would bound it does
-  not exist (D13).
+- Bounded: the record log, per article and at every crash point. An
+  accepted article's record is in the bytes on disk: the kernel recovered
+  from every admissible crash image of every cut of the host's append, of
+  its fence (the barrier `:ok`, or failed after landing the environment's
+  selection), of the segment's extension and of recovery holds the
+  acknowledged record, with no trailer assumption
+  (`fn-lgu-acknowledged-article-is-recoverable-at-every-crash-point` and
+  its recovery half; the tear keeps the prefix below the frontier and the
+  scan reads a complete prefix's entries first). The log grows per batch by
+  its entries, each a whole number of write units
+  (`fn-lg-entry-len-is-units`; the frontier advances by the batch's log
+  length at the fence, `fn-lgk-fence`), and the segment file grows only to
+  the extension target: whole units past the old extent, at least twice it
+  so extensions are logarithmic in the log's size
+  (`fn-olr-extension-target-is-an-extent`).
+- Mechanism: P-BATCH's one positioned write per batch at the frontier; the
+  extension's zeros past the end (`posix_fallocate`, then one barrier).
+- Evidence: THEOREM (PRF-936; PRF-244, PRF-268). Not bounded here: the
+  checkpoint's growth per article (**D2**'s transient, PKT-842), the
+  indexes', the service log (append-only, never rotated; docs/operator.md)
+  and the Message-ID history kept forever (D13). MEASURED example, unchanged:
+  40,000 articles of 2 KiB gave a 268 MB log and a 129 MB checkpoint
+  (specs/storage.md).
 - Exceeded: **D2**.
 - Not bounded: this row. What it would take: a bytes-per-record theorem
   over the log frame and the checkpoint encoding (the frame's fixed
@@ -820,7 +833,7 @@ not on this tree yet; its citations are checked once they land.
 | D1 | `books/store-capacity-vector`: `fn-cvec-roomp-is-within-the-profile`, `fn-cvec-held-row-within-its-figure`; `books/store-reclaim-pack`: `fn-rclp-events-keep-the-length` | PRF-138, PRF-119 | none |  |
 | D2 | `books/owner-time-model`: `fn-otm-admit-keeps-the-space-need`; `books/owner-time-journal-writer`: `fn-otm-jw-file-reads-agrees-or-gap` | PRF-359, PRF-360 | none |  |
 | D3 | `books/owner-checkpoint-writer`: `fn-ockp-decide-defers-by-the-estimate`; `books/store-maintenance-reserve`: `fn-smr-roomp-is-within-the-bound` | PRF-200, PRF-129 | none |  |
-| D4 | none (measured or open) | none | none |  |
+| D4 | `books/store-log-durable`: `fn-lgu-acknowledged-article-is-recoverable-at-every-crash-point`, `fn-lgu-acknowledged-article-is-recoverable-at-every-cut-of-recovery`; `books/store-log-crash`: `fn-lg-entry-len-is-units`; `books/store-log-extend`: `fn-olr-extension-target-is-an-extent` | PRF-936, PRF-244, PRF-268 | `planning/evidence/byte-model-2026-09-29.md` |  |
 | D5 | `books/expiry-verdict`: `fn-xpy-releasablep-is-rule-or-expired-and-unheld`, `fn-xpy-held-article-is-not-expired` | PRF-918 | `planning/evidence/expiry-q11-2026-09-28.md` | lane/operations baec98157 (PKT-868, PRF-908: online compaction) |
 
 Constants the rows quote, read from the books that define them.
@@ -871,7 +884,7 @@ The outcome classes and their codes (`*fn-outcome-codes*`, books/outcome-class.l
 
 Counts.
 
-- Depth lint baseline (tools/depth_baseline.json): 193 debt entries (data-sized recursion on a host-called path with no bound), 186 bounded.
+- Depth lint baseline (tools/depth_baseline.json): 193 debt entries (data-sized recursion on a host-called path with no bound), 170 bounded.
 - Named assumptions: 16 `A-*` rows in specs/failures.md, 13 encapsulates in books/assumptions.lisp.
 - The throughput gate's tolerance (tools/throughput_gate.py, planning/throughput-baseline.json): 25% over the baseline per operation, plaintext.
 
