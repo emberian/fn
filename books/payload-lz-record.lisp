@@ -521,7 +521,7 @@
                  (equal (len payload) (nfix (nth 2 p)))
                  (equal (fn-pzd-decode (cdr e) c (nfix (nth 2 p))) (list :ok payload)))
             (list (nfix file) start (- n *fn-frame-trailer-octets*)
-                  (+ roff (- rlen clen)) clen 0 (nfix (nth 2 p)) (nth 0 p))
+                  (+ roff (- rlen clen)) clen (nfix (nth 4 position)) (nfix (nth 2 p)) (nth 0 p))
           nil)))))
 
 (defthm fn-lzr-extent-of-extentp
