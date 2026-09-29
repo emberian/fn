@@ -14676,10 +14676,6 @@
         {
           "kind": "theorem",
           "name": "fn-sckd-digest-of-written-file"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sckd-digest-ignores-revision-and-log"
         }
       ]
     },
