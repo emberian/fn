@@ -116,7 +116,21 @@ def run_one(module: str, order: str = "default") -> int:
     """
     sys.path.insert(0, str(ROOT))
     os.chdir(ROOT)
-    suite = unittest.defaultTestLoader.loadTestsFromName(module)
+    try:
+        suite = unittest.defaultTestLoader.loadTestsFromName(module)
+    except BaseException as error:  # noqa: BLE001 -- SystemExit included
+        # Importing the module exited or raised: an unguarded `unittest.main()`
+        # read this runner's own argv and exited 2 (correctness-remainder,
+        # native-crem5-c, 2026-09-29: "unrecognized arguments: --one").  That
+        # is a load failure, named, never a run.
+        why = (f"importing {module} exited with SystemExit({error.code!r}): a "
+               "`unittest.main()` or `sys.exit` that runs at import (outside "
+               "`if __name__ == \"__main__\":`)" if isinstance(error, SystemExit)
+               else f"importing {module} raised {type(error).__name__}: {error}")
+        print(RESULT_PREFIX + json.dumps({
+            "module": module, "tests": 0, "failures": 0, "errors": 1, "skipped": 0,
+            "executed": 0, "skips": [], "timings": [], "load_error": why}), flush=True)
+        return 1
     if order == "reverse":
         suite = unittest.TestSuite(reversed(_flatten(suite)))
     runner = unittest.TextTestRunner(resultclass=_TimedResult, verbosity=2)
@@ -214,10 +228,14 @@ def run_module(module: str, budget: float, log_dir: Path | None,
 def verdict_fields(record: dict) -> dict:
     """`all_skipped` and `passed`: a module that executed no test did not pass."""
     over = record.get("over_budget", False)
+    # Zero tests collected is not "every test skipped": nothing was there to
+    # run (a module that defines none, or a loader that found none) -- red.
     record["all_skipped"] = (not over and record.get("returncode") == 0
-                             and "tests" in record and record.get("executed", 1) == 0)
+                             and "tests" in record and record.get("executed", 1) == 0
+                             and record.get("skipped", 0) > 0)
     record["passed"] = (not over and record.get("returncode") == 0
-                        and "tests" in record and not record["all_skipped"])
+                        and "tests" in record and not record["all_skipped"]
+                        and (record.get("tests", 0) > 0 or record.get("skipped", 0) > 0))
     return record
 
 
@@ -255,9 +273,19 @@ def verdict_of_log(path: Path) -> int:
         if line.startswith(RESULT_PREFIX):
             record.update(json.loads(line[len(RESULT_PREFIX):]))
     if "tests" not in record:
-        print(f"{record['module']}: FAILED (no result line in {path})")
+        tail = [line for line in path.read_text(errors="replace").splitlines() if line.strip()]
+        print(f"{record['module']}: FAILED (the module ran no test: no result line in {path}; "
+              "its last lines follow)")
+        for line in tail[-4:]:
+            print(f"    {line}")
+        return 1
+    if record.get("load_error"):
+        print(f"{record['module']}: FAILED (did not load: {record['load_error']})")
         return 1
     record["returncode"] = 0 if (record["failures"] == 0 and record["errors"] == 0) else 1
+    if record["tests"] == 0 and record["returncode"] == 0:
+        print(f"{record['module']}: FAILED (0 tests collected: nothing ran)")
+        return 1
     record["seconds"] = sum(seconds for _, seconds in record.get("timings", []))
     verdict_fields(record)
     if record["all_skipped"]:
