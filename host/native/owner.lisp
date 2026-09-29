@@ -255,11 +255,16 @@ rate reaches the next read)."
   "A private render buffer that holds N octets."
   (fn-octets$c-reserve n (create-fn-octets$c)))
 
-(defun fnn-owner-render-next (plan)
+(defun fnn-owner-render-next (plan &optional compressedp)
   "Render the next window of PLAN: (values OCTETS PLAN-REST DONEP), OCTETS a
 fresh vector (empty only when nothing remained), DONEP when nothing remains
-after it."
-  (let ((size (fnn-core 'fn-splan-window-size plan)))
+after it.  COMPRESSEDP: the connection has a COMPRESS layer, and the window
+is ACL2's flush-schedule window (books/nntp-compress.lisp
+fn-zc-render-window-size), each one sync flush."
+  (let ((size (if compressedp
+                  (fnn-core 'fn-zc-render-window-size
+                            (fnn-core 'fn-splan-window-size plan))
+                (fnn-core 'fn-splan-window-size plan))))
     (unless (and (integerp size) (>= size 0))
       (fnn-fault "owner returned a malformed render window size"))
     (destructuring-bind (status rest buf)
@@ -285,6 +290,19 @@ after it."
     (unless (keywordp value)
       (fnn-fault "owner returned non-action from ~a" name))
     value))
+
+;;; The SASL context of a served connection (books/nntp-auth.lisp
+;;; (:sasl-context SEED BINDING); host/owner-host.lisp fn-owner-sasl-context).
+;;; The seed is read from the OS CSPRNG off the owner mutex, at ACL2's width;
+;;; installing it is one owner action under the caller's quantum.
+(defun fnn-owner-sasl-seed ()
+  "Fresh CSPRNG octets for one connection's SCRAM server nonces."
+  (fnn-csprng-octets (fnn-core 'fn-owner-sasl-seed-octets) "SASL seed"))
+
+(defun fnn-owner-sasl-context (cid seed binding)
+  "Install CID's SASL context; the caller holds the owner mutex."
+  (unless (eq (fnn-owner-action 'fn-owner-sasl-context cid seed binding) :ok)
+    (fnn-fault "owner rejected the SASL context")))
 
 (defun fnn-owner-arena-action (name &rest args)
   "fnn-owner-action for an owner entry that reads or seals the payload arena

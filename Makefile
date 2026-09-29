@@ -483,6 +483,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-lz-append \
 	tests/acl2/payload-lz-append-tests \
 	tests/acl2/deflate-inflate-tests \
+	books/deflate-pool-check \
+	tests/acl2/deflate-pool-tests \
+	books/nntp-compress-dict \
+	tests/acl2/nntp-compress-dict-tests \
+	tests/acl2/nntp-zarticle-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
@@ -892,8 +897,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/refused-offers \
 	books/peer-refused-offers \
 	tests/acl2/transit-hygiene-tests \
+	books/sasl \
 	books/nntp-auth \
 	tests/acl2/nntp-auth-tests \
+	books/nntp-auth-roles \
+	tests/acl2/nntp-auth-sasl-tests \
 	books/served \
 	books/served-tls-prefix \
 	books/served-implicit-tls \

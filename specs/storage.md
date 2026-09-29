@@ -363,6 +363,8 @@ a different history. This is a local fn guarantee; no RFC speaks to it.
 
 ### Compressed payloads: DEFLATE over a shipped dictionary (STO-037)
 
+STO-037: A stored payload may be held compressed: a raw DEFLATE stream over a shipped preset dictionary named by its BLAKE3 digest, decoded by the verified inflater, never transcoded at rest
+
 A stored article record may hold its payload compressed
 (`books/payload-lz-record.lisp`, the frame `fn-z`: DICT-ID, the payload span,
 the record without it, and C). C is a raw DEFLATE stream (RFC 1951) made
@@ -375,8 +377,11 @@ dictionary: the first four octets of its BLAKE3 digest, 0 for none
   `books/deflate-inflate.lisp`). The COMPRESS wire uses the same inflater.
   An :ok answer is exactly N octets, and the stream ended at its final
   block or at a sync flush at the end of its input.
-- **The encoder is untrusted.** zlib (`host/native/fn-deflate.c`
-  `fn_deflate_payload`, level 9, over the current dictionary) proposes C.
+- **The encoder is untrusted.** The image's SBCL deflater
+  (`host/native/deflate.lisp` `fnn-ldf-deflate-payload`, zlib's level-9
+  search limits, over the current dictionary) proposes C; it replaced
+  zlib's `fn_deflate_payload` after ember's 2x-of-zlib gate
+  (`planning/evidence/deflater-gate-2026-09-29/result.md`).
   The append takes the frame only when the decoder gives the span back
   (`fn-lzr-append-decide`). A wrong candidate is a named store fault; a
   candidate that does not shrink the record keeps it as it is.

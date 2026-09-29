@@ -2356,12 +2356,14 @@
 ; builds the record, the verifier and the configuration.  Nothing here
 ; derives a digest, compares a secret or decides a permission: the rows are
 ; transport (AGENTS.md's one-owner rule).  A row is
-; (name-octets principal-octets salt-octets digest-octets postingp).
+; (name principal salt digest postingp stored-key server-key), octets but
+; for postingp: books/auth-secret.lisp's verifier v2 fields.
 
 (defun fn-owner-auth-cred-of (row)
   (declare (xargs :mode :program))
   (fn-auth-make-cred (nth 0 row) (nth 1 row)
-                     (fn-authsec-verifier (nth 2 row) (nth 3 row))
+                     (fn-authsec-verifier (nth 2 row) (nth 3 row)
+                                          (nth 5 row) (nth 6 row))
                      (and (nth 4 row) t)))
 
 (defun fn-owner-auth-creds-of (rows)
@@ -3452,6 +3454,32 @@
              (state (fn-owner-install-ocfg (cdr result) state))
              (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))
+
+; The host's (:sasl-context SEED BINDING) wire event (books/nntp-auth.lisp):
+; SEED, fresh OS CSPRNG octets the SCRAM server nonce is derived from, and
+; BINDING, NIL or the connection's RFC 9266 tls-exporter value.  Sent once
+; after the open (plaintext) or the handshake (implicit TLS), and again after
+; every STARTTLS handshake, after fn-owner-tls-established: the 382 clears the
+; context.  It emits no reply; the widths are ACL2's (books/sasl.lisp).
+(defun fn-owner-sasl-context (id seed binding fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (let ((owner (fn-owner-core state)))
+    (if (not (fn-own-find-conn id (fn-own-conns owner)))
+        (value :unknown)
+      (let* ((result (fn-ocfg-read-step (fn-owner-ocfg state)
+                                        id (list :sasl-context seed binding)
+                                        fn-arena))
+             (state (fn-owner-install-ocfg (cdr result) state))
+             (state (fn-owner-install-effects (car result) state)))
+        (value :ok)))))
+
+(defun fn-owner-sasl-seed-octets ()
+  (declare (xargs :mode :program))
+  *fn-sasl-seed-octets*)
+
+(defun fn-owner-sasl-binding-octets ()
+  (declare (xargs :mode :program))
+  *fn-sasl-binding-octets*)
 
 ;; RFC 8054 (lane compress): the compression layer this connection's session
 ;; owes the host after a 206 (books/nntp-auth.lisp fn-auth-compress): the

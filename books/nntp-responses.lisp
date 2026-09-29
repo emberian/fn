@@ -783,8 +783,9 @@
                         "OVER XOVER HDR XHDR XPAT")
                        (fn-nntp-string-octets
                         "IHAVE CHECK TAKETHIS")
-                       ;; PRF-325: the catch-up stream (books/peer-catchup-serve.lisp).
-                       (fn-nntp-string-octets "XFNCATCHUP"))))
+                       ;; PRF-325: the catch-up stream (books/peer-catchup-serve.lisp);
+                       ;; PRF-993: the stored-payload retrieval (books/nntp-zarticle.lisp).
+                       (fn-nntp-string-octets "XFNCATCHUP XFN-ZARTICLE"))))
 
 ; -----------------------------------------------------------------------------
 ; Reader environment: the clock observation and the persisted group-creation

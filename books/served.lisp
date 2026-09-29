@@ -2582,17 +2582,13 @@
 (local
  (defthm fn-auth-capability-lines-offer-post-by-definition
    (iff (member-equal (fn-nntp-string-octets "POST")
-                      (fn-auth-capability-lines acfg subject tlsp postingp))
+                      (fn-auth-capability-lines acfg subject tlsp postingp ctx))
         postingp)
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines
-                                    fn-auth-capability-lines-for-peer
-                                    fn-auth-access-capability-lines
                                     fn-peer-capability-lines
                                     fn-nntp-capability-lines)
-                                   (fn-auth-config-creds
-                                    fn-auth-config-protected-onlyp
-                                    fn-auth-config-tls-availablep))))))
+                                   (fn-auth-capability-lines-for-peer))))))
 
 ; What specs/nntp.md claims in one sentence, over the octets a client sees:
 ; the greeting on a fresh connection is 200 if and only if the CAPABILITIES
@@ -2616,7 +2612,9 @@
           (fn-auth-open-session archive nil nil nil acfg nil))
          (and (fn-inj-config-allow config)
               (fn-auth-postingp
-               (fn-auth-open-session archive nil nil nil acfg nil))))))
+               (fn-auth-open-session archive nil nil nil acfg nil)))
+         (fn-auth-session-ctx
+          (fn-auth-open-session archive nil nil nil acfg nil)))))
   :hints (("Goal"
            :in-theory (disable fn-served-open fn-auth-capability-lines
                                fn-auth-open-session fn-auth-postingp
@@ -2636,7 +2634,10 @@
                              (and (fn-inj-config-allow config)
                                   (fn-auth-postingp
                                    (fn-auth-open-session archive nil nil nil
-                                                         acfg nil)))))))))
+                                                         acfg nil))))
+                            (ctx (fn-auth-session-ctx
+                                  (fn-auth-open-session archive nil nil nil
+                                                        acfg nil))))))))
 
 (defthm fn-served-concat-is-an-octet-list
   (implies (fn-served-chunk-listp chunks)

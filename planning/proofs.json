@@ -6224,7 +6224,7 @@
     {
       "id": "PRF-164",
       "title": "An invitation code redeems at most one account, once, across a crash: the accounts slot keeps a redeemed row the same row, the redeem plan stages only an admitted delta and resumes as already redeemed, and a redeemed account's credential is in the connection's snapshot",
-      "statement": "Over the configuration the owner replays at open (fn-config-replay-loop; the records fn-owner-reconfigure-complete publishes through fn-ocl-publish), a code's redeemed row in the tenth slot (books/config.lisp fn-cfg-accounts) is the same row, or that row's tombstone once an account delete names its login, after every later acceptable record (fn-acct-bound-row-succeeds-across-replay; per admitted delta list fn-acct-bound-row-succeeds; restated by lane public-node-2 from the row's equality, which account delete falsifies), and fn-cfg-delta-reason refuses a redeem of a redeemed digest unless it carries exactly that row (fn-acct-redeemed-refuses-another-redeem). The redeem plan fn-acct-redeem-plan (books/accounts.lisp; a pure function of the configuration value, the stamp, the code, the login, the password, the host's salt observation and whether the snapshot already names the login) plans :redeem only of a delta the configuration admits at every generation and ledger, which redeems the code under that login with the verifier fn-authsec-enrol computes (fn-acct-redeem-plan-is-admitted-and-redeems); after that delta is applied the same code, login and password plan (:already-redeemed) under any later stamp, salt and snapshot (fn-acct-redeem-plan-after-its-redeem-is-already-redeemed: the crash after the publication's root barrier and before the reply); another login is (:refused :account-redeemed) (fn-acct-redeem-plan-refuses-another-login); an unknown code plans neither (fn-acct-redeem-plan-of-an-unknown-code-stages-nothing). The row keeps the verifier as text and fn-acct-text-verifier-of-verifier-text is the representation's round trip. The connection's credential snapshot fn-auth-config-with-accounts (books/nntp-auth.lisp; host-called through books/owner-config.lisp fn-ocfg-open from host/owner-host.lisp fn-owner-open, and fn-ocfg-open-peer from fn-owner-open-peer) is a configuration, keeps the operator's credential for a login auth.toml names, and otherwise finds the redeemed row's credential (the login's local principal fn-acct-local-principal, the row's verifier, posting); composed with fn-auth-step-principal-login-binds-exactly-the-unique-match (cited) a redeemed account's 281 installs exactly that principal. The wire (friends-accounts-2), over fn-auth-step-pinned (the dispatcher books/served.lisp fn-served-dispatch calls, reached by host/owner-host.lisp fn-owner-chunk-span-at through fn-own-read, and by the owner's re-entry fn-owner-account-outcome, host/native-admin-host.lisp, through fn-ocfg-read-step): XREDEEM before a TLS layer on a protected-only listener answers 483 and changes nothing (fn-auth-step-pinned-xredeem-before-tls-is-483); after 381, XREDEEM PASS PASSWORD answers nothing and holds the session (handshakingp, so the served fold stops) with exactly the cached code, login and password and no subject (fn-auth-step-pinned-xredeem-pass-holds-for-the-owner; a hold binds nobody and keeps the role, fn-auth-step-redeem-hold-keeps-the-role); a holding session answers the owner's (:account-outcome WORD) 281 exactly when WORD is :bound, else 482, and leaves the hold (fn-auth-step-pinned-redeem-outcome-answers-the-word). The owner's plan (host/native-admin-host.lisp fn-acct-host-owner-redeem-stage, run by host/native/admin.lisp fnn-owner-account-redeem under the owner mutex inside fnn-owner-live-reconfigure-locked) is fn-acct-redeem-bounded-plan over the live configuration: where fn-acct-redeem-plan redeems, it redeems exactly while the credential table is under the profile's max-credentials, else (:refused :account-credential-bound) (fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound); the word fn-acct-redeem-word is :bound only for a resume or a :redeem whose publication answered :accepted, i.e. after fn-owner-reconfigure-complete installed the durable record (fn-acct-redeem-word-is-bound-only-after-a-durable-redeem); an unknown code stages nothing and is refused (fn-acct-redeem-word-of-an-unknown-code-is-refused); after its redeem is published the same request is (:already-redeemed) and :bound under any later stamp, salt, snapshot, count and bound (fn-acct-redeem-bounded-plan-after-its-redeem-is-bound: the crash cut FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH). Not covered: the lift of the wire keystones through fn-served-step's fold to fn-own-read (the fold's stop on handshakingp is books/served.lisp's, cited); that a guessed code finds no row is the crypto seam's preimage resistance (A-CRYPTO); P6's publication theorems are PRF-028 (certified again at the current digest since c7072ddc: served-path-scale's manifest certify-20260926T123813Z-1816946 covers its thirteen theorems). EXTENSION (lanes public-node-2 and -3, 2026-09-27): `fn operator CONFIG account delete LOGIN` (books/native-admin.lisp, host host/native-admin-host.lisp) stages config delta code 27 (:account-delete), which tombstones the login's redeemed rows (mark 7: digest and login kept, verifier dropped) and withdraws nothing (fn-acct-delete-apply-unfolds). KEYSTONE fn-acct-delete-is-admitted-exactly-when-held-and-unobligated: admitted exactly when the login is well formed, held, and no signing binding, moderator role or consumer binding names it. KEYSTONE fn-acct-delete-keeps-the-login-taken. KEYSTONE fn-auth-config-with-accounts-after-an-account-delete-offers-only-the-operators-credential: every later snapshot offers only auth.toml's credential under that login.",
+      "statement": "Over the configuration the owner replays at open (fn-config-replay-loop; the records fn-owner-reconfigure-complete publishes through fn-ocl-publish), a code's redeemed row in the tenth slot (books/config.lisp fn-cfg-accounts) is the same row, or that row's tombstone once an account delete names its login, after every later acceptable record (fn-acct-bound-row-succeeds-across-replay; per admitted delta list fn-acct-bound-row-succeeds; restated by lane public-node-2 from the row's equality, which account delete falsifies), and fn-cfg-delta-reason refuses a redeem of a redeemed digest unless it carries exactly that row (fn-acct-redeemed-refuses-another-redeem). The redeem plan fn-acct-redeem-plan (books/accounts.lisp; a pure function of the configuration value, the stamp, the code, the login, the password, the host's salt observation and whether the snapshot already names the login) plans :redeem only of a delta the configuration admits at every generation and ledger, which redeems the code under that login with the verifier fn-authsec-enrol computes (fn-acct-redeem-plan-is-admitted-and-redeems); after that delta is applied the same code, login and password plan (:already-redeemed) under any later stamp, salt and snapshot (fn-acct-redeem-plan-after-its-redeem-is-already-redeemed: the crash after the publication's root barrier and before the reply); another login is (:refused :account-redeemed) (fn-acct-redeem-plan-refuses-another-login); an unknown code plans neither (fn-acct-redeem-plan-of-an-unknown-code-stages-nothing). The row keeps the verifier as text and fn-acct-text-verifier-of-verifier-text is the representation's round trip. The connection's credential snapshot fn-auth-config-with-accounts (books/nntp-auth.lisp; host-called through books/owner-config.lisp fn-ocfg-open from host/owner-host.lisp fn-owner-open, and fn-ocfg-open-peer from fn-owner-open-peer) is a configuration, keeps the operator's credential for a login auth.toml names, and otherwise finds the redeemed row's credential (the login's local principal fn-acct-local-principal, the row's verifier, posting); composed with fn-auth-step-principal-login-binds-exactly-the-unique-match (cited) a redeemed account's 281 installs exactly that principal. The wire (friends-accounts-2), over fn-auth-step-pinned (the dispatcher books/served.lisp fn-served-dispatch calls, reached by host/owner-host.lisp fn-owner-chunk-span-at through fn-own-read, and by the owner's re-entry fn-owner-account-outcome, host/native-admin-host.lisp, through fn-ocfg-read-step): XREDEEM before a TLS layer on a protected-only listener answers 483 and changes nothing (fn-auth-step-pinned-xredeem-before-tls-is-483); after 381, XREDEEM PASS PASSWORD answers nothing and holds the session (handshakingp, so the served fold stops) with exactly the cached code, login and password and no subject (fn-auth-step-pinned-xredeem-pass-holds-for-the-owner; a hold binds nobody and keeps the role, fn-auth-step-redeem-hold-keeps-the-role); a holding session answers the owner's (:account-outcome WORD) 281 exactly when WORD is :bound, else 482, and leaves the hold (fn-auth-step-pinned-redeem-outcome-answers-the-word). An event no client's octets made (fn-auth-client-eventp false: books/wire.lisp's framer emits only :command, :article and :reject) on a session not holding for the owner's word gets no reply and no submission (fn-auth-step-pinned-host-event-answers-nothing), and, unless it is the host's :tls-established or :sasl-context, leaves the session unchanged (fn-auth-step-pinned-stray-event-changes-nothing): an owner outcome arriving after the hold ended was answered 501 by the reader step, a syntax error the client never caused (lane compress-8). The owner's plan (host/native-admin-host.lisp fn-acct-host-owner-redeem-stage, run by host/native/admin.lisp fnn-owner-account-redeem under the owner mutex inside fnn-owner-live-reconfigure-locked) is fn-acct-redeem-bounded-plan over the live configuration: where fn-acct-redeem-plan redeems, it redeems exactly while the credential table is under the profile's max-credentials, else (:refused :account-credential-bound) (fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound); the word fn-acct-redeem-word is :bound only for a resume or a :redeem whose publication answered :accepted, i.e. after fn-owner-reconfigure-complete installed the durable record (fn-acct-redeem-word-is-bound-only-after-a-durable-redeem); an unknown code stages nothing and is refused (fn-acct-redeem-word-of-an-unknown-code-is-refused); after its redeem is published the same request is (:already-redeemed) and :bound under any later stamp, salt, snapshot, count and bound (fn-acct-redeem-bounded-plan-after-its-redeem-is-bound: the crash cut FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH). Not covered: the lift of the wire keystones through fn-served-step's fold to fn-own-read (the fold's stop on handshakingp is books/served.lisp's, cited); that a guessed code finds no row is the crypto seam's preimage resistance (A-CRYPTO); P6's publication theorems are PRF-028 (certified again at the current digest since c7072ddc: served-path-scale's manifest certify-20260926T123813Z-1816946 covers its thirteen theorems). EXTENSION (lanes public-node-2 and -3, 2026-09-27): `fn operator CONFIG account delete LOGIN` (books/native-admin.lisp, host host/native-admin-host.lisp) stages config delta code 27 (:account-delete), which tombstones the login's redeemed rows (mark 7: digest and login kept, verifier dropped) and withdraws nothing (fn-acct-delete-apply-unfolds). KEYSTONE fn-acct-delete-is-admitted-exactly-when-held-and-unobligated: admitted exactly when the login is well formed, held, and no signing binding, moderator role or consumer binding names it. KEYSTONE fn-acct-delete-keeps-the-login-taken. KEYSTONE fn-auth-config-with-accounts-after-an-account-delete-offers-only-the-operators-credential: every later snapshot offers only auth.toml's credential under that login.",
       "milestone": "M3",
       "requirements": [
         "NNT-034"
@@ -13973,7 +13973,7 @@
         "tests/acl2/hmac-sha256-tests.lisp",
         "tests/acl2/scram-tests.lisp"
       ],
-      "progress_note": "Lane sasl increment 1 (2026-09-28): the two books and their test books certify (persvati run-20260928T221347Z-9d5b, certify-20260928T221526Z-3212938: 4 passed, none over 10 s). NO EVENTS ARE CITED: no host line calls SCRAM yet (reach_check); the events are cited with increment 2, when books/nntp-auth.lisp's AUTHINFO SASL arm calls books/sasl.lisp."
+      "progress_note": "Lane sasl increment 1 (2026-09-28): the two books and their test books certify (persvati run-20260928T221347Z-9d5b, certify-20260928T221526Z-3212938: 4 passed, none over 10 s). Increment 2 (lane sasl): the served AUTHINFO SASL arm calls it through books/sasl.lisp, and the events are cited."
     },
     {
       "id": "PRF-385",
@@ -15482,7 +15482,7 @@
     {
       "id": "PRF-974",
       "title": "The wire dictionary negotiation's decisions (NNT-055): a stored payload goes to a peer as it is stored exactly when the peer holds the frame's shipped dictionary",
-      "statement": "books/nntp-compress-dict.lisp (lane compress-4). fn-zdn-choose (Z, the stored payload-lz-record frame; DIGESTS, the BLAKE3 digests an XFN-ZARTICLE request lists): KEYSTONE fn-zdn-choose-stored-only-shared: a (:stored D) answer has a frame that parses, D the digest the shipped table records for the frame's DICT-ID, and D one the peer listed; KEYSTONE fn-zdn-choose-complete: a parsed frame whose recorded digest the peer listed is always answered stored; every other payload (DICT-ID 0, not a frame, a dictionary the peer lacks) is :decoded. fn-zdn-request-shape: a parsed XFN-ZARTICLE names a message-id and one 32-octet digest per hex token. fn-zdn-capability-line: XFN-DICT and the shipped digests, newest first. The host wiring (the command, the reply framing, CAPABILITIES) is not served yet.",
+      "statement": "books/nntp-compress-dict.lisp (lane compress-4). fn-zdn-choose (Z, the stored payload-lz-record frame; DIGESTS, the BLAKE3 digests an XFN-ZARTICLE request lists): KEYSTONE fn-zdn-choose-stored-only-shared: a (:stored D) answer has a frame that parses, D the digest the shipped table records for the frame's DICT-ID, and D one the peer listed; KEYSTONE fn-zdn-choose-complete: a parsed frame whose recorded digest the peer listed is always answered stored; every other payload (DICT-ID 0, not a frame, a dictionary the peer lacks) is :decoded. fn-zdn-request-shape: a parsed XFN-ZARTICLE names a message-id and one 32-octet digest per hex token. fn-zdn-capability-line: XFN-DICT and the shipped digests, newest first. KEYSTONE fn-zdn-body-round-trip: the stored reply's body lines (yEnc-style escape, 128-octet lines, RFC 3977 3.1.1 block text) unescape and join to the stored octets. The served command is PRF-993.",
       "milestone": "M5",
       "requirements": [
         "NNT-055"
@@ -16449,6 +16449,80 @@
         "tests/acl2/bp-fnbs-codec-equivalence-tests.lisp"
       ],
       "events": []
+    },
+    {
+      "id": "PRF-993",
+      "title": "XFN-ZARTICLE, served (NNT-055): a peer that holds the stored payload's dictionary gets the payload as it is stored, and those octets decode to the article; any other request is ARTICLE's answer",
+      "statement": "books/nntp-zarticle.lisp (lanes compress-5, compress-6). The host-called function is fn-zar-command, the :model and :live arm of protocol-table's XFN-ZARTICLE :pinned row (fn-nntp-command-pinned, books/nntp.lisp; host dispatch through the served catalog). fn-zar-stored reads the store's stored form through A-ARENA-STORED (books/assumptions-stored.lisp, fn-arena-stored; host/native/extent.lisp). KEYSTONE fn-zar-decide-stored-denotes: a (:stored D C N) decision has a parsed request, D one of the digests the peer listed, C octets, and fn-lzr-lz-value of D's shipped dictionary, C and N equal to the article's octets (fn-nntp-article-bytes) under A-ARENA-STORED. KEYSTONE fn-zar-decide-complete: an article held compressed whose dictionary digest the peer listed is always answered stored. fn-zar-command-session: the session is unchanged (as ARTICLE by message-id). books/nntp-pinned-effects.lisp fn-zar-command-effects-well-formed: the stored reply's initial line is checked (fn-zar-line-okp-is-an-initial-line) and its body lines are block text (fn-zdn-body-lines-are-block-text). books/nntp-auth-fold.lisp fn-auth-fold-zar-command-has-no-offer. books/protocol-builders.lisp fn-proto-codes-of-zar-command. Not claimed: the peer's decode (it runs its own inflater). Teeth: tests/acl2/nntp-zarticle-tests.lisp attaches a test realiser to fn-arena-stored (defattach proves A-ARENA-STORED's constraint of it; a lying realiser is refused) and runs fn-zar-decide over a sealed arena and the pinned trie: a reachable (:stored D1 C 140) witness with a real preset-dictionary DEFLATE stream, and hypothesis-removal witnesses for the membership and stored-answer hypotheses of fn-zar-decide-complete and for fn-zar-decide-stored-denotes' hypothesis (the realiser is a test one: the host's extent read answering the constraint is the assumption's content).",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-055"
+      ],
+      "depends_on": [
+        "PRF-974",
+        "PRF-911"
+      ],
+      "assumptions": [
+        "A-ARENA-STORED"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/nntp-zarticle.lisp",
+        "books/assumptions-stored.lisp",
+        "books/nntp-pinned-effects.lisp",
+        "books/protocol-table.lisp",
+        "tests/acl2/nntp-zarticle-tests.lisp"
+      ],
+      "progress_note": "Lane compress-6 (Opus 5.5, 2026-09-29): REPL-green on persvati with its includers (nntp-pinned-effects, nntp-auth-fold, protocol-framing, protocol-codes, nntp-auth-invariants, served-catalog-chain).",
+      "events": [
+        "fn-zar-decide-stored-denotes",
+        "fn-zar-decide-complete"
+      ]
+    },
+    {
+      "id": "PRF-916",
+      "title": "The SASL exchanges and the stored verifier v2: PLAIN is the USER/PASS check, SCRAM succeeds only for a stored key and only bound to its own exchange, and the enrolled password authenticates by every mechanism",
+      "statement": "books/sasl.lisp: fn-sasl-plain-succeeds-exactly-on-the-stored-check; fn-sasl-scram-unknown-login-never-succeeds; fn-sasl-scram-y-flag-with-a-binding-is-refused (RFC 5802 section 6); KEYSTONE fn-sasl-scram-final-success-is-bound-to-the-exchange. books/auth-secret.lisp verifier v2 (:fn-authsec-v2 salt digest stored-key server-key): K5 fn-authsec-enrolled-secret-proves-by-scram. books/accounts.lisp: the 224-hex row text is the verifier (fn-acct-text-verifier-of-verifier-text). The server nonce's unpredictability is the host CSPRNG's (A-CRYPTO).",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-056"
+      ],
+      "depends_on": [
+        "PRF-915"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/sasl.lisp",
+        "books/auth-secret.lisp",
+        "books/accounts.lisp",
+        "tests/acl2/auth-secret-tests.lisp",
+        "tests/acl2/nntp-auth-sasl-tests.lisp"
+      ],
+      "progress_note": "Lane sasl increment 2 (2026-09-28): REPL-green; certification pending."
+    },
+    {
+      "id": "PRF-917",
+      "title": "AUTHINFO SASL on the served step: a login by SASL is PASS's acceptance of the credential the snapshot holds, the capability block names exactly the mechanisms accepted now, and the SASL line survives authentication",
+      "statement": "books/nntp-auth.lisp fn-auth-step and fn-auth-step-pinned (the host's served step through fn-served-dispatch): the AUTHINFO SASL arm (fn-auth-sasl-command), the continuation branch taken for every line while an exchange is kept (fn-auth-sasl-continue), and the host's (:sasl-context SEED BINDING) event (fn-auth-install-context). fn-auth-sasl-finish-binds-only-on-success; KEYSTONE fn-auth-step-binds-a-peer-role-by-sasl-only-to-a-found-credential (books/nntp-auth-roles.lisp; with PRF-049's keystone, PASS and SASL are the only ways to a role); fn-auth-sasl-is-advertised-exactly-when-a-mechanism-is-offered; fn-auth-sasl-line-is-the-same-before-and-after-authentication (RFC 4643 section 2.2); fn-auth-sasl-mechanisms-never-offer-plain-before-tls; the step still preserves fn-auth-session-consistentp. books/nntp-auth-invariants.lisp: fn-auth-sasl-waiting-finds-no-credential (a kept exchange is never a credential's name), so the posting-flag delegation keystone needs no not-waiting premise.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-056"
+      ],
+      "depends_on": [
+        "PRF-916",
+        "PRF-049"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/nntp-auth.lisp",
+        "books/nntp-auth-roles.lisp",
+        "tests/acl2/nntp-auth-sasl-tests.lisp",
+        "tests/acl2/nntp-auth-teeth-tests.lisp",
+        "tests/test_native_sasl.py"
+      ],
+      "progress_note": "Lane sasl increment 2 (2026-09-28): REPL-green; certification and SCN-205 pending."
     }
   ]
 }

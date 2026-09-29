@@ -79,8 +79,8 @@ where the node requires one (480 otherwise).
   wanted (peers only).
 - TAKETHIS (RFC 4644 2.4): A streaming peer sends an article (peers
   only).
-- AUTHINFO (RFC 4643 2.3): Logs in: AUTHINFO USER name, then AUTHINFO
-  PASS password.
+- AUTHINFO (RFC 4643 2.3, 2.4): Logs in: AUTHINFO SASL SCRAM-SHA-256 (or
+  PLAIN over TLS), or AUTHINFO USER name, then AUTHINFO PASS password.
 - STARTTLS (RFC 4642 2.2): Turns on TLS on this connection before you
   log in.
 - COMPRESS * (RFC 8054 2.2): Compresses this connection with DEFLATE

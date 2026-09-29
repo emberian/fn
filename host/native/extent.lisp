@@ -292,6 +292,29 @@ realizer's lock held."
 (defun acl2_*1*_acl2::fn-durable-realize-lz (file eoff elen poff plen trailer n dict)
   (fn-durable-realize-lz file eoff elen poff plen trailer n dict))
 
+;;; A-ARENA-STORED (books/assumptions-stored.lisp; lane compress-5, NNT-055):
+;;; handle H's payload AS IT IS STORED, for XFN-ZARTICLE
+;;; (books/nntp-zarticle.lisp fn-zar-stored).  The live fn-arena is the
+;;; concrete arena of books/payload-arena-extent.lisp; EXT[H] names H's
+;;; extent.  For a COMPRESSED extent (FILE EOFF ELEN POFF PLEN TRAILER N
+;;; DICT) the answer is (DICT C N), C the block's durable octets read through
+;;; the extent realizer above (one pread, ACL2's trailer check); nothing is
+;;; decoded.  Any other handle (resident, staged, a plain extent, past the
+;;; array) answers NIL, and ACL2 then answers as ARTICLE does.
+(defun fn-arena-stored (h fn-arena)
+  (let ((e (and (integerp h) (<= 0 h)
+                (< h (fn-arena$x-ext-length fn-arena))
+                (fn-arena$x-exti h fn-arena))))
+    (if (fn-arn-lz-extentp e)
+        (list (nth 7 e)
+              (fn-durable-realize-octets (nth 0 e) (nth 1 e) (nth 2 e)
+                                         (nth 3 e) (nth 4 e) (nth 5 e))
+              (nth 6 e))
+      nil)))
+
+(defun acl2_*1*_acl2::fn-arena-stored (h fn-arena)
+  (fn-arena-stored h fn-arena))
+
 ;;; A-PGS-HOST-IO's page fill (books/assumptions.lisp `fn-pgs-fill-realize';
 ;;; lane arena-store-7, 2026-09-28): the 2048 little-endian u64 words page
 ;;; ADDR of the page file FILE holds, FILE a file id from

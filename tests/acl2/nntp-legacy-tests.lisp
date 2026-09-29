@@ -209,7 +209,7 @@
     "ARTICLE HEAD BODY STAT"
     "OVER XOVER HDR XHDR XPAT"
     "IHAVE CHECK TAKETHIS"
-    "XFNCATCHUP"))
+    "XFNCATCHUP XFN-ZARTICLE"))
 (assert-event (equal (lg-reply *lg-env* "HELP")
                      (lg-block "100 help text follows" *lg-help-lines*)))
 

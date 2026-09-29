@@ -710,6 +710,11 @@
    ((and (fn-auth-redeem-eventp wire-event) (fn-auth-redeem-waitp as))
     (fn-auth-redeem-outcome as wire-event))
    ((fn-auth-session-handshakingp as) (fn-post-make-result as nil nil))
+   ((fn-auth-context-eventp wire-event) (fn-auth-install-context as wire-event))
+   ((and (fn-auth-sasl-waitingp as)
+         (consp wire-event) (equal (car wire-event) :command)
+         (consp (cdr wire-event)) (null (cdr (cdr wire-event))))
+    (fn-auth-sasl-continue as (car (cdr wire-event))))
    ((and (consp wire-event)
          (equal (car wire-event) :command)
          (consp (cdr wire-event))
@@ -725,8 +730,10 @@
                                     observation injection wire-event v fn-arena fn-cat)))
         (fn-scr-auth-delegate as live trie lver arts cache archive index verdicts config observation
                               injection wire-event v fn-arena fn-cat))))
-   (t (fn-scr-auth-delegate as live trie lver arts cache archive index verdicts config observation
-                            injection wire-event v fn-arena fn-cat))))
+   ((fn-auth-client-eventp wire-event)
+    (fn-scr-auth-delegate as live trie lver arts cache archive index verdicts config observation
+                            injection wire-event v fn-arena fn-cat))
+   (t (fn-post-make-result as nil nil))))
 
 (defthm fn-scr-auth-step-is-scar-auth-step-pinned
   (implies (and (fn-gacc-okp cache) (fn-scr-live-joinp trie lver arts fn-arena fn-cat) (fn-scr-catalogp archive index v fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))

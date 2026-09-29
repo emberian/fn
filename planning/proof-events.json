@@ -2218,7 +2218,7 @@
         {
           "kind": "theorem",
           "name": "fn-auth-step-binds-a-peer-role-only-by-a-principal-login",
-          "note": "The only way in, over fn-auth-step (books/served.lisp fn-served-dispatch; host/owner-host.lisp fn-owner-chunk via fn-own-read and fn-served-step). Two hypotheses (unbound before, bound after), each with a must-fail and a refuting value in tests/acl2/nntp-auth-teeth-tests.lisp keystone 8."
+          "note": "The only non-SASL way in, over fn-auth-step (books/served.lisp fn-served-dispatch; host/owner-host.lisp fn-owner-chunk via fn-own-read and fn-served-step); now in books/nntp-auth-roles.lisp. Four hypotheses (unbound before, bound after, no SASL exchange kept, not AUTHINFO SASL); the SASL way is PRF-917's keystone. Teeth in tests/acl2/nntp-auth-teeth-tests.lisp keystone 8."
         },
         {
           "kind": "theorem",
@@ -5733,6 +5733,14 @@
         {
           "kind": "theorem",
           "name": "fn-auth-step-pinned-redeem-outcome-answers-the-word"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-pinned-host-event-answers-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-pinned-stray-event-changes-nothing"
         },
         {
           "kind": "theorem",
@@ -9321,35 +9329,23 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-lz-seal-form-denotes"
+          "name": "fn-pzd-decode-bufs-is-decode"
         },
         {
           "kind": "theorem",
-          "name": "fn-lz-seal-form-of-literal-block"
+          "name": "fn-zin-payload-bufs-is-payload-with"
         },
         {
           "kind": "theorem",
-          "name": "fn-lz-decode-of-literal-block"
+          "name": "fn-pzd-decode-ok"
         },
         {
           "kind": "theorem",
-          "name": "fn-lz-run-out-len-bound"
+          "name": "fn-pzd-decode-of-empty"
         },
         {
           "kind": "theorem",
-          "name": "fn-lz-decode-buf-out-len-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lz-run-extends-out"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lz-lits-words-is-append"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lz-match-bulk-is-copy-match"
+          "name": "fn-zin-payload-bufs-ignores-buffers"
         }
       ]
     },
@@ -11891,6 +11887,10 @@
         {
           "kind": "theorem",
           "name": "fn-lzr-dicts-add-keeps-bindings"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-decode-bufs-is-the-lz-value"
         }
       ]
     },
@@ -14887,6 +14887,10 @@
         {
           "kind": "theorem",
           "name": "fn-zdn-request-shape"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zdn-body-round-trip"
         }
       ]
     },
@@ -16240,6 +16244,156 @@
         {
           "kind": "theorem",
           "name": "fn-bpn-nth-is-nth"
+        }
+      ]
+    },
+    {
+      "id": "PRF-911",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-zc-decide-starts-only-deflate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zc-capability-lines-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-established-starts-the-owed-compression"
+        }
+      ]
+    },
+    {
+      "id": "PRF-912",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lzd-table-current"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-dicts-initial-dictsp"
+        }
+      ]
+    },
+    {
+      "id": "PRF-993",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-zar-decide-stored-denotes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zar-decide-complete"
+        }
+      ]
+    },
+    {
+      "id": "PRF-915",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scram-honest-proof-verifies",
+          "note": "KEYSTONE (completeness), over books/scram.lisp fn-scram-proof-validp, which fn-scram-finish runs for books/sasl.lisp fn-sasl-scram-final-step, reached from books/nntp-auth.lisp fn-auth-sasl-finish in fn-auth-step and fn-auth-step-pinned. Witness: RFC 7677's exchange accepted byte for byte (tests/acl2/scram-tests.lisp); wrong-password teeth there."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scram-finish-refuses-another-nonce",
+          "note": "KEYSTONE (replay), over fn-scram-finish. One hypothesis; refuting value (another exchange's nonce) in tests/acl2/scram-tests.lisp and, on the served step, the replayed final in tests/acl2/nntp-auth-sasl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scram-finish-refuses-another-binding",
+          "note": "KEYSTONE (relay), over fn-scram-finish. One hypothesis; refuting values (a p= header against an n exchange; another exporter value) in tests/acl2/scram-tests.lisp and tests/acl2/nntp-auth-sasl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scram-finish-accepts-only-a-valid-proof"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hmac-from-states-is-hmac",
+          "note": "The executed HMAC (key-block midstate) is RFC 2104's text; with fn-pbkdf2-chain-fast-is-chain the guard of fn-pbkdf2-sha256's mbe. RFC 4231 and RFC 7914 vectors in tests/acl2/hmac-sha256-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-916",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sasl-scram-honest-client-completes",
+          "note": "KEYSTONE (SCRAM completeness over the exchange): an RFC 5802 client's client-first is answered 383 and the client-final it computes from the enrolled password over that server-first succeeds, for every seed. Rests on fn-scram-parse-client-first-of-a-client-message and fn-scram-finish-accepts-the-honest-client. Witness: RFC 7677's exchange (tests/acl2/scram-tests.lisp) and the served 283 (tests/acl2/nntp-auth-sasl-tests.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-authsec-enrolled-secret-proves-by-scram",
+          "note": "K5 of books/auth-secret.lisp: the enrolled secret authenticates by SCRAM against the stored StoredKey, for every AuthMessage. Enrolment is fn-authsec-enrol, which native-auth-admin's set-password and accounts' redeem plan call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sasl-plain-honest-client-succeeds",
+          "note": "KEYSTONE (PLAIN completeness): RFC 4616's message for the enrolled login and password succeeds against fn-authsec-enrol's verifier. Witness: 281 in tests/acl2/nntp-auth-sasl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sasl-plain-succeeds-exactly-on-the-stored-check",
+          "note": "PLAIN is fn-authsec-checkp (the USER/PASS check), over fn-sasl-step. Witnesses (281, wrong password 481, authzid) in tests/acl2/nntp-auth-sasl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sasl-scram-unknown-login-never-succeeds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sasl-scram-y-flag-with-a-binding-is-refused",
+          "note": "RFC 5802 section 6's downgrade rule. Witness on the served step in tests/acl2/nntp-auth-sasl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sasl-scram-final-success-is-bound-to-the-exchange",
+          "note": "KEYSTONE: a SCRAM success carries this exchange's nonce and binding and a stored verifier."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-text-verifier-of-verifier-text",
+          "note": "The 224-hex account-row text of a v2 verifier is the verifier."
+        }
+      ]
+    },
+    {
+      "id": "PRF-917",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-auth-sasl-finish-binds-only-on-success",
+          "note": "Over fn-auth-sasl-finish, which fn-auth-step's AUTHINFO SASL arm and continuation branch call: a role is bound only when books/sasl.lisp's step succeeded on the credential the snapshot holds under the named login, and it is that credential's principal and its fn-auth-principal-match."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-binds-a-peer-role-by-sasl-only-to-a-found-credential",
+          "note": "KEYSTONE (the SASL way in), over fn-auth-step (books/nntp-auth-roles.lisp). Positive witness (SCRAM binds principal-peer) and failed-exchange witness in tests/acl2/nntp-auth-sasl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-sasl-is-advertised-exactly-when-a-mechanism-is-offered",
+          "note": "RFC 4643 section 2.1, over fn-auth-capability-lines-for-peer, the list fn-auth-command's CAPABILITIES arm renders (fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-sasl-line-is-the-same-before-and-after-authentication",
+          "note": "RFC 4643 section 2.2's down-negotiation rule, over fn-auth-capability-lines-for-peer. Witness: the SASL line after SCRAM in tests/acl2/nntp-auth-sasl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-sasl-mechanisms-never-offer-plain-before-tls"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-preserves-consistent-session",
+          "note": "The step with the SASL arms still preserves the session invariant (the SASL states, the context)."
         }
       ]
     }
