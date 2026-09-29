@@ -1602,10 +1602,10 @@
     "books": 1657,
     "books_in_root_closure": 1656,
     "roots": 1595,
-    "theorems": 27250,
+    "theorems": 27251,
     "functions": 17847,
-    "assert_events": 22618,
-    "must_fails": 2450,
+    "assert_events": 22642,
+    "must_fails": 2453,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
@@ -39913,11 +39913,11 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 12,
+      "assert_events": 16,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 1,
-      "defmacros": 0,
+      "defmacros": 1,
       "encapsulates": 0,
       "includes": [
         "../../books/native-control-launch"
@@ -40370,10 +40370,10 @@
         "default-unguarded": 13
       },
       "verify_guards_events": 0,
-      "assert_events": 402,
-      "must_fails": 110,
+      "assert_events": 406,
+      "must_fails": 112,
       "prover_refusals": 0,
-      "defconsts": 143,
+      "defconsts": 145,
       "defmacros": 35,
       "encapsulates": 0,
       "includes": [
@@ -40428,10 +40428,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 1,
+      "assert_events": 3,
+      "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 6,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -41773,10 +41773,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 10,
+      "assert_events": 13,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 0,
+      "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -41991,7 +41991,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 133,
+      "assert_events": 134,
       "must_fails": 6,
       "prover_refusals": 0,
       "defconsts": 32,
@@ -42316,7 +42316,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 30,
+      "assert_events": 32,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 2,
@@ -43832,7 +43832,7 @@
       "book": "tests/acl2/peer-catchup-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 1,
       "functions": 8,
       "guards": {
         "verified": 0,
@@ -43841,10 +43841,10 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 42,
+      "assert_events": 44,
       "must_fails": 9,
       "prover_refusals": 0,
-      "defconsts": 34,
+      "defconsts": 36,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -45954,10 +45954,10 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 116,
+      "assert_events": 118,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 55,
+      "defconsts": 56,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -49079,7 +49079,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 39,
+      "assert_events": 41,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 10,
@@ -49636,7 +49636,7 @@
         "default-unguarded": 8
       },
       "verify_guards_events": 0,
-      "assert_events": 86,
+      "assert_events": 87,
       "must_fails": 3,
       "prover_refusals": 0,
       "defconsts": 25,
