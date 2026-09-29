@@ -17134,6 +17134,23 @@
           "name": "fn-bpnf-family-next-aux-answers-the-first-ready-row"
         }
       ]
+    },
+    {
+      "id": "PRF-1057",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pio-completion-publishes-only-the-issued-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-cancellation-retains-worker-ownership"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-close-waits-for-every-worker"
+        }
+      ]
     }
   ]
 }

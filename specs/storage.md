@@ -1433,6 +1433,41 @@ pack (the decision that dropped the derived checkpoint, published, selected and
 retired a pack generation, with its reclaim-* cuts), whose native steps
 PKT-838 deleted.
 
+#### Issued page reads across retirement (PRF-1057, SCN-216)
+
+A cold extent read issued off the owner mutex has an immutable process-local
+token: monotonically allocated read identity, original connection identity,
+file incarnation identity, entry offset, protected length and expected
+trailer. The token is distinct from an OS descriptor, a Message-ID, a
+connection slot and a durable transaction identity. Its ACL2 ownership row
+(`books/page-read-ownership.lisp`) begins `:issued`. Timeout or cancellation
+changes it to `:cancelled`, retaining its identity and worker ownership;
+neither observation establishes that pread stopped. Actual completion
+settles the matching row once. Only a still-issued matching completion whose
+full read passed the commitment verdict can publish into the verified
+extent cache. Cancelled success discards its data; short read, error or
+failed integrity check settles with a named fault; stale or duplicate
+completion publishes and releases nothing. A late store fault stops the
+owner even after its original request returned 403.
+
+Retirement additionally waits for every issued or cancelled worker naming
+the file. The generation-pin gate still applies independently. The host
+acquires issued ownership before launching the worker, preserves deferred
+close groups and retries them after actual completion, after dropping the
+extent mutex. This is a stronger fn resource-ownership guarantee around
+RFC 3977 section 3.2.1's 403 reply, not an RFC descriptor-lifetime rule.
+The host's OS calls, mutexes, thread-launch outcome and faithful storage of
+ACL2's ownership rows remain in A-HOST. The theorem concerns the host-called
+completion and close decisions, not OS thread correctness.
+
+Scope: this increment does not establish funded admission for cold read
+buffers or workers. Repeated timeouts can still accumulate detached workers;
+this is a P12 blocker. The operator-supported resource vector must charge
+each issued worker, its buffer and shared file incarnation before allocation,
+retain charges through cancellation, and refund only actual settlement.
+No guessed ceiling on stored articles or a connection-count shortcut closes
+that obligation.
+
 ### The maintenance reservation (STO-019)
 
 STO-019: Admission leaves room for the release record and checks maintenance's temporary space against the disk, so a full store can always finish or safely abandon its own maintenance.
@@ -1720,4 +1755,3 @@ and init hold an exclusive flock on `ROOT.lock` for the whole program and
 re-check ROOT's absence under it immediately before rename(2); the residual
 (a process ignoring the lock creates an empty directory at ROOT in that
 window) is an operator constraint (docs/operator.md).
-

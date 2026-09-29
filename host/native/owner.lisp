@@ -3552,33 +3552,56 @@ CLOSING STARTTLS CONSUMED)."
 ;;; in the configuration yet, so the default is passed as nil).  :serve --
 ;;; the page came: the read runs again, warm.  :unavailable -- the line is
 ;;; answered by ACL2 (fnn-owner-unavailable-line): 403, the line consumed,
-;;; the session unchanged; the prefetch keeps running and its page is kept
-;;; for a later read.  A store fault the prefetch met (a short read, a digest
-;;; mismatch) is signalled here, in the owner's thread, as the synchronous
-;;; read signalled it.  Other connections are served meanwhile: nothing here
+;;; the session unchanged; cancellation revokes cache publication, while the
+;;; worker retains its buffer/fd ownership until its actual completion. A
+;;; store fault (short read, digest mismatch) stops the owner even if late.
+;;; Other connections are served meanwhile: nothing here
 ;;; holds the owner mutex or the realizer's lock.
 (defun fnn-owner-cold-line (service cid incoming socket class peerp entry)
   (let* ((since (fnn-owner-monotonic-ms))
          (limit nil)
-         (thread (sb-thread:make-thread
-                  (lambda ()
-                    (handler-case (apply #'fnn-extent-prefetch entry)
-                      (serious-condition (c) c)))
-                  :name "fn cold extent")))
-    (loop
-      (let* ((now (fnn-owner-monotonic-ms))
-             (done (not (sb-thread:thread-alive-p thread)))
-             (decision (fnn-core 'fn-otb-dependency-step since now limit done)))
-        (cond ((eq decision :serve)
-               (let ((got (sb-thread:join-thread thread :default nil)))
-                 (when (typep got 'serious-condition) (error got)))
-               (return (fnn-owner-handle-chunk service cid incoming socket class peerp)))
-              ((eq decision :unavailable)
-               (return (fnn-owner-unavailable-line service cid incoming since now limit class)))
-              ((and (consp decision) (eq (car decision) :wait)
-                    (integerp (second decision)) (plusp (second decision)))
-               (sb-thread:join-thread thread :default nil :timeout (/ (second decision) 1000)))
-              (t (fnn-fault "owner returned a malformed dependency step")))))))
+         ;; Issue under the realizer lock while this caller still has its
+         ;; arena pin. The worker owns the descriptor before it can run.
+         (token (apply #'fnn-extent-issue-read cid entry))
+         (thread nil))
+    (handler-case
+        (setq thread
+              (sb-thread:make-thread
+               (lambda ()
+                 (handler-case
+                     (prog1 (fnn-extent-prefetch token)
+                       (fnn-owner-release-pending-extents service))
+                   (serious-condition (c)
+                     ;; A late fault after timeout is still a store fault.
+                     ;; Never direct it at a replacement connection.
+                     (ignore-errors (fnn-owner-fault-service service nil c))
+                     c)))
+               :name "fn cold extent"))
+      (serious-condition (c)
+        ;; No worker was launched: the failed launch actually settled.
+        (when token
+          (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+            (fnn-extent-complete-read token :error)))
+        (error c)))
+    (unwind-protect
+         (loop
+           (let* ((now (fnn-owner-monotonic-ms))
+                  (done (not (sb-thread:thread-alive-p thread)))
+                  (decision (fnn-core 'fn-otb-dependency-step since now limit done)))
+             (cond ((eq decision :serve)
+                    (let ((got (sb-thread:join-thread thread :default nil)))
+                      (when (typep got 'serious-condition) (error got)))
+                    (return (fnn-owner-handle-chunk service cid incoming socket class peerp)))
+                   ((eq decision :unavailable)
+                    (fnn-extent-cancel-read token)
+                    (return (fnn-owner-unavailable-line service cid incoming since now limit class)))
+                   ((and (consp decision) (eq (car decision) :wait)
+                         (integerp (second decision)) (plusp (second decision)))
+                    (sb-thread:join-thread thread :default nil :timeout (/ (second decision) 1000)))
+                   (t (fnn-fault "owner returned a malformed dependency step")))))
+      ;; Cancellation never joins/kills the thread or removes its ownership.
+      ;; Complete already removed a settled token, so cleanup is idempotent.
+      (fnn-extent-cancel-read token))))
 
 ;;; ACL2's answer to the cold line past its deadline (host/owner-host.lisp
 ;;; fn-owner-unavailable-line-at over fn-ocln-unavailable-span), under the
@@ -3866,6 +3889,24 @@ resident set the owner serves from is its live heap, not the recovery's
 high-water mark.  Work proportional to the live heap, once per start."
   (sb-ext:gc :full t))
 
+(defun fnn-owner-release-pending-extents-locked (&optional pin)
+  "Release pending groups whose reader generations and issued I/O are clear.
+Caller holds owner mutex; extent lock is acquired only after it."
+  (let ((closed 0) (keep nil))
+    (dolist (entry *fnn-extent-pending*)
+      (if (fnn-arena-clear-p (car entry) pin)
+          (multiple-value-bind (count owned) (fnn-extent-close (cdr entry))
+            (incf closed count)
+            (when owned (push (cons (car entry) owned) keep)))
+        (push entry keep)))
+    (setq *fnn-extent-pending* (nreverse keep))
+    closed))
+
+(defun fnn-owner-release-pending-extents (service)
+  "Actual worker completion retries pending closes after dropping extent lock."
+  (fnn-owner-gated (service :control)
+    (fnn-owner-release-pending-extents-locked)))
+
 (defun fnn-owner-release-extents (service store frames dropped-paths pin)
   "Give the disk blocks of the files a durable checkpoint publication dropped
 back while serving (row Q16, PRF-930, books/extent-retire.lisp): register
@@ -3929,12 +3970,7 @@ or pending (closed by a later release) and serving continues."
                 (setq *fnn-extent-pending*
                       (append *fnn-extent-pending* (list (cons (fnn-arena-stamp) quiet)))
                       *fnn-extent-retired* (set-difference *fnn-extent-retired* quiet)))
-              (let ((keep nil))
-                (dolist (entry *fnn-extent-pending*)
-                  (if (fnn-arena-clear-p (car entry) pin)
-                      (incf closed (fnn-extent-close (cdr entry)))
-                      (push entry keep)))
-                (setq *fnn-extent-pending* (nreverse keep)))
+              (incf closed (fnn-owner-release-pending-extents-locked pin))
               ;; Each retired file still named, and by what: (ID COUNT LOG),
               ;; COUNT the extent column's entries naming it, LOG whether a
               ;; log member in flight or fenced names it.
@@ -3948,7 +3984,7 @@ or pending (closed by a later release) and serving continues."
                    (+ (length *fnn-extent-retired*)
                       (reduce #'+ *fnn-extent-pending* :key (lambda (e) (length (cdr e)))))
                    (fnn-extent-open-count)
-                   (cond (*fnn-extent-retired* :named) (*fnn-extent-pending* :readers))
+                   (cond (*fnn-extent-retired* :named) (*fnn-extent-pending* :pending))
                    named-detail))
       (serious-condition (e)
         (fnn-err "CHECKPOINT release failed (files stay retired): ~a" e)))))
