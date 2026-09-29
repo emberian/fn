@@ -601,16 +601,17 @@
         (au-block "101 capability list follows"
                   (append *au-reader-lines* '("AUTHINFO USER SASL" "SASL PLAIN")))))
 ; Authenticated: AUTHINFO USER gone, POST present because this principal may
-; post, STARTTLS still offered because this connection is not yet protected.
+; post, STARTTLS still offered because this connection is not yet protected,
+; and COMPRESS DEFLATE (RFC 8054) now that a login has been made.
 (assert-event
  (equal (in-arena-au-reply *sr-arena* (au-authed) "CAPABILITIES")
         (au-block "101 capability list follows"
-                  (append *au-reader-lines-posting* '("STARTTLS")))))
+                  (append *au-reader-lines-posting* '("STARTTLS" "COMPRESS DEFLATE")))))
 ; Authenticated as the read-only principal: no POST label.
 (assert-event
  (equal (in-arena-au-reply *sr-arena* (au-authed-ro) "CAPABILITIES")
         (au-block "101 capability list follows"
-                  (append *au-reader-lines* '("STARTTLS")))))
+                  (append *au-reader-lines* '("STARTTLS" "COMPRESS DEFLATE")))))
 ; No certificate and nothing required: the reader's own block, unchanged
 ; from before this book existed.
 (assert-event
@@ -625,11 +626,11 @@
 ; The real composed path takes its base list from the peer record pinned at
 ; open, then appends the access labels the reader AUTHINFO policy permits.
 ; The peer is unauthenticated as a reader, but its configured source role
-; makes IHAVE and STREAMING honest promises.
+; makes IHAVE and STREAMING honest promises, and lets it compress.
 (assert-event
  (equal (in-arena-au-peer-reply *sr-arena* *au-s-peer-req* "CAPABILITIES")
         (au-block "101 capability list follows"
-                  (append *au-peer-lines* '("STARTTLS" "AUTHINFO USER")))))
+                  (append *au-peer-lines* '("STARTTLS" "AUTHINFO USER" "COMPRESS DEFLATE")))))
 ; The optional keyword argument of section 5.2.1 is accepted and changes
 ; nothing.
 (assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "CAPABILITIES READER")

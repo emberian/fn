@@ -13025,6 +13025,64 @@
           "note": "The step with the SASL arms still preserves the session invariant (the SASL states, the context)."
         }
       ]
+    },
+    {
+      "id": "PRF-909",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-zin-loop-split-input"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-loop-split-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-loop-out-free"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-loop-is-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-run-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-feed-out-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-loop-stops"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-feed-unfolds"
+        }
+      ]
+    },
+    {
+      "id": "PRF-910",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-zin-feed-bomb-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-reset-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-act-counts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-loop-counts"
+        }
+      ]
     }
   ]
 }

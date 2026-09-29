@@ -424,6 +424,7 @@
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
                 (not (fn-auth-sasl-waitingp as))
+                (not (fn-zc-activep (fn-auth-session-compress as)))
                 (not (fn-auth-session-subject as))
                 (fn-auth-config-protected-onlyp (fn-auth-session-config as))
                 (not (fn-auth-session-tlsp as))
@@ -648,6 +649,8 @@
   (implies (and (fn-served-connp conn)
                 (not (fn-auth-session-handshakingp
                       (fn-served-conn-session conn)))
+                (not (fn-zc-activep (fn-auth-session-compress
+                                     (fn-served-conn-session conn))))
                 (not (fn-auth-session-subject (fn-served-conn-session conn)))
                 (fn-auth-config-protected-onlyp
                  (fn-auth-session-config (fn-served-conn-session conn)))

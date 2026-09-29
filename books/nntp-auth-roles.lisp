@@ -873,6 +873,7 @@
 (defthm fn-auth-step-principal-login-binds-exactly-the-unique-match
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-zc-activep (fn-auth-session-compress as)))
                 (not (fn-auth-sasl-waitingp as))
                 (not (fn-auth-session-peer as))
                 (not (fn-auth-session-subject as))
@@ -960,7 +961,14 @@
                 (not (fn-auth-redeem-waitp
                       (fn-post-result-session
                        (fn-auth-step as archive config observation injection
-                                     wire-event fn-arena)))))
+                                     wire-event fn-arena))))
+                ; the hold is not a COMPRESS layer's (RFC 8054: 206 keeps
+                ; the login; fn-auth-established-starts-the-owed-compression)
+                (not (fn-zc-owedp
+                      (fn-auth-session-compress
+                       (fn-post-result-session
+                        (fn-auth-step as archive config observation injection
+                                      wire-event fn-arena))))))
            (and (null (fn-auth-session-subject
                        (fn-post-result-session
                         (fn-auth-step as archive config observation injection
@@ -1017,7 +1025,12 @@
                 (fn-auth-redeem-waitp
                  (fn-post-result-session
                   (fn-auth-step as archive config observation injection
-                                wire-event fn-arena))))
+                                wire-event fn-arena)))
+                (not (fn-zc-owedp
+                      (fn-auth-session-compress
+                       (fn-post-result-session
+                        (fn-auth-step as archive config observation injection
+                                      wire-event fn-arena))))))
            (and (null (fn-auth-session-subject
                        (fn-post-result-session
                         (fn-auth-step as archive config observation injection

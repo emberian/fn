@@ -13673,6 +13673,60 @@
         "tests/test_native_sasl.py"
       ],
       "progress_note": "Lane sasl increment 2 (2026-09-28): REPL-green; certification and SCN-205 pending."
+    },
+    {
+      "id": "PRF-909",
+      "title": "The COMPRESS DEFLATE inflater is total, bounded per call and resumable: host calls over whatever reads and quanta arrive are one run over the concatenated stream, and malformed streams are refused by name",
+      "statement": "books/deflate-inflate.lisp (lane compress, RFC 8054 over RFC 1951). The host entry fn-zin-feed B ST START END LIM fn-octets fn-zin-win fn-zin-tab fn-zin-out decodes the raw DEFLATE octets in cells [START, END) of a buffer (the host's private fn-octets$c per connection), with the 32 KiB history ring fn-zin-win, the Huffman tables fn-zin-tab (two octets per entry) and the scalar state stobj fn-zin-st, and answers (mv STATUS B2 IP ST win tab out): :more (all input taken), :full (output reached LIM), :yield (budget B of actions spent), or (:refused R), R one of the named malformations (fn-zin-refusal-text). Stored, fixed and dynamic blocks (zlib's puff, a bit at a time). fn-zin-feed-unfolds: once the buffers are ready the entry is fn-zin-loop. KEYSTONE fn-zin-feed-out-bound: the output only grows, never past max(LIM, its length). fn-zin-loop-stops: :more means every octet up to END was read, :full that LIM was reached. KEYSTONES of resumption: fn-zin-loop-split-budget (a :yield resumed with more budget is the call with both), fn-zin-loop-split-input (a :more resumed on a later END is the call over all of it), fn-zin-loop-out-free (the output is written, never read: a :full resumed on a cleared output is one call), fn-zin-loop-is-run (a call over any buffer cells is the list model fn-zin-run over exactly those octets: the D27 representation boundary), fn-zin-run-append (a :more run of A resumed on B is the run of A ++ B).",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-054"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/deflate-inflate.lisp",
+        "tests/acl2/deflate-inflate-tests.lisp",
+        "tests/acl2/deflate-inflate-vectors.lisp",
+        "planning/evidence/compress-2026-09-28/zin_vectors.py"
+      ],
+      "progress_note": "Lane compress (Opus 5.5, 2026-09-28). Witnesses from zlib (fixed, dynamic and stored blocks; every two-read cut of a session; 7-action quanta; 10-octet output bounds) and one hand-built stream per refusal; removal witnesses and must-fails for each resumption hypothesis. Host wiring (the COMPRESS layer in host/native/mux.lisp) is the next increment: until then fn-zin-feed has no host caller. Measure at convergence: inflate microseconds per octet (REPL, persvati: 573 KB of docs text in 0.34 s).",
+      "events": [
+        "fn-zin-loop-split-input",
+        "fn-zin-loop-split-budget",
+        "fn-zin-loop-out-free",
+        "fn-zin-loop-is-run",
+        "fn-zin-run-append",
+        "fn-zin-feed-out-bound",
+        "fn-zin-loop-stops",
+        "fn-zin-feed-unfolds"
+      ]
+    },
+    {
+      "id": "PRF-910",
+      "title": "A DEFLATE decompression bomb is refused by name: a COMPRESS stream never produces more than 256 times the octets it read plus 64 KiB",
+      "statement": "books/deflate-inflate.lisp. fn-zin-st counts the octets read (TOTAL-IN, field 7) and produced (TOTAL-OUT, field 6); fn-zin-emit refuses (:bomb) the octet that would make TOTAL-OUT exceed *fn-zin-ratio* (256) x TOTAL-IN + *fn-zin-slack* (65,536). KEYSTONE fn-zin-feed-bomb-bound: from a state within the bound (fn-zin-bomb-okp; fn-zin-reset-okp: the initial state is), a call stays within it, the octets it appends to the output are exactly what it adds to TOTAL-OUT and the octets it reads (IP - START) exactly what it adds to TOTAL-IN, so the bound is about the plaintext actually handed to the served step. Witness: 1 MiB of zeros in 1,037 zlib octets is refused at exactly 256 x read + 65,536 octets.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-054"
+      ],
+      "depends_on": [
+        "PRF-909"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/deflate-inflate.lisp",
+        "tests/acl2/deflate-inflate-tests.lisp"
+      ],
+      "progress_note": "Lane compress (Opus 5.5, 2026-09-28). The hypothesis (natp start) was proved redundant and removed; the bomb-okp removal witness is a state already past the bound.",
+      "events": [
+        "fn-zin-feed-bomb-bound",
+        "fn-zin-reset-okp",
+        "fn-zin-act-counts",
+        "fn-zin-loop-counts"
+      ]
     }
   ]
 }

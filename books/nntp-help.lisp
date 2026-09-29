@@ -51,7 +51,7 @@
 ; HELP's lines are this table's rows.
 (defconst *fn-nntp-served-command-table*
   '(("CAPABILITIES" "HELP" "QUIT" "MODE" "DATE" "POST")
-    ("AUTHINFO" "STARTTLS" "XREDEEM")
+    ("AUTHINFO" "STARTTLS" "XREDEEM" "COMPRESS")
     ("GROUP" "LISTGROUP" "LIST" "NEXT" "LAST" "NEWGROUPS" "NEWNEWS")
     ("ARTICLE" "HEAD" "BODY" "STAT")
     ("OVER" "XOVER" "HDR" "XHDR" "XPAT")
@@ -109,7 +109,7 @@
              (fn-nntp-keywordp k "QUIT") (fn-nntp-keywordp k "MODE")
              (fn-nntp-keywordp k "DATE") (fn-nntp-keywordp k "POST")
              (fn-nntp-keywordp k "AUTHINFO") (fn-nntp-keywordp k "STARTTLS")
-             (fn-nntp-keywordp k "XREDEEM")
+             (fn-nntp-keywordp k "XREDEEM") (fn-nntp-keywordp k "COMPRESS")
              (fn-nntp-keywordp k "GROUP") (fn-nntp-keywordp k "LISTGROUP")
              (fn-nntp-keywordp k "LIST") (fn-nntp-keywordp k "NEXT")
              (fn-nntp-keywordp k "LAST") (fn-nntp-keywordp k "NEWGROUPS")
@@ -151,6 +151,17 @@
                            (len (cdr (cddddr x))) (len (cddr (cddddr x)))
                            (true-listp (cddr (cddddr x)))))))
 
+(defthm fn-help-seven-list-rebuild
+  (implies (and (true-listp x) (equal (len x) 7))
+           (equal (list (car x) (cadr x) (caddr x) (cadddr x)
+                        (car (cddddr x)) (cadr (cddddr x)) (caddr (cddddr x)))
+                  x))
+  :hints (("Goal" :expand ((len x) (len (cdr x)) (len (cddr x))
+                           (len (cdddr x)) (len (cddddr x))
+                           (len (cdr (cddddr x))) (len (cddr (cddddr x)))
+                           (len (cdddr (cddddr x)))
+                           (true-listp (cdddr (cddddr x)))))))
+
 (defthm fn-help-nth-of-a-constant
   (implies (and (syntaxp (quotep n)) (posp n))
            (equal (nth n x) (nth (- n 1) (cdr x))))
@@ -186,7 +197,7 @@
   :hints (("Goal" :in-theory (enable fn-auth-session-shapep fn-auth-session-base
                                      fn-auth-session-config fn-auth-session-pending
                                      fn-auth-session-subject fn-auth-session-tlsp
-                                     fn-auth-session-handshakingp fn-auth-session-ctx
+                                     fn-auth-session-handshakingp fn-auth-session-compress fn-auth-session-ctx
                                      fn-auth-with-base fn-auth-make-session
                                      fn-inj-nth fn-inj-car fn-inj-cdr)
            :expand ((len (cdr (cddddr as))) (len (cddr (cddddr as)))
@@ -231,6 +242,7 @@
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-auth-step-pinned fn-auth-command fn-auth-gatedp
+                            fn-auth-compressed-refusedp
                             fn-auth-restricted-keywordp fn-auth-tls-eventp
                             fn-auth-redeem-eventp
                             fn-auth-delegate-pinned fn-peer-step-pinned
@@ -251,4 +263,4 @@
                  (:instance fn-post-sessionp (x (fn-auth-post-session as)))))))
 
 ; The reconstruction facts are general rewrites; they leave the theory here.
-(in-theory (disable fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth))
+(in-theory (disable fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-seven-list-rebuild fn-help-nth-of-a-constant fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth))

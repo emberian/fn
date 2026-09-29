@@ -3453,7 +3453,14 @@ EPIPE and the client saw a bare close)."
              (fnn-fault "owner returned malformed refusal log lines"))
            (dolist (line lines) (fnn-log-line line)))
          (let ((closing (fnn-core 'fn-splan-step-closep step))
-               (starttls (fnn-core 'fn-splan-step-handshake-owed step))
+               ;; T: a TLS handshake owed (382); :DEFLATE: the COMPRESS layer
+               ;; owed (206, RFC 8054), read off the session
+               ;; (host/owner-host.lisp fn-owner-compress-owed).
+               (starttls (or (and (fnn-core 'fn-splan-step-handshake-owed step) t)
+                             (let ((alg (fnn-owner-core 'fn-owner-compress-owed cid)))
+                               (unless (member alg '(nil :deflate))
+                                 (fnn-fault "owner returned a malformed compression layer"))
+                               alg)))
                (submitted (fnn-core 'fn-splan-step-submittedp step))
                (consumed (fnn-core 'fn-splan-step-consumed step))
                (completion nil)

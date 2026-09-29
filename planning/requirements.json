@@ -5048,6 +5048,26 @@
         "tests/test_native_sasl.py"
       ],
       "implementation_note": "RFC 4643 section 2.4 with PLAIN (RFC 4616), SCRAM-SHA-256 (RFC 5802, RFC 7677) and SCRAM-SHA-256-PLUS (RFC 9266 tls-exporter). DIGEST-MD5 (RFC 4643's mandatory mechanism) is not implemented: RFC 6331 made it Historic. Increment 1 (lane sasl): the HMAC-SHA-256/PBKDF2 and SCRAM mechanism books. Increment 2: the exchange (books/sasl.lisp), verifier v2 and the served AUTHINFO SASL arm."
+    },
+    {
+      "id": "NNT-054",
+      "title": "COMPRESS DEFLATE (RFC 8054): a client may compress its session after authentication; the inbound stream is decoded by ACL2, bounded, resumable and bomb-refusing, the outbound by vendored zlib behind the trust boundary",
+      "specification": "specs/nntp.md#compression-compress-nnt-054-nnt-055",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-909",
+        "PRF-910"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/deflate-inflate.lisp",
+        "tests/acl2/deflate-inflate-tests.lisp",
+        "specs/nntp.md"
+      ]
     }
   ]
 }

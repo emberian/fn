@@ -54,7 +54,7 @@
                                                nil)
                          nil nil 0 nil nil nil)
    (if (fn-auth-configp acfg) acfg (fn-auth-open-config))
-   nil nil nil nil nil))
+   nil nil nil nil nil nil))
 
 (defthm fn-ocar-auth-open-reader-is-auth-open-session
   (implies (fn-statep archive)

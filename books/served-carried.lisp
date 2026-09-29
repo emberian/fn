@@ -76,6 +76,7 @@
            (fn-prin-idp (fn-auth-session-subject x)))
        (booleanp (fn-auth-session-tlsp x))
        (booleanp (fn-auth-session-handshakingp x))
+       (fn-zc-statep (fn-auth-session-compress x))
        (fn-auth-ctxp (fn-auth-session-ctx x))))
 
 (defthm fn-scar-auth-sessionp-is-auth-sessionp
