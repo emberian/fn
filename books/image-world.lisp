@@ -260,6 +260,7 @@
 (include-book "owner-time-journal-writer")
 (include-book "owner-time-bars")
 (include-book "owner-cold-line")
+(include-book "arena-reader-pins")
 (include-book "owner-reader-read")
 (include-book "peer-carriage")
 (include-book "accounts")

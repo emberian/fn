@@ -13623,6 +13623,27 @@
           "name": "fn-bpcc-frame-decode-of-sealed"
         }
       ]
+    },
+    {
+      "id": "PRF-941",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arpn-release-postdates-every-live-pin"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arpn-release-keeps-every-covered-retirement"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arpn-retire-stamp-covers-every-live-pin"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arpn-step-preserves-okp"
+        }
+      ]
     }
   ]
 }

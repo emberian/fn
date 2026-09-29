@@ -3786,7 +3786,7 @@ resident set the owner serves from is its live heap, not the recovery's
 high-water mark.  Work proportional to the live heap, once per start."
   (sb-ext:gc :full t))
 
-(defun fnn-owner-publish-captured (service captured &optional position)
+(defun fnn-owner-publish-captured (service captured &optional position pin)
   "The publication's thread: ACL2's fn-ock-next-checkpoint over the values
 captured under the owner mutex (NEXT, the capture of the history at the
 capture point: fn-ock-next-checkpoint-is-the-capture), then fn-ockp-setup
@@ -3804,10 +3804,11 @@ the crash keystone) and serving continues."
   ;; The publication allocates in proportion to the history: the open's
   ;; trigger while it runs, the service trigger again when it ends.
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
-  ;; It reads the live arena outside the owner's mutex: no staged page is
-  ;; released while it runs (host/native/io.lisp fnn-log-reseat-fenced).
-  ;; Its caller counted it under the mutex, before this thread existed
-  ;; (fnn-owner-maybe-publish); the count is returned below.
+  ;; It reads the live arena outside the owner's mutex: no staged page
+  ;; retired while it runs is released until it ends (host/native/io.lisp
+  ;; fnn-log-reseat-fenced, books/arena-reader-pins.lisp).  Its caller
+  ;; pinned the generation PIN under the mutex, before this thread existed
+  ;; (fnn-owner-maybe-publish); it is unpinned below.
   (unwind-protect
   (destructuring-bind (base configs records record-octets count suffix budget frontier free revision
                         base-payloads ident)
@@ -3909,7 +3910,7 @@ the crash keystone) and serving continues."
                 (fnn-owner-service-workers service)
                 (delete sb-thread:*current-thread*
                         (fnn-owner-service-workers service) :test #'eq))))))
-    (sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*))
+    (when pin (fnn-arena-unpin pin))
     (fnn-owner-service-nursery))
   ;; PKT-583 (b): the publication finished; decide again from the newest
   ;; committed frontier now, not at the next accept (a load's tail has
@@ -4004,16 +4005,15 @@ reads run as a :control quantum; the thread's registration is the roster's."
                         (and (true-listp captured) (= (length captured) 12)))
               (fnn-fault "owner returned a malformed checkpoint capture"))
             ;; The publication reads the live arena outside the mutex, so it
-            ;; is counted as such a reader here, under the mutex, before its
-            ;; thread starts: counted on its own thread, a commit completing
-            ;; between this capture and that count could release a staged
-            ;; page it reads (fnn-log-reseat-fenced runs under the mutex).
-            ;; The thread returns the count when it ends; a thread that was
-            ;; never made returns it here.
+            ;; pins the generation as such a reader here, under the mutex,
+            ;; before its thread starts: pinned on its own thread, a commit
+            ;; completing between this capture and that pin could release a
+            ;; staged page it reads (fnn-log-reseat-fenced runs under the
+            ;; mutex).  The thread unpins when it ends; a thread that was
+            ;; never made unpins here.
             (fnn-with-roster (service)
               (let ((thread (and (not (eq position :failed))
-                                 (let ((made nil))
-                                   (sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))
+                                 (let ((made nil) (pin (fnn-arena-pin)))
                                    (unwind-protect
                                         (setq made (sb-thread:make-thread
                                                     (lambda ()
@@ -4026,10 +4026,9 @@ reads run as a :control quantum; the thread's registration is the roster's."
                                                                   (fnn-owner-service-stopping
                                                                    service)))))
                                                         (fnn-owner-publish-captured
-                                                         service captured position)))
+                                                         service captured position pin)))
                                                     :name "fn owner checkpoint"))
-                                     (unless made
-                                       (sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*))))))))
+                                     (unless made (fnn-arena-unpin pin)))))))
                 (setf (fnn-owner-service-publisher service) thread)
                 (push thread (fnn-owner-service-workers service)))))))))))
 

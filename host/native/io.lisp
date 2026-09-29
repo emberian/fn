@@ -6292,22 +6292,83 @@ entries).  Nothing is placed when ACL2 answers none."
                   do (push (list (car m) (fnn-log-extent-file log) place (cdr m))
                            (fnn-log-inflight log))))))))
 
-(defvar *fnn-release-pending* nil
-  "Reseated handles whose staged pages wait for their release.")
+(defvar *fnn-arena-pins-lock* (sb-thread:make-mutex :name "fn arena pins")
+  "Serializes every event of *fnn-arena-pins* (its own lock: a reader ends,
+and unpins, outside the owner's mutex).")
 
-(defvar *fnn-arena-off-mutex-readers* (list 0)
-  "The count of threads reading the live arena outside the owner's mutex (a
-checkpoint publication, host/native/owner.lisp fnn-owner-publish-captured,
-counted under the mutex before its thread starts by fnn-owner-maybe-publish
-and uncounted when it ends); a staged page is released only while it is 0.")
+(defvar *fnn-arena-pins* nil
+  "ACL2's arena-reader generation state (books/arena-reader-pins.lisp,
+PRF-941: (CUR PINS PEND)), NIL before its first event.  A thread that reads
+the live arena outside the owner's mutex (a checkpoint publication,
+host/native/owner.lisp fnn-owner-publish-captured; the installing reclaim
+pass) PINS the current generation under the mutex before it starts and
+UNPINS it when it ends; what is taken away from the arena (a COMPLETE's
+reseated staged pages, fnn-log-reseat-fenced) is RETIRED at a stamp and
+RELEASED once no live pin is at or below the stamp (KEYSTONE
+fn-arpn-release-postdates-every-live-pin): an old retirement goes as soon as
+the readers older than it end, whatever newer readers run.")
+
+(defun fnn-arena-pins-step (event)
+  "One EVENT of ACL2's fn-arpn-step over *fnn-arena-pins*, under its lock;
+answers the step's answer."
+  (sb-thread:with-mutex (*fnn-arena-pins-lock*)
+    (destructuring-bind (st answer)
+        (fnn-call 'fn-arpn-step (or *fnn-arena-pins* (fnn-core 'fn-arpn-initial)) event)
+      (setq *fnn-arena-pins* st)
+      answer)))
+
+(defun fnn-arena-pin ()
+  "Pin the current generation for a reader of the live arena outside the
+owner's mutex (taken under the mutex, before the reader runs).  Answers G,
+which the reader passes to fnn-arena-unpin when it ends."
+  (let ((g (fnn-arena-pins-step '(:pin))))
+    (unless (integerp g) (fnn-fault "ACL2 returned a malformed arena pin"))
+    g))
+
+(defun fnn-arena-unpin (g)
+  "The reader pinned at G ended."
+  (unless (eq (fnn-arena-pins-step (list :unpin g)) :ok)
+    (fnn-fault "ACL2 refused an arena unpin at generation ~a" g)))
+
+(defun fnn-arena-retire (items)
+  "ITEMS (a list) taken away from the arena now: pending at the stamp ACL2
+answers, released by fnn-arena-release-due."
+  (let ((s (fnn-arena-pins-step (list :retire items))))
+    (unless (integerp s) (fnn-fault "ACL2 returned a malformed arena stamp"))
+    s))
+
+(defun fnn-arena-stamp ()
+  "A stamp for a retirement the caller keeps itself (the generation
+advances): release it once (fnn-arena-clear-p S)."
+  (let ((s (fnn-arena-pins-step '(:stamp))))
+    (unless (integerp s) (fnn-fault "ACL2 returned a malformed arena stamp"))
+    s))
+
+(defun fnn-arena-clear-p (s &optional own)
+  "Whether no reader is pinned at or below the stamp S; OWN, when given, the
+asking reader's own pin, not counted."
+  (let ((answer (fnn-arena-pins-step (if own (list :clear-except s own) (list :clear s)))))
+    (when (eq answer :refused) (fnn-fault "ACL2 refused an arena clear test"))
+    answer))
+
+(defun fnn-arena-reader-count ()
+  "The live off-mutex arena readers."
+  (fnn-arena-pins-step '(:count)))
+
+(defun fnn-arena-release-due ()
+  "The pending retirements ACL2 releases now, ((S . ITEMS) ...)."
+  (let ((due (fnn-arena-pins-step '(:release))))
+    (unless (listp due) (fnn-fault "ACL2 returned a malformed arena release"))
+    due))
 
 (defun fnn-log-reseat-fenced (log)
   "The COMPLETE's reseat (PRF-309): each fenced staged member's handle is
 re-pointed at the log extent that now durably holds its payload, as ACL2
 decides it (fn-arx-commit-reseats: KEYSTONE fn-arx-commit-reseats-keep-the-
-arena); the staged pages are then released (fn-arena-release) unless a
-reader outside the owner's mutex (a checkpoint publication) is running, in
-which case they wait for the next COMPLETE."
+arena); the staged pages are then retired, and released (fn-arena-release)
+once no reader outside the owner's mutex (a checkpoint publication) that
+pinned before them runs (books/arena-reader-pins.lisp); until then they wait
+for a later COMPLETE."
   (let ((fenced (fnn-log-with-kernel (log)
                   (prog1 (reverse (fnn-log-fenced log)) (setf (fnn-log-fenced log) nil)))))
     (when fenced
@@ -6319,11 +6380,12 @@ which case they wait for the next COMPLETE."
             ;; plain reseat.
             (fnn-call 'fn-lzr-commit-reseats fenced (fnn-lz-dicts) arena)
           (fnn-call 'fn-arx-commit-reseats fenced arena))
-        (setq *fnn-release-pending* (nconc (mapcar #'first fenced) *fnn-release-pending*))))
-    (when (and *fnn-release-pending* (zerop (car *fnn-arena-off-mutex-readers*)))
-      (let ((arena (fnn-live-arena)))
-        (dolist (h *fnn-release-pending*) (fnn-call 'fn-arena-release h arena))
-        (setq *fnn-release-pending* nil)))))
+        (fnn-arena-retire (mapcar #'first fenced))))
+    (let ((due (fnn-arena-release-due)))
+      (when due
+        (let ((arena (fnn-live-arena)))
+          (dolist (entry due)
+            (dolist (h (cdr entry)) (fnn-call 'fn-arena-release h arena))))))))
 
 
 (defun fnn-log-fence (log)
