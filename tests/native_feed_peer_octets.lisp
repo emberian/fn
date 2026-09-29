@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (defvar *the-live-state* nil)
 (defun f-get-global (name state) (declare (ignore name state)) nil)
+(load "tests/native_io_prelude.lisp")
 (load "host/native/io.lisp")
 (load "host/native/feed-service.lisp")
 

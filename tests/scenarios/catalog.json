@@ -5407,7 +5407,7 @@
         "native": false,
         "record": "planning/evidence/arena-store-2026-09-27.md"
       },
-      "note": "Lane arena-store (2026-09-27): the ACL2 witnesses of tests/acl2/pagestore-tests.lisp and books/pagestore-gc.lisp are the executable evidence; the host driver host/native/proto-pagestore.lisp ran the process-death (210 cuts) and power-loss (220 cuts) campaigns on hbox with 0 violations (record section 4), outside the native test modules. No native module exercises it: the owner does not call the page store until fn-hist moves onto it (lane arena-store-2)."
+      "note": "Lane arena-store (2026-09-27): the ACL2 witnesses of tests/acl2/pagestore-tests.lisp and books/pagestore-gc.lisp are the executable evidence; the prototype host driver host/native/proto-pagestore.lisp (retired 2026-09-29, Q7k) ran the process-death (210 cuts) and power-loss (220 cuts) campaigns on hbox with 0 violations (record section 4), outside the native test modules. No native module exercises it: the owner does not call the page store until fn-hist moves onto it (lane arena-store-2)."
     },
     {
       "id": "SCN-187",

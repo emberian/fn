@@ -46,7 +46,7 @@ def driver_for(scenario: str) -> str:
     if scenario != "acceptance-durable":
         raise ValueError(f"unknown scenario: {scenario}")
     return '''(ld '((include-book "books/acceptance")
-      (ld "host/simulator.lisp" :ld-error-action :return :ld-error-triples t)
+      (ld "tests/acl2/simulator.lisp" :ld-error-action :return :ld-error-triples t)
       (value-triple
        (cw "FN_SIM_TRACE s=acceptance-durable t=initial a=~x0 n=~x1 f=~x2~%"
            (len (fn-state-articles (fn-sim-acceptance-initial)))
@@ -114,7 +114,7 @@ def main() -> int:
         print(manifest["failure"], file=sys.stderr)
         return 2
 
-    required = (ROOT / "books" / "acceptance.cert", ROOT / "host" / "simulator.lisp")
+    required = (ROOT / "books" / "acceptance.cert", ROOT / "tests" / "acl2" / "simulator.lisp")
     missing = [path.relative_to(ROOT).as_posix() for path in required if not path.is_file()]
     if missing:
         manifest["failure"] = "required certified model or host scenario is missing: " + ", ".join(missing)

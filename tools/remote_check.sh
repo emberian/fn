@@ -2,7 +2,8 @@
 # Run `make check-lane` (or another target) for this worktree on a build box.
 #
 #   tools/remote_check.sh BOX [--target T | --cmd 'COMMAND' | --regen]
-#                             [--fetch PATH]... [--no-dirty] [--no-install-certs]
+#                             [--fetch PATH]... [--ship PATH]... [--no-dirty]
+#                             [--no-install-certs]
 #                             [--tree BOXPATH] [--log BOXPATH]
 #
 # BOX is hbox, persvati or auto (tools/boxes.sh --pick: the lower load per
@@ -18,7 +19,11 @@
 #      kept), so a regeneration left over from the last run can never keep
 #      make on an old head (batch AX, 2026-09-28);
 #   4. applies this worktree's uncommitted tracked changes (git diff HEAD) on
-#      top, unless --no-dirty; untracked files are named, never shipped;
+#      top, unless --no-dirty; untracked files are named, never shipped,
+#      except each --ship PATH (a file inside the worktree, tracked or not,
+#      copied to the same path in the box tree with its mode: a one-off
+#      analysis helper rides with the run instead of an scp to ~ -- the
+#      tooling-truth lane's ask, 2026-09-29);
 #   5. first installs the box cache's certificates for the tree's bytes
 #      (tools/certs.py install; its summary heads the log; --no-install-certs
 #      skips it): without them make check's host_check prints NOT RUN for both
@@ -66,6 +71,7 @@ BOX=$1
 shift
 TARGET=check-lane
 FETCH=
+SHIP=
 DIRTY=1
 INSTALL=1
 TREE=
@@ -76,6 +82,9 @@ while [ $# -gt 0 ]; do
     case $1 in
         --target) [ $# -ge 2 ] || usage; TARGET=$2; shift 2 ;;
         --fetch) [ $# -ge 2 ] || usage; FETCH="$FETCH $2"; shift 2 ;;
+        --ship) [ $# -ge 2 ] || usage
+            case $2 in /*|*..*|*' '*) echo "remote_check: --ship $2: a path inside the tree, no spaces" >&2; exit 2 ;; esac
+            SHIP="$SHIP $2"; shift 2 ;;
         --no-dirty) DIRTY=0; shift ;;
         --install-certs) INSTALL=1; shift ;;
         --no-install-certs) INSTALL=0; shift ;;
@@ -117,6 +126,9 @@ SSH=${FN_REMOTE_CHECK_SSH:-ssh -o ServerAliveInterval=30 -o ControlMaster=auto -
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
     echo "remote_check: not inside a git worktree" >&2; exit 2; }
+for path in $SHIP; do
+    [ -f "$ROOT/$path" ] || { echo "remote_check: --ship $path: no such file here" >&2; exit 2; }
+done
 LANE=${FN_LANE:-$(basename "$ROOT")}
 case $LANE in *[!A-Za-z0-9._-]*|'') echo "remote_check: lane name '$LANE' is not a plain word" >&2; exit 2 ;; esac
 TREE=${TREE:-$BASE/$LANE-check}
@@ -187,7 +199,14 @@ if [ "$DIRTY" = 1 ]; then
             echo "remote_check: the uncommitted changes did not apply on $BOX" >&2; exit 3; }
     fi
 fi
-UNTRACKED=$(git -C "$ROOT" ls-files --others --exclude-standard | grep -v '^LANEDUMP.md$' | head -20)
+for path in $SHIP; do
+    mode=644; [ -x "$ROOT/$path" ] && mode=755
+    remote "cd $TREE && mkdir -p \$(dirname $path) && cat > $path && chmod $mode $path" < "$ROOT/$path" || {
+        echo "remote_check: --ship $path did not copy to $BOX" >&2; exit 3; }
+    echo "remote_check: shipped $path"
+done
+printf '%s\n' LANEDUMP.md $SHIP > "$WORK/not-untracked"
+UNTRACKED=$(git -C "$ROOT" ls-files --others --exclude-standard | grep -v -x -F -f "$WORK/not-untracked" | head -20)
 [ -z "$UNTRACKED" ] || { echo "remote_check: untracked here, NOT shipped:"; echo "$UNTRACKED" | sed 's/^/  /'; }
 
 # 5. make there, with the box's own toolchain.

@@ -10,6 +10,7 @@
 (defun f-get-global (name state)
   (declare (ignore name state))
   nil)
+(load "tests/native_io_prelude.lisp")
 (load "host/native/io.lisp")
 
 ;; Native socketpair(2), used only to exercise the production descriptor and
