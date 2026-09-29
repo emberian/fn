@@ -3974,10 +3974,6 @@
 ;; books/limits-live.lisp
 
 ; host/native/admin.lisp dispatches it (lane limits-live).
-(definterface fn-lim-apply-row
-  :class :common-lisp-compliant)
-
-; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-lim-decide
   :class :common-lisp-compliant)
 
@@ -3987,10 +3983,6 @@
 
 ; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-lim-decision-status
-  :class :common-lisp-compliant)
-
-; host/native/admin.lisp dispatches it (lane limits-live).
-(definterface fn-lim-funded-after
   :class :common-lisp-compliant)
 
 ; host/native/admin.lisp dispatches it (lane limits-live).
