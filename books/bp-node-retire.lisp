@@ -64,6 +64,7 @@
                   (fn-bpnr-retired-names (cdr names) selected)))
        :exec (fn-bpnr-retired-names-loop names selected nil)))
 
+(verify-guards fn-bpnr-selection-name)
 (verify-guards fn-bpnr-retired-namep)
 (verify-guards fn-bpnr-retired-names-loop)
 
