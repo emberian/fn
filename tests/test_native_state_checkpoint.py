@@ -57,11 +57,25 @@ class StateCheckpointSourceTests(unittest.TestCase):
         # fn-rii-sco-extend-open-is-extend-then-open: the extension and
         # fn-rii-classified-open of it), opened by fn-store-sn-open-classified
         # (fn-store-sn-open-extended's body).
-        self.assertIn("(fn-rii-sco-extend-open checkpoint config-records rows frontier)", recover)
+        # incremental-finalize (row A9, PRF-946 / PRF-992): the open from a
+        # checkpoint calls fn-sfi-extend-open with the F row's NEXT (the
+        # global fn-store-sco-next, kept by fn-store-sco-decode-finish) and
+        # finalizes over the suffix alone; KEYSTONE
+        # fn-sfi-extend-open-is-rii-extend-open equates it to
+        # fn-rii-sco-extend-open, which the full open (fn-store-sn-recover-rows)
+        # still calls.
+        self.assertIn("(fn-sfi-extend-open checkpoint config-records rows frontier next)", recover)
+        self.assertNotIn("fn-rii-sco-extend-open checkpoint", recover)
         self.assertNotIn("fn-arena", recover)
         self.assertIn("(fn-store-sn-open-classified", recover)
         rii0 = (ROOT / "books" / "replay-identity-index.lisp").read_text(encoding="ascii")
         self.assertIn("(defthm fn-rii-sco-extend-open-is-extend-then-open", rii0)
+        sfi = (ROOT / "books" / "store-finalize-incremental.lisp").read_text(encoding="ascii")
+        self.assertIn("(defthm fn-sfi-extend-open-is-rii-extend-open", sfi)
+        finish = native_cuts.host_function(node_host, "fn-store-sco-decode-finish")
+        self.assertIn("(fn-sct-tables-next (cadr loaded))", finish)
+        rows = native_cuts.host_function(node_host, "fn-store-sn-recover-rows")
+        self.assertIn("(fn-rii-sco-extend-open (fn-sco-capture config-records nil)", rows)
         # The open the host takes is fn-sco-store-open over the same
         # arguments, called directly or through the one ACL2 function the
         # host calls in its place (since 2e25e21b fn-sopc-classified-open,
