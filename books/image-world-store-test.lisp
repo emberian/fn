@@ -128,6 +128,7 @@
 (include-book "post-identity-catalog")
 (include-book "post-prepare-catalog")
 (include-book "post-retain-carried")
+(include-book "identity-retain-carried")
 (include-book "owner-prepare-served")
 (include-book "history-columns-store")
 (include-book "owner-log-route")

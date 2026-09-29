@@ -70,6 +70,7 @@
 ; The retention admission of a POST through a carried obligation-id trie
 ; (fn-prc-refresh, fn-prc-sbud-prepare; fn-owner-prepare-buffer).
 (include-book "../books/post-retain-carried")
+(include-book "../books/identity-retain-carried")
 ;; lane prepare-served: the served decision inside the prepares the host calls
 ;; (fn-psrv-prepare, fn-psrv-refusal-kind, fn-psrv-prepare-identity,
 ;; fn-psrv-prepare-topic) and the configuration un-stage (fn-psrv-unstage).
@@ -1801,10 +1802,22 @@
       ;; unchanged otherwise.
       ;; fn-pout-prepare-identity (books/owner-prepare-outcome.lisp) answers
       ;; its word (KEYSTONE fn-pout-prepare-identity-answers-the-store-change).
+      ;; served-costs-4 (Q5b): the prepare the host calls is
+      ;; fn-irc-pout-prepare-identity (books/identity-retain-carried.lisp)
+      ;; with the carried obligation-id trie brought to the Store node's
+      ;; ledger, as the article prepare above: the gate's record application
+      ;; answers the retention admission from the trie instead of scanning
+      ;; every pin and release (KEYSTONE
+      ;; fn-irc-pout-prepare-identity-of-refresh-is-pout: its word and owner
+      ;; are fn-pout-prepare-identity's for every carry the host holds).
+      (let ((carry (fn-prc-refresh (fn-owner-retain-carry state)
+                                   (fn-node-retention (fn-sn-node s)))))
       (mv-let (word next)
-        (fn-pout-prepare-identity (fn-owner-ocfg state) event (fn-arena-count fn-arena))
+        (fn-irc-pout-prepare-identity (fn-owner-ocfg state) event
+                                      (fn-arena-count fn-arena) carry)
       (let* ((row (fn-oii-identity-row event (fn-sn-keyring s) (fn-sn-keyring-generation s)
                                        (fn-arena-count fn-arena)))
+             (state (f-put-global 'fn-owner-retain-carry carry state))
              (state (fn-owner-install-ocfg next state)))
         (cond ((not (equal word :prepared)) (value word))
               ((fn-oii-identity-sealsp event)
@@ -1821,7 +1834,7 @@
                                (cons event row))
                              state)))
                  (value (list :seal (fn-oii-identity-payload event)))))
-              (t (value :prepared))))))))
+              (t (value :prepared)))))))))
 
 ; The consumer proposal is constructed by ACL2.  The host carries this exact
 ; bounded event into Store; it does not rebuild the scope, epoch or cursor.
@@ -2005,8 +2018,19 @@
   (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let* ((before (fn-owner-core state))
          (before-files (fn-sn-files (fn-own-store before)))
+         ;; served-costs-4 (Q5b): the completion the host calls is
+         ;; fn-irc-rix-ocfg-complete (books/identity-retain-carried.lisp),
+         ;; its gate and finish applying an identity, consumer or topic
+         ;; record through the carried obligation-id trie brought to the
+         ;; Store node's ledger (KEYSTONE
+         ;; fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete).
+         (carry (fn-prc-refresh (fn-owner-retain-carry state)
+                                (fn-node-retention
+                                 (fn-sn-node (fn-own-store before)))))
+         (state (f-put-global 'fn-owner-retain-carry carry state))
          (state (fn-owner-install-ocfg
-                 (fn-rix-ocfg-complete (fn-owner-ocfg state) fn-hist) state))
+                 (fn-irc-rix-ocfg-complete (fn-owner-ocfg state) fn-hist carry)
+                 state))
          (after (fn-owner-core state))
          (after-files (fn-sn-files (fn-own-store after))))
     (if (and (equal (fn-sf-phase before-files) :completing)

@@ -14390,6 +14390,72 @@
           "name": "fn-mpxt-spec-from-is-cat-seqs-for"
         }
       ]
+    },
+    {
+      "id": "PRF-1011",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-irc-pout-prepare-identity-of-refresh-is-pout"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-apply-record-is-replay-apply-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-node-prepare-is-node-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-sn-prepare-identity-is-ccar"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-ocfg-prepare-identity-is-ccar"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-psrv-prepare-identity-is-psrv"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-oiis-prepare-identity-is-oiis"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1012",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-rix-ocfg-complete-is-rix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-rix-own-complete-is-rix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-rix-own-complete-enabled-is-rix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-sn-finish-enabled-is-ccar"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-completion-enabledp-is-ccar"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-completion-core-enabledp-is-ccar"
+        }
+      ]
     }
   ]
 }

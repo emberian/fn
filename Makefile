@@ -546,6 +546,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-prepare-catalog-tests \
 	books/post-retain-carried \
 	tests/acl2/post-retain-carried-tests \
+	books/identity-retain-carried \
+	tests/acl2/identity-retain-carried-tests \
 	books/store-profile-carried \
 	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
