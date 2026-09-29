@@ -70,11 +70,13 @@ field-body  = *(WSP / VCHAR), containing at least one VCHAR
 
 Every initial field line has a colon followed by WSP, or ends at the colon
 when its body begins on a continuation line (RFC 5322 §2.2.3 folding:
-`References:` CRLF ` <id>`, row I5); every continuation starts with WSP.  A
-field is closed (by the next field or the header's end) only once its unfolded
-value is non-empty (`fn-article-field-closedp`, one test on the carried
-field), so a bare `References:` with no continuation is still an empty body,
-rejected `:invalid-header` (RFC 5536 §2.2).  Header bytes are US-ASCII only: each is SP, HTAB,
+`References: ` HTAB CRLF ` <id>`, row I5); every continuation starts with WSP.
+An empty or WSP-only initial value remains open. A field is closed (by the next
+field or the header's end) only once its unfolded value contains a VCHAR
+(`fn-article-field-closedp`). Both executed list and buffer accumulators maintain
+that visible-value bit while incorporating a bounded physical line; closing reads
+one flag and never scans an accumulated field. A bare or WSP-only `References:`
+with no visible continuation is rejected `:invalid-header` (RFC 5536 §2.2).  Header bytes are US-ASCII only: each is SP, HTAB,
 or VCHAR.  A continuation without a preceding field, an empty body, a control
 byte, a non-ASCII byte, or a malformed name is rejected.  This is deliberately
 stricter than RFC 5536's permission for receivers to accept a missing post-colon

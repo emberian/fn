@@ -15244,7 +15244,7 @@
     {
       "id": "PRF-935",
       "title": "The received article is parsed in place from the octet buffer, and its consumers answer their list references",
-      "statement": "books/article-buffer.lisp: fn-ars-parse-under LIMITS fn-octets is fn-article-parse-under with the octet list replaced by an index into the buffer; its result is the reference's with the body LOCATED, not copied (fn-ars-of: (:ok (HEADER OFFSET FIELDS)) for (:ok (HEADER BODY FIELDS)), every error the same). KEYSTONE fn-ars-parse-under-is-article-parse-under: under fn-octets-p (the buffer's invariant; a cell that is not an octet is what the reference's preflight refuses and the buffer cannot hold) the twin equals fn-ars-of the reference parse of the buffer's value; fn-ars-body-is-located: the reference's body is the buffer's suffix at the twin's OFFSET. The consumers the host calls are each equal to their reference over the buffer's value: fn-ars-lb-ocfg-gate-is-reference (fn-lb-ocfg-gate, the served POST's login gate), fn-ars-filing-plan-is-reference (fn-pa-filing-plan, C1), fn-ars-carrier-form-is-reference (fn-pa-carrier-form), fn-ars-current-plan-is-reference (fn-pa-current-plan); every keystone about the references applies to the host's verdict. Every executable is guard-verified. host/owner-host.lisp fn-owner-login-gate-buffer, fn-owner-control-filing-buffer, fn-owner-peer-carrier-form-buffer and fn-owner-peer-carrier-plan-buffer are the entries; host/native/owner.lisp fnn-owner-attempt-served and fnn-owner-attempt-transit call them after fnn-octets-fill of the payload, so no octet list of the article is built for them.",
+      "statement": "books/article-buffer.lisp: fn-ars-parse-under LIMITS fn-octets is fn-article-parse-under with the octet list replaced by an index into the buffer; its result is the reference's with the body LOCATED, not copied (fn-ars-of: (:ok (HEADER OFFSET FIELDS)) for (:ok (HEADER BODY FIELDS)), every error the same). KEYSTONE fn-ars-parse-under-is-article-parse-under: under fn-octets-p (the buffer's invariant; a cell that is not an octet is what the reference's preflight refuses and the buffer cannot hold) the twin equals fn-ars-of the reference parse of the buffer's value; fn-ars-body-is-located: the reference's body is the buffer's suffix at the twin's OFFSET. The consumers the host calls are each equal to their reference over the buffer's value: fn-ars-lb-ocfg-gate-is-reference (fn-lb-ocfg-gate, the served POST's login gate), fn-ars-filing-plan-is-reference (fn-pa-filing-plan, C1), fn-ars-carrier-form-is-reference (fn-pa-carrier-form), fn-ars-current-plan-is-reference (fn-pa-current-plan); every keystone about the references applies to the host's verdict. Every executable is guard-verified. host/owner-host.lisp fn-owner-login-gate-buffer, fn-owner-control-filing-buffer, fn-owner-peer-carrier-form-buffer and fn-owner-peer-carrier-plan-buffer are the entries; host/native/owner.lisp fnn-owner-attempt-served and fnn-owner-attempt-transit call them after fnn-octets-fill of the payload, so no octet list of the article is built for them. The buffer parser now executes fn-ars-parse-lines-acc via mbe: fn-ars-parse-lines-acc-is-parse-lines equates complete verdict/header/body-offset/fields under the carried visible flag invariant, maintained per bounded physical line. WSP-only initial values stay open; closing scans no accumulated value.",
       "milestone": "M5",
       "requirements": [
         "HST-001",
@@ -15262,14 +15262,16 @@
         "fn-ars-lb-ocfg-gate-is-reference",
         "fn-ars-filing-plan-is-reference",
         "fn-ars-carrier-form-is-reference",
-        "fn-ars-current-plan-is-reference"
+        "fn-ars-current-plan-is-reference",
+        "fn-ars-parse-lines-acc-is-parse-lines"
       ],
       "evidence": [
         "planning/evidence/d27-representation-2026-09-29.md",
         "books/article-buffer.lisp",
-        "tests/acl2/article-buffer-tests.lisp"
+        "tests/acl2/article-buffer-tests.lisp",
+        "tests/test_native_header_lines.py"
       ],
-      "progress_note": "Lane d27-representation (D27 boundary 9, row Q2 of COMPLETE-BEFORE-6.6.0, 2026-09-29). Teeth in tests/acl2/article-buffer-tests.lisp: the positive witness in the live buffer, every error arm, the hypothesis-removal witness on the logical definitions (a cell of 300: the reference refuses, the twin parses on), the consumers' witnesses. Not here: the signed arm's source as a buffer range (PKT-743); a header-parse cache across the transit's four calls."
+      "progress_note": "Lane d27-representation (D27 boundary 9, row Q2 of COMPLETE-BEFORE-6.6.0, 2026-09-29). Teeth in tests/acl2/article-buffer-tests.lisp: the positive witness in the live buffer, every error arm, the hypothesis-removal witness on the logical definitions (a cell of 300: the reference refuses, the twin parses on), the consumers' witnesses. Not here: the signed arm's source as a buffer range (PKT-743); a header-parse cache across the transit's four calls. I5 whitespace-first increment: executed buffer accumulator refinement and guards REPL-admitted; live-buffer and literal carry teeth green. Whole parser consumer closure and matching native image remain runner obligations; no qualified claim."
     },
     {
       "id": "PRF-960",
@@ -16893,7 +16895,7 @@
     {
       "id": "PRF-981",
       "title": "The executed article parse folds each continuation line in its own length and returns exactly the reference parse",
-      "statement": "books/article.lisp. KEYSTONE fn-article-parse-lines-acc-is-parse-lines: on every input, fn-article-parse-lines-acc (the field under construction carried reversed: fn-article-add-fold-open, a cons and a revappend of the line) returns what fn-article-parse-lines returns with the reversed field closed (fn-article-close-field). Subject: fn-article-parse-under, whose :exec branch (mbe) runs the accumulator loop; it is called by fn-article-parse, which the host calls throughout (e.g. host/bp-ingress-host.lisp and every owner reader through books/owner-parse-carried fn-apc-parse). Cost: books/article-work.lisp fn-aw-add-fold-open-cost, the executed fold step costs 2 + (len line), against fn-aw-add-fold-cost's growth with the field (PKT-552/770). The whole-parse work bound (fn-article-parse-under-work-input-bound) remains stated over the reference loop.",
+      "statement": "books/article.lisp. KEYSTONE fn-article-parse-lines-acc-is-parse-lines: on every input with a null or invariant open-field carry, fn-article-parse-lines-acc (the field under construction carried reversed with an invariant visible-value flag: fn-article-add-fold-open, a cons and a revappend of the line) returns what fn-article-parse-lines returns with the reversed field closed (fn-article-close-field). Subject: fn-article-parse-under, whose :exec branch (mbe) runs the accumulator loop; it is called by fn-article-parse, which the host calls throughout (e.g. host/bp-ingress-host.lisp and every owner reader through books/owner-parse-carried fn-apc-parse). Cost: books/article-work.lisp fn-aw-add-fold-open-cost, the executed fold step costs at most 3 + 2*(len line), including visible-bit establishment on a WSP-only first-line value, against fn-aw-add-fold-cost's growth with the field (PKT-552/770). The whole-parse work bound (fn-article-parse-under-work-input-bound) remains stated over the reference loop.",
       "milestone": "M5",
       "requirements": [
         "STO-030"
@@ -16903,9 +16905,12 @@
       "status": "certified",
       "evidence": [
         "books/article.lisp",
-        "books/article-work.lisp"
+        "books/article-work.lisp",
+        "tests/acl2/article-tests.lisp",
+        "tests/acl2/article-work-tests.lisp",
+        "tests/test_native_header_lines.py"
       ],
-      "progress_note": "Lane served-costs (2026-09-29): REPL-admitted on hbox (article.lisp whole book 4.05 s; the correspondence 0.25 s); certification owed with the affected roots.",
+      "progress_note": "Lane served-costs (2026-09-29): REPL-admitted on hbox (article.lisp whole book 4.05 s; the correspondence 0.25 s); certification owed with the affected roots. I5 whitespace-first continuation increment: first-line WSP is retained raw and unfolded; list and buffer accumulator close is a maintained visible-value bit, with guard/refinement and literal corruption/mutation teeth. Native matching and source certification remain pending.",
       "events": [
         "fn-article-parse-lines-acc-is-parse-lines",
         "fn-aw-add-fold-open-cost"
