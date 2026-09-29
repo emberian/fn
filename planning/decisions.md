@@ -104,6 +104,17 @@ profile grammar and legacy-variant comparison policy remain design work.
 Do not settle this by saying “canonicalize headers”: that hides the difficult
 part. Acceptance must still handle ordinary NNTP clients without fn extensions.
 
+The served Xref line is one such projection. ARTICLE and HEAD serve this
+node's `Xref:` as one line that LEADS the stored header, built at reply time
+from the local numbering (`fn-rcompat-served-payload`,
+books/nntp-reader-compat.lisp); it is never stored and never part of the
+signed source. Keystone `fn-rcompat-served-payload-inserts-one-line`: the
+served octets are that one line followed by the stored octets unchanged, so
+an authored article's signed source stays a suffix of what ARTICLE serves
+(PKT-716, fixed forward at 7b15db39). A tombstone, an article with no Xref
+pairs, or stored octets that do not split into head and body are served as
+stored.
+
 ### D02 and D09: who holds the keys
 
 Native author-signature support does not require every post to be signed. It
