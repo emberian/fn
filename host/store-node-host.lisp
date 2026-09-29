@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "../books/store-observed")
 (include-book "../books/history-columns-relation")
+(include-book "../books/open-frontier")
 ; D25: the duplicate-versus-conflict decision keys on the poster's bytes.
 (include-book "../books/poster-bytes")
 (include-book "../books/native-config-observation")
@@ -257,6 +258,21 @@
   ; Each durable configuration record decodes exactly, or the list is :bad.
   (declare (xargs :mode :program))
   (fn-store-cfg-decode-records-loop octet-records nil))
+
+;; The open's frontier over the configuration history: each record names
+;; the next unconsumed Store txid when it was accepted (a POST refused on a
+;; full budget consumes its txid and leaves no record, so a record may stand
+;; above every event).  The fold is books/open-frontier.lisp
+;; fn-ofr-configs-next, the configuration half of fn-ofr-frontier, which
+;; fn-ofr-replay-ok-frontier-admits proves admits every history the replay
+;; accepts (the checkpoint-damaged bug, operability review 2026-09-29).
+;; :bad records answer ACC: the open refuses them itself.
+(defun fn-store-cfg-next-txid (octet-records acc)
+  (declare (xargs :mode :program))
+  (let ((records (fn-store-cfg-decode-records octet-records)))
+    (if (equal records :bad)
+        (nfix acc)
+      (fn-ofr-configs-next records acc))))
 
 (defun fn-store-cfg-native-admin-authorize
     (octet-records frontier config-octet-records record-octets lock-owned observed-name-octets

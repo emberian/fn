@@ -640,7 +640,9 @@
                                               (mv f fn-octets-lg fn-arena state)
                                             (let* ((kernel (cadr r))
                                                    (next (fn-store-log-next-txid-join
-                                                          (fn-store-log-next-txid-join (nth 3 replay) 0)
+                                                          (fn-store-log-next-txid-join
+                                                           (fn-store-log-next-txid-join (nth 3 replay) 0)
+                                                           (fn-store-cfg-next-txid (cadr config-records) 0))
                                                           (fn-lgc-next-txid kernel))))
                                               (mv-let (erp action state)
                                                 (fn-store-sn-recover-rows (fn-srs-rows (nth 0 replay))

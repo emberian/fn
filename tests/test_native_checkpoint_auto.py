@@ -237,6 +237,38 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         self.assertEqual(self.digest(), published)
         self.assertEqual(self.open_line(), "open=checkpoint:64 suffix=0")
 
+    def test_a_configuration_record_on_a_full_store_after_a_checkpoint_reopens(self):
+        """The operability review's walk F3 (2026-09-29): posts refused on a
+        full transaction budget leave their txids unrecorded, so a
+        configuration record accepted next stands above every event; the
+        open's frontier is joined with the configuration history's
+        (fn-store-cfg-next-txid), or the reopen over the checkpoint refused
+        `checkpoint-damaged' and no verb could open the store."""
+        created = self.op("init", "--profile", "development", "--max-transactions", "12",
+                          "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        owner = self.node.start()
+        outcomes = []
+        for n in range(13):
+            message_id = "<full-{}@example.invalid>".format(n)
+            payload = ("From: a <a@example.invalid>\r\nNewsgroups: fn.test\r\n"
+                       "Subject: full {}\r\nMessage-ID: {}\r\n"
+                       "Date: Tue, 29 Sep 2026 00:00:00 +0000\r\n\r\nbody\r\n"
+                       .format(n, message_id)).encode("ascii")
+            done = self.node.post(message_id, payload)
+            outcomes.append(done.returncode)
+        self.assertIn(EXIT_OK, outcomes)
+        self.assertEqual(outcomes[-1], 1, "the thirteenth post is refused: the budget is full")
+        self.assertIsNotNone(self.owner_line(owner, CHECKPOINT_AUTO),
+                             "no automatic publication within the deadline")
+        made = self.op("group", "create", "fn.live")
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
+        self.node.stop(process=owner)
+        lines = self.status_lines()
+        self.assertTrue(any(line.startswith("open=checkpoint:") for line in lines), lines)
+        again = self.node.start()
+        self.node.stop(process=again)
+
     def test_a_publication_past_the_budget_is_deferred_by_name_and_serving_continues(self):
         self.init_development()
         budget = 1024

@@ -55,10 +55,11 @@
 ; record for A = 32,768 is 38,027 octets, within R) and K = 128; A = 32,768 is
 ; the base's.  The development base's own R is 17,138,486 (the article record
 ; for its G = 65,535), past this H.  Its figure fits a 1,536 MiB machine
-; for any core up to 192 MiB (`fn-heap-small-profile-run-fits-a-small-machine':
-; OpenBSD's default login class allows 1536M of data) and a 2,048 MiB machine
-; for any core up to 512 MiB (`fn-heap-small-profile-run-fits-a-two-gib-
-; machine': the friend's machine has about 2 GB).  `init' with no preset word
+; for any core up to 512 MiB (`fn-heap-small-profile-run-fits-a-small-machine':
+; OpenBSD's default login class allows 1536M of data; lane heap-bounds held
+; it to 192 MiB until lane heap-pool charged the header) and so a 2,048 MiB
+; one (`fn-heap-small-profile-run-fits-a-two-gib-machine': the friend's
+; machine has about 2 GB).  `init' with no preset word
 ; and no field flag writes it on a machine under 4 GiB (`fn-heap-init-request').
 
 (in-package "ACL2")
@@ -684,33 +685,33 @@
 ;; most 2 H, not 3 H).  Since lane heap-bounds (row B2) the records' term is
 ;; derived from the profile's limits (books/heap-store-figure.lisp,
 ;; KEYSTONE fn-heap-records-retained-within-the-terms) rather than a measured
-;; 12 KiB a record, which records with long headers exceeded: at its bounds
-;; (T = 16,384 records, H = 8 MiB) the retained state alone is 1,032 MiB --
-;; 2 x 16,384 x 16,096 (the fixed part and a 250-octet Message-ID a record),
-;; 2 x 32 x 8 MiB (every history octet a header octet: the header columns),
-;; 2 H, the empty arena's page, the handles -- and a full replay of such a
-;; store adds at most 108 MiB (one chunk and one record as lists, the input's
-;; vectors, 1 KiB a record); a `run' sizes the open by the store on disk
-;; (`fn-heap-operation-decide', :run), so the empty store's chunk term is 0
-;; (lane heap-bounds, B4).  The articles in flight (lane zero-copy-commit)
-;; add 48.5 MiB: 32 slots of 1,589,248 octets (an article of A = 32 KiB, its
-;; header bound and a line, as lists, twice for the collector).  The run of
-;; an empty small store is accepted on every machine of at least 1,536 MiB
-;; (OpenBSD's default login class) for an image of up to 192 MiB of dynamic
-;; content (the production image's is 141 MiB), and on every machine of at
-;; least 2,048 MiB (the friend's machine has about 2 GB) for any image up to
-;; 512 MiB.  (Before lane heap-bounds the first held for any image up to
-;; 512 MiB; that was the 12 KiB constant's figure, below the need.)
+;; 12 KiB a record, which records with long headers exceeded; and since lane
+;; heap-pool (B9) the header state is CHARGED to the history budget (8 history
+;; octets a header octet, 12 more a Message-ID octet: books/store-budget.lisp
+;; fn-sbud-held-heap-charge), so at its bounds (T = 16,384 records, H = 8 MiB)
+;; the retained state is 209 MiB -- 2 x 16,384 x 4,096 (the fixed part a
+;; record), 8 x 8 MiB (the header charge's heap), 2 H, the empty arena's page,
+;; the handles -- where lane heap-bounds' uncharged term made it 1,032 MiB; a
+;; full replay of such a store adds at most 108 MiB (one chunk and one record
+;; as lists, the input's vectors, 1 KiB a record); a `run' sizes the open by
+;; the store on disk (`fn-heap-operation-decide', :run), so the empty store's
+;; chunk term is 0 (lane heap-bounds, B4).  The articles in flight (lane
+;; zero-copy-commit) add 48.5 MiB: 32 slots of 1,589,248 octets (an article
+;; of A = 32 KiB, its header bound and a line, as lists, twice for the
+;; collector).  The run of an empty small store is accepted on every machine
+;; of at least 1,536 MiB (OpenBSD's default login class) for any image up to
+;; 512 MiB of dynamic content, and on 2,048 MiB too (the friend's machine
+;; has about 2 GB).
 (defthm fn-heap-small-run-base-of-an-empty-store
   (equal (fn-heap-store-base-octets *fn-heap-small-profile* core '(0 . 0))
-         (+ (fn-heap-core-dynamic core) 1191575754))
+         (+ (fn-heap-core-dynamic core) 328597706))
   :hints (("Goal" :in-theory (enable fn-heap-store-base-octets fn-heap-open-octets-bound
                                      fn-heap-open-records-bound))))
 
 ; (A hypothesis bounding the nursery cap was removed after proving the
 ; weakened theorem: the trigger is at most a sixteenth of the space.)
 (defthm fn-heap-small-profile-run-fits-a-small-machine
-  (implies (and (<= (fn-heap-core-dynamic core) (* 192 *fn-heap-mib*))
+  (implies (and (<= (fn-heap-core-dynamic core) (* 512 *fn-heap-mib*))
                 (posp machine) (<= (* 1536 *fn-heap-mib*) machine))
            (equal (car (fn-heap-operation-decide :run *fn-heap-small-profile* core nursery
                                                  (list machine) '(0 . 0)))

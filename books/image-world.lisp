@@ -186,6 +186,7 @@
 (include-book "store-log-extend")
 (include-book "store-init-log-publication")
 (include-book "history-columns-relation")
+(include-book "open-frontier")
 (include-book "poster-bytes")
 (include-book "native-config-observation")
 (include-book "store-sweep")

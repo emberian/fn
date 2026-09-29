@@ -6810,13 +6810,15 @@ refused by name."
       (unless (eq action :recovering)
         ;; A replay that stopped names itself (fn-store-open-refusal-text:
         ;; books/store-open-replay-refusal.lisp); else the checkpoint is damaged.
-        (let ((text (and (eq action :refused) (fnn-core-state 'fn-store-open-refusal-text))))
+        (let ((text (and (eq action :refused) (fnn-core-state 'fn-store-open-refusal-text)))
+              (stop (and (eq action :fault) (fnn-core-state 'fn-store-open-stop-text))))
           (fnn-core-state 'fn-store-sco-clear)
           (fnn-bridge-reset)
           (error 'fnn-store-open-refusal
-                 :message (if (stringp text)
-                              text
-                            "open refused reason=checkpoint-damaged: the checkpoint that covers the dropped log segments does not open")))))
+                 :message (cond ((stringp text) text)
+                                ((stringp stop)
+                                 (format nil "open refused reason=checkpoint-damaged: the checkpoint that covers the dropped log segments does not open: ~a" stop))
+                                (t "open refused reason=checkpoint-damaged: the checkpoint that covers the dropped log segments does not open"))))))
     (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
     ;; The history's count (PKT-823); the prefix stays in the arena and the
     ;; checkpoint's rows, encoded only for a verb that reads the history
@@ -6936,8 +6938,14 @@ does, and records how the log holds the history (fnn-store-log-history) for
               ;; The frontier: the fold, at least the checkpoint's frontier at S
               ;; (the dropped segments' txids) and the log kernel's next, and
               ;; the log kernel caught up to it.
+              ;; And past every configuration record's txid
+              ;; (fn-store-cfg-next-txid): a record accepted while POSTs were
+              ;; refused on a full budget stands above every event.
               (let ((next (fnn-nat (fnn-core 'fn-store-log-next-txid-join
-                                             (fnn-core 'fn-store-log-next-txid-join acc floor)
+                                             (fnn-core 'fn-store-log-next-txid-join
+                                                       (fnn-core 'fn-store-log-next-txid-join acc floor)
+                                                       (fnn-core 'fn-store-cfg-next-txid
+                                                                 (mapcar #'fnn-octet-list config-records) 0))
                                              (fnn-core 'fn-lgc-next-txid (fnn-log-kernel log))))))
                 (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-consume-to (fnn-log-kernel log) next)
                       (fnn-store-log store) log

@@ -4465,6 +4465,16 @@
         {
           "kind": "theorem",
           "name": "fn-sbud-article-figure-bounds-the-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-gate-figure-bounds-every-record",
+          "note": "Lane heap-pool: the gate figure (the record figure and the header charge at its worst) bounds every record of two payload octets or more, wide or narrow, at any producer width (the widest overhead is 28 octets past the narrow ceiling)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-verdict-keeps-history-for-every-record",
+          "note": "KEYSTONE (lane heap-pool): an article the gate admits never pushes history past H, for every record of two payload octets or more, without the narrowness or u32-charge hypotheses (the gate's header figure covers the widening). Teeth tests/acl2/store-budget-article-tests.lisp."
         }
       ]
     },
@@ -7115,12 +7125,17 @@
         {
           "kind": "theorem",
           "name": "fn-heap-records-retained-within-the-terms",
-          "note": "KEYSTONE (lane heap-bounds, B2): the state retained by records admissible under the profile (Message-ID within 250, header within max-header-octets and a part of the payload) is within the figure's record terms: *fn-heap-record-octets* a record and the header term fn-heap-record-headers-octets of min(USED, N x HDR). Per-octet costs named in books/heap-store-figure.lisp from the retained structures; teeth tests/acl2/heap-figure-tests.lisp."
+          "note": "KEYSTONE (lane heap-bounds, B2; restated by lane heap-pool, B9): the state records (MID HDR PAYLOAD) retain, twice for the collector, is within the figure's record terms: *fn-heap-record-octets* (the fixed part) a record and *fn-heap-charge-heap-octets* (8) a charged octet of USED (payloads and header charges). The header charge is the history budget's (books/store-budget.lisp fn-sbud-held-heap-charge: 8 a header octet, 12 more a Message-ID octet; fn-heap-record-charge-is-the-budgets-charge), so a header-heavy store reaches H sooner and is refused by name (unaffordable). Teeth tests/acl2/heap-figure-tests.lisp."
         },
         {
           "kind": "theorem",
           "name": "fn-heap-small-profile-run-fits-a-two-gib-machine",
           "note": "Lane heap-bounds: the small run holds any core up to 512 MiB on 2,048 MiB; on 1,536 MiB only up to 192 MiB (fn-heap-small-profile-run-fits-a-small-machine, restated)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-record-charge-is-the-budgets-charge",
+          "note": "Lane heap-pool: the model's record charge is the history budget's charge of a held row (fn-sbud-held-heap-charge over fn-sbud-held-header-octets and fn-sbud-held-msgid-octets)."
         }
       ]
     },
@@ -11412,7 +11427,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cvec-statement-row-within-its-figure"
+          "name": "fn-cvec-statement-row-within-its-figure",
+          "note": "Lane heap-pool: a composite's charge (encoding, 320 a group, its article's header charge) is within its figure when its encoding and its article's octets are within the kind's ceiling; the admission's runtime check is the charge against the figure (fn-cvec-record-admittedp). Before lane heap-pool the two were equivalent (no header charge)."
         },
         {
           "kind": "theorem",
@@ -11421,6 +11437,11 @@
         {
           "kind": "theorem",
           "name": "fn-oii-publication-group-count-is-the-rows"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-held-row-within-its-figure",
+          "note": "Lane heap-pool: a held row's charge (payload, 320 a group, its header charge) is within the figure its article was admitted at (fn-sbud-article-figure: the charge at its worst, 8 P + 12 x 250)."
         }
       ]
     },
@@ -13511,6 +13532,23 @@
         {
           "kind": "theorem",
           "name": "fn-bpcc-frame-decode-of-sealed"
+        }
+      ]
+    },
+    {
+      "id": "PRF-937",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ofr-replay-ok-frontier-admits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofr-loop-ok-within-frontier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofr-apply-record-idle-past-txid"
         }
       ]
     }
