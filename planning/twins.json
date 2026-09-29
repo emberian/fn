@@ -1,0 +1,3346 @@
+{
+ "description": "reference <-> executable twins read from a world dump (tools/coverage.py twins; regenerate with --write)",
+ "coordinate": {
+  "source_revision": "9d659e6d4d227f6683bc664816a2e69cbdf710cb",
+  "box": "persvati",
+  "dump_sha256": "6a4eb704cc38893ff382939739ed87488531d11cc8a75a4c703b6f46abc05fdb",
+  "date": "2026-09-29"
+ },
+ "counts": {
+  "defattach": 13,
+  "mbe": 334,
+  "name": 39
+ },
+ "pairs": [
+  {
+   "reference": "create-fn-arena$a",
+   "executable": "create-fn-arena",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/payload-arena-bytes.lisp",
+   "executable_book": "books/payload-arena.lisp"
+  },
+  {
+   "reference": "create-fn-arena$a",
+   "executable": "create-fn-arena$c",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/payload-arena-bytes.lisp",
+   "executable_book": "books/payload-arena-bytes.lisp"
+  },
+  {
+   "reference": "create-fn-cat$a",
+   "executable": "create-fn-cat",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/catalog.lisp",
+   "executable_book": "books/catalog.lisp"
+  },
+  {
+   "reference": "create-fn-cat$a",
+   "executable": "create-fn-cat$c",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/catalog.lisp",
+   "executable_book": "books/catalog.lisp"
+  },
+  {
+   "reference": "create-fn-hist$a",
+   "executable": "create-fn-hist",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/history-columns.lisp",
+   "executable_book": "books/history-columns.lisp"
+  },
+  {
+   "reference": "create-fn-hist$a",
+   "executable": "create-fn-hist$c",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/history-columns.lisp",
+   "executable_book": "books/history-columns.lisp"
+  },
+  {
+   "reference": "create-fn-octets$a",
+   "executable": "create-fn-octets",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/octets-stobj.lisp",
+   "executable_book": "books/octets-stobj.lisp"
+  },
+  {
+   "reference": "create-fn-octets$a",
+   "executable": "create-fn-octets$c",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/octets-stobj.lisp",
+   "executable_book": "books/octets-stobj.lisp"
+  },
+  {
+   "reference": "fn-ag-append",
+   "executable": "fn-ag-append-exec",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/acceptance-alloc.lisp",
+   "executable_book": "books/acceptance-alloc.lisp"
+  },
+  {
+   "reference": "fn-allocate-memberships",
+   "executable": "fn-allocate-memberships-loop",
+   "via": [
+    "mbe in fn-allocate-memberships"
+   ],
+   "reference_book": "books/acceptance-alloc.lisp",
+   "executable_book": "books/acceptance-alloc.lisp"
+  },
+  {
+   "reference": "fn-arp-write-buffer",
+   "executable": "fn-arp-write-run",
+   "via": [
+    "mbe in fn-arp-write-buffer"
+   ],
+   "reference_book": "books/payload-arena-paged.lisp",
+   "executable_book": "books/payload-arena-paged.lisp"
+  },
+  {
+   "reference": "fn-article-get-headers-aux",
+   "executable": "fn-article-get-headers-aux-loop",
+   "via": [
+    "mbe in fn-article-get-headers-aux"
+   ],
+   "reference_book": "books/article.lisp",
+   "executable_book": "books/article.lisp"
+  },
+  {
+   "reference": "fn-article-result-article",
+   "executable": "fn-ag-car",
+   "via": [
+    "mbe in fn-bpi-ag-result-article"
+   ],
+   "reference_book": "books/article.lisp",
+   "executable_book": "books/acceptance-alloc.lisp"
+  },
+  {
+   "reference": "fn-articles-freshp",
+   "executable": "fn-fr-freshp",
+   "via": [
+    "mbe in fn-articles-freshp"
+   ],
+   "reference_book": "books/acceptance.lisp",
+   "executable_book": "books/acceptance.lisp"
+  },
+  {
+   "reference": "fn-b3-byte",
+   "executable": "fn-octets-get",
+   "via": [
+    "mbe in fn-b3x-byte"
+   ],
+   "reference_book": "books/blake3.lisp",
+   "executable_book": "books/octets-stobj.lisp"
+  },
+  {
+   "reference": "fn-b3-firstn",
+   "executable": "fn-b3-firstn-loop",
+   "via": [
+    "mbe in fn-b3-firstn"
+   ],
+   "reference_book": "books/blake3.lisp",
+   "executable_book": "books/blake3.lisp"
+  },
+  {
+   "reference": "fn-b3-fix-octets-walk",
+   "executable": "fn-b3-fix-octets-walk-loop",
+   "via": [
+    "mbe in fn-b3-fix-octets-walk"
+   ],
+   "reference_book": "books/blake3.lisp",
+   "executable_book": "books/blake3.lisp"
+  },
+  {
+   "reference": "fn-b3-words",
+   "executable": "fn-b3-words-loop",
+   "via": [
+    "mbe in fn-b3-words"
+   ],
+   "reference_book": "books/blake3.lisp",
+   "executable_book": "books/blake3.lisp"
+  },
+  {
+   "reference": "fn-b3-words-octets",
+   "executable": "fn-b3-words-octets-loop",
+   "via": [
+    "mbe in fn-b3-words-octets"
+   ],
+   "reference_book": "books/blake3.lisp",
+   "executable_book": "books/blake3.lisp"
+  },
+  {
+   "reference": "fn-b3x-words",
+   "executable": "fn-b3x-words-loop",
+   "via": [
+    "mbe in fn-b3x-words"
+   ],
+   "reference_book": "books/blake3-stobj.lisp",
+   "executable_book": "books/blake3-stobj.lisp"
+  },
+  {
+   "reference": "fn-blake3",
+   "executable": "fn-blake3-of-prefixed-buffer",
+   "via": [
+    "mbe in pgs-x-words-digest"
+   ],
+   "reference_book": "books/blake3.lisp",
+   "executable_book": "books/blake3-stobj.lisp"
+  },
+  {
+   "reference": "fn-bp-replace-work",
+   "executable": "fn-bp-replace-work-loop",
+   "via": [
+    "mbe in fn-bp-replace-work"
+   ],
+   "reference_book": "books/bp-workflow.lisp",
+   "executable_book": "books/bp-workflow.lisp"
+  },
+  {
+   "reference": "fn-bp-restart-works",
+   "executable": "fn-bp-restart-works-loop",
+   "via": [
+    "mbe in fn-bp-restart-works"
+   ],
+   "reference_book": "books/bp-workflow.lisp",
+   "executable_book": "books/bp-workflow.lisp"
+  },
+  {
+   "reference": "fn-bp-work-ids",
+   "executable": "fn-bp-work-ids-loop",
+   "via": [
+    "mbe in fn-bp-work-ids"
+   ],
+   "reference_book": "books/bp-workflow-records.lisp",
+   "executable_book": "books/bp-workflow-records.lisp"
+  },
+  {
+   "reference": "fn-bpaj-apply-record",
+   "executable": "fn-bpaj-apply-record-fast",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/bp-native-app.lisp",
+   "executable_book": "books/bp-native-app-fast.lisp"
+  },
+  {
+   "reference": "fn-bpaj-config-status",
+   "executable": "fn-bpaj-config-status-fast",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/bp-native-app-fast.lisp",
+   "executable_book": "books/bp-native-app-fast.lisp"
+  },
+  {
+   "reference": "fn-bpaj-context-record",
+   "executable": "fn-bpaj-context-record-fast",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/bp-native-app.lisp",
+   "executable_book": "books/bp-native-app-fast.lisp"
+  },
+  {
+   "reference": "fn-bpaj-dispatch",
+   "executable": "fn-bpaj-dispatch-fast",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/bp-native-app.lisp",
+   "executable_book": "books/bp-native-app-fast.lisp"
+  },
+  {
+   "reference": "fn-bpaj-pending-receipt-resolution",
+   "executable": "fn-bpaj-pending-receipt-resolution-fast",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/bp-native-app.lisp",
+   "executable_book": "books/bp-native-app-fast.lisp"
+  },
+  {
+   "reference": "fn-bpaj-record-lookup",
+   "executable": "fn-bpaj-record-lookup-fast",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/bp-native-app.lisp",
+   "executable_book": "books/bp-native-app-fast.lisp"
+  },
+  {
+   "reference": "fn-bpaj-request-status",
+   "executable": "fn-bpaj-request-status-fast",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/bp-native-app.lisp",
+   "executable_book": "books/bp-native-app-fast.lisp"
+  },
+  {
+   "reference": "fn-bpaj-transit-record-lookup",
+   "executable": "fn-bpaj-transit-record-lookup-fast",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/bp-native-app.lisp",
+   "executable_book": "books/bp-native-app-fast.lisp"
+  },
+  {
+   "reference": "fn-bpf-cut",
+   "executable": "fn-bpf-cut-fast",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/bp-fragment.lisp",
+   "executable_book": "books/bp-fragment-fast.lisp"
+  },
+  {
+   "reference": "fn-bpf-fragment",
+   "executable": "fn-bpf-fragment-fast",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/bp-fragment.lisp",
+   "executable_book": "books/bp-fragment-fast.lisp"
+  },
+  {
+   "reference": "fn-bpf-reassemble",
+   "executable": "fn-bpf-reassemble-fast",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/bp-fragment.lisp",
+   "executable_book": "books/bp-fragment-fast.lisp"
+  },
+  {
+   "reference": "fn-bpfw-advance",
+   "executable": "fn-bpfw-advance-loop",
+   "via": [
+    "mbe in fn-bpfw-advance"
+   ],
+   "reference_book": "books/bp-fragment-sweep.lisp",
+   "executable_book": "books/bp-fragment-sweep.lisp"
+  },
+  {
+   "reference": "fn-bpfw-evens",
+   "executable": "fn-bpfw-evens-loop",
+   "via": [
+    "mbe in fn-bpfw-evens"
+   ],
+   "reference_book": "books/bp-fragment-sweep.lisp",
+   "executable_book": "books/bp-fragment-sweep.lisp"
+  },
+  {
+   "reference": "fn-bpfw-merge",
+   "executable": "fn-bpfw-merge-loop",
+   "via": [
+    "mbe in fn-bpfw-merge"
+   ],
+   "reference_book": "books/bp-fragment-sweep.lisp",
+   "executable_book": "books/bp-fragment-sweep.lisp"
+  },
+  {
+   "reference": "fn-bpn-step",
+   "executable": "fn-bpn-dispatch",
+   "via": [
+    "mbe in fn-bpn-step"
+   ],
+   "reference_book": "books/bp-node-machine.lisp",
+   "executable_book": "books/bp-node-machine.lisp"
+  },
+  {
+   "reference": "fn-bpnd-handoffs-debt",
+   "executable": "fn-bpnd-handoffs-debt-loop",
+   "via": [
+    "mbe in fn-bpnd-handoffs-debt"
+   ],
+   "reference_book": "books/bp-node-debt.lisp",
+   "executable_book": "books/bp-node-debt.lisp"
+  },
+  {
+   "reference": "fn-bpnd-held-list-debt",
+   "executable": "fn-bpnd-held-list-debt-loop",
+   "via": [
+    "mbe in fn-bpnd-held-list-debt"
+   ],
+   "reference_book": "books/bp-node-debt.lisp",
+   "executable_book": "books/bp-node-debt.lisp"
+  },
+  {
+   "reference": "fn-bpnd-open-plans-debt",
+   "executable": "fn-bpnd-open-plans-debt-loop",
+   "via": [
+    "mbe in fn-bpnd-open-plans-debt"
+   ],
+   "reference_book": "books/bp-node-debt.lisp",
+   "executable_book": "books/bp-node-debt.lisp"
+  },
+  {
+   "reference": "fn-bpnf-family-consumed-ids",
+   "executable": "fn-bpnf-family-consumed-ids-loop",
+   "via": [
+    "mbe in fn-bpnf-family-consumed-ids"
+   ],
+   "reference_book": "books/bp-node-fragment-plan.lisp",
+   "executable_book": "books/bp-node-fragment-plan.lisp"
+  },
+  {
+   "reference": "fn-bpnf-family-next-aux",
+   "executable": "fn-bpnf-family-select",
+   "via": [
+    "mbe in fn-bpnf-family-next"
+   ],
+   "reference_book": "books/bp-node-fragment-step.lisp",
+   "executable_book": "books/bp-node-fragment-step.lisp"
+  },
+  {
+   "reference": "fn-bpnf-recovery-heldp",
+   "executable": "fn-bpnf-recovery-heldp-fast",
+   "via": [
+    "mbe in fn-bpnf-recovery-heldp",
+    "name"
+   ],
+   "reference_book": "books/bp-node-foundation.lisp",
+   "executable_book": "books/bp-node-foundation.lisp"
+  },
+  {
+   "reference": "fn-bpnr-retire-dir-ops",
+   "executable": "fn-bpnr-retire-dir-ops-loop",
+   "via": [
+    "mbe in fn-bpnr-retire-dir-ops"
+   ],
+   "reference_book": "books/bp-node-retire.lisp",
+   "executable_book": "books/bp-node-retire.lisp"
+  },
+  {
+   "reference": "fn-bpnr-retire-ops-aux",
+   "executable": "fn-bpnr-retire-ops-aux-loop",
+   "via": [
+    "mbe in fn-bpnr-retire-ops-aux"
+   ],
+   "reference_book": "books/bp-node-retire.lisp",
+   "executable_book": "books/bp-node-retire.lisp"
+  },
+  {
+   "reference": "fn-bpnrb-checkpoint-decode",
+   "executable": "fn-bpnrb-decode-range",
+   "via": [
+    "mbe in fn-bpnrb-checkpoint-decode"
+   ],
+   "reference_book": "books/bp-node-rotation-buffer.lisp",
+   "executable_book": "books/bp-node-rotation-buffer.lisp"
+  },
+  {
+   "reference": "fn-bpp-crc16-scan",
+   "executable": "fn-bpp-crc16-scan-table",
+   "via": [
+    "mbe in fn-bpp-crc16-scan"
+   ],
+   "reference_book": "books/bp-primary.lisp",
+   "executable_book": "books/bp-primary.lisp"
+  },
+  {
+   "reference": "fn-bpp-crc32c-scan",
+   "executable": "fn-bpp-crc32c-scan-table",
+   "via": [
+    "mbe in fn-bpp-crc32c-scan"
+   ],
+   "reference_book": "books/bp-primary.lisp",
+   "executable_book": "books/bp-primary.lisp"
+  },
+  {
+   "reference": "fn-bpr-article-records",
+   "executable": "fn-bpr-article-records-loop",
+   "via": [
+    "mbe in fn-bpr-article-records"
+   ],
+   "reference_book": "books/bp-receipt.lisp",
+   "executable_book": "books/bp-receipt.lisp"
+  },
+  {
+   "reference": "fn-bs-config-okp",
+   "executable": "fn-bs-config-okp-impl",
+   "via": [
+    "defattach",
+    "name"
+   ],
+   "reference_book": "books/byte-store-scan.lisp",
+   "executable_book": "books/byte-store-frame.lisp"
+  },
+  {
+   "reference": "fn-bs-frontier-decode",
+   "executable": "fn-bs-frontier-decode-impl",
+   "via": [
+    "defattach",
+    "name"
+   ],
+   "reference_book": "books/byte-store-scan.lisp",
+   "executable_book": "books/byte-store-frame.lisp"
+  },
+  {
+   "reference": "fn-bs-frontier-encode",
+   "executable": "fn-bs-frontier-encode-impl",
+   "via": [
+    "defattach",
+    "name"
+   ],
+   "reference_book": "books/byte-store-scan.lisp",
+   "executable_book": "books/byte-store-frame.lisp"
+  },
+  {
+   "reference": "fn-bs-txn-name",
+   "executable": "fn-bs-txn-name-impl",
+   "via": [
+    "defattach",
+    "name"
+   ],
+   "reference_book": "books/byte-store-txn-seam.lisp",
+   "executable_book": "books/byte-store-txn-name.lisp"
+  },
+  {
+   "reference": "fn-bump-number",
+   "executable": "fn-bump-number-loop",
+   "via": [
+    "mbe in fn-bump-number"
+   ],
+   "reference_book": "books/acceptance-alloc.lisp",
+   "executable_book": "books/acceptance-alloc.lisp"
+  },
+  {
+   "reference": "fn-cat$c-drop-plan",
+   "executable": "fn-cat$c-drop-plan-loop",
+   "via": [
+    "mbe in fn-cat$c-drop-plan"
+   ],
+   "reference_book": "books/catalog.lisp",
+   "executable_book": "books/catalog.lisp"
+  },
+  {
+   "reference": "fn-cat$c-live-plan",
+   "executable": "fn-cat$c-live-plan-loop",
+   "via": [
+    "mbe in fn-cat$c-live-plan"
+   ],
+   "reference_book": "books/catalog.lisp",
+   "executable_book": "books/catalog.lisp"
+  },
+  {
+   "reference": "fn-cat$c-plan",
+   "executable": "fn-cat$c-plan-loop",
+   "via": [
+    "mbe in fn-cat$c-plan"
+   ],
+   "reference_book": "books/catalog.lisp",
+   "executable_book": "books/catalog.lisp"
+  },
+  {
+   "reference": "fn-cat-insert-asc",
+   "executable": "fn-cat-insert-asc-loop",
+   "via": [
+    "mbe in fn-cat-insert-asc"
+   ],
+   "reference_book": "books/catalog.lisp",
+   "executable_book": "books/catalog.lisp"
+  },
+  {
+   "reference": "fn-cat-plan-numbers",
+   "executable": "fn-cat-plan-numbers-loop",
+   "via": [
+    "mbe in fn-cat-plan-numbers"
+   ],
+   "reference_book": "books/catalog.lisp",
+   "executable_book": "books/catalog.lisp"
+  },
+  {
+   "reference": "fn-cat-seqs-for",
+   "executable": "fn-cat-seqs-for-loop",
+   "via": [
+    "mbe in fn-cat-seqs-for"
+   ],
+   "reference_book": "books/catalog.lisp",
+   "executable_book": "books/catalog.lisp"
+  },
+  {
+   "reference": "fn-cat-snoc",
+   "executable": "fn-cat-snoc-loop",
+   "via": [
+    "mbe in fn-cat-snoc"
+   ],
+   "reference_book": "books/catalog.lisp",
+   "executable_book": "books/catalog.lisp"
+  },
+  {
+   "reference": "fn-cat-view-below",
+   "executable": "fn-cat-view-below-loop",
+   "via": [
+    "mbe in fn-cat-view-below"
+   ],
+   "reference_book": "books/catalog-view.lisp",
+   "executable_book": "books/catalog-view.lisp"
+  },
+  {
+   "reference": "fn-cat-view-last-visible",
+   "executable": "fn-cat-view-last-visible-loop",
+   "via": [
+    "mbe in fn-cat-view-last-visible"
+   ],
+   "reference_book": "books/catalog-view.lisp",
+   "executable_book": "books/catalog-view.lisp"
+  },
+  {
+   "reference": "fn-cei-snoc",
+   "executable": "fn-cei-snoc-loop",
+   "via": [
+    "mbe in fn-cei-snoc"
+   ],
+   "reference_book": "books/consumer-event-index.lisp",
+   "executable_book": "books/consumer-event-index.lisp"
+  },
+  {
+   "reference": "fn-cev-envelope-lines",
+   "executable": "fn-cev-envelope-lines-loop",
+   "via": [
+    "mbe in fn-cev-envelope-lines"
+   ],
+   "reference_book": "books/control-evidence.lisp",
+   "executable_book": "books/control-evidence.lisp"
+  },
+  {
+   "reference": "fn-cev-held-count",
+   "executable": "fn-cev-held-count-loop",
+   "via": [
+    "mbe in fn-cev-held-count"
+   ],
+   "reference_book": "books/control-evidence.lisp",
+   "executable_book": "books/control-evidence.lisp"
+  },
+  {
+   "reference": "fn-cev-join",
+   "executable": "fn-cev-join-loop",
+   "via": [
+    "mbe in fn-cev-join"
+   ],
+   "reference_book": "books/control-evidence.lisp",
+   "executable_book": "books/control-evidence.lisp"
+  },
+  {
+   "reference": "fn-cev-log-lines",
+   "executable": "fn-cev-log-lines-loop",
+   "via": [
+    "mbe in fn-cev-log-lines"
+   ],
+   "reference_book": "books/control-evidence.lisp",
+   "executable_book": "books/control-evidence.lisp"
+  },
+  {
+   "reference": "fn-cev-queue-envelopes",
+   "executable": "fn-cev-queue-envelopes-loop",
+   "via": [
+    "mbe in fn-cev-queue-envelopes"
+   ],
+   "reference_book": "books/control-evidence.lisp",
+   "executable_book": "books/control-evidence.lisp"
+  },
+  {
+   "reference": "fn-cev-targeting-lines",
+   "executable": "fn-cev-targeting-lines-loop",
+   "via": [
+    "mbe in fn-cev-targeting-lines"
+   ],
+   "reference_book": "books/control-evidence.lisp",
+   "executable_book": "books/control-evidence.lisp"
+  },
+  {
+   "reference": "fn-cfg-group-all-names",
+   "executable": "fn-cfg-group-all-names-loop",
+   "via": [
+    "mbe in fn-cfg-group-all-names"
+   ],
+   "reference_book": "books/config.lisp",
+   "executable_book": "books/config.lisp"
+  },
+  {
+   "reference": "fn-cfg-groups-create",
+   "executable": "fn-cfg-groups-create-loop",
+   "via": [
+    "mbe in fn-cfg-groups-create"
+   ],
+   "reference_book": "books/config.lisp",
+   "executable_book": "books/config.lisp"
+  },
+  {
+   "reference": "fn-cfg-groups-retire",
+   "executable": "fn-cfg-groups-retire-loop",
+   "via": [
+    "mbe in fn-cfg-groups-retire"
+   ],
+   "reference_book": "books/config.lisp",
+   "executable_book": "books/config.lisp"
+  },
+  {
+   "reference": "fn-cfg-groups-set-policy",
+   "executable": "fn-cfg-groups-set-policy-loop",
+   "via": [
+    "mbe in fn-cfg-groups-set-policy"
+   ],
+   "reference_book": "books/config.lisp",
+   "executable_book": "books/config.lisp"
+  },
+  {
+   "reference": "fn-cfg-item-octets",
+   "executable": "fn-cfg-item-octets-loop",
+   "via": [
+    "mbe in fn-cfg-item-octets"
+   ],
+   "reference_book": "books/config.lisp",
+   "executable_book": "books/config.lisp"
+  },
+  {
+   "reference": "fn-cfg-live-names",
+   "executable": "fn-cfg-live-names-loop",
+   "via": [
+    "mbe in fn-cfg-live-names"
+   ],
+   "reference_book": "books/config.lisp",
+   "executable_book": "books/config.lisp"
+  },
+  {
+   "reference": "fn-cfg-peer-names",
+   "executable": "fn-cfg-peer-names-loop",
+   "via": [
+    "mbe in fn-cfg-peer-names"
+   ],
+   "reference_book": "books/peer-config.lisp",
+   "executable_book": "books/peer-config.lisp"
+  },
+  {
+   "reference": "fn-cfg-rows-with-key",
+   "executable": "fn-cfg-rows-with-key-loop",
+   "via": [
+    "mbe in fn-cfg-rows-with-key"
+   ],
+   "reference_book": "books/config.lisp",
+   "executable_book": "books/config.lisp"
+  },
+  {
+   "reference": "fn-cnode-config-jrecs",
+   "executable": "fn-cnode-config-jrecs-loop",
+   "via": [
+    "mbe in fn-cnode-config-jrecs"
+   ],
+   "reference_book": "books/node-config.lisp",
+   "executable_book": "books/node-config.lisp"
+  },
+  {
+   "reference": "fn-cnode-record-acceptablep",
+   "executable": "fn-cnode-carried-acceptablep",
+   "via": [
+    "mbe in fn-cnode-apply-config",
+    "mbe in fn-cnode-replay-loop",
+    "mbe in fn-cpr-loop",
+    "mbe in fn-rii-sco-cpr-prefix",
+    "mbe in fn-sco-cpr-prefix"
+   ],
+   "reference_book": "books/node-config.lisp",
+   "executable_book": "books/node-config.lisp"
+  },
+  {
+   "reference": "fn-cnx-range-aux",
+   "executable": "fn-cnx-range-aux-loop",
+   "via": [
+    "mbe in fn-cnx-range-aux"
+   ],
+   "reference_book": "books/catalog-number-index.lisp",
+   "executable_book": "books/catalog-number-index.lisp"
+  },
+  {
+   "reference": "fn-ctl-articles-withdrawals-in",
+   "executable": "fn-ctl-articles-withdrawals-in-loop",
+   "via": [
+    "mbe in fn-ctl-articles-withdrawals-in"
+   ],
+   "reference_book": "books/control-visible.lisp",
+   "executable_book": "books/control-visible.lisp"
+  },
+  {
+   "reference": "fn-ctl-configs-through",
+   "executable": "fn-ctl-configs-through-loop",
+   "via": [
+    "mbe in fn-ctl-configs-through"
+   ],
+   "reference_book": "books/control-authority.lisp",
+   "executable_book": "books/control-authority.lisp"
+  },
+  {
+   "reference": "fn-ctl-downcase",
+   "executable": "fn-ctl-downcase-loop",
+   "via": [
+    "mbe in fn-ctl-downcase"
+   ],
+   "reference_book": "books/control-classify.lisp",
+   "executable_book": "books/control-classify.lisp"
+  },
+  {
+   "reference": "fn-ctl-field-entries",
+   "executable": "fn-ctl-field-entries-loop",
+   "via": [
+    "mbe in fn-ctl-field-entries"
+   ],
+   "reference_book": "books/control-authority.lisp",
+   "executable_book": "books/control-authority.lisp"
+  },
+  {
+   "reference": "fn-ctl-fields-named",
+   "executable": "fn-ctl-fields-named-loop",
+   "via": [
+    "mbe in fn-ctl-fields-named"
+   ],
+   "reference_book": "books/control-classify.lisp",
+   "executable_book": "books/control-classify.lisp"
+  },
+  {
+   "reference": "fn-ctl-prepend",
+   "executable": "fn-ctl-prepend-loop",
+   "via": [
+    "mbe in fn-ctl-prepend"
+   ],
+   "reference_book": "books/control-visible.lisp",
+   "executable_book": "books/control-visible.lisp"
+  },
+  {
+   "reference": "fn-ctl-set-tlocks",
+   "executable": "fn-ctl-set-tlocks-loop",
+   "via": [
+    "mbe in fn-ctl-set-tlocks"
+   ],
+   "reference_book": "books/control-visible.lisp",
+   "executable_book": "books/control-visible.lisp"
+  },
+  {
+   "reference": "fn-ctl-sha256-entries",
+   "executable": "fn-ctl-sha256-entries-loop",
+   "via": [
+    "mbe in fn-ctl-sha256-entries"
+   ],
+   "reference_book": "books/control-authority.lisp",
+   "executable_book": "books/control-authority.lisp"
+  },
+  {
+   "reference": "fn-ctl-subseq-diff",
+   "executable": "fn-ctl-subseq-diff-rev",
+   "via": [
+    "mbe in fn-ctl-subseq-diff"
+   ],
+   "reference_book": "books/control-served.lisp",
+   "executable_book": "books/control-served.lisp"
+  },
+  {
+   "reference": "fn-cu-join",
+   "executable": "fn-cu-join-loop",
+   "via": [
+    "mbe in fn-cu-join"
+   ],
+   "reference_book": "books/peer-catchup.lisp",
+   "executable_book": "books/peer-catchup.lisp"
+  },
+  {
+   "reference": "fn-cu-obs-effects",
+   "executable": "fn-cu-obs-effects-loop",
+   "via": [
+    "mbe in fn-cu-obs-effects"
+   ],
+   "reference_book": "books/peer-catchup.lisp",
+   "executable_book": "books/peer-catchup.lisp"
+  },
+  {
+   "reference": "fn-digest",
+   "executable": "fn-blake3-stobj",
+   "via": [
+    "defattach"
+   ],
+   "reference_book": "books/crypto-seam.lisp",
+   "executable_book": "books/blake3-stobj.lisp"
+  },
+  {
+   "reference": "fn-exp-count-address",
+   "executable": "fn-exp-count-address-loop",
+   "via": [
+    "mbe in fn-exp-count-address"
+   ],
+   "reference_book": "books/public-exposure.lisp",
+   "executable_book": "books/public-exposure.lisp"
+  },
+  {
+   "reference": "fn-exp-drop",
+   "executable": "fn-exp-drop-loop",
+   "via": [
+    "mbe in fn-exp-drop"
+   ],
+   "reference_book": "books/public-exposure.lisp",
+   "executable_book": "books/public-exposure.lisp"
+  },
+  {
+   "reference": "fn-exp-prune",
+   "executable": "fn-exp-prune-loop",
+   "via": [
+    "mbe in fn-exp-prune"
+   ],
+   "reference_book": "books/public-exposure.lisp",
+   "executable_book": "books/public-exposure.lisp"
+  },
+  {
+   "reference": "fn-exp-remove",
+   "executable": "fn-exp-remove-loop",
+   "via": [
+    "mbe in fn-exp-remove"
+   ],
+   "reference_book": "books/public-exposure.lisp",
+   "executable_book": "books/public-exposure.lisp"
+  },
+  {
+   "reference": "fn-exp-replace",
+   "executable": "fn-exp-replace-loop",
+   "via": [
+    "mbe in fn-exp-replace"
+   ],
+   "reference_book": "books/public-exposure.lisp",
+   "executable_book": "books/public-exposure.lisp"
+  },
+  {
+   "reference": "fn-fc-drive",
+   "executable": "fn-fc-drive-loop",
+   "via": [
+    "mbe in fn-fc-drive"
+   ],
+   "reference_book": "books/feed-connection-invariants.lisp",
+   "executable_book": "books/feed-connection-invariants.lisp"
+  },
+  {
+   "reference": "fn-feed-distinctp",
+   "executable": "fn-feed-distinct-fast",
+   "via": [
+    "mbe in fn-feed-distinctp"
+   ],
+   "reference_book": "books/peer-feed.lisp",
+   "executable_book": "books/peer-feed.lisp"
+  },
+  {
+   "reference": "fn-feed-inflight-count",
+   "executable": "fn-feed-inflight-count-loop",
+   "via": [
+    "mbe in fn-feed-inflight-count"
+   ],
+   "reference_book": "books/peer-feed.lisp",
+   "executable_book": "books/peer-feed.lisp"
+  },
+  {
+   "reference": "fn-feed-queue-requeue",
+   "executable": "fn-feed-queue-requeue-loop",
+   "via": [
+    "mbe in fn-feed-queue-requeue"
+   ],
+   "reference_book": "books/peer-feed.lisp",
+   "executable_book": "books/peer-feed.lisp"
+  },
+  {
+   "reference": "fn-feed-queue-requeue-inflight",
+   "executable": "fn-feed-queue-requeue-inflight-loop",
+   "via": [
+    "mbe in fn-feed-queue-requeue-inflight"
+   ],
+   "reference_book": "books/peer-feed.lisp",
+   "executable_book": "books/peer-feed.lisp"
+  },
+  {
+   "reference": "fn-feed-queue-retire",
+   "executable": "fn-feed-queue-retire-loop",
+   "via": [
+    "mbe in fn-feed-queue-retire"
+   ],
+   "reference_book": "books/peer-feed.lisp",
+   "executable_book": "books/peer-feed.lisp"
+  },
+  {
+   "reference": "fn-feed-queue-set-state",
+   "executable": "fn-feed-queue-set-state-loop",
+   "via": [
+    "mbe in fn-feed-queue-set-state"
+   ],
+   "reference_book": "books/peer-feed.lisp",
+   "executable_book": "books/peer-feed.lisp"
+  },
+  {
+   "reference": "fn-feed-queue-settle",
+   "executable": "fn-feed-queue-settle-loop",
+   "via": [
+    "mbe in fn-feed-queue-settle"
+   ],
+   "reference_book": "books/peer-feed.lisp",
+   "executable_book": "books/peer-feed.lisp"
+  },
+  {
+   "reference": "fn-frame-digest",
+   "executable": "fn-blake3-stobj",
+   "via": [
+    "defattach"
+   ],
+   "reference_book": "books/frame-octets.lisp",
+   "executable_book": "books/blake3-stobj.lisp"
+  },
+  {
+   "reference": "fn-frame-digest-buffer",
+   "executable": "fn-blake3-of-prefixed-buffer-any",
+   "via": [
+    "defattach"
+   ],
+   "reference_book": "books/frame-digest-buffer.lisp",
+   "executable_book": "books/frame-digest-buffer.lisp"
+  },
+  {
+   "reference": "fn-frame-digest-range",
+   "executable": "fn-blake3-of-prefixed-range-any",
+   "via": [
+    "defattach"
+   ],
+   "reference_book": "books/frame-digest-buffer.lisp",
+   "executable_book": "books/frame-digest-buffer.lisp"
+  },
+  {
+   "reference": "fn-frame-split",
+   "executable": "fn-frame-split-acc",
+   "via": [
+    "mbe in fn-frame-split"
+   ],
+   "reference_book": "books/frame-octets.lisp",
+   "executable_book": "books/frame-octets.lisp"
+  },
+  {
+   "reference": "fn-gac-filter-groups",
+   "executable": "fn-gac-filter-groups-loop",
+   "via": [
+    "mbe in fn-gac-filter-groups"
+   ],
+   "reference_book": "books/group-access.lisp",
+   "executable_book": "books/group-access.lisp"
+  },
+  {
+   "reference": "fn-gac-filter-pairs",
+   "executable": "fn-gac-filter-pairs-loop",
+   "via": [
+    "mbe in fn-gac-filter-pairs"
+   ],
+   "reference_book": "books/group-access.lisp",
+   "executable_book": "books/group-access.lisp"
+  },
+  {
+   "reference": "fn-gac-restrict-articles",
+   "executable": "fn-gac-restrict-articles-loop",
+   "via": [
+    "mbe in fn-gac-restrict-articles"
+   ],
+   "reference_book": "books/group-access.lisp",
+   "executable_book": "books/group-access.lisp"
+  },
+  {
+   "reference": "fn-gacc-put",
+   "executable": "fn-gacc-put-loop",
+   "via": [
+    "mbe in fn-gacc-put"
+   ],
+   "reference_book": "books/group-access-cache.lisp",
+   "executable_book": "books/group-access-cache.lisp"
+  },
+  {
+   "reference": "fn-gen-schema-chars-octets",
+   "executable": "fn-gen-schema-chars-octets-loop",
+   "via": [
+    "mbe in fn-gen-schema-chars-octets"
+   ],
+   "reference_book": "books/store-genesis.lisp",
+   "executable_book": "books/store-genesis.lisp"
+  },
+  {
+   "reference": "fn-gen-take",
+   "executable": "fn-gen-take-loop",
+   "via": [
+    "mbe in fn-gen-take"
+   ],
+   "reference_book": "books/store-genesis.lisp",
+   "executable_book": "books/store-genesis.lisp"
+  },
+  {
+   "reference": "fn-gidx-build-entries",
+   "executable": "fn-gidx-build-entries-loop",
+   "via": [
+    "mbe in fn-gidx-build-entries"
+   ],
+   "reference_book": "books/group-bucket-index.lisp",
+   "executable_book": "books/group-bucket-index.lisp"
+  },
+  {
+   "reference": "fn-gidx-counts-lines",
+   "executable": "fn-gidx-counts-lines-loop",
+   "via": [
+    "mbe in fn-gidx-counts-lines"
+   ],
+   "reference_book": "books/nntp.lisp",
+   "executable_book": "books/nntp.lisp"
+  },
+  {
+   "reference": "fn-hc-count-name",
+   "executable": "fn-hc-count-name-loop",
+   "via": [
+    "mbe in fn-hc-count-name"
+   ],
+   "reference_book": "books/hybrid-carrier.lisp",
+   "executable_book": "books/hybrid-carrier.lisp"
+  },
+  {
+   "reference": "fn-hc-source-header",
+   "executable": "fn-hc-source-header-loop",
+   "via": [
+    "mbe in fn-hc-source-header"
+   ],
+   "reference_book": "books/hybrid-carrier.lisp",
+   "executable_book": "books/hybrid-carrier.lisp"
+  },
+  {
+   "reference": "fn-hf-crlf-count",
+   "executable": "fn-hf-crlf-count-onto",
+   "via": [
+    "mbe in fn-hf-crlf-count"
+   ],
+   "reference_book": "books/catalog-record.lisp",
+   "executable_book": "books/catalog-record.lisp"
+  },
+  {
+   "reference": "fn-hl-history-rows",
+   "executable": "fn-hl-history-rows-loop",
+   "via": [
+    "mbe in fn-hl-history-rows"
+   ],
+   "reference_book": "books/hybrid-lifecycle.lisp",
+   "executable_book": "books/hybrid-lifecycle.lisp"
+  },
+  {
+   "reference": "fn-hp-x-words",
+   "executable": "fn-hp-x-words-loop",
+   "via": [
+    "mbe in fn-hp-x-words"
+   ],
+   "reference_book": "books/history-pages-row.lisp",
+   "executable_book": "books/history-pages-row.lisp"
+  },
+  {
+   "reference": "fn-hsig-octet-fields-to-strings",
+   "executable": "fn-hsig-octet-fields-to-strings-loop",
+   "via": [
+    "mbe in fn-hsig-octet-fields-to-strings"
+   ],
+   "reference_book": "books/hybrid-store.lisp",
+   "executable_book": "books/hybrid-store.lisp"
+  },
+  {
+   "reference": "fn-id-unhex",
+   "executable": "fn-id-unhex-loop",
+   "via": [
+    "mbe in fn-id-unhex"
+   ],
+   "reference_book": "books/identity.lisp",
+   "executable_book": "books/identity.lisp"
+  },
+  {
+   "reference": "fn-index-build",
+   "executable": "fn-index-build-loop",
+   "via": [
+    "mbe in fn-index-build"
+   ],
+   "reference_book": "books/index.lisp",
+   "executable_book": "books/index.lisp"
+  },
+  {
+   "reference": "fn-index-membership-entries",
+   "executable": "fn-index-membership-entries-loop",
+   "via": [
+    "mbe in fn-index-membership-entries"
+   ],
+   "reference_book": "books/index.lisp",
+   "executable_book": "books/index.lisp"
+  },
+  {
+   "reference": "fn-index-range-query-raw",
+   "executable": "fn-index-range-query-raw-loop",
+   "via": [
+    "mbe in fn-index-range-query-raw"
+   ],
+   "reference_book": "books/index.lisp",
+   "executable_book": "books/index.lisp"
+  },
+  {
+   "reference": "fn-initial-nexts",
+   "executable": "fn-initial-nexts-loop",
+   "via": [
+    "mbe in fn-initial-nexts"
+   ],
+   "reference_book": "books/acceptance-alloc.lisp",
+   "executable_book": "books/acceptance-alloc.lisp"
+  },
+  {
+   "reference": "fn-inj-but-last",
+   "executable": "fn-inj-but-last-loop",
+   "via": [
+    "mbe in fn-inj-but-last"
+   ],
+   "reference_book": "books/injection-path.lisp",
+   "executable_book": "books/injection-path.lisp"
+  },
+  {
+   "reference": "fn-inj-diag-keyword",
+   "executable": "fn-inj-diag-keyword-loop",
+   "via": [
+    "mbe in fn-inj-diag-keyword"
+   ],
+   "reference_book": "books/injection-path.lisp",
+   "executable_book": "books/injection-path.lisp"
+  },
+  {
+   "reference": "fn-inj-downcase",
+   "executable": "fn-inj-downcase-loop",
+   "via": [
+    "mbe in fn-inj-downcase"
+   ],
+   "reference_book": "books/injection-path.lisp",
+   "executable_book": "books/injection-path.lisp"
+  },
+  {
+   "reference": "fn-inj-path-scan",
+   "executable": "fn-inj-path-scan-loop",
+   "via": [
+    "mbe in fn-inj-path-scan"
+   ],
+   "reference_book": "books/injection-path.lisp",
+   "executable_book": "books/injection-path.lisp"
+  },
+  {
+   "reference": "fn-inj-split-at",
+   "executable": "fn-inj-split-at-loop",
+   "via": [
+    "mbe in fn-inj-split-at"
+   ],
+   "reference_book": "books/injection-path.lisp",
+   "executable_book": "books/injection-path.lisp"
+  },
+  {
+   "reference": "fn-inj-take-n",
+   "executable": "fn-inj-take-n-loop",
+   "via": [
+    "mbe in fn-inj-take-n"
+   ],
+   "reference_book": "books/injection-path.lisp",
+   "executable_book": "books/injection-path.lisp"
+  },
+  {
+   "reference": "fn-inj-trim-wsp-right",
+   "executable": "fn-inj-trim-wsp-right-loop",
+   "via": [
+    "mbe in fn-inj-trim-wsp-right"
+   ],
+   "reference_book": "books/injection-path.lisp",
+   "executable_book": "books/injection-path.lisp"
+  },
+  {
+   "reference": "fn-ks-lines",
+   "executable": "fn-ks-lines-loop",
+   "via": [
+    "mbe in fn-ks-lines"
+   ],
+   "reference_book": "books/key-statements.lisp",
+   "executable_book": "books/key-statements.lisp"
+  },
+  {
+   "reference": "fn-ks-values",
+   "executable": "fn-ks-values-loop",
+   "via": [
+    "mbe in fn-ks-values"
+   ],
+   "reference_book": "books/key-statements.lisp",
+   "executable_book": "books/key-statements.lisp"
+  },
+  {
+   "reference": "fn-lg-fit-count",
+   "executable": "fn-lg-fit-count-loop",
+   "via": [
+    "mbe in fn-lg-fit-count"
+   ],
+   "reference_book": "books/store-log.lisp",
+   "executable_book": "books/store-log.lisp"
+  },
+  {
+   "reference": "fn-lg-pack-len",
+   "executable": "fn-lg-pack-len-loop",
+   "via": [
+    "mbe in fn-lg-pack-len"
+   ],
+   "reference_book": "books/store-log.lisp",
+   "executable_book": "books/store-log.lisp"
+  },
+  {
+   "reference": "fn-lgb-decide",
+   "executable": "fn-lgb-decide-fast",
+   "via": [
+    "mbe in fn-lgb-decide",
+    "name"
+   ],
+   "reference_book": "books/store-log-buffer.lisp",
+   "executable_book": "books/store-log-buffer.lisp"
+  },
+  {
+   "reference": "fn-lgb-decode-next",
+   "executable": "fn-lgb-decode-next-exec",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/store-log-walk-once.lisp",
+   "executable_book": "books/store-log-walk-once.lisp"
+  },
+  {
+   "reference": "fn-lgb-entry-places",
+   "executable": "fn-lgb-places",
+   "via": [
+    "mbe in fn-lgb-entry-places"
+   ],
+   "reference_book": "books/store-log-buffer.lisp",
+   "executable_book": "books/store-log-buffer.lisp"
+  },
+  {
+   "reference": "fn-lgb-trailer",
+   "executable": "fn-lgb-trailer-fast",
+   "via": [
+    "mbe in fn-lgb-trailer",
+    "name"
+   ],
+   "reference_book": "books/store-log-buffer.lisp",
+   "executable_book": "books/store-log-buffer.lisp"
+  },
+  {
+   "reference": "fn-lgb-unpack",
+   "executable": "fn-lgb-unpack-loop",
+   "via": [
+    "mbe in fn-lgb-unpack"
+   ],
+   "reference_book": "books/store-log-buffer.lisp",
+   "executable_book": "books/store-log-buffer.lisp"
+  },
+  {
+   "reference": "fn-lgc-first",
+   "executable": "fn-lgc-first-loop",
+   "via": [
+    "mbe in fn-lgc-first"
+   ],
+   "reference_book": "books/store-log-kernel-concrete.lisp",
+   "executable_book": "books/store-log-kernel-concrete.lisp"
+  },
+  {
+   "reference": "fn-lgc-log-len",
+   "executable": "fn-lgc-log-len-loop",
+   "via": [
+    "mbe in fn-lgc-log-len"
+   ],
+   "reference_book": "books/store-log-kernel-concrete.lisp",
+   "executable_book": "books/store-log-kernel-concrete.lisp"
+  },
+  {
+   "reference": "fn-lgs-below",
+   "executable": "fn-lgs-below-loop",
+   "via": [
+    "mbe in fn-lgs-below"
+   ],
+   "reference_book": "books/store-log-segments.lisp",
+   "executable_book": "books/store-log-segments.lisp"
+  },
+  {
+   "reference": "fn-lgs-indices",
+   "executable": "fn-lgs-indices-loop",
+   "via": [
+    "mbe in fn-lgs-indices"
+   ],
+   "reference_book": "books/store-log-segments.lisp",
+   "executable_book": "books/store-log-segments.lisp"
+  },
+  {
+   "reference": "fn-lgs-range",
+   "executable": "fn-lgs-range-loop",
+   "via": [
+    "mbe in fn-lgs-range"
+   ],
+   "reference_book": "books/store-log-segments.lisp",
+   "executable_book": "books/store-log-segments.lisp"
+  },
+  {
+   "reference": "fn-lgw-decide",
+   "executable": "fn-lgw-unpack",
+   "via": [
+    "mbe in fn-lgw-decide"
+   ],
+   "reference_book": "books/store-log-stream.lisp",
+   "executable_book": "books/store-log-stream.lisp"
+  },
+  {
+   "reference": "fn-lgw-decide",
+   "executable": "fn-lgw-unpack-okp",
+   "via": [
+    "mbe in fn-lgw-decide"
+   ],
+   "reference_book": "books/store-log-stream.lisp",
+   "executable_book": "books/store-log-stream.lisp"
+  },
+  {
+   "reference": "fn-lgx-log",
+   "executable": "fn-lgx-log-loop",
+   "via": [
+    "mbe in fn-lgx-log"
+   ],
+   "reference_book": "books/store-log-kernel-concrete.lisp",
+   "executable_book": "books/store-log-kernel-concrete.lisp"
+  },
+  {
+   "reference": "fn-lgx-pack",
+   "executable": "fn-lgx-pack-loop",
+   "via": [
+    "mbe in fn-lgx-pack"
+   ],
+   "reference_book": "books/store-log-kernel-concrete.lisp",
+   "executable_book": "books/store-log-kernel-concrete.lisp"
+  },
+  {
+   "reference": "fn-lz-copy-lits",
+   "executable": "fn-lz-lits-words",
+   "via": [
+    "mbe in fn-lz-copy-lits"
+   ],
+   "reference_book": "books/payload-lz.lisp",
+   "executable_book": "books/payload-lz.lisp"
+  },
+  {
+   "reference": "fn-lz-copy-match",
+   "executable": "fn-lz-match-bulk",
+   "via": [
+    "mbe in fn-lz-copy-match"
+   ],
+   "reference_book": "books/payload-lz.lisp",
+   "executable_book": "books/payload-lz.lisp"
+  },
+  {
+   "reference": "fn-lz-length-ext",
+   "executable": "fn-lz-length-ext-loop",
+   "via": [
+    "mbe in fn-lz-length-ext"
+   ],
+   "reference_book": "books/payload-lz.lisp",
+   "executable_book": "books/payload-lz.lisp"
+  },
+  {
+   "reference": "fn-mcr-drop",
+   "executable": "fn-mcr-drop-loop",
+   "via": [
+    "mbe in fn-mcr-drop"
+   ],
+   "reference_book": "books/memory-credits.lisp",
+   "executable_book": "books/memory-credits.lisp"
+  },
+  {
+   "reference": "fn-mcr-ops-credit",
+   "executable": "fn-mcr-ops-credit-onto",
+   "via": [
+    "mbe in fn-mcr-ops-credit"
+   ],
+   "reference_book": "books/memory-credits.lisp",
+   "executable_book": "books/memory-credits.lisp"
+  },
+  {
+   "reference": "fn-midx-build",
+   "executable": "fn-midx-build-loop",
+   "via": [
+    "mbe in fn-midx-build"
+   ],
+   "reference_book": "books/msgid-index.lisp",
+   "executable_book": "books/msgid-index.lisp"
+  },
+  {
+   "reference": "fn-mod-named-entries",
+   "executable": "fn-mod-named-entries-loop",
+   "via": [
+    "mbe in fn-mod-named-entries"
+   ],
+   "reference_book": "books/moderation.lisp",
+   "executable_book": "books/moderation.lisp"
+  },
+  {
+   "reference": "fn-mvb-groups-octets",
+   "executable": "fn-mvb-groups-octets-loop",
+   "via": [
+    "mbe in fn-mvb-groups-octets"
+   ],
+   "reference_book": "books/moderation-verbs.lisp",
+   "executable_book": "books/moderation-verbs.lisp"
+  },
+  {
+   "reference": "fn-mxc-build",
+   "executable": "fn-mxc-build-loop",
+   "via": [
+    "mbe in fn-mxc-build"
+   ],
+   "reference_book": "books/msgid-index-concrete.lisp",
+   "executable_book": "books/msgid-index-concrete.lisp"
+  },
+  {
+   "reference": "fn-napb-before-last",
+   "executable": "fn-napb-before-last-loop",
+   "via": [
+    "mbe in fn-napb-before-last"
+   ],
+   "reference_book": "books/native-admin-peer-budget.lisp",
+   "executable_book": "books/native-admin-peer-budget.lisp"
+  },
+  {
+   "reference": "fn-native-admin-append-record",
+   "executable": "fn-native-admin-append-record-loop",
+   "via": [
+    "mbe in fn-native-admin-append-record"
+   ],
+   "reference_book": "books/native-admin.lisp",
+   "executable_book": "books/native-admin.lisp"
+  },
+  {
+   "reference": "fn-native-admin-before-carries",
+   "executable": "fn-native-admin-before-carries-loop",
+   "via": [
+    "mbe in fn-native-admin-before-carries"
+   ],
+   "reference_book": "books/native-admin-peer.lisp",
+   "executable_book": "books/native-admin-peer.lisp"
+  },
+  {
+   "reference": "fn-native-admin-bp-before-releases",
+   "executable": "fn-native-admin-bp-before-releases-loop",
+   "via": [
+    "mbe in fn-native-admin-bp-before-releases"
+   ],
+   "reference_book": "books/native-admin-peer.lisp",
+   "executable_book": "books/native-admin-peer.lisp"
+  },
+  {
+   "reference": "fn-native-admin-bp-carries-rows",
+   "executable": "fn-native-admin-bp-carries-rows-loop",
+   "via": [
+    "mbe in fn-native-admin-bp-carries-rows"
+   ],
+   "reference_book": "books/native-admin-peer.lisp",
+   "executable_book": "books/native-admin-peer.lisp"
+  },
+  {
+   "reference": "fn-native-admin-bp-releases-rows",
+   "executable": "fn-native-admin-bp-releases-rows-loop",
+   "via": [
+    "mbe in fn-native-admin-bp-releases-rows"
+   ],
+   "reference_book": "books/native-admin-peer.lisp",
+   "executable_book": "books/native-admin-peer.lisp"
+  },
+  {
+   "reference": "fn-native-admin-carries-rows",
+   "executable": "fn-native-admin-carries-rows-loop",
+   "via": [
+    "mbe in fn-native-admin-carries-rows"
+   ],
+   "reference_book": "books/native-admin-peer.lisp",
+   "executable_book": "books/native-admin-peer.lisp"
+  },
+  {
+   "reference": "fn-native-admin-control-report",
+   "executable": "fn-native-admin-control-report-loop",
+   "via": [
+    "mbe in fn-native-admin-control-report"
+   ],
+   "reference_book": "books/native-admin.lisp",
+   "executable_book": "books/native-admin.lisp"
+  },
+  {
+   "reference": "fn-native-admin-fold-octets",
+   "executable": "fn-native-admin-fold-octets-loop",
+   "via": [
+    "mbe in fn-native-admin-fold-octets"
+   ],
+   "reference_book": "books/native-admin.lisp",
+   "executable_book": "books/native-admin.lisp"
+  },
+  {
+   "reference": "fn-native-admin-join-words",
+   "executable": "fn-native-admin-join-words-loop",
+   "via": [
+    "mbe in fn-native-admin-join-words"
+   ],
+   "reference_book": "books/native-admin.lisp",
+   "executable_book": "books/native-admin.lisp"
+  },
+  {
+   "reference": "fn-native-admin-line-pieces",
+   "executable": "fn-native-admin-line-pieces-loop",
+   "via": [
+    "mbe in fn-native-admin-line-pieces"
+   ],
+   "reference_book": "books/native-admin.lisp",
+   "executable_book": "books/native-admin.lisp"
+  },
+  {
+   "reference": "fn-native-admin-octets-strings",
+   "executable": "fn-native-admin-octets-strings-loop",
+   "via": [
+    "mbe in fn-native-admin-octets-strings"
+   ],
+   "reference_book": "books/native-admin.lisp",
+   "executable_book": "books/native-admin.lisp"
+  },
+  {
+   "reference": "fn-native-admin-peer-budget-report-rows",
+   "executable": "fn-napb-report-rows-loop",
+   "via": [
+    "mbe in fn-native-admin-peer-budget-report-rows"
+   ],
+   "reference_book": "books/native-admin-peer-budget.lisp",
+   "executable_book": "books/native-admin-peer-budget.lisp"
+  },
+  {
+   "reference": "fn-native-admin-peer-list-octets",
+   "executable": "fn-native-admin-peer-list-octets-loop",
+   "via": [
+    "mbe in fn-native-admin-peer-list-octets"
+   ],
+   "reference_book": "books/native-admin-peer.lisp",
+   "executable_book": "books/native-admin-peer.lisp"
+  },
+  {
+   "reference": "fn-native-admin-peer-slot-values",
+   "executable": "fn-native-admin-peer-slot-values-loop",
+   "via": [
+    "mbe in fn-native-admin-peer-slot-values"
+   ],
+   "reference_book": "books/native-admin-peer.lisp",
+   "executable_book": "books/native-admin-peer.lisp"
+  },
+  {
+   "reference": "fn-native-admin-split-commas-aux",
+   "executable": "fn-native-admin-split-commas-loop",
+   "via": [
+    "mbe in fn-native-admin-split-commas-aux"
+   ],
+   "reference_book": "books/native-admin.lisp",
+   "executable_book": "books/native-admin.lisp"
+  },
+  {
+   "reference": "fn-native-admin-text-pieces",
+   "executable": "fn-native-admin-text-pieces-loop",
+   "via": [
+    "mbe in fn-native-admin-text-pieces"
+   ],
+   "reference_book": "books/native-admin.lisp",
+   "executable_book": "books/native-admin.lisp"
+  },
+  {
+   "reference": "fn-native-admin-words",
+   "executable": "fn-native-admin-words-loop",
+   "via": [
+    "mbe in fn-native-admin-words"
+   ],
+   "reference_book": "books/native-admin-shape.lisp",
+   "executable_book": "books/native-admin-shape.lisp"
+  },
+  {
+   "reference": "fn-native-operator-post-group-octets",
+   "executable": "fn-native-operator-post-group-octets-loop",
+   "via": [
+    "mbe in fn-native-operator-post-group-octets"
+   ],
+   "reference_book": "books/native-operator.lisp",
+   "executable_book": "books/native-operator.lisp"
+  },
+  {
+   "reference": "fn-nco-decode-entries",
+   "executable": "fn-nco-decode-entries-loop",
+   "via": [
+    "mbe in fn-nco-decode-entries"
+   ],
+   "reference_book": "books/native-config-observation.lisp",
+   "executable_book": "books/native-config-observation.lisp"
+  },
+  {
+   "reference": "fn-nco-insert-by-generation",
+   "executable": "fn-nco-insert-by-generation-loop",
+   "via": [
+    "mbe in fn-nco-insert-by-generation"
+   ],
+   "reference_book": "books/native-config-observation.lisp",
+   "executable_book": "books/native-config-observation.lisp"
+  },
+  {
+   "reference": "fn-nco-output-entries",
+   "executable": "fn-nco-output-entries-loop",
+   "via": [
+    "mbe in fn-nco-output-entries"
+   ],
+   "reference_book": "books/native-config-observation.lisp",
+   "executable_book": "books/native-config-observation.lisp"
+  },
+  {
+   "reference": "fn-nco-sort-by-generation",
+   "executable": "fn-nco-sort-by-generation-loop",
+   "via": [
+    "mbe in fn-nco-sort-by-generation"
+   ],
+   "reference_book": "books/native-config-observation.lisp",
+   "executable_book": "books/native-config-observation.lisp"
+  },
+  {
+   "reference": "fn-ncr-hex",
+   "executable": "fn-ncr-hex-loop",
+   "via": [
+    "mbe in fn-ncr-hex"
+   ],
+   "reference_book": "books/consumer-reason.lisp",
+   "executable_book": "books/consumer-reason.lisp"
+  },
+  {
+   "reference": "fn-ncr-json-escape",
+   "executable": "fn-ncr-json-escape-loop",
+   "via": [
+    "mbe in fn-ncr-json-escape"
+   ],
+   "reference_book": "books/consumer-reason.lisp",
+   "executable_book": "books/consumer-reason.lisp"
+  },
+  {
+   "reference": "fn-nctrl-group-strings",
+   "executable": "fn-nctrl-group-strings-loop",
+   "via": [
+    "mbe in fn-nctrl-group-strings"
+   ],
+   "reference_book": "books/native-control.lisp",
+   "executable_book": "books/native-control.lisp"
+  },
+  {
+   "reference": "fn-ng-len",
+   "executable": "fn-ng-len-loop",
+   "via": [
+    "mbe in fn-ng-len"
+   ],
+   "reference_book": "books/nntp-syntax.lisp",
+   "executable_book": "books/nntp-syntax.lisp"
+  },
+  {
+   "reference": "fn-nh-deferred-count",
+   "executable": "fn-nh-deferred-count-loop",
+   "via": [
+    "mbe in fn-nh-deferred-count"
+   ],
+   "reference_book": "books/native-health.lisp",
+   "executable_book": "books/native-health.lisp"
+  },
+  {
+   "reference": "fn-nh-deferred-total",
+   "executable": "fn-nh-deferred-total-loop",
+   "via": [
+    "mbe in fn-nh-deferred-total"
+   ],
+   "reference_book": "books/native-health.lisp",
+   "executable_book": "books/native-health.lisp"
+  },
+  {
+   "reference": "fn-nh-dropped-count",
+   "executable": "fn-nh-dropped-count-loop",
+   "via": [
+    "mbe in fn-nh-dropped-count"
+   ],
+   "reference_book": "books/native-health.lisp",
+   "executable_book": "books/native-health.lisp"
+  },
+  {
+   "reference": "fn-nh-forward-charge",
+   "executable": "fn-nh-forward-charge-acc",
+   "via": [
+    "mbe in fn-nh-forward-charge"
+   ],
+   "reference_book": "books/native-health.lisp",
+   "executable_book": "books/native-health.lisp"
+  },
+  {
+   "reference": "fn-nh-forward-count",
+   "executable": "fn-nh-forward-count-acc",
+   "via": [
+    "mbe in fn-nh-forward-count"
+   ],
+   "reference_book": "books/native-health.lisp",
+   "executable_book": "books/native-health.lisp"
+  },
+  {
+   "reference": "fn-nh-lines",
+   "executable": "fn-nh-lines-loop",
+   "via": [
+    "mbe in fn-nh-lines"
+   ],
+   "reference_book": "books/native-health.lisp",
+   "executable_book": "books/native-health.lisp"
+  },
+  {
+   "reference": "fn-nh-name-list-words",
+   "executable": "fn-nh-name-list-words-loop",
+   "via": [
+    "mbe in fn-nh-name-list-words"
+   ],
+   "reference_book": "books/native-health.lisp",
+   "executable_book": "books/native-health.lisp"
+  },
+  {
+   "reference": "fn-nh-saturated-total",
+   "executable": "fn-nh-saturated-total-loop",
+   "via": [
+    "mbe in fn-nh-saturated-total"
+   ],
+   "reference_book": "books/native-health.lisp",
+   "executable_book": "books/native-health.lisp"
+  },
+  {
+   "reference": "fn-nh-stranded-count",
+   "executable": "fn-nh-stranded-count-loop",
+   "via": [
+    "mbe in fn-nh-stranded-count"
+   ],
+   "reference_book": "books/native-health.lisp",
+   "executable_book": "books/native-health.lisp"
+  },
+  {
+   "reference": "fn-nh-stranded-peers",
+   "executable": "fn-nh-stranded-peers-loop",
+   "via": [
+    "mbe in fn-nh-stranded-peers"
+   ],
+   "reference_book": "books/native-health.lisp",
+   "executable_book": "books/native-health.lisp"
+  },
+  {
+   "reference": "fn-nh-unavailable-peers",
+   "executable": "fn-nh-unavailable-peers-loop",
+   "via": [
+    "mbe in fn-nh-unavailable-peers"
+   ],
+   "reference_book": "books/native-health.lisp",
+   "executable_book": "books/native-health.lisp"
+  },
+  {
+   "reference": "fn-nntp-active-lines",
+   "executable": "fn-nntp-active-lines-loop",
+   "via": [
+    "mbe in fn-nntp-active-lines"
+   ],
+   "reference_book": "books/nntp-responses.lisp",
+   "executable_book": "books/nntp-responses.lisp"
+  },
+  {
+   "reference": "fn-nntp-active-status-lines",
+   "executable": "fn-nntp-active-status-lines-loop",
+   "via": [
+    "mbe in fn-nntp-active-status-lines"
+   ],
+   "reference_book": "books/nntp-responses.lisp",
+   "executable_book": "books/nntp-responses.lisp"
+  },
+  {
+   "reference": "fn-nntp-active-times-lines",
+   "executable": "fn-nntp-active-times-lines-loop",
+   "via": [
+    "mbe in fn-nntp-active-times-lines"
+   ],
+   "reference_book": "books/nntp-responses.lisp",
+   "executable_book": "books/nntp-responses.lisp"
+  },
+  {
+   "reference": "fn-nntp-append-pieces",
+   "executable": "fn-nntp-append-pieces-loop",
+   "via": [
+    "mbe in fn-nntp-append-pieces"
+   ],
+   "reference_book": "books/nntp-session.lisp",
+   "executable_book": "books/nntp-session.lisp"
+  },
+  {
+   "reference": "fn-nntp-article-response",
+   "executable": "fn-nntp-article-response-of-bytes",
+   "via": [
+    "mbe in fn-nntp-article-response"
+   ],
+   "reference_book": "books/nntp-responses.lisp",
+   "executable_book": "books/nntp-responses.lisp"
+  },
+  {
+   "reference": "fn-nntp-counts-lines",
+   "executable": "fn-nntp-counts-lines-loop",
+   "via": [
+    "mbe in fn-nntp-counts-lines"
+   ],
+   "reference_book": "books/nntp-responses.lisp",
+   "executable_book": "books/nntp-responses.lisp"
+  },
+  {
+   "reference": "fn-nntp-described-lines",
+   "executable": "fn-nntp-described-lines-loop",
+   "via": [
+    "mbe in fn-nntp-described-lines"
+   ],
+   "reference_book": "books/nntp-responses.lisp",
+   "executable_book": "books/nntp-responses.lisp"
+  },
+  {
+   "reference": "fn-nntp-fact-names",
+   "executable": "fn-nntp-fact-names-loop",
+   "via": [
+    "mbe in fn-nntp-fact-names"
+   ],
+   "reference_book": "books/nntp-responses.lisp",
+   "executable_book": "books/nntp-responses.lisp"
+  },
+  {
+   "reference": "fn-nntp-facts-since",
+   "executable": "fn-nntp-facts-since-loop",
+   "via": [
+    "mbe in fn-nntp-facts-since"
+   ],
+   "reference_book": "books/nntp-responses.lisp",
+   "executable_book": "books/nntp-responses.lisp"
+  },
+  {
+   "reference": "fn-nntp-filter-facts-by-wildmat",
+   "executable": "fn-nntp-filter-facts-by-wildmat-loop",
+   "via": [
+    "mbe in fn-nntp-filter-facts-by-wildmat"
+   ],
+   "reference_book": "books/nntp-responses.lisp",
+   "executable_book": "books/nntp-responses.lisp"
+  },
+  {
+   "reference": "fn-nntp-filter-groups-by-wildmat",
+   "executable": "fn-nntp-filter-groups-by-wildmat-loop",
+   "via": [
+    "mbe in fn-nntp-filter-groups-by-wildmat"
+   ],
+   "reference_book": "books/nntp-responses.lisp",
+   "executable_book": "books/nntp-responses.lisp"
+  },
+  {
+   "reference": "fn-nntp-group-count",
+   "executable": "fn-nntp-group-count-loop",
+   "via": [
+    "mbe in fn-nntp-group-count"
+   ],
+   "reference_book": "books/nntp-projection.lisp",
+   "executable_book": "books/nntp-projection.lisp"
+  },
+  {
+   "reference": "fn-nntp-group-high",
+   "executable": "fn-nntp-group-high-loop",
+   "via": [
+    "mbe in fn-nntp-group-high"
+   ],
+   "reference_book": "books/nntp-projection.lisp",
+   "executable_book": "books/nntp-projection.lisp"
+  },
+  {
+   "reference": "fn-nntp-group-last-number",
+   "executable": "fn-nntp-group-last-number-loop",
+   "via": [
+    "mbe in fn-nntp-group-last-number"
+   ],
+   "reference_book": "books/nntp-projection.lisp",
+   "executable_book": "books/nntp-projection.lisp"
+  },
+  {
+   "reference": "fn-nntp-group-low",
+   "executable": "fn-nntp-group-low-loop",
+   "via": [
+    "mbe in fn-nntp-group-low"
+   ],
+   "reference_book": "books/nntp-projection.lisp",
+   "executable_book": "books/nntp-projection.lisp"
+  },
+  {
+   "reference": "fn-nntp-group-next-number",
+   "executable": "fn-nntp-group-next-number-loop",
+   "via": [
+    "mbe in fn-nntp-group-next-number"
+   ],
+   "reference_book": "books/nntp-projection.lisp",
+   "executable_book": "books/nntp-projection.lisp"
+  },
+  {
+   "reference": "fn-nntp-group-range-numbers",
+   "executable": "fn-nntp-group-range-numbers-loop",
+   "via": [
+    "mbe in fn-nntp-group-range-numbers"
+   ],
+   "reference_book": "books/nntp-projection.lisp",
+   "executable_book": "books/nntp-projection.lisp"
+  },
+  {
+   "reference": "fn-nntp-hdr-lines-for-numbers",
+   "executable": "fn-nntp-hdr-lines-for-numbers-loop",
+   "via": [
+    "mbe in fn-nntp-hdr-lines-for-numbers"
+   ],
+   "reference_book": "books/nntp-responses.lisp",
+   "executable_book": "books/nntp-responses.lisp"
+  },
+  {
+   "reference": "fn-nntp-hdr-lines-for-numbers-cat",
+   "executable": "fn-nntp-hdr-lines-for-numbers-cat-loop",
+   "via": [
+    "mbe in fn-nntp-hdr-lines-for-numbers-cat"
+   ],
+   "reference_book": "books/served-catalog.lisp",
+   "executable_book": "books/served-catalog.lisp"
+  },
+  {
+   "reference": "fn-nntp-index-numbers",
+   "executable": "fn-nntp-index-numbers-loop",
+   "via": [
+    "mbe in fn-nntp-index-numbers"
+   ],
+   "reference_book": "books/nntp-index-runtime.lisp",
+   "executable_book": "books/nntp-index-runtime.lisp"
+  },
+  {
+   "reference": "fn-nntp-insert-number",
+   "executable": "fn-nntp-insert-number-loop",
+   "via": [
+    "mbe in fn-nntp-insert-number"
+   ],
+   "reference_book": "books/nntp-projection.lisp",
+   "executable_book": "books/nntp-projection.lisp"
+  },
+  {
+   "reference": "fn-nntp-newnews-scan",
+   "executable": "fn-nntp-newnews-scan-loop",
+   "via": [
+    "mbe in fn-nntp-newnews-scan"
+   ],
+   "reference_book": "books/nntp-responses.lisp",
+   "executable_book": "books/nntp-responses.lisp"
+  },
+  {
+   "reference": "fn-nntp-newsgroup-lines",
+   "executable": "fn-nntp-newsgroup-lines-loop",
+   "via": [
+    "mbe in fn-nntp-newsgroup-lines"
+   ],
+   "reference_book": "books/nntp-responses.lisp",
+   "executable_book": "books/nntp-responses.lisp"
+  },
+  {
+   "reference": "fn-nntp-number-lines",
+   "executable": "fn-nntp-number-lines-loop",
+   "via": [
+    "mbe in fn-nntp-number-lines"
+   ],
+   "reference_book": "books/nntp-projection.lisp",
+   "executable_book": "books/nntp-projection.lisp"
+  },
+  {
+   "reference": "fn-nntp-numbers-count",
+   "executable": "fn-nntp-numbers-count-loop",
+   "via": [
+    "mbe in fn-nntp-numbers-count"
+   ],
+   "reference_book": "books/nntp-index-runtime.lisp",
+   "executable_book": "books/nntp-index-runtime.lisp"
+  },
+  {
+   "reference": "fn-nntp-numbers-max",
+   "executable": "fn-nntp-numbers-max-loop",
+   "via": [
+    "mbe in fn-nntp-numbers-max"
+   ],
+   "reference_book": "books/nntp-index-runtime.lisp",
+   "executable_book": "books/nntp-index-runtime.lisp"
+  },
+  {
+   "reference": "fn-nntp-numbers-max-below",
+   "executable": "fn-nntp-numbers-max-below-loop",
+   "via": [
+    "mbe in fn-nntp-numbers-max-below"
+   ],
+   "reference_book": "books/nntp-index-runtime.lisp",
+   "executable_book": "books/nntp-index-runtime.lisp"
+  },
+  {
+   "reference": "fn-nntp-numbers-min",
+   "executable": "fn-nntp-numbers-min-loop",
+   "via": [
+    "mbe in fn-nntp-numbers-min"
+   ],
+   "reference_book": "books/nntp-index-runtime.lisp",
+   "executable_book": "books/nntp-index-runtime.lisp"
+  },
+  {
+   "reference": "fn-nntp-numbers-min-above",
+   "executable": "fn-nntp-numbers-min-above-loop",
+   "via": [
+    "mbe in fn-nntp-numbers-min-above"
+   ],
+   "reference_book": "books/nntp-index-runtime.lisp",
+   "executable_book": "books/nntp-index-runtime.lisp"
+  },
+  {
+   "reference": "fn-nntp-octets-chars",
+   "executable": "fn-nntp-octets-chars-loop",
+   "via": [
+    "mbe in fn-nntp-octets-chars"
+   ],
+   "reference_book": "books/nntp-syntax.lisp",
+   "executable_book": "books/nntp-syntax.lisp"
+  },
+  {
+   "reference": "fn-nntp-string-octets-aux",
+   "executable": "fn-nntp-string-octets-aux-loop",
+   "via": [
+    "mbe in fn-nntp-string-octets-aux"
+   ],
+   "reference_book": "books/nntp-syntax.lisp",
+   "executable_book": "books/nntp-syntax.lisp"
+  },
+  {
+   "reference": "fn-nntp-stuff-lines",
+   "executable": "fn-nntp-stuff-lines-iter",
+   "via": [
+    "mbe in fn-nntp-stuff-lines"
+   ],
+   "reference_book": "books/nntp-session.lisp",
+   "executable_book": "books/nntp-session.lisp"
+  },
+  {
+   "reference": "fn-nntp-verdict-hdr-lines",
+   "executable": "fn-nntp-verdict-hdr-lines-loop",
+   "via": [
+    "mbe in fn-nntp-verdict-hdr-lines"
+   ],
+   "reference_book": "books/nntp-verdict.lisp",
+   "executable_book": "books/nntp-verdict.lisp"
+  },
+  {
+   "reference": "fn-nntp-xpat-lines-for-numbers",
+   "executable": "fn-nntp-xpat-lines-for-numbers-loop",
+   "via": [
+    "mbe in fn-nntp-xpat-lines-for-numbers"
+   ],
+   "reference_book": "books/nntp-responses.lisp",
+   "executable_book": "books/nntp-responses.lisp"
+  },
+  {
+   "reference": "fn-nntp-xpat-lines-for-numbers-cat",
+   "executable": "fn-nntp-xpat-lines-for-numbers-cat-loop",
+   "via": [
+    "mbe in fn-nntp-xpat-lines-for-numbers-cat"
+   ],
+   "reference_book": "books/served-catalog.lisp",
+   "executable_book": "books/served-catalog.lisp"
+  },
+  {
+   "reference": "fn-node-articles-have-archive-bindingsp",
+   "executable": "fn-nab-articles-boundp",
+   "via": [
+    "mbe in fn-node-articles-have-archive-bindingsp"
+   ],
+   "reference_book": "books/node.lisp",
+   "executable_book": "books/node.lisp"
+  },
+  {
+   "reference": "fn-nop-argument-texts",
+   "executable": "fn-nop-argument-texts-loop",
+   "via": [
+    "mbe in fn-nop-argument-texts"
+   ],
+   "reference_book": "books/native-operator.lisp",
+   "executable_book": "books/native-operator.lisp"
+  },
+  {
+   "reference": "fn-nov-lines-for-numbers",
+   "executable": "fn-nov-lines-for-numbers-loop",
+   "via": [
+    "mbe in fn-nov-lines-for-numbers"
+   ],
+   "reference_book": "books/nntp-responses.lisp",
+   "executable_book": "books/nntp-responses.lisp"
+  },
+  {
+   "reference": "fn-nov-lines-for-numbers-cat",
+   "executable": "fn-nov-lines-for-numbers-cat-loop",
+   "via": [
+    "mbe in fn-nov-lines-for-numbers-cat"
+   ],
+   "reference_book": "books/served-catalog.lisp",
+   "executable_book": "books/served-catalog.lisp"
+  },
+  {
+   "reference": "fn-nov-lines-for-numbers-numbered",
+   "executable": "fn-nov-lines-for-numbers-numbered-loop",
+   "via": [
+    "mbe in fn-nov-lines-for-numbers-numbered"
+   ],
+   "reference_book": "books/nntp-range-indexed.lisp",
+   "executable_book": "books/nntp-range-indexed.lisp"
+  },
+  {
+   "reference": "fn-nov-scrub",
+   "executable": "fn-nov-scrub-loop",
+   "via": [
+    "mbe in fn-nov-scrub"
+   ],
+   "reference_book": "books/nov-fields.lisp",
+   "executable_book": "books/nov-fields.lisp"
+  },
+  {
+   "reference": "fn-nov-served-lines-numbered",
+   "executable": "fn-nov-served-lines-numbered-loop",
+   "via": [
+    "mbe in fn-nov-served-lines-numbered"
+   ],
+   "reference_book": "books/nntp-xref.lisp",
+   "executable_book": "books/nntp-xref.lisp"
+  },
+  {
+   "reference": "fn-nov-served-lines-numbered-col",
+   "executable": "fn-nov-served-lines-numbered-col-loop",
+   "via": [
+    "mbe in fn-nov-served-lines-numbered-col"
+   ],
+   "reference_book": "books/served-columns.lisp",
+   "executable_book": "books/served-columns.lisp"
+  },
+  {
+   "reference": "fn-ocfg-pin-remove",
+   "executable": "fn-ocfg-pin-remove-loop",
+   "via": [
+    "mbe in fn-ocfg-pin-remove"
+   ],
+   "reference_book": "books/owner-config.lisp",
+   "executable_book": "books/owner-config.lisp"
+  },
+  {
+   "reference": "fn-ocfg-pin-set",
+   "executable": "fn-ocfg-pin-set-loop",
+   "via": [
+    "mbe in fn-ocfg-pin-set"
+   ],
+   "reference_book": "books/owner-config.lisp",
+   "executable_book": "books/owner-config.lisp"
+  },
+  {
+   "reference": "fn-ocs-member-releases",
+   "executable": "fn-ocs-member-releases-loop",
+   "via": [
+    "mbe in fn-ocs-member-releases"
+   ],
+   "reference_book": "books/owner-commit-steps.lisp",
+   "executable_book": "books/owner-commit-steps.lisp"
+  },
+  {
+   "reference": "fn-oct-slice-list",
+   "executable": "fn-oct-slice-list-loop",
+   "via": [
+    "mbe in fn-oct-slice-list"
+   ],
+   "reference_book": "books/octets-stobj.lisp",
+   "executable_book": "books/octets-stobj.lisp"
+  },
+  {
+   "reference": "fn-oct-snoc",
+   "executable": "fn-oct-snoc-loop",
+   "via": [
+    "mbe in fn-oct-snoc"
+   ],
+   "reference_book": "books/octets-stobj.lisp",
+   "executable_book": "books/octets-stobj.lisp"
+  },
+  {
+   "reference": "fn-oct-update",
+   "executable": "fn-oct-update-loop",
+   "via": [
+    "mbe in fn-oct-update"
+   ],
+   "reference_book": "books/octets-stobj.lisp",
+   "executable_book": "books/octets-stobj.lisp"
+  },
+  {
+   "reference": "fn-olog-served-refusal-lines",
+   "executable": "fn-olog-served-refusal-lines-loop",
+   "via": [
+    "mbe in fn-olog-served-refusal-lines"
+   ],
+   "reference_book": "books/owner-log.lisp",
+   "executable_book": "books/owner-log.lisp"
+  },
+  {
+   "reference": "fn-ot-downcase",
+   "executable": "fn-ot-downcase-loop",
+   "via": [
+    "mbe in fn-ot-downcase"
+   ],
+   "reference_book": "books/octet-text.lisp",
+   "executable_book": "books/octet-text.lisp"
+  },
+  {
+   "reference": "fn-otm-strip-shed",
+   "executable": "fn-otm-strip-shed-loop",
+   "via": [
+    "mbe in fn-otm-strip-shed"
+   ],
+   "reference_book": "books/owner-time-admission.lisp",
+   "executable_book": "books/owner-time-admission.lisp"
+  },
+  {
+   "reference": "fn-own-feed-dist-names-of-pieces",
+   "executable": "fn-own-feed-dist-names-of-pieces-loop",
+   "via": [
+    "mbe in fn-own-feed-dist-names-of-pieces"
+   ],
+   "reference_book": "books/owner-feed.lisp",
+   "executable_book": "books/owner-feed.lisp"
+  },
+  {
+   "reference": "fn-own-feed-fold",
+   "executable": "fn-own-feed-fold-loop",
+   "via": [
+    "mbe in fn-own-feed-fold"
+   ],
+   "reference_book": "books/owner-feed.lisp",
+   "executable_book": "books/owner-feed.lisp"
+  },
+  {
+   "reference": "fn-own-feed-intent-remove",
+   "executable": "fn-own-feed-intent-remove-loop",
+   "via": [
+    "mbe in fn-own-feed-intent-remove"
+   ],
+   "reference_book": "books/owner-feed.lisp",
+   "executable_book": "books/owner-feed.lisp"
+  },
+  {
+   "reference": "fn-own-remove-conn",
+   "executable": "fn-own-remove-conn-loop",
+   "via": [
+    "mbe in fn-own-remove-conn"
+   ],
+   "reference_book": "books/owner.lisp",
+   "executable_book": "books/owner.lisp"
+  },
+  {
+   "reference": "fn-own-remove-subs",
+   "executable": "fn-own-remove-subs-loop",
+   "via": [
+    "mbe in fn-own-remove-subs"
+   ],
+   "reference_book": "books/owner.lisp",
+   "executable_book": "books/owner.lisp"
+  },
+  {
+   "reference": "fn-own-replace-conn",
+   "executable": "fn-own-replace-conn-loop",
+   "via": [
+    "mbe in fn-own-replace-conn"
+   ],
+   "reference_book": "books/owner.lisp",
+   "executable_book": "books/owner.lisp"
+  },
+  {
+   "reference": "fn-own-take",
+   "executable": "fn-own-take-rev",
+   "via": [
+    "mbe in fn-own-take"
+   ],
+   "reference_book": "books/owner.lisp",
+   "executable_book": "books/owner.lisp"
+  },
+  {
+   "reference": "fn-path-butlast",
+   "executable": "fn-path-butlast-loop",
+   "via": [
+    "mbe in fn-path-butlast"
+   ],
+   "reference_book": "books/path.lisp",
+   "executable_book": "books/path.lisp"
+  },
+  {
+   "reference": "fn-pb-line",
+   "executable": "fn-pb-line-loop",
+   "via": [
+    "mbe in fn-pb-line"
+   ],
+   "reference_book": "books/poster-bytes.lisp",
+   "executable_book": "books/poster-bytes.lisp"
+  },
+  {
+   "reference": "fn-pb-upto-semicolon",
+   "executable": "fn-pb-upto-semicolon-loop",
+   "via": [
+    "mbe in fn-pb-upto-semicolon"
+   ],
+   "reference_book": "books/poster-bytes.lisp",
+   "executable_book": "books/poster-bytes.lisp"
+  },
+  {
+   "reference": "fn-peer-scope-groups",
+   "executable": "fn-peer-scope-groups-loop",
+   "via": [
+    "mbe in fn-peer-scope-groups"
+   ],
+   "reference_book": "books/peer-inbound.lisp",
+   "executable_book": "books/peer-inbound.lisp"
+  },
+  {
+   "reference": "fn-post-body-octets",
+   "executable": "fn-post-body-octets-iter",
+   "via": [
+    "mbe in fn-post-body-octets"
+   ],
+   "reference_book": "books/nntp-post.lisp",
+   "executable_book": "books/nntp-post.lisp"
+  },
+  {
+   "reference": "fn-pu-append",
+   "executable": "fn-pu-append-loop",
+   "via": [
+    "mbe in fn-pu-append"
+   ],
+   "reference_book": "books/path-update.lisp",
+   "executable_book": "books/path-update.lisp"
+  },
+  {
+   "reference": "fn-pu-line",
+   "executable": "fn-pu-line-loop",
+   "via": [
+    "mbe in fn-pu-line"
+   ],
+   "reference_book": "books/path-update.lisp",
+   "executable_book": "books/path-update.lisp"
+  },
+  {
+   "reference": "fn-pu-take-wsp",
+   "executable": "fn-pu-take-wsp-loop",
+   "via": [
+    "mbe in fn-pu-take-wsp"
+   ],
+   "reference_book": "books/path-update.lisp",
+   "executable_book": "books/path-update.lisp"
+  },
+  {
+   "reference": "fn-pu-walk",
+   "executable": "fn-pu-walk-loop",
+   "via": [
+    "mbe in fn-pu-walk"
+   ],
+   "reference_book": "books/path-update.lisp",
+   "executable_book": "books/path-update.lisp"
+  },
+  {
+   "reference": "fn-pull-dropped-of",
+   "executable": "fn-pull-dropped-of-loop",
+   "via": [
+    "mbe in fn-pull-dropped-of"
+   ],
+   "reference_book": "books/peer-pull.lisp",
+   "executable_book": "books/peer-pull.lisp"
+  },
+  {
+   "reference": "fn-pull-dropped-words",
+   "executable": "fn-pull-dropped-words-loop",
+   "via": [
+    "mbe in fn-pull-dropped-words"
+   ],
+   "reference_book": "books/peer-pull.lisp",
+   "executable_book": "books/peer-pull.lisp"
+  },
+  {
+   "reference": "fn-pull-next-pending",
+   "executable": "fn-pull-next-pending-loop",
+   "via": [
+    "mbe in fn-pull-next-pending"
+   ],
+   "reference_book": "books/peer-pull.lisp",
+   "executable_book": "books/peer-pull.lisp"
+  },
+  {
+   "reference": "fn-pull-obs-effects",
+   "executable": "fn-pull-obs-effects-loop",
+   "via": [
+    "mbe in fn-pull-obs-effects"
+   ],
+   "reference_book": "books/peer-pull-session.lisp",
+   "executable_book": "books/peer-pull-session.lisp"
+  },
+  {
+   "reference": "fn-pull-pre-events",
+   "executable": "fn-pull-pre-events-loop",
+   "via": [
+    "mbe in fn-pull-pre-events"
+   ],
+   "reference_book": "books/peer-pull-session.lisp",
+   "executable_book": "books/peer-pull-session.lisp"
+  },
+  {
+   "reference": "fn-rcl-class-count-in",
+   "executable": "fn-rcl-class-count-loop",
+   "via": [
+    "mbe in fn-rcl-class-count-in"
+   ],
+   "reference_book": "books/store-reclaim-holders.lisp",
+   "executable_book": "books/store-reclaim-holders.lisp"
+  },
+  {
+   "reference": "fn-rcl-held-count-in",
+   "executable": "fn-rcl-held-count-loop",
+   "via": [
+    "mbe in fn-rcl-held-count-in"
+   ],
+   "reference_book": "books/store-reclaim-holders.lisp",
+   "executable_book": "books/store-reclaim-holders.lisp"
+  },
+  {
+   "reference": "fn-rcl-held-verdicts",
+   "executable": "fn-rcl-held-verdicts-loop",
+   "via": [
+    "mbe in fn-rcl-held-verdicts"
+   ],
+   "reference_book": "books/store-reclaim-holders.lisp",
+   "executable_book": "books/store-reclaim-holders.lisp"
+  },
+  {
+   "reference": "fn-rcl-summary-in",
+   "executable": "fn-rcl-summary-loop",
+   "via": [
+    "mbe in fn-rcl-summary-in"
+   ],
+   "reference_book": "books/store-reclaim-holders.lisp",
+   "executable_book": "books/store-reclaim-holders.lisp"
+  },
+  {
+   "reference": "fn-rcompat-article-reply",
+   "executable": "fn-rcompat-article-reply-exec",
+   "via": [
+    "mbe in fn-rcompat-article-reply",
+    "name"
+   ],
+   "reference_book": "books/nntp-reader-compat.lisp",
+   "executable_book": "books/nntp-reader-compat.lisp"
+  },
+  {
+   "reference": "fn-rcompat-facts-held",
+   "executable": "fn-rcompat-facts-held-loop",
+   "via": [
+    "mbe in fn-rcompat-facts-held"
+   ],
+   "reference_book": "books/nntp-reader-compat.lisp",
+   "executable_book": "books/nntp-reader-compat.lisp"
+  },
+  {
+   "reference": "fn-rcompat-hdr-lines",
+   "executable": "fn-rcompat-hdr-lines-loop",
+   "via": [
+    "mbe in fn-rcompat-hdr-lines"
+   ],
+   "reference_book": "books/nntp-reader-compat.lisp",
+   "executable_book": "books/nntp-reader-compat.lisp"
+  },
+  {
+   "reference": "fn-rcompat-hdr-lines-cat",
+   "executable": "fn-rcompat-hdr-lines-cat-loop",
+   "via": [
+    "mbe in fn-rcompat-hdr-lines-cat"
+   ],
+   "reference_book": "books/served-catalog.lisp",
+   "executable_book": "books/served-catalog.lisp"
+  },
+  {
+   "reference": "fn-rcompat-name-lines",
+   "executable": "fn-rcompat-name-lines-loop",
+   "via": [
+    "mbe in fn-rcompat-name-lines"
+   ],
+   "reference_book": "books/nntp-reader-compat.lisp",
+   "executable_book": "books/nntp-reader-compat.lisp"
+  },
+  {
+   "reference": "fn-rcompat-names-held",
+   "executable": "fn-rcompat-names-held-loop",
+   "via": [
+    "mbe in fn-rcompat-names-held"
+   ],
+   "reference_book": "books/nntp-reader-compat.lisp",
+   "executable_book": "books/nntp-reader-compat.lisp"
+  },
+  {
+   "reference": "fn-record-content-subject",
+   "executable": "fn-ag-car",
+   "via": [
+    "mbe in fn-bpi-ag-record-content-subject"
+   ],
+   "reference_book": "books/records-shape.lisp",
+   "executable_book": "books/acceptance-alloc.lisp"
+  },
+  {
+   "reference": "fn-record-decode-after-header",
+   "executable": "fn-record-decode-after-header-exec",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/records.lisp",
+   "executable_book": "books/records-exec.lisp"
+  },
+  {
+   "reference": "fn-record-decode-exact",
+   "executable": "fn-record-decode-exact-exec",
+   "via": [
+    "defattach",
+    "name"
+   ],
+   "reference_book": "books/records-seam.lisp",
+   "executable_book": "books/records-exec.lisp"
+  },
+  {
+   "reference": "fn-record-decode-exact",
+   "executable": "fn-record-decode-exact-impl",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/records-seam.lisp",
+   "executable_book": "books/records.lisp"
+  },
+  {
+   "reference": "fn-record-decode-tail",
+   "executable": "fn-record-decode-tail-exec",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/records.lisp",
+   "executable_book": "books/records-exec.lisp"
+  },
+  {
+   "reference": "fn-record-encode",
+   "executable": "fn-rcon-record-encode-impl",
+   "via": [
+    "defattach"
+   ],
+   "reference_book": "books/records-seam.lisp",
+   "executable_book": "books/records-codec-concrete.lisp"
+  },
+  {
+   "reference": "fn-record-encode",
+   "executable": "fn-record-encode-impl",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/records-seam.lisp",
+   "executable_book": "books/records.lisp"
+  },
+  {
+   "reference": "fn-record-groups",
+   "executable": "fn-ag-car",
+   "via": [
+    "mbe in fn-bpi-ag-record-groups"
+   ],
+   "reference_book": "books/records-shape.lisp",
+   "executable_book": "books/acceptance-alloc.lisp"
+  },
+  {
+   "reference": "fn-record-item-decode",
+   "executable": "fn-cbor-decode-prechecked",
+   "via": [
+    "mbe in fn-record-item-decode"
+   ],
+   "reference_book": "books/records.lisp",
+   "executable_book": "books/cbor.lisp"
+  },
+  {
+   "reference": "fn-record-msgid",
+   "executable": "fn-ag-car",
+   "via": [
+    "mbe in fn-bpi-ag-record-msgid"
+   ],
+   "reference_book": "books/records-shape.lisp",
+   "executable_book": "books/acceptance-alloc.lisp"
+  },
+  {
+   "reference": "fn-record-obligation-id",
+   "executable": "fn-ag-car",
+   "via": [
+    "mbe in fn-bpi-ag-record-obligation-id"
+   ],
+   "reference_book": "books/records-shape.lisp",
+   "executable_book": "books/acceptance-alloc.lisp"
+  },
+  {
+   "reference": "fn-record-payload",
+   "executable": "fn-ag-car",
+   "via": [
+    "mbe in fn-bpi-ag-record-payload"
+   ],
+   "reference_book": "books/records-shape.lisp",
+   "executable_book": "books/acceptance-alloc.lisp"
+  },
+  {
+   "reference": "fn-record-uint-decode",
+   "executable": "fn-cbor-decode-prechecked-wide",
+   "via": [
+    "mbe in fn-record-uint-decode"
+   ],
+   "reference_book": "books/records.lisp",
+   "executable_book": "books/cbor.lisp"
+  },
+  {
+   "reference": "fn-retain-no-duplicatesp",
+   "executable": "fn-no-duplicatesp",
+   "via": [
+    "mbe in fn-retain-no-duplicatesp"
+   ],
+   "reference_book": "books/retention.lisp",
+   "executable_book": "books/acceptance-alloc.lisp"
+  },
+  {
+   "reference": "fn-retain-remove-id",
+   "executable": "fn-retain-remove-id-rev",
+   "via": [
+    "mbe in fn-retain-remove-id"
+   ],
+   "reference_book": "books/retention.lisp",
+   "executable_book": "books/retention.lisp"
+  },
+  {
+   "reference": "fn-retain-sum",
+   "executable": "fn-retain-sum-acc",
+   "via": [
+    "mbe in fn-retain-sum"
+   ],
+   "reference_book": "books/retention.lisp",
+   "executable_book": "books/retention.lisp"
+  },
+  {
+   "reference": "fn-rii-kbuild-pins",
+   "executable": "fn-rii-kbuild-pins-loop",
+   "via": [
+    "mbe in fn-rii-kbuild-pins"
+   ],
+   "reference_book": "books/replay-identity-index.lisp",
+   "executable_book": "books/replay-identity-index.lisp"
+  },
+  {
+   "reference": "fn-rii-kbuild-releases",
+   "executable": "fn-rii-kbuild-releases-loop",
+   "via": [
+    "mbe in fn-rii-kbuild-releases"
+   ],
+   "reference_book": "books/replay-identity-index.lisp",
+   "executable_book": "books/replay-identity-index.lisp"
+  },
+  {
+   "reference": "fn-sbud-record-octets",
+   "executable": "fn-sbud-record-octets-acc",
+   "via": [
+    "mbe in fn-sbud-record-octets"
+   ],
+   "reference_book": "books/store-budget.lisp",
+   "executable_book": "books/store-budget.lisp"
+  },
+  {
+   "reference": "fn-sca-targets-of",
+   "executable": "fn-sca-targets-of-loop",
+   "via": [
+    "mbe in fn-sca-targets-of"
+   ],
+   "reference_book": "books/served-catalog-owner.lisp",
+   "executable_book": "books/served-catalog-owner.lisp"
+  },
+  {
+   "reference": "fn-scar-feed-span",
+   "executable": "fn-scar-scan-span",
+   "via": [
+    "mbe in fn-scar-step-span-core"
+   ],
+   "reference_book": "books/served-span.lisp",
+   "executable_book": "books/served-scan.lisp"
+  },
+  {
+   "reference": "fn-scat-counts-lines",
+   "executable": "fn-scat-counts-lines-loop",
+   "via": [
+    "mbe in fn-scat-counts-lines"
+   ],
+   "reference_book": "books/served-catalog.lisp",
+   "executable_book": "books/served-catalog.lisp"
+  },
+  {
+   "reference": "fn-scat-range-keep",
+   "executable": "fn-scat-range-keep-loop",
+   "via": [
+    "mbe in fn-scat-range-keep"
+   ],
+   "reference_book": "books/served-catalog.lisp",
+   "executable_book": "books/served-catalog.lisp"
+  },
+  {
+   "reference": "fn-scat-vh-lines",
+   "executable": "fn-scat-vh-lines-loop",
+   "via": [
+    "mbe in fn-scat-vh-lines"
+   ],
+   "reference_book": "books/served-catalog.lisp",
+   "executable_book": "books/served-catalog.lisp"
+  },
+  {
+   "reference": "fn-scc-chars-octets",
+   "executable": "fn-scc-chars-octets-loop",
+   "via": [
+    "mbe in fn-scc-chars-octets"
+   ],
+   "reference_book": "books/store-tree-codec.lisp",
+   "executable_book": "books/store-tree-codec.lisp"
+  },
+  {
+   "reference": "fn-scc-octets-chars",
+   "executable": "fn-scc-octets-chars-loop",
+   "via": [
+    "mbe in fn-scc-octets-chars"
+   ],
+   "reference_book": "books/store-tree-codec.lisp",
+   "executable_book": "books/store-tree-codec.lisp"
+  },
+  {
+   "reference": "fn-scc-seal",
+   "executable": "fn-sccr-window-seal",
+   "via": [
+    "mbe in fn-sccr-open-frame"
+   ],
+   "reference_book": "books/store-checkpoint-codec.lisp",
+   "executable_book": "books/store-checkpoint-reader.lisp"
+  },
+  {
+   "reference": "fn-sccb-chunk-count",
+   "executable": "fn-sccb-chunk-count-loop",
+   "via": [
+    "mbe in fn-sccb-chunk-count"
+   ],
+   "reference_book": "books/store-checkpoint-buffer.lisp",
+   "executable_book": "books/store-checkpoint-buffer.lisp"
+  },
+  {
+   "reference": "fn-scka-batch-count",
+   "executable": "fn-scka-batch-count-loop",
+   "via": [
+    "mbe in fn-scka-batch-count"
+   ],
+   "reference_book": "books/store-checkpoint-arena.lisp",
+   "executable_book": "books/store-checkpoint-arena.lisp"
+  },
+  {
+   "reference": "fn-scka-canon-rows",
+   "executable": "fn-scka-canon-rows-rev",
+   "via": [
+    "mbe in fn-scka-canon-rows"
+   ],
+   "reference_book": "books/store-checkpoint-arena.lisp",
+   "executable_book": "books/store-checkpoint-arena.lisp"
+  },
+  {
+   "reference": "fn-scka-enc-lens-sum",
+   "executable": "fn-scka-enc-lens-sum-acc",
+   "via": [
+    "mbe in fn-scka-enc-lens-sum"
+   ],
+   "reference_book": "books/store-checkpoint-arena-writer.lisp",
+   "executable_book": "books/store-checkpoint-arena-writer.lisp"
+  },
+  {
+   "reference": "fn-scr-feed-span",
+   "executable": "fn-scr-scan-span",
+   "via": [
+    "mbe in fn-scr-step-span-core"
+   ],
+   "reference_book": "books/served-catalog-chain.lisp",
+   "executable_book": "books/served-catalog-chain.lisp"
+  },
+  {
+   "reference": "fn-sctr-take-frames",
+   "executable": "fn-sctr-take-frames-loop",
+   "via": [
+    "mbe in fn-sctr-take-frames"
+   ],
+   "reference_book": "books/store-checkpoint-tables-reader.lisp",
+   "executable_book": "books/store-checkpoint-tables-reader.lisp"
+  },
+  {
+   "reference": "fn-scv-new-numbers",
+   "executable": "fn-scv-new-numbers-loop",
+   "via": [
+    "mbe in fn-scv-new-numbers"
+   ],
+   "reference_book": "books/served-catalog-view.lisp",
+   "executable_book": "books/served-catalog-view.lisp"
+  },
+  {
+   "reference": "fn-scv-seq-numbers",
+   "executable": "fn-scv-seq-numbers-loop",
+   "via": [
+    "mbe in fn-scv-seq-numbers"
+   ],
+   "reference_book": "books/served-catalog-view.lisp",
+   "executable_book": "books/served-catalog-view.lisp"
+  },
+  {
+   "reference": "fn-scv-withdrawn-numbers",
+   "executable": "fn-scv-withdrawn-numbers-loop",
+   "via": [
+    "mbe in fn-scv-withdrawn-numbers"
+   ],
+   "reference_book": "books/served-catalog-view.lisp",
+   "executable_book": "books/served-catalog-view.lisp"
+  },
+  {
+   "reference": "fn-scv-xdiff",
+   "executable": "fn-scv-xdiff-loop",
+   "via": [
+    "mbe in fn-scv-xdiff"
+   ],
+   "reference_book": "books/served-catalog-view.lisp",
+   "executable_book": "books/served-catalog-view.lisp"
+  },
+  {
+   "reference": "fn-scv-xmax",
+   "executable": "fn-scv-xmax-loop",
+   "via": [
+    "mbe in fn-scv-xmax"
+   ],
+   "reference_book": "books/served-catalog-view.lisp",
+   "executable_book": "books/served-catalog-view.lisp"
+  },
+  {
+   "reference": "fn-scv-xmin",
+   "executable": "fn-scv-xmin-loop",
+   "via": [
+    "mbe in fn-scv-xmin"
+   ],
+   "reference_book": "books/served-catalog-view.lisp",
+   "executable_book": "books/served-catalog-view.lisp"
+  },
+  {
+   "reference": "fn-sdg-chain",
+   "executable": "fn-sdg-sink-final",
+   "via": [
+    "mbe in fn-sdg-arena-pool",
+    "mbe in fn-sdg-digest",
+    "mbe in fn-sdg-rows-history"
+   ],
+   "reference_book": "books/state-digest.lisp",
+   "executable_book": "books/state-digest.lisp"
+  },
+  {
+   "reference": "fn-served-reply-octets",
+   "executable": "fn-served-reply-octets-loop",
+   "via": [
+    "mbe in fn-served-reply-octets"
+   ],
+   "reference_book": "books/served.lisp",
+   "executable_book": "books/served.lisp"
+  },
+  {
+   "reference": "fn-served-step-counted",
+   "executable": "fn-served-step-counted-fast",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/served-tls-prefix.lisp",
+   "executable_book": "books/served-tls-prefix.lisp"
+  },
+  {
+   "reference": "fn-sha256-appx",
+   "executable": "fn-sha256-revx",
+   "via": [
+    "mbe in fn-sha256-appx"
+   ],
+   "reference_book": "books/sha256.lisp",
+   "executable_book": "books/sha256.lisp"
+  },
+  {
+   "reference": "fn-sha256-fix-octets",
+   "executable": "fn-sha256-revx",
+   "via": [
+    "mbe in fn-sha256-fix-octets"
+   ],
+   "reference_book": "books/sha256.lisp",
+   "executable_book": "books/sha256.lisp"
+  },
+  {
+   "reference": "fn-sl-append1",
+   "executable": "fn-sl-append1-loop",
+   "via": [
+    "mbe in fn-sl-append1"
+   ],
+   "reference_book": "books/snoc-list.lisp",
+   "executable_book": "books/snoc-list.lisp"
+  },
+  {
+   "reference": "fn-sn-sweep-removals",
+   "executable": "fn-sn-sweep-removals-loop",
+   "via": [
+    "mbe in fn-sn-sweep-removals"
+   ],
+   "reference_book": "books/store-sweep.lisp",
+   "executable_book": "books/store-sweep.lisp"
+  },
+  {
+   "reference": "fn-sorr-configs-before",
+   "executable": "fn-sorr-configs-before-loop",
+   "via": [
+    "mbe in fn-sorr-configs-before"
+   ],
+   "reference_book": "books/store-open-replay-refusal.lisp",
+   "executable_book": "books/store-open-replay-refusal.lisp"
+  },
+  {
+   "reference": "fn-stmt-decode-items",
+   "executable": "fn-stmt-decode-items-impl",
+   "via": [
+    "name"
+   ],
+   "reference_book": "books/statement-seam.lisp",
+   "executable_book": "books/statement-codec.lisp"
+  },
+  {
+   "reference": "fn-stmt-decode-items-bounded",
+   "executable": "fn-stmt-decode-items-bounded-impl",
+   "via": [
+    "defattach",
+    "name"
+   ],
+   "reference_book": "books/statement-seam.lisp",
+   "executable_book": "books/statement-codec.lisp"
+  },
+  {
+   "reference": "fn-stmt-decode-prefix-items-bounded",
+   "executable": "fn-stmt-decode-prefix-items-bounded-impl",
+   "via": [
+    "defattach",
+    "name"
+   ],
+   "reference_book": "books/statement-seam.lisp",
+   "executable_book": "books/statement-codec.lisp"
+  },
+  {
+   "reference": "fn-stmt-encode-items",
+   "executable": "fn-stmt-encode-items-impl",
+   "via": [
+    "defattach",
+    "name"
+   ],
+   "reference_book": "books/statement-seam.lisp",
+   "executable_book": "books/statement-codec.lisp"
+  },
+  {
+   "reference": "fn-store-event-generation",
+   "executable": "fn-evc-field-by-shape",
+   "via": [
+    "mbe in fn-evc-generation"
+   ],
+   "reference_book": "books/store-events.lisp",
+   "executable_book": "books/store-events-carried.lisp"
+  },
+  {
+   "reference": "fn-store-event-sequence",
+   "executable": "fn-evc-field-by-shape",
+   "via": [
+    "mbe in fn-evc-sequence"
+   ],
+   "reference_book": "books/store-events.lisp",
+   "executable_book": "books/store-events-carried.lisp"
+  },
+  {
+   "reference": "fn-store-event-txid",
+   "executable": "fn-evc-field-by-shape",
+   "via": [
+    "mbe in fn-evc-txid"
+   ],
+   "reference_book": "books/store-events.lisp",
+   "executable_book": "books/store-events-carried.lisp"
+  },
+  {
+   "reference": "fn-stx-authored-header",
+   "executable": "fn-stx-authored-header-loop",
+   "via": [
+    "mbe in fn-stx-authored-header"
+   ],
+   "reference_book": "books/stx-carrier.lisp",
+   "executable_book": "books/stx-carrier.lisp"
+  },
+  {
+   "reference": "fn-stx-field-octets",
+   "executable": "fn-stx-field-octets-loop",
+   "via": [
+    "mbe in fn-stx-field-octets"
+   ],
+   "reference_book": "books/stx-carrier.lisp",
+   "executable_book": "books/stx-carrier.lisp"
+  },
+  {
+   "reference": "fn-stx-index-of-store",
+   "executable": "fn-stx-index-of-store-loop",
+   "via": [
+    "mbe in fn-stx-index-of-store"
+   ],
+   "reference_book": "books/stx-index.lisp",
+   "executable_book": "books/stx-index.lisp"
+  },
+  {
+   "reference": "fn-stx-strip-wsp",
+   "executable": "fn-stx-strip-wsp-loop",
+   "via": [
+    "mbe in fn-stx-strip-wsp"
+   ],
+   "reference_book": "books/stx-carrier.lisp",
+   "executable_book": "books/stx-carrier.lisp"
+  },
+  {
+   "reference": "fn-sxp-config-entries",
+   "executable": "fn-sxp-config-entries-loop",
+   "via": [
+    "mbe in fn-sxp-config-entries"
+   ],
+   "reference_book": "books/store-export.lisp",
+   "executable_book": "books/store-export.lisp"
+  },
+  {
+   "reference": "fn-sxp-manifest",
+   "executable": "fn-sxp-manifest-loop",
+   "via": [
+    "mbe in fn-sxp-manifest"
+   ],
+   "reference_book": "books/store-export.lisp",
+   "executable_book": "books/store-export.lisp"
+  },
+  {
+   "reference": "fn-sxp-record-entries",
+   "executable": "fn-sxp-record-entries-loop",
+   "via": [
+    "mbe in fn-sxp-record-entries"
+   ],
+   "reference_book": "books/store-export.lisp",
+   "executable_book": "books/store-export.lisp"
+  },
+  {
+   "reference": "fn-tcl-app",
+   "executable": "fn-tcl-app-loop",
+   "via": [
+    "mbe in fn-tcl-app"
+   ],
+   "reference_book": "books/tcpcl-session.lisp",
+   "executable_book": "books/tcpcl-session.lisp"
+  },
+  {
+   "reference": "fn-tcl-held-prior-messages",
+   "executable": "fn-tcl-held-prior-messages-loop",
+   "via": [
+    "mbe in fn-tcl-held-prior-messages"
+   ],
+   "reference_book": "books/tcpcl-delivery.lisp",
+   "executable_book": "books/tcpcl-delivery.lisp"
+  },
+  {
+   "reference": "fn-tcl-spool-recovery-actions",
+   "executable": "fn-tcl-spool-recovery-actions-loop",
+   "via": [
+    "mbe in fn-tcl-spool-recovery-actions"
+   ],
+   "reference_book": "books/tcpcl-spool.lisp",
+   "executable_book": "books/tcpcl-spool.lisp"
+  },
+  {
+   "reference": "fn-th-replace-anchor",
+   "executable": "fn-th-replace-anchor-loop",
+   "via": [
+    "mbe in fn-th-replace-anchor"
+   ],
+   "reference_book": "books/topic-history-admission.lisp",
+   "executable_book": "books/topic-history-admission.lisp"
+  },
+  {
+   "reference": "fn-wire-append",
+   "executable": "fn-wire-append-loop",
+   "via": [
+    "mbe in fn-wire-append"
+   ],
+   "reference_book": "books/wire.lisp",
+   "executable_book": "books/wire.lisp"
+  },
+  {
+   "reference": "fn-wire-lines-size",
+   "executable": "fn-wire-lines-size-loop",
+   "via": [
+    "mbe in fn-wire-lines-size"
+   ],
+   "reference_book": "books/wire.lisp",
+   "executable_book": "books/wire.lisp"
+  },
+  {
+   "reference": "fn-wire-list-length",
+   "executable": "fn-wire-list-length-onto",
+   "via": [
+    "mbe in fn-wire-list-length"
+   ],
+   "reference_book": "books/wire.lisp",
+   "executable_book": "books/wire.lisp"
+  },
+  {
+   "reference": "fn-wire-render-lines",
+   "executable": "fn-wire-render-lines-loop",
+   "via": [
+    "mbe in fn-wire-render-lines"
+   ],
+   "reference_book": "books/wire.lisp",
+   "executable_book": "books/wire.lisp"
+  },
+  {
+   "reference": "fn-wr-over-rows",
+   "executable": "fn-wr-over-rows-loop",
+   "via": [
+    "mbe in fn-wr-over-rows"
+   ],
+   "reference_book": "books/web-render.lisp",
+   "executable_book": "books/web-render.lisp"
+  },
+  {
+   "reference": "fn-wr-pct-encode",
+   "executable": "fn-wr-pct-encode-loop",
+   "via": [
+    "mbe in fn-wr-pct-encode"
+   ],
+   "reference_book": "books/web-render.lisp",
+   "executable_book": "books/web-render.lisp"
+  },
+  {
+   "reference": "fn-wrq-span-decode",
+   "executable": "fn-wrq-span-decode-loop",
+   "via": [
+    "mbe in fn-wrq-span-decode"
+   ],
+   "reference_book": "books/web-request.lisp",
+   "executable_book": "books/web-request.lisp"
+  },
+  {
+   "reference": "fn-wrq-urldecode",
+   "executable": "fn-wrq-urldecode-loop",
+   "via": [
+    "mbe in fn-wrq-urldecode"
+   ],
+   "reference_book": "books/web-request.lisp",
+   "executable_book": "books/web-request.lisp"
+  },
+  {
+   "reference": "fn-wss-drop",
+   "executable": "fn-wss-drop-loop",
+   "via": [
+    "mbe in fn-wss-drop"
+   ],
+   "reference_book": "books/web-session.lisp",
+   "executable_book": "books/web-session.lisp"
+  },
+  {
+   "reference": "fn-wss-expired",
+   "executable": "fn-wss-expired-loop",
+   "via": [
+    "mbe in fn-wss-expired"
+   ],
+   "reference_book": "books/web-session.lisp",
+   "executable_book": "books/web-session.lisp"
+  },
+  {
+   "reference": "fn-wss-one-line",
+   "executable": "fn-wss-one-line-loop",
+   "via": [
+    "mbe in fn-wss-one-line"
+   ],
+   "reference_book": "books/web-session.lisp",
+   "executable_book": "books/web-session.lisp"
+  },
+  {
+   "reference": "fn-wss-split",
+   "executable": "fn-wss-split-loop",
+   "via": [
+    "mbe in fn-wss-split"
+   ],
+   "reference_book": "books/web-session.lisp",
+   "executable_book": "books/web-session.lisp"
+  },
+  {
+   "reference": "fn-wss-touch",
+   "executable": "fn-wss-touch-loop",
+   "via": [
+    "mbe in fn-wss-touch"
+   ],
+   "reference_book": "books/web-session.lisp",
+   "executable_book": "books/web-session.lisp"
+  },
+  {
+   "reference": "fn-xpy-header-block",
+   "executable": "fn-xpy-header-block-loop",
+   "via": [
+    "mbe in fn-xpy-header-block"
+   ],
+   "reference_book": "books/expiry.lisp",
+   "executable_book": "books/expiry.lisp"
+  },
+  {
+   "reference": "pgs-ntables",
+   "executable": "pgs-ntables-loop",
+   "via": [
+    "mbe in pgs-ntables"
+   ],
+   "reference_book": "books/pagestore.lisp",
+   "executable_book": "books/pagestore.lisp"
+  },
+  {
+   "reference": "pgs-words-le-octets",
+   "executable": "pgs-words-le-octets-loop",
+   "via": [
+    "mbe in pgs-words-le-octets"
+   ],
+   "reference_book": "books/pagestore-words-blake3.lisp",
+   "executable_book": "books/pagestore-words-blake3.lisp"
+  },
+  {
+   "reference": "pgs-x-tab-from",
+   "executable": "pgs-x-tab-from-loop",
+   "via": [
+    "mbe in pgs-x-tab-from"
+   ],
+   "reference_book": "books/pagestore-exec.lisp",
+   "executable_book": "books/pagestore-exec.lisp"
+  }
+ ]
+}

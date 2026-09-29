@@ -660,7 +660,20 @@
        (fnn-out "receipt replay octets=~d hex=~a" (length adu) (fnn-hex adu))
        +fnn-exit-ok+))))
 
+;;; The experimental ION/LTP subverbs (workflow-ion-*) belong to the
+;;; developer image only (docs/operator-internals.md "Experimental offline
+;;; ION/LTP submission"; PKT-590): a production image refuses them before
+;;; reading an argument.  The other app-journal subverbs stay in both images
+;;; (the BP tests drive workflow-init, -enqueue and the receipt replay).
+(defun fnn-app-journal-developer-only-p (command)
+  (and (>= (length command) 13) (string= "workflow-ion-" command :end2 13)))
+
 (defun fnn-dispatch-app-journal (command args)
+  (when (and (fnn-app-journal-developer-only-p command)
+             (not (fnn-developer-image-p)))
+    (error 'fnn-usage-error
+           :message (format nil "app-journal ~a is available only in the developer image"
+                            command)))
   (flet ((need (n)
            (when (< (length args) n)
              (error 'fnn-usage-error

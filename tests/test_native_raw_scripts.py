@@ -23,7 +23,22 @@ import unittest
 from tests.native_harness import runtime_sbcl
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-SCRIPTS = sorted(ROOT.glob("tests/test_*_raw.sh"))
+# Every script whose header says `# witness: raw` (tools/witness_check.py):
+# the *_raw.sh wrappers and the other sbcl-only witnesses, which nothing ran
+# until 2026-09-29 (five were red at load, found by tooling-truth-2).
+RAW_MARK = "# witness: raw"
+SCRIPTS = sorted(path for path in ROOT.glob("tests/*.sh")
+                 if RAW_MARK in path.read_text(encoding="utf-8", errors="replace").splitlines())
+# Red when first run (hbox, the toolchain SBCL, 2026-09-29 at 02bd7993e): the
+# harness drifted from the host it loads.  Expected failures, so each is
+# reported every run and one that passes again fails as an unexpected
+# success: drop it here then.  Shrink-only.
+KNOWN_BROKEN: dict[str, str] = {
+    # Empty since tooling-truth-3 (2026-09-29): the four drifted harnesses
+    # were rewritten against the current host (the arena-read staged record,
+    # the transit serializer, the owner-request branch, io.lisp's outcome map
+    # and entry guard over an empty world in tests/native_io_prelude.lisp).
+}
 IMAGE = pathlib.Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
 RUNTIME = runtime_sbcl(IMAGE)
 
@@ -31,7 +46,9 @@ RUNTIME = runtime_sbcl(IMAGE)
 @unittest.skipUnless(RUNTIME, "no SBCL runtime for the image and none on PATH")
 class RawScriptTests(unittest.TestCase):
     def test_every_raw_script_has_a_case_here(self):
-        self.assertTrue(SCRIPTS, "no tests/test_*_raw.sh found")
+        self.assertTrue(SCRIPTS, "no tests/*.sh marked raw found")
+        self.assertEqual(sorted(set(KNOWN_BROKEN) - {s.name for s in SCRIPTS}), [],
+                         "KNOWN_BROKEN names a script that is gone or not raw")
 
     def test_every_raw_harness_has_a_runner(self):
         # native_peer_authored_accept_raw.lisp had no runner until
@@ -51,7 +68,7 @@ class RawScriptTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0,
                          f"{script.name} exited {result.returncode}:\n"
                          f"{result.stdout[-2000:]}\n{result.stderr[-2000:]}")
-        self.assertIn("passed", result.stdout.splitlines()[-1],
+        self.assertRegex(result.stdout.splitlines()[-1].lower(), r"\bpass(ed)?\b",
                       f"{script.name} did not end with its passing line")
 
 
@@ -61,6 +78,9 @@ def _add_cases() -> None:
 
         def case(self, script=script):
             self.run_script(script)
+
+        if script.name in KNOWN_BROKEN:
+            case = unittest.expectedFailure(case)
 
         setattr(RawScriptTests, name, case)
 

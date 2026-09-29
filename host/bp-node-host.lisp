@@ -20,6 +20,7 @@
 (include-book "../books/bp-node-profile")
 (include-book "../books/bp-node-profile-admission")
 (include-book "../books/bp-node-host-transfer")
+(include-book "../books/bp-node-host-sequence")
 
 ; -----------------------------------------------------------------------------
 ; Endpoint IDs from the command line.
@@ -88,24 +89,10 @@
       (fn-bpn-sequence-recovery-frontier answer)
     nil))
 
-(defun fn-bpn-host-sequence-reserve (frontier)
-  (if (fn-bpn-sequence-frontierp frontier)
-      (fn-bpn-sequence-reserve frontier)
-    (list :refused :host-arguments)))
-
-(defun fn-bpn-host-sequence-reservationp (reservation)
-  (and (fn-bpn-sequence-reservationp reservation) t))
-
-(defun fn-bpn-host-sequence-reservation-sequence (reservation)
-  (if (fn-bpn-sequence-reservationp reservation)
-      (fn-bpn-sequence-reservation-sequence reservation)
-    nil))
-
-(defun fn-bpn-host-sequence-reservation-frame (reservation)
-  (if (fn-bpn-sequence-reservationp reservation)
-      (fn-bpn-sequence-record-frame
-       (fn-bpn-sequence-reservation-record reservation))
-    nil))
+; fn-bpn-host-sequence-reserve, fn-bpn-host-sequence-reservationp,
+; fn-bpn-host-sequence-reservation-sequence and
+; fn-bpn-host-sequence-reservation-frame are books/bp-node-host-sequence.lisp's
+; (guard-verified, with the keystone PRF-983).
 
 (defun fn-bpn-host-sequence-frame-limit ()
   (fn-bpn-sequence-frame-limit))
@@ -115,9 +102,8 @@
 ; exact final path under the BP spool lock.  The later operation carries that
 ; same ACL2 name and the wire bytes produced by fn-bpn-send.
 
-(defun fn-bpn-host-authored-wire-name (reservation)
-  (let ((chars (fn-bpn-authored-wire-name-for-reservation reservation)))
-    (if (character-listp chars) (coerce chars 'string) "")))
+; fn-bpn-host-authored-wire-name is books/bp-node-host-sequence.lisp's
+; (guard-verified, with the keystone PRF-984).
 
 (defun fn-bpn-host-authored-wire-authorize
   (config peer adu reservation obs lock-owned final-absent)

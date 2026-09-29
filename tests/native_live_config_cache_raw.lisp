@@ -19,12 +19,12 @@
 (defun fnn-admin-plan-reason (plan)
   (declare (ignorable plan))
   (harness-stub-reached 'fnn-admin-plan-reason "host/native/admin.lisp"))
-(defun fnn-lim-plan-p (plan)
-  (declare (ignorable plan))
-  (harness-stub-reached 'fnn-lim-plan-p "host/native/admin.lisp"))
 (defun fnn-owner-compaction-request (service)
   (declare (ignorable service))
   (harness-stub-reached 'fnn-owner-compaction-request "host/native/admin.lisp"))
+(defun fnn-owner-inspect-request (service msgid)
+  (declare (ignorable service msgid))
+  (harness-stub-reached 'fnn-owner-inspect-request "host/native/admin.lisp"))
 (defun fnn-owner-limit-serialized (service plan)
   (declare (ignorable service plan))
   (harness-stub-reached 'fnn-owner-limit-serialized "host/native/admin.lisp"))
@@ -68,6 +68,11 @@
   (push (cons name args) *calls*)
   (case name
     (fn-native-admin-host-plan :plan)
+    ;; A configuration mutation, not an owner request (compaction or
+    ;; reclaim: ACL2's fn-native-admin-result-owner-requestp).
+    (fn-native-admin-host-owner-requestp nil)
+    ;; ... nor a store-limit plan (limits-live's fnn-lim-plan-p asks the kind).
+    (fn-native-admin-result-kind :reconfigure)
     ;; The staging step's ConfigResult fields (books/owner-results.lisp).
     (fn-ores-config-word (second (first args)))
     (fn-ores-config-octets (third (first args)))
@@ -113,6 +118,7 @@
 
 (dolist (spec '(("host/native/io.lisp" fnn-decode-joined-names)
                 ("host/native/admin.lisp" fnn-owner-refresh-config-cache)
+                ("host/native/admin.lisp" fnn-lim-plan-p)
                 ;; peer-invite (e8a7606f) moved the stage-publish-complete
                 ;; body out of fnn-owner-live-admin-serialized into this
                 ;; deployed callee; the boundary under test is its body.

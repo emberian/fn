@@ -109,10 +109,9 @@
                                       (theory 'minimal-theory))
            :use ((:instance fn-scj-catalogp-of-finish
                             (archive (fn-own-view-archive v))
-                            (index (if (fn-own-view-group-index v)
-                                       (fn-gidx-pin-with-control (fn-own-view-index v) (fn-own-view-group-index v)
-                                                                 (fn-own-view-control v))
-                                     (fn-own-view-index v)))
+                            (index (fn-served-pinned-index (fn-own-view-archive v) (fn-own-view-index v)
+                                                           (fn-own-view-group-index v)
+                                                           (fn-own-view-control v)))
                             (v (fn-own-view-version v))
                             (fn-arena nil))))))
 

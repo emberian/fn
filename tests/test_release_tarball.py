@@ -83,7 +83,7 @@ class ReleaseTarballTests(unittest.TestCase):
         for rel in ("SHA256SUMS", "install.sh", "bin/fn", "libexec/fn/fn-host",
                     "libexec/fn/fn-host.core", "libexec/fn/source-revision",
                     "libexec/fn/runtime/sbcl", "libexec/fn/lib/libfn-mldsa65.so",
-                    "libexec/fn/lib/libfn-lz4.so",
+                    "libexec/fn/lib/libfn-deflate.so",
                     "libexec/fn/lib/libfn-blake3.so",
                     "share/fn/fn.toml.example", "share/fn/docs/fn-faq-3.txt",
                     "share/fn/release-gate.txt", "share/fn/runpath-check.txt"):
@@ -178,7 +178,7 @@ class ReleaseTarballTests(unittest.TestCase):
         self.assertIn("libexec/fn/runtime/sbcl", elves)
         self.assertIn("libexec/fn/lib/libsodium.so.23", elves)
         self.assertIn("libexec/fn/lib/libfn-mldsa65.so", elves)
-        self.assertIn("libexec/fn/lib/libfn-lz4.so", elves)
+        self.assertIn("libexec/fn/lib/libfn-deflate.so", elves)
         self.assertIn("libexec/fn/lib/libfn-blake3.so", elves)
         self.assertEqual(above, [])
 

@@ -4,11 +4,12 @@ books/payload-lz-record.lisp PRF-326).
 
 `operator CONFIG policy set compress-min-octets N` (a configuration row; no
 row is off) makes the append offer every article record whose payload span has
-at least N octets to the vendored LZ4-HC encoder (lib/libfn-lz4); ACL2's
-proved decoder checks the candidate before the record is taken, and every read
+at least N octets to the vendored zlib encoder (lib/libfn-deflate: a DEFLATE
+stream over the current shipped dictionary); ACL2's proved decoder checks the candidate before the record is taken, and every read
 of the log expands the frame through the same decoder.  Two twin stores get
 the same articles, one with the row: the compressed one holds fewer octets,
-`store ROOT compression` reports its compressed records and dictionary 0, and
+`store ROOT compression` reports its compressed records and the shipped
+dictionary's ID (baseline 1, planning/evidence/compress-dict/baseline-1.json), and
 every article reads back octet for octet as the uncompressed twin serves it --
 after a recover, after a second recover (the replay is deterministic), and
 after a torn last entry (a power loss through a compressed record recovers
@@ -28,6 +29,9 @@ from tests import fuzz_nntp as fz
 SEGMENT = "journal/000001.log"
 UNIT = 4096
 ARTICLES = 16
+# The first four BLAKE3 octets of the shipped baseline dictionary
+# (books/payload-lz-dicts.lisp *fn-lzd-baseline-1-id*).
+BASELINE_1_ID = 2220533217
 MIN = 64
 
 
@@ -116,7 +120,7 @@ class CompressionTests(unittest.TestCase):
         self.assertEqual(plain["dictionaries"], "none")
         self.assertEqual(packed["compress-min-octets"], str(MIN), line)
         self.assertEqual(int(packed["compressed-records"]), ARTICLES, line)
-        self.assertEqual(packed["dictionaries"], "0", line)
+        self.assertEqual(packed["dictionaries"], str(BASELINE_1_ID), line)
         self.assertLess(int(packed["stored-octets"]), int(packed["uncompressed-octets"]), line)
         # The expansions are the plain store's records: the same octets.
         self.assertEqual(packed["uncompressed-octets"], plain["uncompressed-octets"])

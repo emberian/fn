@@ -160,3 +160,70 @@
   (apply #'concatenate 'string
          (loop for tail = x then (cdr tail) while (consp tail)
                collect (if (stringp (car tail)) (car tail) ""))))
+
+;;; --- fast alists: ACL2's hons-get/hons-acons/make-fast-alist/
+;;; fast-alist-free over a hash table (small-rows-a8's ask, 2026-09-29).
+;;; Emitted from their logical definitions they walked the alist
+;;; (hons-assoc-equal), so an index built with them (A8's, expiry's expired
+;;; set) was linear per lookup in this core.  The alist stays the value, as
+;;; ACL2's logic says; the table accelerates lookups on the newest version
+;;; only, as in ACL2: hons-acons moves the table from ALIST to the new cons,
+;;; so an older version is walked (still the logical answer).  The side
+;;; table is weak on the alist, so a dropped alist frees its table without
+;;; fast-alist-free.  Keys are hashed over their whole structure: SBCL's
+;;; sxhash on a list reads a few elements, and octet-list keys sharing a
+;;; prefix would all collide.
+(defun xl-hons-hash (x)
+  (let ((h 0) (stack (list x)))
+    (declare (type (unsigned-byte 62) h))
+    (loop while stack
+          do (let ((y (pop stack)))
+               (if (consp y)
+                   (progn (push (cdr y) stack) (push (car y) stack)
+                          (setf h (logand (+ (* h 31) 7) #x3fffffffffffffff)))
+                   (setf h (logand (+ (* h 31) (sxhash y)) #x3fffffffffffffff)))))
+    h))
+(defun xl-hons-equal (x y) (equal x y))
+(sb-ext:define-hash-table-test xl-hons-equal xl-hons-hash)
+(defvar *xl-fast-alists*
+  (make-hash-table :test 'eq :weakness :key :synchronized t))
+(defun xl-fast-table (alist)
+  "ALIST's table, built from ALIST (first binding of each key wins, as
+hons-assoc-equal reads it) when it has none."
+  (or (gethash alist *xl-fast-alists*)
+      (let ((table (make-hash-table :test 'xl-hons-equal)))
+        (loop for tail = alist then (cdr tail)
+              while (consp tail)
+              do (let ((pair (car tail)))
+                   (when (and (consp pair)
+                              (not (nth-value 1 (gethash (car pair) table))))
+                     (setf (gethash (car pair) table) pair))))
+        (unless (atom alist)
+          (setf (gethash alist *xl-fast-alists*) table))
+        table)))
+(defun hons-assoc-equal-walk (key alist)
+  (loop for tail = alist then (cdr tail)
+        while (consp tail)
+        do (let ((pair (car tail)))
+             (when (and (consp pair) (equal key (car pair)))
+               (return pair)))))
+(defun hons-get (key alist)
+  (let ((table (and (consp alist) (gethash alist *xl-fast-alists*))))
+    (if table
+        (values (gethash key table))
+        (hons-assoc-equal-walk key alist))))
+(defun hons-acons (key value alist)
+  (let* ((table (if (consp alist) (xl-fast-table alist)
+                    (make-hash-table :test 'xl-hons-equal)))
+         (pair (cons key value))
+         (new (cons pair alist)))
+    (when (consp alist) (remhash alist *xl-fast-alists*))
+    (setf (gethash key table) pair)
+    (setf (gethash new *xl-fast-alists*) table)
+    new))
+(defun make-fast-alist (alist)
+  (when (consp alist) (xl-fast-table alist))
+  alist)
+(defun fast-alist-free (alist)
+  (when (consp alist) (remhash alist *xl-fast-alists*))
+  alist)

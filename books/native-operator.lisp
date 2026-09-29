@@ -833,7 +833,9 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
           ; (books/native-admin.lisp `fn-native-admin-control-plan').
           ((member-equal (fn-native-admin-result-reason plan)
                          '(:reserved-group-name :namespace-pattern :principal
-                           :verb-not-grantable))
+                           :verb-not-grantable
+                           ; Row S10: `policy set' refused by name.
+                           :unknown-policy-key :policy-value-not-a-number))
            (fn-nop-refused (list :administration (fn-native-admin-result-reason plan))
                            command config argv))
           (t (fn-nop-usage (list :administration (fn-native-admin-result-reason plan))
@@ -930,6 +932,13 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((equal command "status")
              (cond ((null rest)
                     (fn-nop-result :accepted :plan "status" config (list :status)))
+                   ; Row S3: on a stopped store `status' reads the checkpoint
+                   ; header (books/owner-maintenance-request.lisp); `--replay'
+                   ; asks for the report over the replayed log.
+                   ((and (equal (fn-ncfg-first rest) "--replay")
+                         (null (fn-ncfg-rest rest)))
+                    (fn-nop-result :accepted :plan "status" config
+                                   (list :status :replay)))
                    ((and (equal (fn-ncfg-first rest) "--watch")
                          (null (fn-ncfg-rest (fn-ncfg-rest rest)))
                          (fn-nop-watch-seconds (fn-ncfg-second rest)))
@@ -1513,6 +1522,147 @@ formed and the operator asked for something the node declined to do."
                   :account-hash))
       (fn-ncfg-second (fn-native-operator-result-arguments result))
     nil))
+
+;; PKT-786: the credential file an accepted `account hash' plan reads (the
+;; configuration's auth path), or nil.
+(defun fn-native-operator-result-account-hash-auth-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-account-hash-login result)
+      (fn-record-string-octets
+       (fn-native-config-auth-path (fn-native-operator-result-config result)))
+    nil))
+
+;; PKT-786: the account a login posts under.  The served path keys the
+;; posting-account value by the session's subject (books/served.lisp
+;; fn-served-account): the principal of the credential the connection's
+;; pinned table finds for the login, the credential file's rows first, then
+;; the redeemed accounts' (books/nntp-auth.lisp fn-auth-config-with-accounts).
+;; The operator reads the credential file; a login the file does not hold is
+;; an invitation-code account, live or deleted (a deleted login is never given
+;; out again), whose principal is its local principal (fn-auth-account-cred).
+(defun fn-nop-login-principal (login creds)
+  (declare (xargs :guard t))
+  (let ((cred (fn-auth-find-cred login creds)))
+    (if cred (fn-auth-cred-principal cred) (fn-acct-local-principal login))))
+
+;; The credential file's rows as the owner's bounded load reads them (the
+;; policy flags do not change the rows: fn-nop-auth-file-creds-of-any-policy).
+(defun fn-nop-auth-file-creds (octets presentp max-credentials)
+  (declare (xargs :guard t))
+  (let ((loaded (fn-native-auth-load octets presentp nil nil nil max-credentials)))
+    (if (equal (fn-native-auth-result-status loaded) :accepted)
+        (fn-auth-config-creds (fn-native-auth-result-config loaded))
+      :refused)))
+
+;; The host-called subject of `account hash LOGIN' (host/native-operator-
+;; host.lisp fn-native-operator-host-account-hash-text): the posting-account
+;; value of LOGIN's account under SECRET, or nil when the credential file is
+;; one the owner's load refuses.
+(defun fn-nop-account-hash (secret login octets presentp max-credentials)
+  (declare (xargs :guard t))
+  (let ((creds (fn-nop-auth-file-creds octets presentp max-credentials)))
+    (if (equal creds :refused)
+        nil
+      (fn-ipp-account-hash secret
+                           (fn-nop-login-principal (fn-ipp-octets login) creds)))))
+
+(local (defthm fn-nop-auth-configp-of-make-config
+  (implies (and (booleanp a) (booleanp b) (booleanp c))
+           (equal (fn-auth-configp (fn-auth-make-config a b c creds))
+                  (fn-auth-cred-listp creds)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-configp) (fn-auth-cred-listp))))))
+
+(defthm fn-nop-auth-file-creds-of-any-policy
+  (implies (equal (fn-native-auth-result-status
+                   (fn-native-auth-load octets presentp requiredp protected-onlyp
+                                        tls-availablep max-credentials))
+                  :accepted)
+           (equal (fn-nop-auth-file-creds octets presentp max-credentials)
+                  (fn-auth-config-creds
+                   (fn-native-auth-result-config
+                    (fn-native-auth-load octets presentp requiredp protected-onlyp
+                                         tls-availablep max-credentials)))))
+  :hints (("Goal" :in-theory (e/d (fn-native-auth-load) (fn-auth-configp fn-auth-make-config fn-native-auth-parse-lines fn-ncfg-lines))))
+  :rule-classes nil)
+
+(local (defthm fn-nop-find-cred-of-append
+  (implies (fn-auth-cred-listp a)
+           (equal (fn-auth-find-cred name (append a b))
+                  (or (fn-auth-find-cred name a) (fn-auth-find-cred name b))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-find-cred fn-auth-cred-listp) (fn-auth-credp))))))
+
+(local (defthm fn-nop-account-cred-principal-is-its-names
+  (equal (fn-auth-cred-principal (fn-auth-account-cred row))
+         (fn-acct-local-principal (fn-auth-cred-name (fn-auth-account-cred row))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-account-cred) (fn-acct-local-principal))))))
+(local (defthm fn-nop-find-cred-of-account-creds
+  (implies (fn-auth-find-cred name (fn-auth-account-creds rows))
+           (equal (fn-auth-cred-principal
+                   (fn-auth-find-cred name (fn-auth-account-creds rows)))
+                  (fn-acct-local-principal name)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-find-cred fn-auth-account-creds)
+                                  (fn-auth-credp fn-auth-account-cred fn-acct-local-principal))))))
+
+(local (defthm fn-nop-configp-has-a-cred-list
+  (implies (fn-auth-configp x) (fn-auth-cred-listp (fn-auth-config-creds x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-auth-configp) (fn-auth-cred-listp))))))
+(defthm fn-nop-login-principal-is-the-served-tables
+  (implies (and (fn-auth-configp acfg)
+                (fn-auth-find-cred login (fn-auth-config-creds
+                                          (fn-auth-config-with-accounts acfg v))))
+           (equal (fn-nop-login-principal login (fn-auth-config-creds acfg))
+                  (fn-auth-cred-principal
+                   (fn-auth-find-cred login (fn-auth-config-creds
+                                             (fn-auth-config-with-accounts acfg v))))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-config-with-accounts)
+                                  (fn-auth-configp fn-auth-find-cred fn-auth-account-creds
+                                   fn-acct-local-principal))))
+  :rule-classes nil)
+
+(local (defthm fn-nop-a-cred-list-is-not-refused
+  (implies (fn-auth-cred-listp x) (not (equal x :refused)))
+  :rule-classes :forward-chaining))
+
+; KEYSTONE (PKT-786): the value `account hash LOGIN' prints is the value an
+; article posted by LOGIN carries.  Whatever policy flags the owner loaded the
+; credential file under, when the connection's pinned table (the file's rows,
+; then the redeemed accounts' of any configuration value V) finds LOGIN, the
+; operator's value is the posting-account value of that credential's
+; principal: the session subject books/served.lisp fn-served-account records
+; as the submission's account, which books/injection-info-params.lisp
+; fn-ipp-injected-octets hashes.  Teeth: tests/acl2/injection-info-params-tests.lisp.
+(defthm fn-nop-account-hash-is-the-served-account-value
+  (implies (and (equal (fn-native-auth-result-status
+                        (fn-native-auth-load octets presentp requiredp protected-onlyp
+                                             tls-availablep max-credentials))
+                       :accepted)
+                (equal acfg (fn-native-auth-result-config
+                             (fn-native-auth-load octets presentp requiredp protected-onlyp
+                                                  tls-availablep max-credentials)))
+                (fn-auth-find-cred (fn-ipp-octets login)
+                                   (fn-auth-config-creds
+                                    (fn-auth-config-with-accounts acfg v))))
+           (equal (fn-nop-account-hash secret login octets presentp max-credentials)
+                  (fn-pa-account-value
+                   secret
+                   (fn-ipp-octets
+                    (fn-auth-cred-principal
+                     (fn-auth-find-cred (fn-ipp-octets login)
+                                        (fn-auth-config-creds
+                                         (fn-auth-config-with-accounts acfg v))))))))
+  :hints (("Goal" :use ((:instance fn-nop-auth-file-creds-of-any-policy)
+                        (:instance fn-native-auth-load-accepted-is-config
+                                   (protected protected-onlyp) (tls tls-availablep))
+                        (:instance fn-nop-login-principal-is-the-served-tables
+                                   (login (fn-ipp-octets login))))
+           :in-theory (e/d (fn-ipp-account-hash)
+                           (fn-native-auth-load-accepted-is-config
+                            fn-nop-auth-file-creds fn-nop-login-principal
+                            fn-native-auth-load fn-auth-configp
+                            fn-auth-config-with-accounts fn-auth-find-cred
+                            fn-pa-account-value fn-ipp-octets))))
+  :rule-classes nil)
 
 ;; PRF-164: the seconds of an accepted `account invite' plan, or nil.
 (defun fn-native-operator-result-account-invite-seconds (result)
@@ -2706,7 +2856,14 @@ control path no supported platform binds whole."
   (let ((status (fn-native-operator-result-status result))
         (reason (fn-native-operator-result-reason result))
         (command (fn-native-operator-result-command result)))
-    (cond ((and (equal status :refused) (equal reason :control-path-too-long))
+    (cond ; Row S10: `policy set KEY VALUE' refused by name, with what it takes.
+          ((and (equal status :refused)
+                (equal reason (list :administration :unknown-policy-key)))
+           "policy set: no key by that name; the keys are path-identity, posting-policy, exposure-connections, exposure-per-address, exposure-steps-per-second, exposure-idle-seconds, exposure-first-seconds, exposure-auth-failures, exposure-posts-per-minute, relay-date-skew, refused-offer-capacity, relay-require-path, max-transactions, max-history-octets, max-article-octets (docs/operator.md)")
+          ((and (equal status :refused)
+                (equal reason (list :administration :policy-value-not-a-number)))
+           "policy set: that key takes a decimal count (digits only); run: fn operator CONFIG policy set KEY N")
+          ((and (equal status :refused) (equal reason :control-path-too-long))
            "the control socket path ([control] path, else the [store] path with /control.sock) is longer than 103 octets, which a Unix socket cannot bind on every platform; set a shorter [control] path in fn.toml")
           ((and (equal status :refused) (equal reason :no-store))
            "no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)")

@@ -26,6 +26,9 @@
 ; realizer's decode (host/native/extent.lisp fn-durable-realize-lz).
 (include-book "../books/payload-lz-append")
 (include-book "../books/payload-lz-replay")
+; The realizer's pooled payload decoder (host/native/deflate.lisp
+; fnn-pzd-decode: fn-zpl-decode-bufs).
+(include-book "../books/deflate-pool")
 (include-book "../books/store-config")
 (include-book "../books/identity")
 (include-book "../books/crypto-attach")
@@ -39,6 +42,7 @@
 (include-book "../books/store-replay-bound")
 (include-book "../books/store-profile-open")
 (include-book "../books/store-mount-identity")
+(include-book "../books/store-host-boundary")
 (include-book "../books/store-profile-namespace")
 (include-book "../books/native-operator")
 (include-book "../books/article-fields")
@@ -315,9 +319,6 @@
       (fn-id-obligation-of msgid subject)
     nil))
 
-(defun fn-store-charge (length)
-  (if (natp length) (fn-charge-for-payload length) 0))
-
 (defun fn-store-identity-text (identity)
   ; The one rendering of a canonical identity into a string, for the three
   ; boundaries that cannot carry octets: the store record metadata fields, the
@@ -464,30 +465,16 @@
 (defun fn-store-metadata-frontier-next (n)
   (fn-bs-frontier-next n))
 
-(defun fn-store-publication-admissibility (profile committed-count
-                                                   prospective-payload-octets)
-  (if (fn-bs-publication-admissiblep profile committed-count
-                                     prospective-payload-octets)
-      :admissible
-    :refused))
-
 ;; The replay bound every open checks per record: H plus T records' encoding
 ;; overhead (books/store-replay-bound.lisp; every history the profile admits
 ;; is within it, `fn-srb-admitted-history-is-within-the-bound').
 (defun fn-store-profile-replay-within-bound (profile aggregate)
   (fn-srb-replay-within-boundp profile aggregate))
 
-;; The open's per-file read bound under the persisted PROFILE: one FNST frame
-;; whose payload is at most the profile's per-record ceiling.  Every committed
-;; transaction file was published under `fn-bs-publication-admissiblep' (its
-;; record at most `fn-bs-profile-record-ceiling', asserted on the actual bytes
-;; by host/native/io.lisp `fnn-publish'), and the profile is written once, at
-;; init or import (D34), so no committed file exceeds this bound.
-;; A profile that is not valid yields the frame overhead alone, and the open
-;; refuses every file.
-(defun fn-store-profile-read-bound (profile)
-  (+ *fn-frame-overhead-octets* (fn-bs-profile-record-ceiling profile)))
-
+;; fn-store-charge, fn-store-publication-admissibility and
+;; fn-store-profile-read-bound live in books/store-host-boundary.lisp
+;; (guard-verified, with their keystones: the read bound covers every
+;; publication the admission admitted, PRF-961).
 
 (defun fn-store-group-codes (name-octets domain-octets)
   (declare (xargs :guard (and (fn-octet-list-listp name-octets) (fn-octet-list-listp domain-octets)) :verify-guards nil))

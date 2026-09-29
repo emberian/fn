@@ -28,11 +28,8 @@
 (include-book "served-catalog-join-finish")
 
 (defun-nx fn-scj-conn-pinned-index (conn)
-  (if (fn-own-conn-group-index conn)
-      (fn-gidx-pin-with-control (fn-own-conn-index conn)
-                                (fn-own-conn-group-index conn)
-                                (fn-own-conn-control conn))
-    (fn-own-conn-index conn)))
+  (fn-served-pinned-index (fn-own-conn-archive conn) (fn-own-conn-index conn)
+                          (fn-own-conn-group-index conn) (fn-own-conn-control conn)))
 
 (defun-nx fn-scj-conn-pinp (conn fn-arena fn-cat)
   (fn-scr-catalogp (fn-own-conn-archive conn)

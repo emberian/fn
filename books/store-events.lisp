@@ -17,14 +17,14 @@
 (defconst *fn-store-event-undertake-code* 0)
 (defconst *fn-store-event-release-code* 1)
 ; Node-generated: an undertake or release event is built by the node from
-; fixed-width fields (design 2026-09-25-bounds §1.2, kind N).
+; fixed-width fields (design 2026-09-25-bounds section 1.2, kind N).
 (defconst *fn-store-event-max-octets* 4096)
 
 ; The pre-reservation figure for an article record (below).  This is NOT the
 ; record codec's width, which is now the u32 `*fn-record-max-octets*': an
 ; article's worst-case record depends on the profile's article and group
 ; bounds, `fn-record-encoded-octets-ceiling' (books/records-shape).  Until the
-; profile carries those bounds (design §2.1, packet P1), the figure stays the
+; profile carries those bounds (design section 2.1, packet P1), the figure stays the
 ; one every persisted profile was admitted under, the pre-D27 record width
 ; 65 538, so no existing profile's budget moves.  P1 replaces it with
 ; (fn-record-encoded-octets-ceiling A G) of the profile.
