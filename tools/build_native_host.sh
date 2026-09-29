@@ -147,8 +147,14 @@ TLS_LINE=$(grep -a -o -E 'FN_NATIVE_TLS [0-9]+ [0-9]+' "$LOG" | tail -1 || true)
 if [ -n "$TLS_LINE" ]; then
     TLS_USED=$(echo "$TLS_LINE" | cut -d' ' -f2)
     TLS_CAP=$(echo "$TLS_LINE" | cut -d' ' -f3)
-    TLS_RUN=$(( ${FN_TLS_LIMIT:-65536} * 8 ))
-    [ "$TLS_RUN" -lt "$TLS_CAP" ] && TLS_CAP=$TLS_RUN
+    # The run's limit is the profile's (books/profile-limits.lisp
+    # :tls-limit, printed by the build as FN_NATIVE_TLS_LIMIT), or
+    # FN_TLS_LIMIT's override; never a copy of the number here.
+    RUN_TLS_LIMIT=${FN_TLS_LIMIT:-$(sed -n 's/.*FN_NATIVE_TLS_LIMIT \([0-9][0-9]*\).*/\1/p' "$LOG" | tail -1)}
+    if [ -n "$RUN_TLS_LIMIT" ]; then
+        TLS_RUN=$(( RUN_TLS_LIMIT * 8 ))
+        [ "$TLS_RUN" -lt "$TLS_CAP" ] && TLS_CAP=$TLS_RUN
+    fi
     TLS_PCT=${FN_TLS_BUDGET_PERCENT:-25}
     if [ $(( TLS_USED * 100 )) -gt $(( TLS_CAP * TLS_PCT )) ]; then
         echo "build_native_host: the build used TLS index $TLS_USED of $TLS_CAP, over ${TLS_PCT}% (tools/tls_check.py --measure names the books)" >&2

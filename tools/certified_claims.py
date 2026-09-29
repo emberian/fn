@@ -112,7 +112,8 @@ def manifest_failures(proofs: list[dict], owners: dict[str, set[str]],
                 failures.append(f"{ident}: cited manifest {relative} is absent")
                 continue
             try:
-                value = json.loads(path.read_text(encoding="utf-8"))
+                value = certs.read_as_current(
+                    json.loads(path.read_text(encoding="utf-8")), root)
             except (OSError, ValueError) as error:
                 failures.append(f"{ident}: cited manifest {relative} is unreadable: {error}")
                 continue
