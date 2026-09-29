@@ -12,6 +12,7 @@
 ; This book has the prefix `fn-clkr-' (docs/prefixes.md).
 (in-package "ACL2")
 (include-book "clock")
+(include-book "clock-wall-reading")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -78,3 +79,34 @@
                                    fn-clock-timep fn-clock-monotonic fn-clock-wall
                                    fn-clock-wall-error fn-clock-has-wall)
                                   (fn-clkr-ms-of-ns)))))
+
+; KEYSTONE (PRF-305, the served reading).  fn-clkr-observation-of-ns's only
+; caller, host/bp-ingress-host.lisp, is not loaded by the served images; the
+; served wall reading is host/native/io.lisp fnn-owner-wall-milliseconds and
+; fnn-store-prepare-observation, which hand gettimeofday's seconds and
+; microseconds to fn-otm-wall-reading (books/clock-wall-reading.lisp).  At
+; the DTN epoch's offset, that decision is this book's: the reading has a
+; wall exactly when its nanoseconds are at or after the epoch, and the wall
+; is the milliseconds past it (fn-clkr-ms-of-ns, fn-clkr-wall-usablep's
+; clock conjuncts).
+(local (include-book "arithmetic-5/top" :dir :system))
+
+(local
+ (defthm fn-clkr-ms-of-ns-of-a-reading
+   (implies (and (integerp seconds) (natp microseconds))
+            (equal (floor (+ (* 1000000000 seconds) (* 1000 microseconds)) 1000000)
+                   (+ (* 1000 seconds) (floor microseconds 1000))))))
+
+(defthm fn-clkr-wall-reading-is-the-ns-decision
+  (implies (and (integerp seconds) (natp microseconds)
+                (equal offset (floor *fn-clkr-dtn-epoch-unix-ms* 1000)))
+           (let ((w (fn-otm-wall-reading seconds microseconds offset))
+                 (ns (+ (* 1000000000 seconds) (* 1000 microseconds))))
+             (and (iff (cadr w)
+                       (and (natp ns)
+                            (<= *fn-clkr-dtn-epoch-unix-ms* (fn-clkr-ms-of-ns ns))))
+                  (equal (car w)
+                         (if (cadr w)
+                             (- (fn-clkr-ms-of-ns ns) *fn-clkr-dtn-epoch-unix-ms*)
+                           0)))))
+  :hints (("Goal" :in-theory (enable fn-otm-wall-reading fn-clkr-ms-of-ns))))

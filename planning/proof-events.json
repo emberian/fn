@@ -1175,7 +1175,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-stx-index-invariant-preserved-by-accept"
+          "name": "fn-stx-index-invariant-preserved-by-accept",
+          "note": "books/stx-node-lace.lisp since 2026-09-29: the invariant compares the index with the octet model's fold over ALPHA of the node's articles (the handles read through the arena); until then it compared with the fold over the handles themselves, the empty index for every node the machine produces (PKT-892)."
         },
         {
           "kind": "theorem",
@@ -10951,8 +10952,8 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-clkr-observation-of-ns-decides-the-wall",
-          "note": "host/bp-ingress-host.lisp fn-bpi-host-observation: fn-clkr-observation-of-ns."
+          "name": "fn-clkr-wall-reading-is-the-ns-decision",
+          "note": "host/native/io.lisp fnn-owner-wall-milliseconds (and fnn-store-prepare-observation) calls fn-otm-wall-reading over gettimeofday's seconds and microseconds at +fnn-owner-unix-dtn-offset-seconds+. Teeth: tests/acl2/clock-reading-tests.lisp (clkt-wall-reading-*: a 2026 reading and the second before the epoch; removal of integerp seconds, natp microseconds and the epoch offset)."
         }
       ]
     },
@@ -13336,6 +13337,22 @@
         {
           "kind": "theorem",
           "name": "fn-ndur-recovery-never-reissues-a-logged-txid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndh-replay-extension-keeps-every-number"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndh-recovery-keeps-every-visible-number"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndh-cpr-loop"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndh-cst-replay-node"
         }
       ]
     },
@@ -15123,6 +15140,241 @@
         {
           "kind": "theorem",
           "name": "fn-mpxt-set-key-faithful-nil"
+        }
+      ]
+    },
+    {
+      "id": "PRF-986",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-steps-keep-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-admits-per-tick-are-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-source-admits-are-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-scratch-within-the-reservation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-997",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-knowledge-is-one-of-the-five-states"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-tombstoned-keeps-the-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-tombstone-of-is-a-tombstone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-record-of-a-rewritten-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-record-of-an-unrewritten-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-find-event-after-rewrite"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-reclamation-never-forgets-an-acceptance"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-acceptance-records-subject-principal-and-undertaking"
+        }
+      ]
+    },
+    {
+      "id": "PRF-998",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-reduce-pins-keeps-the-ids"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-reduce-pin-keeps-the-identifying-fields"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-find-id-after-reduce"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-matching-release-ignores-the-charge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-release-keeps-every-known-id"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-release-discharges-the-same-obligation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-release-frees-exactly-the-content-charge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-release-enables-only-what-the-freed-charge-affords"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-retry-refused-after-release-as-before"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-a-found-pin-is-scanned"
+        }
+      ]
+    },
+    {
+      "id": "PRF-999",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-replay-binds-the-recorded-evidence-not-the-policy"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1000",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-refused-prepare-is-the-identity-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-refusal-keeps-the-recovery-barriers"
+        }
+      ]
+    },
+    {
+      "id": "PRF-994",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arx-trailer-nat-injective"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-entry-verdict-buffer-ok-is-the-commitment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-entry-verdict-buffer-ok-digest-is-the-recorded-trailer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-entry-verdict-buffer-of-durable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-attach-trailers-buffer-is-attach-trailers"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1001",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-post-productive"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-store-run-fields"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-store-run-completion-enabled"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-own-run-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-post-finish-word"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1002",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-uncertain-has-a-named-cause"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1003",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-observer-240"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-observer-240-code"
+        }
+      ]
+    },
+    {
+      "id": "PRF-021",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-stx-lace-of-accept-is-merge",
+          "note": "books/stx-node-lace.lisp: the node lace read through the arena (fn-articles-wire-of of the node's handle articles); until 2026-09-29 the same theorem in books/stx-lace.lisp was satisfied by the empty lace over every node the machine produces (PKT-892, planning/evidence/stx-vacuity-2026-09-29.md)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-transit-ids-are-union"
+        }
+      ]
+    },
+    {
+      "id": "PRF-022",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-stx-transit-equivocation-is-detected",
+          "note": "books/stx-node-lace.lisp, over the node lace read through the arena (PKT-892)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-transit-equivocation-survives-later-merges"
+        }
+      ]
+    },
+    {
+      "id": "PRF-995",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-stx-lace-of-node-is-the-rows-lace",
+          "note": "books/stx-lace-rows.lisp: under the context invariant and the correspondence of the node's articles (through the arena) with the rows' articles, the node lace (books/stx-node-lace.lisp fn-stx-lace) is the rows' lace fn-sn-lace-of-rows. The correspondence hypothesis is the named open composed obligation (nothing at this revision carries it in fn-sn-statep). fn-stx-lace-is-the-wire-lace-of-alpha-by-definition names the unfolding."
         }
       ]
     }

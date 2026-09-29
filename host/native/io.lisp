@@ -6193,7 +6193,13 @@ the open proceeds on (:complete, :torn or :repaired)."
                      ;; PLACE in this entry, ACL2's (fn-lgb-entry-places over
                      ;; the buffer: fn-arx-list-places of its octets), bound for
                      ;; the sink as *fnn-log-record-place* (FILE . PLACE), or NIL.
-                     (let ((places (fnn-core 'fn-lgb-entry-places pos (length records) unit buf)))
+                     ;; Each place with the entry's COMMITMENT (its trailer, read
+                     ;; from the buffer by ACL2: fn-arx-attach-trailers-buffer,
+                     ;; books/payload-extent-read.lisp; lane extent-identity,
+                     ;; PRF-994): the descriptor the seal makes carries it.
+                     (let ((places (fnn-core 'fn-arx-attach-trailers-buffer
+                                             (fnn-core 'fn-lgb-entry-places pos (length records) unit buf)
+                                             pos buf)))
                        (dolist (record records)
                          (let ((*fnn-log-record-place*
                                  (and (consp places) (cons *fnn-extent-file* (pop places))))
@@ -6309,8 +6315,12 @@ entries).  Nothing is placed when ACL2 answers none."
   (let ((members (reverse (fnn-log-members log))))
     (setf (fnn-log-members log) nil)
     (when (some #'car members)
-      (let ((places (fnn-core 'fn-arx-list-places octets frontier (length members) unit
-                              0 0 nil 0 0 nil)))
+      ;; Each place with its entry's COMMITMENT (the trailer the log wrote,
+      ;; fn-arx-attach-trailers; lane extent-identity, PRF-994).
+      (let ((places (fnn-core 'fn-arx-attach-trailers
+                              (fnn-core 'fn-arx-list-places octets frontier (length members) unit
+                                        0 0 nil 0 0 nil)
+                              frontier octets)))
         (when (and (consp places) (= (length places) (length members)))
           (unless (equal (fnn-log-extent-path log) (fnn-log-path log))
             (setf (fnn-log-extent-file log) (fnn-extent-register (fnn-log-path log))
