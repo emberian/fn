@@ -328,6 +328,12 @@ sort -u -o \$L/roots.txt \$L/roots.txt
 BOX
         fi
         cat <<BOX
+# The static pre-image gates first (seconds; make host-convert-check runs
+# them with the ACL2 ones): a stale umbrella or interface registry used to
+# surface only after the certify step, in acquire or the image build
+# (limits-live-5, decision-keystones-3; obstructions-5 item 34).
+step world-check python3 tools/extract/world.py --check
+step interfaces-check python3 tools/interface_emit.py --check
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 step certify swarm-build python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)

@@ -69,6 +69,11 @@ the files build.lisp `load`s, in build.lisp's order.  It then reports:
         counted, never failed, and a load-time call of one is skipped
         (`return-value' restart) so the rest of the file still loads.
 
+It first runs tools/extract/world.py --check (the umbrellas against the
+build scripts; a stale umbrella is a FAIL: limits-live-5's host include-book
+passed --load and died in the image build's acquire).  `make
+host-convert-check FILE=...` (tools/host_convert_check.py) runs this with
+every other pre-image gate, including the certified-world class check.
 What it cannot see: the arity of a call into a book function (the bare image
 does not know it), anything the FFI initializers do (`fnn-crypto-initialize'
 and its siblings are build.lisp's calls, not the files'), and translate
@@ -1075,6 +1080,28 @@ def build_order_main(timeout: int) -> int:
     return 0 if all(code == 0 for code in codes) else 2
 
 
+def world_stale(runner=None) -> list[str]:
+    """tools/extract/world.py --check's findings (the umbrellas books/image-world*
+    against what the build scripts include), printed as FAIL lines.
+
+    `--load` runs it (obstructions-5 item 34): limits-live-5's host
+    include-book passed --load and died in the image build's acquire step
+    (FN_IMAGE_WORLD_OPEN) because the umbrellas were not regenerated.
+    """
+    if runner is None:
+        def runner():
+            done = subprocess.run([sys.executable, str(ROOT / "tools/extract/world.py"),
+                                   "--check"], cwd=ROOT, capture_output=True, text=True)
+            return done.returncode, done.stdout + done.stderr
+    code, output = runner()
+    found = [line.strip() for line in output.splitlines() if line.strip()] if code else []
+    for line in found:
+        print(f"FAIL {line}")
+    print(f"host_check --load: world.py --check "
+          + ("current" if not found else f"STALE ({len(found)}): run python3 tools/extract/world.py"))
+    return found
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -1120,6 +1147,7 @@ def main(argv: list[str] | None = None) -> int:
               "files, in build order")
         if args.forward:
             return 1 if forward else 0
+    stale = world_stale() if args.load else []
     acl2 = executable()
     if args.load:
         if acl2 is None:
@@ -1145,7 +1173,7 @@ def main(argv: list[str] | None = None) -> int:
         if log_dir is not None:
             log_dir.mkdir(parents=True, exist_ok=True)
         loaded = load_check(acl2, files, args.timeout_seconds, log_dir)
-        return 1 if forward and loaded == 0 else loaded
+        return 1 if (forward or stale) and loaded == 0 else loaded
     if not args.alone:
         if args.files:
             print("host_check: FILEs without a mode: use --alone FILE... (a diagnosis) "

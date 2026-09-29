@@ -1511,7 +1511,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/image-world-dtn \
 	books/image-world-store-test
 
-.PHONY: extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
+.PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -1546,6 +1546,13 @@ site:
 # (printed, never failing) instead of against the committed files, which a
 # lane must not commit.  Their generation still has to succeed, and every
 # other check is the same.
+# Every pre-image gate for a host-code conversion, as one target (item 34):
+# world.py --check, interface_emit --check, host_check --forward/--world/
+# --load FILE, and the certified-world class check (host_check's default).
+# On a box: tools/remote_check.sh auto --cmd 'make host-convert-check FILE=host/native/x.lisp'
+host-convert-check:
+	@$(PYTHON) tools/host_convert_check.py $(FILE)
+
 check-lane:
 	FN_LANE_CHECK=1 FN_LANE_CHECK_DIR=$$(mktemp -d "$${TMPDIR:-/tmp}/fn-lane-check.XXXXXX") $(MAKE) check
 
