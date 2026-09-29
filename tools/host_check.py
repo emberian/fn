@@ -599,9 +599,28 @@ def choose_world(build: str, acl2: Path, bare: bool, install: bool = True,
                    f"of {build}, in order (definterface's checks evaluated)")
 
 
+CERTIFICATE_TROUBLE = ("There is a problem with the certificate", "[Uncertified]",
+                       "Warning [Uncertified]")
+
+
+def certificate_trouble(output: str) -> str:
+    """The first include-book whose certificate would not load, before the
+    prefix's end marker ('' when none): the umbrella is not loadable here,
+    which says nothing about the host files (host_translate_check's NOT RUN)."""
+    lines = output.split(WORLD_OK, 1)[0].splitlines()
+    if not any(marker in line for line in lines for marker in CERTIFICATE_TROUBLE):
+        return ""
+    for line in lines:
+        match = re.search(r'INCLUDE-BOOK "([^"]+)"', line)
+        if match and "Failure" in line:
+            return f"include-book {match.group(1)} failed on its certificate"
+    return "an include-book's certificate would not load"
+
+
 def load_check(acl2: Path, files: list[str], timeout: int,
                log_dir: Path | None = None, world: list[object] | None = None,
-               world_note: str = "BARE ACL2") -> int:
+               world_note: str = "BARE ACL2", require_world: bool = False,
+               bare_acl2: Path | None = None) -> int:
     import tempfile
     with tempfile.TemporaryDirectory(prefix="fn-host-load-") as scratch:
         driver = Path(scratch) / "driver.lsp"
@@ -622,6 +641,18 @@ def load_check(acl2: Path, files: list[str], timeout: int,
         elapsed = time.monotonic() - started
     if log_dir is not None:
         (log_dir / "load.log").write_text(output)
+    if world is not None:
+        trouble = certificate_trouble(output)
+        if trouble:
+            if log_dir is not None:
+                (log_dir / "load-world.log").write_text(output)
+            note = (f"BARE ACL2 -- the certified umbrella did not load here ({trouble}: the "
+                    "installed certificates do not compose); definterface's checks and the "
+                    "-by-definition equations were NOT evaluated")
+            if require_world:
+                print(f"host_check --load: NOT RUN -- {note}", file=sys.stderr)
+                return 2
+            return load_check(bare_acl2 or acl2, files, timeout, log_dir, None, note)
     source = world_text()
     findings, counts, completed = classify_load(output, world_names(source), source,
                                                 raw_definers())
@@ -1320,13 +1351,15 @@ def main(argv: list[str] | None = None) -> int:
         if world is None and args.require_world and not args.bare:
             print(f"host_check --load: NOT RUN -- {note}", file=sys.stderr)
             return 2
+        bare_acl2 = acl2
         if world is not None and os.environ.get("FN_IMAGE_ACL2"):
             # The image's launcher (tls64k): the production prefix exhausts
             # SBCL's default thread-local storage (host_translate_check).
             image = Path(os.environ["FN_IMAGE_ACL2"])
             if image.is_file():
                 acl2 = image
-        loaded = load_check(acl2, files, args.timeout_seconds, log_dir, world, note)
+        loaded = load_check(acl2, files, args.timeout_seconds, log_dir, world, note,
+                            args.require_world, bare_acl2)
         return 1 if (forward or stale) and loaded == 0 else loaded
     if not args.alone:
         if args.files:

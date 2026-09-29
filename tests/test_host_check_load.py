@@ -183,6 +183,15 @@ class WorldTests(unittest.TestCase):
         self.assertIn("NOT RUN -- BARE ACL2 -- the certified umbrella is not available: "
                       "no cache (test)", err.getvalue())
 
+    def test_a_certificate_that_will_not_load_is_trouble_not_a_finding(self):
+        output = ("ABORTING from raw Lisp\nError:  There is a problem with the certificate\n"
+                  'ACL2 Error [Failure] in ( INCLUDE-BOOK "post-identity-catalog" ...):\n'
+                  'ACL2 Error [Failure] in ( INCLUDE-BOOK "books/image-world" ...):\n')
+        self.assertEqual(host_check.certificate_trouble(output),
+                         "include-book post-identity-catalog failed on its certificate")
+        self.assertEqual(host_check.certificate_trouble(
+            f"{host_check.WORLD_OK}\n[Uncertified] later\n"), "")
+
     def test_a_prefix_error_names_its_host_file(self):
         tag = host_check.WORLD_LD
         output = ("ACL2 !>\n"
