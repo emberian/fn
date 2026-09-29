@@ -732,8 +732,10 @@
                                     observation injection wire-event v fn-arena fn-cat)))
         (fn-scr-auth-delegate as live trie lver arts cache archive index verdicts config observation
                               injection wire-event v fn-arena fn-cat))))
-   (t (fn-scr-auth-delegate as live trie lver arts cache archive index verdicts config observation
-                            injection wire-event v fn-arena fn-cat))))
+   ((fn-auth-client-eventp wire-event)
+    (fn-scr-auth-delegate as live trie lver arts cache archive index verdicts config observation
+                            injection wire-event v fn-arena fn-cat))
+   (t (fn-post-make-result as nil nil))))
 
 (defthm fn-scr-auth-step-is-scar-auth-step-pinned
   (implies (and (fn-gacc-okp cache) (fn-scr-live-joinp trie lver arts fn-arena fn-cat) (fn-scr-catalogp archive index v fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))

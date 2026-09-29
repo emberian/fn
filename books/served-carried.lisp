@@ -184,8 +184,10 @@
                                         observation injection wire-event fn-arena)))
         (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config observation
                                   injection wire-event fn-arena))))
-   (t (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config observation
-                                injection wire-event fn-arena))))
+   ((fn-auth-client-eventp wire-event)
+    (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config observation
+                                injection wire-event fn-arena))
+   (t (fn-post-make-result as nil nil))))
 
 (defthm fn-scar-auth-step-pinned-is-auth-step-pinned
   (implies (and (fn-node-statep live)
