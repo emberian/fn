@@ -141,6 +141,13 @@
 (assert-event (equal (fn-own-feed-targets *oft-tbl* nil *oft-groups* *oft-path*)
                      '("nodeB")))
 
+; KEYSTONE fn-own-feed-target-is-offerable (PRF-029), by name: the table is
+; a table, nodeB is a target, and its record is offerable.
+(assert-event
+ (and (fn-own-feed-tablep *oft-tbl*)
+      (member-equal "nodeB" (fn-own-feed-targets *oft-tbl* nil *oft-groups* *oft-path*))
+      (fn-own-feed-offerablep (fn-own-feed-record-of "nodeB" *oft-tbl*)
+                              nil *oft-groups* *oft-path*)))
 ; PRF-029's target keystone needs both hypotheses.  Without membership,
 ; nodeC's valid outbound feed has no matching group.  Without the table
 ; recognizer, a duplicate nodeB key can make a later offerable row a target
