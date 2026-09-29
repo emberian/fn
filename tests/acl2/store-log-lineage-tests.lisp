@@ -21,12 +21,12 @@
 (defun slgl-k () (declare (xargs :guard t)) 2)
 ; Segment 2 as the rotation wrote it from P: the head alone (the empty suffix).
 (defun slgl-head () (declare (xargs :guard t :verify-guards nil))
-  (fn-lgl-rotation-entry (slgl-p) (slgl-k) (slgl-unit)))
+  (fn-lg-rotation-entry (slgl-p) (slgl-k) (slgl-unit)))
 ; The F row's GENESIS this store's checkpoint carries, and the fork's.
 (defun slgl-g () (declare (xargs :guard t :verify-guards nil))
-  (fn-lg-trailer (fn-lgl-rotation-frame (slgl-p) (slgl-k))))
+  (fn-lg-trailer (fn-lg-rotation-frame (slgl-p) (slgl-k))))
 (defun slgl-g-fork () (declare (xargs :guard t :verify-guards nil))
-  (fn-lg-trailer (fn-lgl-rotation-frame (slgl-q) (slgl-k))))
+  (fn-lg-trailer (fn-lg-rotation-frame (slgl-q) (slgl-k))))
 ; A record entry after the head: the non-empty suffix.
 (defun slgl-suffix () (declare (xargs :guard t :verify-guards nil))
   (fn-lg-entry (slgl-g) (list '(1 2 3)) (slgl-unit)))
@@ -34,9 +34,9 @@
 ; -----------------------------------------------------------------------------
 ; 1. The entry as written: readable, sized, opening to what was sealed.
 (assert-event
- (and (fn-frame-digestp (slgl-p)) (fn-frame-digestp (slgl-q)) (fn-lgl-indexp (slgl-k))
+ (and (fn-frame-digestp (slgl-p)) (fn-frame-digestp (slgl-q)) (fn-lg-rotation-indexp (slgl-k))
       (not (equal (slgl-p) (slgl-q)))
-      (equal (len (fn-lgl-rotation-frame (slgl-p) (slgl-k))) (+ 42 36))
+      (equal (len (fn-lg-rotation-frame (slgl-p) (slgl-k))) (+ 42 36))
       (equal (len (slgl-head)) (fn-lgl-head-len (slgl-unit)))
       (equal (mod (len (slgl-head)) (slgl-unit)) 0)
       (fn-lgl-headed-p (slgl-head) (slgl-max))
@@ -51,7 +51,7 @@
 ; antecedent (P a digest, K an index above 1, MAX in range) and the whole
 ; conclusion, for the empty suffix and for a suffix of one record entry.
 (assert-event
- (and (fn-frame-digestp (slgl-p)) (fn-lgl-indexp (slgl-k)) (not (equal (slgl-k) 1))
+ (and (fn-frame-digestp (slgl-p)) (fn-lg-rotation-indexp (slgl-k)) (not (equal (slgl-k) 1))
       (natp (slgl-max)) (<= *fn-lgl-payload-octets* (slgl-max)) (<= (slgl-max) *fn-frame-max-payload*)
       (equal (fn-lgl-open (slgl-k) (slgl-g) (slgl-head) (slgl-t0) (slgl-max)) nil)
       (equal (fn-lgl-open (slgl-k) (slgl-g-fork) (slgl-head) (slgl-t0) (slgl-max))
@@ -60,11 +60,21 @@
       (equal (fn-lgl-open (slgl-k) (slgl-g-fork) (append (slgl-head) (slgl-suffix)) (slgl-t0) (slgl-max))
              '(:refused :foreign-lineage))))
 
-; The scan of the segment from the head's claimed predecessor: the entry is
-; an entry of the chain with no records, and the records after it are the
-; suffix's, chained from GENESIS (what the host streams after the decision).
-; Holds once books/store-log.lisp admits kind 3 (READY 2 of the lane); until
-; then the scan stops before the head -- asserted as the format change lands.
+; The scan of the segment from the head's claimed predecessor (what the host
+; streams after the decision): the entry is an entry of the chain with no
+; record, and the suffix's records follow, chained from GENESIS
+; (fn-lg-scan-of-rotation-entry-append).
+(assert-event
+ (and (equal (car (fn-lg-scan (slgl-head) (slgl-p) (slgl-unit) (slgl-max))) nil)
+      (equal (cdr (fn-lg-scan (slgl-head) (slgl-p) (slgl-unit) (slgl-max))) (len (slgl-head)))
+      (equal (car (fn-lg-scan (append (slgl-head) (slgl-suffix)) (slgl-p) (slgl-unit) (slgl-max)))
+             (list '(1 2 3)))
+      (equal (fn-lg-scan-last (append (slgl-head) (slgl-suffix)) (slgl-p) (slgl-unit) (slgl-max))
+             (fn-lg-trailer (slgl-suffix)))
+      (not (fn-lgs-chain-broken-p (append (slgl-head) (slgl-suffix)) (slgl-p) (slgl-unit) (slgl-max)))
+      ; the fork's GENESIS as the scan's start: the head is a splice, refused by the chain too
+      (equal (car (fn-lg-scan (slgl-head) (slgl-g-fork) (slgl-unit) (slgl-max))) nil)
+      (equal (cdr (fn-lg-scan (slgl-head) (slgl-g-fork) (slgl-unit) (slgl-max))) 0)))
 
 ; -----------------------------------------------------------------------------
 ; 3. THE TOOTH: hypothesis-removal witness over the lineage clause.
