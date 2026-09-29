@@ -61,7 +61,11 @@
       (fn-owner-reconfigure-deltas id deltas fn-arena state))
      ;; No delta for this plan over the live owner's tables: the result
      ;; says so, never a previous request's reason (PKT-453 (a)).
-     (t (value (fn-ores-config-refused :no-delta))))))
+     ;; Row S5: `peer set''s refusal over the live record, or
+     ;; :no-such-peer, by ACL2's name (fn-native-admin-plan-refusal-over).
+     (t (value (fn-ores-config-refused
+                (fn-native-admin-plan-refusal-over
+                 plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))))))
 (defun fn-native-admin-host-apply (plan stamp state)
   ;; STAMP is the record stamp fn-native-admin-clock-observation built
   ;; (host/native/admin.lisp fnn-admin-clock-plan); every record this
@@ -126,7 +130,11 @@
                                 (fn-cfg-value (f-get-global 'fn-store-cfg state))))))
              (if deltas
                  (fn-store-cfg-peer-delta-record deltas stamp state)
-               (let ((state (f-put-global 'fn-store-cfg-last-reason :no-such-peer
+               (let ((state (f-put-global 'fn-store-cfg-last-reason
+                                          (fn-native-admin-plan-refusal-over
+                                           plan (fn-cfg-peers
+                                                 (fn-cfg-value
+                                                  (f-get-global 'fn-store-cfg state))))
                                           state)))
                  (value :refused)))))
           ;; PRF-164: offline, the pending row expires from the record's

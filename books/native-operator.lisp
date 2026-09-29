@@ -671,15 +671,15 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "control")
          "usage: fn operator CONFIG control {grant PRINCIPAL-HEX cancel NAMESPACE | revoke PRINCIPAL-HEX cancel NAMESPACE | list | log | evidence MESSAGE-ID} (NAMESPACE is a group name or one ending in .*; spec peering 8; log lists the withdrawal records, evidence shows one article's decision context)")
         ((equal subject "peer")
-         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- source-address|principal VALUE [PROFILE ALLOW-CLEAR] STREAMING [starttls|implicit SERVER-NAME ANCHOR-PEM] | peer remove NAME | peer list | peer pull NAME SECONDS | peer catch-up NAME SECONDS | peer feed NAME pause|resume | peer budget NAME OCTETS COUNT | peer keygen KEYDIR | peer genesis KEYDIR | peer invite NAME GROUPS HOST PORT PATH KEYDIR OUT MY-HOST|- MY-PORT|- | peer accept FILE KEYDIR PATH REACHABLE|- OUT | peer confirm ACCEPTANCE INVITATION (KEYDIR, FILE and OUT absolute; keygen makes a new KEYDIR with both key pairs and runs genesis; spec peering 9)")
+         "usage: fn operator CONFIG peer set NAME [--host HOST] [--port PORT] [--take GROUPS|-] [--send GROUPS|-] [--streaming true|false] [--tls clear|starttls|implicit] [--server-name NAME|-] [--anchor PEM|-] [--login FILE|-] [--allow-clear true|false] [--principal HEX | --source-address IPV4] (changes the named fields of a peer, live; every other field and the pull, carries and budget settings stay) | peer login NAME LOGIN FILE (asks the password your friend gave you twice, writes FILE for NAME and sets it as NAME's login) | peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- source-address|principal VALUE [PROFILE ALLOW-CLEAR] STREAMING [starttls|implicit SERVER-NAME ANCHOR-PEM] | peer remove NAME | peer list | peer pull NAME SECONDS | peer catch-up NAME SECONDS | peer feed NAME pause|resume | peer budget NAME OCTETS COUNT | peer keygen KEYDIR | peer genesis KEYDIR | peer invite NAME GROUPS HOST PORT PATH KEYDIR OUT MY-HOST|- MY-PORT|- | peer accept FILE KEYDIR PATH REACHABLE|- OUT | peer confirm ACCEPTANCE INVITATION (KEYDIR, FILE and OUT absolute; peer add, set, remove, pull and feed apply to the running node; keygen makes a new KEYDIR with both key pairs and runs genesis; spec peering 9)")
         ((equal subject "bp-boundary")
          "usage: fn operator CONFIG bp-boundary add NAME PATH BP-EID PORT [INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] [carries SOURCE-EID ...] (IPv4 loopback; the short form grants no inbound articles; carries lists the source EIDs this neighbour may relay, each judged under its own enrollment here)")
         ((equal subject "bp-route")
          "usage: fn operator CONFIG bp-route {add PATTERN BOUNDARY [PRIORITY] | remove PATTERN BOUNDARY} (PATTERN is a BP EID, or one ending in * for every EID with that prefix; the next hop of held transit, spec bp-node-machine 4.7)")
         ((equal subject "policy")
-         "usage: fn operator CONFIG policy set {path-identity IDENTITY | posting-policy bound-logins|open}")
+         "usage: fn operator CONFIG policy set KEY VALUE, KEY one of: path-identity IDENTITY | posting-policy bound-logins|open | complaints-to ADDR | anonymous none|open | exposure-connections N | exposure-per-address N | exposure-steps-per-second N | exposure-idle-seconds N | exposure-first-seconds N | exposure-auth-failures N | exposure-posts-per-minute N | exposure-trusted CIDR[,CIDR...]|none | relay-date-skew SECONDS | refused-offer-capacity N | relay-require-path 0|1 | log-batch-records N | log-batch-octets N | barrier-deadline-ms N | barrier-stall-ms N | clock-event-ms N | compress-min-octets N | disk-reserve-octets N (each applies to a running node at once)")
         ((equal subject "principal")
-         "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin, restart to apply; bind and unbind apply to a running node at once)")
+         "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin; its last word says when it applies: applied (the running node took it), effective-at-next-start (no node running) or restart-required (fn.toml names no [control] path); bind and unbind apply to a running node at once)")
         ((equal subject "consumer")
          "usage: fn operator CONFIG consumer {bind NAME --account LOGIN | unbind NAME | show} (bind confines local consumer NAME to the groups LOGIN may read: its poll and ack then need LOGIN's password and serve only the events of a group LOGIN's access rule admits; unbind returns it to the operator's unrestricted consumer; show is the account list report; apply to a running node at once; spec consumer-progress Bound consumers)")
         ((equal subject "account")
@@ -697,7 +697,11 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ;; values and absolute paths; what the documents say, and whether they are
 ;; accepted, is books/peer-invite.lisp's, asked by host/native/peer-invite.lisp.
 (defconst *fn-nop-peering-arity*
-  '(("keygen" . 1) ("genesis" . 1) ("invite" . 9) ("accept" . 5) ("confirm" . 2)))
+  '(("keygen" . 1) ("genesis" . 1) ("invite" . 9) ("accept" . 5) ("confirm" . 2)
+    ; Row S5: `peer login NAME LOGIN FILE' writes the FNAUTH1 file from two
+    ; password entries (books/peer-set.lisp fn-pset-login-file) and sets it
+    ; as the peer's login (`peer set NAME --login FILE').
+    ("login" . 3)))
 
 (defun fn-nop-peering-verbp (word)
   (declare (xargs :guard t))
@@ -722,6 +726,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                                     (fn-nop-absolute-pathp (nth 4 args))))
         ((equal verb "confirm") (and (fn-nop-absolute-pathp (nth 0 args))
                                      (fn-nop-absolute-pathp (nth 1 args))))
+        ((equal verb "login") (fn-nop-absolute-pathp (nth 2 args)))
         (t nil)))
 
 (defun fn-nop-parse-peering (words config)
