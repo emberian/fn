@@ -851,9 +851,9 @@ def prepare(node: Node, events: Events, fixture=None, groups=GROUPS, profile=())
     if fixture:
         copy_fixture(Path(fixture), node)
     else:
-        # `operator' takes at most 32 words (books/native-operator.lisp
-        # *fn-nop-max-arguments*): init names a few groups, `group create'
-        # the rest.
+        # init names a few groups and `group create' the rest, so the run
+        # exercises the live admin path too (PKT-867 removed the argv word
+        # bound that first forced this split).
         first, rest = list(groups[:4]), list(groups[4:])
         init = node.op("init", *profile, *first)
         events.emit("init", node=node.name, rc=init.returncode,
