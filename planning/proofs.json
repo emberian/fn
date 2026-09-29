@@ -13545,6 +13545,33 @@
       ]
     },
     {
+      "id": "PRF-923",
+      "title": "Readers of the history image by access pattern: one paged fold, proved once over a constrained step and instantiated per reader, that reads without filling, stops at the first unverified row with its cursor and accumulator (so the page is served outside the owner) and resumes; the composed runs fold exactly the rows read",
+      "statement": "books/history-image-fold.lisp. fn-hif-run I U ACC C: rows [I, U) of the concrete read with fn-hrc-at (no fill, no I/O), the constrained step fn-hif-f applied to each while it reads (:ok); answers (mv VERDICT CURSOR ACC). KEYSTONE fn-hif-run-is-foldl: over a concrete that holds H (fn-hrs-rel, fn-hrc-wfp) and U <= (len H): I <= CURSOR <= U; ACC is fn-hif-foldl of H's rows [I, CURSOR) (fn-hif-seg); VERDICT is :done exactly when CURSOR = U; any other VERDICT is a need-verdict. fn-hif-run-resume: a run stopped at J with A, resumed at J with A, folds H's rows [I, K). fn-hif-def-fold NAME STEP FOLDL instantiates the run and its keystone per reader by functional instance (fn-hif-count-run, fn-hif-collect-run). Patterns: indexed = fn-hrc-get (PRF-920 fn-hib-get-keeps), count = fn-hrc-count, fold / bounded cursor = this run. Scope: no served reader calls it yet (the served open does not adopt the image).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-035"
+      ],
+      "depends_on": [
+        "PRF-920",
+        "PRF-372"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/history-image-fold.lisp",
+        "tests/acl2/history-image-binding-tests.lisp",
+        "planning/evidence/composed-owner-2026-09-29.md"
+      ],
+      "progress_note": "Lane composed-owner, 2026-09-29 (row A5). Teeth (tests/acl2/history-image-binding-tests.lisp): a live run over an adopted committed image: the first run stops at a need at cursor 0 with nothing folded; the composed loop (request, completion outside the owner, resume at the cursor) ends :done at 40 with the fold of every row, after at most one completion per image page; over a file with a damaged page the fold stops by name (:page-damaged) with exactly the rows before it folded. The executed readers of the record list are classified in the evidence record (section 6).",
+      "events": [
+        "fn-hif-run-is-foldl",
+        "fn-hif-run-resume",
+        "fn-hif-count-run-is-foldl",
+        "fn-hif-collect-run-is-foldl"
+      ]
+    },
+    {
       "id": "PRF-387",
       "title": "`run` takes its TLS certificate and key exactly when they load, match and are valid now and readable, by the decision `tls reload` applies, and refuses the start by name otherwise",
       "statement": "Subject fn-tlsr-start-decide (books/tls-reload.lisp), which host/tls-reload-host.lisp fn-tlsr-host-start-decide computes for host/native/tls-reload.lisp fnn-tls-start-context, called by host/native/operator-live.lisp fnn-operator-execute-run before the owner starts; the host builds and observes the candidate exactly as a reload does (fnn-tls-server-candidate, fnn-tls-facts-of), serves it exactly on :accept (recording the facts as the context's served facts, the relation fnn-tls-context-swap preserves), and otherwise frees it and refuses the start (exit 1, `refused operator run tls REASON`). (1) fn-tlsr-start-decide-accepts-exactly-loaded-matching-current-material (KEYSTONE, no hypotheses): the start accepts iff the chain loaded, the key loaded, the key matches, the clock lies in the validity window and the subjectAltName is readable. (2) fn-tlsr-decide-is-the-start-decision-unless-names-dropped (KEYSTONE): every reload decision other than (:refuse :names-dropped) equals the start decision, so the two paths decide the same material by one check and a pair the start refuses a reload refuses by the same word. Before PKT-606 the start refused only what OpenSSL refused (fnn-tls-open-context, deleted), so an expired, not-yet-valid or name-unreadable pair started. Teeth: tests/acl2/tls-reload-tests.lisp (the real P-256 certificate's facts; the positive witness asserting every conjunct; per conjunct a witness where it alone fails and the start refuses by name; per conjunct a must-fail; the names-dropped material the reload refuses and the start takes, with a must-fail of the equation without its hypothesis). Trusted, not proved: as PRF-212 (the library's parse and three booleans, the host clock). Native: tests/test_native_tls_reload.py (a start with a mismatched pair refused key-mismatch and one with an expired certificate refused expired, exit 1, no listener), tests/test_native_starttls.py test_context_mismatch_refuses_before_listener, tests/test_native_tls_transport.py (the candidate's observations).",

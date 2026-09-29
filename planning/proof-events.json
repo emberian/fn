@@ -12899,6 +12899,31 @@
           "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
         }
       ]
+    },
+    {
+      "id": "PRF-923",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hif-run-is-foldl",
+          "pending_subject": "Subject is the paged fold over the history image; no served reader calls it until the served open adopts the image (lane composed-owner NEXT); the instances show the template admits and proves."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hif-run-resume",
+          "pending_subject": "Subject is the paged fold over the history image; no served reader calls it until the served open adopts the image (lane composed-owner NEXT); the instances show the template admits and proves."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hif-count-run-is-foldl",
+          "pending_subject": "Subject is the paged fold over the history image; no served reader calls it until the served open adopts the image (lane composed-owner NEXT); the instances show the template admits and proves."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hif-collect-run-is-foldl",
+          "pending_subject": "Subject is the paged fold over the history image; no served reader calls it until the served open adopts the image (lane composed-owner NEXT); the instances show the template admits and proves."
+        }
+      ]
     }
   ]
 }
