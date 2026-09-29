@@ -1062,8 +1062,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-store-steps \
 	books/owner-log-ocl \
 	tests/acl2/owner-log-ocl-tests \
+	books/owner-outcome-pinned \
 	books/owner-host-relation \
 	tests/acl2/owner-host-relation-tests \
+	books/owner-host-relation-span \
 	books/config-owner-live-authorize \
 	tests/acl2/config-owner-live-authorize-tests \
 	books/store-number-bound \
@@ -1757,6 +1759,15 @@ check:
 # counts the sites left per file and only shrinks.
 	@$(CHECK_STEP) $(PYTHON) tools/clock_unit_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_clock_unit_check
+# The owner's ACL2 state globals (row Q3c, lane owner-relation-2): the host
+# keeps one canonical owner in `fn-owner' and every other `fn-owner-*' state
+# global is a side channel the adapter-retirement record
+# (planning/evidence/adapter-retirement-2026-09-26.md) wants folded into the
+# owner value or a wrapper's result.  tools/owner_globals_baseline.json holds
+# the distinct names per host file (95 across 8 files at the baseline) and
+# only shrinks.  Source-level, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/owner_globals_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_owner_globals_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make
