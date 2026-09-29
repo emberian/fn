@@ -15177,6 +15177,18 @@
         {
           "kind": "theorem",
           "name": "fn-ovw-step-of-withdraw-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-range-ovw-expands-to-over-range-cat"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-cursor-effect-expands-to-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-run-of-start-is-cursor-octets"
         }
       ]
     },
