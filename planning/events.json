@@ -32,7 +32,8 @@
         "consumer-bind": 24,
         "set-default-subscriptions": 25,
         "withdraw-article": 26,
-        "account-delete": 27
+        "account-delete": 27,
+        "reclaim-note": 28
       },
       "reserved": {},
       "recorded": {},
