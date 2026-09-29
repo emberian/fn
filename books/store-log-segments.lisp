@@ -418,9 +418,21 @@
   (declare (xargs :guard t))
   *fn-lgs-max-segment*)
 
-(defun fn-lgs-rotate (ks)
-  (declare (xargs :guard (true-listp ks)))
-  (fn-lgk-make nil (fn-lgk-last ks) 0 (fn-lgk-next-txid ks) nil nil 0 :ready))
+; The rotation to segment K (lane store-lineage, PRF-979): the new segment
+; opens with a ROTATION ENTRY (books/store-log.lisp fn-lg-rotation-entry: an
+; FNLG frame of kind 3 chained from the closed segment's last trailer, its
+; body K, no record), so its kernel starts past the entry -- frontier the
+; entry's padded length, LAST the entry's trailer, which the checkpoint's F
+; row carries as the suffix's genesis and the open checks the head against
+; (books/store-log-lineage.lisp fn-lgl-open).  The chain through the heads
+; is the store's authenticated ancestry: a restored copy that diverged
+; before its next rotation heads its own segment K from another trailer.
+(defun fn-lgs-rotate (ks k unit)
+  (declare (xargs :guard (true-listp ks) :verify-guards nil))
+  (let ((last (fn-lgk-last ks)))
+    (fn-lgk-make nil (fn-lg-trailer (fn-lg-rotation-frame last k))
+                 (len (fn-lg-rotation-entry last k unit))
+                 (fn-lgk-next-txid ks) nil nil 0 :ready)))
 
 ; The rotation's and the drop's byte programs, as the host performs them
 ; (host/native/io.lisp fnn-log-prepare-spare, fnn-log-rotate,
@@ -452,14 +464,27 @@
         (list :fsync-file :staging :spare)
         (list :cut "rotate-fenced")))
 
+;   the head (lane store-lineage): after the rename, still under the mutex,
+;     the rotation entry written at offset 0 of NEXT (cut rotate-headed);
+;     no fence here.  A death between the rename and the head leaves NEXT
+;     named and unheaded: the writable open scans it to nothing and heads it
+;     from the chain it carried (fnn-log-scan-segments, fnn-log-head-segment);
+;     a reader refuses it.  A torn head is a torn first entry, truncated by
+;     P-LOG-RECOVER, then headed the same way.
+;   the durable fence: the new segment's file fenced (the head), then
+;     journal/, before any member in NEXT is acknowledged and before any
+;     checkpoint names NEXT -- so an F row never names an unheaded segment.
 (defun fn-lgs-rotate-program ()
   (declare (xargs :guard t))
   (list (list :rename :staging :spare :journal :next)
-        (list :cut "rotate-renamed")))
+        (list :cut "rotate-renamed")
+        (list :write :journal :next :rotation-entry)
+        (list :cut "rotate-headed")))
 
 (defun fn-lgs-rotate-durable-program ()
   (declare (xargs :guard t))
-  (list (list :fsync-dir :journal)
+  (list (list :fsync-file :journal :next)
+        (list :fsync-dir :journal)
         (list :cut "rotate-durable")))
 
 (defun fn-lgs-drop-program ()
@@ -478,11 +503,45 @@
   (declare (xargs :guard (true-listp ks)))
   (consp (fn-lgk-committed ks)))
 
+(local
+ (defthm fn-lgs-nthcdr-of-append-exact
+   (implies (true-listp a)
+            (equal (nthcdr (len a) (append a b)) b))))
+
+; The chain's last over a segment headed by the rotation entry continues
+; from the entry's trailer (the scan's twin, books/store-log.lisp
+; fn-lg-scan-of-rotation-entry-append).
+(defthm fn-lgs-scan-last-of-rotation-entry-append
+  (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k)
+                (natp max) (<= (+ *fn-frame-trailer-octets* *fn-lg-rotation-body-octets*) max)
+                (<= max *fn-frame-max-payload*))
+           (equal (fn-lg-scan-last (append (fn-lg-rotation-entry prev k unit) x) prev unit max)
+                  (fn-lg-scan-last x (fn-lg-trailer (fn-lg-rotation-frame prev k)) unit max)))
+  :hints (("Goal" :do-not-induct t
+           :expand ((fn-lg-scan-last (append (fn-lg-rotation-entry prev k unit) x) prev unit max))
+           :in-theory (e/d ()
+                           (fn-lg-rotation-entry fn-lg-rotation-frame fn-lg-slice fn-lg-entry-okp
+                            fn-lg-slice-records fn-lg-declared-len fn-lg-pad-len fn-lg-trailer
+                            fn-frame-open fn-cbor-u32-bytes fn-frame-digestp fn-lg-rotation-indexp
+                            fn-lg-scan fn-lg-scan-last))
+           :use ((:instance fn-lgs-nthcdr-of-append-exact
+                            (a (fn-lg-rotation-entry prev k unit)) (b x))))))
+
+; The rotated-to segment's kernel is the kernel recovery derives from its
+; durable content: the rotation entry from the closed segment's last
+; trailer, then zeros (the head is the only entry the rotation writes).
 (defthm fn-lgs-rotate-is-the-recovered-kernel
-  (implies (fn-lg-zerosp z)
-           (equal (fn-lgk-recover z (fn-lgk-last ks) unit max (fn-lgk-next-txid ks))
-                  (fn-lgs-rotate ks)))
-  :hints (("Goal" :in-theory (enable fn-lgk-recover))))
+  (implies (and (fn-lg-zerosp z)
+                (fn-frame-digestp (fn-lgk-last ks)) (fn-lg-rotation-indexp k)
+                (natp max) (<= (+ *fn-frame-trailer-octets* *fn-lg-rotation-body-octets*) max)
+                (<= max *fn-frame-max-payload*))
+           (equal (fn-lgk-recover (append (fn-lg-rotation-entry (fn-lgk-last ks) k unit) z)
+                                  (fn-lgk-last ks) unit max (fn-lgk-next-txid ks))
+                  (fn-lgs-rotate ks k unit)))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-recover)
+                                  (fn-lg-rotation-entry fn-lg-rotation-frame fn-lg-trailer
+                                   fn-lg-scan fn-lg-scan-last fn-frame-digestp
+                                   fn-lg-rotation-indexp fn-lg-zerosp)))))
 
 ; -----------------------------------------------------------------------------
 ; T8, the drop preserves the open, is stated over the host's streamed open in

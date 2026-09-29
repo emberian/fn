@@ -16931,6 +16931,36 @@
         "tests/acl2/identity-retain-carried-tests.lisp"
       ],
       "progress_note": "Lane served-costs-4 (2026-09-29): REPL-admitted; certification owed with the affected roots."
+    },
+    {
+      "id": "PRF-979",
+      "title": "A checkpoint the open accepts shares the log's lineage: every segment K >= 2 opens with a rotation entry chained from the closed segment's last trailer, the F row's GENESIS is its trailer, and the open decides over segment K's head before it scans -- a fork's checkpoint (a restored backup that diverged, the same store identity, an equal count, an empty suffix) is refused :foreign-lineage by name",
+      "statement": "books/store-log-lineage.lisp (lane store-lineage, row A2's last piece: composed-owner-6's G1 finding). The rotation entry fn-lgl-rotation-frame P K: an FNLG frame of kind 3 (*fn-lg-rotation-kind*) over P (the closed segment's last trailer, the claimed predecessor) and K as u32, no records; fn-lgl-open K G HEAD T0 MAX: the open's lineage decision over the F row's (K G) and segment K's head -- nil, or (:refused :foreign-lineage) when the head is a readable rotation entry naming K whose trailer is not G, (:refused :segment-head-damaged) when it is not a readable rotation entry, (:refused :segment-misnamed) when it names another index; segment 1 must carry T0. KEYSTONE fn-lgl-open-of-rotated-segment: over segment K as the rotation wrote it from P (the entry, then anything -- records or nothing) the open accepts (K G) exactly when G is the entry's trailer. fn-lgl-fork-refused: with G the trailer of a rotation entry from another chain value Q, the open refuses :foreign-lineage, under the per-pair hypothesis fn-lgl-trailer-distinct (two rotation entries naming K with equal trailers continue from the same value; its failure is a BLAKE3 collision between the two frames, the pessimistic figure 2^-128 per pair). fn-lgl-accepted-shares-lineage (the composed statement over publish, recover and open): with P the chain value of the segments the log held below K and Q that of the segments the checkpoint's capture covered, an accepted checkpoint covered exactly the log's segments, under fn-lgl-trailer-distinct and fn-lgl-chain-distinct (fn-hib-chain-distinct's shape over segments). Scope at READY 1: the model; the host's rotation and open follow it in READY 2 (books/store-log.lisp kind 3, fn-lgc-rotate KS K, host/native/io.lisp fnn-log-rotate / fnn-recover-log).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-035"
+      ],
+      "depends_on": [
+        "PRF-920",
+        "PRF-270"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-lineage.lisp",
+        "tests/acl2/store-log-lineage-tests.lisp",
+        "books/store-log.lisp",
+        "books/store-log-segments.lisp",
+        "books/store-log-kernel-concrete.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_store_lineage.py"
+      ],
+      "progress_note": "Lane store-lineage-2, 2026-09-29 (READY 2, the format lands whole): books/store-log.lisp kind 3 (fn-lg-rotation-entry; KEYSTONE of the format fn-lg-scan-of-rotation-entry-append: the scan over a headed segment reads the entries after the head from its trailer, no record of its own), the stream and buffer twins decide kind 3 -> no record; books/store-log-segments.lisp fn-lgs-rotate KS K UNIT (fn-lgs-rotate-is-the-recovered-kernel over head + zeros; the rotate program's :write and cut rotate-headed; the durable program's fsync-file before the dir fence), books/store-log-kernel-concrete.lisp fn-lgc-rotate C K UNIT and fn-lgc-rotation-octets (guard-verified twins fn-lgx-rotation-frame/-entry; fn-lgc-rotate-refines). Host: fnn-log-rotate writes the head after the rename (cut rotate-headed, no fsync under the mutex), fnn-log-make-durable fences the file then journal/, fnn-recover-log's fnn-log-lineage-genesis decides fn-lgl-open over K's head and streams K from fn-lgl-head-prev, fnn-log-head-segment completes an unheaded segment on a writable open. Natives: tests/test_native_store_lineage.py (a diverged copy's checkpoint refused foreign-lineage with an empty suffix, over a suffix, and in the other direction); rotate-headed in the rotation cut lists. The 2026-09-29 review's four claims (consistency yes, ancestry yes, freshness NO, authority no) are stated in specs/storage.md Lineage. Lane store-lineage, 2026-09-29. Teeth (tests/acl2/store-log-lineage-tests.lisp): the written entry read back (headed, its predecessor, index and trailer); a reachable positive witness of the keystone (every hypothesis executed; accepted with the empty suffix and with a record entry after the head; the fork's GENESIS refused in both); THE TOOTH, a hypothesis-removal witness over the lineage clause: the old open's three decisions (fn-lgs-open-plan, fn-lg-scan of the empty segment, fn-lgs-chain-broken-p over nothing) are equal for the store's own GENESIS and the fork's, fn-lgl-open is not; corrupted-state witnesses labelled apart (an empty K a checkpoint names, a flipped head octet, a record entry at the head, another index, segment 1's genesis). No removal witness for fn-lgl-trailer-distinct: it needs a BLAKE3 collision.",
+      "events": [
+        "fn-lgl-open-of-rotated-segment",
+        "fn-lgl-fork-refused",
+        "fn-lgl-accepted-shares-lineage"
+      ]
     }
   ]
 }

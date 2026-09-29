@@ -16718,6 +16718,23 @@
           "name": "fn-irc-apply-retention-event-is-reference"
         }
       ]
+    },
+    {
+      "id": "PRF-979",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgl-open-of-rotated-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgl-fork-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgl-accepted-shares-lineage"
+        }
+      ]
     }
   ]
 }

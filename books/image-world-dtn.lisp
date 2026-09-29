@@ -135,6 +135,7 @@
 (include-book "store-log-kernel-concrete")
 (include-book "store-log-stream")
 (include-book "store-log-damage")
+(include-book "store-log-lineage")
 (include-book "store-log-buffer")
 (include-book "store-log-walk-once")
 (include-book "store-log-segments")
