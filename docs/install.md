@@ -143,7 +143,7 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
    If the service runs under a memory limit (the unit's `MemoryMax`, a
    container's `mem_limit`), the store must be sized for that limit, not
    for the machine: run `init` under the same limit, or name the limit in
-   MiB with `FN_INIT_BUDGET_MB=1536` in `init`'s environment. With a named
+   MiB with `init --budget 1536`. With a named
    budget below what this machine gives, `init` sizes the store for the
    named budget and says so on stderr with both numbers:
    `fn: warning init-budget-below-machine named-budget=1536 MB machine-budget=5818 MB: ...`.

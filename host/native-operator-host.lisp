@@ -232,6 +232,14 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-init-profile result))
 
+(defun fn-native-operator-host-result-init-budget (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-init-budget result))
+
+(defun fn-native-operator-host-result-init-sizing (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-init-sizing result))
+
 (defun fn-native-operator-host-result-config-mission (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-config-mission result))

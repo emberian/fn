@@ -1128,17 +1128,29 @@ refuses and makes nothing:
 (exit code 1). The first number is what the store would need at its
 limits, the second what this machine can give. Choose smaller limits, or,
 to make a store for a bigger machine, name that machine's memory with
-`FN_INIT_BUDGET_MB=16384`: `init` then writes it and says
+`init --budget 16384 ...`: `init` then writes it and says
 `within-budget=no target-budget=16384 MB`, and fn refuses to run that
 store here, with `fn: refused machine-cannot-hold-profile`.
 
-The same variable sizes a store for a memory limit smaller than this
+The same word sizes a store for a memory limit smaller than this
 machine: a service under `MemoryMax=1536M` needs a store `init` made with
-`FN_INIT_BUDGET_MB=1536`, or made by an `init` run under that limit. When
+`init --budget 1536` (a `mission`'s `init` takes it too), or made by an
+`init` run under that limit. When
 the named budget is below what this machine gives (an `init` run outside
 the service's limit), `init` writes the store for the named budget and
 warns on stderr with both numbers, exit code 0:
-`fn: warning init-budget-below-machine named-budget=1536 MB machine-budget=5818 MB: the store is sized for FN_INIT_BUDGET_MB, not this machine; run init under the service's memory limit, and give the service at least 1536 MB`.
+`fn: warning init-budget-below-machine named-budget=1536 MB machine-budget=5818 MB: the store is sized for init --budget, not this machine; run init under the service's memory limit, and give the service at least 1536 MB`.
+
+A limit you name with no `--profile` (`--max-transactions`,
+`--max-history-octets` or `--max-record-octets`) is laid over the
+development preset, so the other limits are development's, never the
+default preset's 1 TiB of history; write `--profile default` to start from
+the default preset. When the limits you name do not fit together, `init`
+refuses by the name of the rule and prints the numbers and the value to
+pass, for example
+`init: max-history-octets 1000 is below max-record-octets 17138486; pass --max-history-octets 17138486 or more, or a smaller --max-record-octets`.
+`init --largest` asks for the largest preset this machine (or `--budget`)
+holds instead of the conservative sizes below.
 
 `init` with no `--profile` and no limit (and every `init` under a
 `mission`) picks the largest of four sizes this machine's memory holds:

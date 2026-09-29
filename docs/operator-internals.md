@@ -279,7 +279,7 @@ T, H or R, or `--profile development|scale`, is written as named and never
 resized when the budget holds it; past the budget it is refused
 `init-budget-cannot-hold-profile` with both figures (exit 1,
 `fn-heap-init-decide-refuses-the-operators-request-past-the-budget`),
-unless FN_INIT_BUDGET_MB names a target budget that holds it: then it is
+unless `init --budget MB` names a target budget that holds it: then it is
 written with `within-budget=no target-budget=MB MB`. A named budget below
 the budget init observes without it (init run outside the service's
 memory limit) is written for the named budget and warned on stderr by name

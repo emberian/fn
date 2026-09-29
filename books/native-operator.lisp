@@ -356,16 +356,171 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
            (fn-nop-group-names-within (cdr names) n))
     t))
 
+; Row Q10b (PKT-596/690/691): `init''s sizing words, grammar words where
+; the FN_INIT_* environment variables were.
+; `--budget MB' names the memory budget, in MiB, init sizes the store for (a
+; store made for the service's memory limit, or for another machine);
+; `--largest' asks for the largest preset the budget holds instead of the
+; conservative rung (books/heap-reservation.lisp fn-heap-init-decide decides
+; both).  They stand among the profile flags, each at most once; MB is a
+; decimal naming at least 1.  (BUDGET LARGEST REST): BUDGET the MiB or NIL,
+; LARGEST T or NIL, REST the other words in order; :bad for a repeated word
+; or a budget that is not a positive decimal.  Every other flag carries one
+; value (the profile grammar), so a flag's value is never read as a word here.
+(defun fn-nop-parse-init-sizing (words budget largest)
+  (declare (xargs :guard t :measure (len words)))
+  (cond ((atom words) (list budget largest nil))
+        ((equal (car words) "--budget")
+         (let ((mb (if (consp (cdr words)) (fn-nop-profile-decimal (cadr words)) nil)))
+           (if (or budget (not (posp mb)))
+               :bad
+             (fn-nop-parse-init-sizing (cddr words) mb largest))))
+        ((equal (car words) "--largest")
+         (if largest :bad (fn-nop-parse-init-sizing (cdr words) budget t)))
+        ((and (fn-nop-flag-wordp (car words)) (consp (cdr words)))
+         (let ((r (fn-nop-parse-init-sizing (cddr words) budget largest)))
+           (if (equal r :bad)
+               :bad
+             (list (car r) (cadr r)
+                   (list* (car words) (cadr words) (caddr r))))))
+        (t (list budget largest (true-list-fix words)))))
+
+; The capacity fields (T, H and R): a request naming one over no named preset
+; is sized from the development preset, not D27's defaults (row Q10b; the
+; review's walk: `init --max-transactions 100000' took H = 1 TiB and asked a
+; 10,493,234 MB reservation, PKT-582).  `--profile default' still names D27's.
+(defun fn-nop-names-capacityp (overrides)
+  (declare (xargs :guard t))
+  (if (consp overrides)
+      (or (and (consp (car overrides))
+               (member-equal (caar overrides)
+                             (list *fn-bs-pf-max-transactions*
+                                   *fn-bs-pf-max-history-octets*
+                                   *fn-bs-pf-max-record-octets*)))
+          (fn-nop-names-capacityp (cdr overrides)))
+    nil))
+
+; The request `init' parses from its profile words: (REQUEST REST) or :bad,
+; the base the preset named, else development when a capacity field is
+; named, else D27's defaults (a capacity-free request heap-reservation sizes).
+(defun fn-nop-parse-init-request (words)
+  (declare (xargs :guard t))
+  (let ((parsed (fn-nop-parse-profile-flags words nil nil nil)))
+    (if (consp parsed)
+        (let* ((request (car parsed))
+               (base (fn-ncfg-first request))
+               (overrides (fn-ncfg-second request)))
+          (list (list (cond (base base)
+                            ((fn-nop-names-capacityp overrides) :development)
+                            (t :default))
+                      overrides)
+                (fn-ncfg-second parsed)))
+      :bad)))
+
+; The profile values REQUEST resolves to before its relations are judged:
+; `fn-bs-profile-resolve''s own values (fn-nop-init-profile-values-resolve
+; below), so the refusal can name the numbers the relation compared.
+(defun fn-nop-init-profile-values (request)
+  (declare (xargs :guard t))
+  (if (not (fn-bs-profile-requestp request))
+      :bad
+    (let* ((base (fn-bs-config-for-profile (car request)))
+           (values (if (null base) :bad
+                     (fn-bs-profile-set-fields base (cadr request)))))
+      (if (or (equal values :bad)
+              (assoc-equal *fn-bs-pf-max-open-suffix* (cadr request)))
+          values
+        (fn-bs-profile-put
+         *fn-bs-pf-max-open-suffix*
+         (min (fn-bs-pf *fn-bs-pf-max-open-suffix* values)
+              (fn-bs-pf *fn-bs-pf-max-transactions* values))
+         values)))))
+
+(defthm fn-nop-init-profile-values-resolve
+  (equal (fn-bs-profile-resolve request nil)
+         (let ((values (fn-nop-init-profile-values request)))
+           (cond ((equal values :bad) (list :invalid :request))
+                 ((fn-bs-profile-invalid-reason values)
+                  (list :invalid (fn-bs-profile-invalid-reason values)))
+                 (t values))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-bs-profile-invalid-reason
+                                      fn-bs-profile-set-fields fn-bs-profile-put
+                                      fn-bs-pf fn-bs-config-for-profile))))
+
+(in-theory (disable fn-nop-parse-init-sizing fn-nop-parse-init-request
+                    fn-nop-init-profile-values fn-nop-names-capacityp))
+
+(defun fn-nop-init-field-text (name i values)
+  (declare (xargs :guard (and (stringp name) (natp i))))
+  (concatenate 'string name " " (fn-acct-decimal-text (fn-bs-pf i values))))
+
+(defthm fn-nop-init-field-text-stringp
+  (stringp (fn-nop-init-field-text name i values))
+  :rule-classes :type-prescription)
+
+(defthm fn-nop-acct-decimal-text-stringp
+  (stringp (fn-acct-decimal-text n))
+  :rule-classes :type-prescription)
+
+(in-theory (disable fn-nop-init-field-text))
+
+; Row Q10b: a refused init profile names its numbers (the review's walk:
+; `refused init max-history-octets-below-max-record-octets' named none) and,
+; for the two relations an operator meets by raising one field, the value
+; to pass.  WORDS are the refused init's words; NIL when they parse to no
+; values (the usage line answers those).
+(defun fn-nop-init-refusal-numbers (reason words)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory
+                                 (disable fn-nop-init-profile-values
+                                          fn-nop-parse-init-request
+                                          fn-nop-parse-init-sizing
+                                          fn-bs-profile-invalid-reason
+                                          fn-bs-pf fn-acct-decimal-text
+                                          fn-record-encoded-octets-ceiling)))))
+  (let* ((split (fn-nop-parse-init-sizing words nil nil))
+         (parsed (if (consp split) (fn-nop-parse-init-request (caddr split)) :bad))
+         (values (if (consp parsed) (fn-nop-init-profile-values (car parsed)) :bad)))
+    (if (or (not (consp values))
+            (not (fn-bs-profile-invalid-reason values)))
+        nil
+      (let ((tx (fn-nop-init-field-text "max-transactions" *fn-bs-pf-max-transactions* values))
+            (h (fn-nop-init-field-text "max-history-octets" *fn-bs-pf-max-history-octets* values))
+            (r (fn-nop-init-field-text "max-record-octets" *fn-bs-pf-max-record-octets* values))
+            (a (fn-nop-init-field-text "max-article-octets" *fn-bs-pf-max-article-octets* values))
+            (g (fn-nop-init-field-text "max-groups-per-article" *fn-bs-pf-max-groups-per-article* values))
+            (k (fn-nop-init-field-text "max-open-suffix" *fn-bs-pf-max-open-suffix* values)))
+        (cond ((equal reason :max-history-octets-below-max-record-octets)
+               (concatenate 'string "init: " h " is below " r
+                            "; pass --max-history-octets "
+                            (fn-acct-decimal-text (fn-bs-pf *fn-bs-pf-max-record-octets* values))
+                            " or more, or a smaller --max-record-octets"))
+              ((equal reason :max-record-octets-below-the-article-record)
+               (let ((need (fn-acct-decimal-text
+                            (fn-record-encoded-octets-ceiling
+                             (nfix (fn-bs-pf *fn-bs-pf-max-article-octets* values))
+                             (nfix (fn-bs-pf *fn-bs-pf-max-groups-per-article* values))))))
+                 (concatenate 'string "init: " r " is below " need
+                              ", the record of one article at " a " in " g
+                              " groups; pass --max-record-octets " need
+                              " (and --max-history-octets at least that), or a smaller --max-article-octets or --max-groups-per-article")))
+              (t (concatenate 'string "init: the profile refused: " tx ", " h ", " r
+                              ", " a ", " g ", " k)))))))
+
 (defun fn-nop-parse-init-plain (words config)
   (declare (xargs :guard t))
-  (let* ((parsed (fn-nop-parse-profile-flags words :default nil nil))
+  (let* ((split (fn-nop-parse-init-sizing words nil nil))
+         (parsed (if (consp split) (fn-nop-parse-init-request (caddr split)) :bad))
          (request (if (consp parsed) (car parsed) nil))
          (names (if (consp parsed) (fn-ncfg-second parsed) nil))
          ; The profile init will write, resolved over no store, or
          ; (:invalid REASON); the frame itself is encoded at the store.
          (profile (if (consp parsed) (fn-bs-profile-resolve request nil) nil))
          (groups (fn-nop-parse-init-groups names nil)))
-    (cond ((not (consp parsed))
+    (cond ((not (consp split))
+           (fn-nop-usage :invalid-init-budget "init" config words))
+          ((not (consp parsed))
            (fn-nop-usage :invalid-init-profile "init" config words))
           ((equal groups :bad)
            (fn-nop-usage :invalid-init-groups "init" config words))
@@ -385,7 +540,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                  groups (fn-bs-profile-max-group-name-octets profile)))
            (fn-nop-refused :max-group-name-octets "init" config words))
           (t (fn-nop-result :accepted :plan "init" config
-                            (list :init groups request))))))
+                            (list :init groups request
+                                  (list (car split) (if (cadr split) :largest nil))))))))
 
 ;  KEYSTONE (PRF-171).  An accepted `init' plan creates no group whose name is
 ; longer than the max-group-name-octets of the profile it will write.  Host:
@@ -431,11 +587,18 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
   (declare (xargs :guard t))
   (let ((mission (fn-native-config-ops-mission config)))
     (if (and mission (fn-native-mission-request mission))
-        (let ((groups (fn-nop-parse-init-groups
-                       (fn-nop-with-cancel-group
-                        (if (consp words) words (fn-native-mission-default-groups mission)))
-                       nil)))
-          (cond ((fn-nop-some-flag-wordp words)
+        (let* ((split (fn-nop-parse-init-sizing words nil nil))
+               (names (if (consp split) (caddr split) nil))
+               (groups (fn-nop-parse-init-groups
+                        (fn-nop-with-cancel-group
+                         (if (consp names) names (fn-native-mission-default-groups mission)))
+                        nil)))
+          ; Row Q10b: `--budget MB' names the machine, not the profile, so a
+          ; mission's init takes it; `--largest' and every profile word are
+          ; the mission's to fix.
+          (cond ((not (consp split))
+                 (fn-nop-usage :invalid-init-budget "init" config words))
+                ((or (cadr split) (fn-nop-some-flag-wordp names))
                  (fn-nop-usage :mission-fixes-profile "init" config words))
                 ((equal groups :bad)
                  (fn-nop-usage :invalid-init-groups "init" config words))
@@ -443,7 +606,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                  (fn-nop-refused :reserved-group-name "init" config words))
                 (t (fn-nop-result :accepted :plan "init" config
                                   (list :init groups
-                                        (fn-native-mission-request mission))))))
+                                        (fn-native-mission-request mission)
+                                        (list (car split) nil))))))
       (fn-nop-parse-init-plain words config))))
 
 ;; The groups the parse answers are the words, in order.
@@ -653,7 +817,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
   "Bounded operator help output, selected only from ACL2-normalized subjects."
   (declare (xargs :guard t))
   (cond ((equal subject "init")
-         "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; raise max-transactions, max-history-octets or max-article-octets later with policy set, on the running node)")
+         "usage: fn operator CONFIG init [--budget MB] [--largest] [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [--budget MB] [GROUP...] only (the mission fixes the profile; raise max-transactions, max-history-octets or max-article-octets later with policy set, on the running node)")
         ((equal subject "run") "usage: fn operator CONFIG run [--once]")
         ((equal subject "show")
          "usage: fn operator CONFIG show [TABLE KEY] (the normalized configuration as fn.toml, or one key's value)")
@@ -1565,6 +1729,24 @@ writes, else nil."
       (let ((profile (fn-ncfg-second
                       (fn-ncfg-rest (fn-native-operator-result-arguments result)))))
         (if (fn-bs-profile-requestp profile) profile nil))
+    nil))
+
+; Row Q10b: the sizing words an accepted init plan carries, for the host to
+; hand fn-heap-init-decide: the budget `--budget MB' named (MiB) or NIL, and
+; :largest for `--largest' or NIL (conservative).
+(defun fn-native-operator-result-init-budget (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-init-planp result)
+      (let ((mb (fn-ncfg-first (fn-ncfg-nth 3 (fn-native-operator-result-arguments result)))))
+        (if (posp mb) mb nil))
+    nil))
+
+(defun fn-native-operator-result-init-sizing (result)
+  (declare (xargs :guard t))
+  (if (and (fn-native-operator-result-init-planp result)
+           (equal (fn-ncfg-second (fn-ncfg-nth 3 (fn-native-operator-result-arguments result)))
+                  :largest))
+      :largest
     nil))
 
 (defun fn-nop-store-plan-word (result)
@@ -3069,6 +3251,14 @@ control path no supported platform binds whole."
            "no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)")
           ((and (equal status :usage) (equal reason :mission-fixes-profile))
            "under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. To raise a bound later: fn operator CONFIG policy set max-transactions|max-history-octets|max-article-octets N; or delete the mission line from fn.toml to choose a profile at init")
+          ; Row Q10b: init's budget word, and a refused profile's numbers.
+          ((and (equal status :usage) (equal reason :invalid-init-budget))
+           "init: --budget takes the memory budget in MiB (a decimal, at least 1) and --largest takes no value; each at most once (fn operator CONFIG init [--budget MB] [--largest] ...)")
+          ((and (equal status :refused) (equal command "init")
+                (fn-nop-init-refusal-numbers
+                 reason (fn-native-operator-result-arguments result)))
+           (fn-nop-init-refusal-numbers
+            reason (fn-native-operator-result-arguments result)))
           ((and (equal status :usage) (fn-nop-help-subjectp command))
            (fn-nop-help-text command))
           (t nil))))

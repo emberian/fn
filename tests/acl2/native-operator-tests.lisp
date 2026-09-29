@@ -701,14 +701,15 @@
 ; as before.
 (assert-event (equal (fn-native-operator-result-init-profile *fn-nop-init*)
                      '(:default nil)))
-; Fields: the request carries them, in the order named.
+; Fields: the request carries them, in the order named; a capacity field
+; (T here) named with no preset takes development's other fields (row Q10b).
 (defconst *fn-nop-init-fields*
   (fn-native-operator-run *fn-nop-minimal-config*
                           (fn-nop-test-argv
                            '("init" "--max-transactions" "1000"
                              "--max-article-octets" "20000" "fn.letters"))))
 (assert-event (equal (fn-native-operator-result-init-profile *fn-nop-init-fields*)
-                     '(:default ((1 . 1000) (4 . 20000)))))
+                     '(:development ((1 . 1000) (4 . 20000)))))
 (assert-event (equal (fn-native-operator-result-init-group-octets *fn-nop-init-fields*)
                      (list (fn-record-string-octets "fn.letters"))))
 ; A request that breaks a relation is refused at init, by the relation's
@@ -868,10 +869,10 @@
 ; Help names both new subjects, and only from the ACL2 subject table.
 (assert-event (fn-nop-help-subjectp "init"))
 (assert-event (equal (fn-nop-help-text "init")
-                     "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; raise max-transactions, max-history-octets or max-article-octets later with policy set, on the running node)"))
+                     "usage: fn operator CONFIG init [--budget MB] [--largest] [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [--budget MB] [GROUP...] only (the mission fixes the profile; raise max-transactions, max-history-octets or max-article-octets later with policy set, on the running node)"))
 (assert-event (equal (fn-native-operator-result-arguments
                       (fn-native-operator-run nil (fn-nop-test-argv '("help" "init"))))
-                     '(:help "init" "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; raise max-transactions, max-history-octets or max-article-octets later with policy set, on the running node)")))
+                     '(:help "init" "usage: fn operator CONFIG init [--budget MB] [--largest] [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [--budget MB] [GROUP...] only (the mission fixes the profile; raise max-transactions, max-history-octets or max-article-octets later with policy set, on the running node)")))
 (assert-event (not (fn-nop-help-subjectp "initialise")))
 
 ; The run refusal names the key, and an admitted log path reaches the run
@@ -1486,6 +1487,89 @@
               (member-equal "control.cancel" (cadr (nth 4 result)))))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
+
+;; Row Q10b: init's sizing words are grammar words (FN_INIT_* is gone).
+;; `--budget MB' and `--largest' are carried in the plan for the host to hand
+;; fn-heap-init-decide; each at most once, MB a positive decimal.
+(defconst *nop-t-q10b-init*
+  (fn-nop-parse-init-plain '("--budget" "1536" "--profile" "default" "--largest" "fn.test") nil))
+(assert-event (equal (nth 4 *nop-t-q10b-init*)
+                     '(:init ("fn.test") (:default nil) (1536 :largest))))
+(assert-event (equal (fn-native-operator-result-init-budget *nop-t-q10b-init*) 1536))
+(assert-event (equal (fn-native-operator-result-init-sizing *nop-t-q10b-init*) :largest))
+(assert-event (equal (fn-native-operator-result-init-profile *nop-t-q10b-init*) '(:default nil)))
+;; Neither named: both NIL (conservative sizing within the machine's budget).
+(assert-event (let ((r (fn-nop-parse-init-plain '("fn.test") nil)))
+                (and (equal (fn-native-operator-result-status r) :accepted)
+                     (null (fn-native-operator-result-init-budget r))
+                     (null (fn-native-operator-result-init-sizing r)))))
+;; Refused by name: a zero, a non-decimal, a missing value, a repeated word.
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-nop-parse-init-plain '("--budget" "0" "fn.test") nil))
+                     :invalid-init-budget))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-nop-parse-init-plain '("--budget" "lots" "fn.test") nil))
+                     :invalid-init-budget))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-nop-parse-init-plain '("fn.test" "--budget") nil))
+                     :flag-word-as-group))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-nop-parse-init-plain '("--largest" "--largest" "fn.test") nil))
+                     :invalid-init-budget))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-nop-parse-init-plain '("--budget" "1" "--budget" "2" "fn.test") nil))
+                     :invalid-init-budget))
+(assert-event (stringp (fn-native-operator-result-hint
+                        (fn-nop-parse-init-plain '("--budget" "0" "fn.test") nil))))
+;; A mission's init takes --budget (the machine) but not --largest (the profile).
+(assert-event (equal (nth 4 (fn-nop-parse-init '("--budget" "2048") *nop-t-mission-config*))
+                     (list :init (cadr (nth 4 (fn-nop-parse-init nil *nop-t-mission-config*)))
+                           (caddr (nth 4 (fn-nop-parse-init nil *nop-t-mission-config*)))
+                           '(2048 nil))))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-nop-parse-init '("--largest") *nop-t-mission-config*))
+                     :mission-fixes-profile))
+;; An unnamed base: a capacity field named takes development's other fields,
+;; never D27's 1 TiB history; no capacity field keeps D27's (capacity-free,
+;; sized by heap-reservation); `--profile default' names D27's.
+(assert-event (equal (fn-native-operator-result-init-profile
+                      (fn-nop-parse-init-plain '("--max-transactions" "100000" "fn.test") nil))
+                     '(:development ((1 . 100000)))))
+(assert-event (equal (fn-native-operator-result-init-profile
+                      (fn-nop-parse-init-plain '("--max-article-octets" "65536" "fn.test") nil))
+                     '(:default ((4 . 65536)))))
+(assert-event (equal (fn-native-operator-result-init-profile
+                      (fn-nop-parse-init-plain '("--profile" "default" "--max-transactions" "100000" "fn.test") nil))
+                     '(:default ((1 . 100000)))))
+;; A refused profile names its numbers and the value to pass.
+(assert-event
+ (equal (fn-native-operator-result-hint
+         (fn-nop-parse-init-plain '("--max-history-octets" "1000" "fn.test") nil))
+        "init: max-history-octets 1000 is below max-record-octets 17138486; pass --max-history-octets 17138486 or more, or a smaller --max-record-octets"))
+(assert-event
+ (equal (fn-native-operator-result-hint
+         (fn-nop-parse-init-plain '("--profile" "development" "--max-article-octets" "8388608" "fn.test") nil))
+        "init: max-record-octets 17138486 is below 25494326, the record of one article at max-article-octets 8388608 in max-groups-per-article 65535 groups; pass --max-record-octets 25494326 (and --max-history-octets at least that), or a smaller --max-article-octets or --max-groups-per-article"))
+;; Passing the value the hint names is accepted.
+(assert-event
+ (equal (fn-native-operator-result-status
+         (fn-nop-parse-init-plain '("--profile" "development" "--max-article-octets" "8388608"
+                                    "--max-record-octets" "25494326" "--max-history-octets" "25494326"
+                                    "fn.test") nil))
+        :accepted))
+;; The refusal names the relation fn-bs-profile-resolve names, from the values
+;; it judged (fn-nop-init-profile-values-resolve), on a reached request.
+(assert-event
+ (let ((request '(:development ((2 . 1000)))))
+   (equal (fn-bs-profile-resolve request nil)
+          (list :invalid (fn-bs-profile-invalid-reason (fn-nop-init-profile-values request))))))
+;; ... and on an accepted request the values are the profile init writes.
+(assert-event
+ (let ((request '(:development ((1 . 100000)))))
+   (and (consp (fn-bs-profile-resolve request nil))
+        (not (equal (car (fn-bs-profile-resolve request nil)) :invalid))
+        (equal (fn-bs-profile-resolve request nil)
+               (fn-nop-init-profile-values request)))))
 
 ; Row S6 (one account system): `account delete LOGIN' is the credential
 ; file's :delete plan, whose second argument is public-node-2's `account

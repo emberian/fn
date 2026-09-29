@@ -3448,6 +3448,12 @@
 (definterface fn-native-operator-host-result-init-profile
   :class ::program)
 
+(definterface fn-native-operator-host-result-init-budget
+  :class ::program)
+
+(definterface fn-native-operator-host-result-init-sizing
+  :class ::program)
+
 (definterface fn-native-operator-host-result-inspect-group
   :class ::program)
 

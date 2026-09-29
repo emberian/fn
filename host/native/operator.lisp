@@ -332,7 +332,10 @@ observation into the outcome and this function only carries it out."
                                   'fn-native-operator-host-result-init-profile result)))
                     (unless (consp request)
                       (fnn-fault "ACL2 accepted an init plan with no store profile"))
-                    (fnn-heap-init-decision-noted request))
+                    (fnn-heap-init-decision-noted
+                     request
+                     (fnn-core 'fn-native-operator-host-result-init-budget result)
+                     (fnn-core 'fn-native-operator-host-result-init-sizing result)))
               (let* ((line (fnn-core 'fn-heap-init-report-line decision))
                      (warning (fnn-core 'fn-heap-init-budget-note-line note))
                      (profile (fnn-core 'fn-heap-init-decision-request decision))
