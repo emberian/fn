@@ -22,8 +22,8 @@
 ;; does a transient :error at the stage, retried in place); a refused
 ;; directory, or a :known-fail at the stage, stops it at :refused; an :error
 ;; at the replace stops it at :fenced-marker and reports :uncertain; two :ok
-;; results leave the loop running (:marker-attempted, action
-;; :directory-barrier) and the outcome :pending.
+;; results leave the loop running (:marker-data-durable, action :replace)
+;; and the outcome :pending.
 (assert-event
  (and (equal (bprc-end '(:ok :ok :ok :ok)) :idle)
       (equal (fn-bpnr-publish-action :idle) :done)
@@ -39,9 +39,9 @@
       (equal (bprc-end '(:ok :ok :error)) :fenced-marker)
       (equal (fn-bpnr-publish-outcome :fenced-marker) :uncertain)
       (bprc-keystone-holds '(:ok :ok :error))
-      (equal (bprc-end '(:ok :ok)) :marker-attempted)
-      (equal (fn-bpnr-publish-action :marker-attempted) :directory-barrier)
-      (equal (fn-bpnr-publish-outcome :marker-attempted) :pending)
+      (equal (bprc-end '(:ok :ok)) :marker-data-durable)
+      (equal (fn-bpnr-publish-action :marker-data-durable) :replace)
+      (equal (fn-bpnr-publish-outcome :marker-data-durable) :pending)
       (bprc-keystone-holds '(:ok :ok))))
 
 ;; Tooth, hypothesis "the loop starts at :directory" (the run's fixed start,
@@ -83,11 +83,11 @@
                (fn-bpnr-publish-outcome durable2)))))
 
 ;; Tooth, hypothesis "both loops stopped": two loops from :directory still
-;; running at different phases (:marker-staged after one :ok, :marker-attempted
-;; after two) share the outcome :pending; the iff fails.
+;; running at different phases (:marker-staged after one :ok,
+;; :marker-data-durable after two) share the outcome :pending; the iff fails.
 (assert-event
  (and (equal (bprc-end '(:ok)) :marker-staged)
-      (equal (bprc-end '(:ok :ok)) :marker-attempted)
+      (equal (bprc-end '(:ok :ok)) :marker-data-durable)
       (not (equal (fn-bpnr-publish-action (bprc-end '(:ok))) :done))
       (not (equal (fn-bpnr-publish-action (bprc-end '(:ok :ok))) :done))))
 (must-fail-checked
