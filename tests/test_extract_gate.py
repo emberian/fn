@@ -397,7 +397,7 @@ class ExtractGateTest(unittest.TestCase):
     # The stateful differential (lane extract-writable): every way its report
     # can fall short fails the gate at `stateful'.
     def test_stateful_differ(self):
-        self.assertFails("stateful-differ", "stateful", "interrupted DIFFER at 01 post")
+        self.assertFails("stateful-differ", "stateful", "core: interrupted DIFFER at 01 post")
 
     def test_stateful_no_report(self):
         self.assertFails("stateful-no-report", "stateful", "stateful.json")

@@ -329,43 +329,43 @@ class Gate:
         """The writable verbs, step for step on twin stores (stateful.py): the
         outcome, the durable files and the subsequent read of every step
         identical, every case of its manifest run once, every required class
-        covered."""
+        covered -- through the Common Lisp product (the product under test)
+        and through the CHICKEN program (the independent oracle, its store
+        verbs host/store-write-host.lisp)."""
         self.step = "stateful"
-        d = self.c / "stateful"
-        if d.exists():
-            shutil.rmtree(d)
-        log = self.c / "stateful.log"
-        # the Common Lisp product is the product under test; the CHICKEN
-        # program runs the same cases as the oracle when EXTRACT_STATEFUL_CHICKEN=1
-        # (tools/extract/stateful.py without --core), recorded in status.json
-        rc = self.run("stateful.py", self.t.stateful + [self.image, self.core_exe, d, "--core"], stdout=log,
-                      stderr="stdout", env=self.acl2_env)
-        man = self.load_json(d / "manifest.json", "stateful")
-        doc = self.load_json(d / "stateful.json", "stateful")
-        cases = sorted((man.get("cases") or {}))
-        if not cases:
-            self.fail("the stateful manifest lists no cases")
-        results = doc.get("results") or []
-        seen = collections.Counter(r.get("case") for r in results)
-        for c in cases:
-            if seen[c] != 1:
-                self.fail("case %s ran %d times (want once)" % (c, seen[c]))
-        extra = sorted(set(seen) - set(cases))
-        if extra:
-            self.fail("cases %s are not in the manifest" % extra)
-        bad = [r for r in results if r.get("verdict") != "agree"]
-        if bad:
-            self.fail("%s DIFFER at %s: %s" % (bad[0]["case"], bad[0].get("step"), bad[0].get("reason")))
-        if doc.get("missing"):
-            self.fail("classes not covered: %s" % ", ".join(doc["missing"]))
-        if doc.get("steps_run") != doc.get("steps_expected") or not doc.get("steps_run"):
-            self.fail("%s of %s steps ran" % (doc.get("steps_run"), doc.get("steps_expected")))
-        if doc.get("status") != "PASS":
-            self.fail("stateful.json status %r" % doc.get("status"))
-        if rc != 0:
-            self.fail("stateful.py %s" % describe_status(rc))
-        print("stateful: %d cases, %d steps agree; classes %s"
-              % (len(cases), doc["steps_run"], ",".join(doc.get("covered", []))))
+        for label, program, extra in (("core", self.core_exe, ["--core"]), ("chicken", self.e / "served", [])):
+            d = self.c / ("stateful-" + label)
+            if d.exists():
+                shutil.rmtree(d)
+            log = self.c / ("stateful-%s.log" % label)
+            rc = self.run("stateful.py " + label, self.t.stateful + [self.image, program, d] + extra, stdout=log,
+                          stderr="stdout", env=self.acl2_env)
+            man = self.load_json(d / "manifest.json", "stateful")
+            doc = self.load_json(d / "stateful.json", "stateful")
+            cases = sorted((man.get("cases") or {}))
+            if not cases:
+                self.fail("%s: the stateful manifest lists no cases" % label)
+            results = doc.get("results") or []
+            seen = collections.Counter(r.get("case") for r in results)
+            for c in cases:
+                if seen[c] != 1:
+                    self.fail("%s: case %s ran %d times (want once)" % (label, c, seen[c]))
+            extra_cases = sorted(set(seen) - set(cases))
+            if extra_cases:
+                self.fail("%s: cases %s are not in the manifest" % (label, extra_cases))
+            bad = [r for r in results if r.get("verdict") != "agree"]
+            if bad:
+                self.fail("%s: %s DIFFER at %s: %s" % (label, bad[0]["case"], bad[0].get("step"), bad[0].get("reason")))
+            if doc.get("missing"):
+                self.fail("%s: classes not covered: %s" % (label, ", ".join(doc["missing"])))
+            if doc.get("steps_run") != doc.get("steps_expected") or not doc.get("steps_run"):
+                self.fail("%s: %s of %s steps ran" % (label, doc.get("steps_run"), doc.get("steps_expected")))
+            if doc.get("status") != "PASS":
+                self.fail("%s: stateful.json status %r" % (label, doc.get("status")))
+            if rc != 0:
+                self.fail("%s: stateful.py %s" % (label, describe_status(rc)))
+            print("stateful %s: %d cases, %d steps agree; classes %s"
+                  % (label, len(cases), doc["steps_run"], ",".join(doc.get("covered", []))))
 
     def functions(self):
         self.step = "functions"
