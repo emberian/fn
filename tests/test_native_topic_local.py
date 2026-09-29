@@ -183,10 +183,12 @@ class NativeTopicLocalTest(unittest.TestCase):
                              (result.stdout + result.stderr).decode("utf-8", "replace"))
 
         def state(result):
-            # The open's route (open=checkpoint:S after a compaction) is not
-            # the state; every other line is.
+            # The open's route (open=checkpoint:S after a compaction) and the
+            # checkpoint file the compaction wrote (`checkpoint-file octets=N
+            # modified=T', absent before it) are not the state; every other
+            # line is.
             return [line for line in result.stdout.splitlines()
-                    if not line.startswith(b"open=")]
+                    if not line.startswith((b"open=", b"checkpoint-file"))]
         self.assertEqual(state(self.invoke("store", self.store, "status")),
                          state(before_status))
         self.assertEqual(self.invoke("store", self.store, "retention").stdout,
