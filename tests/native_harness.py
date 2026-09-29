@@ -925,6 +925,24 @@ IMAGE_DEFAULTS = {
 }
 
 
+# The stopped `store ROOT status` report's lines a compaction changes
+# without changing the store's state: the open's route (`open=checkpoint:S`
+# after it, a full replay before) and the header (`stopped checkpoint=N
+# journal-octets=B transactions-at-most=M` reads the checkpoint header the
+# compaction wrote; the exact count is `status --replay`'s).  One site for
+# every test comparing a report across a compaction (obstructions-7 item 66).
+STATUS_ACROSS_COMPACTION = ("open=", "stopped ")
+
+
+def stable_status_lines(stdout, also=()):
+    """The lines of a stopped status report (str or bytes) that a compaction
+    must not change: every line but STATUS_ACROSS_COMPACTION's and ALSO's."""
+    unstable = STATUS_ACROSS_COMPACTION + tuple(also)
+    if isinstance(stdout, bytes):
+        unstable = tuple(prefix.encode("ascii") for prefix in unstable)
+    return [line for line in stdout.splitlines() if not line.startswith(unstable)]
+
+
 def native_image(variable, default=None):
     """The image VARIABLE names, else DEFAULT (a path, relative to the tree),
     else the variable's usual image.  Call it with the variable's name as a
