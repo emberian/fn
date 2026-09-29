@@ -548,7 +548,9 @@
                                    (fn-bs-txn-name-chars-characters
                                     fn-bpnr-character-listp-of-append))))))
 
-(verify-guards fn-bpnr-generation-directory)
+(verify-guards fn-bpnr-generation-directory
+  :hints (("Goal" :in-theory (disable fn-bs-txn-digits)
+                  :use ((:instance fn-bpnr-txn-digits-characters (n generation))))))
 
 ; The next generation: greater than the selected one and than every
 ; generation directory observed (an unselected staging is never reused).
