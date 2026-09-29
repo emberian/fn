@@ -55,9 +55,10 @@
                                  (fn-cfg-set-group-authority "fn.test" *gat-hex-a*))) "fn.test")))
   (and (not (consp old))
        (not (equal (fn-cfg-group-authority new) *gat-hex-a*)))))
-(assert-event (equal (fn-cfg-kind-code :set-group-authority) 29))
-(assert-event (equal (fn-cfg-code-kind 29) :set-group-authority))
-(assert-event (equal (fn-cfg-decode-exact (fn-cfg-encode *gat-r2*)) (fn-record-parse-ok *gat-r2* nil)))
+(assert-event (and (equal (fn-cfg-kind-code :set-group-authority) 29)
+                   (equal (fn-cfg-code-kind 29) :set-group-authority)
+                   (equal (fn-cfg-decode-exact (fn-cfg-encode *gat-r2*))
+                          (fn-record-parse-ok *gat-r2* nil))))
 (defconst *gat-plan* (fn-native-admin-plan
  (list (fn-record-string-octets "group") (fn-record-string-octets "authority")
        (fn-record-string-octets "fn.test") (fn-record-string-octets *gat-hex-a*))))

@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1662 |
-| Certification roots in the Makefile | 1600 |
-| Books inside the root closure | 1661 |
-| `defthm` and `defthmd` events | 27369 |
-| `defun` events | 17899 |
-| Functions with verified guards | 3355 |
+| Books read | 1665 |
+| Certification roots in the Makefile | 1603 |
+| Books inside the root closure | 1664 |
+| `defthm` and `defthmd` events | 27422 |
+| `defun` events | 17920 |
+| Functions with verified guards | 3358 |
 | Functions declared `:verify-guards nil` and never verified | 2063 |
-| Functions left at the default with an explicit guard | 9804 |
+| Functions left at the default with an explicit guard | 9822 |
 | Functions left at the default with no guard | 2677 |
-| `assert-event` checks | 22771 |
-| `must-fail` checks | 2463 |
+| `assert-event` checks | 22792 |
+| `must-fail` checks | 2467 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
 | Theorems flagged SUSPECT by shape | 1208 |
 | Export-hygiene warnings | 317 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2368 |
+| Include-hygiene warnings | 2371 |
 | Host-names warnings | 1982 |
 | Hand-written-record warnings | 18 |
 
@@ -111,6 +111,7 @@ that `make certify` requests.
 | `books/article-properties.lisp` | root | 42 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/article-public-bound.lisp` | root | 19 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/article-public-work.lisp` | root | 11 | 6 | 0/0/0/6 | 0 | 0 | 2 |
+| `books/article-subject.lisp` | root | 34 | 14 | 1/0/13/0 | 0 | 0 | 0 |
 | `books/article-work-budget.lisp` | root | 4 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/article-work-primitives.lisp` | root | 25 | 14 | 0/0/0/14 | 0 | 0 | 2 |
 | `books/article-work-scanners.lisp` | root | 12 | 3 | 0/0/0/3 | 0 | 0 | 0 |
@@ -352,7 +353,7 @@ that `make certify` requests.
 | `books/config-carried-open.lisp` | root | 13 | 5 | 2/0/3/0 | 0 | 0 | 0 |
 | `books/config-crash-replay.lisp` | root | 18 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/config-descriptions.lisp` | root | 14 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/config-invariants.lisp` | root | 64 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/config-invariants.lisp` | root | 70 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/config-observed.lisp` | root | 5 | 4 | 3/0/1/0 | 0 | 0 | 0 |
 | `books/config-owner-advance-invariants.lisp` | root | 21 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/config-owner-advance-reader-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -370,7 +371,7 @@ that `make certify` requests.
 | `books/config-store-steps.lisp` | root | 84 | 7 | 0/3/3/1 | 0 | 0 | 1 |
 | `books/config-store-traces.lisp` | root | 2 | 7 | 5/0/2/0 | 0 | 0 | 0 |
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
-| `books/config.lisp` | root | 103 | 279 | 31/0/248/0 | 0 | 0 | 1 |
+| `books/config.lisp` | root | 115 | 285 | 33/0/252/0 | 0 | 0 | 1 |
 | `books/connection-budget.lisp` | root | 36 | 26 | 0/0/26/0 | 0 | 0 | 2 |
 | `books/consumer-artifact-retry.lisp` | root | 21 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/consumer-bound.lisp` | root | 26 | 15 | 7/1/7/0 | 0 | 0 | 5 |
@@ -746,7 +747,7 @@ that `make certify` requests.
 | `books/peer-pull.lisp` | root | 93 | 128 | 22/0/106/0 | 0 | 0 | 2 |
 | `books/peer-refused-offers.lisp` | root | 20 | 4 | 0/4/0/0 | 0 | 0 | 1 |
 | `books/peer-set.lisp` | root | 29 | 18 | 1/0/17/0 | 0 | 0 | 2 |
-| `books/peer-transit-authority.lisp` | root | 10 | 8 | 0/1/7/0 | 0 | 0 | 0 |
+| `books/peer-transit-authority.lisp` | root | 11 | 8 | 0/1/7/0 | 0 | 0 | 0 |
 | `books/peer-transit-forms.lisp` | root | 10 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 1 |
 | `books/policy.lisp` | root | 14 | 29 | 1/0/28/0 | 0 | 0 | 3 |
@@ -1060,6 +1061,7 @@ that `make certify` requests.
 | `tests/acl2/article-buffer-tests.lisp` | root | 1 | 2 | 0/1/0/1 | 5 | 0 | 0 |
 | `tests/acl2/article-fields-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 36 | 0 | 0 |
 | `tests/acl2/article-header-limits-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 24 | 6 | 0 |
+| `tests/acl2/article-subject-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 3 | 0 |
 | `tests/acl2/article-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 2 | 0 |
 | `tests/acl2/article-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 39 | 0 | 0 |
 | `tests/acl2/article-work-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 28 | 0 | 0 |
@@ -1314,6 +1316,7 @@ that `make certify` requests.
 | `tests/acl2/frame-trailer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 25 | 0 | 0 |
 | `tests/acl2/group-access-cache-tests.lisp` | root | 0 | 5 | 0/2/0/3 | 27 | 3 | 0 |
 | `tests/acl2/group-access-tests.lisp` | root | 0 | 13 | 0/5/0/8 | 64 | 4 | 0 |
+| `tests/acl2/group-authority-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 11 | 1 | 0 |
 | `tests/acl2/group-bucket-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 16 | 5 | 0 |
 | `tests/acl2/group-descriptions-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 1 | 0 |
 | `tests/acl2/group-number-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 16 | 7 | 0 |
@@ -1945,7 +1948,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-cbud-step-read-octets-under-a-rate-by-definition` | `books/connection-budget.lisp` | 145 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cbud-step-read-octets and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-cbud-step-read-octets and the conclusion is that branch's value |
 | `fn-cc-decode-rejects-over-aggregate-bound-before-header` | `books/checkpoint-compaction.lisp` | 305 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cc-decode-exact and the conclusion is that arm's value |
 | `fn-cdl-payload-of-with-context` | `books/catalog-delta.lisp` | 91 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-cfg-delta-items-is-head-and-rows` | `books/config.lisp` | 3227 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-cfg-delta-items-is-head-and-rows` | `books/config.lisp` | 3329 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-cfg-delta-reason-of-a-redeem-past-its-expiry` | `books/accounts.lisp` | 1015 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cfg-delta-reason and the conclusion is that arm's value |
 | `fn-cfg-set-group-description-refuses-an-unknown-group-by-definition` | `books/config-descriptions.lisp` | 134 | branch-of-definition: the hypothesis negates a branch test of fn-cfg-delta-reason and the conclusion is that branch's value |
 | `fn-checkpoint-capacity-of-fn-checkpoint-make` | `books/checkpoint.lisp` | 72 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -2134,7 +2137,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-mpxt-reach-opened` | `books/msgid-pages-exec.lisp` | 1757 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-mpxt-reach; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-mvb-held-article-is-the-model-body-by-definition` | `books/moderation-verbs.lisp` | 474 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-mvb-plan-unfolds` | `books/moderation-verbs.lisp` | 405 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-native-admin-plan-deltas-over-other-plans-by-definition` | `books/native-admin.lisp` | 1226 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-admin-plan-deltas-over and the conclusion is that arm's value |
+| `fn-native-admin-plan-deltas-over-other-plans-by-definition` | `books/native-admin.lisp` | 1242 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-admin-plan-deltas-over and the conclusion is that arm's value |
 | `fn-native-auth-load-protected-without-tls-refuses` | `books/native-auth-profile.lisp` | 383 | arm-of-definition: constant arguments select one IF/COND arm of fn-native-auth-load and the conclusion is that arm's value |
 | `fn-native-control-host-refusal-reason-of-a-class` | `books/native-control-reason.lisp` | 511 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-control-host-refusal-reason and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-native-control-host-refusal-reason and the conclusion is that branch's value |
 | `fn-native-control-host-refusal-reason-outside-is-none` | `books/native-control-reason.lisp` | 543 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-control-host-refusal-reason and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-native-control-host-refusal-reason and the conclusion is that branch's value |

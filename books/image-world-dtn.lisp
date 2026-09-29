@@ -189,6 +189,7 @@
 (include-book "owner-checkpoint-open")
 (include-book "owner-control-post-reason")
 (include-book "peer-transit-authority")
+(include-book "article-subject")
 (include-book "owner-reclaim-conns")
 (include-book "owner-reclaim-ready")
 (include-book "config-owner-live")
