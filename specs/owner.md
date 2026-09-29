@@ -132,7 +132,7 @@ that order. Counts live in the generated ledger.
 
 | Keystone | Property | Hypotheses | Covered scope |
 | --- | --- | --- | --- |
-| `fn-own-read-is-served-step-on-pinned-prefix` | The effects one socket read produces are those of `fn-served-step` over the connection's wire and session and `fn-node-acceptance` of `fn-sf-replay-node` over the first `version` durable records at the pinned frontier | `fn-own-relation`, the connection exists | One `fn-own-read`, the call `fn-owner-chunk` makes for every socket read |
+| `fn-own-read-is-served-step-on-pinned-prefix` | The effects one socket read produces are those of `fn-served-step` over the connection's wire and session and `fn-node-acceptance` of `fn-sf-replay-node` over the first `version` durable records at the pinned frontier | `fn-own-relation`, the connection exists | One `fn-own-read`, the call `fn-owner-chunk-span-at` makes (over the span) for every socket read |
 | `fn-own-read-is-served-step-on-pinned-prefix-after-any-trace` | The same equality on the state after any finite owner-event list | `fn-own-relation` at the start, the connection exists at the end | Every reachable owner state |
 | `fn-own-reader-sees-pinned-prefix-replay` | The effects of one framed wire event are those of `fn-nntp-step` on the connection's session against the same pinned-prefix archive | `fn-own-relation`, the connection exists | One `fn-own-read-step`: the per-event law of the served port (`fn-served-step` is `fn-wire-drive` then the fold `fn-served-nntp-run` of `fn-nntp-step`, `books/served.lisp`); the host calls `fn-own-read` |
 | `fn-own-reader-sees-pinned-prefix-replay-after-any-trace` | The same equality on the state after any finite owner-event list | `fn-own-relation` at the start, the connection exists at the end | Every reachable owner state |
@@ -160,7 +160,7 @@ because the statement is frozen this wave.
 ## Host
 
 `tools/run_owner.py` is a single-threaded event loop. Loopback NNTP
-connections are served one socket read per `fn-owner-chunk`, which is one
+connections are served one socket read per `fn-owner-chunk-span-at`, which is one
 `fn-own-read`; the reply stream and the close verdict are the book's two
 projections of the effect list (`fn-served-reply-octets`,
 `fn-served-closingp`). A peer that does not consume its output stops being

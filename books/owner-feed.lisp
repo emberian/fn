@@ -60,25 +60,8 @@
 (local (in-theory (disable (tau-system))))
 
 ; -----------------------------------------------------------------------------
-; The peer names a configuration value holds
-;
-; `fn-cfg-peers' is a flat list of rows keyed by peer name, not a list of
-; records: the one row every peer has exactly once is "path-identity"
-; (books/peer-config.lisp, `fn-cfg-peer-rows'), so the names in row order are
-; the peers.  host/store-node-host.lisp's `fn-store-cfg-peer-name-list' was a
-; :program-mode copy of this fold for the CLI and now calls this function, so
-; the enumeration has one owner.
-
-(defun fn-own-feed-peer-names (rows)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (if (equal (fn-cfg-row-b (car rows)) "path-identity")
-          (cons (fn-cfg-row-a (car rows)) (fn-own-feed-peer-names (cdr rows)))
-        (fn-own-feed-peer-names (cdr rows)))
-    nil))
-
-(defthm fn-own-feed-peer-names-true-listp
-  (true-listp (fn-own-feed-peer-names rows)))
+; The peer names a configuration value holds: `fn-cfg-peer-names'
+; (books/peer-config.lisp), the one enumeration of the peer table.
 
 ; -----------------------------------------------------------------------------
 ; The table entry: (name record feed) or (name record feed dists)
@@ -543,7 +526,7 @@
 (defun fn-own-feed-reconfigure (tbl peers)
   (declare (xargs :guard t))
   (fn-own-feed-scope-all
-   (fn-own-feed-install (fn-own-feed-peer-names peers) peers
+   (fn-own-feed-install (fn-cfg-peer-names peers) peers
                         (fn-own-feed-retire (fn-own-feed-names tbl) peers tbl))
    peers))
 

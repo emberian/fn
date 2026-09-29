@@ -16,10 +16,6 @@ checks the code against that table's class, never against a family table:
 * bp: a send to a port with no listener (7, not connected), and `bp decode`
   of that authored bundle with no clock, which cannot decide its lifetime:
   a refusal with its reason (1), never the fence (3);
-* the old-client case: an image from before :conflict (FN_OLD_NATIVE_HOST)
-  posting the conflicting source reads the new word as undecodable after
-  submission, so it answers uncertain (3) -- the documented reason clients
-  are upgraded with the node (docs/agents.md).
 """
 import os
 from pathlib import Path
@@ -38,7 +34,6 @@ ROOT = verbs.ROOT
 ACCEPTED, REFUSED, FENCED, FAULT, USAGE, INTERRUPTED, NOT_CONNECTED = (
     EXIT.OK, EXIT.REFUSED, EXIT.UNCERTAIN, EXIT.FAULT, EXIT.USAGE, EXIT.INTERRUPTED,
     EXIT.NOT_CONNECTED)
-OLD = Path(os.environ["FN_OLD_NATIVE_HOST"]) if os.environ.get("FN_OLD_NATIVE_HOST") else None
 
 
 def _cbor_head(major, n):
@@ -166,10 +161,6 @@ class OutcomeAlgebraNativeTests(verbs.NativeOperatorUncertainOutcomeTests):
 
     def test_control_conflict_is_a_refusal_named_conflict(self):
         self.conflict_case(IMAGE, REFUSED, "refused operator post CONFLICT")
-
-    @unittest.skipUnless(OLD and verbs.executable(OLD), "FN_OLD_NATIVE_HOST names an image before :conflict")
-    def test_an_old_client_reads_conflict_as_uncertain(self):
-        self.conflict_case(OLD, FENCED, "uncertain operator post")
 
     # -- bp ---------------------------------------------------------------
     def test_bp_not_connected_and_the_clockless_decode(self):

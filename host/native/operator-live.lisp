@@ -303,8 +303,11 @@ answer (:live), or the refusal of a store whose lock an owner holds (:held)."
 its own state (the compaction request): the exit code of ACL2's status, and
 the word printed as ACL2 rendered it (the reply detail names only refusals)."
   (multiple-value-bind (status word) (fnn-control-admin control-path argv)
-    (when (fnn-octet-list-p word)
-      (fnn-out "compaction ~a" (fnn-octets-string (fnn-octets word))))
+    ;; The request's own first word names it ("compaction requested",
+    ;; "reclaim requested").
+    (when (and (fnn-octet-list-p word) (consp argv) (fnn-octet-list-p (first argv)))
+      (fnn-out "~a ~a" (fnn-octets-string (fnn-octets (first argv)))
+               (fnn-octets-string (fnn-octets word))))
     (fnn-core 'fn-native-control-host-status-exit-code status)))
 
 (setq *fnn-operator-live-owner*

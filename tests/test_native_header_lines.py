@@ -11,6 +11,15 @@ refused with the line bound's own 441 (a header line longer than 998
 octets), and nothing is stored; a Subject line of exactly 998 octets is
 accepted and one of 999 refused the same way.
 
+Row I5: a References whose value begins on a continuation line
+(`References:` CRLF ` <id>`, RFC 5322 section 2.2.3) is accepted, a bare
+`References:` refused as unparsable (RFC 5536 section 2.2: no empty field);
+a relayed article (IHAVE, TAKETHIS) with a 999-octet Subject line is refused
+by the line bound's name (437 with the text; 439 echoes the Message-ID, RFC
+4644 section 2.5), the 998-octet one relayed (books/peer-inbound.lisp
+fn-peer-parse-limitp; keystone
+fn-peer-decide-transfer-line-length-is-a-long-header-line).
+
 The decisions are ACL2's: books/injection.lisp fn-inj-decide and
 fn-inj-parse-refusal (keystone fn-inj-decide-line-length-is-a-long-header-line,
 books/article-line-bound.lisp); books/nntp-post.lisp fn-post-refusal-line;
@@ -23,7 +32,7 @@ launcher> python3 -m unittest -v tests.test_native_header_lines
 
 import unittest
 
-from tests.native_harness import Client, Node, article, executable, native_image
+from tests.native_harness import EXIT, Client, Node, article, dot_stuff, executable, native_image
 
 IMAGES = [("production", native_image("FN_NATIVE_HOST")),
           ("developer", native_image("FN_NATIVE_DEVELOPER_HOST"))]
@@ -100,6 +109,58 @@ class NativeHeaderLineTests(unittest.TestCase):
             self.assertIn(folded.encode("ascii"), block)
             self.assertIn(b"Subject: " + SUBJECT.encode("ascii"), block)
         node.stop()
+
+    def continuation_scenario(self, image):
+        node = Node(self, image)
+        node.init("fn.test")
+        node.operator("peer", "add", "src", "src.example.invalid", "127.0.0.1", "1",
+                      "fn.*", "-", "127.0.0.1", "true", expect=EXIT.OK)
+        node.start()
+        with Client(node.port, timeout=120) as client:
+            reply = self.post(client, article("<cont@example.invalid>", date=None,
+                                              headers=("References:\r\n <r1@example.invalid>",)))
+            self.assertTrue(reply.startswith(b"240"), reply)
+            status, block = client.multiline(b"ARTICLE <cont@example.invalid>")
+            self.assertTrue(status.startswith(b"220"), status)
+            self.assertIn(b"References:\r\n <r1@example.invalid>\r\n", block)
+            bare = self.post(client, article("<bare@example.invalid>", date=None,
+                                             headers=("References:",)))
+            self.assertEqual(bare.rstrip(b"\r\n"),
+                             b"441 posting failed; the article is not valid syntax")
+
+            def relayed(message_id, subject, extra=b""):
+                return (b"Path: src.example.invalid!not-for-mail\r\n"
+                        b"Date: Mon, 21 Sep 2026 12:00:00 +0000\r\n"
+                        b"From: author@example.invalid\r\nNewsgroups: fn.test\r\n"
+                        b"Subject: " + subject + b"\r\n" + extra
+                        + b"Message-ID: " + message_id + b"\r\n\r\nbody\r\n")
+            replies = {}
+            for key, message_id, subject, extra, verb in (
+                    ("edge", b"<t-edge@example.invalid>", b"e" * 989, b"", b"IHAVE"),
+                    ("long", b"<t-long@example.invalid>", b"e" * 990, b"", b"IHAVE"),
+                    ("long-stream", b"<t-longs@example.invalid>", b"e" * 990, b"", b"TAKETHIS"),
+                    ("cont", b"<t-cont@example.invalid>", b"relayed",
+                     b"References:\r\n <r1@example.invalid>\r\n", b"IHAVE")):
+                octets = relayed(message_id, subject, extra)
+                if verb == b"IHAVE":
+                    offer, final = client.post(octets, verb=b"IHAVE " + message_id)
+                    self.assertTrue(offer.startswith(b"335"), offer)
+                else:
+                    client.send(b"TAKETHIS " + message_id + b"\r\n" + dot_stuff(octets) + b".\r\n")
+                    final = client.line()
+                replies[key] = final.rstrip(b"\r\n")
+            print("NATIVE-HEADER-LINES-TRANSIT " + repr(replies))
+            self.assertTrue(replies["edge"].startswith(b"235"), replies)
+            self.assertTrue(replies["cont"].startswith(b"235"), replies)
+            self.assertEqual(replies["long"], b"437 transfer rejected; " + LINE_LENGTH[len(b"441 posting failed; "):],
+                             replies)
+            self.assertEqual(replies["long-stream"], b"439 <t-longs@example.invalid>", replies)
+        node.stop()
+
+    def test_a_field_body_may_begin_on_a_continuation_line_and_transit_names_the_bound(self):
+        for name, image in IMAGES:
+            with self.subTest(image=name):
+                self.continuation_scenario(image)
 
     def test_long_fields_folded_are_served_whole_and_a_long_line_is_refused_by_name(self):
         for name, image in IMAGES:

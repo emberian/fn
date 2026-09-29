@@ -169,6 +169,22 @@
         {
           "kind": "theorem",
           "name": "fn-own-other-post-keeps-a-non-selecting-read-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scl-step-counted-fast-of-with-live-selecting-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scl-own-read-tls-prefix-selecting-nothing-ignores-the-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scl-other-post-keeps-a-chunk-selecting-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scl-host-chunk-selecting-nothing-survives-other-post"
         }
       ]
     },
@@ -1855,12 +1871,6 @@
           "kind": "theorem",
           "name": "fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel",
           "note": "A quiet byte store whose scan succeeds, whose authority inodes are known and whose scanned frontier and records form a kernel history is related to the recovered kernel (the scanned frontier and records, no successes) at every barrier count 0..5, :recovering below five and :ready at five.",
-          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-recover-program-run-from-a-quiet-image",
-          "note": "fn-bs-recover-program from a quiet byte state and any kernel whose (:recover) observation is the recovered kernel at zero barriers: all 17 pairs keep the byte state and the kernel counts one barrier per (:recovery-barrier :ok).",
           "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
         },
         {
@@ -3958,14 +3968,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-record-v1-bytes-decode-identically"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-record-v1-bytes-are-their-translation"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cbor-decode-prechecked-wide-extends-narrow"
         },
         {
@@ -4727,10 +4729,6 @@
         {
           "kind": "theorem",
           "name": "fn-smr-roomp-antitone-in-octets"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-smr-roomp-is-within-the-bound"
         },
         {
           "kind": "theorem",
@@ -7703,6 +7701,11 @@
         {
           "kind": "theorem",
           "name": "fn-cnx-freshp-of-cat-writers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnxw-windows-is-range",
+          "note": "The number range cut into windows of any width is the range (PKT-733 (4)): the equation a bounded OVER arm needs."
         }
       ]
     },
@@ -7790,10 +7793,6 @@
         {
           "kind": "theorem",
           "name": "fn-post-body-octets-iter-is-body-octets"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wire-list-length-onto-is-list-length"
         }
       ]
     },
@@ -13386,6 +13385,10 @@
         {
           "kind": "theorem",
           "name": "fn-inj-decide-line-length-is-a-long-header-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-decide-transfer-line-length-is-a-long-header-line"
         }
       ]
     },
@@ -13535,10 +13538,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-recovered-kernel-holds-the-scan"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-lgu-committed-record-survives-every-cut-of-the-append"
         },
         {
@@ -13619,6 +13618,437 @@
       "events": [
         "fn-mpxt-seqs-is-cat-msgid-seqs",
         "fn-mpxt-spec-from-is-cat-seqs-for"
+      ]
+    },
+    {
+      "id": "PRF-922",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bch-unpack-of-pack"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-pack-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-digits-onto-is-digits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-unpack-is-digits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-octets-of-push-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-wf-is-of-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-body-okp-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-body-okp-whole-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-join-of-terminator-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bchs-push-span-is-push-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-article-event-is-the-held-body"
+        }
+      ]
+    },
+    {
+      "id": "PRF-928",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-psub-unpack-of-pack-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psub-unpack-of-pack-groups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psub-unpack-of-pack-sub"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psub-packed-octets-len-is-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-take-installs-the-enqueued-submission"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-take-installs-the-queued-submission-whatever-it-carries"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-article-slots-are-held"
+        }
+      ]
+    },
+    {
+      "id": "PRF-929",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-wire-statep-article-holds-at-most-the-body-limit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-feed-byte-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tb-served-run-holds-at-most-the-body-limit-mid-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-scan-is-span-fold"
+        }
+      ]
+    },
+    {
+      "id": "PRF-927",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orc-rewrite-row-is-the-offline-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orc-rewrite-rows-is-the-offline-rewrite"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orc-fold-is-the-offline-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orc-decision-names-the-rewritten-articles"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orc-rewrite-rows-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orc-fold-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orc-never-past-a-deferral"
+        }
+      ]
+    },
+    {
+      "id": "PRF-930",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-reseat-frame-keeps-the-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-reseat-checkpoint-frame-keeps-the-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-first-naming-none"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-first-naming-found"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-first-naming-compose"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-close-set-is-safe"
+        }
+      ]
+    },
+    {
+      "id": "PRF-934",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-article-index-finds-the-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcls-step-reads-no-article-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-event-reads-no-article-list"
+        }
+      ]
+    },
+    {
+      "id": "PRF-924",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-fault-preserves-ocl-relation",
+          "note": "host/owner-host.lisp fn-owner-fault (fn-ocfg-fault). Teeth: tests/acl2/owner-host-relation-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-reconfigure-preserves-ocl-relation",
+          "note": "host/owner-host.lisp fn-owner-reconfigure through fn-owner-step (:reconfigure id deltas). Teeth: tests/acl2/owner-host-relation-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-ocl-relation-with-staged",
+          "note": "The staged-slot frame both rest on."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-fault-preserves-carried-relation",
+          "note": "The fn-lgoc-invariantp lift."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-reconfigure-preserves-carried-relation",
+          "note": "The host-shaped step, carried."
+        }
+      ]
+    },
+    {
+      "id": "PRF-925",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-ocl-relation-with-owner-of-same-control",
+          "note": "The same-control frame."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-take-preserves-carried-relation",
+          "note": "host/owner-host.lisp fn-owner-take through fn-owner-step (:take)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-control-submit-preserves-carried-relation",
+          "note": "fn-owner-control-submit (:control-submit ...)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-operator-submit-preserves-carried-relation",
+          "note": "fn-owner-operator-submit (:operator-submit ...)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-feed-replay-preserves-carried-relation",
+          "note": "fn-owner-feed-replay (:feed-replay peer entries)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-control-outcome-preserves-carried-relation",
+          "note": "fn-owner-control-outcome (:control-outcome word)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-bp-transit-outcome-preserves-carried-relation",
+          "note": "fn-owner-bp-transit-outcome (:bp-transit-outcome word)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-feeds-preserves-carried-relation",
+          "note": "fn-owner-feeds-reconfigure (:feeds cfg)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-feed-conn-preserves-carried-relation",
+          "note": "fn-owner-feed-connect (:feed-conn peer conn form)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-configure-preserves-carried-relation",
+          "note": "fn-owner-posting-configure (fn-owner-replace-core of fn-own-configure)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-osb-install-preserves-carried-relation",
+          "note": "fn-owner-install-profile (fn-osb-install)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-with-feeds-preserves-carried-relation",
+          "note": "fn-owner-feed-install-port-result (fn-own-with-feeds)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-with-node-secret-preserves-carried-relation",
+          "note": "fn-owner-install-node-secret (fn-own-with-node-secret)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-begin-preserves-ocl-relation",
+          "note": "fn-owner-begin (fn-pout-begin: fn-ocfg-step (:begin id)). Teeth: tests/acl2/owner-host-relation-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-declare-group-preserves-ocl-relation",
+          "note": "fn-owner-declare-group (fn-pout-declare-group: fn-ocfg-step (:declare-group name)); the facts frame fn-ohr-ocl-relation-with-owner-of-same-control-and-facts. Teeth: tests/acl2/owner-host-relation-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-chunk-preserves-ocl-relation",
+          "note": "fn-owner-chunk (fn-scar-ocfg-read-tls-prefix) under the carried view index and the connection's wire state. Teeth owed (a served-span fixture)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-exposure-open-preserves-ocl-relation",
+          "note": "fn-owner-exposure-open (fn-ocar-exp-open) with no peer named; a configured peer is PKT-888. Teeth owed (a public-exposure fixture)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-finish-synced-preserves-ocl-relation",
+          "note": "fn-owner-finish-synced (fn-rix-ocfg-complete) with nothing staged. Teeth owed (needs the history stobj)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-926",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-store-open-installs-the-carried-relation",
+          "note": "host/owner-host.lisp fn-owner-recover-from-store-open (fn-ock-install of the fn-store-sco-open global)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-942",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-pub-admission-decides-by-what-is-present"
+        }
+      ]
+    },
+    {
+      "id": "PRF-943",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-authorized-injected-carried-submission-event-decides"
+        }
+      ]
+    },
+    {
+      "id": "PRF-944",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-receive-keeps-the-three-outcomes-distinct"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-receive-of-host-send-hands-over-the-adu"
+        }
+      ]
+    },
+    {
+      "id": "PRF-951",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otb-answer-early-answers-each-untold-member-once"
+        }
+      ]
+    },
+    {
+      "id": "PRF-952",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-read-refusal-text-refuses-exactly-what-does-not-expand"
+        }
+      ]
+    },
+    {
+      "id": "PRF-953",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgdm-refusal-text-refuses-exactly-a-break-or-damage"
+        }
+      ]
+    },
+    {
+      "id": "PRF-954",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-smid-durability-warning-warns-exactly-when-the-mount-is-unsafe"
+        }
+      ]
+    },
+    {
+      "id": "PRF-955",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-anchor-rp-outcome-is-terminal-only-after-the-directory-barrier"
+        }
+      ]
+    },
+    {
+      "id": "PRF-956",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct"
+        }
+      ]
+    },
+    {
+      "id": "PRF-958",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-onb-node-boundp-of-replay-apply-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onb-store-boundp-of-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onb-boundp-of-refresh"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onb-boundp-of-psrv-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onb-boundp-at-owner-prepare-buffer"
+        }
       ]
     }
   ]

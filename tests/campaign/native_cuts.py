@@ -331,7 +331,13 @@ def verify_state_checkpoint_cut_map() -> None:
     if declared != model_cut_names("fn-bs-scp-program", STATE_CHECKPOINT_BOOK):
         raise AssertionError("state-checkpoint cuts are not fn-bs-scp-program's")
     source = (ROOT / "host/native/io.lisp").read_text()
-    write = host_function(source, "fnn-state-checkpoint-write")
+    # fnn-state-checkpoint-write is its two halves in order (Q16: the online
+    # reclaim pass stages off the owner mutex and installs under it).
+    top = host_function(source, "fnn-state-checkpoint-write")
+    if "(fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets))" not in top:
+        raise AssertionError("fnn-state-checkpoint-write is not stage then install")
+    write = (host_function(source, "fnn-state-checkpoint-stage")
+             + host_function(source, "fnn-state-checkpoint-install"))
     order = [write.index(":state-checkpoint-created :state-checkpoint-written"),
              write.index("(fnn-at store :state-checkpoint-staged-durable)"),
              write.index("(fnn-replace stage (fnn-state-checkpoint-path store))"),

@@ -783,6 +783,41 @@ The list, and what each would take. Nothing here is accepted; it is stated.
     Takes: ember's D13 decision, then a summary structure with its own
     bound, and a rotation policy for the service log.
 
+## Closure (X)
+
+What the bounds above assume of the state they are entered in, and what a
+refusal leaves behind (lane closure-theorems, after B10: a configuration
+record on a transaction-full store after a checkpoint left a store no open
+accepted, because refused POSTs had consumed ids no reader accounted for).
+
+- **X1** Refusal is effect-free, or says what it consumes. Per host
+  refusal entry, the ACL2 function and the theorem are `books/refusal-effect`'s
+  header table. An unserved group, an unaffordable budget and a configuration
+  request the owner does not admit leave the owner they were given (by
+  definition). The full-store POST refusal is NOT effect-free, by design:
+  the reservation is taken before the prepare decides, and the refusal
+  consumes it; the composed theorems say exactly what: the records, the
+  groups and the capacity are what they were, the files' frontier and the
+  node's next txid are one higher. The readers of ids account for it: the
+  configuration record takes the node's next txid; the open joins the
+  records' and the configuration records' next ids (lane limits-live-2's
+  `fn-ofr-loop-ok-within-frontier`, landing); the export carries the frontier
+  (PRF-205). Scope: the store node model; the host's routes are the named
+  functions. When reality exceeds the model: a reader that computes a frontier
+  from one record kind alone is B10 again, and section X2's check is what
+  catches a new kind.
+- **X2** The alphabets agree, and the premises are listed.
+  `tools/alphabet_check.py` (a `make check` step) reads the configuration
+  deltas' declared kinds, encoder, decoder, dispatcher and every writer, and
+  the store events' encoder, decoder, kind reader and the replay's dispatch,
+  from the source; it fails when a writer produces a kind a reader lacks.
+  `tools/premise_audit.py` lists every hypothesis `(R v)` of a theorem whose
+  subject a host line reaches that no hosted theorem establishes (never
+  concluded, preserved only, or established only by a model), against a
+  shrink-only baseline (planning/premise-baseline.json): 1,011 of 1,528 at
+  dev 1922efe84, 114 of them relation-shaped. Neither is a bound; both are
+  the contract's own premises made visible.
+
 ## Generated
 
 The block below is written by `python3 tools/resource_contract.py --write`
@@ -835,6 +870,8 @@ not on this tree yet; its citations are checked once they land.
 | D3 | `books/owner-checkpoint-writer`: `fn-ockp-decide-defers-by-the-estimate`; `books/store-maintenance-reserve`: `fn-smr-roomp-is-within-the-bound` | PRF-200, PRF-129 | none |  |
 | D4 | `books/store-log-durable`: `fn-lgu-acknowledged-article-is-recoverable-at-every-crash-point`, `fn-lgu-acknowledged-article-is-recoverable-at-every-cut-of-recovery`; `books/store-log-crash`: `fn-lg-entry-len-is-units`; `books/store-log-extend`: `fn-olr-extension-target-is-an-extent` | PRF-936, PRF-244, PRF-268 | `planning/evidence/byte-model-2026-09-29.md` |  |
 | D5 | `books/expiry-verdict`: `fn-xpy-releasablep-is-rule-or-expired-and-unheld`, `fn-xpy-held-article-is-not-expired` | PRF-918 | `planning/evidence/expiry-q11-2026-09-28.md` | lane/operations baec98157 (PKT-868, PRF-908: online compaction) |
+| X1 | `books/refusal-effect`: `fn-rfx-unserved-prepare-is-unchanged-by-definition`, `fn-rfx-unaffordable-prepare-is-unchanged-by-definition`, `fn-rfx-refused-reconfigure-is-unchanged-by-definition`, `fn-rfx-refused-post-keeps-records`, `fn-rfx-refused-post-keeps-configuration`, `fn-rfx-refused-post-consumes-one-txid`, `fn-rfx-config-record-txid-is-the-node-next-by-definition` | none | `planning/evidence/closure-theorems-2026-09-29.md` |  |
+| X2 | none (measured or open) | none | `planning/evidence/closure-theorems-2026-09-29.md` |  |
 
 Constants the rows quote, read from the books that define them.
 
@@ -884,8 +921,8 @@ The outcome classes and their codes (`*fn-outcome-codes*`, books/outcome-class.l
 
 Counts.
 
-- Depth lint baseline (tools/depth_baseline.json): 193 debt entries (data-sized recursion on a host-called path with no bound), 170 bounded.
-- Named assumptions: 16 `A-*` rows in specs/failures.md, 13 encapsulates in books/assumptions.lisp.
+- Depth lint baseline (tools/depth_baseline.json): 192 debt entries (data-sized recursion on a host-called path with no bound), 173 bounded.
+- Named assumptions: 20 `A-*` rows in specs/failures.md, 13 encapsulates in books/assumptions.lisp.
 - The throughput gate's tolerance (tools/throughput_gate.py, planning/throughput-baseline.json): 25% over the baseline per operation, plaintext.
 
 <!-- END resource-contract -->
