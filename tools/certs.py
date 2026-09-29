@@ -147,6 +147,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # evaluates or macro-expands, so computing a closure cannot run a book.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ledger  # noqa: E402
+import cert_images  # noqa: E402
 
 BOOK_DIRECTORIES = ("books", "tests/acl2")
 DEFAULT_CACHE = "~/.cache/fn-certs"
@@ -190,6 +191,8 @@ class Certified:
     # The digest of the compiled file (`.fasl`) this certification wrote, when
     # the manifest recorded one; None publishes the pair alone.
     fasl: str | None = None
+    # The world the certificate was made in (`cert_images.world_id`).
+    world: str = "plain"
 
 
 @dataclass
@@ -435,9 +438,13 @@ def closure_listing(books: dict[str, str]) -> list[str]:
     return sorted(f"{book}.lisp:{digest}" for book, digest in books.items())
 
 
-# What the key hashes changed from each closure book's bytes to its read
-# forms (`form_hash`); the tag keeps the two key spaces apart.
-KEY_VERSION = "fn-cert-key-v2 forms"
+# What the key hashes: each closure book's read forms (`form_hash`) and the
+# world the certificate was made in (`cert_images.world_id`: plain, or a
+# certification image, whose include-books are the portcullis).  v2 had no
+# world and filed image-made pairs with plain ones; a plain world that
+# installed one replayed its portcullis ahead of an attach-stobj (batch BB,
+# 2026-09-29).  The tag keeps the key spaces apart.
+KEY_VERSION = "fn-cert-key-v3 forms+world"
 
 
 def form_hash(source: Path) -> str:
@@ -477,7 +484,8 @@ def key_listing(root: Path, books: dict[str, str]) -> list[str]:
     return sorted(f"{book}.lisp:{form_hash(base / f'{book}.lisp')}" for book in books)
 
 
-def closure_key(root: Path, name: str) -> tuple[str, list[str]]:
+def closure_key(root: Path, name: str,
+                world: str = "plain") -> tuple[str, list[str]]:
     """The cache key for one book, and the listing the key hashes.
 
     The listing names each closure book's read forms (`form_hash`), not its
@@ -485,8 +493,20 @@ def closure_key(root: Path, name: str) -> tuple[str, list[str]]:
     separate question, answered with bytes by `publish` (`closure_drift`).
     """
     listing = key_listing(root, closure(root, name))
-    text = KEY_VERSION + "\n" + "\n".join(listing)
+    text = KEY_VERSION + "\nworld " + world + "\n" + "\n".join(listing)
     return hashlib.sha256(text.encode("utf-8")).hexdigest(), listing
+
+
+def book_entries(root: Path, cache: Path, name: str) -> list[tuple[Path, dict]]:
+    """Every usable entry for NAME at ROOT's sources, in every world a
+    certificate of it may have been made in (`cert_images.worlds`): plain
+    first, then each certification image the image rule allows for it now.
+    An entry made in a world the rule no longer allows is never found."""
+    found: list[tuple[Path, dict]] = []
+    for world in cert_images.worlds(root.resolve(), name):
+        key, _ = closure_key(root, name, world)
+        found.extend(cached_entries(cache, key))
+    return found
 
 
 def origin_token(origin: str) -> str:
@@ -807,8 +827,7 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
     # toolchain identity -> book -> every usable entry, for the composed set.
     pooled: dict[str, tuple[dict, dict[str, list[tuple[Path, dict]]]]] = {}
     for name in required:
-        key, _ = closure_key(root, name)
-        for directory, meta in cached_entries(cache, key):
+        for directory, meta in book_entries(root, cache, name):
             if not usable_origin(meta, target):
                 continue
             toolchain = meta.get("toolchain") or {}
@@ -1093,8 +1112,7 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
     report.toolchain_identity = toolchain_identity
     options: dict[str, list[tuple[Path, dict]]] = {}
     for name in sorted(required):
-        key, _ = closure_key(root, name)
-        usable = [(directory, meta) for directory, meta in cached_entries(cache, key)
+        usable = [(directory, meta) for directory, meta in book_entries(root, cache, name)
                   if usable_origin(meta, target)
                   and meta.get("toolchain_identity") == toolchain_identity]
         own = [entry for entry in usable if entry[1].get("origin_root") == target]
@@ -1232,7 +1250,9 @@ def certified_books(manifests: list[dict],
                 cert=certificate, evidence=evidence, origin=origin,
                 compatibility=manifest_compatibility(manifest),
                 certification_provenance=manifest_provenance(manifest),
-                fasl=compiled.get(book)))
+                fasl=compiled.get(book),
+                world=str(((manifest.get("cert_images") or {}).get("book_images")
+                           or {}).get(book, "plain"))))
     return found
 
 
@@ -1383,8 +1403,15 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
             report.unverified.append(
                 f"{name}: no qualified ACL2 launcher/core/runtime fingerprint")
             continue
+        if record.world != "plain" and record.world not in cert_images.worlds(
+                root.resolve(), name):
+            # Made in an image this tree's rule does not allow for the book
+            # (or a v2 label without the image's roots): never filed.
+            report.unverified.append(f"{name}: made in world {record.world}, "
+                                     "which the image rule does not allow")
+            continue
         try:
-            key, listing = closure_key(root, name)
+            key, listing = closure_key(root, name, record.world)
             sources = closure_listing(closure(root, name))
         except UnreadableBook as error:
             report.unreadable.append(f"{name}: {error}")
@@ -1431,6 +1458,7 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
         "book": name,
         "closure_key": key,
         "key_version": KEY_VERSION,
+        "world": record.world,
         "closure": listing,
         "cert_sha256": record.cert,
         "port_sha256": content_hash(port) if port is not None else None,
@@ -1549,11 +1577,10 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
         report.books += 1
         name = book_name(root, source)
         try:
-            key, _ = closure_key(root, name)
+            entries = book_entries(root, cache, name)
         except UnreadableBook as error:
             report.unreadable.append(f"{name}: {error}")
             continue
-        entries = cached_entries(cache, key)
         cert = source.with_suffix(".cert")
         chosen = choose_entry(entries, str(root.resolve()))
         if chosen is None:
@@ -1600,12 +1627,11 @@ def status(root: Path, cache: Path) -> Report:
         if valid_looking(source.with_suffix(".cert")):
             report.certified_locally += 1
         try:
-            key, _ = closure_key(root, name)
+            entries = book_entries(root, cache, name)
         except UnreadableBook as error:
             report.unreadable.append(f"{name}: {error}")
             report.uncached.append(name)
             continue
-        entries = cached_entries(cache, key)
         chosen = choose_entry(entries, str(root.resolve())) if entries else None
         if not entries:
             report.uncached.append(name)
@@ -1752,7 +1778,9 @@ def legacy_byte_key(root: Path, name: str) -> str:
 def rekey(root: Path, cache: Path, names: list[str] | None = None) -> RekeyReport:
     """File every entry made for this tree's exact bytes under its form key too.
 
-    Run once per cache when the key moved to forms (2026-09-28), against a
+    Byte-keyed (v1) entries were all made in a plain world; each is filed
+    under its plain v3 key.  Run once per cache when the key moved (forms
+    2026-09-28, worlds 2026-09-29), against a
     checkout of the commit that moved it, so the next run does not recertify
     what the cache already holds.  An entry is linked (hard links, the bytes
     are immutable) only under the key of a book whose whole closure has the
@@ -1793,7 +1821,7 @@ def rekey(root: Path, cache: Path, names: list[str] | None = None) -> RekeyRepor
                 for path in directory.iterdir():
                     if path.name not in ("meta.json", ".entry.lock") and path.is_file():
                         os.link(path, staging / path.name)
-            meta.update({"closure_key": key, "closure": listing,
+            meta.update({"closure_key": key, "closure": listing, "world": "plain",
                          "closure_sources": sources, "key_version": KEY_VERSION,
                          "rekeyed_from": old.name})
             write_text_atomic(staging / "meta.json", json.dumps(meta, indent=2, sort_keys=True) + "\n")

@@ -18,6 +18,11 @@ BOOKS = {
     "books/side": '(in-package "ACL2")\n(local (include-book "mid"))\n(defun fn-s (x) x)\n',
     "tests/acl2/top-tests": '(in-package "ACL2")\n(include-book "../../books/top")\n',
     "host/x-host": '(in-package "ACL2")\n(include-book "../books/mid")\n',
+    # An attachable stobj, its attachment, and a book over the attachment.
+    "books/arena": '(in-package "ACL2")\n(include-book "mid")\n(defabsstobj st :attachable t)\n',
+    "books/arena-attach": '(in-package "ACL2")\n(include-book "mid")\n'
+                          '(attach-stobj st st-impl)\n(include-book "arena")\n',
+    "books/umbrella": '(in-package "ACL2")\n(include-book "arena-attach")\n',
 }
 
 
@@ -56,6 +61,33 @@ class ImageForTests(unittest.TestCase):
             graph = cert_images.Graph(tree(directory))
             images = [{"name": "mid", "roots": ["books/mid"]}]
             self.assertIsNone(cert_images.image_for("host/x-host", images, graph))
+
+
+class AttachStobjTests(unittest.TestCase):
+    def test_no_image_defines_a_stobj_the_books_world_attaches(self):
+        # batch BB: an image holding books/payload-arena (fn-arena) made the
+        # umbrella's attach-stobj fail ("The name FN-ARENA is in use").
+        with tempfile.TemporaryDirectory() as directory:
+            graph = cert_images.Graph(tree(directory))
+            images = [{"name": "arena", "roots": ["books/arena"]},
+                      {"name": "mid", "roots": ["books/mid"]}]
+            self.assertEqual(graph.attached("books/umbrella"), {"st"})
+            self.assertEqual(graph.defines(graph.nonlocal_closure("books/arena")), {"st"})
+            self.assertEqual([i["name"] for i in cert_images.applicable(
+                "books/umbrella", images, graph)], ["mid"])
+            self.assertEqual(cert_images.image_for("books/arena-attach", images, graph)["name"],
+                             "mid")
+
+    def test_worlds_name_plain_and_each_allowed_image(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = tree(directory)
+            (root / "tools").mkdir()
+            (root / "tools/cert-images.json").write_text(
+                '{"images": [{"name": "arena", "roots": ["books/arena"]},'
+                ' {"name": "mid", "roots": ["books/mid"]}]}')
+            self.assertEqual(cert_images.worlds(root, "books/umbrella"),
+                             ["plain", "mid@books:books/mid"])
+            self.assertEqual(cert_images.worlds(root, "host/x-host"), ["plain"])
 
 
 class BuildTests(unittest.TestCase):
