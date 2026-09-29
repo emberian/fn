@@ -1143,6 +1143,34 @@
       ]
     },
     {
+      "id": "PRF-021",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-stx-lace-of-accept-is-merge",
+          "note": "books/stx-node-lace.lisp: the node lace read through the arena (fn-articles-wire-of of the node's handle articles); until 2026-09-29 the same theorem in books/stx-lace.lisp was satisfied by the empty lace over every node the machine produces (PKT-892, planning/evidence/stx-vacuity-2026-09-29.md)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-transit-ids-are-union"
+        }
+      ]
+    },
+    {
+      "id": "PRF-022",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-stx-transit-equivocation-is-detected",
+          "note": "books/stx-node-lace.lisp, over the node lace read through the arena (PKT-892)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-transit-equivocation-survives-later-merges"
+        }
+      ]
+    },
+    {
       "id": "PRF-023",
       "events": [
         {
@@ -1159,7 +1187,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-stx-index-invariant-preserved-by-accept"
+          "name": "fn-stx-index-invariant-preserved-by-accept",
+          "note": "books/stx-node-lace.lisp since 2026-09-29: the invariant compares the index with the octet model's fold over ALPHA of the node's articles (the handles read through the arena); until then it compared with the fold over the handles themselves, the empty index for every node the machine produces (PKT-892)."
         },
         {
           "kind": "theorem",
@@ -13528,6 +13557,16 @@
         {
           "kind": "theorem",
           "name": "fn-nls-live-report-is-the-offline-report"
+        }
+      ]
+    },
+    {
+      "id": "PRF-995",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-stx-lace-of-node-is-the-rows-lace",
+          "note": "books/stx-lace-rows.lisp: under the context invariant and the correspondence of the node's articles (through the arena) with the rows' articles, the node lace (books/stx-node-lace.lisp fn-stx-lace) is the rows' lace fn-sn-lace-of-rows. The correspondence hypothesis is the named open composed obligation (nothing at this revision carries it in fn-sn-statep). fn-stx-lace-is-the-wire-lace-of-alpha-by-definition names the unfolding."
         }
       ]
     }

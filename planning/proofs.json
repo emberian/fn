@@ -1109,7 +1109,7 @@
       "status": "planned",
       "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
-      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, so the S3-1 witnesses have now RUN; before that they were written and unexecuted."
+      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, so the S3-1 witnesses have now RUN; before that they were written and unexecuted. 2026-09-29 (lane stx-model, PKT-892): the keystone now lives in books/stx-node-lace.lisp over the node lace read through the arena; until then it was satisfied by the EMPTY lace over every node the machine produces (planning/evidence/stx-vacuity-2026-09-29.md); the transit tests witness it with a non-empty lace over handle nodes."
     },
     {
       "id": "PRF-022",
@@ -1128,7 +1128,7 @@
       "status": "planned",
       "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
-      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, so the S3-2 fork witnesses have now RUN."
+      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, so the S3-2 fork witnesses have now RUN. 2026-09-29 (lane stx-model, PKT-892): the keystone now lives in books/stx-node-lace.lisp over the node lace read through the arena; until then it was satisfied by the EMPTY lace over every node the machine produces (planning/evidence/stx-vacuity-2026-09-29.md); the transit tests witness it with a non-empty lace over handle nodes."
     },
     {
       "id": "PRF-023",
@@ -14142,6 +14142,29 @@
         "fn-nsc-view-seen-is-its-history",
         "fn-nls-live-report-is-the-offline-report"
       ]
+    },
+    {
+      "id": "PRF-995",
+      "title": "The node lace through the arena is the rows' lace (PKT-892)",
+      "statement": "fn-stx-lace-of-node-is-the-rows-lace: under the rows' context invariant (fn-rows-contexts-okp) and the correspondence of ALPHA of the acceptance node's articles with the rows' articles read through the same arena, the node lace fn-stx-lace (books/stx-node-lace.lisp: the octet model over each handle's bytes) equals the retained rows' lace fn-sn-lace-of-rows. The correspondence hypothesis is the open composed obligation this theorem names; fn-stx-lace-is-the-wire-lace-of-alpha-by-definition is the unfolding on the handle side.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-004"
+      ],
+      "depends_on": [
+        "PRF-021",
+        "PRF-023"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/stx-node-lace.lisp",
+        "books/stx-lace-rows.lisp",
+        "tests/acl2/stx-transit-tests.lisp",
+        "planning/evidence/stx-vacuity-2026-09-29.md"
+      ],
+      "planning_note": "Lane stx-model (Fable), 2026-09-29: the fix for PKT-892 (fn-stx-lace and fn-stx-index-invariantp handed handle articles to the octet model, so every node-lace keystone was satisfied by the empty lace; the audit is the evidence file). The node keystones (PRF-021, PRF-022, PRF-023's node half) are restated over the arena in books/stx-node-lace.lisp; tests/acl2/stx-transit-tests.lisp witnesses them with NON-EMPTY laces over handle nodes and turns the vacuity witnesses into must-fails.",
+      "note": "The correspondence of the acceptance node's articles with fn-sf-records is not carried by fn-sn-statep at this revision (fn-install-pending and the record move are two steps of one completion; fn-sn-recover rebuilds the node from the records): the lane that carries it discharges this theorem's second hypothesis for every reachable state."
     }
   ]
 }

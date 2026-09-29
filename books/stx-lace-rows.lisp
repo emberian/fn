@@ -98,6 +98,29 @@
                            (fn-stx-delta fn-held-context-of fn-row-bytes fn-row-context-okp
                             fn-stx-lace-of-store)))))
 
+; THE NODE LACE IS THE ROWS' LACE (PRF-995, PKT-892).  books/stx-node-lace.lisp's
+; fn-stx-lace reads the acceptance node's handles through the arena (ALPHA);
+; when ALPHA of the node's articles is the rows' articles read through the
+; same arena, the node lace is the rows' lace, by (1).  The correspondence
+; hypothesis is the composed obligation this equality names and does not
+; discharge: nothing at this revision proves that the acceptance state's
+; articles and the store's records (fn-sf-records) are the same articles --
+; fn-install-pending and the record move are two steps of one completion, and
+; fn-sn-recover rebuilds the node from the records -- so a lane that carries
+; that invariant in fn-sn-statep discharges this hypothesis for every reachable
+; state.
+(defthm fn-stx-lace-of-node-is-the-rows-lace
+  (implies (and (fn-rows-contexts-okp rows keyring generation fn-arena)
+                (equal (fn-articles-wire-of (fn-stx-store node) fn-arena)
+                       (fn-rows-articles-newest-first rows fn-arena)))
+           (equal (fn-stx-lace node keyring fn-arena)
+                  (fn-sn-lace-of-rows rows)))
+  :hints (("Goal" :use ((:instance fn-sn-lace-of-rows-is-the-wire-lace))
+           :in-theory (e/d (fn-stx-lace)
+                           (fn-sn-lace-of-rows-is-the-wire-lace fn-sn-lace-of-rows
+                            fn-stx-lace-of-store fn-rows-articles-newest-first
+                            fn-rows-contexts-okp fn-articles-wire-of)))))
+
 ; -----------------------------------------------------------------------------
 ; (2) S3-3 over the retained store: the store's index agrees with the rows'
 ; lace.  fn-rows-index-is-the-wire-index and (1) put both on the same wire
@@ -134,8 +157,10 @@
 ; invariant of those rows, each answers exactly as the lace of the retained
 ; store; by (1) that is the wire lace of the rows' articles read through the
 ; arena.  Restated here over rows (records-flip): the pre-flip statement
-; equated them with fn-stx-lace of the node, which reads no statement from a
-; node whose articles carry handles.
+; equated them with fn-stx-lace of the node, which until 2026-09-29 read no
+; statement from a node whose articles carry handles (PKT-892); the node lace
+; now reads the arena, and fn-stx-lace-of-node-is-the-rows-lace above equates
+; the two under the correspondence hypothesis it names.
 (defthm fn-sn-statement-lookup-is-the-lace-lookup
   (implies (and (fn-sn-indexedp s)
                 (fn-rows-contexts-okp (fn-sn-indexed-rows s) keyring generation fn-arena))
