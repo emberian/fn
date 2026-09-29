@@ -198,9 +198,7 @@
  "debt": {
   "fn-orc-rewrite-rows": "a non-tail recursion that arrived with dev 33bb1ada7 (lane online-reclaim, books/owner-reclaim.lisp) after C4 reached 0 debt: the owning lane bounds it by name or executes it by a loop (PRF-919 pattern); listed at the seam by depth-debt-4",
   "fn-psub-pack-dc": "a non-tail recursion that arrived with dev 33bb1ada7 (lane online-reclaim, books/packed-submission.lisp) after C4 reached 0 debt: the owning lane bounds it by name or executes it by a loop (PRF-919 pattern); listed at the seam by depth-debt-4",
-  "fn-psub-pack-small": "a non-tail recursion that arrived with dev 33bb1ada7 (lane online-reclaim, books/packed-submission.lisp) after C4 reached 0 debt: the owning lane bounds it by name or executes it by a loop (PRF-919 pattern); listed at the seam by depth-debt-4",
-  "fn-xrt-remove-named": "a non-tail recursion that arrived with dev 33bb1ada7 (lane online-reclaim, books/extent-retire.lisp) after C4 reached 0 debt: the owning lane bounds it by name or executes it by a loop (PRF-919 pattern); listed at the seam by depth-debt-4",
-  "fn-xrt-srcs-handles": "a non-tail recursion that arrived with dev 33bb1ada7 (lane online-reclaim, books/extent-retire.lisp) after C4 reached 0 debt: the owning lane bounds it by name or executes it by a loop (PRF-919 pattern); listed at the seam by depth-debt-4"
+  "fn-psub-pack-small": "a non-tail recursion that arrived with dev 33bb1ada7 (lane online-reclaim, books/packed-submission.lisp) after C4 reached 0 debt: the owning lane bounds it by name or executes it by a loop (PRF-919 pattern); listed at the seam by depth-debt-4"
  },
  "append": {
   "_doc": "tools/depth_check.py's data-sized append rule (lane depth-debt-2): an `append' whose first argument is not a literal, a constant or a (list ...), in a function on the host-called closure whose guards are not verified (so the host's *1* call runs binary-append's recursion, one frame per element of that argument). bounded names the bound as the recursions' entries do; debt only shrinks (verify the function's guards).",
