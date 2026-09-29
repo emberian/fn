@@ -68,6 +68,52 @@
    (fn-bpn-lifecycle-publication-authorize
     (fn-bpn-answer-state *bpnm-a0*) 0 *bpnm-r0* t nil))))
 
+; KEYSTONE teeth (PRF-985,
+; fn-bpn-lifecycle-publication-authorize-admits-exactly-the-pending-persist).
+; The positive witness above, with its complete antecedent asserted by name:
+; a ready, unfenced machine whose pending :persist carries the offered token
+; and record, the offered token the machine's next token, the lock held and
+; the final name absent; then every conjunct of the conclusion.
+(assert-event
+ (let* ((st (fn-bpn-answer-state *bpnm-a0*))
+        (pending (fn-bpn-machine-state-pending st)))
+   (and (fn-bpn-machine-statep st)
+        (not (fn-bpn-machine-state-fenced st))
+        pending
+        (equal 0 (fn-bpn-machine-state-next-token st))
+        (equal 0 (fn-bpn-pending-token pending))
+        (equal *bpnm-r0* (fn-bpn-pending-record pending))
+        (fn-bpn-lifecycle-publication-operationp *bpnm-publication-operation*)
+        (equal (fn-bpn-lifecycle-publication-operation-token
+                *bpnm-publication-operation*)
+               0)
+        (equal (fn-bpn-lifecycle-publication-operation-record
+                *bpnm-publication-operation*)
+               *bpnm-r0*)
+        (equal (fn-bpn-lifecycle-publication-operation-publication
+                *bpnm-publication-operation*)
+               (fn-jpub-initial t)))))
+; Hypothesis-removal witnesses, each affirming the retained antecedent and
+; that the answer is exactly the one fault: a token that is not the pending
+; one (the next token plus one); a machine with nothing pending (the initial
+; state); the lock and the absent final name are the two witnesses above.
+(assert-event
+ (let ((st (fn-bpn-answer-state *bpnm-a0*)))
+   (and (fn-bpn-machine-statep st)
+        (fn-bpn-machine-state-pending st)
+        (not (equal 1 (fn-bpn-machine-state-next-token st)))
+        (equal (fn-bpn-lifecycle-publication-authorize st 1 *bpnm-r0* t t)
+               '(:fault :lifecycle-publication-authority)))))
+(assert-event
+ (and (fn-bpn-machine-statep *bpnm-s0*)
+      (not (fn-bpn-machine-state-pending *bpnm-s0*))
+      (equal (fn-bpn-lifecycle-publication-authorize *bpnm-s0* 0 *bpnm-r0* t t)
+             '(:fault :lifecycle-publication-authority))))
+(assert-event
+ (equal (fn-bpn-lifecycle-publication-authorize
+         (fn-bpn-answer-state *bpnm-a0*) 0 *bpnm-r0* nil t)
+        '(:fault :lifecycle-publication-authority)))
+
 (defconst *bpnm-a1*
   (fn-bpn-step (fn-bpn-answer-state *bpnm-a0*) '(:persist-result 0 :durable)))
 (defconst *bpnm-s1* (fn-bpn-answer-state *bpnm-a1*))
