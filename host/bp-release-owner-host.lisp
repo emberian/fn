@@ -65,6 +65,22 @@
                   (fn-bprl-record-evidence release-record))
                  0)))))
 
+;; PRF-950: the Store retention event of the operator's waiver of WORK-ID
+;; (books/bp-carry-control.lisp fn-bpcc-waiver-release-event: the receipt's
+;; event shape, the pin's own id, subject and evidence), or nil when the
+;; carry journal holds no waiver of it or its pin is already released.
+(defun fn-owner-workflow-store-waive (work-id state)
+ (declare (xargs :stobjs state :mode :program))
+ (value (fn-bpcc-waiver-release-event (f-get-global 'fn-workflow-state state)
+                                      (fn-workflow-carry-state-of state)
+                                      work-id)))
+
+;; The waivers durable in the carry journal whose Store event did not land.
+(defun fn-owner-workflow-pending-waivers (state)
+ (declare (xargs :stobjs state :mode :program))
+ (value (fn-bpcc-pending-waivers (f-get-global 'fn-workflow-state state)
+                                 (fn-workflow-carry-state-of state))))
+
 (defun fn-owner-workflow-apply-record (record fn-arena state)
  (declare (xargs :stobjs (fn-arena state) :mode :program))
  (let* ((answer (fn-bpiw-apply

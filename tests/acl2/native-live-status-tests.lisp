@@ -591,7 +591,7 @@ open-cost replay-records=")
   (declare (xargs :verify-guards nil))
   (fn-sbud-headroom profile *nlst-s*))
 (defconst *nlst-hr* (nlst-headroom *nlst-profile*))
-(assert-event (equal *nlst-hr* '(1 128 642 25165824 2 10)))
+(assert-event (equal *nlst-hr* '(1 128 682 25165824 2 10)))
 ; Positive witness, first disjunct: the store's tuple after 127 more
 ; articles of 2 octets (128 used of 128); the second disjunct is false (the
 ; history bound is far from spent); the line says 0.

@@ -17,7 +17,7 @@ article's sections are its label lines (`*The details:*`).
    host/native-operator-host.lisp's fn-native-operator-host-run calls, and
    `fn-native-operator-mission-run' for `mission') accepts each one.  This
    book cites each row by the heading it sits under and its ordinal among
-   that section's invocations (`("docs/operator.md#install" 2 ...)`), never
+   that section's invocations (`("docs/operator.md#passwords" 1 ...)`), never
    a line number, so prose moved or inserted leaves the book byte-identical
    and costs no certification (PKT-493).  This
    script decides nothing about the operator grammar: `--check` only fails

@@ -61,6 +61,20 @@ class Classification(unittest.TestCase):
             (reach_check.theorem_forms, reach_check.record_definitions,
              reach_check.Subject.hosted) = original
 
+    def test_statement_opens_binders(self):
+        hyps, conclusion = premise_audit.statement(
+            "(defthm fn-inv-at-install (let* ((oc (fn-install r)) (o (fn-owner oc)))"
+            " (implies (and (not (equal oc :fault)) (fn-idlep o)) (fn-inv o s))))")
+        self.assertEqual(conclusion, ["fn-inv", ["fn-owner", ["fn-install", "r"]], "s"])
+        self.assertEqual(hyps, [["and", ["not", ["equal", ["fn-install", "r"], ":fault"]],
+                                 ["fn-idlep", ["fn-owner", ["fn-install", "r"]]]]])
+        hyps, conclusion = premise_audit.statement(
+            "(defthm two (mv-let (a b) (fn-split x) (implies (fn-okp a) (fn-inv b))))")
+        self.assertEqual(hyps, [["fn-okp", ["mv-nth", "0", ["fn-split", "x"]]]])
+        self.assertEqual(conclusion, ["fn-inv", ["mv-nth", "1", ["fn-split", "x"]]])
+        self.assertEqual(premise_audit.statement("(defthm plain (implies (p x) (q x)))"),
+                         ([["p", "x"]], ["q", "x"]))
+
     def test_hosted_establishment_clears_the_premise(self):
         audit = self.audit(hosted_open=True)
         premises = audit.premises()
