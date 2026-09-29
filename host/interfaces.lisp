@@ -4615,3 +4615,21 @@
 (definterface fn-di-raw-with-problem
   :class :program
   :direct "Image-build declaration lint over the loaded world; no client data or served decision")
+
+; Serialized BP listener installation and actual owner configuration control.
+(definterface fn-bplc-step
+  :class ::common-lisp-compliant
+  :keystones (fn-bplc-failed-completion-fences-without-rollback
+              fn-bplc-installed-runtime-is-the-completed-target
+              fn-bplc-step-preserves-listener-credit
+              fn-bplc-bind-and-retire-account-exact-descriptor-completions
+              fn-bplc-rebind-retains-the-accepted-session-generation))
+(definterface fn-bplc-action :class ::common-lisp-compliant)
+(definterface fn-bplc-accept-plan :class ::common-lisp-compliant)
+(definterface fn-bplc-runtime-line :class ::common-lisp-compliant)
+(definterface fn-bplc-cut-plan
+  :class ::common-lisp-compliant
+  :keystones (fn-bplc-every-death-cut-is-a-fenced-process-crash))
+(definterface fn-owner-bplc-recover :class ::program)
+(definterface fn-owner-bplc-begin :class ::program)
+(definterface fn-owner-bplc-turn-plan :class ::program)

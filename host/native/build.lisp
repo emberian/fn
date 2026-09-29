@@ -523,6 +523,7 @@
         (load "host/native/bp-contact.lisp")
         ; After FNBS: `bp-obligation request' hands its ADU to the carrier.
         (load "host/native/bp-obligation.lisp")
+        (load "host/native/bp-listener-control.lisp")
         (load "host/native/bp-control.lisp")
         (load "host/native/bp-node.lisp")
         ; `acl2 session': developer images only (the test fixtures' ACL2).

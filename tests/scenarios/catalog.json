@@ -6264,6 +6264,45 @@
         "tests/acl2/page-read-ownership-tests.lisp"
       ],
       "execution_scope": "Pending matching union image; ownership only, no funded worker/buffer admission claim."
+    },
+    {
+      "id": "SCN-1001",
+      "title": "Live BP listener generation rebind and post-publication recovery",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "HST-002",
+        "HST-010"
+      ],
+      "steps": [
+        "Start actual configured BP node with same-owner local control; establish an old TCPCL session.",
+        "Replace its actual BP boundary with a new port; observe installed generation and transient descriptor peak; old established FD remains usable and new acceptance pins installed generation.",
+        "Occupy the new port before administration: durable configuration publication completes, runtime bind fails, both operator and BP node report uncertain and node stops. Release port and restart from persisted configuration.",
+        "Kill at configuration-published, before/after-bind, before/after-install and before/after-retire; cold recovery binds the persisted new generation without another configuration record."
+      ],
+      "expected": [
+        "No concurrent core writer; no rollback of durable configuration or false runtime success.",
+        "Unchanged listener handles reused; removed listeners retired without closing accepted TCPCL sessions.",
+        "Control polling during idle TCPCL reads preserves the original absolute read deadline.",
+        "Every process-death cut is fn-bplc-cut-plan -> explicit :crash; runtime descriptor credits and session pins are cleared on process death."
+      ],
+      "evidence": [
+        "books/bp-node-listener-control.lisp",
+        "tests/acl2/bp-node-listener-control-tests.lisp",
+        "host/native/bp-listener-control.lisp",
+        "tests/test_bp_node_native.py",
+        "planning/evidence/bp-listener-control-2026-09-29.md"
+      ],
+      "execution_scope": "Specified native cases; matching coalesced image execution pending. Narrow logical admission does not qualify a native image.",
+      "implementation": {
+        "test": "tests.test_bp_node_native",
+        "cases": [
+          "test_live_listener_rebind_keeps_old_session_generation_and_fd",
+          "test_live_listener_occupied_port_is_uncertain_and_restart_reconciles",
+          "test_death_at_each_live_listener_effect_recovers_published_configuration"
+        ],
+        "native": true
+      }
     }
   ]
 }
