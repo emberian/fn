@@ -843,6 +843,26 @@ reopen predicate, writer-lock observation and observed final namespace."
           (take (nfix count) (nthcdr (nfix start) (fn-sco-records (fn-store-sco-current state))))
           fn-arena)))
 
+; Row S3b (lane operability-7): the running owner's export
+; (host/native/owner.lisp fnn-owner-export-write) walks the captured record
+; list a chunk at a time, off the owner mutex, through the live arena its
+; capture pinned: the next N records' octets, each what the offline export
+; writes for that record (fn-store-sco-encode-records above), and the rest
+; of the list.  The chunking is the host's; for every chunking the entries
+; are fn-sxp-entries of the whole history (books/store-export-stream.lisp
+; fn-sxp-stream-is-the-export).  A walk, not (take n) over (len records):
+; the list is the store's whole history.
+(defun fn-store-sco-split (records n acc)
+  (declare (xargs :mode :program))
+  (if (or (atom records) (zp n))
+      (mv (revappend acc nil) records)
+    (fn-store-sco-split (cdr records) (1- n) (cons (car records) acc))))
+
+(defun fn-store-sco-encode-chunk (records n fn-arena)
+  (declare (xargs :mode :program :stobjs fn-arena))
+  (mv-let (chunk rest) (fn-store-sco-split records n nil)
+    (list (fn-store-sco-encode-records chunk fn-arena) rest)))
+
 ; The covered prefix's LAST record's octets, or NIL: the owner reads its
 ; pending key statement off the history's last record, which after a log
 ; checkpoint open with an empty suffix is the prefix's (host/native/io.lisp

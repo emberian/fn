@@ -257,6 +257,10 @@
   (declare (xargs :mode :program))
   (fn-nh-run-started-line))
 
+(defun fn-native-health-host-run-opened-line (ms)
+  (declare (xargs :mode :program))
+  (fn-nh-run-opened-line ms))
+
 (defun fn-native-health-host-run-stopped-line (code reason)
   (declare (xargs :mode :program))
   (fn-nh-run-stopped-line code reason))

@@ -1724,6 +1724,14 @@
 (definterface fn-owner-sco-capture
   :class ::program)
 
+; host/native/admin.lisp dispatches it (lane operability-7, row S3b).
+(definterface fn-owner-oex-capture
+  :class ::program)
+
+; host/native/owner.lisp dispatches it (lane operability-7, row S3b).
+(definterface fn-store-sco-encode-chunk
+  :class ::program)
+
 (definterface fn-owner-sco-due
   :class ::program)
 
@@ -3328,6 +3336,9 @@
 (definterface fn-native-health-host-run-started-line
   :class ::program)
 
+(definterface fn-native-health-host-run-opened-line
+  :class ::program)
+
 (definterface fn-native-health-host-run-stopped-line
   :class ::program)
 
@@ -3360,7 +3371,8 @@
   :class ::program)
 
 (definterface fn-native-live-status-host-inspect-group-exit
-  :class ::program)
+  :class ::program
+  :exempt ((octets "the report's own octets, read back for its exit (fn-oig-report-exit decides 0 or 1 from the report's first word)")))
 
 (definterface fn-native-live-status-host-max-frame
   :class ::program)
@@ -4050,6 +4062,43 @@
 (definterface fn-native-admin-result-inspect-msgid
   :class :common-lisp-compliant)
 
+; host/native/admin.lisp dispatches them (lane operability-7, row S3b).
+(definterface fn-native-admin-result-export-dir
+  :class :common-lisp-compliant)
+
+(definterface fn-native-admin-result-export-statusp
+  :class :common-lisp-compliant)
+
+;; books/owner-export-request.lisp (row S3b): the running owner's export
+;; request and status (host/native/admin.lisp) and the client's reading
+;; and lines (host/native/operator.lisp).
+(definterface fn-oex-request-word
+  :class :common-lisp-compliant)
+
+(definterface fn-oex-request-status
+  :class :common-lisp-compliant)
+
+(definterface fn-oex-request-line
+  :class :common-lisp-compliant
+  :kinds ((dir stringp)))
+
+(definterface fn-oex-status-word
+  :class :common-lisp-compliant)
+
+(definterface fn-oex-status-status
+  :class :common-lisp-compliant)
+
+(definterface fn-oex-outcome-line
+  :class :common-lisp-compliant
+  :kinds ((dir stringp)))
+
+(definterface fn-oex-word-of-octets
+  :class :common-lisp-compliant
+  :exempt ((octets "compared whole with each reason word's octets (fn-oex-word-reads-back); other octets are no word (nil)")))
+
+(definterface fn-oex-status-no-owner-line
+  :class :common-lisp-compliant)
+
 ;; books/native-control-reason.lisp
 
 ; host/native/control.lisp dispatches it (lane correctness-remainder).
@@ -4100,7 +4149,9 @@
 
 ; host/native/operator.lisp dispatches it (lane operability-2/-5).
 (definterface fn-omr-inspect-live-report
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :exempt ((msgid-octets "rendered into the report's line as the operator typed it (fn-native-operator-inspect-report); any list renders")
+           (word-octets "compared whole with the reason word of :found (fn-omr-inspect-foundp): any value decides absent")))
 
 ; host/native/admin.lisp dispatches it (lane operability-2/-5).
 (definterface fn-omr-inspect-status
@@ -4126,13 +4177,22 @@
 (definterface fn-omr-status-replayp
   :class :common-lisp-compliant)
 
+; host/native/io.lisp dispatches it (`store ROOT status [--replay]', lane
+; operability-9): the operator verb's decision for the store verb.
+(definterface fn-omr-store-status-word
+  :class :common-lisp-compliant)
+
 ; host/native/io.lisp dispatches it (lane operability-2/-5).
 (definterface fn-omr-stopped-health-report
-  :class :ideal)
+  :class :ideal
+  :exempt ((journal-octets "a COUNT of octets (the journal files' lstat sizes), a natural the report nfixes; not bytes")
+           (config-octets "fn-spo-config-open decides the open verdict first and refuses a malformed config by name")))
 
 ; host/native/io.lisp dispatches it (lane operability-2/-5).
 (definterface fn-omr-stopped-report
-  :class :ideal)
+  :class :ideal
+  :exempt ((journal-octets "a COUNT of octets (the journal files' lstat sizes), a natural the report nfixes; not bytes")
+           (config-octets "fn-spo-config-open decides the open verdict first and refuses a malformed config by name")))
 
 ;; books/owner-time-bars.lisp
 

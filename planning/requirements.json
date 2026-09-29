@@ -5489,7 +5489,7 @@
     },
     {
       "id": "HST-036",
-      "title": "Maintenance while serving: `recover' and `store inspect' on a running owner are answered by that owner (recover accepted by name, its status following; inspect as the owner's own lookup rendering the offline report), refused by name with what it would take when an owner holds the lock and answers nothing; `status' and `health' on a stopped store read the checkpoint header and the journal's sizes (a bound on the transactions), never a replay; `status --replay' is the replayed report",
+      "title": "Maintenance while serving (with `store export DIR` on the running owner, row S3b): `recover' and `store inspect' on a running owner are answered by that owner (recover accepted by name, its status following; inspect as the owner's own lookup rendering the offline report), refused by name with what it would take when an owner holds the lock and answers nothing; `status' and `health' on a stopped store read the checkpoint header and the journal's sizes (a bound on the transactions), never a replay; `status --replay' is the replayed report",
       "specification": "specs/host.md#operator-commands-and-owner-critical-sections",
       "milestone": "M5",
       "status": "implemented",

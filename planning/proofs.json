@@ -117,11 +117,7 @@
         "fn-own-served-local-number-is-never-reassigned",
         "fn-own-raw-local-number-is-never-reassigned",
         "fn-ocfg-read-step-without-selection-depends-only-on-its-connection-and-clock",
-        "fn-own-other-post-keeps-a-non-selecting-read-step",
-        "fn-scl-step-counted-fast-of-with-live-selecting-nothing",
-        "fn-scl-own-read-tls-prefix-selecting-nothing-ignores-the-view",
-        "fn-scl-other-post-keeps-a-chunk-selecting-nothing",
-        "fn-scl-host-chunk-selecting-nothing-survives-other-post"
+        "fn-own-other-post-keeps-a-non-selecting-read-step"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -1892,6 +1888,7 @@
         "fn-bs-record-dir-error-preserves-relation",
         "fn-bs-crash-image-relates-to-recovery-entry-kernel",
         "fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel",
+        "fn-bs-recover-program-run-from-a-quiet-image",
         "fn-bs-recover-program-keeps-relation-at-every-cut",
         "fn-bs-host-reopened-kernel-is-the-recovered-kernel",
         "fn-bs-k0-record-link-error-arm-relation"
@@ -3631,7 +3628,6 @@
         "fn-sco-capture-of-later-configs",
         "fn-cpr-loop-append",
         "fn-replay-identity-append",
-        "fn-replay-identity-append-of-true-lists",
         "fn-cpe-projection-replay-append",
         "fn-th-prefix-project-append",
         "fn-cei-build-append",
@@ -3744,8 +3740,7 @@
         "fn-nntp-hdr-fn-control-status-is-the-model-status",
         "fn-own-read-archive-command-is-the-pinned-dispatcher",
         "fn-own-related-conn-control",
-        "fn-ctl-served-status-is-control-status",
-        "fn-own-read-of-a-withdrawn-article-answers-430-withdrawn"
+        "fn-ctl-served-status-is-control-status"
       ]
     },
     {
@@ -4338,6 +4333,8 @@
       ],
       "progress_note": "Certified with teeth; the theorem is over the implementation the seam attaches, not over the constrained seam function; the open corollary over fn-store-sn-recover is by congruence of the program-mode host map and is not an ACL2 event. Format 10 (lane format-bump-10, 2026-09-28): books/byte-store-profile-v1.lisp and its tests were deleted with format 9 (D34: every format-10 profile is written by a format-10 init or import under the current relation; the frozen pre-P6 relation and the PKT-467 window describe profiles no format-10 store holds); the events and paths that named them are removed from this row.",
       "events": [
+        "fn-record-v1-bytes-decode-identically",
+        "fn-record-v1-bytes-are-their-translation",
         "fn-cbor-decode-prechecked-wide-extends-narrow",
         "fn-cbor-encode-uint-wide-is-narrow",
         "fn-cbor-decode-prechecked-wide-of-uint",
@@ -4722,8 +4719,7 @@
         "fn-ks-reopen-is-blind-to-later-configuration",
         "fn-ks-a-decline-replays-as-a-decline",
         "fn-ks-recorded-recovery-completes-the-cut",
-        "fn-pcb-admission-verdict-names-its-class",
-        "fn-pcb-admission-verdict-names-a-revocation"
+        "fn-pcb-admission-verdict-names-its-class"
       ]
     },
     {
@@ -5261,6 +5257,7 @@
         "fn-smr-reserve-admits-the-release",
         "fn-smr-admission-is-within-the-profile",
         "fn-smr-roomp-antitone-in-octets",
+        "fn-smr-roomp-is-within-the-bound",
         "fn-smr-admitted-profile-starts-reserved",
         "fn-scka-publication-setup-plans-within-the-disk"
       ]
@@ -6354,8 +6351,7 @@
         "fn-nh-starting-clears-on-listening",
         "fn-native-control-printed-reason-is-the-decisions",
         "fn-nctrl-reasoned-read-of-encode",
-        "fn-nctrl-reason-word-of-a-reason-is-not-none",
-        "fn-native-control-host-refusal-names-its-class"
+        "fn-nctrl-reason-word-of-a-reason-is-not-none"
       ]
     },
     {
@@ -8251,7 +8247,8 @@
       "progress_note": "Lane served-line-iterative (2026-09-26; image-floor packet 2, PKT-481's class, D27). Cause by persvati REPL backtrace (FN-POST-BODY-OCTETS frames to exhaustion on 3,000,000 lines) and by the native witness (one 4 MiB line: Control stack exhausted in fn-owner-chunk-span until fn-wire-list-length was a loop). Teeth: tests/acl2/served-line-iterative-tests.lisp (reachable witnesses, the composed BODY reply, served-size witnesses of 2,100,000 lines and of one 20,000,000-octet line through the compiled executables, labelled MUTATION witnesses refuted on ground instances). Lane line-stack (Opus 5.5, 2026-09-27): the fourth keystone; cause read from the frames of FN_NATIVE_FAULT_BACKTRACE's stack-exhaustion report (FN-HF-CRLF-COUNT x60795 on the committer); teeth in tests/acl2/catalog-record-tests.lisp (reachable witnesses by loop and definition; 5,000,000 lines through fn-hf-body-lines-of). Lane chunked-body (B6, 2026-09-29): fn-wire-list-length-onto-is-list-length is no longer cited: the served article line is no longer a list the wire measures -- it is in the article's packed store and fn-wire-after-line reads its length in constant work (fn-wire-partial-len; PRF-922).",
       "events": [
         "fn-nntp-stuff-lines-iter-is-stuff-lines",
-        "fn-post-body-octets-iter-is-body-octets"
+        "fn-post-body-octets-iter-is-body-octets",
+        "fn-wire-list-length-onto-is-list-length"
       ]
     },
     {
@@ -10897,6 +10894,7 @@
         "fn-sjh-okp-at-owner-unstage",
         "fn-sjh-okp-at-owner-node-secret",
         "fn-sjh-okp-at-owner-install-profile",
+        "fn-sjh-okp-at-owner-outcome",
         "fn-sjh-okp-at-owner-open-peer",
         "fn-sjh-okp-at-owner-chunk-span",
         "fn-sjh-files-okp-exec-is-files-okp",
@@ -10918,6 +10916,7 @@
         "fn-sjh-viewsp-at-owner-finish-identity",
         "fn-sjh-viewsp-at-host-article-finish",
         "fn-sjh-viewsp-of-ocfg-store-step",
+        "fn-sjh-viewsp-of-ocfg-step-view-event",
         "fn-sjh-viewsp-at-owner-chunk-span",
         "fn-sjh-okp-at-owner-chunk-span-fully-carried",
         "fn-sjh-okp-at-owner-open-captured-carried"
@@ -14119,8 +14118,7 @@
         "tests/test_native_header_lines.py"
       ],
       "events": [
-        "fn-inj-decide-line-length-is-a-long-header-line",
-        "fn-peer-decide-transfer-line-length-is-a-long-header-line"
+        "fn-inj-decide-line-length-is-a-long-header-line"
       ]
     },
     {
@@ -14728,33 +14726,7 @@
         "fn-onb-store-boundp-of-finish",
         "fn-onb-boundp-of-refresh",
         "fn-onb-boundp-of-psrv-prepare",
-        "fn-onb-boundp-at-owner-prepare-buffer",
-        "fn-onb-boundp-at-owner-prepare-identity",
-        "fn-onb-boundp-when-open-okp",
-        "fn-onbj-boundp-of-ocfg-step-owner-event",
-        "fn-onbj-boundp-at-owner-begin",
-        "fn-onbj-boundp-at-owner-declare-group",
-        "fn-onbj-boundp-at-owner-observe",
-        "fn-onbj-boundp-at-owner-node-secret",
-        "fn-onbj-boundp-at-owner-install-profile",
-        "fn-onbj-arm-acar-outcome",
-        "fn-onbj-boundp-at-owner-open-peer",
-        "fn-onbj-boundp-at-owner-log-reserve",
-        "fn-onbj-boundp-at-owner-log-order",
-        "fn-onbj-boundp-at-owner-open",
-        "fn-onbj-boundp-at-owner-open-captured",
-        "fn-onbj-boundp-at-owner-exposure-open",
-        "fn-onbj-boundp-at-owner-read-step",
-        "fn-onbj-boundp-at-owner-chunk-span",
-        "fn-onbj-boundp-at-owner-chunk-span-carried",
-        "fn-onbj-boundp-at-owner-chunk-span-fully-carried",
-        "fn-onbj-boundp-at-owner-known-abort",
-        "fn-onbj-boundp-at-owner-refuse-reservation",
-        "fn-onbj-boundp-of-ccar-ocfg-complete",
-        "fn-onbj-boundp-at-host-article-finish",
-        "fn-onbj-boundp-at-owner-prepare-buffer",
-        "fn-onbj-boundp-at-owner-reconfigure-complete",
-        "fn-onbj-open-okp-is-boundp-when-idle"
+        "fn-onb-boundp-at-owner-prepare-buffer"
       ]
     },
     {
@@ -15598,10 +15570,7 @@
         "tests/acl2/owner-maintenance-request-tests.lisp"
       ],
       "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
-      "events": [
-        "fn-omr-inspect-live-is-the-offline-report",
-        "fn-omr-inspect-status-is-the-offline-exit"
-      ]
+      "events": []
     },
     {
       "id": "PRF-965",
@@ -15619,9 +15588,7 @@
         "tests/acl2/owner-maintenance-request-tests.lisp"
       ],
       "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
-      "events": [
-        "fn-omr-transactions-at-most-bounds-the-count"
-      ]
+      "events": []
     },
     {
       "id": "PRF-988",
@@ -15638,7 +15605,8 @@
         "books/owner-export-request.lisp",
         "tests/acl2/owner-export-request-tests.lisp"
       ],
-      "progress_note": "Lane operability-4 (2026-09-29): the decision book REPL-admitted on persvati (15 forms) with its teeth (36 assert-events, 0 refused): the keystone's reachable positive witness (in flight, DIR absent -> :export-in-flight, not :requested) and the hypothesis-removal witness (nothing in flight -> :requested); every word reads back; the lines name the reason and what it would take. The host wiring (the admin arms `export request DIR' / `export status', the owner's capture + export thread, the client's wait) and the native case are the successor's; the theorems' subject is what that host calls."
+      "progress_note": "Lane operability-4 (2026-09-29): the decision book REPL-admitted on persvati (15 forms) with its teeth (36 assert-events, 0 refused): the keystone's reachable positive witness (in flight, DIR absent -> :export-in-flight, not :requested) and the hypothesis-removal witness (nothing in flight -> :requested); every word reads back; the lines name the reason and what it would take. The host wiring (the admin arms `export request DIR' / `export status', the owner's capture + export thread, the client's wait) and the native case are the successor's; the theorems' subject is what that host calls. Lane operability-7 (2026-09-29): the host calls it: host/native/admin.lisp fnn-owner-export-request (fn-oex-request-word over the lstat off the mutex and the exporter slot under it; the capture, the arena pin and the thread before the mutex is released: fn-owner-oex-capture, fnn-owner-export-start) and fnn-owner-export-status (fn-oex-status-word); the client host/native/operator.lisp fnn-operator-execute-export-live reads the word back (fn-oex-word-of-octets) and prints the owner's kind-23 line. Native tests.test_native_maintenance_live.test_store_export_answers_on_the_running_owner_and_the_archive_imports.",
+      "events": []
     },
     {
       "id": "PRF-972",
@@ -15656,9 +15624,7 @@
         "tests/acl2/owner-control-post-reason-tests.lisp"
       ],
       "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
-      "events": [
-        "fn-ocpr-line-names-the-reason-exactly-when-refused"
-      ]
+      "events": []
     },
     {
       "id": "PRF-983",
