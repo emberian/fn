@@ -44,6 +44,35 @@ class PayloadKindTests(unittest.TestCase):
     def test_the_held_row_accessor_is_checked_too(self):
         self.assertEqual(len(bad_sites("(defun f (h) (len (fn-held-payload h)))")), 1)
 
+    # W1 (entry-guards-2's finding): one hop from the accessor.
+    WIRE = {"fn-stx-lace-of-store", "fn-stx-index-of-store"}
+
+    def hop_sites(self, source):
+        form = ledger.Reader(source).top_level()[0][0]
+        bad = []
+        for item in form[3:]:
+            pk.wire_calls(item, self.WIRE, bad)
+        return bad
+
+    def test_retained_articles_into_the_octet_model_are_found(self):
+        # books/stx-lace.lisp fn-stx-lace's shape, fn-stx-store inlined
+        self.assertEqual(self.hop_sites(
+            "(defun f (node k) (fn-stx-lace-of-store "
+            "(fn-state-articles (fn-node-acceptance node)) k))"),
+            ["fn-stx-lace-of-store"])
+
+    def test_converted_articles_are_accepted(self):
+        self.assertEqual(self.hop_sites(
+            "(defun f (node k fn-arena) (fn-stx-lace-of-store (fn-articles-wire-of "
+            "(fn-state-articles (fn-node-acceptance node)) fn-arena) k))"), [])
+
+    def test_a_keyless_index_reads_no_payload(self):
+        # books/replay-identity-index.lisp fn-rii-sco-finalize-configured
+        self.assertEqual(self.hop_sites(
+            "(defun f (node) (fn-stx-index-of-store (fn-stx-store node) nil))"), [])
+        self.assertEqual(len(self.hop_sites(
+            "(defun f (node k) (fn-stx-index-of-store (fn-stx-store node) k))")), 1)
+
     def test_the_tree_has_no_undeclared_reader(self):
         findings, counts = pk.scan()
         self.assertEqual(findings, [])
