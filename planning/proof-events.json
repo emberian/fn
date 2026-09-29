@@ -13589,58 +13589,169 @@
     {
       "id": "PRF-957",
       "events": [
-        "fn-mpx-confirm-is-the-records-for",
-        "fn-mpx-records-is-the-records-for",
-        "fn-mpx-records-is-hist-msgid-records",
-        "fn-mpx-candidates-ascending",
-        "fn-mpx-candidates-below",
-        "fn-mpx-candidates-nat-listp",
-        "fn-mpx-spec-from-is-records-for"
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-confirm-is-the-records-for"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-records-is-the-records-for"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-records-is-hist-msgid-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-candidates-ascending"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-candidates-below"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-candidates-nat-listp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-spec-from-is-records-for"
+        }
       ]
     },
     {
       "id": "PRF-969",
       "events": [
-        "fn-mpxt-seqs-is-spec-from",
-        "fn-mpxt-confirm-is-the-spec",
-        "fn-mpxt-faithful-from-complete",
-        "fn-mpxt-candidates-ascending",
-        "fn-mpxt-candidates-below",
-        "fn-mpxt-candidates-nat-listp",
-        "fn-mpxt-put-preserves-faithful",
-        "fn-mpxt-put-run-finds",
-        "fn-mpxt-pages-okp-of-put-run",
-        "fn-mpxt-faithful-from-of-put-run"
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-seqs-is-spec-from"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-confirm-is-the-spec"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-faithful-from-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-candidates-ascending"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-candidates-below"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-candidates-nat-listp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-put-preserves-faithful"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-put-run-finds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-pages-okp-of-put-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-faithful-from-of-put-run"
+        }
       ]
     },
     {
       "id": "PRF-970",
       "events": [
-        "fn-mpxt-seqs-is-cat-msgid-seqs",
-        "fn-mpxt-spec-from-is-cat-seqs-for"
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-seqs-is-cat-msgid-seqs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-spec-from-is-cat-seqs-for"
+        }
       ]
     },
     {
       "id": "PRF-991",
       "events": [
-        "fn-mpxt-candidates-page-need",
-        "fn-mpxt-run-counted-is-run",
-        "fn-mpxt-candidates-counted-is-candidates",
-        "fn-mpxt-run-pages-at-most-k",
-        "fn-mpxt-run-len",
-        "fn-mpxt-reach-bounds",
-        "fn-mpxt-put-places-iff-not-saturated",
-        "fn-mpxt-put-unplaced-unchanged",
-        "fn-mpxt-put-run-unplaced-unchanged",
-        "fn-mpxt-add-saturated-keeps-the-table",
-        "fn-mpxt-grow-shape",
-        "fn-mpxt-copy-key-copies",
-        "fn-mpxt2p-is-fn-mpxtp",
-        "fn-mpxt-no-saturation-under-the-condition",
-        "fn-mpxt-key-info-separate-by-definition",
-        "fn-mpxt-key-octets-of-updates",
-        "fn-mpxt-add-key",
-        "fn-mpxt-set-key-faithful-nil"
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-candidates-page-need"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-run-counted-is-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-candidates-counted-is-candidates"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-run-pages-at-most-k"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-run-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-reach-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-put-places-iff-not-saturated"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-put-unplaced-unchanged"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-put-run-unplaced-unchanged"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-add-saturated-keeps-the-table"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-grow-shape"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-copy-key-copies"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt2p-is-fn-mpxtp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-no-saturation-under-the-condition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-key-info-separate-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-key-octets-of-updates"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-add-key"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-set-key-faithful-nil"
+        }
       ]
     },
     {
