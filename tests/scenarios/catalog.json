@@ -5634,8 +5634,14 @@
         "cases": [
           "NativeOperatorWideArgvTests.test_init_names_sixty_groups_and_a_live_command_carries_sixty_words"
         ],
-        "native": true
-      }
+        "native": true,
+        "record": "planning/evidence/operations-2026-09-28.md",
+        "log": "planning/evidence/operations-2026-09-28/native-head-operator_verbs.log"
+      },
+      "evidence": [
+        "tests/test_native_operator_verbs.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
     },
     {
       "id": "SCN-199",
@@ -5657,8 +5663,15 @@
           "AutoCheckpointTests.test_a_death_at_each_rotation_cut_of_the_owner_loses_nothing_acknowledged",
           "AutoCheckpointSourceTests.test_no_statvfs_runs_under_the_owner_mutex"
         ],
-        "native": true
-      }
+        "native": true,
+        "record": "planning/evidence/operations-2026-09-28.md",
+        "log": "planning/evidence/operations-2026-09-28/native-i4c-checkpoint_auto.log"
+      },
+      "evidence": [
+        "tests/test_native_checkpoint_auto.py",
+        "tests/test_native_log_compaction.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
     },
     {
       "id": "SCN-200",
@@ -5679,8 +5692,14 @@
         "cases": [
           "AutoCheckpointTests.test_store_compact_on_the_running_owner_is_a_request_it_answers_by_name"
         ],
-        "native": true
-      }
+        "native": true,
+        "record": "planning/evidence/operations-2026-09-28.md",
+        "log": "planning/evidence/operations-2026-09-28/native-i4c-checkpoint_auto.log"
+      },
+      "evidence": [
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
     },
     {
       "id": "SCN-203",
@@ -5702,8 +5721,14 @@
           "NativeBpCarryVerbTests.test_list_pause_resume_drop_and_the_request_gate",
           "NativeBpCarryVerbTests.test_usage_and_help"
         ],
-        "native": true
-      }
+        "native": true,
+        "record": "planning/evidence/operations-2026-09-28.md",
+        "log": "planning/evidence/operations-2026-09-28/native-head-bp_obligation.log"
+      },
+      "evidence": [
+        "tests/test_bp_obligation_native.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
     }
   ]
 }
