@@ -15156,6 +15156,18 @@
         {
           "kind": "theorem",
           "name": "fn-ovw-step-window-at-most-w"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-lines-is-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-of-commit-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-of-withdraw-pinned"
         }
       ]
     }

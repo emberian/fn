@@ -23,11 +23,17 @@
 ; measure fn-ovw-remaining strictly decreases at every step of a live
 ; cursor (fn-ovw-step-progresses), and a step's probes are the window's
 ; (fn-ovw-step-window-at-most-w: at most W numbers probed, at most W lines).
+; FRAME fn-ovw-step-of-commit-pinned / fn-ovw-step-of-withdraw-pinned: a
+; quantum run after a commit, or after a withdrawal marked at a later
+; version, answers what it answered before, for a cursor pinned at or below
+; the catalog's count (through fn-ovw-lines-is-view: a window's lines are a
+; function of the pinned view's articles and the arena).
 
 (in-package "ACL2")
 
 (include-book "served-catalog")
 (include-book "catalog-number-window")
+(include-book "catalog-refresh")
 
 (local (in-theory (disable (tau-system))))
 
@@ -372,3 +378,86 @@
            :use ((:instance fn-ovw-len-lines (group (nth 0 cur)) (k (nfix (nth 1 cur)))
                             (hi (fn-ovw-hi (nfix (nth 1 cur)) (nfix (nth 2 cur)) w))
                             (v (nth 3 cur)))))))
+
+; -----------------------------------------------------------------------------
+; FRAME: a cursor pinned at V resumes over a catalog that grew or withdrew
+; rows at later versions
+
+(local
+ (defthm fn-ovw-range-aux-is-walk
+   (implies (fn-cnx-freshp fn-cat)
+            (equal (fn-cnx-range-aux group k top v fn-cat)
+                   (fn-cnx-walk-range group k top v fn-cat)))
+   :hints (("Goal" :induct (fn-cnx-walk-range group k top v fn-cat)
+            :in-theory (e/d (fn-cnx-range-aux fn-cnx-walk-range)
+                            (fn-cnx-view-seq fn-cat-view-number-find fn-cnx-freshp))
+            :expand ((fn-cnx-range-aux group k top v fn-cat))))))
+
+; A window's lines are a function of the view's articles and the arena
+; alone: the served fold's lines over the numbers K..HI of the view.
+(defthm fn-ovw-lines-is-view
+  (implies (and (fn-cnx-freshp fn-cat) group)
+           (equal (fn-ovw-lines group k hi v fn-arena fn-cat)
+                  (fn-nov-lines-for-numbers
+                   group
+                   (fn-scat-kf group k hi (fn-cat-view-articles v fn-arena fn-cat))
+                   (fn-cat-view-articles v fn-arena fn-cat) fn-arena)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ovw-lines)
+                           (fn-cnx-range-aux fn-cnx-walk-range fn-scat-range-keep fn-scat-kf
+                            fn-nov-lines-for-numbers-cat fn-nov-lines-for-numbers
+                            fn-cat-view-articles fn-cnx-freshp))
+           :use ((:instance fn-scat-range-keep-of-walk (top hi))))))
+
+; FRAME: a commit (the catalog grows past the view) or a withdrawal marked
+; at a later version leaves a pinned view's window unchanged -- what lets a
+; cursor pinned at V resume after owner transitions.
+(defthm fn-ovw-lines-of-commit-pinned
+  (implies (and (fn-cnx-freshp fn-cat) group
+                (natp v) (<= v (fn-cat-count fn-cat)))
+           (equal (fn-ovw-lines group k hi v fn-arena (fn-cat-commit h fn-cat))
+                  (fn-ovw-lines group k hi v fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-ovw-lines fn-cat-view-articles fn-scat-kf fn-cat-commit-is-append fn-cat-view-articles-of-commit-pinned
+                               fn-nov-lines-for-numbers fn-cnx-freshp fn-ovw-lines-is-view)
+           :use ((:instance fn-ovw-lines-is-view)
+                 (:instance fn-ovw-lines-is-view (fn-cat (fn-cat-commit h fn-cat)))
+                 (:instance fn-cnx-freshp-of-commit (c fn-cat))
+                 (:instance fn-cat-view-articles-of-commit-pinned)))))
+
+(defthm fn-ovw-lines-of-withdraw-pinned
+  (implies (and (fn-cnx-freshp fn-cat) group
+                (natp v) (<= v (fn-cat-count fn-cat))
+                (natp target) (< target (fn-cat-count fn-cat)))
+           (equal (fn-ovw-lines group k hi v fn-arena (fn-cat-withdraw target by fn-cat))
+                  (fn-ovw-lines group k hi v fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-ovw-lines fn-cat-view-articles fn-scat-kf fn-cat-withdraw-is-mark fn-cat-view-articles-of-withdraw-pinned
+                               fn-nov-lines-for-numbers fn-cnx-freshp fn-ovw-lines-is-view)
+           :use ((:instance fn-ovw-lines-is-view)
+                 (:instance fn-ovw-lines-is-view (fn-cat (fn-cat-withdraw target by fn-cat)))
+                 (:instance fn-cnx-freshp-of-withdraw (c fn-cat))
+                 (:instance fn-cat-view-articles-of-withdraw-pinned)))))
+
+; A quantum after a commit or a later withdrawal answers what it would have
+; answered before it, for a cursor pinned at or below the catalog's count.
+(defthm fn-ovw-step-of-commit-pinned
+  (implies (and (fn-cnx-freshp fn-cat) (nth 0 cur)
+                (natp (nth 3 cur)) (<= (nth 3 cur) (fn-cat-count fn-cat)))
+           (equal (fn-ovw-step cur w fn-arena (fn-cat-commit h fn-cat))
+                  (fn-ovw-step cur w fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ovw-step)
+                           (fn-ovw-lines fn-cat-commit-is-append fn-nntp-stuff-lines fn-ovw-status
+                            fn-cnx-freshp fn-cat-count-is-len)))))
+
+(defthm fn-ovw-step-of-withdraw-pinned
+  (implies (and (fn-cnx-freshp fn-cat) (nth 0 cur)
+                (natp (nth 3 cur)) (<= (nth 3 cur) (fn-cat-count fn-cat))
+                (natp target) (< target (fn-cat-count fn-cat)))
+           (equal (fn-ovw-step cur w fn-arena (fn-cat-withdraw target by fn-cat))
+                  (fn-ovw-step cur w fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ovw-step)
+                           (fn-ovw-lines fn-cat-withdraw-is-mark fn-nntp-stuff-lines fn-ovw-status
+                            fn-cnx-freshp fn-cat-count-is-len)))))

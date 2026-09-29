@@ -93,3 +93,32 @@
        (not (equal (fn-ovw-run (fn-ovw-cursor "fn.test" :x 3 3 nil t) 2 *ovwt-a* *ovwt-c*)
                    (fn-ovw-reply (fn-ovw-lines "fn.test" :x 3 3 *ovwt-a* *ovwt-c*) nil t))))
   :rule-classes nil)
+
+;; FRAME (fn-ovw-step-of-commit-pinned): a fourth fn.test article commits
+;; after the pin.  POSITIVE: every hypothesis holds for the cursor pinned at
+;; 3 and its quantum is unchanged (and sends all three lines).  HYPOTHESIS
+;; REMOVAL (v <= count): the same cursor pinned at 4 over the old catalog --
+;; the retained hypotheses hold, the omitted one fails, and the quantum sees
+;; the new article, so the conclusion fails.
+(defconst *ovwt-p3* (append (fn-record-string-octets "Subject: d") '(13 10 13 10 68 13 10)))
+(defconst *ovwt-w3* (fn-record-make 3 4 4 "<d@x>" *ovwt-p3* '("fn.test") "o" "s" "e" 1 5))
+(defconst *ovwt-a4* (list *ovwt-p0* *ovwt-p1* *ovwt-p2* *ovwt-p3*))
+(defconst *ovwt-h3* (ovwt-held *ovwt-w3* 3 nil))
+
+(defthm ovwt-step-of-commit-pinned-witness
+  (let ((cur (fn-ovw-cursor "fn.test" 1 4 3 nil t)))
+    (and (fn-cnx-freshp *ovwt-c*) (nth 0 cur) (natp (nth 3 cur))
+         (<= (nth 3 cur) (fn-cat-count *ovwt-c*))
+         (equal (fn-ovw-step cur 7 *ovwt-a4* (fn-cat-commit *ovwt-h3* *ovwt-c*))
+                (fn-ovw-step cur 7 *ovwt-a4* *ovwt-c*))
+         (equal (len (fn-ovw-lines "fn.test" 1 4 3 *ovwt-a4* *ovwt-c*)) 3)))
+  :rule-classes nil)
+
+(defthm ovwt-step-of-commit-needs-pinned-view
+  (let ((cur (fn-ovw-cursor "fn.test" 1 4 4 nil t)))
+    (and (fn-cnx-freshp *ovwt-c*) (nth 0 cur) (natp (nth 3 cur))
+         (not (<= (nth 3 cur) (fn-cat-count *ovwt-c*)))
+         (equal (len (fn-ovw-lines "fn.test" 1 4 4 *ovwt-a4* (fn-cat-commit *ovwt-h3* *ovwt-c*))) 4)
+         (not (equal (fn-ovw-step cur 7 *ovwt-a4* (fn-cat-commit *ovwt-h3* *ovwt-c*))
+                     (fn-ovw-step cur 7 *ovwt-a4* *ovwt-c*)))))
+  :rule-classes nil)
