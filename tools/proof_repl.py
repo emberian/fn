@@ -1031,6 +1031,8 @@ def encapsulated(text: str, directory: Path, skip: set[str],
     belongs in the session anyway; a local one stays inside, local.  With
     LIMIT, each event inside is wrapped in `with-prover-time-limit`, as a
     `send` is, so one runaway lemma costs LIMIT seconds, not the session.
+    The encapsulate is empty text when no embedded events remain; an
+    include-only umbrella still exports its successfully loaded dependencies.
     """
     hoisted: list[str] = []
     kept: list[str] = []
@@ -1042,7 +1044,9 @@ def encapsulated(text: str, directory: Path, skip: set[str],
             hoisted.append(form)
         else:
             kept.append(wrap_limit(form, limit))
-    return hoisted, "(encapsulate ()\n" + "\n".join(kept) + "\n)"
+    # Include-only umbrellas have no embedded events after hoisting/skips.
+    # ACL2 rejects an empty encapsulate; the includes already export the world.
+    return hoisted, ("(encapsulate ()\n" + "\n".join(kept) + "\n)" if kept else "")
 
 
 TIME_LIMIT_MARK = "[Time-limit]"
@@ -1115,6 +1119,9 @@ def load_book(acl2: Acl2, book: str, state: dict, load_timeout: float,
                     note_refusal(state, output, limit)
                 state["load_timed_out"] = timed_out
                 return False
+        if not body:
+            state["ld_loaded"][book] = "encapsulated"
+            return True
         output, timed_out = acl2.send(body, hard * 4)
         if timed_out or errored(output):
             state["stopped_at"] = (where + "(encapsulate of the book; start with --ld-leak "
@@ -2477,7 +2484,7 @@ def send_range(args) -> int:
         hoisted, body = encapsulated("\n".join(form for _, form in items), path.parent,
                                      set(), None)
         items = ([(form_label(0, form).split(" ", 1)[1], form) for form in hoisted]
-                 + [(f"#{chosen.start + 1}-#{chosen.stop} (encapsulate)", body)])
+                 + ([(f"#{chosen.start + 1}-#{chosen.stop} (encapsulate)", body)] if body else []))
     return send_many(args.name, items, args.limit, args.full, args.keep_going)
 
 
