@@ -5083,14 +5083,18 @@
       "specification": "docs/extensions/nntp-compress-dict.md",
       "milestone": "M5",
       "status": "specified",
-      "proof_targets": [],
+      "proof_targets": [
+        "PRF-974"
+      ],
       "verification": [
         "proof",
         "test"
       ],
       "evidence": [
         "docs/extensions/nntp-compress-dict.md",
-        "specs/nntp.md"
+        "specs/nntp.md",
+        "books/nntp-compress-dict.lisp",
+        "tests/acl2/nntp-compress-dict-tests.lisp"
       ]
     },
     {

@@ -14204,6 +14204,30 @@
         "planning/evidence/pkt-615-number-bound-2026-09-28.md"
       ],
       "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound."
+    },
+    {
+      "id": "PRF-974",
+      "title": "The wire dictionary negotiation's decisions (NNT-055): a stored payload goes to a peer as it is stored exactly when the peer holds the frame's shipped dictionary",
+      "statement": "books/nntp-compress-dict.lisp (lane compress-4). fn-zdn-choose (Z, the stored payload-lz-record frame; DIGESTS, the BLAKE3 digests an XFN-ZARTICLE request lists): KEYSTONE fn-zdn-choose-stored-only-shared: a (:stored D) answer has a frame that parses, D the digest the shipped table records for the frame's DICT-ID, and D one the peer listed; KEYSTONE fn-zdn-choose-complete: a parsed frame whose recorded digest the peer listed is always answered stored; every other payload (DICT-ID 0, not a frame, a dictionary the peer lacks) is :decoded. fn-zdn-request-shape: a parsed XFN-ZARTICLE names a message-id and one 32-octet digest per hex token. fn-zdn-capability-line: XFN-DICT and the shipped digests, newest first. The host wiring (the command, the reply framing, CAPABILITIES) is not served yet.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-055"
+      ],
+      "depends_on": [
+        "PRF-911"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/nntp-compress-dict.lisp",
+        "tests/acl2/nntp-compress-dict-tests.lisp"
+      ],
+      "progress_note": "Lane compress-4 (Opus 5.5, 2026-09-29): REPL-green on persvati (book and teeth: stored witness, peer-without-the-dictionary removal witness, must-fail without membership, decoded witnesses, request and capability witnesses). Not wired: see NNT-055.",
+      "events": [
+        "fn-zdn-choose-stored-only-shared",
+        "fn-zdn-choose-complete",
+        "fn-zdn-request-shape"
+      ]
     }
   ]
 }

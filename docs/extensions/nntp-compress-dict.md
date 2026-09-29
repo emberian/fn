@@ -134,5 +134,17 @@ extension sees plain `COMPRESS DEFLATE`.
   identity. A peer that does not hold it asks with `ARTICLE`. The sender
   never decodes anything to answer.
 
+The decisions are ACL2's (`books/nntp-compress-dict.lisp`, PRF-974):
+`fn-zdn-capability-line` makes the `XFN-DICT` line, `fn-zdn-request`
+parses `XFN-ZARTICLE <message-id> <b3-hex> [<b3-hex> ...]` (the request
+lists the digests the asking peer holds, so no session state is needed),
+and `fn-zdn-choose` decides each reply: the stored frame as it is stored
+when the peer listed the digest the shipped table records for the frame's
+DICT-ID, otherwise the article decoded here and sent as `ARTICLE` sends it
+(raw, or inside the connection's `COMPRESS DEFLATE` layer). Open for the
+wiring: the frame is binary, so the reply line carries its octet count and
+the receiver checks the unstuffed body against it (dot-stuffing alone is
+not octet-transparent at the body's end).
+
 Security (RFC 8054 section 7) is unchanged. A dictionary is public, and it
 adds no secret to the compressed lengths.

@@ -13605,6 +13605,23 @@
           "name": "fn-zpl-ready-window-is-list"
         }
       ]
+    },
+    {
+      "id": "PRF-974",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-zdn-choose-stored-only-shared"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zdn-choose-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zdn-request-shape"
+        }
+      ]
     }
   ]
 }

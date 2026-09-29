@@ -19,6 +19,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-pzd-` | `payload-deflate` | The stored payload's codec: `fn-pzd-decode` (DEFLATE over a preset dictionary through the inflater's payload decoder) and its host entry `fn-pzd-decode-bufs`; a stored-block encoder for witnesses |
 | `fn-zfr-` | `deflate-frame` | The payload decoder's window frame: `fn-zin-loop-ahead` writes only ring cells below min(TOUT, 32 KiB), never the preset half (`fn-zfr-loop-ahead-frame`, PRF-948) |
 | `fn-zpl-` | `deflate-pool`, `deflate-pool-check` | The served read's pooled payload decoder `fn-zpl-decode-bufs`: a window kept across payloads under the pool invariant `fn-zpl-pool-okp` (PRF-949) |
+| `fn-zdn-` | `nntp-compress-dict` | The wire dictionary negotiation's decisions (NNT-055, PRF-974): XFN-DICT, XFN-ZARTICLE's parse, stored-or-decoded per reply |
 | `fn-lzd-` | `payload-lz-dicts`, `payload-lz-dict-1` | The shipped preset dictionaries by digest: DICT-ID = the first four BLAKE3 octets, the append-only table, the current dictionary |
 | `fn-zc-` | `nntp-compress` | The COMPRESS command's decisions (RFC 8054): algorithms, grammar, who may compress, the capability filter, the outbound stream's parameters and cost |
 | `fn-cbor-` | `cbor`, `cbor-invariants` | Deterministic CBOR primitives: uint32 and definite byte strings |
