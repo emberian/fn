@@ -6,6 +6,7 @@
 (include-book "../../books/records-attach-concrete")
 (include-book "must-fail-checked")
 (include-book "owner-served-invariants-tests")
+(local (in-theory (enable fn-rcon-record-twin-rules fn-rcon-event-twin-rules)))  ; Q3f: the concrete twins' equalities
 
 ; Reachable witness: the article record owner-served-invariants-tests'
 ; *osi-completing* is completing (reached by fn-own-run from owner-tests).

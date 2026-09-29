@@ -289,6 +289,9 @@ class Talk:
     def post(self, octets):
         self.command("POST", "340")
         self.article(octets)
+        # The 240 read here is the line books/productive-observer.lisp names
+        # (fn-pcx-observer-240-code, PRF-1003): the first three octets of
+        # *fn-pcx-240-line*, the durable outcome fn-pcx-post-productive reaches.
         return self.expect("240", "441", "480", "502")
 
     def quit(self):

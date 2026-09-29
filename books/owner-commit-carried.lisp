@@ -45,6 +45,7 @@
 (include-book "records-concrete")
 (include-book "store-events-carried")
 (include-book "owner-prepare-carried")
+(local (in-theory (enable fn-rcon-record-twin-rules fn-rcon-event-twin-rules)))  ; Q3f: the concrete twins' equalities
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
