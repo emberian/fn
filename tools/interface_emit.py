@@ -20,7 +20,12 @@ the same forms with the ledger's non-evaluating reader and GENERATES:
   world says about each entry (its direct theorems, the ones about its
   callers or callees, and nothing), from a dump of the world, not a name match;
 
-and hands tools/harness_check.py its exempt formals (`entry_kind_exempt')
+`--kinds' compares every declaration's :kinds with the kinds its guard gives
+(tools/interface_kinds.py, from source, no ACL2: the refusal
+books/definterface.lisp would give at image build), and `--kinds NAME...'
+prints the :kinds a new declaration of NAME needs.
+
+It also hands tools/harness_check.py its exempt formals (`entry_kind_exempt')
 and its direct applications (`entry_direct_allowed'), which were hand lists
 there.
 
@@ -301,11 +306,43 @@ def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
     return out
 
 
+def kinds_main(names: list[str], root: Path = ROOT) -> int:
+    """`--kinds': the guard kinds the image build will require, from source."""
+    from tools import interface_kinds
+    kinds = interface_kinds.entry_guard_kinds(root)
+    defs = interface_kinds.definitions(root)
+    if names:
+        missing = 0
+        for name in names:
+            found = defs.get(name.lower())
+            if found is None:
+                print("{}: defined by no book or ACL2-mode host file".format(name))
+                missing += 1
+                continue
+            print("{} ({}) :kinds {}".format(
+                name.lower(), found[0],
+                interface_kinds.render(interface_kinds.kinds_of(found[1], kinds))))
+        return 1 if missing else 0
+    decls = declarations(root)
+    problems = interface_kinds.disagreements(decls, defs, kinds)
+    print("interface_emit --kinds: {} declared, {} defined in source; {} disagreement(s)".format(
+        len(decls), sum(1 for d in decls if d["name"] in defs), len(problems)))
+    for problem in problems:
+        print("  " + problem)
+    return 1 if problems else 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--write", action="store_true")
+    parser.add_argument("--kinds", nargs="*", metavar="NAME", default=None,
+                        help="compare every declaration's :kinds with its guard "
+                             "(tools/interface_kinds.py; no ACL2), or print the "
+                             ":kinds of each NAME")
     args = parser.parse_args(argv)
+    if args.kinds is not None:
+        return kinds_main(args.kinds)
     if args.write:
         from tools import acl2_slots  # noqa: E402
         acl2_slots.refuse_on_laptop("tools/interface_emit.py --write")
