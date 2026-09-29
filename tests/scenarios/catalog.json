@@ -6236,6 +6236,68 @@
         "planning/evidence/resilience-bp-control-2026-09-29.md"
       ],
       "execution_scope": "Source adapter staged for schedule-receipt-observed-reorder. BP live-control source and a matching runner image/native run remain pending; adapter unit tests do not establish native activation or receipt ordering."
+    },
+    {
+      "id": "SCN-217",
+      "title": "Offline snapshot blessing validates stopped-copy fixtures and real reopen, names missing marker/key and malformed store/key and refuses a foreign lineage",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-039"
+      ],
+      "steps": [
+        "Copy a stopped three-article store; explicitly supply the producer completion observation marker; bless, start the copy and retrieve each article. Remove marker or key, corrupt the key or profile; preserve first-failure refusal. Diverge copied stores and install a foreign checkpoint; blessing refuses its lineage."
+      ],
+      "expected": [
+        "Blessed iff the marker, own read-only open and node-secret observations hold; accepted exit 0, named refusal exit 1. Missing marker omits open even with malformed profile. A complete older own-lineage copy remains accepted (no freshness guarantee)."
+      ],
+      "implementation": {
+        "test": "tests.test_native_snapshot_bless",
+        "cases": [
+          "test_stopped_copy_blesses_reopens_and_names_missing_and_malformed_inputs",
+          "test_foreign_lineage_is_refused_and_complete_old_lineage_is_explicitly_allowed"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_snapshot_bless.py"
+      ],
+      "scope_note": "Stopped-copy fixtures explicitly supply SNAPSHOT. No running snapshot producer or atomic-capture claim."
+    },
+    {
+      "id": "SCN-216",
+      "title": "Cold pread cancellation, retired file ownership and late completion",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017"
+      ],
+      "steps": [
+        "Issue and hold an actual cold pread off both locks; release within deadline and read original article.",
+        "Issue another cold pread, observe 403 deadline, disconnect the client, open a replacement request and install a reclaim that retires the old file.",
+        "Observe close-held for that issued file before release; deliver success, injected stale and duplicate completion variants; assert no publish after cancellation and eventual descriptor close.",
+        "Deliver short/error after timeout and assert named store fault and fault exit rather than an unobserved detached exception."
+      ],
+      "expected": [
+        "Matching verified success advances the original request with exact article bytes.",
+        "Cancellation retains buffer/fd ownership; retirement cannot close the fd while worker still runs.",
+        "Late completion never delivers into the replacement request; duplicate/stale has no second publication or settlement.",
+        "Late error/short faults the store, with no fabricated article and no uncertain/absent classification."
+      ],
+      "implementation": {
+        "test": "tests.test_native_page_io",
+        "cases": [
+          "PageIOTests.test_matching_success_publishes_and_advances_the_original_request",
+          "PageIOTests.test_cancel_retire_and_reuse_keep_the_old_fd_until_actual_completion",
+          "PageIOTests.test_a_late_short_or_error_is_settled_and_fences_the_store"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_page_io.py",
+        "tests/acl2/page-read-ownership-tests.lisp"
+      ],
+      "execution_scope": "Pending matching union image; ownership only, no funded worker/buffer admission claim."
     }
   ]
 }

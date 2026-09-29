@@ -656,6 +656,19 @@ the release first (`BP carry recovered waiver release work=WORK`).
 Copying while the node runs may miss the newest article. Keep the `keys`
 folder private: it holds the node's secret.
 
+A copy produced as a snapshot can be checked without starting it:
+
+```text
+fn operator /path/to/fn.toml store bless-snapshot /var/backups/fn-snapshot
+```
+
+This checks the copy's `SNAPSHOT` completion marker, opens its own store
+history read-only, and checks the node secret. It names a missing marker,
+a refused open (including `foreign-lineage`), or a missing secret; a valid
+copy prints `blessed snapshot=DIR transactions=N`. It does not check how
+recent the copy is. The running `store snapshot` producer is still under
+development; ordinary folder copies do not have its completion marker.
+
 **Restoring an older copy reissues article numbers.** Articles posted or
 fed after the backup are gone from the restored store, and the next ones
 take their numbers again. A reader who saw number 42 as one article now

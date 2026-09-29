@@ -9,7 +9,10 @@
 ;;; function by function.
 ;;;
 ;;; Calls into ACL2 go through `fnn-call`, which applies the executable
-;;; counterpart (ACL2_*1*_ACL2) of the selected wrapper or logical function.
+;;; counterpart (ACL2_*1*_ACL2) of the selected wrapper or logical function,
+;;; or -- for an entry declared `:raw-with' (D40, RAW DISPATCH below) -- its
+;;; guard-verified definition, the guard's carried conjuncts held by the
+;;; named preservation theorems instead of evaluated per call.
 ;;; This does not prove that every inner call rechecks its guards. In particular,
 ;;; :program host wrappers are not guard-verified caller proofs; their raw
 ;;; execution can rely on arguments/global state satisfying a callee's guards.
@@ -1140,13 +1143,85 @@ offered to the writer while the owner runs (PKT-508), else written here."
 
 ;;; ---------------------------------------------------------------------------
 ;;; Calls into the certified core: the executable counterpart of each host
-;;; wrapper, exactly as the interpreted bridge evaluates it.
+;;; wrapper, exactly as the interpreted bridge evaluates it -- or, for an
+;;; entry declared `:raw-with' (D40), the guard-verified definition itself.
 
 (defun fnn-counterpart (name)
   (let ((symbol (find-symbol (symbol-name name) "ACL2_*1*_ACL2")))
     (unless (and symbol (fboundp symbol))
       (fnn-fault "ACL2 executable counterpart missing: ~a" name))
     symbol))
+
+;;; RAW DISPATCH (D40, lane depth-debt-9).  The executable counterpart
+;;; (*1*) of a guard-verified entry evaluates the entry's whole guard and
+;;; then runs the raw definition; for the owner's served entries that guard
+;;; is fn-sn-statep of the live Store -- the whole-node revalidation
+;;; AGENTS.md forbids on a served path -- and it cannot be a stobj invariant
+;;; (fn-sn-statep depends on fn-digest, which has an attachment;
+;;; stobj-attachment-restrictions).  Guard verification is the condition
+;;; for faithful raw execution: where the guard holds, the raw definition IS
+;;; the logical function.  So an entry whose guard is an invariant the host
+;;; establishes at the open and every transition preserves -- named, per
+;;; entry, by the theorems of its `:raw-with' declaration
+;;; (host/interfaces.lisp; books/definterface.lisp refuses the annotation at
+;;; image build unless the theorems exist in the loaded world and conclude
+;;; the guard's carried conjuncts) -- is dispatched to its raw definition.
+;;; The entry guard (arity and kind checks, below) runs before either
+;;; dispatch, exactly as before; what raw dispatch skips is the carried
+;;; conjuncts alone.
+;;;
+;;; The table is derived from the loaded world at image build
+;;; (fnn-install-raw-dispatch, called by host/native/build.lisp after this
+;;; file loads): each `:raw-with' entry of the `fn-interfaces' table, refused
+;;; unless its raw symbol is bound and its symbol-class is
+;;; :common-lisp-compliant, so an unknown dispatch target stops the build.
+;;; The developer selector FN_NATIVE_DISPATCH_COUNTERPART=1 keeps the
+;;; counterpart path for every entry (tests.test_native_owner runs the served
+;;; POST both ways and requires identical replies); a production image has no
+;;; selector and always dispatches raw.  planning/interfaces.json lists the
+;;; raw-dispatched entries (tools/interface_emit.py).
+
+(defvar *fnn-raw-dispatch* (make-hash-table :test 'eq)
+  "entry name -> its raw (guard-verified, compiled) function symbol")
+
+(defvar *fnn-dispatch-counterpart* nil
+  "T when the developer selector keeps the executable-counterpart path.")
+
+(defun fnn-install-raw-dispatch ()
+  "Fill *fnn-raw-dispatch* from the fn-interfaces table of the loaded world:
+the :raw-with entries, each checked against the world; the count."
+  (let ((wrld (w *the-live-state*)))
+    (clrhash *fnn-raw-dispatch*)
+    (dolist (entry (table-alist 'fn-interfaces wrld))
+      (let ((name (car entry))
+            (theorems (cadr (assoc-keyword :raw-with (cdr entry)))))
+        (when theorems
+          ;; Recheck the loaded table at the dispatch installation boundary,
+          ;; rather than assuming every table entry came from definterface.
+          (let ((problem (fn-di-raw-with-problem name (cdr entry) wrld)))
+            (when problem
+              (error "fnn-install-raw-dispatch: ~a has a refused declaration: ~s"
+                     name problem)))
+          (let ((raw (find-symbol (symbol-name name) "ACL2")))
+            (unless (and raw (fboundp raw))
+              (error "fnn-install-raw-dispatch: ~a is declared :raw-with but has no raw definition" name))
+            (unless (eq (symbol-class name wrld) :common-lisp-compliant)
+              (error "fnn-install-raw-dispatch: ~a is declared :raw-with but is ~a, not guard-verified"
+                     name (symbol-class name wrld)))
+            (setf (gethash name *fnn-raw-dispatch*) raw)
+            (format t "~&FN_RAW_DISPATCH ~(~a~) ~(~a~) invariant-risk=~a with=~(~a~)~%"
+                    name (symbol-class name wrld)
+                    (if (getpropc name 'invariant-risk nil wrld) "t" "nil")
+                    theorems)))))
+    (hash-table-count *fnn-raw-dispatch*)))
+
+(defun fnn-dispatch-function (name)
+  "The function fnn-call applies for NAME: its raw definition when NAME is
+raw-dispatched and the counterpart selector is off, else its executable
+counterpart."
+  (or (and (not *fnn-dispatch-counterpart*)
+           (gethash name *fnn-raw-dispatch*))
+      (fnn-counterpart name)))
 
 ;;; The entry guard (lane entry-guards, 2026-09-27).  Every call into the
 ;;; core passes through fnn-call; before the counterpart runs, the host checks
@@ -1249,7 +1324,7 @@ execution-boundary fault, never a claim that the core refused an input."
     (setq values
           (catch 'raw-ev-fncall
             (handler-case
-                (prog1 (multiple-value-list (apply (fnn-counterpart name) args))
+                (prog1 (multiple-value-list (apply (fnn-dispatch-function name) args))
                   (setq outcome :ok))
               (serious-condition (c)
                 (setq outcome (princ-to-string c))
@@ -4423,6 +4498,29 @@ by fn-bs-imp-classify."
         (fnn-out "imported records=~d configuration=~d" count (length configs))
         +fnn-exit-ok+))))
 
+(defun fnn-command-store-bless-snapshot (dir)
+  "S7a: read-only validation of an existing copy, not a snapshot producer.
+
+ACL2 decides which observation is needed, its first refusal, the report and
+exit.  A regular SNAPSHOT is a producer completion observation, not evidence
+that this host produced an atomic copy.  The read-only open checks the copy's
+own lineage; no observation of the currently configured store is used."
+  (let* ((markerp (and (fnn-check-regular (fnn-join dir "SNAPSHOT")) t))
+         (opened :never-observed) (count 0) (keysp nil))
+    (when (fnn-core 'fn-osn-bless-open-needed markerp)
+      (handler-case
+          (multiple-value-bind (store records) (fnn-open-live-store dir nil)
+            (unwind-protect
+                 (setf opened :ok count records
+                       keysp (and (fnn-node-secret-read-entry
+                                   (fnn-node-secret-path store) "node secret") t))
+              (fnn-store-close store)))
+        (fnn-store-open-refusal (condition)
+          (setf opened (fnn-message condition)))))
+    (let ((word (fnn-core 'fn-osn-bless-word markerp opened keysp)))
+      (fnn-out "~a" (fnn-core 'fn-osn-bless-line word dir opened count))
+      (fnn-core 'fn-outcome-code (fnn-core 'fn-osn-bless-status word)))))
+
 (defun fnn-read-up-to (fd n)
   "At most N octets from FD's position, fewer only at end of file."
   (let ((data (fnn-make-octets n)) (at 0))
@@ -5777,6 +5875,11 @@ tree root), or stop the build."
 ;;; not (review of the dabebb84 campaign, F4 to F6).
 (defparameter +fnn-developer-selectors+
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
+    ;; lane join-f2-13: the OVER/XOVER cursor quantum (numbers per hold of
+    ;; the owner mutex) for the natives; ACL2's fn-splan-cursor-window
+    ;; decides the value (books/served-plan-cursor.lisp).
+    "FN_NATIVE_OVER_WINDOW"
+    "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM"
     ;; the extraction gate's stateful differential (tools/extract/stateful.py):
     ;; a recorded clock observation and a recorded entropy stream, the
     ;; environment readings the image and the extracted program then share.
@@ -5785,10 +5888,14 @@ tree root), or stop the build."
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST" "FN_NATIVE_RECLAIM_FAULT"
     "FN_NATIVE_TEST_RECLAIM_STALL_FILE" "FN_NATIVE_RECLAIM_HOLD"
     "FN_NATIVE_PAGE_READ_HOLD"
+    "FN_NATIVE_PAGE_IO_HOLD" "FN_NATIVE_PAGE_IO_RESULT"
     "FN_NATIVE_DISK_FREE"
     "FN_NATIVE_EXTENT_CACHE_TEST_OFF"
     ;; host/native/digest.lisp: the matched measurement's reference arm.
     "FN_NATIVE_DIGEST_TEST_OFF"
+    ;; D40: the executable-counterpart path for every :raw-with entry, so a
+    ;; native compares the served path both ways (fnn-dispatch-function).
+    "FN_NATIVE_DISPATCH_COUNTERPART"
     "FN_NATIVE_IMPORT_COMPRESS_MIN_TEST"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
     "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
@@ -8019,6 +8126,17 @@ segment' (tests/test_native_topic_local.py)."
                  ((string= command "digest") (fnn-command-store-digest root))
                  ((string= command "journal") (fnn-command-store-journal root))
                  ((string= command "export") (need 4) (fnn-command-store-export root (first rest)))
+                 ((string= command "bless-snapshot")
+                  ;; The direct store entry reuses the operator's grammar.
+                  ;; ROOT is the CLI context, never the copy that is opened.
+                  (let ((plan (fnn-core 'fn-nop-parse-store (cons command rest) nil)))
+                    (if (eq (fnn-core 'fn-native-operator-host-result-status plan) :accepted)
+                        (fnn-command-store-bless-snapshot
+                         (fnn-octets-string
+                          (fnn-core 'fn-native-operator-host-result-archive-path-octets plan)))
+                      (progn
+                        (fnn-operator-emit-result plan)
+                        (fnn-core 'fn-native-operator-host-result-exit-code plan)))))
                  ((string= command "import") (need 4) (fnn-command-store-import root (first rest) nil))
                  ((string= command "retention") (fnn-command-retention root))
                  ((string= command "compression") (fnn-command-compression root))
@@ -8357,6 +8475,12 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                  (fnn-developer-selector-gate argv)
                  (unless (eq (fnn-global 'guard-checking-on) t)
                    (fnn-fault "guard-checking-on is not t in the saved image"))
+                 ;; D40: a developer image may keep the counterpart path.
+                 (setq *fnn-dispatch-counterpart*
+                       (equal (fnn-developer-selector "FN_NATIVE_DISPATCH_COUNTERPART") "1"))
+                 (when *fnn-dispatch-counterpart*
+                   (fnn-err "fn-dispatch: counterpart for ~d raw-dispatched entries (FN_NATIVE_DISPATCH_COUNTERPART)"
+                            (hash-table-count *fnn-raw-dispatch*)))
                  (fnn-dispatch argv))
              (fnn-usage-error (e)
                (fnn-err "fn-host: error: ~a" e)

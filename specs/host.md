@@ -418,7 +418,30 @@ executable counterpart (`fnn-call`, the raw-Lisp spelling of `ec-call`), under
 the image's `guard-checking-on`, which the entry asserts is `t`, the same
 policy the interpreted bridge evaluates under. A `:program` wrapper therefore
 runs raw beneath its counterpart in both hosts; the complete call-graph guard
-requirement of packet C3-05 is unchanged by the packaging.
+requirement of packet C3-05 is unchanged by the packaging. One exception, by
+declaration (D40): an entry whose `definterface` carries `:raw-with (THM ...)`
+is applied as its guard-verified definition, not its counterpart --
+guard verification is the condition for faithful raw execution, and the named
+theorems are the argument that the guard's carried conjuncts (the owner's
+`fn-sn-statep` of the live Store, established at the open and preserved by
+every transition) hold at the call. `books/definterface.lisp` checks declaration
+shape against the loaded world, including a positive predicate conclusion.
+That lint does not prove that theorem premises hold or that its arguments
+name the entry's actual state and effects. The five proposed owner annotations
+are withheld until that host-subject argument exists; they still use their
+executable counterparts. The entry guard's arity and kind checks run before
+either dispatch, and
+`planning/interfaces.json` (`raw_dispatched`) lists every such entry. The
+developer image keeps the counterpart path behind
+`FN_NATIVE_DISPATCH_COUNTERPART=1` so a native can compare both.
+
+The off-mutex owner reclamation rebuild calls the logical entry
+`fn-owner-orcp-rebuild` (books/owner-reclaim-carry.lisp). Its returned field 2
+always satisfies `fn-prc-carryp` (PRF-1060), including a refused open's nil
+carry. This initializes a returned value; live installation and later carry
+preservation remain separate obligations. Its cold callees are not all
+guard-verified, so the entry remains `:ideal`; this theorem enables no raw
+owner dispatch.
 
 ### The saved image's memory
 
@@ -1540,3 +1563,30 @@ HST-036: Maintenance while serving (row S3, PRF-964, PRF-965). `recover` and `st
 HST-034: Compaction needs no stop (PKT-868, PRF-908). `store compact` and `store checkpoint` on a running owner are a request it answers by name (requested, coalesced, nothing-to-compact, refused while a deferral blocks) and serves with its own publication in bounded batches off its mutex; KEYSTONE `fn-ock-requested-next-is-due-with-a-suffix`.
 
 HST-035: The operator lists, inspects, pauses, resumes and drops the BP carry obligations (PKT-869, PRF-914) with `operator CONFIG carry JOURNAL ...`; each control is a durable record of the carry journal (domain `:carry`, frame FNCC) ACL2 decides, and a paused or dropped work's request is refused by name before anything is written (KEYSTONE `fn-bpcc-gate-refuses-a-held-work`). A drop keeps the Store pin: only the receipt's evidence releases it, or the operator's waiver, `carry JOURNAL drop WORK --abandon REASON` (PRF-950): a `:waive` record of the carry journal (the principal, ACL2's rendering of the effective uid, and the reason) decided only while the pin stands (`reason=not-held` otherwise), made durable before the Store retention event it authors, which is the receipt's own event (the pin's id, subject and evidence; `fnn-owner-retention-commit`), so retention has one release path. A waiver durable without its Store event (a process death between the two) is completed at the next writable owner open; once the pin is gone ACL2 authors no second event, and a later receipt for the work is refused (`carry-waived`) (KEYSTONE `fn-bpcw-waiver-releases-exactly-once`; `fn-bpcw-only-a-waiver-waives`).
+
+
+### Offline snapshot blessing
+
+HST-039 (S7a, local fn policy): `operator CONFIG store bless-snapshot DIR`
+(or `store ROOT bless-snapshot DIR`) validates the named copy read-only.
+It requires a regular `DIR/SNAPSHOT` completion marker before opening the
+copy. ACL2 `fn-osn-bless-open-needed` omits the open when the marker is
+absent; `fn-osn-bless-word` selects the first failing observation:
+`snapshot-incomplete`, `open-refused` with the open's own refusal sentence,
+or `no-node-secret`. The copy's open checks its own checkpoint/log lineage,
+and the existing node-secret reader checks the key file's regularity,
+permissions and ACL2-decoded format. The configured source store is never
+opened by this action. Accepted output is `blessed snapshot=DIR
+transactions=N`; the exit code follows ACL2's status. PRF-1050 states the
+three-observation blessing predicate, with teeth in
+`tests/acl2/owner-snapshot-request-tests.lisp`; SCN-217 exercises the host.
+
+The marker is the producer's completion observation, not authentication of
+a snapshot producer or proof of atomic capture. Its fields are provenance.
+A complete older copy may open; blessing does not determine freshness or
+prevent local number reuse on restoration. S7's running snapshot producer
+remains unfinished: bounded file-set ownership across replacement/unlink,
+its committed frontier and concurrent key/configuration changes, and its
+marker-last durability program need their own implementation and evidence.
+SCN-217 uses stopped copies with explicitly supplied completion-observation
+fixtures; it establishes no running-capture guarantee.
