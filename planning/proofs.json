@@ -10881,7 +10881,6 @@
         "fn-sjh-okp-at-owner-unstage",
         "fn-sjh-okp-at-owner-node-secret",
         "fn-sjh-okp-at-owner-install-profile",
-        "fn-sjh-okp-at-owner-outcome",
         "fn-sjh-okp-at-owner-open-peer",
         "fn-sjh-okp-at-owner-chunk-span",
         "fn-sjh-files-okp-exec-is-files-okp",
@@ -10903,7 +10902,6 @@
         "fn-sjh-viewsp-at-owner-finish-identity",
         "fn-sjh-viewsp-at-host-article-finish",
         "fn-sjh-viewsp-of-ocfg-store-step",
-        "fn-sjh-viewsp-of-ocfg-step-view-event",
         "fn-sjh-viewsp-at-owner-chunk-span",
         "fn-sjh-okp-at-owner-chunk-span-fully-carried",
         "fn-sjh-okp-at-owner-open-captured-carried"
@@ -13972,7 +13970,8 @@
         "tests/test_native_header_lines.py"
       ],
       "events": [
-        "fn-inj-decide-line-length-is-a-long-header-line"
+        "fn-inj-decide-line-length-is-a-long-header-line",
+        "fn-peer-decide-transfer-line-length-is-a-long-header-line"
       ]
     },
     {
