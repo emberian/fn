@@ -665,3 +665,11 @@
   (implies (fn-sf-prefixp xs ys)
            (fn-sf-prefixp (fn-ndh-events xs) (fn-ndh-events ys)))
   :hints (("Goal" :in-theory (enable fn-sf-prefixp))))
+
+; Every rule above is this book's own proof vocabulary: an includer that
+; wants one enables it by name (the keystones' antecedents name
+; fn-ndh-events, which no other book mentions).
+(deftheory fn-ndh-theory
+  (set-difference-theories (current-theory :here)
+                           (current-theory 'fn-ndh-handle)))
+(in-theory (disable fn-ndh-theory))
