@@ -163,6 +163,22 @@
            :cases ((fn-sn-completion-enabledp s)))
           ("Subgoal 2" :in-theory (enable fn-sn-finish))))
 
+(defthm fn-onb-store-boundp-of-spc-prepare
+  (implies (and (fn-onb-store-boundp s)
+                (fn-snb-record-fitp (fn-sn-node s) record))
+           (fn-onb-store-boundp (fn-spc-prepare s record)))
+  :hints (("Goal" :in-theory (e/d (fn-spc-prepare fn-onb-store-boundp fn-snb-record-fitp fn-snb-record-article)
+                                  (fn-onb-node-boundp fn-sn-prepare-node fn-spc-stage-record
+                                   fn-cpe-projection-step fn-sn-statep fn-node-statep fn-sn-record-bindsp
+                                   fn-snb-groups-fitp)))))
+(defthm fn-onb-store-boundp-of-prc-spc-prepare
+  (implies (and (fn-onb-store-boundp s)
+                (fn-snb-record-fitp (fn-sn-node s) record)
+                (fn-prc-carryp carry)
+                (fn-pidx-view-okp view))
+           (fn-onb-store-boundp (fn-prc-spc-prepare s record view carry)))
+  :hints (("Goal" :in-theory (disable fn-onb-store-boundp fn-prc-spc-prepare fn-spc-prepare))))
+
 ;; ---------------------------------------------------------------------------
 ;; The owner: its Store and its view.  The refresh reads the view's archive
 ;; off the Store's node (fn-ctl-visible-state-of keeps the watermarks).
