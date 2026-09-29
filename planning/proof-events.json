@@ -13809,6 +13809,23 @@
           "name": "fn-arx-files-agree-of-mark"
         }
       ]
+    },
+    {
+      "id": "PRF-934",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-article-index-finds-the-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcls-step-reads-no-article-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-event-reads-no-article-list"
+        }
+      ]
     }
   ]
 }

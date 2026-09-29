@@ -5030,7 +5030,7 @@
     {
       "id": "PRF-119",
       "title": "`store reclaim` rewrites only unheld legacy article records to their tombstones, converges, and frees exactly the octets admission counts",
-      "statement": "Subject: the per-record rewrite fn-rclp-event (host/checkpoint-host.lisp fn-store-log-reclaim-event, called per record by host/native/checkpoint.lisp fnn-log-reclaim-steps) under the context fn-rclp-ctx (fn-store-reclaim-context); fn-rclp-events is its map over the history (books/store-log-reclaim.lisp fn-lgr-rewrites-are-the-events), and PRF-271 (fn-lgr-decide-checkpoints-the-rewrite) makes it the history the log's checkpoint holds. fn-rclp-events-keep-the-summary-shape: fn-cc-octet-event-listp of the rewrite equals fn-cc-octet-event-listp of the history, for every sequence, lower and upper, no hypothesis. fn-rclp-event-decodes-to-the-tombstoned-record: a rewritten event decodes to the record with every field equal but the payload, which is fn-rcl-tombstone-of the old payload, and the charge, which is the history unit *fn-rclp-history-unit* (1). fn-rclp-rewritten-charge-is-the-history-unit: the charge a rewritten event carries into the ledger is the history unit, an unrewritten event carries its own; fn-rclp-freed-charge-account sums the released charge over the list. fn-rclp-events-never-touch-a-held-article: if the I-th event's record's article is named by an obligation of fn-rcl-obligations h, or its verdict needs its payload (fn-rcl-verdict-heldp), or the rule is keep-forever and the expiry policy's set (the context's sixth element, PRF-918) does not name it, the I-th event is byte-identical. fn-rclp-events-keep-every-other-kind: an event that does not decode as a legacy record (accepted-statement composites and every other kind) is byte-identical. fn-rclp-a-reclaimed-event-stays-reclaimed: a rewritten event is not rewritten again under any context; fn-rclp-events-idempotent under the same context. fn-rclp-freed-is-the-admission-count: for a rewritten event the fn-store-event-encode lengths the admission gate sums (fn-sbud-record-octets) fall by exactly the event's length less its replacement's; fn-rclp-freed-octets-account sums it over the list. The operator keystones: `store reclaim` and `store reclaim --dry-run` are exactly the :reclaim and :reclaim-dry-run native actions.",
+      "statement": "Subject: the per-record rewrite fn-rclp-event (host/checkpoint-host.lisp fn-store-log-reclaim-event, called per record by host/native/checkpoint.lisp fnn-log-reclaim-steps) under the context fn-rclp-ctx (fn-store-reclaim-context); fn-rclp-events is its map over the history (books/store-log-reclaim.lisp fn-lgr-rewrites-are-the-events), and PRF-271 (fn-lgr-decide-checkpoints-the-rewrite) makes it the history the log's checkpoint holds. fn-rclp-events-keep-the-summary-shape: fn-cc-octet-event-listp of the rewrite equals fn-cc-octet-event-listp of the history, for every sequence, lower and upper, no hypothesis. fn-rclp-event-decodes-to-the-tombstoned-record: a rewritten event decodes to the record with every field equal but the payload, which is fn-rcl-tombstone-of the old payload, and the charge, which is the history unit *fn-rclp-history-unit* (1). fn-rclp-rewritten-charge-is-the-history-unit: the charge a rewritten event carries into the ledger is the history unit, an unrewritten event carries its own; fn-rclp-freed-charge-account sums the released charge over the list. fn-rclp-events-never-touch-a-held-article: if the I-th event's record's article is named by an obligation of fn-rcl-obligations h, or its verdict needs its payload (fn-rcl-verdict-heldp), or the rule is keep-forever and the expiry policy's set (the context's sixth element, PRF-918) does not name it, the I-th event is byte-identical; the context is the one fn-rclp-ctx-expiring builds, its seventh element fn-rclp-article-index of its articles (PRF-934). fn-rclp-events-keep-every-other-kind: an event that does not decode as a legacy record (accepted-statement composites and every other kind) is byte-identical. fn-rclp-a-reclaimed-event-stays-reclaimed: a rewritten event is not rewritten again under any context; fn-rclp-events-idempotent under the same context. fn-rclp-freed-is-the-admission-count: for a rewritten event the fn-store-event-encode lengths the admission gate sums (fn-sbud-record-octets) fall by exactly the event's length less its replacement's; fn-rclp-freed-octets-account sums it over the list. The operator keystones: `store reclaim` and `store reclaim --dry-run` are exactly the :reclaim and :reclaim-dry-run native actions.",
       "milestone": "M5",
       "requirements": [
         "STO-017"
@@ -14344,6 +14344,27 @@
         "fn-arx-files-agree-of-mark"
       ],
       "progress_note": "Lane composed-owner-4 (Opus 5.5, 2026-09-29). REPL-admitted on persvati (the whole book and the teeth). Teeth tests/acl2/payload-arena-extent-tests.lisp section 4 (paxt-files-): the run (file 7's count 1 then 0 after the reseat onto 9), a reachable positive witness (paxt-files-unnamed-positive, the state reached through the exports: paxt-x3-corresponds), a witness and a must-fail per hypothesis; the correspondence one is a CORRUPTED-STATE witness. natp H was proved redundant and removed. Host caller: online-reclaim-3's checkpoint release (not on this branch)."
+    },
+    {
+      "id": "PRF-934",
+      "title": "`store reclaim`'s per-record step and rewrite read an article index, never the Store's article list",
+      "statement": "Subject: fn-rcls-step (host/checkpoint-host.lisp fn-store-reclaim-step) and fn-rclp-event (fn-store-log-reclaim-event), called once per record by host/native/checkpoint.lisp fnn-log-reclaim-steps, under the context fn-rclp-ctx-expiring builds (fn-store-reclaim-context via books/expiry.lisp fn-xpy-ctx). fn-rclp-article-index-finds-the-article: the index (the context's seventh element, a fast alist) binds each Message-ID to the article fn-find-article's walk finds, for every article list, no hypothesis. fn-rcls-step-reads-no-article-list and fn-rclp-event-reads-no-article-list: replacing the context's article list (its fifth element) with anything changes neither the step nor the rewrite, for every accumulator, record and context. Scope: a record's step is its decode, one hashed article lookup, one hashed expiry lookup and, when the rule permits a release, the holders and verdict tables (linear in those tables, not in the Store's article count); before (row A8) each step walked the article list, 485 s at 100k for `store reclaim --dry-run`. A hashed lookup's cost is the ACL2 image's fast alist; an extracted core that runs hons-get as hons-assoc-equal walks the index instead.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-119"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-reclaim-pack.lisp",
+        "books/store-reclaim-stream.lisp",
+        "tests/acl2/store-reclaim-pack-tests.lisp",
+        "tests/acl2/store-reclaim-stream-tests.lisp"
+      ],
+      "events": []
     }
   ]
 }
