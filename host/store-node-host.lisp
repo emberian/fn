@@ -38,6 +38,8 @@
 ; host's fn-scka-seal-n calls, fn-scka-finish) and its writer
 ; (fn-scka-write-setup, fn-scka-write-step, fn-scka-canon-rows).
 (include-book "../books/store-checkpoint-arena-load")
+; PKT-854: the tables' part of `store ROOT digest' (fn-sckd-tables-digest).
+(include-book "../books/store-checkpoint-digest")
 (include-book "../books/store-checkpoint-arena-writer")
 (include-book "../books/owner-checkpoint-pipeline")
 ; PKT-444 (1): the open names a pre-C1 control record instead of faulting.
