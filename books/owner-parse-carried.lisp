@@ -728,36 +728,25 @@
                                   (fn-pa-current-plan
                                    fn-pcb-unsupported-profilep)))))
 
-; PKT-541: the enrollment refusal of a principal whose enrollment was
-; revoked is :revoked-principal; the transit plan (its :revoked arm) is
-; decided only on that refusal arm.
-(defun fn-apc-admission-verdict-of-plan (plan received snapshots carried
-                                              ed ml carry)
+(defun fn-apc-admission-verdict-of-plan (plan received ed ml)
   (declare (xargs :guard t))
   (let ((class (fn-apc-refusal-class-of-plan plan received ed ml)))
     (cond ((not (consp plan)) :unsigned)
           ((eq (car plan) :carried) :carried)
           ((equal class :malformed) :malformed)
           ((equal class :signature-failed) :cryptographically-invalid)
-          ((and (equal class :no-local-binding)
-                (let ((tplan (fn-apc-current-plan received snapshots carried
-                                                  t carry)))
-                  (and (consp tplan) (eq (car tplan) :revoked))))
-           :revoked-principal)
           ((equal class :no-local-binding) :unenrolled)
           ((equal class :unsupported-profile) :unsupported-profile)
           ((eq (car plan) :ok) :verified)
           (t :malformed))))
 
 (defthm fn-apc-admission-verdict-of-plan-is-reference
-  (implies (fn-apc-p carry)
-           (equal (fn-apc-admission-verdict-of-plan
-                   (fn-pa-current-plan received snapshots carried nil)
-                   received snapshots carried ed ml carry)
-                  (fn-pcb-admission-verdict received snapshots carried ed ml)))
-  :hints (("Goal" :in-theory (e/d (fn-pcb-admission-verdict
-                                   fn-pcb-revoked-principalp)
-                                  (fn-pa-current-plan fn-apc-current-plan
+  (equal (fn-apc-admission-verdict-of-plan
+          (fn-pa-current-plan received snapshots carried nil)
+          received ed ml)
+         (fn-pcb-admission-verdict received snapshots carried ed ml))
+  :hints (("Goal" :in-theory (e/d (fn-pcb-admission-verdict)
+                                  (fn-pa-current-plan
                                    fn-apc-refusal-class-of-plan
                                    fn-pcb-refusal-class)))))
 
@@ -776,8 +765,7 @@
         (if (and (eq ed :verified) (eq ml :verified))
             :revoked
           :cryptographically-invalid)
-      (fn-apc-admission-verdict-of-plan plan0 received snapshots carried
-                                        ed ml carry))))
+      (fn-apc-admission-verdict-of-plan plan0 received ed ml))))
 
 ; KEYSTONE for the host line.
 (defthm fn-apc-transit-verdict-is-reference
@@ -796,7 +784,7 @@
   (declare (xargs :guard t))
   (let* ((verdict (fn-apc-admission-verdict-of-plan
                    (fn-apc-current-plan received snapshots carried nil carry)
-                   received snapshots carried ed ml carry))
+                   received ed ml))
          (class (fn-pcb-verdict-refusal-class verdict)))
     (if class (list class verdict) nil)))
 
