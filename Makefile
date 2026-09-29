@@ -549,6 +549,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/replay-identity-index-tests \
 	books/store-finalize-incremental \
 	tests/acl2/store-finalize-incremental-tests \
+	books/store-finalize-published \
+	tests/acl2/store-finalize-published-tests \
+	books/assumptions-publication \
 	books/bp-fnbs-delivery-codec \
 	tests/acl2/bp-fnbs-delivery-codec-tests \
 	books/bp-fnbs-delivery-replay \

@@ -100,6 +100,7 @@
 (include-book "store-profile-carried")
 (include-book "owner-prepare-served")
 (include-book "replay-identity-index")
+(include-book "store-finalize-incremental")
 (include-book "store-checkpoint-buffer")
 (include-book "store-checkpoint-reader")
 (include-book "store-checkpoint-tables")

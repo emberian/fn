@@ -14151,7 +14151,7 @@
         "books/store-finalize-incremental.lisp",
         "tests/acl2/store-finalize-incremental-tests.lisp"
       ],
-      "progress_note": "Lane incremental-finalize (Claude Fable 5.1, 2026-09-29): REPL-admitted on the box (every form, both guards; the keystone 232k steps, 0.4 s); early certify hbox run-20260929T042235Z-19e0. Wired into the host open: NOT YET (the open's carried verdict needs the checkpoint's frontier/count/last record beside the trailer, composed-owner-4's A5 discipline); online-reclaim-4 cites the corollary for the swap's delta. Teeth: the twin book's history; positive witness (both hypotheses, the conclusion, the open :ok, the corollary's shape); the empty suffix; four suffix-only refusals decided alike (at the frontier, out of sequence, a repeated transaction, a frontier below the bound); two hypothesis-removal witnesses (a base that never finalizes :ok; the bound omitted) each affirming the retained hypothesis, the omitted one failing and the conclusion failing, plus must-fail-checked ground defthms; a corrupted carried bound labelled as a mutation witness (refuses more, never admits more)."
+      "progress_note": "Lane incremental-finalize (Claude Fable 5.1, 2026-09-29): REPL-admitted on the box (every form, both guards; the keystone 232k steps, 0.4 s); early certify hbox run-20260929T042235Z-19e0. Wired into the host open: NOT YET (the open's carried verdict needs the checkpoint's frontier/count/last record beside the trailer, composed-owner-4's A5 discipline); online-reclaim-4 cites the corollary for the swap's delta. Teeth: the twin book's history; positive witness (both hypotheses, the conclusion, the open :ok, the corollary's shape); the empty suffix; four suffix-only refusals decided alike (at the frontier, out of sequence, a repeated transaction, a frontier below the bound); two hypothesis-removal witnesses (a base that never finalizes :ok; the bound omitted) each affirming the retained hypothesis, the omitted one failing and the conclusion failing, plus must-fail-checked ground defthms; a corrupted carried bound labelled as a mutation witness (refuses more, never admits more). WIRED 2026-09-29 (lane incremental-finalize-3, PRF-992): host/store-node-host.lisp fn-store-sn-recover-from-checkpoint calls fn-sfi-extend-open with the F row's NEXT; the twin fn-rii-sco-extend-open remains the full open's (fn-store-sn-recover-rows)."
     },
     {
       "id": "PRF-968",
@@ -14993,6 +14993,32 @@
         "fn-arx-files-agree-of-mark"
       ],
       "progress_note": "Lane composed-owner-4 (Opus 5.5, 2026-09-29). REPL-admitted on persvati (the whole book and the teeth). Teeth tests/acl2/payload-arena-extent-tests.lisp section 4 (paxt-files-): the run (file 7's count 1 then 0 after the reseat onto 9), a reachable positive witness (paxt-files-unnamed-positive, the state reached through the exports: paxt-x3-corresponds), a witness and a must-fail per hypothesis; the correspondence one is a CORRUPTED-STATE witness. natp H was proved redundant and removed. Host caller: online-reclaim-3's checkpoint release (not on this branch)."
+    },
+    {
+      "id": "PRF-992",
+      "title": "The Store open from a checkpoint is the twin's open from the publication's two facts (the composed boundary of the incremental finalize); the F row carries NEXT",
+      "statement": "books/store-finalize-published.lisp (fn-sfp-, row A9) and books/store-checkpoint-tables.lisp (the F row). Subject: fn-store-sn-recover-from-checkpoint (host/store-node-host.lisp) calls (fn-sfi-extend-open checkpoint configs rows frontier next) with NEXT read from the F row (fn-store-sco-decode-finish keeps it in the global fn-store-sco-next): the whole-history finalize fn-rii-sco-extend-open is no longer on the open from a checkpoint (the full open fn-store-sn-recover-rows keeps it). The F row (fn-sct-f-row s frontier revision log next) carries NEXT = (nfix (fn-sct-next-lower records 0)), the prefix's transaction bound, beside S; fn-sct-next-lower-is-next-lower equates the guard-t fold to fn-sf-next-lower; fn-sct-next-of-tables-of-capture and fn-sct-next-of-tables-is-bound-of-loaded-records say the F row's NEXT of any capture's tables is the (nfix of the) bound of the records the load means. Both publish paths (host/native/io.lisp state-checkpoint, host/native/owner.lisp auto and reclaim) build the F row inside ACL2 (fn-sct-tables-of-capture from owner-checkpoint-writer / -pipeline / store-checkpoint-arena-writer), so the field lands on both with no host change there. KEYSTONE fn-sfp-open-from-publication-is-the-twin: whenever the captured history opens :ok at the publication frontier ((fn-sn-open-kind (fn-cpo-open-observed configs frontier records)) = :ok), the tables (fn-sct-tables-of-capture (fn-ock-next-checkpoint base configs records) frontier revision log) of the publication, loaded by fn-sct-capture-of-tables and opened by fn-sfi-extend-open with the F row's NEXT over any suffix at any frontier f, equal fn-rii-sco-extend-open's open, with the same CONFIGS on both sides (the publication's and the open's). From fn-sfp-published-capture-finalizes-ok (the published capture finalizes :ok at the publication frontier: fn-ock-next-checkpoint-is-the-capture, fn-ock-finalize-of-extended-capture over the empty suffix) and fn-sfp-published-next-is-the-bound (NEXT = (fn-sf-next-lower records 0), a natural of every observed history: fn-sfp-next-lower-natp). What connects the tables to the bytes the open verified is fn-scka-load-of-written-file (the writer's file loads to its tables) plus the trust row A-CHECKPOINT-PUBLICATION (books/assumptions-publication.lisp: encapsulate fn-assume-checkpoint-publishedp / fn-assume-checkpoint-publication, constraint fn-assume-checkpoint-publication-is-a-publication: a verified file's tables are a publication's of a history that opened :ok under the open's configuration at the F row's frontier), under which fn-sfp-open-under-checkpoint-publication is the host's open. Pessimistic figure with its scope: A-CRYPTO-TRAILER's collision bound over one 256-bit trailer, about 2^-128 per chosen pair of frames, not the second-preimage figure; the row is also operational (a foreign store's verifying checkpoint is a publication of another history: the lineage check of row A10 refuses it by name before this open). Every process-death cut of the publication is a crash point of fn-bs-scp-program (books/byte-store-state-checkpoint-program.lisp fn-bs-scp-program-crash-is-old-or-new): the open sees the old checkpoint or the new one; a torn new one fails its chain before any table is read. NOT established here: that the owner's live history opens :ok at every publication frontier -- the theorem takes it as its antecedent and the row names it (the owner's live-history relation, PRF-083/PRF-144 territory).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-025",
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-946",
+        "PRF-083"
+      ],
+      "assumptions": [
+        "A-CHECKPOINT-PUBLICATION"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/store-finalize-published.lisp",
+        "books/assumptions-publication.lisp",
+        "books/store-checkpoint-tables.lisp",
+        "tests/acl2/store-finalize-published-tests.lisp",
+        "host/store-node-host.lisp"
+      ],
+      "progress_note": "Lane incremental-finalize-3 (Claude Fable 5.1, 2026-09-29): READY 3 of row A9, the open wiring. Teeth (tests/acl2/store-finalize-published-tests.lisp): a positive witness of the complete antecedent and every conclusion (NEXT = 8, the open :ok at frontier 9 and at the publication frontier with the empty suffix); the keystone's hypothesis removed (a history that does not open :ok, published anyway: the twin refuses :history, the open from the tables opens, the equality fails; must-fail-checked); the trust row's constraint at a ground publication and its failure at a non-publication. Natives: recovery, checkpoint, checkpoint_auto, state_checkpoint, replay_determinism, served_differential."
     }
   ]
 }

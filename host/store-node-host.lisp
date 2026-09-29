@@ -594,10 +594,17 @@ reopen predicate, writer-lock observation and observed final namespace."
                (state (f-put-global 'fn-store-sco-log-position
                                     (list (fn-sct-tables-log (cadr loaded))
                                           (fn-sco-at 2 (fn-sct-tables-f (cadr loaded))))
-                                    state)))
+                                    state))
+               ; The F row's NEXT: the prefix's transaction bound the
+               ; publication wrote (books/store-checkpoint-tables.lisp
+               ; fn-sct-next-of-tables-is-bound-of-loaded-records, PRF-992);
+               ; the open's fn-sfi-extend-open takes it, never a walk.
+               (state (f-put-global 'fn-store-sco-next
+                                    (fn-sct-tables-next (cadr loaded)) state)))
           (mv nil (list :ok (fn-sco-sequence checkpoint)) state fn-octets))
       (let* ((state (f-put-global 'fn-store-sco-checkpoint nil state))
-             (state (f-put-global 'fn-store-sco-log-position nil state)))
+             (state (f-put-global 'fn-store-sco-log-position nil state))
+             (state (f-put-global 'fn-store-sco-next nil state)))
         (mv nil
             (list :refused (if (and (consp loaded) (consp (cdr loaded)))
                                (cadr loaded)
@@ -685,14 +692,24 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program
                   :guard (fn-octet-list-listp config-octet-records)))
   (let ((checkpoint (fn-store-sco-current state))
+        (next (and (boundp-global 'fn-store-sco-next state)
+                   (f-get-global 'fn-store-sco-next state)))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
-    (if (or (null checkpoint) (equal rows :bad) (equal config-records :bad)
-            (null config-records))
+    (if (or (null checkpoint) (not (natp next)) (equal rows :bad)
+            (equal config-records :bad) (null config-records))
         (value :fault)
-      ; The suffix is replayed once: E is fn-sco-open's extension, and the
-      ; open and the configuration are read off it (fn-sco-open is
-      ; fn-sco-finalize of E; fn-sco-replay-result is E's fold finished).
-      (let ((pair (fn-rii-sco-extend-open checkpoint config-records rows frontier)))
+      ; The suffix is replayed once and the prefix never (row A9, PRF-946,
+      ; PRF-992): E is fn-sco-open's extension, the finalize is taken from
+      ; the carried verdict over the suffix from the F row's NEXT, and the
+      ; open and the configuration are read off E.  KEYSTONE
+      ; fn-sfi-extend-open-is-rii-extend-open (books/store-finalize-
+      ; incremental.lisp): equal to fn-rii-sco-extend-open whenever the
+      ; checkpoint finalized :ok at some frontier and NEXT is its records'
+      ; bound; both facts are the publication's (books/store-finalize-
+      ; published.lisp fn-sfp-open-from-publication-is-the-twin) and reach
+      ; this open through the bytes the trailer verified: the trust row
+      ; A-CHECKPOINT-PUBLICATION (books/assumptions-publication.lisp).
+      (let ((pair (fn-sfi-extend-open checkpoint config-records rows frontier next)))
         (fn-store-sn-open-classified (car pair) (cadr pair) config-records state)))))
 
 ; Each ROW's wire event (alpha, books/store-intern.lisp fn-row-wire-of: the

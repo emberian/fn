@@ -602,8 +602,10 @@ stays authoritative, and the file may be deleted at any time.
 STO-016: The checkpoint open costs less than the full replay it replaces,
 and a publication does not hold served commands.
 
-- **The file carries the count.** The F row carries S and the frontier
-  (`fn-sct-tables-of-capture`, STO-026); every committed event below S is
+- **The file carries the count and the bound.** The F row carries S, the
+  frontier, the revision, the log position and NEXT, the prefix's transaction
+  bound (`fn-sct-tables-of-capture`, STO-026; PRF-992: the open takes NEXT
+  from the row and finalizes over the suffix alone, never walking the prefix); every committed event below S is
   one E row and one P row (its payload, once), and the load rebuilds the
   event index from E (`fn-sct-capture-of-tables-of-capture`): the record
   list is stored once, never twice. Nothing is capped: one row per event,

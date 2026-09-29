@@ -67,6 +67,7 @@
 (include-book "owner-prepare-served")
 (include-book "history-columns-store")
 (include-book "replay-identity-index")
+(include-book "store-finalize-incremental")
 (include-book "state-digest")
 (include-book "subject-id-buffer")
 (include-book "owner-advance-carried")

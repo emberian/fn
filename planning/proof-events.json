@@ -14341,6 +14341,47 @@
           "name": "fn-ocln-a-cold-line-is-answered-unavailable"
         }
       ]
+    },
+    {
+      "id": "PRF-992",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-open-from-publication-is-the-twin"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-published-capture-finalizes-ok"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-published-next-is-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-next-lower-natp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-next-lower-is-next-lower"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-next-of-tables-of-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-next-of-tables-is-bound-of-loaded-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-open-under-checkpoint-publication"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-assume-checkpoint-publication-is-a-publication"
+        }
+      ]
     }
   ]
 }
