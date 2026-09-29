@@ -1828,6 +1828,9 @@ check:
 # list (shrink-only), an unfiled requirement in planning/families.json, and
 # a gaps file that is not what the coverage renders.
 	@$(CHECK_STEP) $(PYTHON) tools/coverage.py check
+# A diff that changes one side of a reference <-> executable twin pair only
+# (planning/twins.json: mbe, defattach, naming; Q7i): flagged, not refused.
+	@$(CHECK_STEP) $(PYTHON) tools/coverage.py twins --diff auto
 	@$(CHECK_STEP) $(PYTHON) tools/event_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/profile_limits.py --check
 # Which host entries walk retained state (PKT-334, answers 2026-09-26 §2): a

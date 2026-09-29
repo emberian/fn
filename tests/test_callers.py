@@ -102,5 +102,13 @@ class CallersTests(unittest.TestCase):
             self.assertEqual(json.loads(out.getvalue())["sites"], [])
 
 
+    def test_definitions_span_their_forms_at_any_depth(self):
+        self.assertEqual(callers.definitions(BOOK)[:3],
+                         [("fn-xy-step", 4, 5), ("fn-xy-stepper", 7, 7),
+                          ("fn-xy-step-natp", 9, 11)])
+        nested = '(local (defthm a t))\n(mutual-recursion\n (defun b (x) x)\n (defun c (x) x))\n'
+        self.assertEqual(callers.definitions(nested), [("a", 1, 1), ("b", 3, 3), ("c", 4, 4)])
+
+
 if __name__ == "__main__":
     unittest.main()

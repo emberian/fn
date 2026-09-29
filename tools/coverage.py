@@ -50,6 +50,14 @@ entries has no storage-consistency theorem mentioned in a conclusion":
     python3 tools/coverage.py query --subsystem store --unmentioned --md
     python3 tools/coverage.py query --family durability --level any --json
 
+TWINS (Q7i): a reference function and its executable twin, from the world
+(mbe :logic/:exec calls, defattach, and the tree's -host/-exec/-fast/-impl/
+$a-$c names among world functions); `query --entry` prints the entry's:
+
+    python3 tools/coverage.py twins fn-record-decode-exact [--world W]
+    python3 tools/coverage.py twins --write --world W   # planning/twins.json
+    python3 tools/coverage.py twins --diff auto         # make check: one-sided diffs
+
 `--unmentioned` means no DIRECT theorem cited under a proof of that family;
 `--level hyps|caller|any` widens what counts as mentioned.
 
@@ -108,6 +116,7 @@ FAMILIES = ROOT / "planning" / "families.json"
 COVERAGE = ROOT / "planning" / "coverage.json"
 BASELINE = ROOT / "planning" / "coverage-baseline.json"
 GAPS = ROOT / "planning" / "interfaces-gaps.md"
+TWINS = ROOT / "planning" / "twins.json"
 DEFAULT_WORLD = ROOT / "build" / "coverage" / "world.json"
 
 SUBSYSTEMS = ("store", "owner", "nntp/served", "peer/feed", "bp", "web",
@@ -179,6 +188,9 @@ class World:
                 "attachment": attachment,
                 "constrained": bool(record.get("constrained")),
                 "body": bool(record.get("body")),
+                # [LOGIC, EXEC] per mbe of the body (a dump before
+                # obstructions-3 has none: its twins are defattach + names).
+                "mbe": [[sym(one) for one in pair] for pair in record.get("mbe", ())],
             }
         for record in doc["theorems"]:
             name = sym(record["name"])
@@ -659,6 +671,51 @@ def check(cov: dict | None, root: Path = ROOT) -> tuple[list[str], list[str]]:
     return problems, notes
 
 
+def twins_command(args) -> int:
+    world = None
+    if args.write or args.world:
+        world_path = args.world or DEFAULT_WORLD
+        world = World(load_json(world_path))
+        pairs = twin_pairs(world)
+        if args.write:
+            vias = collections.Counter(via.split()[0] for pair in pairs for via in pair["via"])
+            TWINS.write_text(json.dumps({
+                "description": "reference <-> executable twins read from a world dump "
+                               "(tools/coverage.py twins; regenerate with --write)",
+                "coordinate": coordinate(world_path, args.box),
+                "counts": dict(sorted(vias.items())),
+                "pairs": pairs}, indent=1) + "\n")
+            print(f"coverage twins: {len(pairs)} pairs -> {TWINS.relative_to(ROOT)} "
+                  + " ".join(f"{k}={v}" for k, v in sorted(vias.items())))
+    else:
+        pairs = load_twins()["pairs"]
+    if args.diff:
+        base = args.diff
+        if base == "auto":
+            # make check: the lane's diff from where it left dev.
+            found = subprocess.run(["git", "merge-base", "HEAD", "origin/dev"], cwd=ROOT,
+                                   capture_output=True, text=True)
+            if found.returncode:
+                print("coverage twins --diff auto: no origin/dev here; nothing compared")
+                return 0
+            base = found.stdout.strip()
+        flags = one_sided(pairs, changed_definitions(base))
+        print(f"coverage twins --diff {args.diff}: {len(flags)} one-sided change(s) "
+              f"among {len(pairs)} pairs")
+        for flag in flags:
+            print("  " + flag)
+        return 1 if flags and args.strict else 0
+    if args.entry:
+        found = twins_of(pairs, args.entry.lower(), world)
+        print(json.dumps(found, indent=1) if args.json else render_twins(found))
+        return 0 if found["own"] or found["closure"] else 1
+    if not args.write:
+        print(json.dumps(pairs, indent=1) if args.json else
+              "\n".join(f"{p['reference']} <-> {p['executable']} [{', '.join(p['via'])}]"
+                        for p in pairs))
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command")
@@ -680,6 +737,17 @@ def main(argv=None) -> int:
     r = sub.add_parser("render", help="rewrite the gaps file from coverage.json")
     r.add_argument("--write", action="store_true")
     c = sub.add_parser("check", help="the make-check step")
+    t = sub.add_parser("twins", help="reference <-> executable twins (mbe, defattach, names)")
+    t.add_argument("entry", nargs="?", default=None)
+    t.add_argument("--world", type=Path, default=None,
+                   help="read the pairs from this dump (default: planning/twins.json)")
+    t.add_argument("--write", action="store_true",
+                   help="write planning/twins.json from --world (default build/coverage/world.json)")
+    t.add_argument("--diff", metavar="BASE", default=None,
+                   help="flag a diff from BASE that changes one side of a pair only")
+    t.add_argument("--strict", action="store_true", help="--diff exits 1 on a flag")
+    t.add_argument("--box", default=None, help="where the dump's session ran (the coordinate)")
+    t.add_argument("--json", action="store_true")
     parser.add_argument("--check", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--baseline", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
@@ -709,10 +777,16 @@ def main(argv=None) -> int:
             print(json.dumps(rows, indent=1))
         elif args.entry and rows and not args.md:
             print(render_entry(rows[0]))
+            pairs = load_twins()["pairs"]
+            print("## Twins")
+            print(render_twins(twins_of(pairs, args.entry)) if pairs else
+                  "(no planning/twins.json: `coverage.py twins --write --world W`)")
         else:
             print(render_table(rows))
             print("\n{} entries".format(len(rows)))
         return 0
+    if args.command == "twins":
+        return twins_command(args)
     if args.command == "summary":
         cov = load_coverage()
         counts = summary(cov["entries"])
@@ -745,6 +819,142 @@ def main(argv=None) -> int:
         return 1 if problems else 0
     parser.print_help()
     return 2
+
+
+# ---------------------------------------------------------------------------
+# Twins: a reference function and its executable twin (Q7i, obstructions-3).
+#
+# The served path runs concrete twins of the logical model (D27), and a
+# change to one side of a pair that leaves the other alone is how a
+# correspondence silently goes stale.  The pairs come from the world:
+#
+#   mbe        a body's (mbe :logic (R ...) :exec (X ...)): R is the reference,
+#              X the executable (R is the defined function itself when the
+#              :logic is not a call);
+#   defattach  F attached to G: F is the reference, G what runs;
+#   name       a world function N and N-host / N-exec / N-fast / N-impl, or an
+#              abstract stobj's N$a and N$c / N: the tree's naming conventions
+#              for a twin, read only among functions the world defines.
+#
+# Both sides must be defined by the tree (a book or a host file).
+
+TWIN_NAMES = (("", "-host"), ("", "-exec"), ("", "-fast"), ("", "-impl"),
+              ("$a", "$c"), ("$a", ""))
+
+
+def twin_pairs(world: World) -> list[dict]:
+    found: dict[tuple[str, str], set[str]] = collections.defaultdict(set)
+    tree = {name for name in world.functions if world.in_tree(name)}
+
+    def add(reference: str, executable: str, via: str) -> None:
+        if reference != executable and reference in tree and executable in tree:
+            found[(reference, executable)].add(via)
+
+    for name in sorted(tree):
+        record = world.functions[name]
+        for logic, executable in record.get("mbe", ()):
+            add(logic, executable, "mbe in " + name)
+        if record["attachment"]:
+            add(name, record["attachment"], "defattach")
+        for reference_suffix, executable_suffix in TWIN_NAMES:
+            if name.endswith(executable_suffix):
+                stem = name[:len(name) - len(executable_suffix)]
+                add(stem + reference_suffix, name, "name")
+    return [{"reference": reference, "executable": executable, "via": sorted(vias),
+             "reference_book": world.functions[reference]["book"],
+             "executable_book": world.functions[executable]["book"]}
+            for (reference, executable), vias in sorted(found.items())]
+
+
+def twins_of(pairs: list[dict], entry: str, world: World | None = None) -> dict:
+    """The pairs ENTRY is a side of, and (given the world) those inside its
+    private closure, which the host reaches through ENTRY."""
+    own = [pair for pair in pairs if entry in (pair["reference"], pair["executable"])]
+    inside: list[dict] = []
+    if world is not None and entry in world.functions:
+        reached = world.descendants(entry, tree_only=True)
+        inside = [pair for pair in pairs if pair not in own
+                  and (pair["reference"] in reached or pair["executable"] in reached)]
+    return {"entry": entry, "own": own, "closure": inside}
+
+
+def render_twins(found: dict) -> str:
+    lines = [f"twins of {found['entry']}: {len(found['own'])} own, "
+             f"{len(found['closure'])} in its closure"]
+    for label, key in (("own", "own"), ("closure", "closure")):
+        for pair in found[key]:
+            lines.append(f"  {label:8}{pair['reference']} ({pair['reference_book']}) "
+                         f"<-> {pair['executable']} ({pair['executable_book']}) "
+                         f"[{', '.join(pair['via'])}]")
+    return "\n".join(lines)
+
+
+def load_twins(path: Path = TWINS) -> dict:
+    return load_json(path) if path.is_file() else {"pairs": []}
+
+
+def changed_definitions(base: str, root: Path = ROOT) -> dict[str, str]:
+    """Functions whose defining form a diff from BASE touches: name -> file:line.
+
+    Both sides of each hunk are read (a deleted line changed the old form).
+    """
+    from tools import callers  # the same lexical reader
+    done = subprocess.run(["git", "diff", "-U0", "--no-color", base, "--", "books", "host"],
+                          cwd=root, capture_output=True, text=True)
+    if done.returncode:
+        raise SystemExit(f"coverage twins --diff: git diff {base} failed: "
+                         + done.stderr.strip()[-300:])
+    touched: dict[str, dict[str, set[int]]] = {}
+    current = touched_old = None
+    header = False
+    for line in done.stdout.splitlines():
+        if line.startswith("diff --git "):
+            header, current, touched_old = True, None, None
+        elif header and line.startswith("+++ "):
+            current = line[6:] if line.startswith("+++ b/") else None
+        elif header and line.startswith("--- "):
+            touched_old = line[6:] if line.startswith("--- a/") else None
+        elif line.startswith("@@") and (current or touched_old):
+            header = False
+            head = line.split("@@")[1].split()
+            for side, spec in (("old", head[0][1:]), ("new", head[1][1:])):
+                start, _, count = spec.partition(",")
+                count_value = 1 if count == "" else int(count)
+                lines = set(range(int(start), int(start) + max(count_value, 1)))
+                name = current if side == "new" else touched_old
+                if name and name.endswith(".lisp"):
+                    touched.setdefault(name, {"old": set(), "new": set()})[side] |= lines
+    changed: dict[str, str] = {}
+    for name, sides in sorted(touched.items()):
+        for side, numbers in sides.items():
+            if not numbers:
+                continue
+            if side == "new":
+                path = root / name
+                text = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
+            else:
+                shown = subprocess.run(["git", "show", f"{base}:{name}"], cwd=root,
+                                       capture_output=True, text=True)
+                text = shown.stdout if shown.returncode == 0 else ""
+            for defined, first, last in callers.definitions(text):
+                if any(first <= number <= last for number in numbers):
+                    changed.setdefault(defined, f"{name}:{first}")
+    return changed
+
+
+def one_sided(pairs: list[dict], changed: dict[str, str]) -> list[str]:
+    out = []
+    for pair in pairs:
+        reference, executable = pair["reference"], pair["executable"]
+        if (reference in changed) == (executable in changed):
+            continue
+        moved, still = ((reference, executable) if reference in changed
+                        else (executable, reference))
+        out.append(f"{moved} changed ({changed[moved]}); its twin {still} "
+                   f"({pair['executable_book'] if still == executable else pair['reference_book']}) "
+                   f"did not [{', '.join(pair['via'])}]: say why the correspondence still "
+                   "holds, or change both")
+    return out
 
 
 def family_summary(cov: dict) -> dict:

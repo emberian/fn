@@ -149,6 +149,45 @@ def lisp_sites(text: str, names: set[str]) -> list[dict]:
     return sites
 
 
+def definitions(text: str) -> list[tuple[str, int, int]]:
+    """(name, first line, last line) of every defining form in TEXT, at any
+    depth (inside `local`, `encapsulate`, `mutual-recursion`), in order of
+    their ends.  coverage.py's `twins --diff` maps a hunk to what it changed."""
+    found: list[tuple[str, int, int]] = []
+    line, index = 1, 0
+    stack: list[list] = []      # [head, name, first line, position]
+    while index < len(text):
+        match = TOKEN.match(text, index)
+        kind, value, index = match.lastgroup, match.group(), match.end()
+        if kind == "nl":
+            line += 1
+        elif kind == "block":
+            end = skip_block(text, index)
+            line += text.count("\n", index, end)
+            index = end
+        elif kind in ("string", "char"):
+            line += value.count("\n")
+            if stack:
+                stack[-1][3] += 1
+        elif kind == "open":
+            stack.append([None, None, line, 0])
+        elif kind == "close":
+            if stack:
+                head, name, first, _ = stack.pop()
+                if head in DEFINERS and name:
+                    found.append((name, first, line))
+                if stack:
+                    stack[-1][3] += 1
+        elif kind == "atom" and stack:
+            frame = stack[-1]
+            if frame[3] == 0:
+                frame[0] = bare(value)
+            elif frame[3] == 1 and frame[1] is None:
+                frame[1] = bare(value)
+            frame[3] += 1
+    return found
+
+
 def text_sites(text: str, names: set[str]) -> list[dict]:
     """Whole-word, case-insensitive occurrences in a non-Lisp file."""
     pattern = re.compile(

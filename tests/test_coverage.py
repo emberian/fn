@@ -227,5 +227,107 @@ class CoverTests(unittest.TestCase):
         self.assertIn("`fn-missing`", text)
 
 
+class TwinsTests(unittest.TestCase):
+    """Q7i (obstructions-3): reference <-> executable twins, and a one-sided diff."""
+
+    TWIN_WORLD = {
+        "cbd": "/box/tree/books/",
+        "functions": [
+            fn("car", book=None), fn("member-eq-exec", book=None),
+            dict(fn("fn-x-step", callees=["fn-x-step-ref", "fn-x-step-fast"]),
+                 mbe=[["ACL2::FN-X-STEP-REF", "ACL2::FN-X-STEP-FAST"],
+                      ["ACL2::FN-X-STEP", "ACL2::MEMBER-EQ-EXEC"]]),
+            fn("fn-x-step-ref"), fn("fn-x-step-fast"),
+            fn("fn-x-decode", attachment="fn-x-decode-impl"), fn("fn-x-decode-impl"),
+            fn("fn-x-tail"), fn("fn-x-tail-exec"),
+            fn("create-fn-x$a"), fn("create-fn-x$c"),
+            fn("fn-x-entry", callees=["fn-x-step", "fn-x-decode"]),
+        ],
+        "theorems": [],
+    }
+
+    def pairs(self):
+        return coverage.twin_pairs(coverage.World(self.TWIN_WORLD))
+
+    def test_pairs_come_from_mbe_defattach_and_names_inside_the_tree(self):
+        found = {(p["reference"], p["executable"]): p["via"] for p in self.pairs()}
+        self.assertEqual(found, {
+            ("fn-x-step-ref", "fn-x-step-fast"): ["mbe in fn-x-step"],
+            ("fn-x-step", "fn-x-step-fast"): ["name"],
+            ("fn-x-decode", "fn-x-decode-impl"): ["defattach", "name"],
+            ("fn-x-tail", "fn-x-tail-exec"): ["name"],
+            ("create-fn-x$a", "create-fn-x$c"): ["name"],
+        })
+
+    def test_an_entry_shows_its_own_twins_and_those_in_its_closure(self):
+        world = coverage.World(self.TWIN_WORLD)
+        found = coverage.twins_of(self.pairs(), "fn-x-entry", world)
+        self.assertEqual(found["own"], [])
+        self.assertEqual(sorted((p["reference"], p["executable"]) for p in found["closure"]),
+                         [("fn-x-decode", "fn-x-decode-impl"),
+                          ("fn-x-step", "fn-x-step-fast"),
+                          ("fn-x-step-ref", "fn-x-step-fast")])
+        own = coverage.twins_of(self.pairs(), "fn-x-decode")
+        self.assertEqual([p["executable"] for p in own["own"]], ["fn-x-decode-impl"])
+        self.assertIn("own     fn-x-decode", coverage.render_twins(own))
+
+    def git(self, root, *args):
+        import subprocess
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
+                       cwd=root, check=True, capture_output=True)
+
+    def test_a_diff_that_changes_one_side_of_a_pair_is_flagged(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "books").mkdir()
+            (root / "books/ref.lisp").write_text(
+                '(in-package "ACL2")\n(defun fn-x-tail (x)\n  (cdr x))\n')
+            (root / "books/exec.lisp").write_text(
+                '(in-package "ACL2")\n(defun fn-x-tail-exec (x)\n  (cdr x))\n')
+            self.git(root, "init", "-q")
+            self.git(root, "add", ".")
+            self.git(root, "commit", "-q", "-m", "base")
+            (root / "books/ref.lisp").write_text(
+                '(in-package "ACL2")\n(defun fn-x-tail (x)\n  (cddr x))\n')
+            pairs = self.pairs()
+            changed = coverage.changed_definitions("HEAD", root)
+            self.assertEqual(changed, {"fn-x-tail": "books/ref.lisp:2"})
+            flags = coverage.one_sided(pairs, changed)
+            self.assertEqual(len(flags), 1)
+            self.assertIn("fn-x-tail changed (books/ref.lisp:2); its twin fn-x-tail-exec",
+                          flags[0])
+            # Both sides changed: nothing to flag.
+            (root / "books/exec.lisp").write_text(
+                '(in-package "ACL2")\n(defun fn-x-tail-exec (x)\n  (cddr x))\n')
+            self.assertEqual(coverage.one_sided(
+                pairs, coverage.changed_definitions("HEAD", root)), [])
+            # A deleted definition counts as changed (the old side is read).
+            (root / "books/exec.lisp").write_text('(in-package "ACL2")\n')
+            (root / "books/ref.lisp").write_text(
+                '(in-package "ACL2")\n(defun fn-x-tail (x)\n  (cdr x))\n')
+            self.assertEqual(coverage.changed_definitions("HEAD", root),
+                             {"fn-x-tail-exec": "books/exec.lisp:2"})
+
+
+    def test_the_cli_flags_by_default_and_refuses_only_with_strict(self):
+        import contextlib, io
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as directory:
+            twins = Path(directory) / "twins.json"
+            twins.write_text(json.dumps({"pairs": self.pairs()}))
+            with mock.patch.object(coverage, "TWINS", twins), \
+                    mock.patch.object(coverage, "changed_definitions",
+                                      lambda base: {"fn-x-tail-exec": "books/exec.lisp:2"}):
+                for extra, code in (([], 0), (["--strict"], 1)):
+                    out = io.StringIO()
+                    with contextlib.redirect_stdout(out):
+                        self.assertEqual(coverage.main(["twins", "--diff", "HEAD"] + extra), code)
+                    self.assertIn("1 one-sided change(s)", out.getvalue())
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out):
+                    self.assertEqual(coverage.main(["twins", "fn-x-tail"]), 0)
+                self.assertIn("fn-x-tail-exec", out.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
