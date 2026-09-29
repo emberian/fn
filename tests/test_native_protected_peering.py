@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import ssl
 import subprocess
 import time
@@ -305,6 +306,61 @@ class NativeProtectedPeeringTests(unittest.TestCase):
             "target_policy": {"required": True, "protected_only": True},
             "transit": transit, "reconnect": reconnect,
             "identity": {"a": a.identities[-1], "b": b.identities[-1]}})
+
+    def test_peer_set_and_peer_login_make_the_record_while_serving(self):
+        """Row S5: the record `peer confirm' leaves (one direction, clear,
+        principal-bound), then `peer set' and `peer login' on the RUNNING
+        owners make the protected feed: no hand-written FNAUTH1 file, no
+        thirteen words, no restart; the `peer pull' row survives the set."""
+        a = self.initialize("set-a", "b-at-a", "b-secret")
+        b = self.initialize("set-b", "a-at-b", "a-secret")
+        for source, target in ((a, b), (b, a)):
+            # The confirm's shape: take fn.*, send nothing, clear.
+            source.operator("peer", "add", target.name,
+                            target.name + ".example.invalid", "127.0.0.1",
+                            str(target.port), "fn.*", "-", "principal",
+                            source.principal, "true", expect=EXIT_OK)
+            source.operator("peer", "pull", target.name, "30", expect=EXIT_OK)
+        self.start(a)
+        self.start(b)
+        # Refused by name, live, before any record.
+        nobody = a.operator("peer", "set", "nobody", "--send", "fn.*")
+        self.assertNotEqual(nobody.returncode, EXIT_OK)
+        self.assertIn("no-such-peer", nobody.stdout.decode() + nobody.stderr.decode())
+        numeric = a.operator("peer", "set", b.name, "--tls", "starttls")
+        self.assertNotEqual(numeric.returncode, EXIT_OK)
+        self.assertIn("tls-needs-server-name",
+                      numeric.stdout.decode() + numeric.stderr.decode())
+        early = a.operator("peer", "login", b.name, b.login, str(a.root / "early.fnauth"),
+                           input=(b.password + "\n" + b.password + "\n").encode())
+        self.assertNotEqual(early.returncode, EXIT_OK)
+        self.assertIn("needs-send", early.stdout.decode() + early.stderr.decode())
+        differ = a.operator("peer", "login", b.name, b.login, str(a.root / "x.fnauth"),
+                            input=b"one\ntwo\n")
+        self.assertNotEqual(differ.returncode, EXIT_OK)
+        self.assertIn("passwords-differ", differ.stdout.decode() + differ.stderr.decode())
+        self.assertFalse((a.root / "x.fnauth").exists())
+        for source, target in ((a, b), (b, a)):
+            source.operator("peer", "set", target.name, "--send", "fn.*",
+                            "--tls", "starttls", "--server-name", "localhost",
+                            "--anchor", str(target.certificate), expect=EXIT_OK)
+            login_file = source.root / (target.name + ".fnauth")
+            source.operator("peer", "login", target.name, target.login, str(login_file),
+                            input=(target.password + "\n" + target.password + "\n").encode(),
+                            expect=EXIT_OK)
+            self.assertEqual(stat.S_IMODE(login_file.stat().st_mode), 0o600)
+            self.assertEqual(login_file.read_bytes(), "FNAUTH1\n{}\n{}\n".format(
+                target.login, target.password).encode("ascii"))
+            listed = source.operator("peer", "list", expect=EXIT_OK).stdout.decode()
+            self.assertIn("starttls", listed)
+        for source, target, label in ((a, b, "set-a-to-b"), (b, a, "set-b-to-a")):
+            message_id = "<protected-{}@example.invalid>".format(label)
+            self.post(source, message_id, label)
+            self.assertEqual(self.await_article(target, message_id),
+                             self.await_article(source, message_id))
+        self.witness({"kind": "peer-set-login", "live": True,
+                      "refusals": ["no-such-peer", "tls-needs-server-name",
+                                   "needs-send", "passwords-differ"]})
 
     def test_bad_outbound_password_yields_authenticated_430_observation(self):
         a = self.initialize("bad-auth-a", "b-at-a", "b-secret")

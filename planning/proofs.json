@@ -14113,6 +14113,25 @@
         "planning/evidence/pkt-615-number-bound-2026-09-28.md"
       ],
       "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound."
+    },
+    {
+      "id": "PRF-973",
+      "title": "`peer set` changes only the named fields of the live peer record and keeps its extension rows; `peer login` writes a login file the connection reads back as exactly the login and password entered",
+      "statement": "books/peer-set.lisp (row S5, operability review drag 7). Subject: fn-pset-plan, reached by books/native-admin.lisp fn-native-admin-plan-deltas-over and fn-native-admin-plan-refusal-over, which host/native-admin-host.lisp fn-native-admin-host-owner-reconfigure (live, over the owner's peer table) and fn-native-admin-host-apply (offline, over the replayed table) call; and fn-pset-login-file, called by host/native/peer-invite.lisp fnn-pinv-login. (1) fn-pset-plan-sets-the-record-and-keeps-the-extensions (KEYSTONE): an accepted plan's delta leaves the peer's row group exactly the edited record's rows followed by the extension rows the group held (pull, catch-up, carries, budget, feed pause, distributions). (2) fn-pset-edit-is-a-peer-record and fn-pset-edit-keeps-the-peer: the edited record is fn-cfg-peerp with the same name and path identity. (3) fn-pset-edit-keeps-unnamed-fields: for a live record, a field no flag names keeps its value. (4) fn-pset-edit-sets-the-named-send-and-login: --send and --login take the flag's value. (5) fn-pset-login-file-reads-back (KEYSTONE, over fn-pset-login-octets-round-trip): fn-fap-decode (the reader host/native/feed-service.lisp fnn-feed-auth-profile calls) of the file's octets is (:ok LOGIN PASSWORD). Refusals are named (unknown-flag, repeated-flag, flag-without-value, no-such-peer, host, port, tls-mode, tls-needs-server-name, server-name-without-tls, take, send, streaming, allow-clear, needs-send, allow-clear-needs-login, principal, source-address, auth-twice, peer-record; passwords-differ, login, password). Not covered: the decoder round trip fn-cfg-peer-of-rows of fn-cfg-peer-rows (proved in the REPL at 33 s, too slow for the book budget; the witnesses check it on the walk's record).",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-030"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/peer-set.lisp",
+        "books/native-admin-peer.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/peer-set-tests.lisp"
+      ],
+      "progress_note": "Lane operability-3 (Claude Opus 5.5, 2026-09-29). REPL-admitted (persvati) over native-operator's closure; teeth in tests/acl2/peer-set-tests.lisp: positive witnesses for both keystones on the friend walk's record, a no-such-peer removal, a peer-add mutation that loses the pull row, a named-transport-flag removal, and the login file refused for differing entries, a spaced password and an empty login."
     }
   ]
 }

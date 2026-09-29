@@ -507,8 +507,9 @@ fn operator /etc/fn/fn.toml peer distributions far fn,local
 ```
 
 If a peer's log line says `reason=mode-stream-refused`, that peer's server
-cannot stream. Stop the node, run `peer remove NAME`, add the peer again
-with `false` as the streaming word, and start the node.
+cannot stream. Run `peer set NAME --streaming false`; like `peer add`,
+`peer remove`, `peer pull` and `peer feed`, it applies to the running node
+(review item 8).
 
 Every node needs its own name, set once. Without it, fn cannot spot
 articles that loop back to it:
