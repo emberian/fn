@@ -30,6 +30,14 @@
                   (fn-gidx-build
                    (fn-state-articles (fn-served-conn-archive conn)))))))
 
+;; A view with no article builds no buckets: the control pin over an empty
+;; view (books/served.lisp fn-served-conn-pinned-index, PKT-443) corresponds.
+(local
+ (defthm fn-olc-gidx-build-of-no-articles
+   (implies (not (consp articles))
+            (equal (fn-gidx-build articles) nil))
+   :hints (("Goal" :in-theory (enable fn-gidx-build)))))
+
 (local
  (defthm fn-olc-pinned-index-corresponds
    (implies (fn-olc-buckets-okp conn)
