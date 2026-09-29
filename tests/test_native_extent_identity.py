@@ -52,7 +52,9 @@ UNIT = 4096
 MAGIC = b"FNLG"
 HEADER = 10
 TRAILER = 32
-FAULT = re.compile(rb"owner core/store fault; process stopped: (arena-extent-[a-z]+)")
+# The owner's fault line names the ACL2 entry that was reading (e.g.
+# fn-owner-chunk-span) before the realizer's refusal name.
+FAULT = re.compile(rb"owner core/store fault; process stopped: [^\n]*?(arena-extent-[a-z]+):")
 
 
 def entries(data):
