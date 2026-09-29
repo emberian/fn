@@ -15199,6 +15199,22 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-splan-cw-drain-is-the-expanded-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-cw-drain-of-the-arm-is-the-unbounded-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-range-ovw-emits-a-fresh-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-cursor-step-of-okp-is-ok"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-ovw-run-of-start-is-cursor-octets"
         }
       ]

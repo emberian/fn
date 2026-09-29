@@ -256,11 +256,18 @@ rate reaches the next read)."
   (fn-octets$c-reserve n (create-fn-octets$c)))
 
 (defun fnn-owner-render-next (plan &optional compressedp)
-  "Render the next window of PLAN: (values OCTETS PLAN-REST DONEP), OCTETS a
-fresh vector (empty only when nothing remained), DONEP when nothing remains
-after it.  COMPRESSEDP: the connection has a COMPRESS layer, and the window
-is ACL2's flush-schedule window (books/nntp-compress.lisp
-fn-zc-render-window-size), each one sync flush."
+  "Render the next window of PLAN: (values OCTETS PLAN-REST DONEP CURSORP),
+OCTETS a fresh vector (empty only when nothing remained, or at a cursor),
+DONEP when nothing remains after it.  COMPRESSEDP: the connection has a
+COMPRESS layer, and the window is ACL2's flush-schedule window
+(books/nntp-compress.lisp fn-zc-render-window-size), each one sync flush.
+CURSORP (lane join-f2-13, PRF-1020): the plan's next window is a cursor's
+quantum (books/served-plan.lisp fn-splan-at-cursorp: a served OVER/XOVER
+range), which the caller runs under the owner mutex
+(fnn-owner-cursor-step) before it renders again; nothing is rendered here."
+  (when (fnn-core 'fn-splan-at-cursorp plan)
+    (return-from fnn-owner-render-next
+      (values (fnn-make-octets 0) plan nil t)))
   (let ((size (if compressedp
                   (fnn-core 'fn-zc-render-window-size
                             (fnn-core 'fn-splan-window-size plan))
@@ -276,7 +283,55 @@ fn-zc-render-window-size), each one sync flush."
                     (the fnn-octets array)
                   (subseq (the fnn-octets array) 0 fill))
                 rest
-                (and (fnn-core 'fn-splan-donep rest) t))))))
+                (and (fnn-core 'fn-splan-donep rest) t)
+                nil)))))
+
+;;; The cursor quantum (lane join-f2-13, PRF-1020; books/served-plan-cursor.lisp).
+;;; A served OVER/XOVER range's step answers a CURSOR (books/served-catalog.lisp
+;;; fn-nntp-over-range-ovw: the range parsed and clamped once, no number
+;;; probed); the plan stops in front of it and each quantum below probes at
+;;; most W numbers and builds at most W NOV lines (books/over-window.lisp
+;;; fn-ovw-step-window-at-most-w) under the owner mutex, admitted by the gate
+;;; as the connection's class like its steps (D27: bounded work per hold, the
+;;; range's size never).  ACL2 decides W (fn-splan-cursor-window: its constant,
+;;; or a developer image's FN_NATIVE_OVER_WINDOW for the natives).  The
+;;; keystone fn-splan-cw-drain-is-the-expanded-reply says the windows and
+;;; quanta together write the reply the served machine decided, expanded
+;;; (fn-ovw-expand), for every W and however the socket paced them; with
+;;; fn-ovw-run-is-over-range-cat that is the unbounded reader's reply.
+(defun fnn-owner-over-window ()
+  "ACL2's cursor quantum, the developer selector's override passed through."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")))
+    (fnn-core 'fn-splan-cursor-window
+              (and raw (> (length raw) 0)
+                   (every #'digit-char-p raw)
+                   (parse-integer raw)))))
+
+(defun fnn-owner-cursor-step (service cid plan class)
+  "One quantum of PLAN's cursor under the owner mutex: the plan with the
+quantum's reply in the cursor's place (and the cursor that remains)."
+  (fnn-owner-serialized
+   service cid
+   (lambda ()
+     (destructuring-bind (status rest)
+         (fnn-call 'fn-splan-cursor-step plan (fnn-owner-over-window)
+                   (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat))
+       (unless (eq status :ok)
+         (fnn-fault "owner returned a malformed cursor in its served reply"))
+       rest))
+   class))
+
+(defun fnn-owner-render-next-quantum (service cid plan class &optional compressedp)
+  "fnn-owner-render-next, the plan's cursor quantum run first (under the
+owner mutex, as CID's CLASS) whenever the plan is at one: (values OCTETS
+PLAN-REST DONEP).  One quantum per window rendered, so the mutex is held
+for at most one quantum between two writes of the same connection."
+  (loop
+    (multiple-value-bind (octets rest donep cursorp)
+        (fnn-owner-render-next plan compressedp)
+      (unless cursorp
+        (return (values octets rest donep)))
+      (setq plan (fnn-owner-cursor-step service cid rest class)))))
 
 (defun fnn-owner-list-global (name)
   "An ACL2 octet list left in NAME, as the list (no vector is made)."

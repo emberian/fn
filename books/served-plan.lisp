@@ -76,17 +76,49 @@
   (declare (xargs :guard t :verify-guards nil))
   (append (fn-splan-cur p) (fn-served-reply-octets (fn-splan-rest p))))
 
+; A CURSOR effect, (:over-cursor CUR): the served OVER/XOVER range arm's one
+; effect (books/served-catalog.lisp fn-ovw-cursor-effect; lane join-f2-13,
+; PRF-1020).  It carries no octets of its own: a window STOPS in front of it
+; (status :cursor) and the host runs one quantum of the windowed reader
+; under the owner mutex (books/served-plan-cursor.lisp fn-splan-cursor-step:
+; at most W numbers probed), which replaces it by that quantum's reply effect
+; followed by the cursor that remains, until none does.  The shape is
+; repeated here because this book sits below the catalog; served-plan-cursor's
+; fn-splan-cursor-effectp-is-ovw-by-definition equates the two recognizers.
+(defun fn-splan-cursor-effectp (e)
+  (declare (xargs :guard t))
+  (and (consp e) (equal (car e) :over-cursor) (consp (cdr e))))
+
+; Done: no octets and no cursor remain.
 (defun fn-splan-rest-donep (rest)
   (declare (xargs :guard t))
   (if (consp rest)
-      (and (atom (fn-srb-effect-octets (car rest)))
+      (and (not (fn-splan-cursor-effectp (car rest)))
+           (atom (fn-srb-effect-octets (car rest)))
            (fn-splan-rest-donep (cdr rest)))
     t))
+
+; At a cursor: the next thing the plan owes is a cursor's quantum, not
+; octets (the effects before it carry none).
+(defun fn-splan-rest-at-cursorp (rest)
+  (declare (xargs :guard t))
+  (if (consp rest)
+      (cond ((fn-splan-cursor-effectp (car rest)) t)
+            ((consp (fn-srb-effect-octets (car rest))) nil)
+            (t (fn-splan-rest-at-cursorp (cdr rest))))
+    nil))
 
 (defun fn-splan-donep (p)
   (declare (xargs :guard t))
   (and (atom (fn-splan-cur p))
        (fn-splan-rest-donep (fn-splan-rest p))))
+
+; The host-called question before every window (host/native/owner.lisp
+; fnn-owner-render-next): the plan's next window is a cursor's quantum.
+(defun fn-splan-at-cursorp (p)
+  (declare (xargs :guard t))
+  (and (atom (fn-splan-cur p))
+       (fn-splan-rest-at-cursorp (fn-splan-rest p))))
 
 ; The next window's size, ACL2's decision for the host (host/native/owner.lisp
 ; fnn-owner-render-next asks it before every fn-splan-window): the remaining
@@ -95,15 +127,17 @@
 ; list while the socket drains costs sixteen octets per octet where the
 ; rendered vector costs one; a fixed window bounds a window only over an
 ; effect that points into the pinned view (the design's section 3.3; no such
-; kind yet).  Zero exactly when the plan is done, so the host's loop
-; progresses (fn-splan-window-size-is-positive-until-done with the prefix
-; keystone's progress conjunct).
+; kind yet).  Zero exactly when the plan is done or at a cursor (a cursor's
+; quantum is run by the host, not rendered), so the host's loop progresses
+; (fn-splan-window-size-is-positive-until-done with the prefix keystone's
+; progress conjunct).
 (defun fn-splan-rest-head-len (rest)
   (declare (xargs :guard t))
   (if (consp rest)
-      (if (consp (fn-srb-effect-octets (car rest)))
-          (len (fn-srb-effect-octets (car rest)))
-        (fn-splan-rest-head-len (cdr rest)))
+      (cond ((fn-splan-cursor-effectp (car rest)) 0)
+            ((consp (fn-srb-effect-octets (car rest)))
+             (len (fn-srb-effect-octets (car rest))))
+            (t (fn-splan-rest-head-len (cdr rest))))
     0))
 
 (defun fn-splan-window-size (p)
@@ -115,7 +149,8 @@
 (local
  (defthm fn-splan-rest-head-len-positive-iff-not-done
    (iff (posp (fn-splan-rest-head-len rest))
-        (not (fn-splan-rest-donep rest)))))
+        (and (not (fn-splan-rest-donep rest))
+             (not (fn-splan-rest-at-cursorp rest))))))
 
 (local
  (defthm fn-splan-len-posp-of-consp
@@ -123,9 +158,14 @@
    :hints (("Goal" :expand ((len x))))))
 
 (defthm fn-splan-window-size-is-positive-until-done
+  ; Zero exactly when the plan is done or its next window is a cursor's
+  ; quantum: the host renders while it is positive, runs the quantum at a
+  ; cursor (fn-splan-at-cursorp) and stops when done.
   (iff (posp (fn-splan-window-size p))
-       (not (fn-splan-donep p)))
-  :hints (("Goal" :in-theory (disable posp fn-splan-rest-donep fn-splan-rest-head-len)
+       (and (not (fn-splan-donep p))
+            (not (fn-splan-at-cursorp p))))
+  :hints (("Goal" :in-theory (disable posp fn-splan-rest-donep fn-splan-rest-head-len
+                                      fn-splan-rest-at-cursorp)
            :use ((:instance fn-splan-rest-head-len-positive-iff-not-done
                             (rest (fn-splan-rest p)))
                  (:instance fn-splan-len-posp-of-consp (x (fn-splan-cur p)))))))
@@ -144,7 +184,9 @@
                (fn-splan-fill (cdr cur) rest (- k 1) fn-octets))
            (mv :malformed (cons cur rest) fn-octets)))
         ((consp rest)
-         (fn-splan-fill (fn-srb-effect-octets (car rest)) (cdr rest) k fn-octets))
+         (if (fn-splan-cursor-effectp (car rest))
+             (mv :cursor (cons cur rest) fn-octets)
+           (fn-splan-fill (fn-srb-effect-octets (car rest)) (cdr rest) k fn-octets)))
         (t (mv :ok (cons nil nil) fn-octets))))
 
 ; The host-called subject: clear the buffer, then one window.
@@ -167,7 +209,9 @@
                (mv status (cons (car cur) octets) p))
            (mv :malformed nil (cons cur rest))))
         ((consp rest)
-         (fn-splan-take (fn-srb-effect-octets (car rest)) (cdr rest) k))
+         (if (fn-splan-cursor-effectp (car rest))
+             (mv :cursor nil (cons cur rest))
+           (fn-splan-take (fn-srb-effect-octets (car rest)) (cdr rest) k)))
         (t (mv :ok nil (cons nil nil)))))
 
 ; N windows of W, concatenated.
@@ -239,23 +283,26 @@
          (append cur (fn-served-reply-octets rest)))
   :hints (("Goal" :induct (fn-splan-take cur rest k))))
 
-; A window of a plan that owes something writes something.
+; A window of a plan that is not done writes something, or stops at a
+; cursor (status :cursor) or a non-octet (:malformed): under :ok it wrote.
 (defthm fn-splan-take-progresses
   (implies (and (posp k)
                 (equal (mv-nth 0 (fn-splan-take cur rest k)) :ok)
-                (consp (append cur (fn-served-reply-octets rest))))
+                (not (fn-splan-donep (cons cur rest))))
            (consp (mv-nth 1 (fn-splan-take cur rest k))))
   :hints (("Goal" :induct (fn-splan-take cur rest k))))
 
 (local
- (defthm fn-splan-rest-donep-iff
-   (iff (fn-splan-rest-donep rest)
-        (not (consp (fn-served-reply-octets rest))))
-))
+ (defthm fn-splan-rest-donep-implies-no-octets
+   (implies (fn-splan-rest-donep rest)
+            (not (consp (fn-served-reply-octets rest))))))
 
+; A done plan owes no octets.  (Not an iff since join-f2-13: a plan at a
+; cursor owes a quantum and no octets yet; fn-splan-donep-iff-nothing-remains
+; of a cursor-free plan is served-plan-cursor's business.)
 (local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
-(defthm fn-splan-donep-iff-nothing-remains
-  (iff (fn-splan-donep p) (not (consp (fn-splan-remaining p)))))
+(defthm fn-splan-donep-implies-nothing-remains
+  (implies (fn-splan-donep p) (not (consp (fn-splan-remaining p)))))
 (local (in-theory (disable (tau-system))))
 
 (defthm fn-splan-of-effects-remaining
@@ -293,20 +340,20 @@
          (implies (and (equal status :ok) (posp w) (not (fn-splan-donep p)))
                   (posp (fn-octets-len buf)))))
   :hints (("Goal" :in-theory (e/d (fn-oct-len-is-len fn-oct-slice-list-is-take-nthcdr)
-                                  (fn-splan-take fn-splan-fill fn-splan-donep
+                                  (fn-splan-take fn-splan-fill
                                    fn-splan-cur fn-splan-rest))
            :use ((:instance fn-splan-take-progresses
-                            (cur (fn-splan-cur p)) (rest (fn-splan-rest p)) (k w))
-                 (:instance fn-splan-donep-iff-nothing-remains)))))
+                            (cur (fn-splan-cur p)) (rest (fn-splan-rest p)) (k w))))))
 
 ; A malformed plan leaves the continuation where the fault is and the host
-; faults; nothing but a non-octet in a reply effect stops a window.
+; faults; a cursor stops a window in front of itself (the host runs its
+; quantum); nothing else stops a window.
 (defthm fn-splan-take-status
-  (member-equal (mv-nth 0 (fn-splan-take cur rest k)) '(:ok :malformed))
+  (member-equal (mv-nth 0 (fn-splan-take cur rest k)) '(:ok :malformed :cursor))
   :hints (("Goal" :induct (fn-splan-take cur rest k) :in-theory (enable fn-splan-take))))
 
 (defthm fn-splan-window-status
-  (member-equal (mv-nth 0 (fn-splan-window p w fn-octets)) '(:ok :malformed))
+  (member-equal (mv-nth 0 (fn-splan-window p w fn-octets)) '(:ok :malformed :cursor))
   :hints (("Goal" :in-theory (e/d (fn-splan-window)
                                   (fn-splan-take fn-splan-fill member-equal
                                    fn-splan-cur fn-splan-rest
@@ -351,10 +398,10 @@
                   (fn-served-reply-octets effects)))
   :hints (("Goal" :in-theory (disable fn-splan-drain fn-splan-remaining fn-splan-donep
                                       fn-splan-of-effects fn-splan-drain-is-a-prefix
-                                      fn-splan-donep-iff-nothing-remains
+                                      fn-splan-donep-implies-nothing-remains
                                       fn-splan-of-effects-remaining)
            :use ((:instance fn-splan-drain-is-a-prefix (p (fn-splan-of-effects effects)))
-                 (:instance fn-splan-donep-iff-nothing-remains
+                 (:instance fn-splan-donep-implies-nothing-remains
                             (p (mv-nth 2 (fn-splan-drain (fn-splan-of-effects effects) w n))))
                  (:instance fn-splan-remaining-true-listp
                             (p (mv-nth 2 (fn-splan-drain (fn-splan-of-effects effects) w n))))

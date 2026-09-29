@@ -1836,6 +1836,18 @@
   :kinds ((w natp))
   :keystones (fn-splan-window-is-a-prefix-of-the-reply))
 
+(definterface fn-splan-at-cursorp
+  :class ::common-lisp-compliant
+  :keystones (fn-splan-window-size-is-positive-until-done))
+
+(definterface fn-splan-cursor-step
+  :class ::common-lisp-compliant
+  :kinds ((w natp))
+  :keystones (fn-splan-cw-drain-is-the-expanded-reply))
+
+(definterface fn-splan-cursor-window
+  :class ::common-lisp-compliant)
+
 (definterface fn-splan-window-size
   :class ::common-lisp-compliant
   :keystones (fn-splan-window-size-is-positive-until-done))

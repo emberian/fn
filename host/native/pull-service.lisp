@@ -282,7 +282,8 @@ waits its milliseconds and is fed the same octets."
           (destructuring-bind (plan close starttls consumed &rest more) results
             (declare (ignore starttls more))
             (loop
-              (multiple-value-bind (octets rest donep) (fnn-owner-render-next plan)
+              (multiple-value-bind (octets rest donep)
+                  (fnn-owner-render-next-quantum service cid plan :transit)
                 (setq reply (concatenate 'fnn-octets reply octets))
                 (when donep (return))
                 (setq plan rest)))

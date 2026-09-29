@@ -56,6 +56,10 @@
 ;; fn-splan-window and the gate calls fn-osch-next (books/owner-scheduler).
 (include-book "books/served-reply-buffer")
 (include-book "books/served-plan")
+;; Lane join-f2-13 (PRF-1020): the plan's cursor quantum, the host's
+;; continuation of a served OVER/XOVER range (fnn-owner-cursor-step calls
+;; fn-splan-cursor-step; fnn-owner-render-next asks fn-splan-at-cursorp).
+(include-book "books/served-plan-cursor")
 (include-book "books/owner-scheduler")
 (include-book "books/owner-commit-class")
 ;; PKT-688 (4) slice 2 (PRF-267): the gate calls fn-ocs-next and the committer

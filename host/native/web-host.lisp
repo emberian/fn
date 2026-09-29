@@ -114,7 +114,8 @@ exposure admission decides (the id, or NIL when it refused)."
               (destructuring-bind (plan close starttls consumed &rest more) results
                 (declare (ignore starttls more))
                 (loop
-                  (multiple-value-bind (part rest donep) (fnn-owner-render-next plan)
+                  (multiple-value-bind (part rest donep)
+                      (fnn-owner-render-next-quantum service cid plan :reader)
                     (setq reply (concatenate 'fnn-octets reply part))
                     (when donep (return))
                     (setq plan rest)))
