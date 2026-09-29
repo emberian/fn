@@ -17016,7 +17016,7 @@
       "events": [
         "fn-bpnf-delete-publication-authorize-admits-exactly-the-issued-pending-deletion",
         "fn-bpn-report-delete-record-epoch-and-op-are-frame-nats",
-        "fn-bpnf-nth-is-nth-within-len"
+        "fn-bpn-nth-is-nth-on-true-lists"
       ]
     },
     {

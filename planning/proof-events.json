@@ -16834,7 +16834,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnf-nth-is-nth-within-len"
+          "name": "fn-bpn-nth-is-nth-on-true-lists"
         }
       ]
     },
