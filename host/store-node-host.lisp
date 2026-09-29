@@ -588,6 +588,17 @@ reopen predicate, writer-lock observation and observed final namespace."
         ; the 7-tuple the open extends, its event index rebuilt from E.
         (let* ((checkpoint (fn-sct-capture-of-tables (cadr loaded)))
                (state (f-put-global 'fn-store-sco-checkpoint checkpoint state))
+               ; PKT-854: the tables' part of the checkpoint digest, only
+               ; when `store ROOT digest' asked (fn-store-sco-want-
+               ; checkpoint-digest); the arena's part follows the load
+               ; (fn-store-sco-note-checkpoint-digest).
+               (state (f-put-global
+                       'fn-store-sco-tables-digest
+                       (and (boundp-global 'fn-store-sco-want-digest state)
+                            (f-get-global 'fn-store-sco-want-digest state)
+                            (list (fn-sco-sequence checkpoint)
+                                  (fn-sckd-tables-digest (cadr loaded))))
+                       state))
                ; The F row's log position and frontier (a store's
                ; open starts its scan there: books/store-log-segments.lisp).
                (state (f-put-global 'fn-store-sco-log-position
@@ -602,6 +613,50 @@ reopen predicate, writer-lock observation and observed final namespace."
                                (cadr loaded)
                              :malformed))
             state fn-octets)))))
+
+;; PKT-854 (books/store-checkpoint-digest.lisp): `store ROOT digest' asks
+;; for the loaded checkpoint's verifiable digest before its open; the load
+;; keeps the tables' part, and right after the arena is sealed (the arena
+;; is then exactly the checkpoint's payloads, fn-scka-load-of-written-file)
+;; this note completes it: fn-sckd-combine of the tables' part and
+;; fn-sdg-arena-pool, which is fn-sckd-digest (KEYSTONE
+;; fn-sckd-digest-of-written-file: a function of the prefix, never of the F
+;; row's revision or log).
+(defun fn-store-sco-want-checkpoint-digest (flag state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((state (f-put-global 'fn-store-sco-want-digest (and flag t) state))
+         (state (f-put-global 'fn-store-sco-tables-digest nil state))
+         (state (f-put-global 'fn-store-sco-checkpoint-digest nil state)))
+    (value t)))
+
+(defun fn-store-sco-note-checkpoint-digest (fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (let* ((td (and (boundp-global 'fn-store-sco-tables-digest state)
+                  (f-get-global 'fn-store-sco-tables-digest state)))
+         (state (f-put-global 'fn-store-sco-tables-digest nil state)))
+    (if (and (consp td) (consp (cdr td)))
+        (let ((state (f-put-global
+                      'fn-store-sco-checkpoint-digest
+                      (list (car td)
+                            (fn-sckd-combine (cadr td) (fn-sdg-arena-pool fn-arena)))
+                      state)))
+          (value t))
+      (value nil))))
+
+; The `checkpoint-digest' line: the sequence S and the digest, or `none'
+; when the open loaded no checkpoint (a full replay).  Not a `digest ' line:
+; a full replay and a checkpoint open of one history fold the same state
+; and print the same `digest ' lines.
+(defun fn-store-sco-checkpoint-digest-line (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((cd (and (boundp-global 'fn-store-sco-checkpoint-digest state)
+                 (f-get-global 'fn-store-sco-checkpoint-digest state))))
+    (if (and (consp cd) (natp (car cd)) (consp (cdr cd)))
+        (append (fn-record-string-octets
+                 (concatenate 'string "checkpoint-digest sequence="
+                              (coerce (explode-atom (car cd) 10) 'string) " "))
+                (fn-sdg-hex (cadr cd)) (list 10))
+      (append (fn-record-string-octets "checkpoint-digest none") (list 10)))))
 
 ; The loaded checkpoint's F row: (LOG FRONTIER), LOG its log position
 ; (fn-sct-log-positionp: NIL or (K GENESIS)) and FRONTIER the txid frontier at
@@ -1620,4 +1675,5 @@ reopen predicate, writer-lock observation and observed final namespace."
                    (fn-store-sn-digest-line
                     "genesis"
                     (fn-sdg-digest (and (boundp-global 'fn-store-genesis state)
-                                        (f-get-global 'fn-store-genesis state))))))))
+                                        (f-get-global 'fn-store-genesis state))))
+                   (fn-store-sco-checkpoint-digest-line state)))))
