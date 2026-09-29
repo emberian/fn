@@ -229,6 +229,7 @@
 (include-book "topic-history-local-proposals")
 (include-book "article-buffer")
 (include-book "served-plan")
+(include-book "served-plan-cursor")
 (include-book "feed-journal")
 (include-book "peer-pull")
 (include-book "peer-pull-session")
