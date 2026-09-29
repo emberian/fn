@@ -267,6 +267,7 @@
 (include-book "owner-number-bound")
 (include-book "owner-outcome-pinned")
 (include-book "native-config")
+(include-book "native-auth-profile")
 (include-book "feed-filename")
 (include-book "native-operator-stage")
 (include-book "owner-maintenance-request")
