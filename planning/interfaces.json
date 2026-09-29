@@ -5,7 +5,7 @@
     "declared": 1224,
     "declared_and_dispatched": 1207,
     "guard_verified": 546,
-    "with_keystone": 153
+    "with_keystone": 154
   },
   "entries": [
     {
@@ -14107,7 +14107,14 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpnr-publish-outcome-is-pending-exactly-while-the-loop-runs"
+        },
+        {
+          "theorem": "fn-bpnr-publish-outcome-names-the-stopped-phase"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
