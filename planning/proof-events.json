@@ -14939,6 +14939,83 @@
           "note": "Subject fn-bpfj-apply-at. Equals fn-bpnf-family-apply-at under the invariant."
         }
       ]
+    },
+    {
+      "id": "PRF-991",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-candidates-page-need"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-run-counted-is-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-candidates-counted-is-candidates"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-run-pages-at-most-k"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-run-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-reach-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-put-places-iff-not-saturated"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-put-unplaced-unchanged"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-put-run-unplaced-unchanged"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-add-saturated-keeps-the-table"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-grow-shape"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-copy-key-copies"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt2p-is-fn-mpxtp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-no-saturation-under-the-condition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-key-info-separate-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-key-octets-of-updates"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-add-key"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-set-key-faithful-nil"
+        }
+      ]
     }
   ]
 }
