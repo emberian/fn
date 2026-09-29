@@ -13513,6 +13513,36 @@
           "name": "fn-bpcc-frame-decode-of-sealed"
         }
       ]
+    },
+    {
+      "id": "PRF-981",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-lines-acc-is-parse-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-aw-add-fold-open-cost"
+        }
+      ]
+    },
+    {
+      "id": "PRF-982",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-apc-plan-is-received-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-plansp-of-extend"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-plans-extend-bounded"
+        }
+      ]
     }
   ]
 }

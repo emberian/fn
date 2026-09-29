@@ -14113,6 +14113,64 @@
         "planning/evidence/pkt-615-number-bound-2026-09-28.md"
       ],
       "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound."
+    },
+    {
+      "id": "PRF-981",
+      "title": "The executed article parse folds each continuation line in its own length and returns exactly the reference parse",
+      "statement": "books/article.lisp. KEYSTONE fn-article-parse-lines-acc-is-parse-lines: on every input, fn-article-parse-lines-acc (the field under construction carried reversed: fn-article-add-fold-open, a cons and a revappend of the line) returns what fn-article-parse-lines returns with the reversed field closed (fn-article-close-field). Subject: fn-article-parse-under, whose :exec branch (mbe) runs the accumulator loop; it is called by fn-article-parse, which the host calls throughout (e.g. host/bp-ingress-host.lisp and every owner reader through books/owner-parse-carried fn-apc-parse). Cost: books/article-work.lisp fn-aw-add-fold-open-cost, the executed fold step costs 2 + (len line), against fn-aw-add-fold-cost's growth with the field (PKT-552/770). The whole-parse work bound (fn-article-parse-under-work-input-bound) remains stated over the reference loop.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-030"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/article.lisp",
+        "books/article-work.lisp"
+      ],
+      "progress_note": "Lane served-costs (2026-09-29): REPL-admitted on hbox (article.lisp whole book 4.05 s; the correspondence 0.25 s); certification owed with the affected roots.",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-lines-acc-is-parse-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-aw-add-fold-open-cost"
+        }
+      ]
+    },
+    {
+      "id": "PRF-982",
+      "title": "A signed POST's carrier plan is decided once and every owner reader of the memo reads fn-hc-received-plan",
+      "statement": "books/owner-parse-carried.lisp. KEYSTONE fn-apc-plan-is-received-plan: under fn-apc-p of the parse carry and fn-apc-plansp of the memo, fn-apc-plan is fn-hc-received-plan. fn-apc-plansp-of-extend: fn-apc-plans-extend (the host's only writer of 'fn-owner-plan-carry, host/owner-host.lisp fn-owner-plans-for) preserves fn-apc-plansp; fn-apc-plans-extend-bounded: the memo holds at most one entry. The four readers fn-apc-carrier-form, fn-apc-current-plan, fn-apc-transit-verdict and fn-apc-transit-refusal-detail take the memo, and their -is-reference keystones hold under the added fn-apc-plansp hypothesis. Subjects: host/owner-host.lisp fn-owner-peer-carrier-form, fn-owner-peer-carrier-plan, fn-owner-transit-verdict, fn-owner-transit-refusal-class (PKT-552).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-004"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-parse-carried.lisp",
+        "tests/acl2/owner-parse-carried-tests.lisp"
+      ],
+      "progress_note": "Lane served-costs (2026-09-29): REPL-admitted on hbox; teeth in tests/acl2/owner-parse-carried-tests.lisp (one-entry memo, unchanged by later readers, mutation witness, hypothesis-removal witness); certification owed.",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-apc-plan-is-received-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-plansp-of-extend"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-plans-extend-bounded"
+        }
+      ]
     }
   ]
 }
