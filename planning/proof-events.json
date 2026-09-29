@@ -3628,7 +3628,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-rcl-reclaim-never-touches-a-held-article"
+          "name": "fn-rclp-event-never-touches-a-held-article"
         },
         {
           "kind": "theorem",
@@ -4661,7 +4661,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-rclp-events-never-touch-a-held-article"
+          "name": "fn-rclp-event-never-touches-a-held-article"
         },
         {
           "kind": "theorem",
@@ -12297,7 +12297,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-web-sessions-bound-by-281"
+          "name": "fn-web-step-admits-no-session-but-by-281"
         },
         {
           "kind": "theorem",

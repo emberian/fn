@@ -873,14 +873,15 @@ def load_baseline() -> dict:
 
 
 PLACEHOLDER = "no one has said why that is right"
-DISPOSITIONS = ("SPEC", "HOST")
+DISPOSITIONS = ("SPEC", "HOST", "UNREACHABLE-IN-COMPOSITION")
 
 
 def unexplained(accepted: dict) -> list[str]:
     """Baselined orphans whose reason is not a disposition.
 
-    Each entry says SPEC (a model or specification theorem kept, and why) or
-    HOST (the packet that will host it); a bare acceptance is a flag nobody
+    Each entry says SPEC (a model or specification theorem kept, and why),
+    HOST (the packet that will host it) or UNREACHABLE-IN-COMPOSITION (AGENTS.md:
+    a branch the composed machine cannot reach); a bare acceptance is a flag nobody
     triaged (assurance-triage 2026-09-26 found 25 of 49 that way).
     """
     return sorted(key for key, reason in accepted.items()

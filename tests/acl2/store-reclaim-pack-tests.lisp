@@ -110,6 +110,46 @@
 ; conclusion fails.
 (must-fail-checked (assert-event (equal (nth (rpt-i) (rpt-new)) (nth (rpt-i) (rpt-events)))))
 
+; fn-rclp-event-never-touches-a-held-article (KEYSTONE, PRF-119/PRF-088, the
+; per-record rewrite the host calls): the article's record O under the
+; theorem's own context (RULE NOW H VERDICTS ARTICLES EXPIRED), one witness
+; per disjunct, and the conclusion fails with none of them.
+(defmacro rpt-o () '(nth (rpt-i) (rpt-events)))
+(defconst *rpt-arts* (fn-state-articles (fn-node-acceptance (fn-sn-node *rpt-s*))))
+(defconst *rpt-h0* (list nil nil nil nil))
+(defconst *rpt-hbp* (list nil nil nil (list *rpt-msgid*)))
+(defconst *rpt-vds* (list (cons *rpt-msgid* '(:unverified :signature 0))))
+(assert-event (equal (fn-find-article (fn-record-msgid (fn-record-result-record
+                                                        (fn-record-decode-exact (rpt-o))))
+                                      *rpt-arts*)
+                     *rpt-art*))
+; (1) a BP obligation names the article.
+(assert-event (and (fn-rcl-some-names-p (fn-rcl-obligations *rpt-hbp*) *rpt-msgid*
+                                        (fn-article-memberships *rpt-art*))
+                   (equal (fn-rclp-event (rpt-o) (list *rpt-rule* 0 *rpt-hbp* nil *rpt-arts* nil))
+                          (rpt-o))))
+; (2) the verdict list needs its payload.
+(assert-event (and (fn-rcl-verdict-heldp *rpt-msgid* *rpt-vds*)
+                   (equal (fn-rclp-event (rpt-o) (list *rpt-rule* 0 *rpt-h0* *rpt-vds* *rpt-arts* nil))
+                          (rpt-o))))
+; (3) keep-forever, and the expiry policy expires nothing.
+(assert-event (and (not (fn-xpy-expiredp *rpt-msgid* nil))
+                   (equal (fn-rclp-event (rpt-o) (list '(:keep-forever) 0 *rpt-h0* nil *rpt-arts* nil))
+                          (rpt-o))))
+; Removal witness: no holder names it, no verdict needs it, the rule
+; releases it -- and the rewrite changes the octets.
+(assert-event (and (not (fn-rcl-some-names-p (fn-rcl-obligations *rpt-h0*) *rpt-msgid*
+                                             (fn-article-memberships *rpt-art*)))
+                   (not (fn-rcl-verdict-heldp *rpt-msgid* nil))
+                   (not (equal *rpt-rule* '(:keep-forever)))
+                   (not (equal (fn-rclp-event (rpt-o) (list *rpt-rule* 0 *rpt-h0* nil *rpt-arts* nil))
+                               (rpt-o)))))
+; The third disjunct's expiry conjunct separates: a Message-ID the policy's
+; set names is expired (fn-xpy-releasablep-is-rule-or-expired-and-unheld
+; then releases it under keep-forever when nothing holds it).
+(assert-event (and (fn-xpy-expiredp *rpt-msgid* (hons-acons *rpt-msgid* t nil))
+                   (not (fn-xpy-expiredp *rpt-msgid* nil))))
+
 ; fn-rclp-events-keep-every-other-kind: every event that is not a legacy
 ; record is unchanged; tooth: the article record (a legacy record) changes.
 (defun rpt-others-same (old new)
