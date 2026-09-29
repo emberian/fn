@@ -2957,7 +2957,8 @@
         "PRF-275",
         "PRF-283",
         "PRF-314",
-        "PRF-329"
+        "PRF-329",
+        "PRF-1065"
       ],
       "verification": [
         "proof",
@@ -2973,7 +2974,7 @@
         "books/store-carried-folds.lisp",
         "tests/acl2/store-carried-folds-tests.lisp"
       ],
-      "implementation_note": "The served gates keep a release record for every open forward undertaking and one for the maintenance release (fn-cvec-verdict-at, fn-cvec-article-budget-for, fn-cvec-article-verdict-at); configuration records other than `retention set` leave the last generation to it (fn-cvec-config-generations); `status` prints `maintenance-reserve octets=R transactions=N debt=D held|short`."
+      "implementation_note": "The served gates keep a release record for every open forward undertaking and one for the maintenance release (fn-cvec-verdict-at, fn-cvec-article-budget-for, fn-cvec-article-verdict-at); configuration records other than `retention set` leave the last generation to it (fn-cvec-config-generations); `status` prints `maintenance-reserve octets=R transactions=N debt=D held|short`. P12 partial (paged-history-5): exact token cold-pool admission and settlement library plus stobj adapter (PRF-1065, SCN-1002); supplied demand only. Full actual allocation/profile funding, persistent table capacity, checkpoint/recovery old/new reserve and suffix rescue remain unimplemented; the existing one-release reserve is not the full resource-vector proof."
     },
     {
       "id": "CNS-003",

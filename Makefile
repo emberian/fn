@@ -588,6 +588,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/post-admission-keyed \
 	tests/acl2/post-admission-keyed-tests \
 	tests/acl2/page-read-resources-tests \
+	books/page-read-ledger \
+	host/page-read-host \
+	tests/acl2/page-read-ledger-tests \
+	tests/acl2/page-read-host-tests \
 	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \

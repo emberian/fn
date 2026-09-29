@@ -6202,6 +6202,32 @@
         "books/native-health.lisp",
         "tests/acl2/native-health-tests.lisp"
       ]
+    },
+    {
+      "id": "SCN-1002",
+      "title": "Cold resource credits survive timeouts and cached completion until actual worker death, eviction and incarnation close",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Install a supported, launcher-funded resource profile including persistent peak table capacity; open and charge a file incarnation before issuing served cold reads.",
+        "Stall a real pread, issue until admission refuses, cancel/timeout clients repeatedly while original workers remain live.",
+        "Release the stall, observe thread death and join, publish one verified buffer in cache; replay the old token, then evict it and physically close its file.",
+        "Exercise failed completion, ambiguous close, startup/recovery direct cache population and checkpoint old/new incarnation overlap under the same funded profile."
+      ],
+      "expected": [
+        "Refused issue creates no buffer, thread, descriptor or identity and returns the ACL2 resource-unavailable reply without borrowing rescue.",
+        "Timeout/cancel gives no resource refund; one monotone core-issued token identifies both ownership and exact charge.",
+        "Only joined death releases worker credit; cached buffer memory remains charged until physical eviction. Duplicate or mutated token is stale with unchanged state.",
+        "Incarnation credit lasts until physical close; retained hash capacity stays baseline-funded; faults fence when their persistence/close outcome is ambiguous."
+      ],
+      "evidence": [
+        "tests/acl2/page-read-ledger-tests.lisp",
+        "tests/acl2/page-read-host-tests.lisp"
+      ],
+      "execution_scope": "Model/adapter source REPL only; native scenario and actual allocator/profile refinement pending. This is not a checkpoint/suffix rescue completion claim."
     }
   ]
 }

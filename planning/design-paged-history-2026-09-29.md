@@ -144,6 +144,16 @@ refund. Only the first actual matching completion settles ownership, then
 refunds after dropping the extent mutex; the wrapper must prove exactly-once
 settlement and the lock order. A refused issue allocates no buffer/thread.
 
+The next pool increment (`page-read-ledger`, `page-read-host`, PRF-1065,
+SCN-1002) binds the complete immutable token to its charge in a dedicated
+ACL2 stobj. Actual worker death plus join, rather than a callback still
+running on that worker, is the native release observation. A cached vector
+retains its buffer charge until eviction; the file incarnation retains its
+FD charge until actual close. Persistent hash arrays may retain peak capacity
+after removing entries and must be baseline-funded at installation. The
+current adapter accepts supplied accounting inputs; it establishes no
+measured allocator bound or productive supported profile by itself.
+
 Remaining complete increments, in order:
 
 1. Supported operator resource policy, representability and initial funding;
