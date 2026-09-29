@@ -1463,10 +1463,16 @@ def repository_definitions(root: Path = ROOT) -> dict[str, list[str]]:
 
 def book_holes(builds=WORLD_BUILDS, root: Path = ROOT,
                index: dict[str, list[str]] | None = None) -> list[str]:
-    """`BUILD: FILE:LINE: NAME ...` for each call in an ld host file of BUILD
-    to a name BUILD's world lacks and a repository book defines."""
+    """Missing repository definitions used by ld calls or loaded interfaces.
+
+    A compliant entry can be called directly by the raw host, without an
+    ACL2-mode call site. Its declaration still needs the defining book in
+    the actual image world, rather than merely somewhere in the repository.
+    """
     import build_lists_check
+    import interface_emit
     index = repository_definitions(root) if index is None else index
+    declarations = interface_emit.declarations(root)
     dtn_excused = {name for _, (_, names) in build_lists_check.DTN_OMITTED.items()
                    for name in names}
     found: list[str] = []
@@ -1474,7 +1480,18 @@ def book_holes(builds=WORLD_BUILDS, root: Path = ROOT,
         defined, _, _ = world_of(build, root)
         defined = {name.lower() for name in defined}
         excused = dtn_excused if build == build_lists_check.DTN_BUILD else set()
-        for relative in ld_sequence(build, root):
+        loaded = ld_sequence(build, root)
+        for declaration in declarations:
+            name = declaration["name"]
+            source = declaration["source"]
+            if source not in loaded or name in defined or name not in index:
+                continue
+            found.append(f"{build}: {source}:{declaration['line']}: declared {name} "
+                         f"is defined in {', '.join(index[name])}, which this image's "
+                         "world does not include: include-book it in the build's "
+                         "authoritative source (and regenerate the umbrellas: "
+                         "tools/extract/world.py)")
+        for relative in loaded:
             path = root / relative
             if not path.is_file():
                 continue

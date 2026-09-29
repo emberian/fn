@@ -39,7 +39,7 @@
 ; arena by extents (PKT-585).
 (in-package "ACL2")
 (include-book "bp-fnbs-family-replay")
-(include-book "bp-fragment-resume")
+(include-book "bp-fragment-job-shape")
 
 (set-verify-guards-eagerness 0)
 
@@ -51,19 +51,21 @@
   (fn-bpnf-fragment-cells (fn-bpnf-active-set st anchor)))
 
 (defun fn-bpfj-total (anchor)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpnf-active-fragmentp anchor)))
   (fn-bpp-total-adu-length
    (fn-bpb-bundle-primary (fn-bpnf-held-bundle anchor))))
 
-(defun fn-bpfj-job (cells total sweep)
-  (declare (xargs :guard t))
-  (list cells total sweep))
-(defun fn-bpfj-job-cells (job) (declare (xargs :guard t)) (fn-bpn-nth 0 job))
-(defun fn-bpfj-job-total (job) (declare (xargs :guard t)) (fn-bpn-nth 1 job))
-(defun fn-bpfj-job-sweep (job) (declare (xargs :guard t)) (fn-bpn-nth 2 job))
+; The job, its accessors and its shape recognizers (fn-bpfj-jobp,
+; fn-bpfj-readable-jobp) are books/bp-fragment-job-shape, which the receive
+; boundary checks of a job-carrying event.
 
+; The guard is what fn-bpfr-start and the first step need, computed once
+; from what the start consumes anyway (the family's cells); never the whole
+; held list.
 (defun fn-bpfj-start (st anchor)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (and (fn-bpnf-active-fragmentp anchor)
+                              (fn-bpfw-fragment-listp (fn-bpfj-cells st anchor))
+                              (natp (fn-bpfj-total anchor)))))
   (let ((cells (fn-bpfj-cells st anchor))
         (total (fn-bpfj-total anchor)))
     (fn-bpfj-job cells total (fn-bpfr-start cells total))))
@@ -72,45 +74,53 @@
 ; (fn-bpfj-step-is-bounded), whatever the family holds.  The sweep is read
 ; with nth, as bp-fragment-resume reads it.
 (defun fn-bpfj-step (job quantum)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (and (fn-bpfj-jobp job) (natp quantum))))
   (let ((s (fn-bpfj-job-sweep job)))
     (fn-bpfj-job (fn-bpfj-job-cells job) (fn-bpfj-job-total job)
                  (fn-bpfr-step (nth 0 s) (nth 1 s) (nth 2 s) (nth 3 s)
                                (nth 4 s) quantum))))
 
 (defun fn-bpfj-finishedp (job)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpfj-jobp job)))
   (zp (nth 3 (fn-bpfj-job-sweep job))))
 
 ; The executable half of the invariant: the job was started from exactly
 ; the rows the family holds now.
 (defun fn-bpfj-currentp (st anchor job)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpnf-active-fragmentp anchor)))
   (and (equal (fn-bpfj-job-cells job) (fn-bpfj-cells st anchor))
        (equal (fn-bpfj-job-total job) (fn-bpfj-total anchor))))
 
 (defun fn-bpfj-wf (st anchor job)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (and (fn-bpnf-active-fragmentp anchor)
+                              (fn-bpfj-readable-jobp job))))
   (and (fn-bpfj-currentp st anchor job)
        (equal (fn-bpfr-resume (fn-bpfj-job-sweep job))
               (fn-bpfw-sweep-acc nil (fn-bpfw-sort (fn-bpfj-job-cells job))
                                  0 (fn-bpfj-job-total job) nil))))
 
-; The accessors over the constructor; the accessors stay closed below.
-(defthm fn-bpfj-job-cells-of-job
-  (equal (fn-bpfj-job-cells (fn-bpfj-job cells total sweep)) cells)
-  :hints (("Goal" :in-theory (enable fn-bpfj-job fn-bpfj-job-cells
-                                     fn-bpn-nth fn-cbor-ag-car))))
-(defthm fn-bpfj-job-total-of-job
-  (equal (fn-bpfj-job-total (fn-bpfj-job cells total sweep)) total)
-  :hints (("Goal" :in-theory (enable fn-bpfj-job fn-bpfj-job-total
-                                     fn-bpn-nth fn-cbor-ag-car))))
-(defthm fn-bpfj-job-sweep-of-job
-  (equal (fn-bpfj-job-sweep (fn-bpfj-job cells total sweep)) sweep)
-  :hints (("Goal" :in-theory (enable fn-bpfj-job fn-bpfj-job-sweep
-                                     fn-bpn-nth fn-cbor-ag-car))))
-(in-theory (disable fn-bpfj-job fn-bpfj-job-cells fn-bpfj-job-total
-                    fn-bpfj-job-sweep))
+; The shape the host carries (books/bp-fragment-job-shape): the start
+; makes a readable job under its guard, and a step keeps one (never
+; re-walking the cells; fn-bpfr-step-keeps-statep, -keeps-cells-true-listp).
+(defthm fn-bpfj-start-is-readable
+  (implies (and (fn-bpfw-fragment-listp (fn-bpfj-cells st anchor))
+                (natp (fn-bpfj-total anchor)))
+           (and (fn-bpfj-jobp (fn-bpfj-start st anchor))
+                (fn-bpfj-readable-jobp (fn-bpfj-start st anchor))))
+  :hints (("Goal" :in-theory (e/d (fn-bpfj-start fn-bpfj-jobp
+                                   fn-bpfj-readable-jobp fn-bpfr-statep
+                                   fn-bpfr-start fn-bpfr-state)
+                                  (fn-bpfj-cells fn-bpfj-total
+                                   fn-bpfw-sort fn-bpfw-fragmentp)))))
+
+(defthm fn-bpfj-step-keeps-readable
+  (implies (fn-bpfj-jobp job)
+           (and (fn-bpfj-jobp (fn-bpfj-step job quantum))
+                (implies (fn-bpfj-readable-jobp job)
+                         (fn-bpfj-readable-jobp (fn-bpfj-step job quantum)))))
+  :hints (("Goal" :in-theory (e/d (fn-bpfj-step fn-bpfj-jobp
+                                   fn-bpfj-readable-jobp fn-bpfr-statep)
+                                  (fn-bpfr-step fn-bpfw-fragmentp)))))
 
 (defthm fn-bpfr-resume-of-start
   (equal (fn-bpfr-resume (fn-bpfr-start fs total))
@@ -163,7 +173,7 @@
 ; without the sweep.  A stale job and an unfinished one are named, never
 ; planned.
 (defun fn-bpfj-query (st anchor job)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpfj-readable-jobp job)))
   (cond ((not (and (fn-bpnf-active-fragmentp anchor)
                    (fn-bpnf-family-member anchor (fn-bpnf-held-list st))))
          (list :invalid :bounds))
@@ -195,7 +205,8 @@
 ; fn-bpnf-family-plan over the job, under LIMIT (the profile's bundle
 ; octets) in place of the codec-width cap.
 (defun fn-bpfj-plan (st anchor job limit)
-  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))))
+  (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                              (fn-bpfj-readable-jobp job))))
   (let* ((rows (fn-bpnf-active-set st anchor))
          (query (fn-bpfj-query st anchor job)))
     (if (not (equal (car query) :ok))
@@ -262,7 +273,8 @@
 ; The expiry gate over the job's plan (books/bp-node-fragment-expiry
 ; fn-bpnf-family-plan-at).
 (defun fn-bpfj-plan-at (st anchor observation job limit)
-  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))))
+  (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                              (fn-bpfj-readable-jobp job))))
   (let ((rows (fn-bpnf-active-set st anchor)))
     (if (and (fn-clock-observationp observation)
              (consp rows)
@@ -286,7 +298,8 @@
 ; The kind-18 application over the job's plan
 ; (books/bp-node-fragment-replacement fn-bpnf-family-apply, -apply-at).
 (defun fn-bpfj-apply (st record expected-arrival job limit)
-  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))))
+  (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                              (fn-bpfj-readable-jobp job))))
   (let* ((held (fn-bpnf-held-list st))
          (anchor-arrival (fn-bpn-nth 3 record))
          (anchor (fn-bpnf-find-arrival anchor-arrival held)))
@@ -345,7 +358,8 @@
                               (theory 'minimal-theory)))))
 
 (defun fn-bpfj-apply-at (st record expected-arrival job limit)
-  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))))
+  (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                              (fn-bpfj-readable-jobp job))))
   (if (not (fn-bpnf-family-record-atp record))
       (list :fault :legacy-family-expiry)
     (let* ((observation (fn-bpn-nth 7 record))

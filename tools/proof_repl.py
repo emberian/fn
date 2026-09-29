@@ -73,6 +73,12 @@ session and `status` marks it "from source (not certified)"; the books of the
 closure that include it are loaded from source too, since their
 certificates name its other bytes.
 
+Source loading never implicitly launches certification. If a dependency
+fails from source, fix the source/world or explicitly choose
+`start --certify-missing`. Sent includes may acquire matching cached
+certificates, but a cache miss is refused; certification is a separate
+explicit operation.
+
 Round 2 (2026-09-27): a keyword command (`:ubt! foo`) is one command with
 the rest of its line, and when a keyword command or a raw-Lisp abort
 swallows the sentinel it is sent again after 3 s of quiet, so neither hangs
@@ -1618,20 +1624,22 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
     return True, "\n".join(printed), order
 
 
-# `_start`'s answer when a dependency loaded from source failed: `start`
-# stops what is left and starts again over certificates.
+# `_start`'s answer when a dependency loaded from source failed. `start`
+# stops the failed session; only an explicit certification request may retry.
 SOURCE_DEPS_FAILED = 75
 
 
 def start(args) -> int:
-    """Start a session; a from-source dependency that fails to load falls back
-    to --certify-missing, saying so (limits-live-3: after the chunked-body-2
-    merge a dependency's ENCAPSULATE failed from source, a false red)."""
+    """Start a session without turning a source refusal into an implicit build."""
     code = _start(args)
     if code != SOURCE_DEPS_FAILED:
         return code
     with contextlib.suppress(SystemExit):
         stop(args)
+    if not getattr(args, "certify_missing", False):
+        print("proof-repl: dependency failed from source; no certification launched. "
+              "Fix the source/world or explicitly restart with --certify-missing.")
+        return code
     args.certify_missing = True
     args.source_deps = None
     args.ld_missing = False
@@ -2290,16 +2298,15 @@ def prepare_includes(name: str, several: list[str], acquire=None) -> tuple[list[
     session's directory, and whether every included book is certified.
 
     A sent include of a book with no certificate here (a tests/acl2 book is
-    rarely in a books/ session's closure) is acquired first -- installed
-    from the cache, or certified -- as `start --certify-missing` acquires a
-    dependency; an include of an uncertified book would process its events
-    in the session, which is not what the certified book provides.
+    rarely in a books/ session's closure) is acquired from matching cached
+    evidence first. A miss is refused, never implicitly certified; choose
+    certification explicitly or send the intended source forms instead.
     """
     directory = session_directory(name)
     if directory is None:
         return several, True
     acquire = acquire or (lambda book: install_closure(
-        book, (), "certify", 4, SESSIONS / f"{name}.include.log", include_self=True))
+        book, (), None, 4, SESSIONS / f"{name}.include.log", include_self=True))
     prepared = []
     for one in several:
         rewritten, target = rooted_include(one, directory)

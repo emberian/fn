@@ -48,6 +48,22 @@ class DeclarationTests(unittest.TestCase):
                                           {"theorem": "fn-b-thm", "via": "fn-b"}])
         self.assertEqual(a["root"], "extract")
 
+    def test_raw_scope_is_explicit_and_preserves_kind_checks(self):
+        decls = interface_emit.declarations(tree(
+            '(definterface fn-a :class :common-lisp-compliant :kinds ((n natp)) '
+            ':raw-with (fn-a-proof))\n'
+            '(definterface fn-b :class :common-lisp-compliant)\n'
+            '(definterface fn-di-raw-with-problem :class :program '
+            ':direct "Image-build declaration lint")\n'
+            '(definterface fn-unrelated-helper :class :program :direct "other")\n'))
+        rendered = interface_emit.render_raw_declarations(decls)
+        self.assertIn('(definterface fn-a :class :common-lisp-compliant '
+                      ':kinds ((n natp)) :raw-with (fn-a-proof))', rendered)
+        self.assertNotIn('(definterface fn-b', rendered)
+        self.assertIn('(definterface fn-di-raw-with-problem :class :program '
+                      ':direct "Image-build declaration lint")', rendered)
+        self.assertNotIn('(definterface fn-unrelated-helper', rendered)
+
     def test_harness_tables(self):
         root = tree(SOURCE)
         self.assertEqual(interface_emit.entry_kind_exempt(root), {("fn-c", "frame"): "total scan"})
@@ -61,6 +77,12 @@ class DeclarationTests(unittest.TestCase):
     def test_unknown_keyword_is_refused(self):
         with self.assertRaises(ValueError):
             interface_emit.declarations(tree('(definterface fn-a :class :program :guard t)\n'))
+
+    def test_raw_with_parses(self):
+        decls = interface_emit.declarations(tree(
+            '(definterface fn-a :class :common-lisp-compliant :raw-with (fn-a-open fn-a-statep))\n'))
+        self.assertEqual(decls[0]["raw_with"], ["fn-a-open", "fn-a-statep"])
+        self.assertEqual(interface_emit.declarations(tree(SOURCE))[0]["raw_with"], [])
 
 
 class HostBindingTests(unittest.TestCase):
@@ -98,6 +120,48 @@ class HostBindingTests(unittest.TestCase):
     def test_duplicate(self):
         found = self.problems(SOURCE + "(definterface fn-c :class :program)\n")
         self.assertTrue(any("fn-c is declared twice" in p for p in found), found)
+
+    def raw_with_problems(self, declaration, book=""):
+        # fn-r: a dispatched, defined entry; the book holds one non-local
+        # theorem and one local one
+        root = tree(SOURCE + declaration)
+        (root / "books").mkdir()
+        (root / "books" / "x.lisp").write_text(
+            "(in-package \"ACL2\")\n(defthm fn-r-statep (implies (fn-r-relation s) "
+            "(fn-r-okp s)))\n(local (defthm fn-r-local (equal x x)))\n" + book)
+        decls = interface_emit.declarations(root)
+        over = reading(dispatched={"fn-c": {"host/native/io.lisp"},
+                                   "fn-r": {"host/native/owner.lisp"}},
+                       defined={"fn-a", "fn-c", "fn-d", "fn-r"})
+        return [p for p in interface_emit.findings(decls, over, root)
+                if "is not what the declarations say" not in p]
+
+    def test_raw_with_names_a_tree_theorem(self):
+        self.assertEqual(self.raw_with_problems(
+            "(definterface fn-r :class :common-lisp-compliant :raw-with (fn-r-statep))\n"), [])
+
+    def test_raw_with_refuses_a_missing_or_local_theorem(self):
+        found = self.raw_with_problems(
+            "(definterface fn-r :class :common-lisp-compliant :raw-with (fn-r-statep fn-r-local))\n")
+        self.assertTrue(any("fn-r :raw-with names fn-r-local, which no book defines" in p
+                            for p in found), found)
+
+    def test_raw_with_refuses_a_program_entry(self):
+        found = self.raw_with_problems(
+            "(definterface fn-r :class :program :raw-with (fn-r-statep))\n")
+        self.assertTrue(any("fn-r is declared :raw-with but :class program" in p
+                            for p in found), found)
+
+    def test_registry_lists_the_raw_dispatched(self):
+        root = tree("(definterface fn-a :class :common-lisp-compliant :raw-with (fn-a-thm))\n"
+                    "(definterface fn-c :class :program)\n")
+        import json
+        doc = json.loads(interface_emit.render_registry(
+            interface_emit.declarations(root), reading()))
+        self.assertEqual(doc["raw_dispatched"], [{"name": "fn-a", "raw_with": ["fn-a-thm"]}])
+        self.assertEqual(doc["coverage"]["raw_dispatched"], 1)
+        self.assertEqual(doc["entries"][0]["raw_with"], ["fn-a-thm"])
+        self.assertEqual(doc["entries"][1]["raw_with"], [])
 
 
 class GapTests(unittest.TestCase):

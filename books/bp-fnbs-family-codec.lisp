@@ -200,3 +200,17 @@
   (declare (xargs :guard t))
   (let ((v1 (fn-bpnf-family-v1-unframe octets)))
     (if v1 v1 (fn-bpnf-family-unframe octets))))
+
+;; The *1* class (Q4a item 2, bp-remainder-5): the host-called publication
+;; wrappers call these; verified so that their wrappers can be.
+(verify-guards fn-bpnf-family-recordp)
+(verify-guards fn-bpnf-family-record)
+(verify-guards fn-bpnf-family-record-at)
+(verify-guards fn-bpnf-family-record-atp)
+(verify-guards fn-bpnf-family-v1-values)
+(verify-guards fn-bpnf-family-v1-frame)
+(verify-guards fn-bpnf-family-from-values)
+(verify-guards fn-bpnf-family-v1-from-values)
+(verify-guards fn-bpnf-family-unframe)
+(verify-guards fn-bpnf-family-v1-unframe)
+(verify-guards fn-bpnf-family-replay-unframe)

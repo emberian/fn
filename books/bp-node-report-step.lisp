@@ -116,7 +116,15 @@
                        (or (not (equal (fn-cbor-ag-car event) :recover-fnbs))
                            (and (true-listp (fn-bpn-nth 2 event))
                                 (<= (len (fn-bpn-nth 2 event))
-                                    *fn-bpn-machine-max-records*))))
+                                    *fn-bpn-machine-max-records*)))
+                       ;; A carried reassembly job is readable (Q4a; the
+                       ;; boundary's check, fn-bpnf-fragment-step's guard).
+                       (or (not (equal (fn-cbor-ag-car event) :family))
+                           (not (fn-bpn-nth 3 event))
+                           (fn-bpfj-readable-jobp (fn-bpn-nth 3 event)))
+                       (or (not (equal (fn-cbor-ag-car event) :persist-result))
+                           (not (fn-bpn-nth 4 event))
+                           (fn-bpfj-readable-jobp (fn-bpn-nth 4 event))))
                   :verify-guards nil))
   (cond
    ((equal (fn-cbor-ag-car event) :recover-fnbs)

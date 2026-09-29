@@ -244,8 +244,7 @@
   ; (tools/extract/served-main.scm store-report; lane extract-writable)
   :root :extract)
 
-; =============================================================================
-; Every other entry the raw host dispatches through fnn-call, by subsystem
+; ======================================================================; Every other entry the raw host dispatches through fnn-call, by subsystem
 ; (tools/interface_emit.py SUBSYSTEMS).  Class and kinds are the image
 ; world's; a keystone is a cited theorem (planning/proofs.json) whose
 ; conclusion is about the entry or whose name carries it.  No :keystones is
@@ -1474,7 +1473,7 @@
   :class ::program)
 
 (definterface fn-owner-exposure-install-set
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-exposure-open
   :class ::program
@@ -1576,7 +1575,10 @@
   :class ::program)
 
 (definterface fn-owner-io
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-key-statement-event
   :class ::program)
@@ -1607,7 +1609,16 @@
   :class :common-lisp-compliant)
 
 (definterface fn-owner-known-abort
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
+
+(definterface fn-owner-limit-carried
+  :class ::program)
+
+(definterface fn-owner-limit-decided
+  :class ::program)
 
 (definterface fn-owner-live-post-config
   :class :common-lisp-compliant)
@@ -1676,7 +1687,10 @@
   :class ::program)
 
 (definterface fn-owner-prepare-consumer
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-prepare-identity
   :class :common-lisp-compliant)
@@ -1686,7 +1700,10 @@
   :kinds ((id-octets fn-cbor-octet-listp) (subject-octets fn-cbor-octet-listp) (evidence-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-prepare-topic
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-prov-post
   :class :common-lisp-compliant)
@@ -1719,7 +1736,10 @@
   :class ::program)
 
 (definterface fn-owner-refuse-reservation
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-sco-capture
   :class ::program)
@@ -1843,6 +1863,21 @@
   :class ::common-lisp-compliant
   :kinds ((w natp))
   :keystones (fn-splan-window-is-a-prefix-of-the-reply))
+
+(definterface fn-splan-at-cursorp
+  :class ::common-lisp-compliant
+  :keystones (fn-splan-window-size-is-positive-until-done))
+
+(definterface fn-splan-cursor-step
+  :class ::common-lisp-compliant
+  :kinds ((w natp))
+  ;; The keystone must call the entry: this one does (fn-splan-cw-drain-is-the-
+  ;; expanded-reply calls it only through fn-splan-cw-drain; hbox host-ld at
+  ;; 899634977 refused that).
+  :keystones (fn-splan-cursor-step-keeps-cw-remaining))
+
+(definterface fn-splan-cursor-window
+  :class ::common-lisp-compliant)
 
 (definterface fn-splan-window-size
   :class ::common-lisp-compliant
@@ -2213,7 +2248,7 @@
   :class ::ideal)
 
 (definterface fn-bpah-handoff-report
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpah-handoff-report-is-application-disposition))
 
 (definterface fn-bpah-outbox-effective-status
@@ -2226,20 +2261,23 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpah-publication-authorize
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpah-publication-authorize-admits-exactly-the-issued-pending-delivery))
 
 (definterface fn-bpah-publication-frame
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpah-publication-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpah-publication-operationp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpah-publication-publisher
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpaj-eid-text
   :class ::common-lisp-compliant)
@@ -2499,7 +2537,7 @@
   :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-machine-invariantp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpn-nth
   :class ::common-lisp-compliant
@@ -2519,7 +2557,7 @@
   :keystones (fn-bpn-report-outbox-next-selects-exactly-the-least-yielding-row))
 
 (definterface fn-bpn-report-outbox-peer-matchp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-answer-effects
   :class ::common-lisp-compliant
@@ -2562,59 +2600,85 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-conflict-publication-authorize
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnf-conflict-publication-success-binds-exact-echo))
 
 (definterface fn-bpnf-conflict-publication-frame
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-conflict-publication-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-conflict-publication-operationp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-conflict-publication-publisher
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-delete-publication-authorize
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnf-delete-publication-authorize-admits-exactly-the-issued-pending-deletion))
 
 (definterface fn-bpnf-delete-publication-frame
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-delete-publication-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-delete-publication-operationp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-delete-publication-publisher
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-epoch
   :class ::common-lisp-compliant)
 
-(definterface fn-bpnf-family-next
+;; Q4a increment B: the reassembly job the host carries between steps
+;; (books/bp-node-fragment-job, books/bp-node-fragment-step).
+(definterface fn-bpfj-next-candidate
   :class ::common-lisp-compliant
-  :keystones (fn-bpnf-family-next-selects-exactly-the-first-ready-family))
+  :kinds ((tried true-listp)))
 
+(definterface fn-bpnf-find-arrival
+  :class ::common-lisp-compliant)
+
+(definterface fn-bpfj-start
+  :class ::common-lisp-compliant)
+
+(definterface fn-bpfj-step
+  :class ::common-lisp-compliant
+  :kinds ((quantum natp)))
+
+(definterface fn-bpfj-finishedp
+  :class ::common-lisp-compliant)
+
+(definterface fn-bpnpf-bundle-octets
+  :class ::common-lisp-compliant)
 (definterface fn-bpnf-family-publication-authorize
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family))
 
 (definterface fn-bpnf-family-publication-frame
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-family-publication-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-family-publication-operationp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-family-publication-publisher
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-find-held
   :class ::common-lisp-compliant)
@@ -2632,13 +2696,15 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-mixed-legacy-names
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((plan true-listp)))
 
 (definterface fn-bpnf-mixed-legacy-observed
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-mixed-received-names
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((plan true-listp)))
 
 (definterface fn-bpnf-mixed-recovery-plan
   :class ::common-lisp-compliant)
@@ -2647,22 +2713,25 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-namespace-max-entries
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-publication-authorize
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-publication-operation-frame
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-publication-operation-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-publication-operation-publisher
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-publication-operationp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-receive-wire-event-value
   :class ::common-lisp-compliant)
@@ -2671,20 +2740,20 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-stored-frame-limit
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-stored-record-name
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnj-attempt-token
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnj-host-eventp
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnj-host-refuses-an-unnamed-transport-result))
 
 (definterface fn-bpnj-step
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnj-step-preserves-guard-premises
               fn-bpnj-step-forwarded-needs-a-durable-finished-record
               fn-bpnj-stale-job-result-settles-nothing))
@@ -2710,20 +2779,23 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnp-dispatch-publication-authorize
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnp-dispatch-publication-authorize-admits-exactly-the-issued-pending-dispatch))
 
 (definterface fn-bpnp-dispatch-publication-frame
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnp-dispatch-publication-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnp-dispatch-publication-operationp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnp-dispatch-publication-publisher
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnp-forward-plan
   :class ::common-lisp-compliant
@@ -2732,21 +2804,21 @@
               fn-bpnp-forward-plan-has-one-session-per-peer))
 
 (definterface fn-bpnp-forward-publication-authorize
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward))
 
 (definterface fn-bpnp-forward-publication-name
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnp-forward-publication-octets
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnp-forward-publication-operationp
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward))
 
 (definterface fn-bpnp-forward-publication-publisher
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnp-forward-unrouted
   :class ::common-lisp-compliant
@@ -2956,10 +3028,10 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpsr-host-encode
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpsr-host-preimage
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-id-hex-octets
   :class ::common-lisp-compliant
@@ -3916,6 +3988,10 @@
 (definterface fn-arpn-step
   :class ::common-lisp-compliant)
 
+(definterface fn-rpin-step
+  :class :common-lisp-compliant
+  :keystones (fn-rpin-step-preserves-funded-ownership))
+
 ;; books/control-request-word.lisp
 
 ; host/native/operator-live.lisp dispatches it (lane online-reclaim-5).
@@ -4017,10 +4093,6 @@
 ;; books/limits-live.lisp
 
 ; host/native/admin.lisp dispatches it (lane limits-live).
-(definterface fn-lim-apply-row
-  :class ::common-lisp-compliant)
-
-; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-lim-decide
   :class ::common-lisp-compliant)
 
@@ -4031,10 +4103,6 @@
 ; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-lim-decision-status
   :class ::common-lisp-compliant)
-
-; host/native/admin.lisp dispatches it (lane limits-live).
-(definterface fn-lim-funded-after
-  :class :common-lisp-compliant)
 
 ; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-lim-reply-line
@@ -4100,6 +4168,26 @@
 
 (definterface fn-oex-status-no-owner-line
   :class :common-lisp-compliant)
+
+;; books/owner-snapshot-request.lisp (row S7, PRF-1050): the running owner's
+;; snapshot request and status (host/native/admin.lisp), the blessing's
+;; verdict (host/native/io.lisp fnn-command-store-bless-snapshot), the
+;; marker's text and the client's lines (host/native/operator.lisp).
+(definterface fn-nop-parse-store
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-open-needed
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-word
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-status
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-line
+  :class :common-lisp-compliant
+  :kinds ((dir stringp) (transactions natp)))
 
 ;; books/native-control-reason.lisp
 
@@ -4210,6 +4298,22 @@
   :direct "the raw body of A-ARENA-STORED's realizer (host/native/extent.lisp fn-arena-stored) recognizes the compressed extent itself; guard t")
 
 ;; books/payload-extent-read.lisp
+
+;; books/page-read-ownership.lisp (PRF-1057).
+(definterface fn-pio-issue
+  :class :common-lisp-compliant
+  :kinds ((next natp) (cid natp) (file natp) (eoff natp) (elen natp) (trailer natp)))
+(definterface fn-pio-token
+  :class :common-lisp-compliant
+  :kinds ((r true-listp)))
+(definterface fn-pio-cancel
+  :class :common-lisp-compliant)
+(definterface fn-pio-complete
+  :class :common-lisp-compliant
+  :keystones ((fn-pio-completion-publishes-only-the-issued-identity :via fn-pio-complete)))
+(definterface fn-pio-file-clear-p
+  :class :common-lisp-compliant
+  :keystones ((fn-pio-close-waits-for-every-worker :via fn-pio-file-clear-p)))
 
 ; host/native/io.lisp dispatches it (lane extent-identity).
 (definterface fn-arx-attach-trailers-buffer
@@ -4392,7 +4496,8 @@
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-rebuild
-  :class ::program)
+  :class :ideal
+  :keystones (fn-owner-orcp-rebuild-establishes-retain-carry))
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-salt
@@ -4483,3 +4588,36 @@
 ; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
 (definterface fn-store-sco-want-checkpoint-digest
   :class ::program)
+
+; Serialized BP node local control (route-only first increment).
+(definterface fn-bpnc-config-bound
+  :class ::common-lisp-compliant)
+(definterface fn-bpnc-startup
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnc-ready-startup-binds-the-parsed-store))
+(definterface fn-bpnc-turn-plan
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnc-grant-is-the-authorized-route-plan))
+(definterface fn-bpnc-socket-initial
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnc-open-run-live-iff-both-completions-succeed))
+(definterface fn-bpnc-socket-action
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnc-retirement-stops-the-control-listener))
+(definterface fn-bpnc-socket-step
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnc-open-run-live-iff-both-completions-succeed
+              fn-bpnc-retirement-stops-the-control-listener))
+
+(definterface fn-bpnc-status-unavailable
+  :class ::common-lisp-compliant)
+; Called directly only while installing dispatch from the loaded image world.
+(definterface fn-di-raw-with-problem
+  :class :program
+  :direct "Image-build declaration lint over the loaded world; no client data or served decision")
+(definterface fn-pio-reap-work :class :common-lisp-compliant)
+(definterface fn-pio-worker-death-step :class :common-lisp-compliant
+  :kinds ((deadp booleanp)))
+
+(definterface fn-pio-file-issue :class :common-lisp-compliant
+  :keystones ((fn-pio-successive-file-issues-have-distinct-identities :via fn-pio-file-issue)))

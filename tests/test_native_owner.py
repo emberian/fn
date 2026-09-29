@@ -208,6 +208,48 @@ class NativeOwnerTests(unittest.TestCase):
                 b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n"
                 b"Message-ID: " + message_id + b"\r\n\r\n" + body)
 
+    DISPATCH_ID = b"<dispatch-both-ways@example.invalid>"
+
+    def served_post_transcript(self, env):
+        """A fresh node's served POST, its duplicate, the group and the
+        article read back, under ENV: (the reply lines, the owner's stderr).
+        Lines with a clock reading (Date, Injection-Date) are not compared;
+        the decisions and the stored octets are."""
+        node = Node(self, IMAGE, listener=False, control=False)
+        node.store("init", "fn.test", expect=EXIT.OK)
+        process, port = node.start_store_owner(once=False, env=env)
+        writer = self.connect_owner(port)
+        first, final = writer.post(self.article(self.DISPATCH_ID, b"dispatch both ways\r\n"))
+        dup_first, dup_final = writer.post(self.article(self.DISPATCH_ID, b"dispatch both ways\r\n"))
+        reader = self.connect_owner(port)
+        group = reader.command(b"GROUP fn.test")
+        answer, received = reader.multiline(b"ARTICLE " + self.DISPATCH_ID)
+        body = b"\r\n".join(line for line in received.split(b"\r\n")
+                            if b"date:" not in line.lower())
+        self.assertTrue(writer.command(b"QUIT").startswith(b"205 "))
+        self.assertTrue(reader.command(b"QUIT").startswith(b"205 "))
+        node.stop(process=process)
+        return [first, final, dup_first, dup_final, group, answer, body], process.stderr.since(0)
+
+    def test_unqualified_raw_annotations_stay_on_counterpart(self):
+        # D40's real-owner annotations are withheld pending complete host
+        # guard establishment and preservation. The selector must explicitly
+        # report zero entries; both runs still exercise POST and retrieval.
+        raw, raw_stderr = self.served_post_transcript(None)
+        counterpart, counterpart_stderr = self.served_post_transcript(
+            {"FN_NATIVE_DISPATCH_COUNTERPART": "1"})
+        self.assertTrue(raw[0].startswith(b"340 "), raw[0])
+        self.assertTrue(raw[1].startswith(b"240 "), raw[1])
+        self.assertFalse(raw[3].startswith(b"240 "), raw[3])
+        self.assertTrue(raw[5].startswith(b"220 "), raw[5])
+        self.assertIn(b"dispatch both ways\r\n", raw[6])
+        self.assertEqual(raw, counterpart)
+        self.assertNotIn(b"fn-dispatch: counterpart", raw_stderr)
+        match = re.search(rb"fn-dispatch: counterpart for (\d+) raw-dispatched entries",
+                          counterpart_stderr)
+        self.assertIsNotNone(match, counterpart_stderr[-2000:])
+        self.assertEqual(int(match.group(1)), 0, counterpart_stderr[-2000:])
+
     def test_client_disconnect_is_not_a_global_owner_fault(self):
         process, port = self.node.start_store_owner(once=False)
         with socket.create_connection(("127.0.0.1", port), timeout=30) as client:

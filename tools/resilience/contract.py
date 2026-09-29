@@ -25,6 +25,50 @@ PROFILE = "local-commit-log"
 FATES = ("committed", "absent")
 
 
+def acceptance_model_step(state: dict, operation) -> dict:
+    """Independent checker for the bounded A/B acceptance-model fixture.
+
+    Transcribes books/acceptance.lisp fn-accept-prepare/complete/recover;
+    publication, stale completion and fencing are PRF-003 statements named
+    in RULES below. Recovery and the whole fixture relation remain model
+    checks, not a new composed theorem. This never decides a served request.
+    """
+    state = dict(state, published=set(state["published"]))
+    args = operation.args
+    identity, generation = args["identity"], args["generation"]
+    pending = state["pending"]
+    if operation.op == "model-prepare":
+        if not state["fenced"] and pending is None and identity not in state["published"]:
+            state.update(pending=identity, generation=generation)
+        return state
+    if pending != identity or state["generation"] != generation:
+        return state
+    result = args["result"]
+    if operation.op == "model-complete":
+        if state["fenced"]:
+            return state
+        if result == "indeterminate":
+            state["fenced"] = True
+            return state
+        publish, clear = result == "durable", result in ("durable", "aborted")
+    else:
+        if not state["fenced"]:
+            return state
+        publish, clear = result == "committed", result in ("committed", "absent")
+    if publish:
+        state["published"].add(identity)
+    if clear:
+        state.update(pending=None, generation=None, fenced=False)
+    return state
+
+
+def acceptance_model_view(state: dict) -> dict:
+    return dict(a=str(len(state["published"])), p=state["pending"] or "none",
+                f="T" if state["fenced"] else "NIL",
+                q=str((1 if "A" in state["published"] else 0) +
+                      (2 if "B" in state["published"] else 0)))
+
+
 @dataclass(frozen=True)
 class Rule:
     name: str
