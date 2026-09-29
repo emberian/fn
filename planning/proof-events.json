@@ -7703,6 +7703,11 @@
         {
           "kind": "theorem",
           "name": "fn-cnx-freshp-of-cat-writers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnxw-windows-is-range",
+          "note": "The number range cut into windows of any width is the range (PKT-733 (4)): the equation a bounded OVER arm needs."
         }
       ]
     },
@@ -10822,6 +10827,46 @@
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-chunk-span-carried",
           "note": "KEYSTONE (join-f2-2). The served read with fn-scol-okp discharged by fn-sjh-colsp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-viewsp-at-capture",
+          "note": "KEYSTONE (join-f2-2). The committer's capture of the working view (fn-owner-reader-views-capture)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-viewsp-at-owner-finish-identity",
+          "note": "KEYSTONE (join-f2-2). The captured views across every branch of the identity finish."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-viewsp-at-host-article-finish",
+          "note": "KEYSTONE (join-f2-2). The captured views across the article finish (an older view stays live: fn-scj-catalogp-of-finish)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-viewsp-of-ocfg-store-step",
+          "note": "KEYSTONE (join-f2-2). The store's steps other than its finish: the working view refreshes forward."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-viewsp-of-ocfg-step-view-event",
+          "note": "KEYSTONE (join-f2-2). Every other fn-owner-step event and the connection events keep the view."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-viewsp-at-owner-chunk-span",
+          "note": "KEYSTONE (join-f2-2). The served read keeps the view."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-chunk-span-fully-carried",
+          "note": "KEYSTONE (join-f2-2). The served read over fn-sjh-okp, fn-sjh-colsp and fn-sjh-viewsp: no named premise."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-open-captured-carried",
+          "note": "KEYSTONE (join-f2-2). The open at a captured view over fn-sjh-okp and fn-sjh-viewsp."
         }
       ]
     },
