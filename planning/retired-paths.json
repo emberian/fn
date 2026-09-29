@@ -2,6 +2,8 @@
   "note": "Paths removed from the tree on purpose, with where their role went.  tools/cite_check.py reads this as the disclosure for a citation of one of them (class `retired`): the citing prose predates the removal.  Every path is recoverable as `git show 940bc3104:PATH`.",
   "paths": {
     "bin/fn": "retired with the Python host by python-diet T5: the native image is the host (tests/native_harness.py, the native modules); what this file established about the Python host is not evidence about the image",
+    "packaging/fn.service": "the retired Python host's unit (bin/fn --config ... run); retired by python-diet-3: a release renders packaging/fn-native.service.in (systemd), packaging/fn.rc.in (OpenBSD); packaging/net.fn.native.plist.in is the launchd template",
+    "packaging/net.fn.plist": "the retired Python host's unit (bin/fn --config ... run); retired by python-diet-3: a release renders packaging/fn-native.service.in (systemd), packaging/fn.rc.in (OpenBSD); packaging/net.fn.native.plist.in is the launchd template",
     "tests/bench/__init__.py": "retired with the Python host by python-diet T5: the native image is the host (tests/native_harness.py, the native modules); what this file established about the Python host is not evidence about the image",
     "tests/bench/current_path.py": "retired with the Python host by python-diet T5: the native image is the host (tests/native_harness.py, the native modules); what this file established about the Python host is not evidence about the image",
     "tests/bench/generate.py": "retired with the Python host by python-diet T5: the native image is the host (tests/native_harness.py, the native modules); what this file established about the Python host is not evidence about the image",

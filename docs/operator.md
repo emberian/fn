@@ -144,7 +144,8 @@ that, every `restart` is quietly refused while looking like success. Run
 If you move the store or log folder, add the new place to `ReadWritePaths`
 in the service file. Otherwise the service cannot write there.
 
-On a Mac, install `share/fn/launchd/net.fn.plist` as
+No release targets macOS. From a checkout on a Mac, render
+`packaging/net.fn.native.plist.in` (replace `@PREFIX@`) into
 `/Library/LaunchDaemons/net.fn.plist`, then run
 `sudo launchctl bootstrap system /Library/LaunchDaemons/net.fn.plist`.
 
