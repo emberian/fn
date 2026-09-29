@@ -26,7 +26,7 @@
 ; generalized through it into FLOOR/MOD and ground to the 300,000-step
 ; limit (5.8 s on hbox).  Without it that must-fail fails in 11,444 steps.
 ; Nothing here reasons about quotients.
-(local (in-theory (disable (:generalize mod-x-y-=-x+y-for-rationals))))
+; (books/cbor-invariants.lisp now disables it at its source.)
 
 (defconst *ndt-stamp* *fn-cfg-default-stamp*)
 (defconst *ndt-undertake*

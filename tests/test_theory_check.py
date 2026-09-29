@@ -80,5 +80,50 @@ class RealTreeTests(unittest.TestCase):
         self.assertTrue(result.stdout.startswith("theory-check:"), result.stdout)
 
 
+class BookOrderTests(unittest.TestCase):
+    """obstructions-7 items 56 and 65: guard verification ahead of a
+    callee's; mv-nth enabled in a book's theory."""
+
+    def setUp(self):
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "tools"))
+        import theory_check
+        self.tc = theory_check
+
+    def test_a_verification_before_its_callees_is_named(self):
+        book = """(in-package "ACL2")
+(defun g (x) (declare (xargs :guard t :verify-guards nil)) x)
+(defun f (x) (declare (xargs :guard t)) (g x))
+(verify-guards g)
+"""
+        found = self.tc.guard_order(book)
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("form #3 verifies the guards of f, which calls g", found[0])
+        self.assertIn("only at form #4", found[0])
+        # In order: nothing.
+        good = book.replace("(verify-guards g)\n", "").replace(
+            "(defun f", "(verify-guards g)\n(defun f")
+        self.assertEqual(self.tc.guard_order(good), [])
+        # A later verify-guards of f itself, after g's, is fine; one before is not.
+        late = """(defun g (x) (declare (xargs :verify-guards nil)) x)
+(defun f (x) (declare (xargs :verify-guards nil)) (g x))
+(verify-guards f)
+(verify-guards g)
+"""
+        self.assertEqual(len(self.tc.guard_order(late)), 1)
+        # An mbe's :logic callee needs no guard verification.
+        logic = """(defun g (x) (declare (xargs :verify-guards nil)) x)
+(defun f (x) (declare (xargs :guard t)) (mbe :logic (g x) :exec x))
+(verify-guards g)
+"""
+        self.assertEqual(self.tc.guard_order(logic), [])
+
+    def test_mv_nth_enabled_at_the_top(self):
+        self.assertTrue(self.tc.mv_nth_opened("(local (in-theory (enable mv-nth car-cons)))"))
+        self.assertTrue(self.tc.mv_nth_opened("(in-theory (e/d (mv-nth) (foo)))"))
+        self.assertFalse(self.tc.mv_nth_opened("(in-theory (disable mv-nth))"))
+        self.assertFalse(self.tc.mv_nth_opened(
+            "(defthm x t :hints ((\"Goal\" :in-theory (enable mv-nth))))"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -203,5 +203,33 @@ class AcquisitionTests(unittest.TestCase):
             self.assertIn("Uncertified", result.reason)
 
 
+class FirstFailedBookTests(unittest.TestCase):
+    """obstructions-7 item 62: a failed acquire names the first book that
+    failed to load."""
+
+    def test_the_book_at_or_after_the_first_marker(self):
+        output = ("ACL2 !>\n(include-book \"books/fine\")\nACL2 Error in ( INCLUDE-BOOK "
+                  "\"books/owner\" ...):  The certificate\nfile /t/books/owner.cert\n"
+                  "ACL2 Error later in books/other\n")
+        self.assertEqual(proof_artifacts.first_failed_book(output),
+                         'first failed book books/owner (ACL2 Error in ( INCLUDE-BOOK '
+                         '"books/owner" ...):  The certificate)')
+        after = "HARD ACL2 ERROR in LOAD\nwhile loading /tank/t/books/login-binding.fasl\n"
+        self.assertIn("books/login-binding", proof_artifacts.first_failed_book(after))
+        self.assertEqual(proof_artifacts.first_failed_book("all fine\n"), "")
+        self.assertEqual(proof_artifacts.first_failed_book("Uncertified thing\n"),
+                         "first failure: Uncertified thing")
+
+    def test_validate_puts_it_in_the_reason(self):
+        def run(*_args, **_kwargs):
+            return subprocess.CompletedProcess(
+                [], 0, b'ACL2 Error in ( INCLUDE-BOOK "books/owner" ...)\n')
+        with tempfile.TemporaryDirectory() as directory:
+            loaded = proof_artifacts.validate(Path(directory), Path("/bin/true"),
+                                              ["books/x"], run=run)
+        self.assertFalse(loaded.ok)
+        self.assertIn("first failed book books/owner", loaded.reason)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -120,3 +120,52 @@
 (defun fn-tcl-delivery-plan-progress-p (plan)
   (declare (xargs :guard t))
   (equal (fn-tcl-delivery-plan-status plan) :accepted))
+
+; KEYSTONE (PRF-1036).  The delivery plan (host/native/tcpcl.lisp acts on its status and
+; writes its messages), two-sided per status: a plan is :accepted exactly
+; when the final ACK of the transfer is held and the durability callback
+; answered (:accepted nil-or-string), :refused exactly when it is held and
+; the callback answered (:refused detail), :uncertain exactly when it is held
+; and the callback answered (:uncertain detail); an accepted plan carries the
+; held messages, a refused plan the prior messages followed by one XFER_REFUSE
+; naming the transfer with the detail's reason code, an uncertain or faulted
+; plan no message at all (nothing is sent on uncertainty); a fault names the
+; missing final ACK or the malformed callback.  The status is one of the four.
+(defthm fn-tcl-delivery-plan-decides-exactly-by-the-held-final-ack-and-the-callback
+  (let* ((plan (fn-tcl-delivery-plan messages xfer-id result))
+         (status (fn-tcl-delivery-plan-status plan))
+         (held (fn-tcl-held-final-ackp messages xfer-id))
+         (wf (and (true-listp result) (equal (len result) 2))))
+    (and (member-equal status '(:accepted :refused :uncertain :fault))
+         (iff (equal status :accepted)
+              (and held wf (equal (car result) :accepted)
+                   (or (null (cadr result)) (stringp (cadr result)))))
+         (iff (equal status :refused)
+              (and held wf (equal (car result) :refused)))
+         (iff (equal status :uncertain)
+              (and held wf (equal (car result) :uncertain)))
+         (implies (equal status :accepted)
+                  (and (equal (fn-tcl-delivery-plan-messages plan) messages)
+                       (equal (fn-tcl-delivery-plan-detail plan) (cadr result))))
+         (implies (equal status :refused)
+                  (and (equal (fn-tcl-delivery-plan-messages plan)
+                              (append (fn-tcl-held-prior-messages messages)
+                                      (list (fn-tcl-make-xfer-refuse
+                                             (fn-tcl-delivery-refuse-reason
+                                              (cadr result))
+                                             xfer-id))))
+                       (equal (fn-tcl-delivery-plan-detail plan) (cadr result))))
+         (implies (member-equal status '(:uncertain :fault))
+                  (null (fn-tcl-delivery-plan-messages plan)))
+         (implies (equal status :fault)
+                  (member-equal (fn-tcl-delivery-plan-detail plan)
+                                '(:missing-final-ack :bad-callback-result)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-tcl-delivery-plan
+                                   fn-tcl-delivery-plan-status
+                                   fn-tcl-delivery-plan-messages
+                                   fn-tcl-delivery-plan-detail)
+                                  (fn-tcl-held-final-ackp
+                                   fn-tcl-held-prior-messages
+                                   fn-tcl-make-xfer-refuse
+                                   fn-tcl-delivery-refuse-reason)))))

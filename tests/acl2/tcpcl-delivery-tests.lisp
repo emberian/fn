@@ -173,3 +173,38 @@
 ; A fault (the held list lacks its final ACK): no ACK, no progress.
 (assert-event (not (fn-tcl-delivery-plan-progress-p
                     (fn-tcl-delivery-plan (list (car *t-delivery-held*)) 0 '(:accepted nil)))))
+
+; KEYSTONE teeth (PRF-1036,
+; fn-tcl-delivery-plan-decides-exactly-by-the-held-final-ack-and-the-callback):
+; the held final ACK of transfer 0 with each callback answer by name and the
+; messages each status carries; then no held ACK (no messages at all) and a
+; malformed callback answer the fault with its detail, carrying nothing.
+(assert-event
+ (let ((accepted (fn-tcl-delivery-plan *t-delivery-held* 0 '(:accepted nil)))
+       (refused (fn-tcl-delivery-plan *t-delivery-held* 0 '(:refused :capacity)))
+       (uncertain (fn-tcl-delivery-plan *t-delivery-held* 0 '(:uncertain :disk))))
+   (and (fn-tcl-held-final-ackp *t-delivery-held* 0)
+        (equal (fn-tcl-delivery-plan-status accepted) :accepted)
+        (equal (fn-tcl-delivery-plan-messages accepted) *t-delivery-held*)
+        (null (fn-tcl-delivery-plan-detail accepted))
+        (equal (fn-tcl-delivery-plan-status refused) :refused)
+        (equal (fn-tcl-delivery-plan-messages refused)
+               (append (fn-tcl-held-prior-messages *t-delivery-held*)
+                       (list (fn-tcl-make-xfer-refuse
+                              (fn-tcl-delivery-refuse-reason :capacity) 0))))
+        (equal (fn-tcl-delivery-plan-detail refused) :capacity)
+        (equal (fn-tcl-delivery-plan-status uncertain) :uncertain)
+        (null (fn-tcl-delivery-plan-messages uncertain))
+        (equal (fn-tcl-delivery-plan-detail uncertain) :disk))))
+(assert-event
+ (and (not (fn-tcl-held-final-ackp nil 0))
+      (equal (fn-tcl-delivery-plan nil 0 '(:accepted nil))
+             '(:delivery :fault nil :missing-final-ack))
+      (equal (fn-tcl-delivery-plan *t-delivery-held* 0 '(:accepted 7))
+             '(:delivery :fault nil :bad-callback-result))
+      (equal (fn-tcl-delivery-plan *t-delivery-held* 0 :accepted)
+             '(:delivery :fault nil :bad-callback-result))))
+(must-fail-checked
+ (assert-event
+  (equal (fn-tcl-delivery-plan-status (fn-tcl-delivery-plan nil 0 '(:accepted nil)))
+         :accepted)))

@@ -12,7 +12,7 @@
 (defconst *nv-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state '("fn.letters")) 1 *nv-id*
-                      *nv-article-handle* '("fn.letters") :legacy)
+                      *nv-article-handle* '("fn.letters") 0)
    0 1 :durable))
 (defconst *nv-session* (fn-nntp-open-session *nv-archive*))
 (defconst *nv-principal*

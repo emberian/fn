@@ -224,7 +224,7 @@
 (defun clt-art (msgid groups handle)
   (fn-make-article msgid handle groups nil t nil))
 (defun clt-row (seq msgid groups bytes)
-  (fn-held-make seq seq 1 msgid seq groups "a" "s" "e" 2 :legacy
+  (fn-held-make seq seq 1 msgid seq groups "a" "s" "e" 2 0
                 (fn-held-facts-of bytes)
                 (fn-hc-make (fn-stx-make-verdict :absent nil 0) nil 0) nil nil))
 (defconst *clt-a-t* (clt-art *clt-t-id* (list "local.general") 0))

@@ -772,6 +772,24 @@ class SourceDependencyTests(unittest.TestCase):
         self.assertIn("not the book itself", why)
         self.assertIn("--ld books/X", why)
 
+    def test_a_bare_book_name_resolves_under_books(self):
+        # obstructions-9 item 78: `--source-deps base` lost three sessions.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = worktree(temporary + "/tree")
+            (root / "books" / "sub").mkdir()
+            (root / "books" / "sub" / "deep.lisp").write_text("(in-package \"ACL2\")\n")
+            with mock.patch.object(proof_repl, "ROOT", root), \
+                 mock.patch.dict(os.environ, {"FN_ACL2": temporary + "/acl2"}), \
+                 mock.patch.object(proof_repl.certs, "cache_directory",
+                                   return_value=pathlib.Path(temporary) / "cache"):
+                names = [proof_repl.normalize_book(one)
+                         for one in ("base", "base.lisp", "deep", "books/mid", "nowhere")]
+                ok, detail, order = proof_repl.install_closure("tests/acl2/mid-tests", ["base"])
+        self.assertEqual(names, ["books/base", "books/base", "books/sub/deep", "books/mid",
+                                 "nowhere"])
+        self.assertTrue(ok, detail)
+        self.assertEqual(order, ["books/base", "books/mid"])
+
 
 class RefusalHeadlineTests(unittest.TestCase):
     """Item 27: a refused start says `--ld books/X` on its first line."""
@@ -1919,6 +1937,341 @@ class LdHonoursLocalTests(unittest.TestCase):
                                   record=False, encapsulate=True)
         self.assertFalse(ok)
         self.assertIn("--ld-leak", state["stopped_at"])
+
+
+class FailedDependencyTests(unittest.TestCase):
+    """obstructions-7 item 57: a from-source dependency that fails to load is
+    named with its first error line, and the session is not reported live."""
+
+    def test_the_verdict_names_the_dependency_and_its_error(self):
+        state = {"name": "s", "book": "books/b", "loaded": [], "ready": True,
+                 "stopped_at": "books/dep: fn-lemma-7",
+                 "error": "\nACL2 Error in ( DEFTHM FN-LEMMA-7 ...): the proof failed\nmore",
+                 "failed_dependency": "books/dep",
+                 "dependency_error": "ACL2 Error in ( DEFTHM FN-LEMMA-7 ...): the proof failed"}
+        line, partial = proof_repl.load_verdict(state)
+        self.assertTrue(partial)
+        self.assertIn("NOT LIVE -- the dependency books/dep failed", line)
+        self.assertIn("ACL2 Error in ( DEFTHM FN-LEMMA-7", line)
+        self.assertNotIn("is live", line)
+        self.assertIn(f"exit {proof_repl.SOURCE_DEPS_FAILED}", line)
+
+    def test_serve_records_the_first_error_line_and_start_exits_with_it(self):
+        import inspect
+        serve = inspect.getsource(proof_repl.serve)
+        self.assertIn('state["failed_dependency"] = one', serve)
+        self.assertIn('state["dependency_error"]', serve)
+        start = inspect.getsource(proof_repl)
+        self.assertIn('if final.get("failed_dependency"):', start)
+
+
+class FreeExpandTests(unittest.TestCase):
+    """obstructions-8 item 65: `:expand (:free ...)' over a recursion's controller warns."""
+
+    BOOK = """
+(defun countdown (x n)
+  (declare (xargs :measure (nfix n)))
+  (if (zp n) x (countdown (cons n x) (1- n))))
+(defun walk (x acc)
+  (if (atom x) acc (walk (cdr x) (cons (car x) acc))))
+(defun plain (x n) (+ x n))
+"""
+
+    def test_freeing_the_measured_argument_warns(self):
+        form = ("(defthm c1 (equal (countdown x n) (countdown x n)) :hints "
+                "((\"Goal\" :expand ((:free (n) (countdown x n))))))")
+        lines = proof_repl.free_expand_warnings(form, [self.BOOK])
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("countdown's controlling argument n", lines[0])
+
+    def test_freeing_an_argument_the_recursive_call_changes_warns(self):
+        form = "(thm (equal (walk x a) (walk x a)) :hints ((\"Goal\" :expand (:free (x) (walk x a)))))"
+        lines = proof_repl.free_expand_warnings(form, [self.BOOK])
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("walk's controlling argument x", lines[0])
+
+    def test_freeing_only_a_non_controller_is_quiet(self):
+        form = "(thm t :hints ((\"Goal\" :expand ((:free (x) (countdown x n)) (walk y a)))))"
+        self.assertEqual(proof_repl.free_expand_warnings(form, [self.BOOK]), [])
+        # walk's controller is x (it changes); acc changes too, so freeing acc warns:
+        form = "(thm t :hints ((\"Goal\" :expand ((:free (a) (walk y a))))))"
+        self.assertEqual(len(proof_repl.free_expand_warnings(form, [self.BOOK])), 1)
+
+    def test_a_non_recursive_function_is_quiet(self):
+        form = "(thm t :hints ((\"Goal\" :expand ((:free (n) (plain x n))))))"
+        self.assertEqual(proof_repl.free_expand_warnings(form, [self.BOOK]), [])
+        self.assertEqual(proof_repl.controller_positions(
+            ["defun", "plain", ["x", "n"], ["+", "x", "n"]]), [])
+
+    def test_an_unknown_function_is_quiet(self):
+        form = "(thm t :hints ((\"Goal\" :expand ((:free (n) (no-such-fn-o8 x n))))))"
+        self.assertEqual(proof_repl.free_expand_warnings(form, []), [])
+
+    def test_send_prints_the_warning_and_still_sends(self):
+        form = "(thm t :hints ((\"Goal\" :expand ((:free (n) (countdown x n))))))"
+        args = SimpleNamespace(name="s", form=form, limit=None, full=False)
+        err = io.StringIO()
+        with mock.patch.object(proof_repl, "prepare_includes", return_value=([form], True)), \
+                mock.patch.object(proof_repl, "read_state", return_value={}), \
+                mock.patch.object(proof_repl, "find_definition",
+                                  return_value=proof_repl._theory_check().forms(self.BOOK)[0]), \
+                mock.patch.object(proof_repl, "send_one", return_value=0) as sent, \
+                contextlib.redirect_stderr(err):
+            self.assertEqual(proof_repl.send(args), 0)
+        sent.assert_called_once()
+        self.assertIn("proof-repl: warning: :expand (:free (n) (countdown x n))", err.getvalue())
+
+
+class GuardNotesTests(unittest.TestCase):
+    """obstructions-8 (item 56's proof_repl note): send-range names each
+    verification's same-book callees and the form each is verified at."""
+
+    BOOK = """(in-package "ACL2")
+(defun g (x) (declare (xargs :guard t :verify-guards nil)) x)
+(defun f (x) (declare (xargs :guard t)) (g x))
+(verify-guards g)
+(defun h (x) (declare (xargs :guard t)) (g x))
+"""
+
+    def test_a_later_callee_is_flagged_and_an_earlier_one_named(self):
+        notes = proof_repl.guard_notes(self.BOOK, range(0, 5))
+        self.assertEqual(len(notes), 2, notes)
+        self.assertIn("form #3 verifies f's guards", notes[0])
+        self.assertIn("LATER: g #4", notes[0])
+        self.assertIn("form #5 verifies h's guards", notes[1])
+        self.assertIn("verified at g #4", notes[1])
+        self.assertNotIn("LATER", notes[1])
+
+    def test_numbers_match_the_forms_send_range_counts(self):
+        forms = proof_repl.forms(self.BOOK)
+        self.assertTrue(forms[2].lstrip().startswith("(defun f"))
+        self.assertTrue(forms[3].lstrip().startswith("(verify-guards g"))
+
+    def test_only_the_chosen_forms_are_noted(self):
+        notes = proof_repl.guard_notes(self.BOOK, range(4, 5))
+        self.assertEqual(len(notes), 1)
+        self.assertIn("form #5", notes[0])
+
+
+class SentEventsTests(unittest.TestCase):
+    """obstructions-8 item 72: what `send` adds by hand is recorded for the probe."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dir = pathlib.Path(self.tmp.name)
+        self.state = {"started_at": 100.0}
+        patches = [mock.patch.object(proof_repl, "session_dir", return_value=self.dir),
+                   mock.patch.object(proof_repl, "read_state", side_effect=lambda n: self.state)]
+        for patch in patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def test_events_are_recorded_and_other_forms_are_not(self):
+        proof_repl.record_sent("s", ["(defthm l1 (equal x x))", "(pe 'l1)",
+                                     "(defun f (x) x)"])
+        self.assertEqual(proof_repl.sent_events("s"),
+                         ["(defthm l1 (equal x x))", "(defun f (x) x)"])
+
+    def test_a_restarted_session_starts_empty(self):
+        proof_repl.record_sent("s", ["(defthm l1 (equal x x))"])
+        self.state = {"started_at": 200.0}
+        self.assertEqual(proof_repl.sent_events("s"), [])
+
+    def test_send_records_only_an_accepted_send(self):
+        args = SimpleNamespace(name="s", form="(defthm l2 (equal y y))", limit=None, full=False)
+        for code, expected in ((1, []), (0, ["(defthm l2 (equal y y))"])):
+            with mock.patch.object(proof_repl, "prepare_includes",
+                                   return_value=([args.form], True)), \
+                    mock.patch.object(proof_repl, "send_one", return_value=code):
+                proof_repl.send(args)
+            self.assertEqual(proof_repl.sent_events("s"), expected)
+
+
+class SendFileTests(unittest.TestCase):
+    """obstructions-8 item 75: send-file sends every form of a test file in
+    order, its includes rewritten for the session's directory."""
+
+    def run_send_file(self, text, keep_going=False, session_dir="books"):
+        with tempfile.TemporaryDirectory(dir=proof_repl.ROOT / "tests" / "acl2") as directory:
+            path = pathlib.Path(directory) / "o8-send-file-tests.lisp"
+            path.write_text(text)
+            args = SimpleNamespace(name="s", file=str(path), limit=None, full=False,
+                                   keep_going=keep_going, allow_undo=False)
+            sent = []
+
+            def fake_many(name, items, limit, full, keep):
+                sent.extend(items)
+                return 0
+
+            out = io.StringIO()
+            with mock.patch.object(proof_repl, "session_directory",
+                                   return_value=proof_repl.ROOT / session_dir), \
+                    mock.patch.object(proof_repl.certs, "valid_looking", return_value=True), \
+                    mock.patch.object(proof_repl, "send_many", side_effect=fake_many), \
+                    mock.patch.object(proof_repl, "record_sent") as recorded, \
+                    contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                code = proof_repl.send_file(args)
+            return code, sent, out.getvalue(), recorded
+
+    def test_every_form_in_order_with_the_includes_made_the_sessions(self):
+        text = ('(in-package "ACL2")\n(include-book "../../../books/wire")\n'
+                '(defthm o8-a (equal x x))\n(assert-event t)\n')
+        code, sent, out, recorded = self.run_send_file(text)
+        self.assertEqual(code, 0, out)
+        self.assertEqual([label.split()[0] for label, _ in sent], ["#1", "#2", "#3", "#4"])
+        self.assertEqual(sent[1][1], '(include-book "wire")')  # books/ is the session's dir
+        self.assertIn("4 form(s) of tests/acl2/", out)
+        recorded.assert_called_once()
+
+    def test_a_form_leaving_the_loop_refuses_the_whole_file(self):
+        code, sent, _, _ = self.run_send_file("(defthm o8-b (equal x x))\n(value :q)\n")
+        self.assertEqual(code, 2)
+        self.assertEqual(sent, [])
+
+
+class SameLaneTreeTests(unittest.TestCase):
+    """obstructions-9 item 79: a second live session of the lane on one box
+    takes its own tree instead of racing the first's sync and load."""
+
+    def args(self, **extra):
+        return SimpleNamespace(command="start", name="s2", remote_tree=None, **extra)
+
+    def runner(self, stdout, code=0):
+        seen = []
+
+        def run(command, **kwargs):
+            seen.append(command)
+            return subprocess.CompletedProcess(command, code, stdout=stdout, stderr="")
+        return run, seen
+
+    def test_no_live_sibling_keeps_the_lane_tree(self):
+        run, seen = self.runner("")
+        self.assertEqual(proof_repl.own_remote_tree(self.args(), "hbox", "l",
+                                                    "/tank/fn/gates/l-repl", run),
+                         "/tank/fn/gates/l-repl")
+        self.assertIn("/tank/fn/gates/l-repl s2", seen[0][-1])
+
+    def test_a_live_sibling_suffixes_the_tree_and_says_why(self):
+        run, _ = self.runner("s1\n")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            tree = proof_repl.own_remote_tree(self.args(), "hbox", "l", "/tank/fn/gates/l-repl",
+                                              run)
+        self.assertEqual(tree, "/tank/fn/gates/l-repl-s2")
+        self.assertIn("session(s) s1 of lane l are live in /tank/fn/gates/l-repl; session "
+                      "'s2' gets its own tree /tank/fn/gates/l-repl-s2", out.getvalue())
+
+    def test_an_explicit_remote_tree_with_a_live_sibling_is_refused_by_name(self):
+        run, _ = self.runner("s1\n")
+        args = self.args()
+        args.remote_tree = "/x/t"
+        with self.assertRaises(SystemExit) as refused:
+            proof_repl.own_remote_tree(args, "hbox", "l", "/x/t", run)
+        self.assertIn("session(s) s1 are live in /x/t", str(refused.exception))
+
+    def test_a_box_that_does_not_answer_keeps_the_tree(self):
+        run, _ = self.runner("", code=255)
+        self.assertEqual(proof_repl.own_remote_tree(self.args(), "hbox", "l", "/t", run), "/t")
+
+    @unittest.skipUnless(os.path.isdir("/proc/self"), "the box-side script reads /proc")
+    def test_the_box_script_names_a_live_holder_only(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            locks = pathlib.Path(temporary, "build", "proof-repl", ".locks")
+            locks.mkdir(parents=True)
+            holder = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)",
+                                       "proof_repl.py", "serve", "s1"])
+            try:
+                (locks / "s1").write_text(json.dumps({"pid": holder.pid}))
+                (locks / "gone").write_text(json.dumps({"pid": 999999999}))
+                (locks / "s2").write_text(json.dumps({"pid": holder.pid}))
+                done = subprocess.run([sys.executable, "-", temporary, "s2"],
+                                      input=proof_repl.LIVE_SIBLINGS_SCRIPT, text=True,
+                                      capture_output=True)
+            finally:
+                holder.kill()
+                holder.wait()
+        self.assertEqual(done.stdout.split(), ["s1"], done.stderr)
+
+
+class ChangedDependencyTests(unittest.TestCase):
+    """obstructions-9 item 82 (operability-7): a --host start on a book whose
+    closure holds a book this branch changed loads it from source, and says
+    so BEFORE the sync, instead of the box refusing after it."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = worktree(self.tmp.name + "/tree")
+
+        def g(*words):
+            subprocess.run(["git", "-C", str(self.root), "-c", "commit.gpgsign=false",
+                            "-c", "user.name=t", "-c", "user.email=t@t", *words],
+                           check=True, capture_output=True)
+        g("init", "-q", "-b", "lane")
+        g("add", ".")
+        g("commit", "-q", "-m", "base")
+        g("update-ref", "refs/remotes/origin/dev", "HEAD")
+        (self.root / "books" / "base.lisp").write_text(
+            (self.root / "books" / "base.lisp").read_text() + "; changed on the lane\n")
+        self.patch = mock.patch.object(proof_repl, "ROOT", self.root)
+        self.patch.start()
+
+    def tearDown(self):
+        self.patch.stop()
+        self.tmp.cleanup()
+
+    def test_the_changed_dependency_is_named_and_a_named_one_is_not(self):
+        self.assertEqual(proof_repl.changed_dependencies("tests/acl2/mid-tests"), ["books/base"])
+        self.assertEqual(proof_repl.changed_dependencies("tests/acl2/mid-tests", ["base"]), [])
+        # The session's own book is never a dependency of itself.
+        self.assertEqual(proof_repl.changed_dependencies("books/base"), [])
+
+    def test_a_host_start_forwards_it_as_ld_before_syncing(self):
+        seen, events, real_run = [], [], subprocess.run
+        args = SimpleNamespace(command="start", name="s82", lane="l", remote_tree=None,
+                               host="hbox", book="tests/acl2/mid-tests", ld=[],
+                               source_deps=None, ld_missing=False, certify_missing=False,
+                               no_sync=False, acl2=None)
+        out = io.StringIO()
+        with mock.patch.object(proof_repl, "box_settings",
+                               lambda host: {"acl2": "acl2", "cache": "/c"}), \
+                mock.patch.object(proof_repl, "refuse_or_wait_for_lease", lambda *a: None), \
+                mock.patch.object(proof_repl, "own_remote_tree", lambda a, h, l, t: t), \
+                mock.patch.object(proof_repl, "remember_host", lambda *a: None), \
+                mock.patch.object(proof_repl, "sync_to",
+                                  lambda host, tree, files: events.append(("sync", files)) or 0.0), \
+                mock.patch.object(proof_repl.subprocess, "run",
+                                  lambda command, **kw: real_run(command, **kw)
+                                  if command[0] == "git" else seen.append(command)
+                                  or SimpleNamespace(returncode=0)), \
+                contextlib.redirect_stdout(out):
+            proof_repl.run_remote(args, ["start", "s82", "tests/acl2/mid-tests",
+                                         "--host", "hbox"])
+        self.assertIn("1 dependency of tests/acl2/mid-tests changed on this branch (no box has "
+                      "their certificates): books/base; loading them from source", out.getvalue())
+        self.assertIn("books/base.lisp", events[0][1])
+        self.assertIn("--ld books/base", seen[-1][-1])
+
+    def test_certify_missing_or_bare_source_deps_leave_it_to_the_box(self):
+        for extra in ({"certify_missing": True}, {"source_deps": "*"}, {"ld_missing": True}):
+            args = dict(source_deps=None, ld_missing=False, certify_missing=False)
+            args.update(extra)
+            seen = []
+            with mock.patch.object(proof_repl, "box_settings",
+                                   lambda host: {"acl2": "acl2", "cache": "/c"}), \
+                    mock.patch.object(proof_repl, "refuse_or_wait_for_lease", lambda *a: None), \
+                    mock.patch.object(proof_repl, "own_remote_tree", lambda a, h, l, t: t), \
+                    mock.patch.object(proof_repl, "remember_host", lambda *a: None), \
+                    mock.patch.object(proof_repl, "sync_to", lambda *a: 0.0), \
+                    mock.patch.object(proof_repl.subprocess, "run",
+                                      lambda command, **kw: seen.append(command)
+                                      or SimpleNamespace(returncode=0)), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                proof_repl.run_remote(SimpleNamespace(
+                    command="start", name="s82", lane="l", remote_tree=None, host="hbox",
+                    book="tests/acl2/mid-tests", ld=[], no_sync=False, acl2=None, **args),
+                    ["start", "s82", "tests/acl2/mid-tests", "--host", "hbox"])
+            self.assertNotIn("--ld books/base", seen[-1][-1], extra)
 
 
 if __name__ == "__main__":
