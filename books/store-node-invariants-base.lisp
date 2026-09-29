@@ -114,6 +114,35 @@
                             (fn-record-shape-vocabulary)
                             (fn-record-msgidp))))))
 
+; Recovery includes ordinary held ARTICLE verdicts as well as composites.
+(local (defthm fn-sn-row-verdict-pair-is-valid
+ (fn-sn-verdict-listp (if (fn-sn-row-verdict-pair row)
+                          (list (fn-sn-row-verdict-pair row)) nil))
+ :hints (("Goal" :in-theory
+  (e/d (fn-sn-row-verdict-pair fn-sn-verdict-listp fn-replay-verdict-pair
+        fn-stx-make-verdict fn-stx-verdict-token fn-stx-verdict-generation
+        fn-stxe-tokenp fn-record-msgidp fn-held-p fn-hc-p fn-hc-verdictp
+        fn-held-p-fields fn-hc-p-fields)
+       (fn-record-msgid fn-held-context fn-hc-verdict fn-stxe-decode-exact))))))
+(local (defthm fn-sn-row-verdict-pair-fields
+ (implies (fn-sn-row-verdict-pair row)
+  (and (consp (fn-sn-row-verdict-pair row))
+       (stringp (car (fn-sn-row-verdict-pair row)))
+       (member-equal (fn-stx-verdict-token (cdr (fn-sn-row-verdict-pair row))) *fn-stx-verdicts*)
+       (natp (fn-stx-verdict-generation (cdr (fn-sn-row-verdict-pair row))))))
+ :hints (("Goal" :use fn-sn-row-verdict-pair-is-valid
+  :in-theory (e/d (fn-sn-verdict-listp)
+                 (fn-sn-row-verdict-pair fn-sn-row-verdict-pair-is-valid))))))
+(local (defthm fn-sn-row-verdicts-fold-is-valid
+ (implies (fn-sn-verdict-listp verdicts)
+          (fn-sn-verdict-listp (fn-sn-row-verdicts-fold rows verdicts)))
+ :hints (("Goal" :induct (fn-sn-row-verdicts-fold rows verdicts)
+                 :in-theory (e/d (fn-sn-row-verdicts-fold fn-sn-verdict-listp)
+                                 (fn-sn-row-verdict-pair))))))
+(local (defthm fn-sn-row-verdicts-is-valid
+ (fn-sn-verdict-listp (fn-sn-row-verdicts rows))
+ :hints (("Goal" :in-theory (enable fn-sn-row-verdicts fn-sn-verdict-listp)))))
+
 (local
  (defthm fn-sn-verdict-listp-of-append
    (implies (and (fn-sn-verdict-listp a) (fn-sn-verdict-listp b))
@@ -549,7 +578,8 @@
                   (equal (fn-record-release-evidence record) (fn-node-stage-evidence stage))
                   (equal (fn-record-charge record) (fn-node-stage-charge stage))
                   (equal (fn-record-stamp record) (fn-pending-stamp p)))))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-held-wire))))
 
 (fn-payload-kind fn-sn-committed-recordp :handle "compares the article's handle with the held record's handle")
 (defun fn-sn-committed-recordp (node record)

@@ -13,6 +13,7 @@
 ; fn-node-statep would be a cycle (w11/node-index).  This record is not in
 ; books/stx-index's closure, so carrying it here is not.
 (include-book "stx-index")
+(include-book "statement-snapshot-keyring")
 (include-book "stx-reader")
 (include-book "records-seam")
 (include-book "records-stamp")
@@ -554,12 +555,49 @@
 
 (verify-guards fn-sn-update-accepted)
 
+; Exact publication table from durable rows, newest acceptance first.
+; Plain ARTICLE rows carry their historical verdict in held-context. A
+; composite uses its durable verdict event, matching live identity finish.
+(defun fn-sn-row-verdict-pair (row)
+  (declare (xargs :guard t))
+  (cond ((fn-held-p row)
+         (cons (fn-record-msgid row) (fn-hc-verdict (fn-held-context row))))
+        ((fn-hstxa-p row)
+         (let ((decoded (ec-call (fn-stxe-decode-exact
+                         (fn-stxa-verdict-event (fn-hstxa-stxa row))))))
+           (if (and (fn-stmt-okp decoded) (fn-stxe-p (fn-stmt-value decoded)))
+               (fn-replay-verdict-pair (fn-stmt-value decoded)) nil)))
+        (t nil)))
+(defun fn-sn-row-verdicts-fold (rows verdicts)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (let ((pair (fn-sn-row-verdict-pair (car rows))))
+        (fn-sn-row-verdicts-fold (cdr rows) (if pair (cons pair verdicts) verdicts)))
+    verdicts))
+(defun fn-sn-row-verdicts (rows)
+  (declare (xargs :guard t))
+  (fn-sn-row-verdicts-fold rows nil))
+(defthm fn-sn-row-verdicts-fold-of-append
+  (equal (fn-sn-row-verdicts-fold (append a b) verdicts)
+         (fn-sn-row-verdicts-fold b (fn-sn-row-verdicts-fold a verdicts))))
+(defthm fn-sn-row-verdicts-of-append-one
+  (equal (fn-sn-row-verdicts (append rows (list row)))
+         (if (fn-sn-row-verdict-pair row)
+             (cons (fn-sn-row-verdict-pair row) (fn-sn-row-verdicts rows))
+           (fn-sn-row-verdicts rows)))
+  :hints (("Goal" :in-theory (e/d (fn-sn-row-verdicts fn-sn-row-verdicts-fold)
+                                 (fn-sn-row-verdict-pair)))))
+(in-theory (disable fn-sn-row-verdict-pair fn-sn-row-verdicts-fold fn-sn-row-verdicts))
+
 (defun fn-sn-update-replayed (s files node index identity-context)
   (declare (xargs :guard t))
   (fn-sn-make-v6
    (fn-sn-groups s) (fn-sn-capacity s) files node
-   (fn-sn-keyring s) index (fn-sn-keyring-generation s)
-   (fn-replay-verdict-pairs (fn-stxk-context-verdicts identity-context))
+   ; Reopen derives the CURRENT verification context from retained snapshots.
+   ; Row deltas remain the frozen contexts produced by sequential intern.
+   (fn-ssk-keyring-of-snapshots (fn-stxk-context-snapshots identity-context))
+   index (fn-ssk-generation (fn-stxk-context-snapshots identity-context))
+   (fn-sn-row-verdicts (fn-sf-records files))
    (fn-stxk-context-snapshots identity-context)
    (fn-stxk-context-next identity-context)
    (fn-sn-config-history s) (fn-sn-consumer s) (fn-sn-topic s)
@@ -675,11 +713,11 @@
        (equal (fn-sn-index (fn-sn-update-replayed s files node index identity-context))
               index)
        (equal (fn-sn-keyring (fn-sn-update-replayed s files node index identity-context))
-              (fn-sn-keyring s))
+              (fn-ssk-keyring-of-snapshots (fn-stxk-context-snapshots identity-context)))
        (equal (fn-sn-keyring-generation (fn-sn-update-replayed s files node index identity-context))
-              (fn-sn-keyring-generation s))
+              (fn-ssk-generation (fn-stxk-context-snapshots identity-context)))
        (equal (fn-sn-verdicts (fn-sn-update-replayed s files node index identity-context))
-              (fn-replay-verdict-pairs (fn-stxk-context-verdicts identity-context)))
+              (fn-sn-row-verdicts (fn-sf-records files)))
        (equal (fn-sn-keyring-snapshots (fn-sn-update-replayed s files node index identity-context))
               (fn-stxk-context-snapshots identity-context))
        (equal (fn-sn-identity-next (fn-sn-update-replayed s files node index identity-context))
@@ -1115,7 +1153,13 @@
 
 (defun fn-sn-finish-identity (s files record node)
   (declare (xargs :guard t))
-  (let* ((ctx (fn-replay-identity-step (fn-sn-identity-context s) record))
+  (let* ((old-ctx (fn-sn-identity-context s))
+         (ctx (fn-replay-identity-step old-ctx record))
+         ; Known identical historical snapshots advance the journal cursor
+         ; but do not roll back the active key generation or its table.
+         (new-snapshotp (and (fn-stxk-p record)
+                            (not (equal (fn-stxk-context-current-generation ctx)
+                                        (fn-stxk-context-current-generation old-ctx)))))
          (new-verdicts (fn-replay-verdict-pairs
                         (fn-stxk-context-verdicts ctx)))
          (index (if (fn-hstxa-p record)
@@ -1125,7 +1169,15 @@
                   (fn-sn-index s))))
     (fn-sn-make-v6
      (fn-sn-groups s) (fn-sn-capacity s) files node
-     (fn-sn-keyring s) index (fn-sn-keyring-generation s)
+     ; Publish one snapshot only after its durable completion. Historical
+     ; contexts and forks remain; no served recontext of prior article bytes.
+     (if new-snapshotp
+         (fn-ssk-apply-snapshot record (fn-sn-keyring s))
+       (fn-sn-keyring s))
+     index
+     (if new-snapshotp
+         (nfix (fn-stxk-keyring-generation record))
+       (fn-sn-keyring-generation s))
      (append new-verdicts (fn-sn-verdicts s))
      (fn-stxk-context-snapshots ctx) (fn-stxk-context-next ctx)
      (fn-sn-config-history s) (fn-sn-consumer s)

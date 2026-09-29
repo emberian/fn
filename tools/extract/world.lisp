@@ -237,6 +237,7 @@
 (include-book "../../books/owner-checkpoint-open")
 (include-book "../../books/owner-control-post-reason")
 (include-book "../../books/peer-transit-authority")
+(include-book "../../books/article-subject")
 (include-book "../../books/owner-reclaim-conns")
 (include-book "../../books/owner-reclaim-ready")
 (include-book "../../books/config-owner-live")

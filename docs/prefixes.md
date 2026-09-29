@@ -346,8 +346,17 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-ofr-` | `open-frontier` | The open's transaction frontier (row B10): the folds over Store events and configuration records (`fn-ofr-frontier`, called by the host's `fn-store-cfg-next-txid`) and the keystone that a replay that succeeds ends idle at or below it (`fn-ofr-replay-ok-frontier-admits`) |
 | `fn-ofw-` | `open-frontier-wire` | The open's events fold over wire events (`fn-ofw-wire-next`, called by the host's recovery and extraction opens) and the keystone that it is the replay's frontier fold over the interned rows (`fn-ofw-wire-next-is-the-rows-next`) |
 
+| `fn-asj-`, `asjt-` | `article-subject`, `tests/acl2/article-subject-tests` | Versioned relay-v1 legacy article subject: exact Path/Xref removal, byte preservation, distinct from the received-bytes commitment and authored signatures. |
+
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `fn-bprj-` and similar; they are `:program` mode and outside the proof boundary.
 `host/config-host.lisp` marshals under `fn-cfg-host-`. The `fn-store-` tag is shared: `books/store-config` owns the group table under
 it and `host/store-host.lisp` marshals under it. A host wrapper never decides
 anything a book does not already decide.
+
+| `fn-gat-`, `gat-` | `tests/acl2/group-authority-tests` | Explicit authority publication and replay teeth; distinct posting policy and principal bindings. |
+
+| `fn-ssk-` | `statement-snapshot-keyring` | Stable operator principal projection of retained hybrid enrollment/revocation into the existing ML-DSA FN-Statement table, with an incremental publication operation and recovery oracle. |
+| `fn-ssr-`, `ssrt-` | `statement-recover-stream`, `tests/acl2/statement-recover-stream-tests` | Sequential frozen statement-context replay, with resident chunk composition and extent/compressed refinement including arena effects. |
+| `fn-skp-`, `skpt-` | `statement-keyring-publication`, `tests/acl2/statement-keyring-publication-tests` | Carried active keyring/generation resolution at durable identity publication. |
+| `fn-nsm-` | `native-statement-material` | ACL2-owned legacy statement material, rendering and supplied-key verification for the statement-sign native command. |

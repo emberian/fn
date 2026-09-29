@@ -633,6 +633,19 @@
              (equal (cadr words) "create")
              (fn-record-group-namep (caddr words)))
         (fn-native-admin-result :accepted nil :create-group (caddr argv) 0 nil nil))
+       ((and (equal (len words) 4) (equal (car words) "group")
+             (equal (cadr words) "authority"))
+        (cond ((fn-native-admin-group-name-reservedp (caddr words))
+               (fn-native-admin-result :refused :reserved-group-name nil nil 0 nil nil))
+              ((not (fn-record-group-namep (caddr words)))
+               (fn-native-admin-result :refused :group-name nil nil 0 nil nil))
+              ((not (or (equal (cadddr words) "ungoverned")
+                        (fn-cfg-principal-hexp (cadddr words))))
+               (fn-native-admin-result :refused :principal nil nil 0 nil nil))
+              (t (fn-native-admin-result :accepted nil :set-group-authority
+                                        (caddr argv) 0 nil
+                                        (if (equal (cadddr words) "ungoverned") nil
+                                          (cadddr argv))))))
        ; O2 (books/group-status.lisp): `group policy NAME n|y' sets the
        ; group's LIST ACTIVE status (RFC 3977 section 7.6.3): "n" closes it
        ; to local posting, "y" opens it.  A durable :set-group-status
@@ -1098,6 +1111,9 @@
              (list (fn-cfg-create-group name *fn-cfg-default-policy-id*)))
             ((equal kind :remove-group)
              (list (fn-cfg-remove-group name)))
+            ((equal kind :set-group-authority)
+             (list (fn-cfg-set-group-authority name
+                    (fn-record-octets-string (fn-native-admin-result-value plan)))))
             ((equal kind :set-capacity)
              (list (fn-cfg-set-capacity (fn-native-admin-result-capacity plan))))
             ((equal kind :set-retention)
