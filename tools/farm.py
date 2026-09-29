@@ -1495,6 +1495,83 @@ def pick_host(runner=subprocess.run) -> str:
     return host
 
 
+# The closure-key count a box's cache answers.  Keys arrive on stdin (one
+# per line), the answer is one integer: `test -d` per key, nothing opened.
+COUNT_KEYS = ("import os,sys\n"
+              "print(sum(os.path.isdir(k) for k in sys.stdin.read().split()))\n")
+
+# A box must hold this many more of the run's certificates than the other
+# (or this share of the closure) before the cache outweighs the load.
+CACHE_MARGIN_BOOKS = 20
+CACHE_MARGIN_SHARE = 0.05
+
+
+def closure_keys(root: Path, books: list[str], affected_by: list[str]) -> list[str]:
+    """The plain-world closure keys of the selection's closure (certs.closure_key).
+
+    Plain world only: a handful of umbrellas certify in an image world, and
+    counting those too tripled the cost (the image rule parses every book
+    again).  About 10 s for the widest closure (image-world, 668 books).
+    """
+    import certify_books  # noqa: E402
+    import certs  # noqa: E402
+    import ledger  # noqa: E402
+    selection = list(books)
+    if affected_by or not selection:
+        selection = certify_books.affected_selection(
+            selection, ledger.makefile_roots(), affected_by) if affected_by \
+            else ledger.makefile_roots()
+    return [certs.closure_key(root, book)[0]
+            for book in certify_books.with_dependencies(selection)]
+
+
+def matching_certificates(keys: list[str]) -> dict[str, int]:
+    """How many of `keys` each box's cache holds; a box that cannot answer is absent."""
+    counts: dict[str, int] = {}
+    for host in HOSTS:
+        script = (f"cd {remote_quote(host_settings(host)['cache'])} || exit 9; "
+                  f"python3 -c {shlex.quote(COUNT_KEYS)} <<'FN_KEYS'\n"
+                  + "\n".join(keys) + "\nFN_KEYS\n")
+        done = RUN(["ssh", "-o", "ConnectTimeout=10", host, script], check=False,
+                   stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        words = (done.stdout or "").split()
+        if done.returncode == 0 and words and words[-1].isdigit():
+            counts[host] = int(words[-1])
+    return counts
+
+
+def choose_host(root: Path, books: list[str], affected_by: list[str],
+                pick=None) -> str:
+    """`submit auto`: the box holding clearly more of the run's certificates,
+    else the lower load per core (`pick_host`).
+
+    A run went to a box whose cache lacked dev's recertification and
+    certified 484 books the other box held (obstructions-2 item 3).  Load
+    decides only when the caches are within CACHE_MARGIN of each other.
+    """
+    pick = pick or pick_host
+    try:
+        keys = closure_keys(root, books, affected_by)
+    except Exception as error:  # a selection the runner refuses says so later
+        print(f"auto: could not count the closure's certificates ({error}); "
+              "choosing by load", file=sys.stderr)
+        return pick()
+    counts = matching_certificates(keys) if keys else {}
+    if len(counts) < 2:
+        return pick()
+    print("auto: certificates held of the run's " + str(len(keys)) + " closure books: "
+          + ", ".join(f"{host} {count}" for host, count in sorted(counts.items())),
+          file=sys.stderr)
+    ranked = sorted(counts.items(), key=lambda item: -item[1])
+    (best, most), (_, next_most) = ranked[0], ranked[1]
+    margin = max(CACHE_MARGIN_BOOKS, int(CACHE_MARGIN_SHARE * len(keys)))
+    if most - next_most >= margin:
+        print(f"auto: {best} (its cache holds {most - next_most} more of them; "
+              "the cache outweighs the load)", file=sys.stderr)
+        return best
+    return pick()
+
+
 def cache_summary(record: dict) -> str:
     """What `submit` installed for a run, from its local record, in one word.
 
@@ -1632,7 +1709,8 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.host != "auto":
             # `farm.py submit books/x`: no box named, so the first word is a book.
             arguments.rest.insert(0, arguments.host)
-        arguments.host = pick_host()
+        arguments.host = choose_host(root, list(arguments.rest),
+                                     list(arguments.affected_by))
     elif arguments.host == "auto":
         parser.error(f"{arguments.action} needs the box the run is on (its submit "
                      "printed it); auto picks a box only for submit")

@@ -996,6 +996,59 @@ class CancelAndUnionTests(unittest.TestCase):
             self.assertEqual(submitted.call_args.kwargs["recertify"], ["books/alpha"])
 
 
+class CacheChooserTests(unittest.TestCase):
+    """obstructions-2 item 3: `submit auto` follows the certificates."""
+
+    def choose(self, counts: dict[str, str], keys=("k1", "k2")):
+        scripts: list[str] = []
+
+        def answer(command, **kwargs):
+            scripts.append(command[-1])
+            host = command[-2]
+            code = 0 if host in counts else 255
+            return subprocess.CompletedProcess(command, code,
+                                               stdout=counts.get(host, ""))
+        picked: list[str] = []
+        with mock.patch.object(farm, "RUN", answer), \
+                mock.patch.object(farm, "closure_keys", lambda *a: list(keys)), \
+                contextlib.redirect_stderr(io.StringIO()):
+            host = farm.choose_host(Path("/r"), ["books/alpha"], [],
+                                    pick=lambda: picked.append(1) or "persvati")
+        return host, picked, scripts
+
+    def test_the_box_holding_clearly_more_certificates_wins_over_load(self):
+        keys = [f"k{i}" for i in range(600)]
+        host, picked, scripts = self.choose({"hbox": "590\n", "persvati": "106\n"}, keys)
+        self.assertEqual((host, picked), ("hbox", []))
+        self.assertIn("k599", scripts[0])
+        self.assertIn("os.path.isdir", scripts[0])
+
+    def test_close_caches_leave_the_choice_to_the_load(self):
+        keys = [f"k{i}" for i in range(600)]
+        host, picked, _ = self.choose({"hbox": "590\n", "persvati": "580\n"}, keys)
+        self.assertEqual((host, picked), ("persvati", [1]))
+
+    def test_an_unanswering_box_or_uncountable_closure_falls_back_to_load(self):
+        host, picked, _ = self.choose({"hbox": "2\n"})
+        self.assertEqual((host, picked), ("persvati", [1]))
+
+        def broken(*arguments):
+            raise ValueError("no Makefile")
+        with mock.patch.object(farm, "closure_keys", broken), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(farm.choose_host(Path("/r"), [], ["books/x"],
+                                              pick=lambda: "hbox"), "hbox")
+
+    def test_the_count_script_counts_existing_key_directories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            for key in ("aa", "bb"):
+                (Path(directory) / key).mkdir()
+            done = subprocess.run([sys.executable, "-c", farm.COUNT_KEYS],
+                                  input="aa\nbb\ncc\n", capture_output=True,
+                                  text=True, cwd=directory)
+            self.assertEqual(done.stdout.strip(), "2")
+
+
 class StatusTests(unittest.TestCase):
     @staticmethod
     def snapshot(root: Path) -> list[dict]:
