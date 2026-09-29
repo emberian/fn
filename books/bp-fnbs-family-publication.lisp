@@ -18,8 +18,11 @@
              (equal (fn-bpn-nth 5 issued) :pending)
              (equal (fn-bpnf-epoch st) epoch)
              (equal (fn-bpnf-next-op st) (1+ op))
+             ;; (fix x) keeps the value on every input ((+ 1 x) treats a
+             ;; non-number as 0) and gives the guard its number before the
+             ;; record's shape is checked below.
              (equal (fn-bpnf-next-arrival st)
-                    (1+ (fn-bpn-nth 4 record)))
+                    (1+ (fix (fn-bpn-nth 4 record))))
              (fn-bpnf-family-record-atp record)
              (equal (fn-bpn-nth 1 record) epoch)
              (equal (fn-bpn-nth 2 record) op)
