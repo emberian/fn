@@ -1795,9 +1795,6 @@
 (definterface fn-owner-transit-reason
   :class :common-lisp-compliant)
 
-(definterface fn-owner-transit-authority
-  :class ::program)
-
 (definterface fn-owner-transit-refusal-class
   :class ::program)
 
@@ -4293,7 +4290,7 @@
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orc-init
-  :class :program)
+  :class :common-lisp-compliant)
 
 ; host/native/admin.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orc-request
@@ -4301,7 +4298,7 @@
 
 ; host/native/admin.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orc-request-status
-  :class :program)
+  :class :common-lisp-compliant)
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-capture
