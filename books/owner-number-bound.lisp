@@ -107,13 +107,86 @@
   :hints (("Goal" :in-theory (e/d (fn-sn-prepare-node) (fn-onb-node-boundp fn-node-prepare fn-replay-advance-txid)))))
 
 ;; ---------------------------------------------------------------------------
-;; The Store: its node.  The prepare stages only a record the admission let
-;; through (books/owner-prepare-served.lisp fn-psrv-event-numberedp is
-;; fn-snb-record-fitp at this node); the io steps leave the node; the finish
-;; applies the completion record, which fits at the node.
+;; The Store: its node, and the record in flight.  A staged or completing
+;; record that is not a held row fits at the node (a held row's allocation is
+;; the node's pending, which fn-onb-node-boundp carries).  The identity
+;; prepare stages only a composite the admission let through
+;; (books/owner-prepare-served.lisp fn-psrv-event-numberedp is
+;; fn-snb-record-fitp at this node); the io steps keep the node and the
+;; candidate, and the record directory's :ok makes the candidate the
+;; completion record (books/config-store-steps.lisp
+;; fn-cstp-completion-record-after-dir); so the finish applies a record that
+;; fits.
+
+(defun-nx fn-onb-inflight-fitp (s)
+  (let* ((files (fn-sn-files s))
+         (phase (fn-sf-phase files)))
+    (and (implies (fn-sf-record-phasep phase)
+                  (or (fn-held-p (fn-sf-record-candidate files))
+                      (fn-snb-record-fitp (fn-sn-node s) (fn-sf-record-candidate files))))
+         (implies (equal phase :completing)
+                  (or (fn-held-p (fn-sn-completion-record s))
+                      (fn-snb-record-fitp (fn-sn-node s) (fn-sn-completion-record s)))))))
+
+(in-theory (disable fn-onb-inflight-fitp))
+
+(defthm fn-onb-file-step-record-phase
+  (implies (fn-sf-record-phasep (fn-sf-phase (fn-sn-file-step files operation result)))
+           (and (fn-sf-record-phasep (fn-sf-phase files))
+                (equal (fn-sf-record-candidate (fn-sn-file-step files operation result))
+                       (fn-sf-record-candidate files))))
+  :hints (("Goal" :in-theory (e/d (fn-sn-file-step fn-sf-start-frontier fn-sf-frontier-file-result
+                                   fn-sf-frontier-replace-result fn-sf-frontier-dir-result
+                                   fn-sf-record-file-result fn-sf-record-link-result fn-sf-record-dir-result
+                                   fn-sf-recovery-barrier)
+                                  (fn-sf-statep)))))
+(defthm fn-onb-file-step-completing
+  (implies (equal (fn-sf-phase (fn-sn-file-step files operation result)) :completing)
+           (or (equal (fn-sn-file-step files operation result) files)
+               (and (equal (fn-sf-phase files) :record-attempted)
+                    (equal operation :record-directory)
+                    (equal result :ok)
+                    (fn-sf-statep files))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-sn-file-step fn-sf-start-frontier fn-sf-frontier-file-result
+                                   fn-sf-frontier-replace-result fn-sf-frontier-dir-result
+                                   fn-sf-record-file-result fn-sf-record-link-result fn-sf-record-dir-result
+                                   fn-sf-recovery-barrier)
+                                  (fn-sf-statep)))))
+(defthm fn-onb-inflight-fitp-of-io
+  (implies (fn-onb-inflight-fitp s)
+           (fn-onb-inflight-fitp (fn-sn-io s operation result)))
+  :hints (("Goal" :in-theory (e/d (fn-sn-io fn-onb-inflight-fitp)
+                                  (fn-sn-file-step fn-sn-statep fn-snb-record-fitp fn-held-p
+                                   fn-sf-record-phasep fn-cstp-completion-record-after-dir))
+           :use ((:instance fn-onb-file-step-completing (files (fn-sn-files s)))
+                 (:instance fn-cstp-completion-record-after-dir)))
+          (and stable-under-simplificationp '(:in-theory (enable fn-sn-completion-record)))))
+(defthm fn-onb-inflight-fitp-of-prepare
+  (implies (fn-onb-inflight-fitp s)
+           (fn-onb-inflight-fitp (fn-sn-prepare s record)))
+  :hints (("Goal" :in-theory (e/d (fn-sn-prepare fn-onb-inflight-fitp fn-sf-prepare-record)
+                                  (fn-sn-statep fn-sf-statep fn-snb-record-fitp fn-sn-prepare-node
+                                   fn-sf-candidatep fn-sf-history-recoverablep fn-cpe-projection-step
+                                   fn-sn-record-bindsp fn-node-statep fn-sn-completion-record)))))
+(defthm fn-onb-inflight-fitp-of-spc-prepare
+  (implies (fn-onb-inflight-fitp s)
+           (fn-onb-inflight-fitp (fn-spc-prepare s record)))
+  :hints (("Goal" :in-theory (e/d (fn-spc-prepare fn-onb-inflight-fitp fn-spc-stage-record)
+                                  (fn-sn-statep fn-sf-statep fn-snb-record-fitp fn-sn-prepare-node
+                                   fn-sf-candidatep fn-cpe-projection-step
+                                   fn-sn-record-bindsp fn-node-statep fn-sn-completion-record)))))
+(defthm fn-onb-inflight-fitp-of-finish
+  (implies (fn-sn-completion-enabledp s)
+           (fn-onb-inflight-fitp (fn-sn-finish s)))
+  :hints (("Goal" :in-theory (e/d (fn-onb-inflight-fitp) (fn-sn-finish fn-sn-completion-enabledp))
+           :use fn-snt-finish-image)))
+
 
 (defun-nx fn-onb-store-boundp (s)
-  (fn-onb-node-boundp (fn-sn-node s)))
+  (and (fn-onb-node-boundp (fn-sn-node s))
+       (fn-onb-inflight-fitp s)))
+
 
 (defthm fn-onb-store-boundp-of-prepare
   (implies (and (fn-onb-store-boundp s)
@@ -123,13 +196,15 @@
                                    fn-snb-record-article)
                                   (fn-onb-node-boundp fn-snb-groups-fitp fn-nntp-nexts-boundedp fn-node-prepare
                                    fn-replay-advance-txid fn-sf-prepare-record fn-cpe-projection-step
-                                   fn-sn-statep fn-node-statep fn-sn-record-bindsp)))))
+                                   fn-sn-statep fn-node-statep fn-sn-record-bindsp))
+           :use ((:instance fn-onb-inflight-fitp-of-prepare)))))
 
 (defthm fn-onb-store-boundp-of-io
   (implies (fn-onb-store-boundp s)
            (fn-onb-store-boundp (fn-sn-io s operation result)))
   :hints (("Goal" :in-theory (e/d (fn-sn-io fn-onb-store-boundp)
-                                  (fn-onb-node-boundp fn-sn-file-step fn-sn-statep)))))
+                                  (fn-onb-node-boundp fn-sn-file-step fn-sn-statep))
+           :use ((:instance fn-onb-inflight-fitp-of-io)))))
 
 (defthm fn-onb-sn-node-of-finish
   (implies (fn-sn-completion-enabledp s)
@@ -150,17 +225,34 @@
                                    fn-store-retention-event-p fn-cpe-eventp fn-th-topic-eventp fn-stxe-p
                                    fn-stxk-p fn-hstxa-p)))))
 
+(defthm fn-onb-enabled-is-completing
+  (implies (fn-sn-completion-enabledp s)
+           (equal (fn-sf-phase (fn-sn-files s)) :completing))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-sn-completion-enabledp fn-sn-completion-core-enabledp)
+                                  (fn-sn-statep fn-sn-completion-record fn-store-retention-event-p
+                                   fn-replay-apply-retention-event fn-replay-apply-record fn-stxe-p
+                                   fn-stxk-p fn-hstxa-p fn-cpe-eventp fn-th-topic-eventp
+                                   fn-sn-record-bindsp fn-cpe-projection-step fn-th-prefix-step)))))
+
+(defthm fn-onb-held-record-is-no-event
+  (implies (fn-held-p r)
+           (and (not (fn-store-retention-event-p r)) (not (fn-stxe-p r)) (not (fn-stxk-p r))
+                (not (fn-hstxa-p r)) (not (fn-cpe-eventp r)) (not (fn-th-topic-eventp r)))))
+
+;; The finish: a held row completes its pending allocation (unconditional);
+;; every other record fits, by the Store's in-flight fact.
 (defthm fn-onb-store-boundp-of-finish
-  (implies (and (fn-onb-store-boundp s)
-                (fn-snb-record-fitp (fn-sn-node s) (fn-sn-completion-record s)))
+  (implies (fn-onb-store-boundp s)
            (fn-onb-store-boundp (fn-sn-finish s)))
-  :hints (("Goal" :in-theory (e/d (fn-onb-store-boundp)
+  :hints (("Goal" :in-theory (e/d (fn-onb-store-boundp fn-onb-inflight-fitp)
                                   (fn-sn-finish fn-onb-node-boundp fn-node-complete fn-replay-apply-record
                                    fn-replay-apply-retention-event fn-sn-statep fn-node-statep
                                    fn-sn-completion-enabledp fn-sn-completion-record fn-snb-record-fitp
                                    fn-store-retention-event-p fn-cpe-eventp fn-th-topic-eventp fn-stxe-p
-                                   fn-stxk-p fn-hstxa-p))
-           :cases ((fn-sn-completion-enabledp s)))
+                                   fn-stxk-p fn-hstxa-p fn-held-p fn-sf-record-phasep fn-onb-inflight-fitp-of-finish))
+           :cases ((fn-sn-completion-enabledp s))
+           :use ((:instance fn-onb-inflight-fitp-of-finish)))
           ("Subgoal 2" :in-theory (enable fn-sn-finish))))
 
 (defthm fn-onb-store-boundp-of-spc-prepare
@@ -170,7 +262,8 @@
   :hints (("Goal" :in-theory (e/d (fn-spc-prepare fn-onb-store-boundp fn-snb-record-fitp fn-snb-record-article)
                                   (fn-onb-node-boundp fn-sn-prepare-node fn-spc-stage-record
                                    fn-cpe-projection-step fn-sn-statep fn-node-statep fn-sn-record-bindsp
-                                   fn-snb-groups-fitp)))))
+                                   fn-snb-groups-fitp))
+           :use ((:instance fn-onb-inflight-fitp-of-spc-prepare)))))
 (defthm fn-onb-store-boundp-of-prc-spc-prepare
   (implies (and (fn-onb-store-boundp s)
                 (fn-snb-record-fitp (fn-sn-node s) record)
@@ -255,3 +348,63 @@
            (fn-onb-boundp (fn-ocfg-owner (mv-nth 1 (fn-pout-prepare-article oc record budget carry)))))
   :hints (("Goal" :in-theory (e/d (fn-pout-prepare-article) (fn-psrv-prepare fn-onb-boundp fn-pout-stagedp
                                                              fn-psrv-refusal-kind)))))
+
+;; ---------------------------------------------------------------------------
+;; The identity prepare.  host/owner-host.lisp fn-owner-prepare-identity
+;; calls fn-pout-prepare-identity, whose owner is fn-psrv-prepare-identity's
+;; over the interned row: it stages only a composite fn-psrv-event-numberedp
+;; admits, so the record in flight fits (fn-onb-inflight-fitp) through the io
+;; steps to the finish.
+
+(defthm fn-onb-inflight-fitp-of-ccar-prepare-identity
+  (implies (and (fn-onb-inflight-fitp s)
+                (fn-snb-record-fitp (fn-sn-node s) event))
+           (fn-onb-inflight-fitp (fn-ccar-sn-prepare-identity s event)))
+  :hints (("Goal" :in-theory (e/d (fn-ccar-sn-prepare-identity fn-onb-inflight-fitp fn-pcar-stage-record)
+                                  (fn-sn-statep fn-sf-statep fn-snb-record-fitp fn-pcar-stage-record-is-stage-record
+                                   fn-pcar-files-candidatep fn-ccar-cpe-projection-step
+                                   fn-replay-apply-record fn-replay-identity-step fn-node-statep
+                                   fn-sn-completion-record fn-stxe-p fn-stxk-p fn-hstxa-p fn-held-p
+                                   fn-replay-composite-held fn-record-stamp fn-stxk-context-kind
+                                   fn-sn-identity-context fn-record-record-vocabulary fn-record-shape-vocabulary)))))
+(defthm fn-onb-store-boundp-of-ccar-prepare-identity
+  (implies (and (fn-onb-store-boundp s)
+                (fn-snb-record-fitp (fn-sn-node s) event))
+           (fn-onb-store-boundp (fn-ccar-sn-prepare-identity s event)))
+  :hints (("Goal" :in-theory (e/d (fn-onb-store-boundp fn-ccar-sn-prepare-identity)
+                                  (fn-onb-node-boundp fn-sn-statep fn-snb-record-fitp fn-pcar-stage-record
+                                   fn-ccar-cpe-projection-step fn-replay-apply-record fn-replay-identity-step
+                                   fn-stxe-p fn-stxk-p fn-hstxa-p fn-replay-composite-held fn-record-stamp
+                                   fn-stxk-context-kind fn-sn-identity-context))
+           :use ((:instance fn-onb-inflight-fitp-of-ccar-prepare-identity)))))
+(defthm fn-onb-boundp-of-psrv-prepare-identity
+  (implies (fn-onb-boundp (fn-ocfg-owner oc))
+           (fn-onb-boundp (fn-ocfg-owner (fn-psrv-prepare-identity oc event))))
+  :hints (("Goal" :in-theory (e/d (fn-psrv-prepare-identity fn-ccar-ocfg-prepare-identity fn-psrv-event-numberedp)
+                                  (fn-onb-boundp fn-ccar-sn-prepare-identity fn-own-refresh fn-onb-store-boundp
+                                   fn-psrv-event-servedp fn-snb-record-fitp))
+           :use ((:instance fn-onb-boundp-of-refresh
+                            (o (fn-own-make (fn-ccar-sn-prepare-identity (fn-own-store (fn-ocfg-owner oc)) event)
+                                            (fn-own-view (fn-ocfg-owner oc)) (fn-own-conns (fn-ocfg-owner oc))
+                                            (fn-own-next-id (fn-ocfg-owner oc)) (fn-own-max-conns (fn-ocfg-owner oc))
+                                            (fn-own-pending (fn-ocfg-owner oc)) (fn-own-ledger-field (fn-ocfg-owner oc))
+                                            (fn-own-clock (fn-ocfg-owner oc)) (fn-own-facts (fn-ocfg-owner oc))
+                                            (fn-own-config (fn-ocfg-owner oc)) (fn-own-queue (fn-ocfg-owner oc))
+                                            (fn-own-inflight (fn-ocfg-owner oc)) (fn-own-feeds (fn-ocfg-owner oc))
+                                            (fn-own-node-secret (fn-ocfg-owner oc)) (fn-own-refused (fn-ocfg-owner oc)))))
+                 (:instance fn-onb-boundp (o (fn-own-make (fn-ccar-sn-prepare-identity (fn-own-store (fn-ocfg-owner oc)) event)
+                                            (fn-own-view (fn-ocfg-owner oc)) (fn-own-conns (fn-ocfg-owner oc))
+                                            (fn-own-next-id (fn-ocfg-owner oc)) (fn-own-max-conns (fn-ocfg-owner oc))
+                                            (fn-own-pending (fn-ocfg-owner oc)) (fn-own-ledger-field (fn-ocfg-owner oc))
+                                            (fn-own-clock (fn-ocfg-owner oc)) (fn-own-facts (fn-ocfg-owner oc))
+                                            (fn-own-config (fn-ocfg-owner oc)) (fn-own-queue (fn-ocfg-owner oc))
+                                            (fn-own-inflight (fn-ocfg-owner oc)) (fn-own-feeds (fn-ocfg-owner oc))
+                                            (fn-own-node-secret (fn-ocfg-owner oc)) (fn-own-refused (fn-ocfg-owner oc)))))
+                 (:instance fn-onb-boundp (o (fn-ocfg-owner oc)))))))
+
+(defthm fn-onb-boundp-at-owner-prepare-identity
+  (implies (fn-onb-boundp (fn-ocfg-owner oc))
+           (fn-onb-boundp (fn-ocfg-owner (mv-nth 1 (fn-pout-prepare-identity oc w h)))))
+  :hints (("Goal" :in-theory (e/d (fn-pout-prepare-identity fn-oiis-prepare-identity)
+                                  (fn-psrv-prepare-identity fn-onb-boundp fn-pout-stagedp
+                                   fn-pout-identity-refusal-kind fn-oiis-prepare-identity-unfolds fn-oii-identity-row)))))

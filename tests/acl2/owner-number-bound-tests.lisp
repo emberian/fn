@@ -58,3 +58,49 @@
 (snbt-defconst *onbt-prepared-at* (fn-sn-prepare-node *snbt-at* *ast-journal-r0*))
 (assert-event (fn-state-pending (fn-node-acceptance *onbt-prepared-at*)))
 (assert-event (not (onbt-node-boundp *onbt-prepared-at*)))
+
+; ---------------------------------------------------------------------------
+; The record in flight (lane join-f2-6).  fn-onb-inflight-fitp is proof
+; vocabulary; its executable body, proved equal to it, is what is evaluated.
+(defun onbt-inflight-fitp (s)
+  (let* ((files (fn-sn-files s))
+         (phase (fn-sf-phase files)))
+    (and (implies (fn-sf-record-phasep phase)
+                  (or (fn-held-p (fn-sf-record-candidate files))
+                      (fn-snb-record-fitp (fn-sn-node s) (fn-sf-record-candidate files))))
+         (implies (equal phase :completing)
+                  (or (fn-held-p (fn-sn-completion-record s))
+                      (fn-snb-record-fitp (fn-sn-node s) (fn-sn-completion-record s)))))))
+
+(defthm onbt-inflight-fitp-is-onb-inflight-fitp
+  (equal (onbt-inflight-fitp s) (fn-onb-inflight-fitp s))
+  :hints (("Goal" :in-theory (enable fn-onb-inflight-fitp))))
+
+; KEYSTONE fn-onb-store-boundp-of-finish, reachable positive witness: the
+; signed composite of acceptance-stamp-tests, staged by the identity prepare
+; (its candidate is the composite row) and published to :completing; the
+; node is bound, the composite in flight fits, the finish is enabled, and the
+; node after the finish is bound.
+(assert-event (equal (fn-sf-phase (fn-sn-files *ast-composite-prepared*)) :record-staged))
+(assert-event (fn-hstxa-p (fn-sf-record-candidate (fn-sn-files *ast-composite-prepared*))))
+(assert-event (onbt-inflight-fitp *ast-composite-prepared*))
+(assert-event (onbt-node-boundp (fn-sn-node *ast-composite-completing*)))
+(assert-event (onbt-inflight-fitp *ast-composite-completing*))
+(assert-event (fn-sn-completion-enabledp *ast-composite-completing*))
+(assert-event (onbt-node-boundp (fn-sn-node (fn-sn-finish *ast-composite-completing*))))
+
+; Hypothesis removal, the record in flight (a constructed Store: its node's
+; watermark for the composite's group AT the bound, which the identity
+; prepare's admission refuses): the node is bound (the retained part), the
+; composite in flight does not fit (the omitted part), the finish is still
+; enabled (the replay does not test the bound; the admission does), and the
+; node after it is not bound.
+(snbt-defconst *onbt-completing-at*
+  (fn-sn-update *ast-composite-completing* (fn-sn-files *ast-composite-completing*)
+                (snbt-with-nexts (fn-sn-node *ast-composite-completing*)
+                                 (list (cons "example" *fn-nntp-max-article-number*)))))
+(snbt-defconst *onbt-completing-at-finished* (fn-sn-finish *onbt-completing-at*))
+(assert-event (onbt-node-boundp (fn-sn-node *onbt-completing-at*)))
+(assert-event (not (onbt-inflight-fitp *onbt-completing-at*)))
+(assert-event (with-guard-checking :none (fn-sn-completion-enabledp *onbt-completing-at*)))
+(assert-event (not (onbt-node-boundp (fn-sn-node *onbt-completing-at-finished*))))
