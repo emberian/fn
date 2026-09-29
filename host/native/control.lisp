@@ -761,6 +761,19 @@ ACL2 returns."
         (fnn-socket-shut socket)
         (error condition)))))
 
+(defun fnn-control-send-request (socket fd octets)
+  "Send one request frame and half-close.  PKT-182: when the frame is past the
+owner's read bound the owner answers it (refused, `fnn-control-read-frame's
+:overbound) and stops reading, so the rest of this write fails; the owner's
+reply is already queued on the connection, so the failed write is not the
+exchange's end: the caller reads the reply frame either way, and only a
+missing or undecodable reply leaves the outcome to the transport stage
+(uncertain)."
+  (when (handler-case (progn (fnn-send-all fd octets +fnn-control-io-seconds+) t)
+          (error () nil))
+    (sb-bsd-sockets:socket-shutdown socket :direction :output))
+  nil)
+
 (defun fnn-control-transport-outcome (stage)
   (fnn-core 'fn-native-control-host-transport-outcome stage))
 
@@ -778,9 +791,7 @@ bound and the control I/O deadline when omitted)."
                (let ((fd (fnn-socket-fd socket)))
                  ;; Any failure from here may follow a partial write.
                  (setq stage :after-submission)
-                 (fnn-send-all fd (fnn-octets request-list)
-                               +fnn-control-io-seconds+)
-                 (sb-bsd-sockets:socket-shutdown socket :direction :output)
+                 (fnn-control-send-request socket fd (fnn-octets request-list))
                  (let ((frame (fnn-control-read-frame
                                socket
                                (or maximum
@@ -849,9 +860,7 @@ Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
                              (fnn-octets-string path-octets)))
                (let ((fd (fnn-socket-fd socket)))
                  (setq stage :after-submission)
-                 (fnn-send-all fd (fnn-octets request-list)
-                               +fnn-control-io-seconds+)
-                 (sb-bsd-sockets:socket-shutdown socket :direction :output)
+                 (fnn-control-send-request socket fd (fnn-octets request-list))
                  (let* ((frame (fnn-control-read-frame
                                 socket (fnn-core
                                         'fn-native-control-host-max-frame)))
@@ -1035,8 +1044,7 @@ an ordinary refusal (it is stopping)."
                (setq socket (fnn-control-connect (fnn-octets-string path-octets)))
                (let ((fd (fnn-socket-fd socket)))
                  (setq stage :after-submission)
-                 (fnn-send-all fd (fnn-octets request) +fnn-control-io-seconds+)
-                 (sb-bsd-sockets:socket-shutdown socket :direction :output)
+                 (fnn-control-send-request socket fd (fnn-octets request))
                  (let ((frame (fnn-control-read-frame
                                socket (fnn-core 'fn-native-live-status-host-max-frame))))
                    (if (typep frame 'fnn-octets)

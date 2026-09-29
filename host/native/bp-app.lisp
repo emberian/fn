@@ -219,6 +219,8 @@ finds the transit principal in that ingress."
            (fnn-owner-transit-serialized
             service nil
             (lambda ()
+              ;; Per transfer: a Store-side reason names only its own line.
+              (setq *fnn-owner-transit-detail* nil)
               (multiple-value-bind (result adu)
                   (fnn-bpapp-accept-locked
                    service journal inbound-id (fnn-octets adu) node-id
@@ -228,7 +230,8 @@ finds the transit principal in that ingress."
                   ;; ACL2 renders the line, with the planner's reason, and
                   ;; classifies the answer; the host writes and follows it.
                   (let ((class (fnn-owner-action 'fn-owner-app-refusal-log
-                                                 result xfer-id)))
+                                                 result xfer-id
+                                                 *fnn-owner-transit-detail*)))
                     (fnn-owner-log)
                     (values result nil class)))))))
          (case class

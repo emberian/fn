@@ -300,13 +300,19 @@
 ; for host/native/owner.lisp fnn-owner-log and answers the line's class
 ; (:refused, :deferred or :uncertain; :accepted or :duplicate never reach
 ; here), which the host returns to the convergence layer.
-(defun fn-owner-app-refusal-log (result xfer-id state)
+;; DETAIL is the reason a Store-side step named after the plan was ready
+;; (host/native/owner.lisp fnn-owner-transit-refused keeps it: the control
+;; filing's refusal, C1, among them), or nil; it names the line when the
+;; planner and the dispatcher named none (PKT-443 (2)), exactly as
+;; fn-owner-bp-request-refusal-line takes it for bp-node.
+(defun fn-owner-app-refusal-log (result xfer-id detail state)
   (declare (xargs :stobjs state :mode :program))
   (let ((state (f-put-global
                 'fn-owner-log-line
                 (fn-olog-bp-app-refusal-line
                  result
-                 (f-get-global 'fn-owner-app-refusal-reason state)
+                 (or (f-get-global 'fn-owner-app-refusal-reason state)
+                     (and detail (symbolp detail) detail))
                  xfer-id)
                 state)))
     (value (fn-olog-bp-app-class result))))

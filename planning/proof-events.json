@@ -14385,6 +14385,48 @@
           "name": "fn-sckd-digest-ignores-revision-and-log"
         }
       ]
+    },
+    {
+      "id": "PRF-971",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nsst-absent-store-beside-an-init-stage-names-it"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsst-absent-store-beside-an-import-stage-names-it"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsst-store-outcome-without-a-stage-is-the-store-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsst-result-hint-of-another-result-unfolds"
+        }
+      ]
+    },
+    {
+      "id": "PRF-963",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nh-deferred-checkpoint-is-never-healthy"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-verdict-states"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-exit-code-decodes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-report-exit-of-render"
+        }
+      ]
     }
   ]
 }

@@ -15045,6 +15045,65 @@
           "name": "fn-sckd-digest-ignores-revision-and-log"
         }
       ]
+    },
+    {
+      "id": "PRF-971",
+      "title": "A store action over an absent store beside an interrupted init or import names the stage (:interrupted-init / :interrupted-import, exit 1), not NO-STORE's \"run init\", which init refuses while the stage remains (PKT-781 (1))",
+      "statement": "Subject: fn-nsst-store-outcome (books/native-operator-stage.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan, with the lstat observation of the store's entries and, only when none is there, the stage init and import look up beside ROOT (host/native/io.lisp fnn-import-leftover-stage, kinds init and import); the hint the host prints is fn-nsst-result-hint (fn-native-operator-host-result-hint). KEYSTONE fn-nsst-absent-store-beside-an-init-stage-names-it: a plan that needs a store, no store entry observed, an init stage path S: status :refused, reason :interrupted-init, arguments (S), exit the refusal code, native action :none, and the hint names S and says to remove it and run init. fn-nsst-absent-store-beside-an-import-stage-names-it: the same for an import stage when no init stage is there. fn-nsst-store-outcome-without-a-stage-is-the-store-outcome: with no stage, any store entry, or a plan needing no store, the outcome is fn-native-operator-store-outcome's (PRF-130 part 1 unchanged). Scope: the stage lookup is the host's first matching directory entry; a stage beside a root holding store entries is never this refusal (the open decides).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-008",
+        "HST-009"
+      ],
+      "depends_on": [
+        "PRF-130",
+        "PRF-143"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/native-operator-stage.lisp",
+        "tests/acl2/native-operator-stage-tests.lisp",
+        "host/native-operator-host.lisp",
+        "host/native/operator.lisp",
+        "tests/test_native_init_publication.py"
+      ],
+      "progress_note": "Lane correctness-remainder-6 (Opus 5.5, 2026-09-29; PKT-781 (1)). REPL-admitted whole on persvati (book 11 forms; teeth 46 forms). Teeth: recover/run over nothing beside an init stage (every conjunct), init stage over import stage, each hypothesis removed (help plan; config.json observed; no stage = NO-STORE) with must-fail-checked, the import stage. Native: tests.test_native_init_publication.InitPublicationTests.test_publication_and_the_three_refusals (status and recover beside store.init-deadbeef0000).",
+      "events": [
+        "fn-nsst-absent-store-beside-an-init-stage-names-it",
+        "fn-nsst-absent-store-beside-an-import-stage-names-it",
+        "fn-nsst-store-outcome-without-a-stage-is-the-store-outcome",
+        "fn-nsst-result-hint-of-another-result-unfolds"
+      ]
+    },
+    {
+      "id": "PRF-963",
+      "title": "health's tenth state, a deferred checkpoint: held while the running owner's automatic checkpoint publication is deferred, so a node whose every restart is a full replay never reads healthy (PKT-542)",
+      "statement": "Subjects: fn-nh-verdict / fn-nh-live-report / fn-nh-answer-report (books/native-health.lisp) and the column twin fn-nsc-answer-report (books/native-status-columns.lisp), which host/native-live-status-host.lisp fn-native-live-status-host-answer calls with the observation's sixth element fn-owner-sco-deferred (books/native-live-status.lisp fn-nls-obs-checkpoint-deferred: (:deferred REASON ESTIMATE BOUND) or nil) as CKPT; the host returns the exit (fn-native-health-host-exit, fn-nh-report-exit-of-render). KEYSTONE fn-nh-deferred-checkpoint-is-never-healthy: with CKPT deferred the verdict's exit code is in 20..29, and 29 exactly when none of the first nine states is held. The tenth state is appended (*fn-nh-states* ends :checkpoint-deferred, code 29) so codes 20..28 keep their meaning; fn-nh-verdict-states, fn-nh-exit-code-cases, fn-nh-exit-code-decodes and fn-nh-report-exit-of-render(-and-more) restated for ten outcomes. Offline (no owner) the state is :unobserved. Scope: the natural deferral (a real profile whose checkpoint exceeds its budget) has no native case; the developer selector FN_NATIVE_CHECKPOINT_BUDGET_TEST reaches it.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-007"
+      ],
+      "depends_on": [
+        "PRF-112",
+        "PRF-358"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/native-health.lisp",
+        "books/native-status-columns.lisp",
+        "tests/acl2/native-health-tests.lisp",
+        "host/native-live-status-host.lisp",
+        "specs/host.md"
+      ],
+      "progress_note": "Lane correctness-remainder-5 (Opus 5.5, 2026-09-29; PKT-542). REPL-admitted whole on hbox (books/native-health, 245 forms). Teeth in tests/acl2/native-health-tests.lisp: the reached exit 29 with its reason words, the earlier held disk's 28, nil deferral exit 0, must-fail nht-checkpoint-never-healthy-without-deferred, offline :unobserved.",
+      "events": [
+        "fn-nh-deferred-checkpoint-is-never-healthy",
+        "fn-nh-verdict-states",
+        "fn-nh-exit-code-decodes",
+        "fn-nh-report-exit-of-render"
+      ]
     }
   ]
 }

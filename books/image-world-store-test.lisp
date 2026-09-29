@@ -62,6 +62,7 @@
 (include-book "store-mount-identity")
 (include-book "store-profile-namespace")
 (include-book "native-operator")
+(include-book "native-operator-stage")
 (include-book "post-fields")
 (include-book "store-log-route")
 (include-book "store-log-kernel-concrete")

@@ -258,7 +258,7 @@
 (defun fn-nsc-answer-report (kind profile oc cache obs min disk fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :guard t :verify-guards nil))
   (if (equal kind :health)
-      (fn-nh-live-report profile oc cache min disk)
+      (fn-nh-live-report profile oc cache min disk (fn-nls-obs-checkpoint-deferred obs))
     (fn-nsc-live-report kind profile oc cache obs fn-arena fn-cat)))
 
 ; KEYSTONE (the owner's report is the report).  The subject is

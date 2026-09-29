@@ -5,6 +5,7 @@
 ; assign an exit code: fn-native-operator-run owns all three.
 (in-package "ACL2")
 (include-book "../books/native-operator")
+(include-book "../books/native-operator-stage")
 
 (defun fn-native-operator-host-preflight (argv-octets)
   (declare (xargs :mode :program))
@@ -263,9 +264,9 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-show-octets result))
 
-(defun fn-native-operator-host-store-outcome (result observed)
+(defun fn-native-operator-host-store-outcome (result observed init-stage import-stage)
   (declare (xargs :mode :program))
-  (fn-native-operator-store-outcome result observed))
+  (fn-nsst-store-outcome result observed init-stage import-stage))
 
 (defun fn-native-operator-host-control-outcome (result)
   (declare (xargs :mode :program))
@@ -273,7 +274,7 @@
 
 (defun fn-native-operator-host-result-hint (result)
   (declare (xargs :mode :program))
-  (fn-native-operator-result-hint result))
+  (fn-nsst-result-hint result))
 
 (defun fn-native-operator-host-result-inspect-msgid-octets (result)
   (declare (xargs :mode :program))
