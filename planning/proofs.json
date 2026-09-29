@@ -14453,6 +14453,36 @@
         "fn-rcls-step-reads-no-article-list",
         "fn-rclp-event-reads-no-article-list"
       ]
+    },
+    {
+      "id": "PRF-935",
+      "title": "The received article is parsed in place from the octet buffer, and its consumers answer their list references",
+      "statement": "books/article-buffer.lisp: fn-ars-parse-under LIMITS fn-octets is fn-article-parse-under with the octet list replaced by an index into the buffer; its result is the reference's with the body LOCATED, not copied (fn-ars-of: (:ok (HEADER OFFSET FIELDS)) for (:ok (HEADER BODY FIELDS)), every error the same). KEYSTONE fn-ars-parse-under-is-article-parse-under: under fn-octets-p (the buffer's invariant; a cell that is not an octet is what the reference's preflight refuses and the buffer cannot hold) the twin equals fn-ars-of the reference parse of the buffer's value; fn-ars-body-is-located: the reference's body is the buffer's suffix at the twin's OFFSET. The consumers the host calls are each equal to their reference over the buffer's value: fn-ars-lb-ocfg-gate-is-reference (fn-lb-ocfg-gate, the served POST's login gate), fn-ars-filing-plan-is-reference (fn-pa-filing-plan, C1), fn-ars-carrier-form-is-reference (fn-pa-carrier-form), fn-ars-current-plan-is-reference (fn-pa-current-plan); every keystone about the references applies to the host's verdict. Every executable is guard-verified. host/owner-host.lisp fn-owner-login-gate-buffer, fn-owner-control-filing-buffer, fn-owner-peer-carrier-form-buffer and fn-owner-peer-carrier-plan-buffer are the entries; host/native/owner.lisp fnn-owner-attempt-served and fnn-owner-attempt-transit call them after fnn-octets-fill of the payload, so no octet list of the article is built for them.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001",
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-106",
+        "PRF-016"
+      ],
+      "assumptions": [],
+      "status": "proposed",
+      "events": [
+        "fn-ars-parse-under-is-article-parse-under",
+        "fn-ars-body-is-located",
+        "fn-ars-lb-ocfg-gate-is-reference",
+        "fn-ars-filing-plan-is-reference",
+        "fn-ars-carrier-form-is-reference",
+        "fn-ars-current-plan-is-reference"
+      ],
+      "evidence": [
+        "planning/evidence/d27-representation-2026-09-29.md",
+        "books/article-buffer.lisp",
+        "tests/acl2/article-buffer-tests.lisp"
+      ],
+      "progress_note": "Lane d27-representation (D27 boundary 9, row Q2 of COMPLETE-BEFORE-6.6.0, 2026-09-29). Teeth in tests/acl2/article-buffer-tests.lisp: the positive witness in the live buffer, every error arm, the hypothesis-removal witness on the logical definitions (a cell of 300: the reference refuses, the twin parses on), the consumers' witnesses. Not here: the signed arm's source as a buffer range (PKT-743); a header-parse cache across the transit's four calls."
     }
   ]
 }

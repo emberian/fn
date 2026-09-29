@@ -997,6 +997,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/octet-window \
 	books/subject-id-buffer \
 	tests/acl2/subject-id-buffer-tests \
+	books/article-buffer \
+	tests/acl2/article-buffer-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
@@ -1729,6 +1731,13 @@ check:
 # counts the sites left per file and only shrinks.
 	@$(CHECK_STEP) $(PYTHON) tools/clock_unit_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_clock_unit_check
+# Host-called octet-list codecs (D27, row Q2 of COMPLETE-BEFORE-6.6.0): a host
+# dispatch that hands a codec an octet list consed from a byte vector
+# (fnn-octet-list).  tools/list_codec_baseline.json counts the sites per host
+# file and only shrinks; the target is zero (books/article-buffer.lisp is the
+# pattern: a buffer twin and its boundary theorem).
+	@$(CHECK_STEP) $(PYTHON) tools/list_codec_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_list_codec_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make

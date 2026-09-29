@@ -132,6 +132,7 @@
 ;; books/store-reclaim-buffer's fn-rclb-same-articlep (D13, STO-014).
 (include-book "../books/records-concrete-owner")
 (include-book "../books/octets-stobj")
+(include-book "../books/article-buffer")
 (include-book "../books/store-reclaim-buffer")
 ; HST-023 (PRF-248): the served step's typed result and render plan.
 (include-book "../books/served-plan")
@@ -3295,6 +3296,41 @@
                      (fn-store-octets->string msgid-octets) fn-octets groups
                      (fn-owner-core state) fn-arena fn-cat)))
         (value (if action action :absent))))))
+
+; The received article in the octet buffer (books/article-buffer.lisp, D27
+; boundary 9): the served POST's login gate and the transit attempt's four
+; article calls, each the buffer twin of the list entry above it, equal to
+; it over the buffer's value (fn-ars-lb-ocfg-gate-is-reference,
+; fn-ars-filing-plan-is-reference, fn-ars-carrier-form-is-reference,
+; fn-ars-current-plan-is-reference), so no list of the article is built for
+; them.  Called by host/native/owner.lisp fnn-owner-attempt-served and
+; fnn-owner-attempt-transit through fnn-core-buffer-state after
+; fnn-octets-fill of the payload.
+(defun fn-owner-login-gate-buffer (fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (let* ((verdict (fn-ars-lb-ocfg-gate (fn-owner-ocfg state) fn-octets))
+         (state (f-put-global 'fn-owner-login-log-line
+                              (fn-lb-verdict-line verdict) state)))
+    (value verdict)))
+
+(defun fn-owner-control-filing-buffer (group-octets fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program
+                  :guard (fn-octet-list-listp group-octets)))
+  (value (fn-ars-filing-plan
+          group-octets
+          (fn-state-groups (fn-node-acceptance (fn-owner-node state)))
+          fn-octets)))
+
+(defun fn-owner-peer-carrier-form-buffer (fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (value (fn-ars-carrier-form fn-octets)))
+
+(defun fn-owner-peer-carrier-plan-buffer (transitp fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (value (fn-ars-current-plan
+          (fn-sn-keyring-snapshots (fn-owner-store state))
+          (fn-owner-transit-carried-list transitp state)
+          (and transitp t) fn-octets)))
 
 ; The subject identity of the payload in the octet buffer is
 ; books/subject-id-buffer.lisp fn-sidb-subject-id-bounded, which host/native/io.lisp
