@@ -15700,6 +15700,29 @@
       ],
       "progress_note": "2026-09-29 lane paged-history-3: ember's 06:34Z ruling (W2 row, PKT-774 -> W2b) with GPT-6's 2026-09-29 calls folded in (one key per generation; the structural bound separate from admission capacity; the fourth outcome; exact comparisons in the work bound; structural fixtures). REPL-admitted on persvati; certification manifest at the READY sha. The served refusal :mpx-saturated and the crafted-collision native land with THE SWITCH (row P2), since no host line reads the table before it.",
       "events": []
+    },
+    {
+      "id": "PRF-986",
+      "title": "The TLS handshake is an admission ACL2 decides before SSL_accept: a per-source token bucket, a node-wide in-flight and per-second bound (PKT-639, W2a)",
+      "statement": "books/tls-handshake-budget.lisp (fn-hsb-). fn-hsb-admit s hl trustedp address now queuedp decides :admit ID, :wait or :refuse (:handshake-budget or :busy) for a source (an IPv4 address or an IPv6 /64) under the operator's rows tls-handshakes-per-source-per-minute (N), tls-handshakes-in-flight (L), tls-handshake-ms (D). KEYSTONE fn-hsb-steps-keep-the-bound: from fn-hsb-okp (at most L in flight, at most L started in the tick, at most 32L waiting) every admit, done and leave keeps it. KEYSTONE fn-hsb-admits-per-tick-are-bounded: over any event sequence from any state, the admissions in one one-second tick are at most the largest L they were decided under. KEYSTONE fn-hsb-source-admits-are-bounded: from any state, over events with nondecreasing times in [T0,T1] decided at rate N, one untrusted source is admitted at most N + N(T1-T0)/60000 handshakes. fn-hsb-scratch-within-the-reservation: in-flight native scratch at most L x *fn-hsb-scratch-octets* (stated, not yet charged to books/connection-budget.lisp's figure). Host subjects: host/owner-host.lisp fn-owner-handshake-admit, fn-owner-handshake-done, fn-owner-handshake-leave (called by host/native/mux.lisp fnn-mux-begin, fnn-mux-request-handshake, fnn-mux-start-waiting-handshake, fnn-mux-finish).",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [
+        "PRF-211"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/tls-handshake-budget.lisp",
+        "tests/acl2/tls-handshake-budget-tests.lisp"
+      ],
+      "progress_note": "Lane tls-handshake-budget (Claude Opus 5.5, 2026-09-29; row W2a, PKT-639). REPL-admitted on hbox; teeth book loads green; host_check --load 42/42 at 178c7fcf8. Not yet certified; natives not yet run.",
+      "events": [
+        "fn-hsb-steps-keep-the-bound",
+        "fn-hsb-admits-per-tick-are-bounded",
+        "fn-hsb-source-admits-are-bounded",
+        "fn-hsb-scratch-within-the-reservation"
+      ]
     }
   ]
 }
