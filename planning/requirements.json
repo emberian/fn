@@ -5236,6 +5236,25 @@
       ],
       "implementation_note": "RFC 3977 section 6 requirement (article numbers 1..2,147,483,647), enforced as a protocol bound, not an implementation ceiling (D27): admission refuses (:article-numbers-exhausted; POST 441 with reason, IHAVE 437, TAKETHIS 439) instead of allocating a number past it. The whole-archive article-count conjunct of fn-nntp-projectionp (no RFC basis; an O(N) walk at every re-pin) is removed. Local policy: the last number assigned in a group is 2,147,483,646, so the watermark after it (rendered as an emptied group's low number, RFC 3977 section 6.1.1.2) is itself an article number.",
       "note": "PKT-615 as the coordinator decided it (lane join-f2-615, 2026-09-28). Scenario: no native scenario reaches the bound (2^31 articles); the refusal is exercised by the ACL2 teeth at constructed boundary states, labelled as such."
+    },
+    {
+      "id": "STO-038",
+      "title": "The store's limits (T, H, A) are operator policy changed in place: one configuration event, applied now within the running reservation or at the next start with no data moved, refused by name with the number below current use; never an export and an import",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-940"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/limits-live.lisp",
+        "tests/acl2/limits-live-tests.lisp"
+      ],
+      "implementation_note": "Row S1. The sealed profile's digest is in the genesis record, so config.json is never rewritten: a limit is a :set-limit row folded over it (fn-lim-effective). Verb and native scenario land with lane limits-live-3."
     }
   ]
 }

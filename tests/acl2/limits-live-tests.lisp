@@ -1,0 +1,129 @@
+; Teeth for books/limits-live.lisp (row S1, lane limits-live-3, PRF-940).
+; The development profile (T = 128) on a 64 GiB machine with the 69046a76
+; core: a raise of T within the reservation the process started with is
+; applied now; a raise beyond it is recorded for the next start; a lowering
+; below the store's committed transactions is refused by name, with the use.
+
+(in-package "ACL2")
+(include-book "../../books/limits-live")
+(include-book "std/testing/assert-bang" :dir :system)
+
+(defconst *lim-t-core* 389141032)              ; the 69046a76 fn-host.core
+(defconst *lim-t-nursery* (* 64 1024 1024))    ; +fnn-gc-nursery-octets+
+(defconst *lim-t-machine* (list (* 65536 *fn-heap-mib*)))
+(defconst *lim-t-p* *fn-bs-profile-development*)
+(defconst *lim-t-use* '(100 1000000))          ; 100 transactions, 1 MB charged
+(defconst *lim-t-run-mb*                       ; the reservation this profile's start took
+  (fn-heap-decision-mb (fn-heap-decide *lim-t-p* *lim-t-core* *lim-t-nursery* *lim-t-machine*)))
+
+(assert! (equal (fn-bs-pf *fn-bs-pf-max-transactions* *lim-t-p*) 128))
+(assert! (posp *lim-t-run-mb*))
+
+; -----------------------------------------------------------------------------
+; fn-lim-decide-accepted-keeps-use-within
+
+; REACHABLE, :applied.  Antecedent: the decision is accepted.  Conclusion:
+; the field is live, the new profile is admitted, the use (100) is within the
+; new T (129), and the figure fits the running reservation.
+(defconst *lim-t-applied*
+  (fn-lim-decide "max-transactions" 129 *lim-t-p* *lim-t-use*
+                 *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine*))
+(assert! (equal (car *lim-t-applied*) :applied))
+(assert! (fn-lim-acceptedp *lim-t-applied*))
+(assert! (fn-lim-fieldp "max-transactions"))
+(assert! (fn-bs-profile-admittedp (fn-lim-apply-row *lim-t-p* "max-transactions" 129)))
+(assert! (<= (fn-lim-use-of "max-transactions" *lim-t-use*) 129))
+(assert! (<= (cadr *lim-t-applied*) *lim-t-run-mb*))
+
+; REACHABLE, :at-restart.  A raise to 4096 needs more heap than the running
+; reservation: recorded, and the conclusion's first three conjuncts hold.
+(defconst *lim-t-later*
+  (fn-lim-decide "max-transactions" 4096 *lim-t-p* *lim-t-use*
+                 *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine*))
+(assert! (equal (car *lim-t-later*) :at-restart))
+(assert! (< *lim-t-run-mb* (cadr *lim-t-later*)))
+(assert! (fn-bs-profile-admittedp (fn-lim-apply-row *lim-t-p* "max-transactions" 4096)))
+(assert! (<= (fn-lim-use-of "max-transactions" *lim-t-use*) 4096))
+; Offline (no process holds a reservation: run-mb 0) every accepted change is
+; :at-restart.
+(assert! (equal (car (fn-lim-decide "max-transactions" 129 *lim-t-p* *lim-t-use*
+                                    0 *lim-t-core* *lim-t-nursery* *lim-t-machine*))
+                :at-restart))
+
+; CONCLUSION FAILURE, refused below the current use: T = 99 < 100 committed.
+(assert! (equal (fn-lim-decide "max-transactions" 99 *lim-t-p* *lim-t-use*
+                               *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine*)
+                '(:refused :below-current-use "max-transactions" 100)))
+(assert! (not (<= (fn-lim-use-of "max-transactions" *lim-t-use*) 99)))
+; History octets likewise.
+(assert! (equal (fn-lim-decide "max-history-octets" 999999 *lim-t-p* *lim-t-use*
+                               *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine*)
+                '(:refused :below-current-use "max-history-octets" 1000000)))
+; A field that is not live (the log-scan bound R) is refused by name.
+(assert! (equal (fn-lim-decide "max-record-octets" 4096 *lim-t-p* *lim-t-use*
+                               *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine*)
+                '(:refused :not-a-live-limit "max-record-octets" 0)))
+(assert! (not (fn-lim-fieldp "max-record-octets")))
+; An invalid profile (T = 0 fails the resolution) is refused with its reason.
+(assert! (equal (car (fn-lim-decide "max-transactions" 0 *lim-t-p* '(0 0)
+                                    *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine*))
+                :refused))
+; The machine cannot hold the figure: a 2 GiB machine refuses T = 4096 by the
+; heap figure's name, with both numbers.
+(assert! (equal (cadr (fn-lim-decide "max-transactions" 4096 *lim-t-p* *lim-t-use* 0
+                                     *lim-t-core* *lim-t-nursery*
+                                     (list (* 2048 *fn-heap-mib*))))
+                :machine-cannot-hold-profile))
+; The :applied conjunct fails when the reservation is smaller than the
+; figure: the same raise with run-mb one below it is :at-restart, not applied.
+(assert! (equal (car (fn-lim-decide "max-transactions" 129 *lim-t-p* *lim-t-use*
+                                    (1- (cadr *lim-t-applied*))
+                                    *lim-t-core* *lim-t-nursery* *lim-t-machine*))
+                :at-restart))
+
+; -----------------------------------------------------------------------------
+; fn-lim-effective-of-append-record (a change replays identically)
+
+(defconst *lim-t-stamp* *fn-cfg-default-stamp*)
+(defconst *lim-t-r1*
+  (fn-cfg-record-make 1 5 2 (fn-lim-deltas "max-transactions" 129) *lim-t-stamp*))
+(defconst *lim-t-r2*
+  (fn-cfg-record-make 2 9 3 (append (fn-lim-deltas "max-article-octets" 65536)
+                                    (list (fn-cfg-set-capacity 20)))
+                      *lim-t-stamp*))
+(defconst *lim-t-history* (list *fn-cfg-default-record* *lim-t-r1*))
+
+; REACHABLE: the profile an owner installs applying R2 over the one it serves
+; is the one the next open computes from the history R2 ends; both change T
+; and A and nothing else the fold reads (the capacity row is not a limit).
+(assert! (equal (fn-lim-effective *lim-t-p* (append *lim-t-history* (list *lim-t-r2*)))
+                (fn-lim-apply-deltas (fn-lim-effective *lim-t-p* *lim-t-history*)
+                                     (fn-cfg-record-change *lim-t-r2*))))
+(defconst *lim-t-served* (fn-lim-effective *lim-t-p* (append *lim-t-history* (list *lim-t-r2*))))
+(assert! (equal (fn-bs-pf *fn-bs-pf-max-transactions* *lim-t-served*) 129))
+(assert! (equal (fn-bs-pf *fn-bs-pf-max-article-octets* *lim-t-served*) 65536))
+(assert! (equal (fn-bs-pf *fn-bs-pf-max-history-octets* *lim-t-served*)
+                (fn-bs-pf *fn-bs-pf-max-history-octets* *lim-t-p*)))
+; The last row of a field wins: a later lowering overrides the earlier raise.
+(defconst *lim-t-r3*
+  (fn-cfg-record-make 3 11 4 (fn-lim-deltas "max-transactions" 120) *lim-t-stamp*))
+(assert! (equal (fn-bs-pf *fn-bs-pf-max-transactions*
+                          (fn-lim-effective *lim-t-p* (list *lim-t-r1* *lim-t-r3*)))
+                120))
+; CONCLUSION FAILURE (order matters): applying the rows in the other order is
+; a different profile, so the theorem's append-at-the-end is the content.
+(assert! (not (equal (fn-lim-effective *lim-t-p* (list *lim-t-r1* *lim-t-r3*))
+                     (fn-lim-effective *lim-t-p* (list *lim-t-r3* *lim-t-r1*)))))
+; A lowered T drags the open-suffix bound K down with it (init's resolution).
+(assert! (equal (fn-bs-pf *fn-bs-pf-max-open-suffix*
+                          (fn-lim-apply-row *lim-t-p* "max-transactions" 3))
+                (min 3 (fn-bs-pf *fn-bs-pf-max-open-suffix* *lim-t-p*))))
+
+; fn-lim-apply-deltas-of-the-verb: the verb's row applied is fn-lim-apply-row;
+; the hypothesis (a live field) removed, the verb's row for R is ignored by
+; the fold while fn-lim-apply-row would write slot A.
+(assert! (equal (fn-lim-apply-deltas *lim-t-p* (fn-lim-deltas "max-history-octets" 50000000))
+                (fn-lim-apply-row *lim-t-p* "max-history-octets" 50000000)))
+(assert! (not (fn-lim-fieldp "max-record-octets")))
+(assert! (not (equal (fn-lim-apply-deltas *lim-t-p* (fn-lim-deltas "max-record-octets" 7))
+                     (fn-lim-apply-row *lim-t-p* "max-record-octets" 7))))

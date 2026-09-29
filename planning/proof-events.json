@@ -13551,6 +13551,23 @@
           "name": "fn-bpcc-frame-decode-of-sealed"
         }
       ]
+    },
+    {
+      "id": "PRF-940",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lim-effective-of-append-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lim-apply-deltas-of-the-verb"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lim-decide-accepted-keeps-use-within"
+        }
+      ]
     }
   ]
 }
