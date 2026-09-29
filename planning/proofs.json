@@ -13655,7 +13655,7 @@
     {
       "id": "PRF-917",
       "title": "AUTHINFO SASL on the served step: a login by SASL is PASS's acceptance of the credential the snapshot holds, the capability block names exactly the mechanisms accepted now, and the SASL line survives authentication",
-      "statement": "books/nntp-auth.lisp fn-auth-step and fn-auth-step-pinned (the host's served step through fn-served-dispatch): the AUTHINFO SASL arm (fn-auth-sasl-command), the continuation branch taken for every line while an exchange is kept (fn-auth-sasl-continue), and the host's (:sasl-context SEED BINDING) event (fn-auth-install-context). fn-auth-sasl-finish-binds-only-on-success; KEYSTONE fn-auth-step-binds-a-peer-role-by-sasl-only-to-a-found-credential (books/nntp-auth-roles.lisp; with PRF-049's keystone, PASS and SASL are the only ways to a role); fn-auth-sasl-is-advertised-exactly-when-a-mechanism-is-offered; fn-auth-sasl-line-is-the-same-before-and-after-authentication (RFC 4643 section 2.2); fn-auth-sasl-mechanisms-never-offer-plain-before-tls; the step still preserves fn-auth-session-consistentp.",
+      "statement": "books/nntp-auth.lisp fn-auth-step and fn-auth-step-pinned (the host's served step through fn-served-dispatch): the AUTHINFO SASL arm (fn-auth-sasl-command), the continuation branch taken for every line while an exchange is kept (fn-auth-sasl-continue), and the host's (:sasl-context SEED BINDING) event (fn-auth-install-context). fn-auth-sasl-finish-binds-only-on-success; KEYSTONE fn-auth-step-binds-a-peer-role-by-sasl-only-to-a-found-credential (books/nntp-auth-roles.lisp; with PRF-049's keystone, PASS and SASL are the only ways to a role); fn-auth-sasl-is-advertised-exactly-when-a-mechanism-is-offered; fn-auth-sasl-line-is-the-same-before-and-after-authentication (RFC 4643 section 2.2); fn-auth-sasl-mechanisms-never-offer-plain-before-tls; the step still preserves fn-auth-session-consistentp. books/nntp-auth-invariants.lisp: fn-auth-sasl-waiting-finds-no-credential (a kept exchange is never a credential's name), so the posting-flag delegation keystone needs no not-waiting premise.",
       "milestone": "M3",
       "requirements": [
         "NNT-056"
@@ -13670,6 +13670,7 @@
         "books/nntp-auth.lisp",
         "books/nntp-auth-roles.lisp",
         "tests/acl2/nntp-auth-sasl-tests.lisp",
+        "tests/acl2/nntp-auth-teeth-tests.lisp",
         "tests/test_native_sasl.py"
       ],
       "progress_note": "Lane sasl increment 2 (2026-09-28): REPL-green; certification and SCN-205 pending."
