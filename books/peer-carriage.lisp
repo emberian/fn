@@ -607,13 +607,6 @@
            (equal (fn-pa-current-plan received snapshots carried nil) :absent))
   :hints (("Goal" :in-theory (enable fn-pa-current-plan fn-pa-carrier-form))))
 
-;; PKT-541: the carrier's principal has a revoked enrollment's tombstone
-;; (the transit plan's :revoked arm, books/peer-authored-accept.lisp).
-(defun fn-pcb-revoked-principalp (received snapshots carried)
-  (declare (xargs :guard t))
-  (let ((plan (fn-pa-current-plan received snapshots carried t)))
-    (and (consp plan) (eq (car plan) :revoked))))
-
 (defun fn-pcb-admission-verdict (received snapshots carried ed ml)
   (declare (xargs :guard t))
   (let ((plan (fn-pa-current-plan received snapshots carried nil))
@@ -622,23 +615,16 @@
           ((eq (car plan) :carried) :carried)
           ((equal class :malformed) :malformed)
           ((equal class :signature-failed) :cryptographically-invalid)
-          ;; PKT-541: a principal whose enrollment was revoked is refused off
-          ;; transit for its revocation, never as an unknown one: the
-          ;; transit plan names its tombstone (fn-pa-current-plan's
-          ;; :revoked arm), and the verdict says so.
-          ((and (equal class :no-local-binding)
-                (fn-pcb-revoked-principalp received snapshots carried))
-           :revoked-principal)
           ((equal class :no-local-binding) :unenrolled)
           ((equal class :unsupported-profile) :unsupported-profile)
           ((eq (car plan) :ok) :verified)
           (t :malformed))))
 
 (defconst *fn-pcb-admission-verdicts*
-  '(:unsigned :carried :malformed :cryptographically-invalid :revoked-principal
-    :unenrolled :unsupported-profile :verified))
+  '(:unsigned :carried :malformed :cryptographically-invalid :unenrolled
+    :unsupported-profile :verified))
 
-; KEYSTONE (packet 4).  The verdict is one of the eight names; :verified
+; KEYSTONE (packet 4).  The verdict is one of the seven names; :verified
 ; only for a plan accepted under a local binding with BOTH observations
 ; verified, :carried only for the D23 arm, and a present carrier is never
 ; :unsigned.  So a failed signed request is never relabelled as unsigned
@@ -662,37 +648,8 @@
                  fn-pa-absent-is-only-parser-confirmed-absence
                  fn-pcb-absent-carrier-plan-is-absent))))
 
-;; PKT-541: off transit, a revoked principal's plan is the enrollment
-;; refusal (the transit plan's :revoked arm is the one it would have taken).
-(local (defthm fn-pcb-revoked-principal-off-transit-is-refused
-  (implies (fn-pcb-revoked-principalp received snapshots carried)
-           (equal (fn-pa-current-plan received snapshots carried nil)
-                  '(:refused :local-enrollment)))
-  :hints (("Goal" :in-theory (e/d (fn-pa-current-plan)
-                                  (fn-pa-carrier-form fn-pa-carriesp
-                                   fn-hl-current-for-principal
-                                   fn-hl-current-enrollment
-                                   fn-pa-revoked-tombstonep))))))
-
-; KEYSTONE (PKT-541).  A principal whose enrollment was revoked is refused
-; as revoked, never as unknown: its verdict is :revoked-principal (whose
-; refusal class stays the enrollment refusal, fn-pcb-verdict-refusal-class),
-; and :revoked-principal is the verdict only of such a principal.  So a log
-; line or reply that renders the verdict tells a refused-for-revocation from
-; a refused-as-unknown.  Teeth: tests/acl2/peer-carriage-tests.lisp (PKT-541).
-(defthm fn-pcb-admission-verdict-names-a-revocation
-  (let ((v (fn-pcb-admission-verdict received snapshots carried ed ml)))
-    (and (implies (fn-pcb-revoked-principalp received snapshots carried)
-                  (equal v :revoked-principal))
-         (implies (equal v :revoked-principal)
-                  (fn-pcb-revoked-principalp received snapshots carried))))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-pcb-admission-verdict fn-pcb-refusal-class)
-                                  (fn-pa-current-plan fn-pcb-revoked-principalp
-                                   fn-pcb-unsupported-profilep)))))
-
 ;; PKT-240 (keys-and-accounts): the host's transit refusal class IS the
-;; eight-class verdict's refusal arm.  host/owner-host.lisp
+;; seven-class verdict's refusal arm.  host/owner-host.lisp
 ;; fn-owner-transit-refusal-class (called by host/native/owner.lisp
 ;; fnn-owner-transit-class inside fnn-owner-attempt-transit) now computes
 ;; fn-pcb-verdict-refusal-class of fn-pcb-admission-verdict, and the keystone
@@ -703,7 +660,6 @@
   (cond ((eq verdict :malformed) :malformed)
         ((eq verdict :cryptographically-invalid) :signature-failed)
         ((eq verdict :unenrolled) :no-local-binding)
-        ((eq verdict :revoked-principal) :no-local-binding)
         ((eq verdict :unsupported-profile) :unsupported-profile)
         (t nil)))
 
@@ -722,14 +678,14 @@
 ; PKT-433 (d), PRF-179: what an NNTP transit refusal of a present carrier
 ; relays to its log line: (CLASS VERDICT), the class word
 ; (fn-pcb-verdict-refusal-class, the four words the log always printed) and
-; the eight-class verdict's name, or nil when the verdict is no refusal.
+; the seven-class verdict's name, or nil when the verdict is no refusal.
 ; host/owner-host.lisp fn-owner-transit-refusal-class returns it (called by
 ; host/native/owner.lisp fnn-owner-transit-class); books/owner-log.lisp
 ; fn-olog-detail-fields prints `detail=CLASS verdict=VERDICT'.
 (defthm fn-pcb-verdict-refusal-class-names-a-refusal
   (implies (fn-pcb-verdict-refusal-class v)
            (member-equal v '(:malformed :cryptographically-invalid
-                             :revoked-principal :unenrolled :unsupported-profile)))
+                             :unenrolled :unsupported-profile)))
   :rule-classes nil)
 
 (defun fn-pcb-transit-refusal-detail (received snapshots carried ed ml)
@@ -753,8 +709,7 @@
                                                         carried ed ml))
                        (member-equal (cadr detail)
                                      '(:malformed :cryptographically-invalid
-                                       :revoked-principal :unenrolled
-                                       :unsupported-profile))))))
+                                       :unenrolled :unsupported-profile))))))
   :hints (("Goal" :in-theory (disable fn-pcb-admission-verdict
                                       fn-pcb-refusal-class
                                       fn-pcb-verdict-refusal-class

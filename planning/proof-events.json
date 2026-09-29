@@ -4405,10 +4405,6 @@
         {
           "kind": "theorem",
           "name": "fn-pcb-admission-verdict-names-its-class"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pcb-admission-verdict-names-a-revocation"
         }
       ]
     },
@@ -13936,19 +13932,6 @@
           "kind": "theorem",
           "name": "fn-ohr-transit-outcome-preserves-carried-relation",
           "note": "The carried fn-lgoc-invariantp across the transit outcome."
-        }
-      ]
-    },
-    {
-      "id": "PRF-959",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-sckd-digest-of-written-file"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sckd-digest-ignores-revision-and-log"
         }
       ]
     },

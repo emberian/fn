@@ -582,49 +582,15 @@
                                              :verified :verified)
                      :revoked))
 ; ... the admission verdict (off transit) calls the same input a refusal:
-; the reason the accepted arm needs its own verdict.  PKT-541: the refusal
-; names the revocation, never an unknown principal.
+; the reason the accepted arm needs its own verdict.
 (assert-event (equal (fn-pcb-admission-verdict *pat-relayed* *pat-after-revocation* nil
                                                :verified :verified)
-                     :revoked-principal))
+                     :unenrolled))
 ; ... off transit (TRANSITP nil) there is no :revoked arm, and the verdict
 ; is the admission verdict's refusal.
 (assert-event (equal (fn-pcb-transit-verdict *pat-relayed* *pat-after-revocation* nil nil
                                              :verified :verified)
-                     :revoked-principal))
-
-; KEYSTONE fn-pcb-admission-verdict-names-a-revocation (PKT-541), teeth.
-; Positive witness, first conjunct: the antecedent holds (the transit plan
-; is the tombstone's :revoked arm) and the verdict is :revoked-principal.
-(assert-event (fn-pcb-revoked-principalp *pat-relayed* *pat-after-revocation* nil))
-(assert-event (equal (fn-pcb-admission-verdict *pat-relayed* *pat-after-revocation* nil
-                                               nil nil)
-                     :revoked-principal))
-; ... whatever the observations (the enrollment refusal precedes them).
-(assert-event (equal (fn-pcb-admission-verdict *pat-relayed* *pat-after-revocation* nil
-                                               :refused :verified)
-                     :revoked-principal))
-; Its refusal class stays the enrollment refusal, and the relayed detail
-; names both.
-(assert-event (equal (fn-pcb-transit-refusal-detail *pat-relayed* *pat-after-revocation*
-                                                    nil :verified :verified)
-                     '(:no-local-binding :revoked-principal)))
-; Second conjunct: an unknown principal (no tombstone) is not revoked and
-; its verdict stays :unenrolled.
-(assert-event (not (fn-pcb-revoked-principalp *pat-relayed* nil nil)))
-(assert-event (equal (fn-pcb-admission-verdict *pat-relayed* nil nil nil nil)
                      :unenrolled))
-; Hypothesis removal (the antecedent fails, the conclusion fails): without
-; the revocation the verdict is not :revoked-principal.
-(must-fail-checked
- (assert-event (equal (fn-pcb-admission-verdict *pat-relayed* nil nil nil nil)
-                      :revoked-principal)))
-; An enrolled principal's plan is :ok, never the revocation's.
-(assert-event (not (fn-pcb-revoked-principalp *pat-relayed* *pat-snapshots* nil)))
-(must-fail-checked
- (assert-event (equal (fn-pcb-admission-verdict *pat-relayed* *pat-snapshots* nil
-                                                :verified :verified)
-                      :revoked-principal)))
 ; ... a revoked arm with a failed observation is never :revoked.
 (assert-event (equal (fn-pcb-transit-verdict *pat-relayed* *pat-after-revocation* nil t
                                              :refused :verified)
