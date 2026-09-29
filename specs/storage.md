@@ -20,7 +20,16 @@ returned entries; validating individual object hashes does not prove no entries
 were omitted. An externally implemented index is part of the trust boundary until
 a suitable correspondence/checking argument exists.
 
-STO-027: The catalog is the served store's executable: the Message-ID binding, the local numbers, a row's visibility to a version and the retained octets are columns of `fn-cat` read in constant time, never rediscovered by a walk of the history (wave 5, D33; lane catalog-slice: the columns exist and are proved, the served path moves to them in the continuation).
+STO-027: The catalog is the served store's executable: the Message-ID binding, the local numbers, a row's visibility to a version and the retained octets are columns of `fn-cat` read in constant time, never rediscovered by a walk of the history (wave 5, D33).
+
+The Message-ID column's keyed page table has a bounded home/overflow probe
+and confirms exact Message-IDs against candidate rows. Its admission outcome
+`:mpx-saturated` is distinct from a reader's absence: the served POST refuses
+before staging and preserves the exact outcome into its named 441 reply
+([NNTP](nntp.md), PRF-1044). This column switch does not page the catalog's
+row storage. Served crafted-collision/saturation activation, rejection-to-reader
+composition and resource evidence for retained generations remain open at the
+current source; model bounds do not supply measured peak evidence.
 
 `HDR :fn-verified` (PRF-367, lane scale-reads) reads the catalog for its numbers and articles and the RECORDED verdict list for each line's verdict (SUB-006: the acceptance evidence, which a keyring change never rewrites), resolving a whole reply's verdicts in one pass over that list: O(R + V) for R lines and V recorded verdicts, where the reference was O(R x (N + V)). A catalog row's context verdict is NOT that evidence (it is decided under the keyring in force at its intern and a `:redecide` replaces it), so the verdict is not yet a constant-time column; that needs the row-to-evidence equation carried, or a recorded-verdict column.
 
@@ -1452,7 +1461,8 @@ owner even after its original request returned 403.
 
 Retirement additionally waits for every issued or cancelled worker naming
 the file. The generation-pin gate still applies independently. The host
-acquires issued ownership before launching the worker, preserves deferred
+acquires issued ownership under the owner mutex at validated descriptor
+capture, before launching the worker or allowing retirement; it preserves deferred
 close groups and retries them after actual completion, after dropping the
 extent mutex. This is a stronger fn resource-ownership guarantee around
 RFC 3977 section 3.2.1's 403 reply, not an RFC descriptor-lifetime rule.
@@ -1464,7 +1474,8 @@ Scope: this increment does not establish funded admission for cold read
 buffers or workers. Repeated timeouts can still accumulate detached workers;
 this is a P12 blocker. The operator-supported resource vector must charge
 each issued worker, its buffer and shared file incarnation before allocation,
-retain charges through cancellation, and refund only actual settlement.
+retain charges through cancellation, refund worker resources only on actual
+settlement, and keep cached-buffer charges until eviction.
 No guessed ceiling on stored articles or a connection-count shortcut closes
 that obligation.
 

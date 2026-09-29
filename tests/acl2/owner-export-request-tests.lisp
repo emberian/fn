@@ -63,3 +63,7 @@
 (assert-event (search "no MANIFEST was written" (fn-oex-outcome-line :failed "/srv/a")))
 (assert-event (search "still writing" (fn-oex-outcome-line :in-flight "/srv/a")))
 (assert-event (search "uncertain" (fn-oex-outcome-line :bogus "/srv/a")))
+
+; `store export --status' with no owner: a sentence by name.
+(assert-event (and (stringp (fn-oex-status-no-owner-line))
+                   (equal (search "reason=no-owner" (fn-oex-status-no-owner-line)) 22)))

@@ -1,15 +1,19 @@
 #!/bin/ksh
 #
 # OpenBSD rc.d(8) script a release carries (share/fn/rc.d/fn.rc.in).
-# install.sh renders @PREFIX@ (the installed release, /usr/local/fn), @NODE@
-# (the node directory: fn.toml, store/, tls/, log/; /var/fn) and @USER@ (the
-# service account, _fn) and installs it as /etc/rc.d/fn (mode 0555); then
-# `rcctl enable fn; rcctl start fn`.  The image needs a readable working
+# install.sh renders @PREFIX@ (the installation, /usr/local/fn: its releases
+# under releases/, the running one reached through the `current` link),
+# @NODE@ (the node directory: fn.toml, store/, tls/, log/; /var/fn) and
+# @USER@ (the service account, _fn) and installs it as /etc/rc.d/fn (mode
+# 0555); then `rcctl enable fn; rcctl start fn`.  The daemon runs through
+# @PREFIX@/current, so `install.sh --upgrade` and `--rollback` switch
+# releases by moving that link and render this script again from the
+# release that becomes current.  The image needs a readable working
 # directory, so the daemon starts in the node directory.  The node runs in
 # the foreground, so rc_bg; bin/fn execs the frozen launcher, which execs the
 # bundled SBCL runtime, so pexp matches that final process.
 
-daemon="@PREFIX@/bin/fn"
+daemon="@PREFIX@/current/bin/fn"
 daemon_flags="operator @NODE@/fn.toml run"
 daemon_user="@USER@"
 daemon_logger="daemon.info"
@@ -18,7 +22,7 @@ daemon_execdir="@NODE@"
 
 . /etc/rc.d/rc.subr
 
-pexp="@PREFIX@/libexec/fn/runtime/sbcl .* --fn ${daemon_flags}"
+pexp="@PREFIX@/current/libexec/fn/runtime/sbcl .* --fn ${daemon_flags}"
 rc_bg=YES
 rc_reload=NO
 

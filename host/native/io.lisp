@@ -5714,6 +5714,22 @@ serialized profile when the saved image later starts."
 ;;; at the cut (tools/cut_release.sh gate 01) and by the packaging.
 (defvar *fnn-release-version* nil)
 
+;;; The clock at the image's entry (fnn-main).  The owner's OWNER-OPEN line
+;;; records the milliseconds from here to its open (`ms=N'): the measured
+;;; length of a start, which `install.sh --upgrade' quotes as the gap of
+;;; the next one (docs/install.md, "Upgrading").  A measurement, no
+;;; decision: the heap probe (packaging/fn, a first run of the image) and
+;;; the stop are outside it.
+(defvar *fnn-process-started* nil)
+
+(defun fnn-ms-since-process-start ()
+  "Milliseconds since fnn-main began; 0 when the owner runs without the
+entry (a harness that calls it directly)."
+  (if *fnn-process-started*
+      (values (round (* 1000 (- (get-internal-real-time) *fnn-process-started*))
+                     internal-time-units-per-second))
+      0))
+
 (defun fnn-release-version-word-p (text)
   "TEXT is dotted decimal numerals without leading zeros, any number of
 components (6.6.0, 6.7.12, 6.6.6.6)."
@@ -7992,11 +8008,14 @@ segment' (tests/test_native_topic_local.py)."
                  ((string= command "recover") (fnn-command-recover root rest))
                  ((string= command "node-secret") (need 4) (fnn-command-node-secret root rest))
                  ((string= command "status")
-                  ;; the operator verb's two forms (fn-omr-status-replayp)
-                  (cond ((null rest) (fnn-command-status root))
-                        ((equal rest '("--replay")) (fnn-command-status root t))
-                        (t (error 'fnn-usage-error
-                                  :message "status takes nothing, or --replay (the report over the replayed log)"))))
+                  ;; Row S3: the operator verb's decision, for the store verb
+                  ;; (books/owner-maintenance-request.lisp
+                  ;; fn-omr-store-status-word): the checkpoint header, or the
+                  ;; report over the replayed log with `--replay'.
+                  (case (fnn-core 'fn-omr-store-status-word rest)
+                    (:replay (fnn-command-status root t))
+                    (:header (fnn-command-status root))
+                    (t (error 'fnn-usage-error :message "store ROOT status [--replay]"))))
                  ((string= command "checkpoint") (fnn-command-state-checkpoint root))
                  ((string= command "digest") (fnn-command-store-digest root))
                  ((string= command "journal") (fnn-command-store-journal root))
@@ -8303,6 +8322,7 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
   ;; with the guard checks that keep every stobj update well-guarded -- but no
   ;; warning text on standard output, which carries the LISTENING line and
   ;; the `model' verb's reply octets and nothing else.  Never NIL (unsafe).
+  (setq *fnn-process-started* (get-internal-real-time))
   (f-put-global 'check-invariant-risk t *the-live-state*)
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
   (fnn-open-streams)

@@ -113,6 +113,8 @@
 ; Step 8 (catalog slice): the served read over the catalog and the catalog at
 ; the owner's entries (books/served-catalog-chain, books/served-catalog-owner).
 (include-book "../books/served-catalog-owner")
+; THE SWITCH (PRF-1037, lane paged-history-6): the keyed open of the catalog.
+(include-book "../books/served-catalog-owner-keyed")
 (include-book "../books/owner-prepare-correspondence")
 ; The transaction budget: `fn-owner-prepare' installs `fn-sbud-prepare'.
 (include-book "../books/owner-store-budget")
@@ -124,6 +126,8 @@
 ; (fn-pvc-make; fn-pvc-article-budget-carried, fn-pvc-verdict-carried,
 ; fn-pvc-post-boundary-carried).
 (include-book "../books/store-profile-carried")
+; The served POST's admission with the keyed Message-ID index (fn-pak-).
+(include-book "../books/post-admission-keyed")
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/feed-wire-input")
 (include-book "../books/feed-connection")
@@ -387,7 +391,12 @@
 ;; carried served keystones to what is installed here.  The extended value is
 ;; the capture of the whole history; the owner keeps it as the base of its
 ;; next publication (`fn-owner-sco-base').
-(defun fn-owner-install-extended (oc extended fn-arena fn-cat fn-hist state)
+; KEY is the paged Message-ID table's (books/msgid-pages-exec.lisp
+; fn-mpxt-key-of-entry of the node secret's current entry, the one the host
+; read before this open: host/native/owner.lisp fnn-owner-read-node-secret);
+; the keyed clear installs it before the rows are loaded
+; (books/served-catalog-owner-keyed.lisp, THE SWITCH PRF-1037).
+(defun fn-owner-install-extended (oc extended key fn-arena fn-cat fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
   (cond
    ((equal oc :fault)
@@ -458,9 +467,12 @@
         ; The records flip: the store's history is its ROWS, interned into
         ; the arena by the open; the catalog commits those rows and reads no
         ; byte and seals nothing (fn-sca-load-held-rows).
-        (let ((fn-cat (fn-sca-load-held-rows (fn-sf-records (fn-sn-files store))
-                                             (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
-                                             fn-arena fn-cat)))
+        ; THE SWITCH: under the ring's key (fn-sca-load-held-rows-keyed-is-
+        ; load-held-rows: the same catalog, the table keyed).
+        (let ((fn-cat (fn-sca-load-held-rows-keyed key
+                                                   (fn-sf-records (fn-sn-files store))
+                                                   (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
+                                                   fn-arena fn-cat)))
           (let (; Stage 2b: the history stobj IS the installed store's history
               ; (KEYSTONE fn-hist-load-is-the-history,
               ; books/history-columns.lisp): R is established here, at every
@@ -479,9 +491,11 @@
 
 (defun fn-owner-recover-extended (extended config-records frontier max-conns fn-arena fn-cat fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
+  ; The retired bridge's recoveries load a local catalog that serves nothing:
+  ; the zero entry's key.
   (fn-owner-install-extended
    (fn-ock-recover-extended extended config-records frontier max-conns)
-   extended fn-arena fn-cat fn-hist state))
+   extended (fn-mpxt-key-of-entry nil) fn-arena fn-cat fn-hist state))
 
 ; The owner from the Store open this process just ran
 ; (fn-store-sn-open-extended, host/store-node-host.lisp): its extended
@@ -491,7 +505,11 @@
 ; so the keystone fn-owner-recover-from-checkpoint-equals-full-recover and
 ; fn-ock-recover-installs-ocl-relation hold of what is installed here, on
 ; both paths, with no second extension or finalization.
-(defun fn-owner-recover-from-store-open (max-conns fn-arena fn-cat fn-hist state)
+; ENTRY is the node secret's current entry the host read from the ring's
+; files before this recovery (host/native/owner.lisp fnn-owner-read-node-secret;
+; the same files fn-owner-install-node-secret then installs, so the table's
+; key and the served boundary's (fn-owner-mpx-key) are one source).
+(defun fn-owner-recover-from-store-open (max-conns entry fn-arena fn-cat fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
   (let ((opened (and (boundp-global 'fn-store-sco-open state)
                      (f-get-global 'fn-store-sco-open state))))
@@ -500,7 +518,7 @@
       (let ((state (f-put-global 'fn-store-sco-open nil state)))
         (fn-owner-install-extended
          (fn-ock-install (cadr opened) (caddr opened) max-conns)
-         (car opened) fn-arena fn-cat fn-hist state)))))
+         (car opened) (fn-mpxt-key-of-entry entry) fn-arena fn-cat fn-hist state)))))
 
 ; The two recoveries below are the Python bridge's (tools/run_owner.py), whose
 ; served path was the retired fn-owner-chunk over the view's lists and reads no catalog:
@@ -832,6 +850,26 @@
                              (fn-gen-node (cadr v))
                            nil)
                          (fn-gen-verdict-salt v)))))))
+
+; Row S3b (lane operability-7): `store export DIR' on the running owner
+; (host/native/owner.lisp fnn-owner-export-request).  fn-owner-oex-capture,
+; under the owner mutex and O(1): the values the export reads,
+; (RECORDS COUNT CONFIGS FRONTIER): the record list by pointer (a later
+; commit makes a new one and changes none of these), its carried count,
+; the configuration history (the decoded records; the archive carries the
+; config/ files' octets, which the export thread reads off the mutex and
+; cuts to this history's length) and the frontier txid at the capture (the
+; archive's frontier entry).  The words ACL2 answers the request with are
+; books/owner-export-request.lisp's (fn-oex-request-word over the two
+; observations the host took); the owner state is only read here.
+(defun fn-owner-oex-capture (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((st (fn-own-store (fn-owner-core state)))
+         (files (fn-sn-files st)))
+    (value (list (fn-sf-records files)
+                 (fn-sf-records-count files)
+                 (fn-sn-config-history st)
+                 (fn-sf-frontier files)))))
 
 ; Off the mutex, over the values captured above and the live arena, READ
 ; only (host/native/owner.lisp fnn-owner-publish-captured): NEXT, the capture
@@ -2072,16 +2110,30 @@
 
 ; The POST admission boundary over the profile the owner was handed at open
 ; (`fn-owner-install-profile'); without one the payload bound is 0.
+; The paged Message-ID table's key: the node secret's current entry's
+; (books/msgid-pages-exec.lisp fn-mpxt-key-of-entry) from the ring the owner
+; carries (fn-own-node-secret), installed by fn-owner-install-node-secret from
+; the same files the open read its entry from (fn-owner-recover-from-store-open).
+(defun fn-owner-mpx-key (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-mpxt-key-of-entry (fn-ns-current (fn-own-node-secret (fn-owner-core state)))))
+
 (defun fn-owner-post-boundary (msgid-octets payload-length group-count charge
-                                            state)
-  (declare (xargs :stobjs state :mode :program
+                                            fn-cat state)
+  (declare (xargs :stobjs (fn-cat state) :mode :program
                   :guard (and (fn-cbor-octet-listp msgid-octets)
                               (natp payload-length))))
-  ; PRF-284: fn-pvc-post-boundary-carried-is-sbud-post-boundary.
-  (value (fn-pvc-post-boundary-carried (fn-owner-profile-carry state)
-                                       (fn-owner-store-profile state)
-                                       msgid-octets payload-length
-                                       group-count charge)))
+  ; PRF-284: fn-pvc-post-boundary-carried-is-sbud-post-boundary; then THE
+  ; SWITCH's served refusal (books/post-admission-keyed.lisp
+  ; fn-pak-post-admission, KEYSTONE fn-pak-post-admission-ok-is-indexed): the
+  ; keyed Message-ID table's own answer under the ring's key, the one the open
+  ; installed (fn-owner-install-extended), BEFORE the duplicate test, the
+  ; prepare and any durable acceptance.  The sixth word `:mpx-saturated' is a
+  ; refusal by name (books/store-budget-naming.lisp).
+  (value (fn-pak-post-admission (fn-owner-profile-carry state)
+                                (fn-owner-store-profile state)
+                                msgid-octets payload-length group-count charge
+                                (fn-owner-mpx-key state) fn-cat)))
 
 ; Completion is the owner's (:complete) event: fn-sn-finish consumed once,
 ; its pair appended to the ledger once (fn-own-completion-consumed-once).
@@ -4727,11 +4779,18 @@ existing port only after fn-fc has made this connection ready."
 ; Off the mutex, into FRESH catalog and history instances (the served ones
 ; untouched): the catalog of the rebuilt Store's rows and its history
 ; columns, as fn-owner-install-extended loads them.
-(defun fn-owner-orcp-load-columns (rows view-index salt fn-arena fn-cat fn-hist)
+(defun fn-owner-orcp-load-columns (key rows view-index salt fn-arena fn-cat fn-hist)
   (declare (xargs :stobjs (fn-arena fn-cat fn-hist) :mode :program))
-  (let* ((fn-cat (fn-sca-load-held-rows rows view-index fn-arena fn-cat))
+  ; THE SWITCH: the fresh catalog under the same key as the served one
+  ; (fn-owner-orcp-key), so the swap changes no tag.
+  (let* ((fn-cat (fn-sca-load-held-rows-keyed key rows view-index fn-arena fn-cat))
          (fn-hist (fn-hist-load rows salt fn-hist)))
     (mv :loaded fn-cat fn-hist)))
+
+; The key the reclaim's fresh catalog is loaded under: the served table's.
+(defun fn-owner-orcp-key (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-owner-mpx-key state)))
 
 (defun fn-owner-orcp-salt (state)
   (declare (xargs :stobjs state :mode :program))

@@ -1408,7 +1408,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/native-auth-runtime-2026-09-21/README.md",
         "planning/lanes/HANDOFF-w23-native-auth-admin.md",
@@ -1706,7 +1706,7 @@
         "PRF-031"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "Lane w11/auth-live, decided by measurement and not by inspection. fn-served-open-peer pinned the literal (fn-auth-open-config) while fn-served-open pinned the operator's, and the owner resolves a connection to a peer by SOURCE ADDRESS alone, so on a box where a configured peer is reachable on loopback every client was opened without the operator's policy: AUTHINFO PASS answered 481 with the secret just written, CAPABILITIES carried no AUTHINFO line and POST was never gated. Both theorems are FALSE of that definition. The live before/after is planning/evidence/auth-live-2026-09-21.md and the boundary test is tests/test_auth.py ServedCredentialTests, which starts the node with `bin/fn run` over an fn.toml and writes the peer record, because no test that starts tools/run_owner.py directly can reach this. The greeting half is a second defect the same measurement found: fn-served-greeting read the injection configuration alone, so a connection under [auth] required = true greeted 200 and then answered POST 480, where section 5.1.2's MUST is 201. It takes the opened session now. Lane t7/auth-teeth, 2026-09-22: teeth in tests/acl2/nntp-auth-teeth-tests.lisp. Neither greeting theorem nor either pinning theorem has a hypothesis, so the teeth are the values that separate the two sides together with a must-fail on the statement the definition satisfied BEFORE the 2026-09-21 measurement: that the greeting is 200 exactly when the injection configuration allows posting, and that the peer open pins (fn-auth-open-config). fn-served-open-greeting-agrees-with-the-post-label stays uncited: the statement above names it a corollary and a local unfold, so its evidence is the witnesses on both sides of its iff, not a registry event. fn-auth-step-preserves-the-config is new in this lane and was asked for by name in the header of books/nntp-auth-invariants.lisp as the first of the three facts OB-AUTH-FOLD waits on.",
       "evidence": [
         "planning/evidence/native-auth-runtime-2026-09-21/README.md",
@@ -2553,7 +2553,7 @@
         "PRF-042"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/manifests/certify-20260924T144913Z-1419146.json",
         "planning/evidence/manifests/certify-20260924T145118Z-1441609.json",
@@ -4854,7 +4854,7 @@
         "PRF-084"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/nntp-search-scope.lisp",
         "tests/acl2/nntp-search-scope-tests.lisp",
@@ -6236,7 +6236,7 @@
         "PRF-097"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/config.lisp",
         "books/accounts.lisp",
@@ -7094,7 +7094,7 @@
         "PRF-161"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/served-reply-buffer.lisp",
         "tests/acl2/served-reply-buffer-tests.lisp",
@@ -7396,7 +7396,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "statement": "books/nntp-help.lisp. KEYSTONE fn-auth-step-pinned-answers-500-to-a-keyword-help-does-not-list: for every AS, LINE, ARCHIVE, INDEX, VERDICTS, CONFIG, OBSERVATION and INJECTION, if (fn-auth-sessionp AS), AS is not handshaking TLS, its peer session awaits no transit article, its POST session awaits no body, its reader session is open (openp = t), (fn-nntp-command-inputp LINE), the first token of LINE is a keyword token, the arguments are within RFC 3977 section 3.1's bound, and (not (fn-nntp-served-keywordp keyword)), then (fn-auth-step-pinned AS ... (list :command LINE)) has effects (fn-auth-single AS \"500 command not recognized\"), no submission, and session AS. fn-auth-step-pinned is the dispatcher books/served.lisp fn-served-dispatch calls for every framed command line (host/native/owner.lisp fnn-owner-serve-client -> fn-own-read -> fn-served-step -> fn-served-feed -> fn-served-dispatch). fn-nntp-served-keywordp is membership (RFC 3977 section 3.1 case-insensitively, fn-nntp-keywordp) in *fn-nntp-served-command-table*, 28 keywords in six rows; fn-nntp-served-keywordp-unfolds writes it out as the disjunction the dispatchers test. fn-nntp-help-renders-the-served-command-table-by-definition: (fn-nntp-help SESSION) = (fn-nntp-multi SESSION \"100 help text follows\" (fn-nntp-help-table-lines *fn-nntp-served-command-table*)). Not proved (PKT-571): the converse, that each listed keyword draws a reply other than 500 for every argument list; tests/acl2/nntp-help-tests.lisp checks it by evaluation on a served session for all 28.",
       "evidence": [
         "books/nntp-help.lisp",
@@ -7597,7 +7597,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/config.lisp",
         "books/config-invariants.lisp",
@@ -8235,7 +8235,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/nntp-session.lisp",
         "books/nntp-post.lisp",
@@ -8483,7 +8483,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/group-access.lisp",
         "books/nntp-auth.lisp",
@@ -8621,7 +8621,7 @@
         "PRF-207"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/refused-offers.lisp",
         "books/peer-refused-offers.lisp",
@@ -8654,7 +8654,7 @@
         "PRF-235"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/relay-checks.lisp",
         "books/peer-inbound.lisp",
@@ -9433,7 +9433,7 @@
         "PRF-161"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-scheduler.lisp",
         "books/served-plan.lisp",
@@ -11291,7 +11291,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/served.lisp",
         "books/served-tls-prefix.lisp",
@@ -12182,7 +12182,7 @@
         "PRF-325"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/protocol-table.lisp",
         "books/protocol-builders.lisp",
@@ -13993,7 +13993,7 @@
         "PRF-230"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/article-line-bound.lisp",
         "books/injection.lisp",
@@ -15738,7 +15738,7 @@
         "PRF-910"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/nntp-compress.lisp",
         "books/nntp-auth.lisp",
@@ -15833,7 +15833,7 @@
         "books/owner-export-request.lisp",
         "tests/acl2/owner-export-request-tests.lisp"
       ],
-      "progress_note": "Lane operability-4 (2026-09-29): the decision book REPL-admitted on persvati (15 forms) with its teeth (36 assert-events, 0 refused): the keystone's reachable positive witness (in flight, DIR absent -> :export-in-flight, not :requested) and the hypothesis-removal witness (nothing in flight -> :requested); every word reads back; the lines name the reason and what it would take. The host wiring (the admin arms `export request DIR' / `export status', the owner's capture + export thread, the client's wait) and the native case are the successor's; the theorems' subject is what that host calls."
+      "progress_note": "Lane operability-4 (2026-09-29): the decision book REPL-admitted on persvati (15 forms) with its teeth (36 assert-events, 0 refused): the keystone's reachable positive witness (in flight, DIR absent -> :export-in-flight, not :requested) and the hypothesis-removal witness (nothing in flight -> :requested); every word reads back; the lines name the reason and what it would take. The host wiring (the admin arms `export request DIR' / `export status', the owner's capture + export thread, the client's wait) and the native case are the successor's; the theorems' subject is what that host calls. Lane operability-7 (2026-09-29): the host calls it: host/native/admin.lisp fnn-owner-export-request (fn-oex-request-word over the lstat off the mutex and the exporter slot under it; the capture, the arena pin and the thread before the mutex is released: fn-owner-oex-capture, fnn-owner-export-start) and fnn-owner-export-status (fn-oex-status-word); the client host/native/operator.lisp fnn-operator-execute-export-live reads the word back (fn-oex-word-of-octets) and prints the owner's kind-23 line. Native tests.test_native_maintenance_live.test_store_export_answers_on_the_running_owner_and_the_archive_imports."
     },
     {
       "id": "PRF-972",
@@ -16203,7 +16203,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/productive-observer.lisp",
         "tests/acl2/productive-contract-tests.lisp",
@@ -16733,7 +16733,7 @@
         "PRF-049"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/nntp-auth.lisp",
         "books/nntp-auth-roles.lisp",
@@ -17064,7 +17064,7 @@
     {
       "id": "PRF-1012",
       "title": "The identity, consumer and topic completion applies its record through the carried obligation-id trie",
-      "statement": "books/identity-retain-carried.lisp (Q5b). KEYSTONE fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete: under fn-prc-carryp of the carry and fn-hist-of-storep of the owner's Store, fn-irc-rix-ocfg-complete over (fn-prc-refresh carry ledger) is fn-ocfg-step of (:complete) (through fn-irc-rix-ocfg-complete-is-rix and fn-rix-ocfg-complete-is-ccar-ocfg-complete). The retention record through the carry (fn-irc-apply-retention-event-is-reference: the undertaking admission by fn-prc-admissiblep), also inside fn-irc-apply-record. The gate and finish twins fn-irc-completion-core-enabledp-is-ccar, fn-irc-completion-enabledp-is-ccar, fn-irc-sn-finish-enabled-is-ccar, fn-irc-rix-own-complete-enabled-is-rix, fn-irc-rix-own-complete-is-rix. Subject: host/owner-host.lisp fn-owner-finish-synced calls fn-irc-rix-ocfg-complete. Local policy (cost); no RFC requirement.",
+      "statement": "books/identity-retain-carried.lisp (Q5b). Boundary theorem fn-irc-rix-ocfg-complete-is-rix equates the actual host-called subject to fn-rix-ocfg-complete under fn-prc-carryp. The derived composition fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete-by-definition (not a keystone) gives: under fn-prc-carryp of the carry and fn-hist-of-storep of the owner's Store, fn-irc-rix-ocfg-complete over (fn-prc-refresh carry ledger) is fn-ocfg-step of (:complete) (through fn-irc-rix-ocfg-complete-is-rix and fn-rix-ocfg-complete-is-ccar-ocfg-complete). The retention record through the carry (fn-irc-apply-retention-event-is-reference: the undertaking admission by fn-prc-admissiblep), also inside fn-irc-apply-record. The gate and finish twins fn-irc-completion-core-enabledp-is-ccar, fn-irc-completion-enabledp-is-ccar, fn-irc-sn-finish-enabled-is-ccar, fn-irc-rix-own-complete-enabled-is-rix, fn-irc-rix-own-complete-is-rix. Subject: host/owner-host.lisp fn-owner-finish-synced calls fn-irc-rix-ocfg-complete. Local policy (cost); no RFC requirement.",
       "depends_on": [
         "PRF-289",
         "PRF-1011"
@@ -17081,7 +17081,6 @@
       ],
       "progress_note": "Lane served-costs-4 (2026-09-29): REPL-admitted; certification owed with the affected roots.",
       "events": [
-        "fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete",
         "fn-irc-rix-ocfg-complete-is-rix",
         "fn-irc-rix-own-complete-is-rix",
         "fn-irc-rix-own-complete-enabled-is-rix",
@@ -17558,6 +17557,39 @@
         "fn-pio-close-waits-for-every-worker"
       ],
       "progress_note": "Folded definitions guard-verified and all 16 forms admitted in clean REPL pio-clean on hbox; teeth evaluated there. Certification and matching native image pending runner union; no pass claimed."
+    },
+    {
+      "id": "PRF-1044",
+      "title": "The served POST's admission with the keyed Message-ID index (lane paged-history-6, row P2 slice 3): fn-pak-post-admission asks the five carried bounds, then THE SWITCH's served refusal fn-cat-msgid-saturatedp under the ring's key; an admitted POST is indexed, and the sixth verdict word :mpx-saturated is a refusal by name before durable acceptance",
+      "statement": "Subjects: books/post-admission-keyed.lisp fn-pak-post-admission (carry profile msgid-octets payload-length group-count charge key fn-cat), THE HOST-CALLED SUBJECT of host/owner-host.lisp fn-owner-post-boundary (host/native/owner.lisp fnn-owner-attempt-post and fnn-owner-attempt-transit through fnn-validate-post-boundary), asked before the duplicate test, the prepare and any staging. KEYSTONE fn-pak-post-admission-ok-is-indexed: when the admission answers :ok and H carries the POST's Message-ID (fn-record-octets-string of the octets), fn-mpxt-build-unplaced of KEY over the catalog's rows and H equals it over the rows (no unplaced row is added), by books/catalog.lisp fn-cat-msgid-saturatedp-is-the-outcome (PRF-1037). fn-pak-post-admission-saturated-is-not-indexed: the sixth word is said exactly when that fold could not place the row. fn-pak-post-admission-is-a-named-verdict: under fn-pvc-carryp the answer is one of the six words of books/store-budget-naming.lisp fn-sbud-post-boundary-verdictp (widened to :mpx-saturated, with its 441 text *fn-sbud-refusal-mpx-saturated*; fn-sbud-post-boundary-refusals-are-distinct and -is-a-printable-line cover it). fn-pak-boundary-never-says-mpx-saturated: the carried boundary never says it. The key: fn-mpxt-key-of-entry of the node secret's current entry, read by the host before the open (host/native/owner.lisp fnn-owner-read-node-secret), installed in the table by the keyed open books/served-catalog-owner-keyed.lisp fn-sca-load-held-rows-keyed (fn-sca-load-held-rows-keyed-is-load-held-rows: the same catalog as fn-sca-load-held-rows, so every served-catalog-join keystone holds of the host's open unchanged) and read for the boundary from the owner's ring (fn-owner-mpx-key), one source. The health line fn-pak-index-health-line renders fn-cat-index-health (pages entries unplaced stuck). Scope: the composed boundary only; saturation itself is the exec book's (PRF-969/1037). Teeth: tests/acl2/post-admission-keyed-tests.lisp (ground :ok witness with the fold's equality; the by-definition pass-through of every bound; the six distinct texts; the hypothesis-removal witness; must-fail of the conclusion without the verdict; the exec path on a live local catalog under the table's own key and another), tests/acl2/catalog-tests.lisp (the switch's exports), tests/test_native_reader_index.py test_ten_thousand_similar_msgids_stay_flat_on_the_keyed_index (a 10,000-row family: entries 10000, unplaced 0, stuck 0, every 1,000th resolves after a restart). The :mpx-saturated branch has no ground witness (a home page saturates past 1,024 rows and its overflow).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-1037",
+        "PRF-284"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/post-admission-keyed.lisp",
+        "books/served-catalog-owner-keyed.lisp",
+        "books/store-budget-naming.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "tests/acl2/post-admission-keyed-tests.lisp",
+        "tests/acl2/catalog-tests.lisp",
+        "tests/test_native_reader_index.py"
+      ],
+      "progress_note": "2026-09-29 lane paged-history-6: books/post-admission-keyed.lisp (14 forms) and books/served-catalog-owner-keyed.lisp (5 forms) REPL-admitted on persvati (ph6pak, ph6sca); the host's open keyed (fn-owner-install-extended, fn-owner-recover-from-store-open takes the ring's current entry; fn-owner-orcp-load-columns the reclaim's key), the boundary fn-owner-post-boundary over fn-cat, the health line; landed under the LAND-AND-FIX-FORWARD mode 2026-09-29 GPT-6.1 continuation: saturation previously raised a generic host condition and became :refused on the served wire; both native attempt boundary sites now return the exact ACL2 :mpx-saturated word before buffer fill/identity allocation/prepare. nntp-post accepts and names that refusal, with its existing distinctness and uncertainty-separation theorems REPL-admitted at the broadened enum; nntp-post-tests has exact-line and complete positive witnesses. Native crafted-collision/saturation activation and refusal-finder composition remain open; no native verdict transferred.",
+      "events": [
+        "fn-pak-post-admission-ok-is-indexed",
+        "fn-pak-post-admission-saturated-is-not-indexed",
+        "fn-pak-post-admission-is-a-named-verdict",
+        "fn-pak-boundary-never-says-mpx-saturated",
+        "fn-sca-load-held-rows-keyed-is-load-held-rows"
+      ]
     }
   ]
 }

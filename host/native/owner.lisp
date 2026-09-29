@@ -65,6 +65,12 @@
   (gate nil) (roster (sb-thread:make-mutex :name "fn owner roster"))
   ;; The checkpoint publication's thread while one runs (fnn-owner-maybe-publish).
   (publisher nil)
+  ;; Row S3b: the export's thread while one runs (fnn-owner-export-request),
+  ;; the last export's outcome ((:done . N) or (:failed . WORD)) and its
+  ;; DIR: ACL2's two observations for `store export' and `store export
+  ;; --status' (books/owner-export-request.lisp fn-oex-request-word,
+  ;; fn-oex-status-word), kept under the roster.
+  (exporter nil) (export-outcome nil) (export-dir nil)
   ;; PRF-359's NEED (ACL2's fn-owner-space-need of the live configuration),
   ;; kept under the owner mutex each time the owner computes it, so the
   ;; free-space observation (statvfs) is taken off the mutex, before a
@@ -738,7 +744,7 @@ pair is a string and a non-empty octet list."
            (fnn-fault "owner refused recovered feed resolution")))
         (t (fnn-fault "unexpected feed reconciliation: ~a" resolution))))))
 
-(defun fnn-owner-recover-core (store records max-connections)
+(defun fnn-owner-recover-core (store records max-connections entry)
   "Install the owner from the Store open this process just ran.  The open
 (full replay, or the verified state checkpoint over the records after it) left
 its extended checkpoint E and ACL2's (fn-sco-store-open E ...) in the global
@@ -751,7 +757,11 @@ checkpoint's S, or NIL."
   (declare (ignore records))
   (let* ((mode (fnn-store-open-mode store))
          (s (and (eq (first mode) :checkpoint) (second mode)))
-         (result (fnn-owner-action 'fn-owner-recover-from-store-open max-connections)))
+         ;; THE SWITCH (PRF-1037): ENTRY is the node secret's current entry
+         ;; (fnn-owner-read-node-secret, read before this open); ACL2 derives
+         ;; the paged Message-ID table's key from it and installs it before
+         ;; the rows are loaded (fn-owner-install-extended).
+         (result (fnn-owner-action 'fn-owner-recover-from-store-open max-connections entry)))
     ;; A watermark past RFC 3977 section 6's bound is a damaged Store, refused
     ;; by name (books/owner-number-bound.lisp fn-onb-open-okp); the node does
     ;; not start on it.
@@ -781,7 +791,12 @@ checkpoint's S, or NIL."
 ;;; not regular, is readable or writable by group or others, or does not
 ;;; parse, or ACL2 does not accept the ring (fn-owner-install-node-secret
 ;;; answers :refused unless fn-ns-ringp).
-(defun fnn-owner-load-node-secret (store)
+(defun fnn-owner-read-node-secret (store)
+  "Read the ring's files: (CURRENT . RETAINED), the current entry first.
+Read BEFORE the recovery (fnn-owner-recover-core takes the current entry:
+THE SWITCH, PRF-1037, keys the catalog's paged Message-ID table from it at
+the open) and installed after it (fnn-owner-install-node-secret): one read,
+one ring, so the table's key and the served boundary's are one source."
   (let* ((path (fnn-node-secret-path store))
          (current (or (fnn-node-secret-read-entry path "node secret")
                       (fnn-refuse "node secret ~a is missing: run `store ~a node-secret create' once (a start never creates one)"
@@ -793,10 +808,14 @@ checkpoint's S, or NIL."
                            (or (fnn-node-secret-read-entry older "retained node secret")
                                (fnn-refuse "node secret retained epoch ~d missing: ~a"
                                            e older))))))
-    (unless (eq (fnn-owner-core 'fn-owner-install-node-secret (cons current retained))
-                :installed)
-      (fnn-refuse "node secret files in ~a do not form a key ring (epochs must decrease from the current one)"
-                  (fnn-node-secret-directory store)))))
+    (cons current retained)))
+
+(defun fnn-owner-install-node-secret (store ring)
+  "Hand the ring fnn-owner-read-node-secret read to the owner."
+  (unless (eq (fnn-owner-core 'fn-owner-install-node-secret ring)
+              :installed)
+    (fnn-refuse "node secret files in ~a do not form a key ring (epochs must decrease from the current one)"
+                (fnn-node-secret-directory store))))
 
 (defun fnn-owner-install (root max-connections &optional fault)
   (multiple-value-bind (store count) (fnn-open-live-store root t fault)
@@ -807,17 +826,28 @@ checkpoint's S, or NIL."
             ;; (books/store-mount-identity.lisp fn-smid-start-verdict),
             ;; before the owner serves anything.
             (fnn-check-filesystem-identity store t)
-            (fnn-owner-recover-core store count max-connections)
-            (fnn-err "OWNER-OPEN ~a" (fnn-open-report store))
+            ;; SEC-006: the ring is READ before the recovery (its current
+            ;; entry keys the catalog's Message-ID table at the open) and
+            ;; INSTALLED after the recovery that builds the owner.
+            (let ((ring (fnn-owner-read-node-secret store)))
+              (fnn-owner-recover-core store count max-connections (car ring))
+              (fnn-owner-install-node-secret store ring))
+            ;; `ms=': milliseconds from the image's entry to here (the
+            ;; recovery included), the measured length of a start that
+            ;; `install.sh --upgrade' quotes as the next gap (io.lisp
+            ;; *fnn-process-started*).
+            (let ((ms (fnn-ms-since-process-start)))
+              (fnn-err "OWNER-OPEN ~a ms=~d" (fnn-open-report store) ms)
+              ;; The service log's line for it, ACL2's rendering
+              ;; (books/native-health.lisp fn-nh-run-opened-line): what
+              ;; `install.sh --upgrade' reads for the gap to expect.
+              (fnn-log-line (fnn-core 'fn-native-health-host-run-opened-line ms)))
             ;; The persisted profile ACL2 decoded at open, handed back once:
             ;; the owner's transaction budget is derived from it there.
             (unless (eq (fnn-owner-core 'fn-owner-install-profile
                                         (fnn-store-config store))
                         :installed)
               (fnn-fault "owner refused the store profile"))
-            ;; SEC-006: the node secret, handed to the owner after the
-            ;; recovery that built it (fnn-owner-load-node-secret).
-            (fnn-owner-load-node-secret store)
             ;; The recovery barriers again (three, fnn-store-recovery-barriers):
             ;; fresh namespace observations, now delivered to fn-owner.
             (let ((phase nil))
@@ -1490,9 +1520,14 @@ follows is justified only by this line."
           (when (or (keywordp codes) (not (listp codes))
                     (/= (length codes) (length groups)))
             (fnn-refuse "unknown or duplicate configured group"))
-          (fnn-validate-post-boundary
-           (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
-                           (length payload) (length codes) charge))
+          (let ((boundary (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
+                                          (length payload) (length codes) charge)))
+            ;; Preserve ACL2's named placement refusal before buffer fill,
+            ;; identity allocation or prepare.  The generic condition
+            ;; handler would otherwise erase it into :refused.
+            (when (eq boundary :mpx-saturated)
+              (return-from fnn-owner-attempt boundary))
+            (fnn-validate-post-boundary boundary))
           ;; The payload goes to the core in the octet buffer
           ;; (books/octets-stobj.lisp): filled once here from the byte
           ;; vector, read in place by the existing-article test and the
@@ -1642,9 +1677,11 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                        (/= (length codes) (length groups)))
                (return-from fnn-owner-attempt-transit
                  (fnn-owner-transit-refused :groups)))
-             (fnn-validate-post-boundary
-              (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
-                              (length payload) (length codes) charge))
+             (let ((boundary (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
+                                             (length payload) (length codes) charge)))
+               (when (eq boundary :mpx-saturated)
+                 (return-from fnn-owner-attempt-transit boundary))
+               (fnn-validate-post-boundary boundary))
              (case (fnn-owner-arena-action 'fn-owner-existing-action
                                      (fnn-octet-list msgid)
                                      (fnn-owner-payload-octets payload) codes)
@@ -3478,7 +3515,8 @@ CLOSING STARTTLS CONSUMED)."
          (values :await step (and waiting (fnn-owner-redeem-quantum service cid))
                  closing starttls consumed)))
       (:fnn-extent-cold
-       (fnn-owner-cold-line service cid incoming socket class peerp (second results)))
+       (fnn-owner-cold-line service cid incoming socket class peerp
+                            (second results) (third results)))
       (:defer (values-list results))
       (t (fnn-owner-page-read-hold cid (first results))
          (values-list results)))))
@@ -3557,13 +3595,11 @@ CLOSING STARTTLS CONSUMED)."
 ;;; store fault (short read, digest mismatch) stops the owner even if late.
 ;;; Other connections are served meanwhile: nothing here
 ;;; holds the owner mutex or the realizer's lock.
-(defun fnn-owner-cold-line (service cid incoming socket class peerp entry)
-  (let* ((since (fnn-owner-monotonic-ms))
-         (limit nil)
-         ;; Issue under the realizer lock while this caller still has its
-         ;; arena pin. The worker owns the descriptor before it can run.
-         (token (apply #'fnn-extent-issue-read cid entry))
-         (thread nil))
+(defun fnn-owner-cold-line (service cid incoming socket class peerp entry token)
+  (declare (ignore entry))
+  ;; TOKEN was acquired under the owner mutex at cold descriptor capture.
+  ;; Retirement cannot run between capture and acquiring worker ownership.
+  (let* ((since (fnn-owner-monotonic-ms)) (limit nil) (thread nil))
     (handler-case
         (setq thread
               (sb-thread:make-thread
@@ -3703,7 +3739,12 @@ EPIPE and the client saw a bare close)."
          ;; Row A4 (c): the first line needs a page not in memory; its read
          ;; happens off the mutex (fnn-owner-handle-chunk, fnn-owner-cold-line).
          (when (and (consp step) (eq (car step) :fnn-extent-cold))
-           (return-from step (values :fnn-extent-cold (cdr step))))
+           (let ((entry (cdr step)))
+             ;; Owner->extent lock order: issue at the validated capture,
+             ;; before releasing the mutex that excludes file retirement.
+             (return-from step
+               (values :fnn-extent-cold entry
+                       (apply #'fnn-extent-issue-read cid entry)))))
          (when (eq step :unknown)
            (fnn-refuse "owner no longer knows connection ~d" cid))
          (fnn-owner-refresh-read-octets service)
@@ -4249,6 +4290,149 @@ reads run as a :control quantum; the thread's registration is the roster's."
                 (setf (fnn-owner-service-publisher service) thread)
                 (push thread (fnn-owner-service-workers service)))))))))))
 
+;;; Row S3b (lane operability-7): `store export DIR' on the running owner
+;;; (books/owner-export-request.lisp fn-oex-; SCN-210, PRF-988).  The export
+;;; is a reader of the live arena, as the publication is: the capture under
+;;; the owner mutex is O(1) (host/owner-host.lisp fn-owner-oex-capture: the
+;;; record list by pointer, its count, the configuration history, the
+;;; frontier), the archive is written on its own thread off the mutex in
+;;; chunks of +fnn-export-chunk+ records, pinned at the arena generation the
+;;; capture saw (fnn-arena-pin under the mutex, before the thread exists),
+;;; joined by the stop with the client workers and ended by name at its next
+;;; chunk when the owner stops (fnn-checkpoint-yield).  ACL2 decides the
+;;; request (fn-oex-request-word over the two observations) and every
+;;; archive entry and MANIFEST line (fn-sxp-export-head, fn-sxp-export-chunk:
+;;; the entries the offline export writes, fn-sxp-stream-is-the-export);
+;;; durability is fn-sxd-program's cuts, step for step as the offline verb
+;;; (host/native/io.lisp fnn-command-store-export).  The export never
+;;; excludes the publication: both read the arena under their pins, and the
+;;; captured list is an immutable ACL2 value.
+
+(defun fnn-owner-export-observation (service)
+  "(INFLIGHTP OUTCOME DIR) under the roster: whether the exporter thread
+runs, the last outcome and its DIR."
+  (fnn-with-roster (service)
+    (list (and (fnn-owner-service-exporter service) t)
+          (fnn-owner-service-export-outcome service)
+          (fnn-owner-service-export-dir service))))
+
+(defun fnn-owner-export-start (service captured dir)
+  "Under the owner mutex, an accepted request: pin the arena generation the
+capture saw, make the thread and register it (the exporter slot; the
+workers the stop joins).  A thread that was never made unpins here."
+  (fnn-with-roster (service)
+    (let ((made nil) (pin (fnn-arena-pin)))
+      (unwind-protect
+           (setq made (sb-thread:make-thread
+                       (lambda ()
+                         (let ((*fnn-checkpoint-stop-test*
+                                 (lambda ()
+                                   (fnn-with-roster (service)
+                                     (fnn-owner-service-stopping service)))))
+                           (fnn-owner-export-captured service captured dir pin)))
+                       :name "fn owner export"))
+        (unless made (fnn-arena-unpin pin)))
+      (setf (fnn-owner-service-exporter service) made
+            (fnn-owner-service-export-outcome service) nil
+            (fnn-owner-service-export-dir service) dir)
+      (push made (fnn-owner-service-workers service)))))
+
+(defun fnn-owner-export-write (store records count configs frontier dir)
+  "fnn-command-store-export's program over the captured values, without an
+open: the head (config.json's octets, the captured frontier's frame, the
+config/ files cut to the captured history's length: a record published
+after the capture is a later file, never one of these), then the chunks off
+the captured record list through the live arena (host/store-node-host.lisp
+fn-store-sco-encode-chunk), each an ACL2 export step; then fn-sxd-program's
+cuts.  A yield before each chunk ends the export by name when the owner
+stops.  Answers the record count written."
+  (let* ((fault (fnn-export-test-fault))
+         (profile (fnn-octet-list (fnn-read-regular-bounded (fnn-config-path store) 16384)))
+         (frontier-octets (fnn-octet-list (fnn-metadata-frontier-frame frontier)))
+         (observation (fnn-config-record-observation store))
+         (wanted (length configs)))
+    (when (< (length observation) wanted)
+      (fnn-refuse-io "the configuration directory holds ~d records, the captured history ~d"
+                     (length observation) wanted))
+    (let* ((config-pairs (mapcar (lambda (pair) (cons (car pair) (fnn-octet-list (cdr pair))))
+                                 (subseq observation 0 wanted)))
+           (head (fnn-core 'fn-sxp-export-head profile frontier-octets config-pairs))
+           (staged (fnn-join dir "MANIFEST.partial"))
+           (written 0) (batch 0))
+      (unless (and (consp head) (consp (car head)))
+        (fnn-fault "ACL2 returned a malformed archive"))
+      (fnn-mkdir dir #o700)
+      (fnn-mkdir (fnn-join dir "config") #o700)
+      (fnn-mkdir (fnn-join dir "records") #o700)
+      (let ((fd (fnn-open staged (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl
+                                         +fnn-o-nofollow+)
+                          #o600)))
+        (unwind-protect
+             (let ((cursor records))
+               (fnn-export-step dir fd head fault)
+               (loop while (consp cursor)
+                     do (fnn-checkpoint-yield "export" batch)
+                        (destructuring-bind (octets-list rest)
+                            (fnn-core 'fn-store-sco-encode-chunk cursor +fnn-export-chunk+
+                                      (fnn-live-arena))
+                          (unless (listp octets-list)
+                            (fnn-fault "ACL2 returned a malformed export chunk"))
+                          (let ((chunk (mapcar (lambda (octets)
+                                                 (cons (fnn-bridge-record-sequence octets) octets))
+                                               octets-list)))
+                            (fnn-export-step dir fd (fnn-core 'fn-sxp-export-chunk chunk) fault)
+                            (incf written (length chunk))
+                            (incf batch)
+                            (setq cursor rest))))
+               (fnn-export-at fault "export-data-written")
+               ;; :sync-all
+               (fnn-export-sync-data dir)
+               (fnn-export-at fault "export-data-durable")
+               ;; fn-sxd-publish-program
+               (fnn-fsync-file fd))
+          (fnn-close fd)))
+      (fnn-fsync-dir (fnn-join dir "records"))
+      (fnn-fsync-dir (fnn-join dir "config"))
+      (fnn-export-at fault "export-manifest-staged")
+      (fnn-replace staged (fnn-join dir "MANIFEST"))
+      (fnn-export-at fault "export-manifest-renamed")
+      (fnn-fsync-dir dir)
+      (fnn-export-at fault "export-durable")
+      (unless (eql written count)
+        (fnn-fault "the export wrote ~d records of a capture of ~d" written count))
+      written)))
+
+(defun fnn-owner-export-captured (service captured dir pin)
+  "The export's thread: the archive under DIR from the captured values, the
+outcome into the exporter slot, the log line.  A failure leaves no MANIFEST
+(KEYSTONE fn-sxd-crash-is-incomplete-or-complete) and serving continues;
+the stop's refusal at a chunk boundary is `owner-stopping'."
+  (let ((started (get-internal-real-time)) (outcome nil))
+    (unwind-protect
+         (destructuring-bind (records count configs frontier) captured
+           (handler-case
+               (let ((written (fnn-owner-export-write (fnn-owner-service-store service)
+                                                      records count configs frontier dir)))
+                 (setq outcome (cons :done written))
+                 (fnn-err "EXPORT done archive=~a records=~d configuration=~d ms=~d"
+                          dir written (length configs)
+                          (round (* 1000 (- (get-internal-real-time) started))
+                                 internal-time-units-per-second)))
+             (fnn-store-io-refusal (e)
+               (setq outcome (cons :failed :owner-stopping))
+               (fnn-err "EXPORT failed archive=~a reason=owner-stopping: ~a" dir e))
+             (serious-condition (e)
+               (setq outcome (cons :failed :archive-write))
+               (fnn-err "EXPORT failed archive=~a reason=archive-write: ~a" dir e))))
+      (fnn-with-roster (service)
+        (setf (fnn-owner-service-exporter service) nil
+              (fnn-owner-service-export-outcome service)
+              (or outcome (cons :failed :archive-write))
+              (fnn-owner-service-workers service)
+              (delete sb-thread:*current-thread*
+                      (fnn-owner-service-workers service) :test #'eq)))
+      (fnn-arena-unpin pin))))
+
 ;;; Q16 (lane online-reclaim): `store reclaim --dry-run' on the running
 ;;; owner (books/owner-reclaim.lisp; host/owner-host.lisp fn-owner-orc-*).
 
@@ -4569,7 +4753,9 @@ publication).  Answers the reply word."
                         (hist (fnn-fresh-stobj 'fn-hist)))
                    (when (eq (second rebuilt) :fault)
                      (deferred :rebuild) (return-from pass))
-                   (fnn-call 'fn-owner-orcp-load-columns rows
+                   (fnn-call 'fn-owner-orcp-load-columns
+                             (fnn-owner-core 'fn-owner-orcp-key)
+                             rows
                              (fnn-core 'fn-owner-orcp-view-index (second rebuilt))
                              (fnn-owner-core 'fn-owner-orcp-salt)
                              (fnn-live-arena) cat hist)
