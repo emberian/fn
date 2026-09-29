@@ -191,14 +191,21 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         self.node.start()
         clear = self.node.session(greeting=None)
         self.addCleanup(clear.close)
+        # The AUTHINFO line's arguments (RFC 4643 section 2.2: USER, and SASL
+        # beside it since NNT-056), never an exact-line match.
+        def authinfo(labels):
+            return [set(l.split()[1:]) for l in labels if l.split()[:1] == [b"AUTHINFO"]]
         listed = self.capabilities(clear)
         self.assertIn(b"STARTTLS", listed)
-        self.assertNotIn(b"AUTHINFO USER", listed)
+        self.assertEqual(authinfo(listed), [])
         self.assertTrue(clear.starttls().startswith(b"382"))
         listed = self.capabilities(clear)
-        self.assertIn(b"AUTHINFO USER", listed)
+        self.assertEqual(len(authinfo(listed)), 1, listed)
+        self.assertIn(b"USER", authinfo(listed)[0])
         self.assertNotIn(b"STARTTLS", listed)
-        self.assertIn(b"AUTHINFO USER", self.capabilities(self.tls()))
+        overtls = authinfo(self.capabilities(self.tls()))
+        self.assertEqual(len(overtls), 1, overtls)
+        self.assertIn(b"USER", overtls[0])
         self.stop()
 
     def test_fn_redeem_to_an_unreachable_node_is_uncertain_never_refused(self):

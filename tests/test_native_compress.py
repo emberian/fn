@@ -129,8 +129,10 @@ class NativeCompressTests(unittest.TestCase):
             self.assertTrue(z.command(b"CAPABILITIES").startswith(b"101 "))
             labels = z.block()
             self.assertIn(b"READER", labels)
-            for withdrawn in (b"COMPRESS DEFLATE", b"STARTTLS", b"AUTHINFO USER"):
+            for withdrawn in (b"COMPRESS DEFLATE", b"STARTTLS"):
                 self.assertNotIn(withdrawn, labels)
+            # No AUTHINFO line at all (its arguments are USER and SASL since NNT-056).
+            self.assertFalse([l for l in labels if l.split()[:1] == [b"AUTHINFO"]], labels)
             for refused in (b"AUTHINFO USER native-reader", b"STARTTLS", b"COMPRESS DEFLATE"):
                 self.assertTrue(z.command(refused).startswith(b"502 "), refused)
             self.assertTrue(z.command(b"GROUP fn.test").startswith(b"211 "))
