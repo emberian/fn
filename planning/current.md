@@ -37,7 +37,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [P10](#p10) every cut is a model crash point | `fn-bs-recover-program-keeps-relation-at-every-cut` | yes | no: closure moved | no: source changed since 69046a76 | no: dev source not on the node |
 | [P11](#p11) bundles across an outage | `fn-bpnp-step-session-offer-is-the-scan-choice` | yes | no: closure moved | no: source changed since 69046a76 | no: profile not deployed |
 | [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | no: closure moved | no: source changed since 69046a76 | no: profile not deployed |
-| [M5](#m5) maintenance: compaction and reclaim over the record log | `fn-lgr-decide-checkpoints-the-rewrite` | yes | no: closure moved | lab only: `10674f330` | no: dev source not on the node |
+| [M5](#m5) maintenance: compaction and reclaim over the record log | `fn-lgr-decide-checkpoints-the-rewrite` | yes | yes: `certify-20260929T070718Z-259519` | lab only: `10674f330` | no: dev source not on the node |
 | [M6](#m6) the human client | `fn-served-step-list-counts-is-the-archive-counts` | yes | no: closure moved | no: source changed since 69046a76 | no: dev source not on the node |
 | [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | yes: `certify-20260929T053511Z-3527331` | no: source changed since 69046a76 | no: dev source not on the node |
 
@@ -192,7 +192,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **maintenance: compaction and reclaim over the record log.** `operator CONFIG store compact` checkpoints the store with the log rotated and drops the segments the checkpoint covers, and `store reclaim` checkpoints exactly the reclaiming pack's rewrite of the committed history (a held article is never touched), both decided in ACL2 over the one store format, 9.
 
 - Host-called subject: `fn-lgr-decide-stream` at host/checkpoint-host.lisp:211, equated by `fn-lgr-decide-stream-is-lgr-decide` (books/store-log-reclaim.lisp:96).
-- Keystone: `fn-lgr-decide-checkpoints-the-rewrite` (books/store-log-reclaim.lisp:46; PRF-271 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260927T204325Z-1333706` passed this source of `books/store-log-reclaim.lisp`, and since then `books/acceptance-alloc.lisp`, `books/acceptance.lisp`, `books/article-fields.lisp` and 114 more changed.
+- Keystone: `fn-lgr-decide-checkpoints-the-rewrite` (books/store-log-reclaim.lisp:46; PRF-271 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260929T070718Z-259519` (earliest archived).
 - Tested: lane image of `10674f330` ([log-recovery-2026-09-27](evidence/log-recovery-2026-09-27.md)), profile developer and production lane images (s2c): log_compaction 7/7 (rotation and drop kill cuts, reclaim, refusals), store_export 4/4; not a shared qualification.
 - Deployed: no: node image `a3553e6b`; changed since it: `host/checkpoint-host.lisp`.
 - Latest positive result: log_compaction 7/7 and store_export 4/4 on both lane images; a 40,000-article compact 40-139 s at 4.7 GB, from 2,963 s and 16.4 GB on the per-file layout ([log-recovery](evidence/log-recovery-2026-09-27.md)); the verb's own open streams the log since log-open-stream.

@@ -1528,24 +1528,24 @@
     "books": 1577,
     "books_in_root_closure": 1567,
     "roots": 1521,
-    "theorems": 25566,
-    "functions": 16803,
-    "assert_events": 21604,
-    "must_fails": 2320,
+    "theorems": 25595,
+    "functions": 16820,
+    "assert_events": 21620,
+    "must_fails": 2323,
     "prover_refusals": 0,
     "encapsulates": 143,
     "guards": {
-      "verified": 3044,
-      "declared-off": 1995,
-      "default-guarded": 9263,
-      "default-unguarded": 2501
+      "verified": 3047,
+      "declared-off": 1998,
+      "default-guarded": 9270,
+      "default-unguarded": 2505
     },
-    "suspect_theorems": 1201,
+    "suspect_theorems": 1202,
     "export_hygiene_warnings": 318,
     "enabled_projection_warnings": 52,
-    "teeth_form_warnings": 252,
-    "include_hygiene_warnings": 2238,
-    "host_names_warnings": 2064,
+    "teeth_form_warnings": 254,
+    "include_hygiene_warnings": 2241,
+    "host_names_warnings": 2065,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -15034,12 +15034,12 @@
       "book": "books/native-live-status.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 73,
-      "functions": 58,
+      "theorems": 74,
+      "functions": 62,
       "guards": {
         "verified": 6,
         "declared-off": 11,
-        "default-guarded": 41,
+        "default-guarded": 45,
         "default-unguarded": 0
       },
       "verify_guards_events": 6,
@@ -15159,7 +15159,7 @@
       "book": "books/native-status-columns.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 17,
+      "theorems": 23,
       "functions": 12,
       "guards": {
         "verified": 1,
@@ -15176,10 +15176,13 @@
       "encapsulates": 0,
       "includes": [
         "native-health",
+        "owner-reader-view",
         "served-columns"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-nsc-at-reader-view-without-capture"
+      ],
       "read_error": null
     },
     {
@@ -24941,15 +24944,15 @@
       "book": "books/store-finalize-incremental.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 20,
-      "functions": 4,
+      "theorems": 42,
+      "functions": 12,
       "guards": {
-        "verified": 2,
-        "declared-off": 0,
-        "default-guarded": 2,
+        "verified": 5,
+        "declared-off": 2,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
-      "verify_guards_events": 2,
+      "verify_guards_events": 5,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -38221,15 +38224,16 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 76,
-      "must_fails": 15,
+      "assert_events": 83,
+      "must_fails": 16,
       "prover_refusals": 0,
-      "defconsts": 26,
+      "defconsts": 27,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
         "../../books/native-live-status",
+        "../../books/owner-reader-view",
         "../../books/owner-store-budget",
         "arena-lift",
         "held-rows-tests",
@@ -38355,22 +38359,23 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 8,
+      "functions": 9,
       "guards": {
         "verified": 0,
-        "declared-off": 8,
+        "declared-off": 9,
         "default-guarded": 0,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 6,
-      "must_fails": 4,
+      "assert_events": 8,
+      "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 1,
+      "defconsts": 2,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/native-status-columns",
+        "native-live-status-tests",
         "store-reclaim-holders-tests"
       ],
       "system_includes": [],
@@ -44656,18 +44661,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 1,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 1
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 10,
-      "must_fails": 2,
+      "assert_events": 17,
+      "must_fails": 3,
       "prover_refusals": 0,
-      "defconsts": 21,
+      "defconsts": 28,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -50928,6 +50933,15 @@
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-nov-header-content and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-nsc-at-reader-view-without-capture",
+      "book": "books/native-status-columns.lisp",
+      "line": 284,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-ocfg-at-reader-view and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-at-reader-view and the conclusion is that branch's value"
       ]
     },
     {
@@ -58142,7 +58156,7 @@
       {
         "theorem": "fn-nls-octets-string-is-record-octets-string",
         "book": "books/native-live-status.lisp",
-        "line": 825,
+        "line": 880,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -58154,7 +58168,7 @@
       {
         "theorem": "fn-nsc-client-step-carries-its-length",
         "book": "books/native-status-columns.lisp",
-        "line": 381,
+        "line": 456,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
@@ -60612,6 +60626,12 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
+        "check": "nlst-live-is-offline-with-the-view-behind",
+        "book": "tests/acl2/native-live-status-tests.lisp",
+        "line": 148,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
         "check": "nopt-developer-init-groups-are-not-flags-without-init",
         "book": "tests/acl2/native-operator-tests.lisp",
         "line": 1119,
@@ -60651,6 +60671,12 @@
         "check": "nsct-client-step-without-the-length",
         "book": "tests/acl2/native-status-columns-tests.lisp",
         "line": 198,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "nsct-counts-for-every-kind",
+        "book": "tests/acl2/native-status-columns-tests.lisp",
+        "line": 255,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -65748,6 +65774,13 @@
         "line": 16,
         "include": "outcome-class",
         "included": "books/outcome-class.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/native-status-columns.lisp",
+        "line": 36,
+        "include": "owner-reader-view",
+        "included": "books/owner-reader-view.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -72403,20 +72436,27 @@
       {
         "book": "tests/acl2/native-live-status-tests.lisp",
         "line": 9,
+        "include": "../../books/owner-reader-view",
+        "included": "books/owner-reader-view.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/native-live-status-tests.lisp",
+        "line": 10,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/native-live-status-tests.lisp",
-        "line": 10,
+        "line": 11,
         "include": "held-rows-tests",
         "included": "tests/acl2/held-rows-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/native-live-status-tests.lisp",
-        "line": 46,
+        "line": 47,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -72482,6 +72522,13 @@
         "line": 18,
         "include": "store-reclaim-holders-tests",
         "included": "tests/acl2/store-reclaim-holders-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/native-status-columns-tests.lisp",
+        "line": 210,
+        "include": "native-live-status-tests",
+        "included": "tests/acl2/native-live-status-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -77593,6 +77640,13 @@
         "host": "host/native-live-status-host.lisp",
         "line": 34,
         "name": "fn-owner-store-profile",
+        "source": "host/owner-host.lisp",
+        "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native-live-status-host.lisp",
+        "line": 34,
+        "name": "fn-owner-reader-views",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
