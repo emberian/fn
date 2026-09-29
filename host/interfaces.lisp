@@ -4509,3 +4509,5 @@
   :class :common-lisp-compliant :kinds ((limit natp)))
 (definterface fn-osc-plan :class :common-lisp-compliant)
 (definterface fn-osc-advance :class :common-lisp-compliant)
+
+(definterface fn-osd-seal-program (stage target marker))

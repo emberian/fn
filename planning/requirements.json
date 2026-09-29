@@ -5645,7 +5645,8 @@
       "status": "planned",
       "proof_targets": [
         "PRF-1068",
-        "PRF-1069"
+        "PRF-1069",
+        "PRF-1071"
       ],
       "verification": [
         "proof",
@@ -5654,7 +5655,9 @@
       ],
       "evidence": [
         "books/snapshot-file-copy.lisp",
-        "tests/acl2/snapshot-file-copy-tests.lisp"
+        "tests/acl2/snapshot-file-copy-tests.lisp",
+        "books/snapshot-publication.lisp",
+        "tests/acl2/snapshot-publication-tests.lisp"
       ],
       "implementation_note": "S7 producer in development on codex/operability-producer; grammar and bounded copy cursor only. Full maintained-projection recovery and resource lifetime funding remain required, no producer completion claim."
     }

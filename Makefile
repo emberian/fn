@@ -1472,6 +1472,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-snapshot-request \
 	books/snapshot-file-copy \
 	tests/acl2/snapshot-file-copy-tests \
+	tests/acl2/snapshot-publication-tests \
 	tests/acl2/owner-snapshot-request-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \

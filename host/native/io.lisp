@@ -4438,7 +4438,7 @@ fresh and completion is still gated by the later SNAPSHOT durability program."
          (loop
            (let ((plan (fnn-core 'fn-osc-plan cursor +fnn-snapshot-copy-quantum+)))
              (case (first plan)
-               (:done (return))
+               (:done (fnn-fsync-file fd) (return))
                (:read
                 (fnn-checkpoint-yield "snapshot-copy" (third plan))
                 (let* ((octets (fnn-make-octets (fourth plan)))
@@ -4452,6 +4452,60 @@ fresh and completion is still gated by the later SNAPSHOT durability program."
                   (setq cursor (second advance))))
                (otherwise (fnn-fault "ACL2 refused a snapshot copy cursor: ~a" plan)))))
       (fnn-close fd))))
+
+(defun fnn-snapshot-seal-publish (stage target marker)
+  "Fence the last completion file and publish a fully streamed staged copy.
+Caller has fenced every captured data file, retained capture ownership and
+funded the entire target.  ACL2 supplies the syscall order.  This component
+cannot establish target recovery equivalence or its admission budget."
+  (let* ((root (fnn-store-root stage))
+         (parent (fnn-parent target))
+         (lock nil) (marker-fd nil) (attempted nil))
+    (handler-case
+        (unwind-protect
+             (progn
+               (setq lock (fnn-publication-lock target))
+               (dolist (step (fnn-core 'fn-osd-seal-program root target marker))
+                 (case (first step)
+                   (:create
+                    (setq marker-fd
+                          (fnn-open (fnn-join root (third step))
+                                    (logior sb-posix:o-wronly sb-posix:o-creat
+                                            sb-posix:o-excl +fnn-o-nofollow+) #o600)))
+                   (:write-all (fnn-write-all marker-fd (fnn-octets (fourth step))))
+                   (:fsync-file (fnn-fsync-file marker-fd)
+                                (fnn-close marker-fd) (setq marker-fd nil))
+                   (:fsync-dir
+                    (fnn-fsync-dir
+                     (case (second step)
+                       (:parent parent)
+                       (:stage root)
+                       (:staging (fnn-join root "staging"))
+                       (:config (fnn-join root "config"))
+                       (:journal (fnn-join root "journal"))
+                       (:keys (fnn-join root "keys"))
+                       (otherwise (fnn-fault "invalid snapshot directory identifier")))))
+                   (:rename-dir-noreplace
+                    ;; Issuance itself can fail ambiguously.  A later final
+                    ;; fence error never becomes a known prepublication refusal.
+                    (setq attempted t)
+                    (case (fnn-rename-no-replace root target)
+                      ((nil))
+                      (:exists (fnn-refuse-io "snapshot target exists: ~a; stage=~a"
+                                             target root))
+                      (:unsupported (fnn-refuse-io "snapshot no-replace publication unsupported; stage=~a" root))
+                      (otherwise (fnn-fault "invalid snapshot no-replace outcome"))))
+                   (:cut (fnn-at stage (second step)))
+                   (otherwise (fnn-fault "invalid snapshot publication step"))))
+               :done)
+          (when marker-fd (fnn-close marker-fd))
+          (fnn-publication-unlock lock))
+      (fnn-os-error (e)
+        (if attempted
+            (fnn-indeterminate "snapshot publication uncertain target=~a stage=~a: ~a"
+                               target root e)
+          (fnn-refuse-io "snapshot failed before publication target=~a stage=~a: ~a"
+                         target root e))))))
 
 (defun fnn-snapshot-copy-regular (source destination &optional captured-limit)
   "One source descriptor held through every bounded prefix-copy step.

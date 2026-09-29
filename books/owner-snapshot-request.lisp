@@ -73,11 +73,14 @@
   (cond (inflightp :in-flight)
         ((and (consp outcome) (equal (car outcome) :done)) :done)
         ((and (consp outcome) (equal (car outcome) :failed)) :failed)
+        ((and (consp outcome) (equal (car outcome) :uncertain)) :uncertain)
         (t :idle)))
 
 (defun fn-osn-status-status (word)
   (declare (xargs :guard t))
-  (if (equal word :failed) :refused :accepted))
+  (cond ((equal word :failed) :refused)
+        ((equal word :uncertain) :uncertain)
+        (t :accepted)))
 
 (defthm fn-osn-in-flight-is-the-status-while-copying
   (iff (equal (fn-osn-status-word inflightp outcome) :in-flight)
@@ -87,7 +90,7 @@
 ; The client's reading of a reply's word
 
 (defconst *fn-osn-words*
-  '(:requested :snapshot-in-flight :target-exists :in-flight :done :failed :idle))
+  '(:requested :snapshot-in-flight :target-exists :in-flight :done :failed :uncertain :idle))
 
 (defun fn-osn-word-of-octets-loop (octets words)
   (declare (xargs :guard t))
@@ -200,6 +203,9 @@
          (concatenate 'string "snapshot failed target=" dir
                       ": no SNAPSHOT marker was written (the owner's log names the reason: `SNAPSHOT failed reason=...'); what it would take: remove "
                       dir " and request again"))
+        ((equal word :uncertain)
+         (concatenate 'string "snapshot uncertain target=" dir
+                      ": publication or its final barrier may have taken effect; inspect this target with `store bless-snapshot' before using it; the owner log names the staged directory and failure"))
         ((equal word :in-flight)
          "snapshot in-flight: the owner is still copying the store")
         ((equal word :idle)

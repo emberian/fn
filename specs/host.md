@@ -1600,3 +1600,24 @@ ambiguous rename/fence failures stay uncertain and preserve recovery evidence.
 SCN-215 is reserved for actual producer output and subsequent complete restore
 checks. The offline checker SCN-217's artificial observation fixtures establish
 none of these producer guarantees.
+
+The S7 producer under development builds a private sibling staging tree.
+Its completion tail is ACL2's `fn-osd-seal-program`: write and fence
+`SNAPSHOT` after every captured data file is fenced, fence staging/config/
+journal/keys names and the staged root, publish by no-replace rename, and
+fence the parent. The logical full program is the existing arbitrary-tree
+import publication program with `SNAPSHOT` last. An error once rename may
+have been issued yields **uncertain**, including failure of the parent
+fence; status must preserve that outcome. The copied target is absent
+until publication. A stage left behind is named in the diagnostic and is
+not evidence of a completed target.
+
+This component is implemented source, not an enabled producer. Its
+streamed checkpoint prelude must refine the full byte program; the
+capture must preserve the actual Store statement keyring, retained
+verdict/provenance and independent identity/consumer/topic projections;
+and a funded maintenance resource profile must cover old pinned artifacts
+and the new tree simultaneously. The existing checkpoint disk estimate
+does not bound Lisp summary conses, history-image scratch or its host hash
+index. None of marker presence, an ARTICLE-positive reopen or the generic
+crash theorem closes those pending obligations.

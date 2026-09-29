@@ -17599,6 +17599,27 @@
         "host/native/io.lisp"
       ],
       "progress_note": "Clean REPL oscc61 persvati admitted 12 teeth forms with source book encapsulated, zero refusal, 0.08s/15108 steps. Native matching source pending; no certificate or snapshot producer claim."
+    },
+    {
+      "id": "PRF-1071",
+      "title": "Snapshot completion publication reuses the staged-tree crash program with SNAPSHOT as the last file",
+      "statement": "Host fnn-snapshot-seal-publish calls guard-verified fn-osd-seal-program. Named boundary fn-osd-tail-is-the-last-file-and-publication-by-definition identifies it with the final file/fence/no-replace-parent-fence tail of fn-bs-imp-program. The authoritative keystone fn-bs-imp-program-crash-is-no-store-or-the-complete-store covers arbitrary subdirectories including keys. Its inputp, outcome and reachable-run hypotheses remain required; host streaming prelude refinement, admitted resource budget, and captured target recovery equivalence must still be supplied before a producer completion claim. No theorem claims physical capture coherence by marker presence.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-040"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-bs-imp-program-crash-is-no-store-or-the-complete-store"
+      ],
+      "evidence": [
+        "books/snapshot-publication.lisp",
+        "tests/acl2/snapshot-publication-tests.lisp",
+        "host/native/io.lisp"
+      ],
+      "progress_note": "Clean REPL osdp62 hbox admitted 8 test forms with source snapshot-publication encapsulated (guard-verified host-called seal tail), zero refusal, 0.06s/32546 steps. Host prelude refinement, funded capture admission and actual producer native remain pending; no certificate or producer completion claim."
     }
   ]
 }

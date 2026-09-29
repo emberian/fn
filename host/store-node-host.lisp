@@ -23,6 +23,7 @@
 (include-book "../books/owner-snapshot-request")
 ; S7 bounded exact file-prefix copy cursor.
 (include-book "../books/snapshot-file-copy")
+(include-book "../books/snapshot-publication")
 (include-book "../books/store-capacity-vector")
 (include-book "../books/store-carried-folds")
 ; PKT-220: the retention figures `operator CONFIG obligations' opens with.

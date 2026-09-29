@@ -115,3 +115,12 @@
                                                0))))
 (assert-event (natp (search "reason=no-node-secret: /var/backups/s1/keys holds no node-secret.key"
                             (fn-osn-bless-line :no-node-secret "/var/backups/s1" :ok 0))))
+
+; An ambiguous publication is distinct from known refusal and acceptance.
+(assert-event (equal (fn-osn-status-word nil '(:uncertain . :parent-fence)) :uncertain))
+(assert-event (and (equal (fn-osn-status-status :uncertain) :uncertain)
+                   (not (equal (fn-osn-status-status :uncertain) :accepted))
+                   (not (equal (fn-osn-status-status :uncertain) :refused))))
+(assert-event (equal (fn-osn-word-of-octets (fn-nctrl-reason-word :uncertain)) :uncertain))
+(assert-event (natp (search "snapshot uncertain target=/x"
+                            (fn-osn-outcome-line :uncertain "/x"))))
