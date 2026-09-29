@@ -26,6 +26,17 @@ revert the revert, or to re-apply the work on top after the merge.
 
     python3 tools/lane_fetch.py --merge                # fetch dev, check, merge
     python3 tools/lane_fetch.py --merge --allow-revert # merge although it reverts ours
+    python3 tools/lane_fetch.py --duplicates           # scan tools/ now, no fetch
+
+THE DUPLICATE CHECK (obstructions-9 item 81).  A merge of tools/ can keep
+both sides' copy of a function: obstructions-8's merged tools/depth_check.py
+had two top-level `_xargs`, and the lane's later one silently shadowed dev's.
+After the merge (clean or conflicted) this parses every Python file under
+tools/ and tests/ the merge changed and prints each name a module defines
+twice at top level (def, async def, class), with both line numbers, and each
+shell file's twice-defined `name()` function; a found duplicate makes the
+exit status 5 when the merge itself succeeded.  A file the merge left with
+conflict markers is named as not checked.
 
 So this fetches only the branches named, each into its own
 `refs/remotes/origin/B`, holding an exclusive lock in the repository's common
@@ -38,6 +49,7 @@ other fetch through it is running -- and retries once.
 from __future__ import annotations
 
 import argparse
+import ast
 import fcntl
 from pathlib import Path
 import re
@@ -162,10 +174,76 @@ def merge(incoming: str, cwd: Path, allow_revert: bool) -> int:
               "of this lane's own work (above).  Ask the runner to revert the revert, or "
               "merge with --allow-revert and re-apply the work on top.", file=sys.stderr)
         return 4
+    before = _out(["rev-parse", "HEAD"], cwd).strip()
     done = git(["merge", "--no-gpg-sign", "--no-edit", incoming], cwd)
     sys.stdout.write(done.stdout)
     sys.stderr.write(done.stderr)
+    changed = _out(["diff", "--name-only", before, "--", "tools", "tests"], cwd).split() \
+        if before else []
+    lines = duplicate_report(duplicates([cwd / name for name in changed]), cwd)
+    for line in lines:
+        print(line)
+    if done.returncode == 0 and any(line.startswith("  ") for line in lines):
+        return 5
     return done.returncode
+
+
+SHELL_FUNCTION = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*\(\)\s*\{?", re.M)
+
+
+def top_level_duplicates(path: Path) -> list[tuple[str, list[int]]] | None:
+    """Each name PATH defines more than once at top level, with its lines;
+    None when the file does not parse (conflict markers)."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return []
+    seen: dict[str, list[int]] = {}
+    if path.suffix == ".py":
+        try:
+            tree = ast.parse(text, filename=str(path))
+        except SyntaxError:
+            return None
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                seen.setdefault(node.name, []).append(node.lineno)
+    elif path.suffix == ".sh":
+        if "\n<<<<<<< " in "\n" + text:
+            return None
+        for match in SHELL_FUNCTION.finditer(text):
+            seen.setdefault(match.group(1), []).append(text.count("\n", 0, match.start()) + 1)
+    else:
+        return []
+    return sorted((name, lines) for name, lines in seen.items() if len(lines) > 1)
+
+
+def duplicates(paths: list[Path]) -> dict[Path, list[tuple[str, list[int]]] | None]:
+    found = {}
+    for path in sorted(set(paths)):
+        if path.suffix in (".py", ".sh") and path.is_file():
+            result = top_level_duplicates(path)
+            if result is None or result:
+                found[path] = result
+    return found
+
+
+def duplicate_report(found: dict, cwd: Path) -> list[str]:
+    if not found:
+        return ["lane_fetch: no twice-defined top-level name in the tools/ and tests/ files "
+                "checked"]
+    lines = []
+    for path, names in found.items():
+        shown = path.relative_to(cwd) if path.is_relative_to(cwd) else path
+        if names is None:
+            lines.append(f"lane_fetch: {shown}: not checked (does not parse: conflict markers?)")
+            continue
+        for name, at in names:
+            lines.append(f"  {shown}: {name} defined {len(at)} times (lines "
+                         + ", ".join(map(str, at)) + "): the last one shadows the others")
+    if any(line.startswith("  ") for line in lines):
+        lines.insert(0, "lane_fetch: TWICE-DEFINED top-level names "
+                        "(keep one; the _xargs lesson):")
+    return lines
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -178,7 +256,18 @@ def main(argv: list[str] | None = None) -> int:
                              "incoming revert of this lane's work")
     parser.add_argument("--allow-revert", action="store_true",
                         help="with --merge: merge although it reverts this lane's work")
+    parser.add_argument("--duplicates", action="store_true",
+                        help="only scan every tools/ and tests/ Python and shell file for "
+                             "twice-defined top-level names (no fetch); exit 5 on a find")
     args = parser.parse_args(argv)
+    if args.duplicates:
+        cwd = Path.cwd()
+        paths = [p for d in ("tools", "tests") for p in (cwd / d).rglob("*")
+                 if p.suffix in (".py", ".sh")]
+        lines = duplicate_report(duplicates(paths), cwd)
+        for line in lines:
+            print(line)
+        return 5 if any(line.startswith("  ") for line in lines) else 0
     for branch in args.branches:
         if not re.fullmatch(r"[A-Za-z0-9._/-]+", branch) or branch.startswith("-"):
             parser.error(f"not a branch name: {branch!r}")

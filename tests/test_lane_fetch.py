@@ -158,5 +158,60 @@ class RevertCheckTests(unittest.TestCase):
         self.assertTrue(found[0]["ours"])  # the merged commit is on HEAD's first-parent chain
 
 
+class DuplicateCheckTests(unittest.TestCase):
+    """obstructions-9 item 81: a merge that keeps both sides' copy of a tools/
+    function (obstructions-8's two `_xargs`) is named after the merge."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        r = self.repo = Path(self.tmp.name)
+        sh(r, "init", "-q", "-b", "dev")
+        sh(r, "config", "user.name", "t")
+        sh(r, "config", "user.email", "t@t")
+        sh(r, "config", "commit.gpgsign", "false")
+        (r / "tools").mkdir()
+        (r / "tools" / "t.py").write_text("def a():\n    return 1\n\n\ndef keep():\n    pass\n")
+        (r / "tools" / "t.sh").write_text("f() {\n  :\n}\n")
+        sh(r, "add", "tools")
+        sh(r, "commit", "-q", "-m", "base")
+        sh(r, "checkout", "-q", "-b", "lane/mine")
+        # The lane appends its own copy of _xargs at the end; dev adds one at the top.
+        (r / "tools" / "t.py").write_text("def a():\n    return 1\n\n\ndef keep():\n    pass\n"
+                                          "\n\ndef _xargs():\n    return 'lane'\n")
+        sh(r, "commit", "-q", "-am", "lane xargs")
+        sh(r, "checkout", "-q", "dev")
+        (r / "tools" / "t.py").write_text("def _xargs():\n    return 'dev'\n\n\n"
+                                          "def a():\n    return 1\n\n\ndef keep():\n    pass\n")
+        (r / "tools" / "t.sh").write_text("f() {\n  :\n}\nf() {\n  echo\n}\n")
+        sh(r, "commit", "-q", "-am", "dev xargs")
+        sh(r, "checkout", "-q", "lane/mine")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_a_clean_merge_that_doubles_a_def_is_named_and_exits_5(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            code = lane_fetch.merge("dev", self.repo, False)
+        text = out.getvalue()
+        self.assertEqual(code, 5, text)
+        self.assertIn("tools/t.py: _xargs defined 2 times (lines 1, 13)", text)
+        self.assertIn("tools/t.sh: f defined 2 times (lines 1, 4)", text)
+        self.assertNotIn("keep defined", text)
+
+    def test_a_single_definition_per_name_is_clean(self):
+        path = self.repo / "tools" / "t.py"
+        self.assertEqual(lane_fetch.top_level_duplicates(path), [])
+        path.write_text("class C:\n    def m(self): pass\n    def m(self): pass\n")
+        self.assertEqual(lane_fetch.top_level_duplicates(path), [])  # methods are not top level
+
+    def test_conflict_markers_are_named_not_checked(self):
+        path = self.repo / "tools" / "t.py"
+        path.write_text("<<<<<<< HEAD\ndef a(): pass\n=======\ndef b(): pass\n>>>>>>> dev\n")
+        lines = lane_fetch.duplicate_report(lane_fetch.duplicates([path]), self.repo)
+        self.assertEqual(lines, ["lane_fetch: tools/t.py: not checked (does not parse: "
+                                 "conflict markers?)"])
+
+
 if __name__ == "__main__":
     unittest.main()
