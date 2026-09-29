@@ -3919,6 +3919,10 @@
 (definterface fn-arpn-step
   :class :common-lisp-compliant)
 
+(definterface fn-rpin-step
+  :class :common-lisp-compliant
+  :keystones (fn-rpin-step-preserves-funded-ownership))
+
 ;; books/control-request-word.lisp
 
 ; host/native/operator-live.lisp dispatches it (lane online-reclaim-5).

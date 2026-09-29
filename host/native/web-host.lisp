@@ -113,12 +113,14 @@ exposure admission decides (the id, or NIL when it refused)."
                 (sleep (/ (min (second results) 1000) 1000))
               (destructuring-bind (plan close starttls consumed &rest more) results
                 (declare (ignore starttls more))
-                (loop
-                  (multiple-value-bind (part rest donep)
-                      (fnn-owner-render-next-quantum service cid plan :reader)
-                    (setq reply (concatenate 'fnn-octets reply part))
-                    (when donep (return))
-                    (setq plan rest)))
+                (unwind-protect
+                     (loop
+                       (multiple-value-bind (part rest donep)
+                           (fnn-owner-render-next-quantum service cid plan :reader)
+                         (setq reply (concatenate 'fnn-octets reply part))
+                         (when donep (return))
+                         (setq plan rest)))
+                  (fnn-owner-response-unpin service cid))
                 (setq closing close)
                 (when (and (zerop consumed) (not close))
                   (fnn-fault "owner consumed no octets of a web command"))
@@ -127,6 +129,7 @@ exposure admission decides (the id, or NIL when it refused)."
     (fnn-store-error () :gone)))
 
 (defun fnn-web-close (service cid)
+  (fnn-owner-response-unpin service cid)
   (ignore-errors
     (fnn-owner-serialized service cid (lambda () (fnn-owner-action 'fn-owner-close cid)) :reader))
   (ignore-errors

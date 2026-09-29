@@ -222,6 +222,7 @@
 ; lane composed-owner-5 (PRF-941, row A6): the arena readers' generation
 ; pins (host/native/io.lisp fnn-arena-pins-step).
 (include-book "../books/arena-reader-pins")
+(include-book "../books/response-plan-pins")
 (include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")

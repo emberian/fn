@@ -5749,6 +5749,7 @@ tree root), or stop the build."
     ;; the owner mutex) for the natives; ACL2's fn-splan-cursor-window
     ;; decides the value (books/served-plan-cursor.lisp).
     "FN_NATIVE_OVER_WINDOW"
+    "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM"
     ;; the extraction gate's stateful differential (tools/extract/stateful.py):
     ;; a recorded clock observation and a recorded entropy stream, the
     ;; environment readings the image and the extracted program then share.

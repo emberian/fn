@@ -60,6 +60,7 @@
 ;; continuation of a served OVER/XOVER range (fnn-owner-cursor-step calls
 ;; fn-splan-cursor-step; fnn-owner-render-next asks fn-splan-at-cursorp).
 (include-book "books/served-plan-cursor")
+(include-book "books/response-plan-pins")
 (include-book "books/owner-scheduler")
 (include-book "books/owner-commit-class")
 ;; PKT-688 (4) slice 2 (PRF-267): the gate calls fn-ocs-next and the committer

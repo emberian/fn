@@ -256,6 +256,7 @@ the TLS session, then the socket.  Idempotent."
           (opened-cid (fnn-mux-conn-opened-cid conn))
           (was (fnn-mux-conn-phase conn)))
       (setf (fnn-mux-conn-phase conn) :done)
+      (fnn-owner-response-unpin service (or cid opened-cid))
       (when (fnn-mux-conn-ssl conn)
         (ignore-errors (fnn-%ssl-free (fnn-mux-conn-ssl conn)))
         (setf (fnn-mux-conn-ssl conn) nil))
@@ -369,9 +370,9 @@ plan remains."
 (defun fnn-mux-render-next (loop conn plan)
   "The plan's next window, its cursor quantum run first when it is at one
 (lane join-f2-13, PRF-1020: a served OVER/XOVER range; fnn-owner-cursor-step
-under the owner mutex, one quantum per window the socket takes, so the
-mutex is held for at most one quantum between two writes): (values OCTETS
-PLAN-REST DONEP)."
+under the owner mutex, at most one quantum per mutex hold; sparse ranges
+can take several empty quanta before a write): (values OCTETS PLAN-REST
+DONEP)."
   (fnn-owner-render-next-quantum (fnn-mux-service loop) (fnn-mux-conn-cid conn) plan
                                  (fnn-mux-conn-class conn)
                                  (and (fnn-mux-conn-zout conn) t)))
@@ -449,6 +450,9 @@ contract, without blocking the loop)."
 ;; now only re-arms the idle timer: the running loop steps the rest of the
 ;; input, as the nested call did, in the same order.
 (defun fnn-mux-after (loop conn after)
+  ;; All windows, including a partial socket write's pending suffix, have
+  ;; drained.  A replacement catalog is now safe for this connection.
+  (fnn-owner-response-unpin (fnn-mux-service loop) (fnn-mux-conn-cid conn))
   (case after
     (:close (fnn-mux-begin-drain loop conn))
     (:starttls (fnn-mux-request-handshake loop conn))

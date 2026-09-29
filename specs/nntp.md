@@ -1808,6 +1808,29 @@ no-posters open: the open has no pending POST, and
 carried by the served path; it is theorem vocabulary, not a runtime
 whole-store check or an independent posting authority condition.
 
+## Resumable overview response ownership (PRF-1020, PRF-1059)
+
+OVER and XOVER range responses retain their original pinned view and range
+while the host writes the reply in scheduling quanta (RFC 3977 §8.3.2,
+RFC 2980 §2.8). Produced octets followed by the plan's residual rendering
+equal the original complete reply; a partial socket write retains its owned
+suffix and position. The connection owns one outstanding render plan,
+possibly containing several pipelined responses. It steps no subsequent
+input until that plan drains or is cancelled.
+
+Capture holds an arena-reader generation under the owner mutex, before
+the plan escapes. ACL2's `fn-rpin-step` owns the keyed hold and its
+multiplicity. The hold ends after every output window drains or the whole
+connection cancels, including service stop. Reclaim therefore refuses its
+catalog swap while a cursor still refers to the captured catalog; retirement
+retains its pages until that generation is settled. Web and pull consumers
+settle after rendering because their resulting byte vectors own the bytes.
+
+The current quantum bounds numbers probed and overview rows formatted.
+It still parses a complete article and formats a complete overview row;
+byte-budgeted long-row continuation remains an identified Q5c/J1 obligation.
+This ownership increment does not complete that resource claim.
+
 ## Public exposure (NNT-031)
 
 NNT-031: A reader port facing strangers admits, paces and closes connections within operator limits ACL2 decides, and an unauthenticated session under the none policy reaches no reader or posting command

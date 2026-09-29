@@ -1431,6 +1431,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-cold-line-tests \
 	books/arena-reader-pins \
 	tests/acl2/arena-reader-pins-tests \
+	books/response-plan-pins \
+	tests/acl2/response-plan-pins-tests \
 	books/feed-restart-domain \
 	tests/acl2/feed-restart-domain-tests \
 	books/web-request \

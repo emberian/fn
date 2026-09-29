@@ -17190,6 +17190,19 @@
           "name": "fn-bpnf-family-next-aux-answers-the-first-ready-row"
         }
       ]
+    },
+    {
+      "id": "PRF-1059",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rpin-step-preserves-funded-ownership"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rpin-acquire-holds-the-captured-generation"
+        }
+      ]
     }
   ]
 }
