@@ -180,6 +180,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-control-tests \
 	books/native-control-reason \
 	tests/acl2/native-control-reason-tests \
+	books/native-control-line \
+	tests/acl2/native-control-line-tests \
 	tests/acl2/native-control-host-tests \
 	books/native-live-status \
 	tests/acl2/native-live-status-tests \
@@ -291,6 +293,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/memory-credits-tests \
 	tests/acl2/heap-figure-tests \
 	tests/acl2/open-frontier-tests \
+	books/open-frontier-wire \
+	tests/acl2/open-frontier-wire-tests \
 	tests/acl2/limits-live-tests \
 	books/connection-budget \
 	tests/acl2/connection-budget-tests \

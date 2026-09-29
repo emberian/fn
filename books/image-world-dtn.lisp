@@ -111,6 +111,7 @@
 (include-book "heap-open-nursery")
 (include-book "heap-reservation")
 (include-book "store-intern")
+(include-book "open-frontier-wire")
 (include-book "store-recover-stream")
 (include-book "payload-commit-extent")
 (include-book "payload-extent-read")

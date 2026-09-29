@@ -16159,6 +16159,65 @@
         "tests/acl2/peer-set-tests.lisp"
       ],
       "progress_note": "Lane operability-3 (Claude Opus 5.5, 2026-09-29). REPL-admitted (persvati) over native-operator's closure; teeth in tests/acl2/peer-set-tests.lisp: positive witnesses for both keystones on the friend walk's record, a no-such-peer removal, a peer-add mutation that loses the pull row, a named-transport-flag removal, and the login file refused for differing entries, a spaced password and an empty login."
+    },
+    {
+      "id": "PRF-975",
+      "title": "A running node's limit decision reaches the operator as ACL2's printed line (FNCT reply kind 23), not one colon-joined word",
+      "statement": "books/native-control-line.lisp. KEYSTONE fn-native-control-printed-line-is-the-decisions: for every FNCT status and every LINE fn-ncline-line accepts (a non-empty string of printable ASCII 32..126, spaces allowed, at most 1,024 octets), the client's step (fn-native-control-lined-client-step of fn-native-control-lined-reply-read) on the reply the owner seals (fn-native-control-lined-reply-encode STATUS REASON LINE, kind 23) is (:status STATUS (fn-nctrl-reason-word REASON) (fn-ncline-line LINE)), and the printed detail (fn-native-control-lined-detail) is exactly the line's octets. fn-ncline-read-of-a-lineless-encode: with no line the reply is the reasoned reply (kind 18, PKT-453 (a)) and is read as before. Host: host/native/admin.lisp fnn-owner-limit-serialized answers (:reason STATUS (fn-lim-decision-reason D) (fn-lim-reply-line FIELD N D OPEN-MS VALUES FUNDED)), the decision sentence followed by the field's three values (PRF-996); host/native/control.lisp fnn-control-handle-client seals it through fn-native-control-host-lined-reply-encode (fnn-control-reply-octets); fnn-control-reasoned-exchange steps with fn-native-control-host-lined-client-step; host/native/operator-live.lisp fnn-operator-live-admin prints fn-native-control-host-lined-detail. Scope: the line's content is fn-lim-decision-line's (PRF-940); local policy, no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-038"
+      ],
+      "depends_on": [
+        "PRF-940"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/native-control-line.lisp",
+        "tests/acl2/native-control-line-tests.lisp"
+      ],
+      "progress_note": "Lanes limits-live-4 (book), limits-live-5 (teeth, host wiring, registry) 2026-09-29, row S1."
+    },
+    {
+      "id": "PRF-996",
+      "title": "Live limits keep three values: the requested policy, the funded limit the running process admits under, and the representation ceiling; a recorded change never funds",
+      "statement": "books/limits-live.lisp (GPT-6, planning/review-2026-09-29-gpt6-decisions.md section 7). KEYSTONE fn-lim-funded-after-decide: for every live decision D = fn-lim-decide FIELD N VALUES USE RUN-MB CORE NURSERY OBSERVATIONS OBSERVED and candidate C = fn-lim-apply-row VALUES FIELD N, the profile the owner serves afterwards (fn-lim-funded-after D FUNDED C) is FUNDED unless D is :applied, and on :applied it is C, admitted (fn-bs-profile-admittedp), with the store's use at most N, N at most the ceiling (fn-lim-ceiling FIELD) and D's heap figure at most RUN-MB. KEYSTONE fn-lim-resource-refusal-is-the-reservations: D's refusal class (fn-lim-refusal-class) is :resource exactly when FIELD is live, N is within the ceiling and the use, C is admitted, and the launcher's run reservation (fn-heap-status-decide C ...) answers no heap; policy (not live, below use) and representation (past the ceiling, invalid profile) refusals are never resource ones. fn-lim-decide refuses N past fn-lim-ceiling (the configuration delta's u32, fn-cfg-deltap; T also the txid width, A the article codec) by name, :above-representation-ceiling, before the profile or the machine is consulted; fn-lim-decide-accepted-keeps-use-within gains N <= the ceiling. Host: host/native/admin.lisp fnn-owner-limit-serialized installs (fn-lim-funded-after D FUNDED C) with FUNDED the owner's served profile and replies fn-lim-reply-line (the decision sentence; then `limit FIELD requested=R funded=U ceiling=C'); fnn-admin-execute-limit replies it with funded=none; host/native/heap.lisp fnn-lim-print-values prints fn-lim-values-lines for the three fields on an offline `status' (host/native/operator.lisp fnn-operator-status-once, :offline route). Scope: the running owner's `status'/`health' do not yet print the three values (NEXT: an FNLS :limits report kind the owner answers from its served profile); the start's own refusal is the launcher's reservation refusal (heap-reservation.lisp fn-heap-reserve-report-line), the same words this class names :resource. Local policy, no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-038"
+      ],
+      "depends_on": [
+        "PRF-940",
+        "PRF-975"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/limits-live.lisp",
+        "tests/acl2/limits-live-tests.lisp",
+        "tests/test_native_limits_live.py"
+      ],
+      "progress_note": "Lane limits-live-6 2026-09-29, row S1."
+    },
+    {
+      "id": "PRF-976",
+      "title": "The open's events fold over wire events is ACL2's and is the replay's frontier fold over the rows the intern makes of them",
+      "statement": "books/open-frontier-wire.lisp. Subject: fn-ofw-wire-next, called by host/native/io.lisp fnn-recover-suffix-intern and fnn-recover-log, host/store-open-host.lisp and host/store-write-host.lisp (it replaces the program-mode host fold fn-store-log-next-txid-of-events). KEYSTONE fn-ofw-wire-next-is-the-rows-next: for every keyring, natural generation and arena, when fn-intern-events of WS is not :bad, (fn-ofw-wire-next WS ACC) = (fn-ofr-events-next ROWS ACC) over the interned ROWS -- the events half of the frontier PRF-937's fn-ofr-replay-ok-frontier-admits reads (books/store-intern.lisp fn-intern-events-keep-coordinates: a row's txid is its wire event's; books/records-concrete.lisp fn-rcon-wire-event-txid-is-wire-event-txid). fn-ofw-wire-next-of-append: the fold over (append A B) is the fold of B over the fold of A, so the streamed open's chunk-by-chunk fold is the fold over the whole suffix. Scope: the chunks are the decoded records fn-srs-decode keeps; that they are exactly the suffix's records is books/store-recover-stream.lisp's.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-038"
+      ],
+      "depends_on": [
+        "PRF-937"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/open-frontier-wire.lisp",
+        "tests/acl2/open-frontier-wire-tests.lisp"
+      ],
+      "progress_note": "Lane limits-live-5 2026-09-29, row S1 item 4."
     }
   ]
 }

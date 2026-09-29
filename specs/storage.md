@@ -77,6 +77,20 @@ reading the configuration history or scanning the log before any fold
 (`max-config-generations`, `max-record-octets`, `max-open-suffix`) are not
 live; a lowered T lowers `max-open-suffix` with it as init's resolution does.
 No limit change moves data or needs an export and an import.
+Each live field has three distinct values (PRF-996): the requested policy
+(the configuration history's, `fn-lim-effective`), the funded limit the
+running process admits under (the profile its owner installed at its open or
+at an applied change), and the immutable representation ceiling
+(`fn-lim-ceiling`: the configuration delta's u32; T also the txid width, A the
+article codec). Admission reads the funded limit; a change recorded for the
+next start does not fund (`fn-lim-funded-after-decide`). A value past the
+ceiling is refused as the representation's (`above-representation-ceiling`);
+a refusal is classed policy, representation or resource, and is a resource
+refusal exactly when the reservation cannot hold the requested profile
+(`fn-lim-resource-refusal-is-the-reservations`), the same words a start that
+cannot fund its store refuses with. `policy set` replies with the decision
+and `limit FIELD requested=R funded=U ceiling=C`; an offline `status` prints
+that line for each field with `funded=none`.
 
 STO-015: a namespace the store holds is bounded by the operator's profile,
 never by a constant (D27). Configuration generations and AUTHINFO

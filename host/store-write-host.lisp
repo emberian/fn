@@ -639,7 +639,7 @@
           (stored (reverse (nth 6 replay))))
       (mv-let (decoded fold) (fn-lgb-decode-next chunk (nth 5 replay))
         (let ((next (if (consp decoded)
-                        (fn-store-log-next-txid-of-events decoded (nth 3 replay))
+                        (fn-ofw-wire-next decoded (nth 3 replay))
                       (nth 3 replay))))
           (mv-let (acc fn-arena)
             (cond ((not (fn-xw-some places)) (fn-srs-intern-step (nth 0 replay) decoded fn-arena))

@@ -630,10 +630,15 @@ nothing answers and nothing holds the lock."
                                        (fnn-operator-last-run result))))
          ;; Row S3: a stopped store's status is its checkpoint header's
          ;; (fnn-command-stopped-status); `--replay' asks for the replay.
-         (if (and (eq kind :status)
-                  (not (and result (fnn-core 'fn-omr-status-replayp result))))
-             (fnn-command-stopped-status root)
-           (fnn-command-live-report root kind)))
+         ;; Row S1 (limits-live): an answered status also prints the
+         ;; store's limit values (fnn-lim-print-values).
+         (let ((code (if (and (eq kind :status)
+                              (not (and result (fnn-core 'fn-omr-status-replayp result))))
+                         (fnn-command-stopped-status root)
+                       (fnn-command-live-report root kind))))
+           (when (and (eq kind :status) (eql code +fnn-exit-ok+))
+             (fnn-lim-print-values root))
+           code))
         (:refused +fnn-exit-refused+)
         (t +fnn-exit-uncertain+)))))
 

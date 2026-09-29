@@ -434,12 +434,26 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertIsNone(err, "a watermark at the bound starts")
         self.node.stop(process=process)
 
-    def test_a_running_owner_refuses_the_verb(self):
+    def test_a_running_owner_answers_the_request_and_the_offline_verb_is_refused(self):
+        """On a running owner, `operator ... store checkpoint' is PKT-868's
+        compaction request (host/native/operator.lisp
+        fnn-operator-execute-compaction -> host/native/admin.lisp
+        fnn-owner-compaction-request): the owner answers it by name and
+        publishes in place while serving.  This test formerly expected a
+        refusal, which predates PKT-868.  The offline `store checkpoint'
+        entry still takes the store lock, so it is refused while the owner
+        holds it and leaves the checkpoint file untouched."""
         self.init_with_checkpoint_at_three()
+        old = self.digest()
         self.node.start()
-        held = self.checkpoint()
-        self.assertNotEqual(held.returncode, EXIT_OK)
+        offline = self.checkpoint("store")
+        self.assertNotEqual(offline.returncode, EXIT_OK, offline.stdout.decode())
+        self.assertEqual(self.digest(), old)
+        asked = self.checkpoint("operator")
+        self.assertEqual(asked.returncode, EXIT_OK, asked.stderr.decode())
+        self.assertIn(b"requested", asked.stdout + asked.stderr)
         self.node.stop()
+        self.assertEqual(self.open_line(), "open=checkpoint:5 suffix=0")
 
 
 class StateCheckpointCutTests(StateCheckpointFixture):

@@ -2450,7 +2450,7 @@ decoded (fn-store-decode-records, which is fn-srs-decode) and interned by
 the guard-verified fn-srs-intern-step, as the full replay's chunks are.
 Answers (values ROWS ACC2): ROWS oldest first (fn-srs-rows), or :bad when
 the configuration history or any chunk does not decode or intern; ACC2 the
-txid fold (fn-store-log-next-txid-of-events) of every decoded event over
+txid fold (fn-ofw-wire-next) of every decoded event over
 ACC, or ACC when ROWS is :bad.
 
 Lane heap-bounds (row B3): the suffix was converted to octet lists and
@@ -2471,7 +2471,7 @@ fn-scka-recover-rows makes (books/store-checkpoint-arena.lisp)."
           (let ((decoded (funcall next)))
             (when (eq decoded :end) (return))
             (when (eq decoded :bad) (return-from fnn-recover-suffix-intern (values :bad acc)))
-            (setq fold (fnn-core 'fn-store-log-next-txid-of-events decoded fold)
+            (setq fold (fnn-core 'fn-ofw-wire-next decoded fold)
                   rows (first (fnn-call 'fn-srs-intern-step rows decoded (fnn-live-arena))))
             (when (eq rows :bad) (return-from fnn-recover-suffix-intern (values :bad acc)))))
         (values (fnn-core 'fn-srs-rows rows) fold))))
@@ -6599,7 +6599,7 @@ init completes, never truncates): the retry branch, not the program."
 (defun fnn-recover-log-stream-begin ()
   "The full replay of a history that arrives a record at a time: the replay
 begun (fnn-bridge-recover-begin), an empty chunk, its octet count, the
-next txid folded over the decoded chunks (fn-store-log-next-txid-of-events),
+next txid folded over the decoded chunks (fn-ofw-wire-next),
 the chunk's places, and (SIXTH) the log stream's txid fold over the current
 segment's records from 1, taken from the same decode (fn-lgb-decode-next) and
 handed to the stream at the segment's end (*fnn-log-stream-finish*).  The
@@ -6630,7 +6630,7 @@ placed record faithful at its place)."
       (setf (sixth replay) (second answer))
       (when (consp decoded)
         (setf (fourth replay)
-              (fnn-core 'fn-store-log-next-txid-of-events decoded (fourth replay))))
+              (fnn-core 'fn-ofw-wire-next decoded (fourth replay))))
       (unless (cond ((not (some #'identity places))
                      (fnn-bridge-recover-step (first replay) decoded))
                     ;; A chunk holding a compressed record (its stored octets

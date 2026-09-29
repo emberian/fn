@@ -918,9 +918,6 @@
 (definterface fn-store-log-next-txid-join
   :class ::program)
 
-(definterface fn-store-log-next-txid-of-events
-  :class ::program)
-
 (definterface fn-store-log-next-txid-step
   :class ::program)
 
