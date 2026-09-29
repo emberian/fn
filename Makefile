@@ -1045,6 +1045,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-log-ocl-tests \
 	books/config-owner-live-authorize \
 	tests/acl2/config-owner-live-authorize-tests \
+	books/store-number-bound \
+	books/store-number-projection \
+	tests/acl2/store-number-bound-tests \
 	books/owner-prepare-served \
 	books/store-prepare-served \
 	tests/acl2/store-prepare-served-tests \

@@ -13945,6 +13945,43 @@
         "fn-gacc-grow-builds",
         "fn-gac-view-entry-is-per-command"
       ]
+    },
+    {
+      "id": "PRF-921",
+      "title": "Admission keeps every group watermark within RFC 3977 section 6's bound, and the served projection follows from the Store's facts without counting articles",
+      "statement": "books/store-number-bound.lisp, books/store-number-projection.lisp, books/owner-prepare-served.lisp, books/store-prepare-served.lisp. The admission test is fn-snb-groups-fitp (each group's allocated number, bumped in the allocation's order, below 2,147,483,647) over the record's article (fn-snb-record-fitp: a held row or a signed composite's held row) at the Store's node. The host's article and identity prepares (host/owner-host.lisp fn-owner-prepare-buffer / fn-owner-prepare / fn-owner-prepare-identity via fn-pout-prepare-article / fn-pout-prepare-identity) are fn-psrv-prepare / fn-psrv-prepare-identity, which stage only where fn-psrv-event-servedp and fn-psrv-event-numberedp hold. KEYSTONE fn-psrv-prepare-refuses-exhausted: a served record whose numbers would pass the bound leaves the owner unchanged at every budget and is answered :article-numbers-exhausted (fn-psrv-refusal-kind, fn-psrv-identity-refusal-kind); the standalone Store's fn-psrv-store-prepare-refuses-exhausted likewise (host/store-node-host.lisp fn-store-sn-prepare). KEYSTONE fn-snb-replay-apply-record-keeps-nexts-bounded: fn-nntp-nexts-boundedp of the node's watermarks and fn-snb-record-fitp give fn-nntp-nexts-boundedp after fn-replay-apply-record (the node step of every durable record, live and at recovery), no other hypothesis; KEYSTONE fn-snb-replay-keeps-nexts-bounded: fn-replay of a history each of whose records fits at its own prefix (fn-snb-history-fitp) keeps them. KEYSTONE fn-snb-replayed-acceptance-is-projection: that replayed acceptance, a fn-statep with fn-nntp-safe-group-listp names, is fn-nntp-projectionp, whose whole-archive article-count conjunct is removed (fn-snb-projectionp-unfolds). NOT proved here: that the owner CARRIES the node's watermark bound and the in-flight candidate's fit through every host entry (the carried form of fn-snb-history-fitp); that is the owner-relation work of row Q3c / the fn-sjh-okp carrying of row J1.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-057"
+      ],
+      "depends_on": [
+        "PRF-290"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-number-bound.lisp",
+        "books/store-number-projection.lisp",
+        "books/owner-prepare-served.lisp",
+        "books/store-prepare-served.lisp",
+        "books/nntp-session.lisp",
+        "tests/acl2/store-number-bound-tests.lisp",
+        "tests/acl2/owner-prepare-served-tests.lisp",
+        "tests/acl2/owner-prepare-outcome-tests.lisp",
+        "tests/acl2/store-prepare-served-tests.lisp",
+        "tests/acl2/nntp-post-tests.lisp",
+        "planning/evidence/pkt-615-number-bound-2026-09-28.md"
+      ],
+      "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound.",
+      "events": [
+        "fn-snb-replay-apply-record-keeps-nexts-bounded",
+        "fn-snb-replay-keeps-nexts-bounded",
+        "fn-snb-replayed-acceptance-is-projection",
+        "fn-psrv-prepare-refuses-exhausted",
+        "fn-psrv-store-prepare-refuses-exhausted",
+        "fn-snb-nexts-boundedp-of-advance",
+        "fn-snb-projectionp-unfolds"
+      ]
     }
   ]
 }

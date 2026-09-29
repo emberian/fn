@@ -56,8 +56,25 @@ The reader now separates three things.
 
 **Configuration, decided once.** `fn-nntp-projectionp` is now a configuration
 recognizer: the acceptance state recognizer, group names that a response can
-render (nonempty printable US-ASCII, at most 460 octets), watermarks inside RFC
-3977 §6's range, and an article capacity of at most 2,147,483,647.
+render (nonempty printable US-ASCII, at most 460 octets), and watermarks inside
+RFC 3977 §6's range. (Until 2026-09-28 it also bounded the archive's whole
+article count by 2,147,483,647; §6 bounds numbers per group, not the store, and
+the count was an O(N) walk at every re-pin, so it is gone: PKT-615, NNT-057.)
+The watermarks are the admission's to keep, not the reader's to discover: RFC
+3977 §6 is a protocol bound, so an article whose number in any of its groups
+would take that group's watermark past 2,147,483,647 is refused by name
+(`:article-numbers-exhausted`; POST 441 with the reason, IHAVE 437, TAKETHIS
+439) and nothing is stored (`books/owner-prepare-served.lisp`
+`fn-psrv-prepare-refuses-exhausted`; the standalone Store's
+`fn-psrv-store-prepare-refuses-exhausted`). Every Store record so admitted keeps
+every watermark within the bound (`books/store-number-bound.lisp`
+`fn-snb-replay-apply-record-keeps-nexts-bounded`, and over a replayed history
+`fn-snb-replay-keeps-nexts-bounded`), so the replayed acceptance is a
+projection whenever it is a state with servable group names
+(`books/store-number-projection.lisp` `fn-snb-replayed-acceptance-is-projection`).
+The last number the bound leaves a group is 2,147,483,646: its watermark after
+is 2,147,483,647, which an emptied group renders as its low number
+(§6.1.1.2), so it must itself be an article number.
 `fn-nntp-open-session` evaluates it once, when the reader opens a connection
 (`host/reader-host.lisp` `fn-reader-reset`), and stores the verdict as the
 session's fourth field. `fn-nntp-step-preserves-carried-projection` states that
