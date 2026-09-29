@@ -181,3 +181,37 @@
 (assert-event (and (equal (cdr (fn-oop-transit-outcome *ohrt-b9* 0 :want nil :durable)) *ohrt-b9*)
                    (null (car (fn-oop-transit-outcome *ohrt-b9* 0 :want nil :durable)))
                    (fn-ocl-relation (cdr (fn-oop-transit-outcome *ohrt-b9* 0 :want nil :durable)))))
+
+; =============================================================================
+; The teeth owed by increment 1 (owner-relation): CHUNK, EXPOSURE OPEN (reader
+; arm) and FINISH-SYNCED, each a reachable positive witness asserting the
+; complete antecedent and the conclusion.
+; CHUNK (fn-ohr-chunk-preserves-ocl-relation): owner-served-carried-tests'
+; configured owner *scar-t-oc*, view indexed, connection 1's wire a wire
+; state; the carried read of "GROUP fn.live" keeps the relation.
+(assert-event (and (fn-ocl-relation *scar-t-oc*)
+                   (fn-scar-view-indexedp (fn-ocfg-owner *scar-t-oc*))
+                   (fn-wire-statep (fn-own-conn-wire (fn-own-find-conn 1 (fn-own-conns (fn-ocfg-owner *scar-t-oc*)))))
+                   (fn-ocl-relation (fn-own-tls-result-owner *scar-t-carried*))))
+; EXPOSURE OPEN, reader arm (fn-ohr-exposure-open-preserves-ocl-relation with
+; PEER nil): the host-called open admits connection 2 and keeps the relation.
+(defconst *ohrt-exp-lim* (fn-exp-lim-make 8 4 1000 600 600 3 8 nil))
+(assert-event (and (equal (fn-exp-open-id (fn-ocar-exp-open *ohrt-oc* (fn-exp-initial) *ohrt-exp-lim* nil nil '(:inet 127 0 0 1) 0)) 2)
+                   (fn-ocl-relation (fn-exp-open-ocfg (fn-ocar-exp-open *ohrt-oc* (fn-exp-initial) *ohrt-exp-lim* nil nil '(:inet 127 0 0 1) 0)))))
+; FINISH-SYNCED (fn-ohr-finish-synced-preserves-ocl-relation): the :completing
+; owner *ohrt-b8* above has nothing staged; fn-rix-ocfg-complete over a history
+; stobj loaded with the history it reads (fn-hist-of-storep by construction,
+; as owner-refresh-indexed-tests' helper) keeps the relation, reaches :ready
+; and is the carried completion's owner.
+(defun ohrt-rix-complete-h (oc)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))) 0 fn-hist)))
+        (mv (fn-rix-ocfg-complete oc fn-hist) fn-hist))
+      ans)))
+(assert-event (and (fn-ocl-relation *ohrt-b8*)
+                   (not (fn-ocfg-staged *ohrt-b8*))
+                   (fn-ocl-relation (ohrt-rix-complete-h *ohrt-b8*))
+                   (equal (fn-sf-phase (fn-sn-files (fn-own-store (fn-ocfg-owner (ohrt-rix-complete-h *ohrt-b8*))))) :ready)
+                   (equal (fn-ocfg-owner (ohrt-rix-complete-h *ohrt-b8*)) (fn-ocfg-owner *ohrt-b9*))))
