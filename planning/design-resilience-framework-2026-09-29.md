@@ -312,7 +312,25 @@ every step. This is executable model evidence, not certification or evidence
 about the served host. It does not yet cover two independent holds or a general
 IR-driven backend. Schedule plans and separate oracle records accompany the
 traces; the driver must consume every planned step exactly once before it
-accepts the result. The record-backed IR adapter is the next increment.
+accepts the result.
+
+The next increment executes a bounded acceptance-model IR through
+`tools/resilience/adapters/simulator.py`: its validated model-prepare,
+model-complete and model-recover operations are translated to calls of the
+actual ACL2 acceptance functions, not precomputed oracle replies. It retains
+the scenario, driver, source and launcher digests, raw output, sealed journal
+and shared checker verdict. The example observes stale completion delivery,
+an indeterminate completion, stale recovery, repeated recovery and a productive
+retry; a real healing suffix ends with no pending proposal or fence. Fault
+activation is recorded from the transition that executed with the named
+completion/generation, not inferred from a requested selector. The independent
+Python contract interpretation is explicitly a model check, with the composed
+fixture rule marked pending; the separate ACL2 oracle is also checked at every
+step. Native page buffers, descriptors and generation leases are outside this
+fixture. Two independent holds and broader lifecycle IR remain open. The
+tester mutations cover child death, missing operations, suppressed workload,
+disabled fault records, universal refusal, omitted terminal ownership,
+truncated journals, edited verdicts and corrupted oracle observations.
 The historical box failure was launcher configuration: the command replaced
 the real FN_ACL2 with tools/acl2, whose recursion refusal exited 2 before any
 scenario executed. Preserve that non-green result; it was not a model failure.
