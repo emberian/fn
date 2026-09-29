@@ -212,6 +212,7 @@
 (include-book "../../books/store-reclaim-stream")
 (include-book "../../books/store-log-reclaim")
 (include-book "../../books/reclaim-instant")
+(include-book "../../books/expiry-instant")
 (include-book "../../books/anchor-invariants")
 (include-book "../../books/owner-config")
 (include-book "../../books/owner-checkpoint-open")

@@ -12744,10 +12744,6 @@
         {
           "kind": "theorem",
           "name": "fn-heap-articles-octets-monotone"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-oas-refusal-line-follows-the-disk-unfolds"
         }
       ]
     },
@@ -13167,10 +13163,6 @@
         {
           "kind": "theorem",
           "name": "fn-xpy-classes-partition-the-articles"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-xpy-standing-verdict-without-expiry"
         },
         {
           "kind": "theorem",
