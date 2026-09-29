@@ -99,7 +99,19 @@ refusal exactly when the reservation cannot hold the requested profile
 (`fn-lim-resource-refusal-is-the-reservations`), the same words a start that
 cannot fund its store refuses with. `policy set` replies with the decision
 and `limit FIELD requested=R funded=U ceiling=C`; an offline `status` prints
-that line for each field with `funded=none`.
+that line for each field with `funded=none`. Its inexpensive stopped report
+retains the sealed header's profile; `status --replay` opens the history and
+reports its effective limits. A restart installs that effective profile as
+both requested and funded. The live-limit parser accepts canonical decimal
+naturals including values beyond u32 so `fn-lim-decide` names the representation
+ceiling; malformed numbers remain a parser refusal.
+Replay admits a record under the history at its position, never under a
+limit value (PRF-1026, `fn-rhl-extend-open-is-limit-free`): the open's
+configuration fold is the same, up to the configuration's limits, for two
+histories that differ only in their `:set-limit` values, so an article
+accepted before A is lowered below its size is replayed after the lowering.
+What replay decides historically is the retention capacity (`:set-capacity`),
+carried in the node.
 
 STO-015: a namespace the store holds is bounded by the operator's profile,
 never by a constant (D27). Configuration generations and AUTHINFO

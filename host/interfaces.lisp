@@ -1609,6 +1609,12 @@
 (definterface fn-owner-known-abort
   :class :common-lisp-compliant)
 
+(definterface fn-owner-limit-carried
+  :class ::program)
+
+(definterface fn-owner-limit-decided
+  :class ::program)
+
 (definterface fn-owner-live-post-config
   :class :common-lisp-compliant)
 
@@ -4017,10 +4023,6 @@
 ;; books/limits-live.lisp
 
 ; host/native/admin.lisp dispatches it (lane limits-live).
-(definterface fn-lim-apply-row
-  :class ::common-lisp-compliant)
-
-; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-lim-decide
   :class ::common-lisp-compliant)
 
@@ -4031,10 +4033,6 @@
 ; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-lim-decision-status
   :class ::common-lisp-compliant)
-
-; host/native/admin.lisp dispatches it (lane limits-live).
-(definterface fn-lim-funded-after
-  :class :common-lisp-compliant)
 
 ; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-lim-reply-line
