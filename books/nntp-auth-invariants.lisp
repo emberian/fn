@@ -906,16 +906,42 @@
                             (creds (fn-auth-config-creds
                                     (fn-auth-session-config as)))))))))
 
+; A kept SASL exchange is never a credential's name: a credential's name is
+; a printable token (octets), an exchange state a keyword-tagged list.  So
+; the flag premise of the keystone below already excludes a kept exchange,
+; and it needs no not-waiting premise.
+(local
+ (defthm fn-auth-sasl-state-is-not-a-printable-token
+   (implies (fn-sasl-statep p) (not (fn-nntp-printable-tokenp p)))
+   :hints (("Goal" :in-theory (enable fn-sasl-statep fn-nntp-printable-tokenp)))))
+
+(local
+ (defthm fn-auth-find-cred-of-a-sasl-state
+   (implies (and (fn-auth-cred-listp creds) (fn-sasl-statep n))
+            (not (fn-auth-find-cred n creds)))
+   :hints (("Goal" :induct (fn-auth-find-cred n creds)
+                   :in-theory (enable fn-auth-find-cred fn-auth-cred-listp
+                                      fn-auth-credp)))))
+
+(defthm fn-auth-sasl-waiting-finds-no-credential
+  (implies (and (fn-auth-sessionp as) (fn-auth-sasl-waitingp as))
+           (not (fn-auth-find-cred (fn-auth-session-pending as)
+                                   (fn-auth-config-creds
+                                    (fn-auth-session-config as)))))
+  :hints (("Goal" :in-theory (enable fn-auth-sessionp fn-auth-configp
+                                     fn-auth-sasl-waitingp))))
+
 ; KEYSTONE (c3).  An authenticated principal whose credential carries the
 ; posting flag is not refused here: the step is exactly the delegation to the
 ; pinned reader/injection path.  No command-bound premise: a POST line the
 ; preflight refuses is delegated as well, so the conclusion holds of it.
 ; The subject premise is not written either; the fourth premise forces it,
 ; because a credential found in a session's configuration names a principal.
+; No not-waiting premise: the flag premise excludes a kept exchange
+; (fn-auth-sasl-waiting-finds-no-credential).
 (defthm fn-auth-step-pinned-post-by-a-principal-with-the-flag-is-delegated
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
-                (not (fn-auth-sasl-waitingp as))
                 (fn-auth-cred-postingp
                  (fn-auth-find-cred (fn-auth-session-pending as)
                                     (fn-auth-config-creds
@@ -945,7 +971,8 @@
                             fn-nntp-tokenize fn-nntp-command-inputp
                             fn-nntp-command-arguments-at-mostp))
            :use ((:instance fn-auth-served-posting-cred-has-a-principal
-                            (name (fn-auth-session-pending as)))))))
+                            (name (fn-auth-session-pending as)))
+                 (:instance fn-auth-sasl-waiting-finds-no-credential)))))
 
 (deftheory fn-auth-served-vocabulary
   '((:d fn-auth-no-posting-credsp) (:d fn-auth-config-no-postersp)
