@@ -57,6 +57,8 @@
           (ns (fn-post-session-base pst)))
      (and (fn-auth-sessionp ,as)
           (not (fn-auth-session-handshakingp ,as))
+          ;; NNT-056: no SASL exchange kept (else the line is its response)
+          (not (fn-auth-sasl-waitingp ,as))
           (not (fn-auth-gatedp ,as (car ,tokens)))
           (fn-peer-sessionp ps)
           (null (fn-peer-session-peer ps))

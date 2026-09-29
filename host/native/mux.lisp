@@ -731,12 +731,19 @@ handshake."
               (fnn-mux-conn-want conn) nil
               (fnn-mux-conn-hs-deadline conn) nil)
         (decf (fnn-mux-loop-handshaking loop))
-        (fnn-owner-serialized
-         service cid
-         (lambda ()
-           (unless (eq (fnn-owner-action 'fn-owner-tls-established cid) :ok)
-             (fnn-fault "owner rejected established TLS")))
-         (fnn-mux-conn-class conn))
+        ;; RFC 4643 2.4 over TLS: a fresh seed and the RFC 9266 tls-exporter
+        ;; value, read off the mutex; the context follows the established
+        ;; event, since the STARTTLS 382 cleared the old one.
+        (let ((seed (fnn-owner-sasl-seed))
+              (binding (fnn-tls-exporter (fnn-mux-conn-channel conn)
+                                         (fnn-core 'fn-owner-sasl-binding-octets))))
+          (fnn-owner-serialized
+           service cid
+           (lambda ()
+             (unless (eq (fnn-owner-action 'fn-owner-tls-established cid) :ok)
+               (fnn-fault "owner rejected established TLS"))
+             (fnn-owner-sasl-context cid seed binding))
+           (fnn-mux-conn-class conn)))
         (fnn-mux-start-waiting-handshake loop)
         (let ((greeting (fnn-mux-conn-greeting conn)))
           (setf (fnn-mux-conn-greeting conn) nil)
@@ -776,8 +783,12 @@ handshake."
 (defun fnn-mux-admit (loop conn)
   "The accept: the peer's address, then ACL2's admission and open in one
 call (books/public-exposure.lisp fn-exp-open), as the worker did it."
-  (let ((service (fnn-mux-service loop))
-        (socket (fnn-mux-conn-socket conn)))
+  (let* ((service (fnn-mux-service loop))
+         (socket (fnn-mux-conn-socket conn))
+         ;; A plaintext connection's SASL context (no binding), read off the
+         ;; mutex; an implicit-TLS one gets its context after the handshake
+         ;; (fnn-mux-handshake-step), before its first read either way.
+         (seed (and (not (fnn-mux-conn-implicit-tls conn)) (fnn-owner-sasl-seed))))
     (multiple-value-bind (family address) (fnn-owner-socket-address service socket)
       (multiple-value-bind (opened greeting peerp)
           (fnn-owner-serialized
@@ -790,11 +801,15 @@ call (books/public-exposure.lisp fn-exp-open), as the worker did it."
                                          family address)))
                (unless (or (null peer) (fnn-octet-list-p peer))
                  (fnn-fault "owner returned a malformed peer identity"))
-               (let ((opened (fnn-owner-core 'fn-owner-exposure-open
-                                             family address peer)))
+               (let* ((opened (fnn-owner-core 'fn-owner-exposure-open
+                                              family address peer))
+                      ;; The greeting before the context's step replaces
+                      ;; fn-owner-output (it emits no reply).
+                      (greeting (fnn-owner-octets-global 'fn-owner-output)))
                  (when opened (fnn-owner-log))
-                 (values opened (fnn-owner-octets-global 'fn-owner-output)
-                         (and peer t)))))
+                 (when (and seed (integerp opened))
+                   (fnn-owner-sasl-context opened seed nil))
+                 (values opened greeting (and peer t)))))
            ;; The open arrived on the served socket: a reader quantum.  The
            ;; connection's later quanta carry its class (ACL2 named a peer:
            ;; :transit).

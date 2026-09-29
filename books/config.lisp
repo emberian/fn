@@ -546,8 +546,9 @@
 ; written only by :account-invite and :account-redeem (specs/nntp.md,
 ; "Invitation-code accounts").  A pending row is
 ; (DIGEST-HEX ISSUER EXPIRY-DECIMAL 0); a redeemed row is
-; (DIGEST-HEX LOGIN VERIFIER-HEX 1), VERIFIER-HEX the 96 hexadecimal
-; characters of the books/auth-secret.lisp verifier's salt and digest.  A row
+; (DIGEST-HEX LOGIN VERIFIER-HEX 1), VERIFIER-HEX the 224 hexadecimal
+; characters of the books/auth-secret.lisp verifier's salt, digest and
+; SCRAM-SHA-256 StoredKey and ServerKey (verifier v2, NNT-056).  A row
 ; is never removed, so a code is issued once and redeemed at most once, and
 ; the redeemed rows are the second producer of the reader's credential table
 ; (books/accounts.lisp).
@@ -1260,8 +1261,8 @@
 ;; DIGEST is the 64 lowercase hexadecimal characters of the crypto seam's
 ;; tagged SHA-256 digest of the code (books/accounts.lisp
 ;; `fn-acct-code-digest'); EXPIRY the decimal wall-clock second from which
-;; the code is refused; VERIFIER the 96 hexadecimal characters of a
-;; books/auth-secret.lisp verifier's salt and digest.  The plans that build
+;; the code is refused; VERIFIER the 224 hexadecimal characters of a
+;; books/auth-secret.lisp verifier's salt, digest, StoredKey and ServerKey.  The plans that build
 ;; these deltas are books/accounts.lisp's.
 (defun fn-cfg-decimal-octetsp (xs)
   (declare (xargs :guard t))
@@ -1318,7 +1319,7 @@
 
 (defun fn-cfg-account-verifier-hexp (text)
   (declare (xargs :guard t))
-  (fn-cfg-hex-textp text 96))
+  (fn-cfg-hex-textp text 224))
 
 (defun fn-cfg-account-invite (digest issuer expiry)
   (declare (xargs :guard t))

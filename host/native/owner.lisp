@@ -286,6 +286,19 @@ after it."
       (fnn-fault "owner returned non-action from ~a" name))
     value))
 
+;;; The SASL context of a served connection (books/nntp-auth.lisp
+;;; (:sasl-context SEED BINDING); host/owner-host.lisp fn-owner-sasl-context).
+;;; The seed is read from the OS CSPRNG off the owner mutex, at ACL2's width;
+;;; installing it is one owner action under the caller's quantum.
+(defun fnn-owner-sasl-seed ()
+  "Fresh CSPRNG octets for one connection's SCRAM server nonces."
+  (fnn-csprng-octets (fnn-core 'fn-owner-sasl-seed-octets) "SASL seed"))
+
+(defun fnn-owner-sasl-context (cid seed binding)
+  "Install CID's SASL context; the caller holds the owner mutex."
+  (unless (eq (fnn-owner-action 'fn-owner-sasl-context cid seed binding) :ok)
+    (fnn-fault "owner rejected the SASL context")))
+
 (defun fnn-owner-arena-action (name &rest args)
   "fnn-owner-action for an owner entry that reads or seals the payload arena
 (the records flip: the duplicate test reads stored bytes by handle)."

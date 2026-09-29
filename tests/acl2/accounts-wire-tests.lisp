@@ -80,14 +80,14 @@
 ; H2 removed: a holding session answers nothing.
 (defconst *awt-held*
   (fn-auth-make-session (fn-auth-session-base *awt-prot*) *awt-protected*
-                        nil nil nil t nil))
+                        nil nil nil t nil nil))
 (assert-event (and (fn-auth-sessionp *awt-held*)
                    (fn-auth-session-handshakingp *awt-held*)
                    (not (awt-483-concl *awt-held* *awt-redeem*))))
 ; H3 removed: an authenticated session is answered 502.
 (defconst *awt-authed*
   (fn-auth-make-session (fn-auth-session-base *awt-prot*) *awt-protected*
-                        nil (make-list 32 :initial-element 7) nil nil nil))
+                        nil (make-list 32 :initial-element 7) nil nil nil nil))
 (assert-event (and (fn-auth-sessionp *awt-authed*)
                    (fn-auth-session-subject *awt-authed*)
                    (equal (fn-post-result-effects
@@ -110,7 +110,7 @@
 ; section 2.2.2), not 483.  Reachable by a source-address peer connection.
 (defconst *awt-compressed*
   (fn-auth-make-session (fn-auth-session-base *awt-prot*) *awt-protected*
-                        nil nil nil nil '(:active :deflate)))
+                        nil nil nil nil '(:active :deflate) nil))
 (assert-event (and (fn-auth-sessionp *awt-compressed*)
                    (fn-zc-activep (fn-auth-session-compress *awt-compressed*))
                    (equal (fn-post-result-effects
@@ -152,7 +152,7 @@
 ; the cached exchange is refused 483 and nothing is held.
 (defconst *awt-381-clear*
   (fn-auth-make-session (fn-auth-session-base *awt-prot*) *awt-protected*
-                        (fn-auth-session-pending *awt-381*) nil nil nil nil))
+                        (fn-auth-session-pending *awt-381*) nil nil nil nil nil))
 (assert-event (and (fn-auth-sessionp *awt-381-clear*)
                    (not (fn-auth-redeem-waitp
                          (fn-post-result-session
@@ -199,7 +199,7 @@
 (defconst *awt-381-compressed*
   (fn-auth-make-session (fn-auth-session-base *awt-381*) (fn-auth-session-config *awt-381*)
                         (fn-auth-session-pending *awt-381*) nil
-                        (fn-auth-session-tlsp *awt-381*) nil '(:active :deflate)))
+                        (fn-auth-session-tlsp *awt-381*) nil '(:active :deflate) nil))
 (assert-event (and (fn-auth-sessionp *awt-381-compressed*)
                    (equal (fn-post-result-effects
                            (in-arena-awt-step *sr-arena* *awt-381-compressed* (awt-cmd *awt-pass*)))

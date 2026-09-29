@@ -169,7 +169,7 @@
 ; is served until the handshake ends.
 (defconst *nht-handshaking*
   (fn-auth-make-session (fn-auth-session-base *nht-s*)
-                        (fn-auth-session-config *nht-s*) nil nil nil t nil))
+                        (fn-auth-session-config *nht-s*) nil nil nil t nil nil))
 (assert-event (in-arena-nht-retained-but *sr-arena* 2 *nht-handshaking* *nht-xpath*))
 (assert-event (null (fn-post-result-effects (in-arena-nht-step *sr-arena* *nht-handshaking* *nht-xpath*))))
 ; (4) awaiting a POST body: after 340 the next line is article data.

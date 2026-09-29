@@ -104,7 +104,9 @@
 (defconst *au-digest*
   '(42 82 187 10 181 221 230 125 199 188 135 91 193 55 205 245
     177 50 208 139 71 236 67 86 54 24 223 76 55 144 61 51))
-(defconst *au-verifier* (fn-authsec-verifier *au-salt* *au-digest*))
+(defconst *au-verifier* (fn-authsec-verifier *au-salt* *au-digest*
+                     (car (fn-scram-keys *au-secret* *au-salt* 4096))
+                     (cadr (fn-scram-keys *au-secret* *au-salt* 4096))))
 (assert-event (equal *au-verifier* (fn-authsec-enrol *au-salt* *au-secret*)))
 (assert-event (fn-authsec-verifierp *au-verifier*))
 (assert-event (not (fn-cbor-octet-listp *au-verifier*)))
@@ -126,7 +128,9 @@
 (defconst *au-digest-ro*
   '(157 10 51 45 80 59 232 56 203 127 1 240 240 207 113 96
     173 125 217 47 2 249 4 17 4 12 204 53 48 56 55 153))
-(defconst *au-verifier-ro* (fn-authsec-verifier *au-salt-ro* *au-digest-ro*))
+(defconst *au-verifier-ro* (fn-authsec-verifier *au-salt-ro* *au-digest-ro*
+                     (car (fn-scram-keys (fn-nntp-string-octets "guest-pass") *au-salt-ro* 4096))
+                     (cadr (fn-scram-keys (fn-nntp-string-octets "guest-pass") *au-salt-ro* 4096))))
 (assert-event (equal *au-verifier-ro*
                      (fn-authsec-enrol *au-salt-ro*
                                        (fn-nntp-string-octets "guest-pass"))))
@@ -394,10 +398,15 @@
 (assert-event (equal (in-arena-au-reply *sr-arena* (au-authed) "AUTHINFO USER reader")
                      (au-single "502 already authenticated")))
 
-; Section 2.4: SASL is deferred, not refused.  502, and the capability block
-; never carries a SASL argument.
+; Section 2.4 (NNT-056): PLAIN requires a TLS layer (483 before it), and a
+; connection the host installed no SASL context on offers no SCRAM (503).
+; The exchanges themselves are tests/acl2/nntp-auth-sasl-tests.lisp.
 (assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "AUTHINFO SASL PLAIN")
-                     (au-single "502 no SASL mechanism is offered")))
+                     (au-single "483 a protected channel is required; use STARTTLS")))
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "AUTHINFO SASL SCRAM-SHA-256")
+                     (au-single "503 mechanism not recognized")))
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "AUTHINFO SASL X-UNKNOWN")
+                     (au-single "503 mechanism not recognized")))
 (assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "AUTHINFO")
                      (au-single "501 syntax error")))
 (assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "AUTHINFO USER")
@@ -585,11 +594,12 @@
         (au-block "101 capability list follows"
                   (append *au-reader-lines*
                           '("STARTTLS" "AUTHINFO USER")))))
-; Under TLS, still unauthenticated: STARTTLS gone, AUTHINFO USER kept.
+; Under TLS, still unauthenticated: STARTTLS gone, AUTHINFO USER kept, and
+; SASL offered with PLAIN (no SASL context installed, so no SCRAM).
 (assert-event
  (equal (in-arena-au-reply *sr-arena* *au-s-req-tls* "CAPABILITIES")
         (au-block "101 capability list follows"
-                  (append *au-reader-lines* '("AUTHINFO USER")))))
+                  (append *au-reader-lines* '("AUTHINFO USER SASL" "SASL PLAIN")))))
 ; Authenticated: AUTHINFO USER gone, POST present because this principal may
 ; post, STARTTLS still offered because this connection is not yet protected,
 ; and COMPRESS DEFLATE (RFC 8054) now that a login has been made.
@@ -686,17 +696,17 @@
 ; false and a certificate configured, the label IS in the list, so the
 ; theorem is not vacuous.
 (assert-event (member-equal (fn-nntp-string-octets "STARTTLS")
-                            (fn-auth-capability-lines *au-required* nil nil t)))
+                            (fn-auth-capability-lines *au-required* nil nil t nil)))
 (assert-event (not (member-equal (fn-nntp-string-octets "STARTTLS")
-                                 (fn-auth-capability-lines *au-required* nil t t))))
+                                 (fn-auth-capability-lines *au-required* nil t t nil))))
 
 ; fn-auth-authinfo-is-not-advertised-once-authenticated.  Hypothesis subject:
 ; with it nil the label IS in the list.
 (assert-event (member-equal (fn-nntp-string-octets "AUTHINFO USER")
-                            (fn-auth-capability-lines *au-required* nil nil t)))
+                            (fn-auth-capability-lines *au-required* nil nil t nil)))
 (assert-event (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                                  (fn-auth-capability-lines *au-required*
-                                                           *au-principal* nil t))))
+                                                           *au-principal* nil t nil))))
 
 ; fn-auth-pass-accepts-only-a-checking-secret (books/nntp-auth.lisp:1372;
 ; the name here was the pre-rename one and matched nothing).  Note what

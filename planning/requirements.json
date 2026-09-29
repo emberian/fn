@@ -5160,7 +5160,9 @@
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-915"
+        "PRF-915",
+        "PRF-916",
+        "PRF-917"
       ],
       "verification": [
         "proof",
@@ -5171,7 +5173,13 @@
         "books/hmac-sha256.lisp",
         "books/scram.lisp",
         "tests/acl2/hmac-sha256-tests.lisp",
-        "tests/acl2/scram-tests.lisp"
+        "tests/acl2/scram-tests.lisp",
+        "books/sasl.lisp",
+        "books/auth-secret.lisp",
+        "books/nntp-auth.lisp",
+        "books/nntp-auth-roles.lisp",
+        "tests/acl2/nntp-auth-sasl-tests.lisp",
+        "tests/test_native_sasl.py"
       ],
       "implementation_note": "RFC 4643 section 2.4 with PLAIN (RFC 4616), SCRAM-SHA-256 (RFC 5802, RFC 7677) and SCRAM-SHA-256-PLUS (RFC 9266 tls-exporter). DIGEST-MD5 (RFC 4643's mandatory mechanism) is not implemented: RFC 6331 made it Historic. Increment 1 (lane sasl): the HMAC-SHA-256/PBKDF2 and SCRAM mechanism books. Increment 2: the exchange (books/sasl.lisp), verifier v2 and the served AUTHINFO SASL arm."
     },

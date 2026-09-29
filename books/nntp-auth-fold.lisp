@@ -9,6 +9,40 @@
 ;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
 (local (in-theory (disable (tau-system))))
 
+; AUTHINFO SASL (NNT-056) keeps the pinned configuration too.
+(local (defthm fn-auth-fold-sasl-finish-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session (fn-auth-sasl-finish as st response)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-finish fn-auth-sasl-refuse
+                                   fn-auth-bind-principal-peer fn-auth-with-base)
+                                  (fn-auth-single fn-auth-find-cred fn-sasl-step
+                                   fn-sasl-response-login fn-auth-sasl-effects
+                                   fn-auth-sasl-line-okp fn-auth-principal-match
+                                   fn-node-statep))))))
+
+(local (defthm fn-auth-fold-sasl-command-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session (fn-auth-sasl-command as margs)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-command fn-auth-sasl-refuse)
+                                  (fn-auth-sasl-finish fn-auth-sasl-decode
+                                   fn-auth-single fn-sasl-mech fn-sasl-offeredp))))))
+
+(local (defthm fn-auth-fold-sasl-continue-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session (fn-auth-sasl-continue as line)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-continue fn-auth-sasl-refuse)
+                                  (fn-auth-sasl-finish fn-auth-sasl-decode
+                                   fn-auth-single))))))
+
+(local (defthm fn-auth-fold-install-context-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session (fn-auth-install-context as wire-event)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (enable fn-auth-install-context)))))
+
 (local
  (defthm fn-auth-fold-authinfo-keeps-the-config
    (equal (fn-auth-session-config
@@ -574,6 +608,57 @@
           (fn-auth-fold-post-awaiting as))
    :hints (("Goal" :in-theory (enable fn-auth-fold-post-awaiting)))))
 
+; AUTHINFO SASL (NNT-056) keeps the base session's POST state: its arms
+; rebuild the pending, subject and context fields, and a login binds a role
+; only through fn-auth-bind-principal-peer, which keeps the POST base.
+(local
+ (defthm fn-auth-fold-sasl-finish-keeps-post-awaiting
+   (equal (fn-post-session-awaiting
+           (fn-peer-session-base
+            (fn-auth-session-base
+             (fn-post-result-session (fn-auth-sasl-finish as st response)))))
+          (fn-post-session-awaiting
+           (fn-peer-session-base (fn-auth-session-base as))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-auth-sasl-finish fn-auth-sasl-refuse fn-auth-bind-principal-peer
+                   fn-auth-with-base fn-auth-fold-post-awaiting)
+                 (fn-auth-single fn-auth-find-cred fn-sasl-step fn-sasl-response-login
+                  fn-auth-sasl-effects fn-auth-sasl-line-okp
+                  fn-auth-principal-match fn-node-statep))))))
+
+(local
+ (defthm fn-auth-fold-sasl-command-keeps-post-awaiting
+   (equal (fn-post-session-awaiting
+           (fn-peer-session-base
+            (fn-auth-session-base (fn-post-result-session (fn-auth-sasl-command as margs)))))
+          (fn-post-session-awaiting
+           (fn-peer-session-base (fn-auth-session-base as))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-auth-sasl-command fn-auth-sasl-refuse fn-auth-fold-post-awaiting)
+                 (fn-auth-sasl-finish fn-auth-sasl-decode fn-auth-single
+                  fn-sasl-mech fn-sasl-offeredp))))))
+
+(local
+ (defthm fn-auth-fold-sasl-continue-keeps-post-awaiting
+   (equal (fn-post-session-awaiting
+           (fn-peer-session-base
+            (fn-auth-session-base (fn-post-result-session (fn-auth-sasl-continue as line)))))
+          (fn-post-session-awaiting
+           (fn-peer-session-base (fn-auth-session-base as))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-auth-sasl-continue fn-auth-sasl-refuse fn-auth-fold-post-awaiting)
+                 (fn-auth-sasl-finish fn-auth-sasl-decode fn-auth-single))))))
+
+(local
+ (defthm fn-auth-fold-install-context-keeps-post-awaiting
+   (equal (fn-post-session-awaiting
+           (fn-peer-session-base
+            (fn-auth-session-base (fn-post-result-session (fn-auth-install-context as wire-event)))))
+          (fn-post-session-awaiting
+           (fn-peer-session-base (fn-auth-session-base as))))
+   :hints (("Goal" :in-theory (enable fn-auth-install-context
+                                      fn-auth-fold-post-awaiting)))))
+
 (local
  (defthm fn-auth-fold-authinfo-keeps-post-awaiting
    (equal (fn-auth-fold-post-awaiting
@@ -583,7 +668,7 @@
             (e/d (fn-auth-authinfo fn-auth-bind-principal-peer
                    fn-auth-with-base fn-auth-fold-post-awaiting)
                  (fn-auth-single fn-auth-find-cred fn-auth-checkp
-                  fn-auth-token-argp fn-nntp-keywordp
+                  fn-auth-token-argp fn-nntp-keywordp fn-auth-sasl-command
                   fn-auth-principal-match fn-node-statep))))))
 
 (local
@@ -639,7 +724,7 @@
            (e/d (fn-auth-step-pinned fn-auth-tls-eventp
                   fn-auth-tls-established
                   fn-auth-fold-post-awaiting)
-                (fn-auth-delegate-pinned fn-auth-command
+                (fn-auth-delegate-pinned fn-auth-command fn-auth-sasl-continue fn-auth-install-context
                  fn-auth-authinfo fn-auth-starttls
                  fn-nntp-tokenize
                  fn-nntp-keywordp fn-nntp-command-inputp
@@ -667,7 +752,7 @@
                             fn-auth-tls-established
                             fn-auth-fold-post-awaiting
                             fn-served-post-command-eventp)
-                           (fn-auth-delegate-pinned fn-auth-command
+                           (fn-auth-delegate-pinned fn-auth-command fn-auth-sasl-continue fn-auth-install-context
                             fn-auth-postingp fn-nntp-tokenize))
            :use ((:instance fn-auth-fold-auth-step-starts-post-awaiting-only-on-post)
                  (:instance fn-auth-no-posters-means-no-posting)

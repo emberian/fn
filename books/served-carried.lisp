@@ -76,7 +76,8 @@
            (fn-prin-idp (fn-auth-session-subject x)))
        (booleanp (fn-auth-session-tlsp x))
        (booleanp (fn-auth-session-handshakingp x))
-       (fn-zc-statep (fn-auth-session-compress x))))
+       (fn-zc-statep (fn-auth-session-compress x))
+       (fn-auth-ctxp (fn-auth-session-ctx x))))
 
 (defthm fn-scar-auth-sessionp-is-auth-sessionp
   (implies (fn-node-statep live)
@@ -163,6 +164,11 @@
    ((and (fn-auth-redeem-eventp wire-event) (fn-auth-redeem-waitp as))
     (fn-auth-redeem-outcome as wire-event))
    ((fn-auth-session-handshakingp as) (fn-post-make-result as nil nil))
+   ((fn-auth-context-eventp wire-event) (fn-auth-install-context as wire-event))
+   ((and (fn-auth-sasl-waitingp as)
+         (consp wire-event) (equal (car wire-event) :command)
+         (consp (cdr wire-event)) (null (cdr (cdr wire-event))))
+    (fn-auth-sasl-continue as (car (cdr wire-event))))
    ((and (consp wire-event)
          (equal (car wire-event) :command)
          (consp (cdr wire-event))
@@ -187,7 +193,7 @@
            (equal (fn-scar-auth-step-pinned as live trie arts archive index verdicts config observation injection wire-event fn-arena)
                   (fn-auth-step-pinned as archive index verdicts config observation injection wire-event fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-auth-step-pinned fn-auth-step-pinned)
-                                  (fn-midx-correspondencep fn-scar-auth-sessionp fn-auth-sessionp fn-scar-auth-delegate-pinned fn-auth-delegate-pinned fn-auth-command fn-auth-tls-established fn-auth-redeem-outcome fn-node-statep)))))
+                                  (fn-midx-correspondencep fn-scar-auth-sessionp fn-auth-sessionp fn-scar-auth-delegate-pinned fn-auth-delegate-pinned fn-auth-command fn-auth-tls-established fn-auth-redeem-outcome fn-auth-install-context fn-auth-sasl-continue fn-node-statep)))))
 
 ; The dispatch proper (fn-served-dispatch-core carried); fn-scar-dispatch
 ; below puts NNT-042's advance in front of it exactly as fn-served-dispatch does.

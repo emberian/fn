@@ -184,9 +184,9 @@
 (defconst *mdt-cfg*
   (fn-inj-make-config-closed t *mdt-agent* *mdt-groups* 32768 (list *mdt-entry*)))
 (defconst *mdt-alice-session*
-  (fn-auth-make-session nil nil (mdt-o "alice") '(:principal) nil nil nil))
+  (fn-auth-make-session nil nil (mdt-o "alice") '(:principal) nil nil nil nil))
 (defconst *mdt-carol-session*
-  (fn-auth-make-session nil nil (mdt-o "carol") '(:principal) nil nil nil))
+  (fn-auth-make-session nil nil (mdt-o "carol") '(:principal) nil nil nil nil))
 (defconst *mdt-alice-cfg* (fn-auth-moderation-config *mdt-alice-session* *mdt-cfg*))
 (defconst *mdt-approver-entry*
   (list :approver (mdt-o "fn.mod") (mdt-o "fn.queue")))
@@ -194,7 +194,7 @@
 ; carol and an unauthenticated session approve nothing.
 (assert-event (equal (fn-auth-moderation-config *mdt-carol-session* *mdt-cfg*) *mdt-cfg*))
 (assert-event (equal (fn-auth-moderation-config
-                      (fn-auth-make-session nil nil (mdt-o "alice") nil nil nil nil)
+                      (fn-auth-make-session nil nil (mdt-o "alice") nil nil nil nil nil)
                       *mdt-cfg*)
                      *mdt-cfg*))
 
@@ -441,7 +441,7 @@
 (defconst *mdt-as-anon* (fn-auth-open-session *mdt-state* nil nil nil *mdt-acfg* nil))
 (defun mdt-logged-in (name)
   (fn-auth-make-session (fn-auth-session-base *mdt-as-anon*) *mdt-acfg*
-                        (mdt-o name) (make-list 32 :initial-element 7) nil nil nil))
+                        (mdt-o name) (make-list 32 :initial-element 7) nil nil nil nil))
 (defconst *mdt-as-carol* (mdt-logged-in "carol"))
 (defconst *mdt-as-alice* (mdt-logged-in "alice"))
 (defun mdt-view-groups (as)

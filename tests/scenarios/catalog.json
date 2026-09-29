@@ -5733,18 +5733,39 @@
       "id": "SCN-205",
       "title": "A reader logs in with AUTHINFO SASL: PLAIN over TLS, SCRAM-SHA-256 in clear and over TLS, and SCRAM-SHA-256-PLUS bound to the connection's tls-exporter value",
       "milestone": "M3",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "NNT-056"
       ],
       "steps": [
-        "A node with a plaintext reader listener offering STARTTLS, an implicit-TLS listener, required authentication and one credential written by `principal set-password`.",
-        "CAPABILITIES in clear, over TLS and after a login; AUTHINFO SASL PLAIN, SCRAM-SHA-256 and SCRAM-SHA-256-PLUS exchanges, a wrong password and a replayed final message."
+        "Node A runs with a plaintext reader listener offering STARTTLS, an implicit-TLS listener, `[auth] required = true, protected_only = false`, and one credential written by `principal set-password`.",
+        "CAPABILITIES in clear, after STARTTLS, on the TLS port, and after a login.",
+        "AUTHINFO SASL PLAIN in clear; over TLS with a wrong password, an unknown mechanism, bad base64, no initial response then `*`, no initial response then the response, and an initial response.",
+        "SCRAM-SHA-256 over implicit TLS then POST; in clear then GROUP; after STARTTLS; with a wrong password; the client-final of a completed exchange replayed on a second connection after the same client-first.",
+        "SCRAM-SHA-256-PLUS through `openssl s_client -tls1_3 -keymatexport EXPORTER-Channel-Binding`, with the printed exporter value and with a different one.",
+        "In SCN-094's node, the redeemed account logs in with SCRAM-SHA-256 over TLS and posts."
       ],
       "expected": [
-        "The SASL label lists the mechanisms offered now and survives the login; PLAIN in clear is 483; SCRAM answers 383 then 283 with the server's v=; a wrong password and a replayed final message are 481; PLUS succeeds only with the connection's own exporter value."
+        "In clear `AUTHINFO USER SASL` and `SASL SCRAM-SHA-256`; over TLS 1.3 `SASL SCRAM-SHA-256-PLUS SCRAM-SHA-256 PLAIN`; after a login the SASL line and no AUTHINFO line.",
+        "PLAIN in clear is 483; wrong password 481; unknown mechanism 503; bad base64 504; `383 =` then `*` is 481; `383 =` then the response is 281; the initial response is 281.",
+        "SCRAM answers 383 with a server-first whose nonce extends the client's, a salt and i=4096, then 283 whose v= is HMAC(ServerKey, AuthMessage); the POST is 240 and GROUP 211; a wrong password and the replayed final are 481.",
+        "PLUS with the exporter value is 283; with another value 481.",
+        "The redeemed account's SCRAM login is 283 and its POST 240."
       ],
-      "execution_scope": "Specified by lane sasl increment 1 (the mechanism books); the served arm and tests/test_native_sasl.py come with increment 2."
+      "execution_scope": "Written before the lane's image was built; not yet run.",
+      "implementation": {
+        "test": "tests.test_native_sasl",
+        "cases": [
+          "NativeSaslTests.test_capabilities_offer_by_protection_and_login",
+          "NativeSaslTests.test_plain",
+          "NativeSaslTests.test_scram_over_implicit_tls_then_post",
+          "NativeSaslTests.test_scram_in_clear_and_after_starttls",
+          "NativeSaslTests.test_scram_wrong_password_is_481",
+          "NativeSaslTests.test_scram_replayed_final_is_481",
+          "NativeSaslTests.test_scram_plus_with_tls_exporter"
+        ],
+        "native": true
+      }
     },
     {
       "id": "SCN-201",

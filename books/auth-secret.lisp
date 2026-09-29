@@ -15,10 +15,26 @@
 ;   preimage  : salt || secret                (the salt's length is fixed, so
 ;                                              the boundary is unambiguous;
 ;                                              see -preimage-injective below)
-;   stored    : (:fn-authsec-v1 salt (fn-digest-tagged "fn-authinfo-v1"
-;                                                      preimage))
-;   check     : the supplied octets pass iff re-deriving the digest under the
-;               stored salt yields the stored digest
+;   digest    : (fn-digest-tagged "fn-authinfo-v1" preimage)
+;   scram     : (StoredKey ServerKey) = books/scram.lisp fn-scram-keys of the
+;               secret under the same salt and *fn-scram-iterations* (4096,
+;               RFC 7677 section 4): what SCRAM-SHA-256 checks against
+;   stored    : (:fn-authsec-v2 salt digest stored-key server-key)
+;   check     : AUTHINFO USER/PASS and SASL PLAIN pass iff re-deriving the
+;               digest under the stored salt yields the stored digest;
+;               SCRAM-SHA-256 checks a proof against StoredKey
+;               (books/sasl.lisp) and never sees the secret
+;
+; Why two derivations and not one.  Every served step runs under the owner's
+; one mutex (host/native/mux.lisp), so a login that ran PBKDF2 on the served
+; path (4096 HMACs, about 0.1 s here) would stall every connection for its
+; duration, and an unauthenticated client could repeat it at will.  PBKDF2
+; therefore runs at ENROLMENT only (`fn principal set-password', an XREDEEM
+; redemption), and the cleartext mechanisms keep the one-digest check.  The
+; consequence is stated: a stolen verifier is attacked through the fast
+; digest, not the 4096-iteration keys; the iteration count protects nothing
+; a stolen configuration reveals.  Retiring the fast digest means running
+; the KDF off the mutex (a resumable step), an open item in specs/nntp.md.
 ;
 ; The tag is the crypto seam's domain separation: an AUTHINFO digest and a
 ; content identity digest never share a preimage, whatever their messages
@@ -44,10 +60,19 @@
 
 (in-package "ACL2")
 (include-book "crypto-attach")
+(include-book "scram")
 
 (local (in-theory (enable fn-cbor-codec-vocabulary
                           fn-cbor-invariants-vocabulary
                           fn-crypto-seam-internals)))
+
+; The SCRAM keys come from books/sha256.lisp, which carries its own
+; octet-list recognizer; it is fn-cbor-octet-listp's (the bridge
+; books/crypto-attach.lisp proves for BLAKE3's).
+(local
+ (defthm fn-authsec-sha256-octets-are-cbor-octets
+   (implies (fn-sha256-octet-listp x) (fn-cbor-octet-listp x))
+   :hints (("Goal" :in-theory (enable fn-sha256-octet-listp)))))
 
 ; -----------------------------------------------------------------------------
 ; Shapes
@@ -142,18 +167,27 @@
 
 (defun fn-authsec-enrol (salt secret)
   ; What the configuration stores for a credential.  The secret is an input
-  ; to this function and appears in no field of its result.
+  ; to this function and appears in no field of its result: the digest and
+  ; the two SCRAM keys are derived from it, SaltedPassword is not kept.
   (declare (xargs :guard t))
-  (list :fn-authsec-v1 (fn-authsec-octets salt) (fn-authsec-digest salt secret)))
+  (let ((keys (fn-scram-keys secret (fn-authsec-octets salt)
+                             *fn-scram-iterations*)))
+    (list :fn-authsec-v2 (fn-authsec-octets salt) (fn-authsec-digest salt secret)
+          (car keys) (cadr keys))))
+
+(defun fn-authsec-32p (x)
+  (declare (xargs :guard t))
+  (and (fn-cbor-octet-listp x) (equal (len x) 32)))
 
 (defun fn-authsec-verifierp (x)
   (declare (xargs :guard t))
   (and (true-listp x)
-       (equal (len x) 3)
-       (equal (car x) :fn-authsec-v1)
+       (equal (len x) 5)
+       (equal (car x) :fn-authsec-v2)
        (fn-authsec-saltp (car (cdr x)))
-       (fn-cbor-octet-listp (car (cdr (cdr x))))
-       (equal (len (car (cdr (cdr x)))) 32)))
+       (fn-authsec-32p (car (cdr (cdr x))))
+       (fn-authsec-32p (car (cdr (cdr (cdr x)))))
+       (fn-authsec-32p (car (cdr (cdr (cdr (cdr x))))))))
 
 (defun fn-authsec-ver-salt (x)
   (declare (xargs :guard t))
@@ -165,9 +199,27 @@
       (car (cdr (cdr x)))
     nil))
 
+(defun fn-authsec-ver-stored-key (x)
+  ; SCRAM's StoredKey = H(HMAC(SaltedPassword, "Client Key")).
+  (declare (xargs :guard t))
+  (if (and (consp x) (consp (cdr x)) (consp (cdr (cdr x)))
+           (consp (cdr (cdr (cdr x)))))
+      (car (cdr (cdr (cdr x))))
+    nil))
+
+(defun fn-authsec-ver-server-key (x)
+  ; SCRAM's ServerKey = HMAC(SaltedPassword, "Server Key").
+  (declare (xargs :guard t))
+  (if (and (consp x) (consp (cdr x)) (consp (cdr (cdr x)))
+           (consp (cdr (cdr (cdr x)))) (consp (cdr (cdr (cdr (cdr x))))))
+      (car (cdr (cdr (cdr (cdr x)))))
+    nil))
+
+
 (defthm fn-authsec-verifierp-of-enrol
   (implies (fn-authsec-saltp salt)
-           (fn-authsec-verifierp (fn-authsec-enrol salt secret))))
+           (fn-authsec-verifierp (fn-authsec-enrol salt secret)))
+  :hints (("Goal" :in-theory (disable fn-scram-keys fn-authsec-digest))))
 
 ; `local': an enabled equality between two one-argument applications is
 ; proof vocabulary, not an export (docs/proof-style.md section 2).
@@ -178,32 +230,56 @@
 
 (defthm fn-authsec-ver-digest-of-enrol
   (equal (fn-authsec-ver-digest (fn-authsec-enrol salt secret))
-         (fn-authsec-digest salt secret)))
+         (fn-authsec-digest salt secret))
+  :hints (("Goal" :in-theory (disable fn-scram-keys fn-authsec-digest))))
 
-; The verifier reassembled from the two fields the operator's file stores.
+(defthm fn-authsec-ver-scram-keys-of-enrol
+  ; The stored SCRAM keys are fn-scram-keys of the secret, under the stored
+  ; salt and the format's count.
+  (and (equal (fn-authsec-ver-stored-key (fn-authsec-enrol salt secret))
+              (car (fn-scram-keys secret (fn-authsec-octets salt)
+                                  *fn-scram-iterations*)))
+       (equal (fn-authsec-ver-server-key (fn-authsec-enrol salt secret))
+              (cadr (fn-scram-keys secret (fn-authsec-octets salt)
+                                   *fn-scram-iterations*))))
+  :hints (("Goal" :in-theory (disable fn-scram-keys fn-authsec-digest))))
+
+; The verifier reassembled from the four fields the operator's file stores.
 ; `fn principal set-password' writes what `fn-authsec-enrol' produced and
-; the owner reads the two fields back at start-up; this is the ONLY place
-; the stored shape is rebuilt, so the host never writes the tag or the
-; layout and `fn-authsec-enrol' and this function cannot drift
+; the owner reads the fields back at start-up; this is the ONLY place the
+; stored shape is rebuilt, so the host never writes the tag or the layout
+; and `fn-authsec-enrol' and this function cannot drift
 ; (fn-authsec-enrol-is-a-verifier-of-its-fields).
-(defun fn-authsec-verifier (salt digest)
+(defun fn-authsec-verifier (salt digest stored-key server-key)
   (declare (xargs :guard t))
-  (list :fn-authsec-v1 (fn-authsec-octets salt) (fn-authsec-octets digest)))
+  (list :fn-authsec-v2 (fn-authsec-octets salt) (fn-authsec-octets digest)
+        (fn-authsec-octets stored-key) (fn-authsec-octets server-key)))
 
 (defthm fn-authsec-enrol-is-a-verifier-of-its-fields
   (equal (fn-authsec-enrol salt secret)
-         (fn-authsec-verifier salt (fn-authsec-digest salt secret)))
+         (fn-authsec-verifier
+          salt (fn-authsec-digest salt secret)
+          (car (fn-scram-keys secret (fn-authsec-octets salt)
+                              *fn-scram-iterations*))
+          (cadr (fn-scram-keys secret (fn-authsec-octets salt)
+                               *fn-scram-iterations*))))
   :hints (("Goal" :in-theory (e/d (fn-authsec-enrol fn-authsec-verifier)
-                                  (fn-authsec-digest fn-authsec-octets))))
+                                  (fn-authsec-digest fn-scram-keys))
+           :use ((:instance fn-scram-keys-shape
+                            (password secret)
+                            (salt (fn-authsec-octets salt))
+                            (iterations *fn-scram-iterations*)))))
   :rule-classes nil)
 
 (defthm fn-authsec-verifierp-of-fn-authsec-verifier
   (implies (and (fn-authsec-saltp salt)
-                (fn-cbor-octet-listp digest)
-                (equal (len digest) 32))
-           (fn-authsec-verifierp (fn-authsec-verifier salt digest)))
+                (fn-authsec-32p digest)
+                (fn-authsec-32p stored-key)
+                (fn-authsec-32p server-key))
+           (fn-authsec-verifierp
+            (fn-authsec-verifier salt digest stored-key server-key)))
   :hints (("Goal" :in-theory (e/d (fn-authsec-verifierp fn-authsec-verifier
-                                   fn-authsec-saltp)
+                                   fn-authsec-saltp fn-authsec-32p)
                                   nil))))
 
 (defun fn-authsec-checkp (ver supplied)
@@ -262,6 +338,26 @@
                   (fn-authsec-checkp v2 supplied)))
   :rule-classes nil)
 
+; K5.  The enrolled secret authenticates by SCRAM too: an RFC 5802 client
+; that derives its proof from the enrolled secret, the stored salt and the
+; format's count is accepted against the stored StoredKey, for every
+; AuthMessage.  Composes books/scram.lisp fn-scram-honest-proof-verifies
+; with the enrolment; together with K1 it says every mechanism fn offers
+; accepts the password the account was enrolled with.
+(defthm fn-authsec-enrolled-secret-proves-by-scram
+  (fn-scram-proof-validp
+   (fn-authsec-ver-stored-key (fn-authsec-enrol salt secret))
+   auth-message
+   (fn-scram-client-proof secret (fn-authsec-ver-salt (fn-authsec-enrol salt secret))
+                          *fn-scram-iterations* auth-message))
+  :hints (("Goal" :in-theory (disable fn-scram-keys fn-authsec-digest
+                                      fn-scram-proof-validp
+                                      fn-scram-client-proof)
+           :use ((:instance fn-scram-honest-proof-verifies
+                            (password secret)
+                            (salt (fn-authsec-octets salt))
+                            (iterations *fn-scram-iterations*))))))
+
 ; NOT A THEOREM, deliberately: that a secret other than the enrolled one
 ; fails.  It is second-preimage resistance of the attached digest, A-CRYPTO,
 ; and under the seam's local witness (a constant digest) it is false.
@@ -274,7 +370,9 @@
 (deftheory fn-authsec-internals
   '((:d fn-authsec-saltp) (:d fn-authsec-octets)
     (:d fn-authsec-preimage) (:d fn-authsec-digest) (:d fn-authsec-enrol)
+    (:d fn-authsec-32p)
     (:d fn-authsec-verifierp) (:d fn-authsec-verifier) (:d fn-authsec-ver-salt)
-    (:d fn-authsec-ver-digest) (:d fn-authsec-checkp)))
+    (:d fn-authsec-ver-digest) (:d fn-authsec-ver-stored-key)
+    (:d fn-authsec-ver-server-key) (:d fn-authsec-checkp)))
 
 (in-theory (disable fn-authsec-internals))
