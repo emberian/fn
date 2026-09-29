@@ -1716,6 +1716,14 @@
 (definterface fn-owner-sco-capture
   :class ::program)
 
+; host/native/admin.lisp dispatches it (lane operability-7, row S3b).
+(definterface fn-owner-oex-capture
+  :class ::program)
+
+; host/native/owner.lisp dispatches it (lane operability-7, row S3b).
+(definterface fn-store-sco-encode-chunk
+  :class ::program)
+
 (definterface fn-owner-sco-due
   :class ::program)
 
@@ -4013,6 +4021,40 @@
 
 ; host/native/admin.lisp dispatches it (lane operability-5).
 (definterface fn-native-admin-result-inspect-msgid
+  :class :common-lisp-compliant)
+
+; host/native/admin.lisp dispatches them (lane operability-7, row S3b).
+(definterface fn-native-admin-result-export-dir
+  :class :common-lisp-compliant)
+
+(definterface fn-native-admin-result-export-statusp
+  :class :common-lisp-compliant)
+
+;; books/owner-export-request.lisp (row S3b): the running owner's export
+;; request and status (host/native/admin.lisp) and the client's reading
+;; and lines (host/native/operator.lisp).
+(definterface fn-oex-request-word
+  :class :common-lisp-compliant)
+
+(definterface fn-oex-request-status
+  :class :common-lisp-compliant)
+
+(definterface fn-oex-request-line
+  :class :common-lisp-compliant)
+
+(definterface fn-oex-status-word
+  :class :common-lisp-compliant)
+
+(definterface fn-oex-status-status
+  :class :common-lisp-compliant)
+
+(definterface fn-oex-outcome-line
+  :class :common-lisp-compliant)
+
+(definterface fn-oex-word-of-octets
+  :class :common-lisp-compliant)
+
+(definterface fn-oex-status-no-owner-line
   :class :common-lisp-compliant)
 
 ;; books/native-control-reason.lisp

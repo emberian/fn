@@ -127,3 +127,9 @@
         ((equal word :idle)
          "export idle: no export is in flight and none has finished since the owner started")
         (t "export uncertain reason=unrecognized-word: the owner answered a word this release does not know")))
+
+; `store export --status' with no owner (fn-omr-route :offline): nothing is
+; in flight and nothing finished, because no owner is serving; by name.
+(defun fn-oex-status-no-owner-line ()
+  (declare (xargs :guard t))
+  "export status refused reason=no-owner: no owner is serving this store, so no export is in flight; what it would take: `store export DIR' with the node stopped runs to completion in this verb")

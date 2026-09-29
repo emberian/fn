@@ -6071,7 +6071,7 @@
       "id": "SCN-210",
       "title": "`store export DIR' answers on the running owner: requested and written while serving, refused by name when an export is in flight or DIR exists; the archive imports with the captured count",
       "milestone": "M5",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "HST-036"
       ],
@@ -6083,7 +6083,9 @@
       ],
       "implementation": {
         "test": "tests.test_native_maintenance_live",
-        "cases": [],
+        "cases": [
+          "test_store_export_answers_on_the_running_owner_and_the_archive_imports"
+        ],
         "native": true
       },
       "evidence": [

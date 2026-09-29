@@ -693,7 +693,23 @@ the larger counter. It needs a row of its own before it is built.
 
 An **export** (`store export`) is different. It carries the store's history
 for moving to a new store, not the node's secrets or settings. Keep backups
-and exports both.
+and exports both. The node need not stop for it: on a running node the
+owner writes the archive itself, beside serving, and the command waits for
+the outcome:
+
+```text
+fn operator /path/to/fn.toml store export /var/backups/fn-2026-09-29
+fn operator /path/to/fn.toml store export --status
+```
+
+It prints `export requested archive=DIR ...` then `exported archive=DIR:
+complete ...`. The archive holds the articles the store had when the
+request arrived; posts accepted after it are not in it. It is refused by
+name while another export runs (`export-in-flight`) or when DIR exists
+(`archive-exists`), and `store export --status` names the running
+export's state or the last outcome (the node's log has `EXPORT done
+archive=DIR records=N configuration=M`). With the node stopped the same
+command runs to completion by itself.
 
 ### New releases
 
@@ -955,7 +971,9 @@ fn operator /path/to/fn.toml store compact
 
 Stopped, it answers `compacted steps=checkpoint,drop records=N`. On a store
 of 40,000 short articles it took under three minutes. A running node needs
-its `[control]` socket for the request.
+its `[control]` socket for the request, as it does for `store export`,
+`store reclaim`, `store inspect` and `recover`, which answer on the running
+node the same way.
 
 ## 11. How much one node can handle
 
