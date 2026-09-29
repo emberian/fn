@@ -449,9 +449,6 @@
            (or (fn-stxe-p event) (fn-stxk-p event) (fn-hstxa-p event))
            (eq (car (fn-ccar-cpe-projection-step
                      (fn-sn-consumer s) event (fn-sn-identity-next s))) :ok)
-           (or (not (fn-hstxa-p event))
-               (not (equal (fn-record-stamp (fn-replay-composite-held event))
-                           :legacy)))
            (consp (fn-irc-apply-record (fn-sn-node s) event carry))
            (equal (fn-stxk-context-kind
                    (fn-replay-identity-step (fn-sn-identity-context s) event))
