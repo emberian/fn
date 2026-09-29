@@ -14,6 +14,7 @@
 (in-package "ACL2")
 (include-book "../books/replay")
 (include-book "../books/store-intern")
+(include-book "../books/open-frontier-wire")
 (include-book "../books/store-recover-stream")
 ; The open's extent seals and the served read's trailer check (PRF-294);
 ; the commit's extent reseat (PRF-309; it includes payload-extent).
@@ -390,19 +391,11 @@
   (fn-store-log-next-txid-loop (list record) (nfix acc)))
 
 ;; The same fold over records the replay has already decoded
-;; (books/store-recover-stream.lisp fn-srs-decode: each record's
-;; fn-store-event-decode-exact, kept when it is :ok with a wire event, which is
-;; exactly when fn-store-log-next-txid-loop's step reads that event's txid; any
-;; other record makes the chunk :bad and the open faults), so the streamed
-;; open decodes each record once.
-(defun fn-store-log-next-txid-of-events (events acc)
-  (declare (xargs :mode :program))
-  (if (consp events)
-      (fn-store-log-next-txid-of-events
-       (cdr events)
-       (let ((txid (fn-rcon-wire-event-txid (car events))))
-         (if (natp txid) (max acc (+ 1 txid)) acc)))
-    acc))
+;; (books/store-recover-stream.lisp fn-srs-decode) is ACL2's:
+;; books/open-frontier-wire.lisp fn-ofw-wire-next, the replay's frontier fold
+;; over the rows the intern makes of them (fn-ofw-wire-next-is-the-rows-next)
+;; and chunk by chunk the fold over the whole suffix
+;; (fn-ofw-wire-next-of-append).
 
 (defun fn-store-log-next-txid-join (a b)
   (declare (xargs :mode :program))
