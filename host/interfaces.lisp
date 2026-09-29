@@ -2421,7 +2421,8 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-lifecycle-recovery-agrees-p
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-lifecycle-recovery-agrees-with-the-replayed-machine))
 
 (definterface fn-bpn-host-lifecycle-recovery-ready-p
   :class ::ideal)
@@ -2812,13 +2813,15 @@
   :class ::ideal)
 
 (definterface fn-bpnr-publish-action
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnr-publish-outcome
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnr-publish-outcome-is-pending-exactly-while-the-loop-runs
+              fn-bpnr-publish-outcome-names-the-stopped-phase))
 
 (definterface fn-bpnr-publish-step
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnr-read-bound
   :class ::common-lisp-compliant)
