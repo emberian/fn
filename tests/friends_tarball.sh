@@ -21,15 +21,23 @@
 # The freeze bundles the glibc-floor SBCL runtime (packaging/floor-runtime.sh's
 # output, the build's SBCL rebuilt on glibc 2.36): the package's runpath step
 # (tools/runpath_check.py GLIBC_FLOOR) refuses the build host's own runtime.
-# FN_FREEZE_RUNTIME names it; unset, it is hbox's floor runtime, the one
-# tools/cut_release.sh bundles.  Refused by name (exit 4) when it is absent.
+# FN_FREEZE_RUNTIME names it; unset, it is the registered fixture
+# sbcl-floor-runtime-2.6.8 (tools/fixtures.py, PKT-727), verified against its
+# pinned SHA256SUMS, the one tools/cut_release.sh bundles.  Refused by name
+# (exit 4) when it is absent or does not verify.
 set -eu
 [ "$#" -eq 3 ] || { echo 'usage: friends_tarball.sh TREE REV SCRATCH' >&2; exit 2; }
 tree=$1 rev=$2 scratch=$3
 case $scratch in /tank/fn/node*) echo 'friends_tarball: never the live node' >&2; exit 2;; /*) ;; *) echo 'friends_tarball: SCRATCH must be absolute' >&2; exit 2;; esac
 [ ! -e "$scratch" ] || { echo "friends_tarball: exists: $scratch" >&2; exit 4; }
 short=$(printf '%s' "$rev" | cut -c1-12)
-runtime=${FN_FREEZE_RUNTIME:-/tank/fn/scratch/glibc-floor/runtime-2.6.8/sbcl}
+if [ -n "${FN_FREEZE_RUNTIME:-}" ]; then
+  runtime=$FN_FREEZE_RUNTIME
+else
+  floor=$(python3 "$tree/tools/fixtures.py" path sbcl-floor-runtime-2.6.8) || {
+    echo "friends_tarball: the glibc-floor runtime fixture does not verify (tools/fixtures.py path sbcl-floor-runtime-2.6.8)" >&2; exit 4; }
+  runtime=$floor/sbcl
+fi
 [ -x "$runtime" ] || {
   echo "friends_tarball: no glibc-floor SBCL runtime at $runtime (packaging/floor-runtime.sh builds one; FN_FREEZE_RUNTIME names it)" >&2; exit 4; }
 mkdir -p "$scratch"
