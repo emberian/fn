@@ -14,6 +14,11 @@ the same forms with the ledger's non-evaluating reader and GENERATES:
   it directly, and the raw host files that dispatch it;
 * tools/extract/roots.sh -- the extractor's default ROOTS and EXTRA
   (tools/extract/build.sh sources it), in declaration order;
+* the subsystem each entry is filed under (SUBSYSTEMS below: a name prefix,
+  else the dispatching host file), a column of the registry.
+  planning/interfaces-gaps.md is tools/coverage.py's: what the certified
+  world says about each entry (its direct theorems, the ones about its
+  callers or callees, and nothing), from a dump of the world, not a name match;
 
 and hands tools/harness_check.py its exempt formals (`entry_kind_exempt')
 and its direct applications (`entry_direct_allowed'), which were hand lists
@@ -31,6 +36,8 @@ applies directly, and refuses
   application that no :direct declaration names (harness_check's
   entry-guards lint reports the latter with its site);
 * a declaration whose NAME no book or ACL2-mode host file defines;
+* a dispatched entry that no declaration names (every host-called entry is
+  declared);
 * a generated file that differs from what the forms say.
 
 What it cannot check is the world: the class, the kinds and the keystones
@@ -46,6 +53,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,6 +65,55 @@ SOURCES = ("host/interfaces.lisp", "host/interfaces-extract.lisp")
 REGISTRY = ROOT / "planning" / "interfaces.json"
 ROOTS_SH = ROOT / "tools" / "extract" / "roots.sh"
 KEYS = {":class", ":kinds", ":exempt", ":keystones", ":root", ":direct"}
+
+# The subsystems a declaration is filed under (host/interfaces.lisp's
+# sections; planning/interfaces-gaps.md).  A name prefix decides first, then
+# the first dispatching host file the table names, else nntp/served (the
+# extraction roots: the served program's driver calls them).
+SUBSYSTEMS = ("store", "owner", "nntp/served", "peer/feed", "bp", "web",
+              "admin/operator", "control")
+SUBSYSTEM_PREFIX = (
+    ("control", ("fn-native-control", "fn-native-hybrid-control", "fn-hl-host",
+                 "fn-owner-control", "fn-ncl-", "fn-cpj-", "fn-cp-", "fn-hctl")),
+    ("admin/operator", ("fn-native-operator", "fn-native-admin", "fn-native-auth-admin",
+                        "fn-native-live", "fn-native-health", "fn-native-config", "fn-nop-",
+                        "fn-nls-", "fn-heap-", "fn-cfg-", "fn-bs-profile", "fn-wf",
+                        "fn-workflow")),
+    ("web", ("fn-web", "fn-native-web")),
+    ("bp", ("fn-bp", "fn-tcpcl", "fn-tcl-", "fn-dtn")),
+    ("peer/feed", ("fn-pull", "fn-feed", "fn-peer", "fn-pinv", "fn-anchor", "fn-hsig",
+                   "fn-jpub", "fn-redeem", "fn-th-", "fn-cu-")),
+    ("owner", ("fn-owner",)),
+    ("nntp/served", ("fn-reader", "fn-served", "fn-outcome", "fn-native-auth", "fn-wire",
+                     "fn-cbud", "fn-rdc")),
+    ("store", ("fn-store", "fn-lg", "fn-smid", "fn-lz", "fn-arx", "fn-arena", "fn-ns-",
+               "fn-ock", "fn-srs", "fn-sx", "fn-otm", "fn-log", "fn-sbud", "fn-scka",
+               "fn-olr", "fn-frame", "fn-b3", "fn-blake3", "fn-sha", "create-fn-",
+               "fn-intern", "fn-clock", "fn-octets")),
+)
+SUBSYSTEM_FILE = {
+    "io": "store", "checkpoint": "store", "extent": "store", "heap": "admin/operator",
+    "owner": "owner", "keys": "owner", "consumer-local": "control", "topic-local": "control",
+    "auth": "nntp/served", "login-bindings": "nntp/served", "tls-reload": "nntp/served",
+    "mux": "nntp/served", "pull-service": "peer/feed", "feed-service": "peer/feed",
+    "feed-filename": "peer/feed", "peer-invite": "peer/feed", "anchor": "peer/feed",
+    "immutable-publish": "peer/feed", "signatures": "peer/feed",
+    "signature-command": "peer/feed", "bp-service": "bp", "bp": "bp", "bp-node": "bp",
+    "bp-app": "bp", "bp-obligation": "bp", "bp-contact": "bp", "tcpcl": "bp",
+    "web-host": "web", "operator": "admin/operator", "operator-live": "admin/operator",
+    "admin": "admin/operator", "workflow": "admin/operator", "config": "admin/operator",
+    "control": "control", "hybrid-control": "control"}
+
+
+def subsystem(name: str, files) -> str:
+    for sub, prefixes in SUBSYSTEM_PREFIX:
+        if name.startswith(prefixes):
+            return sub
+    for relative in sorted(files):
+        sub = SUBSYSTEM_FILE.get(Path(relative).stem)
+        if sub:
+            return sub
+    return "nntp/served"
 
 
 def _sym(x) -> str:
@@ -148,9 +205,28 @@ def host_reading(root: Path = ROOT) -> dict:
                     dispatched.setdefault(name[1:], set()).add(relative)
                 elif name in tree.functions and name not in rawdefs:
                     direct.setdefault(name, set()).add(relative)
-    defined = set(tree.functions) | set(harness_check._acl2_definition_forms(tree, raw))
+    defined = (set(tree.functions) | set(harness_check._acl2_definition_forms(tree, raw))
+               | generated_names(root))
     return {"dispatched": dispatched, "direct": direct,
             "defined": defined, "entries": len(dispatched)}
+
+
+# Functions a macro introduces that the ledger's reader does not list: an
+# abstract stobj's exports (`(NAME :logic ...' in a defabsstobj) and a
+# defevent's recognizer and encoder.
+_GENERATED = re.compile(r"\((fn-[^\s()]+)\s+:logic\s|:(?:recognizer|encode)\s+(fn-[^\s()]+)")
+
+
+def generated_names(root: Path = ROOT) -> set[str]:
+    names: set[str] = set()
+    for path in sorted((root / "books").glob("*.lisp")):
+        for a, b in _GENERATED.findall(path.read_text(encoding="utf-8", errors="replace")):
+            names.add((a or b).lower())
+    return names
+
+
+def subsystem_of(d: dict, reading: dict) -> str:
+    return subsystem(d["name"], reading["dispatched"].get(d["name"], ()))
 
 
 def render_registry(decls: list[dict], reading: dict) -> str:
@@ -158,6 +234,7 @@ def render_registry(decls: list[dict], reading: dict) -> str:
     for d in decls:
         rows.append({
             "name": d["name"],
+            "subsystem": subsystem_of(d, reading),
             "declared_in": d["source"],
             "class": d["class"],
             "kinds": d["kinds"],
@@ -180,7 +257,8 @@ def render_registry(decls: list[dict], reading: dict) -> str:
                      "declared_and_dispatched": sum(1 for d in decls
                                                     if d["name"] in reading["dispatched"]),
                      "guard_verified": sum(1 for d in decls
-                                           if d["class"] == "common-lisp-compliant")},
+                                           if d["class"] == "common-lisp-compliant"),
+                     "with_keystone": sum(1 for d in decls if d["keystones"])},
         "entries": rows,
     }
     return json.dumps(doc, indent=2, sort_keys=False) + "\n"
@@ -204,6 +282,9 @@ def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
         elif d["root"] is None and name not in reading["dispatched"]:
             out.append("{}: {} is declared but the raw host never dispatches it (stale); "
                        "remove the declaration or name its role".format(where, name))
+    for name in sorted(set(reading["dispatched"]) - set(seen)):
+        out.append("the raw host dispatches {} ({}) and no definterface declares it".format(
+            name, ", ".join(sorted(reading["dispatched"][name]))))
     direct_declared = {d["name"] for d in decls if d["direct"]}
     for name in sorted(set(reading["direct"]) - direct_declared):
         out.append("the raw host applies {} directly ({}), bypassing fnn-call's entry "

@@ -1820,6 +1820,14 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/keystone_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/interface_emit.py --check
+# What the certified world says about each host-called entry (lane
+# coverage-crawler, 2026-09-29): planning/coverage.json is built from a dump
+# tools/coverage_dump.lisp writes in an ACL2 session over books/image-world
+# (regenerated at convergence, not per commit); this refuses a decision
+# entry with no direct theorem that planning/coverage-baseline.json does not
+# list (shrink-only), an unfiled requirement in planning/families.json, and
+# a gaps file that is not what the coverage renders.
+	@$(CHECK_STEP) $(PYTHON) tools/coverage.py check
 	@$(CHECK_STEP) $(PYTHON) tools/event_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/profile_limits.py --check
 # Which host entries walk retained state (PKT-334, answers 2026-09-26 §2): a
@@ -1910,7 +1918,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_test_budget tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \
 	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync \
-	    tests.test_extract_gate tests.test_cert_images
+	    tests.test_extract_gate tests.test_cert_images tests.test_coverage
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 
