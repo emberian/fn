@@ -319,8 +319,10 @@ def publish_pair(book: str, verdict: str, run_dir: Path, nonce: str,
     event["published"] = bool(report.published)
     event["already_cached"] = bool(report.already)
     if not report.published and not report.already:
-        event["why"] = "; ".join(report.unverified + report.uncached
-                                 + report.unreadable) or "no pair offered"
+        event["why"] = "; ".join(
+            report.unverified + report.uncached + report.unreadable
+            + [f"{name}: no compiled file (.fasl); never cached without one"
+               for name in report.uncompiled]) or "no pair offered"
     return event
 
 
@@ -1225,6 +1227,8 @@ def main() -> int:
             # file, and those that did not (ACL2 then loads them uncompiled).
             "fasl_installed": installed.fasl_installed,
             "fasl_missing": installed.fasl_missing,
+            # Cached pairs refused for want of a compiled file: certified here.
+            "uncompiled": list(installed.uncompiled),
         }
         manifest["installed_books"] = dict(sorted(installed.installed_from.items()))
         manifest["book_provenance"] = {
@@ -1622,6 +1626,7 @@ def main() -> int:
                 "already_cached": published.already,
                 "not_published": sorted(published.uncached + published.unverified
                                         + published.unreadable),
+                "uncompiled": sorted(published.uncompiled),
                 "per_book": cache_events,
                 "per_book_published": sum(1 for event in cache_events
                                           if event.get("published")),
