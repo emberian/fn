@@ -1198,6 +1198,26 @@
       (f-get-global 'fn-owner-parse-carry state)
     nil))
 
+; The carrier-plan memo (books/owner-parse-carried.lisp, PKT-552): one entry
+; ((RECEIVED . PLAN)), PLAN = fn-hc-received-plan of RECEIVED.  Its only
+; writer is fn-owner-plans-for, through fn-apc-plans-extend, which keeps
+; fn-apc-plansp under fn-apc-p of the parse carry (fn-apc-plansp-of-extend;
+; nil before the first write), so each reader is its reference
+; (fn-apc-plan-is-received-plan).  A signed POST decides its carrier plan in
+; its first reader and reads it in the others.
+(defun fn-owner-plan-carry (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-plan-carry state)
+      (f-get-global 'fn-owner-plan-carry state)
+    nil))
+
+(defun fn-owner-plans-for (received state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((plans (fn-apc-plans-extend received (fn-owner-plan-carry state)
+                                     (fn-owner-parse-carry state)))
+         (state (f-put-global 'fn-owner-plan-carry plans state)))
+    (mv plans state)))
+
 ;; Lane commit-onto-log: the owner as it is now, a value (the commit quantum
 ;; keeps it before each member's outcome, and renders from it only when the
 ;; batch's barrier fails).
@@ -2781,10 +2801,11 @@
 (defun fn-owner-peer-carrier-plan (received transitp state)
   (declare (xargs :stobjs state :mode :program))
   ; fn-apc-current-plan-is-reference (books/owner-parse-carried.lisp).
-  (value (fn-apc-current-plan
-          received (fn-sn-keyring-snapshots (fn-owner-store state))
-          (fn-owner-transit-carried-list transitp state)
-          (and transitp t) (fn-owner-parse-carry state))))
+  (mv-let (plans state) (fn-owner-plans-for received state)
+    (value (fn-apc-current-plan
+            received (fn-sn-keyring-snapshots (fn-owner-store state))
+            (fn-owner-transit-carried-list transitp state)
+            (and transitp t) plans (fn-owner-parse-carry state)))))
 
 ;; C1 (control messages): the filing step every ingress takes first,
 ;; books/peer-authored-accept.lisp fn-pa-filing-plan over the received
@@ -2829,7 +2850,8 @@
 (defun fn-owner-peer-carrier-form (received state)
   (declare (xargs :stobjs state :mode :program))
   ; fn-apc-carrier-form-is-reference (books/owner-parse-carried.lisp).
-  (value (fn-apc-carrier-form received (fn-owner-parse-carry state))))
+  (mv-let (plans state) (fn-owner-plans-for received state)
+    (value (fn-apc-carrier-form received plans (fn-owner-parse-carry state)))))
 
 (defun fn-owner-served-carried-word (word detail state)
   (declare (xargs :stobjs state :mode :program))
@@ -2904,10 +2926,11 @@
   (declare (xargs :stobjs state :mode :program))
   ;; PKT-433 (d): (CLASS VERDICT) (fn-pcb-transit-refusal-detail), or nil.
   ;; fn-apc-transit-refusal-detail-is-reference (books/owner-parse-carried).
-  (value (fn-apc-transit-refusal-detail
-          received (fn-sn-keyring-snapshots (fn-owner-store state))
-          (fn-owner-transit-carried-list transitp state) ed ml
-          (fn-owner-parse-carry state))))
+  (mv-let (plans state) (fn-owner-plans-for received state)
+    (value (fn-apc-transit-refusal-detail
+            received (fn-sn-keyring-snapshots (fn-owner-store state))
+            (fn-owner-transit-carried-list transitp state) ed ml
+            plans (fn-owner-parse-carry state)))))
 
 ; PKT-473 (PRF-184): an accepted transit arm's verdict
 ; (books/peer-carriage.lisp fn-pcb-transit-verdict) under the same keyring
@@ -2916,10 +2939,11 @@
 (defun fn-owner-transit-verdict (received transitp ed ml state)
   (declare (xargs :stobjs state :mode :program))
   ; fn-apc-transit-verdict-is-reference (books/owner-parse-carried.lisp).
-  (value (fn-apc-transit-verdict
-          received (fn-sn-keyring-snapshots (fn-owner-store state))
-          (fn-owner-transit-carried-list transitp state)
-          (and transitp t) ed ml (fn-owner-parse-carry state))))
+  (mv-let (plans state) (fn-owner-plans-for received state)
+    (value (fn-apc-transit-verdict
+            received (fn-sn-keyring-snapshots (fn-owner-store state))
+            (fn-owner-transit-carried-list transitp state)
+            (and transitp t) ed ml plans (fn-owner-parse-carry state)))))
 
 (defun fn-owner-peer-carried-event
     (coordinates msgid received group-codes obligation subject evidence charge
