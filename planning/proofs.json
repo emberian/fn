@@ -14281,7 +14281,6 @@
         "fn-orc-decision-names-the-rewritten-articles",
         "fn-orc-rewrite-rows-of-append",
         "fn-orc-fold-of-append",
-        "fn-orc-one-pass-in-flight-by-definition",
         "fn-orc-never-past-a-deferral"
       ]
     },
@@ -14401,8 +14400,7 @@
         "tests/test_native_slow_disk.py"
       ],
       "events": [
-        "fn-ocln-a-cold-line-is-answered-unavailable",
-        "fn-ocln-unavailable-span-outside-command-mode-by-definition"
+        "fn-ocln-a-cold-line-is-answered-unavailable"
       ],
       "progress_note": "Lane composed-owner-3 (Opus 5.5, 2026-09-29). REPL-admitted on persvati. Teeth tests/acl2/owner-cold-line-tests.lisp (oclnt-): pipelined positive witness (GROUP warm, ARTICLE cold 403 consuming its 11 octets only, STAT answered exactly as without the cold line, owner unchanged), a line split across reads (wire reset, session kept, next command as from the owner that never saw the line), hypothesis removal (article mode: nil), a whole-buffer mutation must-fail. Native: tests/test_native_slow_disk.py test_a_cold_read_on_a_stalled_disk_answers_403_while_cached_reads_stay_flat."
     },
