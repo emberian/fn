@@ -2941,7 +2941,10 @@
                                     (fn-olog-field
                                      "authority"
                                      (fn-olog-symbol-text
-                                      (f-get-global 'fn-owner-transit-authority state)))))
+                                      ; unbound until a transit's authority
+                                      ; decision sets it: the empty authority
+                                      (and (boundp-global 'fn-owner-transit-authority state)
+                                           (f-get-global 'fn-owner-transit-authority state))))))
                              state)))
     (value :ok)))
 
