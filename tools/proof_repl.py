@@ -1584,9 +1584,46 @@ def _start(args) -> int:
         else:
             print("proof-repl: the session did not become ready; see", directory / "log")
             return 1
-        return status(args)
+        code = status(args)
+        line, partial = load_verdict(read_state(args.name) or {})
+        print(line)
+        return PARTIAL_LOAD if partial else code
     finally:
         os.close(lock_fd)
+
+
+# `start`'s answer when the book's load stopped at a refused form: the session
+# may be live, just before it, but it is not the book (join-f2-5 lost a farm
+# round to a start whose output looked like a full load).
+PARTIAL_LOAD = 3
+
+
+def load_verdict(state: dict) -> tuple[str, bool]:
+    """`start`'s last line: where the load stopped, or that it is complete.
+
+    Answers (the line, whether the load is partial).  A stop the caller
+    asked for (--upto/--through) is a complete load of what was asked.
+    """
+    name, book = state.get("name", "?"), state.get("book", "?")
+    loaded = len(state.get("loaded") or [])
+    stopped = state.get("stopped_at")
+    if not stopped:
+        asked = state.get("upto") or state.get("through")
+        return (f"proof-repl {name}: LOADED {book}: {loaded} forms"
+                + (f" (as asked, {'up to' if state.get('upto') else 'through'} {asked})"
+                   if asked else ""), False)
+    within, _, event = stopped.rpartition(": ")
+    try:
+        total = len(forms((ROOT / f"{book}.lisp").read_text(encoding="utf-8")))
+    except OSError:
+        total = None
+    return (f"proof-repl {name}: PARTIAL LOAD -- stopped at {event} in "
+            f"{within or book} (a from-source dependency) " if within else
+            f"proof-repl {name}: PARTIAL LOAD -- stopped at {event} in {book} "
+            ) + (f"after {loaded}" + (f" of {total}" if total else "") + " forms; "
+                 ) + ("the session is live just before it (fix it, then `send` or "
+                      "`send-range --from`); exit 3" if state.get("ready") else
+                      "the session is not live; exit 3"), True
 
 
 REFUSAL_MARKS = ("******** FAILED ********", "ACL2 Error")

@@ -1561,5 +1561,68 @@ class SessionIncludeTests(unittest.TestCase):
                 self.assertEqual((code, sent), (1, []))
 
 
+class PartialLoadTests(unittest.TestCase):
+    """obstructions-3 item 25: a start that stopped at a refused form says where."""
+
+    def state(self, **fields) -> dict:
+        state = {"name": "s", "book": "books/model", "loaded": ["a", "b"],
+                 "stopped_at": None, "ready": True, "upto": None, "through": None}
+        state.update(fields)
+        return state
+
+    def test_a_load_that_stops_early_names_the_form_and_book_and_is_partial(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            (root / "books").mkdir()
+            (root / "books/model.lisp").write_text(
+                '(in-package "ACL2")\n(defun a (x) x)\n(defun b (x) x)\n'
+                '(defthm c (equal (a x) (b x)))\n(defthm d t)\n')
+            with mock.patch.object(proof_repl, "ROOT", root):
+                line, partial = proof_repl.load_verdict(self.state(stopped_at="c"))
+                self.assertTrue(partial)
+                self.assertIn("PARTIAL LOAD -- stopped at c in books/model after 2 of 5 "
+                              "forms; the session is live just before it", line)
+                line, partial = proof_repl.load_verdict(
+                    self.state(stopped_at="books/dep: lemma-7", ready=False))
+                self.assertTrue(partial)
+                self.assertIn("stopped at lemma-7 in books/dep (a from-source dependency)",
+                              line)
+                self.assertIn("not live", line)
+                line, partial = proof_repl.load_verdict(self.state())
+                self.assertEqual((line, partial), ("proof-repl s: LOADED books/model: 2 forms",
+                                                   False))
+                line, partial = proof_repl.load_verdict(self.state(through="b"))
+                self.assertFalse(partial)
+                self.assertIn("as asked, through b", line)
+
+    def test_start_exits_non_zero_on_a_partial_load_with_the_verdict_last(self):
+        state = self.state(stopped_at="c")
+        with tempfile.TemporaryDirectory() as directory:
+            sessions = pathlib.Path(directory)
+            (sessions / "s").mkdir()
+
+            def serve(*args, **kwargs):
+                # What the server writes once its load stopped at `c`.
+                (sessions / "s" / "state.json").write_text(json.dumps(state))
+                (sessions / "s" / "sock").write_text("")
+            args = argparse.Namespace(
+                name="s", book="books/model", upto=None, through=None, limit=60.0,
+                load_timeout=5.0, lane=None, idle_seconds=60, ld=[], ld_missing=False,
+                certify_missing=False, certify_jobs=4, load_limit=None, ld_local=False,
+                source_deps=None)
+            with mock.patch.object(proof_repl, "SESSIONS", sessions), \
+                    mock.patch.object(proof_repl, "session_dir", lambda n: sessions / n), \
+                    mock.patch.object(proof_repl, "open_session_lock", lambda *a: os.open(
+                        os.devnull, os.O_RDONLY)), \
+                    mock.patch.object(proof_repl, "install_closure",
+                                      lambda *a, **k: (True, "no dependencies", [])), \
+                    mock.patch.object(proof_repl.subprocess, "Popen", serve), \
+                    mock.patch.object(proof_repl, "status", lambda args: 0), \
+                    contextlib.redirect_stdout(io.StringIO()) as out:
+                code = proof_repl._start(args)
+            self.assertEqual(code, proof_repl.PARTIAL_LOAD)
+            self.assertIn("PARTIAL LOAD -- stopped at c", out.getvalue().splitlines()[-1])
+
+
 if __name__ == "__main__":
     unittest.main()
