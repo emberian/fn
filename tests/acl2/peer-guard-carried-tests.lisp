@@ -180,7 +180,7 @@
                                                  (fn-peer-evidence "innA" *pt-cfg*) 1)
                       (fn-retain-admissiblep *pgc-t-bad-ledger* "id" "subject" :archive
                                              (fn-peer-evidence "innA" *pt-cfg*) 1))))
-; fn-pgc-decide-offer-is-pix-decide-offer, hypothesis (fn-node-statep node):
+; fn-pgc-decide-offer-is-peer-decide-offer, hypothesis (fn-node-statep node):
 ; the same ledger in an otherwise reachable node.  The copy wants the absent
 ; id; the reference defers it on capacity.
 (defconst *pgc-t-bad-ledger-node*
@@ -189,8 +189,32 @@
 (must-fail-checked
  (assert-event (equal (fn-pgc-decide-offer *pgc-t-bad-ledger-node* *pt-cfg* "innA" nil
                                            *pt-idloop* nil 0 *pgc-t-empty-trie* nil)
-                      (fn-pix-decide-offer *pgc-t-bad-ledger-node* *pt-cfg* "innA" nil
-                                           *pt-idloop* nil 0 *pgc-t-empty-trie* nil))))
+                      (fn-peer-decide-offer *pgc-t-bad-ledger-node* *pt-cfg* "innA" nil
+                                            *pt-idloop* nil 0))))
+
+; fn-pgc-decide-offer-is-peer-decide-offer, reachable positive: the node
+; holds the offered id and the trie is keyed to its list; both answer
+; :have (the 435/438 of the arm above).
+(assert-event (fn-node-statep *pt-node1*))
+(assert-event (fn-midx-correspondencep *pix-t-trie* *pix-t-arts*))
+(assert-event
+ (let ((d (fn-pgc-decide-offer *pt-node1* *pt-cfg* "innA" nil *pt-id1* nil 0
+                               *pix-t-trie* *pix-t-arts*)))
+   (and (equal (fn-peer-decision-kind d) :have)
+        (equal d (fn-peer-decide-offer *pt-node1* *pt-cfg* "innA" nil *pt-id1*
+                                       nil 0)))))
+; Hypothesis (fn-midx-correspondencep trie arts): the empty trie over the
+; same node's list; the copy wants the held id, the reference has it.
+(assert-event (not (fn-midx-correspondencep nil *pix-t-arts*)))
+(assert-event (equal (fn-peer-decision-kind
+                      (fn-pgc-decide-offer *pt-node1* *pt-cfg* "innA" nil *pt-id1*
+                                           nil 0 nil *pix-t-arts*))
+                     :want))
+(must-fail-checked
+ (assert-event (equal (fn-pgc-decide-offer *pt-node1* *pt-cfg* "innA" nil *pt-id1*
+                                           nil 0 nil *pix-t-arts*)
+                      (fn-peer-decide-offer *pt-node1* *pt-cfg* "innA" nil *pt-id1*
+                                            nil 0))))
 
 ; -----------------------------------------------------------------------------
 ; A peer's retrieval by Message-ID (lane/rep-records-2): the peer commands do

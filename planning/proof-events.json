@@ -8270,7 +8270,7 @@
         {
           "kind": "theorem",
           "name": "fn-prof-offer-answer-is-the-reparse",
-          "note": "KEYSTONE. Subject fn-peer-decide-offer (served: fn-pgc-decide-offer = fn-pix-decide-offer = fn-peer-decide-offer, reached from host/owner-host.lisp fn-owner-chunk -> fn-own-read with the memory re-pinned by fn-own-conn-live-session). Teeth: tests/acl2/transit-hygiene-tests.lisp; native: tests/test_native_peering.py test_transit_hygiene_refused_offer_memory_and_relay_checks."
+          "note": "KEYSTONE. Subject fn-peer-decide-offer (served: fn-pgc-decide-offer, equal to fn-peer-decide-offer by fn-pgc-decide-offer-is-peer-decide-offer, reached from host/owner-host.lisp fn-owner-chunk -> fn-own-read with the memory re-pinned by fn-own-conn-live-session). Teeth: tests/acl2/transit-hygiene-tests.lisp; native: tests/test_native_peering.py test_transit_hygiene_refused_offer_memory_and_relay_checks."
         },
         {
           "kind": "theorem",
