@@ -84,7 +84,11 @@ class Classification(unittest.TestCase):
     def test_summary_counts(self):
         audit = self.audit(hosted_open=False)
         line = premise_audit.summary_line(audit.findings(), audit.premises(), {"accepted": {}})
-        self.assertIn("2 premises at hosted entries, 2 unestablished (2 theorems)", line)
+        # Three theorems assume a finding's premise at a hosted entry: the
+        # preservation `(implies (fn-inv s) (fn-inv (fn-step s)))' assumes
+        # fn-inv at the hosted step too, as it should (the step is entered
+        # with the premise the open never established).
+        self.assertIn("2 premises at hosted entries, 2 unestablished (3 theorems)", line)
         self.assertIn("2 established off the host path", line)
 
 

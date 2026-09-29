@@ -79,7 +79,8 @@ class Row:
 
 
 # The rows.  Ids: M memory, W work per step, S stack, T TLS, C time
-# (classification), D disk.  A row without theorems is measured or open; the
+# (classification), D disk, X closure (what the rows assume of the state
+# they are entered in, and what a refusal leaves: lane closure-theorems).  A row without theorems is measured or open; the
 # prose says which.  A `landing` row cites what another lane is delivering,
 # so the contract states the figure as it will be (heap-bounds-2's brief).
 ROWS: tuple[Row, ...] = (
@@ -512,7 +513,7 @@ def cited_books(root: Path = ROOT) -> list[str]:
 
 def row_ids_in_prose(text: str) -> set[str]:
     prose = text[:text.find(BEGIN)] if BEGIN in text else text
-    return set(re.findall(r"\*\*([MWSTCD]\d+b?)\*\*", prose))
+    return set(re.findall(r"\*\*([MWSTCDX]\d+b?)\*\*", prose))
 
 
 def check(root: Path = ROOT, strict: bool = False, certify: bool = True) -> int:

@@ -115,8 +115,11 @@ def store_event_tables() -> dict[str, set[str]]:
         for name in re.findall(r"\((fn-[a-z0-9-]+(?:-p|p|-held))\s", form):
             dispatch.add(ROW_ALIASES.get(name, name))
     as_row = lambda s: {WIRE_TO_ROW.get(p, p) for p in s}  # noqa: E731
+    # The dispatch bodies test other predicates too (the node's state, the
+    # index): a kind is a predicate the encoder or the kind reader knows.
+    kinds = as_row(encoder) | as_row(kind)
     return {"encoder": as_row(encoder), "decoder": as_row(decoder),
-            "kind": as_row(kind), "dispatcher": dispatch & (as_row(encoder) | as_row(kind) | dispatch)}
+            "kind": as_row(kind), "dispatcher": dispatch & kinds}
 
 
 def defevent_families() -> list[str]:

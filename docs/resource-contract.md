@@ -777,7 +777,7 @@ refusal leaves behind (lane closure-theorems, after B10: a configuration
 record on a transaction-full store after a checkpoint left a store no open
 accepted, because refused POSTs had consumed ids no reader accounted for).
 
-- **X1, refusal is effect-free, or says what it consumes.** Per host
+- **X1** Refusal is effect-free, or says what it consumes. Per host
   refusal entry, the ACL2 function and the theorem are `books/refusal-effect`'s
   header table. An unserved group, an unaffordable budget and a configuration
   request the owner does not admit leave the owner they were given (by
@@ -793,7 +793,7 @@ accepted, because refused POSTs had consumed ids no reader accounted for).
   functions. When reality exceeds the model: a reader that computes a frontier
   from one record kind alone is B10 again, and section X2's check is what
   catches a new kind.
-- **X2, the alphabets agree, and the premises are listed.**
+- **X2** The alphabets agree, and the premises are listed.
   `tools/alphabet_check.py` (a `make check` step) reads the configuration
   deltas' declared kinds, encoder, decoder, dispatcher and every writer, and
   the store events' encoder, decoder, kind reader and the replay's dispatch,
@@ -857,6 +857,8 @@ not on this tree yet; its citations are checked once they land.
 | D3 | `books/owner-checkpoint-writer`: `fn-ockp-decide-defers-by-the-estimate`; `books/store-maintenance-reserve`: `fn-smr-roomp-is-within-the-bound` | PRF-200, PRF-129 | none |  |
 | D4 | none (measured or open) | none | none |  |
 | D5 | `books/expiry-verdict`: `fn-xpy-releasablep-is-rule-or-expired-and-unheld`, `fn-xpy-held-article-is-not-expired` | PRF-918 | `planning/evidence/expiry-q11-2026-09-28.md` | lane/operations baec98157 (PKT-868, PRF-908: online compaction) |
+| X1 | `books/refusal-effect`: `fn-rfx-unserved-prepare-is-unchanged-by-definition`, `fn-rfx-unaffordable-prepare-is-unchanged-by-definition`, `fn-rfx-refused-reconfigure-is-unchanged-by-definition`, `fn-rfx-refused-post-keeps-records`, `fn-rfx-refused-post-keeps-configuration`, `fn-rfx-refused-post-consumes-one-txid`, `fn-rfx-config-record-txid-is-the-node-next-by-definition` | none | `planning/evidence/closure-theorems-2026-09-29.md` |  |
+| X2 | none (measured or open) | none | `planning/evidence/closure-theorems-2026-09-29.md` |  |
 
 Constants the rows quote, read from the books that define them.
 
@@ -906,7 +908,7 @@ The outcome classes and their codes (`*fn-outcome-codes*`, books/outcome-class.l
 
 Counts.
 
-- Depth lint baseline (tools/depth_baseline.json): 193 debt entries (data-sized recursion on a host-called path with no bound), 186 bounded.
+- Depth lint baseline (tools/depth_baseline.json): 193 debt entries (data-sized recursion on a host-called path with no bound), 170 bounded.
 - Named assumptions: 16 `A-*` rows in specs/failures.md, 13 encapsulates in books/assumptions.lisp.
 - The throughput gate's tolerance (tools/throughput_gate.py, planning/throughput-baseline.json): 25% over the baseline per operation, plaintext.
 
