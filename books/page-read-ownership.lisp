@@ -97,6 +97,23 @@
                 (equal (nth 2 r) file) (not (eq (nth 6 r) :settled)))
            (not (fn-pio-file-clear-p file rows))))
 
+; Process-local incarnation names are derived by ACL2 as well. NIL is the
+; initial allocator; an invalid carried counter refuses rather than resetting.
+(defun fn-pio-file-issue (next)
+  (declare (xargs :guard t))
+  (cond ((null next) (mv :issued 2 1))
+        ((posp next) (mv :issued (+ 1 next) next))
+        (t (mv :invalid-file-identity next nil))))
+
+(defthm fn-pio-successive-file-issues-have-distinct-identities
+  (let* ((next1 (mv-nth 1 (fn-pio-file-issue next)))
+         (first-id (mv-nth 2 (fn-pio-file-issue next)))
+         (second-id (mv-nth 2 (fn-pio-file-issue next1))))
+    (implies (eq (mv-nth 0 (fn-pio-file-issue next)) :issued)
+             (and (eq (mv-nth 0 (fn-pio-file-issue next1)) :issued)
+                  (posp first-id) (posp second-id) (< first-id second-id))))
+  :rule-classes nil)
+
 ; A reaper quantum inspects one owned worker, not the whole pool. These
 ; are work limits/OS-observation decisions, never ceilings on stored data.
 (defun fn-pio-reap-work ()

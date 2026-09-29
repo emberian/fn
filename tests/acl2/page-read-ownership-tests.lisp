@@ -95,3 +95,27 @@
 (assert-event (equal (fn-pio-reap-work) 1))
 (assert-event (and (equal (fn-pio-worker-death-step t) :settle)
                    (equal (fn-pio-worker-death-step nil) :rotate)))
+
+(defun piot-file-issue (next) (mv-list 3 (fn-pio-file-issue next)))
+(assert-event (and (equal (piot-file-issue nil) '(:issued 2 1))
+                   (equal (piot-file-issue 2) '(:issued 3 2))
+                   (equal (piot-file-issue 0) '(:invalid-file-identity 0 nil))
+                   (equal (piot-file-issue :bad) '(:invalid-file-identity :bad nil))))
+
+; KEYSTONE fn-pio-successive-file-issues-have-distinct-identities.
+; Literal positive: include initial namespace and another carried allocator.
+(assert-event
+ (and (let* ((first (piot-file-issue nil)) (second (piot-file-issue (cadr first))))
+        (and (eq (car first) :issued) (eq (car second) :issued)
+             (posp (caddr first)) (posp (caddr second)) (< (caddr first) (caddr second))))
+      (let* ((first (piot-file-issue 9)) (second (piot-file-issue (cadr first))))
+        (and (eq (car first) :issued) (eq (car second) :issued)
+             (posp (caddr first)) (posp (caddr second)) (< (caddr first) (caddr second))))))
+; Hypothesis-removal, corrupted carried counter: omitted :issued is false;
+; no other hypothesis remains, and the literal conclusion is false.
+(assert-event
+ (let* ((first (piot-file-issue 0)) (second (piot-file-issue (cadr first))))
+   (and (not (eq (car first) :issued))
+        (not (and (eq (car second) :issued)
+                  (posp (caddr first)) (posp (caddr second))
+                  (< (caddr first) (caddr second)))))))

@@ -4503,3 +4503,6 @@
 (definterface fn-pio-reap-work :class :common-lisp-compliant)
 (definterface fn-pio-worker-death-step :class :common-lisp-compliant
   :kinds ((deadp booleanp)))
+
+(definterface fn-pio-file-issue :class :common-lisp-compliant
+  :keystones ((fn-pio-successive-file-issues-have-distinct-identities :via fn-pio-file-issue)))

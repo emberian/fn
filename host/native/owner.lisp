@@ -3733,11 +3733,15 @@ Owner->extent locking makes publication/settlement and queue removal atomic."
       (return-from fnn-owner-cold-line
         (fnn-owner-handle-chunk service cid incoming socket class peerp)))
     (handler-case
-        (setq thread
+        (progn
+          (when (equal (fnn-developer-selector "FN_NATIVE_PAGE_IO_RESULT") "launch-error")
+            (fnn-err "PAGE-IO launch-failed token=~s worker=none buffer=none" token)
+            (error 'fnn-extent-fault :message "arena-extent-read: injected thread launch error"))
+          (setq thread
               (sb-thread:make-thread
                (lambda () (handler-case (fnn-extent-prefetch token)
                             (serious-condition (condition) condition)))
-               :name "fn cold extent"))
+               :name "fn cold extent")))
       (serious-condition (condition)
         (fnn-owner-cold-settle service read condition)
         (error condition)))

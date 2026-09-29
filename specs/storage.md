@@ -1448,10 +1448,14 @@ A cold extent read issued off the owner mutex has an immutable process-local
 token: monotonically allocated read identity, original connection identity,
 file incarnation identity, entry offset, protected length and expected
 trailer. The token is distinct from an OS descriptor, a Message-ID, a
-connection slot and a durable transaction identity. Its ACL2 ownership row
+connection slot and a durable transaction identity. ACL2 also derives fresh
+process-local incarnation names: successive admitted file allocations are
+distinct; failed opens spend their name and invalid carried counters refuse
+instead of resetting. Definite launch failure settles without a worker or
+buffer being created. Its ACL2 ownership row
 (`books/page-read-ownership.lisp`) begins `:issued`. Timeout or cancellation
 changes it to `:cancelled`, retaining its identity and worker ownership;
-neither observation establishes that pread stopped. Actual completion
+neither observation establishes that pread stopped. Actual worker death observed by the owner and joined completion
 settles the matching row once. Only a still-issued matching completion whose
 full read passed the commitment verdict can publish into the verified
 extent cache. Cancelled success discards its data; short read, error or

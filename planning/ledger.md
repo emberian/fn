@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1664 |
 | Certification roots in the Makefile | 1602 |
 | Books inside the root closure | 1663 |
-| `defthm` and `defthmd` events | 27377 |
-| `defun` events | 17907 |
+| `defthm` and `defthmd` events | 27378 |
+| `defun` events | 17911 |
 | Functions with verified guards | 3355 |
 | Functions declared `:verify-guards nil` and never verified | 2063 |
-| Functions left at the default with an explicit guard | 9812 |
-| Functions left at the default with no guard | 2677 |
-| `assert-event` checks | 22782 |
+| Functions left at the default with an explicit guard | 9815 |
+| Functions left at the default with no guard | 2678 |
+| `assert-event` checks | 22787 |
 | `must-fail` checks | 2463 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 272 |
 | Include-hygiene warnings | 2368 |
-| Host-names warnings | 1989 |
+| Host-names warnings | 1992 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -699,7 +699,7 @@ that `make certify` requests.
 | `books/owner.lisp` | root | 123 | 192 | 13/1/178/0 | 0 | 0 | 66 |
 | `books/packed-octets.lisp` | closure | 48 | 17 | 2/0/15/0 | 0 | 0 | 0 |
 | `books/packed-submission.lisp` | closure | 37 | 27 | 1/0/24/2 | 0 | 0 | 0 |
-| `books/page-read-ownership.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/page-read-ownership.lisp` | root | 9 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/pagestore-exec.lisp` | root | 203 | 101 | 4/5/89/3 | 0 | 0 | 2 |
 | `books/pagestore-gc.lisp` | root | 69 | 44 | 0/3/17/24 | 0 | 0 | 2 |
 | `books/pagestore-keystones.lisp` | root | 271 | 56 | 0/0/0/56 | 0 | 0 | 4 |
@@ -1514,7 +1514,7 @@ that `make certify` requests.
 | `tests/acl2/owner-verdict-read-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 32 | 6 | 0 |
 | `tests/acl2/owner-verdict-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/packed-submission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 0 | 0 |
-| `tests/acl2/page-read-ownership-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 11 | 0 | 0 |
+| `tests/acl2/page-read-ownership-tests.lisp` | root | 0 | 3 | 0/0/2/1 | 16 | 0 | 0 |
 | `tests/acl2/pagestore-refine-tests.lisp` | root | 0 | 10 | 0/5/5/0 | 6 | 0 | 0 |
 | `tests/acl2/pagestore-tests.lisp` | root | 0 | 39 | 0/0/2/37 | 41 | 0 | 0 |
 | `tests/acl2/payload-arena-extent-tests.lisp` | root | 13 | 7 | 0/2/1/4 | 6 | 10 | 0 |

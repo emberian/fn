@@ -51,7 +51,7 @@
 (defvar *fnn-extent-incarnations* (make-hash-table))
 ;; guarded-by: *fnn-extent-lock* (file id -> (device . inode) of the file opened)
 (defvar *fnn-extent-bases* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> page 0's offset)
-(defvar *fnn-extent-next-id* 1)
+(defvar *fnn-extent-next-id* nil)
 (defvar *fnn-extent-cache* nil)
 ;; ((file eoff elen trailer . octets) ...), most recent first: the verified
 ;; entries, each under the descriptor identity it was verified for
@@ -62,18 +62,29 @@
 ;; Removed only by actual worker completion, never a request's timeout.
 
 (defun fnn-extent-register (path)
-  "A new file id for PATH: a read-only descriptor held for the process's life,
-and the durable incarnation (device . inode) it opened."
-  (let* ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
-         (st (fnn-fstat fd))
-         (incarnation (cons (sb-posix:stat-dev st) (sb-posix:stat-ino st))))
+  "Reserve ACL2's fresh incarnation name before opening PATH. Failed opens
+spend the name; an OS descriptor number can never become its identity."
+  (let ((id nil))
     (sb-thread:with-mutex (*fnn-extent-lock*)
-      (let ((id *fnn-extent-next-id*))
-        (incf *fnn-extent-next-id*)
-        (setf (gethash id *fnn-extent-fds*) fd
-              (gethash id *fnn-extent-paths*) path
-              (gethash id *fnn-extent-incarnations*) incarnation)
-        id))))
+      (destructuring-bind (word next issued)
+          (fnn-call 'fn-pio-file-issue *fnn-extent-next-id*)
+        (unless (eq word :issued) (fnn-fault "invalid extent incarnation allocator"))
+        (setf *fnn-extent-next-id* next id issued)))
+    ;; Resource reservation will precede this open too; it must run while
+    ;; the pool's carried state is serialized, without owner/extent inversion.
+    (let ((fd nil) (installed nil))
+      (unwind-protect
+           (progn
+             (setq fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
+             (let* ((st (fnn-fstat fd))
+                    (incarnation (cons (sb-posix:stat-dev st) (sb-posix:stat-ino st))))
+               (sb-thread:with-mutex (*fnn-extent-lock*)
+                 (setf (gethash id *fnn-extent-fds*) fd
+                       (gethash id *fnn-extent-paths*) path
+                       (gethash id *fnn-extent-incarnations*) incarnation
+                       installed t)))
+             id)
+        (when (and fd (not installed)) (fnn-close fd))))))
 
 (defun fnn-extent-incarnation (file)
   "The (device . inode) file id FILE opened, or NIL.  Called with the
@@ -504,6 +515,7 @@ Answers the count closed and IDS still owned by issued workers."
               (remhash id *fnn-extent-fds*)
               (remhash id *fnn-extent-paths*)
               (remhash id *fnn-extent-incarnations*)
+              (remhash id *fnn-extent-bases*)
               (push id released)
               (when fd
                 (fnn-close fd) (incf closed)
