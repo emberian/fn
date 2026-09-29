@@ -1461,6 +1461,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-maintenance-request-tests \
 	tests/acl2/owner-reclaim-conns-tests \
 	tests/acl2/owner-reclaim-pass-tests \
+	tests/acl2/owner-reclaim-carry-tests \
 	tests/acl2/owner-reclaim-ready-tests \
 	tests/acl2/control-request-word-tests \
 	tests/acl2/packed-submission-tests \

@@ -239,6 +239,7 @@
 (include-book "../../books/peer-transit-authority")
 (include-book "../../books/owner-reclaim-conns")
 (include-book "../../books/owner-reclaim-ready")
+(include-book "../../books/owner-reclaim-carry")
 (include-book "../../books/config-owner-live")
 (include-book "../../books/config-owner-publish")
 (include-book "../../books/config-owner-carried")

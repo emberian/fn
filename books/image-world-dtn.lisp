@@ -191,6 +191,7 @@
 (include-book "peer-transit-authority")
 (include-book "owner-reclaim-conns")
 (include-book "owner-reclaim-ready")
+(include-book "owner-reclaim-carry")
 (include-book "config-owner-live")
 (include-book "config-owner-publish")
 (include-book "config-owner-carried")
@@ -295,3 +296,4 @@
 (include-book "bp-node-host-sequence")
 (include-book "bp-node-host-machine")
 (include-book "bp-evidence-host-names")
+(include-book "definterface")

@@ -1474,7 +1474,7 @@
   :class ::program)
 
 (definterface fn-owner-exposure-install-set
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-exposure-open
   :class ::program
@@ -1576,7 +1576,10 @@
   :class ::program)
 
 (definterface fn-owner-io
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-key-statement-event
   :class ::program)
@@ -1607,7 +1610,10 @@
   :class :common-lisp-compliant)
 
 (definterface fn-owner-known-abort
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-live-post-config
   :class :common-lisp-compliant)
@@ -1676,7 +1682,10 @@
   :class ::program)
 
 (definterface fn-owner-prepare-consumer
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-prepare-identity
   :class :common-lisp-compliant)
@@ -1686,7 +1695,10 @@
   :kinds ((id-octets fn-cbor-octet-listp) (subject-octets fn-cbor-octet-listp) (evidence-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-prepare-topic
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-prov-post
   :class :common-lisp-compliant)
@@ -1719,7 +1731,10 @@
   :class ::program)
 
 (definterface fn-owner-refuse-reservation
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-sco-capture
   :class ::program)
@@ -4392,7 +4407,8 @@
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-rebuild
-  :class ::program)
+  :class :ideal
+  :keystones (fn-owner-orcp-rebuild-establishes-retain-carry))
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-salt
@@ -4483,3 +4499,8 @@
 ; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
 (definterface fn-store-sco-want-checkpoint-digest
   :class ::program)
+
+; Called directly only while installing dispatch from the loaded image world.
+(definterface fn-di-raw-with-problem
+  :class :program
+  :direct "Image-build declaration lint over the loaded world; no client data or served decision")
