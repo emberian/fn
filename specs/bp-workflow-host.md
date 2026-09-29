@@ -216,8 +216,8 @@ order, takes the one `:submit` (`fn-workflow-take-submit`), then enqueues the
 ADU as one FNBS job under that key and offers it once to CONTACT-HOST:PORT;
 `bp-service resume` re-offers a durable job. Keystone
 `fn-bprq-plan-is-the-works-request`. The ION sender
-(`app-journal workflow-ion-submit`) is an adapter of the same attempt:
-`fn-bpiw-attempt-record` equals `fn-bprq-attempt-record`. Developer cuts
+(`app-journal workflow-ion-submit`) is an adapter of the same attempt: it
+publishes `fn-bprq-attempt-record` itself (the ION copy was deleted). Developer cuts
 `FN_BP_OBLIGATION_TEST_PAUSE_AFTER_ATTEMPT` (attempt durable, outcome absent)
 and `FN_BP_OBLIGATION_TEST_PAUSE_AFTER_SUBMIT` (submit taken, no carrier).
 After the first the reopened image is fenced with the attempt pending and no

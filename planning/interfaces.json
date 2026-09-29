@@ -4,8 +4,8 @@
   "coverage": {
     "declared": 1223,
     "declared_and_dispatched": 1206,
-    "guard_verified": 471,
-    "with_keystone": 138
+    "guard_verified": 478,
+    "with_keystone": 141
   },
   "entries": [
     {
@@ -7031,7 +7031,7 @@
       "name": "fn-owner-consumer-local-wait-admit",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -7844,7 +7844,7 @@
       "name": "fn-owner-key-statement-redecide-log-line",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -7876,7 +7876,7 @@
       "name": "fn-owner-key-statement-request",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -7902,38 +7902,6 @@
       "delegates": null,
       "dispatched_from": [
         "host/native/owner.lisp"
-      ],
-      "applied_directly_in": []
-    },
-    {
-      "name": "fn-owner-limit-carried",
-      "subsystem": "owner",
-      "declared_in": "host/interfaces.lisp",
-      "class": "program",
-      "kinds": [],
-      "exempt": {},
-      "keystones": [],
-      "extraction": null,
-      "direct": null,
-      "delegates": null,
-      "dispatched_from": [
-        "host/native/admin.lisp"
-      ],
-      "applied_directly_in": []
-    },
-    {
-      "name": "fn-owner-limit-decided",
-      "subsystem": "owner",
-      "declared_in": "host/interfaces.lisp",
-      "class": "program",
-      "kinds": [],
-      "exempt": {},
-      "keystones": [],
-      "extraction": null,
-      "direct": null,
-      "delegates": null,
-      "dispatched_from": [
-        "host/native/admin.lisp"
       ],
       "applied_directly_in": []
     },
@@ -8786,7 +8754,7 @@
       "name": "fn-owner-statement-fence",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -11141,7 +11109,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpah-publication-authorize-admits-exactly-the-issued-pending-delivery"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -11647,13 +11619,13 @@
       "name": "fn-bpn-host-evidence-authorize",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": null,
+      "delegates": "fn-bpn-evidence-authorize",
       "dispatched_from": [
         "host/native/bp.lisp"
       ],
@@ -11813,7 +11785,7 @@
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": null,
+      "delegates": "fn-bpn-evidence-operationp",
       "dispatched_from": [
         "host/native/bp.lisp"
       ],
@@ -11930,7 +11902,7 @@
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": null,
+      "delegates": "fn-bpn-lifecycle-publication-authorize",
       "dispatched_from": [
         "host/native/bp-service.lisp"
       ],
@@ -12866,7 +12838,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpnf-delete-publication-authorize-admits-exactly-the-issued-pending-deletion"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -12978,7 +12954,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -14973,7 +14953,7 @@
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": null,
+      "delegates": "fn-tcl-encode",
       "dispatched_from": [
         "host/native/tcpcl.lisp"
       ],
@@ -20050,6 +20030,22 @@
       "applied_directly_in": []
     },
     {
+      "name": "fn-lim-apply-row",
+      "subsystem": "admin/operator",
+      "declared_in": "host/interfaces.lisp",
+      "class": "common-lisp-compliant",
+      "kinds": [],
+      "exempt": {},
+      "keystones": [],
+      "extraction": null,
+      "direct": null,
+      "delegates": null,
+      "dispatched_from": [
+        "host/native/admin.lisp"
+      ],
+      "applied_directly_in": []
+    },
+    {
       "name": "fn-lim-decide",
       "subsystem": "admin/operator",
       "declared_in": "host/interfaces.lisp",
@@ -20083,6 +20079,22 @@
     },
     {
       "name": "fn-lim-decision-status",
+      "subsystem": "admin/operator",
+      "declared_in": "host/interfaces.lisp",
+      "class": "common-lisp-compliant",
+      "kinds": [],
+      "exempt": {},
+      "keystones": [],
+      "extraction": null,
+      "direct": null,
+      "delegates": null,
+      "dispatched_from": [
+        "host/native/admin.lisp"
+      ],
+      "applied_directly_in": []
+    },
+    {
+      "name": "fn-lim-funded-after",
       "subsystem": "admin/operator",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",

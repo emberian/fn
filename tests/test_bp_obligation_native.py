@@ -197,9 +197,6 @@ class NativeBpObligationTests(unittest.TestCase):
         self.assertNotIn("status=outstanding", status.stdout)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 @requires(IMAGE)
 class NativeBpCarryVerbTests(unittest.TestCase):
@@ -304,3 +301,7 @@ class NativeBpCarryVerbTests(unittest.TestCase):
         helped = self.invoke("operator", self.config, "help", "carry")
         self.assertEqual(helped.returncode, EXIT.OK, helped.stderr)
         self.assertIn("carry JOURNAL", helped.stdout + helped.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()
