@@ -4229,7 +4229,17 @@ FN_NATIVE_RECLAIM_FAULT names it."
           (fnn-fault "invalid FN_NATIVE_RECLAIM_FAULT (expected CUT:kill)"))
         (when (string-equal (subseq raw 0 colon) (symbol-name cut))
           (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
-          (fnn-fault "test SIGKILL did not terminate the process"))))))
+          (fnn-fault "test SIGKILL did not terminate the process")))))
+  ;; Developer image only (Q16 item 5): while the file
+  ;; FN_NATIVE_TEST_RECLAIM_STALL_FILE names exists, the pass waits at its
+  ;; :rebuilt cut, off the owner mutex, so posts commit between the capture
+  ;; and the swap and the swap word answers :delta
+  ;; (tests/test_native_expiry.py, the continuous-posting case).
+  (when (eq cut :rebuilt)
+    (let ((stall (fnn-developer-selector "FN_NATIVE_TEST_RECLAIM_STALL_FILE")))
+      (when (and stall (plusp (length stall)) (probe-file stall))
+        (fnn-err "RECLAIM stalled at=rebuilt")
+        (loop while (probe-file stall) do (sleep 0.05))))))
 
 (defun fnn-fresh-stobj (name)
   "A fresh, empty instance of the live stobj NAME (fn-cat, fn-hist) for the

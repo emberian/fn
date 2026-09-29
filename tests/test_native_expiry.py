@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import re
 import shutil
+import threading
 import time
 import unittest
 
@@ -338,6 +339,61 @@ class DeveloperExpiryTests(ExpiryMixin, unittest.TestCase):
             node.stop(expect=None, grace=300)
         self.assert_reclaimed(node, "reopened")
         self.assertTrue(self.served(node, ["STAT %s" % msgid("n9")])[0].startswith(b"223"))
+
+    # Q16 item 5 (lane online-reclaim-7): posting continues through a pass.
+    # Posts commit between the capture and the swap (the pass held at its
+    # :rebuilt cut, off the owner mutex, by the developer selector
+    # FN_NATIVE_TEST_RECLAIM_STALL_FILE): the swap is taken only over exactly
+    # the captured Store (PRF-939 fn-orcp-swap-only-over-the-capture), so the
+    # pass defers BY NAME, reason=delta -- refused, nothing installed -- and
+    # every post is accepted and served.  The rerun on the quiet node
+    # installs and keeps them.  Until the pass can resume over the delta
+    # (incremental finalize's O(|Q|) resume, PRF-946) a pass under steady
+    # posting defers; it never installs a Store that lost a post.
+    def test_posting_through_a_pass_defers_by_name_then_installs(self):
+        node = self.copy_of(self.recorded_base(), "posting")
+        stall = self.root / "reclaim-stall"
+        stall.write_bytes(b"")
+        owner = node.start(timeout=600, env={"FN_NATIVE_TEST_RECLAIM_STALL_FILE": str(stall)})
+        tags = ["c%d" % i for i in range(5)]
+        try:
+            c = Client(node.port, timeout=300, greeting=None)
+            result = {}
+            worker = threading.Thread(
+                target=lambda: result.setdefault("done", self.reclaim(node, "--recorded", expect=None)))
+            worker.start()
+            held = self.owner_lines(owner, re.compile(rb"RECLAIM stalled at=rebuilt"), 1, deadline=600)
+            self.assertEqual(len(held), 1, owner.stderr.since(0)[-3000:])
+            for tag in tags:
+                first, final = c.post(article(tag, GROUP, None))
+                self.assertTrue((final or first).startswith(b"240"), (tag, first, final))
+            stall.unlink()
+            worker.join(timeout=1300)
+            self.assertFalse(worker.is_alive())
+            done = result["done"]
+            self.assertEqual(done.returncode, EXIT.REFUSED, (done.stdout, done.stderr[-600:]))
+            self.assertNotIn(b"installed", done.stdout, done.stdout)
+            deferred = self.owner_lines(owner, re.compile(rb"RECLAIM deferred reason=delta"), 1)
+            self.assertEqual(len(deferred), 1, owner.stderr.since(0)[-3000:])
+            self.assertEqual(self.owner_lines(owner, re.compile(rb"RECLAIM installed"), 1, deadline=0), [])
+            # Nothing installed: the expired article is still served, and every post.
+            self.assertTrue(c.command("STAT %s" % msgid("p0")).startswith(b"223"))
+            for tag in tags:
+                self.assertTrue(c.command("STAT %s" % msgid(tag)).startswith(b"223"), tag)
+            # Quiet now: the rerun installs over a Store that has the posts.
+            again = self.reclaim(node, "--recorded")
+            self.assertIn(b"installed", again.stdout, again.stdout)
+            self.assertTrue(c.command("STAT %s" % msgid("p0")).startswith(b"430 article reclaimed"))
+            for tag in tags:
+                self.assertTrue(c.command("STAT %s" % msgid(tag)).startswith(b"223"), tag)
+            first, final = c.post(article("c9", GROUP, None))
+            self.assertTrue((final or first).startswith(b"240"), (first, final))
+            c.close()
+        finally:
+            node.stop(expect=None, grace=300)
+        self.assert_reclaimed(node, "posting")
+        replies = self.served(node, ["STAT %s" % msgid(t) for t in tags + ["c9"]])
+        self.assertTrue(all(r.startswith(b"223") for r in replies), replies)
 
     def test_a_death_at_each_pass_cut_is_old_or_new(self):
         base = self.recorded_base()
