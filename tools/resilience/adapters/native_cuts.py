@@ -858,7 +858,10 @@ class Run:
         return r.returncode
 
     def status(self, op: Operation) -> str:
-        r = self.invoke("status")
+        # `--replay': the report over the replayed log (open=checkpoint:N ...);
+        # since operability-2 cbe0c1d7d the plain stopped report reads only
+        # the checkpoint header (`stopped checkpoint=... transactions-at-most=`).
+        r = self.invoke("status", "--replay")
         lines = [ln for ln in r.stdout.decode("ascii", "replace").splitlines()
                  if ln.startswith("open=")]
         line = lines[0] if len(lines) == 1 else ""

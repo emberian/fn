@@ -246,7 +246,12 @@ class BpRun:
         verb = "add" if present else "remove"
         r = self.invoke("operator", self.configs[True], "bp-route", verb, *ROUTE)
         if r.returncode != EXIT.OK:
-            raise HarnessFailure("bp-route-{}:rc={}".format(verb, r.returncode))
+            # The operator's own words go into the cause: on the 444fb9f41
+            # image `bp-route remove` at the hold exited 1 (the receiver
+            # holds the writer lock; operability-2 refuses by name).
+            words = ((r.stdout or b"") + b" " + (r.stderr or b"")).decode("ascii", "replace")
+            raise HarnessFailure("bp-route-{}:rc={}:{}".format(
+                verb, r.returncode, " ".join(words.split())[:160]))
         self.route_present = present
         self.j.client("policy-change", operation=op_id, what="receipt-policy",
                       change="route-restored" if present else "route-removed",
@@ -265,7 +270,9 @@ class BpRun:
                       pinned=pinned, returncode=r.returncode)
 
     def probe(self, op_id: str):
-        status = self.invoke("store", self.receiver_store, "status", timeout=300)
+        # `--replay': the counts over the replayed log (transactions= articles=);
+        # the plain stopped report (operability-2 cbe0c1d7d) is the header only.
+        status = self.invoke("store", self.receiver_store, "status", "--replay", timeout=300)
         counts = re.findall(rb"^transactions=[0-9]+ articles=([0-9]+) ", status.stdout,
                             re.MULTILINE)
         if status.returncode != EXIT.OK or len(counts) != 1:
