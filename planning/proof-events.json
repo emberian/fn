@@ -13544,6 +13544,46 @@
           "name": "fn-bpn-host-receive-of-host-send-hands-over-the-adu"
         }
       ]
+    },
+    {
+      "id": "PRF-951",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otb-answer-early-answers-each-untold-member-once"
+        }
+      ]
+    },
+    {
+      "id": "PRF-952",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-read-refusal-text-refuses-exactly-what-does-not-expand"
+        }
+      ]
+    },
+    {
+      "id": "PRF-953",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgdm-refusal-text-refuses-exactly-a-break-or-damage"
+        }
+      ]
+    },
+    {
+      "id": "PRF-954",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-smid-durability-warning-warns-exactly-when-the-mount-is-unsafe"
+        }
+      ]
     }
   ]
 }

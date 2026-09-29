@@ -444,7 +444,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-lgdm-refusal-text
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-lgdm-refusal-text-refuses-exactly-a-break-or-damage))
 
 (definterface fn-lgdm-refused-p
   :class ::common-lisp-compliant)
@@ -545,7 +546,8 @@
               fn-lzr-append-plan-off))
 
 (definterface fn-lzr-append-refusal-text
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder))
 
 (definterface fn-lzr-candidate-cap
   :class ::common-lisp-compliant)
@@ -562,7 +564,8 @@
   :keystones (fn-lzr-intern-step-refines))
 
 (definterface fn-lzr-read-refusal-text
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-lzr-read-refusal-text-refuses-exactly-what-does-not-expand))
 
 (definterface fn-lzr-read-step
   :class ::common-lisp-compliant
@@ -759,7 +762,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-smid-durability-warning
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-smid-durability-warning-warns-exactly-when-the-mount-is-unsafe))
 
 (definterface fn-smid-init-policy
   :class ::common-lisp-compliant)
@@ -1247,7 +1251,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-otb-answer-early
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-otb-answer-early-answers-each-untold-member-once))
 
 (definterface fn-otb-complete
   :class ::common-lisp-compliant
