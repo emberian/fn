@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6202,6 +6202,33 @@
         "books/native-health.lisp",
         "tests/acl2/native-health-tests.lisp"
       ]
+    },
+    {
+      "id": "SCN-217",
+      "title": "Offline snapshot blessing validates stopped-copy fixtures and real reopen, names missing marker/key and malformed store/key and refuses a foreign lineage",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-039"
+      ],
+      "steps": [
+        "Copy a stopped three-article store; explicitly supply the producer completion observation marker; bless, start the copy and retrieve each article. Remove marker or key, corrupt the key or profile; preserve first-failure refusal. Diverge copied stores and install a foreign checkpoint; blessing refuses its lineage."
+      ],
+      "expected": [
+        "Blessed iff the marker, own read-only open and node-secret observations hold; accepted exit 0, named refusal exit 1. Missing marker omits open even with malformed profile. A complete older own-lineage copy remains accepted (no freshness guarantee)."
+      ],
+      "implementation": {
+        "test": "tests.test_native_snapshot_bless",
+        "cases": [
+          "test_stopped_copy_blesses_reopens_and_names_missing_and_malformed_inputs",
+          "test_foreign_lineage_is_refused_and_complete_old_lineage_is_explicitly_allowed"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_snapshot_bless.py"
+      ],
+      "scope_note": "Stopped-copy fixtures explicitly supply SNAPSHOT. No running snapshot producer or atomic-capture claim."
     }
   ]
 }
