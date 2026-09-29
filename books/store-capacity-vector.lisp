@@ -781,8 +781,9 @@ the capacity vector at the composite's figure."
                            (fn-cvec-roomp fn-smr-roomp fn-cvec-row-payload-length
                             fn-sbud-article-figure)))))
 
-;  KEYSTONE (one committed record of any kind keeps the vector).
-(defthm fn-cvec-record-keeps-the-vector
+; One committed record of any kind keeps the vector, at a natural debt.
+(local
+(defthm fn-cvec-record-keeps-the-vector-at-a-natural-debt
   (implies (and (fn-cvec-roomp profile used bytes-used debt)
                 (natp debt)
                 (fn-cvec-record-admittedp profile used bytes-used debt record))
@@ -807,7 +808,54 @@ the capacity vector at the composite's figure."
                             fn-sbud-row-memberships
                             fn-cvec-article-verdict-at fn-cvec-row-payload-length
                             fn-store-event-kind fn-store-event-encode
-                            fn-store-publication-ceiling fn-held-p)))))
+                            fn-store-publication-ceiling fn-held-p))))))
+
+; Every reader of the debt fixes it (fn-cvec-roomp, fn-cvec-debt-step, the
+; verdicts through fn-cvec-roomp; a release asks posp), so a debt that is not
+; a natural reads as 0 everywhere and the natural-debt hypothesis is
+; redundant (PKT-362, PKT-776: it had no removal witness because it has no
+; work to do).
+(local
+ (defthm fn-cvec-roomp-of-non-natp-debt
+   (implies (not (natp d))
+            (equal (fn-cvec-roomp profile used b d)
+                   (fn-cvec-roomp profile used b 0)))))
+
+(local
+ (defthm fn-cvec-debt-step-of-non-natp
+   (implies (not (natp debt))
+            (equal (fn-cvec-debt-step kind debt) (fn-cvec-debt-step kind 0)))))
+
+(local
+ (defthm fn-cvec-record-admittedp-of-non-natp-debt
+   (implies (not (natp debt))
+            (equal (fn-cvec-record-admittedp profile used bytes-used debt record)
+                   (fn-cvec-record-admittedp profile used bytes-used 0 record)))
+   :hints (("Goal"
+            :in-theory (union-theories
+                        '(fn-cvec-record-admittedp fn-cvec-article-verdict-at
+                          fn-cvec-statement-verdict-at fn-cvec-verdict-at
+                          fn-cvec-roomp-of-non-natp-debt fn-cvec-debt-step-of-non-natp
+                          posp natp (:executable-counterpart natp)
+                          (:executable-counterpart posp))
+                        (theory 'minimal-theory))))))
+
+;  KEYSTONE (one committed record of any kind keeps the vector).
+(defthm fn-cvec-record-keeps-the-vector
+  (implies (and (fn-cvec-roomp profile used bytes-used debt)
+                (fn-cvec-record-admittedp profile used bytes-used debt record))
+           (fn-cvec-roomp profile (+ 1 used)
+                          (+ bytes-used (fn-sbud-row-octets record))
+                          (fn-cvec-debt-step (fn-store-event-kind record) debt)))
+  :rule-classes nil
+  :hints (("Goal" :cases ((natp debt))
+           :use ((:instance fn-cvec-record-keeps-the-vector-at-a-natural-debt)
+                 (:instance fn-cvec-record-keeps-the-vector-at-a-natural-debt (debt 0)))
+           :in-theory (union-theories '(fn-cvec-record-admittedp-of-non-natp-debt
+                                        fn-cvec-debt-step-of-non-natp
+                                        fn-cvec-roomp-of-non-natp-debt
+                                        (:executable-counterpart natp))
+                                      (theory 'minimal-theory)))))
 
 ;  The vector part of the composed statement, by induction over the history.
 (local
@@ -881,7 +929,7 @@ the capacity vector at the composite's figure."
             (fn-cvec-roomp profile (+ 1 used)
                            (+ bytes-used (fn-sbud-row-octets record))
                            (fn-cvec-debt-step (fn-store-event-kind record) debt)))
-   :hints (("Goal" :use fn-cvec-record-keeps-the-vector
+   :hints (("Goal" :use fn-cvec-record-keeps-the-vector-at-a-natural-debt
             :in-theory (disable fn-cvec-roomp fn-cvec-record-admittedp
                                 fn-cvec-debt-step fn-store-event-kind
                                 fn-store-event-encode)))))
@@ -900,13 +948,14 @@ the capacity vector at the composite's figure."
                                 fn-cvec-record-admittedp fn-cvec-debt-step
                                 fn-store-event-kind fn-store-event-encode)))))
 
-;  KEYSTONE (the composed statement, PRF-138).  From a state where the vector
+;  The composed statement (PRF-138) at a natural debt.  From a state where the vector
 ; holds, a history of mixed record kinds each admitted by the host-called gate
 ; of its kind leaves the vector holding at the committed count, the ACTUAL
 ; committed record octets (`fn-sbud-record-octets', the unframed sum the open
 ; path counts) and the history's debt; so the history is within H and below
 ; T, which is what the selected open path admits.
-(defthm fn-cvec-admitted-history-keeps-the-vector
+(local
+(defthm fn-cvec-admitted-history-keeps-the-vector-at-a-natural-debt
   (implies (and (fn-cvec-roomp profile used bytes-used debt)
                 (natp debt)
                 (fn-cvec-history-admittedp profile used bytes-used debt records))
@@ -922,7 +971,49 @@ the capacity vector at the composite's figure."
                                    (b (+ bytes-used (fn-sbud-record-octets records)))
                                    (debt (fn-cvec-debt-from debt records))))
            :in-theory (disable fn-cvec-roomp fn-cvec-history-admittedp
-                               fn-profile-replay-within-boundp))))
+                               fn-profile-replay-within-boundp)))))
+
+;  KEYSTONE (the composed statement, PRF-138), at any debt: the reads fix it.
+(local
+ (defthm fn-cvec-debt-from-of-non-natp
+   (implies (not (natp debt))
+            (equal (fn-cvec-debt-from debt records)
+                   (fn-cvec-debt-from 0 records)))
+   :hints (("Goal" :expand ((fn-cvec-debt-from debt records)
+                            (fn-cvec-debt-from 0 records))
+            :in-theory (union-theories '(fn-cvec-debt-step-of-non-natp nfix natp
+                                         (:executable-counterpart nfix))
+                                       (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-cvec-history-admittedp-of-non-natp
+   (implies (not (natp debt))
+            (equal (fn-cvec-history-admittedp profile used bytes-used debt records)
+                   (fn-cvec-history-admittedp profile used bytes-used 0 records)))
+   :hints (("Goal" :expand ((fn-cvec-history-admittedp profile used bytes-used debt records)
+                            (fn-cvec-history-admittedp profile used bytes-used 0 records))
+            :in-theory (union-theories '(fn-cvec-debt-step-of-non-natp
+                                         fn-cvec-record-admittedp-of-non-natp-debt)
+                                       (theory 'minimal-theory))))))
+
+(defthm fn-cvec-admitted-history-keeps-the-vector
+  (implies (and (fn-cvec-roomp profile used bytes-used debt)
+                (fn-cvec-history-admittedp profile used bytes-used debt records))
+           (and (fn-cvec-roomp profile (+ used (len records))
+                               (+ bytes-used (fn-sbud-record-octets records))
+                               (fn-cvec-debt-from debt records))
+                (fn-profile-replay-within-boundp
+                 profile (+ bytes-used (fn-sbud-record-octets records)))))
+  :rule-classes nil
+  :hints (("Goal" :cases ((natp debt))
+           :use ((:instance fn-cvec-admitted-history-keeps-the-vector-at-a-natural-debt)
+                 (:instance fn-cvec-admitted-history-keeps-the-vector-at-a-natural-debt
+                            (debt 0)))
+           :in-theory (union-theories '(fn-cvec-history-admittedp-of-non-natp
+                                        fn-cvec-debt-from-of-non-natp
+                                        fn-cvec-roomp-of-non-natp-debt
+                                        (:executable-counterpart natp))
+                                      (theory 'minimal-theory)))))
 
 ;  KEYSTONE (from init).  A store initialised under an admitted profile whose
 ; history each record of which the host-called gate admitted is within H and
