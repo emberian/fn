@@ -166,7 +166,7 @@ class Context:
             self.env["FN_BLAKE3_LIBRARY"] = str(lib)
         # The ACL2 bridge the BP recipe's harness starts (as hbox_native.sh
         # exports it).
-        for name, value in (("FN_ACL2", "/tank/fn/toolchains/w28/acl2-literal-4g"),
+        for name, value in (("FN_ACL2", "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k"),
                             ("FN_CERT_CACHE", "/tank/fn/certcache")):
             if name not in self.env and Path(value).exists():
                 self.env[name] = value

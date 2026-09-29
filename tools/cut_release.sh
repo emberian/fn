@@ -112,7 +112,7 @@ DRY=no REV_ARG=HEAD OUT="" FROM=1 TO=17
 RUNTIME=/tank/fn/scratch/glibc-floor/runtime-2.6.8
 OB_VM=cutbld OB_BASE=/tank/fn/scratch/power-loss-openbsd
 HOST=${FN_HBOX:-hbox}
-BOX_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+BOX_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k
 BOX_CACHE=/tank/fn/certcache
 while [ "$#" -gt 0 ]; do
   case $1 in
