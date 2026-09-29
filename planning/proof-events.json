@@ -17039,6 +17039,19 @@
           "name": "fn-cat-clear-keyed-is-nil"
         }
       ]
+    },
+    {
+      "id": "PRF-1049",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rcn-live-note-checks"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcn-live-limits-are-the-recorded-limits"
+        }
+      ]
     }
   ]
 }

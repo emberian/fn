@@ -17325,6 +17325,29 @@
         "fn-cat-index-health-is-the-build",
         "fn-cat-clear-keyed-is-nil"
       ]
+    },
+    {
+      "id": "PRF-1049",
+      "title": "The live reclaim pass's note is the offline note: over the owner's two records (the instant, then the note of its decision) the --recorded rerun checks the note exactly as over `store reclaim`'s one record",
+      "statement": "books/reclaim-note.lisp KEYSTONE fn-rcn-live-note-checks: for NOW an instant and D the stream decision at the configuration's rule and NOW, over V the value of fn-rcn-live-config (the instant record fn-rci-recorded-config at Q TX G STAMP, then a record of the one delta fn-rcn-note-deltas TEXT at any coordinates Q2 TX2 G2 STAMP2, TEXT = fn-rcn-of-decision NOW COUNT D): the note of V is TEXT, V's instant is NOW, and fn-rcn-check of V, COUNT and the rerun's decision fn-rci-decide-stream answers :checked when D reclaims (:unchecked otherwise). fn-rcn-live-limits-are-the-recorded-limits: the two live records leave exactly the limits of the offline one-record form fn-rcn-recorded-config, so every theorem of PRF-1025 transfers. Host: host/owner-host.lisp fn-owner-orc-note-stage (fn-rcn-of-decision, fn-rcn-note-deltas through fn-owner-reconfigure-deltas); its call from host/native/owner.lisp fnn-owner-reclaim-pass after the :reclaim decision and before the install is online-reclaim's to wire (until then the live rerun is :unchecked). Scope: the check; the log fold does not apply the note.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-1025",
+        "PRF-987"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/reclaim-note.lisp",
+        "tests/acl2/reclaim-note-tests.lisp (the fixture's decision: the live two-record form reads back the note and the instant and rechecks :checked, with the same limits as the offline form; teeth: a foreign note in the live form :reclaim-note-mismatch, the instant alone :unchecked, the instant at a non-instant never :checked)"
+      ],
+      "events": [
+        "fn-rcn-live-note-checks",
+        "fn-rcn-live-limits-are-the-recorded-limits"
+      ]
     }
   ]
 }

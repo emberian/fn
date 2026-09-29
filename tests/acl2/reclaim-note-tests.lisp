@@ -52,7 +52,7 @@
 (assert-event (equal (rcnt-recheck (rcnt-v (rcnt-foreign)) (rcnt-count)) :reclaim-note-mismatch))
 (must-fail-checked
  (assert-event (equal (rcnt-recheck (rcnt-v (rcnt-foreign)) (rcnt-count)) :checked)))
-(defmacro rcnt-other () `(fn-rcn-of-decision 0 (rcnt-count) (list :reclaim '("<other@x>") 1 nil))))
+(defmacro rcnt-other () `(fn-rcn-of-decision 0 (rcnt-count) (list :reclaim '("<other@x>") 1 nil)))
 (assert-event (equal (rcnt-recheck (rcnt-v (rcnt-other)) (rcnt-count)) :reclaim-note-mismatch))
 ; A note of an earlier instant (the live pass records its instant alone) is
 ; not checked.
@@ -67,3 +67,29 @@
 ; The configuration admits the note delta only non-empty.
 (assert-event (equal (fn-cfg-reclaim-note-reason (fn-cfg-reclaim-note "")) :reclaim-note))
 (assert-event (null (fn-cfg-reclaim-note-reason (fn-cfg-reclaim-note (rcnt-text)))))
+
+; fn-rcn-live-note-checks (PRF-1049): the owner's two records (the instant at
+; generation 2, then the note at generation 3 with other coordinates).
+; Reachable and not degenerate: the whole conclusion, :checked.
+(defmacro rcnt-live (text)
+  `(fn-cfg-value (fn-rcn-live-config (rcnt-cfg *rpt-rule*) 1 0 2 0 0 2 5 3 9 ,text)))
+(assert-event (fn-cfg-delta-listp (fn-rcn-note-deltas (rcnt-text))))
+(assert-event (and (equal (fn-rcn-config-note (rcnt-live (rcnt-text))) (rcnt-text))
+                   (equal (fn-rci-config-now (rcnt-live (rcnt-text))) 0)
+                   (equal (rcnt-recheck (rcnt-live (rcnt-text)) (rcnt-count)) :checked)))
+; The live and the offline forms leave the same limits.
+(assert-event (equal (fn-cfg-limits (rcnt-live (rcnt-text)))
+                     (fn-cfg-limits (rcnt-v (rcnt-text)))))
+; Teeth: the live form with a foreign note is refused by name; with no note
+; record (the instant alone, before this packet) the rerun is :unchecked.
+(assert-event (equal (rcnt-recheck (rcnt-live (rcnt-foreign)) (rcnt-count)) :reclaim-note-mismatch))
+(assert-event (equal (rcnt-recheck (fn-cfg-value (fn-rci-recorded-config (rcnt-cfg *rpt-rule*) 1 0 2 0 0))
+                                   (rcnt-count))
+                     :unchecked))
+; Hypothesis removal (fn-rci-instantp): the instant recorded at :late is not
+; the note's; the rerun does not check.
+(assert-event (not (equal (rcnt-recheck (fn-cfg-value (fn-rcn-live-config (rcnt-cfg *rpt-rule*)
+                                                                          1 0 2 0 :late 2 5 3 9
+                                                                          (rcnt-text)))
+                                        (rcnt-count))
+                          :checked)))

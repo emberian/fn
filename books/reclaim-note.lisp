@@ -294,6 +294,92 @@
                  (:instance fn-rcn-recorded-note-reads-back
                             (text (fn-rcn-of-decision now count d)))))))
 
+; -----------------------------------------------------------------------------
+; The LIVE pass (PKT-855's open half; host/owner-host.lisp
+; fn-owner-orc-note-stage, which online-reclaim's fnn-owner-reclaim-pass
+; calls after its decision and before the install).  The running owner
+; records the instant first (books/owner-reclaim-instant.lisp) and decides
+; after it, so the note is a SECOND reconfiguration record, of the one delta
+; fn-rcn-note-deltas, at the owner's next coordinates Q2 TX2 G2 STAMP2.
+
+(defun fn-rcn-note-deltas (text)
+  (declare (xargs :guard t))
+  (list (fn-cfg-reclaim-note text)))
+
+(defun fn-rcn-live-config (cfg q tx g stamp now q2 tx2 g2 stamp2 text)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-cfg-apply-record (fn-rci-recorded-config cfg q tx g stamp now)
+                       (fn-cfg-record-make q2 tx2 g2 (fn-rcn-note-deltas text) stamp2)))
+
+(local
+ (defthm fn-rcn-limits-of-note-after-instant
+   (equal (fn-cfg-limits (fn-cfg-apply (fn-cfg-apply v g stamp (list (fn-rci-delta now)))
+                                       g2 stamp2 (list (fn-cfg-delta-make :reclaim-note text "" 0 nil))))
+          (fn-cfg-row-upsert
+           (fn-cfg-row-upsert (fn-cfg-limits v)
+                              (fn-cfg-row-make *fn-rci-slot* "" "" (fn-rci-code now)))
+           (fn-cfg-row-make *fn-cfg-reclaim-note-slot* "" text 0)))
+   :hints (("Goal" :in-theory (enable fn-cfg-apply fn-cfg-apply-delta
+                                      fn-rci-delta fn-cfg-set-limit fn-cfg-reclaim-note
+                                      fn-cfg-delta-make fn-cfg-delta-kind fn-cfg-delta-a
+                                      fn-cfg-delta-b fn-cfg-delta-n fn-cfg-delta-rows
+                                      fn-cfg-ag-car fn-cfg-ag-cdr)))))
+
+; The live records leave exactly the limits the offline record leaves: the
+; instant row and the note row, whatever the second record's coordinates.
+(defthm fn-rcn-live-limits-are-the-recorded-limits
+  (equal (fn-cfg-limits (fn-cfg-value (fn-rcn-live-config cfg q tx g stamp now
+                                                          q2 tx2 g2 stamp2 text)))
+         (fn-cfg-limits (fn-cfg-value (fn-rcn-recorded-config cfg q tx g stamp now text))))
+  :hints (("Goal" :in-theory (enable fn-rcn-live-config fn-rcn-recorded-config
+                                     fn-rci-recorded-config fn-rcn-note-deltas
+                                     fn-cfg-reclaim-note))))
+
+; Every quantity the check reads is a function of the limits.
+(local
+ (defthm fn-rcn-by-limits
+   (implies (equal (fn-cfg-limits a) (fn-cfg-limits b))
+            (and (equal (fn-rcn-config-note a) (fn-rcn-config-note b))
+                 (equal (fn-rci-config-now a) (fn-rci-config-now b))
+                 (equal (fn-rcn-check a count d) (fn-rcn-check b count d))
+                 (equal (fn-rci-decide-stream profile a s acc dry fn-arena)
+                        (fn-rci-decide-stream profile b s acc dry fn-arena))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory '(fn-rcn-config-note fn-rci-config-now fn-rcn-check
+                                fn-rci-decide-stream fn-rci-recordedp
+                                fn-rcl-config-rule)))))
+
+; KEYSTONE (PRF-1049).  The live pass's note is the offline note: over the
+; configuration the owner's two records yield (the instant, then the note of
+; its decision D at the clock over COUNT records), the --recorded rerun
+; checks the note (:checked whenever D reclaims), exactly as over the one
+; record `store reclaim' publishes (fn-rcn-recorded-note-checks).
+(defthm fn-rcn-live-note-checks
+  (implies (and (fn-rci-instantp now)
+                (equal d (fn-lgr-decide-stream profile (fn-rcl-config-rule (fn-cfg-value cfg))
+                                               now s acc nil fn-arena)))
+           (let ((v (fn-cfg-value (fn-rcn-live-config cfg q tx g stamp now q2 tx2 g2 stamp2
+                                                      (fn-rcn-of-decision now count d)))))
+             (and (equal (fn-rcn-config-note v) (fn-rcn-of-decision now count d))
+                  (equal (fn-rci-config-now v) now)
+                  (equal (fn-rcn-check v count (fn-rci-decide-stream profile v s acc nil fn-arena))
+                         (if (equal (car d) :reclaim) :checked :unchecked)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory '(fn-rcn-live-limits-are-the-recorded-limits)
+           :use ((:instance fn-rcn-recorded-note-checks)
+                 (:instance fn-rcn-recorded-note-reads-back
+                            (text (fn-rcn-of-decision now count d)))
+                 (:instance fn-rcn-by-limits
+                            (a (fn-cfg-value (fn-rcn-live-config cfg q tx g stamp now q2 tx2 g2 stamp2
+                                                                 (fn-rcn-of-decision now count d))))
+                            (b (fn-cfg-value (fn-rcn-recorded-config cfg q tx g stamp now
+                                                                     (fn-rcn-of-decision now count d))))
+                            (dry nil)
+                            (d (fn-rci-decide-stream profile
+                                  (fn-cfg-value (fn-rcn-recorded-config cfg q tx g stamp now
+                                                                        (fn-rcn-of-decision now count d)))
+                                  s acc nil fn-arena)))))))
+
 ; A note that is not the decision's, at the recorded instant, is refused.
 (defthm fn-rcn-check-refuses-a-foreign-note-by-definition
   (implies (and (consp d) (equal (car d) :reclaim)
@@ -318,4 +404,5 @@
                                      fn-cfg-labelp fn-record-uint32p))))
 
 (in-theory (disable fn-rcn-text fn-rcn-of-decision fn-rcn-check fn-rcn-config-note
-                    fn-rcn-recorded-config fn-rcn-deltas))
+                    fn-rcn-recorded-config fn-rcn-deltas fn-rcn-live-config
+                    fn-rcn-note-deltas))
