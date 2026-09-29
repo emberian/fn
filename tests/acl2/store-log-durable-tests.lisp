@@ -76,13 +76,13 @@
 (defun lgut-recover-pair (i) (declare (xargs :guard t :verify-guards nil)) (nth i (lgut-recover-run)))
 (defun lgut-tail-units ()
   (declare (xargs :guard t :verify-guards nil))
-  (lgut-units-of (nth 3 (car (fn-bs-pending (lgut-recover-pair 0))))))
+  (lgut-units-of (nth 3 (car (fn-bs-pending (car (lgut-recover-pair 0)))))))
 
 (assert-event
  (and (not (fn-bs-ops-for-ino (fn-bs-pending (lgut-bs-raw)) 0))
       (not (fn-bs-ops-not-for-ino (fn-bs-pending (lgut-bs-raw)) 0))
-      (consp (fn-bs-pending (lgut-recover-pair 0)))
-      (null (fn-bs-pending (lgut-recover-pair 2)))
+      (consp (fn-bs-pending (car (lgut-recover-pair 0))))
+      (null (fn-bs-pending (car (lgut-recover-pair 2))))
       ; log-truncated: all landed, none, the first unit only, a hole
       (lgut-recovered-p (lgut-m1) (lgut-recover-pair 0) (list (lgut-sels (lgut-tail-units) :new)))
       (lgut-recovered-p (lgut-m2) (lgut-recover-pair 0) (list (lgut-sels (lgut-tail-units) :new)))
