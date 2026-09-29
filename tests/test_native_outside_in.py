@@ -33,6 +33,7 @@ import sys
 import threading
 import time
 import unittest
+import zlib
 from pathlib import Path
 
 from tests.native_harness import EXIT, Node, ROOT, class_case, free_port, native_image, requires
@@ -1094,19 +1095,42 @@ class StrangerTests(NodeCase):
         talk.quit()
         talk.record()
 
-    def test_b18_compression_is_a_later_capability(self):
-        """docs/references.md: "RFC 8054: Compression, a later capability".
-        specs/nntp.md: "compression extensions as selected" are planned, not
-        served: CAPABILITIES has no COMPRESS line and COMPRESS is not a
-        command HELP lists (500).  When it lands this test flips and gets
-        replaced by a real one."""
+    def test_b18_compression(self):
+        """specs/nntp.md "Compression: COMPRESS (NNT-054, NNT-055)": RFC 8054
+        COMPRESS DEFLATE after login; after the 206 every octet in both
+        directions is one raw DEFLATE stream (section 2.2.2).  The stranger's
+        side is Python's zlib (raw DEFLATE, wbits -15, a sync flush) over
+        openssl s_client; the node's QUIT closes, so the tool's output ends."""
         talk = self.reader()
         _, caps = talk.multiline("CAPABILITIES", "101")
-        self.assertFalse(any(c.startswith("COMPRESS") for c in caps), caps)
-        reply = talk.command("COMPRESS DEFLATE", "500")
-        talk.quit()
+        self.assertIn("COMPRESS DEFLATE", caps)
+        self.assertEqual(talk.command("COMPRESS SHRINK", "503")[:3], "503")
+        started = talk.command("COMPRESS DEFLATE", "206")
+        out = zlib.compressobj(6, zlib.DEFLATED, -15)
+        talk.process.stdin.write(out.compress(b"DATE\r\nCAPABILITIES\r\nQUIT\r\n")
+                                 + out.flush(zlib.Z_SYNC_FLUSH))
+        talk.process.stdin.flush()
+        talk.transcript += ["<DATE, CAPABILITIES, QUIT compressed>"]
+        raw = b""
+        while True:
+            try:
+                piece = talk.lines.get(timeout=talk.timeout)
+            except queue.Empty:
+                raise AssertionError("no compressed reply within %s s" % talk.timeout)
+            if piece is None:
+                break
+            raw += piece
+        replies = zlib.decompressobj(-15).decompress(raw).split(b"\r\n")
+        self.assertTrue(replies[0].startswith(b"111 "), replies[:3])
+        self.assertTrue(replies[1].startswith(b"101 "), replies[:3])
+        listed = replies[2:replies.index(b".")]
+        self.assertIn(b"READER", listed)
+        self.assertNotIn(b"COMPRESS DEFLATE", listed)
+        self.assertTrue(replies[replies.index(b".") + 1].startswith(b"205 "), replies)
+        talk.close()
         talk.record()
-        self.saw("no COMPRESS capability; COMPRESS DEFLATE -> " + reply)
+        self.saw("COMPRESS DEFLATE -> %s; compressed DATE -> %s; QUIT -> %s" % (
+            started, replies[0].decode(), replies[replies.index(b".") + 1].decode()))
 
     # ---- both faces are one node ---------------------------------------------
 
