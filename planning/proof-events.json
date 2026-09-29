@@ -15389,6 +15389,79 @@
           "name": "fn-acar-cnode-groups-are-safe"
         }
       ]
+    },
+    {
+      "id": "PRF-1018",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-add-places-iff-not-saturated"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-grow-preserves-faithful"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-grow-into-faithful"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-candidates-entry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-put-all-checked-finds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-put-all-checked-keeps-candidate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-put-all-checked-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-fresh-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-settle-preserves-faithful"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-add-preserves-faithful"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-build-faithful"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-build-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-build-nil"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-same-pages-faithful"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-faithful-of-adopt"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-first-page-faithful-nil"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-first-page-not-saturated"
+        }
+      ]
     }
   ]
 }
