@@ -304,25 +304,34 @@ and `peer-innd`; the same rules judge both agents. Over the three findings
 files every verdict is the lab's. Remaining: the lab running from the
 scenarios (its checks as journal writes) on hbox with INN.
 
-W7f **the deterministic backend**. DONE: completion delivery and the
-selected scheduling boundaries are deterministic in the simulator; a small
-exhaustive suite around uncertainty, two independent holds, a generation
-change and repeated recovery. AFTER THE CUT.
+W7f **the deterministic backend**. IN PROGRESS: the fixed acceptance-world
+suite executes 100 schedules over two proposals, durable/aborted/indeterminate
+completion, matching/stale generation and repeated recovery. It compares the
+actual acceptance transitions with the separate four-field ACL2 oracle at
+every step. This is executable model evidence, not certification or evidence
+about the served host. It does not yet cover two independent holds or a general
+IR-driven backend. Schedule plans and separate oracle records accompany the
+traces; the driver must consume every planned step exactly once before it
+accepts the result. The record-backed IR adapter is the next increment.
+The historical box failure was launcher configuration: the command replaced
+the real FN_ACL2 with tools/acl2, whose recursion refusal exited 2 before any
+scenario executed. Preserve that non-green result; it was not a model failure.
+AFTER THE original cut prerequisites; still part of the complete-all portfolio.
 
 W7g **Hypothesis rule-based generation + dependency-aware shrinking**.
-DONE: stateful workloads over the IR with bundles for symbolic identities;
+PLANNED: stateful workloads over the IR with bundles for symbolic identities;
 shrinking preserves prerequisites (a retry never survives its post's
 removal); separate randomness streams; the minimized scenario reproduces
 under the same backend. AFTER THE CUT.
 
-W7h **semantic coverage + structure-aware storage mutation**. DONE: the
+W7h **semantic coverage + structure-aware storage mutation**. PLANNED: the
 coverage signature (publication phase, client-outcome certainty, pending
 effect classes, reader-generation relation, hold-count class, headroom
 band, evidence-version relation, recovery attempt) counts abstract
 situations; checksum-preserving and checksum-breaking storage cases; the
 corpus keeps boundary-sized payloads. AFTER THE CUT.
 
-W7i **LibAFL / Antithesis evaluated against the same corpus**, each
+W7i **PLANNED: LibAFL / Antithesis evaluated against the same corpus**, each
 evaluation proving the intended faults occur, the storage model matches the
 declared campaign, and feedback reaches SBCL code. AFTER THE CUT.
 

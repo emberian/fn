@@ -147,11 +147,19 @@
       (let ((o2 (fn-sim-oracle-step (car steps) o))
             (step (car steps)))
         (prog2$
-         (cw "FN_SIM_TRACE s=acceptance-world k=~x0 i=~x1 t=~x2 m=~s3 g=~x4 x=~x5 a=~x6 p=~s7 f=~x8~%"
+         (prog2$
+          (cw "FN_SIM_ORACLE s=acceptance-world k=~x0 i=~x1 a=~x2 p=~s3 f=~x4 q=~x5~%"
+              k i (len (car o2)) (or (cadr o2) "none")
+              (if (cadddr o2) t nil)
+              (+ (if (member-equal "A" (car o2)) 1 0)
+                 (if (member-equal "B" (car o2)) 2 0)))
+          (cw "FN_SIM_TRACE s=acceptance-world k=~x0 i=~x1 t=~x2 m=~s3 g=~x4 x=~x5 a=~x6 p=~s7 f=~x8 q=~x9~%"
              k i (car step) (cadr step) (caddr step) (or (cadddr step) '-)
              (len (fn-state-articles s2))
              (if (consp (fn-state-pending s2)) (fn-pending-msgid (fn-state-pending s2)) "none")
-             (if (equal (fn-state-fenced s2) t) t nil))
+             (if (equal (fn-state-fenced s2) t) t nil)
+             (+ (if (fn-acceptedp "A" (fn-state-articles s2)) 1 0)
+                (if (fn-acceptedp "B" (fn-state-articles s2)) 2 0))))
          (and (fn-sim-world-agreesp s2 o2)
               (fn-sim-world-run (cdr steps) s2 txids2 o2 k (1+ i))))))))
 
@@ -200,8 +208,11 @@
 (defun fn-sim-world-all (schedules k passed)
   (if (endp schedules)
       passed
-    (let ((ok (fn-sim-world-run (car schedules) (fn-sim-acceptance-initial) nil
-                                (list nil nil nil nil) k 0)))
+    (let ((ok (prog2$
+               (cw "FN_SIM_PLAN s=acceptance-world k=~x0 n=~x1~%"
+                   k (len (car schedules)))
+               (fn-sim-world-run (car schedules) (fn-sim-acceptance-initial) nil
+                                (list nil nil nil nil) k 0))))
       (fn-sim-world-all (cdr schedules) (1+ k) (and passed ok)))))
 
 (defun fn-sim-world-report ()

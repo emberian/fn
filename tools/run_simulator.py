@@ -22,6 +22,8 @@ import acl2_slots  # noqa: E402
 BUILD_ROOT = ROOT / "build" / "simulator"
 TRACE_PREFIX = "FN_SIM_TRACE "
 RESULT_PREFIX = "FN_SIM_RESULT "
+PLAN_PREFIX = "FN_SIM_PLAN "
+ORACLE_PREFIX = "FN_SIM_ORACLE "
 SCENARIOS = ("acceptance-durable", "acceptance-world")
 # acceptance-durable: one proposal, prepared, completed :durable (three trace
 # lines).  acceptance-world (design W7f): the exhaustive small world in
@@ -39,7 +41,7 @@ def digest(path: Path) -> str:
 
 
 def executable() -> Path | None:
-    configured = os.environ.get("FN_ACL2", "acl2")
+    configured = acl2_slots.configured_acl2()
     if os.sep in configured:
         candidate = Path(configured).expanduser()
         return candidate.resolve() if candidate.is_file() and os.access(candidate, os.X_OK) else None
@@ -52,7 +54,9 @@ def driver_for(scenario: str) -> str:
         return WORLD_DRIVER
     if scenario != "acceptance-durable":
         raise ValueError(f"unknown scenario: {scenario}")
-    return '''(ld '((include-book "books/acceptance")
+    return '''(set-fmt-hard-right-margin 100000 state)
+(set-fmt-soft-right-margin 100000 state)
+(ld '((include-book "books/acceptance")
       (ld "tests/acl2/simulator.lisp" :ld-error-action :return :ld-error-triples t)
       (value-triple
        (cw "FN_SIM_TRACE s=acceptance-durable t=initial a=~x0 n=~x1 f=~x2~%"
@@ -82,7 +86,9 @@ def driver_for(scenario: str) -> str:
 '''
 
 
-WORLD_DRIVER = '''(ld '((include-book "books/acceptance")
+WORLD_DRIVER = '''(set-fmt-hard-right-margin 100000 state)
+(set-fmt-soft-right-margin 100000 state)
+(ld '((include-book "books/acceptance")
       (ld "tests/acl2/simulator.lisp" :ld-error-action :return :ld-error-triples t)
       (value-triple (prog2$ (fn-sim-world-report) t)))
     :ld-error-action :return
@@ -91,11 +97,12 @@ WORLD_DRIVER = '''(ld '((include-book "books/acceptance")
 '''
 
 
-def scenario_passed(scenario: str, exit_code, parse_error, traces: list, results: list) -> bool:
+def scenario_passed(scenario: str, exit_code, parse_error, traces: list, results: list,
+                    plans: list | None = None, oracles: list | None = None) -> bool:
     """The runner's verdict over the parsed records: ACL2 exited 0, one
     result line naming the scenario as passed, every trace line the
     scenario's; acceptance-durable prints exactly its three steps, the
-    world at least one step per schedule it counted (n=)."""
+    world consumes its exact schedule plan and independent oracle records."""
     if exit_code != 0 or parse_error is not None or len(results) != 1:
         return False
     result = results[0]
@@ -104,8 +111,34 @@ def scenario_passed(scenario: str, exit_code, parse_error, traces: list, results
     if not all(trace.get("s") == scenario for trace in traces):
         return False
     if scenario == "acceptance-world":
-        return result.get("n", "0").isdigit() and len(traces) >= int(result["n"]) > 0
-    return len(traces) == 3
+        # This fixed world is ten alternatives for each of two proposals.
+        # A count claimed by the child cannot make a shortened run complete.
+        if result.get("n") != "100" or not plans or not oracles:
+            return False
+        expected = []
+        for k, plan in enumerate(plans):
+            if plan.get("s") != scenario or plan.get("k") != str(k):
+                return False
+            if plan.get("n") not in ("4", "6", "8"):
+                return False
+            expected.extend((str(k), str(i)) for i in range(int(plan["n"])))
+        if len(plans) != 100 or len(expected) != 560:
+            return False
+        if [(r.get("k"), r.get("i")) for r in traces] != expected:
+            return False
+        if [(r.get("k"), r.get("i")) for r in oracles] != expected:
+            return False
+        return all({"s", "k", "i", "t", "m", "g", "x", "a", "p", "f"} <= t.keys()
+                   and {"s", "k", "i", "a", "p", "f", "q"} <= o.keys()
+                   and o.get("s") == scenario and
+                   all(key in t and t[key] == o[key] for key in ("a", "p", "f", "q"))
+                   for t, o in zip(traces, oracles))
+    expected = [dict(t="initial", a="0", n="0", f="NIL"),
+                dict(t="prepared", a="0", n="1", p="T", f="NIL"),
+                dict(t="durable", a="1", n="1", q="T", f="NIL")]
+    return len(traces) == 3 and all(
+        all(t.get(key) == value for key, value in e.items())
+        for t, e in zip(traces, expected))
 
 
 def parse_records(output: str, prefix: str) -> list[dict[str, str]]:
@@ -119,6 +152,8 @@ def parse_records(output: str, prefix: str) -> list[dict[str, str]]:
             key, separator, value = field.partition("=")
             if not separator or not key or not value:
                 raise ValueError(f"malformed ACL2 record: {line}")
+            if key in record:
+                raise ValueError(f"duplicate ACL2 record field: {key}")
             record[key] = value
         records.append(record)
     return records
@@ -186,14 +221,18 @@ def main() -> int:
         try:
             traces = parse_records(output, TRACE_PREFIX)
             results = parse_records(output, RESULT_PREFIX)
+            plans = parse_records(output, PLAN_PREFIX)
+            oracles = parse_records(output, ORACLE_PREFIX)
         except ValueError as error:
-            traces, results = [], []
+            traces, results, plans, oracles = [], [], [], []
             parse_error = str(error)
         else:
             parse_error = None
-        passed = scenario_passed(scenario, exit_code, parse_error, traces, results)
+        passed = scenario_passed(scenario, exit_code, parse_error, traces, results,
+                                 plans, oracles)
         outcomes.append({"scenario": scenario, "exit_code": exit_code, "traces": traces,
-                         "result": results, "parse_error": parse_error, "passed": passed})
+                         "result": results, "plans": plans, "oracles": oracles,
+                         "parse_error": parse_error, "passed": passed})
         all_passed = all_passed and passed
 
     manifest["outcomes"] = outcomes
