@@ -4411,6 +4411,20 @@ be resumable and funded before the producer controller uses the result."
           (:continue (setq cursor (rest tick)))
           (otherwise (fnn-fault "invalid configured snapshot preparation tick")))))))
 
+(defun fnn-snapshot-prepare-summary-folds (records)
+  "Resume identity/consumer/topic/event-index summaries one event per tick.
+The private cursor retains unconsumed captured records by pointer and the
+four carried accumulators; it never copies an accumulated record prefix."
+  (let ((cursor (fnn-core 'fn-osp-fold-begin records)))
+    (loop
+      (fnn-checkpoint-yield "snapshot-prepare-summaries" nil)
+      (let ((tick (fnn-core 'fn-osp-fold-tick cursor)))
+        (case (first tick)
+          (:done (return (second tick)))
+          (:continue (setq cursor (second tick)))
+          (:refused (fnn-refuse-io "snapshot summary preparation refused: ~a" (second tick)))
+          (otherwise (fnn-fault "invalid summary snapshot preparation tick")))))))
+
 (defun fnn-snapshot-write-captured-checkpoint (target captured position profile)
   "Write the captured whole Store into TARGET's complete checkpoint.
 Caller owns the shared publication scratch, pins the captured arena/version

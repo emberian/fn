@@ -4607,3 +4607,6 @@
 
 (definterface fn-osp-cpr-begin :class :common-lisp-compliant)
 (definterface fn-osp-cpr-tick :class :common-lisp-compliant)
+
+(definterface fn-osp-fold-begin :class :common-lisp-compliant)
+(definterface fn-osp-fold-tick :class :common-lisp-compliant)

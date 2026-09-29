@@ -57,3 +57,50 @@
                          (equal (nth 3 *osp-t4*) (cdr (nth 3 *osp-t3*)))))
                 (equal (+ (len (nth 2 *osp-t4*)) (len (nth 3 *osp-t4*)))
                        (- (+ (len (nth 2 *osp-t3*)) (len (nth 3 *osp-t3*))) 1))))))
+
+(defconst *osp-f0* (fn-osp-fold-begin *osp-events*))
+(defconst *osp-f1* (nth 1 (fn-osp-fold-tick *osp-f0*)))
+(defconst *osp-f2* (nth 1 (fn-osp-fold-tick *osp-f1*)))
+; Full antecedent and conclusion of four-summary refinement.
+(assert-event
+ (and (fn-sco-store-eventsp (fn-sco-at 0 *osp-f0*))
+      (implies (equal (fn-sco-at 0 (fn-sco-at 2 *osp-f0*)) :ok)
+               (equal (fn-sco-at 2 *osp-f0*)
+                      (list :ok (fn-sco-at 1 (fn-sco-at 2 *osp-f0*)))))
+      (equal (fn-osp-fold-value *osp-f0*)
+             (let ((tick (fn-osp-fold-tick *osp-f0*)))
+               (if (equal (car tick) :continue)
+                   (fn-osp-fold-value (nth 1 tick)) (nth 1 tick))))))
+(assert-event
+ (let ((tick (fn-osp-fold-tick *osp-f0*)))
+   (and (equal (car tick) :continue)
+        (consp (fn-sco-at 0 *osp-f0*))
+        (equal (fn-sco-at 0 (nth 1 tick)) (cdr (fn-sco-at 0 *osp-f0*)))
+        (equal (fn-sco-at 5 (nth 1 tick)) (+ 1 (fn-sco-at 5 *osp-f0*)))
+        (natp (fn-sco-at 5 *osp-f0*)) (natp (fn-sco-at 5 (nth 1 tick))))))
+(assert-event
+ (let ((captured (fn-sco-capture *osp-configs* *osp-events*)))
+   (and (equal (car (fn-osp-fold-tick *osp-f2*)) :done)
+        (equal (nth 1 (fn-osp-fold-tick *osp-f2*))
+               (list (fn-sco-identity captured) (fn-sco-consumer captured)
+                     (fn-sco-topic captured) (fn-sco-event-index captured))))))
+; Hypothesis-removal, malformed captured record: keep normalized consumer,
+; fail the event-list hypothesis, and fail retained full-fold equality.
+(defconst *osp-bad-record* (fn-osp-fold-begin '(bad)))
+(assert-event
+ (and (not (fn-sco-store-eventsp (fn-sco-at 0 *osp-bad-record*)))
+      (implies (equal (fn-sco-at 0 (fn-sco-at 2 *osp-bad-record*)) :ok)
+               (equal (fn-sco-at 2 *osp-bad-record*)
+                      (list :ok (fn-sco-at 1 (fn-sco-at 2 *osp-bad-record*)))))
+      (not (equal (fn-osp-fold-value *osp-bad-record*)
+                  (fn-osp-fold-value (nth 1 (fn-osp-fold-tick *osp-bad-record*)))))))
+; Corrupted private cursor, separately labelled: keep the event-list
+; hypothesis, fail normalized-consumer hypothesis and full-fold equality.
+(defconst *osp-bad-consumer* (update-nth 2 '(:ok nil junk) (fn-osp-fold-begin nil)))
+(assert-event
+ (and (fn-sco-store-eventsp (fn-sco-at 0 *osp-bad-consumer*))
+      (equal (fn-sco-at 0 (fn-sco-at 2 *osp-bad-consumer*)) :ok)
+      (not (equal (fn-sco-at 2 *osp-bad-consumer*)
+                  (list :ok (fn-sco-at 1 (fn-sco-at 2 *osp-bad-consumer*)))))
+      (not (equal (fn-osp-fold-value *osp-bad-consumer*)
+                  (nth 1 (fn-osp-fold-tick *osp-bad-consumer*))))))

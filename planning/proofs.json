@@ -17836,8 +17836,8 @@
     },
     {
       "id": "PRF-1077",
-      "title": "Resumable snapshot configured-prefix preparation retains exact paused-fold value and consumes one input per accepted tick",
-      "statement": "Subject fn-osp-cpr-tick called by fnn-snapshot-prepare-configured-fold. fn-osp-cpr-tick-refines-the-paused-fold equates its completed or retained continuation value to fn-sco-cpr-prefix, including refusal position and leaving configurations after the last event paused. Each continue consumes exactly one config or event; configured-state preservation is established without revalidation of the carried state on the executable path. This counts input transitions, not a proven byte/work bound of the inner config/event operation. Full checkpoint summary/canonical-row preparation and page commit remain unfunded/nonresumable dependencies, so this component is not full producer completion.",
+      "title": "Resumable snapshot summary preparation retains exact paused/configured and identity/consumer/topic/index fold values",
+      "statement": "Host-called subjects fn-osp-cpr-tick and fn-osp-fold-tick, through fnn-snapshot-prepare-configured-fold and fnn-snapshot-prepare-summary-folds. The configured tick retains exact fn-sco-cpr-prefix including every refusal/position and unconsumed later configurations; each continue consumes exactly one config or event with carried configured-state preservation. The four-summary cursor retains exact identity/consumer/topic/event-index continuation values under valid event-list and normalized consumer-result hypotheses, consumes one event, and preserves its natural counter; a redundant natural-counter theorem hypothesis was removed only after the weakened result was proved (the executable subject still requires its natural counter guard). Neither input-transition progress is a byte/work bound for the inner operations. Canonical-row and history-image/commit preparation, funded lifetime and controller composition remain required before full producer completion.",
       "milestone": "M5",
       "requirements": [
         "HST-040"
@@ -17848,14 +17848,17 @@
       "events": [
         "fn-osp-cpr-tick-refines-the-paused-fold",
         "fn-osp-cpr-continue-consumes-exactly-one-input",
-        "fn-osp-cpr-continue-preserves-configured-state"
+        "fn-osp-cpr-continue-preserves-configured-state",
+        "fn-osp-fold-tick-retains-the-four-summary-values",
+        "fn-osp-fold-continue-is-exactly-one-record",
+        "fn-osp-fold-natural-counter-is-preserved"
       ],
       "evidence": [
         "books/snapshot-prepare.lisp",
         "tests/acl2/snapshot-prepare-tests.lisp",
         "host/native/owner.lisp"
       ],
-      "progress_note": "Found via REPL ospp61; source refinement and progress admitted, guard corrected with maintained config carry lemmas. Clean full source+literal nonempty/later-config teeth recheck ospt63 pending; no native or certificate claim."
+      "progress_note": "Clean persvati ospf62: source snapshot-prepare encapsulated, 23 nonempty/later-config/retention summary tooth forms, zero refused, ACL2 1.59s/502892 steps; cpr and four-summary host-called ticks guard-verified. Native, source host check for this increment and certificate pending."
     }
   ]
 }

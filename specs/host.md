@@ -1670,3 +1670,13 @@ One-input progress is not a byte-cost bound of the inner configuration or
 event operation. The remaining summary folds, canonical-row preparation,
 history-image build/commit and write-map construction must have their own
 resumable funded phases before the producer uses this component.
+
+The second summary component `fnn-snapshot-prepare-summary-folds` carries
+identity, consumer, topic and event-index accumulators independently and
+advances one event per tick. It does not append a growing record prefix on
+each tick. Its refinement requires a valid captured event list and a
+normalized consumer result; those must come from maintained capture
+relations, never a served whole-history validation. Full image/commit and
+canonical-row preparation remain pending. The inherited event-index codec
+addresses only its existing unsigned-32 sequence range; this component
+copies that format behavior and does not qualify larger operator profiles.

@@ -124,3 +124,86 @@
 (defun fn-osp-cpr-begin (configs records)
   (declare (xargs :guard t))
   (list (fn-cnode-initial (fn-cfg-initial)) configs records 0 0))
+
+; Remaining four summaries: one event per tick, carrying each fold's state
+; independently.  No repeated append of the accumulated record prefix.
+(defun fn-osp-fold-begin (records)
+  (declare (xargs :guard t))
+  (list records (fn-stxk-initial-context 0) (list :ok nil)
+        (fn-th-prefix-state :ok 0 nil nil nil nil nil) nil 0))
+(defun fn-osp-fold-tick (cursor)
+  (declare (xargs :guard (natp (fn-sco-at 5 cursor))))
+  (let ((records (fn-sco-at 0 cursor))
+        (identity (fn-sco-at 1 cursor))
+        (consumer (fn-sco-at 2 cursor))
+        (topic (fn-sco-at 3 cursor))
+        (index (fn-sco-at 4 cursor))
+        (count (fn-sco-at 5 cursor)))
+    (cond ((not (consp records))
+           (if (null records)
+               (list :done (list identity consumer topic index))
+             (list :refused :improper-records)))
+          (t
+           (let ((event (car records)))
+             (list :continue
+                   (list (cdr records)
+                         (fn-replay-identity-step identity event)
+                         (if (equal (fn-sco-at 0 consumer) :ok)
+                             (fn-cpe-projection-step (fn-sco-at 1 consumer) event count)
+                           consumer)
+                         (fn-th-prefix-step topic event)
+                         (fn-cei-put count event index)
+                         (+ 1 count))))))))
+(defun fn-osp-fold-value (cursor)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((records (fn-sco-at 0 cursor)))
+    (list (fn-replay-identity-loop records (fn-sco-at 1 cursor))
+          (fn-sco-consumer-resume (fn-sco-at 2 cursor) records (fn-sco-at 5 cursor))
+          (fn-th-prefix-loop (fn-sco-at 3 cursor) records)
+          (fn-cei-build-aux records (fn-sco-at 5 cursor) (fn-sco-at 4 cursor)))))
+(local
+ (defthm fn-osp-consumer-step-ok-has-natural-counter
+   (implies (equal (car (fn-cpe-projection-step s event expected)) :ok)
+            (natp expected))
+   :hints (("Goal" :in-theory (e/d (fn-cpe-projection-step fn-cp-uintp)
+                                  (fn-cpe-projection-decision fn-cpe-projection-advance
+                                   fn-cpe-operation fn-cp-initial fn-cp-state fn-cp-apply))))))
+(defthm fn-osp-fold-tick-retains-the-four-summary-values
+  (implies (and (fn-sco-store-eventsp (fn-sco-at 0 cursor))
+                (implies (equal (fn-sco-at 0 (fn-sco-at 2 cursor)) :ok)
+                         (equal (fn-sco-at 2 cursor)
+                                (list :ok (fn-sco-at 1 (fn-sco-at 2 cursor))))))
+           (let ((tick (fn-osp-fold-tick cursor)))
+             (equal (fn-osp-fold-value cursor)
+                    (if (equal (car tick) :continue)
+                        (fn-osp-fold-value (nth 1 tick))
+                      (nth 1 tick)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-osp-consumer-step-ok-has-natural-counter
+                            (s (fn-sco-at 1 (fn-sco-at 2 cursor)))
+                            (event (car (fn-sco-at 0 cursor)))
+                            (expected (fn-sco-at 5 cursor))))
+           :in-theory (e/d (fn-osp-fold-tick fn-osp-fold-value fn-sco-consumer-resume
+                            fn-replay-identity-loop fn-cpe-projection-replay
+                            fn-th-prefix-loop fn-cei-build-aux fn-sco-at
+                            fn-sco-store-eventsp)
+                           (fn-replay-identity-step fn-cpe-projection-step
+                            fn-th-prefix-step fn-cei-put)))))
+(defthm fn-osp-fold-continue-is-exactly-one-record
+  (let ((tick (fn-osp-fold-tick cursor)))
+    (implies (equal (car tick) :continue)
+             (and (consp (fn-sco-at 0 cursor))
+                  (equal (fn-sco-at 0 (nth 1 tick))
+                         (cdr (fn-sco-at 0 cursor)))
+                  (equal (fn-sco-at 5 (nth 1 tick))
+                         (+ 1 (fn-sco-at 5 cursor))))))
+  :hints (("Goal" :in-theory (e/d (fn-osp-fold-tick fn-sco-at)
+                                  (fn-replay-identity-step fn-cpe-projection-step
+                                   fn-th-prefix-step fn-cei-put)))))
+(defthm fn-osp-fold-natural-counter-is-preserved
+  (implies (and (natp (fn-sco-at 5 cursor))
+                (equal (car (fn-osp-fold-tick cursor)) :continue))
+           (natp (fn-sco-at 5 (nth 1 (fn-osp-fold-tick cursor)))))
+  :hints (("Goal" :in-theory (e/d (fn-osp-fold-tick fn-sco-at)
+                                  (fn-replay-identity-step fn-cpe-projection-step
+                                   fn-th-prefix-step fn-cei-put)))))
