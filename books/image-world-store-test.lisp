@@ -117,6 +117,7 @@
 (include-book "owner-checkpoint-open")
 (include-book "owner-compact-request")
 (include-book "owner-control-post-reason")
+(include-book "peer-transit-authority")
 (include-book "owner-reclaim")
 (include-book "owner-reclaim-conns")
 (include-book "owner-reclaim-ready")
