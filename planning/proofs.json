@@ -15208,6 +15208,35 @@
         "tests/acl2/frame-buffer-tests.lisp"
       ],
       "progress_note": "Lane d27-representation-3 (D27 row Q2, the frame-control class, 2026-09-29). Teeth in tests/acl2/frame-buffer-tests.lisp: positive witnesses in the live buffer (an explicit-trailer frame for the decode and the digest-given open; real sealed frames through the window digest's attachment for the composed open and the dispatch), every error arm of the decode, and a hypothesis-removal witness per literal theorem with a non-octet cell in the payload (the digest explicit, since fn-frame-digest is constrained). fn-frb-payload-is-window was restated with the single hypothesis fn-octets-p: of its two hypotheses neither had a removal witness (an ok decode is one of an octet list; under the invariant the keystone decides the error arms)."
+    },
+    {
+      "id": "PRF-980",
+      "title": "The running owner's status counts never include a batch whose barrier has not returned",
+      "statement": "books/native-status-columns.lisp, books/native-live-status.lisp (PKT-885). The status report's transactions= and articles= counts are SEEN, the (TRANSACTIONS . ARTICLES) of the view the report is rendered at: offline the Store's (fn-nls-store-seen), on the running owner the configured owner's view's (fn-nls-view-seen). KEYSTONE fn-nsc-answer-report-counts-are-the-reader-view: the subject is fn-nsc-answer-report, which host/native-live-status-host.lisp fn-native-live-status-host-answer calls over (fn-ocfg-at-reader-view OC VIEWS) with VIEWS the committer's captured reader views (host/owner-host.lisp fn-owner-reader-views); for every status kind (not health, peers, control, accounts, pins, obligations) the report opens with the counts of the reader view while a capture is held and of the owner's view otherwise. With books/owner-reader-view.lisp fn-ocvm-reader-view-is-the-completed-prefix that reader view is the view at the records whose batch completed. fn-nsc-view-seen-is-its-history: for a view related to its Store (fn-ocl-view-historyp) the counts are its version and the article count of the configured replay of that many records. fn-nls-live-report-is-the-offline-report now also assumes fn-nls-view-currentp (the view is the Store's current state); a view behind the Store changes the counts (witnessed). Scope: the capacity, reserve, reclaim and pins lines remain the Store's (commitments the owner holds, conservative, no number); the PKT-209 records/archive kinds (fn-cev-live-report) are not changed here.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-006",
+        "STO-001"
+      ],
+      "depends_on": [
+        "PRF-089",
+        "PRF-368"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/native-status-columns.lisp",
+        "books/native-live-status.lisp",
+        "tests/acl2/native-status-columns-tests.lisp",
+        "tests/acl2/native-live-status-tests.lisp",
+        "host/native-live-status-host.lisp"
+      ],
+      "progress_note": "Lane correctness-i4 (row I4, PKT-885), 2026-09-29.",
+      "events": [
+        "fn-nsc-answer-report-counts-are-the-reader-view",
+        "fn-nsc-view-seen-is-its-history",
+        "fn-nls-live-report-is-the-offline-report"
+      ]
     }
   ]
 }

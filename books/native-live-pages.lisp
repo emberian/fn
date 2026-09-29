@@ -80,7 +80,7 @@
    (equal (append (append a b) c) (append a (append b c)))))
 
 (defthm fn-nlp-report-is-the-obligations-report
-  (equal (fn-nls-report :obligations profile s bytes cfg pins obs fn-arena)
+  (equal (fn-nls-report :obligations profile s bytes seen cfg pins obs fn-arena)
          (fn-nlp-report (fn-nls-retention s)))
   :hints (("Goal" :in-theory '(fn-nls-report fn-nlp-report fn-nlp-header
                                fn-nlp-append-assoc))))

@@ -14585,6 +14585,23 @@
           "name": "fn-frb-payload-is-window"
         }
       ]
+    },
+    {
+      "id": "PRF-980",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-answer-report-counts-are-the-reader-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-view-seen-is-its-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-live-report-is-the-offline-report"
+        }
+      ]
     }
   ]
 }
