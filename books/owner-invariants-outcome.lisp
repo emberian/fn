@@ -419,7 +419,8 @@
                        (fn-own-sub-make-author (fn-own-sub-id (car (fn-own-queue o)))
                                                (fn-own-sub-version (car (fn-own-queue o)))
                                                (len (fn-own-ledger o))
-                                               (fn-own-sub-decision (car (fn-own-queue o)))
+                                               (fn-psub-unpack-decision
+                                                (fn-own-sub-decision (car (fn-own-queue o))))
                                                (fn-own-sub-login (car (fn-own-queue o)))
                                                (fn-own-sub-account (car (fn-own-queue o)))))
                 (equal (fn-own-queue (fn-own-take-submission o))
@@ -429,6 +430,26 @@
                 (equal (fn-own-store (fn-own-take-submission o)) (fn-own-store o))
                 (equal (fn-own-conns (fn-own-take-submission o)) (fn-own-conns o))))
   :hints (("Goal" :in-theory (enable fn-own-take-submission))))
+
+; KEYSTONE (lane chunked-body-2, B6b).  The queue holds a submission packed
+; (fn-own-enqueue; books/packed-submission.lisp) and the take unpacks it: what
+; the writer installs is exactly the decision the read enqueued -- the
+; article's octets, its groups, every field -- whatever it carries.
+(defthm fn-own-take-installs-the-enqueued-submission
+  (implies (and (null (fn-own-inflight o))
+                (null (fn-own-queue o))
+                (null (fn-own-pending o))
+                (equal (fn-sf-phase (fn-sn-files (fn-own-store o))) :ready))
+           (equal (fn-own-inflight (fn-own-take-submission (fn-own-enqueue o sub)))
+                  (fn-own-sub-make-author (fn-own-sub-id sub)
+                                          (fn-own-sub-version sub)
+                                          (len (fn-own-ledger o))
+                                          (fn-own-sub-decision sub)
+                                          (fn-own-sub-login sub)
+                                          (fn-own-sub-account sub))))
+  :hints (("Goal" :in-theory (e/d (fn-own-take-submission fn-own-enqueue)
+                                  (fn-own-sub-fields-of-pack fn-own-sub-fields-of-unpack))
+                  :use ((:instance fn-psub-unpack-of-pack-sub (x sub))))))
 
 ; KEYSTONE.  A transit outcome reaches only its connection: no other
 ; connection's pin, session or wire is touched, and an outcome for a

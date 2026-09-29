@@ -38,7 +38,7 @@
 (assert! (hbt-conclusion :run *hbt-small* *hbt-core* *hbt-nursery* nil
                          (fn-heap-reserve-init-connections)))
 (assert! (equal (fn-heap-init-reservation-octets *hbt-small* *hbt-core* *hbt-nursery*)
-                1975620608))
+                1929483264))
 (assert! (equal (fn-heap-breakdown :run *hbt-small* *hbt-core* *hbt-nursery* nil
                                    (fn-heap-reserve-init-connections))
                 '((:image-dynamic . 147604131)
@@ -50,10 +50,11 @@
                   (:open-suffix-vectors . 16777216)
                   (:open-per-record . 33554432)
                   (:inflight-lists . 7864320)
+                  (:taken-submission-lists . 1580864)
                   (:octet-buffers . 50725002)
-                  (:articles . 50855936)
+                  (:articles . 3441664)
                   (:collector-room . 134217728)
-                  (:megabyte-rounding . 900243)
+                  (:megabyte-rounding . 596307)
                   (:image-outside-heap . 214012928)
                   (:thread-stacks . 31457280)
                   (:thread-runtime . 125829120))))
@@ -65,7 +66,7 @@
 ;; profile's limits (lane heap-bounds; the empty store's open chunk is 0).
 (assert! (equal (fn-heap-mb-of (fn-heap-operation-figure-octets :init *hbt-small* *hbt-core*
                                                                  *hbt-nursery* nil))
-                1406))
+                1362))
 (assert! (hbt-conclusion :init *hbt-small* *hbt-core* *hbt-nursery* nil 32))
 
 ;; The hypothesis is needed: `store compact' reserves the larger of its list

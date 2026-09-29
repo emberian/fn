@@ -252,3 +252,20 @@
         (fn-lgdm-refused-p (fn-lgdm-effective v "000001.log" "000001.log:0" nil))
         (equal (fn-lgdm-effective (sld-open (sld-torn)) "000001.log" "000001.log:0" t)
                (sld-open (sld-torn))))))
+
+; Teeth for fn-lgdm-refusal-text-refuses-exactly-a-break-or-damage (PRF-953).
+; Reachable positive witnesses: the flipped bit (:damaged) and the splice
+; (:broken) above, each with a line, over the host's verdict.  Hypothesis
+; removal: a complete segment and a torn tail -- neither broken nor a first
+; invalid entry -- have no line and are not refused.
+(assert-event
+ (let* ((c (sld-flip-first)) (v (sld-host-verdict c)))
+   (and (fn-lgdm-refused-p v) (stringp (fn-lgdm-refusal-text v "000001.log")))))
+(assert-event
+ (let* ((c (sld-splice)) (v (sld-host-verdict c)))
+   (and (fn-lgdm-refused-p v) (stringp (fn-lgdm-refusal-text v "000001.log")))))
+(assert-event
+ (and (null (fn-lgdm-refusal-text (list :complete 5) "000001.log"))
+      (not (fn-lgdm-refused-p (list :complete 5)))
+      (null (fn-lgdm-refusal-text (list :torn 5 1) "000001.log"))
+      (not (fn-lgdm-refused-p (list :torn 5 1)))))

@@ -514,19 +514,13 @@ ACL2 returns."
              ;; (the operator's reply word is still :refused).
              (fnn-store-error (condition)
                (fnn-err "control request refused (store-error): ~a" condition)
-               ;; PKT-472 (e): ACL2 names the class as the refusal's reason.
-               (list :reason :refused
-                     (fnn-core 'fn-native-control-host-refusal-reason :store-error)))
+               :refused)
              (fnn-os-error (condition)
                (fnn-err "control request refused (os-error): ~a" condition)
-               ;; PKT-472 (e): ACL2 names the class as the refusal's reason.
-               (list :reason :refused
-                     (fnn-core 'fn-native-control-host-refusal-reason :os-error)))
+               :refused)
              (sb-bsd-sockets:socket-error (condition)
                (fnn-err "control request refused (socket-error): ~a" condition)
-               ;; PKT-472 (e): ACL2 names the class as the refusal's reason.
-               (list :reason :refused
-                     (fnn-core 'fn-native-control-host-refusal-reason :socket-error)))
+               :refused)
              (error (condition)
                (fnn-owner-fault-service service nil condition)
                :fault))))

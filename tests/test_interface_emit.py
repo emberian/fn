@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 import sys
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -88,9 +89,43 @@ class HostBindingTests(unittest.TestCase):
         found = self.problems(defined={"fn-c", "fn-d"})
         self.assertTrue(any("fn-a is defined by no book" in p for p in found), found)
 
+    def test_undeclared_dispatched_entry(self):
+        found = self.problems(dispatched={"fn-c": {"host/native/io.lisp"},
+                                          "fn-z": {"host/native/owner.lisp"}})
+        self.assertTrue(any("dispatches fn-z (host/native/owner.lisp) and no definterface"
+                            in p for p in found), found)
+
     def test_duplicate(self):
         found = self.problems(SOURCE + "(definterface fn-c :class :program)\n")
         self.assertTrue(any("fn-c is declared twice" in p for p in found), found)
+
+
+class GapTests(unittest.TestCase):
+    def test_subsystem_prefix_then_file(self):
+        self.assertEqual(interface_emit.subsystem("fn-owner-x", {"host/native/bp.lisp"}), "owner")
+        self.assertEqual(interface_emit.subsystem("fn-q", {"host/native/bp-node.lisp"}), "bp")
+        self.assertEqual(interface_emit.subsystem("fn-q", ()), "nntp/served")
+
+
+class LaptopRefusalTests(unittest.TestCase):
+    """decision-keystones: `interface_emit --write` took minutes on the laptop."""
+
+    def test_write_is_refused_off_a_farm_box_unless_overridden(self):
+        from tools import acl2_slots
+        with self.assertRaises(SystemExit) as refused:
+            acl2_slots.refuse_on_laptop("tools/interface_emit.py --write", environ={},
+                                        hostname="embers-laptop.local")
+        self.assertIn("remote_check.sh auto", str(refused.exception))
+        acl2_slots.refuse_on_laptop("x", environ={}, hostname="persvati")
+        acl2_slots.refuse_on_laptop("x", environ={"FN_LAPTOP_OK": "1"},
+                                    hostname="embers-laptop")
+        from tools import interface_emit
+        with mock.patch("socket.gethostname", return_value="embers-laptop"), \
+                mock.patch.dict("os.environ", {"FN_LAPTOP_OK": ""}), \
+                mock.patch.object(interface_emit, "declarations",
+                                  side_effect=AssertionError("read the tree")):
+            with self.assertRaises(SystemExit):
+                interface_emit.main(["--write"])
 
 
 if __name__ == "__main__":

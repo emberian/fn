@@ -1056,10 +1056,8 @@ RFC 5537 section 3.5 item 10 asks the injecting agent for the field; relaying
 agents never add or change it (section 3.6).
 
 What the node writes (fn guarantee). For a served POST decided under an
-authenticated login whose account (the principal its credential names, the
-session subject; books/served.lisp fn-served-account; PKT-786) is L, with
-the node secret installed, the one Injection-Info line of the stored article
-is
+authenticated login L, with the node secret installed, the one Injection-Info
+line of the stored article is
 
     Injection-Info: AGENT; posting-account="HEX"[; mail-complaints-to="ADDR"]
 
@@ -1138,17 +1136,9 @@ DQUOTE, backslash, ";", CR or LF and stands in the quoted-string as it is
 (`fn-ipp-addr-spec-has-no-quote-or-line-break`); anything else is refused.
 `fn operator CONFIG account hash LOGIN` prints the value an article posted
 under LOGIN carries (the host reads STORE/keys/node-secret.key with the
-owner's permission checks and the configuration's credential file under the
-store profile's max-credentials; ACL2 resolves LOGIN to its account, the
-principal the credential file names or else the invitation-code account's
-local principal, live or deleted, and computes the value,
-books/native-operator.lisp fn-nop-account-hash, keystone
-`fn-nop-account-hash-is-the-served-account-value`: when the served table
-finds LOGIN, the value is the one fn-ipp-injected-octets writes for that
-credential's principal), which is how an operator answers a complaint that
-quotes a posting-account. Two logins of one principal carry one value; a
-login renamed onto the same principal keeps it. A credential file the
-owner's load refuses is refused here too. Known limit: the parameters are computed from the
+owner's permission checks; ACL2 computes the value,
+fn-ipp-account-hash), which is how an operator answers a complaint that
+quotes a posting-account. Known limit: the parameters are computed from the
 live configuration when the writer stages the article and again when the
 completion is checked, so a `complaints-to` change between the two answers
 that one POST with the uncertain 441 (the article is durable; a same-source

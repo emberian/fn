@@ -25,13 +25,14 @@
 
 (in-package "ACL2")
 (include-book "peer-inbound")
+(include-book "article-line-bound")
 
 ; -----------------------------------------------------------------------------
 ; The octets' refusal is one of the remembered reasons
 
 (defthm fn-peer-intrinsic-refusal-of-is-an-intrinsic-reason
-  (implies (fn-peer-intrinsic-refusal-of msgid okp article check)
-           (member-equal (fn-peer-intrinsic-refusal-of msgid okp article check)
+  (implies (fn-peer-intrinsic-refusal-of msgid okp article check limitp)
+           (member-equal (fn-peer-intrinsic-refusal-of msgid okp article check limitp)
                          *fn-peer-intrinsic-reasons*))
   :hints (("Goal" :in-theory (e/d (fn-peer-intrinsic-refusal-of)
                                   (fn-af-message-id-equalp fn-path-date-presentp
@@ -58,7 +59,10 @@
                                              (fn-peer-article-of octets)))
                                        (fn-af-relayed-article-check
                                         (fn-peer-article-of octets))
-                                     nil)))))))
+                                     nil))
+                            (limitp (and (not (fn-peer-article-of octets))
+                                         (fn-peer-parse-limitp
+                                          (fn-article-parse octets) octets))))))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE: the transfer refuses what the octets refuse
@@ -353,3 +357,29 @@
                             fn-peer-decide-transfer fn-peer-intrinsic-refusal
                             fn-cfg-peer-find fn-af-message-idp
                             fn-peer-history-hasp fn-record-octets-string)))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE (I5): a transfer refused :line-length met a header line over RFC
+; 5322 section 2.1.1's 998 octets.  Subject: fn-peer-decide-transfer, which
+; every IHAVE and TAKETHIS transfer runs (books/peer-inbound.lisp
+; fn-peer-command, reached from host/owner-host.lisp's peer arm).  The peer
+; path names the bound as POST does (books/injection.lisp
+; fn-inj-decide-line-length-is-a-long-header-line), from the same parse
+; theorem (books/article-line-bound.lisp).  No hypothesis.
+(defthm fn-peer-decide-transfer-line-length-is-a-long-header-line
+  (implies (equal (fn-peer-decision-reason
+                   (fn-peer-decide-transfer node cfg peer msgid octets clock id subject))
+                  :line-length)
+           (fn-alb-long-header-linep octets (1+ *fn-article-max-octets*)))
+  :hints (("Goal" :in-theory (e/d (fn-peer-decide-transfer fn-peer-intrinsic-refusal-of
+                                   fn-peer-parse-limitp)
+                                  (fn-article-parse fn-alb-long-header-linep
+                                   fn-cbor-at-mostp fn-article-syntax-p
+                                   fn-af-relayed-article-check fn-cfg-peer-find
+                                   fn-af-message-idp fn-peer-history-hasp fn-peer-stagedp
+                                   fn-retain-admissiblep fn-peer-relayed-octets
+                                   fn-peer-scope-groups fn-peer-date-futurep
+                                   fn-path-names-p fn-af-path-field-value
+                                   fn-rck-path-wellformedp fn-rck-article-instant
+                                   fn-peer-path-missingp))
+           :use ((:instance fn-article-parse-limit-is-a-long-header-line)))))

@@ -428,45 +428,31 @@ observation into the outcome and this function only carries it out."
                                     "account" condition)
           code)))))
 
-;;; PKT-597, PKT-786: `account hash LOGIN'.  The host reads the current key
-;;; file STORE/keys/node-secret.key through fnn-node-secret-read-entry (the
-;;; checks the owner makes at start; ACL2 parses it) and the configuration's
-;;; credential file under the store profile's max-credentials (the owner's
-;;; bounded read, fnn-native-auth-read); ACL2 resolves LOGIN to its account
-;;; (the principal the credential file names, else the invitation-code
-;;; account's local principal) and computes that account's posting-account
-;;; value under the current epoch's `fn/posting-account/v1' key
-;;; (books/native-operator.lisp fn-nop-account-hash), and the value is
+;;; PKT-597: `account hash LOGIN'.  The host reads the current key file
+;;; STORE/keys/node-secret.key through fnn-node-secret-read-entry (the checks
+;;; the owner makes at start; ACL2 parses it), ACL2 computes the
+;;; posting-account value of LOGIN under the current epoch's
+;;; `fn/posting-account/v1' key
+;;; (books/injection-info-policy.lisp fn-ipp-account-hash), and the value is
 ;;; printed to stdout.  The secret is never printed; nothing is written.
 (defun fnn-operator-execute-account-hash (result)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result))
-        (login (fnn-core 'fn-native-operator-host-result-account-hash-login result))
-        (auth-path (fnn-octets-string
-                    (fnn-core 'fn-native-operator-host-result-account-hash-auth-path-octets
-                              result))))
+        (login (fnn-core 'fn-native-operator-host-result-account-hash-login result)))
     (handler-case
         (let* ((store (make-fnn-store root :writable nil))
                (path (fnn-node-secret-path store))
                (current (or (fnn-node-secret-read-entry path "node secret")
                             (fnn-refuse "node secret ~a is missing: run `store ~a node-secret create' once"
-                                        path root)))
-               (max-credentials (fnn-operator-store-max-credentials root)))
-          (multiple-value-bind (octets presentp)
-              (fnn-native-auth-read auth-path
-                                    (fnn-core 'fn-native-auth-host-max-octets
-                                              max-credentials))
+                                        path root))))
           (let ((text (fnn-core 'fn-native-operator-host-account-hash-text
-                                (list current) login octets presentp
-                                max-credentials)))
-            (when (eq text :credential-file-refused)
-              (fnn-refuse "credential file ~a is refused" auth-path))
+                                (list current) login)))
             (unless (stringp text)
               (fnn-refuse "node secret ~a is not a node secret" path))
             (write-sequence (fnn-octets (fnn-ascii-octet-list (format nil "~a~%" text)))
                             *fnn-stdout*)
             (finish-output *fnn-stdout*)
             (fnn-operator-emit-status :accepted "account")
-            +fnn-exit-ok+)))
+            +fnn-exit-ok+))
       (error (condition)
         (let ((code (fnn-exit-code-for condition)))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
@@ -479,15 +465,12 @@ observation into the outcome and this function only carries it out."
 ; And `fnn-command-reclaim' (`store reclaim [--dry-run | --recorded]', STO-017).
 (defvar *fnn-reclaim-callback* nil)
 
-(defun fnn-operator-execute-compaction (result root offline)
-  "PKT-868: `store compact' / `store checkpoint'.  A running owner is asked
-(ACL2's liveness decision over the socket and the lock, as for an
-administrative vector): it answers the compaction request by name and runs
-the publication itself, off its mutex (host/native/admin.lisp
-fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
+(defun fnn-operator-execute-owner-request (result root offline path-fn argv-fn)
+  "An operator verb a running owner answers as a request (PKT-868's
+compaction, Q16's reclaim): ACL2's liveness decision, then the request vector
+ARGV-FN names over the control path PATH-FN names; OFFLINE with no owner."
   (let* ((live *fnn-operator-live-owner*)
-         (path-list (fnn-core 'fn-native-operator-host-result-compaction-control-path-octets
-                              result))
+         (path-list (fnn-core path-fn result))
          (control-path (and (fnn-octet-list-p path-list) (consp path-list)
                             (fnn-octets path-list)))
          (liveness (if (and live control-path)
@@ -498,16 +481,25 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
            ;; fn-ock-request-word: requested, coalesced, nothing-to-compact,
            ;; or the refusal's blocked), printed as ACL2 rendered it
            ;; (host/native/operator-live.lisp fnn-operator-live-request).
-           (funcall (fnn-olo-request live) control-path
-                    (fnn-core 'fn-native-operator-host-result-compaction-argv result)))
+           (funcall (fnn-olo-request live) control-path (fnn-core argv-fn result)))
           ((eq liveness :held)
            (multiple-value-bind (exit detail)
-               (funcall (fnn-olo-admin live) control-path
-                        (fnn-core 'fn-native-operator-host-result-compaction-argv result)
+               (funcall (fnn-olo-admin live) control-path (fnn-core argv-fn result)
                         liveness)
              (when detail (fnn-out "~a" detail))
              exit))
           (t (funcall offline)))))
+
+(defun fnn-operator-execute-compaction (result root offline)
+  "PKT-868: `store compact' / `store checkpoint'.  A running owner is asked
+(ACL2's liveness decision over the socket and the lock, as for an
+administrative vector): it answers the compaction request by name and runs
+the publication itself, off its mutex (host/native/admin.lisp
+fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
+  (fnn-operator-execute-owner-request
+   result root offline
+   'fn-native-operator-host-result-compaction-control-path-octets
+   'fn-native-operator-host-result-compaction-argv))
 
 (defun fnn-operator-execute-store-action (result action)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
@@ -522,9 +514,19 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
                                                         (list "--repair" "truncate" at)))))
                       (:compact (fnn-operator-execute-compaction
                                  result root (lambda () (funcall *fnn-compact-callback* root))))
-                      (:reclaim (funcall *fnn-reclaim-callback* root :reclaim))
-                      (:reclaim-dry-run (funcall *fnn-reclaim-callback* root :dry-run))
-                      (:reclaim-recorded (funcall *fnn-reclaim-callback* root :recorded))
+                      ;; Q16: on a running owner, a request for its reclaim
+                      ;; pass (host/native/admin.lisp fnn-owner-reclaim-request).
+                      ((:reclaim :reclaim-dry-run :reclaim-recorded)
+                       (fnn-operator-execute-owner-request
+                        result root
+                        (lambda ()
+                          (funcall *fnn-reclaim-callback* root
+                                   (case action
+                                     (:reclaim :reclaim)
+                                     (:reclaim-dry-run :dry-run)
+                                     (t :recorded))))
+                        'fn-native-operator-host-result-reclaim-control-path-octets
+                        'fn-native-operator-host-result-reclaim-argv))
                       (:checkpoint (fnn-operator-execute-compaction
                                     result root (lambda () (fnn-command-state-checkpoint root))))
                       (:rebind-filesystem

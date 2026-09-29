@@ -490,18 +490,70 @@ def theorem_forms(paths) -> dict:
     return found
 
 
-def split_statement(form: str):
+def _substitute(term, env: dict):
+    """TERM with each variable in ENV replaced by its bound term; a quoted
+    constant is left alone (tools/premise_audit.py's rule)."""
+    if isinstance(term, str):
+        return env.get(term, term)
+    if isinstance(term, list):
+        if term and term[0] == "quote":
+            return term
+        return [_substitute(t, env) for t in term]
+    return term
+
+
+def split_statement(form: str, keep_binders: bool = False):
     """(hypotheses, conclusion) of a defthm FORM as s-expression trees.
+
     Nested `implies' in the conclusion are unfolded; the hints, rule
-    classes and every other keyword argument are dropped."""
+    classes and every other keyword argument are dropped.  A `let',
+    `let*' or `mv-let' around the statement (or around an `implies'
+    conclusion) is opened: `(let* ((o (open ...))) (implies (h o) (R o)))'
+    has the hypothesis `(h (open ...))' and concludes `(R (open ...))', as
+    the theorem does.  Until 2026-09-29 the reader stopped at the binder,
+    read the whole let* as the conclusion and took the hypothesis predicate
+    `h' for a subject (tools/premise_audit.py had the same blind spot,
+    fixed on lane/closure-theorems for fn-scj-invp-at-install).
+
+    With KEEP_BINDERS each hypothesis and the conclusion stay wrapped in the
+    binders in scope at them instead of substituted: `hosted_call' tells a
+    bound model state from a direct argument, and substitution would erase
+    that difference."""
     tree = read_sexp(form)
     if not isinstance(tree, list) or len(tree) < 3:
         return [], None
-    term, hyps = tree[2], []
-    while isinstance(term, list) and len(term) == 3 and term[0] == "implies":
-        hyps.append(term[1])
-        term = term[2]
-    return hyps, term
+    term, hyps, env, scope = tree[2], [], {}, []
+
+    def place(one):
+        if not keep_binders:
+            return _substitute(one, env)
+        for head, bindings in reversed(scope):
+            one = [head, bindings, one] if head != "mv-let" else [head, bindings[0],
+                                                                  bindings[1], one]
+        return one
+    while True:
+        bound = _bindings(term)
+        if bound is not None:
+            pairs, body = bound
+            if term[0] == "mv-let":
+                scope.append(("mv-let", (term[1], term[2])))
+            else:
+                scope.append((term[0], term[1]))
+            for variables, value in pairs:
+                value = _substitute(value, env)
+                if len(variables) == 1:
+                    env[variables[0]] = value
+                else:
+                    for i, v in enumerate(variables):
+                        env[v] = ["mv-nth", str(i), value]
+            term = body
+            continue
+        if isinstance(term, list) and len(term) == 3 and term[0] == "implies":
+            hyps.append(place(term[1]))
+            term = term[2]
+            continue
+        break
+    return hyps, place(term)
 
 
 def tree_symbols(tree) -> set[str]:
@@ -655,8 +707,9 @@ class Subject:
             functions = (tree_symbols(hyps) & set(graph.book_defs)) - graph.stobj_names
             narrowed = functions
         self.functions = sorted(narrowed or functions)
-        self.term = conclusion if tree_symbols(conclusion) & set(self.functions) else (
-            ["and"] + list(hyps))
+        bound_hyps, bound_conclusion = split_statement(form or "", keep_binders=True)
+        self.term = (bound_conclusion if tree_symbols(conclusion) & set(self.functions)
+                     else ["and"] + list(bound_hyps))
 
     def hosted(self, graph: "Graph") -> bool:
         if self.via == "export":
