@@ -14778,7 +14778,7 @@
     {
       "id": "PRF-1000",
       "title": "Every refusal's footprint is named and bounded",
-      "statement": "fn-hkn-refused-prepare-is-the-identity-by-definition (a prepare stages or is the identity), fn-hkn-unmatched-complete-is-the-identity-by-definition, fn-hkn-unmatched-release-is-the-identity-by-definition; the full-store POST consumes one txid (fn-rfx-refused-post-consumes-one-txid, books/refusal-effect.lisp) and the five steps of that path keep the recovery barriers (fn-hkn-refusal-keeps-the-recovery-barriers); a frontier at *fn-sf-max-uint* reserves nothing (fn-hkn-frontier-at-the-ceiling-reserves-nothing): the refused path consumes at most the ids between the frontier and the uint32 ceiling, never a barrier, never a record.",
+      "statement": "fn-hkn-refused-prepare-is-the-identity-by-definition (a prepare stages or is the identity; the unmatched completion and the unmatched release are the identity by their definitions, stated in the book as -by-definition facts, not cited); the full-store POST consumes one txid (fn-rfx-refused-post-consumes-one-txid, books/refusal-effect.lisp) and the five steps of that path keep the recovery barriers (fn-hkn-refusal-keeps-the-recovery-barriers); a frontier at *fn-sf-max-uint* reserves nothing (fn-sf-start-frontier's own arm, stated in the book): the refused path consumes at most the ids between the frontier and the uint32 ceiling, never a barrier, never a record.",
       "milestone": "M5",
       "requirements": [
         "STO-017"
@@ -14796,10 +14796,7 @@
       "progress_note": "",
       "events": [
         "fn-hkn-refused-prepare-is-the-identity-by-definition",
-        "fn-hkn-unmatched-complete-is-the-identity-by-definition",
-        "fn-hkn-unmatched-release-is-the-identity-by-definition",
-        "fn-hkn-refusal-keeps-the-recovery-barriers",
-        "fn-hkn-frontier-at-the-ceiling-reserves-nothing"
+        "fn-hkn-refusal-keeps-the-recovery-barriers"
       ]
     }
   ]

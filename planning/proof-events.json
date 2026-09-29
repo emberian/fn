@@ -14117,19 +14117,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-hkn-unmatched-complete-is-the-identity-by-definition"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hkn-unmatched-release-is-the-identity-by-definition"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-hkn-refusal-keeps-the-recovery-barriers"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hkn-frontier-at-the-ceiling-reserves-nothing"
         }
       ]
     }
