@@ -69,7 +69,7 @@ guard proof that needs a hint or a definition that comes later. None of the
 three touches the accessors, which stay `:guard t` and verified on the spot.
 
 A record whose recognizer takes the record FIRST, or that has two
-constructors over one accessor family (`fn-cbor-result`, `fn-replay-result`,
+constructors over one accessor family (`fn-cbor-result-*`, `fn-replay-result-*`,
 `fn-record-parse-*`), or whose constructor derives a stored field from
 another (`fn-checkpoint-make` stores the node's groups and capacity), does
 not fit and is left hand-written; the fifth lint counts it, which is the
@@ -258,11 +258,13 @@ rewrite rule. It is stated once, `:rule-classes nil`, and used by `:use`:
 (`books/replay.lisp`.) A guard fact needed only inside one book is `local`
 (`fn-retain-guard-find-is-obligation`, `books/retention.lisp`).
 
-The `fn-ag-car-is-car` family is the cautionary example: five `-is-`
-equalities exported enabled to every book in the tree. The helpers are now
-their logical primitives by `mbe` (`fn-ag-car` is `(mbe :logic (car x) :exec
-...)`), so opening the definition is the equality and the twins survive only
-as `:rule-classes nil` names for the one includer that cites them by `:use`.
+The `fn-ag-` helpers (`books/acceptance-alloc.lisp`) are the cautionary
+example: five `-is-` equalities once exported enabled to every book in the
+tree. The helpers are now their logical primitives by `mbe` (`fn-ag-car` is
+`(mbe :logic (car x) :exec ...)`), so opening the definition is the equality
+and no twin is exported; the one survivor, `fn-ag-less-is-less`, is
+`:rule-classes nil` for the one includer that cites it by `:use`
+(`books/transfer.lisp`).
 
 ## 4. Recognizers are carried invariants
 
@@ -702,9 +704,9 @@ the one name to reach for when a single name suffices.
 
 ### Never open a recognizer to prove a property of a transition
 
-A theorem about a transition of a record (`fn-x-step`, `fn-x-recv-*`) is
+A theorem about a transition of a record (`fn-<x>-step`, `fn-<x>-recv-*`) is
 proved with the recognizer and every sub-recognizer CLOSED: a named
-`fn-x-closed` theory, one lemma per branch dismissing the transitions that
+`fn-<x>-closed` theory, one lemma per branch dismissing the transitions that
 cannot affect the property, the content proved at the owning transition, and
 the theorem lifted by `:use`. `books/deftransition.lisp` writes the three
 mechanical parts:

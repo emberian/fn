@@ -25,11 +25,6 @@ import ledger  # noqa: E402
 # each names the failure, so the exception is a work item, not a hiding place.
 # The check prints every one on each run.
 KNOWN_RED = {
-    "tests/acl2/accounts-wire-tests":
-        "red at dev e78a6645d (hbox certify-20260929T045858Z-3350988): the "
-        "assert-event after *awt-381* (a redeem-wait session's PASS answers "
-        "no effects) fails; the auth/redeem semantics moved under it while it "
-        "was in no Makefile list",
 }
 
 

@@ -341,6 +341,34 @@ deferral stands, and `status' names it)."
       (fnn-owner-maybe-publish service))
     (list :reason (fnn-core 'fn-ock-request-status word) word)))
 
+(defun fnn-owner-reclaim-request (service mode)
+  "Q16: `store reclaim' on the running owner (books/owner-reclaim.lisp).  ACL2
+answers it under the owner mutex (host/owner-host.lisp fn-owner-orc-request):
+a dry run the owner runs now, off its mutex, on this control thread
+(host/native/owner.lisp fnn-owner-reclaim-dry-run: the capture by pointer,
+then the fold over the rows, the classes and the decision), its report in the
+owner's log as `store reclaim --dry-run' prints it offline; a pass in flight
+answers :in-flight; `--recorded' runs the pass that installs
+(fnn-owner-reclaim-pass: :installed, :none, or deferred by name);
+`store reclaim' without it is :offline-only until the pass records the
+instant live.  The reply names the word."
+  (let* ((free (fnn-disk-free-octets (fnn-owner-service-store service)))
+         (word (fnn-owner-serialized
+                service nil
+                (lambda ()
+                  (fnn-owner-core 'fn-owner-orc-request mode
+                                  (fnn-checkpoint-budget-test-override nil) free)))))
+    (unless (member word '(:requested :in-flight :queued :blocked :no-recorded-instant
+                           :offline-only))
+      (fnn-fault "owner returned a malformed reclaim answer ~a" word))
+    (fnn-err "RECLAIM request mode=~(~a~) answer=~(~a~)" mode word)
+    (when (eq word :requested)
+      (setq word (if (eq mode :dry-run)
+                     (fnn-owner-reclaim-dry-run service free)
+                   ;; Q16 (a): `--recorded' installs (fnn-owner-reclaim-pass)
+                   (fnn-owner-reclaim-pass service free))))
+    (list :reason (fnn-core 'fn-owner-orc-request-status word) word)))
+
 ;;; Row S1 (books/limits-live.lisp, PRF-940): `policy set
 ;;; max-transactions|max-history-octets|max-article-octets N'.  ACL2 decides
 ;;; the change (fn-lim-decide) before anything is staged, over the profile
@@ -450,28 +478,6 @@ accepted change is recorded for the next start.  Prints ACL2's line."
                  generation name verification)
         (fnn-out "~a" line)
         +fnn-exit-ok+))))
-(defun fnn-owner-reclaim-request (service mode)
-  "Q16: `store reclaim' on the running owner (books/owner-reclaim.lisp).  ACL2
-answers it under the owner mutex (host/owner-host.lisp fn-owner-orc-request):
-a dry run the owner runs now, off its mutex, on this control thread
-(host/native/owner.lisp fnn-owner-reclaim-dry-run: the capture by pointer,
-then the fold over the rows, the classes and the decision), its report in the
-owner's log as `store reclaim --dry-run' prints it offline; a pass in flight
-answers :in-flight; `store reclaim' and `--recorded' are :offline-only until
-the pass that installs lands.  The reply names the word."
-  (let* ((free (fnn-disk-free-octets (fnn-owner-service-store service)))
-         (word (fnn-owner-serialized
-                service nil
-                (lambda ()
-                  (fnn-owner-core 'fn-owner-orc-request mode
-                                  (fnn-checkpoint-budget-test-override nil) free)))))
-    (unless (member word '(:requested :in-flight :queued :blocked :no-recorded-instant
-                           :offline-only))
-      (fnn-fault "owner returned a malformed reclaim answer ~a" word))
-    (fnn-err "RECLAIM request mode=~(~a~) answer=~(~a~)" mode word)
-    (when (eq word :requested)
-      (setq word (fnn-owner-reclaim-dry-run service free)))
-    (list :reason (fnn-core 'fn-owner-orc-request-status word) word)))
 
 (defun fnn-owner-live-admin-serialized (service argv)
   "Publish one ACL2-planned configuration mutation through the live owner,

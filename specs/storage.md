@@ -1207,9 +1207,27 @@ the fold is the offline fold, `fn-orc-fold-is-the-offline-fold`), so the
 decision names exactly the rewritten articles
 (`fn-orc-decision-names-the-rewritten-articles`). Today the owner answers
 `--dry-run` (its report in the owner's log, posts and reads continuing) and
-refuses `store reclaim` and `--recorded` by name (`offline-only`) until the
-installing pass (the rewritten capture's checkpoint, the live swap, the
-drop) lands.
+`--recorded`, which INSTALLS (Q16 (a), `books/owner-reclaim-pass.lisp`,
+PRF-939): the pass reserves its second copy of the history in the run's
+credit ledger under its own key (`fn-orcp-reserve-keeps-funded`; past the
+budget `deferred reason=credit` by name, nothing moved), captures under
+the owner mutex, and off it rewrites, decides, stages the reclaimed
+checkpoint, interns the tombstones in owner quanta and rebuilds the owner
+the full open of the rewritten history installs
+(`fn-orcp-rebuild-is-the-full-open`) with fresh catalog and history
+columns. One owner quantum then installs the checkpoint (the commit point)
+and swaps the owner, re-pinning each connection to the rebuilt view
+(O(connections)), only when nothing was committed since the capture, the
+commit pipeline is idle and no other off-mutex reader holds the arena
+(`fn-orcp-swap-only-over-the-capture`); otherwise the pass defers by name
+(`delta`, `busy`, `readers`) and installs nothing. The covered segments are
+then dropped and their blocks given back (PRF-930). A death before the
+install leaves the old publication, from it the new
+(`fn-orcp-every-cut-is-old-or-new`), and a rerun rewrites nothing more
+(`fn-orcp-rerun-rewrites-nothing`). Local policy until the carried finalize
+verdict lands: a pass under continuous posting defers (`delta`). `store
+reclaim` without `--recorded` (which records the instant first) stays
+`offline-only` on a running owner.
 
 What becomes available again, precisely: the payload octets of each
 reclaimed record, on disk when the covered segments are dropped, and in the

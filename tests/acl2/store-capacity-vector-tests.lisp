@@ -356,6 +356,27 @@
                      (fn-cvec-debt-from 0 *cvt-article-history*))
       (equal (fn-cvec-record-debt *cvt-article-history*) 0)
       (fn-profile-replay-within-boundp *cvt-p* *cvt-article-octets*)))
+; Removal of the history hypothesis: from H - R - 1 000 committed the vector holds, the one-row
+; history is not admitted, and the vector does not hold after it.
+(assert-event
+ (let ((b (- *cvt-h* (+ *cvt-r* 1000))))
+   (and (fn-cvec-roomp *cvt-p* 0 b 0)
+        (not (fn-cvec-history-admittedp *cvt-p* 0 b 0 (list *cvt-row*)))
+        (not (fn-cvec-roomp *cvt-p* 1 (+ b (fn-sbud-record-octets (list *cvt-row*)))
+                            (fn-cvec-debt-from 0 (list *cvt-row*)))))))
+; Removal of the vector hypothesis: at a debt no profile can pay the empty
+; history is admitted, the vector does not hold, and the conclusion fails.
+(assert-event
+ (and (not (fn-cvec-roomp *cvt-p* 0 0 (expt 10 30)))
+      (fn-cvec-history-admittedp *cvt-p* 0 0 (expt 10 30) nil)
+      (not (fn-cvec-roomp *cvt-p* 0 (fn-sbud-record-octets nil)
+                          (fn-cvec-debt-from (expt 10 30) nil)))))
+; The natural-debt hypothesis the keystone once carried is gone (PKT-362):
+; every reader fixes the debt, so a debt of -1 reads as 0.
+(assert-event
+ (and (equal (fn-cvec-roomp *cvt-p* 0 0 -1) (fn-cvec-roomp *cvt-p* 0 0 0))
+      (equal (fn-cvec-debt-step :release -1) 0)
+      (not (fn-cvec-record-admittedp *cvt-p* 0 0 -1 *cvt-release*))))
 ; fn-cvec-record-keeps-the-vector at the article, at the state its prefix
 ; leaves (one undertaking open).
 (assert-event
