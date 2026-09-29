@@ -248,6 +248,27 @@ class CompressionTests(unittest.TestCase):
         for k in range(len(self.ids)):
             self.assertTrue(lines[k].startswith(b"501"), lines[k])
 
+    def test_fuzzed_zarticle_served_equals_the_model(self):
+        # The fuzzer's XFN-ZARTICLE (its table row's :fuzz grammar: a
+        # Message-ID from the store, a fresh one or a malformed one, and the
+        # baseline's digest, "00" or "x"), cut as the diff campaign cuts it,
+        # served by the reader over the packed store: octet for octet the
+        # model's reply, a well-formed reply stream (229 is a block), and the
+        # stored answer reached.
+        reader = fz.Reader(self.image, self.packed)
+        self.addCleanup(reader.stop)
+        stored = 0
+        for seed in range(24):
+            gen = fz.Gen(seed, "reader", self.ids)
+            data = b"".join([gen.cmd("XFN-ZARTICLE") for _ in range(12)] + [b"QUIT\r\n"])
+            cuts = gen.chunkings(data, 3)
+            model = fz.model_reply(self.image, gen.choice(cuts), self.packed)
+            for cut in cuts:
+                session = fz.served(reader, cut, 0.0)
+                self.assertIsNone(fz.diff_verdict(model, session, reader), (seed, cut[:2]))
+            stored += fz.normalize(model[1]).count(b"\r\n229 ")
+        self.assertGreater(stored, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

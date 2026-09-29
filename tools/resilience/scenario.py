@@ -42,14 +42,19 @@ WITNESSES = ("post-accepted", "retry-reconciled", "read-completed",
              "read-during-competing-work", "reclaim-freed", "recovery-completed",
              "memberships-listed", "checkpoint-installed",
              "receipt-delivered", "receipt-effect-once", "cross-route-retry-refused",
-             "init-old-or-new")
+             "init-old-or-new",
+             # the interop backend (W7e, adapters/inn_lab.py): a copy served
+             # by the other agent matched under the named normalization; a
+             # Path loop refused; a second offer refused as held
+             "relay-normalized", "loop-refused", "duplicate-refused")
 REPLAY = ("exact", "timed", "image")
 CONTRACTS = ("local-commit-log",)
 CANDIDATE_RULES = ("absent", "present", "either")
 # The routes a post's cut is reached by; the registry carries each route's
 # column where they differ (design §5: `operator post' and `store post' are
 # a batch of one, the served POST a member of the owner's quantum).
-ROUTES = ("store-post", "operator-post", "served-post", "bp-transit")
+ROUTES = ("store-post", "operator-post", "served-post", "bp-transit",
+          "peer-transit")     # NNTP transit from or to another news agent (W7e)
 HEALING_BOUND_KINDS = ("seconds", "experimental")
 EXPECTED = ("consistent", "violation", "inconclusive", "no-witness", "harness-failure",
             "healing-overran")
@@ -128,6 +133,8 @@ TABLE_SELECTORS = {
 RECLAIM_CUTS_SOURCE = "host/native/owner.lisp:+fnn-reclaim-cuts+"
 BLOCK_BOUNDARY = "power-loss"                   # adapters/power_loss.py (W7d)
 BLOCK_RECOVERY_BOUNDARY = "recovery-power-loss"
+INTEROP_IDLE_BOUNDARY = "peer-idle"              # adapters/inn_lab.py (W7e): fn owner SIGTERM
+INTEROP_PEER_BOUNDARY = "peer-innd"              # the peer daemon killed
 
 
 class ScenarioError(ValueError):
@@ -297,6 +304,19 @@ def boundary_registry() -> dict:
                           "rule": None, "rules": {}, "operations": ops,
                           "actions": ["drop-writes"], "selector": None,
                           "executable": True, "backend": "block-replay"}
+    # The interop backend's boundaries (W7e, adapters/inn_lab.py): the fn
+    # owner's SIGTERM with no transfer in flight (tools/inn_lab.py
+    # scenario_fn_term) and the peer daemon killed (scenario_innd_cut).
+    # Neither is a cut table's column: everything acknowledged stays
+    # (present), and the peer's own recovery is the peer's, never fn's rule.
+    for name, ops, rules in ((INTEROP_IDLE_BOUNDARY, ["probe"],
+                              {"served-post": "present", "operator-post": "present",
+                               "peer-transit": "present"}),
+                             (INTEROP_PEER_BOUNDARY, ["disconnect"], {})):
+        registry[name] = {"source": "tools/inn_lab.py (INN 2.7.4 on hbox)", "tables": [],
+                          "program": None, "book": None, "rule": None, "rules": rules,
+                          "operations": ops, "actions": ["kill"], "selector": None,
+                          "executable": True, "backend": "interop"}
     io = ROOT / "host" / "native" / "io.lisp"
     selectors = io.read_text() if io.is_file() else ""
     for name, row in PENDING_BOUNDARIES.items():
@@ -395,9 +415,26 @@ def validate(scenario: Scenario, registry: dict | None = None) -> list:
     return problems
 
 
+# Interleaved operations (a nemesis step at a held boundary) without a host
+# coordinate on the native backend: the held form exists, the verb the
+# nemesis needs does not.  Keyed by the operation's `op` and the recipe.
+PENDING_INTERLEAVES = {
+    ("policy-change", "bp-node"): {
+        "coordinate": "no live path: `operator CONFIG bp-route remove` under a running "
+                      "`bp-node serve` is refused store-held (a process holds the store lock "
+                      "and no control socket is there to reach it; rf4-444f-2's words); "
+                      "`bp-node serve` opens no control socket and the owner service "
+                      "(`operator run`) does not embed the BP node, so the live "
+                      "reconfiguration path (host/native/control.lisp :admin -> "
+                      "fnn-owner-live-admin-serialized) cannot reach a BP node's route table",
+        "owner": "coordinator (finding, resilience-framework-5)"},
+}
+
+
 def pending_reasons(scenario: Scenario, registry: dict | None = None) -> list:
     """Why the scenario is not executable on the native backend, by
-    boundary; [] when every fault has a host coordinate for its action."""
+    boundary and by interleaved operation; [] when every fault has a host
+    coordinate for its action and every nemesis step a verb."""
     registry = boundary_registry() if registry is None else registry
     reasons = []
     for f in scenario.faults:
@@ -411,7 +448,34 @@ def pending_reasons(scenario: Scenario, registry: dict | None = None) -> list:
         elif f.action not in entry.get("actions", ()):
             reasons.append("{}: no {} form of the cut (actions: {})".format(
                 f.boundary, f.action, ", ".join(entry.get("actions", ()))))
+        for step in f.interleave:
+            o = scenario.operation(step)
+            pending = PENDING_INTERLEAVES.get((o.op, scenario.initial.get("recipe")))
+            if pending:
+                reasons.append("{} at {}: {} (owner {})".format(
+                    o.op, f.boundary, pending["coordinate"], pending["owner"]))
     return reasons
+
+
+def pending_owner(scenario: Scenario, registry: dict | None = None) -> str | None:
+    """The lane asked for the first missing coordinate: a boundary without
+    an executable held form first, then a nemesis verb without a live path,
+    then the boundary's registered owner (an executable point keeps its
+    lane's name)."""
+    registry = boundary_registry() if registry is None else registry
+    for f in scenario.faults:
+        if f.boundary in PENDING_BOUNDARIES and not registry.get(f.boundary, {}).get("executable"):
+            return PENDING_BOUNDARIES[f.boundary]["owner"]
+    for f in scenario.faults:
+        for step in f.interleave:
+            o = scenario.operation(step)
+            pending = PENDING_INTERLEAVES.get((o.op, scenario.initial.get("recipe")))
+            if pending:
+                return pending["owner"]
+    for f in scenario.faults:
+        if f.boundary in PENDING_BOUNDARIES:
+            return PENDING_BOUNDARIES[f.boundary]["owner"]
+    return None
 
 
 def executable_on_native(scenario: Scenario, registry: dict | None = None) -> bool:

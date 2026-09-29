@@ -377,10 +377,18 @@ and `fn-pta-decide` carries it beside the unchanged byte decision
 carries `authority=NAME`. `fn-pta-admitted-is-the-gate-over-the-rows` (PRF-1023)
 equates `:admitted` with `fn-pol-admitp` over the retained rows' lace minus the
 poster's fork, under the carried index invariant; the node-lace form reaches it
-through `fn-stx-lace-of-node-is-the-rows-lace` (PRF-995). The group's authority
-is the live group entry's policy-id when it is a principal id
-([reconfiguration](reconfiguration.md) `(:create-group name policy-id)`); until
-D11's portable group authority lands, every other group is ungoverned by name.
+through `fn-stx-lace-of-node-is-the-rows-lace` (PRF-995), whose correspondence
+hypothesis is carried on the served path: `fn-snc-correspondp`
+(books/store-node-correspondence.lisp) is established at the initial store and
+preserved by every transition of the store node (PRF-1027, PRF-1034). The
+group's authority is the live group entry's policy-id when it is a principal id
+([reconfiguration](reconfiguration.md) `(:create-group name policy-id)`); every
+other group is ungoverned by name. In the configuration model that policy-id
+is the posting-policy identifier (`*fn-cfg-default-policy-id*` in
+books/config.lisp, written by `store init` and `:set-group-status`), and no operator path binds a principal there,
+so on a running node the gate answers `:ungoverned` for every take
+(tests/test_native_key_statements' forked pair) until D11's group authority
+binding lands: an open decision, not a served refusal.
 
 Three consequences, each a §6 theorem.
 

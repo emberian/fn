@@ -626,3 +626,93 @@
         ((equal phase :refused) :refused)
         ((equal phase :fenced-marker) :uncertain)
         (t :pending)))
+
+; ---------------------------------------------------------------------------
+; The publication loop as a run, and the outcome keystone (PRF-1039).
+(verify-guards fn-bpnr-publish-action)
+(verify-guards fn-bpnr-publish-step)
+(verify-guards fn-bpnr-publish-outcome)
+
+; The phases the publication loop can hold, from its start :directory to the
+; three phases it stops at.
+(defun fn-bpnr-publish-phasep (phase)
+  (declare (xargs :guard t))
+  (or (equal phase :directory) (equal phase :marker-staged)
+      (equal phase :marker-data-durable) (equal phase :marker-attempted)
+      (equal phase :idle) (equal phase :refused) (equal phase :fenced-marker)))
+
+; The host loop's phase after a sequence of observed results
+; (host/native/bp-service.lisp fnn-bps-publish-generation: it starts at
+; :directory, follows fn-bpnr-publish-step under each result until
+; fn-bpnr-publish-action answers :done, and reports fn-bpnr-publish-outcome of
+; the phase it stopped at).
+(defun fn-bpnr-publish-run (phase results)
+  (declare (xargs :guard (true-listp results)))
+  (if (atom results)
+      phase
+    (fn-bpnr-publish-run (fn-bpnr-publish-step phase (car results))
+                         (cdr results))))
+
+(verify-guards fn-bpnr-publish-phasep)
+(verify-guards fn-bpnr-publish-run)
+
+(defthm fn-bpnr-publish-step-preserves-phasep
+  (implies (fn-bpnr-publish-phasep phase)
+           (fn-bpnr-publish-phasep (fn-bpnr-publish-step phase result))))
+
+(defthm fn-bpnr-publish-run-preserves-phasep
+  (implies (fn-bpnr-publish-phasep phase)
+           (fn-bpnr-publish-phasep (fn-bpnr-publish-run phase results))))
+
+; The host's fnn-fault branch ("ACL2 returned an invalid rotation publication
+; action") is unreachable: every phase the loop reaches answers one of the
+; five actions the host dispatches.
+(defthm fn-bpnr-publish-action-of-run-is-dispatched
+  (member-equal (fn-bpnr-publish-action (fn-bpnr-publish-run :directory results))
+                '(:make-directory :stage-and-file-barrier :replace
+                  :directory-barrier :done))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-bpnr-publish-run-preserves-phasep
+                                   (phase :directory)))
+           :in-theory (disable fn-bpnr-publish-run
+                               fn-bpnr-publish-run-preserves-phasep))))
+
+; KEYSTONE for fn-bpnr-publish-outcome, two-sided: the outcome of the loop's
+; phase is :pending exactly while the loop has not stopped (its action is not
+; :done), so the host, which reads the outcome only after the loop returned,
+; never reports :pending (a :pending outcome names a cut loop and nothing
+; else); a stopped loop's outcome is one of :durable, :refused and
+; :uncertain.
+(defthm fn-bpnr-publish-outcome-is-pending-exactly-while-the-loop-runs
+  (let ((end (fn-bpnr-publish-run :directory results)))
+    (and (iff (equal (fn-bpnr-publish-outcome end) :pending)
+              (not (equal (fn-bpnr-publish-action end) :done)))
+         (implies (equal (fn-bpnr-publish-action end) :done)
+                  (member-equal (fn-bpnr-publish-outcome end)
+                                '(:durable :refused :uncertain)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-bpnr-publish-run-preserves-phasep
+                                   (phase :directory)))
+           :in-theory (disable fn-bpnr-publish-run
+                               fn-bpnr-publish-run-preserves-phasep))))
+
+; The three decided outcomes are distinct and name the phase the loop stopped
+; at: two stopped loops report the same outcome exactly when they stopped at
+; the same phase (:durable at :idle, the selection replaced and the directory
+; barriered; :refused at :refused, the directory or the staged file refused;
+; :uncertain at :fenced-marker, an :error once the replace was attempted).
+(defthm fn-bpnr-publish-outcome-names-the-stopped-phase
+  (let ((end1 (fn-bpnr-publish-run :directory results1))
+        (end2 (fn-bpnr-publish-run :directory results2)))
+    (implies (and (equal (fn-bpnr-publish-action end1) :done)
+                  (equal (fn-bpnr-publish-action end2) :done))
+             (iff (equal (fn-bpnr-publish-outcome end1)
+                         (fn-bpnr-publish-outcome end2))
+                  (equal end1 end2))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-bpnr-publish-run-preserves-phasep
+                                   (phase :directory) (results results1))
+                        (:instance fn-bpnr-publish-run-preserves-phasep
+                                   (phase :directory) (results results2)))
+           :in-theory (disable fn-bpnr-publish-run
+                               fn-bpnr-publish-run-preserves-phasep))))
