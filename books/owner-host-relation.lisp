@@ -754,23 +754,6 @@
            :in-theory (disable fn-scar-ocfg-read-tls-prefix fn-ocfg-read-tls-prefix fn-ocfg-read))))
 
 ; ---------------------------------------------------------------------------
-; EXPOSURE OPEN (fn-owner-exposure-open: fn-ocar-exp-open): the admitted
-; branch is fn-ocfg-open for a reader and fn-ocfg-open-peer for a source the
-; host resolved to a configured peer (host/native/mux.lisp), the refused
-; branch keeps the owner.  Both opens pin the live configuration
-; (fn-ocl-open-preserves-historical-relation,
-; fn-ohr-open-peer-preserves-ocl-relation below).
-(defthm fn-ohr-exposure-open-preserves-ocl-relation
-  (implies (fn-ocl-relation oc)
-           (fn-ocl-relation (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now))))
-  :hints (("Goal" :use (fn-ocar-exp-open-is-exp-open-under-ocl-relation)
-           :in-theory (e/d (fn-exp-open fn-exp-open-ocfg fn-exp-at)
-                           (fn-ocar-exp-open-is-exp-open-under-ocl-relation fn-ocar-exp-open
-                            fn-exp-admit-decision fn-exp-register fn-exp-pinned-acfg fn-ocfg-open
-                            fn-ocfg-open-peer
-                            fn-exp-with fn-exp-counters-bump fn-exp-make)))))
-
-; ---------------------------------------------------------------------------
 ; FINISH-SYNCED (fn-owner-finish-synced: fn-rix-ocfg-complete) with nothing
 ; staged (the host refuses the finish otherwise): the indexed completion is the
 ; carried one, which is fn-ocfg-complete's article branch (owner-commit-ocl).
@@ -959,6 +942,23 @@
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
                                    (x (cdr (fn-ocfg-open-peer oc peer acfg)))))
            :in-theory (disable fn-ocfg-open-peer))))
+
+; ---------------------------------------------------------------------------
+; EXPOSURE OPEN (fn-owner-exposure-open: fn-ocar-exp-open): the admitted
+; branch is fn-ocfg-open for a reader and fn-ocfg-open-peer for a source the
+; host resolved to a configured peer (host/native/mux.lisp), the refused
+; branch keeps the owner.  Both opens pin the live configuration
+; (fn-ocl-open-preserves-historical-relation,
+; fn-ohr-open-peer-preserves-ocl-relation below).
+(defthm fn-ohr-exposure-open-preserves-ocl-relation
+  (implies (fn-ocl-relation oc)
+           (fn-ocl-relation (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now))))
+  :hints (("Goal" :use (fn-ocar-exp-open-is-exp-open-under-ocl-relation)
+           :in-theory (e/d (fn-exp-open fn-exp-open-ocfg fn-exp-at)
+                           (fn-ocar-exp-open-is-exp-open-under-ocl-relation fn-ocar-exp-open
+                            fn-exp-admit-decision fn-exp-register fn-exp-pinned-acfg fn-ocfg-open
+                            fn-ocfg-open-peer
+                            fn-exp-with fn-exp-counters-bump fn-exp-make)))))
 
 ; ---------------------------------------------------------------------------
 ; OUTCOME and TRANSIT-OUTCOME (fn-owner-outcome: fn-oop-outcome;
