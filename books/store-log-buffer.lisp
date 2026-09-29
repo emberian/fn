@@ -103,9 +103,14 @@
              (equal (nth 4 e) *fn-lg-version*)
              (or (equal kind *fn-lg-record-kind*)
                  (and (equal kind *fn-lg-batch-kind*)
-                      (fn-lgw-unpack-okp body max)))
+                      (fn-lgw-unpack-okp body max))
+                 ; a rotation entry (lane store-lineage): no record
+                 (and (equal kind *fn-lg-rotation-kind*)
+                      (equal (len body) *fn-lg-rotation-body-octets*)))
              (equal (take 32 (nthcdr 10 e)) prev))
-        (mv t (if (equal kind *fn-lg-batch-kind*) (fn-lgw-unpack body) (list body)))
+        (mv t (cond ((equal kind *fn-lg-batch-kind*) (fn-lgw-unpack body))
+                    ((equal kind *fn-lg-rotation-kind*) nil)
+                    (t (list body))))
       (mv nil nil))))
 
 ;; The list algebra the closed form needs, with take and nthcdr closed.
@@ -265,16 +270,44 @@
     t))
 
 ; How many records the unpack takes from [I, END).
-(defun fn-lgb-count (i end fn-octets)
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of data with no fixed cap.  The :logic is
+; the recursion, unchanged; the :exec is the loop, equal by the lemma below.
+(defun fn-lgb-count-loop (i end fn-octets acc)
   (declare (xargs :stobjs fn-octets
-                  :guard (and (natp i) (natp end) (<= end (fn-octets-len fn-octets)))
+                  :guard (and (natp i) (natp end) (<= end (fn-octets-len fn-octets))
+                              (acl2-numberp acc))
                   :measure (nfix (- end i))))
   (if (and (natp i) (natp end) (< i end) (<= (+ i 4) end))
       (let ((n (fn-lgb-u32-at i fn-octets)))
         (if (and (natp n) (<= (+ i 4 n) end))
-            (+ 1 (fn-lgb-count (+ i 4 n) end fn-octets))
-          0))
-    0))
+            (fn-lgb-count-loop (+ i 4 n) end fn-octets (+ 1 acc))
+          acc))
+    acc))
+
+(defun fn-lgb-count (i end fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp i) (natp end) (<= end (fn-octets-len fn-octets)))
+                  :measure (nfix (- end i))
+                  :verify-guards nil))
+  (mbe :logic
+       (if (and (natp i) (natp end) (< i end) (<= (+ i 4) end))
+           (let ((n (fn-lgb-u32-at i fn-octets)))
+             (if (and (natp n) (<= (+ i 4 n) end))
+                 (+ 1 (fn-lgb-count (+ i 4 n) end fn-octets))
+               0))
+         0)
+       :exec (fn-lgb-count-loop i end fn-octets 0)))
+
+(defthm fn-lgb-count-loop-is-plus
+  (implies (acl2-numberp acc)
+           (equal (fn-lgb-count-loop i end fn-octets acc)
+                  (+ acc (fn-lgb-count i end fn-octets))))
+  :hints (("Goal" :induct (fn-lgb-count-loop i end fn-octets acc)
+                  :in-theory (disable fn-lgb-u32-at))))
+
+(verify-guards fn-lgb-count
+  :hints (("Goal" :in-theory (disable fn-lgb-u32-at))))
 
 ; Each record the unpack takes fits the log's payload bound MAX.
 (defun fn-lgb-records-okp (i end max fn-octets)
@@ -426,15 +459,19 @@
                        (and (equal kind *fn-lg-batch-kind*)
                             (fn-lgb-exactp 42 end fn-octets)
                             (<= 2 (fn-lgb-count 42 end fn-octets))
-                            (fn-lgb-records-okp 42 end max fn-octets)))
+                            (fn-lgb-records-okp 42 end max fn-octets))
+                       ; a rotation entry (lane store-lineage): no record
+                       (and (equal kind *fn-lg-rotation-kind*)
+                            (equal (- end 42) *fn-lg-rotation-body-octets*)))
                    (true-listp prev)
                    (equal (len prev) 32)
                    (fn-oct-prefix-equalp 10 prev fn-octets)
                    (fn-oct-suffix-equalp end (fn-frame-digest-range nil 0 end fn-octets)
                                          fn-octets))
-              (mv t (if (equal kind *fn-lg-batch-kind*)
-                        (fn-lgb-unpack 42 end fn-octets)
-                      (list (fn-lgb-slice-acc 42 end nil fn-octets))))
+              (mv t (cond ((equal kind *fn-lg-batch-kind*)
+                           (fn-lgb-unpack 42 end fn-octets))
+                          ((equal kind *fn-lg-rotation-kind*) nil)
+                          (t (list (fn-lgb-slice-acc 42 end nil fn-octets)))))
             (mv nil nil)))
       (fn-lgw-decide (fn-octets-list fn-octets) prev max))))
 

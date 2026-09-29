@@ -273,36 +273,80 @@
 ; the same thing on base-256 digits).
 (local (in-theory (disable floor mod)))
 
+;; fn-stx-b64-encode executes by a loop (lane depth-debt, PRF-919): it runs
+;; over a carrier or topic field's octets, one frame per three of them.  The
+;; loop conses each quantum's four characters onto ACC reversed; the :logic is
+;; the recursion, unchanged.
+(defun fn-stx-b64-encode-loop (octets acc)
+  (declare (xargs :guard t :measure (acl2-count octets)))
+  (if (atom octets)
+      (fn-ag-rev-onto acc nil)
+    (let ((a (nfix (car octets))))
+      (if (atom (cdr octets))
+          (fn-ag-rev-onto acc (list (fn-stx-b64-sextet (floor a 4))
+                                    (fn-stx-b64-sextet (* 16 (mod a 4)))
+                                    *fn-stx-b64-pad* *fn-stx-b64-pad*))
+        (let ((b (nfix (car (cdr octets)))))
+          (if (atom (cdr (cdr octets)))
+              (fn-ag-rev-onto acc (list (fn-stx-b64-sextet (floor a 4))
+                                        (fn-stx-b64-sextet (+ (* 16 (mod a 4)) (floor b 16)))
+                                        (fn-stx-b64-sextet (* 4 (mod b 16)))
+                                        *fn-stx-b64-pad*))
+            (let ((c (nfix (car (cdr (cdr octets))))))
+              (fn-stx-b64-encode-loop
+               (cdr (cdr (cdr octets)))
+               (cons (fn-stx-b64-sextet (mod c 64))
+                     (cons (fn-stx-b64-sextet (+ (* 4 (mod b 16)) (floor c 64)))
+                           (cons (fn-stx-b64-sextet (+ (* 16 (mod a 4)) (floor b 16)))
+                                 (cons (fn-stx-b64-sextet (floor a 4)) acc))))))))))))
+
 (defun fn-stx-b64-encode (octets)
   (declare (xargs :guard t
                   :measure (acl2-count octets)
                   :verify-guards nil))
-  (if (atom octets)
-      nil
-    (let ((a (nfix (car octets))))
-      (if (atom (cdr octets))
-          (list (fn-stx-b64-sextet (floor a 4))
-                (fn-stx-b64-sextet (* 16 (mod a 4)))
-                *fn-stx-b64-pad* *fn-stx-b64-pad*)
-        (let ((b (nfix (car (cdr octets)))))
-          (if (atom (cdr (cdr octets)))
-              (list (fn-stx-b64-sextet (floor a 4))
-                    (fn-stx-b64-sextet (+ (* 16 (mod a 4)) (floor b 16)))
-                    (fn-stx-b64-sextet (* 4 (mod b 16)))
-                    *fn-stx-b64-pad*)
-            (let ((c (nfix (car (cdr (cdr octets))))))
-              (cons (fn-stx-b64-sextet (floor a 4))
-                    (cons (fn-stx-b64-sextet (+ (* 16 (mod a 4)) (floor b 16)))
-                          (cons (fn-stx-b64-sextet (+ (* 4 (mod b 16)) (floor c 64)))
-                                (cons (fn-stx-b64-sextet (mod c 64))
-                                      (fn-stx-b64-encode (cdr (cdr (cdr octets)))))))))))))))
+  (mbe :logic
+     (if (atom octets)
+           nil
+         (let ((a (nfix (car octets))))
+           (if (atom (cdr octets))
+               (list (fn-stx-b64-sextet (floor a 4))
+                     (fn-stx-b64-sextet (* 16 (mod a 4)))
+                     *fn-stx-b64-pad* *fn-stx-b64-pad*)
+             (let ((b (nfix (car (cdr octets)))))
+               (if (atom (cdr (cdr octets)))
+                   (list (fn-stx-b64-sextet (floor a 4))
+                         (fn-stx-b64-sextet (+ (* 16 (mod a 4)) (floor b 16)))
+                         (fn-stx-b64-sextet (* 4 (mod b 16)))
+                         *fn-stx-b64-pad*)
+                 (let ((c (nfix (car (cdr (cdr octets))))))
+                   (cons (fn-stx-b64-sextet (floor a 4))
+                         (cons (fn-stx-b64-sextet (+ (* 16 (mod a 4)) (floor b 16)))
+                               (cons (fn-stx-b64-sextet (+ (* 4 (mod b 16)) (floor c 64)))
+                                     (cons (fn-stx-b64-sextet (mod c 64))
+                                           (fn-stx-b64-encode (cdr (cdr (cdr octets))))))))))))))
+       :exec (fn-stx-b64-encode-loop octets nil)))
 
-(verify-guards fn-stx-b64-encode)
+(defthm fn-stx-b64-encode-loop-is-rev-onto
+  (equal (fn-stx-b64-encode-loop octets acc)
+         (fn-ag-rev-onto acc (fn-stx-b64-encode octets)))
+  :hints (("Goal" :induct (fn-stx-b64-encode-loop octets acc)
+                  :in-theory (union-theories
+                              '(fn-stx-b64-encode-loop fn-stx-b64-encode fn-ag-rev-onto
+                                atom car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
 
-(defun fn-stx-b64-decode-exact (chars)
+(verify-guards fn-stx-b64-encode
+  :hints (("Goal" :expand ((fn-stx-b64-encode octets))
+                  :in-theory (disable (:definition fn-stx-b64-encode)
+                                      fn-stx-b64-encode-loop fn-stx-b64-sextet))))
+
+;; fn-stx-b64-decode-exact executes by a loop (lane depth-debt, PRF-919):
+;; ACC holds the octets decoded so far, reversed; the first refusal is the
+;; answer, as in the recursion (fn-stx-b64-decode-exact-loop-is-rev-onto).
+(defun fn-stx-b64-decode-exact-loop (chars acc)
   (declare (xargs :guard t :measure (acl2-count chars)))
   (if (atom chars)
-      (if (null chars) (fn-stx-ok (list nil)) (fn-stx-error :b64-improper))
+      (if (null chars) (fn-stx-ok (list (fn-ag-rev-onto acc nil))) (fn-stx-error :b64-improper))
     (if (not (and (consp (cdr chars))
                   (consp (cdr (cdr chars)))
                   (consp (cdr (cdr (cdr chars))))))
@@ -319,26 +363,92 @@
                    (null rest))
               (if (not (equal (mod v1 16) 0))
                   (fn-stx-error :b64-padding-bits)
-                (fn-stx-ok (list (list (+ (* 4 v0) (floor v1 16))))))
+                (fn-stx-ok (list (fn-ag-rev-onto acc (list (+ (* 4 v0) (floor v1 16)))))))
             (let ((v2 (fn-stx-b64-value c2)))
               (if (null v2)
                   (fn-stx-error :b64-alphabet)
                 (if (and (equal c3 *fn-stx-b64-pad*) (null rest))
                     (if (not (equal (mod v2 4) 0))
                         (fn-stx-error :b64-padding-bits)
-                      (fn-stx-ok (list (list (+ (* 4 v0) (floor v1 16))
-                                             (+ (* 16 (mod v1 16)) (floor v2 4))))))
+                      (fn-stx-ok (list (fn-ag-rev-onto
+                                        acc (list (+ (* 4 v0) (floor v1 16))
+                                                  (+ (* 16 (mod v1 16)) (floor v2 4)))))))
                   (let ((v3 (fn-stx-b64-value c3)))
                     (if (null v3)
                         (fn-stx-error :b64-alphabet)
-                      (let ((tail (fn-stx-b64-decode-exact rest)))
-                        (if (not (fn-stx-okp tail))
-                            tail
-                          (fn-stx-ok
-                           (list (cons (+ (* 4 v0) (floor v1 16))
-                                       (cons (+ (* 16 (mod v1 16)) (floor v2 4))
-                                             (cons (+ (* 64 (mod v2 4)) v3)
-                                                   (fn-stx-val tail)))))))))))))))))))
+                      (fn-stx-b64-decode-exact-loop
+                       rest
+                       (cons (+ (* 64 (mod v2 4)) v3)
+                             (cons (+ (* 16 (mod v1 16)) (floor v2 4))
+                                   (cons (+ (* 4 v0) (floor v1 16)) acc)))))))))))))))
+
+(defun fn-stx-b64-decode-exact (chars)
+  (declare (xargs :guard t :measure (acl2-count chars) :verify-guards nil))
+  (mbe :logic
+     (if (atom chars)
+           (if (null chars) (fn-stx-ok (list nil)) (fn-stx-error :b64-improper))
+         (if (not (and (consp (cdr chars))
+                       (consp (cdr (cdr chars)))
+                       (consp (cdr (cdr (cdr chars))))))
+             (fn-stx-error :b64-quantum)
+           (let ((c2 (car (cdr (cdr chars))))
+                 (c3 (car (cdr (cdr (cdr chars)))))
+                 (rest (cdr (cdr (cdr (cdr chars)))))
+                 (v0 (fn-stx-b64-value (car chars)))
+                 (v1 (fn-stx-b64-value (car (cdr chars)))))
+             (if (or (null v0) (null v1))
+                 (fn-stx-error :b64-alphabet)
+               (if (and (equal c2 *fn-stx-b64-pad*)
+                        (equal c3 *fn-stx-b64-pad*)
+                        (null rest))
+                   (if (not (equal (mod v1 16) 0))
+                       (fn-stx-error :b64-padding-bits)
+                     (fn-stx-ok (list (list (+ (* 4 v0) (floor v1 16))))))
+                 (let ((v2 (fn-stx-b64-value c2)))
+                   (if (null v2)
+                       (fn-stx-error :b64-alphabet)
+                     (if (and (equal c3 *fn-stx-b64-pad*) (null rest))
+                         (if (not (equal (mod v2 4) 0))
+                             (fn-stx-error :b64-padding-bits)
+                           (fn-stx-ok (list (list (+ (* 4 v0) (floor v1 16))
+                                                  (+ (* 16 (mod v1 16)) (floor v2 4))))))
+                       (let ((v3 (fn-stx-b64-value c3)))
+                         (if (null v3)
+                             (fn-stx-error :b64-alphabet)
+                           (let ((tail (fn-stx-b64-decode-exact rest)))
+                             (if (not (fn-stx-okp tail))
+                                 tail
+                               (fn-stx-ok
+                                (list (cons (+ (* 4 v0) (floor v1 16))
+                                            (cons (+ (* 16 (mod v1 16)) (floor v2 4))
+                                                  (cons (+ (* 64 (mod v2 4)) v3)
+                                                        (fn-stx-val tail))))))))))))))))))
+       :exec (fn-stx-b64-decode-exact-loop chars nil)))
+
+(defthm fn-stx-b64-decode-exact-ok-shape
+  (implies (fn-stx-okp (fn-stx-b64-decode-exact chars))
+           (equal (fn-stx-ok (list (fn-stx-val (fn-stx-b64-decode-exact chars))))
+                  (fn-stx-b64-decode-exact chars)))
+  :hints (("Goal" :induct (fn-stx-b64-decode-exact chars)
+                  :in-theory (disable fn-stx-b64-value))))
+
+(defthm fn-stx-b64-decode-exact-loop-is-rev-onto
+  (equal (fn-stx-b64-decode-exact-loop chars acc)
+         (let ((r (fn-stx-b64-decode-exact chars)))
+           (if (fn-stx-okp r)
+               (fn-stx-ok (list (fn-ag-rev-onto acc (fn-stx-val r))))
+             r)))
+  :hints (("Goal" :induct (fn-stx-b64-decode-exact-loop chars acc)
+                  :expand ((fn-stx-b64-decode-exact chars))
+                  :in-theory (disable (:definition fn-stx-b64-decode-exact)
+                                      fn-stx-b64-value fn-stx-b64-decode-exact-ok-shape))))
+
+(verify-guards fn-stx-b64-decode-exact
+  :hints (("Goal" :use ((:instance fn-stx-b64-decode-exact-ok-shape))
+                  :expand ((fn-stx-b64-decode-exact chars))
+                  :in-theory (disable (:definition fn-stx-b64-decode-exact)
+                                      (:definition fn-stx-b64-decode-exact-loop)
+                                      fn-stx-b64-value fn-stx-b64-decode-exact-ok-shape))))
 
 (defthm fn-stx-b64-encode-is-octet-list
   (fn-cbor-octet-listp (fn-stx-b64-encode octets))

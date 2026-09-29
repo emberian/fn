@@ -89,47 +89,8 @@ FN_EXPORT long fn_deflate_sync(void *h, const unsigned char *src, long src_len,
     return dst_cap - (long)s->avail_out;
 }
 
-/* A stored payload's candidate (books/payload-deflate.lisp): SRC as one raw
- * DEFLATE stream at level 9, a 32 KiB window, over the preset dictionary
- * DICT (deflateSetDictionary: its last 32 KiB), ended by a final block.
- * UNTRUSTED like the stream above: ACL2 keeps the candidate only when its
- * decoder gives SRC back (fn-lzr-append-decide).  Returns the candidate's
- * length, -2 when it would not fit DST_CAP (no gain), -1 on bad arguments,
- * -3 when zlib fails. */
-FN_EXPORT long fn_deflate_payload(const unsigned char *dict, long dict_len,
-                                  const unsigned char *src, long src_len,
-                                  unsigned char *dst, long dst_cap)
-{
-    z_stream s;
-    int rc;
-    long out;
-    if (dict_len < 0 || src_len < 0 || dst_cap <= 0 || dst == 0 ||
-        (dict_len > 0 && dict == 0) || (src_len > 0 && src == 0) ||
-        dict_len > 0x3fffffffL || src_len > 0x3fffffffL || dst_cap > 0x3fffffffL)
-        return -1;
-    s.zalloc = fn_deflate_alloc;
-    s.zfree = fn_deflate_release;
-    s.opaque = 0;
-    if (deflateInit2(&s, 9, Z_DEFLATED, -15, 9, Z_DEFAULT_STRATEGY) != Z_OK)
-        return -3;
-    if (dict_len > 0 &&
-        deflateSetDictionary(&s, (const Bytef *)dict, (uInt)dict_len) != Z_OK) {
-        deflateEnd(&s);
-        return -3;
-    }
-    s.next_in = (Bytef *)src;
-    s.avail_in = (uInt)src_len;
-    s.next_out = dst;
-    s.avail_out = (uInt)dst_cap;
-    rc = deflate(&s, Z_FINISH);
-    out = dst_cap - (long)s.avail_out;
-    deflateEnd(&s);
-    if (rc == Z_STREAM_END)
-        return out;
-    if (rc == Z_OK || rc == Z_BUF_ERROR)
-        return -2;
-    return -3;
-}
+/* A stored payload's candidate is not made here: the image's own SBCL
+ * deflater proposes it (host/native/deflate.lisp fnn-ldf-, lane compress-7). */
 
 FN_EXPORT void fn_deflate_free(void *h)
 {

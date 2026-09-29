@@ -93,12 +93,62 @@
 
 (defconst *fn-lg-batch-kind* 2)
 
+; The log's functions execute guard-verified, every walk by a loop (lane
+; depth-debt-2, PRF-919): the host reaches fn-lg-log, fn-lg-last-trailer and
+; fn-lg-unpack through the concrete kernel's and the stream's fallbacks, and
+; an unverified function's *1* ran its recursion, one control-stack frame
+; per record or octet.  Each :logic is the definition, unchanged; each :exec
+; takes any value (guard t), calling the frame's sealer and the CBOR length
+; codec through ec-call where the value may not be the octets they expect.
+
+; nthcdr on any value, by a tail call.
+(defun fn-lg-nthcdr (n x)
+  (declare (xargs :guard t))
+  (cond ((not (posp n)) x)
+        ((consp x) (fn-lg-nthcdr (1- n) (cdr x)))
+        (t nil)))
+
+(defthm fn-lg-nthcdr-is-nthcdr
+  (equal (fn-lg-nthcdr n x) (nthcdr n x)))
+
+(local
+ (defthm fn-lg-rev-onto-of-rev-onto
+   (equal (fn-ag-rev-onto (fn-ag-rev-onto x acc) y)
+          (fn-ag-rev-onto acc (append x y)))))
+
+(defun fn-lg-pack-loop (records acc)
+  (declare (xargs :guard t))
+  (if (consp records)
+      (fn-lg-pack-loop (cdr records)
+                       (fn-ag-rev-onto (true-list-fix (car records))
+                                       (fn-ag-rev-onto
+                                        (ec-call (fn-cbor-u32-bytes (len (car records))))
+                                        acc)))
+    (fn-ag-rev-onto acc nil)))
+
+; A ROTATION entry (lane store-lineage; books/store-log-lineage.lisp has the
+; open's decision and the keystones, PRF-979): the first entry of every
+; segment K >= 2, chained from the closed segment's last trailer, naming K,
+; holding no record.  The scan takes it as an entry of the chain with no
+; records (fn-lg-entry-okp, fn-lg-slice-records); its trailer is the chain
+; value K's records continue from -- the checkpoint F row's GENESIS.
+(defconst *fn-lg-rotation-kind* 3)
+(defconst *fn-lg-rotation-body-octets* 4)
+
 (defun fn-lg-pack (records)
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp records)
-      (append (fn-cbor-u32-bytes (len (car records)))
-              (append (true-list-fix (car records)) (fn-lg-pack (cdr records))))
-    nil))
+  (mbe :logic
+       (if (consp records)
+           (append (fn-cbor-u32-bytes (len (car records)))
+                   (append (true-list-fix (car records)) (fn-lg-pack (cdr records))))
+         nil)
+       :exec (fn-lg-pack-loop records nil)))
+
+(local
+ (defthm fn-lg-pack-loop-is-rev-onto
+   (equal (fn-lg-pack-loop records acc) (fn-ag-rev-onto acc (fn-lg-pack records)))))
+
+(verify-guards fn-lg-pack)
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
@@ -146,14 +196,32 @@
    :rule-classes :linear))
 
 ; The records of a packed body, read while each length lies within it.
+(defun fn-lg-unpack-loop (x acc)
+  (declare (xargs :guard t :measure (len x)))
+  (if (and (consp x) (<= 4 (len x)))
+      (let ((n (nfix (ec-call (fn-cbor-u32-from (fn-bs-take 4 x))))))
+        (if (<= (+ 4 n) (len x))
+            (fn-lg-unpack-loop (fn-lg-nthcdr (+ 4 n) x)
+                               (cons (fn-bs-take n (fn-lg-nthcdr 4 x)) acc))
+          (fn-ag-rev-onto acc nil)))
+    (fn-ag-rev-onto acc nil)))
+
 (defun fn-lg-unpack (x)
   (declare (xargs :guard t :verify-guards nil :measure (len x)))
-  (if (and (consp x) (<= 4 (len x)))
-      (let ((n (nfix (fn-cbor-u32-from (fn-bs-take 4 x)))))
-        (if (<= (+ 4 n) (len x))
-            (cons (fn-bs-take n (nthcdr 4 x)) (fn-lg-unpack (nthcdr (+ 4 n) x)))
-          nil))
-    nil))
+  (mbe :logic
+       (if (and (consp x) (<= 4 (len x)))
+           (let ((n (nfix (fn-cbor-u32-from (fn-bs-take 4 x)))))
+             (if (<= (+ 4 n) (len x))
+                 (cons (fn-bs-take n (nthcdr 4 x)) (fn-lg-unpack (nthcdr (+ 4 n) x)))
+               nil))
+         nil)
+       :exec (fn-lg-unpack-loop x nil)))
+
+(local
+ (defthm fn-lg-unpack-loop-is-rev-onto
+   (equal (fn-lg-unpack-loop x acc) (fn-ag-rev-onto acc (fn-lg-unpack x)))))
+
+(verify-guards fn-lg-unpack)
 
 ; The body is exactly its packed records: every length lies within it and
 ; the last record ends it.
@@ -216,22 +284,52 @@
 
 (defun fn-lg-frame-body (chunk)
   (declare (xargs :guard t :verify-guards nil))
-  (if (and (consp chunk) (consp (cdr chunk))) (fn-lg-pack chunk) (car chunk)))
+  (mbe :logic (if (and (consp chunk) (consp (cdr chunk))) (fn-lg-pack chunk) (car chunk))
+       :exec (if (and (consp chunk) (consp (cdr chunk))) (fn-lg-pack chunk) (fn-ag-car chunk))))
+
+(verify-guards fn-lg-frame-body)
 
 (defun fn-lg-frame (prev chunk)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-frame-seal *fn-lg-magic* *fn-lg-version* (fn-lg-frame-kind chunk)
-                 (append prev (fn-lg-frame-body chunk))))
+  (mbe :logic (fn-frame-seal *fn-lg-magic* *fn-lg-version* (fn-lg-frame-kind chunk)
+                             (append prev (fn-lg-frame-body chunk)))
+       :exec (ec-call (fn-frame-seal *fn-lg-magic* *fn-lg-version* (fn-lg-frame-kind chunk)
+                                     (fn-ag-append prev (fn-lg-frame-body chunk))))))
+
+(verify-guards fn-lg-frame)
 
 (defun fn-lg-entry (prev chunk unit)
   (declare (xargs :guard t :verify-guards nil))
   (let ((frame (fn-lg-frame prev chunk)))
-    (append frame (fn-bs-zeros (fn-lg-pad-len (len frame) unit)))))
+    (mbe :logic (append frame (fn-bs-zeros (fn-lg-pad-len (len frame) unit)))
+         :exec (fn-ag-append frame (fn-bs-zeros (fn-lg-pad-len (len frame) unit))))))
+
+(verify-guards fn-lg-entry)
 
 ; The last 32 octets of a frame.
 (defun fn-lg-trailer (frame)
   (declare (xargs :guard t :verify-guards nil))
-  (nthcdr (nfix (- (len frame) *fn-frame-trailer-octets*)) frame))
+  (mbe :logic (nthcdr (nfix (- (len frame) *fn-frame-trailer-octets*)) frame)
+       :exec (fn-lg-nthcdr (nfix (- (len frame) *fn-frame-trailer-octets*)) frame)))
+
+(verify-guards fn-lg-trailer)
+
+; The rotation entry: a segment index the body can name (six decimal digits,
+; books/store-log-segments.lisp *fn-lgs-max-segment*), the frame over PREV
+; (the claimed predecessor) and K as u32, and the padded entry.
+(defun fn-lg-rotation-indexp (k)
+  (declare (xargs :guard t))
+  (and (posp k) (<= k 999999)))
+
+(defun fn-lg-rotation-frame (prev k)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-frame-seal *fn-lg-magic* *fn-lg-version* *fn-lg-rotation-kind*
+                 (append prev (fn-cbor-u32-bytes k))))
+
+(defun fn-lg-rotation-entry (prev k unit)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((frame (fn-lg-rotation-frame prev k)))
+    (append frame (fn-bs-zeros (fn-lg-pad-len (len frame) unit)))))
 
 ; A record the log admits under the payload bound MAX.
 (defun fn-lg-recordp (record max)
@@ -320,7 +418,12 @@
                   (and (equal (fn-frame-result-kind r) *fn-lg-batch-kind*)
                        (fn-lg-unpack-okp (nthcdr *fn-frame-trailer-octets*
                                                  (fn-frame-result-payload r))
-                                         max)))
+                                         max))
+                  ; a rotation entry: the body names the segment, nothing more
+                  (and (equal (fn-frame-result-kind r) *fn-lg-rotation-kind*)
+                       (equal (len (nthcdr *fn-frame-trailer-octets*
+                                           (fn-frame-result-payload r)))
+                              *fn-lg-rotation-body-octets*)))
               (equal (fn-bs-take *fn-frame-trailer-octets*
                                  (fn-frame-result-payload r))
                      prev)))))
@@ -330,9 +433,9 @@
   (declare (xargs :guard t :verify-guards nil))
   (let* ((r (fn-frame-open slice (fn-lg-open-bound slice max)))
          (body (nthcdr *fn-frame-trailer-octets* (fn-frame-result-payload r))))
-    (if (equal (fn-frame-result-kind r) *fn-lg-batch-kind*)
-        (fn-lg-unpack body)
-      (list body))))
+    (cond ((equal (fn-frame-result-kind r) *fn-lg-batch-kind*) (fn-lg-unpack body))
+          ((equal (fn-frame-result-kind r) *fn-lg-rotation-kind*) nil)
+          (t (list body)))))
 
 (defthm fn-lg-slice-records-true-listp
   (true-listp (fn-lg-slice-records slice max))
@@ -395,23 +498,66 @@
 ; -----------------------------------------------------------------------------
 ; A well-formed log: the chained entries of RECORDS from PREV.
 
+(defun fn-lg-log-loop (records prev unit acc)
+  (declare (xargs :guard t :measure (len records)))
+  (if (consp records)
+      (let* ((k (fn-lg-chunk-len records))
+             (chunk (fn-bs-take k records)))
+        (fn-lg-log-loop (fn-lg-nthcdr k records)
+                        (fn-lg-trailer (fn-lg-frame prev chunk))
+                        unit
+                        (fn-ag-rev-onto (fn-lg-entry prev chunk unit) acc)))
+    (fn-ag-rev-onto acc nil)))
+
 (defun fn-lg-log (records prev unit)
   (declare (xargs :guard t :verify-guards nil :measure (len records)))
+  (mbe :logic
+       (if (consp records)
+           (let ((k (fn-lg-chunk-len records)))
+             (append (fn-lg-entry prev (fn-bs-take k records) unit)
+                     (fn-lg-log (nthcdr k records)
+                                (fn-lg-trailer (fn-lg-frame prev (fn-bs-take k records)))
+                                unit)))
+         nil)
+       :exec (fn-lg-log-loop records prev unit nil)))
+
+(local
+ (defthm fn-lg-log-loop-is-rev-onto
+   (equal (fn-lg-log-loop records prev unit acc)
+          (fn-ag-rev-onto acc (fn-lg-log records prev unit)))
+   :hints (("Goal" :induct (fn-lg-log-loop records prev unit acc)
+            :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-trailer fn-bs-take
+                                fn-lg-chunk-len)))))
+
+(verify-guards fn-lg-log
+  :hints (("Goal" :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-trailer fn-bs-take
+                                      fn-lg-chunk-len fn-lg-log-loop))))
+
+(defun fn-lg-last-trailer-loop (records prev)
+  (declare (xargs :guard t :measure (len records)))
   (if (consp records)
       (let ((k (fn-lg-chunk-len records)))
-        (append (fn-lg-entry prev (fn-bs-take k records) unit)
-                (fn-lg-log (nthcdr k records)
-                           (fn-lg-trailer (fn-lg-frame prev (fn-bs-take k records)))
-                           unit)))
-    nil))
+        (fn-lg-last-trailer-loop (fn-lg-nthcdr k records)
+                                 (fn-lg-trailer (fn-lg-frame prev (fn-bs-take k records)))))
+    prev))
 
 (defun fn-lg-last-trailer (records prev)
   (declare (xargs :guard t :verify-guards nil :measure (len records)))
-  (if (consp records)
-      (let ((k (fn-lg-chunk-len records)))
-        (fn-lg-last-trailer (nthcdr k records)
-                            (fn-lg-trailer (fn-lg-frame prev (fn-bs-take k records)))))
-    prev))
+  (mbe :logic
+       (if (consp records)
+           (let ((k (fn-lg-chunk-len records)))
+             (fn-lg-last-trailer (nthcdr k records)
+                                 (fn-lg-trailer (fn-lg-frame prev (fn-bs-take k records)))))
+         prev)
+       :exec (fn-lg-last-trailer-loop records prev)))
+
+(local
+ (defthm fn-lg-last-trailer-loop-is-last-trailer
+   (equal (fn-lg-last-trailer-loop records prev) (fn-lg-last-trailer records prev))
+   :hints (("Goal" :induct (fn-lg-last-trailer-loop records prev)
+            :in-theory (disable fn-lg-frame fn-lg-trailer fn-bs-take fn-lg-chunk-len)))))
+
+(verify-guards fn-lg-last-trailer)
 
 ; -----------------------------------------------------------------------------
 ; The frame's shape: its length, its header's length field, its trailer.
@@ -880,6 +1026,243 @@
 
 ; The consumed count is a natural, and a frame's trailer is a digest (so the
 ; chain's next predecessor satisfies the keystone's hypothesis).
+
+; -----------------------------------------------------------------------------
+; The rotation entry's shape, its opening and the scan over it (lane
+; store-lineage): as the record entry's lemmas above, for the frame every
+; segment K >= 2 opens with.
+
+(local
+ (defthm fn-lg-rot-u32-bytes-len
+   (equal (len (fn-cbor-u32-bytes n)) 4)
+   :hints (("Goal" :in-theory (enable fn-cbor-u32-bytes)))))
+
+(local
+ (defthm fn-lg-rot-indexp-forward
+   (implies (fn-lg-rotation-indexp k) (and (natp k) (<= k *fn-cbor-max-uint*)))
+   :rule-classes :forward-chaining))
+
+(local
+ (defthm fn-lg-rot-octet-listp-of-append
+   (implies (true-listp a)
+            (equal (fn-cbor-octet-listp (append a b))
+                   (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b))))
+   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+
+(local
+ (defthm fn-lg-rot-len-of-append
+   (equal (len (append a b)) (+ (len a) (len b)))))
+
+(local
+ (defthm fn-lg-rot-digestp-forward
+   (implies (fn-frame-digestp xs)
+            (and (fn-cbor-octet-listp xs) (true-listp xs) (equal (len xs) 32)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-frame-digestp)))))
+
+(local
+ (defthm fn-lg-rot-take-of-append-exact
+   (implies (true-listp a)
+            (equal (fn-bs-take (len a) (append a b)) a))))
+
+(local
+ (defthm fn-lg-rot-nthcdr-of-append-exact
+   (implies (true-listp a)
+            (equal (nthcdr (len a) (append a b)) b))))
+
+(local
+ (defthm fn-lg-rot-append-assoc
+   (equal (append (append a b) c) (append a (append b c)))))
+
+(local
+ (defthm fn-lg-rot-frame-item-of-ok
+   (and (equal (fn-frame-result-okp (fn-frame-ok m v k p)) t)
+        (equal (fn-frame-result-magic (fn-frame-ok m v k p)) m)
+        (equal (fn-frame-result-version (fn-frame-ok m v k p)) v)
+        (equal (fn-frame-result-kind (fn-frame-ok m v k p)) k)
+        (equal (fn-frame-result-payload (fn-frame-ok m v k p)) p))
+   :hints (("Goal" :in-theory (enable fn-frame-item)))))
+
+(defthm fn-lg-rotation-payload-octets
+  (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k))
+           (and (fn-cbor-octet-listp (append prev (fn-cbor-u32-bytes k)))
+                (equal (len (append prev (fn-cbor-u32-bytes k)))
+                       (+ *fn-frame-trailer-octets* *fn-lg-rotation-body-octets*))))
+  :hints (("Goal" :in-theory (disable fn-cbor-u32-bytes fn-cbor-octet-listp fn-frame-digestp)
+           :use ((:instance fn-cbor-u32-bytes-are-octets (n k))))))
+
+(local
+ (defthm fn-lg-rot-protected-octets
+   (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k))
+            (and (fn-cbor-octet-listp (fn-frame-protected *fn-lg-magic* *fn-lg-version* *fn-lg-rotation-kind*
+                                                          (append prev (fn-cbor-u32-bytes k))))
+                 (true-listp (fn-frame-protected *fn-lg-magic* *fn-lg-version* *fn-lg-rotation-kind*
+                                                 (append prev (fn-cbor-u32-bytes k))))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-frame-protected fn-frame-header fn-cbor-octet-listp fn-cbor-octetp)
+                            (fn-frame-digestp fn-lg-rotation-indexp fn-cbor-u32-bytes))
+            :use ((:instance fn-cbor-u32-bytes-are-octets (n k))
+                  (:instance fn-cbor-u32-bytes-are-octets
+                             (n (+ *fn-frame-trailer-octets* *fn-lg-rotation-body-octets*))))))))
+
+(defthm fn-lg-rotation-frame-len
+  (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k))
+           (equal (len (fn-lg-rotation-frame prev k))
+                  (+ *fn-frame-overhead-octets* *fn-frame-trailer-octets* *fn-lg-rotation-body-octets*)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lg-rotation-frame fn-frame-seal fn-frame-encode fn-frame-protected fn-frame-header)
+                           (fn-cbor-u32-bytes fn-frame-digestp fn-lg-rotation-indexp fn-cbor-octet-listp
+                            fn-frame-digest-length))
+           :use ((:instance fn-frame-digest-length
+                            (octets (fn-frame-protected *fn-lg-magic* *fn-lg-version* *fn-lg-rotation-kind*
+                                                        (append prev (fn-cbor-u32-bytes k)))))))))
+
+(defthm fn-lg-rotation-frame-octets
+  (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k))
+           (fn-cbor-octet-listp (fn-lg-rotation-frame prev k)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lg-rotation-frame fn-frame-seal fn-frame-encode)
+                           (fn-cbor-u32-bytes fn-frame-digestp fn-lg-rotation-indexp fn-cbor-octet-listp
+                            fn-frame-protected fn-frame-digest-octet-listp))
+           :use ((:instance fn-frame-digest-octet-listp
+                            (octets (fn-frame-protected *fn-lg-magic* *fn-lg-version* *fn-lg-rotation-kind*
+                                                        (append prev (fn-cbor-u32-bytes k)))))))))
+
+(defthm fn-lg-rotation-frame-true-listp
+  (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k))
+           (true-listp (fn-lg-rotation-frame prev k)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lg-rotation-frame fn-frame-seal fn-frame-encode)
+                           (fn-cbor-u32-bytes fn-frame-digestp fn-lg-rotation-indexp fn-cbor-octet-listp
+                            fn-frame-protected fn-frame-digest-octet-listp))
+           :use ((:instance fn-frame-digest-octet-listp
+                            (octets (fn-frame-protected *fn-lg-magic* *fn-lg-version* *fn-lg-rotation-kind*
+                                                        (append prev (fn-cbor-u32-bytes k)))))))))
+
+; The sealed entry opens to what was sealed (fn-frame-open-of-seal, A-CRYPTO).
+(defthm fn-lg-open-of-rotation-frame
+  (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k)
+                (natp max) (<= (+ *fn-frame-trailer-octets* *fn-lg-rotation-body-octets*) max)
+                (<= max *fn-frame-max-payload*))
+           (equal (fn-frame-open (fn-lg-rotation-frame prev k) max)
+                  (fn-frame-ok *fn-lg-magic* *fn-lg-version* *fn-lg-rotation-kind*
+                               (append prev (fn-cbor-u32-bytes k)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-frame-open-of-seal
+                            (magic *fn-lg-magic*) (version *fn-lg-version*)
+                            (kind *fn-lg-rotation-kind*)
+                            (payload (append prev (fn-cbor-u32-bytes k)))
+                            (max-payload max)))
+           :in-theory (e/d (fn-frame-inputp)
+                           (fn-frame-open fn-frame-seal fn-frame-open-of-seal
+                            fn-cbor-u32-bytes fn-frame-digestp fn-lg-rotation-indexp)))))
+
+; The kind octet is 3: the open bound is the record bound.
+(defthm fn-lg-open-bound-of-rotation-frame
+  (implies (fn-frame-digestp prev)
+           (equal (fn-lg-open-bound (fn-lg-rotation-frame prev k) max) max))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lg-open-bound fn-lg-rotation-frame fn-frame-seal fn-frame-encode
+                            fn-frame-protected fn-frame-header nth)
+                           (fn-cbor-u32-bytes fn-frame-digestp fn-cbor-octet-listp)))))
+
+(defthm fn-lg-declared-len-of-rotation-frame-append
+  (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k))
+           (equal (fn-lg-declared-len (append (fn-lg-rotation-frame prev k) x))
+                  (len (fn-lg-rotation-frame prev k))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lg-declared-len fn-lg-rotation-frame fn-frame-seal fn-frame-encode
+                            fn-frame-protected fn-frame-header fn-bs-take nthcdr)
+                           (fn-cbor-u32-bytes fn-cbor-u32-from fn-frame-digestp fn-lg-rotation-indexp
+                            fn-cbor-octet-listp fn-lg-rotation-frame-len fn-lg-rotation-frame-octets
+                            fn-lg-rotation-frame-true-listp fn-frame-digest-length))
+           :use ((:instance fn-frame-digest-length
+                            (octets (fn-frame-protected *fn-lg-magic* *fn-lg-version* *fn-lg-rotation-kind*
+                                                        (append prev (fn-cbor-u32-bytes k)))))))))
+
+(defthm fn-lg-slice-of-rotation-entry-append
+  (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k))
+           (equal (fn-lg-slice (append (fn-lg-rotation-entry prev k unit) x))
+                  (fn-lg-rotation-frame prev k)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lg-slice fn-lg-rotation-entry)
+                           (fn-lg-rotation-frame fn-lg-declared-len fn-lg-pad-len
+                            fn-frame-digestp fn-lg-rotation-indexp fn-cbor-u32-bytes))
+           :use ((:instance fn-lg-declared-len-of-rotation-frame-append
+                            (x (append (fn-bs-zeros (fn-lg-pad-len (len (fn-lg-rotation-frame prev k)) unit)) x)))
+                 (:instance fn-lg-rot-take-of-append-exact
+                            (a (fn-lg-rotation-frame prev k))
+                            (b (append (fn-bs-zeros (fn-lg-pad-len (len (fn-lg-rotation-frame prev k)) unit)) x)))))))
+
+(defthm fn-lg-rotation-frame-consp
+  (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k))
+           (consp (fn-lg-rotation-frame prev k)))
+  :hints (("Goal" :do-not-induct t
+           :use fn-lg-rotation-frame-len
+           :expand ((len (fn-lg-rotation-frame prev k)))
+           :in-theory (disable fn-lg-rotation-frame fn-lg-rotation-frame-len fn-frame-digestp
+                               fn-lg-rotation-indexp))))
+
+; The entry validates against its predecessor and yields no record.
+(defthm fn-lg-entry-okp-of-rotation-frame
+  (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k)
+                (natp max) (<= (+ *fn-frame-trailer-octets* *fn-lg-rotation-body-octets*) max)
+                (<= max *fn-frame-max-payload*))
+           (fn-lg-entry-okp (fn-lg-rotation-frame prev k) prev max))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lg-entry-okp)
+                           (fn-lg-rotation-frame fn-frame-open fn-frame-ok fn-lg-open-bound
+                            fn-cbor-u32-bytes fn-frame-digestp fn-lg-rotation-indexp fn-lg-unpack-okp))
+           :use ((:instance fn-lg-rot-nthcdr-of-append-exact (a prev) (b (fn-cbor-u32-bytes k)))
+                 (:instance fn-lg-rot-take-of-append-exact (a prev) (b (fn-cbor-u32-bytes k)))))))
+
+(defthm fn-lg-slice-records-of-rotation-frame
+  (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k)
+                (natp max) (<= (+ *fn-frame-trailer-octets* *fn-lg-rotation-body-octets*) max)
+                (<= max *fn-frame-max-payload*))
+           (equal (fn-lg-slice-records (fn-lg-rotation-frame prev k) max) nil))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lg-slice-records)
+                           (fn-lg-rotation-frame fn-frame-open fn-frame-ok fn-lg-open-bound
+                            fn-cbor-u32-bytes fn-frame-digestp fn-lg-rotation-indexp fn-lg-unpack)))))
+
+(defthm fn-lg-rotation-entry-len
+  (equal (len (fn-lg-rotation-entry prev k unit))
+         (+ (len (fn-lg-rotation-frame prev k))
+            (fn-lg-pad-len (len (fn-lg-rotation-frame prev k)) unit)))
+  :hints (("Goal" :in-theory (e/d (fn-lg-rotation-entry) (fn-lg-rotation-frame fn-lg-pad-len)))))
+
+(defthm fn-lg-rotation-entry-true-listp
+  (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k))
+           (true-listp (fn-lg-rotation-entry prev k unit)))
+  :hints (("Goal" :in-theory (e/d (fn-lg-rotation-entry) (fn-lg-rotation-frame fn-lg-pad-len)))))
+
+; KEYSTONE of the format: the scan over a segment that opens with a rotation
+; entry from PREV reads the entries after it from the entry's trailer, with
+; no record of its own -- what the open streams after the lineage decision
+; (books/store-log-lineage.lisp fn-lgl-open, fn-lgl-head-prev).
+(defthm fn-lg-scan-of-rotation-entry-append
+  (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k)
+                (natp max) (<= (+ *fn-frame-trailer-octets* *fn-lg-rotation-body-octets*) max)
+                (<= max *fn-frame-max-payload*))
+           (equal (fn-lg-scan (append (fn-lg-rotation-entry prev k unit) x) prev unit max)
+                  (let ((rest (fn-lg-scan x (fn-lg-trailer (fn-lg-rotation-frame prev k)) unit max)))
+                    (cons (car rest) (+ (len (fn-lg-rotation-entry prev k unit)) (cdr rest))))))
+  :hints (("Goal" :do-not-induct t
+           :expand ((fn-lg-scan (append (fn-lg-rotation-entry prev k unit) x) prev unit max))
+           :in-theory (e/d ()
+                           (fn-lg-rotation-entry fn-lg-rotation-frame fn-lg-slice fn-lg-entry-okp
+                            fn-lg-slice-records fn-lg-declared-len fn-lg-pad-len fn-lg-trailer
+                            fn-frame-open fn-cbor-u32-bytes fn-frame-digestp fn-lg-rotation-indexp
+                            fn-lg-scan))
+           :use ((:instance fn-lg-rot-nthcdr-of-append-exact
+                            (a (fn-lg-rotation-entry prev k unit)) (b x))))))
+
+; Closed from here: the rotation entry's shape is what the lemmas above say
+; of it (the segments book, the concrete kernel and the lineage book open it
+; in hints only).
+(in-theory (disable fn-lg-rotation-frame fn-lg-rotation-entry))
+
 (defthm fn-lg-scan-consumed-natp
   (natp (cdr (fn-lg-scan octets prev unit max)))
   :rule-classes :type-prescription

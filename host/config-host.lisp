@@ -21,12 +21,37 @@
 ; re-admits identical definitions, which ACL2 accepts as redundant.
 (ld "store-host.lisp" :ld-error-action :error)
 
-(defun fn-cfg-host-creations (names)
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+(defun fn-cfg-host-creations-loop (names acc)
   (declare (xargs :guard t))
   (if (consp names)
-      (cons (fn-cfg-create-group (car names) *fn-cfg-default-policy-id*)
-            (fn-cfg-host-creations (cdr names)))
-    nil))
+      (fn-cfg-host-creations-loop (cdr names)
+       (cons (fn-cfg-create-group (car names) *fn-cfg-default-policy-id*) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-cfg-host-creations (names)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp names)
+           (cons (fn-cfg-create-group (car names) *fn-cfg-default-policy-id*)
+                 (fn-cfg-host-creations (cdr names)))
+         nil)
+       :exec (fn-cfg-host-creations-loop names nil)))
+
+(defthm fn-cfg-host-creations-loop-is-rev-onto
+  (equal (fn-cfg-host-creations-loop names acc)
+         (fn-ag-rev-onto acc (fn-cfg-host-creations names)))
+  :hints (("Goal" :induct (fn-cfg-host-creations-loop names acc)
+                  :in-theory (union-theories
+                              '(fn-cfg-host-creations-loop fn-cfg-host-creations fn-ag-rev-onto not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-cfg-host-creations
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-cfg-host-creations fn-ag-rev-onto fn-cfg-host-creations-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-cfg-host-non-group-deltas (deltas)
   ; The capacity and limit deltas of the default record; the group creations

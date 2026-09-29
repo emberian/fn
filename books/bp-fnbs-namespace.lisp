@@ -94,22 +94,49 @@
 ; legacy contiguous frontier: the old planner still judges exactly its final
 ; names and hidden stages, while kind-five replay judges received name/bytes.
 ; The result is a read-only recovery plan, not another lifecycle transition.
+; The directory listing's appends (a data-sized first argument) run in
+; constant stack: the two functions below are guard-verified (lane
+; depth-debt-2, PRF-919), their :exec the definition with this book's
+; unverified helpers called through ec-call and the append fn-ag-append; an
+; unverified function's *1* ran binary-append's recursion, one frame per name.
 (defun fn-bpnf-mixed-recovery-plan (names)
-  (declare (xargs :guard t))
-  (let ((split (fn-bpnf-namespace-plan names)))
-    (if (not (fn-bpnf-namespace-planp split))
-        (list :fault :fnbs-namespace)
-      (let ((legacy
-             (fn-bpn-lifecycle-namespace-plan
-              (append (fn-bpnf-namespace-legacy split)
-                      (fn-bpnf-namespace-hidden split)))))
-        (if (not (fn-bpn-lifecycle-namespace-planp legacy))
-            (list :fault :legacy-namespace)
-          (list :ready
-                (fn-bpn-lifecycle-plan-record-names legacy)
-                (fn-bpnf-namespace-received split)
-                (fn-bpn-lifecycle-plan-hidden-stages legacy)
-                (fn-bpn-lifecycle-plan-next-token legacy)))))))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe
+   :logic
+   (let ((split (fn-bpnf-namespace-plan names)))
+     (if (not (fn-bpnf-namespace-planp split))
+         (list :fault :fnbs-namespace)
+       (let ((legacy
+              (fn-bpn-lifecycle-namespace-plan
+               (append (fn-bpnf-namespace-legacy split)
+                       (fn-bpnf-namespace-hidden split)))))
+         (if (not (fn-bpn-lifecycle-namespace-planp legacy))
+             (list :fault :legacy-namespace)
+           (list :ready
+                 (fn-bpn-lifecycle-plan-record-names legacy)
+                 (fn-bpnf-namespace-received split)
+                 (fn-bpn-lifecycle-plan-hidden-stages legacy)
+                 (fn-bpn-lifecycle-plan-next-token legacy))))))
+   :exec
+   (let ((split (ec-call (fn-bpnf-namespace-plan names))))
+     (if (not (ec-call (fn-bpnf-namespace-planp split)))
+         (list :fault :fnbs-namespace)
+       (let ((legacy
+              (ec-call (fn-bpn-lifecycle-namespace-plan
+                        (fn-ag-append (ec-call (fn-bpnf-namespace-legacy split))
+                                      (ec-call (fn-bpnf-namespace-hidden split)))))))
+         (if (not (ec-call (fn-bpn-lifecycle-namespace-planp legacy)))
+             (list :fault :legacy-namespace)
+           (list :ready
+                 (ec-call (fn-bpn-lifecycle-plan-record-names legacy))
+                 (ec-call (fn-bpnf-namespace-received split))
+                 (ec-call (fn-bpn-lifecycle-plan-hidden-stages legacy))
+                 (ec-call (fn-bpn-lifecycle-plan-next-token legacy)))))))))
+
+(verify-guards fn-bpnf-mixed-recovery-plan
+  :hints (("Goal" :in-theory (disable fn-bpnf-namespace-plan fn-bpnf-namespace-planp
+                                      fn-bpn-lifecycle-namespace-plan
+                                      fn-bpn-lifecycle-namespace-planp))))
 
 (defun fn-bpnf-mixed-recovery-planp (plan)
   (declare (xargs :guard t))
@@ -127,6 +154,10 @@
 (defun fn-bpnf-mixed-hidden-stages (plan)
   (declare (xargs :guard t)) (nth 3 plan))
 (defun fn-bpnf-mixed-legacy-observed (plan)
-  (declare (xargs :guard t))
-  (append (fn-bpnf-mixed-legacy-names plan)
-          (fn-bpnf-mixed-hidden-stages plan)))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (append (fn-bpnf-mixed-legacy-names plan)
+                      (fn-bpnf-mixed-hidden-stages plan))
+       :exec (fn-ag-append (ec-call (fn-bpnf-mixed-legacy-names plan))
+                           (ec-call (fn-bpnf-mixed-hidden-stages plan)))))
+
+(verify-guards fn-bpnf-mixed-legacy-observed)

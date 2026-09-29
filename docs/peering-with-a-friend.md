@@ -92,43 +92,51 @@ their peer name for you is your node name (`news.example.org`), as
    fn operator /var/lib/fn/fn.toml principal set-password friend-node --principal PRINCIPAL-HEX --posting
    ```
 
-2. Save the login your friend made for you, in a file only you can read. Its
-   three lines are `FNAUTH1`, the login, the password:
+   Its last word is `applied` when the node is running (it took the
+   password at once), or `effective-at-next-start` when it is not.
+
+2. Send your groups to your friend too, and encrypt the link. Name only
+   what changes; the rest of the peer stays as `peer confirm` wrote it:
 
    ```sh
-   umask 077; printf 'FNAUTH1\nme-node\nPASSWORD-FROM-FRIEND\n' > /var/lib/fn/friend.fnauth
+   fn operator /var/lib/fn/fn.toml peer set friend --send 'local.*' --tls starttls --server-name friend.example.net --anchor /var/lib/fn/friend-cert.pem
    ```
 
-3. Replace the peer with its encrypted form, then start fetching from it
-   every 20 seconds:
+   `--server-name` is the name on their certificate and `--anchor` their
+   certificate file (both `-` for a friend with a host name and a public
+   certificate, below). `--streaming false` if their server cannot stream.
+
+3. Save the login your friend made for you. `peer login` asks the password
+   twice and writes the file (only you can read it), then uses it for the
+   peer:
 
    ```sh
-   fn operator /var/lib/fn/fn.toml peer add friend friend.example.net 198.51.100.9 119 'local.*' 'local.*' principal PRINCIPAL-HEX /var/lib/fn/friend.fnauth false true starttls 198.51.100.9 /var/lib/fn/friend-cert.pem
+   fn operator /var/lib/fn/fn.toml peer login friend me-node /var/lib/fn/friend.fnauth
+   ```
+
+4. Start fetching from your friend every 20 seconds:
+
+   ```sh
    fn operator /var/lib/fn/fn.toml peer pull friend 20
    ```
 
-4. Check the login from step 1: its last word is `applied` when the node
-   was running (the node took the password at once), or
-   `effective-at-next-start` when it was not. If it said `restart-required`
-   (your `fn.toml` names no `[control] path`), restart the node (as root:
-   `systemctl restart fn`; OpenBSD: `rcctl restart fn`). A pull that fails
-   says why in the log, for example
-   `pull peer=friend round=failed cursor=held at=preamble reason=login-refused code=481 phase=auth-pass`:
-   your friend's node refused the login you saved in step 2.
+All of these apply to the running node; there is nothing to restart. A pull
+that fails says why in the log, for example
+`pull peer=friend round=failed cursor=held at=preamble reason=login-refused code=481 phase=auth-pass`:
+your friend's node refused the login you saved in step 3.
 
-The words of `peer add`, in order: peer name, node name, address, port,
-groups you take, groups you send, `principal HEX` (who logs in as this
-peer), your login file for their node, `false` (never send the password
-unencrypted), `true` (fast "streaming" mode; use `false` if their server
-cannot stream), then `starttls`, the name on their certificate, and their
-certificate file. `fn operator CONFIG help peer` prints the full list.
+`peer set` refuses by name what it cannot make: `no-such-peer`,
+`tls-needs-server-name` (a peer added by number needs the name on its
+certificate), `needs-send` (a login or `--streaming` for a peer you send
+nothing to), `unknown-flag`. `fn operator CONFIG help peer` prints every
+flag.
 
 **A friend with a host name and a public certificate** (such as Let's
 Encrypt) can be added by name. Then no certificate file is needed, and a
 friend who changes address is found again:
 
 ```sh
-fn operator /var/lib/fn/fn.toml peer add friend friend.example.net news.friend.example 563 'local.*' 'local.*' principal PRINCIPAL-HEX /var/lib/fn/friend.fnauth false true implicit - -
+fn operator /var/lib/fn/fn.toml peer set friend --host news.friend.example --port 563 --tls implicit --server-name - --anchor -
 ```
 
 `implicit` means TLS from the first byte, as on port 563. The two `-` mean:
@@ -222,9 +230,9 @@ To stop: `fn operator /var/lib/fn/fn.toml peer catch-up friend 0`.
 
 ## Known gaps
 
-- A friend's server that cannot stream stops being fed until restart. Set
-  its streaming word to `false`.
+- A friend's server that cannot stream stops being fed. Run
+  `peer set friend --streaming false` (on the running node).
 - One login file per peer serves both directions, so fetching with a login
-  needs outbound groups too.
+  needs outbound groups too (`peer set` names this `needs-send`).
 - If two cancels withdraw each other, the answer is a plain `430` rather
   than `430 withdrawn`.

@@ -110,6 +110,7 @@
                   ;; restricted one is served the view: books/group-access.lisp).
                   (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (not (fn-auth-session-handshakingp as))
+                  (not (fn-auth-sasl-waitingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
                   (null (fn-peer-session-peer ps))
@@ -200,6 +201,7 @@
                   (not (equal (fn-wire-state-mode w2) :closed))
                   (fn-auth-sessionp as)
                   (not (fn-auth-session-handshakingp as))
+                  (not (fn-auth-sasl-waitingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
                   (null (fn-peer-session-peer ps))
@@ -301,6 +303,7 @@
                   ;; restricted one is served the view: books/group-access.lisp).
                   (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (not (fn-auth-session-handshakingp as))
+                  (not (fn-auth-sasl-waitingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
                   (null (fn-peer-session-peer ps))
@@ -382,6 +385,7 @@
                   (not (equal (fn-wire-state-mode w2) :closed))
                   (fn-auth-sessionp as)
                   (not (fn-auth-session-handshakingp as))
+                  (not (fn-auth-sasl-waitingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
                   (null (fn-peer-session-peer ps))

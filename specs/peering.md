@@ -2218,6 +2218,31 @@ accept of the same invitation, which finds those rows and enrols without a
 second record. As with the confirm, TLS words and an outbound feed are the
 operator's `peer add` of the same name.
 
+**The rest of the record is `peer set`, and the login file is `peer login`
+(PRF-973, row S5).** After the confirm or the accept, the operator adds
+what the invitation does not carry by naming fields, not by rewriting the
+record: `peer set NAME --send GROUPS --tls starttls|implicit --server-name
+NAME|- --anchor PEM|- ...` (also `--host`, `--port`, `--take`,
+`--streaming`, `--login FILE|-`, `--allow-clear`, `--principal`,
+`--source-address`). The plan (`fn-pset-plan`, books/peer-set.lisp) reads
+the peer's row group from the live table (offline: the replayed one),
+replaces the named fields of the typed record, and publishes one
+`(:set-peer NAME ROWS)` whose rows are the edited record's followed by the
+group's extension rows (pull, catch-up, carries, budget, feed pause,
+distributions), which `peer add` would drop
+(`fn-pset-plan-sets-the-record-and-keeps-the-extensions`); every other
+field keeps its value (`fn-pset-edit-keeps-unnamed-fields`). What the
+edit cannot make is refused by name before any record (`no-such-peer`,
+`tls-needs-server-name` for a numeric host, `needs-send` for a login or a
+streaming word with nothing sent, `peer-record`, ...). `peer login NAME
+LOGIN FILE` reads the password the friend gave twice (terminal or stdin,
+never argv), and ACL2 decides the entries agree and renders the `FNAUTH1`
+octets (`fn-pset-login-file`), which the connection's reader
+`fn-fap-decode` gives back as exactly that login and password
+(`fn-pset-login-file-reads-back`); the host writes FILE owner-only by a
+rename and applies `peer set NAME --login FILE`. `peer add` stays for a
+peer no invitation made.
+
 NNT-030: A friend's node and this one become peers from one invitation each way of the exchange: the accept configures the inviter at the invitee from the invitation's signed address in one record before the enrolment, the confirm configures the invitee at the inviter, and a crash between record and enrolment is resumed without a second record
 
 NNT-022: A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, a declined key statement stays declined across a restart unless a new statement is decided, and an accepted key statement whose change a crash cut finishes under its own admission context

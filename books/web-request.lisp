@@ -605,13 +605,41 @@
   (true-listp (fn-wrq-true x))
   :rule-classes :type-prescription)
 
-(defun fn-wrq-join (vals sep)
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of data with no fixed cap (D27).
+(local
+ (defthm fn-wrq-rev-onto-of-rev-onto
+   (equal (fn-ag-rev-onto (fn-ag-rev-onto a acc) b)
+          (fn-ag-rev-onto acc (append a b)))
+   :hints (("Goal" :induct (fn-ag-rev-onto a acc)))))
+
+; ACC holds the octets so far, reversed.
+(defun fn-wrq-join-loop (vals sep acc)
   (declare (xargs :guard (true-listp sep)))
   (if (consp vals)
       (if (consp (cdr vals))
-          (append (fn-wrq-true (car vals)) sep (fn-wrq-join (cdr vals) sep))
-        (fn-wrq-true (car vals)))
-    nil))
+          (fn-wrq-join-loop (cdr vals) sep
+                            (fn-ag-rev-onto sep (fn-ag-rev-onto (fn-wrq-true (car vals)) acc)))
+        (fn-ag-rev-onto acc (fn-wrq-true (car vals))))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-wrq-join (vals sep)
+  (declare (xargs :guard (true-listp sep) :verify-guards nil))
+  (mbe :logic (if (consp vals)
+                  (if (consp (cdr vals))
+                      (append (fn-wrq-true (car vals)) sep (fn-wrq-join (cdr vals) sep))
+                    (fn-wrq-true (car vals)))
+                nil)
+       :exec (fn-wrq-join-loop vals sep nil)))
+
+(defthm fn-wrq-join-loop-is-rev-onto
+  (equal (fn-wrq-join-loop vals sep acc)
+         (fn-ag-rev-onto acc (fn-wrq-join vals sep)))
+  :hints (("Goal" :induct (fn-wrq-join-loop vals sep acc)
+                  :in-theory (disable fn-wrq-true))))
+
+(verify-guards fn-wrq-join
+  :hints (("Goal" :in-theory (disable fn-wrq-true))))
 
 (in-theory (disable fn-ot-decimal-parse))
 

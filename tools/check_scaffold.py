@@ -195,6 +195,22 @@ def markdown_files():
                 yield Path(base) / name
 
 
+def assumption_books() -> None:
+    """One place lists every named assumption (AGENTS.md): a book
+    books/assumptions-*.lisp is either included by books/assumptions.lisp or
+    named, by its path, in specs/failures.md's assumption table (a book kept
+    out of assumptions.lisp's closure because its signature needs a stobj
+    that 766 includers must not load: A-ARENA-STORED)."""
+    included = set(re.findall(r'\(include-book "(assumptions-[a-z0-9-]+)"',
+                              (ROOT / "books/assumptions.lisp").read_text()))
+    rows = "\n".join(line for line in (ROOT / "specs/failures.md").read_text().splitlines()
+                     if re.match(r"\| A-[A-Z-]+ \|", line))
+    for book in sorted((ROOT / "books").glob("assumptions-*.lisp")):
+        if book.stem not in included and f"books/{book.name}" not in rows:
+            fail(f"books/{book.name}: an assumption book neither included by "
+                 "books/assumptions.lisp nor named in a specs/failures.md A-* row")
+
+
 def main() -> int:
     conflict_markers()
     markdown = sorted(markdown_files())
@@ -206,6 +222,7 @@ def main() -> int:
                                 (ROOT / "planning/milestones.md").read_text()))
     assumptions = set(re.findall(r"(?m)^\| (A-[A-Z-]+) \|",
                                  (ROOT / "specs/failures.md").read_text()))
+    assumption_books()
     requirements = registry("planning/requirements.json", "requirements", r"[A-Z]{3}-\d{3}")
     proofs = registry("planning/proofs.json", "proofs", r"PRF-\d{3}")
     scenarios = registry("tests/scenarios/catalog.json", "scenarios", r"SCN-\d{3}")

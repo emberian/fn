@@ -1032,11 +1032,32 @@
 ; -----------------------------------------------------------------------------
 ; Text: every line the host prints for this boundary
 
-(defun fn-smid-codes (chars)
+; A mount-identity string has no fixed length cap (D27): the conversion
+; executes by a loop (lane depth-debt, PRF-919), (mbe :logic <the
+; recursion, unchanged> :exec <a loop>).
+(defun fn-smid-codes-loop (chars acc)
   (declare (xargs :guard (character-listp chars)))
   (if (endp chars)
-      nil
-    (cons (char-code (car chars)) (fn-smid-codes (cdr chars)))))
+      (fn-ag-rev-onto acc nil)
+    (fn-smid-codes-loop (cdr chars) (cons (char-code (car chars)) acc))))
+
+(defun fn-smid-codes (chars)
+  (declare (xargs :guard (character-listp chars) :verify-guards nil))
+  (mbe :logic (if (endp chars)
+                  nil
+                (cons (char-code (car chars)) (fn-smid-codes (cdr chars))))
+       :exec (fn-smid-codes-loop chars nil)))
+
+(defthm fn-smid-codes-loop-is-rev-onto
+  (equal (fn-smid-codes-loop chars acc)
+         (fn-ag-rev-onto acc (fn-smid-codes chars)))
+  :hints (("Goal" :induct (fn-smid-codes-loop chars acc)
+                  :in-theory (union-theories
+                              '(fn-smid-codes-loop fn-smid-codes
+                                fn-ag-rev-onto endp atom car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-smid-codes)
 
 (defun fn-smid-text (s)
   (declare (xargs :guard (stringp s)))

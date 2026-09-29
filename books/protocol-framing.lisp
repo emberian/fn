@@ -55,7 +55,7 @@
                                    (fn-auth-fold-command-pinned-offers-only-post
                                     fn-nntp-session-command
                                     fn-nntp-archive-command-pinned fn-post-offeredp
-                                    fn-cu-serve-reply
+                                    fn-cu-serve-reply fn-zar-command
                                     ,@*fn-proto-token-theory*)))))
        (fn-proto-framing-events (cdr names)))
     nil))
@@ -89,7 +89,7 @@
                              (fn-auth-fold-command-pinned-offers-only-post
                               fn-nntp-session-command
                               fn-nntp-archive-command-pinned fn-post-offeredp
-                              fn-cu-serve-reply
+                              fn-cu-serve-reply fn-zar-command
                               ,@*fn-proto-token-theory*))))))
 
 (make-event
