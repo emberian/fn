@@ -5084,7 +5084,9 @@
         "PRF-257",
         "PRF-326",
         "PRF-341",
-        "PRF-912"
+        "PRF-912",
+        "PRF-948",
+        "PRF-949"
       ],
       "verification": [
         "proof",
@@ -5101,7 +5103,7 @@
     {
       "id": "NNT-055",
       "title": "fn extension: COMPRESS DEFLATE with a shipped preset dictionary named by its BLAKE3 digest (RFC 9842-shaped), and stored payloads carried as they are stored between fn peers",
-      "specification": "docs/extensions/nntp-compress-dict.md",
+      "specification": "specs/nntp.md#compression-compress-nnt-054-nnt-055",
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [

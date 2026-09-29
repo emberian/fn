@@ -1976,12 +1976,22 @@ answered.
 
 ## Compression: COMPRESS (NNT-054, NNT-055)
 
+NNT-054: COMPRESS DEFLATE (RFC 8054): a client may compress its session after authentication; the inbound stream is decoded by ACL2, bounded, resumable and bomb-refusing, the outbound by vendored zlib behind the trust boundary
+
+NNT-055: fn extension: COMPRESS DEFLATE with a shipped preset dictionary named by its BLAKE3 digest (RFC 9842-shaped), and stored payloads carried as they are stored between fn peers
+
 RFC 8054 adds `COMPRESS DEFLATE`: after `206`, every octet in both
 directions is a raw DEFLATE stream (RFC 1951), flushed after each response
 (section 2.2.2). fn serves it. The fn extension NNT-055
 (docs/extensions/nntp-compress-dict.md) presets a shipped dictionary, named
 by its BLAKE3 digest, in both streams and carries stored payloads as they
-are stored. It is specified but not yet served. It replaces the `COMPRESS
+are stored. Its stored-payload half is served: `XFN-DICT` in CAPABILITIES
+lists the shipped digests and `XFN-ZARTICLE <message-id> <digest>...`
+answers `229 <digest> <length> <stored-length>` with the stored block,
+yEnc-style escaped in lines of at most 128 octets (RFC 3977 section 3.1.1:
+no NUL, CR or LF in a block), when the peer listed the block's dictionary,
+and ARTICLE's answer otherwise. The preset dictionary on the COMPRESS
+streams is not yet served. It replaces the `COMPRESS
 LZ4` extension that was planned before the compression survey: fn uses one
 DEFLATE inflater for the wire and the store (the 2026-09-28 decision).
 

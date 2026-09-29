@@ -9259,35 +9259,23 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-lz-seal-form-denotes"
+          "name": "fn-pzd-decode-bufs-is-decode"
         },
         {
           "kind": "theorem",
-          "name": "fn-lz-seal-form-of-literal-block"
+          "name": "fn-zin-payload-bufs-is-payload-with"
         },
         {
           "kind": "theorem",
-          "name": "fn-lz-decode-of-literal-block"
+          "name": "fn-pzd-decode-ok"
         },
         {
           "kind": "theorem",
-          "name": "fn-lz-run-out-len-bound"
+          "name": "fn-pzd-decode-of-empty"
         },
         {
           "kind": "theorem",
-          "name": "fn-lz-decode-buf-out-len-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lz-run-extends-out"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lz-lits-words-is-append"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lz-match-bulk-is-copy-match"
+          "name": "fn-zin-payload-bufs-ignores-buffers"
         }
       ]
     },
@@ -11823,6 +11811,10 @@
         {
           "kind": "theorem",
           "name": "fn-lzr-dicts-add-keeps-bindings"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-decode-bufs-is-the-lz-value"
         }
       ]
     },
@@ -13324,6 +13316,36 @@
         {
           "kind": "theorem",
           "name": "fn-feed-restart-forgets-the-previous-clock-domain"
+        }
+      ]
+    },
+    {
+      "id": "PRF-911",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-zc-decide-starts-only-deflate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zc-capability-lines-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-established-starts-the-owed-compression"
+        }
+      ]
+    },
+    {
+      "id": "PRF-912",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lzd-table-current"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-dicts-initial-dictsp"
         }
       ]
     },

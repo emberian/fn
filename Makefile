@@ -458,6 +458,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-lz-append \
 	tests/acl2/payload-lz-append-tests \
 	tests/acl2/deflate-inflate-tests \
+	books/deflate-pool-check \
+	tests/acl2/deflate-pool-tests \
+	books/nntp-compress-dict \
+	tests/acl2/nntp-compress-dict-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \

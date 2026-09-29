@@ -324,6 +324,8 @@ a different history. This is a local fn guarantee; no RFC speaks to it.
 
 ### Compressed payloads: DEFLATE over a shipped dictionary (STO-037)
 
+STO-037: A stored payload may be held compressed: a raw DEFLATE stream over a shipped preset dictionary named by its BLAKE3 digest, decoded by the verified inflater, never transcoded at rest
+
 A stored article record may hold its payload compressed
 (`books/payload-lz-record.lisp`, the frame `fn-z`: DICT-ID, the payload span,
 the record without it, and C). C is a raw DEFLATE stream (RFC 1951) made
