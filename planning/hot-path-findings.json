@@ -1,9 +1,5 @@
 {
   "findings": {
-    "fn-acar-nntp-projectionp len N": {
-      "class": "unexpected",
-      "packet": "PKT-190"
-    },
     "fn-acceptedp recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
@@ -434,10 +430,6 @@
       "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
       "packet": "PKT-448 (c)",
       "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-nntp-newnews-scan recursion N', same traversal, same class]"
-    },
-    "fn-nntp-projectionp len N": {
-      "class": "unexpected",
-      "packet": "PKT-190"
     },
     "fn-node-binding-ids-rev recursion N": {
       "class": "unexpected",
