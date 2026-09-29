@@ -655,9 +655,6 @@ class SuspectCacheTests(unittest.TestCase):
         self.assertEqual(changed["d"], base["d"])        # d reaches nothing that moved
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class ExportHygieneLintTests(unittest.TestCase):
     """What a book leaves enabled, judged by shape only."""
@@ -1410,3 +1407,7 @@ class HandWrittenRecordLintTests(unittest.TestCase):
                           '(defun fn-s (x) (declare (xargs :mode :program)) x)\n'
                           }).books["books/s.lisp"]
         self.assertFalse(ledger.exports_no_rule(book))
+
+
+if __name__ == "__main__":
+    unittest.main()

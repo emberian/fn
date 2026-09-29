@@ -2213,7 +2213,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpah-publication-authorize
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpah-publication-authorize-admits-exactly-the-issued-pending-delivery))
 
 (definterface fn-bpah-publication-frame
   :class ::ideal)
@@ -2312,10 +2313,10 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-evidence-authorize
-  ; an exact alias of fn-bpn-evidence-authorize, but no proof target cites a theorem
-  ; about it, so the delegation is not declared (decision-keystones-3): a
-  ; keystone about fn-bpn-evidence-authorize, cited, then :delegates again
-  :class ::ideal)
+  ; an exact alias; the callee's keystone is PRF-1007
+  ; (fn-bpn-evidence-authorize-admits-exactly-the-locked-next-identity)
+  :class ::common-lisp-compliant
+  :delegates fn-bpn-evidence-authorize)
 
 (definterface fn-bpn-host-evidence-directory-name
   :class ::ideal)
@@ -2345,7 +2346,10 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-evidence-operationp
-  :class ::ideal)
+  ; an exact alias of the boolean recognizer; the keystone naming it is
+  ; PRF-1007 (fn-bpn-evidence-authorize-admits-exactly-the-locked-next-identity)
+  :class ::ideal
+  :delegates fn-bpn-evidence-operationp)
 
 (definterface fn-bpn-host-evidence-readyp
   :class ::ideal)
@@ -2366,7 +2370,10 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-lifecycle-publication-authorize
-  :class ::ideal)
+  ; an exact alias; the callee's keystone is PRF-985
+  ; (fn-bpn-lifecycle-publication-authorize-admits-exactly-the-pending-persist)
+  :class ::ideal
+  :delegates fn-bpn-lifecycle-publication-authorize)
 
 (definterface fn-bpn-host-lifecycle-publication-operation-publication
   :class ::ideal)
@@ -2551,7 +2558,8 @@
   :class ::ideal)
 
 (definterface fn-bpnf-delete-publication-authorize
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpnf-delete-publication-authorize-admits-exactly-the-issued-pending-deletion))
 
 (definterface fn-bpnf-delete-publication-frame
   :class ::ideal)
@@ -2572,7 +2580,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-family-publication-authorize
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family))
 
 (definterface fn-bpnf-family-publication-frame
   :class ::ideal)
@@ -2951,10 +2960,11 @@
   :class ::ideal)
 
 (definterface fn-tcl-host-encode
-  ; an exact alias of fn-tcl-encode, but no proof target cites a theorem
-  ; about it, so the delegation is not declared (decision-keystones-3): a
-  ; keystone about fn-tcl-encode, cited, then :delegates again
-  :class ::ideal)
+  ; an exact alias; the callee's keystones are PRF-1006 (the per-kind
+  ; fn-tcl-decode-message-of-encode-* round trips and
+  ; fn-tcl-accepted-message-is-canonical)
+  :class ::ideal
+  :delegates fn-tcl-encode)
 
 (definterface fn-tcl-host-event-digests
   :class ::ideal)

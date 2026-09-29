@@ -210,6 +210,77 @@
             (fn-bpn-evidence-state
              (+ 1 (fn-bpn-evidence-next state))))))
 
+; --- Guards of the admission chain (decision-keystones-4).  The host calls
+; fn-bpn-evidence-authorize through an exact alias
+; (host/bp-receive-evidence-host.lisp fn-bpn-host-evidence-authorize, a
+; checked :delegates), so the alias is common-lisp-compliant exactly because
+; the callee is.  fn-bpn-evidence-operationp stays :ideal: fn-jpub-authorityp
+; (journal-publish) takes the cdr of an unchecked argument, so its guard t is
+; not verifiable from here; the host alias of operationp is :ideal too.
+(local (defthm fn-bpn-evidence-character-listp-append-left
+  (implies (and (character-listp (append a b)) (true-listp a))
+           (character-listp a))))
+(local (defthm fn-bpn-evidence-digits-characters
+  (character-listp (fn-bs-txn-digits n))
+  :hints (("Goal" :use ((:instance fn-bs-txn-name-chars-characters))
+           :in-theory (e/d (fn-bs-txn-name-chars) (fn-bs-txn-digits))))))
+(local (defthm fn-bpn-evidence-name-chars-characters
+  (character-listp (fn-bpn-evidence-name-chars sequence kind))
+  :hints (("Goal" :in-theory (e/d (fn-bpn-evidence-name-chars
+                                   fn-bpn-evidence-suffix)
+                                  (fn-bs-txn-digits))))))
+(verify-guards fn-bpn-evidence-outcomep)
+(verify-guards fn-bpn-evidence-suffix)
+(verify-guards fn-bpn-evidence-name-chars)
+(verify-guards fn-bpn-evidence-result-kind)
+(verify-guards fn-bpn-evidence-state)
+(verify-guards fn-bpn-evidence-next)
+(verify-guards fn-bpn-evidence-statep)
+(verify-guards fn-bpn-evidence-name
+  :hints (("Goal" :in-theory (disable fn-bpn-evidence-name-chars))))
+(verify-guards fn-bpn-evidence-next-wire-name)
+(verify-guards fn-bpn-evidence-next-result-name)
+(verify-guards fn-bpn-evidence-authorize)
+
+; KEYSTONE (PRF-1007).  The admission decision, two-sided, with the
+; principal (the caller owns the evidence lock: LOCK-OWNEDP is t), the policy
+; context (a ready state below the record ceiling) and the evidence (a
+; classified outcome; both exact next names observed absent) in the
+; conclusion.  An operation is issued exactly under all of them, and then it
+; carries the next identity, that identity's wire and result names, two
+; initial authorized publications and the successor state at the next
+; identity; anything else is the one refusal.  The two theorems above
+; (produces-operation, successor-does-not-reuse-identity) are the one-sided
+; readings it subsumes.
+(defthm fn-bpn-evidence-authorize-admits-exactly-the-locked-next-identity
+  (let ((answer (fn-bpn-evidence-authorize st outcome lock-ownedp
+                                           wire-absentp result-absentp))
+        (sequence (fn-bpn-evidence-next st)))
+    (and (iff (fn-bpn-evidence-operationp answer)
+              (and (fn-bpn-evidence-statep st)
+                   (< sequence *fn-bpn-evidence-max-records*)
+                   (fn-bpn-evidence-outcomep outcome)
+                   (equal lock-ownedp t)
+                   (equal wire-absentp t)
+                   (equal result-absentp t)))
+         (implies (fn-bpn-evidence-operationp answer)
+                  (and (equal (fn-bpn-evidence-operation-identity answer)
+                              sequence)
+                       (equal (fn-bpn-evidence-operation-wire-name answer)
+                              (fn-bpn-evidence-name sequence :wire))
+                       (equal (fn-bpn-evidence-operation-result-name answer)
+                              (fn-bpn-evidence-name
+                               sequence (fn-bpn-evidence-result-kind outcome)))
+                       (equal (fn-bpn-evidence-operation-wire-publication answer)
+                              (fn-jpub-initial t))
+                       (equal (fn-bpn-evidence-operation-result-publication answer)
+                              (fn-jpub-initial t))
+                       (equal (fn-bpn-evidence-operation-successor answer)
+                              (fn-bpn-evidence-state (+ 1 sequence)))))
+         (implies (not (fn-bpn-evidence-operationp answer))
+                  (equal answer '(:refused :evidence-admission)))))
+  :rule-classes nil)
+
 (deftheory fn-bp-receive-evidence-vocabulary
   '(fn-bpn-evidence-kindp fn-bpn-evidence-outcomep
     fn-bpn-evidence-name fn-bpn-evidence-state fn-bpn-evidence-next
