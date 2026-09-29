@@ -666,7 +666,7 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
                   acl2: str | None = None, no_publish: bool = False,
                   pcert: bool = False, budget_seconds: int | None = None,
                   require_origin: str | None = None,
-                  recertify: list[str] = ()) -> str:
+                  recertify: list[str] = (), images: str | None = None) -> str:
     """The submit script: every step that can fail exits with its own code.
 
     `cd X && ... &` backgrounds the whole list, so ssh returned 0 whatever
@@ -693,6 +693,11 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
         runner.append("--pcert")
     if budget_seconds is not None:
         runner.extend(["--budget-seconds", str(budget_seconds)])
+    if images is not None:
+        # Certification images on or off (tools/cert_images.py); unset, the
+        # runner's own default.  FN_CERT_IMAGES in this shell never reaches
+        # the box, so the choice travels as an argument.
+        runner.extend(["--images", images])
     for book in recertify:
         runner.extend(["--recertify", book])
     runner.extend(books)
@@ -736,7 +741,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
            prepare: Callable[[str, Path], None] | None = None,
            pcert: bool = False, budget_seconds: int | None = None,
            require_origin: str | None = None,
-           recertify: list[str] = ()) -> str:
+           recertify: list[str] = (), images: str | None = None) -> str:
     """Mirror, install from the box's cache, and start the detached runner.
 
     `prepare(host, remote)` runs between the mirror and ACL2, on the box's
@@ -781,7 +786,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
     script = remote_script(host, remote, identifier, books, jobs,
                            timeout_seconds, affected_by, closure, cache, acl2,
                            no_publish, pcert, budget_seconds, require_origin,
-                           recertify)
+                           recertify, images)
     if no_publish and publishes(script):
         raise FarmError(
             f"{host}: {identifier} was asked not to publish and its runner "
@@ -805,6 +810,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
         "no_publish": no_publish,
         "pcert": pcert,
         "budget_seconds": budget_seconds,
+        "images": images,
         # What the box's cache already held: the run certifies the rest.
         "cache_install": cached,
         "cache": host_settings(host, cache)["cache"],
@@ -1475,6 +1481,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--all", action="store_true",
                         help="submit: certify every Makefile root (an empty "
                              "selection is refused without it)")
+    parser.add_argument("--images", choices=("on", "off"), default=None,
+                        help="submit: certify from certification images or not "
+                             "(the runner's --images; default: the runner's own, on; "
+                             "FN_CERT_IMAGES here is forwarded when set)")
     parser.add_argument("--no-publish", action="store_true",
                         help="submit: a measurement run: the runner publishes no pair "
                              "to the box's cache, and `wait` neither sweeps nor "
@@ -1542,7 +1552,9 @@ def main(argv: list[str] | None = None) -> int:
                                 arguments.acl2,
                                 no_publish=arguments.no_publish,
                                 require_origin=arguments.require_origin,
-                                recertify=list(arguments.recertify))
+                                recertify=list(arguments.recertify),
+                                images=arguments.images
+                                or os.environ.get("FN_CERT_IMAGES") or None)
             print(identifier)
             print(f"{identifier}: on {arguments.host}; wait with `farm.py wait "
                   f"{arguments.host} {identifier}`", file=sys.stderr)

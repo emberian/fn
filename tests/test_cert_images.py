@@ -18,6 +18,11 @@ BOOKS = {
     "books/side": '(in-package "ACL2")\n(local (include-book "mid"))\n(defun fn-s (x) x)\n',
     "tests/acl2/top-tests": '(in-package "ACL2")\n(include-book "../../books/top")\n',
     "host/x-host": '(in-package "ACL2")\n(include-book "../books/mid")\n',
+    # An attachable stobj, its attachment, and a book over the attachment.
+    "books/arena": '(in-package "ACL2")\n(include-book "mid")\n(defabsstobj st :attachable t)\n',
+    "books/arena-attach": '(in-package "ACL2")\n(include-book "mid")\n'
+                          '(attach-stobj st st-impl)\n(include-book "arena")\n',
+    "books/umbrella": '(in-package "ACL2")\n(include-book "arena-attach")\n',
 }
 
 
@@ -56,6 +61,38 @@ class ImageForTests(unittest.TestCase):
             graph = cert_images.Graph(tree(directory))
             images = [{"name": "mid", "roots": ["books/mid"]}]
             self.assertIsNone(cert_images.image_for("host/x-host", images, graph))
+
+
+class AttachStobjTests(unittest.TestCase):
+    def test_no_image_defines_a_stobj_the_books_world_attaches(self):
+        # batch BB: an image holding books/payload-arena (fn-arena) made the
+        # umbrella's attach-stobj fail ("The name FN-ARENA is in use").
+        with tempfile.TemporaryDirectory() as directory:
+            graph = cert_images.Graph(tree(directory))
+            images = [{"name": "arena", "roots": ["books/arena"]},
+                      {"name": "mid", "roots": ["books/mid"]},
+                      {"name": "attached", "roots": ["books/arena-attach"]}]
+            self.assertEqual(graph.attached("books/umbrella"), {"st"})
+            # An image that made the attachment itself is fine.
+            self.assertEqual(cert_images.image_for("books/umbrella", images, graph)["name"],
+                             "attached")
+            images = images[:2]
+            self.assertEqual(graph.defines(graph.nonlocal_closure("books/arena")), {"st"})
+            self.assertEqual([i["name"] for i in cert_images.applicable(
+                "books/umbrella", images, graph)], ["mid"])
+            self.assertEqual(cert_images.image_for("books/arena-attach", images, graph)["name"],
+                             "mid")
+
+    def test_worlds_name_plain_and_each_allowed_image(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = tree(directory)
+            (root / "tools").mkdir()
+            (root / "tools/cert-images.json").write_text(
+                '{"images": [{"name": "arena", "roots": ["books/arena"]},'
+                ' {"name": "mid", "roots": ["books/mid"]}]}')
+            self.assertEqual(cert_images.worlds(root, "books/umbrella"),
+                             ["plain", "mid@books:books/mid"])
+            self.assertEqual(cert_images.worlds(root, "host/x-host"), ["plain"])
 
 
 class BuildTests(unittest.TestCase):
@@ -99,3 +136,28 @@ class PlanTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TreeTests(unittest.TestCase):
+    """The committed image set on this tree: the batch BB defect, pinned."""
+
+    def test_the_umbrellas_never_start_from_an_image_that_defines_fn_arena(self):
+        root = Path(__file__).resolve().parents[1]
+        graph = cert_images.Graph(root)
+        images = cert_images.load_config(root)
+        for umbrella in ("books/image-world", "books/image-world-dtn",
+                         "books/image-world-store-test"):
+            self.assertIn("fn-arena", graph.attached(umbrella), umbrella)
+            for image in cert_images.applicable(umbrella, images, graph):
+                self.assertNotIn("fn-arena", graph.defines(
+                    cert_images.image_closure(image, graph)), (umbrella, image["name"]))
+            chosen = cert_images.image_for(umbrella, images, graph)
+            self.assertNotIn(chosen and chosen["name"], ("owner", "served-catalog-owner",
+                                                         "nntp-auth", "nntp"))
+        # A book above the owner that attaches nothing still starts from one.
+        for book in ("books/owner-invariants-relation", "books/owner-cold-line"):
+            if (root / f"{book}.lisp").is_file():
+                self.assertFalse(graph.attached(book) & graph.defines(
+                    cert_images.image_closure(cert_images.image_for(book, images, graph),
+                                              graph)), book)
+                self.assertIsNotNone(cert_images.image_for(book, images, graph), book)
