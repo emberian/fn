@@ -16908,6 +16908,25 @@
         "fn-lgl-fork-refused",
         "fn-lgl-accepted-shares-lineage"
       ]
+    },
+    {
+      "id": "PRF-1026",
+      "title": "Replay admits a record under the history at its position, never under a limit value: the open's configuration fold is invariant under the history's :set-limit values",
+      "statement": "books/replay-historical-limits.lisp (row S1 item 3). KEYSTONE fn-rhl-extend-open-is-limit-free: for every frontier F, prefix P and suffix Q with (fn-sn-observed-historyp F (append P Q)), and every two configuration histories C1, C2 that differ only in the values of their :set-limit deltas (fn-rhl-configs-variantp: each pair of records equal once those values are blanked, fn-rhl-blank-record, and decoded, fitting and within the limit ceilings alike), the configuration fold the host's open returns first (fn-sco-cpr-finish of the extension's fold, fn-rii-sco-store-open's REPLAYED) over the capture of P under Ci extended by Q is the same up to the configuration's limits slot (fn-rhl-blank-result): the same verdict, position and node. Host: host/store-node-host.lisp fn-store-sn-recover-rows calls fn-rii-sco-extend-open. Through fn-sco-extend-of-capture-when-history it is fn-rhl-cpr-replay-limit-variant over fn-cpr-replay, from the position-by-position fold's fn-rhl-cpr-loop-limit-variant: fn-cfg-apply, fn-cfg-delta-reason and fn-cfg-admissible-reason read no limit (congruences under fn-rhl-veq); admissibility splits into the blanked history's and each :set-limit value's ceiling (fn-rhl-admissiblep-is-blank-and-admitted). The retention capacity (:set-capacity) is decided historically and is not covered (the hypothesis-removal witness). Scope: the fold; the open's log-scan bounds are the sealed profile's.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-038"
+      ],
+      "depends_on": [
+        "PRF-996"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/replay-historical-limits.lisp",
+        "tests/acl2/replay-historical-limits-tests.lisp"
+      ],
+      "progress_note": "Lane limits-live-8 2026-09-29, row S1 item 3."
     }
   ]
 }

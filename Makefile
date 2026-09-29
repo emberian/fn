@@ -584,6 +584,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
+	books/replay-historical-limits \
+	tests/acl2/replay-historical-limits-tests \
 	books/store-finalize-incremental \
 	tests/acl2/store-finalize-incremental-tests \
 	books/store-finalize-published \
