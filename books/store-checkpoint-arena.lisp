@@ -682,13 +682,31 @@
        (implies (and (consp lens) (zp acc)) (< 0 (fn-scka-batch-count lens seg acc))))
   :rule-classes :linear)
 
-(defun fn-scka-batches (lens seg)
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of data with no fixed cap.  The :logic is
+; the recursion, unchanged; the :exec is the loop, equal by the lemma below.
+(defun fn-scka-batches-loop (lens seg acc)
   (declare (xargs :guard (and (nat-listp lens) (natp seg)) :measure (len lens)
                   :verify-guards nil))
   (if (atom lens)
-      nil
+      (fn-ag-rev-onto acc nil)
     (let ((k (fn-scka-batch-count lens seg 0)))
-      (cons k (fn-scka-batches (nthcdr k lens) seg)))))
+      (fn-scka-batches-loop (nthcdr k lens) seg (cons k acc)))))
+
+(defun fn-scka-batches (lens seg)
+  (declare (xargs :guard (and (nat-listp lens) (natp seg)) :measure (len lens)
+                  :verify-guards nil))
+  (mbe :logic (if (atom lens)
+                  nil
+                (let ((k (fn-scka-batch-count lens seg 0)))
+                  (cons k (fn-scka-batches (nthcdr k lens) seg))))
+       :exec (fn-scka-batches-loop lens seg nil)))
+
+(defthm fn-scka-batches-loop-is-rev-onto
+  (equal (fn-scka-batches-loop lens seg acc)
+         (fn-ag-rev-onto acc (fn-scka-batches lens seg)))
+  :hints (("Goal" :induct (fn-scka-batches-loop lens seg acc)
+                  :in-theory (disable fn-scka-batch-count))))
 
 (defthm fn-scka-sum-of-batches
   (equal (fn-scka-sum (fn-scka-batches lens seg)) (len lens))

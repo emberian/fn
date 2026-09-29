@@ -95,6 +95,49 @@ class MaintenanceLiveTests(auto.AutoCheckpointFixture):
         self.assertEqual(line.group(1), b"5")
         self.assertGreaterEqual(int(line.group(3)), 5)
 
+    def test_inspect_group_lists_the_memberships_live_and_offline(self):
+        """Row S3d (lane operability-5): `store inspect --group GROUP` prints
+        the group's memberships, article numbers to Message-IDs, from the
+        archive the running owner serves, and the same lines offline from
+        the checkpoint and its suffix; a group the node does not carry is
+        refused by name, exit 1 (books/owner-inspect-group.lisp)."""
+        self.init_development()
+        self.keep_log()
+        owner = self.node.start()
+        ids = self.post_batch(0, 3)
+
+        def lines(count):
+            return [("inspect group=fn.test members=%d" % count).encode("ascii")] + [
+                ("%d %s" % (n + 1, ids[n])).encode("ascii") for n in range(count)]
+
+        live = self.op("store", "inspect", "--group", "fn.test")
+        self.assertEqual(live.returncode, EXIT_OK, live.stderr.decode())
+        self.assertEqual(live.stdout.splitlines()[:4], lines(3), live.stdout)
+        self.assertNotIn(b"already locked", live.stdout + live.stderr)
+        unknown = self.op("store", "inspect", "--group", "fn.nosuch")
+        self.assertEqual(unknown.returncode, 1, unknown.stderr.decode())
+        self.assertIn(b"refused unknown-group group=fn.nosuch", unknown.stdout)
+        # A checkpoint, then two more posts: the offline report reads the
+        # checkpoint and its suffix.
+        asked = self.op("store", "checkpoint")
+        self.assertEqual(asked.returncode, EXIT_OK, asked.stderr.decode())
+        self.assertIsNotNone(self.owner_line(owner, auto.CHECKPOINT_AUTO),
+                             "the requested publication did not run")
+        ids += self.post_batch(3, 2)
+        self.node.stop(process=owner)
+        offline = self.op("store", "inspect", "--group", "fn.test")
+        self.assertEqual(offline.returncode, EXIT_OK, offline.stderr.decode())
+        self.assertEqual(offline.stdout.splitlines()[:6], lines(5), offline.stdout)
+        unknown = self.op("store", "inspect", "--group", "fn.nosuch")
+        self.assertEqual(unknown.returncode, 1, unknown.stderr.decode())
+        self.assertIn(b"refused unknown-group group=fn.nosuch", unknown.stdout)
+        # Serving again: the owner's report carries the suffix too.
+        owner = self.node.start()
+        live = self.op("store", "inspect", "--group", "fn.test")
+        self.assertEqual(live.returncode, EXIT_OK, live.stderr.decode())
+        self.assertEqual(live.stdout.splitlines()[:6], lines(5), live.stdout)
+        self.node.stop(process=owner)
+
 
 if __name__ == "__main__":
     unittest.main()

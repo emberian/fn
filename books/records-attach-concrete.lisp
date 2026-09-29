@@ -30,6 +30,7 @@
 (include-book "records-attach")
 (include-book "records-codec-concrete")
 (include-book "records-exec")
+(local (in-theory (enable fn-rcon-record-twin-rules)))  ; Q3f: the concrete twins' equalities
 
 ; The implementation facts are stated of fn-record-encode-impl; the twin's
 ; keystone rewrites the attached function to it.

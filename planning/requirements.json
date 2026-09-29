@@ -1504,7 +1504,11 @@
         "PRF-946",
         "PRF-1010",
         "PRF-960",
-        "PRF-968"
+        "PRF-968",
+        "PRF-992",
+        "PRF-1005",
+        "PRF-1011",
+        "PRF-1012"
       ],
       "verification": [
         "proof",
@@ -1610,7 +1614,8 @@
         "PRF-293",
         "PRF-347",
         "PRF-935",
-        "PRF-960"
+        "PRF-960",
+        "PRF-982"
       ],
       "verification": [
         "proof",
@@ -1768,7 +1773,8 @@
       "proof_targets": [
         "PRF-021",
         "PRF-022",
-        "PRF-023"
+        "PRF-023",
+        "PRF-995"
       ],
       "verification": [
         "proof",
@@ -2151,7 +2157,9 @@
         "PRF-362",
         "PRF-371",
         "PRF-383",
-        "PRF-980"
+        "PRF-980",
+        "PRF-919",
+        "PRF-947"
       ],
       "verification": [
         "proof",
@@ -2206,7 +2214,9 @@
       "status": "specified",
       "proof_targets": [
         "PRF-088",
-        "PRF-361"
+        "PRF-361",
+        "PRF-997",
+        "PRF-998"
       ],
       "verification": [
         "proof",
@@ -2719,7 +2729,14 @@
         "PRF-930",
         "PRF-934",
         "PRF-939",
-        "PRF-966"
+        "PRF-966",
+        "PRF-997",
+        "PRF-998",
+        "PRF-999",
+        "PRF-1000",
+        "PRF-941",
+        "PRF-938",
+        "PRF-987"
       ],
       "verification": [
         "proof",
@@ -2836,7 +2853,8 @@
         "PRF-330",
         "PRF-326",
         "PRF-341",
-        "PRF-952"
+        "PRF-952",
+        "PRF-994"
       ],
       "verification": [
         "proof",
@@ -2953,7 +2971,8 @@
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-160"
+        "PRF-160",
+        "PRF-973"
       ],
       "verification": [
         "proof",
@@ -3612,7 +3631,9 @@
         "PRF-937",
         "PRF-945",
         "PRF-946",
-        "PRF-968"
+        "PRF-968",
+        "PRF-992",
+        "PRF-1005"
       ],
       "verification": [
         "proof",
@@ -3678,7 +3699,8 @@
         "PRF-957",
         "PRF-969",
         "PRF-970",
-        "PRF-991"
+        "PRF-991",
+        "PRF-1018"
       ],
       "verification": [
         "proof",
@@ -4462,7 +4484,8 @@
         "PRF-281",
         "PRF-295",
         "PRF-309",
-        "PRF-320"
+        "PRF-320",
+        "PRF-994"
       ],
       "verification": [
         "proof",
@@ -4513,7 +4536,8 @@
       "proof_targets": [
         "PRF-230",
         "PRF-905",
-        "PRF-978"
+        "PRF-978",
+        "PRF-981"
       ],
       "verification": [
         "proof",
@@ -4975,7 +4999,10 @@
         "PRF-342",
         "PRF-365",
         "PRF-372",
-        "PRF-373"
+        "PRF-373",
+        "PRF-920",
+        "PRF-923",
+        "PRF-979"
       ],
       "verification": [
         "proof",
@@ -5003,7 +5030,10 @@
         "tests/acl2/history-records-tests.lisp",
         "books/history-records-disk.lisp",
         "books/store-records-field.lisp",
-        "tests/acl2/history-records-disk-tests.lisp"
+        "tests/acl2/history-records-disk-tests.lisp",
+        "books/history-image-binding.lisp",
+        "tests/acl2/history-image-binding-tests.lisp",
+        "books/history-image-fold.lisp"
       ],
       "implementation_note": "Lane arena-store (2026-09-27): the model, keystones, reclamation and the executable layer are proved; the prototype host driver host/native/proto-pagestore.lisp (retired 2026-09-29, Q7k: planning/retired-paths.json) ran them on hbox (process death and power loss, 0 violations); page 0 (the owner's root slots) is the model's reserved page, kept by pgs-disk-keeps and marked by pgs-g-start; the scenario is SCN-186. Limitation L-PGS-LAZY-SHAPE (record section 5): the host's lazy open shape-checks only the table pages its own commit wrote, the model's lazy open every table page. The owner does not use it yet (fn-hist on pages is the next step, lane arena-store-2)."
     },
@@ -5100,7 +5130,8 @@
       "proof_targets": [
         "PRF-384",
         "PRF-385",
-        "PRF-951"
+        "PRF-951",
+        "PRF-933"
       ],
       "verification": [
         "proof",
@@ -5128,7 +5159,9 @@
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-915"
+        "PRF-915",
+        "PRF-916",
+        "PRF-917"
       ],
       "verification": [
         "proof",
@@ -5139,7 +5172,13 @@
         "books/hmac-sha256.lisp",
         "books/scram.lisp",
         "tests/acl2/hmac-sha256-tests.lisp",
-        "tests/acl2/scram-tests.lisp"
+        "tests/acl2/scram-tests.lisp",
+        "books/sasl.lisp",
+        "books/auth-secret.lisp",
+        "books/nntp-auth.lisp",
+        "books/nntp-auth-roles.lisp",
+        "tests/acl2/nntp-auth-sasl-tests.lisp",
+        "tests/test_native_sasl.py"
       ],
       "implementation_note": "RFC 4643 section 2.4 with PLAIN (RFC 4616), SCRAM-SHA-256 (RFC 5802, RFC 7677) and SCRAM-SHA-256-PLUS (RFC 9266 tls-exporter). DIGEST-MD5 (RFC 4643's mandatory mechanism) is not implemented: RFC 6331 made it Historic. Increment 1 (lane sasl): the HMAC-SHA-256/PBKDF2 and SCRAM mechanism books. Increment 2: the exchange (books/sasl.lisp), verifier v2 and the served AUTHINFO SASL arm."
     },
@@ -5154,7 +5193,9 @@
         "PRF-927",
         "PRF-930",
         "PRF-939",
-        "PRF-966"
+        "PRF-966",
+        "PRF-938",
+        "PRF-987"
       ],
       "verification": [
         "proof",
@@ -5317,7 +5358,10 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-940"
+        "PRF-940",
+        "PRF-975",
+        "PRF-996",
+        "PRF-976"
       ],
       "verification": [
         "proof",
@@ -5381,11 +5425,12 @@
     {
       "id": "NNT-055",
       "title": "fn extension: COMPRESS DEFLATE with a shipped preset dictionary named by its BLAKE3 digest (RFC 9842-shaped), and stored payloads carried as they are stored between fn peers",
-      "specification": "docs/extensions/nntp-compress-dict.md",
+      "specification": "specs/nntp.md#compression-compress-nnt-054-nnt-055",
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-974"
+        "PRF-974",
+        "PRF-993"
       ],
       "verification": [
         "proof",
@@ -5395,7 +5440,10 @@
         "docs/extensions/nntp-compress-dict.md",
         "specs/nntp.md",
         "books/nntp-compress-dict.lisp",
-        "tests/acl2/nntp-compress-dict-tests.lisp"
+        "tests/acl2/nntp-compress-dict-tests.lisp",
+        "tests/acl2/nntp-zarticle-tests.lisp",
+        "books/nntp-zarticle.lisp",
+        "books/assumptions-stored.lisp"
       ]
     },
     {
@@ -5474,6 +5522,56 @@
         "tests/test_bp_service_native.py",
         "planning/evidence/bp-cursors-2026-09-27.md"
       ]
+    },
+    {
+      "id": "NNT-1000",
+      "title": "The served POST is productive: a request the Store admits, under the specified successful primitive completions, reaches the 240 line and the record in durable history within nine steps of the served step function; every uncertain answer names its cause; the 240 on the wire is the line the theorem names",
+      "specification": "specs/productive-contract.md",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1001",
+        "PRF-1002",
+        "PRF-1003"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/productive-contract.lisp",
+        "books/productive-observer.lisp",
+        "tests/acl2/productive-contract-tests.lisp",
+        "tests/test_native_outside_in.py"
+      ],
+      "implementation_note": "GPT-6's second review section 1 (warranty-quality-proof-engineering.md): a machine that always answers uncertain satisfies every success-implies-durability theorem; fn was that machine once (the handle compared against the staged octets). The productive theorem pairs fn-own-240-follows-consumed-completion; the served read and the peer transfer are stated in the spec's section 5 and open.",
+      "note": "Row W6 of the pre-6.6.0 list; lane productive-contract 2026-09-29."
+    },
+    {
+      "id": "HST-038",
+      "title": "Maintenance while serving, the group listing: `store inspect --group GROUP' prints the group's memberships (article numbers to Message-IDs, in number order, after `inspect group=GROUP members=N') from the archive the running owner serves, read through the status exchange (FNLS frame kind 3, as `moderation list GROUP' is), and the same report from the archive a stopped store's open replays from the checkpoint and its suffix; a group the node does not carry is refused by name with what it would take, exit 1; refused by name when an owner holds the lock and answers nothing",
+      "specification": "specs/host.md#operator-commands-and-owner-critical-sections",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-1004"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-maintenance-request.lisp",
+        "tests/acl2/owner-maintenance-request-tests.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "host/native/admin.lisp",
+        "host/native/operator.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_maintenance_live.py"
+      ],
+      "implementation_note": "Lane operability-2 (row S3, 2026-09-29): PKT-868's owner-request route (the administrative vector over the control socket, ACL2's liveness decision) carries `inspect request ID'; `recover' with a live owner is a status read; the stopped report is fn-omr-stopped-report over config.json, the checkpoint's 37-octet header and lstat sizes. `store export' on the running owner is the row's remaining item (S3b)."
     }
   ]
 }

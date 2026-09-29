@@ -54,6 +54,9 @@
 (include-book "native-live-status")
 (include-book "native-control-reason")
 (include-book "control-visible")
+; Row S3d (lane operability-5): `store inspect --group GROUP' rides the same
+; frame (kind 3, code 11) as `moderation list GROUP'.
+(include-book "owner-inspect-group")
 
 ; -----------------------------------------------------------------------------
 ; Words
@@ -62,14 +65,49 @@
   (declare (xargs :guard t))
   (if (and (stringp x) (not (equal x ""))) (fn-nls-text x) (fn-nls-text "-")))
 
-(defun fn-cev-scope-words (scope)
+; A principal's granted scope is operator data with no fixed cap (D27): the
+; walk executes by a loop (lane depth-debt, PRF-919), the octets reversed
+; onto ACC, equal by fn-cev-scope-words-loop-is-rev-onto.
+(defun fn-cev-scope-words-loop (scope acc)
   (declare (xargs :guard t))
   (if (consp scope)
-      (append (fn-cev-string (car scope))
-              (if (consp (cdr scope))
-                  (cons 44 (fn-cev-scope-words (cdr scope)))
-                nil))
-    nil))
+      (fn-cev-scope-words-loop
+       (cdr scope)
+       (let ((acc (fn-ag-rev-onto (fn-cev-string (car scope)) acc)))
+         (if (consp (cdr scope)) (cons 44 acc) acc)))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-cev-scope-words (scope)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp scope)
+                  (append (fn-cev-string (car scope))
+                          (if (consp (cdr scope))
+                              (cons 44 (fn-cev-scope-words (cdr scope)))
+                            nil))
+                nil)
+       :exec (fn-cev-scope-words-loop scope nil)))
+
+(local
+ (defthm fn-cev-rev-onto-of-rev-onto
+   (equal (fn-ag-rev-onto (fn-ag-rev-onto x acc) y)
+          (fn-ag-rev-onto acc (append x y)))))
+
+(defthm fn-cev-scope-words-loop-is-rev-onto
+  (equal (fn-cev-scope-words-loop scope acc)
+         (fn-ag-rev-onto acc (fn-cev-scope-words scope)))
+  :hints (("Goal" :induct (fn-cev-scope-words-loop scope acc)
+                  :in-theory (union-theories
+                              '(fn-cev-scope-words-loop fn-cev-scope-words
+                                fn-ag-rev-onto fn-cev-rev-onto-of-rev-onto
+                                car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-cev-scope-words
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-cev-scope-words fn-ag-rev-onto
+                                fn-cev-scope-words-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-cev-scope (scope)
   (declare (xargs :guard t))
@@ -547,9 +585,15 @@
   (let* ((o (fn-ocfg-owner oc))
          (v (fn-own-view o))
          (s (fn-own-store o)))
-    (fn-cev-report kind (fn-own-view-withdrawals v) (fn-own-view-raw v)
-                   (fn-own-view-verdicts v)
-                   (fn-sf-records (fn-sn-files s)) (fn-sn-config-history s))))
+    (if (fn-oig-kindp kind)
+        ; Row S3d: the group's memberships over the archive the served view
+        ; carries (books/owner-inspect-group.lisp fn-oig-report; the same
+        ; archive LISTGROUP renders from: books/owner.lisp
+        ; fn-served-live-archive).
+        (fn-oig-report (cdr kind) (fn-own-view-archive v))
+      (fn-cev-report kind (fn-own-view-withdrawals v) (fn-own-view-raw v)
+                     (fn-own-view-verdicts v)
+                     (fn-sf-records (fn-sn-files s)) (fn-sn-config-history s)))))
 
 ; What the offline command prints over the Store it replayed: the records
 ; decided as recovery decides them (`fn-ctl-articles-withdrawals').  Host:
@@ -557,17 +601,28 @@
 ; `fnn-command-live-report').
 (defun fn-cev-offline-report (kind s)
   (declare (xargs :guard t :verify-guards nil))
-  (let* ((raw (fn-state-articles (fn-node-acceptance (fn-sn-node s))))
+  (let* ((archive (fn-node-acceptance (fn-sn-node s)))
+         (raw (fn-state-articles archive))
          (verdicts (fn-sn-verdicts s))
          (records (fn-sf-records (fn-sn-files s)))
          (configs (fn-sn-config-history s)))
-    (fn-cev-report kind (fn-ctl-articles-withdrawals raw verdicts records configs)
-                   raw verdicts records configs)))
+    (if (fn-oig-kindp kind)
+        ; Row S3d: the same report over the archive the open replayed
+        ; (books/owner-inspect-group.lisp fn-oig-report).
+        (fn-oig-report (cdr kind) archive)
+      (fn-cev-report kind (fn-ctl-articles-withdrawals raw verdicts records configs)
+                     raw verdicts records configs))))
 
 ; -----------------------------------------------------------------------------
 ; The request: FNLS frame kind 3, (uint CODE, uint OFFSET, bytes ARGUMENT).
 
 (defconst *fn-cev-request-kind* 3)
+
+; The kinds the frame carries: the evidence kinds and row S3d's
+; (:inspect-group . GROUP) (books/owner-inspect-group.lisp fn-oig-kindp).
+(defun fn-cev-report-kindp (kind)
+  (declare (xargs :guard t))
+  (or (fn-cevg-kindp kind) (fn-oig-kindp kind)))
 
 (defun fn-cev-kind-code (kind)
   (declare (xargs :guard t))
@@ -575,6 +630,8 @@
         ((and (consp kind) (equal (car kind) :control-evidence)) 9)
         ; PKT-657: `moderation list GROUP' (FNLS frame kind 3, code 10).
         ((and (consp kind) (equal (car kind) :moderation-list)) 10)
+        ; Row S3d: `store inspect --group GROUP' (code 11).
+        ((and (consp kind) (equal (car kind) :inspect-group)) 11)
         (t 0)))
 
 (defun fn-cev-kind-argument (kind)
@@ -583,7 +640,7 @@
 
 (defun fn-cev-request-encode (kind offset)
   (declare (xargs :guard t))
-  (if (not (and (fn-cevg-kindp kind) (fn-record-uint32p offset)))
+  (if (not (and (fn-cev-report-kindp kind) (fn-record-uint32p offset)))
       :bad
     (fn-nls-seal *fn-cev-request-kind*
                  (append (fn-cbor-encode (cons :uint (fn-cev-kind-code kind)))
@@ -600,6 +657,9 @@
         ((and (equal code 10) (fn-cbor-octet-listp argument))
          (let ((kind (cons :moderation-list (fn-record-octets-string argument))))
            (if (fn-cevg-kindp kind) kind nil)))
+        ((and (equal code 11) (fn-cbor-octet-listp argument))
+         (let ((kind (cons :inspect-group (fn-record-octets-string argument))))
+           (if (fn-oig-kindp kind) kind nil)))
         (t nil)))
 
 ; The payload grammar over an opened frame; the decode below is the open
@@ -640,7 +700,7 @@
 
 (defun fn-cev-any-request-encode (kind offset)
   (declare (xargs :guard t))
-  (if (fn-cevg-kindp kind)
+  (if (fn-cev-report-kindp kind)
       (fn-cev-request-encode kind offset)
     (fn-nls-request-encode kind offset)))
 
@@ -781,26 +841,26 @@
 (local (defthm fn-cev-len-append
   (equal (len (append a b)) (+ (len a) (len b)))))
 (local (defthm fn-cev-argument-facts
-  (implies (fn-cevg-kindp kind)
+  (implies (fn-cev-report-kindp kind)
            (and (fn-cbor-octet-listp (fn-cev-kind-argument kind))
                 (<= (len (fn-cev-kind-argument kind)) *fn-cevg-max-msgid-octets*)))
   :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind)))
                         (:instance fn-cev-group-octets (x (cdr kind))))
-           :in-theory (e/d (fn-cevg-kindp fn-cev-kind-argument)
+           :in-theory (e/d (fn-cev-report-kindp fn-oig-kindp fn-cevg-kindp fn-cev-kind-argument)
                            (fn-cev-msgid-octets fn-cev-group-octets fn-cevg-msgidp
                             fn-cevg-groupp fn-record-string-octets
                             fn-record-octets-string))))))
 (defthm fn-cev-request-payload-fits
-  (implies (fn-cevg-kindp kind)
+  (implies (fn-cev-report-kindp kind)
            (<= (len (fn-record-item-encode (cons :bytes (fn-cev-kind-argument kind))))
                (+ 5 *fn-cevg-max-msgid-octets*)))
   :rule-classes :linear
   :hints (("Goal" :use ((:instance fn-nls-bytes-item-length (xs (fn-cev-kind-argument kind)))
                         fn-cev-argument-facts)
            :in-theory (disable fn-nls-bytes-item-length fn-record-item-encode fn-cev-kind-argument
-                               fn-cev-argument-facts fn-cevg-kindp))))
+                               fn-cev-argument-facts fn-cevg-kindp fn-cev-report-kindp))))
 (defthm fn-cev-open-of-request-encode
-  (implies (and (fn-cevg-kindp kind) (fn-record-uint32p offset))
+  (implies (and (fn-cev-report-kindp kind) (fn-record-uint32p offset))
            (equal (fn-nls-open (fn-cev-request-encode kind offset) 3)
                   (fn-frame-ok *fn-nls-magic* *fn-nls-version* 3
                                (append (fn-cbor-encode (cons :uint (fn-cev-kind-code kind)))
@@ -834,20 +894,22 @@
            :in-theory (disable fn-record-read-bytes-of-item-encoding fn-record-item-encode-true-list
                                fn-record-read-bytes fn-record-item-encode)))))
 (local (defthm fn-cev-code-kind-of-argument
-  (implies (fn-cevg-kindp kind)
+  (implies (fn-cev-report-kindp kind)
            (equal (fn-cev-code-kind (fn-cev-kind-code kind) (fn-cev-kind-argument kind))
                   kind))
-  :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind))))
-           :in-theory (e/d (fn-cevg-kindp fn-cev-kind-argument fn-cev-kind-code fn-cev-code-kind)
+  :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind)))
+                        (:instance fn-cev-group-octets (x (cdr kind))))
+           :in-theory (e/d (fn-cev-report-kindp fn-oig-kindp
+                            fn-cevg-kindp fn-cev-kind-argument fn-cev-kind-code fn-cev-code-kind)
                            (fn-cev-msgid-octets fn-cevg-msgidp fn-record-string-octets
                             fn-record-octets-string))))))
 (local (defthm fn-cev-argument-octets
-  (implies (fn-cevg-kindp kind)
+  (implies (fn-cev-report-kindp kind)
            (and (fn-cbor-octet-listp (fn-cev-kind-argument kind))
                 (<= (len (fn-cev-kind-argument kind)) *fn-record-max-octets*)))
   :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind)))
                         (:instance fn-cev-group-octets (x (cdr kind))))
-           :in-theory (e/d (fn-cevg-kindp fn-cev-kind-argument)
+           :in-theory (e/d (fn-cev-report-kindp fn-oig-kindp fn-cevg-kindp fn-cev-kind-argument)
                            (fn-cev-msgid-octets fn-cev-group-octets fn-cevg-msgidp
                             fn-cevg-groupp fn-record-string-octets
                             fn-record-octets-string))))))
@@ -857,7 +919,7 @@
 ; PKT-518: the owner reads back the report kind and offset the client framed
 ; in FNLS request frame kind 3 (`control log', `control evidence MSGID').
 (defthm fn-cev-request-decode-of-encode
-  (implies (and (fn-cevg-kindp kind) (fn-record-uint32p offset))
+  (implies (and (fn-cev-report-kindp kind) (fn-record-uint32p offset))
            (equal (fn-cev-request-decode (fn-cev-request-encode kind offset))
                   (list :live-status kind offset)))
   :hints (("Goal" :do-not-induct t
@@ -868,6 +930,7 @@
                            (fn-cev-request-encode fn-nls-open fn-nls-seal fn-record-read-uint
                             fn-record-read-bytes fn-cev-code-kind fn-cev-kind-code
                             fn-cev-kind-argument fn-record-item-encode fn-cevg-kindp
+                            fn-cev-report-kindp
                             fn-cbor-encode (:e fn-cbor-encode)))))))
 
 (encapsulate ()
@@ -877,13 +940,14 @@
            (not (fn-frame-result-okp (fn-nls-open x k))))
   :hints (("Goal" :in-theory (enable fn-nls-open)))))
 (local (defthm fn-cev-plain-decode-refuses-kind-3
-  (implies (and (fn-cevg-kindp kind) (fn-record-uint32p offset))
+  (implies (and (fn-cev-report-kindp kind) (fn-record-uint32p offset))
            (equal (fn-nls-request-decode (fn-cev-request-encode kind offset))
                   (list :refused :frame)))
   :hints (("Goal" :use ((:instance fn-cev-open-one-kind
                                    (x (fn-cev-request-encode kind offset)) (j 3) (k 1)))
            :in-theory (e/d (fn-nls-request-decode fn-frame-result-okp fn-frame-ok)
-                           (fn-cev-open-one-kind fn-cev-request-encode fn-nls-open fn-cevg-kindp))))))
+                           (fn-cev-open-one-kind fn-cev-request-encode fn-nls-open fn-cevg-kindp
+                            fn-cev-report-kindp))))))
 ; KEYSTONE (PKT-518).  The subject pair the host calls: the client frames
 ; with `fn-cev-any-request-encode' (host/native-live-status-host.lisp
 ; `fn-native-live-status-host-request-encode', host/native/control.lisp
@@ -895,7 +959,7 @@
 ; the status kinds, frame kind 3 for `control log' and `control evidence
 ; MSGID', whose Message-ID survives the octet round trip.
 (defthm fn-cev-any-request-decode-of-encode
-  (implies (and (or (member-equal kind *fn-nls-kinds*) (fn-cevg-kindp kind))
+  (implies (and (or (member-equal kind *fn-nls-kinds*) (fn-cev-report-kindp kind))
                 (fn-record-uint32p offset))
            (equal (fn-cev-any-request-decode (fn-cev-any-request-encode kind offset))
                   (list :live-status kind offset)))
@@ -903,4 +967,4 @@
            :in-theory (e/d (fn-cev-any-request-decode fn-cev-any-request-encode
                             fn-cev-request-decode-of-encode fn-nls-request-decode-of-encode)
                            (fn-cev-request-encode fn-cev-request-decode fn-nls-request-encode
-                            fn-nls-request-decode fn-cevg-kindp))))))
+                            fn-nls-request-decode fn-cevg-kindp fn-cev-report-kindp))))))

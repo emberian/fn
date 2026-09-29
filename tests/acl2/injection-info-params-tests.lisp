@@ -411,6 +411,10 @@ Hello, news.
          "principal = \"abababababababababababababababababababababababababababababababab\""
          "salt = \"00000000000000000000000000000000\""
          "digest = \"1111111111111111111111111111111111111111111111111111111111111111\""
+         ;; SCRAM-SHA-256's two keys (verifier v2, NNT-056): a v1 entry is
+         ;; refused :credential-shape (one format, no migration).
+         "scram_stored_key = \"2222222222222222222222222222222222222222222222222222222222222222\""
+         "scram_server_key = \"3333333333333333333333333333333333333333333333333333333333333333\""
          "posting = true")))
 (defconst *ipt-auth* (fn-native-auth-load *ipt-auth-file* t t nil nil 128))
 (defconst *ipt-acfg* (fn-native-auth-result-config *ipt-auth*))

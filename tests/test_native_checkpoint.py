@@ -367,7 +367,13 @@ class NativeProductionCompactTests(unittest.TestCase):
         # open reads (the export archive) and the served view are unchanged,
         # the next POST takes the next number, a second compaction covers
         # only the new suffix, and a third with nothing new keeps the one
-        # segment it has.
+        # segment it has.  A running owner is ASKED (PKT-868, lane
+        # operations: host/native/operator.lisp
+        # fnn-operator-execute-compaction; books/owner-compact-request.lisp
+        # fn-ock-request-word): with nothing new it answers
+        # nothing-to-compact by name and nothing changes.  (Until PKT-868 the
+        # verb was refused while an owner ran; composed-owner-6 moved that
+        # stanza to the end, where the owner's answer is determined.)
         name = "prod-compact"
         store = self.base / name
         config, port = self.owner_config(store, name)
@@ -378,10 +384,6 @@ class NativeProductionCompactTests(unittest.TestCase):
         try:
             for k, msgid in enumerate(msgids):
                 self.operator_post(config, msgid, "{}-{}".format(name, k))
-            # Refused while an owner runs, and nothing changes.
-            held = self.native("operator", config, "store", "compact", expected=1)
-            self.assertIn("refused operator compact", held.stderr)
-            self.assertIn("locked", held.stderr)
         finally:
             self.stop_owner(owner)
         # Format 10's genesis (journal/000000.log) is never rotated or
@@ -413,6 +415,15 @@ class NativeProductionCompactTests(unittest.TestCase):
         grown = self.transaction_bytes(store)
         idle = self.native("operator", config, "store", "compact")
         self.assertIn("accepted operator compact", idle.stderr)
+        self.assertEqual(segments(), ["000003.log"])
+        self.assertEqual(self.transaction_bytes(store), grown)
+        owner = self.run_owner(config)
+        try:
+            asked = self.native("operator", config, "store", "compact")
+            self.assertIn("compaction nothing-to-compact", asked.stdout)
+            self.assertIn("accepted operator compact", asked.stderr)
+        finally:
+            self.stop_owner(owner)
         self.assertEqual(segments(), ["000003.log"])
         self.assertEqual(self.transaction_bytes(store), grown)
         usage = self.native("operator", config, "store", "compact", "now", expected=5)

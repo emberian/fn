@@ -22,6 +22,7 @@ What this module asserts on the image:
 """
 import re
 import socket
+import struct
 import subprocess
 import threading
 import time
@@ -34,6 +35,7 @@ IMAGE = native_image("FN_NATIVE_HOST", "build/fn-host-developer")
 # (FN_NATIVE_OWNER_TEST_BARRIER_MS); a production image refuses to start.
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 
+CHECKPOINT_DONE = re.compile(rb"CHECKPOINT auto sequence=(\d+)")
 SCHED_HEAD = re.compile(rb"^sched order=control,reader,poster,transit bound=(\d+) cursor=(\d+)$", re.M)
 SCHED_ROW = re.compile(
     rb"^sched (control|reader|poster|transit) holds=(\d+) hold<1ms=(\d+) hold<10ms=(\d+) "
@@ -618,6 +620,197 @@ class SchedulerNativeTests(unittest.TestCase):
         self.assertGreaterEqual(redeemed_at, hold - 0.1, redeemed_at)
         self.assertTrue(user.startswith(b"381"), user)
         self.assertTrue(authed.startswith(b"281"), authed)
+
+    def peer_connect(self, source="127.0.0.9"):
+        conn = socket.create_connection(("127.0.0.1", self.port), timeout=120,
+                                        source_address=(source, 0))
+        stream = conn.makefile("rwb")
+        self.assertTrue(stream.readline().startswith(b"200"))
+        return conn, stream
+
+    def ask(self, stream, line):
+        stream.write(line + b"\r\n")
+        stream.flush()
+        return stream.readline()
+
+    def test_a_hostile_peer_racing_a_durable_completion_gets_no_second_copy(self):
+        # Row A2 (composed boundary under a hostile peer; lane composed-owner-5).
+        # A POST's batch is held at its barrier (4 s) while a configured peer
+        # (source 127.0.0.9) OPENS its session and offers the same Message-ID
+        # every way it can: IHAVE, CHECK, and a TAKETHIS carrying a DIFFERENT
+        # body; a second peer session sends half a TAKETHIS and resets.  The
+        # owner relation across both is owner-relation-2's
+        # (books/owner-host-relation.lisp): the peer open keeps the Store and
+        # the committed view (fn-ohr-open-peer-keeps-store-and-view,
+        # fn-ohr-open-peer-preserves-ocl-relation) and the durable completion
+        # keeps the relation over every connection, the peer's included
+        # (fn-ohr-finish-synced-preserves-ocl-relation).  So: the peer is never
+        # invited to send the in-flight id (no 335/238) and never told a copy
+        # was taken (no 235/239); the reset costs the poster nothing (240);
+        # after the COMPLETE the same peer session is told it is held (435,
+        # 438); the article is the poster's, once, and stays so across a
+        # restart.
+        self.reap(self.owner)
+        policy = self.operator("policy", "set", "path-identity", "fn-a2.example")
+        self.assertEqual(policy.returncode, 0, policy.stderr.decode())
+        added = self.operator("peer", "add", "hostile", "hostile.example", "127.0.0.1", "9",
+                              "fn.*", "-", "127.0.0.9", "true")
+        self.assertEqual(added.returncode, 0, added.stderr.decode())
+        hold = 4.0
+        self.owner = self.start_owner({"FN_NATIVE_OWNER_TEST_BARRIER_MS": str(int(hold * 1000))},
+                                      image=DEVELOPER)
+        msgid = b"a2-race@example.invalid"
+        mid = b"<" + msgid + b">"
+        poster_conn, poster = self.connect()
+        reader_conn, reader = self.connect()
+        with poster_conn, reader_conn:
+            self.begin_post(poster, msgid, b"the poster's body")
+            time.sleep(0.5)
+            peer_conn, peer = self.peer_connect()
+            with peer_conn:
+                offered = self.ask(peer, b"IHAVE " + mid)
+                self.assertTrue(offered[:3] in (b"435", b"436"), offered)
+                self.assertTrue(self.ask(peer, b"MODE STREAM").startswith(b"203"))
+                checked = self.ask(peer, b"CHECK " + mid)
+                self.assertTrue(checked[:3] in (b"438", b"431"), checked)
+                peer.write(b"TAKETHIS " + mid + b"\r\n"
+                           b"Path: hostile.example!not-for-mail\r\nFrom: peer@example.invalid\r\n"
+                           b"Newsgroups: fn.test\r\nSubject: a second copy\r\n"
+                           b"Date: Mon, 28 Sep 2026 08:00:00 +0000\r\n"
+                           b"Message-ID: " + mid + b"\r\n\r\nthe peer's body\r\n.\r\n")
+                peer.flush()
+                took = peer.readline()
+                self.assertTrue(took[:3] in (b"439", b"436"), took)
+                self.assertIn(mid, took)
+                # A second peer session: half a TAKETHIS, then a reset.
+                rst_conn, rst = self.peer_connect()
+                self.assertTrue(self.ask(rst, b"MODE STREAM").startswith(b"203"))
+                rst.write(b"TAKETHIS <a2-reset@example.invalid>\r\nPath: hostile.example\r\n"
+                          b"Newsgroups: fn.test\r\n")
+                rst.flush()
+                rst_conn.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+                rst_conn.close()
+                reply = poster.readline()
+                self.assertTrue(reply.startswith(b"240"), reply)
+                # After the COMPLETE the same peer session reads it as held.
+                self.assertTrue(self.ask(peer, b"IHAVE " + mid).startswith(b"435"))
+                self.assertTrue(self.ask(peer, b"CHECK " + mid).startswith(b"438"))
+                self.ask(peer, b"QUIT")
+            # The reader predates the post (its pinned view); a fresh one sees it.
+            fresh_conn, fresh = self.connect()
+            with fresh_conn:
+                self.assertTrue(self.stat(fresh, msgid).startswith(b"223"))
+                self.assertEqual(self.stat(fresh, b"a2-reset@example.invalid")[:3], b"430")
+                fresh.write(b"QUIT\r\n")
+                fresh.flush()
+            for stream in (reader, poster):
+                stream.write(b"QUIT\r\n")
+                stream.flush()
+        self.reap(self.owner)
+        self.owner = self.start_owner()
+        conn, stream = self.connect()
+        with conn:
+            self.assertEqual(self.group_count(stream), 1)
+            stream.write(b"BODY " + mid + b"\r\n")
+            stream.flush()
+            self.assertTrue(stream.readline().startswith(b"222"))
+            self.assertEqual(self.multiline(stream), b"the poster's body\r\n")
+            stream.write(b"QUIT\r\n")
+            stream.flush()
+
+    def wait_stderr(self, process, pattern, deadline=180.0):
+        end = time.monotonic() + deadline
+        while time.monotonic() < end:
+            match = pattern.search(process.stderr.since(0))
+            if match:
+                return match
+            self.assertIsNone(process.poll(), "the owner exited while waiting")
+            time.sleep(0.1)
+        return None
+
+    def article_body(self, stream, what):
+        stream.write(b"BODY " + what + b"\r\n")
+        stream.flush()
+        status = stream.readline()
+        if not status.startswith(b"222"):
+            return status, None
+        return status, self.multiline(stream)
+
+    def test_the_a6_campaign_keeps_accepted_history_through_one_integrated_scenario(self):
+        # Row A6, GPT-6's integrated campaign (planning/review-2026-09-28-gpt6.md),
+        # in ONE scenario on the developer image: every completion delayed at
+        # its barrier (0.6 s), the extent cache off (every payload read cold:
+        # cache pressure), an OLD reader pinned before new writes, a snapshot
+        # (the checkpoint publication, which reads the live arena off the
+        # mutex under its generation pin, books/arena-reader-pins.lisp) racing
+        # the old reader's reads, then a crash (SIGKILL) with one completion
+        # still held at its barrier, and recovery.  Accepted history stays
+        # accepted (every 240 is readable, byte for byte, after the crash); no
+        # root loses a page (the old reader reads every article it pinned,
+        # during the snapshot); the article whose completion the crash cut is
+        # all there or not there -- never a damaged body.
+        self.reap(self.owner)
+        env = {"FN_NATIVE_OWNER_TEST_BARRIER_MS": "600", "FN_NATIVE_EXTENT_CACHE_TEST_OFF": "1"}
+        self.owner = self.start_owner(env, image=DEVELOPER)
+        bodies = {}
+
+        def posted(i):
+            return (b"campaign article %d\r\n" % i + b"line %d of a longer body\r\n" % i * 40)[:-2]
+
+        def body_of(i):
+            # what BODY answers: the posted lines, each CRLF-terminated
+            return posted(i) + b"\r\n"
+
+        conn, writer = self.connect()
+        with conn:
+            for i in range(1, 7):
+                msgid = b"a6-%d@example.invalid" % i
+                self.post(writer, msgid, posted(i))
+                bodies[msgid] = body_of(i)
+            old_conn, old = self.connect()
+            with old_conn:
+                self.assertEqual(self.group_count(old), 6)
+                for i in range(7, 11):
+                    msgid = b"a6-%d@example.invalid" % i
+                    self.post(writer, msgid, posted(i))
+                    bodies[msgid] = body_of(i)
+                asked = self.operator("store", "checkpoint")
+                self.assertEqual(asked.returncode, 0, asked.stderr.decode())
+                # The old reader's pinned archive, read while the snapshot runs.
+                for number in range(1, 7):
+                    status, got = self.article_body(old, b"%d" % number)
+                    self.assertTrue(status.startswith(b"222"), (number, status))
+                    self.assertEqual(got, body_of(number), number)
+                self.assertIsNotNone(self.wait_stderr(self.owner, CHECKPOINT_DONE),
+                                     "the snapshot did not publish")
+                for i in range(1, 7):
+                    msgid = b"<a6-%d@example.invalid>" % i
+                    self.assertEqual(self.article_body(old, msgid)[1], body_of(i), msgid)
+                fresh_conn, fresh = self.connect()
+                with fresh_conn:
+                    self.assertEqual(self.group_count(fresh), 10)
+                    for msgid, body in bodies.items():
+                        self.assertEqual(self.article_body(fresh, b"<" + msgid + b">")[1], body, msgid)
+            # A completion held at its barrier when the owner dies.
+            cut = b"a6-cut@example.invalid"
+            self.begin_post(writer, cut, posted(11))
+            time.sleep(0.2)
+            self.owner.kill()
+        self.reap(self.owner)
+        self.owner = self.start_owner()
+        conn, stream = self.connect()
+        with conn:
+            count = self.group_count(stream)
+            self.assertIn(count, (10, 11))
+            for msgid, body in bodies.items():
+                self.assertEqual(self.article_body(stream, b"<" + msgid + b">")[1], body, msgid)
+            status, got = self.article_body(stream, b"<" + cut + b">")
+            if count == 11:
+                self.assertEqual(got, body_of(11))
+            else:
+                self.assertTrue(status.startswith(b"430"), status)
+            stream.write(b"QUIT\r\n")
+            stream.flush()
 
 if __name__ == "__main__":
     unittest.main()

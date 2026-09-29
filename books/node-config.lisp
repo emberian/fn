@@ -370,16 +370,44 @@
 ; -----------------------------------------------------------------------------
 ; The configuration transition
 
+; Executes by a loop (lane depth-debt, PRF-919): it walks the domain's group names, operator
+; data with no fixed cap (D27), so the recursion took one control-stack
+; frame per element.  The :logic is the recursion, unchanged.
+(defun fn-cnode-extend-nexts-loop (names nexts acc)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (fn-cnode-extend-nexts-loop (cdr names) nexts
+       (cons (cons (car names)
+             (let ((n (fn-next-number (car names) nexts)))
+               (if (posp n) n 1))) acc))
+    (fn-ag-rev-onto acc nil)))
+
 (defun fn-cnode-extend-nexts (names nexts)
   ; The watermark list for a (possibly grown) domain: every name keeps the
   ; watermark it has, a name new to the list starts at 1.
-  (declare (xargs :guard t))
-  (if (consp names)
-      (cons (cons (car names)
-                  (let ((n (fn-next-number (car names) nexts)))
-                    (if (posp n) n 1)))
-            (fn-cnode-extend-nexts (cdr names) nexts))
-    nil))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp names)
+           (cons (cons (car names)
+                       (let ((n (fn-next-number (car names) nexts)))
+                         (if (posp n) n 1)))
+                 (fn-cnode-extend-nexts (cdr names) nexts))
+         nil)
+       :exec (fn-cnode-extend-nexts-loop names nexts nil)))
+
+(defthm fn-cnode-extend-nexts-loop-is-rev-onto
+  (equal (fn-cnode-extend-nexts-loop names nexts acc)
+         (fn-ag-rev-onto acc (fn-cnode-extend-nexts names nexts)))
+  :hints (("Goal" :induct (fn-cnode-extend-nexts-loop names nexts acc)
+                  :in-theory (union-theories
+                              '(fn-cnode-extend-nexts-loop fn-cnode-extend-nexts fn-ag-rev-onto not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-cnode-extend-nexts
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-cnode-extend-nexts fn-ag-rev-onto fn-cnode-extend-nexts-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-cnode-record-acceptablep (cn record ceiling)
   ; `books/config' admits the record against the node's REAL reservation

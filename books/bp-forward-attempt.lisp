@@ -157,15 +157,39 @@
             (fn-bpn-nth 13 h) (fn-bpn-nth 1 record) (fn-bpn-nth 5 record)))
        (null (fn-bpn-nth 14 h))))
 
-(defun fn-bpnp-attempt-replace (arrival record held)
+; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
+; node's held-bundle or job queue, data with no fixed cap (D27), one
+; control-stack frame per row before.
+(defun fn-bpnp-attempt-replace-loop (arrival record held acc)
   (declare (xargs :guard t :measure (acl2-count held)))
-  (if (atom held) nil
+  (if (atom held) (fn-ag-rev-onto acc nil)
     (if (equal arrival (fn-bpn-nth 3 (car held)))
         (if (true-listp (car held))
-            (cons (fn-bpnp-attempted-held (car held) record) (cdr held))
-          nil)
-      (cons (car held)
-            (fn-bpnp-attempt-replace arrival record (cdr held))))))
+            (fn-ag-rev-onto acc (cons (fn-bpnp-attempted-held (car held) record) (cdr held)))
+          (fn-ag-rev-onto acc nil))
+      (fn-bpnp-attempt-replace-loop arrival record (cdr held) (cons (car held) acc)))))
+
+(defun fn-bpnp-attempt-replace (arrival record held)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count held)))
+  (mbe :logic
+       (if (atom held) nil
+         (if (equal arrival (fn-bpn-nth 3 (car held)))
+             (if (true-listp (car held))
+                 (cons (fn-bpnp-attempted-held (car held) record) (cdr held))
+               nil)
+           (cons (car held)
+                 (fn-bpnp-attempt-replace arrival record (cdr held)))))
+       :exec (fn-bpnp-attempt-replace-loop arrival record held nil)))
+
+(defthm fn-bpnp-attempt-replace-loop-is-rev-onto
+  (equal (fn-bpnp-attempt-replace-loop arrival record held acc)
+         (fn-ag-rev-onto acc (fn-bpnp-attempt-replace arrival record held)))
+  :hints (("Goal" :induct (fn-bpnp-attempt-replace-loop arrival record held acc)
+                  :in-theory (union-theories
+                              '(fn-bpnp-attempt-replace-loop fn-bpnp-attempt-replace fn-ag-rev-onto atom car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+
 
 (defun fn-bpnp-attempt-apply (record held)
   (declare (xargs :guard t))
@@ -275,15 +299,39 @@
           (fn-bpn-nth 11 h) (fn-bpn-nth 7 record)))
        (null (fn-bpn-nth 14 h))))
 
-(defun fn-bpnp-forward-result-replace (arrival outcome held)
+; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
+; node's held-bundle or job queue, data with no fixed cap (D27), one
+; control-stack frame per row before.
+(defun fn-bpnp-forward-result-replace-loop (arrival outcome held acc)
   (declare (xargs :guard t :measure (acl2-count held)))
-  (if (atom held) nil
+  (if (atom held) (fn-ag-rev-onto acc nil)
     (if (equal arrival (fn-bpn-nth 3 (car held)))
         (if (true-listp (car held))
-            (cons (fn-bpnp-forward-result-held (car held) outcome) (cdr held))
-          nil)
-      (cons (car held)
-            (fn-bpnp-forward-result-replace arrival outcome (cdr held))))))
+            (fn-ag-rev-onto acc (cons (fn-bpnp-forward-result-held (car held) outcome) (cdr held)))
+          (fn-ag-rev-onto acc nil))
+      (fn-bpnp-forward-result-replace-loop arrival outcome (cdr held) (cons (car held) acc)))))
+
+(defun fn-bpnp-forward-result-replace (arrival outcome held)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count held)))
+  (mbe :logic
+       (if (atom held) nil
+         (if (equal arrival (fn-bpn-nth 3 (car held)))
+             (if (true-listp (car held))
+                 (cons (fn-bpnp-forward-result-held (car held) outcome) (cdr held))
+               nil)
+           (cons (car held)
+                 (fn-bpnp-forward-result-replace arrival outcome (cdr held)))))
+       :exec (fn-bpnp-forward-result-replace-loop arrival outcome held nil)))
+
+(defthm fn-bpnp-forward-result-replace-loop-is-rev-onto
+  (equal (fn-bpnp-forward-result-replace-loop arrival outcome held acc)
+         (fn-ag-rev-onto acc (fn-bpnp-forward-result-replace arrival outcome held)))
+  :hints (("Goal" :induct (fn-bpnp-forward-result-replace-loop arrival outcome held acc)
+                  :in-theory (union-theories
+                              '(fn-bpnp-forward-result-replace-loop fn-bpnp-forward-result-replace fn-ag-rev-onto atom car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+
 
 (defun fn-bpnp-forward-result-apply (record held)
   (declare (xargs :guard t))
@@ -349,15 +397,39 @@
          (or (equal new (1+ old))
              (and (equal new 0) (< 0 old))))))
 
-(defun fn-bpnp-deferral-replace (arrival count held)
+; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
+; node's held-bundle or job queue, data with no fixed cap (D27), one
+; control-stack frame per row before.
+(defun fn-bpnp-deferral-replace-loop (arrival count held acc)
   (declare (xargs :guard t :measure (acl2-count held)))
-  (if (atom held) nil
+  (if (atom held) (fn-ag-rev-onto acc nil)
     (if (equal arrival (fn-bpn-nth 3 (car held)))
         (if (true-listp (car held))
-            (cons (fn-bpnp-deferred-held (car held) count) (cdr held))
-          nil)
-      (cons (car held)
-            (fn-bpnp-deferral-replace arrival count (cdr held))))))
+            (fn-ag-rev-onto acc (cons (fn-bpnp-deferred-held (car held) count) (cdr held)))
+          (fn-ag-rev-onto acc nil))
+      (fn-bpnp-deferral-replace-loop arrival count (cdr held) (cons (car held) acc)))))
+
+(defun fn-bpnp-deferral-replace (arrival count held)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count held)))
+  (mbe :logic
+       (if (atom held) nil
+         (if (equal arrival (fn-bpn-nth 3 (car held)))
+             (if (true-listp (car held))
+                 (cons (fn-bpnp-deferred-held (car held) count) (cdr held))
+               nil)
+           (cons (car held)
+                 (fn-bpnp-deferral-replace arrival count (cdr held)))))
+       :exec (fn-bpnp-deferral-replace-loop arrival count held nil)))
+
+(defthm fn-bpnp-deferral-replace-loop-is-rev-onto
+  (equal (fn-bpnp-deferral-replace-loop arrival count held acc)
+         (fn-ag-rev-onto acc (fn-bpnp-deferral-replace arrival count held)))
+  :hints (("Goal" :induct (fn-bpnp-deferral-replace-loop arrival count held acc)
+                  :in-theory (union-theories
+                              '(fn-bpnp-deferral-replace-loop fn-bpnp-deferral-replace fn-ag-rev-onto atom car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+
 
 (defun fn-bpnp-deferral-apply (record held)
   (declare (xargs :guard t))

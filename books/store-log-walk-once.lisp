@@ -14,6 +14,7 @@
 (in-package "ACL2")
 (include-book "store-log-buffer")
 (local (include-book "arithmetic/top" :dir :system))
+(local (in-theory (enable fn-rcon-event-twin-rules)))  ; Q3f: the concrete twins' equalities
 
 ; -----------------------------------------------------------------------------
 ; The walk without its txid fold, and the fold from the replay's decode.
@@ -246,14 +247,29 @@
 
 (in-theory (disable fn-lgb-decode-one))
 
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of data with no fixed cap.  The :logic is
+; the recursion, unchanged; the :exec is the loop, equal by the lemma below.
+; BADP says an event so far was :bad; the txid fold runs to the end as the
+; recursion's did.
+(defun fn-lgb-decode-next-exec-loop (rs next acc badp)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rs)
+      (mv-let (event txid) (fn-lgb-decode-one (car rs))
+        (fn-lgb-decode-next-exec-loop (cdr rs) (max (1+ (nfix txid)) (nfix next))
+                                      (cons event acc) (or badp (eq event :bad))))
+    (mv (if (or badp (not (null rs))) :bad (fn-ag-rev-onto acc nil)) (nfix next))))
+
 (defun fn-lgb-decode-next-exec (rs next)
   (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
   (if (consp rs)
       (mv-let (event txid) (fn-lgb-decode-one (car rs))
         (mv-let (rest n2)
           (fn-lgb-decode-next-exec (cdr rs) (max (1+ (nfix txid)) (nfix next)))
           (mv (if (or (eq event :bad) (equal rest :bad)) :bad (cons event rest)) n2)))
-    (mv (if (null rs) nil :bad) (nfix next))))
+    (mv (if (null rs) nil :bad) (nfix next)))
+  :exec (mv-let (r n) (fn-lgb-decode-next-exec-loop rs next nil nil) (mv r n))))
 
 ; Its two answers are the replay's decode and the walk's fold.
 (defthm fn-lgb-decode-next-exec-fold
@@ -268,7 +284,34 @@
   :hints (("Goal" :induct (fn-lgb-decode-next-exec rs next)
            :in-theory (disable fn-store-event-decode-exact fn-rcon-wire-event-p fn-lgt-txid))))
 
-(verify-guards fn-lgb-decode-next-exec)
+(defthm fn-lgb-decode-next-exec-loop-next
+  (equal (mv-nth 1 (fn-lgb-decode-next-exec-loop rs next acc badp))
+         (mv-nth 1 (fn-lgb-decode-next-exec rs next)))
+  :hints (("Goal" :induct (fn-lgb-decode-next-exec-loop rs next acc badp)
+                  :in-theory (union-theories '(fn-lgb-decode-next-exec-loop fn-lgb-decode-next-exec mv-nth
+                                                car-cons cdr-cons)
+                                              (union-theories (theory 'minimal-theory)
+                                                              (executable-counterpart-theory :here))))))
+
+(defthm fn-lgb-decode-next-exec-loop-is-rev-onto
+  (equal (mv-nth 0 (fn-lgb-decode-next-exec-loop rs next acc badp))
+         (let ((r (mv-nth 0 (fn-lgb-decode-next-exec rs next))))
+           (if (or badp (equal r :bad)) :bad (fn-ag-rev-onto acc r))))
+  :hints (("Goal" :induct (fn-lgb-decode-next-exec-loop rs next acc badp)
+                  :in-theory (union-theories '(fn-lgb-decode-next-exec-loop fn-lgb-decode-next-exec mv-nth
+                                                car-cons cdr-cons fn-ag-rev-onto)
+                                              (union-theories (theory 'minimal-theory)
+                                                              (executable-counterpart-theory :here))))))
+
+(verify-guards fn-lgb-decode-next-exec-loop)
+(verify-guards fn-lgb-decode-next-exec
+  :hints (("Goal" :expand ((fn-lgb-decode-next-exec rs next))
+                  :in-theory (union-theories
+                              '(mv-nth car-cons cdr-cons fn-ag-rev-onto
+                                fn-lgb-decode-next-exec-loop-next
+                                fn-lgb-decode-next-exec-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; The host's call (host/native/io.lisp fnn-recover-log-stream-flush): the
 ; chunk's events (fn-srs-decode) and the fold of its records' txids over

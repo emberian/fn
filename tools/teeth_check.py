@@ -1241,7 +1241,8 @@ def hypotheses_of(statement: object) -> list[object]:
 
 def cited_sections(name: str) -> list[tuple[str, int, int]]:
     """Where a test book cites `name` in a comment, and how many
-    `assert-event`s follow before the next citation of another keystone.
+    `assert-event`s and literal `must-fail`s follow before the next citation
+    of another keystone.
 
     The corpus writes teeth as `; <theorem-name>` and then the witnesses, so
     the assertions between one citation and the next are the teeth for that
@@ -1261,8 +1262,37 @@ def cited_sections(name: str) -> list[tuple[str, int, int]]:
             body = "\n".join(lines[number:stop])
             macro_musts = sum(1 for tooth in teeth if tooth.kind == "must-fail"
                               and number < tooth.line <= stop)
-            out.append((path, number, body.count("(assert-event") + macro_musts))
+            literal_musts = sum(1 for at in literal_must_fail_lines(path)
+                                if number < at <= stop)
+            out.append((path, number,
+                        body.count("(assert-event") + macro_musts + literal_musts))
     return out
+
+
+_LITERAL_MUSTS: dict[str, list[int]] = {}
+
+
+def literal_must_fail_lines(book: str) -> list[int]:
+    """The lines of BOOK's top-level literal `must-fail`-family forms
+    (`must-fail`, `must-fail-checked`, ... under `local` too): each is a
+    hypothesis-removal witness in the section that holds it, the same as an
+    `(assert-event` there (assurance-hygiene-5: the removal witnesses written
+    as `must-fail-checked` defthms were not counted, so a keystone toothed
+    per hypothesis was still reported without teeth)."""
+    if book not in _LITERAL_MUSTS:
+        try:
+            forms = ledger.Reader((ROOT / book).read_text(encoding="utf-8")).top_level()
+        except Exception:
+            forms = []
+        lines = []
+        for form, line in forms:
+            node = form
+            while head(node) == "local" and len(node) == 2:
+                node = node[1]
+            if _is_must_fail_name(head(node)):
+                lines.append(line)
+        _LITERAL_MUSTS[book] = lines
+    return _LITERAL_MUSTS[book]
 
 
 _SECTIONS: list | None = None

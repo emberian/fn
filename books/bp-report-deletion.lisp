@@ -80,19 +80,49 @@
                 (fn-bpn-nth 11 held) (fn-bpn-nth 12 held)
                 (fn-bpn-nth 13 held) record (fn-bpn-nth 15 held)))
 
-(defun fn-bpn-report-apply-delete (record held-list)
+; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
+; node's held-bundle or job queue, data with no fixed cap (D27), one
+; control-stack frame per row before.
+; The loop carries the rows before the match reversed.
+(defun fn-bpn-report-apply-delete-loop (record held-list acc)
   (declare (xargs :guard t :measure (acl2-count held-list)))
   (if (atom held-list)
-      (mv nil held-list)
+      (mv nil (fn-ag-rev-onto acc held-list))
     (if (equal (fn-bpn-nth 3 record) (fn-bpn-nth 3 (car held-list)))
         (if (fn-bpn-report-delete-matches-heldp record (car held-list))
-            (mv t (cons (fn-bpn-report-tombstone-held
-                         (car held-list) record)
-                        (cdr held-list)))
-          (mv nil held-list))
-      (mv-let (ok rest)
-        (fn-bpn-report-apply-delete record (cdr held-list))
-        (mv ok (cons (car held-list) rest))))))
+            (mv t (fn-ag-rev-onto acc (cons (fn-bpn-report-tombstone-held
+                                             (car held-list) record)
+                                            (cdr held-list))))
+          (mv nil (fn-ag-rev-onto acc held-list)))
+      (fn-bpn-report-apply-delete-loop record (cdr held-list)
+                                       (cons (car held-list) acc)))))
+
+(defun fn-bpn-report-apply-delete (record held-list)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count held-list)))
+  (mbe :logic
+       (if (atom held-list)
+           (mv nil held-list)
+         (if (equal (fn-bpn-nth 3 record) (fn-bpn-nth 3 (car held-list)))
+             (if (fn-bpn-report-delete-matches-heldp record (car held-list))
+                 (mv t (cons (fn-bpn-report-tombstone-held
+                              (car held-list) record)
+                             (cdr held-list)))
+               (mv nil held-list))
+           (mv-let (ok rest)
+             (fn-bpn-report-apply-delete record (cdr held-list))
+             (mv ok (cons (car held-list) rest)))))
+       :exec (fn-bpn-report-apply-delete-loop record held-list nil)))
+
+(defthm fn-bpn-report-apply-delete-loop-is-rev-onto
+  (equal (fn-bpn-report-apply-delete-loop record held-list acc)
+         (mv-let (ok rest)
+           (fn-bpn-report-apply-delete record held-list)
+           (mv ok (fn-ag-rev-onto acc rest))))
+  :hints (("Goal" :induct (fn-bpn-report-apply-delete-loop record held-list acc)
+                  :in-theory (disable fn-bpn-report-delete-matches-heldp
+                                      fn-bpn-report-tombstone-held fn-bpn-nth))))
+
+
 
 ; The only live source of this record is an uncommitted held carrier whose
 ; current ACL2 clock decision is definitely expired.  Legacy anchorless or
@@ -206,7 +236,21 @@
                                fn-bpn-report-held-bundle-for-guard
                                fn-bpn-report-primary-for-guard))))
 (verify-guards fn-bpn-report-tombstone-held)
-(verify-guards fn-bpn-report-apply-delete)
+(verify-guards fn-bpn-report-apply-delete-loop)
+(defthm fn-bpn-report-apply-delete-is-two-values
+  (equal (list (mv-nth 0 (fn-bpn-report-apply-delete record held-list))
+               (mv-nth 1 (fn-bpn-report-apply-delete record held-list)))
+         (fn-bpn-report-apply-delete record held-list))
+  :hints (("Goal" :induct (fn-bpn-report-apply-delete record held-list)
+                  :in-theory (disable fn-bpn-report-delete-matches-heldp
+                                      fn-bpn-report-tombstone-held fn-bpn-nth))))
+
+(verify-guards fn-bpn-report-apply-delete
+  :hints (("Goal" :use ((:instance fn-bpn-report-apply-delete-loop-is-rev-onto (acc nil))
+                        (:instance fn-bpn-report-apply-delete-is-two-values))
+                  :expand ((fn-bpn-report-apply-delete record held-list))
+                  :in-theory (union-theories '(fn-ag-rev-onto)
+                                             (theory 'minimal-theory)))))
 (verify-guards fn-bpn-report-find-expired-held
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bpah-held-expiry-header-of-held

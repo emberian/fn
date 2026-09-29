@@ -299,8 +299,11 @@
           (mv (append before (list placed (fn-mpxt-candidates-pages 7 fn-mpxt))) fn-mpxt)))
       result)))
 
-(assert-event ; mpxe-saturated-witness: 2,048 entries under tag 7 in 4 pages fill page 3 and page 0
-  (equal (mpxe-skew 2048) '(4 2048 t 2 nil nil 1 nil 2)))
+(assert-event ; mpxe-saturated-witness: 2,048 entries under tag 7: the 2,048th placement reached
+              ; half the slots of 4 pages and grew to 8 (paged-history-4: the add places, then
+              ; settles), where tag 7's home page and its overflow hold exactly those 2,048 --
+              ; saturated for tag 7 at load 1/4, and the 2,049th is not placed.
+  (equal (mpxe-skew 2048) '(8 2048 t 2 nil nil 1 nil 2)))
 
 (assert-event ; mpxe-not-skewed-witness: 1,000 entries under tag 7 (2 pages: page 1 not full)
   (equal (mpxe-skew 1000) '(2 1000 nil 1 t nil 1 t 1)))
