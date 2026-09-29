@@ -1152,3 +1152,57 @@ silently taken.
    forging. The poster's client attaches it (`fn statement sign` then
    `fn statement attach`), and the ACL2 fact that licenses attaching it
    anywhere is S1's `fn-stx-payload-ignores-the-carrier-field`.
+
+
+### Retained enrollment and statement authority bridge (PRF-1070/1078/1079)
+
+The running gate's explicit group authority identifies the existing stable,
+operator-enrolled principal. A valid retained hybrid enrollment projects its
+ML-DSA-65 public key into the existing `A-SIG-NATIVE` FN-Statement suite;
+revocation removes that principal. This bridge does not reinterpret
+FN-Authorship's hybrid signature or derive another principal from a key.
+`fn-ssk-keyring-of-snapshots` defines the oldest-to-newest resolution oracle.
+A newly completed kind-3 snapshot applies one publication to the carried
+keyring and generation. An identical repeat of an older generation advances
+only the identity cursor, preserving the current keyring. The carried
+`fn-skp-resolvedp` relates those fields to retained snapshots; identity finish
+preserves it with that invariant as the sole hypothesis. The invariant is a
+proof predicate, never a scan on each served admission.
+
+Native recovery calls `fn-ssr-intern-step`. Each decoded event is interned
+under the keyring and generation active immediately before that event.
+After a new enrollment/revocation the next event receives the new epoch.
+The same sequential worker handles resident, extent and compressed records;
+its refinement theorems compare the complete worker result and arena effects
+under their named arena/placement hypotheses. Full replay clears any selected
+checkpoint and starts at the initial epoch. Checkpoint suffix replay starts
+at the selected checkpoint's captured identity context and arena, rather
+than the current running owner's keyring. Canonical open retains the frozen
+row deltas as its statement index and reconstructs every accepted article's
+historical verdict, including ordinary held ARTICLE rows and carried
+composites. The extra row-projection walk at finalize is currently linear in
+retained rows; carrying a captured index for suffix-only work remains a cost
+continuation and is not a bounded-suffix claim.
+
+Frozen index membership is evidence of historical verification. Before a
+later authority decision the chosen current policy is verified again under
+the active keyring. Rotation therefore refuses an old-key policy as
+`no-policy` until an active-key policy is published. Retained poster and
+policy forks remain equivocation evidence across rotation and reopen. The
+existing uniform-context lace correspondence theorem retains its exact
+hypotheses; it does not prove a multi-epoch trust policy merely because the
+carried Store invariant holds.
+
+`statement-sign PRINCIPAL INCARNATION SEQUENCE article|policy GROUP
+ML-PRIVATE-PEM ML-PUBLIC-PEM SOURCE OUTPUT` produces a client carrier for this
+existing statement suite. ACL2 parses the source, chooses the statement
+payload and preimage, renders the carrier and verifies the supplied public
+key/signature. The host performs only key-file I/O and the native ML-DSA
+primitive. Policy source-body octets become policy terms; membership stays
+empty in this smallest self-authority slice. Real productive authority,
+restart, rotation, old-policy refusal and both fork outcomes are exercised
+by `NativeProductiveGroupAuthorityTests`; that witness requires
+`FN_RUN_HYBRID_E2E=1` and a matching new immutable runner image. Source REPL
+admission, an abstract signature attachment and this pending native fixture
+are separate coordinates. No durable article-subject/Message-ID conflict
+binding or store adoption is asserted by this bridge.

@@ -5703,7 +5703,10 @@
       "milestone": "M4",
       "status": "specified",
       "proof_targets": [
-        "PRF-1061"
+        "PRF-1061",
+        "PRF-1070",
+        "PRF-1078",
+        "PRF-1079"
       ],
       "verification": [
         "proof",
@@ -5714,9 +5717,15 @@
         "books/config-invariants.lisp",
         "books/native-admin.lisp",
         "tests/acl2/group-authority-tests.lisp",
-        "tests/test_native_group_authority.py"
+        "tests/test_native_group_authority.py",
+        "books/statement-snapshot-keyring.lisp",
+        "books/statement-recover-stream.lisp",
+        "books/statement-keyring-publication.lisp",
+        "books/native-statement-material.lisp",
+        "tests/acl2/statement-keyring-publication-tests.lisp",
+        "tests/acl2/statement-recover-stream-tests.lisp"
       ],
-      "note": "Configuration implementation and clean REPL complete; running pin/replacement native pending new image. Productive verified authority through hybrid-snapshot/legacy-statement index bridge remains active finite work."
+      "note": "Explicit configuration and durable snapshot/legacy-statement bridge are source implementation input with clean narrow REPL checks. Active policy is reverified under active keys; frozen history and plain held verdicts are restored. Productive native enrollment/admission/restart/rotation/fork fixture awaits matching new immutable image; physical hypothesis-removal teeth and full inverse/startup composition remain open."
     }
   ]
 }

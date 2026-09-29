@@ -3,6 +3,7 @@
 (include-book "../books/hybrid-store")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/hybrid-carrier")
+(include-book "../books/native-statement-material")
 
 (defun fn-hsig-host-received-carrier-plan (received)
   (declare (xargs :mode :program))
