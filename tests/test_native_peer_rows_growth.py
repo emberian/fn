@@ -63,7 +63,8 @@ class NativePeerRowsGrowthTests(unittest.TestCase):
         # The small preset's record, article and group bounds (tools/fixtures.py
         # SYNTH_SMALL_BOUNDS): with the defaults, init's reservation for this
         # profile is 11.5 TB and the budget check refuses it (batch AZ).
-        self.ok("init", "--budget", HARNESS_INIT_BUDGET_MB, "--max-transactions", room,
+        self.ok("init", "--budget", HARNESS_INIT_BUDGET_MB, "--profile", "default",
+                "--max-transactions", room,
                 "--max-config-generations", room,
                 "--max-record-octets", "196608", "--max-article-octets", "32768",
                 "--max-groups-per-article", "16",

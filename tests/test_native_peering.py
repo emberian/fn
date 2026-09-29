@@ -764,7 +764,8 @@ class NativePeeringTests(unittest.TestCase):
         unavailable-peer (books/native-health.lisp
         fn-nh-deferring-peer-is-held)."""
         source = self.initialize("full-source")
-        full = self.initialize("full-target", "--max-transactions", "12", "fn.test")
+        full = self.initialize("full-target", "--profile", "default", "--max-transactions", "12",
+                               "fn.test")
         port = full.port
         self.configure_peer(full, source, outbound="-")
         self.start(full)
@@ -1013,7 +1014,7 @@ class NativePeeringTests(unittest.TestCase):
         `down' (127.0.0.2, outbound only, at DOWN_PORT)."""
         # Room for 12,000 transactions with a record bound small enough that
         # the heap the profile asks for fits the test's 24 GiB scope.
-        node = self.initialize(marker, "--max-transactions", "12000",
+        node = self.initialize(marker, "--profile", "default", "--max-transactions", "12000",
                                "--max-record-octets", "262144",
                                "--max-history-octets", "134217728",
                                "--max-article-octets", "8192",

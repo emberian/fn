@@ -52,7 +52,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 POSTS = int(os.environ.get("FN_STATUS_POSTS", "60000"))
-FLAGS = ["--max-transactions", "131072", "--max-history-octets", "128000000"]
+FLAGS = ["--profile", "default", "--max-transactions", "131072", "--max-history-octets", "128000000"]
 SLACK = float(os.environ.get("FN_STATUS_SLACK", "2.0"))
 CONNECTIONS = 8
 

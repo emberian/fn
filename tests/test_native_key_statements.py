@@ -521,7 +521,7 @@ class NativeKeyStatementTests(unittest.TestCase):
         # does: R 256 KiB (above the composite's 196,608-octet ceiling), A 128
         # KiB and 16 groups (an article record within R) and H 4 MiB.
         flags = [] if max_transactions is None else [
-            "--max-transactions", str(max_transactions),
+            "--profile", "default", "--max-transactions", str(max_transactions),
             "--max-history-octets", str(4 << 20),
             "--max-record-octets", "262144",
             "--max-article-octets", "131072", "--max-groups-per-article", "16"]
