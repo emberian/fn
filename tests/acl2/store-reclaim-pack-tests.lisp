@@ -120,6 +120,27 @@
                                              (append *rpt-articles* *rpt-articles*))))
                      (fn-find-article *rpt-msgid* (append *rpt-articles* *rpt-articles*))))
 (assert-event (equal (cdr (hons-get "<absent@rpt.invalid>" (fn-rcl-nth 6 *rpt-ctx*))) nil))
+;; The forward build binds the FIRST of two distinct articles naming one
+;; Message-ID (fn-rclp-index-into-finds, reachable: the host's context is
+;; fn-rclp-index-built = fn-rclp-index-into over the articles from nil);
+;; tooth: the second is not the binding; and a Message-ID the accumulator
+;; already binds keeps its binding.
+(defconst *rpt-a1* (fn-make-article "<dup@rpt.invalid>" 1 nil nil t 0))
+(defconst *rpt-a2* (fn-make-article "<dup@rpt.invalid>" 2 nil nil t 0))
+(assert-event (equal (cdr (hons-get "<dup@rpt.invalid>"
+                                    (fn-rclp-index-built (list *rpt-a1* *rpt-a2*))))
+                     *rpt-a1*))
+(assert-event (equal (fn-find-article "<dup@rpt.invalid>" (list *rpt-a1* *rpt-a2*)) *rpt-a1*))
+(must-fail-checked
+ (assert-event (equal (cdr (hons-get "<dup@rpt.invalid>"
+                                     (fn-rclp-index-built (list *rpt-a1* *rpt-a2*))))
+                      *rpt-a2*)))
+(assert-event (equal (cdr (hons-assoc-equal "<dup@rpt.invalid>"
+                                            (fn-rclp-index-into
+                                             (list *rpt-a1*)
+                                             (make-fast-alist
+                                              (list (cons "<dup@rpt.invalid>" *rpt-a2*))))))
+                     *rpt-a2*))
 
 ; fn-rclp-events-keep-every-other-kind: every event that is not a legacy
 ; record is unchanged; tooth: the article record (a legacy record) changes.
