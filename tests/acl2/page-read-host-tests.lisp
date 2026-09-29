@@ -70,7 +70,7 @@
                 (preview (fn-owner-page-read-close-preview 11 fn-page-read-pool)))
             (mv (list offline offline-close installed funded registered preview
                       (equal before (fn-owner-page-read-ledger fn-page-read-pool)))
-                fn-page-read-pool))))))))
+                fn-page-read-pool)))))))
 (defun prh-preview-exec ()
   (declare (xargs :mode :program))
   (with-local-stobj fn-page-read-pool
