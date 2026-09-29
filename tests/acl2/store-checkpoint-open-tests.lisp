@@ -82,6 +82,40 @@
  (defthm sco-t-extend-improper-suffix
    (equal (fn-sco-extend *sco-t-capture* *sco-t-configs* (cons (cadr *sco-t-events*) 5))
           (fn-sco-capture *sco-t-configs* (append *sco-t-prefix* (cons (cadr *sco-t-events*) 5))))))
+;; fn-sco-extend-of-capture has one hypothesis, a true-list suffix (the
+;; witness above).  Reachable positive witness of the dropped history
+;; hypothesis: a prefix holding a record that is not a Store event (a
+;; negative sequence) extends to the capture of the concatenation.
+(defconst *sco-t-bad* (update-nth 1 -1 (car *sco-t-events*)))
+(assert-event
+ (and (not (fn-store-event-p *sco-t-bad*))
+      (equal (fn-sco-extend (fn-sco-capture *sco-t-configs* (list *sco-t-bad*))
+                            *sco-t-configs* *sco-t-suffix*)
+             (fn-sco-capture *sco-t-configs* (cons *sco-t-bad* *sco-t-suffix*)))))
+;; fn-replay-identity-append-of-true-lists: positive witness over that prefix
+;; (the fault is sticky); each hypothesis's removal witness: an improper
+;; suffix faults the split with :improper-record-list but not the whole, and
+;; an improper prefix the same way.
+(assert-event
+ (equal (fn-replay-identity-loop (append (list *sco-t-bad*) *sco-t-suffix*)
+                                 (fn-stxk-initial-context 0))
+        (fn-replay-identity-loop *sco-t-suffix*
+                                 (fn-replay-identity-loop (list *sco-t-bad*)
+                                                          (fn-stxk-initial-context 0)))))
+(assert-event
+ (let ((p (list *sco-t-bad*)) (s (cons (cadr *sco-t-events*) 5)))
+   (and (true-listp p) (not (true-listp s))
+        (not (equal (fn-replay-identity-loop (append p s) (fn-stxk-initial-context 0))
+                    (fn-replay-identity-loop s (fn-replay-identity-loop
+                                                p (fn-stxk-initial-context 0))))))))
+(assert-event
+ (let ((p (cons (car *sco-t-events*) 5)) (s *sco-t-suffix*))
+   ;; (append p s) is (cons (car p) s) in the logic; spelled out, since
+   ;; append's guard asks a true-list first argument.
+   (and (not (true-listp p)) (true-listp s)
+        (not (equal (fn-replay-identity-loop (cons (car p) s) (fn-stxk-initial-context 0))
+                    (fn-replay-identity-loop s (fn-replay-identity-loop
+                                                p (fn-stxk-initial-context 0))))))))
 ; fn-sco-finalize-of-capture: without a true-list history, capture repairs it
 ; and the checkpoint would open what the full open refuses.
 (must-fail-checked

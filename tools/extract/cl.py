@@ -100,7 +100,10 @@ RUNTIME = {"ACL2::" + n for n in (
     "W", "GETPROPC", "GETPROP", "USER-STOBJ-ALIST", "F-GET-GLOBAL", "F-PUT-GLOBAL", "F-BOUNDP-GLOBAL",
     "GET-GLOBAL", "PUT-GLOBAL", "BOUNDP-GLOBAL", "STOBJS-IN", "HARD-ERROR", "ILLEGAL",
     "THROW-NONEXEC-ERROR", "FMT-TO-COMMENT-WINDOW", "FMT-TO-COMMENT-WINDOW!", "FMT-TO-COMMENT-WINDOW+",
-    "FMT-TO-COMMENT-WINDOW!+", "CW-PRINT-BASE-RADIX")}
+    "FMT-TO-COMMENT-WINDOW!+", "CW-PRINT-BASE-RADIX",
+    # fast alists over a hash table (clruntime.lisp; emitted from their logic
+    # they walked the alist)
+    "HONS-GET", "HONS-ACONS", "MAKE-FAST-ALIST", "FAST-ALIST-FREE")}
 
 
 def esc(s):

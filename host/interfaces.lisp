@@ -837,7 +837,8 @@
   :kinds ((config-octet-records fn-octet-list-listp) (record-octets fn-cbor-octet-listp) (observed-name-octets fn-octet-list-listp)))
 
 (definterface fn-store-charge
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge))
 
 (definterface fn-store-checkpoint-clone-fence-name
   :class ::program)
@@ -893,14 +894,16 @@
   :class ::program)
 
 (definterface fn-store-genesis-octets
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-gen-octets-for)
 
 (definterface fn-store-genesis-open
   :class ::ideal
   :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-store-genesis-refusal-text
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-gen-refusal-text)
 
 (definterface fn-store-group-codes
   :class ::ideal
@@ -936,17 +939,21 @@
 
 (definterface fn-store-metadata-config-decode
   :class ::ideal
-  :kinds ((octets fn-cbor-octet-listp)))
+  :kinds ((octets fn-cbor-octet-listp))
+  :delegates fn-bs-config-decode)
 
 (definterface fn-store-metadata-config-frame
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-config-frame-for-profile)
 
 (definterface fn-store-metadata-config-open
   :class ::ideal
-  :kinds ((octets fn-cbor-octet-listp)))
+  :kinds ((octets fn-cbor-octet-listp))
+  :delegates fn-spo-config-open)
 
 (definterface fn-store-metadata-config-refusal-text
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-spo-refusal-text)
 
 (definterface fn-store-metadata-frontier-decode
   :class ::ideal
@@ -968,19 +975,24 @@
   :class ::program)
 
 (definterface fn-store-profile-admittedp
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-admittedp)
 
 (definterface fn-store-profile-logp
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-logp)
 
 (definterface fn-store-profile-max-record-octets
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-max-record-octets)
 
 (definterface fn-store-profile-read-bound
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-store-profile-read-bound-covers-every-admitted-publication))
 
 (definterface fn-store-profile-report
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-report)
 
 (definterface fn-store-prov-for-msgid
   :class ::program
@@ -990,7 +1002,9 @@
   :class ::program)
 
 (definterface fn-store-publication-admissibility
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-store-publication-admissibility-admits-exactly-within-the-profile
+              fn-store-profile-read-bound-covers-every-admitted-publication))
 
 (definterface fn-store-reclaim-context
   :class ::program)
@@ -2236,10 +2250,12 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-authored-wire-authorize
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bpn-authored-wire-authorize)
 
 (definterface fn-bpn-host-authored-wire-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-authored-wire-name-names-the-reserved-sequence))
 
 (definterface fn-bpn-host-authored-wire-operation-label
   :class ::ideal)
@@ -2263,6 +2279,9 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-evidence-authorize
+  ; an exact alias of fn-bpn-evidence-authorize, but no proof target cites a theorem
+  ; about it, so the delegation is not declared (decision-keystones-3): a
+  ; keystone about fn-bpn-evidence-authorize, cited, then :delegates again
   :class ::ideal)
 
 (definterface fn-bpn-host-evidence-directory-name
@@ -2406,16 +2425,20 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-sequence-reservation-frame
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-host-sequence-reservation-sequence
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-host-sequence-reservationp
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-host-sequence-reserve
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-machine-invariantp
   :class ::ideal)
@@ -2895,6 +2918,9 @@
   :class ::ideal)
 
 (definterface fn-tcl-host-encode
+  ; an exact alias of fn-tcl-encode, but no proof target cites a theorem
+  ; about it, so the delegation is not declared (decision-keystones-3): a
+  ; keystone about fn-tcl-encode, cited, then :delegates again
   :class ::ideal)
 
 (definterface fn-tcl-host-event-digests

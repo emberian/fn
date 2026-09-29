@@ -252,7 +252,8 @@
         "tests/evidence/2026-09-18-articles.md",
         "tests/evidence/2026-09-18-articles.json",
         "tests/evidence/2026-09-18-bp-workflow.md",
-        "tests/evidence/2026-09-18-bp-exchange.md"
+        "tests/evidence/2026-09-18-bp-exchange.md",
+        "tests/test_native_owner_bound_commit_raw.sh"
       ],
       "execution_scope": "Partial: ledger and node retention proofs, real adapter bounds/maximum-profile replay, and BP receiver capacity refusal preserving prior article/archive pin. No durable deletion/compaction or physical disk-reservation proof."
     },
@@ -483,7 +484,8 @@
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "books/nntp-newnews.lisp",
-        "tests/acl2/nntp-newnews-tests.lisp"
+        "tests/acl2/nntp-newnews-tests.lisp",
+        "tests/test_native_owner_group_codes_raw.sh"
       ],
       "execution_scope": "Implemented reader session/cursor and effect shape have general proofs; exact ACL2 bridge input partitions and real reconnects have targeted tests. Full READER/POST and complete RFC byte-response conformance remain open. Framing and cursor coverage moved from the host to books/served, which states chunk-partition independence of the function the host calls. The capabilities leg is REFUTED as it stands: the deploy gate found POST answered with 340 while CAPABILITIES omits POST (RFC 3977 section 5.2.2)."
     },
@@ -551,7 +553,8 @@
         "tests/test_native_control.py",
         "planning/lanes/HANDOFF-w22-native-control.md",
         "planning/evidence/native-control-accept-shutdown-2026-09-21.md",
-        "planning/evidence/native-raw-integration-w35-2026-09-21/README.md"
+        "planning/evidence/native-raw-integration-w35-2026-09-21/README.md",
+        "tests/test_native_io_progress.sh"
       ],
       "execution_scope": "Partial: frozen03 default/DTN builds and scoped native suites passed, including public operator startup and concurrent uncertainty fencing. Later logical traces and targeted native tests cover stated subcontracts. The standalone store and shared-owner prepare projections are certified equal to their replaying specification/previous owner event under maintained relations, with nonempty-history witnesses and stale-node counterexamples when the premises are removed. A production image at 8cbeda9 passed all six targeted native-owner tests, including durable POST/reopen and uncertainty fencing. The frozen cdbd6b2 Python service matrix retains its recorded authentication and BP-crash disagreements. Full native service parity, deployment dependency evidence, concurrent backpressure/stale-completion composition and complete physical adapter correspondence remain open; the targeted owner image is not the whole deployment gate. The integrated control packet has ACL2 closure and exact-raw Darwin lifecycle/posting evidence; its saved-image build returned nonzero due to unrelated certificate origins, so it is not a clean native build gate. The later control resource packet passed scoped native slow-drip and active-client ceiling cases; it adds linear accumulation by source inspection, with the combined image gate still separate."
     },
@@ -728,7 +731,9 @@
         "A change made while the service is live reaches the served configuration through the control channel, and the offline path is refused rather than racing it.",
         "A stopped service releases the writer lock, and the store reopens without recovery."
       ],
-      "evidence": [],
+      "evidence": [
+        "tests/test_native_live_config_cache_raw.sh"
+      ],
       "execution_scope": "Specified. The v0 rows (planning/v0-matrix.json, last run b6759850) are owned by tests/test_native_conformance.py on one node and by tests/test_native_peering.py and tests/test_native_protected_peering.py between two nodes on one host over loopback (planning/evidence/python-diet-2-2026-09-28/v0-row-owners.md). Nothing here exercises two machines, a real network, or an operator's own configuration."
     },
     {
@@ -827,7 +832,11 @@
         "planning/evidence/feed-k5-w11-2026-09-21.md",
         "planning/evidence/feed-journal-w12-host.json",
         "planning/lanes/HANDOFF-w12-feed-durability.md",
-        "tests/test_native_peering.py"
+        "tests/test_native_peering.py",
+        "tests/test_native_feed_peer_octets.sh",
+        "tests/test_native_feed_service_raw.sh",
+        "tests/test_native_fnfd_budget.sh",
+        "tests/test_owner_feed_connection_host.sh"
       ],
       "execution_scope": "The owner drives outbound feeds; the former standalone tools/run_feed.py is retired. A source-matched production image ran the combined public operator, owner, feed and inbound NNTP path over private loopback. It transferred one article byte-identically in each direction, suppressed both duplicates, and requeued a durable FNFD obligation after the source process was killed and restarted. W12 separately covers bounded journal replay and cuts. Article-commit/feed-intent atomicity and general K5 correspondence remain active work, so the whole scenario is not marked validated."
     },
@@ -1058,7 +1067,13 @@
         "A linked Store candidate is either absent or replayed once at recovery; no stale live projection is accepted as progress.",
         "Old incarnation, registration epoch and view cursors are refused without mutation; independent stores and consumers keep separate positions."
       ],
-      "note": "The ACL2 Store model is witnessed by tests/acl2/consumer-store-invariants-tests.lisp and its scoped manifest. Native image 1d26e01f passed signed local-owner poll, read-only repeat, advancing ACK with killed reply/reopen and fenced clone cursor recovery, as recorded in planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md. The local consumer-status command is an experimental v1 diagnostic and has no v0 gate. The Mini consumer-owned transaction/ACK/reply join and complete two-store E2-01.. trace set remain unqualified; component passes do not establish the whole scenario."
+      "note": "The ACL2 Store model is witnessed by tests/acl2/consumer-store-invariants-tests.lisp and its scoped manifest. Native image 1d26e01f passed signed local-owner poll, read-only repeat, advancing ACK with killed reply/reopen and fenced clone cursor recovery, as recorded in planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md. The local consumer-status command is an experimental v1 diagnostic and has no v0 gate. The Mini consumer-owned transaction/ACK/reply join and complete two-store E2-01.. trace set remain unqualified; component passes do not establish the whole scenario.",
+      "evidence": [
+        "tests/test_native_owner_consumer_raw.sh",
+        "tests/test_native_owner_consumer_local_raw.sh",
+        "tests/test_native_consumer_poll_cli_raw.sh",
+        "tests/test_native_consumer_peer_raw.sh"
+      ]
     },
     {
       "id": "SCN-032",
@@ -2188,32 +2203,48 @@
       "id": "SCN-076",
       "title": "The operator walk: one installed fn from nothing to a recovered node on two scratch nodes",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "HST-008",
         "HST-009"
       ],
       "steps": [
         "Install the production image with packaging/install-native.sh into a scratch prefix; every later command is PREFIX/bin/fn.",
-        "Write a small-community fn.toml with `mission`; ask status, health and run before init; init with a profile word, then init.",
-        "Enrol a login; peer two nodes; start both; status and health live; post; post over the article bound.",
-        "Add a peer that answers 501 to MODE STREAM; post; watch the dial.",
-        "Stop, back up, post two more; on a copy with rewritten paths upgrade the profile, rollback-check the kept config and the snapshot, restore the snapshot and recover.",
-        "SIGKILL the owner; status, recover, run, health.",
-        "rollback-check --snapshot between two stores whose first transaction holds different articles of equal encoded length, the store one transaction longer; between a store and its own earlier copy after it was compacted; with the store's writer lock held exclusively."
+        "Write a small-community fn.toml with `mission`; ask status, health and run before init; init with a profile word, then init; init again; show the port; set the path identity; status and health offline.",
+        "Enrol a login; peer two nodes; start both; status live; post; the peer's log names the fed article; health live; post over the article bound.",
+        "Give a node a streaming peer that answers MODE STREAM with 501, and one that answers another refusal; post to each.",
+        "Stop, back up the node folder (docs/operator.md section 9), start, post two more, stop; restore the backup on a copy with rewritten paths; recover, status, run; post the backup's article and a later one.",
+        "SIGKILL the owner; status, recover, run, health, status."
       ],
       "expected": [
-        "Before init: refused NO-STORE exit 1 (specs/host.md \"CLI exit codes\", HST-009: the refused class; exit 6 before outcome-algebra) with the init line, never a fault; init with a profile word under a mission is usage 5 naming what init accepts; the non-streaming peer receives MODE STREAM once and the owner logs its stop; rollback-check --snapshot prints the count of transactions the snapshot loses; after the crash recover exits 0 and run serves the store.",
-        "The equal-counter, different-content snapshot is refused snapshot-not-a-prefix (exit 1: not an earlier state of this history), never counted as one lost transaction; the compacted store's earlier copy is counted through its pack (loses 1 of 4); a held store is refused (already locked), never read unlocked."
+        "Before init: refused NO-STORE exit 1 with the init line, never a fault (specs/host.md \"CLI exit codes\", HST-009); init with a profile word under a mission is usage 5 (MISSION-FIXES-PROFILE) and writes no store; init again is refused STORE-EXISTS; health of a node not running is exit 18 (not-running).",
+        "The 501 peer receives MODE STREAM once and is fed with IHAVE on the same connection, the owner logging mode-stream-unsupported once and health exit 0 (fn-fc-mode-stream-unsupported-falls-back-to-ihave); the peer answering any other refusal receives MODE STREAM once, is stopped by name (reason=mode-stream-refused) and not dialled again for new work, health exit 26 unavailable-peer (fn-fc-mode-stream-refusal-stops-the-dial).",
+        "The restored copy recovers and serves the backup's state: the backup's article is a DUPLICATE, a later one is ACCEPTED; after the SIGKILL the control socket file stays, status and recover exit 0 and the restarted owner's health is 0."
       ],
       "evidence": [
         "planning/evidence/operator-walk-2026-09-26/walk.sh",
         "planning/evidence/operator-walk-2026-09-26.md",
         "tests/acl2/native-operator-tests.lisp",
-        "planning/evidence/rollback-history-2026-09-26.md",
-        "planning/evidence/outcome-algebra-2026-09-26.md"
+        "planning/evidence/outcome-algebra-2026-09-26.md",
+        "planning/evidence/operator-walk-2026-09-29/native-ow5.log",
+        "tests/test_native_cli_launcher.sh"
       ],
-      "retirement_note": "D34 removed rollback-check --snapshot, the walk item its implementation evidenced (tests.test_native_rollback_history, deleted); the walk is re-evidenced by the batch."
+      "execution_scope": "Native, through the installed launcher on scratch loopback nodes (stores on durable local storage, FN_TEST_DURABLE_TMP), one host; D34 retired the walk's upgrade rehearsal and rollback-check (one store format, a new release is a fresh install): the backup step is the operator guide's copy of the stopped node folder. The walk script planning/evidence/operator-walk-2026-09-26/walk.sh is the 2026-09-26 record, superseded by the module.",
+      "implementation": {
+        "test": "tests.test_native_operator_walk",
+        "cases": [
+          "test_the_installed_image_is_the_production_image",
+          "test_before_init_every_verb_is_refused_no_store_and_init_takes_no_profile_word",
+          "test_two_peered_nodes_carry_a_post_and_refuse_one_over_the_article_bound",
+          "test_a_peer_answering_501_to_mode_stream_is_fed_with_ihave",
+          "test_a_peer_refusing_mode_stream_otherwise_is_stopped_by_name_and_not_redialled",
+          "test_backup_of_the_stopped_node_restored_on_a_copy_and_recovered",
+          "test_sigkill_of_the_owner_then_status_recover_run_and_health"
+        ],
+        "native": true,
+        "log": "planning/evidence/operator-walk-2026-09-29/native-ow5.log",
+        "record": "planning/evidence/operator-walk-2026-09-26.md"
+      }
     },
     {
       "id": "SCN-075",
@@ -3389,7 +3420,9 @@
       ],
       "evidence": [
         "planning/evidence/release-product-2026-09-26.md",
-        "planning/evidence/release-product-2026-09-26/build-c755569badf5.log"
+        "planning/evidence/release-product-2026-09-26/build-c755569badf5.log",
+        "tests/test_native_distribution.sh",
+        "tests/test_deploy_fresh.sh"
       ],
       "implementation": {
         "test": "tests/test_release_tarball.py",
@@ -4216,7 +4249,8 @@
         "Every request exits 0 and the listing names the principals in request order; the total time is recorded before and after (planning/evidence/config-consumer-catalog-2026-09-26.md)."
       ],
       "evidence": [
-        "planning/evidence/config-consumer-catalog-2026-09-26.md"
+        "planning/evidence/config-consumer-catalog-2026-09-26.md",
+        "tests/test_native_admin_authorize_boundary.sh"
       ],
       "implementation": {
         "test": "tests.test_native_peer_rows_growth",
@@ -4434,7 +4468,8 @@
       ],
       "evidence": [
         "planning/evidence/image-floor-2026-09-26.md",
-        "tests/test_native_image_floor.py"
+        "tests/test_native_image_floor.py",
+        "tests/test_native_crypto_saved_image.sh"
       ],
       "implementation": {
         "test": "tests/test_native_image_floor.py",
@@ -5407,7 +5442,7 @@
         "native": false,
         "record": "planning/evidence/arena-store-2026-09-27.md"
       },
-      "note": "Lane arena-store (2026-09-27): the ACL2 witnesses of tests/acl2/pagestore-tests.lisp and books/pagestore-gc.lisp are the executable evidence; the host driver host/native/proto-pagestore.lisp ran the process-death (210 cuts) and power-loss (220 cuts) campaigns on hbox with 0 violations (record section 4), outside the native test modules. No native module exercises it: the owner does not call the page store until fn-hist moves onto it (lane arena-store-2)."
+      "note": "Lane arena-store (2026-09-27): the ACL2 witnesses of tests/acl2/pagestore-tests.lisp and books/pagestore-gc.lisp are the executable evidence; the prototype host driver host/native/proto-pagestore.lisp (retired 2026-09-29, Q7k) ran the process-death (210 cuts) and power-loss (220 cuts) campaigns on hbox with 0 violations (record section 4), outside the native test modules. No native module exercises it: the owner does not call the page store until fn-hist moves onto it (lane arena-store-2)."
     },
     {
       "id": "SCN-187",
@@ -5938,6 +5973,100 @@
       "evidence": [
         "tests/test_bp_obligation_native.py",
         "planning/evidence/operations-2026-09-28.md"
+      ]
+    },
+    {
+      "id": "SCN-201",
+      "title": "COMPRESS DEFLATE conversations through the native owner: gated by login, 206, the stream both ways from the octet after the 206, capabilities withdrawn, 502/503/501 by name, a bomb and a malformed stream refused by name and the connection closed; and stored payloads compressed under the shipped dictionary read back octet for octet",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-054",
+        "STO-037"
+      ],
+      "steps": [
+        "tests/test_native_compress.py on the production image: before and after AUTHINFO, COMPRESS DEFLATE, then CAPABILITIES, GROUP, ARTICLE, POST and QUIT through the stream; COMPRESS/STARTTLS/AUTHINFO after 206; COMPRESS with an unknown and a malformed algorithm; compressed octets pipelined behind the COMPRESS line; a 1 MiB run of zeros; a malformed stream.",
+        "tests/test_native_compression.py on the developer image: two twin stores given the same articles, one with `policy set compress-min-octets'; `store ROOT compression'; every article served from both; recover twice; a torn last entry."
+      ],
+      "expected": [
+        "480 before a login, 206 after; the label withdrawn once active; 502 for a second COMPRESS, STARTTLS and AUTHINFO; 503 unknown, 501 malformed; pipelined octets are the stream's first; the bomb refused (compress-bomb) and the malformed stream (compress-malformed), each closing the connection.",
+        "The compressed store reports every article record compressed and `dictionaries=' the shipped baseline's DICT-ID 2220533217, holds fewer octets, and serves every article octet for octet as its uncompressed twin, after both recovers and the torn tail."
+      ]
+    },
+    {
+      "id": "SCN-208",
+      "title": "`recover' and `store inspect' answer on the running owner; a stopped store's status is its checkpoint header's, with a bound the replayed count never exceeds",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-036"
+      ],
+      "steps": [
+        "A development-profile store; `run`; 3 POSTs; `operator recover`; `operator store inspect` of a stored and of a never-posted Message-ID; 2 POSTs; stop; `operator status`; `operator status --replay`; the offline inspect; `operator health`; `run`; `operator store checkpoint`; stop; `operator status`."
+      ],
+      "expected": [
+        "recover exits 0 with `recover accepted owner=serving` and the owner's `transactions=3` line (never `store is already locked`); inspect answers `accepted ... an article is stored here` exit 0 and `absent ...` exit 1 while the owner serves; the stopped status prints `stopped checkpoint=none journal-octets=B transactions-at-most=M` and no `transactions=` line, with M >= 5 = the `--replay` count; health carries `state=not-running` and the stopped line; after the checkpoint the stopped status prints `checkpoint=5`."
+      ],
+      "implementation": {
+        "test": "tests.test_native_maintenance_live",
+        "cases": [
+          "MaintenanceLiveTests.test_recover_and_inspect_answer_on_the_running_owner_and_a_stopped_status_reads_the_header"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
+    },
+    {
+      "id": "SCN-209",
+      "title": "An operator post the full store refuses names its reason on the reply and the line; `policy set' with an unknown key or a non-numeric count is refused by name",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-037"
+      ],
+      "steps": [
+        "A development store with --max-transactions 4; `run`; 2 POSTs; `operator post` until one is refused; `operator policy set bogus-key 1`; `operator policy set exposure-connections abc`; stop."
+      ],
+      "expected": [
+        "The refused post prints `refused operator post WORD` (a Store word, never the bare REFUSED) and the owner logs `refused post path=control message-id=ID ... reason=WORD` with the same word; the two policy commands exit 1 naming unknown-policy-key (with the key list) and policy-value-not-a-number (a decimal count), and print no usage line."
+      ],
+      "implementation": {
+        "test": "tests.test_native_operator_refusals",
+        "cases": [
+          "OperatorRefusalTests.test_a_post_the_store_refuses_names_its_reason_and_policy_set_refuses_by_name"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
+    },
+    {
+      "id": "SCN-210",
+      "title": "`store export DIR' answers on the running owner: requested and written while serving, refused by name when an export is in flight or DIR exists; the archive imports with the captured count",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-036"
+      ],
+      "steps": [
+        "A development-profile store; `run`; N POSTs; `operator store export DIR` while the owner serves (posting continues during it); `operator store export DIR` again; `operator store import DIR` into a fresh root; `operator status --replay` on the imported store; the owner's log."
+      ],
+      "expected": [
+        "The first export prints `export requested archive=DIR` then `exported archive=DIR: complete ...` exit 0 and never `store is already locked`; DIR/MANIFEST exists; the second answers `export refused reason=archive-exists ...` exit 1 (a request while the first is still writing answers `reason=export-in-flight`); the import opens and `status --replay` shows `transactions=` the count captured at the request (at most N, at least the POSTs acknowledged before it); the owner's log carries `EXPORT done records=... configuration=...`; serving continued (POSTs during the export were accepted)."
+      ],
+      "implementation": {
+        "test": "tests.test_native_maintenance_live",
+        "cases": [],
+        "native": true
+      },
+      "evidence": [
+        "books/owner-export-request.lisp",
+        "tests/acl2/owner-export-request-tests.lisp"
       ]
     }
   ]

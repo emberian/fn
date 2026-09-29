@@ -391,3 +391,45 @@ plan).
 Measure at convergence (not now): the small profile's launcher figure and
 VmHWM on the 100k and SYNTH_1M stores after P3 and P8; the cold ARTICLE
 cost by Message-ID (B.3's 3 preads) on the served differential fixture.
+
+## Amendment 2026-09-29 (lane paged-history-3): the Message-ID table under PKT-774 and GPT-6's calls
+
+Row P2's table (books/msgid-pages-exec) now carries ember's W2b ruling and
+GPT-6's 2026-09-29 calls (planning/review-2026-09-29-gpt6-decisions.md):
+
+- **The key is the generation's.** The tag is BLAKE3 keyed_hash under a
+  purpose key of the node secret ("fn/msgid-index/v1"); one key per index
+  generation, stable across every ordinary checkpoint, never per
+  checkpoint; a generation changes only through a controlled rebuild (the
+  next generation built beside the old, `fn-mpxt-grow-into`, adopted only
+  when every entry landed) or on compromise. A key derived from a
+  compromised node secret restores nothing: a rotation is a fresh
+  node-secret epoch and a rebuild under its key. Row P8's page image binds
+  the key identifier (the entry's epoch and the label) into its manifest.
+- **The structural bound is the guarantee; L-MPX-OVERFLOW is restated.** A
+  lookup reads the tag's home page and, only when it is full, its overflow
+  page, never further (`fn-mpxt-reach`), and confirms at most 2,048
+  candidates against the rows' exact Message-IDs: PRF-991
+  `fn-mpxt-candidates-page-need`, for every tag, key known or not. The
+  occupancy argument (a full page needs 1,024 entries where the mean is at
+  most 512) now bounds only how often the fourth outcome occurs.
+- **The fourth outcome.** Besides present, absent and unavailable, the index
+  answers INDEX-SATURATED (`:mpx-saturated`): the home page and its
+  overflow are both full (`fn-mpxt-saturatedp`), so the placement has
+  nowhere to go. The placement is not made and the table keeps every
+  mapping (`fn-mpxt-put-places-iff-not-saturated`,
+  `fn-mpxt-add-saturated-keeps-the-table`); the served POST refuses by name
+  before durable acceptance (the catalog's key-argument export at THE
+  SWITCH), the health state names the rebuild. It is admission capacity,
+  separate from the reader's bound, and an implementation limit stated as
+  such (2,049 Message-IDs whose tags share a home page cannot be admitted
+  however empty the rest is), never slipped in under D27. Under the table
+  condition "no page and its successor are both full" nothing is refused.
+- **Fixtures are structural**: direct tags, a home page and its overflow
+  filled by 2,048 entries under one tag, an equal-tag/different-Message-ID
+  exact-compare witness (open), a saturated-grow witness (open) -- not
+  claims about BLAKE3.
+- **B.6, corrected**: a verdict of a concrete structure behind an abstract
+  stobj needs its inputs in the logic: the saturated export takes the key
+  as an argument and its logic is over the fold `fn-mpxt-build key rows`;
+  the catalog's correspondence clause is that equality.

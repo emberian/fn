@@ -75,7 +75,8 @@
        (or (null (fn-auth-session-subject x))
            (fn-prin-idp (fn-auth-session-subject x)))
        (booleanp (fn-auth-session-tlsp x))
-       (booleanp (fn-auth-session-handshakingp x))))
+       (booleanp (fn-auth-session-handshakingp x))
+       (fn-zc-statep (fn-auth-session-compress x))))
 
 (defthm fn-scar-auth-sessionp-is-auth-sessionp
   (implies (fn-node-statep live)

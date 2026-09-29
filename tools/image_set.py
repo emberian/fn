@@ -4,6 +4,7 @@
     python3 tools/image_set.py publish TREE SHA [--base DIR]
     python3 tools/image_set.py link SHA TREE IMAGE... [--base DIR]
     python3 tools/image_set.py check SHA [--base DIR]
+    python3 tools/image_set.py link-run RUN TREE IMAGE...
 
 An image build is the long pole of a native run (~25 min; python-diet-2 and
 others, 2026-09-28), and a lane that changed only tests or tools rebuilt the
@@ -33,6 +34,14 @@ directory into place; an existing BASE/SHA is left alone (refused, exit 1).
 `link` verifies the set's SHA256SUMS and symlinks the named images (their
 cores, world-deps, and lib/) into TREE/build; a named image the set lacks is
 refused by name (exit 1).  `check` verifies the sums.
+
+`link-run` (`hbox_native.sh --reuse-image RUN`) links the images an earlier
+hbox_native run built, RUN/tree/build, the same way, and writes
+TREE/build/REUSED_SOURCE: the source RUN's run.log names (`== source commit
+X` / `== source worktree X`), which is the images' identity source.  A run
+without that line, or without a named image's launcher and core, is refused
+by name: python-diet-3 and correctness-remainder reran modules against
+another run's images by hand (2026-09-29).
 """
 from __future__ import annotations
 
@@ -160,6 +169,12 @@ def link(sha: str, tree: Path, wanted: list[str], base: Path = BASE) -> int:
         names += [file, f"{file}.core"]
         if (directory / f"{file}.world-deps").is_file():
             names.append(f"{file}.world-deps")
+    place_links(directory, build, names)
+    print(f"image_set: linked {', '.join(wanted)} from {directory} into {build}")
+    return 0
+
+
+def place_links(directory: Path, build: Path, names: list[str]) -> None:
     for name in names:
         place = build / name
         if place.is_symlink() or place.is_file():
@@ -167,7 +182,42 @@ def link(sha: str, tree: Path, wanted: list[str], base: Path = BASE) -> int:
         elif place.is_dir():
             shutil.rmtree(place)
         place.symlink_to(directory / name)
-    print(f"image_set: linked {', '.join(wanted)} from {directory} into {build}")
+
+
+SOURCE_LINE = re.compile(r"^== source (?:commit|worktree) (\S+)\s*$", re.MULTILINE)
+
+
+def link_run(run: Path, tree: Path, wanted: list[str]) -> int:
+    directory = run / "tree" / "build"
+    try:
+        log = (run / "run.log").read_text(encoding="utf-8", errors="replace")
+    except OSError as error:
+        print(f"image_set: no earlier run at {run}: {error}", file=sys.stderr)
+        return 1
+    found = SOURCE_LINE.search(log)
+    if not found:
+        print(f"image_set: {run}/run.log names no `== source` line: the images' source "
+              "is unknown, so they are not reused", file=sys.stderr)
+        return 1
+    missing = [name for name in wanted
+               if not (directory / IMAGES[name]).is_file()
+               or not (directory / f"{IMAGES[name]}.core").is_file()]
+    if missing:
+        print(f"image_set: {directory} has no {', '.join(missing)} image (launcher and "
+              "core); that run did not build it", file=sys.stderr)
+        return 1
+    build = tree / "build"
+    build.mkdir(parents=True, exist_ok=True)
+    names = ["lib"] if (directory / "lib").is_dir() else []
+    for name in wanted:
+        file = IMAGES[name]
+        names += [file, f"{file}.core"]
+        if (directory / f"{file}.world-deps").is_file():
+            names.append(f"{file}.world-deps")
+    place_links(directory, build, names)
+    (build / "REUSED_SOURCE").write_text(found.group(1) + "\n")
+    print(f"image_set: linked {', '.join(wanted)} from the run {run} "
+          f"(source {found.group(1)}) into {build}")
     return 0
 
 
@@ -185,7 +235,13 @@ def main(argv: list[str] | None = None) -> int:
     three.add_argument("sha")
     for each in (one, two, three):
         each.add_argument("--base", default=str(BASE))
+    four = sub.add_parser("link-run")
+    four.add_argument("run")
+    four.add_argument("tree")
+    four.add_argument("images", nargs="+", choices=sorted(IMAGES))
     args = parser.parse_args(argv)
+    if args.action == "link-run":
+        return link_run(Path(args.run), Path(args.tree).resolve(), args.images)
     base = Path(args.base)
     if args.action == "publish":
         return publish(Path(args.tree).resolve(), args.sha, base)

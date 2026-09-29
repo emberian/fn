@@ -11,6 +11,7 @@
 (include-book "../books/consumer-wait-codec")
 (include-book "../books/consumer-reason")
 (include-book "../books/topic-history-local-control")
+(include-book "../books/native-live-buffer")
 
 (defun fn-native-control-host-topic-request-encode (operation sequence quota)
   (declare (xargs :mode :program))
@@ -303,3 +304,15 @@
 (defun fn-native-control-host-consumer-article-json (summary)
   (declare (xargs :mode :program))
   (fn-ncr-article-json summary))
+
+;; D27 (PRF-960): the frame decoded in place from the control buffer, the
+;; whole dispatch of host/native/control.lisp fnn-control-handle-client in
+;; one entry from one digest (fn-frb-site-decode-is-reference: the tuple is
+;; fn-frb-site-reference of the octet list: the FNCT decoders, then the FNLS
+;; requests as fn-native-live-status-host-requestp and
+;; fn-native-live-pages-host-requestp decide them).  Called through fnn-core
+;; with the live control buffer (io.lisp fnn-octets-ctl-fill of the frame),
+;; under the control buffer lock.
+(defun fn-native-control-host-decode-frame (fn-octets-ctl)
+  (declare (xargs :stobjs fn-octets-ctl :mode :program))
+  (fn-frb-site-decode fn-octets-ctl))
