@@ -1496,7 +1496,9 @@
         "PRF-277",
         "PRF-284",
         "PRF-289",
-        "PRF-266"
+        "PRF-266",
+        "PRF-935",
+        "PRF-946"
       ],
       "verification": [
         "proof",
@@ -2077,7 +2079,10 @@
       "proof_targets": [
         "PRF-083",
         "PRF-104",
-        "PRF-199"
+        "PRF-199",
+        "PRF-959",
+        "PRF-937",
+        "PRF-945"
       ],
       "verification": [
         "proof",
@@ -2699,7 +2704,9 @@
         "PRF-918",
         "PRF-927",
         "PRF-930",
-        "PRF-934"
+        "PRF-934",
+        "PRF-939",
+        "PRF-966"
       ],
       "verification": [
         "proof",
@@ -3282,7 +3289,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-172",
-        "PRF-304"
+        "PRF-304",
+        "PRF-967"
       ],
       "verification": [
         "proof",
@@ -3584,7 +3592,10 @@
         "PRF-209",
         "PRF-242",
         "PRF-261",
-        "PRF-266"
+        "PRF-266",
+        "PRF-937",
+        "PRF-945",
+        "PRF-946"
       ],
       "verification": [
         "proof",
@@ -3646,7 +3657,10 @@
         "PRF-201",
         "PRF-204",
         "PRF-332",
-        "PRF-367"
+        "PRF-367",
+        "PRF-957",
+        "PRF-969",
+        "PRF-970"
       ],
       "verification": [
         "proof",
@@ -5116,7 +5130,9 @@
       "proof_targets": [
         "PRF-918",
         "PRF-927",
-        "PRF-930"
+        "PRF-930",
+        "PRF-939",
+        "PRF-966"
       ],
       "verification": [
         "proof",
@@ -5218,7 +5234,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-914"
+        "PRF-914",
+        "PRF-950"
       ],
       "verification": [
         "proof",
@@ -5234,9 +5251,13 @@
         "host/workflow-host.lisp",
         "host/native/workflow.lisp",
         "host/native/bp-obligation.lisp",
-        "tests/test_bp_obligation_native.py"
+        "tests/test_bp_obligation_native.py",
+        "books/bp-carry-waiver.lisp",
+        "tests/acl2/bp-carry-waiver-tests.lisp",
+        "host/bp-release-owner-host.lisp",
+        "tests/test_native_bp_carry_abandon.py"
       ],
-      "implementation_note": "Lane operations (PKT-869). `fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK REASON...}' over the FNWF workflow journal, offline beside the store as the other obligation verbs are (a served store refuses). The controls are durable records of their own application journal (domain :carry at JOURNAL/carry, frame FNCC: books/bp-carry-frame.lisp), replayed over the workflow image, never FNWF kinds: books/frame-journal.lisp has about 1,100 dependents and each FNWF kind doubled books/frame's fn-frame-workflow-protected guard proof (476k to 874k steps for one). A drop stops the carrying and keeps the Store pin: books/retention.lisp releases a pin only with the evidence it was undertaken against (the receipt's), so an operator's abandonment of the pin is a new evidence kind, a decision for the register. Open: the verbs act on a stopped BP node; the application journals' lifetime namespace (app-journal.lisp *fn-aj-max-records* 4096, 16 MiB for FNWF) is a BP data cap (bounds inventory 1.4)."
+      "implementation_note": "Lane operations (PKT-869). `fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK REASON...}' over the FNWF workflow journal, offline beside the store as the other obligation verbs are (a served store refuses). The controls are durable records of their own application journal (domain :carry at JOURNAL/carry, frame FNCC: books/bp-carry-frame.lisp), replayed over the workflow image, never FNWF kinds: books/frame-journal.lisp has about 1,100 dependents and each FNWF kind doubled books/frame's fn-frame-workflow-protected guard proof (476k to 874k steps for one). A drop stops the carrying and keeps the Store pin: books/retention.lisp releases a pin only with the evidence it was undertaken against (the receipt's), so an operator's abandonment of the pin is a new evidence kind, a decision for the register. Open: the verbs act on a stopped BP node; the application journals' lifetime namespace (app-journal.lisp *fn-aj-max-records* 4096, 16 MiB for FNWF) is a BP data cap (bounds inventory 1.4). Lane carry-abandon (2026-09-29, PRF-950, ember approved): `drop WORK --abandon REASON...' is the operator's waiver: a :waive record of the carry journal (principal uid:N, reason) decided only while the Store pin stands (not-held otherwise), durable before the Store retention event it authors, which is the receipt's own :release event (fnn-owner-retention-commit), so retention has one release path; a waiver cut off before its Store event is completed at the next writable owner open, once; a receipt for a waived work is refused (carry-waived). The drop itself still keeps the pin."
     },
     {
       "id": "NNT-057",
@@ -5289,6 +5310,25 @@
         "tests/test_bp_service_native.py",
         "planning/evidence/bp-cursors-2026-09-27.md"
       ]
+    },
+    {
+      "id": "STO-038",
+      "title": "The store's limits (T, H, A) are operator policy changed in place: one configuration event, applied now within the running reservation or at the next start with no data moved, refused by name with the number below current use; never an export and an import",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-940"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/limits-live.lisp",
+        "tests/acl2/limits-live-tests.lisp"
+      ],
+      "implementation_note": "Row S1. The sealed profile's digest is in the genesis record, so config.json is never rewritten: a limit is a :set-limit row folded over it (fn-lim-effective). Verb and native scenario land with lane limits-live-3."
     }
   ]
 }

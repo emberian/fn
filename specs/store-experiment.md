@@ -174,10 +174,11 @@ Configuration is checksummed
 and exact-versioned; the adapter refuses other profiles rather than silently
 using host defaults. The aggregate cap bounds the temporary all-record replay
 input. A future streaming/checkpoint implementation requires its own argument.
-The group list is no longer written into the configuration:
-[`books/store-config.lisp`](../books/store-config.lisp) owns it, the two
-directions of the name/code mapping are proved inverse, and a store records
-only which version of the table it was written under (`fn-store-groups-1`).
+The group list is not a fixed table: a store's groups are its configuration
+record history (packet R4), and
+[`books/store-config.lisp`](../books/store-config.lisp) keeps the name/code
+mapping over a table parameter, its two directions proved inverse
+(`fn-store-group-name-of-code-in`, `fn-store-group-code-in-of-name`).
 The 65,538-octet encoded-record bound is a model constant, not store
 configuration: `books/frame.lisp`'s `*fn-frame-max-store-payload*` is its one
 owner, `tools/run_store.py` reads it from the bridge to size its bounded read

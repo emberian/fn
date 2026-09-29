@@ -50,7 +50,7 @@ pinned dtn7-rs build and ION stop being fn's agent and become fn's *peers*.
 | Application agent, administrative element | the sender workflow `fn-bp` (bp-workflow) and the receiver `fn-bpr` (bp-receipt) are the application agent; status reports are generated and parsed by `fn-bpn` itself and are the administrative element |
 | Node ID, endpoint | `fn-bpp-eidp` values; fn's node ID is a `dtn` node ID; its registration is one singleton endpoint `dtn://<node>/fn` in the Active state |
 | Bundle store | the fn Store journal, with a new record family (§1.3). A bundle is a durable record; its payload is an object the Store already keeps |
-| Retention constraint (§3.1, §5.4, §5.6, §5.7) | `fn-bpn-constraintp`: `:dispatch-pending`, `:forward-pending`, `:reassembly-pending`; a per-bundle set in the bundle record |
+| Retention constraint (§3.1, §5.4, §5.6, §5.7) | the constraints slot of the held row (`fn-bpnf-held`, recognized by `fn-bpnf-heldp`): `(:dispatch-pending)` or `(:forward-pending)`; a fragment awaiting reassembly carries `(:dispatch-pending)` as its one job (`fn-bpnf-reassembly-job-onlyp`), so there is no separate `:reassembly-pending` |
 | Custody | not in BPv7. RFC 9171 Appendix A removes RFC 5050 custody transfer and fn imports nothing of it |
 | Convergence layer adapter (§7) | `fn-tcl-*` (§2), sockets in the native host |
 | Contact plan, routing (§5.4 step 2) | the wave-3 scheduler: `fn-sched-contact-holdsp` decides whether a peer is reachable now; `fn-sched-selection` decides which work goes |
@@ -59,14 +59,19 @@ pinned dtn7-rs build and ION stop being fn's agent and become fn's *peers*.
 bundle: the archive pin an accepted article holds (RET-001, `fn-retain`), and
 the `:forward` pin an outstanding work holds (`fn-bprl-undertake`). Both are
 released only by `fn-retain-release` under checked application evidence
-(`fn-bprl-release-decision`, a receipt). These are what "custody" means in
+(`fn-bprl-release-decision`, a receipt), and the `:forward` pin also by the
+operator's explicit waiver (`carry drop WORK --abandon`, PRF-950): a durable
+record naming the principal and the reason, decided only while the pin
+stands, whose release is the receipt's own retention event, once
+(`fn-bpcw-waiver-releases-exactly-once`, books/bp-carry-waiver.lisp). These are what "custody" means in
 fn: a promise about content, discharged by a receipt. They are deliberately
 *not* BPv7 retention constraints, which are BPA bookkeeping about one bundle
 and vanish on deletion (§5.10 step 2). A bundle is a carrier; the article is
 the subject. When a carrier expires, is refused or is deleted, the subject's
 obligation is untouched and the scheduler makes a new carrier
 (`fn-sched-expiry-preserves-workflow`, already proved on the scheduler side;
-`fn-bpn-step-preserves-obligations` below on the node side). The word
+`fn-bpn-step-emits-no-release-from-actual-effects` on the node side: the
+node step never emits a `:release`). The word
 "custody" is never used for retention constraints in fn's books.
 
 ### 1.2 What fn keeps from RFC 9171 §5, verbatim
@@ -182,11 +187,14 @@ Packet 0 adds `fn-bpb-*`:
 ;; each block's data length is checked before take.
 ```
 
-Theorems required of packet 0: `fn-bpb-decode-of-encode`,
-`fn-bpb-accepted-input-is-canonical` (the primary-block proof pattern, over
-arbitrary input), `fn-bpb-block-numbers-unique` (a decoded bundle has
-pairwise distinct block numbers, payload is number 1, §4.1),
-`fn-bpb-decode-allocates-within-limit`. The CRC over a canonical block
+Theorems required of packet 0: `fn-bpb-decode-of-encode`; whole-bundle
+canonicality (an accepted input is the encoding of what was accepted, the
+primary-block proof pattern over arbitrary input), which is open: only its
+per-block half, `fn-bpb-decode-block-is-canonical-by-construction`, is
+proved; pairwise distinct block numbers with the payload numbered 1 (§4.1),
+carried by `fn-bpb-decode-yields-bundle` (§1.4.1); and the bounds before
+allocation, `fn-bpb-decode-refuses-overlong-input` and
+`fn-bpb-decoded-data-is-within-bound`. The CRC over a canonical block
 includes its own zero-filled CRC field, as for the primary block, and reuses
 `fn-bpp-crc16`/`fn-bpp-crc32c`.
 
@@ -205,7 +213,7 @@ than hides:
 - The payload block is a field of `fn-bpb-bundle`, not the last element of
   its block list, because RFC 9171 section 4.1 requires it last and unique
   and "last" is not a property to re-derive at every use.
-- `fn-bpb-block-numbers-unique` is not a separate theorem: pairwise-distinct
+- Block-number uniqueness is not a separate theorem: pairwise-distinct
   numbers, no block numbered 0 or 1 among the canonical blocks, and the
   payload block numbered 1 are conjuncts of `fn-bpb-bundlep`, which
   `fn-bpb-decode-yields-bundle` establishes for every accepted input. A
@@ -470,11 +478,13 @@ outcomes, `fn-bpn-expiry` over `fn-clock-expiry-decision`,
 
 Open, and each one is a named absence rather than a weakened claim:
 
-- `fn-bpn-make-state`, `fn-bpn-statep`, the bundle list, the retention
-  constraints, `fn-bpn-step` and `fn-bpn-trace`: none exists. The theorems
-  of section 1.6 are stated against `fn-bpn-step` and therefore have no
-  subject yet; T1 to T6 are **not** proved and nothing in this tree claims
-  them.
+- A node state and its recognizer, the bundle list, the retention
+  constraints, a step and a trace: none existed then. The outbound machine
+  now is `fn-bpn-step` and `fn-bpn-trace` over `fn-bpn-machine-statep` in
+  `books/bp-node-machine.lisp` (bp-node-machine.md), with its own state; the
+  statements of section 1.6 are written against this design's state, T1 to
+  T3 and T5 are **not** proved against that machine, and T4 and T6 are
+  answered where section 1.6 says so.
 - The FNBS record family and the `(:bpn-sequence n)` durable frontier of
   section 1.3: absent. `host/native/bp.lisp` takes the sequence number as an
   argument and says in its own header that a restarted operator must not
@@ -482,7 +492,9 @@ Open, and each one is a named absence rather than a weakened claim:
 - Reassembly: `fn-bpn-receive` refuses a fragment (`:fragment-not-reassembled`)
   rather than reassembling it. `books/bp-fragment` has the reassembly and is
   not wired in.
-- Status reports (section 6.1.1) and `fn-bpn-make-report`: absent. A received
+- Status reports (section 6.1.1): absent then. A deletion report is now
+  proposed by `fn-bpn-report-delete-propose-step`
+  (`books/bp-node-report-step.lisp`). A received
   administrative record is decoded as a bundle like any other and its payload
   is handed out as an ADU; nothing turns it into a transport observation.
 - Dispatch: `fn-bpn-receive` does not decide local delivery against
@@ -518,10 +530,12 @@ and `(fn-bpn-next st event)` the state.
                              (equal ref (fn-bpn-object-of (fn-bpf-result-bytes r))))))))))
 ```
 
-`validated` is set only by `fn-bpn-receive` on a successful
-`fn-bpb-decode-bundle`, and `fn-bpb-decode-bundle` succeeds only when every
-attached CRC verifies (`fn-bpb-accepted-block-has-valid-crc`, the canonical
-analogue of `fn-bpp-accepted-block-has-valid-crc`).
+In this design `validated` is set only by `fn-bpn-receive` on a successful
+`fn-bpb-decode`, and `fn-bpb-decode` succeeds only when every attached CRC
+verifies: `fn-bpb-decode-block` refuses `:crc-mismatch`, and
+`fn-bpb-decode-block-is-canonical-by-construction` says an accepted block is
+its own encoding, CRC field included. There is no separate canonical-block
+analogue of `fn-bpp-accepted-block-has-valid-crc`.
 
 **T2. No deletion of an undelivered bundle whose obligation is open.**
 Two statements, because the obligation lives on the application side.
@@ -609,14 +623,16 @@ sure.
                        p))))
 ```
 
-The first is a corollary of the certified
-`fn-bpf-complete-agreeing-cover-reassembles-to-payload` once the two open
-lemmas in `bp-fragment-invariants` land: `fn-bpf-cut-covers` (a cut covers
-its payload) and `fn-bpf-reassemble-ok-agrees-with-every-fragment`. Those two
-are packet 2's first deliverable, because T4 is not provable without them.
-The second uses `fn-bpf-fragment-block-preserves-adu-key` (certified) and a
-new `fn-bpn-unfragment` that clears the fragment flag, drops the two fragment
-fields and recomputes the CRC.
+The first is certified over `fn-bpf-fragment` as
+`fn-bpf-fragment-then-reassemble-is-identity`, from
+`fn-bpf-complete-agreeing-cover-reassembles-to-payload`, `fn-bpf-cut-covers-range`
+(a cut covers its payload) and `fn-bpf-cut-agrees`; its companion
+`fn-bpf-reassemble-ok-agrees-with-every-fragment` is certified too. The
+second is `fn-bpf-fragment-block-preserves-adu-key` with
+`fn-bpf-whole-parent-fragments-restore-parent`: `fn-bpf-unfragment-block`
+clears the fragment flag and drops the two fragment fields, and returns the
+whole parent. The primary block record keeps a CRC type, not a CRC value, so
+the CRC is computed at encoding and nothing is recomputed.
 
 **T5. Status reports never discharge obligations.**
 
@@ -646,13 +662,20 @@ and the definition of `fn-bp-observe-transport` (bp-workflow.md: "BP delivery
 alone does not close the fn obligation"); it is restated here so that the
 node's theorem file names the composition explicitly.
 
-**T6. State and replay.** `fn-bpn-step-preserves-statep`,
-`fn-bpn-trace-preserves-statep`, `fn-bpn-ids-unique`,
-`fn-bpn-replay-journal-is-trace` (the FNBS records denote events, as
-`fn-bp-replay-journal` does for FNWF), and
-`fn-bpn-restart-reanchors-age` (after `(:restart obs)` every anchor's
-monotonic is `obs`'s and its age is the age estimated at the last durable
-observation, time.md's "re-established from durable state").
+**T6. State and replay.** Proposed as state preservation, unique ids,
+replay-is-trace and restart re-anchoring. What the machine carries:
+`fn-bpn-step-preserves-machine-invariant`,
+`fn-bpn-step-preserves-lifecycle-invariant` and
+`fn-bpn-trace-preserves-lifecycle-invariant` (state);
+`fn-bpnjc-job-list-keys-are-distinct` (every `fn-bpn-job-listp` has distinct
+job keys); `fn-bpn-replay-records-preserves-machine-invariant` (replaying
+FNBS records keeps the invariant). That the FNBS records denote the trace
+that wrote them, as `fn-bp-replay-journal-is-trace-when-ok` says of
+`fn-bp-replay-journal` for FNWF, is not proved. Re-anchoring was not built:
+a same-domain restart keeps each job's age anchor
+(`fn-bpn-resume-job-keeps-wire-and-peer`), and a recovery whose clock boot
+domain disagrees fences instead of comparing a retained anchor
+(`fn-bpnp-step-domain-disagreement-fences`).
 
 ## 2. The convergence layer fn owns: TCPCLv4
 
@@ -688,9 +711,12 @@ buffer, exactly as `fn-bpc-decode` preflights (bp-primary.md).
 | SESS_TERM 0x05 (§6.1) | `flags:U8` `reason:U8` | flags bit 0 = REPLY; reason Table 9, unknown read as `Unknown` |
 | MSG_REJECT 0x06 (§5.1.2) | `reason:U8` `rejected-header:U8` | |
 
-`fn-tcl-encode` is the inverse; `fn-tcl-decode-of-encode` and
-`fn-tcl-accepted-input-is-canonical` are the codec theorems (the grammar is
-fixed-width except for lengths, so canonicality is length-exactness).
+`fn-tcl-encode` is the inverse. The codec theorems are per message: the
+round trips `fn-tcl-decode-contact-of-encode` and
+`fn-tcl-decode-message-of-encode-segment` with one sibling per message type,
+and the canonicality theorems `fn-tcl-accepted-contact-is-canonical` and
+`fn-tcl-accepted-message-is-canonical` (the grammar is fixed-width except for
+lengths, so canonicality is length-exactness).
 
 ### 2.2 Session state
 
@@ -811,8 +837,10 @@ theorem and not a weaker one.
 **C3. An interrupted transfer resumes or is refused, never partially
 delivered.** TCPCLv4 has no in-session resumption; "resume" is the
 scheduler retrying the bundle in a later session, and a receiver that already
-holds the bundle answers `Completed` (which `fn-bpn-forward-result` counts as
-`:sent`).
+holds the bundle answers `Completed`. `fn-bpnp-tcpcl-outcome` maps every
+refusal, `Completed` included, to `(:refused reason)`, so the node does not
+yet count `Completed` as sent; the attempt is requeued
+(`fn-bpn-forward-result-step`).
 
 ```lisp
 (defthm fn-tcl-inbound-outcomes-are-exhaustive
@@ -839,9 +867,10 @@ holds the bundle answers `Completed` (which `fn-bpn-forward-result` counts as
 
 **C4. Discipline and bounds.**
 `fn-tcl-no-interleaving` (a second START while an inbound is live is
-rejected and no second inbound is created), `fn-tcl-refuse-only-after-preceding-settled`
-(§5.2.4 MUST: a refusal for id implies every earlier id was fully acked or
-refused), `fn-tcl-segment-never-exceeds-mru` (the decoder returns `(:error
+rejected and no second inbound is created); the §5.2.4 MUST (a refusal for
+id implies every earlier id was fully acked or refused) holds by structure,
+not by a theorem: one inbound at a time, every segment acked in the step that
+accepts it (tcpcl.md §4); `fn-tcl-segment-never-exceeds-mru` (the decoder returns `(:error
 :segment-exceeds-mru)` without taking data when `data-len > segment-mru`, and
 no `(:need k)` is ever answered with `k` larger than the MRU plus the fixed
 header), `fn-tcl-ending-refuses-new-transfers`,
@@ -864,15 +893,20 @@ surface and nowhere else:
   `fn-tcl-tick`, `fn-tcl-send`, `fn-tcl-terminate`, `fn-tcl-tcp-closed`, each
   marshalling one session global keyed by session id, like
   `fn-sched-host-install`).
-- `host/bp-node-host.lisp` (wrappers over `fn-bpn-step`, threading the
-  workflow and scheduler globals read-only for `fn-bpn-obligation-openp`).
+- `host/bp-node-host.lisp` (wrappers over `books/bp-node`: endpoint IDs,
+  configuration, send, receive, sequence recovery). The outbound lifecycle is
+  `fn-bpnj-step`, called from `host/native/bp-service.lisp`; the design's
+  read-only threading of workflow and scheduler state into an obligation
+  test was not built.
 - `host/native/tcpcl.lisp` (raw): `fnn-tcl-listen port`, `fnn-tcl-connect
   host port` (both `AF_INET6`, no TLS in wave 4), and one `fnn-tcl-session
   fd role` loop: read at most `segment-mtu + 32` octets, prepend the carry,
   `fnn-call fn-tcl-host-drive`, write every emitted message with the
-  partial-write offset tracked per HST-002, deliver `:bundle-received` to
-  `fn-bpn-host-step` **after** the FNBS `:bundle-stored` record is barriered,
-  and only then emit the final XFER_ACK (so an ack is fn's durable acceptance
+  partial-write offset tracked per HST-002, hand `:bundle-received` to the
+  node's delivery callback (`fnn-tcl-act`), and release the final XFER_ACK,
+  held with the rest of the batch's output, only **after** the bundle's
+  staging barrier completes, `fn-tcl-delivery-plan` choosing which held
+  messages go (so an ack is fn's durable acceptance
   of the octets, which is stronger than RFC 9174 requires and is what makes
   the ack meaningful to a peer that retries on failure). Keepalive ticks come
   from the same monotonic source the clock observation uses.
@@ -952,9 +986,10 @@ verification function as a **constrained** function under an `encapsulate`,
 `(fn-bps-verify context params key-ref target-octets result) -> :verified |
 :failed | :unsupported`, whose real implementation is the host's trusted
 cryptographic primitive (HST-004, A-CRYPTO). Nothing in the certified books
-computes an HMAC.
+computes an HMAC. Packet 8 has not been started: no `fn-bps-*` definition
+exists, and `books/bp-primary.lisp` keeps RFC 9172 and RFC 9173 out of scope.
 
-What the receiver would verify, under `fn-bpn-security-policy` per peer:
+What the receiver would verify, under a per-peer security policy:
 
 | Policy | `fn-bpn-receive` step 3' (after CRCs, before storing) |
 | --- | --- |
@@ -974,7 +1009,7 @@ Theorem to carry with the slot:
            (equal (fn-bpn-verification-of st id 1) :verified)))
 ```
 
-and `fn-bpn-transit-never-decrypts` (a `:cl-send` image for a bundle with a
+and a transit theorem (a `:cl-send` image for a bundle with a
 BCB carries the BCB and the ciphertext unchanged).
 
 **TCPCL TLS** (RFC 9174 §4.4) is the other slot: `CAN_TLS` negotiation is
@@ -998,21 +1033,23 @@ answering w11/phantom-cites). `specs/bp-bundle.md` and `specs/bp-node.md`
 were never written and should not be: §1.4 and §1.5 of THIS document are
 the frame and the machine, and their status sections (§1.4.1, §1.4.2,
 §1.5.1) are where those two specs' content lives. `books/bp-node-records`
-in packet 1 is an unbuilt deliverable rather than a misnamed one — packet 1
-has not been started, and the FNBS record family it names does not exist.
+in packet 1 exists and is smaller than the packet: it holds the first FNBS
+record, the creation-sequence frontier (reserve a sequence in ACL2, frame it,
+persist it, then author the bundle). The rest of packet 1's record family and
+its replay-is-trace theorem are not built.
 Packet 4's `books/tcpcl.lisp` was repaired to the four books that did land.
 
 | # | Packet | Owner | Deliverables | Acceptance |
 | --- | --- | --- | --- | --- |
-| 0 | Bundle frame | core | `books/bp-bundle`, `-invariants`, `tests/acl2/bp-bundle-tests`; `specs/bp-bundle.md` | `fn-bpb-decode-of-encode`, `fn-bpb-accepted-input-is-canonical`, `fn-bpb-block-numbers-unique`, bounds theorem; vectors: the `bp7` crate's `doc/encoding_samples.md` blocks (with the stale-SSP caveat already recorded) and an ION-emitted bundle captured in lab I3 |
-| 1 | Bundle store records | core + host | FNBS record family in `books/frame`, replay in `books/bp-node-records`, `(:bpn-sequence n)` frontier | `fn-bpn-replay-journal-is-trace`; the five process-death cuts of `tests/test_bp_receive_process_crash.py` re-targeted at FNBS |
-| 2 | Fragment lemmas | core | `fn-bpf-cut-covers`, `fn-bpf-reassemble-ok-agrees-with-every-fragment` uncommented and proved | both certify; T4 stated and certified against them |
-| 3 | Node machine | core | `books/bp-node`, `-invariants`, teeth; `specs/bp-node.md` | T1, T2, T3, T5, T6 certified; each with a concrete tooth (a fabricated `validated` bundle with a bad CRC is not `fn-bpn-statep`; a `:clock` event with `:uncertain` deletes nothing; an admin-record bundle produces no `:deliver`) |
+| 0 | Bundle frame | core | `books/bp-bundle`, `-invariants`, `tests/acl2/bp-bundle-tests`; `specs/bp-bundle.md` | `fn-bpb-decode-of-encode`; whole-bundle canonicality (open; per block `fn-bpb-decode-block-is-canonical-by-construction`); distinct block numbers as conjuncts of `fn-bpb-bundlep` (`fn-bpb-decode-yields-bundle`); bounds `fn-bpb-decode-refuses-overlong-input`; vectors: the `bp7` crate's `doc/encoding_samples.md` blocks (with the stale-SSP caveat already recorded) and an ION-emitted bundle captured in lab I3 |
+| 1 | Bundle store records | core + host | FNBS record family in `books/frame`, replay in `books/bp-node-records`, `(:bpn-sequence n)` frontier | an FNBS replay-is-trace theorem, the node analogue of `fn-bp-replay-journal-is-trace-when-ok` (not proved; §1.6 T6); the five process-death cuts of `tests/test_bp_receive_process_crash.py` re-targeted at FNBS |
+| 2 | Fragment lemmas | core | `fn-bpf-cut-covers-range`, `fn-bpf-reassemble-ok-agrees-with-every-fragment` uncommented and proved | both certify; T4's first half certified as `fn-bpf-fragment-then-reassemble-is-identity` |
+| 3 | Node machine | core | `books/bp-node`, `-invariants`, teeth; `specs/bp-node.md` | T1, T2, T3, T5, T6 certified; each with a concrete tooth (a fabricated `validated` bundle with a bad CRC fails the state recognizer; a `:clock` event with `:uncertain` deletes nothing; an admin-record bundle produces no `:deliver`) |
 | 4 | TCPCL books | core | `books/tcpcl-octets`, `-records`, `-session`, `-invariants`, teeth; `specs/tcpcl.md` | codec round trip and canonicality; C1–C4 certified; the partition tooth is the chunk-size sweep as `assert-event`s |
 | 5 | Native host | host | `host/tcpcl-host.lisp`, `host/bp-node-host.lisp`, `host/native/tcpcl.lisp`; `tools/fn_native.py` grows `serve-tcpcl` and `connect-tcpcl`; lab I1 | I1 evidence record; fn–fn exchange with the receipt returning over TCPCL; SIGKILL at every message boundary recovers per T2/T6; **deletes** `tools/bpa_dtn7.py`, `tools/bpa_payload_extract.rs`, `tests/bp-dtn7/build_payload_extractor.sh`, `lab_bpa.py`, `bp_fn_ingress_driver.py`, `fn_sender_lab.py`, `run_fn_exchange_lab.py`, `run_fn_ingress_lab.sh`, `run_two_node.sh`, the FNBI inbox code in `workflow_journal.py`, and `tests/test_bp_receive*.py` (replaced by native-host tests) |
 | 6 | Workflow and scheduler alignment | core (sender-proofs) + scheduler | `fn-bp-transport-statusp` becomes `:intent :bundle-created :attempted :forwarded :delivered :expired :deleted :lost :no-contact :restart :unknown` (rank preserved; the three BPA-era statuses removed); `fn-sched-open-event`/`close-event` drive CL sessions; `fn-bpi-context-bundle-id` becomes an `fn-bpp-bundle-id` | `bp-workflow*`, `bp-workflow-transport-invariants`, `scheduler*`, `bp-ingress*` re-certify; `fn-bp-observe-transport-never-moves-status-backward` unchanged in statement |
 | 7 | Interop labs | lab | I2 (dtn7-rs peer), I3 (ION peer), I4 (relay), I5 (hbox–persvati); reactive fragmentation on `No Resources` | one evidence record per lab with the feature matrix; no row claimed without its trace |
-| 8 | BPSec slot | core + host | `books/bpsec`, the `encapsulate`d `fn-bps-verify`, policy table; host HMAC-SHA2 under A-CRYPTO | `fn-bpn-deliver-under-policy-requires-verified-targets`, `fn-bpn-transit-never-decrypts`; RFC 9173 Appendix A test vectors |
+| 8 | BPSec slot | core + host | `books/bpsec`, the `encapsulate`d verification function, policy table; host HMAC-SHA2 under A-CRYPTO (not started, §4) | the §4 delivery-under-policy theorem and the transit theorem; RFC 9173 Appendix A test vectors |
 | 9 | LTP | core + lab (w3-ltp-ion) | `books/ltp`, `host/native/ltp.lisp` (UDP), lab against ION | red-part completeness theorem; evidence record |
 
 ### 5.1 Which books survive

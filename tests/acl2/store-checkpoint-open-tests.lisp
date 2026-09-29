@@ -149,8 +149,41 @@
                                                   (car (sco-t-segments)))
                                       (cdr (sco-t-segments)))))
                           :ok)))
-; fn-scc-decode-segments-of-segments: a value outside the tree universe is
-; not encoded.
+;; fn-scc-decode-segments-of-segments
+; Reachable positive witness: the capture the open writes satisfies all three
+; hypotheses (a tree, its encoding and its record count inside the u64 header
+; fields) and its segments decode to it.
+(assert-event (and (fn-scc-treep *sco-t-capture*)
+                   (< (+ 1 (len (fn-scc-encode *sco-t-capture*))) *fn-scc-u64-bound*)
+                   (< (fn-scc-value-sequence *sco-t-capture*) *fn-scc-u64-bound*)
+                   (< 0 (fn-scc-value-sequence *sco-t-capture*))
+                   (equal (fn-scc-decode-segments (fn-scc-segments *sco-t-capture* 64))
+                          (list :ok *sco-t-capture*))))
+; Removal of the record-count width: a tree whose count is 2^64 keeps the
+; tree and length hypotheses, and its segments are refused.
+(defconst *sco-t-wide-sequence* (list :v (expt 2 64)))
+(assert-event (and (fn-scc-treep *sco-t-wide-sequence*)
+                   (< (+ 1 (len (fn-scc-encode *sco-t-wide-sequence*))) *fn-scc-u64-bound*)
+                   (not (< (fn-scc-value-sequence *sco-t-wide-sequence*) *fn-scc-u64-bound*))
+                   (not (equal (fn-scc-decode-segments
+                                (fn-scc-segments *sco-t-wide-sequence* 64))
+                               (list :ok *sco-t-wide-sequence*)))))
+; Removal of fn-scc-treep beyond the rational case: an integer whose digit
+; count reaches 256 keeps both width hypotheses and is not encoded.
+(defconst *sco-t-wide-atom* (list :v 0 (expt 256 256)))
+(assert-event (with-guard-checking
+               :none
+               (and (not (fn-scc-treep *sco-t-wide-atom*))
+                    (< (+ 1 (len (fn-scc-encode *sco-t-wide-atom*))) *fn-scc-u64-bound*)
+                    (< (fn-scc-value-sequence *sco-t-wide-atom*) *fn-scc-u64-bound*)
+                    (not (equal (fn-scc-decode-segments
+                                 (fn-scc-segments *sco-t-wide-atom* 64))
+                                (list :ok *sco-t-wide-atom*))))))
+; The encoding-length width: no value of 2^64 octets can be built, so this is
+; a component witness, labelled apart: the header's length field cannot tell
+; 2^64 from 0, so a longer chunk would be framed with a wrong length.
+(assert-event (equal (fn-scc-header 0 1 (expt 2 64) 0) (fn-scc-header 0 1 0 0)))
+; A rational is outside the tree universe too.
 (must-fail-checked
  (defthm sco-t-codec-needs-a-tree
    (equal (fn-scc-decode-segments (fn-scc-segments (list 1/2) 64))

@@ -147,7 +147,12 @@ def defined_names() -> set:
     # (books/defrecord.lisp): prose names the record kind by it.
     for path in sorted((ROOT / "books").glob("*.lisp")):
         text = path.read_text(encoding="utf-8", errors="replace")
-        names |= set(re.findall(r"^\(fn-defrecord\s+([^\s()]+)", text, re.M | re.I))
+        names |= set(re.findall(r"^\s*\(fn-defrecord\s+([^\s()]+)", text, re.M | re.I))
+        # A named theory, `(deftheory fn-tcl-cheap-rules ...)', and an
+        # abstract stobj's exported, recognizer and creator names,
+        # `(fn-arena-seal-buffer :logic ... :exec ...)' inside `defabsstobj'.
+        names |= set(re.findall(r"\(deftheory\s+([a-z][^\s()]*)", text, re.I))
+        names |= set(re.findall(r"\((fn[^\s()]*)\s+:logic\s", text, re.I))
     return {name.lower() for name in names}
 
 
