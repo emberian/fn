@@ -4401,6 +4401,10 @@
         {
           "kind": "theorem",
           "name": "fn-pcb-admission-verdict-names-its-class"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-admission-verdict-names-a-revocation"
         }
       ]
     },
@@ -14358,6 +14362,19 @@
         {
           "kind": "theorem",
           "name": "fn-mpxt-spec-from-is-cat-seqs-for"
+        }
+      ]
+    },
+    {
+      "id": "PRF-959",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sckd-digest-of-written-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sckd-digest-ignores-revision-and-log"
         }
       ]
     }
