@@ -146,3 +146,32 @@
 (assert-event (equal (fn-splan-cursor-window nil) *fn-splan-cursor-window*))
 (assert-event (equal (fn-splan-cursor-window 0) *fn-splan-cursor-window*))
 (assert-event (equal (fn-splan-cursor-window 97) 97))
+
+;; PIPELINED (GPT-6, section 4: one cursor per outstanding response): two
+;; range commands outstanding are two cursor effects in stream order -- an
+;; OVER of 1-10 and an XOVER of 7-9 (past the group: its 420) -- and the
+;; loop drains them to the two unbounded replies, in order, at (5, 1).
+(defconst *spct-past* (fn-record-string-octets "7-9"))
+(defthm spct-pipelined-cursors-witness
+  (let* ((s (spct-session "fn.test"))
+         (effects (append (spct-effects s *spct-range* nil) (spct-effects s *spct-past* t)))
+         (r (fn-splan-cw-drain (fn-splan-of-effects effects) 5 1 400 *spct-a* *spct-c*)))
+    (and (fn-splan-fresh-effectsp effects)
+         (equal (len effects) 2)
+         (fn-splan-cw-okp (fn-splan-of-effects effects))
+         (equal (mv-nth 0 r) :ok)
+         (fn-splan-donep (mv-nth 2 r))
+         (equal (mv-nth 1 r) (append (spct-old s *spct-range* nil) (spct-old s *spct-past* t)))
+         (equal (take 3 (spct-old s *spct-past* t)) '(52 50 48))))
+  :rule-classes nil)
+
+;; RESIDUAL RENDERING after four rounds (fn-splan-cw-residual-rendering): the
+;; octets written followed by what the continuation owes are the whole reply,
+;; though the plan is not done.
+(defthm spct-residual-rendering-witness
+  (let* ((s (spct-session "fn.test"))
+         (r (spct-drain s *spct-range* nil 5 1 4)))
+    (and (not (fn-splan-donep (mv-nth 2 r)))
+         (equal (append (mv-nth 1 r) (fn-splan-cw-remaining (mv-nth 2 r) 1 *spct-a* *spct-c*))
+                (spct-old s *spct-range* nil))))
+  :rule-classes nil)

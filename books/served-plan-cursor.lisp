@@ -48,6 +48,53 @@
 ; live), so a commit or a withdrawal between quanta changes no quantum
 ; (over-window's fn-ovw-step-of-commit-pinned, -of-withdraw-pinned).  Seals
 ; and reclaim between quanta: over-window's header (open).
+;
+; GPT-6's review of resumable OVER (planning/review-2026-09-30-gpt6-log2.md
+; section 4), folded here:
+;   RESIDUAL RENDERING.  fn-splan-cw-residual-rendering: after ANY number of
+;   rounds, the octets written followed by what the continuation still owes
+;   are the whole expanded reply (ProducedPrefix ++ Remaining = R); the
+;   unsent suffix is the continuation's, owned by the connection
+;   (host/native/mux.lisp: the window the socket has not taken stays
+;   fnn-mux-conn-out with its write position out-at; a partial write
+;   advances the position, a would-block retries from it, and the plan
+;   advances only when the window left whole: no octet lost, none written
+;   twice); exact octets, one status line, one terminator, in order
+;   (fn-ovw-run-is-reply: a run IS the status line, the stuffed lines, the
+;   dot).
+;   THE CURSOR PINS (GROUP K TOP V LEGACYP OWEDP): the group, the FIXED range
+;   (TOP clamped once by fn-ovw-start, never re-read against the current
+;   catalog), the pinned view V, the interpretation (XOVER or OVER) and the
+;   response phase (the status line owed).  Pipelined commands: one cursor
+;   effect per outstanding response, in stream order (the keystone is over
+;   any effects list; tests/acl2/served-plan-cursor-tests.lisp
+;   spct-pipelined-cursors-witness).
+;   BUDGET.  A quantum is at most W NUMBERS: probed (the seek and the scan of
+;   the view, fn-cnx-range-aux over K..HI), read and formatted (at most W NOV
+;   lines): fn-ovw-step-window-at-most-w; and every quantum of a live cursor
+;   makes progress (fn-ovw-step-progresses: the remaining numbers strictly
+;   decrease, W >= 1 or not; a sparse window that finds no line still
+;   advances the cursor by its numbers).
+;   MID-RESPONSE FAILURE.  Before the status line: the arm's 412, or the
+;   423/420 (fn-ovw-start; fn-ovw-reply with no line).  After the 224
+;   started: a run yields the reply and nothing else (fn-ovw-run-is-reply);
+;   a quantum reads a pinned view and computes nothing that can refuse; the
+;   terminator is inside the LAST quantum's octets (fn-ovw-step: donep) and
+;   the host writes no octet of its own.  A connection whose write fails, or
+;   whose service stops, is finished with its plan (fnn-mux-finish: the plan
+;   is the connection's and dies with it): terminated, never an error line
+;   in the body, never a terminator after omitted rows.  A malformed cursor
+;   (never an okp plan's: fn-splan-cursor-step-of-okp-is-ok) is a core
+;   fault, as a non-octet reply effect is.
+;   QUANTA, NOT RESTART.  The cursor advances (K := HI + 1); a quantum runs
+;   once and its octets are spliced into the immutable plan; nothing is
+;   re-run and nothing survives the connection (no durable continuation).
+;   PLACEMENT.  The cursor is an effect only inside the -cat dispatcher's own
+;   result and then the connection's render plan (host state between
+;   quanta): never in the session, the octet stream or the pinned
+;   reference's effects; every chain equation is stated on the expansion
+;   (fn-ovw-expand), so the external history carries no cursor (join-f2-12's
+;   design; GPT-6's "request/connection state" is the plan).
 
 (in-package "ACL2")
 (include-book "served-plan")
@@ -81,7 +128,8 @@
 
 (defun fn-splan-rest-cursor-step (rest w fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
+                  :guard (and (natp w)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :verify-guards nil))
   (if (consp rest)
       (if (fn-splan-cursor-effectp (car rest))
@@ -102,10 +150,11 @@
 (verify-guards fn-splan-rest-cursor-step
   :hints (("Goal" :in-theory (disable fn-ovw-step fn-ovw-cursorp))))
 
-; The host-called subject.
+; The host-called subject (W a natural: the entry guard's kind).
 (defun fn-splan-cursor-step (p w fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)))
+                  :guard (and (natp w)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
   (mv-let (status rest)
     (fn-splan-rest-cursor-step (fn-splan-rest p) w fn-arena fn-cat)
     (mv status (cons (fn-splan-cur p) rest))))
@@ -273,6 +322,26 @@
            :in-theory (e/d (fn-ovw-expand fn-ovw-cursor-effectp)
                            (fn-ovw-run fn-ovw-cursor-octets fn-splan-fresh-cursorp)))))
 
+; RESIDUAL RENDERING (GPT-6's invariant, section 4): after ANY number of
+; rounds, the octets written followed by what the continuation still owes
+; are the whole expanded reply.  No hypothesis that the loop is done: a
+; partial write, a would-block, a quantum not yet run all leave the rest
+; owed, exactly, to the connection's continuation.
+(defthm fn-splan-cw-residual-rendering
+  (implies (fn-splan-fresh-effectsp effects)
+           (equal (append (mv-nth 1 (fn-splan-cw-drain (fn-splan-of-effects effects) w wl n fn-arena fn-cat))
+                          (fn-splan-cw-remaining
+                           (mv-nth 2 (fn-splan-cw-drain (fn-splan-of-effects effects) w wl n fn-arena fn-cat))
+                           wl fn-arena fn-cat))
+                  (fn-served-reply-octets (fn-ovw-expand effects fn-arena fn-cat))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-splan-cw-drain fn-splan-cw-remaining fn-splan-of-effects
+                               fn-splan-cw-drain-is-a-prefix fn-splan-of-effects-cw-remaining
+                               fn-splan-cw-octets fn-splan-fresh-effectsp)
+           :use ((:instance fn-splan-cw-drain-is-a-prefix (p (fn-splan-of-effects effects)))
+                 (:instance fn-splan-of-effects-cw-remaining)
+                 (:instance fn-splan-cw-octets-is-the-expanded-reply)))))
+
 ; KEYSTONE.  Whatever the window size W, the quantum WL and the N rounds
 ; the socket paced, once the plan is done the loop wrote the reply the
 ; served machine decided, with every cursor expanded.
@@ -285,16 +354,15 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-splan-cw-drain fn-splan-cw-remaining fn-splan-donep
                                fn-splan-of-effects fn-splan-cw-drain-is-a-prefix
+                               fn-splan-cw-residual-rendering
                                fn-splan-donep-implies-cw-nothing-remains
                                fn-splan-of-effects-cw-remaining fn-splan-cw-octets
                                fn-splan-fresh-effectsp)
-           :use ((:instance fn-splan-cw-drain-is-a-prefix (p (fn-splan-of-effects effects)))
+           :use ((:instance fn-splan-cw-residual-rendering)
                  (:instance fn-splan-donep-implies-cw-nothing-remains
                             (p (mv-nth 2 (fn-splan-cw-drain (fn-splan-of-effects effects)
                                                             w wl n fn-arena fn-cat))))
-                 (:instance fn-splan-cw-drain-octets-true-listp (p (fn-splan-of-effects effects)))
-                 (:instance fn-splan-of-effects-cw-remaining)
-                 (:instance fn-splan-cw-octets-is-the-expanded-reply)))))
+                 (:instance fn-splan-cw-drain-octets-true-listp (p (fn-splan-of-effects effects)))))))
 
 ; -----------------------------------------------------------------------------
 ; The arm: its one cursor is fresh, and the loop writes the unbounded

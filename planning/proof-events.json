@@ -15203,6 +15203,10 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-splan-cw-residual-rendering"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-splan-cw-drain-of-the-arm-is-the-unbounded-reply"
         },
         {
