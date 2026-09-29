@@ -858,6 +858,13 @@ def environment(extra=None, *, stack=True):
     env["ACL2_CUSTOMIZATION"] = "NONE"
     for name in ("ACL2_SYSTEM_BOOKS", "FN_HOST") + developer_selectors():
         env.pop(name, None)
+    # A diagnosis knob, not a selector the tests set: with
+    # FN_NATIVE_TEST_FAULT_BACKTRACE in the runner's environment, every
+    # started developer image reports a control-stack exhaustion as its
+    # run-length frame list (io.lisp fnn-stack-exhaustion-report).  A
+    # production image refuses the selector at its gate, as it should.
+    if os.environ.get("FN_NATIVE_TEST_FAULT_BACKTRACE"):
+        env["FN_NATIVE_FAULT_BACKTRACE"] = "1"
     for name, value in (extra or {}).items():
         if value is None:
             env.pop(name, None)
