@@ -75,6 +75,10 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         self.assertIn("(fnn-history-image-build", publish)
         self.assertIn("(fnn-history-image-write fd image)", publish)
         self.assertIn("(fnn-live-octets-pub) arun)", publish)
+        # the reported octets are the file's, the stream's free space what
+        # the image leaves: both ACL2's (host/store-node-host.lisp)
+        self.assertIn("(fnn-core 'fn-his-file-octets (fnn-history-image-np image)", publish)
+        self.assertIn("(fnn-core 'fn-his-stream-free free (fnn-history-image-np image))", publish)
         prepare = (native_cuts.host_function(owner_host, "fn-owner-sco-next")
                    + native_cuts.host_function(owner_host, "fn-owner-sco-setup-of"))
         # (the base is kept stripped of its event index and restored here:
@@ -220,8 +224,12 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         # at the development profile's batch), never as one file.
         self.assertGreaterEqual(steps, 4)
         self.node.stop(process=owner)
-        # The file the owner wrote has the octets ACL2 named (the estimate,
-        # the plan's octets and the list codec's file are one length).
+        # The file the owner wrote has the octets ACL2 named: the history
+        # image's region, then the stream (the estimate, the plan's octets
+        # and the list codec's file are one length), summed by ACL2's
+        # fn-his-file-octets (host/store-node-host.lisp; composed-owner-6:
+        # the line named the stream alone after the A2 wiring put the image
+        # in the file).
         self.assertTrue(self.path().exists())
         self.assertEqual(self.path().stat().st_size, octets)
         published = self.digest()

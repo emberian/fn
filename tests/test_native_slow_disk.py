@@ -93,7 +93,16 @@ class SlowDiskSourceTests(unittest.TestCase):
         # Lane log-leftovers: the read gets the gate's value (the disk's
         # reason lines are ACL2's over it); PKT-858: a peer read admitted as
         # :reader runs only while the disk sheds.
-        self.assertIn("'fn-owner-chunk-span cid 0 (length incoming) sched)", chunk)
+        # Row A4 (c) (books/owner-cold-line.lisp, PRF-933): the read goes
+        # through fnn-owner-chunk-span-no-io, which runs ACL2's
+        # fn-owner-chunk-span over the same scheduler value, first with a
+        # cold payload thrown out of the mutex (the line is then read off
+        # it), else the whole read as before when the cache is off.
+        self.assertIn("(fnn-owner-chunk-span-no-io cid incoming sched)", chunk)
+        no_io = owner[owner.index("(defun fnn-owner-chunk-span-no-io "):
+                      owner.index("(defun fnn-owner-cold-line ")]
+        self.assertIn("'fn-owner-chunk-span cid 0 (length incoming) sched)", no_io)
+        self.assertIn("'fn-owner-chunk-span cid 0 end sched)", no_io)
         self.assertIn("(fnn-core 'fn-otm-peer-read-proceeds-p class sched)", chunk)
         mux = (ROOT / "host" / "native" / "mux.lisp").read_text()
         self.assertIn("(fnn-owner-peer-read-class service)", mux)

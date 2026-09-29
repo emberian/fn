@@ -2402,7 +2402,9 @@ checked; the last row compared with the checkpoint's last record): (values
       (if (null verdict)
           (values :ok s)
           (progn
-            (fnn-err "checkpoint image refused reason=~(~a~)" verdict)
+            ;; ~s: the verdict's keywords keep their colons, so
+            ;; (:refused :store-identity) is told apart from a symbol list.
+            (fnn-err "checkpoint image refused reason=~(~s~)" verdict)
             (fnn-core-state 'fn-store-sco-clear)
             (values :refused 0))))))
 
@@ -3039,11 +3041,11 @@ WRITES); with no position, (values POSITION NIL): no binding, no image."
               (fnn-fault "ACL2 returned a malformed history image page count"))
             (values (list (first position) (second position) binding) (list np writes)))))))
 
-(defun fnn-history-image-octets (image)
-  "The region's octets: the base, then its pages (ACL2's constants)."
-  (if image
-      (fnn-core 'fn-his-region-octets (first image))
-      0))
+(defun fnn-history-image-np (image)
+  "IMAGE's page count, or NIL for a publication without an image: what
+ACL2's fn-his-stream-free and fn-his-file-octets (host/store-node-host.lisp)
+take for the image region."
+  (and image (first image)))
 
 (defun fnn-history-image-write (fd image)
   "Write IMAGE's region at FD's current position (the file's start)."
@@ -3152,8 +3154,8 @@ it covers are dropped (fnn-log-drop; T8)."
                          (values position nil))
                    (setq image image2)
                    (fnn-core-state 'fn-store-sco-publish-setup-of prepared segment budget
-                                   (max 0 (- (fnn-disk-free-octets store)
-                                             (fnn-history-image-octets image)))
+                                   (fnn-core 'fn-his-stream-free (fnn-disk-free-octets store)
+                                             (fnn-history-image-np image))
                                    (fnn-checkpoint-revision) position2))))
     (declare (ignore walked))
     (unless (and (consp answer) (= (length answer) 3)
@@ -3185,7 +3187,9 @@ it covers are dropped (fnn-log-drop; T8)."
                (fnn-os-error (e)
                  (fnn-indeterminate "the drop of covered log segments is uncertain: ~a" e))))
            (format nil "checkpoint sequence=~d octets=~d steps=~d~@[ segment=~d~]~:[~; dropped=~d~] ~a"
-                   sequence (second verdict) steps (first position) position dropped
+                   sequence (fnn-core 'fn-his-file-octets (fnn-history-image-np image)
+                                      (second verdict))
+                   steps (first position) position dropped
                    (fnn-open-report store))))
         (t (fnn-fault "ACL2 returned a malformed checkpoint verdict"))))))
 

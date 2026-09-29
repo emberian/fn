@@ -3844,7 +3844,7 @@ the crash keystone) and serving continues."
                             (values position nil))
                       (setq image image2)
                       (fnn-core 'fn-owner-sco-setup-of prepared frontier revision position2 segment
-                                budget (max 0 (- free (fnn-history-image-octets image))))))
+                                budget (fnn-core 'fn-his-stream-free free (fnn-history-image-np image)))))
                 (unless (and (consp setup) (= (length setup) 7))
                   (fnn-fault "owner returned a malformed checkpoint setup"))
                 (setq next prepared-next payloads n)
@@ -3860,7 +3860,9 @@ the crash keystone) and serving continues."
                             (elapsed)))
                   ((and (consp verdict) (eq (first verdict) :plan) (= (length verdict) 2)
                         (integerp (second verdict)))
-                   (let ((octets (second verdict)) (steps 0)
+                   (let ((octets (fnn-core 'fn-his-file-octets (fnn-history-image-np image)
+                                           (second verdict)))
+                         (steps 0)
                          (store (fnn-owner-service-store service)))
                      (handler-case
                          (progn

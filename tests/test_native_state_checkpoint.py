@@ -194,6 +194,7 @@ FRAME_TRAILER_OCTETS = 32
 # region ("FNSI", version, NP u64, base u64, zeros; page A at base + 16 KiB *
 # A), and the framed segments start after its NP pages.
 IMAGE_BASE = 16384
+PAGE = 16384
 
 
 def framed_start(data):
@@ -443,15 +444,30 @@ class StateCheckpointTests(StateCheckpointFixture):
         """Page 0 of the image changed in the file: the adoption's digest
         check refuses it by name -- (:page-damaged 0 PHYS) -- and the
         checkpoint is unusable, as a corrupt one is: never an empty history,
-        never a silent answer."""
+        never a silent answer.
+
+        Page 0 is the image's LOGICAL page 0 (books/history-image-binding.lisp
+        fn-hib-adopt: filled at (fn-hrc-phys 0), checked against its table
+        entry), the page that opens with the FNADTSN2 header; the page store
+        places it at a physical page of its own choosing (composed-owner-6:
+        physical page 0 of the region is the page store's unallocated page,
+        all zeros, which no read consults, so damage there changes no
+        history; the directory and table pages are refused as dir-damaged and
+        table-damaged)."""
         self.init_with_checkpoint_at_three()
         expected = self.observation()
         good = self.path().read_bytes()
+        np = int.from_bytes(good[5:13], "little")
+        pages = [good[IMAGE_BASE + PAGE * k:IMAGE_BASE + PAGE * (k + 1)] for k in range(np)]
+        headed = [k for k, page in enumerate(pages) if page[:8] == b"FNADTSN2"]
+        self.assertEqual(len(headed), 1, "one page opens with the image header")
+        phys = headed[0]
         data = bytearray(good)
-        data[IMAGE_BASE + 8 * 7] ^= 0x01   # page 0, word 7 (the header's region count)
+        data[IMAGE_BASE + PAGE * phys + 8 * 7] ^= 0x01   # logical page 0, word 7
         self.path().write_bytes(bytes(data))
         status = self.op("status")
-        self.assertIn(b"checkpoint image refused reason=(:page-damaged 0", status.stderr)
+        self.assertIn("checkpoint image refused reason=(:page-damaged 0 {})".format(phys).encode(),
+                      status.stderr)
         self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
         self.assertEqual(self.open_line(), "open=full-replay reason=corrupt")
         self.assertEqual(self.observation(), expected)
@@ -496,12 +512,27 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.path().write_bytes(mine)
         self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=0")
 
-    def test_a_running_owner_refuses_the_verb(self):
+    def test_a_running_owner_is_asked_and_answers_by_name(self):
+        """PKT-868 (lane operations; host/native/operator.lisp
+        fnn-operator-execute-compaction): `store checkpoint' on a running
+        owner is a request the owner answers with ACL2's word
+        (books/owner-compact-request.lisp fn-ock-request-word) and runs off
+        its mutex; before PKT-868 the verb was refused while an owner ran,
+        which this test encoded until composed-owner-6.  Here the suffix of
+        two records past the checkpoint at 3 is due: `requested'.  Whether
+        the owner's publication finished before the stop or not, the store
+        opens from a checkpoint and serves the same history."""
         self.init_with_checkpoint_at_three()
+        expected = self.observation()
         self.node.start()
-        held = self.checkpoint()
-        self.assertNotEqual(held.returncode, EXIT_OK)
-        self.node.stop()
+        try:
+            asked = self.checkpoint()
+            self.assertEqual(asked.returncode, EXIT_OK, asked.stderr.decode())
+            self.assertIn(b"compaction requested", asked.stdout)
+        finally:
+            self.node.stop()
+        self.assertTrue(self.open_line().startswith("open=checkpoint:"), self.open_line())
+        self.assertEqual(self.observation(), expected)
 
 
 class StateCheckpointCutTests(StateCheckpointFixture):

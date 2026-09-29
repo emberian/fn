@@ -1669,3 +1669,21 @@ reopen predicate, writer-lock observation and observed final namespace."
                     "genesis"
                     (fn-sdg-digest (and (boundp-global 'fn-store-genesis state)
                                         (f-get-global 'fn-store-genesis state))))))))
+
+; The checkpoint file of a publication that carries a history image
+; (lane composed-owner; books/history-image-snapshot.lisp): the image
+; region (fn-his-region-octets NP: the header, zeros to the base, NP pages)
+; first, then the checkpoint stream the setup planned.  IMAGE-NP is the
+; region's page count, or NIL for a publication without an image.
+; fn-his-stream-free: the free octets the setup's decision is made over,
+; the region's octets taken first.  fn-his-file-octets: the file's octets,
+; the figure the CHECKPOINT line reports (the file on disk has exactly these).
+(defun fn-his-stream-free (free image-np)
+  (declare (xargs :guard t))
+  (let ((region (if (natp image-np) (fn-his-region-octets image-np) 0)))
+    (nfix (- (nfix free) region))))
+
+(defun fn-his-file-octets (image-np stream-octets)
+  (declare (xargs :guard t))
+  (+ (if (natp image-np) (fn-his-region-octets image-np) 0)
+     (nfix stream-octets)))
