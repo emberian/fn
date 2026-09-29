@@ -4,8 +4,8 @@
   "coverage": {
     "declared": 1224,
     "declared_and_dispatched": 1207,
-    "guard_verified": 550,
-    "with_keystone": 155
+    "guard_verified": 551,
+    "with_keystone": 158
   },
   "entries": [
     {
@@ -12567,7 +12567,11 @@
       "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-report-observe-next-selects-exactly-the-least-yielding-row"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -12580,10 +12584,14 @@
       "name": "fn-bpn-report-outbox-next",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-report-outbox-next-selects-exactly-the-least-yielding-row"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -12672,7 +12680,7 @@
           "theorem": "fn-bpnp-receipt-contact-event-needs-a-queued-job"
         },
         {
-          "theorem": "fn-bpnp-contact-closes-only-when-nothing-owed-remains"
+          "theorem": "fn-bpnj-contact-offers-while-a-ready-job-remains"
         },
         {
           "theorem": "fn-bpnj-step-forwarded-needs-a-durable-finished-record"
@@ -12985,7 +12993,11 @@
       "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpnf-family-next-selects-exactly-the-first-ready-family"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,

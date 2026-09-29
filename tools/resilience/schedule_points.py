@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 from .adapters import native_cuts as adapter
 from .scenario import (Scenario, Operation, Fault, boundary_registry, validate,
-                       pending_reasons, PENDING_BOUNDARIES)
+                       pending_reasons, pending_owner, PENDING_BOUNDARIES)
 from tests.campaign import native_cuts
 
 GROUP = adapter.GROUP
@@ -180,9 +180,7 @@ def status(registry: dict | None = None) -> list:
                         "valid": not problems, "problems": problems,
                         "status": "executable" if not reasons else "pending",
                         "reasons": reasons, "expected": s.expected,
-                        "owner": next((PENDING_BOUNDARIES[b]["owner"] for b in
-                                       {f.boundary for f in s.faults}
-                                       if b in PENDING_BOUNDARIES), None)})
+                        "owner": pending_owner(s, registry)})
     return out
 
 

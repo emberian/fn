@@ -88,3 +88,32 @@
               (list (fn-nntp-string-octets "VERSION 2"))))
   :hints (("Goal" :in-theory (enable fn-zdn-capability-line)))
   :rule-classes nil)
+
+; PRF-974 by name.  fn-zdn-body-round-trip (no hypothesis): cdt-body-witness
+; above is its positive witness on a true list; on an improper list the
+; round trip is the list's true-list-fix, not the value itself.
+(assert-event
+ (and (equal (fn-zdn-unescape (fn-zdn-join (fn-zdn-body-lines '(1 13 . 7))))
+             (true-list-fix '(1 13 . 7)))
+      (not (equal (true-list-fix '(1 13 . 7)) '(1 13 . 7)))))
+; fn-zdn-request-shape.  Positive: a parsed request is (:ask MID DIGESTS)
+; with a message-id token and one 32-octet digest per argument after it.
+(defconst *cdt-ask-args* (list *cdt-mid* (fn-zdn-hex *cdt-d1*)))
+(assert-event
+ (let ((r (fn-zdn-request *cdt-ask-args*)))
+   (and (not (equal r :syntax))
+        (equal (car r) :ask)
+        (fn-nntp-message-id-tokenp (cadr r))
+        (consp (caddr r))
+        (fn-zdn-digest-listp (caddr r))
+        (equal (len (caddr r)) (len (cdr *cdt-ask-args*))))))
+; The hypothesis removed: a request with no digest is :syntax, which is no
+; (:ask ...).
+(assert-event
+ (with-guard-checking :none
+  (let ((r (fn-zdn-request (list *cdt-mid*))))
+    (and (equal r :syntax) (not (equal (car r) :ask))))))
+(must-fail-checked
+ (defthm cdt-request-shape-without-parsed
+   (equal (car (fn-zdn-request args)) :ask)
+   :rule-classes nil))

@@ -280,12 +280,29 @@ explicit (preflush/FUA semantics from dm-log-writes); `classify`/`bindings`
 are observations; the checker composes them whole-history (the "old or new
 per article" independence is gone); recovery-during-recovery is a second
 fault at a recovery boundary; the pre-recovery image is kept. AFTER THE
-CUT (the convergence checklist runs the current rig once).
+CUT (the convergence checklist runs the current rig once). Landed
+2026-09-29 (lanes resilience-framework-3 and -4): the adapter over the
+rig's records (`persisted-write-selection`, the second cut as a second
+fault, the recovery count as `persisted-records`); the rig's classify
+writes per-article outcomes (`per`) and bindings per-number outcomes
+(`observed_numbers`), each its own `read` / `number` observation, so the
+prefix property is judged per article and number stability per number
+from the rig's next run on (the 2026-09-26 records carry counts only).
 
 W7e **the INN lab as a differential backend**. DONE: the lab's workload is
 IR; normalization rules are explicit and named (numbers, transport fields);
 response classes, identities, memberships and authored bytes are never
-normalized; the RFC adjudicates. AFTER THE CUT.
+normalized; the RFC adjudicates. AFTER THE CUT. Landed 2026-09-29 (lane
+resilience-framework-4, first increment, record-driven like W7d's):
+`tools/resilience/adapters/inn_lab.py` turns the lab's findings into six
+IR scenarios (fn-to-inn, inn-to-fn, fn-term, innd-cut, operator-post,
+inn-refusals) judged by the checker under `relay-changes-permitted`
+(Path and Xref the named normalization, each with its RFC 5537 section;
+the differential itself is judged, never the lab's ok), `loop-refused`,
+`injection-complete` and the `peer-transfer` fact; boundaries `peer-idle`
+and `peer-innd`; the same rules judge both agents. Over the three findings
+files every verdict is the lab's. Remaining: the lab running from the
+scenarios (its checks as journal writes) on hbox with INN.
 
 W7f **the deterministic backend**. DONE: completion delivery and the
 selected scheduling boundaries are deterministic in the simulator; a small
