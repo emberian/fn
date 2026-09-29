@@ -205,7 +205,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/record full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema1-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -216,7 +216,7 @@
         "fn-bpa-round-trip",
         "fn-bpa-success-is-canonical"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). Round trip and accepted-input canonicality hold for the CBOR primitives, the schema-0 transaction record and the BP ADU. Scope: these are fn's own provisional formats; no native object, signature-preimage or batch format is frozen."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). Round trip and accepted-input canonicality hold for the CBOR primitives, the transaction record and the BP ADU. Scope: these are fn's own provisional formats; no native object, signature-preimage or batch format is frozen."
     },
     {
       "id": "ENC-002",
@@ -302,7 +302,7 @@
         "tests/acl2/acceptance-stamp-tests.lisp",
         "planning/evidence/t2a-acceptance-stamp-4670cc35-2026-09-23.md"
       ],
-      "note": "T2a implements schema-1 acceptance stamps with exact schema-0 decode/re-encode as :legacy; the codec and replay properties have lane certification. Native carried-over Store qualification on the combined image remains open. Unknown article headers and body bytes remain preserved, but opaque re-encoding of an unknown record schema is still unimplemented; this broader requirement is not complete."
+      "note": "T2a implements schema-1 acceptance stamps; the stampless schema 0 and its :legacy stamp are deleted (no migrations: fresh deploys at 6.6.0; lane small-rows-2-d3); the codec and replay properties have lane certification. Native carried-over Store qualification on the combined image remains open. Unknown article headers and body bytes remain preserved, but opaque re-encoding of an unknown record schema is still unimplemented; this broader requirement is not complete."
     },
     {
       "id": "STO-001",
@@ -1430,7 +1430,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; an article without a natural stamp uses the nearest later stamped acceptance, else the pinned reader wall second, else remains visible; no record carries such a stamp since schema 0 was deleted (no migrations: fresh deploys at 6.6.0), and deleting this horizon is open. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
@@ -1937,7 +1937,7 @@
         "planning/evidence/manifests/certify-20260924T054048Z-760063.json",
         "tests/fixtures/topic-history/matched-second-root.source"
       ],
-      "implementation_note": "The bounded experimental fixed-controller model carries administrator installation, root anchor and report admission in Store slot 12, binds earlier T10 exact source and historical key context, and checks finite quota, roster and same-topic parents. Fresh version-2 anchors additionally bind the exact earlier administrator-install event generation; historical version-1 anchors retain ID-only replay meaning and cannot be freshly staged. The owner-called report selector returns retained admission on exact historical retry without another Store event. Scoped v2 codec, proposal and Store prepare evidence passed; the maintained topic/crash relation remains open. No dual-image migration: no store of another release is opened (fresh deploys at 6.6.0); tests/test_native_topic_local.py's v1-image cases became one single-image reopen-and-compaction case (lane config-and-legacy 2026-09-28).",
+      "implementation_note": "The bounded experimental fixed-controller model carries administrator installation, root anchor and report admission in Store slot 12, binds earlier T10 exact source and historical key context, and checks finite quota, roster and same-topic parents. Fresh version-2 anchors additionally bind the exact earlier administrator-install event generation; the eight-field version-1 anchor is not a topic event (no migrations: fresh deploys at 6.6.0; lane small-rows-2-d3). The owner-called report selector returns retained admission on exact historical retry without another Store event. Scoped v2 codec, proposal and Store prepare evidence passed; the maintained topic/crash relation remains open. No dual-image migration: no store of another release is opened (fresh deploys at 6.6.0); tests/test_native_topic_local.py's v1-image cases became one single-image reopen-and-compaction case (lane config-and-legacy 2026-09-28).",
       "note": "This local experiment is not a universal governance contract. The maintained Store topic relation needed to derive topic-valid physical crash images is still open; BP and byte reopen remain conditional. No succession, fork healing or automatic policy adoption is inferred."
     },
     {
