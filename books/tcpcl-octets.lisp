@@ -26,6 +26,7 @@
 
 (in-package "ACL2")
 (include-book "tcpcl-records")
+(include-book "rev-onto")
 
 ; The base-256 digit facts the codec needs, proved once under the arithmetic
 ; libraries and exported without them: their :elim and :generalize rules loop
@@ -119,14 +120,30 @@
       t
     (and (consp octets) (fn-tcl-has (cdr octets) (1- n)))))
 
-(defun fn-tcl-take (n octets)
+; fn-tcl-take executes by a loop (lane depth-debt, PRF-919): N is a
+; segment's data length, up to the session's MRU, and the recursion took one
+; control-stack frame per octet.  The :logic is the recursion, unchanged.
+(defun fn-tcl-take-loop (n octets acc)
   (declare (xargs :guard (natp n)))
   (if (zp n)
-      nil
-    (mbe :logic (cons (car octets) (fn-tcl-take (1- n) (cdr octets)))
-         :exec (if (consp octets)
-                   (cons (car octets) (fn-tcl-take (1- n) (cdr octets)))
-                 (cons nil (fn-tcl-take (1- n) nil))))))
+      (fn-ag-rev-onto acc nil)
+    (fn-tcl-take-loop (1- n)
+                      (if (consp octets) (cdr octets) nil)
+                      (cons (if (consp octets) (car octets) nil) acc))))
+
+(defun fn-tcl-take (n octets)
+  (declare (xargs :guard (natp n) :verify-guards nil))
+  (mbe :logic (if (zp n)
+                  nil
+                (cons (car octets) (fn-tcl-take (1- n) (cdr octets))))
+       :exec (fn-tcl-take-loop n octets nil)))
+
+(defthm fn-tcl-take-loop-is-rev-onto
+  (equal (fn-tcl-take-loop n octets acc)
+         (fn-ag-rev-onto acc (fn-tcl-take n octets)))
+  :hints (("Goal" :induct (fn-tcl-take-loop n octets acc))))
+
+(verify-guards fn-tcl-take)
 
 (defun fn-tcl-drop (n octets)
   (declare (xargs :guard (natp n)))

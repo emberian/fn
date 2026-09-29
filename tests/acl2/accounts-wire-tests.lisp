@@ -80,14 +80,14 @@
 ; H2 removed: a holding session answers nothing.
 (defconst *awt-held*
   (fn-auth-make-session (fn-auth-session-base *awt-prot*) *awt-protected*
-                        nil nil nil t nil))
+                        nil nil nil t nil nil))
 (assert-event (and (fn-auth-sessionp *awt-held*)
                    (fn-auth-session-handshakingp *awt-held*)
                    (not (awt-483-concl *awt-held* *awt-redeem*))))
 ; H3 removed: an authenticated session is answered 502.
 (defconst *awt-authed*
   (fn-auth-make-session (fn-auth-session-base *awt-prot*) *awt-protected*
-                        nil (make-list 32 :initial-element 7) nil nil nil))
+                        nil (make-list 32 :initial-element 7) nil nil nil nil))
 (assert-event (and (fn-auth-sessionp *awt-authed*)
                    (fn-auth-session-subject *awt-authed*)
                    (equal (fn-post-result-effects
@@ -110,7 +110,7 @@
 ; section 2.2.2), not 483.  Reachable by a source-address peer connection.
 (defconst *awt-compressed*
   (fn-auth-make-session (fn-auth-session-base *awt-prot*) *awt-protected*
-                        nil nil nil nil '(:active :deflate)))
+                        nil nil nil nil '(:active :deflate) nil))
 (assert-event (and (fn-auth-sessionp *awt-compressed*)
                    (fn-zc-activep (fn-auth-session-compress *awt-compressed*))
                    (equal (fn-post-result-effects
@@ -152,7 +152,7 @@
 ; the cached exchange is refused 483 and nothing is held.
 (defconst *awt-381-clear*
   (fn-auth-make-session (fn-auth-session-base *awt-prot*) *awt-protected*
-                        (fn-auth-session-pending *awt-381*) nil nil nil nil))
+                        (fn-auth-session-pending *awt-381*) nil nil nil nil nil))
 (assert-event (and (fn-auth-sessionp *awt-381-clear*)
                    (not (fn-auth-redeem-waitp
                          (fn-post-result-session
@@ -180,20 +180,45 @@
                      (null (fn-auth-session-subject s))
                      (fn-auth-sessionp s))))
 ; The waiting hypothesis removed: a session that is not holding gets no 281
-; for a :bound word (the owner cannot make a 281 out of thin air).  The step
-; routes the outcome event only to a waiting session
-; (fn-auth-redeem-outcome-is-inert-unless-it-answers is the outcome's own
-; inertness); any other session hands it to the peer step, which answers an
-; event it does not know with 501 and leaves the session as it was.
+; for a :bound word (the owner cannot make a 281 out of thin air), and no
+; reply at all: the outcome is not client input, so the step answers it with
+; nothing and leaves the session as it was (a 501 here would be a syntax
+; error the client never caused).
 (assert-event
  (let ((r (in-arena-awt-step *sr-arena* *awt-381* '(:account-outcome :bound))))
    (and (fn-auth-sessionp *awt-381*)
         (not (fn-auth-redeem-waitp *awt-381*))
-        (not (equal (fn-post-result-effects r)
-                    (awt-single "281 account bound; authenticate with AUTHINFO on a new connection")))
-        (equal (fn-post-result-effects r) (awt-single "501 syntax error"))
-        (equal (fn-auth-session-pending (fn-post-result-session r))
-               (fn-auth-session-pending *awt-381*)))))
+        (null (fn-post-result-effects r))
+        (null (fn-post-result-submission r))
+        (equal (fn-post-result-session r) *awt-381*))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE fn-auth-step-pinned-host-event-answers-nothing
+;   H1 not a client event  H2 not holding for the owner's word
+; Reachable positive witnesses: the owner's outcome after the hold (above),
+; and a probe event, on the same non-holding session: no reply, no
+; submission, the session unchanged (fn-auth-step-pinned-stray-event-changes-nothing).
+(assert-event
+ (let ((r (in-arena-awt-step *sr-arena* *awt-381* '(:foo))))
+   (and (not (fn-auth-client-eventp '(:foo)))
+        (not (fn-auth-redeem-waitp *awt-381*))
+        (null (fn-post-result-effects r))
+        (null (fn-post-result-submission r))
+        (equal (fn-post-result-session r) *awt-381*))))
+; H1 removed: a client's (:reject REASON) on the same session is answered
+; (the reader's 501), so the conclusion fails.
+(assert-event
+ (let ((r (in-arena-awt-step *sr-arena* *awt-381* '(:reject :line-too-long))))
+   (and (fn-auth-client-eventp '(:reject :line-too-long))
+        (not (fn-auth-redeem-waitp *awt-381*))
+        (equal (fn-post-result-effects r) (awt-single "501 syntax error")))))
+; H2 removed: the holding session answers the same host event 281, so the
+; conclusion fails (the keystone above names the reply).
+(assert-event
+ (let ((r (in-arena-awt-step *sr-arena* *awt-wait* '(:account-outcome :bound))))
+   (and (not (fn-auth-client-eventp '(:account-outcome :bound)))
+        (fn-auth-redeem-waitp *awt-wait*)
+        (fn-post-result-effects r))))
 ; A STARTTLS handshake is not a redemption hold: the outcome event does not
 ; answer it (fn-auth-handshaking-session-serves-nothing).
 (assert-event (and (fn-auth-session-handshakingp *awt-held*)
@@ -208,7 +233,7 @@
 (defconst *awt-381-compressed*
   (fn-auth-make-session (fn-auth-session-base *awt-381*) (fn-auth-session-config *awt-381*)
                         (fn-auth-session-pending *awt-381*) nil
-                        (fn-auth-session-tlsp *awt-381*) nil '(:active :deflate)))
+                        (fn-auth-session-tlsp *awt-381*) nil '(:active :deflate) nil))
 (assert-event (and (fn-auth-sessionp *awt-381-compressed*)
                    (equal (fn-post-result-effects
                            (in-arena-awt-step *sr-arena* *awt-381-compressed* (awt-cmd *awt-pass*)))

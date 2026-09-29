@@ -55,6 +55,7 @@
 (include-book "../books/store-log-stream")
 ;; The open tells a torn tail from damage (lane log-corruption).
 (include-book "../books/store-log-damage")
+(include-book "../books/store-log-lineage")
 ;; The walk over the entry's octet buffer (lane snapshot-open-3; KEYSTONE
 ;; fn-lgw-step-buf-is-step): host/native/io.lisp fnn-log-stream-segment.
 (include-book "../books/store-log-buffer")
@@ -88,15 +89,20 @@
 ; A final namespace observation is not parsed by the native adapter.  The
 ; bounded host enumeration is sorted only to make its representation stable.
 ; This conversion only validates octets before the scan policy compares names.
-(defun fn-store-octet-lists->strings (xs)
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+; ACC holds the converted strings reversed; any element that is not an
+; octet list, or a non-nil final tail, answers :bad, as the recursion did.
+(defun fn-store-octet-lists->strings-loop (xs acc)
   (if (consp xs)
       (if (not (fn-cbor-octet-listp (car xs)))
           :bad
-        (let ((rest (fn-store-octet-lists->strings (cdr xs))))
-          (if (equal rest :bad)
-              :bad
-            (cons (fn-store-octets->string (car xs)) rest))))
-    (if (null xs) nil :bad)))
+        (fn-store-octet-lists->strings-loop
+         (cdr xs) (cons (fn-store-octets->string (car xs)) acc)))
+    (if (null xs) (fn-ag-rev-onto acc nil) :bad)))
+
+(defun fn-store-octet-lists->strings (xs)
+  (fn-store-octet-lists->strings-loop xs nil))
 
 ; The bound and the grammar are `fn-profile-txn-observation'
 ; (books/store-profile-facts.lisp); this wrapper converts octets.  The
@@ -522,3 +528,13 @@
   (declare (xargs :stobjs state :mode :program))
   (let ((state (f-put-global 'fn-store-genesis verdict state)))
     (mv nil t state)))
+
+;; The store's identity the history image's binding names
+;; (books/history-image-binding.lisp): the genesis record's node identity and
+;; the history salt the open answered (fn-gen-verdict-salt), or (NIL 0) when
+;; the open installed none.
+(defun fn-store-genesis-ident (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((v (and (boundp-global 'fn-store-genesis state) (f-get-global 'fn-store-genesis state))))
+    (value (list (if (and (consp v) (equal (car v) :genesis) (consp (cdr v))) (fn-gen-node (cadr v)) nil)
+                 (fn-gen-verdict-salt v)))))

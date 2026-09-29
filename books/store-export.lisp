@@ -53,12 +53,37 @@
 ; -----------------------------------------------------------------------------
 ; Names and entries
 
-(defun fn-sxp-chars-octets (chars)
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+(defun fn-sxp-chars-octets-loop (chars acc)
   (declare (xargs :guard t))
   (if (consp chars)
-      (cons (if (characterp (car chars)) (char-code (car chars)) 0)
-            (fn-sxp-chars-octets (cdr chars)))
-    nil))
+      (fn-sxp-chars-octets-loop (cdr chars)
+       (cons (if (characterp (car chars)) (char-code (car chars)) 0) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-sxp-chars-octets (chars)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp chars)
+           (cons (if (characterp (car chars)) (char-code (car chars)) 0)
+                 (fn-sxp-chars-octets (cdr chars)))
+         nil)
+       :exec (fn-sxp-chars-octets-loop chars nil)))
+
+(defthm fn-sxp-chars-octets-loop-is-rev-onto
+  (equal (fn-sxp-chars-octets-loop chars acc)
+         (fn-ag-rev-onto acc (fn-sxp-chars-octets chars)))
+  :hints (("Goal" :induct (fn-sxp-chars-octets-loop chars acc)
+                  :in-theory (union-theories
+                              '(fn-sxp-chars-octets-loop fn-sxp-chars-octets fn-ag-rev-onto not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-sxp-chars-octets
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-sxp-chars-octets fn-ag-rev-onto fn-sxp-chars-octets-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-sxp-text-octets (text)
   (declare (xargs :guard t))

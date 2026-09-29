@@ -175,11 +175,13 @@
 ; After STARTTLS and the handshake: AUTHINFO USER is offered and STARTTLS is
 ; not, with no credential in the configuration.  Before D1 the block ended at
 ; IMPLEMENTATION and a newsreader that gates its login on the label had none.
+; Under TLS the label also names SASL, with PLAIN (NNT-056); no SASL context
+; was installed here, so no SCRAM.
 (assert-event
  (equal (in-arena-sit-command *sr-arena* (in-arena-sit-starttls *sr-arena* *sit-acfg*)
                               "CAPABILITIES")
         (sit-caps (in-arena-sit-starttls *sr-arena* *sit-acfg*)
-                  (append *sit-reader-caps* '("AUTHINFO USER")))))
+                  (append *sit-reader-caps* '("AUTHINFO USER SASL" "SASL PLAIN")))))
 ; And the label's promise holds on that connection: AUTHINFO USER is 381.
 (assert-event
  (equal (in-arena-sit-command *sr-arena* (in-arena-sit-starttls *sr-arena* *sit-acfg*)

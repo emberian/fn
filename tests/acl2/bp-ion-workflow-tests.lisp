@@ -1,6 +1,8 @@
 (in-package "ACL2")
 (include-book "bp-ion-observation-tests")
 (include-book "../../books/bp-ion-workflow")
+; The attempt record the host calls (fn-bprq-attempt-record).
+(include-book "../../books/bp-request-plan")
 ; The workflow entries read the payload arena (the records flip): each call
 ; runs over an arena holding *bpo-payloads* (tests/acl2/arena-lift.lisp).
 (bpr-lift fn-bpiw-route-record 7)
@@ -12,7 +14,7 @@
   '(:ion-route "work:out" "attempt:out" 0
                "dtn://destination/" "ipn:2.1" "ipn:1.1"))
 (assert-event
- (equal (fn-bpiw-attempt-record
+ (equal (fn-bprq-attempt-record
          (nth 1 *bpo-enqueued*) 11 0 "work:out" "attempt:out")
         *bpo-attempt-record*))
 (assert-event

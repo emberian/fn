@@ -1112,7 +1112,7 @@
    :faq "A streaming peer sends an article (peers only).")
 
   ("AUTHINFO"
-   :rfc "RFC 4643 2.3" :dispatch :auth
+   :rfc "RFC 4643 2.3, 2.4" :dispatch :auth
    :parser (fn-auth-token-argp)
    :model (fn-auth-authinfo) :cat nil :xref nil
    :live (("any" fn-auth-authinfo))
@@ -1120,7 +1120,9 @@
    :fuzz ((:cases (("USER" (:choice "fuzz" "nobody" "" (:rep "u" 600)))
                    ("PASS" (:choice "fuzz-password" "wrong" "" (:rep "p" 600))))
                   (("PASS" "fuzz-password"))
-                  (("SASL" (:choice "PLAIN" "PLAIN AGZ1enoAZnV6ei1wYXNzd29yZA==" "X")))
+                  (("SASL" (:choice "PLAIN" "PLAIN AGZ1enoAZnV6ei1wYXNzd29yZA==" "X"
+                                    "SCRAM-SHA-256" "SCRAM-SHA-256 biwsbj1mdXp6LHI9ZnV6eg=="
+                                    "SCRAM-SHA-256-PLUS" "PLAIN =" "PLAIN !!!!")))
                   (((:choice "GENERIC" "SIMPLE" "" "user")))
                   (("USER" "fuzz"))))
    :replies ((381 :accepted :auth :password "381 password required")
@@ -1130,8 +1132,12 @@
              (483 :refused :auth :protect "483 a protected channel is required; use STARTTLS")
              (501 :refused :auth :syntax "501 syntax error")
              (502 :refused :auth :already "502 already authenticated")
-             (502 :refused :auth :no-sasl "502 no SASL mechanism is offered"))
-   :faq "Logs in: AUTHINFO USER name, then AUTHINFO PASS password.")
+             (383 :accepted :auth :sasl-continue "383 CHALLENGE" :computed)
+             (283 :accepted :auth :sasl-accepted "283 CHALLENGE" :computed)
+             (481 :refused :auth :cancelled "481 authentication cancelled")
+             (503 :refused :auth :no-mechanism "503 mechanism not recognized")
+             (504 :refused :auth :base64 "504 base64 encoding error"))
+   :faq "Logs in: AUTHINFO SASL SCRAM-SHA-256 (or PLAIN over TLS), or AUTHINFO USER name, then AUTHINFO PASS password.")
 
   ("STARTTLS"
    :rfc "RFC 4642 2.2" :dispatch :auth
@@ -1195,6 +1201,32 @@
              (503 :refused :reader :no-projection "503 archive projection unavailable")
              (480 :refused :auth :auth-required "480 authentication required"))
    :faq "A peer's batched catch-up over the articles it may read (peers only).")
+
+  ("XFN-ZARTICLE"
+   :rfc "fn extension, NNT-055" :dispatch :pinned
+   :parser (fn-zdn-request)
+   :model (fn-zar-command) :cat nil :xref nil
+   :live (("any" fn-zar-command))
+   :arms (:pinned
+           ((and (not (equal (fn-zdn-request args) :syntax))
+                 (fn-nntp-msgid-withdrawn-p index (cadr (fn-zdn-request args))))
+             (fn-nntp-withdrawn-reply session t))
+           (t (fn-zar-command session archive (fn-gidx-pin-trie index) args fn-arena)))
+   :framing :command
+   :fuzz ((:msgid) (:choice "845aa5e18680ef219a9b0f0d0b959cd8886d5eabc12236aae19f301aed9de75e" "00" "x"))
+   :replies ((229 :accepted :reader :stored "229 DIGEST N CLEN stored payload follows" :computed)
+             (220 :accepted :reader :sent "220 NUMBER MESSAGE-ID article follows" :computed)
+             (423 :refused :reader :no-number "423 no article with that number" :unreachable)
+             (430 :refused :reader :no-msgid "430 no article with that message-id")
+             (430 :refused :reader :reclaimed-msgid "430 article reclaimed")
+             (430 :refused :reader :withdrawn-msgid "430 withdrawn")
+             (501 :refused :reader :syntax "501 syntax error")
+             (503 :refused :reader :no-framing "503 stored article framing unavailable")
+             (503 :refused :reader :no-identifier
+                  "503 stored article identifier unavailable" :unreachable)
+             (503 :refused :reader :no-projection "503 archive projection unavailable")
+             (480 :refused :auth :auth-required "480 authentication required"))
+   :faq "Sends an article's payload as it is stored when you hold its dictionary (fn peers).")
 
   ("(syntax)"
    :rfc "RFC 3977 3.2.1" :dispatch :syntax

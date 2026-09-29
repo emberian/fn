@@ -106,6 +106,13 @@ HOSTS = {
         "image_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
         # The toolchain SBCL by absolute path, ahead of any system sbcl on
         # PATH (tools/native_env.py sbcl; hbox's /usr/bin/sbcl is 2.2.9).
+        # LOAD-ONLY (obstructions-6 item 46): the same ACL2 at --tls-limit
+        # 262144, for sessions that LOAD the certified umbrella plus every
+        # host file (coverage.py dump --here): tls64k dies "Thread local
+        # storage exhausted" at the 14th host ld (decision-keystones-3).  A
+        # different launcher is a different toolchain identity: it never
+        # certifies, publishes or acquires (tests/test_farm LoadOnlyTests).
+        "load_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls256k",
         "sbcl": "/tank/fn/sbcl/bin/sbcl",
         "cache": "~/fn-certcache",
         "wrap": "",
@@ -116,6 +123,7 @@ HOSTS = {
         # SBCL's default thread-local storage (tools/hbox_native.sh IMAGE_ACL2;
         # packaging/release-tarball.sh FN_IMAGE_ACL2).
         "image_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+        "load_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls256k",  # LOAD-ONLY; see persvati's
         "sbcl": "/tank/fn/sbcl/bin/sbcl",  # not /usr/bin/sbcl (2.2.9); see persvati's
         "cache": "/tank/fn/certcache",
         # hbox is shared with another project's build; swarm-build is the
@@ -637,6 +645,19 @@ def note_certify_id(root: Path, identifier: str, certify_id: str) -> None:
         pass
 
 
+def note_box_manifest(root: Path, identifier: str, verdict: str) -> None:
+    """Record the final manifest's status the box reported (passed/failed)."""
+    path = record_path(root, identifier)
+    record = run_record(root, identifier)
+    if not record or record.get("box_manifest") == verdict:
+        return
+    record["box_manifest"] = verdict
+    try:
+        path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    except OSError:
+        pass
+
+
 def remote_certify_id(host: str, remote: Path, identifier: str) -> str | None:
     """The certify id the run's log on the box names, or None yet."""
     done = ssh(host, f"cd {remote_quote(remote)} 2>/dev/null && "
@@ -965,7 +986,15 @@ def progress_script(root: Path, identifier: str) -> str:
     checked, all 0).  The running run's directory is the newest one.
     """
     log = f"build/farm/{identifier}.log"
-    newest = "$(ls -td build/acl2/certify-*/ 2>/dev/null | head -1)"
+    # The run's OWN directory, as `status` finds it (item 60): the one its
+    # log names ("Certification run|evidence: .../build/acl2/certify-..."),
+    # else the newest.  The newest alone is another run's once a later run
+    # starts in the same tree, and a wait on it hung or answered "unknown"
+    # while `status` already showed this run's manifest passed.
+    named = (f"$(grep -m1 -oE 'build/acl2/certify-[0-9]{{8}}T[0-9]{{6}}Z-[0-9]+' {log} "
+             "2>/dev/null)")
+    newest = (f"$(n={named}; if [ -n \"$n\" ] && [ -d \"$n\" ]; then echo \"$n/\"; "
+              "else ls -td build/acl2/certify-*/ 2>/dev/null | head -1; fi)")
     return (
         f"cd {remote_quote(root)} 2>/dev/null || {{ echo 'NOROOT'; exit 9; }}; "
         f"printf 'STATUS %s\\n' \"$(cat build/farm/{identifier}.status "
@@ -1096,6 +1125,7 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
     final = progress.get("MANIFEST", "").split()
     if len(final) > 1:
         note_certify_id(root, identifier, final[1])
+        note_box_manifest(root, identifier, final[0])
     print(f"{identifier} on {host}: finished with exit code {code}"
           + (f" -- {killed_words(signalled)}" if signalled is not None else "")
           + (f"; manifest {final[1]} {final[0]}" if len(final) > 1 else "")
@@ -1317,6 +1347,15 @@ def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
         if isinstance(manifest, dict):
             manifests.append((root / directory, manifest))
     if not manifests:
+        # The box already decided (wait read its final manifest, as `status`
+        # does, and recorded its certify id): say that verdict, never
+        # "unknown", and say the evidence is not here yet (item 60).
+        certify_id = run_record(root, identifier).get("certify_id")
+        decided = run_record(root, identifier).get("box_manifest")
+        if certify_id and decided:
+            return [head, f"  manifest {certify_id} {decided} on the box (read as "
+                          "`farm.py status` reads it); its evidence did not come back "
+                          f"under {root}/build/acl2 -- `farm.py fetch` it before citing"]
         return [head, "  no manifest came back under "
                 f"{root}/build/acl2; the verdict is unknown (not green); "
                 f"read {log}"]

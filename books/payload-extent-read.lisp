@@ -67,3 +67,130 @@
            (fn-arx-entry-ok-buffer (fn-durable-octets file (+ eoff elen) *fn-frame-trailer-octets*)
                                    (fn-durable-octets file eoff elen)))
   :hints (("Goal" :in-theory (disable fn-durable-octets-len))))
+
+; -----------------------------------------------------------------------------
+; The read decided against the descriptor's COMMITMENT (lane extent-identity,
+; 2026-09-29; PRF-994; GPT-6's warranty-quality-proof-engineering.md
+; section 2).
+;
+; The buffer holds the protected prefix the host read at [EOFF, EOFF+ELEN),
+; READ the 32 octets it read after that, EXPECTED the descriptor's trailer
+; (books/payload-extent.lisp fn-arx-trailer-nat of the entry's recorded
+; trailer, attached to the record's place when the descriptor was made).
+; The verdict, each refused by name by the realizer (host/native/extent.lisp
+; fnn-extent-entry):
+;   :trailer  the trailer recorded after the prefix is not the descriptor's
+;             (another entry at this offset, a wrong offset, an entry of
+;             another store or generation: the recorded trailer disagrees
+;             with the commitment, however well formed the entry is);
+;   :digest   the recorded trailer is the descriptor's but the prefix's
+;             frame digest is not it (the prefix was damaged in place);
+;   :ok       the prefix's digest is the recorded trailer and that trailer is
+;             the descriptor's.
+; Nothing else is answered: a malformed READ is :trailer.
+(defun fn-arx-entry-verdict-buffer (expected read fn-octets)
+  (declare (xargs :stobjs fn-octets :guard t))
+  (cond ((not (and (fn-cbor-octet-listp read)
+                   (equal (len read) *fn-frame-trailer-octets*)
+                   (equal (fn-arx-trailer-nat read) expected)))
+         :trailer)
+        ((not (equal (fn-frame-digest-buffer nil fn-octets) read)) :digest)
+        (t :ok)))
+
+; KEYSTONE (PRF-994).  The verdict is :ok exactly when the read's recorded
+; trailer is the descriptor's commitment and the prefix's frame digest is
+; that trailer: what fn-arx-entry-ok-buffer decided, AND the identity it
+; never decided.
+(defthm fn-arx-entry-verdict-buffer-ok-is-the-commitment
+  (equal (equal (fn-arx-entry-verdict-buffer expected read fn-octets) :ok)
+         (and (fn-cbor-octet-listp read)
+              (equal (len read) *fn-frame-trailer-octets*)
+              (equal (fn-arx-trailer-nat read) expected)
+              (equal (fn-frame-digest fn-octets) read))))
+
+; The refusals are distinct and exhaustive: a verdict is one of the three.
+(defthm fn-arx-entry-verdict-buffer-is-one-of-three
+  (member-equal (fn-arx-entry-verdict-buffer expected read fn-octets) '(:ok :trailer :digest))
+  :rule-classes nil)
+
+; KEYSTONE (PRF-994), the boundary composed with the descriptor: when
+; EXPECTED is the commitment of the entry's durable recorded trailer (the 32
+; octets the file holds after the prefix at [EOFF, EOFF+ELEN)), an :ok
+; verdict means the frame digest of the buffer the host serves from IS that
+; recorded trailer -- the octets the host hands to the model are the octets
+; whose digest the accepted extent committed to (fn-arx-trailer-nat-injective:
+; no other 32 octets have that commitment).  A-DURABLE-EXTENT names the
+; durable octets; the collision figure of the digest (pessimistic: a BLAKE3
+; collision, 2^128 work) is the only gap between "the same digest" and "the
+; same octets".
+(defthm fn-arx-entry-verdict-buffer-ok-digest-is-the-recorded-trailer
+  (implies (equal (fn-arx-entry-verdict-buffer
+                   (fn-arx-trailer-nat (fn-durable-octets file (+ eoff elen) *fn-frame-trailer-octets*))
+                   read fn-octets)
+                  :ok)
+           (equal (fn-frame-digest fn-octets)
+                  (fn-durable-octets file (+ eoff elen) *fn-frame-trailer-octets*)))
+  :hints (("Goal"
+           :use ((:instance fn-arx-trailer-nat-injective
+                            (a read)
+                            (b (fn-durable-octets file (+ eoff elen) *fn-frame-trailer-octets*))))
+           :in-theory (disable fn-durable-octets-len))))
+
+; No false refusal: a faithful read of an intact entry (the buffer holds the
+; durable prefix, READ the durable trailer, the file's trailer the frame
+; digest of its prefix) against the descriptor made from that trailer is :ok.
+(defthm fn-arx-entry-verdict-buffer-of-durable
+  (implies (equal (fn-durable-octets file (+ eoff elen) *fn-frame-trailer-octets*)
+                  (fn-frame-digest (fn-durable-octets file eoff elen)))
+           (equal (fn-arx-entry-verdict-buffer
+                   (fn-arx-trailer-nat (fn-durable-octets file (+ eoff elen) *fn-frame-trailer-octets*))
+                   (fn-durable-octets file (+ eoff elen) *fn-frame-trailer-octets*)
+                   (fn-durable-octets file eoff elen))
+                  :ok))
+  :hints (("Goal" :in-theory (disable fn-durable-octets-len))))
+
+(in-theory (disable fn-arx-entry-verdict-buffer))
+
+; -----------------------------------------------------------------------------
+; The commitment read from a buffer, by index (the open's entry buffer, the
+; publication's frame buffer): the twins of fn-arx-trailer-nat-at and
+; fn-arx-attach-trailers over fn-octets, equal to them over the buffer's
+; octets (KEYSTONE fn-arx-attach-trailers-buffer-is-attach-trailers).
+
+(defun fn-arx-trailer-nat-at-buffer (j fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp j) (<= (+ j *fn-frame-trailer-octets*) (fn-octets-len fn-octets)))))
+  (fn-arx-trailer-nat (fn-oct-slice-list j (+ j *fn-frame-trailer-octets*) fn-octets)))
+
+(defthm fn-arx-trailer-nat-at-buffer-is-trailer-nat-at
+  (implies (and (fn-octets-p fn-octets) (natp j)
+                (<= (+ j *fn-frame-trailer-octets*) (len fn-octets)))
+           (equal (fn-arx-trailer-nat-at-buffer j fn-octets)
+                  (fn-arx-trailer-nat-at j fn-octets)))
+  :hints (("Goal" :in-theory (enable fn-octets-p))))
+
+; The places of the entry the buffer holds (books/store-log-buffer.lisp
+; fn-lgb-entry-places: START is BASE, the entry's file offset, for each), with
+; the entry's commitment attached.
+(defun fn-arx-attach-trailers-buffer (places base fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (true-listp places) (natp base))))
+  (if (atom places)
+      nil
+    (cons (if (true-listp (car places))
+              (let* ((start (nfix (nth 0 (car places))))
+                     (n (nfix (nth 1 (car places))))
+                     (j (nfix (- (+ start n) (+ base *fn-frame-trailer-octets*)))))
+                (list (nth 0 (car places)) (nth 1 (car places)) (nth 2 (car places))
+                      (nth 3 (car places))
+                      (if (<= (+ j *fn-frame-trailer-octets*) (fn-octets-len fn-octets))
+                          (fn-arx-trailer-nat-at-buffer j fn-octets)
+                        (fn-arx-trailer-nat-at j (fn-octets-list fn-octets)))))
+            (car places))
+          (fn-arx-attach-trailers-buffer (cdr places) base fn-octets))))
+
+(defthm fn-arx-attach-trailers-buffer-is-attach-trailers
+  (implies (fn-octets-p fn-octets)
+           (equal (fn-arx-attach-trailers-buffer places base fn-octets)
+                  (fn-arx-attach-trailers places base fn-octets)))
+  :hints (("Goal" :in-theory (enable fn-octets-p))))

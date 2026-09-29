@@ -144,16 +144,48 @@
         (t nil)))
 
 ; The octets of an even-length lower-case hexadecimal token, or :bad.
-(defun fn-cu-unhex (xs)
+; Executes by a loop (lane depth-debt, PRF-919): a hex argument's octets,
+; two per step; the loop stops at the first bad pair, which the recursion
+; answers :bad for as well.  Equal by fn-cu-unhex-loop-is-rev-onto.
+(defun fn-cu-unhex-loop (xs acc)
   (declare (xargs :guard t))
-  (cond ((atom xs) nil)
+  (cond ((atom xs) (fn-ag-rev-onto acc nil))
         ((atom (cdr xs)) :bad)
         (t (let ((hi (fn-cu-hex-value (car xs)))
-                 (lo (fn-cu-hex-value (cadr xs)))
-                 (rest (fn-cu-unhex (cddr xs))))
-             (if (and hi lo (not (equal rest :bad)))
-                 (cons (+ (* 16 hi) lo) rest)
+                 (lo (fn-cu-hex-value (cadr xs))))
+             (if (and hi lo)
+                 (fn-cu-unhex-loop (cddr xs) (cons (+ (* 16 hi) lo) acc))
                :bad)))))
+
+(defun fn-cu-unhex (xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (cond ((atom xs) nil)
+             ((atom (cdr xs)) :bad)
+             (t (let ((hi (fn-cu-hex-value (car xs)))
+                      (lo (fn-cu-hex-value (cadr xs)))
+                      (rest (fn-cu-unhex (cddr xs))))
+                  (if (and hi lo (not (equal rest :bad)))
+                      (cons (+ (* 16 hi) lo) rest)
+                    :bad))))
+       :exec (fn-cu-unhex-loop xs nil)))
+
+(defthm fn-cu-unhex-loop-is-rev-onto
+  (equal (fn-cu-unhex-loop xs acc)
+         (let ((r (fn-cu-unhex xs)))
+           (if (equal r :bad) :bad (fn-ag-rev-onto acc r))))
+  :hints (("Goal" :induct (fn-cu-unhex-loop xs acc)
+                  :in-theory (union-theories
+                              '(fn-cu-unhex-loop fn-cu-unhex fn-ag-rev-onto
+                                atom not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-cu-unhex
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-cu-unhex fn-ag-rev-onto fn-cu-unhex-loop-is-rev-onto
+                                atom not car-cons cdr-cons)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; A position or a count on the wire: a u64 as sixteen hexadecimal digits,
 ; so every rendered line has a fixed width and no value is rendered short.

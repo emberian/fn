@@ -1620,5 +1620,47 @@ class FailedSummaryTests(unittest.TestCase):
             self.assertIn(field, text)
 
 
+class WaitReadsTheRunsOwnDirectoryTests(unittest.TestCase):
+    """obstructions-6 item 60: wait polls the directory `status` finds, and never
+    answers "unknown" when the box has decided."""
+
+    def recorded_run(self, directory: str) -> Path:
+        root = Path(directory)
+        (root / "build" / "farm").mkdir(parents=True)
+        own = root / "build" / "acl2" / "certify-20260929T010000Z-11"
+        later = root / "build" / "acl2" / "certify-20260929T020000Z-22"
+        own.mkdir(parents=True)
+        later.mkdir(parents=True)
+        (own / "manifest.json").write_text(json.dumps(
+            {"status": "passed", "finished_utc": "2026-09-29T01:30:00Z"}))
+        (later / "manifest.json").write_text(json.dumps({"status": "failed"}))
+        os.utime(later, (2e9, 2e9))  # the newest directory is another run's
+        (root / "build" / "farm" / "run-20260929T005959Z-ab12.log").write_text(
+            f"Certification run: {own}\n")
+        return root
+
+    def test_progress_reads_the_directory_the_log_names(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.recorded_run(directory)
+            script = farm.progress_script(root, "run-20260929T005959Z-ab12")
+            out = subprocess.run(["sh", "-c", script], capture_output=True, text=True).stdout
+            progress = farm.parse_progress(out)
+            self.assertEqual(progress["MANIFEST"], "passed certify-20260929T010000Z-11")
+            self.assertEqual(progress["STATUS"], "running")
+
+    def test_verdict_names_the_boxs_manifest_rather_than_unknown(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "build" / "farm").mkdir(parents=True)
+            farm.record_path(root, "run-x").write_text(json.dumps({"host": "hbox"}))
+            farm.note_certify_id(root, "run-x", "certify-20260929T010000Z-11")
+            farm.note_box_manifest(root, "run-x", "passed")
+            lines = farm.verdict_lines(root, "run-x", 0)
+            self.assertNotIn("unknown", " ".join(lines))
+            self.assertIn("manifest certify-20260929T010000Z-11 passed on the box", lines[1])
+            farm.record_path(root, "run-y").write_text(json.dumps({"host": "hbox"}))
+            self.assertIn("unknown", " ".join(farm.verdict_lines(root, "run-y", 1)))
+
+
 if __name__ == "__main__":
     unittest.main()

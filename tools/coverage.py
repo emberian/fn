@@ -9,9 +9,9 @@ that function, from a dump tools/coverage_dump.lisp writes inside an ACL2
 session over books/image-world (its certificates) and the host :program
 files -- never from source text:
 
-    python3 tools/proof_repl.py --host BOX start cov books/image-world --lane LANE
-    python3 tools/proof_repl.py --host BOX send cov '(ld "../tools/coverage_dump.lisp")'
-    python3 tools/proof_repl.py --host BOX send cov '(cov-dump "/abs/world.json" state)'
+    python3 tools/coverage.py dump --host BOX     # remote_check ships the tree;
+        # on BOX one bare ACL2 on the LOAD-ONLY tls256k launcher (farm HOSTS
+        # load_acl2) reads the umbrella, world-host.lisp's host lds, the dumper
     python3 tools/coverage.py build --world build/coverage/world.json --write
 
 `build --write` writes planning/coverage.json (one row per declared entry,
@@ -40,8 +40,10 @@ WHAT A THEOREM SAYS ABOUT AN ENTRY E, from its translated formula (the
   nothing     no theorem of the tree's books mentions E, its callers or its
               callees.
 
-Every theorem is also read against planning/proofs.json (a cited theorem is
-an `events` entry of a proof; the proof's requirements file it under the
+Every theorem is also read against the registry (a cited theorem is an
+event of a proof in planning/proof-events.json -- read directly, since
+proofs.json's generated `events` lag it until `ledger.py --write`, which
+`check` names; the proof's requirements in planning/proofs.json file it under the
 property families of planning/families.json), so a query can ask "which
 entries has no storage-consistency theorem mentioned in a conclusion":
 
@@ -125,9 +127,11 @@ import datetime as _dt
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -293,6 +297,21 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def events_of_proofs(root: Path = ROOT) -> dict[str, list[str]] | None:
+    """PRF id -> event names, from planning/proof-events.json (None: absent)."""
+    path = root / "planning" / "proof-events.json"
+    if not path.is_file():
+        return None
+    return {target["id"]: [event["name"] for event in target.get("events", [])]
+            for target in load_json(path).get("targets", [])}
+
+
+def event_lag(proofs: list[dict], curated: dict[str, list[str]]) -> list[str]:
+    """The ids whose generated proofs.json events differ from proof-events.json."""
+    return sorted(proof["id"] for proof in proofs
+                  if proof.get("events", []) != curated.get(proof["id"], []))
+
+
 class Registry:
     """proofs.json, requirements.json and families.json, inverted."""
 
@@ -308,9 +327,18 @@ class Registry:
                 self.family_of_requirement[rid].add(family)
         self.proofs_of_event: dict[str, list[str]] = collections.defaultdict(list)
         self.requirements_of_proof: dict[str, list[str]] = {}
+        # A proof's events come from planning/proof-events.json, the file
+        # lanes edit; proofs.json's `events` are generated from it by
+        # `ledger.py --write` and lag it until someone regenerates
+        # (decision-keystones-3: six delegations refused because a new
+        # PRF's callee theorems read uncited).  item 47.
+        curated = events_of_proofs(root)
+        self.event_lag = event_lag(proofs, curated) if curated is not None else []
         for proof in proofs:
             self.requirements_of_proof[proof["id"]] = list(proof.get("requirements", []))
-            for event in proof.get("events", []):
+            events = (curated.get(proof["id"], []) if curated is not None
+                      else proof.get("events", []))
+            for event in events:
                 self.proofs_of_event[event.lower()].append(proof["id"])
 
     def families_of_theorem(self, theorem: str) -> tuple[list[str], list[str]]:
@@ -533,18 +561,40 @@ def cover(world: World, registry: Registry, entry: str, entries: frozenset) -> d
     }
 
 
-def coordinate(world_path: Path, box: str | None) -> dict:
+SHA = re.compile(r"[0-9a-f]{7,40}")
+
+
+def source_revision(given: str | None = None, root: Path = ROOT) -> str:
+    """The commit the dumped world was built from (item 48): GIVEN
+    (--source-revision) when named, else the tree's HEAD.  A box tree with no
+    git (a shipped copy) must name it: a coverage file without its source
+    coordinate is not a claim (AGENTS.md, "A claim names its coordinate")."""
     try:
-        revision = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
-                                  capture_output=True, text=True, check=True).stdout.strip()
+        head = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
+                              capture_output=True, text=True, check=True).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
-        revision = None
-    return {"source_revision": revision, "box": box,
+        head = None
+    if given:
+        if not SHA.fullmatch(given):
+            raise SystemExit(f"coverage: --source-revision {given!r} is not a commit sha")
+        if head and not head.startswith(given) and not given.startswith(head):
+            print(f"coverage: --source-revision {given} is not this tree's HEAD {head}; "
+                  f"recording {given}", file=sys.stderr)
+        return given
+    if head is None:
+        raise SystemExit("coverage: no git here (a shipped box tree?): name the commit the "
+                         "world was dumped from with --source-revision SHA")
+    return head
+
+
+def coordinate(world_path: Path, box: str | None, revision: str | None = None) -> dict:
+    return {"source_revision": source_revision(revision), "box": box,
             "dump_sha256": hashlib.sha256(world_path.read_bytes()).hexdigest(),
             "date": _dt.date.today().isoformat()}
 
 
-def build(world_path: Path, box: str | None = None, root: Path = ROOT) -> dict:
+def build(world_path: Path, box: str | None = None, root: Path = ROOT,
+          revision: str | None = None) -> dict:
     world = World(load_json(world_path))
     registry = Registry(root)
     declared = load_json(root / "planning" / "interfaces.json")["entries"]
@@ -567,7 +617,7 @@ def build(world_path: Path, box: str | None = None, root: Path = ROOT) -> dict:
                         "(tools/coverage_dump.lisp) and planning/interfaces.json, proofs.json, "
                         "requirements.json and families.json.  Do not edit; regenerate at "
                         "convergence."),
-        "coordinate": {**coordinate(world_path, box), "world_cbd": world.cbd,
+        "coordinate": {**coordinate(world_path, box, revision), "world_cbd": world.cbd,
                        "theorems": len(world.theorems),
                        "functions": sum(1 for n in world.functions if world.in_tree(n))},
         "rule": {"decision": "branches (if in its private closure) and constructs an outcome "
@@ -764,8 +814,16 @@ def write_baseline(cov: dict, path: Path = BASELINE) -> None:
 
 def check(cov: dict | None, root: Path = ROOT) -> tuple[list[str], list[str]]:
     """(problems, notes): problems fail make check, notes only print."""
-    problems = Registry(root).problems()
+    registry = Registry(root)
+    problems = registry.problems()
     notes: list[str] = []
+    if registry.event_lag:
+        lag = registry.event_lag
+        notes.append("planning/proofs.json's generated events lag planning/proof-events.json "
+                     "for {} target(s) ({}{}): coverage reads proof-events.json, but regen "
+                     "the ledger (python3 tools/ledger.py --write, or tools/remote_check.sh "
+                     "BOX --regen) before committing".format(
+                         len(lag), ", ".join(lag[:6]), ", ..." if len(lag) > 6 else ""))
     if cov is None:
         notes.append("planning/coverage.json is missing: no world dump has been built yet")
         return problems, notes
@@ -881,82 +939,159 @@ def host_forms() -> list[str]:
     return out
 
 
-def dump_steps(host: str, name: str, remote_json: str,
-               with_host: bool = True) -> list[tuple[str, list[str]]]:
-    """(what, proof_repl argv) for one dump, in order."""
-    repl = [sys.executable, str(ROOT / "tools" / "proof_repl.py")]
-    steps = [("start the session over books/image-world",
-              repl + ["start", name, "books/image-world", "--host", host])]
+DUMP_LD = "FNCOV-LD"
+DUMP_WORLD_OK = "FNCOV-WORLD-OK"
+DUMP_DONE = "FNCOV-DONE"
+DUMP_ERRORS = ("ACL2 Error", "HARD ACL2 ERROR", "ABORTING from raw Lisp",
+               "Thread local storage exhausted")
+
+
+def dump_session(remote_json: str, with_host: bool = True) -> str:
+    """The form file a bare ACL2 reads on stdin from books/ (obstructions-6
+    item 46; decision-keystones-3's recipe): the certified umbrella, each
+    world-host.lisp form (every host `ld` announced, so an error names its
+    file), the dumper, the dump, an end marker."""
+    lines = ['(ld "image-world.lisp")']
     if with_host:
         for form in host_forms():
-            what = (form.split('"')[1] if form.startswith("(ld ") else
-                    "the prologue" if form.startswith("(if ") else
-                    "restore the compiler" if form.startswith("(set-compiler") else
-                    "the closure check")
-            steps.append((what, repl + ["send", name, form, "--host", host,
-                                        "--limit", "1200"]))
-    steps.append(("load tools/coverage_dump.lisp",
-                  repl + ["send", name, '(ld "../tools/coverage_dump.lisp")', "--host", host]))
-    steps.append(("dump the world",
-                  repl + ["send", name, f'(cov-dump "{remote_json}" state)', "--host", host,
-                          "--limit", "1800"]))
-    return steps
+            if form.startswith("(ld "):
+                lines.append(f'(value-triple (cw "{DUMP_LD} ~s0~%" "{form.split(chr(34))[1]}"))')
+            lines.append(form)
+    lines += [f'(value-triple (cw "{DUMP_WORLD_OK}~%"))',
+              '(ld "../tools/coverage_dump.lisp")',
+              f'(cov-dump "{remote_json}" state)',
+              f'(value-triple (cw "{DUMP_DONE}~%"))',
+              "(good-bye)"]
+    return "\n".join(lines) + "\n"
+
+
+def dump_findings(output: str) -> tuple[list[str], bool, bool]:
+    """(errors, each naming the host `ld` it was in; world reached; done)."""
+    findings, current, world, done = [], "books/image-world", False, False
+    lines = output.splitlines()
+    for index, line in enumerate(lines):
+        if DUMP_LD + " " in line:
+            current = line.split(DUMP_LD + " ", 1)[1].strip()
+        elif DUMP_WORLD_OK in line:
+            world, current = True, "tools/coverage_dump.lisp / cov-dump"
+        elif DUMP_DONE in line:
+            done = True
+        elif any(marker in line for marker in DUMP_ERRORS):
+            detail = " ".join(part.strip() for part in lines[index:index + 3])
+            findings.append(f"in {current}: {detail[:400]}")
+    return findings, world, done
+
+
+def load_launcher() -> str | None:
+    """The LOAD-ONLY launcher (farm HOSTS load_acl2, via FN_LOAD_ACL2)."""
+    return os.environ.get("FN_LOAD_ACL2") or None
+
+
+def dump_here(out: Path, with_host: bool, timeout: int, run=subprocess.run) -> int:
+    """`coverage.py dump --here` (on the box, in a tree whose certificates are
+    installed): one bare ACL2 on the LOAD-ONLY launcher reads dump_session."""
+    launcher = load_launcher()
+    if not launcher:
+        print("coverage dump --here: NOT RUN -- FN_LOAD_ACL2 is unset (the LOAD-ONLY "
+              "launcher; farm HOSTS load_acl2; `coverage.py dump --host BOX` sets it)",
+              file=sys.stderr)
+        return 2
+    # One coherent set for the umbrella, under the CERTIFYING launcher (the
+    # cache's identity): remote_check's per-book `certs.py install` left
+    # pairs that do not compose on hbox (include-book owner failed on its
+    # certificate), and every host ld after it failed with it.
+    certifying = os.environ.get("FN_ACL2")
+    if certifying:
+        installed = run([sys.executable, str(ROOT / "tools" / "certs.py"), "--root", str(ROOT),
+                         "--acl2", certifying, "install-set", "books/image-world"],
+                        cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+        said = (installed.stdout or b"")
+        said = said.decode("utf-8", "replace") if isinstance(said, bytes) else said
+        print("coverage dump --here: certs.py install-set books/image-world: "
+              + " ".join(said.split()[-24:]), file=sys.stderr)
+        if installed.returncode != 0:
+            print("coverage dump --here: NOT RUN -- the umbrella's certificate set did not "
+                  "install from the cache (see above)", file=sys.stderr)
+            return 2
+    if not (ROOT / "books" / "image-world.cert").is_file():
+        print("coverage dump --here: NOT RUN -- books/image-world has no certificate in "
+              "this tree (python3 tools/certs.py install-set books/image-world, with the "
+              "CERTIFYING launcher's --acl2)", file=sys.stderr)
+        return 2
+    out = out if out.is_absolute() else (ROOT / out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if out.exists():
+        out.unlink()
+    log = out.with_suffix(".log")
+    env = dict(os.environ, FN_ACL2=launcher, ACL2_CUSTOMIZATION="NONE",
+               ACL2_BOOK_HASH_ALISTP="NIL")
+    env.pop("ACL2_SYSTEM_BOOKS", None)
+    started = time.monotonic()
+    done = run([sys.executable, str(ROOT / "tools" / "acl2"), "--timeout", str(timeout),
+                "--label", "coverage-dump"], cwd=ROOT / "books",
+               input=dump_session(str(out), with_host).encode(), stdout=subprocess.PIPE,
+               stderr=subprocess.STDOUT, env=env, check=False)
+    output = (done.stdout or b"").decode("utf-8", "replace")
+    log.write_text(output, encoding="utf-8")
+    findings, world, finished = dump_findings(output)
+    for finding in findings:
+        print(f"coverage dump --here: FAIL {finding}", file=sys.stderr)
+    ok = not findings and world and finished and out.is_file()
+    if not ok and out.is_file():
+        # A partial world is not the world: never leave it where `build` reads.
+        out.rename(out.with_suffix(".partial.json"))
+    print(f"coverage dump --here: {'ok' if ok else 'FAILED'} in "
+          f"{time.monotonic() - started:.0f} s on {launcher} "
+          f"({'with' if with_host else 'WITHOUT'} the host files); "
+          f"world {'reached' if world else 'NOT reached'}; transcript {log}",
+          file=sys.stderr)
+    return 0 if ok else 1
 
 
 def dump_command(args, run=subprocess.run) -> int:
     """`coverage.py dump --host BOX`: the recipe nobody should re-derive.
 
-    A session over books/image-world alone lists every host entry ABSENT
-    (661 of them; decision-keystones-2 reverted a baseline built that way),
-    and ld-ing world-host.lisp whole from a session ended it on an inner
-    error.  So: start, send world-host.lisp's forms one at a time (a failure
-    names its host file and stops), load the dumper, dump on the box, copy
-    the JSON home, stop the session.
+    decision-keystones-3 (2026-09-29): a proof_repl session on the fleet's
+    tls64k launcher dies "Thread local storage exhausted" at the 14th host
+    `ld`, and a session on any other launcher is a different toolchain
+    identity, so proof_repl refuses the certificate cache.  So: remote_check
+    ships this tree to BOX and installs the cache's certificates under the
+    CERTIFYING launcher (its step 5), then `coverage.py dump --here` feeds one
+    bare ACL2 on BOX's LOAD-ONLY launcher (farm HOSTS load_acl2, tls256k) the
+    umbrella, world-host.lisp's forms, the dumper and the dump, and the JSON
+    comes back as a remote_check --fetch.
     """
     sys.path.insert(0, str(ROOT / "tools"))
-    import proof_repl  # noqa: E402
-    lane = args.lane or proof_repl.default_lane()
-    if not lane:
-        raise SystemExit("coverage: dump needs --lane (or run from build/lanes/NAME)")
-    host, name = args.host, args.name or f"cov-{lane}"
-    tree = proof_repl.remote_tree(host, lane)
-    # cov-dump writes an absolute path; a relative gates root is under $HOME.
-    remote_json = f"{tree}/build/coverage/world.json"
-    absolute = remote_json if remote_json.startswith("/") else None
-    if absolute is None:
-        home = run(["ssh", host, "echo $HOME"], capture_output=True, text=True)
-        absolute = f"{(home.stdout or '').strip()}/{remote_json}"
-    env = dict(os.environ, FN_LANE=lane)
+    import farm  # noqa: E402
+    host = args.host
+    launcher = farm.HOSTS.get(host, {}).get("load_acl2")
+    if not launcher:
+        print(f"coverage dump: {host} names no load_acl2 launcher in farm HOSTS",
+              file=sys.stderr)
+        return 2
+    relative = DEFAULT_WORLD.relative_to(ROOT).as_posix()
+    inner = (f"FN_LOAD_ACL2={launcher} python3 tools/coverage.py dump --here "
+             f"--out {relative} --timeout {args.timeout}"
+             + (" --no-host-files" if args.no_host_files else ""))
+    argv = ["sh", str(ROOT / "tools" / "remote_check.sh"), host, "--cmd", inner,
+            "--fetch", relative, "--fetch", relative[:-len(".json")] + ".log"]
+    print(f"coverage dump: {' '.join(argv[2:])}", file=sys.stderr, flush=True)
+    done = run(argv, cwd=ROOT)
+    fetched = DEFAULT_WORLD
+    if done.returncode != 0 or not fetched.is_file():
+        print(f"coverage dump: FAILED on {host} (exit {done.returncode}); nothing was "
+              f"dumped here; the transcript is {relative[:-len('.json')]}.log",
+              file=sys.stderr)
+        return 1
     out = Path(args.out)
-    code, started = 0, False
-    try:
-        run(["ssh", host, f"mkdir -p {absolute.rsplit('/', 1)[0]}"])
-        for what, argv in dump_steps(host, name, absolute, not args.no_host_files):
-            print(f"coverage dump: {what}", file=sys.stderr, flush=True)
-            done = run(argv, cwd=ROOT, env=env)
-            if argv[2] == "start":
-                started = done.returncode == 0
-            if done.returncode != 0:
-                print(f"coverage dump: FAILED at {what} (exit {done.returncode}); "
-                      "nothing was dumped", file=sys.stderr)
-                code = 1
-                break
-        if code == 0:
-            out.parent.mkdir(parents=True, exist_ok=True)
-            if run(["scp", "-q", f"{host}:{absolute}", str(out)]).returncode != 0:
-                print(f"coverage dump: the dump is on {host}:{absolute} and did not copy",
-                      file=sys.stderr)
-                code = 1
-            else:
-                print(f"coverage dump: {out} ({host}, "
-                      f"{'WITHOUT' if args.no_host_files else 'with'} the host files); next: "
-                      f"python3 tools/coverage.py build --world {out} --box {host} --write",
-                      file=sys.stderr)
-    finally:
-        if started and not args.keep:
-            run([sys.executable, str(ROOT / "tools" / "proof_repl.py"), "stop", name,
-                 "--host", host], cwd=ROOT, env=env)
-    return code
+    if out.resolve() != fetched.resolve():
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(fetched.read_bytes())
+    print(f"coverage dump: {out} ({host}, {launcher}, "
+          f"{'WITHOUT' if args.no_host_files else 'with'} the host files); next: "
+          f"python3 tools/coverage.py build --world {out} --box {host} --write",
+          file=sys.stderr)
+    return 0
 
 
 def main(argv=None) -> int:
@@ -967,14 +1102,19 @@ def main(argv=None) -> int:
     b.add_argument("--box", default=None, help="where the session ran (the coordinate)")
     b.add_argument("--write", action="store_true", help="write coverage.json and the gaps file")
     b.add_argument("--baseline", action="store_true", help="also rewrite coverage-baseline.json")
+    b.add_argument("--source-revision", metavar="SHA", default=None,
+                   help="the commit the world was dumped from (required where the tree "
+                        "has no git; default this tree's HEAD)")
     d = sub.add_parser("dump", help="dump the world (image-world + the host files) on a box")
-    d.add_argument("--host", required=True, metavar="BOX")
-    d.add_argument("--lane", default=None)
-    d.add_argument("--name", default=None, help="the proof_repl session (default cov-LANE)")
+    where = d.add_mutually_exclusive_group(required=True)
+    where.add_argument("--host", metavar="BOX", help="ship this tree to BOX and dump there")
+    where.add_argument("--here", action="store_true",
+                       help="dump in this tree (the box side; needs FN_LOAD_ACL2 and "
+                            "books/image-world's certificate)")
     d.add_argument("--out", default=str(DEFAULT_WORLD))
+    d.add_argument("--timeout", type=int, default=1800)
     d.add_argument("--no-host-files", action="store_true",
                    help="the umbrella alone (every host entry then reads ABSENT)")
-    d.add_argument("--keep", action="store_true", help="leave the session running")
     q = sub.add_parser("query", help="ask the coverage")
     q.add_argument("--family", default=None)
     q.add_argument("--subsystem", default=None, choices=SUBSYSTEMS)
@@ -1004,7 +1144,7 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "build":
-        cov = build(args.world, args.box)
+        cov = build(args.world, args.box, revision=args.source_revision)
         if args.write:
             COVERAGE.write_text(json.dumps(cov, indent=1) + "\n")
             GAPS.write_text(render_gaps(cov))
@@ -1039,6 +1179,8 @@ def main(argv=None) -> int:
     if args.command == "twins":
         return twins_command(args)
     if args.command == "dump":
+        if args.here:
+            return dump_here(Path(args.out), not args.no_host_files, args.timeout)
         return dump_command(args)
     if args.command == "summary":
         cov = load_coverage()

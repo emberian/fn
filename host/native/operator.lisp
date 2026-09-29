@@ -861,6 +861,49 @@ that is neither accepted nor refused (the transport) is uncertain."
                  (if (eql (first report) 0) +fnn-exit-ok+ +fnn-exit-refused+))
             (fnn-store-close store)))))
 
+(defun fnn-operator-execute-inspect-group (result)
+  "Row S3d: `store inspect --group GROUP': the group's memberships, article
+numbers to Message-IDs, ACL2's report (books/owner-inspect-group.lisp
+fn-oig-report) over the archive the running owner's served view carries, read
+as the control report kind (:inspect-group . GROUP) through the status
+exchange (books/control-evidence.lisp, FNLS frame kind 3, as `moderation list
+GROUP' is read), or over the archive this process replays from the checkpoint
+and its suffix when no owner runs (fnn-command-inspect-group-offline); refused
+by name when an owner holds the lock and answers nothing (fn-omr-held-line).
+The exit is ACL2's reading of the octets printed (fn-oig-report-exit); an
+answer that is neither the report nor a refusal (the transport) is uncertain."
+  (let ((root (fnn-core 'fn-native-operator-host-result-store-root result))
+        (group (fnn-core 'fn-native-operator-host-result-inspect-group result)))
+    (unless (stringp group)
+      (fnn-fault "ACL2 accepted an inspect plan with no group"))
+    (handler-case
+        (let ((kind (cons :inspect-group group)))
+          (case (fnn-operator-maintenance-route result root)
+            (:owner
+             (let* ((live *fnn-operator-live-owner*)
+                    (control-path
+                      (fnn-octets (fnn-core 'fn-omr-control-path-octets result)))
+                    (answer (funcall (fnn-olo-live-status live) control-path kind)))
+               (cond ((and (consp answer) (eq (first answer) :done)
+                           (fnn-octet-list-p (second answer)))
+                      (fnn-write-report (second answer))
+                      (fnn-core 'fn-native-live-status-host-inspect-group-exit
+                                (second answer)))
+                     ((and (consp answer) (eq (first answer) :refused))
+                      (fnn-out "inspect refused reason=~(~a~)" (second answer))
+                      +fnn-exit-refused+)
+                     (t (fnn-out "inspect uncertain reason=~(~a~)"
+                                 (if (consp answer) (first answer) answer))
+                        +fnn-exit-uncertain+))))
+            (:held (fnn-out "~a" (fnn-core 'fn-omr-held-line "inspect"))
+                   +fnn-exit-refused+)
+            (t (fnn-command-inspect-group-offline root kind))))
+      (error (condition)
+        (let ((code (fnn-exit-code-for condition)))
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
+                                    "inspect" condition)
+          code)))))
+
 (defun fnn-operator-dispatch-plan (result0)
   (let* ((result (fnn-operator-store-outcome result0))
          (status (fnn-core 'fn-native-operator-host-result-status result)))
@@ -897,6 +940,7 @@ that is neither accepted nor refused (the transport) is uncertain."
             :reclaim :reclaim-dry-run :reclaim-recorded :rebind-filesystem)
            (fnn-operator-execute-store-action result action))
           (:inspect (fnn-operator-execute-inspect result))
+          (:inspect-group (fnn-operator-execute-inspect-group result))
           (:admin (fnn-operator-execute-admin result))
           (:account-invite (fnn-operator-execute-account-invite result))
           (:account-hash (fnn-operator-execute-account-hash result))

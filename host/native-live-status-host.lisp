@@ -23,7 +23,7 @@
   ; `status', `pins', `obligations' and `peer list' with no owner running:
   ; the Store and configuration this process replayed, no connection.
   (declare (xargs :stobjs (fn-arena state) :mode :program))
-  (if (fn-cevg-kindp kind)
+  (if (fn-cev-report-kindp kind)
       ;; PKT-209: the records decided as recovery decides them.
       (fn-cev-offline-report kind (f-get-global 'fn-store-sn state))
     (fn-nls-offline-report kind profile
@@ -71,7 +71,7 @@
                    ;; (books/public-exposure.lisp fn-exp-health-lines),
                    ;; after the eight states, so the first line and its exit
                    ;; code are fn-nh-render's unchanged.
-                   (if (fn-cevg-kindp kind)
+                   (if (fn-cev-report-kindp kind)
                        ;; PKT-209 (PRF-185): the records and archive the
                        ;; owner's committed view carries.
                        (fn-cev-live-report kind (fn-owner-ocfg state))
@@ -195,6 +195,13 @@
 (defun fn-native-live-status-host-route (socket-present outcome)
   (declare (xargs :mode :program))
   (fn-nls-route socket-present outcome))
+
+; Row S3d: the exit the client reads back from the `store inspect --group'
+; report it printed (books/owner-inspect-group.lisp fn-oig-report-exit): 0 for
+; the members and their lines, 1 for the refusal by name.
+(defun fn-native-live-status-host-inspect-group-exit (octets)
+  (declare (xargs :mode :program))
+  (fn-oig-report-exit octets))
 
 (defun fn-native-live-status-host-max-frame ()
   (declare (xargs :mode :program))

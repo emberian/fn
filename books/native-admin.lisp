@@ -781,7 +781,14 @@
                                            ;; PRF-359: the operator's free-space
                                            ;; reserve (books/owner-time-model.lisp
                                            ;; fn-otm-space-need).
-                                           "disk-reserve-octets"))
+                                           "disk-reserve-octets"
+                                           ;; PRF-986 (PKT-639): the TLS
+                                           ;; handshake budget
+                                           ;; (books/tls-handshake-budget.lisp
+                                           ;; fn-hsb-limits), each positive.
+                                           "tls-handshakes-per-source-per-minute"
+                                           "tls-handshakes-in-flight"
+                                           "tls-handshake-ms"))
              (fn-native-admin-decimalp (cadddr words))
              ; Lane compression-extents-2 (PRF-341): `compress-min-octets'
              ; (books/payload-lz-append.lisp fn-lzr-config-min) also admits
@@ -870,7 +877,7 @@
           (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil))
          ((and (consp (cdr words))
                (member-equal (cadr words) '("budget" "carries" "pull" "distributions"
-                                            "catch-up" "feed")))
+                                            "catch-up" "feed" "set")))
           (fn-native-admin-peer-extend-plan words))
          (t (fn-native-admin-peer-plan words))))
        ; PRF-164 (PKT-439): invitation-code accounts.  `account list' is a
@@ -1037,7 +1044,7 @@
        (fn-native-admin-result-value result)))
 
 ; Q16: the reclaim pass's mode an accepted reclaim request names, or nil
-; (the compaction request).
+; (the compaction and inspect requests).
 (defun fn-native-admin-result-reclaim-mode (result)
   (declare (xargs :guard t))
   (and (fn-native-admin-result-owner-requestp result)
@@ -1164,6 +1171,14 @@
       ; (`fn-pcb-extend-deltas-apply-as-the-extend-delta').
       ; `peer feed NAME pause|resume' (books/feed-pause.lisp): the deltas
       ; that set the one pause row, removing the other.
+      ; Row S5: `peer set' (books/peer-set.lisp fn-pset-plan): the one
+      ; :set-peer delta of the edited record and the kept extension rows.
+      (if (fn-pset-plan-valuep (fn-native-admin-result-value plan))
+          (let ((pset (fn-pset-plan
+                       (fn-record-octets-string (fn-native-admin-result-name plan))
+                       (cadr (fn-native-admin-result-value plan))
+                       peers)))
+            (if (equal (car pset) :ok) (cadr pset) nil))
       (if (fn-fps-plan-rowsp (fn-native-admin-result-value plan))
           (fn-fps-deltas
            (fn-record-octets-string (fn-native-admin-result-name plan))
@@ -1172,8 +1187,30 @@
         (fn-pcb-extend-deltas
          (fn-record-octets-string (fn-native-admin-result-name plan))
          (fn-native-admin-result-value plan)
-         peers))
+         peers)))
     (fn-native-admin-plan-deltas plan)))
+
+; Why an accepted plan has no delta over the table PEERS, by name, for the
+; host to print (live: host/native-admin-host.lisp
+; fn-native-admin-host-owner-reconfigure; offline: fn-native-admin-host-
+; apply): `peer set''s own refusal (books/peer-set.lisp fn-pset-plan), or
+; :no-such-peer for an extension of a peer the table does not hold; nil when
+; the plan has its deltas.
+(defun fn-native-admin-plan-refusal-over (plan peers)
+  (declare (xargs :guard t))
+  (cond ((fn-native-admin-plan-deltas-over plan peers) nil)
+        ((and (equal (fn-native-admin-result-status plan) :accepted)
+              (equal (fn-native-admin-result-kind plan) :extend-peer)
+              (fn-pset-plan-valuep (fn-native-admin-result-value plan)))
+         (let ((pset (fn-pset-plan
+                      (fn-record-octets-string (fn-native-admin-result-name plan))
+                      (cadr (fn-native-admin-result-value plan))
+                      peers)))
+           (if (equal (car pset) :refused) (cadr pset) :no-delta)))
+        ((and (equal (fn-native-admin-result-status plan) :accepted)
+              (equal (fn-native-admin-result-kind plan) :extend-peer))
+         :no-such-peer)
+        (t :no-delta)))
 
 (defthm fn-native-admin-plan-deltas-over-other-plans-by-definition
   (implies (not (equal (fn-native-admin-result-kind plan) :extend-peer))
