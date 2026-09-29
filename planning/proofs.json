@@ -4780,7 +4780,9 @@
         "fn-sbud-article-verdict-keeps-history",
         "fn-sbud-prepare-under-article-budget-keeps-history",
         "fn-post-admitted-article-keeps-history",
-        "fn-sbud-article-figure-bounds-the-record"
+        "fn-sbud-article-figure-bounds-the-record",
+        "fn-sbud-article-gate-figure-bounds-every-record",
+        "fn-sbud-article-verdict-keeps-history-for-every-record"
       ]
     },
     {
@@ -7536,7 +7538,8 @@
         "fn-heap-store-history-holds-payload-and-memberships",
         "fn-heap-arena-octets-slope",
         "fn-heap-records-retained-within-the-terms",
-        "fn-heap-small-profile-run-fits-a-two-gib-machine"
+        "fn-heap-small-profile-run-fits-a-two-gib-machine",
+        "fn-heap-record-charge-is-the-budgets-charge"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -8227,8 +8230,7 @@
       "progress_note": "Lane served-line-iterative (2026-09-26; image-floor packet 2, PKT-481's class, D27). Cause by persvati REPL backtrace (FN-POST-BODY-OCTETS frames to exhaustion on 3,000,000 lines) and by the native witness (one 4 MiB line: Control stack exhausted in fn-owner-chunk-span until fn-wire-list-length was a loop). Teeth: tests/acl2/served-line-iterative-tests.lisp (reachable witnesses, the composed BODY reply, served-size witnesses of 2,100,000 lines and of one 20,000,000-octet line through the compiled executables, labelled MUTATION witnesses refuted on ground instances). Lane line-stack (Opus 5.5, 2026-09-27): the fourth keystone; cause read from the frames of FN_NATIVE_FAULT_BACKTRACE's stack-exhaustion report (FN-HF-CRLF-COUNT x60795 on the committer); teeth in tests/acl2/catalog-record-tests.lisp (reachable witnesses by loop and definition; 5,000,000 lines through fn-hf-body-lines-of). Lane chunked-body (B6, 2026-09-29): fn-wire-list-length-onto-is-list-length is no longer cited: the served article line is no longer a list the wire measures -- it is in the article's packed store and fn-wire-after-line reads its length in constant work (fn-wire-partial-len; PRF-922).",
       "events": [
         "fn-nntp-stuff-lines-iter-is-stuff-lines",
-        "fn-post-body-octets-iter-is-body-octets",
-        "fn-wire-list-length-onto-is-list-length"
+        "fn-post-body-octets-iter-is-body-octets"
       ]
     },
     {
@@ -8486,9 +8488,7 @@
         "fn-auth-view-consistent",
         "fn-auth-view-consistent-back",
         "fn-auth-view-trie-corresponds",
-        "fn-auth-delegate-pinned-preserves-consistentp",
-        "fn-gac-views-find-is-restriction",
-        "fn-gac-access-views-covers-pattern"
+        "fn-auth-delegate-pinned-preserves-consistentp"
       ]
     },
     {
@@ -10857,7 +10857,40 @@
         "fn-sjh-okp-at-owner-prepare-identity-sealed",
         "fn-sjh-okp-at-owner-prepare-identity-unsealed",
         "fn-sjh-okp-at-owner-finish-no-row",
-        "fn-sjh-okp-of-other-prepare"
+        "fn-sjh-okp-of-other-prepare",
+        "fn-sjh-okp-at-owner-finish-identity",
+        "fn-sjh-idf-finish-equations",
+        "fn-sjh-okp-of-ocfg-step-owner-event",
+        "fn-sjh-okp-at-owner-begin",
+        "fn-sjh-okp-at-owner-declare-group",
+        "fn-sjh-okp-at-owner-observe",
+        "fn-sjh-okp-at-owner-unstage",
+        "fn-sjh-okp-at-owner-node-secret",
+        "fn-sjh-okp-at-owner-install-profile",
+        "fn-sjh-okp-at-owner-open-peer",
+        "fn-sjh-okp-at-owner-chunk-span",
+        "fn-sjh-files-okp-exec-is-files-okp",
+        "fn-sjh-okp-at-owner-log-reserve",
+        "fn-sjh-okp-at-owner-log-order",
+        "fn-sjh-okp-at-owner-reconfigure-complete",
+        "fn-sjh-okp-at-owner-open",
+        "fn-sjh-okp-at-owner-open-captured",
+        "fn-sjh-okp-at-owner-exposure-open",
+        "fn-sjh-okp-at-owner-read-step",
+        "fn-sjh-colsp-at-full-open",
+        "fn-sjh-colsp-at-recover",
+        "fn-sjh-colsp-at-owner-prepare-buffer",
+        "fn-sjh-colsp-at-owner-prepare-identity-sealed",
+        "fn-sjh-colsp-at-finish",
+        "fn-sjh-colsp-at-commit-reseat",
+        "fn-sjh-okp-at-owner-chunk-span-carried",
+        "fn-sjh-viewsp-at-capture",
+        "fn-sjh-viewsp-at-owner-finish-identity",
+        "fn-sjh-viewsp-at-host-article-finish",
+        "fn-sjh-viewsp-of-ocfg-store-step",
+        "fn-sjh-viewsp-at-owner-chunk-span",
+        "fn-sjh-okp-at-owner-chunk-span-fully-carried",
+        "fn-sjh-okp-at-owner-open-captured-carried"
       ]
     },
     {
@@ -11332,7 +11365,8 @@
         "fn-cvec-statement-admission-keeps-the-vector",
         "fn-cvec-statement-row-within-its-figure",
         "fn-pvc-statement-verdict-carried-is-cvec-statement-verdict-at",
-        "fn-oii-publication-group-count-is-the-rows"
+        "fn-oii-publication-group-count-is-the-rows",
+        "fn-cvec-held-row-within-its-figure"
       ]
     },
     {
@@ -13882,7 +13916,12 @@
         "tests/acl2/open-frontier-tests.lisp",
         "tests/test_native_checkpoint_auto.py"
       ],
-      "progress_note": "Lane limits-live-2 (2026-09-29), row B10: the checkpoint-damaged bug of the operability review's walk F3."
+      "progress_note": "Lane limits-live-2 (2026-09-29), row B10: the checkpoint-damaged bug of the operability review's walk F3.",
+      "events": [
+        "fn-ofr-replay-ok-frontier-admits",
+        "fn-ofr-loop-ok-within-frontier",
+        "fn-ofr-apply-record-idle-past-txid"
+      ]
     },
     {
       "id": "PRF-904",
@@ -14119,7 +14158,12 @@
         "books/limits-live.lisp",
         "tests/acl2/limits-live-tests.lisp"
       ],
-      "progress_note": "Lanes limits-live (book), limits-live-3 (teeth, registry) 2026-09-29, row S1."
+      "progress_note": "Lanes limits-live (book), limits-live-3 (teeth, registry) 2026-09-29, row S1.",
+      "events": [
+        "fn-lim-effective-of-append-record",
+        "fn-lim-apply-deltas-of-the-verb",
+        "fn-lim-decide-accepted-keeps-use-within"
+      ]
     },
     {
       "id": "PRF-975",
@@ -14133,7 +14177,7 @@
         "PRF-940"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/native-control-line.lisp",
         "tests/acl2/native-control-line-tests.lisp"
@@ -14152,7 +14196,7 @@
         "PRF-937"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/open-frontier-wire.lisp",
         "tests/acl2/open-frontier-wire-tests.lisp"
@@ -14185,7 +14229,20 @@
         "tests/acl2/wire-tests.lisp",
         "specs/store-refinement.md"
       ],
-      "progress_note": "Lane chunked-body (2026-09-28/29, B6 of COMPLETE-BEFORE-6.6.0): certification and native modules in the lane's READY."
+      "progress_note": "Lane chunked-body (2026-09-28/29, B6 of COMPLETE-BEFORE-6.6.0): certification and native modules in the lane's READY.",
+      "events": [
+        "fn-bch-unpack-of-pack",
+        "fn-bch-pack-of-append",
+        "fn-bch-digits-onto-is-digits",
+        "fn-bch-unpack-is-digits",
+        "fn-bch-octets-of-push-list",
+        "fn-bch-wf-is-of-octets",
+        "fn-bch-body-okp-line",
+        "fn-bch-body-okp-whole-line",
+        "fn-bch-join-of-terminator-lines",
+        "fn-bchs-push-span-is-push-list",
+        "fn-wire-article-event-is-the-held-body"
+      ]
     },
     {
       "id": "PRF-928",
@@ -14215,7 +14272,16 @@
         "tests/test_native_article_slots.py",
         "specs/store-refinement.md"
       ],
-      "progress_note": "Lane chunked-body-2 (2026-09-29, B6b of COMPLETE-BEFORE-6.6.0): at A = 1 MiB the 64 MiB pool holds 30 articles in flight (it held 1)."
+      "progress_note": "Lane chunked-body-2 (2026-09-29, B6b of COMPLETE-BEFORE-6.6.0): at A = 1 MiB the 64 MiB pool holds 30 articles in flight (it held 1).",
+      "events": [
+        "fn-psub-unpack-of-pack-octets",
+        "fn-psub-unpack-of-pack-groups",
+        "fn-psub-unpack-of-pack-sub",
+        "fn-psub-packed-octets-len-is-len",
+        "fn-own-take-installs-the-enqueued-submission",
+        "fn-own-take-installs-the-queued-submission-whatever-it-carries",
+        "fn-heap-article-slots-are-held"
+      ]
     },
     {
       "id": "PRF-929",
@@ -14240,7 +14306,13 @@
         "tests/acl2/wire-tests.lisp",
         "specs/store-refinement.md"
       ],
-      "progress_note": "Lane chunked-body-2 (2026-09-29, B6b)."
+      "progress_note": "Lane chunked-body-2 (2026-09-29, B6b).",
+      "events": [
+        "fn-wire-statep-article-holds-at-most-the-body-limit",
+        "fn-wire-feed-byte-preserves-statep",
+        "fn-tb-served-run-holds-at-most-the-body-limit-mid-article",
+        "fn-wire-scan-is-span-fold"
+      ]
     }
   ]
 }
