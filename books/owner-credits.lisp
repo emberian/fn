@@ -25,7 +25,7 @@
 ;
 ;   THE OPERATIONS are keyed by where the buffer is:
 ;     (:conn . ID)  connection ID's article buffers: one reserve R (the
-;                   article's worst case, fn-heap-article-reserve-octets)
+;                   article's worst case packed, fn-heap-article-reserve-octets)
 ;                   while it is mid-article and one per submission of it
 ;                   still queued (`fn-mca-need');
 ;     :open         the submissions the committer took and has not sealed
@@ -73,8 +73,10 @@
 ; buffers as they were (the frame theorem lane admission-gap is proving);
 ; with it, "every connection's credit covers its buffers" is an invariant of
 ; the served machine, and without it this book's coverage is per read of
-; the connection read.  That the octet-list heap of a retained body is the
-; reserve's 32 octets an octet (a measurement: measure at convergence).
+; the connection read.  That the packed store and the packed submission
+; take the reserve's figures (544 octets a 512-octet block; an octet and 48
+; a natural) is a measurement: measure at convergence (VmRSS with 30 posters
+; mid-article at the default preset with A = 1 MiB).
 
 (in-package "ACL2")
 (include-book "owner-article-slots")
@@ -113,17 +115,18 @@
   (natp (fn-mca-queued id subs))
   :rule-classes :type-prescription)
 
-; What a queued submission holds (lane credits-stall; PKT-887): its
-; article's octets and the groups and Message-ID read from them (each at
-; most the article's length), as octet lists, twice for the collector's
-; copy, and a line -- never more than the reserve it was admitted with.
-; The worst case (the reserve) is what an article NOT YET COMPLETE may still
-; need; once complete its size is known and the rest comes back.
+; What a queued submission holds (lane credits-stall; PKT-887): the queue
+; holds it packed (lane chunked-body-2, B6b: fn-own-enqueue,
+; books/packed-submission.lisp fn-psub-sub-heap -- the article's octets one
+; natural, the groups another, the Message-ID and the records' cells), twice
+; for the collector's copy -- never more than the reserve it was admitted
+; with.  The worst case (the reserve) is what an article NOT YET COMPLETE
+; may still need; once complete its size is known and the rest comes back.
+; SUB is the submission as QUEUED (the host reads the queue's head before
+; the take, host/owner-host.lisp fn-owner-take).
 (defun fn-mca-sub-charge (sub reserve)
   (declare (xargs :guard t))
-  (min (nfix reserve)
-       (* 2 *fn-heap-list-octets-per-octet*
-          (+ *fn-heap-article-line-octets* (* 2 (len (fn-own-sub-octets sub)))))))
+  (min (nfix reserve) (* 2 (fn-psub-sub-heap sub))))
 
 (defthm fn-mca-sub-charge-natp
   (natp (fn-mca-sub-charge sub reserve))
