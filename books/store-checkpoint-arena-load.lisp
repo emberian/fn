@@ -484,7 +484,14 @@
                              fn-scka-program fn-scka-body fn-scc-nat-octets fn-scc-read-nat
                              fn-oct-slice-list-is-take-nthcdr))))))
 
-(verify-guards fn-scka-open-run)
+; The :ok run's bounds are naturals (books/store-checkpoint-tables-reader
+; fn-sctr-next-run-ok-shape, exported for this event); used explicitly since
+; the guard asks acl2-numberp of them, which a natp rewrite never yields.
+(verify-guards fn-scka-open-run
+  :hints (("Goal" :use ((:instance fn-sctr-restp-of-plan)
+                        (:instance fn-sctr-next-run-ok-shape (rest plan)
+                                   (s (nth 3 (fn-scc-parse-header (fn-sccr-at 0 (car plan)))))))
+           :in-theory (disable fn-sctr-next-run-ok-shape fn-sctr-restp-of-plan))))
 
 (defthm fn-scka-open-run-of-written
   (implies (and (fn-octets-p fn-octets)

@@ -43,13 +43,24 @@
 ; The routes below chain concrete io steps on the owner's store: each step
 ; wants (and keeps) the store a store-node state, which is what the host
 ; carries for the owner (fn-rcon-ocfg-io's guard).
+(local (defthm fn-olr-store-of-refresh
+  (equal (fn-own-store (fn-own-refresh o)) (fn-own-store o))
+  :hints (("Goal" :in-theory (enable fn-own-refresh)))))
+
+; Through the concrete chain (fn-rcon-own-store-io = refresh of a make over
+; fn-rcon-sn-io, which is fn-sn-io, which keeps the state), with the
+; fn-ocfg-step reading held back: it would restate the goal as the owner
+; machine's :store arm, whose store-state preservation is not a rewrite.
 (defthm fn-rcon-ocfg-io-keeps-the-store-a-state
   (implies (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
            (fn-sn-statep (fn-own-store (fn-ocfg-owner (fn-rcon-ocfg-io oc operation result)))))
-  :hints (("Goal" :in-theory (enable fn-rcon-ocfg-io fn-rcon-own-store-io))))
+  :hints (("Goal" :in-theory (e/d (fn-rcon-ocfg-io fn-rcon-own-store-io fn-ocfg-with-owner)
+                                  (fn-rcon-ocfg-io-is-ocfg-step)))))
 
 (defun fn-olr-ocfg-reserve (oc)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))))
+  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+                  ; the same reading held back: each step keeps the store a state
+                  :guard-hints (("Goal" :in-theory (disable fn-rcon-ocfg-io-is-ocfg-step)))))
   (fn-rcon-ocfg-io
    (fn-rcon-ocfg-io
     (fn-rcon-ocfg-io (fn-rcon-ocfg-io oc :start-frontier nil) :frontier-file :ok)
@@ -57,7 +68,9 @@
    :frontier-directory :ok))
 
 (defun fn-olr-ocfg-order (oc)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))))
+  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+                  ; the same reading held back: each step keeps the store a state
+                  :guard-hints (("Goal" :in-theory (disable fn-rcon-ocfg-io-is-ocfg-step)))))
   (fn-rcon-ocfg-io
    (fn-rcon-ocfg-io (fn-rcon-ocfg-io oc :record-file :ok) :record-link :ok)
    :record-directory :ok))
