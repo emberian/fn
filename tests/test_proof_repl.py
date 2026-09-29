@@ -517,7 +517,7 @@ class LaneAskTests(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()) as out:
             proof_repl.status(proof_repl.argparse.Namespace(name="w"))
         self.assertIn("WARNING: 1 from-source book(s) loaded form by form", out.getvalue())
-        self.assertIn("--ld-local", out.getvalue())
+        self.assertIn("--ld-leak", out.getvalue())
 
 
 class RemoteTests(unittest.TestCase):
@@ -1338,8 +1338,8 @@ class RealAcl2Tests(unittest.TestCase):
             capture_output=True, text=True, cwd=ROOT, timeout=300)
         try:
             started = cli("start", name, "build/proof-repl-real-ld/top",
-                          "--ld", "build/proof-repl-real-ld/dep", "--ld-local",
-                          "--load-limit", "0.001")
+                          "--ld", "build/proof-repl-real-ld/dep",
+                          "--load-limit", "0.001")  # encapsulated by default (item 32)
             # Stopped at `slow`: a partial load (item 25).
             self.assertEqual(started.returncode, proof_repl.PARTIAL_LOAD,
                              started.stdout + started.stderr)
@@ -1827,6 +1827,41 @@ class SessionRecordLaneTests(unittest.TestCase):
         script = seen[-1][-1]
         self.assertIn("cd fn-gates/mylane-repl ", script)
         self.assertIn("FN_LANE=mylane", script)
+
+
+class LdHonoursLocalTests(unittest.TestCase):
+    """obstructions-5 item 32: `start --ld` loads inside one encapsulate by
+    default (store-log-extend's local lemmas turned global form by form)."""
+
+    def parsed(self, *words):
+        seen = []
+        with mock.patch.object(proof_repl, "start", lambda args: seen.append(args) or 0):
+            proof_repl.main(["start", "n", "books/x", *words])
+        return seen[0]
+
+    def test_ld_is_encapsulated_by_default(self):
+        self.assertTrue(self.parsed("--ld", "books/store-log-extend").ld_local)
+
+    def test_ld_local_is_still_accepted(self):
+        self.assertTrue(self.parsed("--ld", "books/y", "--ld-local").ld_local)
+
+    def test_ld_leak_loads_form_by_form(self):
+        self.assertFalse(self.parsed("--ld", "books/y", "--ld-leak").ld_local)
+
+    def test_an_encapsulated_refusal_names_ld_leak(self):
+        class Refusing:
+            def send(self, form, timeout):
+                return ("ACL2 Error in ( ENCAPSULATE NIL ...): failed\n"
+                        if form.startswith("(encapsulate") else ""), False
+        scratch = ROOT / "build" / "proof-repl-ld32"
+        scratch.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, scratch, True)
+        (scratch / "dep.lisp").write_text('(in-package "ACL2")\n(local (defthm l (equal x x)))\n')
+        state = {"ld_loaded": {}}
+        ok = proof_repl.load_book(Refusing(), "build/proof-repl-ld32/dep", state, 10, set(),
+                                  record=False, encapsulate=True)
+        self.assertFalse(ok)
+        self.assertIn("--ld-leak", state["stopped_at"])
 
 
 if __name__ == "__main__":

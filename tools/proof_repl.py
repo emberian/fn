@@ -76,8 +76,11 @@ the session.  `probe` checks its session's checkpoint (label fn-probe-base
 and the world's command number) before and after each attempt, undoes what
 is above it with `ubu!`, and reloads when it cannot; `--form` takes several
 forms.  `stop NAME` also ends a start still loading with no socket (the
-lock file names its holder).  `start --ld-local` loads from-source books
-inside one encapsulate so their local events stay local.  `--host BOX`
+lock file names its holder).  `start` loads from-source books (`--ld`,
+`--source-deps`, `--ld-missing`) inside one encapsulate so their local
+events stay local -- the default since obstructions-5 item 32
+(store-log-extend's local lemmas turned global form by form); `--ld-leak`
+loads form by form, which names the refused event.  `--host BOX`
 (hbox, persvati) runs a command in the lane's tree on that box with the
 box's own ACL2 and cache after syncing tools/ and the book's closure; on a
 box itself FN_ACL2 and FN_CERT_CACHE default to that box's.
@@ -1068,7 +1071,8 @@ def load_book(acl2: Acl2, book: str, state: dict, load_timeout: float,
                 return False
         output, timed_out = acl2.send(body, hard * 4)
         if timed_out or errored(output):
-            state["stopped_at"] = where + "(encapsulate of the book)"
+            state["stopped_at"] = (where + "(encapsulate of the book; start with --ld-leak "
+                                   "to stop at the refused event itself)")
             if timed_out:
                 state["error"] = "load timed out"
             else:
@@ -1768,9 +1772,9 @@ def status(args) -> int:
               "LOCAL lemmas and theory are rules in this session that a certified include "
               "would not give: a proof here may pass, fail or cost differently than under "
               "certification (feed-queue, 2026-09-27: 6.9M steps here, 1.76M over the "
-              "certified dependency). Start with --ld-local to load each inside one "
-              "encapsulate (its non-local include-book and defpkg forms first), or "
-              "--certify-missing to include certificates.")
+              "certified dependency). This session was started with --ld-leak; without it "
+              "each loads inside one encapsulate (its non-local include-book and defpkg "
+              "forms first), or --certify-missing includes certificates.")
     if state["stopped_at"]:
         print(f"  stopped at {state['stopped_at']}:")
         print("  " + (state["error"] or "").replace("\n", "\n  "))
@@ -3305,10 +3309,13 @@ def main(argv: list[str] | None = None) -> int:
                         "(certify_books.py --incremental, under swarm-build when present)")
     p.add_argument("--certify-jobs", type=int, default=4,
                    help="--jobs for --certify-missing (default 4)")
-    p.add_argument("--ld-local", action="store_true",
-                   help="load each from-source dependency inside one (encapsulate () ...), "
-                        "so its local lemmas stay local as a certified include keeps them "
-                        "(default: form by form, locals leak into the session)")
+    p.add_argument("--ld-local", dest="ld_local", action="store_true", default=True,
+                   help="(the default) load each from-source dependency inside one "
+                        "(encapsulate () ...), so its local lemmas stay local as a certified "
+                        "include keeps them")
+    p.add_argument("--ld-leak", dest="ld_local", action="store_false",
+                   help="load from-source dependencies form by form instead: their LOCAL "
+                        "lemmas become session rules, but a refusal names its event")
     add_remote_options(p, sync=True, lease=True)
     p.set_defaults(run=start)
     p = sub.add_parser("serve")
