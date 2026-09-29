@@ -576,6 +576,7 @@
                   o icar carry word evidence generation txid)))
     (fn-ores-feed-port-publication (fn-ores-resolution-word o word records)
                                    records nil (fn-ores-inflight-token o) nil)))
+(verify-guards fn-apc-submission-resolution-publication)
 
 ; KEYSTONE for the host line.
 (defthm fn-apc-submission-resolution-publication-is-reference

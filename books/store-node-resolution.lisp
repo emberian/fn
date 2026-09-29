@@ -584,6 +584,8 @@
 ; :ideal (they verify as-is; the step's own verification needs them first).
 (verify-guards fn-sn-prepare-identity)
 (verify-guards fn-sn-prepare-consumer)
+; Likewise books/store-events' retention event constructor (an owner-host callee).
+(verify-guards fn-store-retention-event-make)
 
 ; Total in EVENT as fn-snt-step is: the executable accessors read an atom
 ; where a list is expected as nil, exactly as the logical car/cadr do (the

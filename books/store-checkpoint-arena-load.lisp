@@ -544,6 +544,7 @@
           (if (not ok)
               (mv (list :refused :arena) fn-arena)
             (mv (fn-scka-finish (nth 4 o) (nth 5 o) i (nth 2 o) fn-octets) fn-arena)))))))
+(verify-guards fn-scka-load)
 
 (local
  (defthm fn-scka-f-of-tables-of-capture

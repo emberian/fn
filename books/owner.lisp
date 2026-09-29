@@ -1767,7 +1767,9 @@
 ; (fn-peer-decide-transfer-under), not the control/posting policy.
 (defun fn-own-bp-transit-submit-result
     (o cfg peer msgid octets id subject)
-  (declare (xargs :guard t :verify-guards nil))
+  ; The store's node decides the transfer: the owner's store is a store-node
+  ; state (fn-own-step's guard, carried by the host).
+  (declare (xargs :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))
   (let ((decision (fn-peer-decide-transfer-under
                    (fn-sn-node (fn-own-store o)) cfg peer msgid octets
                    (fn-own-clock o) id subject
@@ -1779,10 +1781,11 @@
                            :ready)))
            :busy)
           (t :submitted))))
-(verify-guards fn-own-bp-transit-submit-result)
+(verify-guards fn-own-bp-transit-submit-result
+  :hints (("Goal" :in-theory (enable fn-sn-statep))))
 
 (defun fn-own-bp-transit-submit (o cfg peer msgid octets id subject)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))
   (if (equal (fn-own-bp-transit-submit-result
               o cfg peer msgid octets id subject) :submitted)
       (fn-own-enqueue

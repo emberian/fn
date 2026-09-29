@@ -687,6 +687,7 @@
           (fn-peer-evidence peer cfg)
           (fn-charge-for-payload (len (fn-peer-relayed-octets cfg peer octets)))
           (fn-record-stamp-of-observation clock))))
+(verify-guards fn-peer-injection-arguments)
 
 ; (mv node2 decision).  On :want it is exactly one fn-node-prepare; it never
 ; calls fn-accept-prepare directly and never touches retention itself.
