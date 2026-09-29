@@ -271,6 +271,16 @@
        (equal (fn-his-image-header-np '(70 78 83 67 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)) nil))
   :rule-classes nil)
 
+(defun fn-his-base-octets ()
+  ; the offset of page 0 of the image in the checkpoint's file
+  (declare (xargs :guard t))
+  *fn-his-base*)
+
+(defun fn-his-region-octets (np)
+  ; the image region's octets: the header, zeros to the base, NP pages
+  (declare (xargs :guard (natp np)))
+  (+ *fn-his-header-octets* (fn-his-skip-octets np)))
+
 (defun fn-his-np (writes acc)
   ; one past the largest page address WRITES names
   (declare (xargs :guard (natp acc)))
