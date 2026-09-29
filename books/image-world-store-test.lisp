@@ -154,7 +154,6 @@
 (include-book "topic-history-local-proposals")
 (include-book "records-concrete-owner")
 (include-book "octets-stobj")
-(include-book "article-buffer")
 (include-book "served-plan")
 (include-book "feed-journal")
 (include-book "peer-pull")
