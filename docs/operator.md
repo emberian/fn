@@ -839,6 +839,23 @@ absent <never-posted@fn.example.invalid> nothing is stored here under this Messa
 `accepted` means it was saved (even if it was later withdrawn). `absent`
 means it was not. Tell the person which answer you got.
 
+### Which articles are in a group?
+
+`store inspect --group GROUP` lists a group's memberships: a first line
+`inspect group=GROUP members=N`, then one line per article number with its
+Message-ID, in number order. It answers while the node runs (the node
+reports the archive it serves) and while it is stopped (the store is opened
+read-only: the checkpoint and its suffix). A group the node does not carry
+is refused by name (`refused unknown-group group=GROUP ...`, exit 1).
+
+```text
+fn operator /path/to/fn.toml store inspect --group fn.test
+inspect group=fn.test members=3
+1 <auto-0@example.invalid>
+2 <auto-1@example.invalid>
+3 <auto-2@example.invalid>
+```
+
 ### Why was an article withdrawn?
 
 ```

@@ -3299,6 +3299,9 @@
 (definterface fn-native-live-status-host-client-step-chunks
   :class ::program)
 
+(definterface fn-native-live-status-host-inspect-group-exit
+  :class ::program)
+
 (definterface fn-native-live-status-host-max-frame
   :class ::program)
 
@@ -3394,6 +3397,9 @@
   :class ::program)
 
 (definterface fn-native-operator-host-result-init-profile
+  :class ::program)
+
+(definterface fn-native-operator-host-result-inspect-group
   :class ::program)
 
 (definterface fn-native-operator-host-result-inspect-msgid-octets

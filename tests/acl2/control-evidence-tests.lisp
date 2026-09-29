@@ -242,3 +242,20 @@
  (equal (fn-cev-report '(:moderation-list . "fn.letters") nil *cevm-raw* nil nil *cevm-configs*)
         (fn-nls-text (concatenate 'string "moderation group=fn.letters moderated=no"
                                   (string #\Newline)))))
+
+; Row S3d (lane operability-5): `store inspect --group GROUP' rides the same
+; frame, code 11; the round trip (fn-cev-any-request-decode-of-encode's
+; witness for the new kind) and the recognizers.
+(assert-event (equal (fn-cev-kind-code '(:inspect-group . "fn.test")) 11))
+(assert-event (fn-cev-report-kindp '(:inspect-group . "fn.test")))
+(assert-event (not (fn-cev-report-kindp '(:inspect-group . ""))))
+(assert-event (not (fn-cevg-kindp '(:inspect-group . "fn.test"))))
+(assert-event (equal (fn-cev-code-kind 11 (fn-record-string-octets "fn.test"))
+                     '(:inspect-group . "fn.test")))
+(assert-event (null (fn-cev-code-kind 11 nil)))
+(assert-event (equal (fn-cev-any-request-decode
+                      (fn-cev-any-request-encode '(:inspect-group . "fn.test") 0))
+                     '(:live-status (:inspect-group . "fn.test") 0)))
+(assert-event (equal (fn-cev-any-request-decode
+                      (fn-cev-any-request-encode '(:inspect-group . "fn.test") 4096))
+                     '(:live-status (:inspect-group . "fn.test") 4096)))

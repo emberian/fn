@@ -15462,6 +15462,19 @@
           "name": "fn-mpxt-first-page-not-saturated"
         }
       ]
+    },
+    {
+      "id": "PRF-1004",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-oig-rows-number-the-listgroup-numbers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oig-report-exit-is-the-membership"
+        }
+      ]
     }
   ]
 }
