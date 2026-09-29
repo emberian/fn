@@ -4377,6 +4377,15 @@ existing port only after fn-fc has made this connection ready."
          (state (f-put-global 'fn-owner-record-debt (nth 4 rebuilt) state))
          (state (f-put-global 'fn-owner-carried-usage (nth 5 rebuilt) state))
          (state (f-put-global 'fn-owner-sco-base (fn-scka-strip-base e) state))
+         ; No H0: the next publication is the whole capture of the canonical
+         ; rows (fn-owner-sco-prepare's nil branch), the checkpoint an open
+         ; of this history publishes.  The open notes the arena's count
+         ; because its rows ARE canonical (interned from the emptied or the
+         ; checkpoint's canonical arena); the rebuilt E's rows keep their
+         ; live handles, so E is not the canonical capture the incremental
+         ; path's base must be (fn-scka-next-checkpoint-is-capture) and no
+         ; count makes it one.  The whole walk is the publication's own cost
+         ; (fnn-checkpoint-walk walks every record either way).
          (state (f-put-global 'fn-owner-sco-base-payloads nil state))
          (state (f-put-global 'fn-owner-sco-durable count state))
          (state (f-put-global 'fn-owner-sco-attempted count state))

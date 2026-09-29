@@ -299,9 +299,22 @@ class DeveloperExpiryTests(ExpiryMixin, unittest.TestCase):
             # A second pass finds nothing more (the rerun rewrites nothing).
             again = self.reclaim(node, "--recorded")
             self.assertNotIn(b"installed", again.stdout, again.stdout)
+            # The NEXT publication after the swap (no H0 noted: the whole
+            # capture of the canonical rows, fn-owner-orcp-swap) is the one
+            # the reopen reads.
+            auto = re.compile(rb"CHECKPOINT auto sequence=(\d+) ")
+            before = len(self.owner_lines(owner, auto, 0))
+            asked = node.operator("store", "checkpoint", timeout=600, expect=EXIT.OK)
+            self.assertIn(b"requested", asked.stdout + asked.stderr)
+            published = self.owner_lines(owner, auto, before + 1)
+            self.assertEqual(len(published), before + 1, owner.stderr.since(0)[-3000:])
+            sequence = int(auto.search(published[-1]).group(1))
         finally:
             node.stop(expect=None, grace=300)
-        # Reopened: the durable publication is the one served before the stop.
+        status = node.operator("status", timeout=600, expect=EXIT.OK)
+        opened = [l for l in status.stdout.decode("ascii").splitlines() if l.startswith("open=")]
+        self.assertEqual(opened, ["open=checkpoint:%d suffix=0" % sequence], status.stdout)
+        # Reopened from it: the durable publication is the one served before the stop.
         self.assert_reclaimed(node, "reopened")
         self.assertTrue(self.served(node, ["STAT %s" % msgid("n9")])[0].startswith(b"223"))
 
