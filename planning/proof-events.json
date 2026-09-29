@@ -14507,6 +14507,35 @@
           "name": "fn-snb-replayed-acceptance-is-projection"
         }
       ]
+    },
+    {
+      "id": "PRF-935",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ars-parse-under-is-article-parse-under"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ars-body-is-located"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ars-lb-ocfg-gate-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ars-filing-plan-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ars-carrier-form-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ars-current-plan-is-reference"
+        }
+      ]
     }
   ]
 }
