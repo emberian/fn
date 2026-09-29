@@ -4135,11 +4135,13 @@ FN_NATIVE_RECLAIM_FAULT names it."
 
 (defun fnn-fresh-stobj (name)
   "A fresh, empty instance of the live stobj NAME (fn-cat, fn-hist) for the
-rebuild off the mutex: its creator's value, of the live instance's type."
+rebuild off the mutex: its creator's value, of the live instance's type.
+The creator may be a macro (a defstobj's raw creator is), so it is called
+by evaluating the form (CREATOR), once per pass."
   (let* ((creator (find-if #'fboundp
                            (list (intern (format nil "CREATE-~a" (symbol-name name)) "ACL2")
                                  (intern (format nil "CREATE-~a$C" (symbol-name name)) "ACL2"))))
-         (fresh (and creator (funcall creator)))
+         (fresh (and creator (eval (list creator))))
          (live (fnn-live-stobj name)))
     (unless (and fresh (equal (type-of fresh) (type-of live)))
       (fnn-fault "no fresh instance of the ~(~a~) stobj" name))

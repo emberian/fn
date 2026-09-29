@@ -877,7 +877,7 @@
 (defun fn-owner-orc-request-status (word)
   (declare (xargs :mode :program))
   ; Q16 (a): the pass's answers -- :installed and :none accepted; a deferral
-  ; by name (:deferred-credit, -delta, -busy, -readers, -rebuild, the
+  ; by name (:deferred-credit, -delta, -unbound, -busy, -readers, -rebuild, the
   ; publication's -budget/-space/-unencodable) and :failed refused.
   (if (or (member-eq word '(:offline-only :profile :failed))
           (and (keywordp word)
