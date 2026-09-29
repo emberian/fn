@@ -22,7 +22,12 @@ import acl2_slots  # noqa: E402
 BUILD_ROOT = ROOT / "build" / "simulator"
 TRACE_PREFIX = "FN_SIM_TRACE "
 RESULT_PREFIX = "FN_SIM_RESULT "
-SCENARIOS = ("acceptance-durable",)
+SCENARIOS = ("acceptance-durable", "acceptance-world")
+# acceptance-durable: one proposal, prepared, completed :durable (three trace
+# lines).  acceptance-world (design W7f): the exhaustive small world in
+# tests/acl2/simulator.lisp -- two proposals under every completion status,
+# generation, recovery result and a repeated recovery; one trace line per
+# step; the result line carries n=<schedules>.
 
 
 def digest(path: Path) -> str:
@@ -43,6 +48,8 @@ def executable() -> Path | None:
 
 
 def driver_for(scenario: str) -> str:
+    if scenario == "acceptance-world":
+        return WORLD_DRIVER
     if scenario != "acceptance-durable":
         raise ValueError(f"unknown scenario: {scenario}")
     return '''(ld '((include-book "books/acceptance")
@@ -75,6 +82,32 @@ def driver_for(scenario: str) -> str:
 '''
 
 
+WORLD_DRIVER = '''(ld '((include-book "books/acceptance")
+      (ld "tests/acl2/simulator.lisp" :ld-error-action :return :ld-error-triples t)
+      (value-triple (prog2$ (fn-sim-world-report) t)))
+    :ld-error-action :return
+    :ld-error-triples t)
+(quit)
+'''
+
+
+def scenario_passed(scenario: str, exit_code, parse_error, traces: list, results: list) -> bool:
+    """The runner's verdict over the parsed records: ACL2 exited 0, one
+    result line naming the scenario as passed, every trace line the
+    scenario's; acceptance-durable prints exactly its three steps, the
+    world at least one step per schedule it counted (n=)."""
+    if exit_code != 0 or parse_error is not None or len(results) != 1:
+        return False
+    result = results[0]
+    if result.get("s") != scenario or result.get("r") != "passed":
+        return False
+    if not all(trace.get("s") == scenario for trace in traces):
+        return False
+    if scenario == "acceptance-world":
+        return result.get("n", "0").isdigit() and len(traces) >= int(result["n"]) > 0
+    return len(traces) == 3
+
+
 def parse_records(output: str, prefix: str) -> list[dict[str, str]]:
     records: list[dict[str, str]] = []
     for line in output.splitlines():
@@ -93,11 +126,14 @@ def parse_records(output: str, prefix: str) -> list[dict[str, str]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("scenario", nargs="*", choices=SCENARIOS, default=list(SCENARIOS))
+    # No list default: argparse checks a non-string default against
+    # `choices` whole (the run refused itself once SCENARIOS had two names).
+    parser.add_argument("scenario", nargs="*", choices=SCENARIOS)
     parser.add_argument("--timeout-seconds", type=int, default=120)
     args = parser.parse_args()
     if args.timeout_seconds <= 0:
         parser.error("--timeout-seconds must be positive")
+    args.scenario = args.scenario or list(SCENARIOS)
 
     acl2 = executable()
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -155,11 +191,7 @@ def main() -> int:
             parse_error = str(error)
         else:
             parse_error = None
-        passed = (
-            exit_code == 0 and parse_error is None and len(results) == 1
-            and results[0] == {"s": scenario, "r": "passed"}
-            and len(traces) == 3 and all(trace.get("s") == scenario for trace in traces)
-        )
+        passed = scenario_passed(scenario, exit_code, parse_error, traces, results)
         outcomes.append({"scenario": scenario, "exit_code": exit_code, "traces": traces,
                          "result": results, "parse_error": parse_error, "passed": passed})
         all_passed = all_passed and passed
