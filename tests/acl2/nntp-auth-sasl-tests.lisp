@@ -751,3 +751,74 @@
 (assert-event (equal (fn-scram-cf-flag (fn-scram-parse-client-first
                                         (fn-nntp-string-octets "y,,n=,r=abc")))
                      :invalid-username-encoding))
+
+; fn-auth-step-preserves-consistent-session (the served step itself)
+; Positive witnesses: a consistent session stays consistent across a
+; command and across the first SCRAM message.
+(assert-event (fn-auth-session-consistentp *sa-tls-ctx* *sa-archive*))
+(assert-event (fn-auth-session-consistentp
+               (fn-post-result-session (sa-send *sa-tls-ctx* "CAPABILITIES")) *sa-archive*))
+(assert-event (fn-auth-session-consistentp *sa-plain-ctx* *sa-archive*))
+(assert-event (fn-auth-session-consistentp (fn-post-result-session *sa-r1*) *sa-archive*))
+; Hypothesis removed: from a value that is no session the step's session is
+; not consistent.
+(assert-event (not (fn-auth-session-consistentp nil *sa-archive*)))
+(must-fail-checked
+ (assert-event (fn-auth-session-consistentp
+                (fn-post-result-session (sa-send nil "CAPABILITIES")) *sa-archive*)))
+
+; fn-auth-sasl-finish-binds-only-on-success, at the call the host's step
+; makes (books/nntp-auth.lisp fn-auth-step's kept exchange:
+; (fn-auth-sasl-finish as (fn-auth-session-pending as) response)).
+(defconst *sa-q-as* (fn-post-result-session *sa-q1*))
+(defconst *sa-q-st* (fn-auth-session-pending *sa-q-as*))
+(defconst *sa-q-nonce* (sa-field-value (car (fn-scram-split *sa-q-sf*))))
+(defconst *sa-q-final*
+  (sa-final *sa-secret* :n (fn-nntp-string-octets "n,,") nil *sa-q-nonce* *sa-bare* *sa-q-sf*))
+(defconst *sa-q-final-bad*
+  (sa-final (fn-nntp-string-octets "correct-horsf") :n (fn-nntp-string-octets "n,,") nil
+            *sa-q-nonce* *sa-bare* *sa-q-sf*))
+(defmacro sa-fin-hyps (as st response)
+  `(and (not (fn-auth-session-peer ,as))
+        (fn-auth-session-peer
+         (fn-post-result-session (fn-auth-sasl-finish ,as ,st ,response)))))
+(defmacro sa-fin-concl (as st response)
+  `(let* ((acfg (fn-auth-session-config ,as))
+          (ctx (fn-auth-session-ctx ,as))
+          (cred (fn-auth-find-cred (fn-sasl-response-login ,st ,response)
+                                   (fn-auth-config-creds acfg)))
+          (next (fn-post-result-session (fn-auth-sasl-finish ,as ,st ,response))))
+     (and (consp cred)
+          (fn-sasl-successp
+           (fn-sasl-step ,st ,response (fn-auth-cred-secret cred)
+                         (fn-auth-ctx-seed ctx) (fn-auth-ctx-binding ctx)))
+          (equal (fn-auth-session-pending next) (fn-auth-cred-name cred))
+          (equal (fn-auth-session-subject next) (fn-auth-cred-principal cred))
+          (equal (fn-auth-session-peer next)
+                 (fn-auth-principal-match
+                  (fn-auth-cred-principal cred)
+                  (fn-peer-session-cfg (fn-auth-session-base ,as))))
+          (fn-auth-principal-rolep next))))
+; Positive witness: the pinned principal's honest SCRAM final binds the
+; peer role "principal-peer".
+(assert-event (sa-fin-hyps *sa-q-as* *sa-q-st* *sa-q-final*))
+(assert-event (equal (fn-auth-session-peer
+                      (fn-post-result-session (fn-auth-sasl-finish *sa-q-as* *sa-q-st* *sa-q-final*)))
+                     "principal-peer"))
+(assert-event (sa-fin-concl *sa-q-as* *sa-q-st* *sa-q-final*))
+; Hypothesis "the step's session has a peer" removed: the wrong password
+; binds nothing (the first hypothesis kept) and nothing succeeded.
+(assert-event (and (not (fn-auth-session-peer *sa-q-as*))
+                   (not (fn-auth-session-peer
+                         (fn-post-result-session
+                          (fn-auth-sasl-finish *sa-q-as* *sa-q-st* *sa-q-final-bad*))))))
+(must-fail-checked (assert-event (sa-fin-concl *sa-q-as* *sa-q-st* *sa-q-final-bad*)))
+; Hypothesis "no peer before" removed: a session that already holds the
+; role keeps it through a refused exchange (the second hypothesis holds),
+; and nothing succeeded.
+(defconst *sa-q-peer-as* (fn-post-result-session *sa-q2*))
+(assert-event (and (fn-auth-session-peer *sa-q-peer-as*)
+                   (fn-auth-session-peer
+                    (fn-post-result-session
+                     (fn-auth-sasl-finish *sa-q-peer-as* *sa-q-st* *sa-q-final-bad*)))))
+(must-fail-checked (assert-event (sa-fin-concl *sa-q-peer-as* *sa-q-st* *sa-q-final-bad*)))
