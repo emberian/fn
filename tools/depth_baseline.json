@@ -196,14 +196,6 @@
    "fn-nls-report": "each first argument is a fixed word or a count's decimal digits",
    "fn-nsc-report": "each first argument is a fixed word or a count's decimal digits"
   },
-  "debt": {
-   "fn-bpaj-apply-record": "appends the joined record's intents and facts (data) through *1*: verify guards",
-   "fn-bpaj-apply-record-fast": "appends the joined record's intents and facts (data) through *1*: verify guards",
-   "fn-bpiw-replay-records": "appends a replay's effects (data) through *1*: verify guards",
-   "fn-bpnf-family-frame": "appends a family frame's protected prefix (octets) through *1*: verify guards",
-   "fn-bpnf-mixed-legacy-observed": "appends the namespace's legacy names (a directory listing) through *1*: verify guards",
-   "fn-bpnf-mixed-recovery-plan": "appends the namespace's legacy split (a directory listing) through *1*: verify guards",
-   "fn-tcl-host-fold": "appends a TCPCL carry (octets) through *1*: verify guards"
-  }
+  "debt": {}
  }
 }

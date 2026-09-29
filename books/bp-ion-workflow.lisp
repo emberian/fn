@@ -179,8 +179,14 @@
           (cdr records)
           (fn-ag-append effects (fn-ag-car (fn-ag-cdr (fn-ag-cdr answer)))) fn-arena))))))
 
+(local
+ (defthm fn-bpiw-nth-1-2-3
+   (and (equal (nth 1 x) (car (cdr x)))
+        (equal (nth 2 x) (car (cdr (cdr x))))
+        (equal (nth 3 x) (car (cdr (cdr (cdr x))))))))
+
 (verify-guards fn-bpiw-replay-records
-  :hints (("Goal" :in-theory (disable fn-bpiw-apply fn-bpiw-replay-fence fn-bp-step))))
+  :hints (("Goal" :in-theory (disable fn-bpiw-apply fn-bpiw-replay-fence fn-bp-step nth))))
 
 (defun fn-bpiw-replay-journal (node records fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))

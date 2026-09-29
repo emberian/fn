@@ -938,7 +938,7 @@
             (theory 'minimal-theory)
             '(car-cons cdr-cons fn-bpaj-nth-one-of-two-list
               fn-bpaj-bprr-nth-one-is-bpa-nth
-              fn-bpaj-apply-record
+              fn-bpaj-apply-record fn-bpaj-snoc
               fn-bpaj-statep-of-constructor
               fn-bpaj-intent-listp-append-one
               fn-bpaj-fact-listp-append-one
