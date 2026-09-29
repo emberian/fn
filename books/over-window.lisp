@@ -37,10 +37,6 @@
 
 (local (in-theory (disable (tau-system))))
 
-; fn-cnxw-range-is-windows binds its split point freely and loops on any
-; range term; it is used by :instance here.
-(local (in-theory (disable fn-cnxw-range-is-windows)))
-
 ; -----------------------------------------------------------------------------
 ; The cursor and one window
 
@@ -189,7 +185,7 @@
            (equal (fn-ovw-lines group k top v fn-arena fn-cat)
                   (append (fn-ovw-lines group k hi v fn-arena fn-cat)
                           (fn-ovw-lines group (+ 1 hi) top v fn-arena fn-cat))))
-  :hints (("Goal" :in-theory (e/d (fn-ovw-lines) (fn-cnx-range-aux fn-cnxw-range-is-windows
+  :hints (("Goal" :in-theory (e/d (fn-ovw-lines) (fn-cnx-range-aux
                                                   fn-scat-range-keep fn-nov-lines-for-numbers-cat))
            :use ((:instance fn-cnxw-range-is-windows (b (+ 1 hi)))))))
 
