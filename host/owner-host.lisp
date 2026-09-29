@@ -2715,7 +2715,7 @@
                                           (nth 2 args)
                                         nil)
                                       state)))
-            (value (fn-peer-decision-kind d))))))))
+            (value (fn-peer-decision-kind d)))))))))
 
 ; The transit reply.  `kind' and `reason' are the decision this image just
 ; made; `word' is the store's observed outcome (:durable, :refused,
@@ -2731,7 +2731,7 @@
 ;; fetches nothing by index and splits no name list.  The header, the field
 ;; encoding, the seal and every bound stay ACL2's
 ;; (fn-ores-feed-port-publication-by-definition; the plan IS the by-index
-;; fetch it replaced: fn-ores-sealed-plan-is-indexed-fetch).)
+;; fetch it replaced: fn-ores-sealed-plan-is-indexed-fetch).
 
 (defun fn-owner-feed-word-publication (word command log-line)
   ; A step with no journal records: a connection-phase command (MODE,
