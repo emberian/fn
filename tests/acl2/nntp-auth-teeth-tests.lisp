@@ -20,7 +20,8 @@
 ;   the peer role a login binds (PRF-049, keystones 8 to 10 at the end):
 ;     fn-auth-step-binds-a-peer-role-only-by-a-principal-login,
 ;     fn-auth-step-principal-login-binds-exactly-the-unique-match,
-;     fn-auth-step-starttls-clears-a-principal-role
+;     fn-auth-step-starttls-clears-a-principal-role,
+;     fn-auth-step-redeem-hold-keeps-the-role (PRF-164; keystone 10b)
 ;
 ; The subject of the first two is `fn-auth-step', which books/served.lisp
 ; `fn-served-dispatch' calls and which host/owner-host.lisp `fn-owner-chunk-span-at'
@@ -2124,6 +2125,127 @@
 (assert-event (not (fn-auth-session-handshakingp (in-arena-aut-role-after *aut-arena* (aut-bound) "CAPABILITIES"))))
 (assert-event (fn-auth-principal-rolep (in-arena-aut-role-after *aut-arena* (aut-bound) "CAPABILITIES")))
 (local (must-fail-checked (aut-k10 aut-k10-without-s2 (s1 s4))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE 10b (PRF-164): fn-auth-step-redeem-hold-keeps-the-role
+;
+;   (implies (and (not (fn-auth-session-handshakingp as))                ; R1
+;                 (fn-auth-session-handshakingp (session of the step))    ; R2
+;                 (fn-auth-redeem-waitp (session of the step))            ; R3
+;                 (not (fn-zc-owedp (compress of the step's session))))   ; R4
+;            (and (null subject) (equal role (fn-auth-session-peer as))))
+
+(defconst *aut-k10b-hyps*
+  '((r1 . (not (fn-auth-session-handshakingp as)))
+    (r2 . (fn-auth-session-handshakingp
+           (fn-post-result-session
+            (fn-auth-step as archive config observation injection
+                          wire-event fn-arena))))
+    (r3 . (fn-auth-redeem-waitp
+           (fn-post-result-session
+            (fn-auth-step as archive config observation injection
+                          wire-event fn-arena))))
+    (r4 . (not (fn-zc-owedp
+                (fn-auth-session-compress
+                 (fn-post-result-session
+                  (fn-auth-step as archive config observation injection
+                                wire-event fn-arena))))))))
+(defconst *aut-k10b-conclusion*
+  '(and (null (fn-auth-session-subject
+               (fn-post-result-session
+                (fn-auth-step as archive config observation injection
+                              wire-event fn-arena))))
+        (equal (fn-auth-session-peer
+                (fn-post-result-session
+                 (fn-auth-step as archive config observation injection
+                               wire-event fn-arena)))
+               (fn-auth-session-peer as))))
+(defmacro aut-k10b (name keys)
+  `(aut-tooth ,name ,keys ,*aut-k10b-hyps* ,*aut-k10b-conclusion*
+              fn-auth-step-redeem-hold-keeps-the-role))
+
+(aut-k10b aut-k10b-full (r1 r2 r3 r4))
+
+; The witness (reachable): the source-address peer "transit" sends XREDEEM
+; CODE NAME (381), then XREDEEM PASS PASSWORD.  Nothing is answered, the
+; session holds for the owner's word, no layer is owed, no subject is
+; installed and the role is still "transit" -- a role, so the equality is
+; not nil = nil.
+(defconst *aut-src-381*
+  (in-arena-aut-role-after *aut-arena* *aut-src*
+                           "XREDEEM 000102030405060708090a0b0c0d0efa robin"))
+(assert-event (equal (car (fn-auth-session-pending *aut-src-381*)) :xredeem))
+(assert-event (not (fn-auth-session-handshakingp *aut-src-381*)))
+(defmacro aut-src-wait ()
+  '(in-arena-aut-role-after *aut-arena* *aut-src-381* "XREDEEM PASS correct-horse"))
+(assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-src-381* "XREDEEM PASS correct-horse")
+                     nil))
+(assert-event (and (not (fn-auth-session-handshakingp *aut-src-381*))
+                   (fn-auth-session-handshakingp (aut-src-wait))
+                   (fn-auth-redeem-waitp (aut-src-wait))
+                   (not (fn-zc-owedp (fn-auth-session-compress (aut-src-wait))))
+                   (null (fn-auth-session-subject (aut-src-wait)))
+                   (equal (fn-auth-session-peer (aut-src-wait)) "transit")
+                   (equal (fn-auth-session-peer *aut-src-381*) "transit")
+                   (fn-auth-sessionp (aut-src-wait))))
+(defconst *aut-wait-pending* (fn-auth-session-pending (aut-src-wait)))
+
+; R1, R2 and R4 are separated only by CORRUPTED STATE: a redemption hold
+; with a subject, which no command sequence reaches (fn-auth-xredeem's first
+; arm refuses a session with a subject, and only its PASS arm installs
+; :xredeem-wait, together with handshaking).  Each value keeps the
+; subject, so the conclusion's `no subject' fails.
+
+; R1 dropped (corrupted state): already holding, with a subject.  A step on
+; a handshaking session returns it: still holding, the subject kept.
+(defmacro aut-held-with-subject (handshaking)
+  `(aut-mk *aut-src-base* *aut-role-policy* *aut-wait-pending* *aut-principal*
+           nil ,handshaking))
+(assert-event
+ (let ((s (in-arena-aut-role-after *aut-arena* (aut-held-with-subject t) "CAPABILITIES")))
+   (and (fn-auth-session-handshakingp (aut-held-with-subject t))
+        (fn-auth-session-handshakingp s)
+        (fn-auth-redeem-waitp s)
+        (not (fn-zc-owedp (fn-auth-session-compress s)))
+        (equal (fn-auth-session-subject s) *aut-principal*))))
+(local (must-fail-checked (aut-k10b aut-k10b-without-r1 (r2 r3 r4))))
+
+; R2 dropped (corrupted state): the :xredeem-wait state without the hold's
+; handshaking flag.  CAPABILITIES leaves it so: not handshaking, the subject
+; kept.
+(assert-event
+ (let ((s (in-arena-aut-role-after *aut-arena* (aut-held-with-subject nil) "CAPABILITIES")))
+   (and (not (fn-auth-session-handshakingp (aut-held-with-subject nil)))
+        (not (fn-auth-session-handshakingp s))
+        (fn-auth-redeem-waitp s)
+        (not (fn-zc-owedp (fn-auth-session-compress s)))
+        (equal (fn-auth-session-subject s) *aut-principal*))))
+(local (must-fail-checked (aut-k10b aut-k10b-without-r2 (r1 r3 r4))))
+
+; R3 dropped (reachable): the TLS handshake is the other hold.  The bound
+; connection's STARTTLS is handshaking, not a redemption hold, owes no
+; layer, and its principal-derived role is gone ("principal-peer" -> nil).
+(assert-event
+ (let ((s (in-arena-aut-role-after *aut-arena* (aut-bound) "STARTTLS")))
+   (and (not (fn-auth-session-handshakingp (aut-bound)))
+        (fn-auth-session-handshakingp s)
+        (not (fn-auth-redeem-waitp s))
+        (not (fn-zc-owedp (fn-auth-session-compress s)))
+        (equal (fn-auth-session-peer (aut-bound)) "principal-peer")
+        (null (fn-auth-session-peer s)))))
+(local (must-fail-checked (aut-k10b aut-k10b-without-r3 (r1 r2 r4))))
+
+; R4 dropped (corrupted state): COMPRESS DEFLATE on the not-handshaking
+; :xredeem-wait value with a subject.  206: the layer is owed, the step
+; holds (handshaking) and keeps the pending state and the subject (RFC 8054
+; keeps the login).
+(assert-event
+ (let ((s (in-arena-aut-role-after *aut-arena* (aut-held-with-subject nil) "COMPRESS DEFLATE")))
+   (and (fn-auth-session-handshakingp s)
+        (fn-auth-redeem-waitp s)
+        (fn-zc-owedp (fn-auth-session-compress s))
+        (equal (fn-auth-session-subject s) *aut-principal*))))
+(local (must-fail-checked (aut-k10b aut-k10b-without-r4 (r1 r2 r3))))
 
 ; =============================================================================
 ; P1 at the host-called step (keystones 11 to 17, books/nntp-auth-invariants,
