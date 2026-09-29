@@ -502,126 +502,99 @@
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (cdr (fn-ocfg-fault oc id))))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store (x (cdr (fn-ocfg-fault oc id)))))
-           :in-theory (enable fn-ocfg-fault fn-own-fault fn-own-close))))
-
+           :in-theory (disable fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner fn-osb-install fn-bs-profile-admittedp))))
 (defthm fn-ohr-reconfigure-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-reconfigure oc id deltas)))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store (x (fn-ocfg-reconfigure oc id deltas))))
-           :in-theory (enable fn-ocfg-reconfigure))))
-
+           :in-theory (disable fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner fn-osb-install fn-bs-profile-admittedp))))
 (defthm fn-ohr-configure-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-with-owner oc (fn-own-configure (fn-ocfg-owner oc) config))))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store (x (fn-ocfg-with-owner oc (fn-own-configure (fn-ocfg-owner oc) config)))))
-           :in-theory (enable fn-ocfg-with-owner))))
-
+           :in-theory (disable fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner fn-osb-install fn-bs-profile-admittedp))))
 (defthm fn-ohr-with-feeds-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-with-owner oc (fn-own-with-feeds (fn-ocfg-owner oc) feeds))))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store (x (fn-ocfg-with-owner oc (fn-own-with-feeds (fn-ocfg-owner oc) feeds)))))
-           :in-theory (enable fn-ocfg-with-owner))))
-
+           :in-theory (disable fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner fn-osb-install fn-bs-profile-admittedp))))
 (defthm fn-ohr-with-node-secret-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-with-owner oc (fn-own-with-node-secret (fn-ocfg-owner oc) secret))))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store (x (fn-ocfg-with-owner oc (fn-own-with-node-secret (fn-ocfg-owner oc) secret)))))
-           :in-theory (enable fn-ocfg-with-owner))))
-
+           :in-theory (disable fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner fn-osb-install fn-bs-profile-admittedp))))
 (defthm fn-ohr-osb-install-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-with-owner oc (mv-nth 1 (fn-osb-install (fn-ocfg-owner oc) profile)))))
-  :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store (x (fn-ocfg-with-owner oc (mv-nth 1 (fn-osb-install (fn-ocfg-owner oc) profile)))))) :in-theory (disable fn-osb-install fn-bs-profile-admittedp)
-           :in-theory (enable fn-ocfg-with-owner))))
-
+  :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store (x (fn-ocfg-with-owner oc (mv-nth 1 (fn-osb-install (fn-ocfg-owner oc) profile))))))
+           :in-theory (disable fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner fn-osb-install fn-bs-profile-admittedp))))
 (defthm fn-ohr-step-reconfigure-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-step oc (list :reconfigure id deltas) fn-arena)))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
                                    (x (fn-ocfg-step oc (list :reconfigure id deltas) fn-arena))))
-           :in-theory (enable fn-ocfg-step fn-ocfg-pass fn-ocfg-with-owner fn-ocfg-close fn-own-close
-                              fn-ocfg-reconfigure fn-own-step))))
-
+           :in-theory (e/d (fn-ocfg-step) (fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner)))))
 (defthm fn-ohr-step-close-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-step oc (list :close id) fn-arena)))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
                                    (x (fn-ocfg-step oc (list :close id) fn-arena))))
-           :in-theory (enable fn-ocfg-step fn-ocfg-pass fn-ocfg-with-owner fn-ocfg-close fn-own-close
-                              fn-ocfg-reconfigure fn-own-step))))
-
+           :in-theory (e/d (fn-ocfg-step) (fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner)))))
 (defthm fn-ohr-step-advance-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-step oc (list :advance id) fn-arena)))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
-                                   (x (fn-ocfg-step oc (list :advance id) fn-arena))))
-           :in-theory (enable fn-ocfg-step fn-ocfg-pass fn-ocfg-with-owner fn-ocfg-close fn-own-close
-                              fn-ocfg-reconfigure fn-own-step))))
-
+                                   (x (fn-ocfg-step oc (list :advance id) fn-arena)))
+                 fn-ocl-advance-preserves-historical-relation)
+           :in-theory (e/d (fn-ocfg-step) (fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner)))))
 (defthm fn-ohr-step-take-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-step oc (list :take) fn-arena)))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
                                    (x (fn-ocfg-step oc (list :take) fn-arena))))
-           :in-theory (enable fn-ocfg-step fn-ocfg-pass fn-ocfg-with-owner fn-ocfg-close fn-own-close
-                              fn-ocfg-reconfigure fn-own-step))))
-
+           :in-theory (e/d (fn-ocfg-step) (fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner)))))
 (defthm fn-ohr-step-control-submit-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-step oc (list :control-submit msgid groups octets) fn-arena)))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
                                    (x (fn-ocfg-step oc (list :control-submit msgid groups octets) fn-arena))))
-           :in-theory (enable fn-ocfg-step fn-ocfg-pass fn-ocfg-with-owner fn-ocfg-close fn-own-close
-                              fn-ocfg-reconfigure fn-own-step))))
-
+           :in-theory (e/d (fn-ocfg-step) (fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner)))))
 (defthm fn-ohr-step-operator-submit-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-step oc (list :operator-submit msgid groups octets stored) fn-arena)))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
                                    (x (fn-ocfg-step oc (list :operator-submit msgid groups octets stored) fn-arena))))
-           :in-theory (enable fn-ocfg-step fn-ocfg-pass fn-ocfg-with-owner fn-ocfg-close fn-own-close
-                              fn-ocfg-reconfigure fn-own-step))))
-
+           :in-theory (e/d (fn-ocfg-step) (fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner)))))
 (defthm fn-ohr-step-feed-replay-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-step oc (list :feed-replay peer entries) fn-arena)))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
                                    (x (fn-ocfg-step oc (list :feed-replay peer entries) fn-arena))))
-           :in-theory (enable fn-ocfg-step fn-ocfg-pass fn-ocfg-with-owner fn-ocfg-close fn-own-close
-                              fn-ocfg-reconfigure fn-own-step))))
-
+           :in-theory (e/d (fn-ocfg-step) (fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner)))))
 (defthm fn-ohr-step-control-outcome-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-step oc (list :control-outcome word) fn-arena)))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
                                    (x (fn-ocfg-step oc (list :control-outcome word) fn-arena))))
-           :in-theory (enable fn-ocfg-step fn-ocfg-pass fn-ocfg-with-owner fn-ocfg-close fn-own-close
-                              fn-ocfg-reconfigure fn-own-step))))
-
+           :in-theory (e/d (fn-ocfg-step) (fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner)))))
 (defthm fn-ohr-step-bp-transit-outcome-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-step oc (list :bp-transit-outcome word) fn-arena)))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
                                    (x (fn-ocfg-step oc (list :bp-transit-outcome word) fn-arena))))
-           :in-theory (enable fn-ocfg-step fn-ocfg-pass fn-ocfg-with-owner fn-ocfg-close fn-own-close
-                              fn-ocfg-reconfigure fn-own-step))))
-
+           :in-theory (e/d (fn-ocfg-step) (fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner)))))
 (defthm fn-ohr-step-feeds-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-step oc (list :feeds cfg) fn-arena)))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
                                    (x (fn-ocfg-step oc (list :feeds cfg) fn-arena))))
-           :in-theory (enable fn-ocfg-step fn-ocfg-pass fn-ocfg-with-owner fn-ocfg-close fn-own-close
-                              fn-ocfg-reconfigure fn-own-step))))
-
+           :in-theory (e/d (fn-ocfg-step) (fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner)))))
 (defthm fn-ohr-step-feed-conn-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-step oc (list :feed-conn peer conn form) fn-arena)))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
                                    (x (fn-ocfg-step oc (list :feed-conn peer conn form) fn-arena))))
-           :in-theory (enable fn-ocfg-step fn-ocfg-pass fn-ocfg-with-owner fn-ocfg-close fn-own-close
-                              fn-ocfg-reconfigure fn-own-step))))
-
+           :in-theory (e/d (fn-ocfg-step) (fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner)))))
 ; ---------------------------------------------------------------------------
 ; THE OPEN establishes it.  host/owner-host.lisp fn-owner-recover-from-store-open
 ; installs (fn-ock-install REPLAYED OPENED max-conns) where (REPLAYED OPENED) is
