@@ -2475,25 +2475,75 @@
 ; over the input in fn-octets cells [START, END).  What it produces is what
 ; a seal compares with the octets a payload was made from.
 
-(defun fn-zin-payload-bufs (b dict start end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
-                              fn-zin-out)
-  (declare (xargs :stobjs (fn-octets fn-zin-win fn-zin-tab fn-zin-out fn-zin-st)
+(defconst *fn-zin-zeros* (make-list *fn-zin-window* :initial-element 0))
+
+(defun fn-zin-zero-list ()
+  ; 32 KiB of zeros, one shared constant (appending it conses nothing).
+  (declare (xargs :guard t))
+  *fn-zin-zeros*)
+
+(defthm fn-zin-zero-list-shape
+  (and (fn-cbor-octet-listp (fn-zin-zero-list))
+       (equal (len (fn-zin-zero-list)) *fn-zin-window*)))
+
+(in-theory (disable fn-zin-zero-list (:executable-counterpart fn-zin-zero-list)))
+
+(local
+ (defthm fn-zin-octet-listp-nthcdr
+   (implies (fn-cbor-octet-listp x)
+            (fn-cbor-octet-listp (nthcdr n x)))
+   :hints (("Goal" :in-theory (enable nthcdr)))))
+
+(defun fn-zin-payload-ready (dict fn-zin-win fn-zin-tab)
+  ; The window and the table for one payload, in three bulk writes each:
+  ; the ring's half zero, the preset (DICT's last 32 KiB) at the start of
+  ; the upper half and zeros after it; the table zero.  What
+  ; fn-zin-buffers-ready and fn-zin-load-preset make, without their
+  ; octet-at-a-time loops.  (mv H fn-zin-win fn-zin-tab), H the preset's
+  ; length.
+  (declare (xargs :stobjs (fn-zin-win fn-zin-tab)
+                  :guard (fn-cbor-octet-listp dict)))
+  (let* ((n (len dict))
+         (tail (if (< *fn-zin-window* n) (nthcdr (- n *fn-zin-window*) dict) dict))
+         (h (len tail))
+         (fn-zin-win (fn-zin-win-clear fn-zin-win))
+         (fn-zin-win (fn-zin-win-reserve *fn-zin-win-octets* fn-zin-win))
+         (fn-zin-win (fn-zin-win-append-list (fn-zin-zero-list) fn-zin-win))
+         (fn-zin-win (fn-zin-win-append-list tail fn-zin-win))
+         (fn-zin-win (fn-zin-win-append-list (nthcdr h (fn-zin-zero-list)) fn-zin-win))
+         (fn-zin-tab (fn-zin-tab-clear fn-zin-tab))
+         (fn-zin-tab (fn-zin-tab-reserve *fn-zin-tab-octets* fn-zin-tab))
+         (fn-zin-tab (fn-zin-tab-append-list (nthcdr (- *fn-zin-window* *fn-zin-tab-octets*)
+                                                     (fn-zin-zero-list))
+                                             fn-zin-tab)))
+    (mv h fn-zin-win fn-zin-tab)))
+
+(defun fn-zin-payload-bufs (b dict start end lim fn-octets fn-zin-win fn-zin-tab fn-zin-out)
+  ; THE HOST ENTRY for a stored payload (the host holds one window, table
+  ; and output per thread and passes them; the scalar state is local): every
+  ; buffer it reads is made here first, so its answer is a function of DICT
+  ; and the input octets alone (`fn-zin-payload-bufs-is-payload-with').
+  ; (mv STATUS fn-zin-win fn-zin-tab fn-zin-out).
+  (declare (xargs :stobjs (fn-octets fn-zin-win fn-zin-tab fn-zin-out)
                   :guard (and (natp b) (fn-cbor-octet-listp dict) (natp start) (natp end)
                               (natp lim) (<= end (fn-octets-len fn-octets)))))
-  (let* ((fn-zin-out (fn-zin-out-clear fn-zin-out))
-         (fn-zin-st (fn-zin-reset fn-zin-st)))
-    (mv-let (fn-zin-win fn-zin-tab) (fn-zin-buffers-ready fn-zin-win fn-zin-tab)
-      (mv-let (fn-zin-st fn-zin-win) (fn-zin-load-preset dict fn-zin-st fn-zin-win)
-        (if (and (fn-zin-window-ready-p fn-zin-win) (fn-zin-tab-okp fn-zin-tab))
-            (mv-let (st b2 ip fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
-              (fn-zin-loop-ahead b start end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
-                                 fn-zin-out)
-              (declare (ignore b2 ip))
-              (mv st fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))
-          (mv (list :refused :buffers) fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))))))
+  (with-local-stobj fn-zin-st
+    (mv-let (st fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
+      (let* ((fn-zin-out (fn-zin-out-clear fn-zin-out))
+             (fn-zin-st (fn-zin-reset fn-zin-st)))
+        (mv-let (h fn-zin-win fn-zin-tab) (fn-zin-payload-ready dict fn-zin-win fn-zin-tab)
+          (let ((fn-zin-st (fn-zin-set 18 h fn-zin-st)))
+            (if (and (fn-zin-window-ready-p fn-zin-win) (fn-zin-tab-okp fn-zin-tab))
+                (mv-let (st b2 ip fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
+                  (fn-zin-loop-ahead b start end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
+                                     fn-zin-out)
+                  (declare (ignore b2 ip))
+                  (mv st fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))
+              (mv (list :refused :buffers) fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)))))
+      (mv st fn-zin-win fn-zin-tab fn-zin-out))))
 
 (defun fn-zin-payload-with (b dict c lim)
-  ; The payload decoder over octet lists: (list STATUS OUTPUT FIELDS).
+  ; The payload decoder over octet lists: (list STATUS OUTPUT).
   (declare (xargs :guard (and (natp b) (natp lim) (fn-cbor-octet-listp c)
                               (fn-cbor-octet-listp dict))))
   (with-local-stobj fn-octets
@@ -2504,19 +2554,47 @@
             (mv-let (r fn-zin-tab fn-zin-win fn-octets)
               (with-local-stobj fn-zin-out
                 (mv-let (r fn-zin-out fn-zin-tab fn-zin-win fn-octets)
-                  (with-local-stobj fn-zin-st
-                    (mv-let (r fn-zin-st fn-zin-win fn-zin-tab fn-zin-out fn-octets)
-                      (let ((fn-octets (fn-octets-from-list c fn-octets)))
-                        (mv-let (st fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
-                          (fn-zin-payload-bufs b dict 0 (fn-octets-len fn-octets) lim fn-zin-st
-                                               fn-octets fn-zin-win fn-zin-tab fn-zin-out)
-                          (mv (list st (fn-zin-out-list fn-zin-out) (fn-zin-fields-list 0 fn-zin-st))
-                              fn-zin-st fn-zin-win fn-zin-tab fn-zin-out fn-octets)))
-                      (mv r fn-zin-out fn-zin-tab fn-zin-win fn-octets)))
+                  (let ((fn-octets (fn-octets-from-list c fn-octets)))
+                    (mv-let (st fn-zin-win fn-zin-tab fn-zin-out)
+                      (fn-zin-payload-bufs b dict 0 (fn-octets-len fn-octets) lim fn-octets
+                                           fn-zin-win fn-zin-tab fn-zin-out)
+                      (mv (list st (fn-zin-out-list fn-zin-out))
+                          fn-zin-out fn-zin-tab fn-zin-win fn-octets)))
                   (mv r fn-zin-tab fn-zin-win fn-octets)))
               (mv r fn-zin-win fn-octets)))
           (mv r fn-octets)))
       r)))
+
+; The host's entry is the list decoder: its buffers are made inside it.
+(defthm fn-zin-payload-ready-ignores-buffers
+  (implies (syntaxp (not (and (equal fn-zin-win ''nil) (equal fn-zin-tab ''nil))))
+           (equal (fn-zin-payload-ready dict fn-zin-win fn-zin-tab)
+                  (fn-zin-payload-ready dict nil nil))))
+
+(defthm fn-zin-payload-bufs-ignores-buffers
+  (implies (syntaxp (not (and (equal fn-zin-win ''nil) (equal fn-zin-tab ''nil)
+                              (equal fn-zin-out ''nil))))
+           (equal (fn-zin-payload-bufs b dict start end lim fn-octets fn-zin-win fn-zin-tab
+                                       fn-zin-out)
+                  (fn-zin-payload-bufs b dict start end lim fn-octets nil nil nil)))
+  :hints (("Goal" :in-theory (disable fn-zin-payload-ready fn-zin-loop-ahead))))
+
+; KEYSTONE (the payload decoder's boundary).  The host entry, over the
+; host's buffers with the input C in fn-octets, answers the list decoder's
+; status and octets.
+(defthm fn-zin-payload-bufs-is-payload-with
+  (implies (fn-cbor-octet-listp c)
+           (let ((r (fn-zin-payload-bufs b dict 0 (len c) lim c fn-zin-win fn-zin-tab
+                                         fn-zin-out)))
+             (equal (list (car r) (mv-nth 3 r))
+                    (fn-zin-payload-with b dict c lim))))
+  :hints (("Goal" :in-theory (disable fn-zin-payload-bufs))))
+
+(defthm fn-zin-payload-with-octets
+  (implies (and (fn-cbor-octet-listp dict) (fn-cbor-octet-listp c))
+           (and (fn-cbor-octet-listp (cadr (fn-zin-payload-with b dict c lim)))
+                (true-listp (cadr (fn-zin-payload-with b dict c lim)))))
+  :hints (("Goal" :in-theory (disable fn-zin-loop-ahead))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE (the bomb, PRF-910).  The octets a call appends to the output
