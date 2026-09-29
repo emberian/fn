@@ -304,7 +304,7 @@
   (implies (and (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
-           (fn-sjh-vw-result-viewp (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat) oc))
+           (fn-sjh-vw-result-viewp (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat) oc))
   :hints (("Goal" :in-theory (union-theories '(fn-sjh-vw-result-viewp fn-scj-otm-read-span-owner
                                                fn-sjh-vw-unshed-view fn-sjh-rd-shed-view)
                                              (theory 'minimal-theory))
@@ -318,7 +318,7 @@
   (implies (and (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
-           (fn-sjh-vw-result-viewp (fn-oas-posting-off-read oc views id i end s fn-octets fn-arena fn-cat) oc))
+           (fn-sjh-vw-result-viewp (fn-oas-posting-off-read oc views id i end cache s fn-octets fn-arena fn-cat) oc))
   :hints (("Goal" :in-theory (union-theories '(fn-sjh-vw-result-viewp fn-oas-posting-off-read
                                                fn-scj-tls-result-owner-of-make fn-sjh-rd-with-allow-view)
                                              (theory 'minimal-theory))
@@ -347,7 +347,7 @@
   (implies (and (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
-           (fn-sjh-vw-result-viewp (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat) oc))
+           (fn-sjh-vw-result-viewp (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat) oc))
   :hints (("Goal" :in-theory '(fn-oas-read-span fn-sjh-vw-otm-view fn-sjh-vw-posting-off-view fn-sjh-vw-tiers-view))))
 
 (defthm fn-sjh-vw-shut-read-view
@@ -359,14 +359,14 @@
   (implies (and (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
-           (fn-sjh-vw-result-viewp (fn-mca-refused-read oc views id i end s fn-octets fn-arena fn-cat) oc))
+           (fn-sjh-vw-result-viewp (fn-mca-refused-read oc views id i end cache s fn-octets fn-arena fn-cat) oc))
   :hints (("Goal" :in-theory '(fn-mca-refused-read fn-sjh-vw-posting-off-view fn-sjh-vw-close-result-view))))
 
 (defthm fn-sjh-vw-mca-view
   (implies (and (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
-           (fn-sjh-vw-result-viewp (car (fn-mca-read-span credits oc views id i end s slots reserve
+           (fn-sjh-vw-result-viewp (car (fn-mca-read-span credits oc views id i end cache s slots reserve
                                                           fn-octets fn-arena fn-cat))
                                    oc))
   :hints (("Goal" :in-theory '(fn-mca-read-span car-cons fn-sjh-vw-oas-view fn-sjh-vw-refused-read-view
@@ -380,7 +380,7 @@
                 (fn-sjh-viewsp views (fn-ocfg-owner oc) fn-cat))
            (fn-sjh-viewsp views
                           (fn-ocfg-owner (fn-own-tls-result-owner
-                                          (car (fn-mca-read-span credits oc views id i end s slots reserve
+                                          (car (fn-mca-read-span credits oc views id i end cache s slots reserve
                                                                  fn-octets fn-arena fn-cat))))
                           fn-cat))
   :hints (("Goal" :in-theory '(fn-sjh-vw-result-viewp fn-sjh-colsp-gives-scol-okp fn-sjh-viewsp-gives-views-okp)
@@ -388,7 +388,7 @@
                  (:instance fn-sjh-okp-unfolds (o (fn-ocfg-owner oc)))
                  (:instance fn-sjh-viewsp-of-later-view (o (fn-ocfg-owner oc))
                             (o2 (fn-ocfg-owner (fn-own-tls-result-owner
-                                                (car (fn-mca-read-span credits oc views id i end s slots reserve
+                                                (car (fn-mca-read-span credits oc views id i end cache s slots reserve
                                                                        fn-octets fn-arena fn-cat))))))))))
 
 
@@ -776,7 +776,7 @@
                 (fn-sjh-viewsp views (fn-ocfg-owner oc) fn-cat))
            (fn-sjh-okp (fn-ocfg-owner
                         (fn-own-tls-result-owner
-                         (car (fn-mca-read-span credits oc views id i end s slots reserve
+                         (car (fn-mca-read-span credits oc views id i end cache s slots reserve
                                                 fn-octets fn-arena fn-cat))))
                        pending fn-arena fn-cat))
   :hints (("Goal" :in-theory '(fn-sjh-viewsp-gives-views-okp)

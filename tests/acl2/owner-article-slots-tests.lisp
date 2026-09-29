@@ -379,7 +379,7 @@
          (fn-arena (fn-arn-seal-many payloads fn-arena))
          (fn-cat (fn-sca-load-held-rows rows (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
                                         fn-arena fn-cat)))
-    (mv (fn-oas-posting-off-read oc views id 0 (len octs) s fn-octets fn-arena fn-cat)
+    (mv (fn-oas-posting-off-read oc views id 0 (len octs) nil s fn-octets fn-arena fn-cat)
         fn-octets fn-arena fn-cat)))
 
 (defun oast-off (oc views id octs s)

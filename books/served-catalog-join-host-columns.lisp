@@ -266,7 +266,7 @@
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-okp (fn-ocfg-owner
                         (fn-own-tls-result-owner
-                         (car (fn-mca-read-span credits oc views id i end s slots reserve
+                         (car (fn-mca-read-span credits oc views id i end cache s slots reserve
                                                 fn-octets fn-arena fn-cat))))
                        pending fn-arena fn-cat))
   :hints (("Goal" :in-theory '(fn-sjh-colsp-gives-scol-okp)
