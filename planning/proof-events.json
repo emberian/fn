@@ -13513,6 +13513,79 @@
           "name": "fn-bpcc-frame-decode-of-sealed"
         }
       ]
+    },
+    {
+      "id": "PRF-936",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgu-acknowledged-article-is-recoverable-at-every-crash-point"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgu-acknowledged-article-is-recoverable-at-every-cut-of-recovery"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgu-committed-record-is-read-from-every-crash-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgu-scan-of-a-complete-prefix-reads-its-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgu-recovered-kernel-holds-the-scan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgu-committed-record-survives-every-cut-of-the-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgu-committed-record-survives-every-cut-of-the-fence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgu-committed-record-survives-every-cut-of-a-failed-fence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgu-committed-record-survives-every-cut-of-the-extension"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgu-record-read-at-open-survives-every-cut-of-recovery"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgu-acknowledged-record-is-committed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-uncertain-batch-recovers-to-a-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-crash-of-aligned-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-extend-program-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-read-ranges-is-the-range"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-read-ranges-read-the-whole-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgs-open-plan-scan-ignores-covered"
+        }
+      ]
     }
   ]
 }

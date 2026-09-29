@@ -653,13 +653,18 @@ def verify_compact_is_rotation() -> None:
         raise AssertionError("store compact is not the checkpoint's rotation and drop")
 
 
-def verify_log_cut_map() -> None:
+def log_program_cut_map(source: str | None = None) -> list[tuple[str, str, tuple[str, ...]]]:
     """The host's log cuts are the log programs', in their order: the declared
     names (+fnn-log-model-cuts+) are LOG_CUTS's and the programs' cuts in
     LOG_PROGRAM_HOSTS order; each hosting function performs its program's
-    steps (fnn-log-pwrite for :write-at, fnn-log-fdatasync for :fence, and
-    `(fnn-log-at :NAME)' for each cut) in the program's order, and every
-    `fnn-log-at' in it is one of the program's cuts."""
+    steps (fnn-log-pwrite for :write-at, fnn-log-fdatasync for :fence,
+    fnn-log-preallocate for :extend-to, and `(fnn-log-at :NAME)' for each
+    cut) in the program's order, and every `fnn-log-at' in it is one of the
+    program's cuts.  Answers the listing tools/native_program_check.py
+    prints (lane byte-model, row Q3b): (program, host function, its cuts)
+    per program, in LOG_PROGRAM_HOSTS order; raises AssertionError at the
+    first drift.  SOURCE is host/native/io.lisp's text (the tree's when
+    None; the tests hand in mutations)."""
     declared = tuple(c.name for c in LOG_CUTS)
     if declared != native_declared_cut_names("fnn-log-model-cuts"):
         raise AssertionError("native/model log cuts differ")
@@ -668,7 +673,9 @@ def verify_log_cut_map() -> None:
                              program, LOG_PROGRAM_BOOKS.get(program, LOG_BOOK)))
     if declared != program_cuts:
         raise AssertionError("log cuts are not the log programs': {!r}".format(program_cuts))
-    source = (ROOT / "host/native/io.lisp").read_text()
+    if source is None:
+        source = (ROOT / "host/native/io.lisp").read_text()
+    listing = []
     for program, host in LOG_PROGRAM_HOSTS.items():
         book = LOG_PROGRAM_BOOKS.get(program, LOG_BOOK)
         body = host_function(source, host)
@@ -689,8 +696,15 @@ def verify_log_cut_map() -> None:
             if body.count(needle) != sum(1 for s in model_steps(program, book)
                                          if s.kind == kind):
                 raise AssertionError("{}: {} count differs from {}".format(host, kind, program))
+        listing.append((program, host, tuple(model_cut_names(program, book))))
     for cut in LOG_CUTS:
         cut_step_index(cut)
+    return listing
+
+
+def verify_log_cut_map() -> None:
+    """The log cut map holds (log_program_cut_map raises at the first drift)."""
+    log_program_cut_map()
 
 
 # The log's segment programs (lane log-recovery; books/store-log-segments.lisp):

@@ -431,6 +431,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-route-phases \
 	books/store-log-extend \
 	tests/acl2/store-log-extend-tests \
+	books/store-log-durable \
+	tests/acl2/store-log-durable-tests \
 	books/store-init-log-publication \
 	tests/acl2/store-init-log-publication-tests \
 	books/owner-feed-txid-reuse \
@@ -1555,6 +1557,13 @@ check:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_shape_books
 # tools/rule_usage.py's graph simulation and log reading (lane fan-in-cuts).
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_rule_usage
+# The resource contract (docs/resource-contract.md, row R1): its generated
+# block is current, every theorem it cites exists in its book, every proof id
+# and record exists, and no cited book is red at its digest (green_check over
+# the cited books' closures); a cited book no held manifest certifies at its
+# current bytes is printed, and fails only under --strict (the release form).
+	@$(CHECK_STEP) $(PYTHON) tools/resource_contract.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_resource_contract
 # The website renders the guides' articles (site/build_site.py, stdlib only):
 # every article is well-formed (tools/docs_articles.py: its headers, its
 # Message-ID, 72 columns), every repository path it names exists, and every
@@ -1882,7 +1891,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_test_budget tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \
 	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync \
-	    tests.test_extract_gate tests.test_cert_images
+	    tests.test_extract_gate tests.test_cert_images tests.test_resource_contract
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 

@@ -14113,6 +14113,55 @@
         "planning/evidence/pkt-615-number-bound-2026-09-28.md"
       ],
       "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound."
+    },
+    {
+      "id": "PRF-936",
+      "title": "An article the node acknowledged as accepted is recoverable from the bytes on disk at every crash point of the record log's programs (durable acceptance; the six byte-model remainder theorems of row Q3b)",
+      "statement": "KEYSTONE fn-lgu-acknowledged-article-is-recoverable-at-every-crash-point (books/store-log-durable.lisp): an article the node acknowledged as accepted (a member of the aligned owner layer's acked list, books/owner-batch.lisp fn-owb-alignedp) is held by the kernel recovered (fn-lgk-recover) from the durable content of every admissible crash image (fn-bs-crash-imagep) of every crash point of the served programs: fn-lgu-crash-point-p names, from a related state (R, fn-lgk-relp), every cut state of fn-lg-append-program, of fn-lg-fence-program with the barrier :ok or failed after landing an admissible selection (the fsyncgate outcome), and of fn-lg-extend-program to a unit-aligned larger extent; its recovery half fn-lgu-acknowledged-article-is-recoverable-at-every-cut-of-recovery covers every cut of fn-lg-recover-program from the recovered layer fn-owb-recover (the zeroing write at the frontier, then its fence). Subjects: the programs tools/native_program_check.py ties to host/native/io.lisp fnn-log-append, fnn-log-fence, fnn-log-recover and fnn-log-ensure-extent, listed with their cuts (tests/campaign/native_cuts.py log_program_cut_map; 4 programs, 6 cuts). No trailer assumption: fn-lgu-committed-record-is-read-from-every-crash-image composes the shift lemma fn-bs-crash-of-aligned-append (the tear keeps the prefix below the frontier) with fn-lg-scan-of-complete-append (fn-lgu-scan-of-a-complete-prefix-reads-its-records); A-CRYPTO-TRAILER decides only what the scan reads after the committed records (T2). The six theorems row Q3b names: T7 fn-owb-uncertain-batch-recovers-to-a-prefix (a failed barrier recovers to the committed records then a prefix of the batch, owner-batch), the shift lemma fn-bs-crash-of-aligned-append (store-log-crash, PRF-244), the extension's P-BATCH step fn-lg-extend-program-keeps-the-relation with its cuts log-extended/log-extent-fenced (store-log-extend, PRF-268), the whole-file range read over the host loop fn-bs-read-ranges-read-the-whole-file / fn-bs-read-ranges-is-the-range (byte-store-range-read: fnn-state-checkpoint-plan's consecutive reads on one descriptor under A-HOST-EXCLUSIVE-READ, fn-bs-exclusive-chainp, are one range of the first state's content; model-only, planning/reach-baseline.json), covered segments ruled out by proof fn-lgs-open-plan-scan-ignores-covered (store-log-segments, PRF-270: the open's plan ignores a checkpoint's covered leftovers; the host's open takes the plan from fn-lgs-open-plan). NOT DELIVERED (open, PKT-216's live half): the administrative publication's byte program (host/native/admin.lisp fnn-admin-publish through fnn-immutable-publish-effect into the config directory): no model program and no cut yet. PKT-086 and PKT-215's remaining items were the per-file layout's (frontier publication, authority entries, the marker file), deleted with it (PRF-041's note, PKT-838); the marker is M := D under the log (design 2026-09-27 section 3.4). Teeth: tests/acl2/store-log-durable-tests.lisp (a ground two-record log recovered, acknowledged, a third record appended; every cut of every program under explicit crash choices; T7 on the ground; one witness per removed hypothesis, the corrupted-state and mutation witnesses labelled).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003"
+      ],
+      "depends_on": [
+        "PRF-245",
+        "PRF-253",
+        "PRF-244",
+        "PRF-268",
+        "PRF-270",
+        "PRF-273"
+      ],
+      "assumptions": [
+        "A-HOST-EXCLUSIVE-READ (the range read only)",
+        "fn-assume-log-sole-pending-writer (the recovery half only; an fn obligation)"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/store-log-durable.lisp",
+        "books/byte-store-range-read.lisp",
+        "tests/acl2/store-log-durable-tests.lisp",
+        "planning/evidence/byte-model-2026-09-29.md",
+        "planning/evidence/manifests/certify-20260929T031304Z-2122246.json"
+      ],
+      "progress_note": "Lane byte-model (Fable 5.1, 2026-09-29): REPL-admitted on persvati (store-log-durable 62 forms, the keystone 800 steps; byte-store-range-read's chain); certified on persvati, farm run-20260929T031004Z-7de9 (4/0), manifest planning/evidence/manifests/certify-20260929T031304Z-2122246.json. The administrative publication's byte program is the row's one undelivered item (successor).",
+      "events": [
+        "fn-lgu-acknowledged-article-is-recoverable-at-every-crash-point",
+        "fn-lgu-acknowledged-article-is-recoverable-at-every-cut-of-recovery",
+        "fn-lgu-committed-record-is-read-from-every-crash-image",
+        "fn-lgu-scan-of-a-complete-prefix-reads-its-records",
+        "fn-lgu-recovered-kernel-holds-the-scan",
+        "fn-lgu-committed-record-survives-every-cut-of-the-append",
+        "fn-lgu-committed-record-survives-every-cut-of-the-fence",
+        "fn-lgu-committed-record-survives-every-cut-of-a-failed-fence",
+        "fn-lgu-committed-record-survives-every-cut-of-the-extension",
+        "fn-lgu-record-read-at-open-survives-every-cut-of-recovery",
+        "fn-lgu-acknowledged-record-is-committed",
+        "fn-owb-uncertain-batch-recovers-to-a-prefix",
+        "fn-bs-crash-of-aligned-append",
+        "fn-lg-extend-program-keeps-the-relation",
+        "fn-bs-read-ranges-is-the-range",
+        "fn-bs-read-ranges-read-the-whole-file",
+        "fn-lgs-open-plan-scan-ignores-covered"
+      ]
     }
   ]
 }
