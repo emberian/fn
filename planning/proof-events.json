@@ -13269,6 +13269,19 @@
           "name": "fn-xpy-rci-recorded-context-is-the-decided-context"
         }
       ]
+    },
+    {
+      "id": "PRF-933",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocln-a-cold-line-is-answered-unavailable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocln-unavailable-span-outside-command-mode"
+        }
+      ]
     }
   ]
 }

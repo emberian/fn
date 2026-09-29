@@ -13891,6 +13891,23 @@
         "fn-xpy-rci-recorded-config-keeps-the-policy",
         "fn-xpy-rci-recorded-context-is-the-decided-context"
       ]
+    },
+    {
+      "id": "PRF-933",
+      "milestone": "M5",
+      "requirements": [
+        "HST-031"
+      ],
+      "depends_on": [
+        "PRF-384"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "title": "A served read's cold line past the dependency deadline is answered 403 with the session unchanged; pipelined lines are answered in order (row A4, option (c))",
+      "statement": "Subject (books/owner-cold-line.lisp): fn-ocln-unavailable-span, which host/owner-host.lisp fn-owner-unavailable-line-at calls from host/native/owner.lisp fnn-owner-unavailable-line once fn-otb-dependency-step answers :unavailable for the cold first line of a span aborted in the realizer's no-I/O mode (fnn-owner-chunk-span-no-io, fnn-owner-cold-line). KEYSTONE fn-ocln-a-cold-line-is-answered-unavailable: for a connection in command mode and I within the buffer, the result consumes exactly the octets up to and including the line's LF (fn-oct-line-end; at least one when any remain), carries one reply, fn-otb-unavailable-line (code 403), and its owner is OC with only that connection's wire reset to the start of a line in command mode with its limits kept. fn-ocln-unavailable-span-outside-command-mode: otherwise nil (the host faults).",
+      "evidence": "['books/owner-cold-line.lisp', 'tests/acl2/owner-cold-line-tests.lisp', 'host/owner-host.lisp', 'host/native/owner.lisp', 'host/native/extent.lisp', 'tests/test_native_slow_disk.py']",
+      "events": "['fn-ocln-a-cold-line-is-answered-unavailable', 'fn-ocln-unavailable-span-outside-command-mode']",
+      "progress_note": "Lane composed-owner-3 (Opus 5.5, 2026-09-29). REPL-admitted on persvati. Teeth tests/acl2/owner-cold-line-tests.lisp (oclnt-): pipelined positive witness (GROUP warm, ARTICLE cold 403 consuming its 11 octets only, STAT answered exactly as without the cold line, owner unchanged), a line split across reads (wire reset, session kept, next command as from the owner that never saw the line), hypothesis removal (article mode: nil), a whole-buffer mutation must-fail. Native: tests/test_native_slow_disk.py test_a_cold_read_on_a_stalled_disk_answers_403_while_cached_reads_stay_flat."
     }
   ]
 }
