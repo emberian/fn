@@ -274,9 +274,11 @@ class Runner:
             if book_directory(book) is None:
                 continue
             reach = self.graph.nonlocal_closure(book)
+            attachers = self.graph.closure(book) & self.graph.attaches
             names = [name for name, image in by_name.items()
                      if book not in image["roots"] and book not in self.closures[name]
-                     and all(r in reach for r in image["roots"])]
+                     and all(r in reach for r in image["roots"])
+                     and attachers <= self.closures[name]]
             self.applicable[book] = sorted(names, key=lambda n: (-self.cost[n], n))
         self.kick()
 
