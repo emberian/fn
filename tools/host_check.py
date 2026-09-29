@@ -258,7 +258,23 @@ def world_text() -> str:
 
 
 def world_names(text: str) -> set[str]:
-    return {name.lower() for name in WORLD_DEF.findall(text)}
+    return {name.lower() for name in WORLD_DEF.findall(text)} | stobj_world_names()
+
+
+def stobj_world_names() -> set[str]:
+    """The names every `defstobj'/`defabsstobj' in the world generates (the
+    creator, recognizer, field accessors and updaters): no `def' form spells
+    them, so WORLD_DEF cannot see them, and `create-fn-zin-st' (host/native/
+    deflate.lisp's fnn-zin-new) was reported undefined (compress-4)."""
+    found: set[str] = set()
+    for directory in WORLD_DIRS:
+        base = ROOT / directory
+        paths = base.rglob("*.lisp") if directory == "books" else base.glob("*.lisp")
+        for path in sorted(paths):
+            text = path.read_text(encoding="utf-8", errors="replace").lower()
+            if "(defstobj" in text or "(defabsstobj" in text:
+                found |= {name.lower() for name in stobj_names(path)}
+    return found
 
 
 def in_world(name: str, defined: set[str], text: str) -> bool:
