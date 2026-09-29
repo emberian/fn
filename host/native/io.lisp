@@ -5892,7 +5892,7 @@ offline `store ROOT post'), the store's replayed configuration's
             record
           (let* ((k (car plan)) (n (cdr plan))
                  (dict (fnn-lz-current-dict))
-                 (candidate (funcall 'fnn-deflate-candidate (cdr dict) (fnn-octets record) k n
+                 (candidate (funcall 'fnn-deflate-candidate (cddr dict) (fnn-octets record) k n
                                      (fnn-core 'fn-lzr-candidate-cap n)))
                  (decision (fnn-core 'fn-lzr-append-decide (second dict) (first dict) min r k n
                                      (if (eq candidate :none) :none
