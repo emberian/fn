@@ -410,6 +410,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/view-delta \
 	books/view-delta-concrete \
 	books/retention-obligation-view \
+	books/retention-obligation-view-status \
+	books/owner-obligation-state \
 	tests/acl2/retention-obligation-view-tests \
 	tests/acl2/native-live-pages-tests \
 	books/feed-link-backoff \

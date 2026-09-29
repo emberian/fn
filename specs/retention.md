@@ -202,6 +202,10 @@ the subject path and its finite character branches, independent of ledger size.
 Initialization is a tail-recursive fold; it is separate from served reads.
 The delta updater has no reconstruction fallback and releases use the new
 release record plus the reservation change, rather than searching for a pin.
+The owner-state book names the actual installation function and proves its
+owner/view/global effects; separate cold and rebuilt installations establish
+the correspondence. The status substitution preserves the exact report under
+that correspondence. These boundaries are not yet connected to the host.
 
 At this checkpoint these are source definitions with clean REPL evidence, not
 a served implementation claim. Host writer preservation, matching native status
