@@ -13,7 +13,7 @@
 
 (defconst *fn-bpnp-max-routes* 64)
 ; This deployed profile keeps one received-FNBS control record above exact
-; cleanup debt.  The policy slot in spec §2.1 is not yet a host input.
+; cleanup debt.  The policy slot in spec section 2.1 is not yet a host input.
 (defconst *fn-bpnp-control-margin* 1)
 
 (defun fn-bpnp-single-peer-routes (peer)
@@ -151,13 +151,41 @@
     (and (fn-bpnp-sessionp (car x))
          (fn-bpnp-session-listp (cdr x)))))
 
+; The session table holds a row per BP boundary, operator data with no
+; fixed cap (D27): the walk executes by a loop (lane depth-debt, PRF-919),
+; (mbe :logic <the recursion, unchanged> :exec <a loop>).
+(defun fn-bpnp-remove-peer-session-loop (peer sessions acc)
+  (declare (xargs :guard t :measure (acl2-count sessions)))
+  (if (atom sessions) (fn-ag-rev-onto acc nil)
+    (fn-bpnp-remove-peer-session-loop
+     peer (cdr sessions)
+     (if (equal (fn-bpn-nth 1 (car sessions)) peer) acc (cons (car sessions) acc)))))
+
 (defun fn-bpnp-remove-peer-session (peer sessions)
   (declare (xargs :guard t :measure (acl2-count sessions)))
-  (if (atom sessions) nil
-    (if (equal (fn-bpn-nth 1 (car sessions)) peer)
-        (fn-bpnp-remove-peer-session peer (cdr sessions))
-      (cons (car sessions)
-            (fn-bpnp-remove-peer-session peer (cdr sessions))))))
+  (mbe :logic (if (atom sessions) nil
+                (if (equal (fn-bpn-nth 1 (car sessions)) peer)
+                    (fn-bpnp-remove-peer-session peer (cdr sessions))
+                  (cons (car sessions)
+                        (fn-bpnp-remove-peer-session peer (cdr sessions)))))
+       :exec (fn-bpnp-remove-peer-session-loop peer sessions nil)))
+
+(defthm fn-bpnp-remove-peer-session-loop-is-rev-onto
+  (equal (fn-bpnp-remove-peer-session-loop peer sessions acc)
+         (fn-ag-rev-onto acc (fn-bpnp-remove-peer-session peer sessions)))
+  :hints (("Goal" :induct (fn-bpnp-remove-peer-session-loop peer sessions acc)
+                  :in-theory (union-theories
+                              '(fn-bpnp-remove-peer-session-loop fn-bpnp-remove-peer-session
+                                fn-ag-rev-onto atom car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-bpnp-remove-peer-session-loop)
+(verify-guards fn-bpnp-remove-peer-session
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnp-remove-peer-session fn-ag-rev-onto
+                                fn-bpnp-remove-peer-session-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-bpnp-open-session (sessions peer session mru)
   (declare (xargs :guard t))
@@ -217,21 +245,63 @@
         (car waits)
       (fn-bpnp-wait-for key (cdr waits)))))
 
-(defun fn-bpnp-remove-wait (key waits)
+; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
+; node's held-bundle or job queue, data with no fixed cap (D27), one
+; control-stack frame per row before.
+(defun fn-bpnp-remove-wait-loop (key waits acc)
   (declare (xargs :guard t :measure (acl2-count waits)))
-  (if (atom waits) nil
-    (if (equal key (fn-bpn-nth 1 (car waits)))
-        (fn-bpnp-remove-wait key (cdr waits))
-      (cons (car waits) (fn-bpnp-remove-wait key (cdr waits))))))
+  (if (atom waits) (fn-ag-rev-onto acc nil)
+    (fn-bpnp-remove-wait-loop key (cdr waits)
+     (if (not (equal key (fn-bpn-nth 1 (car waits)))) (cons (car waits) acc) acc))))
+
+(defun fn-bpnp-remove-wait (key waits)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count waits)))
+  (mbe :logic
+       (if (atom waits) nil
+         (if (equal key (fn-bpn-nth 1 (car waits)))
+             (fn-bpnp-remove-wait key (cdr waits))
+           (cons (car waits) (fn-bpnp-remove-wait key (cdr waits)))))
+       :exec (fn-bpnp-remove-wait-loop key waits nil)))
+
+(defthm fn-bpnp-remove-wait-loop-is-rev-onto
+  (equal (fn-bpnp-remove-wait-loop key waits acc)
+         (fn-ag-rev-onto acc (fn-bpnp-remove-wait key waits)))
+  :hints (("Goal" :induct (fn-bpnp-remove-wait-loop key waits acc)
+                  :in-theory (union-theories
+                              '(fn-bpnp-remove-wait-loop fn-bpnp-remove-wait fn-ag-rev-onto atom car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+
+
+; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
+; node's held-bundle or job queue, data with no fixed cap (D27), one
+; control-stack frame per row before.
+(defun fn-bpnp-prune-waits-loop (waits held acc)
+  (declare (xargs :guard t :measure (acl2-count waits)))
+  (if (atom waits) (fn-ag-rev-onto acc nil)
+    (fn-bpnp-prune-waits-loop (cdr waits) held
+     (if (fn-bpnf-find-held (fn-bpn-nth 1 (car waits)) held) (cons (car waits) acc) acc))))
 
 (defun fn-bpnp-prune-waits (waits held)
-  (declare (xargs :guard t :measure (acl2-count waits)))
-  (if (atom waits) nil
-    (let* ((row (car waits))
-           (key (fn-bpn-nth 1 row)))
-      (if (fn-bpnf-find-held key held)
-          (cons row (fn-bpnp-prune-waits (cdr waits) held))
-        (fn-bpnp-prune-waits (cdr waits) held)))))
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count waits)))
+  (mbe :logic
+       (if (atom waits) nil
+         (let* ((row (car waits))
+                (key (fn-bpn-nth 1 row)))
+           (if (fn-bpnf-find-held key held)
+               (cons row (fn-bpnp-prune-waits (cdr waits) held))
+             (fn-bpnp-prune-waits (cdr waits) held))))
+       :exec (fn-bpnp-prune-waits-loop waits held nil)))
+
+(defthm fn-bpnp-prune-waits-loop-is-rev-onto
+  (equal (fn-bpnp-prune-waits-loop waits held acc)
+         (fn-ag-rev-onto acc (fn-bpnp-prune-waits waits held)))
+  :hints (("Goal" :induct (fn-bpnp-prune-waits-loop waits held acc)
+                  :in-theory (union-theories
+                              '(fn-bpnp-prune-waits-loop fn-bpnp-prune-waits fn-ag-rev-onto atom car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+
 
 (defun fn-bpnp-wait-key (h)
   (declare (xargs :guard t))
@@ -1703,13 +1773,35 @@
   (declare (xargs :guard t))
   (fn-bpaj-eid-text (fn-bpn-nth 3 (fn-bpnp-primary h))))
 
-(defun fn-bpnp-routed-rows (ordered via)
+; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
+; node's held-bundle or job queue, data with no fixed cap (D27), one
+; control-stack frame per row before.
+(defun fn-bpnp-routed-rows-loop (ordered via acc)
   (declare (xargs :guard t :measure (acl2-count ordered)))
-  (if (atom ordered) nil
-    (if (equal (fn-bprt-offer-decision (fn-bpnp-held-dest (car ordered)) via)
-               :offer)
-        (cons (car ordered) (fn-bpnp-routed-rows (cdr ordered) via))
-      (fn-bpnp-routed-rows (cdr ordered) via))))
+  (if (atom ordered) (fn-ag-rev-onto acc nil)
+    (fn-bpnp-routed-rows-loop (cdr ordered) via
+     (if (equal (fn-bprt-offer-decision (fn-bpnp-held-dest (car ordered)) via)
+                :offer) (cons (car ordered) acc) acc))))
+
+(defun fn-bpnp-routed-rows (ordered via)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count ordered)))
+  (mbe :logic
+       (if (atom ordered) nil
+         (if (equal (fn-bprt-offer-decision (fn-bpnp-held-dest (car ordered)) via)
+                    :offer)
+             (cons (car ordered) (fn-bpnp-routed-rows (cdr ordered) via))
+           (fn-bpnp-routed-rows (cdr ordered) via)))
+       :exec (fn-bpnp-routed-rows-loop ordered via nil)))
+
+(defthm fn-bpnp-routed-rows-loop-is-rev-onto
+  (equal (fn-bpnp-routed-rows-loop ordered via acc)
+         (fn-ag-rev-onto acc (fn-bpnp-routed-rows ordered via)))
+  :hints (("Goal" :induct (fn-bpnp-routed-rows-loop ordered via acc)
+                  :in-theory (union-theories
+                              '(fn-bpnp-routed-rows-loop fn-bpnp-routed-rows fn-ag-rev-onto atom car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+
 
 (defun fn-bpnp-routed-start (st peer session mru observation via budget)
   (declare (xargs :guard (and (natp mru)

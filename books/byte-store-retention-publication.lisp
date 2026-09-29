@@ -49,11 +49,11 @@
 (defthm fn-bsrp-row-wire-of-a-retention-event
   (implies (fn-store-retention-event-p e)
            (equal (fn-bs-row-wire e arena) e))
-  :hints (("Goal" :use ((:instance fn-bs-held-is-no-wire-event (x e))
-                        (:instance fn-bs-hstxa-is-no-wire-event (x e)))
+  :hints (("Goal" :use ((:instance fn-held-is-no-wire-event (x e))
+                        (:instance fn-hstxa-is-no-wire-event (x e)))
            :in-theory (e/d (fn-bs-row-wire)
                            (fn-held-p fn-hstxa-p fn-store-retention-event-p
-                            fn-bs-held-is-no-wire-event fn-bs-hstxa-is-no-wire-event)))))
+                            fn-held-is-no-wire-event fn-hstxa-is-no-wire-event)))))
 (defthm fn-bsrp-retention-host-arguments-are-typed-record-input
   (implies (and (fn-store-retention-event-p event)
                 (equal (fn-sf-phase ks) :record-staged)

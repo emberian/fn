@@ -31,6 +31,14 @@
                   (fn-gidx-build
                    (fn-state-articles (fn-served-conn-archive conn)))))))
 
+;; A view with no article builds no buckets: the control pin over an empty
+;; view (books/served.lisp fn-served-conn-pinned-index, PKT-443) corresponds.
+(local
+ (defthm fn-olc-gidx-build-of-no-articles
+   (implies (not (consp articles))
+            (equal (fn-gidx-build articles) nil))
+   :hints (("Goal" :in-theory (enable fn-gidx-build)))))
+
 (local
  (defthm fn-olc-pinned-index-corresponds
    (implies (fn-olc-buckets-okp conn)
@@ -102,6 +110,7 @@
                   ;; restricted one is served the view: books/group-access.lisp).
                   (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (not (fn-auth-session-handshakingp as))
+                  (not (fn-auth-sasl-waitingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
                   (null (fn-peer-session-peer ps))
@@ -192,6 +201,7 @@
                   (not (equal (fn-wire-state-mode w2) :closed))
                   (fn-auth-sessionp as)
                   (not (fn-auth-session-handshakingp as))
+                  (not (fn-auth-sasl-waitingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
                   (null (fn-peer-session-peer ps))
@@ -293,6 +303,7 @@
                   ;; restricted one is served the view: books/group-access.lisp).
                   (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (not (fn-auth-session-handshakingp as))
+                  (not (fn-auth-sasl-waitingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
                   (null (fn-peer-session-peer ps))
@@ -374,6 +385,7 @@
                   (not (equal (fn-wire-state-mode w2) :closed))
                   (fn-auth-sessionp as)
                   (not (fn-auth-session-handshakingp as))
+                  (not (fn-auth-sasl-waitingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
                   (null (fn-peer-session-peer ps))

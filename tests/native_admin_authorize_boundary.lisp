@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (defvar *the-live-state* :unexpected-state)
 (defun f-get-global (name state) (declare (ignore name state)) nil)
+(load "tests/native_io_prelude.lisp")
 (load "host/native/io.lisp")
 (load "host/native/admin.lisp")
 

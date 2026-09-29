@@ -229,8 +229,10 @@
 ;; fn-owner-chunk-span calls fn-scar-ocfg-read-span.
 (include-book "books/served-span")
 ;; Lane time-model-2: host/native/io.lisp fnn-owner-wall-milliseconds calls
-;; fn-otm-wall-reading (the wall clock's validity is ACL2's).
-(include-book "books/clock-wall-reading")
+;; fn-otm-wall-reading (the wall clock's validity is ACL2's); PRF-305
+;; (assurance-hygiene-5): with the monotonic readings (fn-otm-monotonic-ms,
+;; fn-otm-boottime-ms) and their keystones, books/clock-reading.
+(include-book "books/clock-reading")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
 ; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file
@@ -303,9 +305,8 @@
         (load "host/native/io.lisp")
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
-        ; The LZ4 block encoder of the compressed append (lib/libfn-lz4;
-        ; untrusted: ACL2's proved decoder checks every candidate).
-        (load "host/native/lz4.lisp")
+        ; The COMPRESS DEFLATE layer (RFC 8054): mux.lisp serves it here too.
+        (load "host/native/deflate.lisp")
         ; Select once during construction, before any diagnostic module loads.
         ; A restart-time FN_NATIVE_PROFILE cannot promote this saved image.
         (fnn-select-image-profile)
@@ -327,7 +328,7 @@
         (fnn-digest-reset)
         (load "host/native/signatures.lisp")
         (fnn-hsig-initialize)
-        (fnn-lz4-initialize)
+        (fnn-deflate-initialize)
         (defun fn-native-entry (st)
           (declare (ignore st))
           (fnn-crypto-startup)
@@ -336,8 +337,8 @@
           (fnn-digest-startup)
           (fnn-hsig-reset)
           (fnn-hsig-initialize)
-          (fnn-lz4-reset)
-          (fnn-lz4-initialize)
+          (fnn-deflate-reset)
+          (fnn-deflate-initialize)
           (fnn-main)
           (values nil :exited *the-live-state*))
         (load "host/native/immutable-publish.lisp")

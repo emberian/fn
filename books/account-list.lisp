@@ -99,12 +99,45 @@
     (concatenate 'string (fn-acct-kind-word kind) (fn-acct-list-fields row kind)
                  (string #\Newline))))
 
-(defun fn-acct-kinds-lines (rows)
+; The report's walk over the accounts table executes by a loop (lane
+; depth-debt, PRF-919): the table is operator data with no fixed cap (D27),
+; and a recursion one control-stack frame per row could exhaust the
+; 1,024 KiB stack.  The loop collects the lines' characters reversed onto
+; ACC (each line copied once) and the :exec makes the string once.
+(defun fn-acct-kinds-lines-loop (rows acc)
   (declare (xargs :guard t))
   (if (consp rows)
-      (concatenate 'string (fn-acct-list-line (car rows))
-                   (fn-acct-kinds-lines (cdr rows)))
-    ""))
+      (fn-acct-kinds-lines-loop
+       (cdr rows)
+       (fn-ag-rev-onto (coerce (fn-acct-list-line (car rows)) 'list) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-acct-kinds-lines (rows)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp rows)
+                  (concatenate 'string (fn-acct-list-line (car rows))
+                               (fn-acct-kinds-lines (cdr rows)))
+                "")
+       :exec (coerce (fn-acct-kinds-lines-loop rows nil) 'string)))
+
+(local
+ (defthm fn-acct-rev-onto-of-rev-onto
+   (equal (fn-ag-rev-onto (fn-ag-rev-onto x acc) y)
+          (fn-ag-rev-onto acc (append x y)))))
+
+(defthm fn-acct-kinds-lines-loop-is-rev-onto
+  (equal (fn-acct-kinds-lines-loop rows acc)
+         (fn-ag-rev-onto acc (coerce (fn-acct-kinds-lines rows) 'list)))
+  :hints (("Goal" :induct (fn-acct-kinds-lines-loop rows acc)
+                  :in-theory (disable fn-acct-list-line))))
+
+(local
+ (defthm fn-acct-character-listp-of-rev-onto
+   (implies (and (character-listp x) (character-listp acc))
+            (character-listp (fn-ag-rev-onto x acc)))))
+
+(verify-guards fn-acct-kinds-lines
+  :hints (("Goal" :in-theory (disable fn-acct-list-line))))
 
 (defun fn-acct-kinds-list-report (v)
   "The `account list' report over configuration value V."

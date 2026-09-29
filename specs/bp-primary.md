@@ -118,17 +118,11 @@ A source node ID of `dtn:none` makes a bundle not uniquely identifiable at all
 
 ## What the host now calls, and what it decides
 
-`host/bp-ingress-host.lisp` adds four `:program`-mode wrappers over the books
-above, and `tools/bundle_bridge.py` is the only Python that reaches them. It
-marshals decimal octets in, reads a regex-checked form back, and computes
-SHA-256 over an octet string it does not interpret. It spells no BP field.
-
-| Host wrapper | What it decides | Called from |
-| --- | --- | --- |
-| `fn-bpi-host-primary-octets` | the RFC 9171 §4.1 indefinite-array head, then exactly one CBOR item decoded by `fn-bpc-decode`; the consumed prefix and nothing else is the primary block | `fn-bpi-host-bundle-block` |
-| `fn-bpi-host-bundle-block` | `fn-bpp-decode` over those octets, then `fn-bpp-identifiablep`; three refusals stay apart (`:not-a-bundle`, the codec's own reason, `:anonymous`) | `fn-bpi-host-bundle-report` |
-| `fn-bpi-host-observation` | milliseconds from `time.monotonic_ns`/`time.time_ns` and the DTN epoch offset, then `fn-clock-observation` | `fn-bpi-host-bundle-report` |
-| `fn-bpi-host-bundle-report` | `fn-bpp-primary-identity` and `fn-clock-expiry-decision`, in one call | `BundleBridge.report`, from `run_bp_ingress.identify_bundle`, from `run_bp_receive.receive_bpa_request` and `run_bp_ingress.ingest_bpa_adu` |
+The lab host that called these books, `host/bp-ingress-host.lisp` (four
+`:program`-mode wrappers: the primary block's octets, its decode, the clock
+observation and the identity-and-expiry report), went with the Python host (python-diet T5b) and was removed as a file no build loads (Q7k, 2026-09-29; `planning/retired-paths.json`). The native BP node's
+path is `host/bp-native-app-host.lisp`; which of these books it reaches is
+reach_check's to say, not this section's.
 
 ### The identity the host uses, and what it costs
 

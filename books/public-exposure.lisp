@@ -1166,6 +1166,7 @@
   (implies (and (equal (fn-exp-lim-anonymous lim) :none)
                 (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-sasl-waitingp as))
                 (equal (fn-auth-session-config as) (fn-exp-pinned-acfg acfg lim))
                 (not (fn-auth-session-subject as))
                 (fn-nntp-command-inputp line)

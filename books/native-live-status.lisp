@@ -410,20 +410,53 @@ keeps."
               (fn-nls-text " held")
             (fn-nls-text " short"))))
 
+; Executes by a loop (lane depth-debt, PRF-919): one line per open
+; connection, whose count the operator's max-connections sets (D27: data, not
+; a bound).  The right fold runs from the left over the reversed pins.
+(defun fn-nls-connection-lines-step (x rest)
+  (declare (xargs :guard t :verify-guards nil))
+  (append (if (consp x)
+              (append (fn-nls-text "connection")
+                      (fn-nls-field "id" (car x))
+                      (fn-nls-field "config-generation"
+                                    (fn-cfg-generation (cdr x)))
+                      *fn-nls-lf*)
+            nil)
+          rest))
+
+(defun fn-nls-connection-lines-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-nls-connection-lines-loop (cdr rev) (fn-nls-connection-lines-step (car rev) acc))
+    acc))
+
 (defun fn-nls-connection-lines (pins)
   "One `connection id=I config-generation=G' line per open connection's pin
 (books/owner-config.lisp: the generation it opened at, or advanced to)."
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp pins)
-      (append (if (consp (car pins))
-                  (append (fn-nls-text "connection")
-                          (fn-nls-field "id" (car (car pins)))
-                          (fn-nls-field "config-generation"
-                                        (fn-cfg-generation (cdr (car pins))))
-                          *fn-nls-lf*)
-                nil)
-              (fn-nls-connection-lines (cdr pins)))
-    nil))
+  (mbe :logic
+       (if (consp pins)
+           (append (if (consp (car pins))
+                       (append (fn-nls-text "connection")
+                               (fn-nls-field "id" (car (car pins)))
+                               (fn-nls-field "config-generation"
+                                             (fn-cfg-generation (cdr (car pins))))
+                               *fn-nls-lf*)
+                     nil)
+                   (fn-nls-connection-lines (cdr pins)))
+         nil)
+       :exec (fn-nls-connection-lines-loop (fn-ag-rev-onto pins nil) nil)))
+
+(defthm fn-nls-connection-lines-loop-of-rev-onto
+  (equal (fn-nls-connection-lines-loop (fn-ag-rev-onto pins zs) nil)
+         (fn-nls-connection-lines-loop zs (fn-nls-connection-lines pins)))
+  :hints (("Goal" :induct (fn-ag-rev-onto pins zs)
+                  :in-theory (union-theories
+                              '(fn-nls-connection-lines-loop fn-nls-connection-lines fn-nls-connection-lines-step fn-ag-rev-onto
+                                car-cons cdr-cons)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
+
 
 (defun fn-nls-kind-words (kind)
   (declare (xargs :guard t))
@@ -724,10 +757,12 @@ flight, which the host puts in place)."
                  (append (fn-cbor-encode (cons :uint (fn-nls-kind-code kind)))
                          (fn-cbor-encode (cons :uint offset))))))
 
-(defun fn-nls-request-decode (octets)
+; The payload grammar over an opened frame; the decode below is the open
+; (fn-nls-open) followed by it, and books/native-live-buffer.lisp opens the
+; frame in place and calls the grammar.
+(defun fn-nls-request-payload-decode (opened)
   "(:live-status KIND OFFSET), or (:refused REASON)."
   (declare (xargs :guard t :verify-guards nil))
-  (let ((opened (fn-nls-open octets *fn-nls-request-kind*)))
     (if (not (fn-frame-result-okp opened))
         (list :refused :frame)
       (let* ((payload (fn-frame-result-payload opened))
@@ -741,7 +776,12 @@ flight, which the host puts in place)."
                           (null (fn-record-parse-rest second))))
                 (list :refused :fields)
               (list :live-status (fn-nls-code-kind (fn-record-parse-value first))
-                    (fn-record-parse-value second)))))))))
+                    (fn-record-parse-value second))))))))
+
+(defun fn-nls-request-decode (octets)
+  "(:live-status KIND OFFSET), or (:refused REASON)."
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-nls-request-payload-decode (fn-nls-open octets *fn-nls-request-kind*)))
 
 (defun fn-nls-status-code (status)
   (declare (xargs :guard t))
@@ -1363,7 +1403,10 @@ malformed page."
 
 ; PKT-269 (PRF-187): the retention lines the health verdict reads
 ; (books/native-health.lisp fn-nh-forward-pins) run guard-verified.
-(verify-guards fn-nls-connection-lines)
+(verify-guards fn-nls-connection-lines-step)
+(verify-guards fn-nls-connection-lines-loop)
+(verify-guards fn-nls-connection-lines
+  :hints (("Goal" :use ((:instance fn-nls-connection-lines-loop-of-rev-onto (zs nil))))))
 (encapsulate ()
   (local
    (defthm fn-nls-revappend-revappend-lines

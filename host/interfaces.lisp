@@ -30,37 +30,37 @@
   :root :extract)
 
 (definterface fn-reader-use-seed
-  :class :program
+  :class :common-lisp-compliant
   :keystones ((fn-rdc-selection-establishes :via fn-rdc-selection))
   :root :extract)
 
 (definterface fn-reader-set-posting
-  :class :program
+  :class :common-lisp-compliant
   :root :extract)
 
 (definterface fn-reader-model-octets
-  :class :program
+  :class :common-lisp-compliant
   :root :extract)
 
 (definterface fn-reader-reset
-  :class :program
+  :class :common-lisp-compliant
   :keystones ((fn-rdc-reset-is-served-open :via fn-rdc-reset))
   :root :extract)
 
 (definterface fn-reader-chunk
-  :class :program
+  :class :common-lisp-compliant
   :kinds ((octets fn-cbor-octet-listp))
   :keystones ((fn-oag-served-step-submission-names-the-pinned-agent :via fn-served-step))
   :root :extract)
 
 (definterface fn-reader-outcome
-  :class :program
+  :class :common-lisp-compliant
   :keystones ((fn-own-consumed-completion-is-240-or-uncertain
                :via fn-served-post-outcome))
   :root :extract)
 
 (definterface fn-reader-observe-clock
-  :class :program
+  :class :common-lisp-compliant
   :keystones ((fn-clock-observation-shapep-of-fn-clock-observation
                :via fn-clock-observation))
   :root :extract)
@@ -90,11 +90,18 @@
   :class :common-lisp-compliant
   :root :extract)
 
+; host/native/owner.lisp's checkpoint release reads the live arena's file
+; count (lane composed-owner-4, row A6).
+(definterface fn-arx-file-count
+  :class :common-lisp-compliant
+  :kinds ((f natp))
+  :root :extract)
+
 ; fn-xo-open-store: host/interfaces-extract.lisp (the image does not load
 ; host/store-open-host.lisp).
 
 (definterface fn-reader-use-store
-  :class :program
+  :class :common-lisp-compliant
   :keystones ((fn-rdc-store-selection-unfolds :via fn-rdc-store-selection))
   :root :extract)
 
@@ -164,9 +171,6 @@
   :kinds ((msgid-octets fn-cbor-octet-listp) (group-octets fn-octet-list-listp))
   :exempt ((payload "the received article's buffer (host/native/hybrid-control.lisp)")))
 
-(definterface fn-store-sco-publish-setup
-  :class :program
-  :exempt ((segment-octets "a segment descriptor, not bytes")))
 
 (definterface fn-native-health-host-exit
   :class :program
@@ -207,7 +211,7 @@
 
 ; Not guard-verified (:ideal): the host's call runs the logic definition.
 (definterface fn-bpnf-inspect-adu
-  :class :ideal
+  :class :common-lisp-compliant
   :exempt ((frame "total unframe (fn-bpnf-stored-recordp gates it)")))
 
 (definterface fn-bpnpf-node-profile-write-octets
@@ -398,9 +402,34 @@
   :class ::common-lisp-compliant
   :kinds ((c true-listp)))
 
+;; K's range (fn-lg-rotation-indexp) and the chain's last digest are guard
+;; conjuncts no entry kind names (*fn-entry-guard-kinds*): fnn-log-rotate
+;; passes the index ACL2 answered (nil = segment-index-exhausted, refused).
 (definterface fn-lgc-rotate
   :class ::common-lisp-compliant
-  :kinds ((c true-listp)))
+  :kinds ((c true-listp) (unit natp))
+  :keystones (fn-lgc-rotate-refines))
+
+;; The rotation entry the host writes at offset 0 of the rotated-to segment
+;; (lane store-lineage; books/store-log-kernel-concrete.lisp).
+(definterface fn-lgc-rotation-octets
+  :class ::common-lisp-compliant
+  :kinds ((c true-listp) (unit natp)))
+
+;; The open's lineage decision over the checkpoint's F row and the segment's
+;; head (books/store-log-lineage.lisp, PRF-979; host fnn-log-lineage-genesis).
+(definterface fn-lgl-open
+  :class ::ideal
+  :keystones (fn-lgl-open-of-rotated-segment))
+
+(definterface fn-lgl-head-prev
+  :class ::ideal)
+
+(definterface fn-lgl-head-len
+  :class ::common-lisp-compliant)
+
+(definterface fn-lgl-refusal-text
+  :class ::common-lisp-compliant)
 
 (definterface fn-lgc-rotate-admitsp
   :class ::common-lisp-compliant
@@ -724,7 +753,15 @@
 
 (definterface fn-otm-wall-reading
   :class ::common-lisp-compliant
-  :keystones (fn-otm-wall-reading-shape))
+  :keystones (fn-otm-wall-reading-shape fn-clkr-wall-reading-is-the-ns-decision))
+
+(definterface fn-otm-monotonic-ms
+  :class ::common-lisp-compliant
+  :keystones (fn-clkr-monotonic-readings-are-the-ns-decision))
+
+(definterface fn-otm-boottime-ms
+  :class ::common-lisp-compliant
+  :keystones (fn-clkr-monotonic-readings-are-the-ns-decision))
 
 (definterface fn-otm-wordp
   :class ::common-lisp-compliant)
@@ -837,7 +874,8 @@
   :kinds ((config-octet-records fn-octet-list-listp) (record-octets fn-cbor-octet-listp) (observed-name-octets fn-octet-list-listp)))
 
 (definterface fn-store-charge
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge))
 
 (definterface fn-store-checkpoint-clone-fence-name
   :class ::program)
@@ -893,14 +931,16 @@
   :class ::program)
 
 (definterface fn-store-genesis-octets
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-gen-octets-for)
 
 (definterface fn-store-genesis-open
   :class ::ideal
   :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-store-genesis-refusal-text
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-gen-refusal-text)
 
 (definterface fn-store-group-codes
   :class ::ideal
@@ -913,9 +953,6 @@
   :class ::ideal)
 
 (definterface fn-store-log-next-txid-join
-  :class ::program)
-
-(definterface fn-store-log-next-txid-of-events
   :class ::program)
 
 (definterface fn-store-log-next-txid-step
@@ -939,17 +976,21 @@
 
 (definterface fn-store-metadata-config-decode
   :class ::ideal
-  :kinds ((octets fn-cbor-octet-listp)))
+  :kinds ((octets fn-cbor-octet-listp))
+  :delegates fn-bs-config-decode)
 
 (definterface fn-store-metadata-config-frame
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-config-frame-for-profile)
 
 (definterface fn-store-metadata-config-open
   :class ::ideal
-  :kinds ((octets fn-cbor-octet-listp)))
+  :kinds ((octets fn-cbor-octet-listp))
+  :delegates fn-spo-config-open)
 
 (definterface fn-store-metadata-config-refusal-text
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-spo-refusal-text)
 
 (definterface fn-store-metadata-frontier-decode
   :class ::ideal
@@ -971,19 +1012,24 @@
   :class ::program)
 
 (definterface fn-store-profile-admittedp
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-admittedp)
 
 (definterface fn-store-profile-logp
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-logp)
 
 (definterface fn-store-profile-max-record-octets
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-max-record-octets)
 
 (definterface fn-store-profile-read-bound
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-store-profile-read-bound-covers-every-admitted-publication))
 
 (definterface fn-store-profile-report
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-report)
 
 (definterface fn-store-prov-for-msgid
   :class ::program
@@ -993,7 +1039,9 @@
   :class ::program)
 
 (definterface fn-store-publication-admissibility
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-store-publication-admissibility-admits-exactly-within-the-profile
+              fn-store-profile-read-bound-covers-every-admitted-publication))
 
 (definterface fn-store-reclaim-context
   :class ::program)
@@ -1677,8 +1725,6 @@
 (definterface fn-owner-sco-note-durable
   :class ::program)
 
-(definterface fn-owner-sco-prepare
-  :class ::program)
 
 (definterface fn-owner-sco-publication-done
   :class ::program)
@@ -2233,10 +2279,12 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-authored-wire-authorize
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bpn-authored-wire-authorize)
 
 (definterface fn-bpn-host-authored-wire-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-authored-wire-name-names-the-reserved-sequence))
 
 (definterface fn-bpn-host-authored-wire-operation-label
   :class ::ideal)
@@ -2260,6 +2308,9 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-evidence-authorize
+  ; an exact alias of fn-bpn-evidence-authorize, but no proof target cites a theorem
+  ; about it, so the delegation is not declared (decision-keystones-3): a
+  ; keystone about fn-bpn-evidence-authorize, cited, then :delegates again
   :class ::ideal)
 
 (definterface fn-bpn-host-evidence-directory-name
@@ -2403,16 +2454,20 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-sequence-reservation-frame
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-host-sequence-reservation-sequence
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-host-sequence-reservationp
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-host-sequence-reserve
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-machine-invariantp
   :class ::ideal)
@@ -2546,13 +2601,13 @@
   :class ::ideal)
 
 (definterface fn-bpnf-mixed-legacy-observed
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-mixed-received-names
   :class ::ideal)
 
 (definterface fn-bpnf-mixed-recovery-plan
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-mixed-recovery-planp
   :class ::common-lisp-compliant)
@@ -2707,7 +2762,7 @@
   :keystones (fn-bpnp-rotate-step-proposes-only-own-projection))
 
 (definterface fn-bpnr-generation-directory
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnr-next-generation
   :class ::common-lisp-compliant)
@@ -2734,11 +2789,11 @@
   :class ::ideal)
 
 (definterface fn-bpnr-retired-names
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnr-retired-names-never-the-selected-directory))
 
 (definterface fn-bpnr-selection-name
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnrb-selection-plan
   :class ::common-lisp-compliant
@@ -2892,6 +2947,9 @@
   :class ::ideal)
 
 (definterface fn-tcl-host-encode
+  ; an exact alias of fn-tcl-encode, but no proof target cites a theorem
+  ; about it, so the delegation is not declared (decision-keystones-3): a
+  ; keystone about fn-tcl-encode, cited, then :delegates again
   :class ::ideal)
 
 (definterface fn-tcl-host-event-digests
@@ -3227,14 +3285,10 @@
 (definterface fn-native-health-host-log-tail-octets
   :class ::program)
 
-(definterface fn-native-health-host-not-running
-  :class ::program)
 
 (definterface fn-native-health-host-not-running-lines
   :class ::program)
 
-(definterface fn-native-health-host-offline
-  :class ::program)
 
 (definterface fn-native-health-host-run-started-line
   :class ::program)
@@ -3263,14 +3317,14 @@
 (definterface fn-native-live-pages-host-request-encode
   :class ::program)
 
-(definterface fn-native-live-pages-host-requestp
-  :class ::program
-  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-native-live-status-host-answer
   :class ::program)
 
 (definterface fn-native-live-status-host-client-step-chunks
+  :class ::program)
+
+(definterface fn-native-live-status-host-inspect-group-exit
   :class ::program)
 
 (definterface fn-native-live-status-host-max-frame
@@ -3285,9 +3339,6 @@
 (definterface fn-native-live-status-host-request-encode
   :class ::program)
 
-(definterface fn-native-live-status-host-requestp
-  :class ::program
-  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-native-live-status-host-route
   :class ::program)
@@ -3343,11 +3394,7 @@
 (definterface fn-native-operator-host-result-command
   :class ::program)
 
-(definterface fn-native-operator-host-result-compaction-argv
-  :class ::program)
 
-(definterface fn-native-operator-host-result-compaction-control-path-octets
-  :class ::program)
 
 (definterface fn-native-operator-host-result-config-mission
   :class ::program)
@@ -3368,6 +3415,9 @@
   :class ::program)
 
 (definterface fn-native-operator-host-result-init-profile
+  :class ::program)
+
+(definterface fn-native-operator-host-result-inspect-group
   :class ::program)
 
 (definterface fn-native-operator-host-result-inspect-msgid-octets
@@ -3629,9 +3679,6 @@
 (definterface fn-native-control-host-consumer-poll-reply-encode
   :class ::program)
 
-(definterface fn-native-control-host-consumer-reasoned-request-decode
-  :class ::program
-  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-native-control-host-consumer-reasoned-request-encode
   :class ::program)
@@ -3643,9 +3690,6 @@
   :class ::program
   :kinds ((octets fn-cbor-octet-listp)))
 
-(definterface fn-native-control-host-consumer-request-decode
-  :class ::program
-  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-native-control-host-consumer-request-encode
   :class ::program)
@@ -3678,9 +3722,6 @@
 (definterface fn-native-control-host-max-frame
   :class ::program)
 
-(definterface fn-native-control-host-moderation-decode
-  :class ::program
-  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-native-control-host-moderation-encode
   :class ::program)
@@ -3691,16 +3732,8 @@
 (definterface fn-native-control-host-reasoned-admin-encode
   :class ::program)
 
-(definterface fn-native-control-host-reasoned-client-step
-  :class ::program
-  :kinds ((octets fn-cbor-octet-listp)))
 
-(definterface fn-native-control-host-reasoned-framep
-  :class ::program
-  :kinds ((octets fn-cbor-octet-listp)))
 
-(definterface fn-native-control-host-reasoned-reply-encode
-  :class ::program)
 
 (definterface fn-native-control-host-refusal-status
   :class ::program)
@@ -3734,9 +3767,6 @@
 (definterface fn-native-control-host-topic-reply-encode
   :class ::program)
 
-(definterface fn-native-control-host-topic-request-decode
-  :class ::program
-  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-native-control-host-topic-request-encode
   :class ::program)
@@ -3818,3 +3848,536 @@
 
 (definterface fn-tlsr-host-reply-encode
   :class ::program)
+
+; -----------------------------------------------------------------------------
+; Entries the raw host dispatched with no declaration at the batch BE head
+; (tranches 4-6 and the queue merges, 2026-09-29): interface_emit --check
+; refused 111 of them and every native image build stopped at its
+; interfaces-check.  Each names the book or host file that defines it, the
+; raw host file that dispatches it, and the lane that brought the call.
+; Classes and kinds are the definitions' own (guard-verification by the
+; book's xargs and verify-guards events; kinds as fn-di-world-kinds derives
+; them); the lanes add keystones.
+
+;; books/arena-reader-pins.lisp
+
+; host/native/io.lisp dispatches it (lane composed-owner-5).
+(definterface fn-arpn-initial
+  :class :common-lisp-compliant)
+
+; host/native/io.lisp dispatches it (lane composed-owner-5).
+(definterface fn-arpn-step
+  :class :common-lisp-compliant)
+
+;; books/control-request-word.lisp
+
+; host/native/operator-live.lisp dispatches it (lane online-reclaim-5).
+(definterface fn-crqw-request-word
+  :class :common-lisp-compliant)
+
+;; books/deflate-inflate.lisp
+
+; host/native/deflate.lisp dispatches it (lane compress).
+(definterface fn-zin-buffer-sizes
+  :class :common-lisp-compliant)
+
+; host/native/deflate.lisp dispatches it (lane compress).
+(definterface fn-zin-buffers-ready
+  :class :common-lisp-compliant)
+
+; host/native/deflate.lisp dispatches it (lane compress).
+(definterface fn-zin-feed
+  :class :common-lisp-compliant
+  :kinds ((b natp) (start natp) (end natp) (lim natp)))
+
+; host/native/deflate.lisp dispatches it (lane compress).
+(definterface fn-zin-refusal-text
+  :class :common-lisp-compliant)
+
+; host/native/deflate.lisp dispatches it (lane compress).
+(definterface fn-zin-reset
+  :class :common-lisp-compliant)
+
+;; books/deflate-pool.lisp
+
+; host/native/deflate.lisp dispatches it (lane compress-3).
+(definterface fn-zpl-decode-bufs
+  :class :common-lisp-compliant
+  :kinds ((dict fn-cbor-octet-listp) (end natp) (n natp)))
+
+;; books/extent-retire.lisp
+
+; host/native/owner.lisp dispatches it (lane online-reclaim (composed-owner-4)).
+(definterface fn-xrt-quiet-files
+  :class :common-lisp-compliant
+  :kinds ((named true-listp)))
+
+; host/native/owner.lisp dispatches it (lane online-reclaim (composed-owner-4)).
+(definterface fn-xrt-reseat-checkpoint-frame
+  :class :common-lisp-compliant
+  :kinds ((file natp) (start natp) (end natp)))
+
+; host/native/io.lisp dispatches it (lane online-reclaim (composed-owner-4)).
+(definterface fn-xrt-step-handles
+  :class :common-lisp-compliant
+  :kinds ((pst true-listp)))
+
+;; books/history-image-snapshot.lisp
+
+; host/native/io.lisp dispatches it (lane composed-owner).
+(definterface fn-his-base-octets
+  :class :common-lisp-compliant)
+
+; host/native/io.lisp dispatches it (lane composed-owner).
+(definterface fn-his-binding
+  :class :common-lisp-compliant)
+
+; host/native/io.lisp dispatches it (lane composed-owner).
+(definterface fn-his-image-header
+  :class :common-lisp-compliant
+  :kinds ((np natp)))
+
+; host/native/io.lisp dispatches it (lane composed-owner).
+(definterface fn-his-image-header-np
+  :class :common-lisp-compliant)
+
+; host/native/io.lisp dispatches it (lane composed-owner).
+(definterface fn-his-np
+  :class :common-lisp-compliant
+  :kinds ((acc natp)))
+
+; host/native/io.lisp dispatches it (lane composed-owner).
+(definterface fn-his-release
+  :class :common-lisp-compliant)
+
+; host/native/io.lisp dispatches it (lane composed-owner).
+(definterface fn-his-skip-octets
+  :class :common-lisp-compliant
+  :kinds ((np natp)))
+
+; host/native/io.lisp dispatches it (lane composed-owner).
+(definterface fn-his-snapshot
+  :class :common-lisp-compliant
+  :kinds ((records true-listp) (salt natp)))
+
+; host/native/io.lisp dispatches it (lane composed-owner).
+(definterface fn-his-words
+  :class :common-lisp-compliant
+  :kinds ((sel natp) (a natp)))
+
+;; books/limits-live.lisp
+
+; host/native/admin.lisp dispatches it (lane limits-live).
+(definterface fn-lim-apply-row
+  :class :common-lisp-compliant)
+
+; host/native/admin.lisp dispatches it (lane limits-live).
+(definterface fn-lim-decide
+  :class :common-lisp-compliant)
+
+; host/native/admin.lisp dispatches it (lane limits-live).
+(definterface fn-lim-decision-reason
+  :class :common-lisp-compliant)
+
+; host/native/admin.lisp dispatches it (lane limits-live).
+(definterface fn-lim-decision-status
+  :class :common-lisp-compliant)
+
+; host/native/admin.lisp dispatches it (lane limits-live).
+(definterface fn-lim-funded-after
+  :class :common-lisp-compliant)
+
+; host/native/admin.lisp dispatches it (lane limits-live).
+(definterface fn-lim-reply-line
+  :class :common-lisp-compliant)
+
+; host/native/heap.lisp dispatches it (lane limits-live).
+(definterface fn-lim-values-lines
+  :class :common-lisp-compliant)
+
+;; books/native-admin-shape.lisp
+
+; host/native/admin.lisp dispatches it (lane operability-2).
+(definterface fn-native-admin-result-capacity
+  :class :common-lisp-compliant)
+
+; host/native/admin.lisp dispatches it (lane operability-2).
+(definterface fn-native-admin-result-kind
+  :class :common-lisp-compliant)
+
+; host/native/admin.lisp dispatches it (lane operability-2).
+(definterface fn-native-admin-result-name
+  :class :common-lisp-compliant)
+
+;; books/native-admin.lisp
+
+; host/native/admin.lisp dispatches it (lane operability-5).
+(definterface fn-native-admin-result-inspect-msgid
+  :class :common-lisp-compliant)
+
+;; books/native-control-reason.lisp
+
+; host/native/control.lisp dispatches it (lane correctness-remainder).
+(definterface fn-native-control-host-refusal-reason
+  :class :common-lisp-compliant)
+
+;; books/nntp-compress.lisp
+
+; host/native/deflate.lisp dispatches it (lane compress-8).
+(definterface fn-zc-deflate-params
+  :class :common-lisp-compliant)
+
+; host/native/owner.lisp dispatches it (lane compress-8).
+(definterface fn-zc-render-window-size
+  :class :common-lisp-compliant)
+
+; host/native/deflate.lisp dispatches it (lane compress-8).
+(definterface fn-zc-sync-output-octets
+  :class :common-lisp-compliant)
+
+;; books/octets-stobj.lisp
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-oct-line-end
+  :class :common-lisp-compliant
+  :kinds ((i natp)))
+
+;; books/open-frontier-wire.lisp
+
+; host/native/io.lisp dispatches it (lane limits-live-5).
+(definterface fn-ofw-wire-next
+  :class :common-lisp-compliant)
+
+;; books/owner-maintenance-request.lisp
+
+; host/native/operator.lisp dispatches it (lane operability-2/-5).
+(definterface fn-omr-control-path-octets
+  :class :common-lisp-compliant)
+
+; host/native/io.lisp dispatches it (lane operability-2/-5).
+(definterface fn-omr-header-octets
+  :class :common-lisp-compliant)
+
+; host/native/io.lisp, host/native/operator.lisp dispatches it (lane operability-2/-5).
+(definterface fn-omr-held-line
+  :class :common-lisp-compliant
+  :kinds ((verb stringp)))
+
+; host/native/operator.lisp dispatches it (lane operability-2/-5).
+(definterface fn-omr-inspect-live-report
+  :class :common-lisp-compliant)
+
+; host/native/admin.lisp dispatches it (lane operability-2/-5).
+(definterface fn-omr-inspect-status
+  :class :common-lisp-compliant)
+
+; host/native/admin.lisp dispatches it (lane operability-2/-5).
+(definterface fn-omr-inspect-word
+  :class :common-lisp-compliant)
+
+; host/native/operator.lisp dispatches it (lane operability-2/-5).
+(definterface fn-omr-recover-line
+  :class :common-lisp-compliant)
+
+; host/native/operator.lisp dispatches it (lane operability-2/-5).
+(definterface fn-omr-recover-status
+  :class :common-lisp-compliant)
+
+; host/native/io.lisp, host/native/operator.lisp dispatches it (lane operability-2/-5).
+(definterface fn-omr-route
+  :class :common-lisp-compliant)
+
+; host/native/operator.lisp dispatches it (lane operability-2/-5).
+(definterface fn-omr-status-replayp
+  :class :common-lisp-compliant)
+
+; host/native/io.lisp dispatches it (lane operability-2/-5).
+(definterface fn-omr-stopped-health-report
+  :class :ideal)
+
+; host/native/io.lisp dispatches it (lane operability-2/-5).
+(definterface fn-omr-stopped-report
+  :class :ideal)
+
+;; books/owner-time-bars.lisp
+
+; host/native/owner.lisp dispatches it (lane composed-owner-3 (row A4)).
+(definterface fn-otb-dependency-step
+  :class :common-lisp-compliant)
+
+;; books/payload-arena-extent-logic.lisp
+
+; host/native/extent.lisp dispatches it (lane compress-5 (NNT-055)).
+(definterface fn-arn-lz-extentp
+  :class :common-lisp-compliant
+  :direct "the raw body of A-ARENA-STORED's realizer (host/native/extent.lisp fn-arena-stored) recognizes the compressed extent itself; guard t")
+
+;; books/payload-extent-read.lisp
+
+; host/native/io.lisp dispatches it (lane extent-identity).
+(definterface fn-arx-attach-trailers-buffer
+  :class :common-lisp-compliant
+  :kinds ((places true-listp) (base natp)))
+
+; host/native/extent.lisp dispatches it (lane extent-identity).
+(definterface fn-arx-entry-verdict-buffer
+  :class :common-lisp-compliant)
+
+;; books/payload-extent.lisp
+
+; host/native/io.lisp dispatches it (lane extent-identity).
+(definterface fn-arx-attach-trailers
+  :class :common-lisp-compliant
+  :kinds ((places true-listp) (base natp) (octets true-listp)))
+
+;; books/payload-lz-dicts.lisp
+
+; host/native/io.lisp dispatches it (lane compress-2).
+(definterface fn-lzd-current-id
+  :class :common-lisp-compliant)
+
+; host/native/io.lisp dispatches it (lane compress-2).
+(definterface fn-lzd-lookup
+  :class :common-lisp-compliant)
+
+;; books/peer-set.lisp
+
+; host/native/peer-invite.lisp dispatches it (lane operability-3 (S5)).
+(definterface fn-pset-login-argv
+  :class :common-lisp-compliant)
+
+; host/native/peer-invite.lisp dispatches it (lane operability-3 (S5)).
+(definterface fn-pset-login-file
+  :class :common-lisp-compliant)
+
+;; books/records-shape.lisp
+
+; host/native/admin.lisp dispatches it (lane operability-3).
+(definterface fn-record-octets-string
+  :class :common-lisp-compliant)
+
+; host/native/admin.lisp, host/native/operator.lisp dispatches it (lane operability-3).
+(definterface fn-record-string-octets
+  :class :common-lisp-compliant)
+
+;; books/store-checkpoint-open.lisp
+
+; host/native/io.lisp, host/native/owner.lisp dispatches it (lane composed-owner).
+(definterface fn-sco-records
+  :class :common-lisp-compliant)
+
+;; host/bp-release-owner-host.lisp
+
+; host/native/bp-obligation.lisp dispatches it (lane carry-abandon).
+(definterface fn-owner-workflow-pending-waivers
+  :class :program)
+
+; host/native/bp-obligation.lisp dispatches it (lane carry-abandon).
+(definterface fn-owner-workflow-store-waive
+  :class :program)
+
+;; host/native-admin-host.lisp
+
+; host/native/admin.lisp dispatches it (lane online-reclaim).
+(definterface fn-native-admin-host-reclaim-mode
+  :class :ideal)
+
+;; host/native-control-host.lisp
+
+; host/native/control.lisp dispatches it (lane d27-representation-3).
+(definterface fn-native-control-host-decode-frame
+  :class :program)
+
+; host/native/control.lisp dispatches it (lane d27-representation-3).
+(definterface fn-native-control-host-lined-client-step
+  :class :program
+  :kinds ((octets fn-cbor-octet-listp)))
+
+; host/native/operator-live.lisp dispatches it (lane d27-representation-3).
+(definterface fn-native-control-host-lined-detail
+  :class :program)
+
+; host/native/control.lisp dispatches it (lane d27-representation-3).
+(definterface fn-native-control-host-lined-reply-encode
+  :class :program)
+
+;; host/native-operator-host.lisp
+
+; host/native/operator.lisp dispatches it (lane correctness-remainder-3).
+(definterface fn-native-operator-host-result-account-hash-auth-path-octets
+  :class :program)
+
+;; host/owner-host.lisp
+
+; host/native/admin.lisp dispatches it (lane limits-live).
+(definterface fn-owner-apply-limit-profile
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane compress-8).
+(definterface fn-owner-compress-owed
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane correctness-remainder).
+(definterface fn-owner-control-reason
+  :class :program)
+
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget).
+(definterface fn-owner-handshake-admit
+  :class :program)
+
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget).
+(definterface fn-owner-handshake-done
+  :class :program)
+
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget).
+(definterface fn-owner-handshake-leave
+  :class :program)
+
+; host/native/admin.lisp dispatches it (lane limits-live).
+(definterface fn-owner-limit-use
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-capture
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-chunk
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-classes
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-ctx
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-decide
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-finish
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-init
+  :class :program)
+
+; host/native/admin.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-request
+  :class :program)
+
+; host/native/admin.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-request-status
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-capture
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-finish
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-intern-chunk
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-keyring
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-load-columns
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-rebuild
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-salt
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-swap
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-swap-word
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-view-index
+  :class :program)
+
+; host/native/mux.lisp dispatches it (lane compress-8 (sasl union)).
+(definterface fn-owner-sasl-binding-octets
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane compress-8 (sasl union)).
+(definterface fn-owner-sasl-context
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane compress-8 (sasl union)).
+(definterface fn-owner-sasl-seed-octets
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane composed-owner).
+(definterface fn-owner-sco-next
+  :class :program)
+
+; host/native/owner.lisp dispatches it (lane composed-owner).
+(definterface fn-owner-sco-setup-of
+  :class :program)
+
+;; host/store-host.lisp
+
+; host/native/io.lisp, host/native/owner.lisp dispatches it (lane composed-owner).
+(definterface fn-store-genesis-ident
+  :class :program)
+
+;; host/store-node-host.lisp
+
+; host/native/io.lisp, host/native/owner.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-his-file-octets
+  :class :common-lisp-compliant)
+
+; host/native/io.lisp, host/native/owner.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-his-stream-free
+  :class :common-lisp-compliant)
+
+; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-cfg-next-txid
+  :class :program)
+
+; host/native/admin.lisp, host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-lim-effective
+  :class :program)
+
+; host/native/admin.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-lim-use
+  :class :program)
+
+; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-sco-image-open
+  :class :program)
+
+; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-sco-note-checkpoint-digest
+  :class :program)
+
+; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-sco-publish-next
+  :class :program)
+
+; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-sco-publish-setup-of
+  :class :program
+  :exempt ((segment-octets "a segment descriptor, not bytes")))
+
+; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-sco-want-checkpoint-digest
+  :class :program)

@@ -129,7 +129,11 @@
   (fn-authsec-verifier
    *cwt-salt*
    '(42 82 187 10 181 221 230 125 199 188 135 91 193 55 205 245
-     177 50 208 139 71 236 67 86 54 24 223 76 55 144 61 51)))
+     177 50 208 139 71 236 67 86 54 24 223 76 55 144 61 51)
+   (car (fn-scram-keys (fn-nntp-string-octets "correct-horse")
+                                   (make-list 16 :initial-element 3) 4096))
+   (cadr (fn-scram-keys (fn-nntp-string-octets "correct-horse")
+                                    (make-list 16 :initial-element 3) 4096))))
 (assert-event (equal *cwt-verifier* (fn-authsec-enrol *cwt-salt* *cwt-secret*)))
 (defconst *cwt-acfg*
   (fn-auth-make-config

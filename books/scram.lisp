@@ -577,3 +577,224 @@
     (:d fn-scram-client-final)))
 
 (in-theory (disable fn-scram-internals))
+
+; -----------------------------------------------------------------------------
+; The client's own messages parse back (completeness of the grammar).
+;
+; A client-first message built from a login (saslname-encoded) and a
+; printable nonce, and a client-final message built by fn-scram-client-final,
+; parse to exactly the fields they were built from; so an RFC 5802 client
+; with the enrolled password completes the exchange
+; (books/sasl.lisp fn-sasl-scram-honest-client-completes).
+
+(defun fn-scram-no-commap (xs)
+  (declare (xargs :guard t))
+  (if (consp xs) (and (not (equal (car xs) 44)) (fn-scram-no-commap (cdr xs))) t))
+
+(local (defthm fn-scram-split-aux-steps
+  (and (implies (not (equal x 44))
+                (equal (fn-scram-split-aux (cons x r) f)
+                       (fn-scram-split-aux r (cons x f))))
+       (equal (fn-scram-split-aux (cons 44 r) f)
+              (cons (revappend f nil) (fn-scram-split-aux r nil))))
+  :hints (("Goal" :in-theory (enable fn-scram-split-aux)))))
+
+(local (defthm fn-scram-split-aux-past-a-field
+  (implies (fn-scram-no-commap a)
+           (equal (fn-scram-split-aux (append a (cons 44 b)) f)
+                  (cons (revappend (revappend a f) nil) (fn-scram-split-aux b nil))))
+  :hints (("Goal" :induct (fn-scram-split-aux a f)
+           :in-theory (enable fn-scram-split-aux)))))
+
+(local (defthm fn-scram-split-aux-of-a-last-field
+  (implies (fn-scram-no-commap a)
+           (equal (fn-scram-split-aux a f) (list (revappend (revappend a f) nil))))
+  :hints (("Goal" :in-theory (enable fn-scram-split-aux)))))
+
+(local (defthm fn-scram-revappend-revappend
+  (equal (revappend (revappend x a) b) (revappend a (append x b)))))
+
+(local (defthm fn-scram-sextet-is-not-a-comma
+  (not (equal (fn-ot-b64-sextet n) 44))
+  :hints (("Goal" :in-theory (enable fn-ot-b64-sextet)))))
+
+(local (defthm fn-scram-b64-has-no-comma
+  (fn-scram-no-commap (fn-ot-b64-encode xs))
+  :hints (("Goal" :in-theory (enable fn-ot-b64-encode fn-ot-b64-c0 fn-ot-b64-c1
+                                     fn-ot-b64-c2 fn-ot-b64-c3 fn-ot-b64-c1-last
+                                     fn-ot-b64-c2-last)))))
+
+(defthm fn-scram-b64-is-printable
+  (fn-scram-printablep (fn-ot-b64-encode xs))
+  :hints (("Goal" :in-theory (enable fn-ot-b64-encode fn-ot-b64-c0 fn-ot-b64-c1
+                                     fn-ot-b64-c2 fn-ot-b64-c3 fn-ot-b64-c1-last
+                                     fn-ot-b64-c2-last fn-scram-printablep
+                                     fn-scram-printable-octetp fn-ot-b64-sextet))))
+
+(defthm fn-scram-printablep-of-append
+  (implies (and (fn-scram-printablep a) (fn-scram-printablep b))
+           (fn-scram-printablep (append a b)))
+  :hints (("Goal" :in-theory (enable fn-scram-printablep))))
+
+(defthm fn-scram-printable-facts
+  (implies (fn-scram-printablep x)
+           (and (fn-scram-no-commap x) (fn-sha256-octet-listp x) (true-listp x)))
+  :hints (("Goal" :in-theory (enable fn-scram-printablep fn-scram-printable-octetp
+                                     fn-sha256-octet-listp))))
+
+(local (defthm fn-scram-cbor-octets-are-sha256-octets
+  (implies (fn-cbor-octet-listp x)
+           (and (fn-sha256-octet-listp x) (true-listp x)))
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp
+                                     fn-sha256-octet-listp)))))
+
+(local (defthm fn-scram-sha256-octets-are-cbor-octets
+  (implies (fn-sha256-octet-listp x) (fn-cbor-octet-listp x))
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp
+                                     fn-sha256-octet-listp)))))
+
+(local (defthm fn-scram-b64-shape
+  (and (fn-sha256-octet-listp (fn-ot-b64-encode xs))
+       (true-listp (fn-ot-b64-encode xs)))
+  :hints (("Goal" :in-theory (disable fn-ot-b64-encode)
+           :use ((:instance fn-scram-cbor-octets-are-sha256-octets
+                            (x (fn-ot-b64-encode xs))))))))
+
+(local (defthm fn-scram-len-of-append
+  (equal (len (append a b)) (+ (len a) (len b)))))
+
+(local (defthm fn-scram-take-of-append
+  (implies (and (true-listp a) (equal n (len a)))
+           (equal (take n (append a b)) a))))
+
+(local (defthm fn-scram-append-assoc
+  (equal (append (append a b) c) (append a (append b c)))))
+
+(defthm fn-scram-parse-client-final-of-a-client-message
+  (implies (and (fn-scram-noncep n) (fn-sha256-octet-listp cb)
+                (fn-sha256-octet-listp pr))
+           (equal (fn-scram-parse-client-final
+                   (append (fn-scram-text "c=") (fn-ot-b64-encode cb)
+                           (fn-scram-text ",r=") n (fn-scram-text ",p=")
+                           (fn-ot-b64-encode pr)))
+                  (list :client-final cb n pr
+                        (append (fn-scram-text "c=") (fn-ot-b64-encode cb)
+                                (fn-scram-text ",r=") n))))
+  :hints (("Goal"
+           :use ((:instance fn-scram-take-of-append
+                            (a (append (fn-scram-text "c=") (fn-ot-b64-encode cb)
+                                       (fn-scram-text ",r=") n))
+                            (b (append (fn-scram-text ",p=") (fn-ot-b64-encode pr)))
+                            (n (len (append (fn-scram-text "c=") (fn-ot-b64-encode cb)
+                                            (fn-scram-text ",r=") n)))))
+           :in-theory (e/d (fn-scram-parse-client-final fn-scram-split fn-scram-octets
+                            fn-scram-attrp fn-scram-attr-value fn-scram-noncep)
+                           (fn-scram-take-of-append fn-ot-b64-encode fn-ot-b64-decode
+                            fn-scram-split-aux fn-sha256-fix-octets
+                            fn-scram-printablep)))))
+
+(local (defthm fn-scram-saslname-encode-has-no-comma
+  (fn-scram-no-commap (fn-scram-saslname-encode x))
+  :hints (("Goal" :in-theory (enable fn-scram-saslname-encode)))))
+
+(local (defthm fn-scram-no-nulp-is-no-member-0
+  (implies (fn-scram-no-nulp x) (not (member-equal 0 x)))
+  :hints (("Goal" :in-theory (enable fn-scram-no-nulp)))))
+
+(local (defthm fn-scram-saslname-encode-is-octets
+  (implies (fn-sha256-octet-listp x)
+           (fn-sha256-octet-listp (fn-scram-saslname-encode x)))
+  :hints (("Goal" :in-theory (enable fn-scram-saslname-encode
+                                     fn-sha256-octet-listp)))))
+
+(defthm fn-scram-parse-client-first-of-a-client-message
+  (implies (and (consp login) (fn-sha256-octet-listp login) (fn-scram-no-nulp login)
+                (fn-scram-noncep cn))
+           (equal (fn-scram-parse-client-first
+                   (append (fn-scram-text "n,,n=") (fn-scram-saslname-encode login)
+                           (fn-scram-text ",r=") cn))
+                  (list :client-first :n nil login cn (fn-scram-text "n,,")
+                        (append (fn-scram-text "n=") (fn-scram-saslname-encode login)
+                                (fn-scram-text ",r=") cn))))
+  :hints (("Goal"
+           :use ((:instance fn-scram-saslname-decode-of-encode (xs login))
+                 (:instance fn-sha256-octet-listp-implies-true-listp (xs login)))
+           :in-theory (e/d (fn-scram-parse-client-first fn-scram-split fn-scram-octets
+                            fn-scram-attrp fn-scram-attr-value fn-scram-noncep
+                            fn-scram-cbind-flag fn-scram-authzid fn-scram-extensionsp)
+                           (fn-scram-saslname-encode fn-scram-saslname-decode
+                            fn-scram-split-aux fn-sha256-fix-octets fn-scram-printablep
+                            fn-scram-saslname-decode-of-encode)))))
+
+(local (defthm fn-scram-client-proof-is-octets
+  (fn-sha256-octet-listp (fn-scram-client-proof pw salt i am))
+  :hints (("Goal" :in-theory (enable fn-scram-client-proof)))))
+
+(defthm fn-scram-parse-of-the-client-final
+  (implies (fn-scram-noncep nonce)
+           (let ((cfin (fn-scram-client-final pw salt i :n (fn-scram-text "n,,") nil
+                                              nonce bare sf))
+                 (without (fn-scram-client-final-without-proof
+                           :n (fn-scram-text "n,,") nil nonce)))
+             (equal (fn-scram-parse-client-final cfin)
+                    (list :client-final (fn-scram-text "n,,") nonce
+                          (fn-scram-client-proof pw salt i
+                                                 (fn-scram-auth-message bare sf without))
+                          without))))
+  :hints (("Goal"
+           :use ((:instance fn-scram-parse-client-final-of-a-client-message
+                            (cb (fn-scram-text "n,,")) (n nonce)
+                            (pr (fn-scram-client-proof
+                                 pw salt i
+                                 (fn-scram-auth-message
+                                  bare sf
+                                  (fn-scram-client-final-without-proof
+                                   :n (fn-scram-text "n,,") nil nonce)))))
+                 (:instance fn-scram-printable-facts (x nonce))
+                 (:instance fn-sha256-fix-octets-is-identity-on-octets (m nonce)))
+           :in-theory (e/d (fn-scram-client-final fn-scram-client-final-without-proof
+                            fn-scram-expected-cbind fn-scram-octets fn-scram-noncep)
+                           (fn-scram-parse-client-final-of-a-client-message
+                            fn-scram-parse-client-final fn-scram-client-proof
+                            fn-scram-auth-message fn-ot-b64-encode
+                            fn-sha256-fix-octets)))))
+
+(defthm fn-scram-stored-key-is-a-cons
+  (consp (car (fn-scram-keys pw salt i)))
+  :hints (("Goal" :use ((:instance fn-scram-keys-shape (password pw) (iterations i)))
+           :in-theory (disable fn-scram-keys fn-scram-keys-shape))))
+
+; The server accepts the final message an RFC 5802 client sends from the
+; password the keys were derived from, whatever the exchange's nonce,
+; client-first-bare and server-first.
+(defthm fn-scram-finish-accepts-the-honest-client
+  (implies (fn-scram-noncep nonce)
+           (equal (car (fn-scram-finish
+                        (fn-scram-client-final pw salt i :n (fn-scram-text "n,,") nil
+                                               nonce bare sf)
+                        :n (fn-scram-text "n,,") nil nonce bare sf
+                        (car (fn-scram-keys pw salt i))
+                        (cadr (fn-scram-keys pw salt i))))
+                  :accept))
+  :hints (("Goal"
+           :use ((:instance fn-scram-parse-of-the-client-final)
+                 (:instance fn-scram-honest-proof-verifies (password pw) (iterations i)
+                            (auth-message (fn-scram-auth-message
+                                           bare sf
+                                           (fn-scram-client-final-without-proof
+                                            :n (fn-scram-text "n,,") nil nonce))))
+                 (:instance fn-scram-printable-facts (x nonce))
+                 (:instance fn-scram-stored-key-is-a-cons)
+                 (:instance fn-sha256-fix-octets-is-identity-on-octets (m nonce)))
+           :in-theory (e/d (fn-scram-finish fn-scram-failp fn-scram-nth
+                            fn-scram-cfin-nonce fn-scram-cfin-cbind fn-scram-cfin-proof
+                            fn-scram-cfin-without fn-scram-expected-cbind fn-scram-octets
+                            fn-scram-noncep)
+                           (fn-scram-parse-of-the-client-final fn-scram-stored-key-is-a-cons
+                            fn-scram-parse-client-final fn-scram-client-final
+                            fn-scram-client-final-without-proof fn-scram-proof-validp
+                            fn-scram-client-proof fn-scram-auth-message fn-scram-keys
+                            fn-scram-honest-proof-verifies fn-scram-server-final
+                            fn-sha256-fix-octets)))))
+
+(in-theory (disable fn-scram-no-commap))

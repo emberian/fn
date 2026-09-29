@@ -33,6 +33,7 @@ import sys
 import threading
 import time
 import unittest
+import zlib
 from pathlib import Path
 
 from tests.native_harness import EXIT, Node, ROOT, class_case, free_port, native_image, requires
@@ -289,6 +290,9 @@ class Talk:
     def post(self, octets):
         self.command("POST", "340")
         self.article(octets)
+        # The 240 read here is the line books/productive-observer.lisp names
+        # (fn-pcx-observer-240-code, PRF-1003): the first three octets of
+        # *fn-pcx-240-line*, the durable outcome fn-pcx-post-productive reaches.
         return self.expect("240", "441", "480", "502")
 
     def quit(self):
@@ -1053,35 +1057,83 @@ class StrangerTests(NodeCase):
         self.saw("the same article again -> %s; another article under the same id -> %s; "
                  "the group count stayed %s" % (same, other, after))
 
-    @unittest.expectedFailure
     def test_b17_sasl_authentication(self):
-        """PKT-890 (finding): specs/nntp.md NNT-056 says "fn offers
-        three mechanisms" and "CAPABILITIES lists AUTHINFO USER SASL ... and
-        SASL with the offered mechanisms", but books/nntp-auth.lisp on dev
-        still answers AUTHINFO SASL as deferred and advertises no SASL line.
-        Expected to fail until the sasl lane lands; an unexpected success
-        here is the signal to drop the mark."""
+        """specs/nntp.md NNT-056: "fn offers three mechanisms" and
+        "CAPABILITIES lists AUTHINFO USER SASL ... and SASL with the offered
+        mechanisms"; docs/implementation.md: "AUTHINFO SASL offers
+        SCRAM-SHA-256 (and -PLUS over TLS 1.3) and PLAIN over TLS".  PLAIN
+        (RFC 4616) is what a stranger can drive with `openssl base64`: with
+        an initial response, and as RFC 4643 section 2.4's empty challenge
+        `383 =` answered on the next line.  SCRAM's proof needs a client
+        that computes HMACs, so here it is checked as offered;
+        tests/test_native_sasl.py runs its exchange."""
+        def plain(user, password):
+            out = subprocess.run(["openssl", "base64", "-A"], check=True,
+                                 input=b"\0" + user.encode() + b"\0" + password.encode(),
+                                 capture_output=True).stdout
+            return out.decode("ascii").strip()
+
         talk = self.tls()
         talk.expect("200", "201")
         _, caps = talk.multiline("CAPABILITIES", "101")
         self.saw("CAPABILITIES over TLS: %s" % caps)
-        self.assertTrue(any(c.startswith("SASL ") for c in caps), "no SASL line: %s" % caps)
-        reply = talk.command("AUTHINFO SASL PLAIN", "383")
-        self.saw(reply)
-
-    def test_b18_compression_is_a_later_capability(self):
-        """docs/references.md: "RFC 8054: Compression, a later capability".
-        specs/nntp.md: "compression extensions as selected" are planned, not
-        served: CAPABILITIES has no COMPRESS line and COMPRESS is not a
-        command HELP lists (500).  When it lands this test flips and gets
-        replaced by a real one."""
-        talk = self.reader()
-        _, caps = talk.multiline("CAPABILITIES", "101")
-        self.assertFalse(any(c.startswith("COMPRESS") for c in caps), caps)
-        reply = talk.command("COMPRESS DEFLATE", "500")
+        self.assertIn("USER", next(c for c in caps if c.startswith("AUTHINFO ")).split())
+        self.assertIn("SASL", next(c for c in caps if c.startswith("AUTHINFO ")).split())
+        sasl = [c.split()[1:] for c in caps if c.startswith("SASL ")]
+        self.assertEqual(len(sasl), 1, "one SASL line: %s" % caps)
+        self.assertTrue({"SCRAM-SHA-256", "PLAIN"} <= set(sasl[0]), sasl)
+        wrong = talk.command("AUTHINFO SASL PLAIN " + plain("wren", "not-" + PASSWORD), "481")
+        self.saw("AUTHINFO SASL PLAIN <wrong password> -> " + wrong)
+        right = talk.command("AUTHINFO SASL PLAIN " + plain("wren", PASSWORD), "281")
+        self.saw("AUTHINFO SASL PLAIN <initial response> -> " + right)
         talk.quit()
         talk.record()
-        self.saw("no COMPRESS capability; COMPRESS DEFLATE -> " + reply)
+
+        talk = self.tls()
+        talk.expect("200", "201")
+        challenge = talk.command("AUTHINFO SASL PLAIN", "383")
+        self.assertEqual(challenge, "383 =")
+        done = talk.command(plain("wren", PASSWORD), "281")
+        self.saw("AUTHINFO SASL PLAIN -> %s; <response> -> %s" % (challenge, done))
+        talk.quit()
+        talk.record()
+
+    def test_b18_compression(self):
+        """specs/nntp.md "Compression: COMPRESS (NNT-054, NNT-055)": RFC 8054
+        COMPRESS DEFLATE after login; after the 206 every octet in both
+        directions is one raw DEFLATE stream (section 2.2.2).  The stranger's
+        side is Python's zlib (raw DEFLATE, wbits -15, a sync flush) over
+        openssl s_client; the node's QUIT closes, so the tool's output ends."""
+        talk = self.reader()
+        _, caps = talk.multiline("CAPABILITIES", "101")
+        self.assertIn("COMPRESS DEFLATE", caps)
+        self.assertEqual(talk.command("COMPRESS SHRINK", "503")[:3], "503")
+        started = talk.command("COMPRESS DEFLATE", "206")
+        out = zlib.compressobj(6, zlib.DEFLATED, -15)
+        talk.process.stdin.write(out.compress(b"DATE\r\nCAPABILITIES\r\nQUIT\r\n")
+                                 + out.flush(zlib.Z_SYNC_FLUSH))
+        talk.process.stdin.flush()
+        talk.transcript += ["<DATE, CAPABILITIES, QUIT compressed>"]
+        raw = b""
+        while True:
+            try:
+                piece = talk.lines.get(timeout=talk.timeout)
+            except queue.Empty:
+                raise AssertionError("no compressed reply within %s s" % talk.timeout)
+            if piece is None:
+                break
+            raw += piece
+        replies = zlib.decompressobj(-15).decompress(raw).split(b"\r\n")
+        self.assertTrue(replies[0].startswith(b"111 "), replies[:3])
+        self.assertTrue(replies[1].startswith(b"101 "), replies[:3])
+        listed = replies[2:replies.index(b".")]
+        self.assertIn(b"READER", listed)
+        self.assertNotIn(b"COMPRESS DEFLATE", listed)
+        self.assertTrue(replies[replies.index(b".") + 1].startswith(b"205 "), replies)
+        talk.close()
+        talk.record()
+        self.saw("COMPRESS DEFLATE -> %s; compressed DATE -> %s; QUIT -> %s" % (
+            started, replies[0].decode(), replies[replies.index(b".") + 1].decode()))
 
     # ---- both faces are one node ---------------------------------------------
 

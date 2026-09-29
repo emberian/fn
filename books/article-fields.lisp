@@ -11,7 +11,7 @@
 (in-package "ACL2")
 (include-book "article")
 
-; RFC 5536 §3.1.3.
+; RFC 5536 section 3.1.3.
 (defconst *fn-af-max-message-id-octets* 250)
 ; One field value is part of the header, so the header octets the parse
 ; admitted it under already bound it: the store profile's max-header-octets

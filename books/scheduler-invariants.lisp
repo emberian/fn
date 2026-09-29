@@ -820,7 +820,7 @@
                             fn-sched-queue-bound fn-sched-conf)))))
 
 ; -----------------------------------------------------------------------------
-; Export theory (docs/proof-style.md §2)
+; Export theory (docs/proof-style.md section 2)
 ;
 ; The keystones above and the small arithmetic facts about `fn-sched-pos' (the
 ; list-recursive position function the aging proofs induct on) leave this book

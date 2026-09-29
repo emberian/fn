@@ -9,13 +9,10 @@ import socket
 import subprocess
 import time
 import unittest
-import sys
 
 from tests.native_harness import (
-    EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_USAGE, ROOT, Client, Node, executable,
-    native_image, requires)
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
-import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
+    EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_USAGE, ROOT, Acl2Session, Client, Node,
+    acl2_boolean, acl2_octets, executable, native_image, requires)
 
 
 IMAGE = native_image("FN_NATIVE_HOST")
@@ -41,26 +38,19 @@ STRUCTURED_REPLY_KINDS = {
                            (ROOT / book).read_text(encoding="ascii"))}
 
 
-def cbor_head(major, n):
-    """RFC 8949 section 3: the head of one item (the record codec's CBOR)."""
-    if n < 24:
-        return bytes([(major << 5) | n])
-    if n < 256:
-        return bytes([(major << 5) | 24, n])
-    return bytes([(major << 5) | 25]) + n.to_bytes(2, "big")
-
-
-def admin_payload(words):
-    """An FNCT admin argv (books/native-control.lisp fn-nctrl-admin-argv-encode):
-    a CBOR count, then each word as a CBOR byte string."""
-    return cbor_head(0, len(words)) + b"".join(cbor_head(2, len(w)) + w for w in words)
-
-
-def fnct_seal(kind, payload):
-    """An FNCT frame: magic, version 1, KIND, u32 length, payload, then the
-    BLAKE3 digest of all of that (books/frame-trailer.lisp)."""
-    protected = b"FNCT" + bytes([1, kind]) + len(payload).to_bytes(4, "big") + payload
-    return protected + blake3_ref.blake3(protected)
+def old_client_exchange(control, words):
+    """PKT-453 (a)'s old client: the plain kind-3 request of WORDS
+    (books/native-control.lisp fn-nctrl-seal of fn-nctrl-admin-argv-encode),
+    framed by ACL2 in the developer image's session; the reply, and whether it
+    is ACL2's sealed kind-2 frame of the one octet 1 (:accepted)."""
+    with Acl2Session(DEVELOPER) as acl2:
+        argv = "'(" + " ".join(Acl2Session.literal(w) for w in words) + ")"
+        request = acl2_octets(acl2.call(
+            "(fn-nctrl-seal 3 (fn-nctrl-admin-argv-encode %s))" % argv))
+        reply = control_exchange(control, request)
+        accepted = acl2_boolean(acl2.call(
+            "(equal (fn-nctrl-seal 2 '(1)) '%s)" % Acl2Session.literal(reply)))
+    return reply, accepted
 
 
 def control_exchange(path, frame):
@@ -108,12 +98,6 @@ class NativeControlCutGateTests(unittest.TestCase):
         # A new selector read straight from the environment would bypass the
         # startup gate; the accessor faults on a name the table lacks.
         for path in sorted((ROOT / "host/native").glob("*.lisp")):
-            if path.name.startswith("proto-"):
-                # The page store's prototype image (tools/proto/pagestore_bench.py)
-                # loads only the proto-*.lisp files: a measurement host, never a
-                # node, with no startup gate to bypass (arena-store-5 reads
-                # FN_NATIVE_DIGEST_TEST_OFF there).
-                continue
             source = path.read_text(encoding="utf-8")
             direct = re.findall(r'posix-getenv\s+"(FN_[A-Z_]+)"', source)
             guarded = {name for name in direct if name.startswith((
@@ -596,14 +580,17 @@ class NativeControlTests(unittest.TestCase):
         # image before the reasoned kinds 13 and 17) reads the one-field reply
         # it always read (kind 2, the status's enumeration octet); only a
         # reasoned frame is answered with the reasoned reply (kind 18).
+        if not executable(DEVELOPER):
+            self.skipTest("the old client's frame is ACL2's: `fn acl2 session` of a "
+                          "developer image (FN_NATIVE_DEVELOPER_HOST)")
         self.start_owner()
         words = [b"control", b"grant", b"ab" * 32, b"keys", b"fn.keys"]
-        reply = control_exchange(self.control, fnct_seal(3, admin_payload(words)))
+        reply, sealed_accepted = old_client_exchange(self.control, words)
         self.assertEqual(reply[:4], b"FNCT")
         self.assertEqual((reply[4], reply[5]), (1, 2), reply[:10])
         self.assertEqual(reply[6:10], (1).to_bytes(4, "big"), reply[:10])
         self.assertEqual(reply[10:11], b"\x01", reply)          # :accepted
-        self.assertEqual(reply[11:], blake3_ref.blake3(reply[:11]))
+        self.assertTrue(sealed_accepted, reply)
         # The grant is durable: the revoke the new client sends succeeds.
         revoked = self.operator("control", "revoke", "ab" * 32, "keys", "fn.keys")
         self.assertEqual(revoked.returncode, 0, revoked.stderr.decode())

@@ -8,20 +8,47 @@
 ;     ADDR' is admitted exactly when ADDR is an <addr-spec> of two
 ;     dot-atoms (`fn-ipp-addr-specp'), a durable `:set-policy' row like
 ;     path-identity (no delta code of its own);
-;   * the posting-account value of a login (`fn operator CONFIG account
-;     hash LOGIN', `fn-ipp-account-hash'): the value an article posted under
-;     LOGIN carries, for the operator who answers a complaint.
+;   * the posting-account value of an account (`fn-ipp-account-hash'; `fn
+;     operator CONFIG account hash LOGIN' resolves LOGIN to its account,
+;     books/native-operator.lisp fn-nop-account-hash): the value an article
+;     posted under that account carries, for the operator who answers a
+;     complaint.
 
 (in-package "ACL2")
 (include-book "posting-account")
 (include-book "article-fields")
 
 ; The octets of a text, a string's character codes or an octet list as is.
-(defun fn-ipp-codes (chars)
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+(defun fn-ipp-codes-loop (chars acc)
   (declare (xargs :guard (character-listp chars)))
   (if (consp chars)
-      (cons (char-code (car chars)) (fn-ipp-codes (cdr chars)))
-    nil))
+      (fn-ipp-codes-loop (cdr chars) (cons (char-code (car chars)) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-ipp-codes (chars)
+  (declare (xargs :guard (character-listp chars) :verify-guards nil))
+  (mbe :logic (if (consp chars)
+                  (cons (char-code (car chars)) (fn-ipp-codes (cdr chars)))
+                nil)
+       :exec (fn-ipp-codes-loop chars nil)))
+
+(defthm fn-ipp-codes-loop-is-rev-onto
+  (equal (fn-ipp-codes-loop chars acc)
+         (fn-ag-rev-onto acc (fn-ipp-codes chars)))
+  :hints (("Goal" :induct (fn-ipp-codes-loop chars acc)
+                  :in-theory (union-theories
+                              '(fn-ipp-codes-loop fn-ipp-codes fn-ag-rev-onto
+                                car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-ipp-codes
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-ipp-codes fn-ag-rev-onto fn-ipp-codes-loop-is-rev-onto
+                                character-listp)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-ipp-octets (text)
   (declare (xargs :guard t))
@@ -30,15 +57,44 @@
 ; An <addr-spec> of two dot-atoms, local "@" domain: what the operator may
 ; set as the complaints address.  atext has no DQUOTE, backslash, ";", SP,
 ; CR or LF, so the address stands in a <quoted-string> as it is.
-(defun fn-ipp-split-at (x)
-  ; (local . domain) at the first "@", or nil.
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+; The loop carries the octets before the "@" reversed.
+(defun fn-ipp-split-at-loop (x acc)
   (declare (xargs :guard t))
   (if (consp x)
       (if (equal (car x) 64)
-          (cons nil (cdr x))
-        (let ((r (fn-ipp-split-at (cdr x))))
-          (if r (cons (cons (car x) (car r)) (cdr r)) nil)))
+          (cons (fn-ag-rev-onto acc nil) (cdr x))
+        (fn-ipp-split-at-loop (cdr x) (cons (car x) acc)))
     nil))
+
+(defun fn-ipp-split-at (x)
+  ; (local . domain) at the first "@", or nil.
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp x)
+                  (if (equal (car x) 64)
+                      (cons nil (cdr x))
+                    (let ((r (fn-ipp-split-at (cdr x))))
+                      (if r (cons (cons (car x) (car r)) (cdr r)) nil)))
+                nil)
+       :exec (fn-ipp-split-at-loop x nil)))
+
+(defthm fn-ipp-split-at-loop-is-rev-onto
+  (equal (fn-ipp-split-at-loop x acc)
+         (let ((r (fn-ipp-split-at x)))
+           (if r (cons (fn-ag-rev-onto acc (car r)) (cdr r)) nil)))
+  :hints (("Goal" :induct (fn-ipp-split-at-loop x acc)
+                  :in-theory (union-theories
+                              '(fn-ipp-split-at-loop fn-ipp-split-at fn-ag-rev-onto
+                                car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-ipp-split-at
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-ipp-split-at fn-ag-rev-onto fn-ipp-split-at-loop-is-rev-onto
+                                car-cons cdr-cons)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-ipp-addr-specp (x)
   (declare (xargs :guard t))
@@ -98,13 +154,15 @@
   (and (stringp w) (consp (fn-ipp-octets w))
        (fn-ipp-login-octetsp (fn-ipp-octets w))))
 
-; The operator's answer for a login (`fn operator CONFIG account hash
-; LOGIN', books/native-operator.lisp fn-nop-parse-account; the host reads
-; the node secret and prints this value): the value an article posted under
-; LOGIN carries, under the same secret.
-(defun fn-ipp-account-hash (secret login)
+; The posting-account value of an ACCOUNT (the principal a session
+; authenticated as, books/served.lisp fn-served-account; PKT-786): the value
+; an article posted under that account carries, under the same secret
+; (books/injection-info-params.lisp fn-ipp-injected-octets).  The operator's
+; `fn operator CONFIG account hash LOGIN' resolves LOGIN to its account
+; first (books/native-operator.lisp fn-nop-account-hash).
+(defun fn-ipp-account-hash (secret account)
   (declare (xargs :guard t))
-  (fn-pa-account-value secret (fn-ipp-octets login)))
+  (fn-pa-account-value secret (fn-ipp-octets account)))
 
 ;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
 ;; Each is tried in includers' proofs and pays for its frames in

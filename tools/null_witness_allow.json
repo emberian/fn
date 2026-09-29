@@ -1,0 +1,4 @@
+{
+  "description": "tools/null_witness_lint.py: \"BOOK FUNCTION\" -> why the empty result is the right answer and no non-empty case exists. A STALE entry (no longer found) is reported.",
+  "allow": {}
+}

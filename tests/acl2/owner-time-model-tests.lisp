@@ -347,10 +347,10 @@ disk space: unobserved (statvfs gave nothing; an append that finds the disk full
                        (fn-otm-now (fn-otm-clock-run *t2-back* '(99000))))))
 
 ; --- The wall reading (N3): ACL2 decides validity.
-(assert-event (equal (fn-otm-wall-reading 946684801 250000 946684800) '(1250 t)))
-(assert-event (equal (fn-otm-wall-reading 946684799 999999 946684800) '(0 nil)))
-(assert-event (equal (fn-otm-wall-reading 946684799 999999 946684800)
-                     (fn-otm-wall-reading "garbage" -1 946684800)))
+(assert-event (equal (fn-otm-wall-reading 946684801 250000) '(1250 t)))
+(assert-event (equal (fn-otm-wall-reading 946684799 999999) '(0 nil)))
+(assert-event (equal (fn-otm-wall-reading 946684799 999999)
+                     (fn-otm-wall-reading "garbage" -1)))
 
 ; =============================================================================
 ; The journal (books/owner-time-journal.lisp).

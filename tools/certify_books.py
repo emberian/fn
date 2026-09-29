@@ -319,8 +319,10 @@ def publish_pair(book: str, verdict: str, run_dir: Path, nonce: str,
     event["published"] = bool(report.published)
     event["already_cached"] = bool(report.already)
     if not report.published and not report.already:
-        event["why"] = "; ".join(report.unverified + report.uncached
-                                 + report.unreadable) or "no pair offered"
+        event["why"] = "; ".join(
+            report.unverified + report.uncached + report.unreadable
+            + [f"{name}: no compiled file (.fasl); never cached without one"
+               for name in report.uncompiled]) or "no pair offered"
     return event
 
 
@@ -1114,6 +1116,10 @@ def main() -> int:
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = BUILD_ROOT / f"certify-{stamp}-{os.getpid()}"
     run_dir.mkdir(parents=True, exist_ok=False)
+    # Named at the start, not only at the end: `farm.py submit`/`status` read
+    # it from the run's log so the certify id is known before `wait`.
+    shown = run_dir.relative_to(ROOT) if run_dir.is_relative_to(ROOT) else run_dir
+    print(f"Certification run: {shown}", file=sys.stderr, flush=True)
 
     manifest: dict[str, Any] = {
         # Identity first: a manifest that has left its directory behind must
@@ -1225,6 +1231,8 @@ def main() -> int:
             # file, and those that did not (ACL2 then loads them uncompiled).
             "fasl_installed": installed.fasl_installed,
             "fasl_missing": installed.fasl_missing,
+            # Cached pairs refused for want of a compiled file: certified here.
+            "uncompiled": list(installed.uncompiled),
         }
         manifest["installed_books"] = dict(sorted(installed.installed_from.items()))
         manifest["book_provenance"] = {
@@ -1622,6 +1630,7 @@ def main() -> int:
                 "already_cached": published.already,
                 "not_published": sorted(published.uncached + published.unverified
                                         + published.unreadable),
+                "uncompiled": sorted(published.uncompiled),
                 "per_book": cache_events,
                 "per_book_published": sum(1 for event in cache_events
                                           if event.get("published")),

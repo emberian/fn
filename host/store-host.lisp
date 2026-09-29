@@ -14,6 +14,7 @@
 (in-package "ACL2")
 (include-book "../books/replay")
 (include-book "../books/store-intern")
+(include-book "../books/open-frontier-wire")
 (include-book "../books/store-recover-stream")
 ; The open's extent seals and the served read's trailer check (PRF-294);
 ; the commit's extent reseat (PRF-309; it includes payload-extent).
@@ -26,6 +27,9 @@
 ; realizer's decode (host/native/extent.lisp fn-durable-realize-lz).
 (include-book "../books/payload-lz-append")
 (include-book "../books/payload-lz-replay")
+; The realizer's pooled payload decoder (host/native/deflate.lisp
+; fnn-pzd-decode: fn-zpl-decode-bufs).
+(include-book "../books/deflate-pool")
 (include-book "../books/store-config")
 (include-book "../books/identity")
 (include-book "../books/crypto-attach")
@@ -39,6 +43,7 @@
 (include-book "../books/store-replay-bound")
 (include-book "../books/store-profile-open")
 (include-book "../books/store-mount-identity")
+(include-book "../books/store-host-boundary")
 (include-book "../books/store-profile-namespace")
 (include-book "../books/native-operator")
 (include-book "../books/article-fields")
@@ -50,6 +55,7 @@
 (include-book "../books/store-log-stream")
 ;; The open tells a torn tail from damage (lane log-corruption).
 (include-book "../books/store-log-damage")
+(include-book "../books/store-log-lineage")
 ;; The walk over the entry's octet buffer (lane snapshot-open-3; KEYSTONE
 ;; fn-lgw-step-buf-is-step): host/native/io.lisp fnn-log-stream-segment.
 (include-book "../books/store-log-buffer")
@@ -83,15 +89,20 @@
 ; A final namespace observation is not parsed by the native adapter.  The
 ; bounded host enumeration is sorted only to make its representation stable.
 ; This conversion only validates octets before the scan policy compares names.
-(defun fn-store-octet-lists->strings (xs)
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+; ACC holds the converted strings reversed; any element that is not an
+; octet list, or a non-nil final tail, answers :bad, as the recursion did.
+(defun fn-store-octet-lists->strings-loop (xs acc)
   (if (consp xs)
       (if (not (fn-cbor-octet-listp (car xs)))
           :bad
-        (let ((rest (fn-store-octet-lists->strings (cdr xs))))
-          (if (equal rest :bad)
-              :bad
-            (cons (fn-store-octets->string (car xs)) rest))))
-    (if (null xs) nil :bad)))
+        (fn-store-octet-lists->strings-loop
+         (cdr xs) (cons (fn-store-octets->string (car xs)) acc)))
+    (if (null xs) (fn-ag-rev-onto acc nil) :bad)))
+
+(defun fn-store-octet-lists->strings (xs)
+  (fn-store-octet-lists->strings-loop xs nil))
 
 ; The bound and the grammar are `fn-profile-txn-observation'
 ; (books/store-profile-facts.lisp); this wrapper converts octets.  The
@@ -314,9 +325,6 @@
       (fn-id-obligation-of msgid subject)
     nil))
 
-(defun fn-store-charge (length)
-  (if (natp length) (fn-charge-for-payload length) 0))
-
 (defun fn-store-identity-text (identity)
   ; The one rendering of a canonical identity into a string, for the three
   ; boundaries that cannot carry octets: the store record metadata fields, the
@@ -390,19 +398,11 @@
   (fn-store-log-next-txid-loop (list record) (nfix acc)))
 
 ;; The same fold over records the replay has already decoded
-;; (books/store-recover-stream.lisp fn-srs-decode: each record's
-;; fn-store-event-decode-exact, kept when it is :ok with a wire event, which is
-;; exactly when fn-store-log-next-txid-loop's step reads that event's txid; any
-;; other record makes the chunk :bad and the open faults), so the streamed
-;; open decodes each record once.
-(defun fn-store-log-next-txid-of-events (events acc)
-  (declare (xargs :mode :program))
-  (if (consp events)
-      (fn-store-log-next-txid-of-events
-       (cdr events)
-       (let ((txid (fn-rcon-wire-event-txid (car events))))
-         (if (natp txid) (max acc (+ 1 txid)) acc)))
-    acc))
+;; (books/store-recover-stream.lisp fn-srs-decode) is ACL2's:
+;; books/open-frontier-wire.lisp fn-ofw-wire-next, the replay's frontier fold
+;; over the rows the intern makes of them (fn-ofw-wire-next-is-the-rows-next)
+;; and chunk by chunk the fold over the whole suffix
+;; (fn-ofw-wire-next-of-append).
 
 (defun fn-store-log-next-txid-join (a b)
   (declare (xargs :mode :program))
@@ -463,30 +463,16 @@
 (defun fn-store-metadata-frontier-next (n)
   (fn-bs-frontier-next n))
 
-(defun fn-store-publication-admissibility (profile committed-count
-                                                   prospective-payload-octets)
-  (if (fn-bs-publication-admissiblep profile committed-count
-                                     prospective-payload-octets)
-      :admissible
-    :refused))
-
 ;; The replay bound every open checks per record: H plus T records' encoding
 ;; overhead (books/store-replay-bound.lisp; every history the profile admits
 ;; is within it, `fn-srb-admitted-history-is-within-the-bound').
 (defun fn-store-profile-replay-within-bound (profile aggregate)
   (fn-srb-replay-within-boundp profile aggregate))
 
-;; The open's per-file read bound under the persisted PROFILE: one FNST frame
-;; whose payload is at most the profile's per-record ceiling.  Every committed
-;; transaction file was published under `fn-bs-publication-admissiblep' (its
-;; record at most `fn-bs-profile-record-ceiling', asserted on the actual bytes
-;; by host/native/io.lisp `fnn-publish'), and the profile is written once, at
-;; init or import (D34), so no committed file exceeds this bound.
-;; A profile that is not valid yields the frame overhead alone, and the open
-;; refuses every file.
-(defun fn-store-profile-read-bound (profile)
-  (+ *fn-frame-overhead-octets* (fn-bs-profile-record-ceiling profile)))
-
+;; fn-store-charge, fn-store-publication-admissibility and
+;; fn-store-profile-read-bound live in books/store-host-boundary.lisp
+;; (guard-verified, with their keystones: the read bound covers every
+;; publication the admission admitted, PRF-961).
 
 (defun fn-store-group-codes (name-octets domain-octets)
   (declare (xargs :guard (and (fn-octet-list-listp name-octets) (fn-octet-list-listp domain-octets)) :verify-guards nil))
@@ -542,3 +528,13 @@
   (declare (xargs :stobjs state :mode :program))
   (let ((state (f-put-global 'fn-store-genesis verdict state)))
     (mv nil t state)))
+
+;; The store's identity the history image's binding names
+;; (books/history-image-binding.lisp): the genesis record's node identity and
+;; the history salt the open answered (fn-gen-verdict-salt), or (NIL 0) when
+;; the open installed none.
+(defun fn-store-genesis-ident (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((v (and (boundp-global 'fn-store-genesis state) (f-get-global 'fn-store-genesis state))))
+    (value (list (if (and (consp v) (equal (car v) :genesis) (consp (cdr v))) (fn-gen-node (cadr v)) nil)
+                 (fn-gen-verdict-salt v)))))

@@ -209,5 +209,82 @@ class ClientTests(unittest.TestCase):
                                b"Subject: s\r\nMessage-ID: <m@x>\r\n\r\nb\r\n")
 
 
+
+class FailedTestStderrTests(unittest.TestCase):
+    """obstructions-3 item 15: a failed native test prints and keeps the
+    stderr of every process it started; a passing test's are dropped."""
+
+    def run_cases(self, keep):
+        import io
+        import os
+        import tempfile
+        from unittest import mock
+        from tools import test_budget
+
+        class Cases(unittest.TestCase):
+            def test_refusal(self):
+                process = native_harness.start(
+                    [sys.executable, "-c",
+                     "import sys; sys.stderr.write('owner refused: heap figure 802 GB\\n')"])
+                process.wait(timeout=30)
+                process.stop()
+                self.fail("the owner did not start")
+
+            def test_filed(self):
+                with tempfile.TemporaryDirectory() as scratch:
+                    log = os.path.join(scratch, "owner.stderr")
+                    process = native_harness.start_filed(
+                        [sys.executable, "-c",
+                         "import sys; sys.stderr.write('filed refusal line\\n')"], log)
+                    process.wait(timeout=30)
+                    process.stdout.close()
+                    process.stderr.close()
+                # the directory, and the file, are gone here
+                raise RuntimeError("after the temp dir went")
+
+            def test_passes(self):
+                native_harness.start([sys.executable, "-c", "pass"]).stop()
+
+            def test_two_processes(self):
+                # obstructions-5 item 43: the receiver's stdout line diagnosed
+                # the sender's defect; the report keeps every process's.
+                receiver = native_harness.start(
+                    [sys.executable, "-c", "print('(:BUNDLE-RECEIVED 7)')"])
+                receiver.wait(timeout=30)
+                receiver.stop()
+                native_harness.run([sys.executable, "-c",
+                                    "import sys; print('sender out'); "
+                                    "sys.stderr.write('sender err\\n'); sys.exit(6)"])
+                self.fail("send exit 6")
+
+        stream = io.StringIO()
+        suite = unittest.defaultTestLoader.loadTestsFromTestCase(Cases)
+        with mock.patch.dict(os.environ, {"FN_NATIVE_STDERR_DIR": keep}):
+            unittest.TextTestRunner(stream=stream, resultclass=test_budget._TimedResult,
+                                    verbosity=0).run(suite)
+        return stream.getvalue()
+
+    def test_the_failed_tests_stderr_is_printed_and_kept(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as keep:
+            out = self.run_cases(keep)
+            self.assertIn("owner refused: heap figure 802 GB", out)
+            self.assertIn("filed refusal line", out)
+            self.assertNotIn("test_passes process", out)
+            kept = sorted(path.name for path in Path(keep).iterdir())
+            self.assertEqual(len([n for n in kept if n.endswith(".stderr")]), 4, kept)
+            self.assertIn("(:BUNDLE-RECEIVED 7)", out)
+            self.assertIn("sender out", out)
+            self.assertIn("sender err", out)
+            self.assertIn("exit=6", out)
+            self.assertTrue(any(n.startswith("Cases.test_two_processes-1-") and
+                                n.endswith(".stdout") for n in kept), kept)
+            self.assertTrue(any(name.startswith("Cases.test_refusal-1-") for name in kept), kept)
+            text = b"".join(path.read_bytes() for path in Path(keep).iterdir())
+            self.assertIn(b"filed refusal line", text)
+        self.assertEqual(native_harness._STARTED, {})
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2,10 +2,12 @@
 ; books/injection-info-params-invariants.lisp (the keystones),
 ; books/injection-info-params.lisp (fn-ipp-injected-octets-without-parameters),
 ; books/injection-info-policy.lisp (the complaints address, the operator's
-; account hash), the admin arm and the operator verb.
+; account hash), the admin arm and the operator verb (PKT-786:
+; books/native-operator.lisp fn-nop-account-hash hashes LOGIN's account).
 (in-package "ACL2")
 (include-book "../../books/injection-info-params-invariants")
 (include-book "../../books/native-operator")
+(include-book "../../books/crypto-attach")
 (include-book "must-fail-checked")
 
 (defun ipt-codes (cs)
@@ -85,8 +87,8 @@ Hello, news.
                (cons 32 (append *ipt-agent* (ipt-o "; posting-account=\"") *ipt-hex*
                                 (ipt-o "\"; mail-complaints-to=\"abuse@example.org\"")))))))
 (assert-event (not (ipt-infixp *ipt-login* *ipt-stored*)))
-; The operator's verb gives the value the article carries.
-(assert-event (equal (fn-ipp-account-hash *ipt-secret* "alice") *ipt-hex*))
+; The value of an account is the value an article posted under it carries.
+(assert-event (equal (fn-ipp-account-hash *ipt-secret* *ipt-login*) *ipt-hex*))
 ; Omitted hypothesis (the only one, an injection): a refused decision has no
 ; octets, and the conclusion fails.
 (assert-event
@@ -395,3 +397,91 @@ Hello, news.
         (not (equal s1 s2))
         (equal (fn-pb-path-agent s2 (fn-inj-decision-msgid *ipt-v3-2*)) *ipt-agent*)
         (fn-pb-same-articlep (fn-inj-decision-msgid *ipt-v3-1*) s2 s1))))
+
+; PKT-786 KEYSTONE fn-nop-account-hash-is-the-served-account-value
+; (books/native-operator.lisp): `account hash LOGIN' prints the value of
+; LOGIN's account, the principal the served table finds for LOGIN.
+(defun ipt-lines (lines)
+  (if (consp lines)
+      (append (fn-record-string-octets (car lines)) (list 10) (ipt-lines (cdr lines)))
+    nil))
+(defconst *ipt-auth-file*
+  (ipt-lines
+   (list "[login.\"alice\"]"
+         "principal = \"abababababababababababababababababababababababababababababababab\""
+         "salt = \"00000000000000000000000000000000\""
+         "digest = \"1111111111111111111111111111111111111111111111111111111111111111\""
+         ;; SCRAM-SHA-256's two keys (verifier v2, NNT-056): a v1 entry is
+         ;; refused :credential-shape (one format, no migration).
+         "scram_stored_key = \"2222222222222222222222222222222222222222222222222222222222222222\""
+         "scram_server_key = \"3333333333333333333333333333333333333333333333333333333333333333\""
+         "posting = true")))
+(defconst *ipt-auth* (fn-native-auth-load *ipt-auth-file* t t nil nil 128))
+(defconst *ipt-acfg* (fn-native-auth-result-config *ipt-auth*))
+(defconst *ipt-stamp* (fn-clock-observation 5 1700000000 2 t))
+(defconst *ipt-code* (fn-record-string-octets "k3y-friend-0001-7f3a"))
+(defconst *ipt-robin* (fn-record-string-octets "robin"))
+(defmacro ipt-v1 ()
+  '(fn-cfg-apply-delta (fn-cfg-empty-value) 1 *ipt-stamp*
+                       (fn-cfg-account-invite (fn-acct-code-digest-text *ipt-code*)
+                                              "operator" "2000000000")))
+(defmacro ipt-v2 ()
+  '(fn-cfg-apply-delta
+    (ipt-v1) 2 *ipt-stamp*
+    (fn-acct-plan-delta (fn-acct-redeem-plan (ipt-v1) *ipt-stamp* *ipt-code*
+                                             *ipt-robin*
+                                             (fn-record-string-octets "correct horse")
+                                             (make-list 16 :initial-element 7) nil))))
+(defmacro ipt-served-cred (login v)
+  `(fn-auth-find-cred (fn-ipp-octets ,login)
+                      (fn-auth-config-creds (fn-auth-config-with-accounts *ipt-acfg* ,v))))
+
+; Reachable witness, a credential-file login: every antecedent, then the
+; conclusion; the account is the file's principal, not the login's spelling.
+(assert-event (equal (fn-native-auth-result-status *ipt-auth*) :accepted))
+(assert-event (ipt-served-cred "alice" (ipt-v2)))
+(assert-event
+ (equal (fn-nop-account-hash *ipt-secret* "alice" *ipt-auth-file* t 128)
+        (fn-pa-account-value *ipt-secret*
+                             (fn-ipp-octets (fn-auth-cred-principal
+                                             (ipt-served-cred "alice" (ipt-v2)))))))
+(assert-event (not (equal (fn-nop-account-hash *ipt-secret* "alice" *ipt-auth-file* t 128)
+                          *ipt-hex*)))
+; ... and it is the value the article stored under that account carries.
+(assert-event
+ (ipt-infixp (fn-nop-account-hash *ipt-secret* "alice" *ipt-auth-file* t 128)
+             (fn-ipp-injected-octets *ipt-d* *ipt-secret*
+                                     (fn-auth-cred-principal (ipt-served-cred "alice" (ipt-v2)))
+                                     *ipt-cfg1*)))
+; Reachable witness, an invitation-code account the file does not hold: the
+; served table finds robin's redeemed credential; the operator's value is
+; its principal's.
+(assert-event (not (fn-auth-find-cred *ipt-robin* (fn-auth-config-creds *ipt-acfg*))))
+(assert-event (ipt-served-cred "robin" (ipt-v2)))
+(assert-event
+ (equal (fn-nop-account-hash *ipt-secret* "robin" *ipt-auth-file* t 128)
+        (fn-pa-account-value *ipt-secret*
+                             (fn-ipp-octets (fn-auth-cred-principal
+                                             (ipt-served-cred "robin" (ipt-v2)))))))
+; Omitted hypothesis, the table finds LOGIN: carol is in neither table (the
+; load is accepted, ACFG is its configuration); the conclusion fails.
+(assert-event (not (ipt-served-cred "carol" (ipt-v2))))
+(assert-event
+ (not (equal (fn-nop-account-hash *ipt-secret* "carol" *ipt-auth-file* t 128)
+             (fn-pa-account-value *ipt-secret*
+                                  (fn-ipp-octets (fn-auth-cred-principal
+                                                  (ipt-served-cred "carol" (ipt-v2))))))))
+; Omitted hypothesis, the load is accepted: a file with a non-ASCII octet is
+; refused; its configuration is the open one, whose table still finds robin
+; through the redeemed row, and the operator prints nothing.
+(defconst *ipt-bad-file* (list 200 10))
+(assert-event (not (equal (fn-native-auth-result-status
+                           (fn-native-auth-load *ipt-bad-file* t t nil nil 128))
+                          :accepted)))
+(assert-event (fn-auth-find-cred *ipt-robin*
+                                 (fn-auth-config-creds
+                                  (fn-auth-config-with-accounts
+                                   (fn-native-auth-result-config
+                                    (fn-native-auth-load *ipt-bad-file* t t nil nil 128))
+                                   (ipt-v2)))))
+(assert-event (null (fn-nop-account-hash *ipt-secret* "robin" *ipt-bad-file* t 128)))

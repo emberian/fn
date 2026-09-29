@@ -433,15 +433,39 @@
     nil))
 
 ; The specification: the walk per number over LOW .. HIGH, unclamped.
-(defun fn-cnx-walk-range (group k top v fn-cat)
-  (declare (xargs :stobjs fn-cat :verify-guards nil
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of data with no fixed cap.  The :logic is
+; the recursion, unchanged; the :exec is the loop, equal by the lemma below.
+; (A specification: host/native/io.lisp names it only in its lookup-count
+; list.  Its guard is verified so that the loop is what would run.)
+(defun fn-cnx-walk-range-loop (group k top v fn-cat acc)
+  (declare (xargs :stobjs fn-cat :guard (natp v)
                   :measure (nfix (- (+ 1 (nfix top)) (nfix k)))))
   (if (and (natp k) (natp top) (<= k top))
       (let ((s (fn-cat-view-number-find group k (fn-cat-count fn-cat) v fn-cat)))
-        (if s
-            (cons s (fn-cnx-walk-range group (+ 1 k) top v fn-cat))
-          (fn-cnx-walk-range group (+ 1 k) top v fn-cat)))
-    nil))
+        (fn-cnx-walk-range-loop group (+ 1 k) top v fn-cat (if s (cons s acc) acc)))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-cnx-walk-range (group k top v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v) :verify-guards nil
+                  :measure (nfix (- (+ 1 (nfix top)) (nfix k)))))
+  (mbe :logic
+       (if (and (natp k) (natp top) (<= k top))
+           (let ((s (fn-cat-view-number-find group k (fn-cat-count fn-cat) v fn-cat)))
+             (if s
+                 (cons s (fn-cnx-walk-range group (+ 1 k) top v fn-cat))
+               (fn-cnx-walk-range group (+ 1 k) top v fn-cat)))
+         nil)
+       :exec (fn-cnx-walk-range-loop group k top v fn-cat nil)))
+
+(defthm fn-cnx-walk-range-loop-is-rev-onto
+  (equal (fn-cnx-walk-range-loop group k top v fn-cat acc)
+         (fn-ag-rev-onto acc (fn-cnx-walk-range group k top v fn-cat)))
+  :hints (("Goal" :induct (fn-cnx-walk-range-loop group k top v fn-cat acc)
+                  :in-theory (disable fn-cat-view-number-find))))
+
+(verify-guards fn-cnx-walk-range
+  :hints (("Goal" :in-theory (disable fn-cat-view-number-find))))
 
 (local
  (defthm fn-cnx-aux-is-walk-range

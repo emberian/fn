@@ -111,11 +111,21 @@
 (make-event `(defconst *slst-ks1* ',(fn-lgk-recover *slst-seg1* *slst-g0* *slst-unit* *slst-max* 3)))
 (assert-event (fn-lgs-rotate-admitsp *slst-ks1*))
 (assert-event (equal (fn-lgk-last *slst-ks1*) *slst-g1*))
-(assert-event (equal (fn-lgs-rotate *slst-ks1*)
-                     (fn-lgk-recover (fn-bs-zeros *slst-unit*) *slst-g1* *slst-unit* *slst-max* 3)))
+; The rotated-to segment 2 opens with the rotation entry from segment 1's last
+; trailer (lane store-lineage): the kernel is the recovery over the head and
+; zeros, its LAST the head's trailer, its frontier the head's length.
+(assert-event (equal (fn-lgs-rotate *slst-ks1* 2 *slst-unit*)
+                     (fn-lgk-recover (append (fn-lg-rotation-entry *slst-g1* 2 *slst-unit*)
+                                             (fn-bs-zeros *slst-unit*))
+                                     *slst-g1* *slst-unit* *slst-max* 3)))
+(assert-event (equal (fn-lgk-last (fn-lgs-rotate *slst-ks1* 2 *slst-unit*))
+                     (fn-lg-trailer (fn-lg-rotation-frame *slst-g1* 2))))
+(assert-event (not (equal (fn-lgk-last (fn-lgs-rotate *slst-ks1* 2 *slst-unit*)) *slst-g1*)))
+(assert-event (equal (fn-lgk-frontier (fn-lgs-rotate *slst-ks1* 2 *slst-unit*))
+                     (len (fn-lg-rotation-entry *slst-g1* 2 *slst-unit*))))
 (assert-event (not (fn-lgs-rotate-admitsp (fn-lgk-prepare *slst-ks1* *slst-r3*))))
 (assert-event (fn-lgs-rotate-needed-p *slst-ks1*))
-(assert-event (not (fn-lgs-rotate-needed-p (fn-lgs-rotate *slst-ks1*))))
+(assert-event (not (fn-lgs-rotate-needed-p (fn-lgs-rotate *slst-ks1* 2 *slst-unit*))))
 
 ; -----------------------------------------------------------------------------
 ;; T8, reachable, over the host's streamed open (fn-lgw-open-chain-*: each

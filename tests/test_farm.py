@@ -1152,8 +1152,70 @@ class StatusTests(unittest.TestCase):
             self.assertNotIn("certify_books.py", commands[0])
 
 
-if __name__ == "__main__":
-    unittest.main()
+
+class CertifyIdTests(unittest.TestCase):
+    """submit and status name the run's certify id (evidence_manifests add)."""
+
+    def test_submit_records_the_certify_id_the_runner_names(self):
+        class Named(Fake):
+            def __call__(self, command, **kwargs):
+                if command[0] == "ssh" and "Certification (run|evidence)" in command[-1]:
+                    self.commands.append(list(command))
+                    return subprocess.CompletedProcess(
+                        command, 0, stdout="Certification run: build/acl2/"
+                        "certify-20260929T101010Z-4242\n", stderr="")
+                return super().__call__(command, **kwargs)
+
+        fake = Named([])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                identifier = farm.submit("persvati", root, ["books/alpha"], jobs=4,
+                                         timeout_seconds=60, affected_by=[])
+            record = json.loads(farm.record_path(root, identifier).read_text())
+        self.assertEqual(record["certify_id"], "certify-20260929T101010Z-4242")
+
+    def test_submit_without_the_id_yet_says_status_will_name_it(self):
+        fake = Fake([])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            err = io.StringIO()
+            with driving(fake, root / "cache"), contextlib.redirect_stderr(err):
+                identifier = farm.submit("persvati", root, ["books/alpha"], jobs=4,
+                                         timeout_seconds=60, affected_by=[])
+            record = json.loads(farm.record_path(root, identifier).read_text())
+        self.assertNotIn("certify_id", record)
+        self.assertIn("has not named its certify id yet", err.getvalue())
+        asks = [s for s in fake.scripts() if "Certification (run|evidence)" in s]
+        self.assertEqual(len(asks), farm.CERTIFY_ID_ATTEMPTS)
+
+    def test_status_reads_the_id_from_the_log_and_records_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            identifier = "run-20260929T101000Z-abcd"
+            farm_dir = root / "build/farm"
+            farm_dir.mkdir(parents=True)
+            (farm_dir / f"{identifier}.log").write_text(
+                "Certification run: build/acl2/certify-20260929T101500Z-77\n")
+            (farm_dir / f"{identifier}.json").write_text(json.dumps({"run_id": identifier}))
+            # A second directory in the time window: the log decides, not the clock.
+            for name in ("certify-20260929T101001Z-11", "certify-20260929T101500Z-77"):
+                (root / "build/acl2" / name).mkdir(parents=True)
+            rows = StatusTests.snapshot(root)
+            self.assertEqual(rows[0]["certify_id"], "certify-20260929T101500Z-77")
+
+            def local_ssh(host, script, check=False):
+                return subprocess.run(["sh", "-c", script], text=True,
+                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            out = io.StringIO()
+            with mock.patch.object(farm, "ssh", local_ssh), contextlib.redirect_stdout(out):
+                farm.status("persvati", root, root)
+            self.assertIn("certify-20260929T101500Z-77", out.getvalue())
+            self.assertEqual(farm.run_record(root, identifier)["certify_id"],
+                             "certify-20260929T101500Z-77")
+            import evidence_manifests
+            self.assertEqual(evidence_manifests.certify_ids_of_farm_run(root, identifier),
+                             ["certify-20260929T101500Z-77"])
 
 
 class FrictionTests(unittest.TestCase):
@@ -1509,3 +1571,96 @@ class RecertifyFromTests(unittest.TestCase):
                            "--root", directory])
             self.assertEqual(raised.exception.code, 2)
             submit.assert_not_called()
+
+
+class FailedSummaryTests(unittest.TestCase):
+    """obstructions-5 item 35: status --failed-summary RUN prints each failed
+    book's checkpoint; the run record names the box path as such."""
+
+    LOG = ("(defthm a ...)\n"
+           "*** Key checkpoint at the top level: ***\n"
+           "Goal'\n(IMPLIES (CONSP X) (EQUAL (F X) (G X)))\n"
+           "Summary\n******** FAILED ********\n"
+           "later noise\n")
+
+    def test_each_failed_book_with_its_checkpoint(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+
+            def fetcher(host, identifier, root_, remote, into):
+                directory = into / "certify-x"
+                directory.mkdir(parents=True)
+                (directory / "manifest.json").write_text(json.dumps({
+                    "book_results": {"books/a": "failed", "books/b": "passed"},
+                    "book_failures": {"books/a": ["ACL2 exited 1"]}}))
+                (directory / "books--a.certify.log").write_text(self.LOG)
+                return [directory]
+            lines = farm.failed_summary("persvati", "run-1", root, Path("/box/tree"),
+                                        fetcher=fetcher)
+        text = "\n".join(lines)
+        self.assertIn("-- FAILED books/a: ACL2 exited 1", text)
+        self.assertIn("   | *** Key checkpoint at the top level: ***", text)
+        self.assertIn("   | (IMPLIES (CONSP X) (EQUAL (F X) (G X)))", text)
+        self.assertIn("   | ******** FAILED ********", text)
+        self.assertNotIn("later noise", text)
+        self.assertNotIn("books/b", text)
+        self.assertEqual(lines[-1], "== 1 failed book(s)")
+
+    def test_excerpt_without_a_checkpoint_keeps_the_lines_before_the_failure(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            log = Path(scratch) / "x.log"
+            log.write_text("\n".join(f"line {n}" for n in range(30)) + "\nACL2 Error in X\n")
+            excerpt = farm.checkpoint_excerpt(log)
+        self.assertEqual(excerpt[0], "line 18")
+        self.assertEqual(excerpt[-1], "ACL2 Error in X")
+
+    def test_the_record_names_the_box_path(self):
+        text = Path(farm.__file__).read_text()
+        for field in ('"local_path": str(root)', '"box_path": str(remote)', '"box_log"'):
+            self.assertIn(field, text)
+
+
+class WaitReadsTheRunsOwnDirectoryTests(unittest.TestCase):
+    """obstructions-6 item 60: wait polls the directory `status` finds, and never
+    answers "unknown" when the box has decided."""
+
+    def recorded_run(self, directory: str) -> Path:
+        root = Path(directory)
+        (root / "build" / "farm").mkdir(parents=True)
+        own = root / "build" / "acl2" / "certify-20260929T010000Z-11"
+        later = root / "build" / "acl2" / "certify-20260929T020000Z-22"
+        own.mkdir(parents=True)
+        later.mkdir(parents=True)
+        (own / "manifest.json").write_text(json.dumps(
+            {"status": "passed", "finished_utc": "2026-09-29T01:30:00Z"}))
+        (later / "manifest.json").write_text(json.dumps({"status": "failed"}))
+        os.utime(later, (2e9, 2e9))  # the newest directory is another run's
+        (root / "build" / "farm" / "run-20260929T005959Z-ab12.log").write_text(
+            f"Certification run: {own}\n")
+        return root
+
+    def test_progress_reads_the_directory_the_log_names(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.recorded_run(directory)
+            script = farm.progress_script(root, "run-20260929T005959Z-ab12")
+            out = subprocess.run(["sh", "-c", script], capture_output=True, text=True).stdout
+            progress = farm.parse_progress(out)
+            self.assertEqual(progress["MANIFEST"], "passed certify-20260929T010000Z-11")
+            self.assertEqual(progress["STATUS"], "running")
+
+    def test_verdict_names_the_boxs_manifest_rather_than_unknown(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "build" / "farm").mkdir(parents=True)
+            farm.record_path(root, "run-x").write_text(json.dumps({"host": "hbox"}))
+            farm.note_certify_id(root, "run-x", "certify-20260929T010000Z-11")
+            farm.note_box_manifest(root, "run-x", "passed")
+            lines = farm.verdict_lines(root, "run-x", 0)
+            self.assertNotIn("unknown", " ".join(lines))
+            self.assertIn("manifest certify-20260929T010000Z-11 passed on the box", lines[1])
+            farm.record_path(root, "run-y").write_text(json.dumps({"host": "hbox"}))
+            self.assertIn("unknown", " ".join(farm.verdict_lines(root, "run-y", 1)))
+
+
+if __name__ == "__main__":
+    unittest.main()
