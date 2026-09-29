@@ -982,6 +982,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-view \
 	books/served-columns \
 	tests/acl2/served-columns-tests \
+	books/nov-byte-window \
+	tests/acl2/nov-byte-window-tests \
+	books/nov-column-window \
+	tests/acl2/nov-column-window-tests \
 	books/served-catalog \
 	books/served-catalog-chain \
 	books/served-catalog-owner \
