@@ -37,8 +37,11 @@ exactly the committed count and no article is served with other bytes
 (`number-stability`).  The rig's control records (a POST judged acknowledged
 whose writes all follow the cut) are the tooth: their expected verdict is
 `violation`.  Per-article outcomes (`per`, written by the rig's classify
-from the next run on) become individual `read` records; until then the
-counts are one `served-counts` observation, and the verdict says so.
+since W7d-2) become individual `read` records, and every number a reader
+was served before the cut (`observed_numbers`, the rig's bindings) its own
+`number` record judged under `number-stability`; a record from before
+(the 2026-09-26 evidence) carries counts only, which are one
+`served-counts` observation, and the verdict says so.
 
 Over the 2026-09-26 evidence (236 images): every cut record is consistent
 with one history and the six controls are violations, EXCEPT six init-phase
@@ -77,6 +80,23 @@ PHASE_OP = {"checkpoint": "checkpoint", "compact": "reclaim", "reclaim": "reclai
             "retention": "reclaim", "reference-reclaimed": "probe", "reference": "probe",
             "end": "probe", "export": "probe", "import": "probe", "init": "probe"}
 CONTROL_PHASES = ("control", "stmtcontrol")
+
+
+# The phases from which the recovered store serves the reclaimed reference
+# (tools/power_loss.py bindings' `reclaimed'): an observed number unlisted
+# after recovery is the reclaim's doing there, a loss anywhere else.
+RECLAIMED_PHASES = ("reclaim", "reference-reclaimed", "end", "export", "import")
+_MSGID = re.compile(r"^<t17-(\d{6})@example\.invalid>$")   # tools/msgid_measure.py msgid(i)
+
+
+def _post_of(mid: str, posts: list):
+    """The scenario post the rig's Message-ID MID names (msgid(i) is
+    post-(i+1)), None for a Message-ID outside the workload."""
+    m = _MSGID.match(mid)
+    if m is None:
+        return None
+    i = int(m.group(1))
+    return posts[i].id if i < len(posts) else None
 
 
 def records(path=EVIDENCE) -> list:
@@ -125,6 +145,11 @@ def scenario_for(rec: dict) -> Scenario:
         # above every served one), not a fated post of the crashed history.
         ops.append(Operation("fresh", "client", "probe", {"what": "fresh-post"}))
         healing.append("fresh")
+        if rec["binding"].get("observed_numbers"):
+            # Every number a reader was served before the cut, looked up
+            # after recovery (the rig's bindings from W7d-2 on).
+            ops.append(Operation("observed", "client", "probe", {"what": "observed-numbers"}))
+            healing.append("observed")
     if phase == "init" and not acked:
         # The cut fell in the store's initialization: the positive witness
         # is the old state (no store) re-initialized, not a recovery.
@@ -227,6 +252,13 @@ def journal_for(rec: dict, s: Scenario) -> Journal:
         j.client("numbers", operation="fresh", fresh=fresh,
                  fresh_number=b.get("fresh_number") if fresh.startswith("240") else None,
                  max_served=b.get("max_served"), listed=b.get("listed"))
+        # Per observed number (the rig's bindings from W7d-2 on): a number a
+        # reader was served before the cut is served with the same
+        # Message-ID after recovery, or unlisted once the reclaim ran; each
+        # is its own observation under `number-stability'.
+        for n, mid, kind in b.get("observed_numbers") or ():
+            j.client("number", operation="observed", number=n, msgid=mid, result=kind,
+                     article=_post_of(mid, posts), reclaimed=phase in RECLAIMED_PHASES)
     j.stage("healing", "ended", elapsed=0.0)
     return j
 

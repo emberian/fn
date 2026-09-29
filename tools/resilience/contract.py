@@ -370,6 +370,17 @@ def narrow(scenario, history: dict, rec: dict, journal, registry: dict) -> tuple
             if fresh is None or top is None:
                 return False, ("number-stability",)
             return fresh > top, ("number-stability",)
+        if ev == "number":
+            # A number a reader was served before the cut names the same
+            # article after recovery; unlisted only once the reclaim ran
+            # (the reclaim withdraws articles, never reissues a number);
+            # served with another Message-ID it was handed out twice.
+            result = rec.get("result")
+            if result == "same":
+                return True, ("number-stability",)
+            if result == "unlisted":
+                return bool(rec.get("reclaimed")), ("number-stability",)
+            return False, ("number-stability",)
         if ev == "recover":
             # A killed recovery (outcome lost) says nothing; the healing
             # recovery completes, or the history was not kept.

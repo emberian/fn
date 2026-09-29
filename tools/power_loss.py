@@ -1316,11 +1316,22 @@ def bindings(port, got, acked, violations, attempted=0, observed=None, reclaimed
                 + list(observed))
         served = dict(over)
         rec["observed"] = len(observed)
+        # Per observed number (W7d-2): [number, Message-ID, kind], kind one
+        # of same (served with that Message-ID after recovery) / unlisted /
+        # reissued (served with another); the resilience adapter judges each
+        # under `number-stability' (unlisted is allowed once the reclaim ran).
+        rec["observed_numbers"] = []
         for n, mid in sorted(observed.items()):
             if n in served and served[n] != mid:
+                kind = "reissued"
                 violations.append("observed-number-reissued:%d:%s->%s" % (n, mid, served[n]))
-            elif n not in served and not reclaimed:
-                violations.append("observed-number-lost:%d:%s" % (n, mid))
+            elif n not in served:
+                kind = "unlisted"
+                if not reclaimed:
+                    violations.append("observed-number-lost:%d:%s" % (n, mid))
+            else:
+                kind = "same"
+            rec["observed_numbers"].append([n, mid, kind])
         rec["max_served"] = max(held) if held else 0
         rec["listed"] = len(over)
         if len(set(nums)) != len(nums):
@@ -1374,14 +1385,25 @@ def classify(got, phase, acked, ref, ref2, violations):
     else:
         allowed = lambda i, g: g == ref[i]
     c = {"served_ref": 0, "served_reclaimed": 0, "absent": 0, "other": 0}
+    # Per article (W7d-2): [index, kind] for each read, kind one of ref /
+    # reclaimed / absent / other; the resilience adapter turns each into its
+    # own `read' observation so the checker judges the prefix property per
+    # article (tools/resilience/adapters/power_loss.py), the counts above
+    # being their sums.
+    per = []
     for i, g in enumerate(got):
         if allowed(i, g):
-            c["served_ref" if g == ref[i] else "served_reclaimed"] += 1
+            kind = "ref" if g == ref[i] else "reclaimed"
+            c["served_" + kind] += 1
         elif g.startswith(b"430") and i not in acked:
+            kind = "absent"
             c["absent"] += 1
         else:
+            kind = "other"
             c["other"] += 1
             violations.append("%s-mismatch:%d:%r" % ("acked" if i in acked else "unacked", i, g[:60]))
+        per.append([i, kind])
+    c["per"] = per
     return c
 
 

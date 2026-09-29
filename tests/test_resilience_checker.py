@@ -779,6 +779,82 @@ class PowerLossBackendTests(unittest.TestCase):
         self.assertEqual(v.kind, "violation", v.to_json())
         self.assertEqual(v.explanation["rules"], ["number-stability"])
 
+    def test_per_article_outcomes_are_reads_and_the_prefix_is_judged_per_article(self):
+        """W7d-2: a record carrying the rig's per-article outcomes is judged
+        article by article: the same counts with the served unacknowledged
+        post AFTER an absent one in log order is no prefix (a violation the
+        counts alone cannot see), and an acknowledged article absent is one."""
+        import re
+        real = next(r for r in self.records if r["phase"] == "post" and r["acked"] >= 1
+                    and not r.get("second"))
+        # One acknowledged post, then two in flight at the cut: the store
+        # recovered two articles (the acknowledged one and the first in
+        # flight), the second in flight is absent.
+        rec = dict(real, acked=1, refused=0, served_ref=2, absent=1, other=0,
+                   binding=None, second=None, violations=[],
+                   recover_out=re.sub(r"articles=\d+", "articles=2", real["recover_out"]))
+        n, served = self.pl.attempted(rec), rec["served_ref"]
+        self.assertEqual((n, served), (3, 2))
+        per = [[i, "ref" if i < served else "absent"] for i in range(n)]
+        s, j, v = self.pl.check_record(dict(rec, per=per))
+        self.assertEqual(v.kind, "consistent", v.to_json())
+        reads = [r for r in j.of_kind("client") if r.get("event") == "read"]
+        self.assertEqual([(r["article"], r["result"]) for r in reads],
+                         [("post-{}".format(i + 1), "match" if i < served else "absent")
+                          for i in range(n)])
+        self.assertEqual([r for r in j.of_kind("client") if r.get("event") == "served-counts"], [])
+        swapped = [list(x) for x in per]
+        swapped[served - 1][1], swapped[served][1] = "absent", "ref"
+        s, j, v = self.pl.check_record(dict(rec, per=swapped))
+        self.assertEqual(v.kind, "violation", v.to_json())
+        self.assertIn("power-loss-prefix", v.explanation["rules_used"])
+        # The counts are unchanged; a per-article read is what no history
+        # survives (the prefix history dies at post-2 absent, the swapped
+        # one at the selection).
+        self.assertEqual(v.explanation["record"]["event"], "read")
+        gone = [list(x) for x in per]
+        gone[0][1] = "absent"
+        s, j, v = self.pl.check_record(dict(rec, per=gone))
+        self.assertEqual(v.kind, "violation", v.to_json())
+
+    def test_an_observed_number_is_judged_on_its_own(self):
+        """W7d-2: each number a reader was served before the cut is its own
+        `number` observation: the same article after recovery is consistent,
+        another article (reissued) a violation, unlisted a violation before
+        the reclaim and consistent from the reclaim on."""
+        mid = "<t17-000000@example.invalid>"
+        rec = dict(next(r for r in self.records if r["phase"] == "post" and r.get("binding")))
+        for kind, expected in (("same", "consistent"), ("reissued", "violation"),
+                               ("unlisted", "violation")):
+            with self.subTest(kind=kind):
+                s, j, v = self.pl.check_record(
+                    dict(rec, binding=dict(rec["binding"], observed_numbers=[[1, mid, kind]])))
+                self.assertEqual(v.kind, expected, v.to_json())
+                self.assertIn("observed", s.healing)
+                numbers = [r for r in j.of_kind("client") if r.get("event") == "number"]
+                self.assertEqual([(r["number"], r["msgid"], r["result"], r["article"],
+                                   r["reclaimed"]) for r in numbers],
+                                 [(1, mid, kind, "post-1", False)])
+                if expected == "violation":
+                    self.assertIn("number-stability", v.explanation["rules"])
+        after = dict(next(r for r in self.records
+                          if r["phase"] == "reclaim" and r.get("binding") and not r["violations"]))
+        s, j, v = self.pl.check_record(
+            dict(after, binding=dict(after["binding"], observed_numbers=[[1, mid, "unlisted"]])))
+        self.assertEqual(v.kind, "consistent", v.to_json())
+        self.assertTrue([r for r in j.of_kind("client") if r.get("event") == "number"][0]["reclaimed"])
+
+    def test_the_rig_classify_writes_per_article_outcomes_summing_to_its_counts(self):
+        import tools.power_loss as rig
+        ref = [b"220 a", b"220 b", b"220 c"]
+        got = [b"220 a", b"430 no such article", b"220 x"]
+        violations = []
+        c = rig.classify(got, "post", {0}, ref, list(ref), violations)
+        self.assertEqual(c["per"], [[0, "ref"], [1, "absent"], [2, "other"]])
+        self.assertEqual((c["served_ref"], c["served_reclaimed"], c["absent"], c["other"]),
+                         (1, 0, 1, 1))
+        self.assertEqual(violations, ["unacked-mismatch:2:b'220 x'"])
+
 
 class ContractRuleTests(unittest.TestCase):
     def test_every_rule_names_its_source(self):
