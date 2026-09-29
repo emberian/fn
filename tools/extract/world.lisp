@@ -66,7 +66,6 @@
 (include-book "../../books/replay-identity-index")
 (include-book "../../books/state-digest")
 (include-book "../../books/subject-id-buffer")
-(include-book "../../books/article-buffer")
 (include-book "../../books/owner-advance-carried")
 (include-book "../../books/owner-intent-carried")
 (include-book "../../books/owner-commit-ocl")

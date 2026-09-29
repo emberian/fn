@@ -65,6 +65,12 @@
   (gate nil) (roster (sb-thread:make-mutex :name "fn owner roster"))
   ;; The checkpoint publication's thread while one runs (fnn-owner-maybe-publish).
   (publisher nil)
+  ;; PRF-359's NEED (ACL2's fn-owner-space-need of the live configuration),
+  ;; kept under the owner mutex each time the owner computes it, so the
+  ;; free-space observation (statvfs) is taken off the mutex, before a
+  ;; quantum's gate entry (fnn-owner-space-preobserve): no I/O inside the
+  ;; semantic critical section.  NIL until the run's first computation.
+  (space-need nil)
   ;; The I/O loops that serve every reader and transit connection
   ;; (host/native/mux.lisp), and the round-robin cursor over them.
   (mux nil) (mux-next 0)
@@ -956,19 +962,38 @@ the disk is :full and every write is shed.  The host compares nothing."
                           (list (and (integerp free) (>= free 0) free) need))))
 
 (defun fnn-owner-space-observe-if-due (service)
-  "A :space event when ACL2 says one is due (fn-otm-space-due-p over the
-gate's value).  The caller holds the owner mutex (fn-owner-space-need reads
-the live configuration)."
-  (when (fnn-core 'fn-otm-space-due-p (fnn-owner-gate-sched-value service))
-    (fnn-owner-space-event service (fnn-owner-core 'fn-owner-space-need))))
+  "Under the owner mutex (fn-owner-space-need reads the live configuration):
+keep ACL2's NEED for the observation the next quantum takes before its gate
+entry (fnn-owner-space-preobserve).  No statvfs here: the observation is I/O
+and stays outside the semantic critical section (a greeting, a read, the
+checkpoint capture)."
+  (setf (fnn-owner-service-space-need service) (fnn-owner-core 'fn-owner-space-need)))
+
+(defun fnn-owner-space-preobserve (service &optional force)
+  "Off the owner mutex, before a quantum's gate entry: a :space event (statvfs,
+at the NEED the owner last computed) when ACL2 says one is due
+(fn-otm-space-due-p over the gate's value), or FORCE (a status render).  The
+observation precedes the quantum's admission, so a write the quantum admits
+is judged against it (PRF-359).  Nothing before the run's first NEED."
+  (let ((need (fnn-owner-service-space-need service)))
+    (when (and need (eq service *fnn-owner-time-service*)
+               (or force
+                   (fnn-core 'fn-otm-space-due-p (fnn-owner-gate-sched-value service))))
+      (fnn-owner-space-event service need))))
+
+(defun fnn-owner-space-prime (service)
+  "The run's first NEED (under the owner mutex) and its first observation
+(off it), before the listener serves."
+  (fnn-owner-serialized service nil
+                        (lambda () (fnn-owner-space-observe-if-due service)))
+  (fnn-owner-space-preobserve service t))
 
 (defun fnn-owner-sched-snapshot (service)
   "ACL2's scheduler value for `health' and `status'
 (books/owner-time-model.lisp fn-otm-health-lines, fn-otm-disk-lines): a clock
-event is appended on demand first, so the figures are at the render's time,
-and the free space is observed (PRF-359: health's `disk' state reads it).
-The caller holds the owner mutex."
-  (fnn-owner-space-event service (fnn-owner-core 'fn-owner-space-need))
+event is appended on demand first, so the figures are at the render's time.
+The free space (PRF-359: health's `disk' state reads it) is observed by the
+caller before it takes the owner mutex (fnn-owner-space-preobserve FORCE)."
   (fnn-owner-disk-event service :clock)
   (let ((gate (fnn-owner-service-gate service)))
     (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
@@ -1110,7 +1135,11 @@ nothing.  The caller holds the owner mutex.  Returns the number shed."
   "Run BODY under the owner mutex, admitted by the gate as CLASS."
   (let ((g (gensym "GATE")) (c (gensym "CLASS")) (w (gensym "WAITED"))
         (h (gensym "HELD")))
-    `(let* ((,g (fnn-owner-service-gate ,service))
+    `(let* ((,g (progn
+                  ;; PRF-359's observation, off the mutex, before the
+                  ;; quantum is admitted (fnn-owner-space-preobserve).
+                  (fnn-owner-space-preobserve ,service)
+                  (fnn-owner-service-gate ,service)))
             (,c ,class)
             (,w (fnn-owner-gate-enter ,g ,c))
             (,h (get-internal-real-time)))
@@ -1388,7 +1417,9 @@ here: its budget is part of its prepare (fn-owner-prepare)."
 ;; :refused.
 (defun fnn-owner-prepare-refusal-word (prepared)
   (case prepared
-    ((:duplicate :conflict :clock-unusable :refused :unaffordable :memberships) prepared)
+    ((:duplicate :conflict :clock-unusable :refused :unaffordable :memberships
+      :article-numbers-exhausted)
+     prepared)
     (:invalid :malformed)
     (t (fnn-fault "owner prepare returned ~a" prepared))))
 
@@ -1918,7 +1949,10 @@ reason before any Store call.  An ordinary article's groups are unchanged."
         (unless (eq prepared :prepared)
           (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation) :refused)
             (fnn-indeterminate "owner could not consume refused identity reservation"))
-          (fnn-refuse "canonical Store refused identity event")))
+          ;; The word names the refusal (:refused, or RFC 3977 section 6's
+          ;; :article-numbers-exhausted, books/owner-prepare-served.lisp
+          ;; fn-psrv-identity-refusal-kind).
+          (fnn-refuse "canonical Store refused identity event (~(~a~))" prepared)))
       (fnn-owner-publish-prepared service "identity"))))
 
 (defun fnn-owner-consumer-commit (service event)
@@ -2746,6 +2780,9 @@ leave only in its COMPLETE, after its barrier returned
        (setq limits (fnn-owner-core 'fn-owner-barrier-limits)
              ;; PRF-359: the space the next admissions are judged against.
              need (fnn-owner-core 'fn-owner-space-need))
+       ;; ... and kept for the observations taken off the mutex
+       ;; (fnn-owner-space-preobserve).
+       (setf (fnn-owner-service-space-need service) need)
        ;; PKT-828: the view the readers read while this batch is in flight.
        (fnn-owner-reader-capture :start)
        (multiple-value-setq (members uncertain deferred)
@@ -3038,7 +3075,7 @@ owner's recovery fence."
                 (fnn-store-fault (condition) (error condition))
                 (fnn-store-error () :refused))))
     (unless (member word '(:durable :duplicate :conflict :malformed :unaffordable
-                           :memberships
+                           :memberships :article-numbers-exhausted
                            :storage-failed :refused :clock-unusable :uncertain))
       (fnn-fault "owner bound commit returned ~a" word))
     word))
@@ -3718,6 +3755,11 @@ the crash keystone) and serving continues."
                          (store (fnn-owner-service-store service)))
                      (handler-case
                          (progn
+                           ;; The F row names the segment the capture rotated
+                           ;; to: its name is made durable first (journal/'s
+                           ;; fence, cut rotate-durable; io.lisp
+                           ;; fnn-log-make-durable), off the owner mutex.
+                           (fnn-log-make-durable (fnn-store-log store))
                            (unwind-protect
                                 (fnn-state-checkpoint-write
                                  store
@@ -3771,6 +3813,34 @@ the crash keystone) and serving continues."
   (fnn-owner-maybe-publish service))
 
 (defun fnn-owner-maybe-publish (service)
+  "One publication decision (fnn-owner-maybe-publish-quantum), and when it
+answers that the rotation's spare is missing, the spare made off the owner
+mutex (host/native/io.lisp fnn-log-prepare-spare: create, preallocate, fence
+in staging/) and the decision taken once more.  The rotation under the mutex
+is then a rename.  A spare that cannot be made is a failed publication:
+logged, serving continues."
+  (let ((store (fnn-owner-service-store service)))
+    (loop repeat 2 do
+      (unless (eq (fnn-owner-maybe-publish-quantum service) :needs-spare)
+        (return))
+      (handler-case (fnn-log-prepare-spare store)
+        ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
+        (fnn-store-error (e)
+          (fnn-err "CHECKPOINT auto failed: ~a" e)
+          (return))))))
+
+(defun fnn-log-rotation-ready-p (store)
+  "Whether the rotation the capture performs can run as a rename now: the
+active segment holds no record (ACL2's fn-lgc-rotate-needed-p: no rotation),
+or the spare of ACL2's next segment is prepared."
+  (let* ((log (fnn-store-log store))
+         (ks (fnn-log-kernel log)))
+    (or (not (fnn-core 'fn-lgc-rotate-needed-p ks))
+        (let ((spare (fnn-log-spare log)))
+          (and spare (eql (first spare)
+                          (fnn-core 'fn-lgs-next-segment (fnn-log-index log))))))))
+
+(defun fnn-owner-maybe-publish-quantum (service)
   "P3 owner publication (books/owner-checkpoint-open.lisp).  Between accepts
 and when a publication finishes, never inside a command: when
 fn-ock-publication-next says :due (fn-ock-publication-duep: the suffix since
@@ -3786,23 +3856,31 @@ commands and accepts continue; at most one publication runs at a time, and
 the stop joins it with the client workers.  The owner state is only read
 here, and written only through fn-owner-sco-publication-done.  The owner
 reads run as a :control quantum; the thread's registration is the roster's."
-  (fnn-owner-gated (service :control)
+  ;; The free space is observed once, off the owner mutex (statvfs is I/O),
+  ;; before the quantum that decides with it; the due path and the capture
+  ;; are handed the same reading.
+  (let ((free (fnn-disk-free-octets (fnn-owner-service-store service))))
+   (fnn-owner-gated (service :control)
     (unless (or (fnn-owner-service-stopping service)
                 (fnn-with-roster (service) (fnn-owner-service-publisher service)))
       ;; The budget override is nil but on a developer image with
       ;; FN_NATIVE_CHECKPOINT_BUDGET_TEST set; ACL2 chooses between it and
       ;; the profile's (fn-owner-sco-budget) on the due path and at the
-      ;; capture, so both see one budget.  The free space is observed once
-      ;; and handed to both.
-      (let ((free (fnn-disk-free-octets (fnn-owner-service-store service))))
+      ;; capture, so both see one budget.
+      (progn
         (when (eq (fnn-owner-core 'fn-owner-sco-due
                                   (fnn-checkpoint-budget-test-override nil) free)
                   :due)
           ;; The capture rotates the log (fnn-log-rotate, under
           ;; the owner mutex: no batch is open in a :control quantum), so
           ;; the captured history is exactly the closed segments' records
-          ;; and the checkpoint's F row names the new segment.  A failed
-          ;; rotation is a failed publication: logged, serving continues.
+          ;; and the checkpoint's F row names the new segment.  The
+          ;; rotation is a rename of the spare made off the mutex; without
+          ;; one this quantum answers :needs-spare and captures nothing.
+          ;; A failed rotation is a failed publication: logged, serving
+          ;; continues.
+          (unless (fnn-log-rotation-ready-p (fnn-owner-service-store service))
+            (return-from fnn-owner-maybe-publish-quantum :needs-spare))
           (let* ((store (fnn-owner-service-store service))
                  (position (handler-case (fnn-log-rotate store)
                              ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
@@ -3844,7 +3922,7 @@ reads run as a :control quantum; the thread's registration is the roster's."
                                      (unless made
                                        (sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*))))))))
                 (setf (fnn-owner-service-publisher service) thread)
-                (push thread (fnn-owner-service-workers service))))))))))
+                (push thread (fnn-owner-service-workers service)))))))))))
 
 ;;; PKT-101: reopen `[log] path' when ACL2 says a SIGHUP is due
 ;;; (books/owner-log-reopen.lisp fn-olr-decide, through fn-owner-log-reopen).
@@ -4065,7 +4143,8 @@ fn-osd-drain-stops-by-the-deadline).  Nothing here compares times or counts."
                        (if (fnn-owner-service-stopping service)
                            (return-from fnn-owner-drain-service nil)
                          (error condition)))))
-           (s0 (fnn-owner-sched-snapshot service))
+           (s0 (progn (fnn-owner-space-preobserve service t)
+                      (fnn-owner-sched-snapshot service)))
            (poll (fnn-core 'fn-osd-poll-ms))
            (released nil))
       (unless (and (integerp poll) (plusp poll))
@@ -4074,7 +4153,8 @@ fn-osd-drain-stops-by-the-deadline).  Nothing here compares times or counts."
       (loop
         (when (fnn-owner-service-stopping service) (return))
         (destructuring-bind (awaiting unsent) (fnn-owner-drain-observation service)
-          (let ((s (fnn-owner-sched-snapshot service)))
+          (let ((s (progn (fnn-owner-space-preobserve service t)
+                          (fnn-owner-sched-snapshot service))))
             (destructuring-bind (step released2 &rest more)
                 (fnn-call 'fn-osd-drain-next s0 s limits awaiting unsent released)
              (declare (ignore more))
@@ -4123,6 +4203,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                   ;; readings are events on this service's gate from here.
                   (fnn-owner-journal-open service)
                   (setq *fnn-owner-time-service* service)
+                  ;; PRF-359: the first NEED and observation, before serving.
+                  (fnn-owner-space-prime service)
                   ;; PRF-161: the listener this run binds decides the default
                   ;; of every absent exposure row (fn-exp-address-publicp).
                   (unless (member (fnn-owner-action 'fn-owner-exposure-install-set
