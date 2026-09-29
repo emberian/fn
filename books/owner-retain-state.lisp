@@ -27,6 +27,15 @@
                   (fn-owner-retain-carry state)))
   :hints (("Goal" :in-theory (enable fn-owner-retain-carry))))
 
+; Actual host guard checkpoints have already opened boundp/get-global to
+; the global table. Preserve the complete association, hence both binding
+; and stored owner value, without reopening the carry writer.
+(defthm fn-owner-retain-carry-put-frames-global-association
+  (implies (not (equal key 'fn-owner-retain-carry))
+           (equal (assoc-equal key (nth 2 (fn-owner-retain-carry-put carry state)))
+                  (assoc-equal key (nth 2 state))))
+  :hints (("Goal" :in-theory (enable fn-owner-retain-carry-put put-global))))
+
 ; The actual caller's later global puts require the returned state's
 ; shape. Export this rule while the setter stays closed.
 (defthm fn-owner-retain-carry-put-preserves-state-p1
