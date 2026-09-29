@@ -31,12 +31,14 @@
 ; rebuild's count and last transaction id; the open has the checkpoint's
 ; count (fn-sco-freeze-of-capture-carries-the-count) and its last record.
 ; Cost of fn-sfi-extend-open beyond the folds' resume: O(|Q|) record checks
-; + O(configuration) + O(1).  Not changed here (named in the lane's record):
-; the resume's check of the paused node and the tries it rebuilds
-; (fn-rii-sco-cpr-resume), and fn-stx-index-of-store over the opened store,
-; all inherited from section 7 of the twin book; and the one node check the
-; empty-suffix path keeps (fn-sco-cpr-finish), because a guard does not
-; cross a host call.
+; + O(configuration) + O(1).  Also dropped: the twin's fn-stx-index-of-store
+; over the opened store, which parses every retained article's payload
+; against the empty keyring for the index that
+; fn-stx-index-of-store-without-a-keyring proves empty.  Not changed here
+; (named in the lane's record): the resume's check of the paused node and
+; the tries it rebuilds (fn-rii-sco-cpr-resume), inherited from section 7 of
+; the twin book; and the one node check the empty-suffix path keeps
+; (fn-sco-cpr-finish), because a guard does not cross a host call.
 
 (in-package "ACL2")
 
@@ -233,7 +235,8 @@
 ; Section 3.  The finalize from the carried verdict, and the fused entry.
 
 ; fn-rii-sco-finalize-configured with the suffix walk in place of the history
-; walk and fn-sfi-sn-statep-carried in place of fn-rii-sn-statep-carried.
+; walk, fn-sfi-sn-statep-carried in place of fn-rii-sn-statep-carried and the
+; empty index in place of the parse of every payload.
 ; COUNT and NEXT are the prefix's length and the transaction bound it left.
 (defun fn-sfi-finalize-carried (replayed c configs count next suffix frontier)
   (declare (xargs :guard (and (natp count) (natp next)
@@ -267,7 +270,10 @@
                               (fn-cpo-install
                                (fn-sn-update-replayed
                                 seed files advanced
-                                (fn-stx-index-of-store (fn-stx-store advanced) nil)
+                                ; the open has no keyring: its index IS the
+                                ; empty one (fn-stx-index-of-store-without-a-
+                                ; keyring), so no article payload is parsed
+                                (fn-stx-index-empty)
                                 identity)
                                (fn-cnode-make advanced config) configs)
                               (fn-cp-nth 1 consumer))
@@ -301,7 +307,8 @@
                                            suffix frontier)
                   (fn-rii-sco-finalize-configured replayed c configs frontier)))
   :hints (("Goal" :in-theory (e/d (fn-sfi-finalize-carried
-                                   fn-rii-sco-finalize-configured)
+                                   fn-rii-sco-finalize-configured
+                                   fn-stx-index-of-store-without-a-keyring)
                                   (fn-sfi-historyp-extend fn-rii-observed-historyp
                                    fn-rii-observed-historyp-is-observed-historyp
                                    fn-sfi-sn-statep-carried fn-rii-sn-statep-carried
