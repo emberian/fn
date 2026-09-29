@@ -182,13 +182,24 @@ class ExecuteTests(unittest.TestCase):
         self.assertLess(text.index("== " + check_steps.step_name(writer)),
                         text.index("-- started"))  # alone, before the fan-out
 
+    def test_a_git_read_is_replayed_to_key_the_step(self):
+        probe = [PY, "-c", f"import subprocess; print(subprocess.run(['git', '-C', {str(ROOT)!r}, "
+                           "'rev-parse', 'HEAD'], capture_output=True, text=True).stdout)"]
+        plan(self.steps, probe)
+        execute(self.steps, self.cache)
+        self.assertTrue(execute(self.steps, self.cache)[2][0].get("cached"))
+        entry = json.loads(next((self.cache / "steps").iterdir()).read_text())
+        self.assertEqual(entry["inputs"]["g"][0][:2], [str(ROOT), ["rev-parse", "HEAD"]])
+
     def test_git_replay_is_for_reads_only(self):
         self.assertTrue(check_steps.git_replayable(["rev-parse", "HEAD"]))
         self.assertTrue(check_steps.git_replayable(["--no-pager", "log", "-1", "--", "x"]))
         self.assertFalse(check_steps.git_replayable(["add", "-f", "x"]))
         self.assertFalse(check_steps.git_replayable(["cat-file", "--batch"]))
         self.assertFalse(check_steps.git_replayable(["check-ignore", "--stdin"]))
-        self.assertFalse(check_steps.git_replayable(["-C", "/elsewhere", "log"]))
+        self.assertEqual(check_steps.git_command("/a", ["-C", "b", "log", "-1"]),
+                         ["/a/b", ["log", "-1"]])
+        self.assertFalse(check_steps.git_replayable(["-c", "core.pager=x", "log"]))
         self.assertFalse(check_steps.git_replayable(["config", "user.name", "x"]))
         self.assertTrue(check_steps.git_replayable(["config", "--get", "user.name"]))
 

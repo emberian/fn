@@ -232,6 +232,15 @@ def git_output(cwd: str, argv: list[str]) -> str:
     return hashlib.sha256(bytes([done.returncode & 0xFF]) + done.stdout).hexdigest()
 
 
+def git_command(cwd: str, argv: list[str]) -> list:
+    """[cwd, argv] with leading `-C DIR` options folded into cwd."""
+    argv = list(argv)
+    while len(argv) >= 2 and argv[0] == "-C":
+        cwd = os.path.normpath(os.path.join(cwd, argv[1]))
+        argv = argv[2:]
+    return [cwd, argv]
+
+
 def git_replayable(argv: list[str]) -> bool:
     if any(word in ("-C", "-c") for word in argv):
         return False
@@ -285,8 +294,9 @@ def read_trace(trace_dir: Path) -> dict:
             if kind in ("r", "w", "l", "s"):
                 trace[kind].add(record[1])
             elif kind == "g":
-                if [record[1], record[2]] not in trace["g"]:
-                    trace["g"].append([record[1], record[2]])
+                command = git_command(record[1], record[2])
+                if command not in trace["g"]:
+                    trace["g"].append(command)
             elif kind == "x":
                 trace["x"].append(record[1])
     return trace
