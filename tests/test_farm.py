@@ -700,6 +700,35 @@ class WaitTests(unittest.TestCase):
                 else:
                     self.assertEqual(MIRRORS, [])
 
+    def test_a_no_publish_run_publishes_nowhere(self):
+        # tooling-obstructions: a measurement run seeded both caches.
+        fake = Fake(["0"], log=self.LOG)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            (root / "books").mkdir()
+            with driving(fake, root / "cache"):
+                identifier = farm.submit("hbox", root, [], jobs=2, timeout_seconds=60,
+                                         affected_by=[], remote=Path("/tank/fn/tree"),
+                                         no_publish=True)
+            self.assertIn("--no-publish", fake.runner_script())
+            self.assertTrue(farm.run_record(root, identifier)["no_publish"])
+            del MIRRORS[:]
+            with mock.patch.object(farm.certs, "publish",
+                                   lambda *a, **k: self.fail("published locally")), \
+                    driving(fake, root / "cache"), \
+                    contextlib.redirect_stdout(io.StringIO()) as out:
+                farm.wait("hbox", identifier, root, poll=1, timeout_seconds=60)
+            self.assertEqual(MIRRORS, [])
+            self.assertFalse([s for s in fake.scripts() if "--origin-kind run publish" in s])
+            self.assertIn("not published to any cache", out.getvalue())
+        with mock.patch.object(farm, "submit", return_value="run-np") as submitted, \
+                mock.patch.object(farm, "honour_reservation"), \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(farm.main(["submit", "hbox", "books/x", "--jobs", "2",
+                                        "--no-publish"]), 0)
+        self.assertTrue(submitted.call_args.kwargs["no_publish"])
+
     def test_wait_returns_the_remote_exit_code(self):
         fake = Fake(["1"], log=self.LOG)
         with tempfile.TemporaryDirectory() as directory:

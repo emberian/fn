@@ -65,60 +65,28 @@ aging policy the same trace submits it on the third contact tick. The rest of
 the book is the reachable witness for each keystone in
 `books/scheduler-invariants.lisp` and one `must-fail` per hypothesis.
 
-`tests/test_scheduler.py` tests only what the host owns: the bounded contact
-plan reader, the durable decision log's trailer and sequencing, and the order
-the driver calls the `:program` wrappers in -- select, durable decision,
-durable attempt, commit -- with a fake host, so that no test here re-implements
-a decision `books/scheduler.lisp` makes. `tests/bp-dtn7/fn_sender_lab.py`
-runs the same driver against a two-window contact plan with an expiry, using
-`MockBpa` when the pinned dtn7-rs build is unavailable; that mock transmits no
-bundle and has no peer, and a report using it says so rather than claiming an
-exchange.
-
 ## Crash campaign
 
-`tests/campaign/` replaces hand-enumerated process-death cuts with a table
-generated from the host itself. `cuts.py` reads `tools/run_store.py`,
-`tools/workflow_journal.py`, `tools/receipt_journal.py` and
-`tools/run_bp_receive.py`, collects every `faults.at("<name>")` injection site
-with the write path that encloses it, and refuses to run when the declared
-table and the injector disagree: a fault point added to a durable path is
-automatically a new cut, and a removed one is a loud failure rather than a
-silently dropped check. Each cut names the model crash point it corresponds
-to -- the `fn-sf-crash` frontier and record choices of `books/store-files.lisp`
-for the store, the `fn-journal-crash` slot choices of `books/journal.lisp` for
-the two journals -- and a cut the model cannot express carries that gap in the
-table instead of being skipped. `python3 tests/campaign/cuts.py` prints the
-table, the pairs, the cuts no scenario reaches with the reason, and the model
-gaps.
-
-`campaign.py` runs each (scenario, cut) pair: it copies a prepared scenario
-template, runs the real entry point (`run_store.command_post`,
-`run_bp_receive.receive_bpa_request`, `WorkflowJournal.persist_enqueue`) in its
-own process group, SIGKILLs that group at the named cut, and reopens the store
-and journals through the real recovery path. It then checks that previously
-acknowledged content and its pins are intact; that the interrupted operation
-is absent or complete and never partial, against the crash choice the cut
-declares; that a retry reaches exactly the state a run with no kill reaches;
-that the receipt ADU regenerates byte-identically, including against bytes the
-killed process had already produced; and that what the host had told the caller
-or the transport before the kill is consistent with the recovered state -- a
-receipt acknowledged without a durable record is a failure, and a pending
-receipt intent must be reported as needing explicit recovery rather than
-guessed. A failing pair is recorded as a minimal trace: scenario, cut,
-durable-state digest before and after the kill, ACL2 replay result, the
-pre-kill observation, and the checks that failed.
-
-Run it with `python3 tests/campaign/campaign.py [--quick] [--json report.json]`
-or as `python3 -m unittest tests.campaign.test_campaign`; `FN_CAMPAIGN=quick`
-selects the marked subset for iteration. The subset is the iteration loop, not
-the gate.
+`tests/campaign/` holds the native image's crash campaigns (the Python host's
+campaign, `cuts.py` and `campaign.py`, retired with it in python-diet T5).
+`native_cuts.py` is the cut table: every `fnn-at` cut of a native write path,
+each naming the `:cut` step of the ACL2 program that transcribes it
+(`books/byte-store-programs.lisp`, `books/store-log-route-programs.lisp`), and
+`tools/native_program_check.py` (part of `make check`) checks, per program,
+that the host function's syscalls, observations and cuts in source order equal
+the program's steps. `native_operator_campaign.py` kills the developer image at
+each cut through the public operator entry, reopens the store through the
+owner's recovery, and checks the acknowledged content, the interrupted
+operation and the retry against the crash choice the cut declares;
+`native_production_kill.py` SIGKILLs the production image by pid at measured
+instants of a POST stream, with no selector at all, and judges every reread.
+Both run on hbox (`tools/hbox_native.sh`; their `test_native_*` modules).
 
 What the campaign does not show. It kills a process; the operating system page
 cache survives, so nothing here is evidence about power loss, about a drive
 cache that discards a `F_FULLFSYNC` acknowledgement, or about torn sectors and
-partially written blocks. It does not corrupt bytes: `tests/test_store_corruption.py`
-and `specs/store-fault-matrix.md` own that axis. It uses a single writer on one
+partially written blocks. It does not corrupt bytes: `specs/store-fault-matrix.md` and
+`tools/power_loss.py` own that axis. It uses a single writer on one
 host with a held lock, so it says nothing about concurrent writers or about a
 filesystem losing cached metadata across a mount. The journals' cuts are
 expressed by analogy with `fn-journal-crash`: no theorem binds an FNWF or FNRJ
@@ -127,8 +95,8 @@ contract and the model's shape, not against a proved correspondence.
 
 ## The integration labs, and `make labs`
 
-Two integration labs were dead on `dev` for a day and every `make check` was
-green for all of it. `receive_bpa_request` gained a required keyword-only
+Two integration labs (both since retired with the Python host) were dead on
+`dev` for a day and every `make check` was green for all of it. `receive_bpa_request` gained a required keyword-only
 `bundle` on 2026-09-19; the callers in `tools/` were updated, two in `tests/`
 were not; the four-node lab — the only end-to-end evidence for the
 carried-media and crash-recovery rows of M3 — died at its first receive, and
@@ -149,30 +117,33 @@ able to run one says so.
 
 | Lab | Tier | Cost | Needs | What it carries |
 | --- | --- | --- | --- | --- |
-| `four-node` (`tests/bp-dtn7/run_four_node_lab.py`) | quick | ~65 s, one ACL2 | ACL2 and the certificates under its nine host files | 22 assertions over four nodes: non-overlapping contacts, a carried-media hop, a SIGKILLed relay, a lost receipt regenerated, an attempt that expires, a reordered duplicate pair |
 | `tcpcl` (`tools/tcpcl_lab.py`) | local | minutes, once the image exists | `build/fn-host` (`sh tools/build_native_host.sh`, which needs a certified tree) | two fn native hosts over TCPCLv4 on loopback: transfers both ways, a refused MRU, keepalives, a SIGKILL inside a transfer, a whole-bundle ADU, the trace folded back through the image |
-| `ltp` (`tests/ltp/run_fn_ltp_lab.py`) | box | ~2 min on the box that holds ION | the pinned ION build (`tests/ltp/pin.json`; `/tank/fn/ltp` on hbox) with both nodes started | fn's request ADU across a real BP-over-LTP link and back into fn's own acceptance |
-| `deploy` (`tools/deploy_gate.py`) | box | tens of minutes | `--host`, and a certification if the box holds no gate for the tree | one commit on a machine that is not the laptop, serving a real client, SIGKILLed mid-session, reopened through the real recovery path |
-| `twonode` (`tools/twonode_gate.py`) | box | tens of minutes | `--host` | two fn nodes: independence, an `IHAVE` offer A to B, B SIGKILLed mid-transfer and reread |
 | `inn` (`tools/inn_lab.py`) | box | about a minute | `--host` with the pinned INN (`tests/inn/pin.json`; `/tank/fn/inn/2.7.4` on hbox) and `--native-image` (D07) | the native fn owner against a real InterNetNews: fn's feed into innd, innfeed into fn, the octets each serves, duplicates and loops both ways, a cut on each side |
-| `scale` (`tools/scale_gate.py`) | box | hours | `--host` | the store size at which a post stops returning and a recover becomes an outage, and what a reader pays per command |
 
-Four more rows are **harness dry runs**, printed in their own section and
-never mixed with the labs: `deploy-dry`, `twonode-dry`, `scale-dry` and
-`inn-dry` drive the real gate scripts through bash on this machine with `HOME`
-redirected, fakes over the entry points and no ssh. They establish that the
-harness parses, sequences, classifies and renders, and **nothing whatever
-about fn**. Together they cost about 75 s and they are what catches a gate
-script that no longer runs — `tests/test_inn_lab.py` was red on `dev` on
-2026-09-21 for exactly that reason, an `IndexError` on an `nnrpd` pid the fake
-never wrote.
+`tools/deploy_gate.py` (one commit shipped to a box, its native image
+`--native-image` serving an independent client, the three outcomes, a
+SIGKILL mid-session, the restart and the reread) is run by hand on a box; its
+dry run is the `deploy-dry` row. The two-node gate's questions are
+`tests/test_native_peering.py`'s (the receiver killed mid-`IHAVE` among
+them), the dtn7 labs under `tests/bp-dtn7/` that drive the native image
+(`run_mission_four_node.py`, `run_fn_bp_interop.py`) run by hand, and scale is
+`tools/scale_curve.py`'s.
+
+Two more rows are **harness dry runs**, printed in their own section and
+never mixed with the labs: `deploy-dry` and `inn-dry` drive the real gate
+scripts through bash on this machine with `HOME` redirected, a stand-in
+native image and no ssh. They establish that the harness parses, sequences,
+classifies and renders, and **nothing whatever about fn** -- and they are
+what catches a gate script that no longer runs: `tests/test_inn_lab.py` was
+red on `dev` on 2026-09-21 for exactly that reason, an `IndexError` on an
+`nnrpd` pid the fake never wrote.
 
 ```sh
-make labs-quick        # four-node plus the four dry runs, about 2.5 minutes
+make labs-quick        # the two dry runs, about a minute
 make labs              # the above plus every lab runnable off a box
 python3 tools/labs.py --tier box --host hbox --commit dev
 python3 tools/labs.py --list
-python3 tools/labs.py --only four-node --json build/labs/report.json
+python3 tools/labs.py --only tcpcl --json build/labs/report.json
 ```
 
 Nothing here is wired into `make check`. `make check` is seconds and runs
@@ -193,7 +164,7 @@ imported module attribute, an imported function, a constructor, or
 `self.<method>` inside a class whose bases are all in the corpus — and counts
 what it declined rather than guessing. On the tree at the time it landed it
 resolved 3195 of 22719 call sites with 19 undecidable (`f(*rest)`,
-`f(**rest)`), and it reports the missing `bundle` at
+`f(**rest)`), and it reported the missing `bundle` at
 `tests/ltp/run_fn_ltp_lab.py` naming `tools/run_bp_receive.py:113` as the
 definition. It fails on any finding.
 
@@ -201,12 +172,10 @@ definition. It fails on any finding.
 reads, and fails on unwaived mismatches: the `ld`ed files under `host/`, and **ACL2 forms
 spelled inside Python string literals**. The second is the sharper target and
 the one neither language can see. `d484e9a` gave `fn-served-open` a seventh
-formal and updated both Lisp callers; `tests/test_served_differential.py:57`
-spells that call as text, so all seven of its tests raised `FN-SERVED-OPEN
-takes 7 arguments ... given 6` instead of comparing bytes, and the bridge host
-and `books/served` had no divergence check running for a day. That call now
-ends in `(fn-auth-open-config)`, exactly as `host/reader-host.lisp:137` passes
-it, and the seven tests pass again.
+formal and updated both Lisp callers; a Python differential test (retired
+with the Python host) spelled that call as text, so all seven of its tests
+raised `FN-SERVED-OPEN takes 7 arguments ... given 6` instead of comparing
+bytes, and no divergence check ran for a day.
 
 It is deliberately not over `books/`: a book's arity is ACL2's own business,
 `certify-book` refuses a wrong one, and what let the `books/owner` break
@@ -289,8 +258,8 @@ not built, recorded with the observed reply. The rest were waivers for a known
 defect, and they are named individually in
 [`planning/lanes/HANDOFF-w11-lab-gate.md`](../planning/lanes/HANDOFF-w11-lab-gate.md).
 
-The structural repair was in `tools/deploy_gate.py`, which `twonode_gate`,
-`scale_gate` and `inn_lab` all subclass. `not_exercised()` builds a step with
+The structural repair was in `tools/deploy_gate.py`, which `inn_lab`
+subclasses (as the retired two-node and scale gates did). `not_exercised()` builds a step with
 `rc=None`, and `Step.failed` cannot see one, so the gate exits 0; every
 "the server did not restart after recovery", "the lab produced no result",
 "the profile pass printed no JSON" was recorded that way. There is now a
@@ -337,12 +306,7 @@ held box lock keeps everything; a box with no `/proc` keeps everything; the
 newest gates of each tree and any revision git does not know are kept) is
 exercised against listings the test writes, and the removal guards -- a
 non-stale verdict, and six names that could widen an `rm -rf` -- are shown to
-raise with nothing sent to the box. `tests/test_feed.py` covers the two host
-mechanisms `tools/run_owner.py` imports from `tools/feed_wire.py`: the FNFD
-journal's layout, including a torn tail ending the record stream, and RFC 3977
-section 3.1.1 dot stuffing. It used to drive `tools/run_feed.py`, which was
-retired on 2026-09-21; the feed scenarios it held are `tools/twonode_gate.py`'s
-`scenario_owner_feed` and `scenario_feed_restart` against a real fn node.
+raise with nothing sent to the box.
 
 ## Evidence record
 
@@ -379,12 +343,10 @@ So the two halves of a run are treated differently.
   The archived manifest's `archived_from` field says which machine held it
   and where, so a log that still exists can be found while it lasts.
 
-Three tools write the archive, at the three points a manifest reaches this
+Two tools write the archive, at the two points a manifest reaches this
 laptop: `tools/certify_books.py` when a local run finishes (every exit,
-including a refusal before ACL2 starts), `tools/farm.py wait` when a farm
-run's evidence is fetched, and `tools/verdict.py` when a gate is harvested --
-the gate manifest is carried home in the harvest's JSON rather than left on
-the box for a reaper. The directory is ignored by default and a manifest is
+including a refusal before ACL2 starts), and `tools/farm.py wait` when a farm
+run's evidence is fetched. The directory is ignored by default and a manifest is
 tracked with `git add -f`, which `python3 tools/evidence_manifests.py sync
 --add` does for exactly the runs a tracked file cites. Committing a manifest
 and citing its run are therefore the same act.
@@ -409,7 +371,7 @@ does not install dependencies or start a service.
 
 It then runs `tools/host_check.py`, which is the one part of `make check` that
 runs ACL2, and only when `FN_ACL2` names one: a host file is never certified,
-so nothing else reads it until a bridge `ld`s it at start-up. Each host file
+so nothing else reads it until an image build `ld`s it. Each host file
 gets a fresh ACL2 that loads that file and nothing else, and must reach the
 `ACL2 !>` prompt with no error reported while it loaded — the dynamic half of
 the `host_names` lint in `tools/ledger.py`, which reports the same dependency
@@ -430,7 +392,7 @@ for repository paths and deliberately does not read `build/`; this tool
 reads nothing else.
 
 Three static checks run beside it, none of them needing ACL2.
-`tools/transcribe_check.py` is the crash model's cut correspondence;
+`tools/native_program_check.py` is the crash model's cut correspondence;
 `tools/teeth_check.py --summary` is the teeth audit's static half, which
 reports and never fails; and `tools/session_depth.py` checks that every
 session reaches the level its callee wants. That last one exists because the

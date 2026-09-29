@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The v0 matrix's pan and Thunderbird client phase, on the execution host.
+"""The pan and Thunderbird client phase (tests.test_native_reader_clients), on the execution host.
 
     python3 tools/reader_clients_phase.py --image IMAGE --work DIR
         [--group G] [--thunderbird BIN] [--openssl-prefix P]
@@ -29,7 +29,7 @@ Every line of 2 and 4 is appended to the client's wire log in
 tools/nntp_wire_log.py's format (XREDEEM PASS and AUTHINFO PASS arguments
 redacted), and the client's own transcript between `--- action NAME`
 markers.  The rows are read from those reply lines by
-`v0_matrix.client_wire_outcomes`; nothing here decides a verdict.  Prints
+`client_wire_outcomes` below; nothing here decides a verdict.  Prints
 one JSON object with the log paths, their SHA-256 and the per-client driver
 results.  The owner is stopped (SIGTERM) before it returns.
 """
@@ -591,7 +591,6 @@ def main(argv=None):
     finally:
         report["owner_exit"] = node.stop()
     try:
-        from v0_matrix import client_wire_outcomes
         for client, entry in report["clients"].items():
             entry["outcomes"] = client_wire_outcomes(Path(entry["log"]).read_text(
                 encoding="utf-8"))
@@ -599,6 +598,99 @@ def main(argv=None):
         report["outcomes_error"] = "{}: {}".format(type(error).__name__, error)
     print(json.dumps(report, default=str))
     return 0 if not report.get("error") else 3
+
+
+# The outcome classes of an NNTP status line (RFC 3977 section 3.2): these
+# three codes mean the node could not tell, the uncertain outcome.
+ACCEPTED, REFUSED, UNCERTAIN = "accepted", "refused", "uncertain"
+FAULT_CODES = frozenset(("400", "403", "503"))
+
+
+def client_wire_outcomes(text: str) -> dict:
+    """From a client wire log with `--- action NAME` markers: the node's replies.
+
+    tools/reader_clients_phase.py writes the log (its own TLS prelude and
+    check, and the client's transcript between markers).  Per action:
+    `read` is the node's first reply to the client's first ARTICLE (or BODY)
+    in the read action; `reply`, `post` and `cancel` are the reply line that
+    ended the client's first POST in that action (the line after 340, or
+    the refusal of POST itself); `redeem` and `login` are the prelude's
+    replies to XREDEEM and to the prelude's AUTHINFO PASS, `client_login`
+    the node's first 281 inside the client's own actions.  Nothing here
+    judges an article; it only reads reply lines.
+    """
+    # A client with several connections (pan keeps two) interleaves them in
+    # one log; a reply is only ever read from the connection that sent the
+    # command.  `conns` runs parallel to each segment's lines.
+    segments, conns, name = {}, {}, None
+    for raw in text.splitlines():
+        parts = raw.split(" ", 2)
+        if len(parts) < 3:
+            continue
+        line = parts[2]
+        if line.startswith("--- action "):
+            name = line[len("--- action "):].strip()
+            segments.setdefault(name, [])
+            conns.setdefault(name, [])
+            continue
+        if name is not None and line[:3] in ("C: ", "S: "):
+            segments[name].append(line)
+            conns[name].append(parts[1])
+
+    def same(key, index):
+        """The lines after `index` in segment `key` on that line's connection."""
+        lines, tags = segments.get(key, []), conns.get(key, [])
+        return [x for x, tag in zip(lines[index + 1:], tags[index + 1:]) if tag == tags[index]]
+
+    def after(key, predicate):
+        for index, line in enumerate(segments.get(key, [])):
+            if predicate(line):
+                return next((x[3:] for x in same(key, index) if x.startswith("S: ")), None)
+        return None
+
+    def post_reply(key):
+        for index, line in enumerate(segments.get(key, [])):
+            if line == "C: POST":
+                replies = [x[3:] for x in same(key, index) if x.startswith("S: ")]
+                if not replies:
+                    return None
+                if replies[0].startswith("340"):
+                    return replies[1] if len(replies) > 1 else None
+                return replies[0]
+        return None
+
+    out = {"actions": sorted(segments)}
+    out["read"] = after("read", lambda x: x.startswith(("C: ARTICLE", "C: BODY")))
+    for key in ("reply", "post", "cancel"):
+        out[key] = post_reply(key)
+    # slrn --create: the node's answer to each LIST the client sent while
+    # building its newsrc (LIST SUBSCRIPTIONS is the first-run one).
+    out["create"] = {line[3:]: after("create", lambda x, l=line: x == l)
+                     for line in segments.get("create", []) if line.startswith("C: LIST")}
+    redeem = [x[3:] for x in segments.get("redeem", []) if x.startswith("S: ")]
+    out["redeem"] = redeem[1:3]
+    out["login"] = after("seed", lambda x: x.startswith("C: AUTHINFO PASS"))
+    out["client_login"] = next(
+        (x[3:] for key in ("read", "reply", "post", "cancel-fetch", "cancel")
+         for x in segments.get(key, []) if x.startswith("S: 281")), None)
+    return out
+
+
+def reply_verdict(status: str) -> str:
+    """The outcome class of one NNTP status line, and nothing more.
+
+    RFC 3977 section 3.2.  1xx/2xx/3xx: the server did the thing or is ready
+    to.  4xx/5xx: the server decided not to -- except the three codes that
+    mean it could not tell, which are the uncertain outcome.  Anything that is
+    not a status line at all (a reset, an EOF, a timeout) is uncertain too:
+    the node did not say.
+    """
+    code = (status or "").strip()[:3]
+    if not code.isdigit():
+        return UNCERTAIN
+    if code in FAULT_CODES:
+        return UNCERTAIN
+    return ACCEPTED if code[0] in "123" else REFUSED
 
 
 if __name__ == "__main__":

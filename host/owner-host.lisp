@@ -187,6 +187,10 @@
 (include-book "../books/owner-credits")
 ; lane health-truth-journal (PKT-872, PRF-360): the journal writer never keeps a torn line.
 (include-book "../books/owner-time-journal-writer")
+; lane time-bars (PRF-384): the committer's ledger of the request in flight
+; (its generation, the connections told before its late completion), a
+; read's page-dependency outcome, the restart's clock domain.
+(include-book "../books/owner-time-bars")
 (include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
@@ -1022,11 +1026,16 @@
          (state (f-put-global 'fn-owner-connection-bound
                               (and (equal (car d) :hold) (fn-cbud-held-bound d))
                               state))
-         ;; The articles in flight the dynamic space holds (books/heap-store-
-         ;; figure.lisp fn-heap-article-slots), which every served read admits
-         ;; within (fn-owner-chunk-span-at).
+         ;; The COUNT of articles in flight every served read admits within
+         ;; (fn-owner-chunk-span-at): the default configuration's connections
+         ;; (*fn-heap-article-slots-most*).  The OCTETS they hold are the
+         ;; credits' (below, books/owner-credits.lisp): an article mid-body
+         ;; holds its worst case (fn-heap-article-reserve-octets), a complete
+         ;; one its size (fn-mca-sub-charge), so a queued short POST no
+         ;; longer holds a large profile's whole reserve (lane credits-stall,
+         ;; PKT-887).
          (state (f-put-global 'fn-owner-article-slots
-                              (fn-heap-article-slots profile)
+                              *fn-heap-article-slots-most*
                               state))
          ;; Lane credits: the same figure is the credit budget
          ;; (fn-mca-initial-funds-exactly-the-articles), from which every
@@ -1961,9 +1970,10 @@
              ;; Lane credits: the submission's credit follows it from its
              ;; connection to the committer (fn-mca-take; :open until the
              ;; batch is appended, fn-owner-credits-seal).
+             (charge (fn-mca-sub-charge sub (fn-owner-credit-reserve state)))
+             (state (f-put-global 'fn-owner-credit-taken charge state))
              (state (fn-owner-put-credits
-                     (fn-mca-take (fn-owner-credits state) (fn-own-sub-id sub)
-                                  (fn-owner-credit-reserve state))
+                     (fn-mca-take (fn-owner-credits state) (fn-own-sub-id sub) charge)
                      state)))
         (value (fn-apc-take-result sub (car tk) intent))))))
 
@@ -2626,7 +2636,10 @@
       (let* ((state (f-put-global 'fn-owner-output (fn-otm-shed-reply s) state))
              ;; Lane credits: nothing stored, its taken credit comes back.
              (state (fn-owner-put-credits
-                     (fn-mca-untake (fn-owner-credits state) (fn-owner-credit-reserve state))
+                     (fn-mca-untake (fn-owner-credits state)
+                                    (if (boundp-global 'fn-owner-credit-taken state)
+                                        (f-get-global 'fn-owner-credit-taken state)
+                                      0))
                      state)))
         (value :shed)))))
 

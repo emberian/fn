@@ -106,9 +106,12 @@ IMAGES = {
 # A module that needs a different first choice for a variable (module stem,
 # variable) -> images in order: 7 of test_bp_service_native's 17 cases need
 # fault-injection switches the non-developer DTN image refuses (image-strip,
-# 2026-09-28), so it takes the dtn-developer image when that is built.
+# 2026-09-28), so it takes the dtn-developer image when that is built; 2 of
+# test_bp_receive_integrity_native's 4 likewise (FN_BP_TEST_DELIVER_FAULT,
+# FN_IMMUTABLE_PUBLISH_TEST_FAIL; red on the dtn image, lane native-reds).
 PREFER = {
     ("test_bp_service_native", "FN_NATIVE_BP_HOST"): ("dtn-developer", "dtn"),
+    ("test_bp_receive_integrity_native", "FN_NATIVE_BP_HOST"): ("dtn-developer", "dtn"),
 }
 # The modules reading these default to exactly the first image's path in
 # their own tree ($T), so when that image is built nothing is exported and
@@ -169,6 +172,15 @@ IDENTITY = {
     "FN_NATIVE_RUNTIME_SHA256": "SHA-256 of the SBCL runtime the launcher execs",
     "FN_NATIVE_IMAGE_SOURCE_SHA": "the source revision the image was built from "
                                   "(a commit, or HEAD+dirty for a worktree run)",
+}
+# The developer image's identity, computed the same way from
+# build/fn-host-developer when that image is built (`identity --prefix
+# FN_NATIVE_DEVELOPER_`): a case that pins the developer core
+# (tests/test_native_protected_peering's durable-sent cut) skipped wholly
+# without it.
+DEVELOPER_IDENTITY = {
+    "FN_NATIVE_DEVELOPER_LAUNCHER_SHA256": "SHA-256 of the developer image's launcher",
+    "FN_NATIVE_DEVELOPER_CORE_SHA256": "SHA-256 of the developer image's core",
 }
 # The FN_INIT_BUDGET_MB a harness names for the stores it makes for hbox and
 # runs directly (hbox's 96 GiB): the one place it is written.
@@ -312,6 +324,9 @@ def plan(images: list[str], given: dict[str, str], modules: list[str]
                 if (name in own and "production" not in images
                         and "FN_NATIVE_HOST" not in given):
                     missing.append((module, name, "production"))
+            elif name in DEVELOPER_IDENTITY:
+                if name in own and "developer" not in images:
+                    missing.append((module, name, "developer"))
             elif name in FIXED:
                 assignments.append(f"{name}={FIXED[name][0]}")
             elif name in MANUAL and not MANUAL[name].startswith(("falls back", "defaults")):
@@ -338,6 +353,9 @@ def meaning(name: str) -> str:
     if name in IDENTITY:
         return ("identity: " + IDENTITY[name] + "; `native_env.py identity` computes it "
                 "after the image steps (refused when no production image is built)")
+    if name in DEVELOPER_IDENTITY:
+        return ("identity: " + DEVELOPER_IDENTITY[name] + "; `native_env.py identity "
+                "--prefix FN_NATIVE_DEVELOPER_` computes it when the developer image is built")
     if name in IMAGES:
         fallback = sorted(stem for stem, var in FALLBACK if var == name)
         return ("image: " + " or ".join(IMAGES[name]) + " (set when built; refused when not)"
@@ -352,7 +370,7 @@ def meaning(name: str) -> str:
 def table() -> str:
     rows = ["| variable | modules reading it | what hbox_native.sh gives it |",
             "|---|---|---|"]
-    known = set(IMAGES) | set(FIXED) | set(MANUAL) | set(IDENTITY)
+    known = set(IMAGES) | set(FIXED) | set(MANUAL) | set(IDENTITY) | set(DEVELOPER_IDENTITY)
     for name, modules in sorted(readers().items()):
         if name not in known:
             continue
@@ -373,6 +391,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="the launcher (its core is IMAGE.core); default build/fn-host")
     p.add_argument("--source", default=None, help="the source revision it was built from")
     p.add_argument("--export", action="store_true", help="as `export NAME=VALUE` lines")
+    p.add_argument("--prefix", default=None,
+                   help="FN_NATIVE_DEVELOPER_: print the launcher and core digests "
+                        "under that prefix (DEVELOPER_IDENTITY) and nothing else")
     arguments = parser.parse_args(argv)
     if arguments.command == "table":
         print(table())
@@ -380,6 +401,14 @@ def main(argv: list[str] | None = None) -> int:
     if arguments.command == "identity":
         image = Path(arguments.image)
         found = image_identity(image, arguments.source)
+        if arguments.prefix:
+            renamed = {arguments.prefix + name[len("FN_NATIVE_"):]: value
+                       for name, value in found.items()
+                       if name in ("FN_NATIVE_LAUNCHER_SHA256", "FN_NATIVE_CORE_SHA256")}
+            for name in DEVELOPER_IDENTITY if arguments.prefix == "FN_NATIVE_DEVELOPER_" else renamed:
+                if name in renamed:
+                    print(("export " if arguments.export else "") + f"{name}={renamed[name]}")
+            return 0 if renamed else 1
         absent = [name for name in IDENTITY if name not in found]
         for name in IDENTITY:
             if name in found:

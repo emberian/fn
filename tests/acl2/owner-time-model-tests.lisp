@@ -364,7 +364,9 @@ disk space: unobserved (statvfs gave nothing; an append that finds the disk full
 (assert-event (equal (t2-jparse (otmt-text "1 2")) '(:torn nil)))
 (assert-event (equal (t2-jparse (otmt-text "1 x
 ")) '(:malformed nil)))
-(assert-event (equal (fn-otm-start-line 5 7) (otmt-text "0 0 5 7 0 0 0
+(assert-event (equal (fn-otm-start-line 7 t) (otmt-text "0 0 0 7 1 0 0
+")))
+(assert-event (equal (fn-otm-start-line 7 nil) (otmt-text "0 0 0 7 0 0 0
 ")))
 
 ; A reached run of the host's calls, interleaved (the gate's pick, the

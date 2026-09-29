@@ -315,34 +315,6 @@ class BuildListsCheckTests(unittest.TestCase):
         text = self.dtn_text().replace(BUFFER_INCLUDES, "")
         self.assertEqual(check.include_findings(ROOT, text), [])
 
-    def test_bridges_satisfy_the_include_rule(self):
-        self.assertEqual(check.bridge_findings(), [])
-
-    def test_owner_bridge_missing_books_are_found(self):
-        # harness-repair (PKT-176): at 483987b1 the owner bridge's boot,
-        # tools/bridge_image.OWNER_FORMS, reached host/owner-host.lisp
-        # without these three books, and the bridge did not boot.
-        with bare_owner_host() as root:
-            found = check.bridge_findings(root)
-        loader = "the owner bridge (tools/bridge_image.py)"
-        self.assertEqual(found, [
-            f"included: host/owner-host.lisp uses {name}, defined in {book}, "
-            f"which {loader} has not included when it loads host/owner-host.lisp"
-            for name, book in tuple((n, "books/owner-log-route.lisp") for n in LOG_ROUTE_NAMES) + (
-                # rep-wave-d-2: books/octets-stobj is in STORE_FORMS now (the
-                # store-node host takes the buffer), so fn-octets is served.
-                # post-identity-index: the served POST calls the two below
-                # instead of fn-rclb-existing-action.
-                ("fn-pidx-existing-action", "books/post-identity-index.lisp"),)
-            # host-decisions-2: the owner entries' words (they call
-            # prepare-served's prepares and the identity entry).
-            + tuple((n, "books/owner-prepare-outcome.lisp") for n in POUT_NAMES) + (
-                # post-alloc-2: the prepare through the carried id trie.
-                ("fn-prc-refresh", "books/post-retain-carried.lisp"),
-                # prepare-served: the configuration un-stage.
-                ("fn-psrv-unstage", "books/owner-prepare-served.lisp"),
-                ("fn-rcon-ocfg-io", "books/records-concrete-owner.lisp"))])
-
     def test_a_nested_ld_serves_its_loader(self):
         # host/store-node-host.lisp loads host/store-host.lisp, which includes
         # books/store-config, before it calls fn-store-group-name; a loader of

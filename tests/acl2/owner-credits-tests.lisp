@@ -122,9 +122,12 @@
   (fn-ocfg-with-owner *oast-open*
                       (fn-own-enqueue (fn-ocfg-owner *oast-open*)
                                       (fn-own-sub-make 0 0 nil :witness))))
-(assert-event (equal (fn-mca-need *mcat-queued0* 0 *mcat-r*) *mcat-r*))
-(assert-event (not (<= (fn-mca-need *mcat-queued0* 0 *mcat-r*) (fn-mca-held *mcat-l0* 0))))
-(defconst *mcat-uncovered* (mcat-read *mcat-l0* *mcat-queued0* *orrt-views* 0 *t2r-post* *t2-s1* 32 *mcat-r*))
+; A complete submission holds its charge, not the reserve (lane
+; credits-stall): an empty witness article, one line of lists.
+(assert-event (equal (fn-mca-need *mcat-queued0* 0 *mcat-r*) 16384))
+(defconst *mcat-lnone* (mcat-ledger 0 nil))
+(assert-event (not (<= (fn-mca-need *mcat-queued0* 0 *mcat-r*) (fn-mca-held *mcat-lnone* 0))))
+(defconst *mcat-uncovered* (mcat-read *mcat-lnone* *mcat-queued0* *orrt-views* 0 *t2r-post* *t2-s1* 32 *mcat-r*))
 (assert-event (not (equal (fn-mca-held (cdr *mcat-uncovered*) 0)
                           (fn-mca-need (fn-own-tls-result-owner (car *mcat-uncovered*)) 0 *mcat-r*))))
 (assert-event (fn-mcr-fundedp (cdr *mcat-uncovered*)))
@@ -203,3 +206,26 @@
 (defconst *mcat-a4-r* (fn-heap-article-reserve-octets *oast-a4*))
 (assert-event (fn-mcr-fundedp (mcat-admit-n *mcat-a4* 1 *mcat-a4-r*)))
 (assert-event (equal (mcat-admit-n *mcat-a4* 2 *mcat-a4-r*) :refused))
+
+; PKT-887 (lane credits-stall): a poster whose short article is queued
+; behind a barrier holds that article's charge, not a whole reserve, so its
+; next POST fits beside it in one reserve of room.  Reachable: connection 0
+; with its witness submission queued, covered (holding its 16,384), and one
+; reserve free: the POST is offered 340 and connection 0 then holds the
+; reserve plus the charge.  MUTATION: charged a reserve per queued
+; submission (the credit before this lane), the same read needs two
+; reserves and the room is one: refused.
+(defconst *mcat-q-l* (mcat-ledger *mcat-r* (list (cons (fn-mca-conn-key 0) (cons 0 16384)))))
+(assert-event (fn-mcr-fundedp *mcat-q-l*))
+(defconst *mcat-q-post* (mcat-read *mcat-q-l* *mcat-queued0* *orrt-views* 0 *t2r-post* *t2-s1* 32 *mcat-r*))
+(assert-event (fn-post-offeredp (fn-own-tls-result-effects (car *mcat-q-post*))))
+(assert-event (equal (fn-mca-held (cdr *mcat-q-post*) 0) (+ *mcat-r* 16384)))
+(assert-event (fn-mcr-fundedp (cdr *mcat-q-post*)))
+(assert-event (< (+ (fn-mcr-budget *mcat-q-l*) 0)
+                 (+ (- (fn-mcr-total *mcat-q-l*) 16384) (* 2 *mcat-r*))))
+; The charge of a submission never exceeds the reserve.
+(assert-event (equal (fn-mca-sub-charge (fn-own-sub-make 0 0 nil
+                                                         (fn-inj-make-decision :injected nil "m" nil
+                                                                               (make-list 1000000 :initial-element 65)))
+                                        *mcat-r*)
+                     *mcat-r*))
