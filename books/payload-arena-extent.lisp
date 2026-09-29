@@ -1440,19 +1440,37 @@
    (implies (and (nat-listp fs) (member-equal f fs)) (natp f))
    :rule-classes :forward-chaining))
 
+(local
+ (defthm fn-arx-nth-non-natp
+   (implies (not (natp h)) (equal (nth h l) (nth 0 l)))
+   :hints (("Goal" :in-theory (enable nth)))))
+
+(local
+ (defthm fn-arx-files-unnamed-names-none-at-natp
+   (implies (and (fn-arena$xcorr fn-arena$x fn-arena$a)
+                 (nat-listp fs)
+                 (fn-arx-files-unnamed-p fs fn-arena$x)
+                 (member-equal f fs) (natp h))
+            (not (equal (fn-arx-entry-file (nth h (nth *fn-arena$x-exti* fn-arena$x))) f)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable fn-arena$xcorr fn-arx-file-count-is-files-get
+                                fn-arx-file-count fn-arx-files-unnamed-p)
+            :use ((:instance fn-arx-file-count-zero-names-none)
+                  (:instance fn-arx-files-unnamed-p-member))))))
+
 ; KEYSTONE (the host-called subject): every file of FS the check passes is
-; named by no entry at any handle.
+; named by no entry at any handle H (a non-natural H reads entry 0).
 (defthm fn-arx-files-unnamed-names-none
   (implies (and (fn-arena$xcorr fn-arena$x fn-arena$a)
                 (nat-listp fs)
                 (fn-arx-files-unnamed-p fs fn-arena$x)
-                (member-equal f fs) (natp h))
+                (member-equal f fs))
            (not (equal (fn-arx-entry-file (nth h (nth *fn-arena$x-exti* fn-arena$x))) f)))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-arena$xcorr fn-arx-file-count-is-files-get
-                               fn-arx-file-count fn-arx-files-unnamed-p)
-           :use ((:instance fn-arx-file-count-zero-names-none)
-                 (:instance fn-arx-files-unnamed-p-member)))))
+  :hints (("Goal" :do-not-induct t :cases ((natp h))
+           :in-theory (disable fn-arena$xcorr fn-arx-files-unnamed-names-none-at-natp
+                               fn-arx-files-unnamed-p)
+           :use ((:instance fn-arx-files-unnamed-names-none-at-natp)
+                 (:instance fn-arx-files-unnamed-names-none-at-natp (h 0))))))
 
 ; What an entry names is the file its realizer reads (fn-arena$x-get passes
 ; (nth 0 E) to fn-durable-realize-octets / fn-durable-realize-lz).

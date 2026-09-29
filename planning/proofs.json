@@ -13905,9 +13905,44 @@
       "status": "uncertified-at-current-digest",
       "title": "A served read's cold line past the dependency deadline is answered 403 with the session unchanged; pipelined lines are answered in order (row A4, option (c))",
       "statement": "Subject (books/owner-cold-line.lisp): fn-ocln-unavailable-span, which host/owner-host.lisp fn-owner-unavailable-line-at calls from host/native/owner.lisp fnn-owner-unavailable-line once fn-otb-dependency-step answers :unavailable for the cold first line of a span aborted in the realizer's no-I/O mode (fnn-owner-chunk-span-no-io, fnn-owner-cold-line). KEYSTONE fn-ocln-a-cold-line-is-answered-unavailable: for a connection in command mode and I within the buffer, the result consumes exactly the octets up to and including the line's LF (fn-oct-line-end; at least one when any remain), carries one reply, fn-otb-unavailable-line (code 403), and its owner is OC with only that connection's wire reset to the start of a line in command mode with its limits kept. fn-ocln-unavailable-span-outside-command-mode: otherwise nil (the host faults).",
-      "evidence": "['books/owner-cold-line.lisp', 'tests/acl2/owner-cold-line-tests.lisp', 'host/owner-host.lisp', 'host/native/owner.lisp', 'host/native/extent.lisp', 'tests/test_native_slow_disk.py']",
-      "events": "['fn-ocln-a-cold-line-is-answered-unavailable', 'fn-ocln-unavailable-span-outside-command-mode']",
+      "evidence": [
+        "books/owner-cold-line.lisp",
+        "tests/acl2/owner-cold-line-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/extent.lisp",
+        "tests/test_native_slow_disk.py"
+      ],
+      "events": [
+        "fn-ocln-a-cold-line-is-answered-unavailable",
+        "fn-ocln-unavailable-span-outside-command-mode"
+      ],
       "progress_note": "Lane composed-owner-3 (Opus 5.5, 2026-09-29). REPL-admitted on persvati. Teeth tests/acl2/owner-cold-line-tests.lisp (oclnt-): pipelined positive witness (GROUP warm, ARTICLE cold 403 consuming its 11 octets only, STAT answered exactly as without the cold line, owner unchanged), a line split across reads (wire reset, session kept, next command as from the owner that never saw the line), hypothesis removal (article mode: nil), a whole-buffer mutation must-fail. Native: tests/test_native_slow_disk.py test_a_cold_read_on_a_stalled_disk_answers_403_while_cached_reads_stay_flat."
+    },
+    {
+      "id": "PRF-938",
+      "milestone": "M5",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-294"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "title": "The payload arena counts, per durable file, the extent entries naming it; a file whose count is 0 is named by no handle (row A6, the file count for online disk release)",
+      "statement": "Subject (books/payload-arena-extent.lisp): fn-arx-files-unnamed-p over the live arena's concrete fn-arena$x, which the owner's checkpoint release (host/native/owner.lisp, lane online-reclaim-3, replacing the bounded fn-xrt-scan walk) calls under the owner mutex before closing a retired file's descriptor. The count column fn-arena$x-files is kept by fn-arx-mark (every seal, reseat and lz variant: the replaced entry's file loses one, the written entry's file gains one) and emptied by fn-arena$x-clear; fn-arena$xcorr carries fn-arx-files-agree (the column equals the tally of the extent column for every file id), so every export of the abstract stobj preserves it and the live arena satisfies it. KEYSTONE fn-arx-files-unnamed-names-none: under the correspondence, for FS a list of file ids the check passes, no entry at any handle H names a file of FS (fn-arx-entry-file, which is the file the realizer reads: fn-arx-entry-file-of-extent-by-definition). fn-arx-file-count-zero-names-none: the same for one file whose count is 0.",
+      "evidence": [
+        "books/payload-arena-extent.lisp",
+        "tests/acl2/payload-arena-extent-tests.lisp"
+      ],
+      "events": [
+        "fn-arx-files-unnamed-names-none",
+        "fn-arx-file-count-zero-names-none",
+        "fn-arx-files-agree-of-mark"
+      ],
+      "progress_note": "Lane composed-owner-4 (Opus 5.5, 2026-09-29). REPL-admitted on persvati (the whole book and the teeth). Teeth tests/acl2/payload-arena-extent-tests.lisp section 4 (paxt-files-): the run (file 7's count 1 then 0 after the reseat onto 9), a reachable positive witness (paxt-files-unnamed-positive, the state reached through the exports: paxt-x3-corresponds), a witness and a must-fail per hypothesis; the correspondence one is a CORRUPTED-STATE witness. natp H was proved redundant and removed. Host caller: online-reclaim-3's checkpoint release (not on this branch)."
     }
   ]
 }

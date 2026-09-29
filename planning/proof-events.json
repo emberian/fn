@@ -13282,6 +13282,23 @@
           "name": "fn-ocln-unavailable-span-outside-command-mode"
         }
       ]
+    },
+    {
+      "id": "PRF-938",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arx-files-unnamed-names-none"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-file-count-zero-names-none"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-files-agree-of-mark"
+        }
+      ]
     }
   ]
 }
