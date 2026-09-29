@@ -88,8 +88,4 @@
                             (frontier (nth 2 (fn-assume-checkpoint-publication tables configs)))
                             (revision (nth 3 (fn-assume-checkpoint-publication tables configs)))
                             (log (nth 4 (fn-assume-checkpoint-publication tables configs)))))
-           :in-theory (disable fn-sfp-open-from-publication-is-the-twin
-                               fn-sfi-extend-open fn-rii-sco-extend-open
-                               fn-sct-capture-of-tables fn-sct-tables-next
-                               fn-sct-tables-of-capture fn-ock-next-checkpoint
-                               fn-cpo-open-observed fn-sn-open-kind))))
+           :in-theory (theory 'minimal-theory))))
