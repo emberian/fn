@@ -51,8 +51,11 @@
 ; -----------------------------------------------------------------------------
 ; 1. The plan.
 
-; The largest source the host's one-call encoder takes (host/native/
-; fn-deflate.c fn_deflate_payload: 2^30 - 1).  The decoder has no such bound.
+; The largest source the plan hands the host's at-rest encoder: 2^30 - 1.
+; It was the retired C encoder's one-call limit (fn_deflate_payload); the
+; SBCL encoder that replaced it (host/native/deflate.lisp fnn-ldf-, lane
+; compress-7) has no such limit, so a larger record is merely stored as it
+; is.  The decoder has no such bound.
 (defconst *fn-lzr-encoder-max-input* 1073741823)
 
 (defthm fn-lzr-decoded-record-p

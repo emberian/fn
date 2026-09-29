@@ -5723,6 +5723,14 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-auth-step-pinned-host-event-answers-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-pinned-stray-event-changes-nothing"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-auth-step-redeem-hold-keeps-the-role"
         },
         {

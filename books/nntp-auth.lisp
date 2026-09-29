@@ -1672,6 +1672,19 @@
        (equal (car wire-event) :tls-established)
        (null (cdr wire-event))))
 
+; The events a client's octets can make: books/wire.lisp's framer emits
+; exactly (:command LINE), (:article BODY) and (:reject REASON)
+; (fn-wire-command-event, fn-wire-article-event, fn-wire-reject-event).
+; Every other event is the host's own (:tls-established, :sasl-context,
+; :account-outcome) or no event at all, and no client caused it: the step
+; answers it with nothing rather than with a 501 the client never earned
+; (fn-auth-step-pinned-host-event-answers-nothing below).
+(defun fn-auth-client-eventp (wire-event)
+  (declare (xargs :guard t))
+  (and (consp wire-event)
+       (member-eq (car wire-event) '(:command :article :reject))
+       t))
+
 ; COMPRESS (RFC 8054 section 2.2).  Who may: an authenticated connection or
 ; one that speaks for a configured peer (fn-zc-may-startp, local policy: see
 ; books/nntp-compress.lisp).  206 holds the session (handshaking) with the
@@ -1885,7 +1898,11 @@
               (fn-auth-delegate as archive config observation injection
                                 wire-event fn-arena)))
         (fn-auth-delegate as archive config observation injection wire-event fn-arena))))
-   (t (fn-auth-delegate as archive config observation injection wire-event fn-arena))))
+   ((fn-auth-client-eventp wire-event)
+    (fn-auth-delegate as archive config observation injection wire-event fn-arena))
+   ; A host event the clauses above do not take (an owner outcome after the
+   ; hold has ended, a probe): no reply and nothing changed.
+   (t (fn-post-make-result as nil nil))))
 
 (verify-guards fn-auth-cred-shapep)
 (verify-guards fn-auth-make-cred)
@@ -3958,8 +3975,10 @@
                                         observation injection wire-event fn-arena)))
         (fn-auth-delegate-pinned as archive index verdicts config observation
                                   injection wire-event fn-arena))))
-   (t (fn-auth-delegate-pinned as archive index verdicts config observation
-                                injection wire-event fn-arena))))
+   ((fn-auth-client-eventp wire-event)
+    (fn-auth-delegate-pinned as archive index verdicts config observation
+                              injection wire-event fn-arena))
+   (t (fn-post-make-result as nil nil))))
 
 (verify-guards fn-auth-delegate-pinned)
 (verify-guards fn-auth-step-pinned)
@@ -4396,6 +4415,50 @@
                            (fn-auth-delegate-pinned fn-auth-single
                             fn-auth-sessionp
                             fn-auth-sasl-continue fn-auth-install-context)))))
+
+;; KEYSTONE (no reply nobody asked for).  An event no client's octets made
+;; (fn-auth-client-eventp false: the owner's (:account-outcome WORD) after the
+;; hold has ended, :tls-established, :sasl-context, anything else) on a
+;; session that is not holding for the owner's word gets no reply and makes
+;; no submission.  Only the held session's outcome (the keystone above)
+;; answers a host event.  Before this clause a stray outcome reached the
+;; reader step, which answers every non-command event 501 (books/nntp.lisp
+;; fn-nntp-step): a syntax error the client never caused.
+(defthm fn-auth-step-pinned-host-event-answers-nothing
+  (implies (and (not (fn-auth-client-eventp wire-event))
+                (not (fn-auth-redeem-waitp as)))
+           (let ((r (fn-auth-step-pinned as archive index verdicts config
+                                         observation injection wire-event
+                                         fn-arena)))
+             (and (null (fn-post-result-effects r))
+                  (null (fn-post-result-submission r)))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step-pinned fn-auth-tls-established
+                            fn-auth-install-context)
+                           (fn-auth-delegate-pinned fn-auth-single
+                            fn-auth-sessionp fn-auth-redeem-outcome
+                            fn-auth-sasl-continue fn-auth-command
+                            fn-auth-make-session)))))
+
+;; And it leaves the session as it was, unless it is the host's own TLS or
+;; SASL-context event (which change only the TLS and context fields).
+(defthm fn-auth-step-pinned-stray-event-changes-nothing
+  (implies (and (not (fn-auth-client-eventp wire-event))
+                (not (fn-auth-redeem-waitp as))
+                (not (fn-auth-tls-eventp wire-event))
+                (not (fn-auth-context-eventp wire-event)))
+           (equal (fn-auth-step-pinned as archive index verdicts config
+                                       observation injection wire-event
+                                       fn-arena)
+                  (fn-post-make-result as nil nil)))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step-pinned)
+                           (fn-auth-delegate-pinned fn-auth-single
+                            fn-auth-sessionp fn-auth-redeem-outcome
+                            fn-auth-sasl-continue fn-auth-command
+                            fn-auth-tls-established fn-auth-install-context)))))
 
 ;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
 ;; Each is tried in includers' proofs and pays for its frames in
