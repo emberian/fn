@@ -16805,6 +16805,116 @@
           "note": "books/store-node-correspondence.lisp: a crash of a corresponding state corresponds (the empty node, no indexed row; -by-recomputation)."
         }
       ]
+    },
+    {
+      "id": "PRF-1006",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-contact-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-init"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-ack"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-refuse"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-term"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-reject"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-keepalive"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-accepted-message-is-canonical"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-accepted-contact-is-canonical"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1007",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-evidence-authorize-admits-exactly-the-locked-next-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-evidence-successor-does-not-reuse-identity"
+        }
+      ]
+    },
+    {
+      "id": "PRF-985",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-lifecycle-publication-authorize-admits-exactly-the-pending-persist"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1013",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-publication-authorize-admits-exactly-the-issued-pending-delivery"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-delivery-record-epoch-and-op-are-frame-nats"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1014",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-delete-publication-authorize-admits-exactly-the-issued-pending-deletion"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-delete-record-epoch-and-op-are-frame-nats"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-nth-is-nth-on-true-lists"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1015",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-record-at-epoch-and-op-are-frame-nats"
+        }
+      ]
     }
   ]
 }
