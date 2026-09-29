@@ -233,12 +233,22 @@
 ; The result is (VERDICT S' X): (:admit S' ID), (:wait S' nil) or
 ; (:refuse S' REASON), REASON :handshake-budget or :busy.
 
+(defun fn-hsb-now-tick (now)
+  (declare (xargs :guard t))
+  (floor (nfix now) *fn-hsb-tick-ms*))
+
+(defthm fn-hsb-now-tick-natp
+  (natp (fn-hsb-now-tick now))
+  :rule-classes :type-prescription)
+
+(in-theory (disable fn-hsb-now-tick))
+
 (defun fn-hsb-admit (s hl trustedp address now queuedp)
   (declare (xargs :guard t))
   (let* ((rate (fn-hsb-lim-rate hl))
          (lmax (fn-hsb-lim-in-flight hl))
          (key (fn-hsb-source-key address))
-         (now-tick (floor (nfix now) *fn-hsb-tick-ms*))
+         (now-tick (fn-hsb-now-tick now))
          (tick (max (fn-hsb-tick s) now-tick))
          (started (if (< (fn-hsb-tick s) now-tick) 0 (fn-hsb-started s)))
          (next (fn-hsb-next s))
@@ -384,10 +394,63 @@
                     fn-hsb-waiting fn-hsb-buckets fn-hsb-lim-rate fn-hsb-lim-in-flight
                     fn-hsb-lim-deadline fn-hsb-level fn-hsb-lookup fn-hsb-prune fn-hsb-put))
 
+; What one decision does, component by component (the admit opened once
+; per component, under a small theory).
+(defthm fn-hsb-result-accessors
+  (and (equal (fn-hsb-verdict (list v x d)) v)
+       (equal (fn-hsb-state (list v x d)) x)
+       (equal (fn-hsb-detail (list v x d)) d)))
+
+
+(defthm fn-hsb-admit-tick
+  (equal (fn-hsb-tick (fn-hsb-state (fn-hsb-admit s hl trustedp address now queuedp)))
+         (max (fn-hsb-tick s) (fn-hsb-now-tick now)))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap)))))
+
+(defthm fn-hsb-admit-started
+  (equal (fn-hsb-started (fn-hsb-state (fn-hsb-admit s hl trustedp address now queuedp)))
+         (+ (if (< (fn-hsb-tick s) (fn-hsb-now-tick now)) 0 (fn-hsb-started s))
+            (if (equal (fn-hsb-verdict (fn-hsb-admit s hl trustedp address now queuedp)) :admit)
+                1 0)))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap)))))
+
+(defthm fn-hsb-admit-flight
+  (equal (fn-hsb-flight (fn-hsb-state (fn-hsb-admit s hl trustedp address now queuedp)))
+         (if (equal (fn-hsb-verdict (fn-hsb-admit s hl trustedp address now queuedp)) :admit)
+             (cons (cons (fn-hsb-next s) (fn-hsb-source-key address)) (fn-hsb-flight s))
+           (fn-hsb-flight s)))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap)))))
+
+(defthm fn-hsb-admit-admits-under-the-limits
+  (implies (equal (fn-hsb-verdict (fn-hsb-admit s hl trustedp address now queuedp)) :admit)
+           (and (< (len (fn-hsb-flight s)) (fn-hsb-lim-in-flight hl))
+                (< (if (< (fn-hsb-tick s) (fn-hsb-now-tick now)) 0 (fn-hsb-started s))
+                   (fn-hsb-lim-in-flight hl))
+                (equal (fn-hsb-detail (fn-hsb-admit s hl trustedp address now queuedp))
+                       (fn-hsb-next s))))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap))))
+  :rule-classes nil)
+
+(defthm fn-hsb-admit-waiting
+  (implies (<= (fn-hsb-waiting s) (fn-hsb-lim-queue hl))
+           (<= (fn-hsb-waiting (fn-hsb-state (fn-hsb-admit s hl trustedp address now queuedp)))
+               (fn-hsb-lim-queue hl)))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap))))
+  :rule-classes :linear)
+
+(defthm fn-hsb-tick-natp (natp (fn-hsb-tick s)) :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-hsb-tick))))
+(defthm fn-hsb-started-natp (natp (fn-hsb-started s)) :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-hsb-started))))
+(defthm fn-hsb-waiting-natp (natp (fn-hsb-waiting s)) :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-hsb-waiting))))
+
+(in-theory (disable fn-hsb-admit fn-hsb-state fn-hsb-verdict fn-hsb-detail))
+
 (defthm fn-hsb-admit-keeps-the-bound
   (implies (fn-hsb-okp s hl)
            (fn-hsb-okp (fn-hsb-state (fn-hsb-admit s hl trustedp address now queuedp)) hl))
-  :hints (("Goal" :in-theory (enable fn-hsb-admit fn-hsb-state fn-hsb-at))))
+  :hints (("Goal" :use fn-hsb-admit-admits-under-the-limits)))
 
 (defthm fn-hsb-done-keeps-the-bound
   (implies (fn-hsb-okp s hl) (fn-hsb-okp (fn-hsb-done s id) hl)))
@@ -418,8 +481,7 @@
                              (fn-hsb-flight s)))
                 (equal (fn-hsb-detail (fn-hsb-admit s hl trustedp address now queuedp))
                        (fn-hsb-next s))))
-  :hints (("Goal" :in-theory (enable fn-hsb-admit fn-hsb-verdict fn-hsb-state fn-hsb-detail
-                                     fn-hsb-at))))
+  :hints (("Goal" :use fn-hsb-admit-admits-under-the-limits)))
 
 ; The native memory: the flight holds at most L handshakes' scratch.
 (defthm fn-hsb-scratch-within-the-reservation
@@ -471,21 +533,18 @@
 
 (defthm fn-hsb-event-tick-monotone
   (<= (fn-hsb-tick s) (fn-hsb-tick (fn-hsb-event s e)))
-  :hints (("Goal" :in-theory (enable fn-hsb-admit fn-hsb-state fn-hsb-at)))
   :rule-classes :linear)
 
 (defthm fn-hsb-event-started-in-tick
   (implies (and (consp e) (equal (car e) :admit)
                 (equal (fn-hsb-tick (fn-hsb-event s e)) (fn-hsb-tick s)))
            (equal (fn-hsb-started (fn-hsb-event s e))
-                  (+ (fn-hsb-started s) (if (fn-hsb-admittedp s e) 1 0))))
-  :hints (("Goal" :in-theory (enable fn-hsb-admit fn-hsb-state fn-hsb-verdict fn-hsb-at))))
+                  (+ (fn-hsb-started s) (if (fn-hsb-admittedp s e) 1 0)))))
 
 (defthm fn-hsb-event-started-in-a-new-tick
   (implies (< (fn-hsb-tick s) (fn-hsb-tick (fn-hsb-event s e)))
            (equal (fn-hsb-started (fn-hsb-event s e))
-                  (if (fn-hsb-admittedp s e) 1 0)))
-  :hints (("Goal" :in-theory (enable fn-hsb-admit fn-hsb-state fn-hsb-verdict fn-hsb-at))))
+                  (if (fn-hsb-admittedp s e) 1 0))))
 
 (defthm fn-hsb-event-started-unchanged-otherwise
   (implies (not (and (consp e) (equal (car e) :admit)))
@@ -499,7 +558,10 @@
                   (fn-hsb-started s)
                 0)
               (fn-hsb-lim-in-flight (fn-hsb-at 1 e))))
-  :hints (("Goal" :in-theory (enable fn-hsb-admit fn-hsb-state fn-hsb-verdict fn-hsb-at))))
+  :hints (("Goal" :use ((:instance fn-hsb-admit-admits-under-the-limits
+                                   (hl (fn-hsb-at 1 e)) (trustedp (fn-hsb-at 2 e))
+                                   (address (fn-hsb-at 3 e)) (now (fn-hsb-at 4 e))
+                                   (queuedp (fn-hsb-at 5 e)))))))
 
 (in-theory (disable fn-hsb-event fn-hsb-admittedp))
 
@@ -605,16 +667,7 @@
   (and (fn-hsb-stamps-by rows now)
        (no-duplicatesp-equal (fn-hsb-keys rows))))
 
-(local (include-book "arithmetic-5/top" :dir :system))
-
-(local
- (defthm fn-hsb-times-monotone
-   (implies (and (natp n) (natp a) (natp b) (<= a b))
-            (<= (* n a) (* n b)))
-   :hints (("Goal" :nonlinearp t))
-   :rule-classes :linear))
-
-(local (in-theory (enable fn-hsb-level fn-hsb-lookup fn-hsb-prune fn-hsb-put)))
+(local (in-theory (enable fn-hsb-lookup fn-hsb-prune fn-hsb-put)))
 
 (local
  (defthm fn-hsb-stamps-by-later
@@ -631,36 +684,6 @@
 
 ; Refill: from T to NOW >= T the level rises by at most N x (NOW - T).
 (local
- (defthm fn-hsb-level-refill
-   (implies (and (consp row) (natp (car row)) (natp (cdr row)) (<= (cdr row) tt)
-                 (natp tt) (natp now) (<= tt now) (natp rate))
-            (<= (fn-hsb-level row rate now)
-                (+ (fn-hsb-level row rate tt) (* rate (- now tt)))))
-   :hints (("Goal" :in-theory (enable fn-hsb-cap)
-                   :use ((:instance fn-hsb-times-monotone (n rate) (a tt) (b now))
-                         (:instance fn-hsb-times-monotone (n rate) (a (cdr row)) (b tt)))))
-   :rule-classes nil))
-
-(local
- (defthm fn-hsb-eff-refill
-   (implies (and (fn-hsb-stamps-by rows tt) (natp tt) (natp now) (<= tt now) (natp rate))
-            (<= (fn-hsb-eff rows key rate now)
-                (+ (fn-hsb-eff rows key rate tt) (* rate (- now tt)))))
-   :hints (("Goal" :in-theory (disable fn-hsb-lookup fn-hsb-level)
-                   :cases ((fn-hsb-lookup key rows)))
-           ("Subgoal 1" :use ((:instance fn-hsb-level-refill (row (fn-hsb-lookup key rows)))
-                              (:instance fn-hsb-lookup-stamped (now tt))))
-           ("Subgoal 2" :in-theory (enable fn-hsb-level fn-hsb-cap)))
-   :rule-classes nil))
-
-(local
- (defthm fn-hsb-eff-natp
-   (implies (fn-hsb-stamps-by rows now)
-            (natp (fn-hsb-eff rows key rate tt)))
-   :rule-classes :type-prescription))
-
-; Pruning at NOW keeps every source's level at NOW (a dropped row was full).
-(local
  (defthm fn-hsb-lookup-absent
    (implies (not (member-equal key (fn-hsb-keys rows)))
             (and (equal (fn-hsb-lookup key rows) nil)
@@ -675,24 +698,6 @@
                      (fn-hsb-lookup key rows))))
    :hints (("Goal" :induct (fn-hsb-prune rows rate now)
                    :in-theory (disable fn-hsb-fullp)))))
-
-(local
- (defthm fn-hsb-level-at-most-cap
-   (<= (fn-hsb-level row rate now) (fn-hsb-cap rate))
-   :rule-classes :linear))
-
-(local
- (defthm fn-hsb-level-of-no-row
-   (implies (not (consp row))
-            (equal (fn-hsb-level row rate now) (fn-hsb-cap rate)))))
-
-(local
- (defthm fn-hsb-eff-of-prune
-   (implies (no-duplicatesp-equal (fn-hsb-keys rows))
-            (equal (fn-hsb-eff (fn-hsb-prune rows rate now) key rate now)
-                   (fn-hsb-eff rows key rate now)))
-   :hints (("Goal" :do-not-induct t
-                   :in-theory (e/d (fn-hsb-fullp) (fn-hsb-prune fn-hsb-level fn-hsb-cap))))))
 
 (local
  (defthm fn-hsb-lookup-of-drop
@@ -734,6 +739,64 @@
                  (fn-hsb-stamps-by (fn-hsb-prune rows rate x) now)))
    :hints (("Goal" :in-theory (enable fn-hsb-drop)))))
 
+(local (include-book "arithmetic-5/top" :dir :system))
+
+(local
+ (defthm fn-hsb-times-monotone
+   (implies (and (natp n) (natp a) (natp b) (<= a b))
+            (<= (* n a) (* n b)))
+   :hints (("Goal" :nonlinearp t))
+   :rule-classes :linear))
+
+(local (in-theory (enable fn-hsb-level fn-hsb-lookup fn-hsb-prune fn-hsb-put)))
+(local
+ (defthm fn-hsb-level-refill
+   (implies (and (consp row) (natp (car row)) (natp (cdr row)) (<= (cdr row) tt)
+                 (natp tt) (natp now) (<= tt now) (natp rate))
+            (<= (fn-hsb-level row rate now)
+                (+ (fn-hsb-level row rate tt) (* rate (- now tt)))))
+   :hints (("Goal" :in-theory (enable fn-hsb-cap)
+                   :use ((:instance fn-hsb-times-monotone (n rate) (a tt) (b now))
+                         (:instance fn-hsb-times-monotone (n rate) (a (cdr row)) (b tt)))))
+   :rule-classes nil))
+
+(local
+ (defthm fn-hsb-eff-refill
+   (implies (and (fn-hsb-stamps-by rows tt) (natp tt) (natp now) (<= tt now) (natp rate))
+            (<= (fn-hsb-eff rows key rate now)
+                (+ (fn-hsb-eff rows key rate tt) (* rate (- now tt)))))
+   :hints (("Goal" :in-theory (disable fn-hsb-lookup fn-hsb-level)
+                   :cases ((fn-hsb-lookup key rows)))
+           ("Subgoal 1" :use ((:instance fn-hsb-level-refill (row (fn-hsb-lookup key rows)))
+                              (:instance fn-hsb-lookup-stamped (now tt))))
+           ("Subgoal 2" :in-theory (enable fn-hsb-level fn-hsb-cap)))
+   :rule-classes nil))
+
+(local
+ (defthm fn-hsb-eff-natp
+   (implies (fn-hsb-stamps-by rows now)
+            (natp (fn-hsb-eff rows key rate tt)))
+   :rule-classes :type-prescription))
+
+; Pruning at NOW keeps every source's level at NOW (a dropped row was full).
+(local
+ (defthm fn-hsb-level-at-most-cap
+   (<= (fn-hsb-level row rate now) (fn-hsb-cap rate))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-hsb-level-of-no-row
+   (implies (not (consp row))
+            (equal (fn-hsb-level row rate now) (fn-hsb-cap rate)))))
+
+(local
+ (defthm fn-hsb-eff-of-prune
+   (implies (no-duplicatesp-equal (fn-hsb-keys rows))
+            (equal (fn-hsb-eff (fn-hsb-prune rows rate now) key rate now)
+                   (fn-hsb-eff rows key rate now)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-hsb-fullp) (fn-hsb-prune fn-hsb-level fn-hsb-cap))))))
+
 (defthm fn-hsb-rows-okp-of-put-prune
   (implies (and (fn-hsb-rows-okp rows now) (natp lv) (natp st) (<= st (nfix now)))
            (fn-hsb-rows-okp (fn-hsb-put k lv st (fn-hsb-prune rows rate x)) now))
@@ -751,16 +814,14 @@
                          (nfix now)
                          (fn-hsb-prune (fn-hsb-buckets s) (fn-hsb-lim-rate hl) now))
            (fn-hsb-buckets s)))
-  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-state fn-hsb-verdict fn-hsb-at)
-                                  (fn-hsb-put fn-hsb-prune fn-hsb-level fn-hsb-lookup)))))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-eff) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap)))))
 
 (defthm fn-hsb-admit-needs-a-handshake-of-level
   (implies (and (equal (fn-hsb-verdict (fn-hsb-admit s hl trustedp address now queuedp)) :admit)
                 (not trustedp))
            (<= *fn-hsb-window-ms*
                (fn-hsb-eff (fn-hsb-buckets s) (fn-hsb-source-key address) (fn-hsb-lim-rate hl) now)))
-  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-verdict fn-hsb-at)
-                                  (fn-hsb-put fn-hsb-prune fn-hsb-level fn-hsb-lookup))))
+  :hints (("Goal" :in-theory (e/d (fn-hsb-admit fn-hsb-eff) (fn-hsb-level fn-hsb-lookup fn-hsb-put fn-hsb-prune fn-hsb-cap))))
   :rule-classes :linear)
 
 (defthm fn-hsb-buckets-of-done-leave
