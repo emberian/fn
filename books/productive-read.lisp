@@ -26,8 +26,8 @@
 ;       (fn-otm-admit-post S is not :shed), the credit funds it, the article
 ;       slots hold it, and no committer capture is live (VIEWS empty).
 ; The host's routing (":serve, then fn-owner-chunk-span-at") is Lisp in
-; fnn-owner-cold-line: an assumption named in specs/productive-contract.md
-; section 5 and exercised by the native, never an ACL2 twin.
+; fnn-owner-cold-line: an external host I/O routing boundary; no named logical assumption is
+; introduced here, and no ACL2 twin models that Lisp routing.
 ;
 ; THE CHAIN the lift composes (each link an existing equality):
 ;   fn-mca-read-span  = fn-oas-read-span   fn-mca-read-span-within-the-credit-unfolds (owner-credits)
@@ -110,7 +110,7 @@
                  (:instance fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix
                             (octets (fn-oct-slice-list i end fn-octets)))
                  fn-otb-a-late-page-is-unavailable-never-absent)
-           :in-theory (union-theories '(fn-ocfg-read fn-own-read)
+           :in-theory (union-theories '(fn-ocfg-read fn-own-read car-cons cdr-cons)
                                       (theory 'minimal-theory)))))
 
 ; -----------------------------------------------------------------------------
@@ -145,6 +145,8 @@
                   (fn-nntp-number-tokenp token)
                   group
                   (consp article)
+                  (fn-nntp-response-okp-of-bytes article
+                     (fn-nntp-article-bytes article fn-arena) :article)
                   (fn-nntp-response-okp-of-bytes article served :article))
              (equal (fn-rcompat-retrieval session archive trie :article (list token) server fn-arena)
                     (fn-pcr-220-reply session article number group server fn-arena))))
