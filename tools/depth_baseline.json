@@ -180,15 +180,30 @@
   "fn-otb-minus": "walks a batch's member connection ids (or the ledger's told ids): at most two batches in flight, each at most the operator's log-batch-records row (a profile field, D27), never store data",
   "fn-otb-dedup": "walks a batch's member connection ids (or the ledger's told ids): at most two batches in flight, each at most the operator's log-batch-records row (a profile field, D27), never store data"
  },
- "debt": {
-  "fn-bs-take": "UNVERIFIED GUARDS, reached through books/store-log-damage.lisp fn-lgdm-entry-len's ec-call of fn-lg-declared-len: takes n octets of a header window (n small there; the recursion is on n). A (natp n) guard, then a twin (draft kept by lane depth-debt).",
-  "fn-bs-zeros": "UNVERIFIED GUARDS, reached through fn-lg-entry <- fn-lg-log (the fallback above): a zero pad. With fn-bs-take: a (natp n) guard, then a twin (draft kept by lane depth-debt).",
-  "fn-lg-log": "UNVERIFIED GUARDS, reached only through books/store-log-kernel-concrete.lisp fn-lgc-log-octets' ec-call fallback (inputs that are not fn-lg-recordsp; the concrete fn-lgx-log runs otherwise): walks the write batch. Needs a guard-t concrete twin for the fallback, or a proof the fallback is unreachable from fn-lgc-append-octets.",
-  "fn-lg-pack": "UNVERIFIED GUARDS, reached only through fn-lgc-last-trailer's ec-call fallback (fn-lg-last-trailer -> fn-lg-frame -> fn-lg-frame-body): packs a chunk's records. Same fix as fn-lg-log.",
-  "fn-lg-unpack": "UNVERIFIED GUARDS, reached through books/store-log-stream.lisp fn-lgw-broken-slice-p's ec-call of fn-lg-entry-okp -> fn-lg-unpack-okp: unpacks a chunk's records. fn-lgw-unpack is its guard-verified twin (fn-lgw-unpack-is-unpack): an fn-lgw-entry-okp for the slice check would take it off the path.",
-  "fn-srs-decode": "UNVERIFIED GUARDS: host/store-host.lisp fn-store-decode-records (:program) calls it, so its :logic runs: one frame per octet-record being recovered. Needs fn-store-event-decode-exact's guards verified, then its twin runs.",
-  "fn-ores-sealed-plan": "UNVERIFIED GUARDS: the host's *1* call runs its :logic, so the loop twin in its :exec never runs (depth_check reads :logic for such functions since lane depth-debt); one record per target peer (D27). Needs guard verification of fn-ores-sealed-entry's chain: fn-ores-seal -> books/frame-fields.lisp fn-frame-protected-prefix (unverified), and fn-ores-seal's append of the frame prefix is itself data-sized.",
-  "fn-bpnr-retired-names": "UNVERIFIED GUARDS: the host's *1* call runs its :logic, so the loop twin in its :exec never runs (depth_check reads :logic for such functions since lane depth-debt); the journal root's listing (data). Needs guard verification of books/bp-node-rotation-codec.lisp fn-bpnr-generation-directory (refused as is) and fn-bpnr-retired-namep.",
-  "fn-bpnrb-dec": "guard-verified and called by fn-bpnrb-decode-range directly (not only through fn-bpnrb-mstep): a checkpoint value's cons structure, depth capped by the budget 4096+4*max-jobs (operator data). Needs the pair case made a loop (fn-bpnrb-mstep's goal stack) at that call too."
+ "debt": {},
+ "append": {
+  "_doc": "tools/depth_check.py's data-sized append rule (lane depth-debt-2): an `append' whose first argument is not a literal, a constant or a (list ...), in a function on the host-called closure whose guards are not verified (so the host's *1* call runs binary-append's recursion, one frame per element of that argument). bounded names the bound as the recursions' entries do; debt only shrinks (verify the function's guards).",
+  "bounded": {
+   "fn-aj-record-name-chars": "the first argument is a number's decimal digits (fn-bs-txn-digits: 20 digits, fixed width)",
+   "fn-bpn-authored-wire-name-chars": "the first argument is a number's decimal digits (fn-bs-txn-natural-digits)",
+   "fn-bpn-evidence-name-chars": "the first argument is a number's decimal digits (fn-bs-txn-digits: 20 digits, fixed width)",
+   "fn-bpnf-stored-record-name-chars": "each first argument is a number's decimal digits (fn-bs-txn-digits: 20 digits, fixed width)",
+   "fn-bpnf-stored-record-values": "the first argument is a fixed record of 11 fields (base), never a list of data",
+   "fn-bpaj-ref-metadata": "the first argument is the fixed fields of a request head (fn-bpaj-head-read), a fixed shape",
+   "fn-rcl-store-counts": "the first argument is a fixed tuple of counts (fn-rcl-summary-in), a fixed width",
+   "fn-nls-reclaim-words": "each first argument is a fixed word or a count's decimal digits",
+   "fn-nsc-reclaim-words": "each first argument is a fixed word or a count's decimal digits",
+   "fn-nls-report": "each first argument is a fixed word or a count's decimal digits",
+   "fn-nsc-report": "each first argument is a fixed word or a count's decimal digits"
+  },
+  "debt": {
+   "fn-bpaj-apply-record": "appends the joined record's intents and facts (data) through *1*: verify guards",
+   "fn-bpaj-apply-record-fast": "appends the joined record's intents and facts (data) through *1*: verify guards",
+   "fn-bpiw-replay-records": "appends a replay's effects (data) through *1*: verify guards",
+   "fn-bpnf-family-frame": "appends a family frame's protected prefix (octets) through *1*: verify guards",
+   "fn-bpnf-mixed-legacy-observed": "appends the namespace's legacy names (a directory listing) through *1*: verify guards",
+   "fn-bpnf-mixed-recovery-plan": "appends the namespace's legacy split (a directory listing) through *1*: verify guards",
+   "fn-tcl-host-fold": "appends a TCPCL carry (octets) through *1*: verify guards"
+  }
  }
 }

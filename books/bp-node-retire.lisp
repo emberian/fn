@@ -64,6 +64,9 @@
                   (fn-bpnr-retired-names (cdr names) selected)))
        :exec (fn-bpnr-retired-names-loop names selected nil)))
 
+(verify-guards fn-bpnr-retired-namep)
+(verify-guards fn-bpnr-retired-names-loop)
+
 (defthm fn-bpnr-retired-names-loop-is-rev-onto
   (equal (fn-bpnr-retired-names-loop names selected acc)
          (fn-ag-rev-onto acc (fn-bpnr-retired-names names selected)))
@@ -71,6 +74,8 @@
                   :in-theory (union-theories
                               '(fn-bpnr-retired-names-loop fn-bpnr-retired-names fn-ag-rev-onto atom not car-cons cdr-cons)
                               (theory 'minimal-theory)))))
+
+(verify-guards fn-bpnr-retired-names)
 
 ; The removal program.  LISTINGS maps a retired directory to the entry
 ; names the host observed in it (bounded by the namespace's work bound); a

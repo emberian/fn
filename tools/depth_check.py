@@ -225,6 +225,9 @@ def _small_first(arg) -> bool:
         n = _name(arg)
         return n in ("nil", "t") or bool(CONSTANT.fullmatch(n or ""))
     if isinstance(arg, list) and arg:
+        if _name(arg[0]) == "coerce" and len(arg) > 1 and isinstance(arg[1], str) \
+                and not isinstance(arg[1], Sym):
+            return True  # (coerce "literal" 'list)
         return _name(arg[0]) in _SMALL_APPEND_HEADS
     return arg is None
 
@@ -661,6 +664,11 @@ def check_appends(rows: list[dict], baseline: dict) -> list[str]:
         for fn in sorted(set(listed[kind]) - set(found)):
             problems.append("{}: listed under \"append\" -> \"{}\" but no longer appends data "
                             "through *1* on the closure: remove its entry".format(fn, kind))
+    for fn, why in sorted(listed["bounded"].items()):
+        text = why if isinstance(why, str) else ""
+        if not (CONSTANT.search(text) or LITERAL.search(text) or STRUCTURAL.search(text)):
+            problems.append("{}: its \"append\" -> \"bounded\" entry names no bound ({!r})".format(
+                fn, text))
     return problems
 
 

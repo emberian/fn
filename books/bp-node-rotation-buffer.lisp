@@ -500,12 +500,16 @@
   :hints (("Goal" :in-theory (disable fn-frame-trailer fn-bpnr-checkpoint-prefix
                                       fn-bpnrb-slice-acc-is-slice))))
 
+(defthm fn-bpnrb-mrun-all-of-no-goals
+  (implies (atom goals)
+           (equal (fn-bpnrb-mrun-all i end goals vals x)
+                  (mv (natp end) i vals)))
+  :hints (("Goal" :expand ((fn-bpnrb-mrun-all i end goals vals x))
+                  :in-theory (disable fn-bpnrb-mstep fn-bpnrb-mrun-all-of-mrun))))
+
 (verify-guards fn-bpnrb-decode-range
-  :hints (("Goal" :in-theory (disable fn-bpnrb-mrun-all fn-bpnrb-dec fn-bpnrb-frame-end
-                                      fn-bpnr-checkpointp)
-                  :use ((:instance fn-bpnrb-mrun-all-of-dec-goal
-                                   (i 14) (end (fn-bpnrb-frame-end m budget fn-octets))
-                                   (d budget) (goals nil) (vals nil) (x fn-octets))))))
+  :hints (("Goal" :in-theory (disable fn-bpnrb-mrun-all-of-mrun fn-bpnrb-dec fn-bpnrb-frame-end
+                                      fn-bpnr-checkpointp fn-bpnrb-mstep))))
 
 (defthm fn-bpnrb-decode-range-is-decode
   (implies (and (fn-cbor-octet-listp x) (natp m) (<= m (len x)))

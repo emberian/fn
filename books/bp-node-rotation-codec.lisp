@@ -525,6 +525,31 @@
                     (fn-bs-txn-digits generation))
             'string)))
 
+; Guard-verified (lane depth-debt-2): the retirement's name filter
+; (books/bp-node-retire.lisp fn-bpnr-retired-names) runs its loop only when
+; everything it calls is.
+(local
+ (defthm fn-bpnr-character-listp-of-append
+   (implies (character-listp (append x y))
+            (character-listp (true-list-fix x)))))
+
+(local
+ (defthm fn-bpnr-txn-digits-true-listp
+   (true-listp (fn-bs-txn-digits n))
+   :hints (("Goal" :in-theory (enable fn-bs-txn-digits fn-bs-txn-natural-digits)))))
+
+(local
+ (defthm fn-bpnr-txn-digits-characters
+   (character-listp (fn-bs-txn-digits n))
+   :hints (("Goal" :use ((:instance fn-bs-txn-name-chars-characters)
+                         (:instance fn-bpnr-character-listp-of-append
+                                    (x (fn-bs-txn-digits n)) (y *fn-bs-txn-name-suffix*)))
+                   :in-theory (e/d (fn-bs-txn-name-chars)
+                                   (fn-bs-txn-name-chars-characters
+                                    fn-bpnr-character-listp-of-append))))))
+
+(verify-guards fn-bpnr-generation-directory)
+
 ; The next generation: greater than the selected one and than every
 ; generation directory observed (an unselected staging is never reused).
 (defun fn-bpnr-generation-of-name (name)
