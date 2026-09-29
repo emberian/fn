@@ -767,6 +767,34 @@ def undoes(form: str) -> bool:
     return form_head(form) in UNDO_HEADS
 
 
+# Forms that leave the ACL2 loop (item 49): `(value :q)` sent to a session
+# returned :q to LP, which exits to raw Lisp; the session kept answering, in
+# raw Lisp, with no ACL2 world semantics and no error.  `stop NAME` ends a
+# session; raw Lisp inside one form is `(progn! (set-raw-mode t) ...)`.
+LEAVE_HEADS = {"q": "`:q` leaves the ACL2 loop for raw Lisp",
+               "good-bye": "`good-bye` ends the ACL2 process",
+               "exit": "`exit` ends the ACL2 process",
+               "quit": "`quit` ends the ACL2 process",
+               "sb-ext:exit": "`sb-ext:exit` ends the Lisp process",
+               "sb-ext:quit": "`sb-ext:quit` ends the Lisp process",
+               "set-raw-mode-on!": "`set-raw-mode-on!` leaves the session in raw mode"}
+LEAVE_VALUE = re.compile(r"\(\s*(?:value|mv\s+nil)\s+:q\b", re.IGNORECASE)
+RAW_MODE_ON = re.compile(r"^\s*\(\s*set-raw-mode\s+(?:t|:on)\b", re.IGNORECASE)
+
+
+def leaves_loop(form: str) -> str | None:
+    """Why FORM would take the session out of the ACL2 loop, or None."""
+    head = form_head(form)
+    if head in LEAVE_HEADS:
+        return LEAVE_HEADS[head]
+    if LEAVE_VALUE.search(form):
+        return "a form returning :q (`(value :q)`) exits LP into raw Lisp"
+    if RAW_MODE_ON.match(form):
+        return ("top-level `(set-raw-mode t)` leaves the session in raw mode "
+                "(use `(progn! (set-raw-mode t) ...)` for one form)")
+    return None
+
+
 def value_lines(form: str, output: str, keep: int = 20) -> list[str]:
     """What a non-event form printed, for the one-line-per-form answers.
 
@@ -1890,6 +1918,13 @@ def send(args) -> int:
         several = commands(form)
     except ValueError:
         several = [form]  # the session answers with the parse error
+    for one in several:
+        why = leaves_loop(one)
+        if why:
+            print(f"proof-repl: refusing {one.strip()[:40]!r}: {why}; the session would "
+                  "keep answering outside the ACL2 loop.  End a session with "
+                  f"`proof_repl.py stop {args.name}`.", file=sys.stderr)
+            return 2
     undoing = [one for one in several if undoes(one)]
     if undoing and not getattr(args, "allow_undo", False):
         print(f"proof-repl: refusing {undoing[0].strip()[:40]!r}: it takes events back "

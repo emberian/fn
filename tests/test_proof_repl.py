@@ -1561,6 +1561,31 @@ class OwnershipTests(unittest.TestCase):
 
 
 
+class LeaveLoopTests(unittest.TestCase):
+    """obstructions-6 item 49: forms that leave the ACL2 loop are refused by name."""
+
+    def test_leaving_forms_are_named(self):
+        for form in (":q", "(value :q)", "(er-progn (value-triple 1) (value :q))",
+                     "(mv nil :q state)", "(good-bye)", "(exit 0)", "(quit)",
+                     "(sb-ext:exit)", "(set-raw-mode t)", "(set-raw-mode-on! state)"):
+            self.assertIsNotNone(proof_repl.leaves_loop(form), form)
+        for form in ("(value-triple :q)", "(progn! (set-raw-mode t) (load \"x\"))",
+                     "(defthm q-lemma (equal (car (cons :q b)) :q))", ":pe car",
+                     "(set-raw-mode nil)", "(value :quiet)"):
+            self.assertIsNone(proof_repl.leaves_loop(form), form)
+
+    def test_send_refuses_before_anything_is_sent(self):
+        asked = []
+        with mock.patch.object(proof_repl, "ask", lambda *a, **k: asked.append(a) or {}), \
+                contextlib.redirect_stderr(io.StringIO()) as said:
+            code = proof_repl.send(argparse.Namespace(name="s", form="(+ 1 2) (value :q)",
+                                                      limit=None, full=False))
+        self.assertEqual(code, 2)
+        self.assertEqual(asked, [])
+        self.assertIn("exits LP into raw Lisp", said.getvalue())
+        self.assertIn("proof_repl.py stop s", said.getvalue())
+
+
 class ObstructionsTwoTests(unittest.TestCase):
     """obstructions-2 item 5: suffix, argument order, values, undo, fallback."""
 
