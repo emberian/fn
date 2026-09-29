@@ -57,6 +57,7 @@
 ; join-f2-midx: the duplicate test's lookup through the catalog, not the trie
 ; (fn-pidx-existing-action-cat).
 (include-book "../books/post-identity-catalog")
+(include-book "../books/post-prepare-catalog")
 ; The retention admission of a POST through a carried obligation-id trie
 ; (fn-prc-refresh, fn-prc-sbud-prepare; fn-owner-prepare-buffer).
 (include-book "../books/post-retain-carried")
@@ -1305,8 +1306,16 @@
                  ; fn-pout-prepare-article-answers-the-store-change).
                  (outcome (if (equal record :clock-unusable)
                               nil
+                            ; join-f2-midx: the same prepare with its duplicate
+                            ; test decided from the catalog
+                            ; (books/post-prepare-catalog.lisp KEYSTONE
+                            ; fn-ppc-pout-prepare-article-cat-is-pout-prepare-
+                            ; article: both values are fn-pout-prepare-article's
+                            ; under the join, fn-ppc-pout-prepare-article-cat-
+                            ; of-live-owner at the host's owner).
                             (mv-let (word next)
-                              (fn-pout-prepare-article before row budget carry)
+                              (fn-ppc-pout-prepare-article-cat before row budget carry
+                                                               fn-arena fn-cat)
                               ; Lane membership-budget: an :unaffordable
                               ; that the membership charge alone caused is
                               ; :memberships (books/store-capacity-vector.lisp

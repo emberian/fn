@@ -520,6 +520,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/post-identity-catalog \
 	tests/acl2/post-identity-index-tests \
 	tests/acl2/post-identity-catalog-tests \
+	books/post-prepare-catalog \
+	tests/acl2/post-prepare-catalog-tests \
 	books/post-retain-carried \
 	tests/acl2/post-retain-carried-tests \
 	books/store-profile-carried \

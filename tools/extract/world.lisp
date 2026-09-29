@@ -56,6 +56,7 @@
 (include-book "../../books/store-reclaim-buffer")
 (include-book "../../books/post-identity-index")
 (include-book "../../books/post-identity-catalog")
+(include-book "../../books/post-prepare-catalog")
 (include-book "../../books/post-retain-carried")
 (include-book "../../books/store-profile-carried")
 (include-book "../../books/owner-prepare-served")
