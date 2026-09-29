@@ -274,6 +274,16 @@ bp-remainder-3). incremental-finalize-3 confirmed (2026-09-29) that the
 capture adds no earlier prepared boundary: the NEXT bound is written inside
 the same staged checkpoint file, and the cuts stay STATE_CHECKPOINT_CUTS'.
 
+Receipt reorder continuation (SCN-218): the adapter requests the BP owner's
+serialized live listener with the trailing `--control-config CONFIG` on the
+receiver only and requires the observed `BP NODE CONTROL Store/control.sock`
+before the held route mutation. Its existing journal checker requires the
+actual successful route removal, no-route dispatch, restored sent dispatch,
+receipt and unpinned obligation, and one application effect. This adapter
+wiring is unit-tested; the source catalog still names the live-route
+dependency as pending until that owner's source and a matching runner image
+execute this case. An announcement alone never activates the receipt fault.
+
 W7d **power_loss as a backend**. DONE: crash-image selection is an
 environment fact with the storage profile's ordering constraints made
 explicit (preflush/FUA semantics from dm-log-writes); `classify`/`bindings`

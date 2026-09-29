@@ -442,14 +442,13 @@ def validate(scenario: Scenario, registry: dict | None = None) -> list:
 # nemesis needs does not.  Keyed by the operation's `op` and the recipe.
 PENDING_INTERLEAVES = {
     ("policy-change", "bp-node"): {
-        "coordinate": "no live path: `operator CONFIG bp-route remove` under a running "
-                      "`bp-node serve` is refused store-held (a process holds the store lock "
-                      "and no control socket is there to reach it; rf4-444f-2's words); "
-                      "`bp-node serve` opens no control socket and the owner service "
-                      "(`operator run`) does not embed the BP node, so the live "
-                      "reconfiguration path (host/native/control.lisp :admin -> "
-                      "fnn-owner-live-admin-serialized) cannot reach a BP node's route table",
-        "owner": "coordinator (finding, resilience-framework-5)"},
+        "coordinate": "live BP route control source integration and matching image pending: "
+                      "the adapter stages `bp-node serve ... --control-config CONFIG` and "
+                      "requires actual BP NODE CONTROL for this Store; the earlier image "
+                      "rf4-444f-2 refused live `bp-route remove` as store-held. "
+                      "The same serialized BP owner must pump the admin turn during the "
+                      "receipt decided hold; offline edits cannot stand in for it",
+        "owner": "bp_resume (serialized live BP control); resilience (SCN-218 adapter)"},
 }
 
 
