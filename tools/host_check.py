@@ -851,6 +851,15 @@ def interface_step(undefined: list[str] | None = None, root: Path = ROOT,
         return findings
     reading = interface_emit.host_reading(root)
     static = interface_emit.findings(decls, reading, root)
+    if not static_always:
+        # Inside --load a static finding fails only for a host file this
+        # branch touched (dev's own interface debt is `--interfaces`' and
+        # make check's to report); the rest are printed as warnings.
+        mine = [one for one in static if touched and any(f in one for f in touched)]
+        for one in static:
+            if one not in mine:
+                print(f"warn interfaces: {one}")
+        static = mine
     lines, findings = interface_report(decls, reading, static, touched, undefined)
     for line in lines:
         print(line)

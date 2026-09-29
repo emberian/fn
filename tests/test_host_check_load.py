@@ -355,6 +355,21 @@ class DeclaredInterfaceTests(unittest.TestCase):
         self.assertIn("interface_step(interface_world_undefined(output)", source)
         self.assertIn("static_always=False", source)
 
+    def test_inside_load_static_findings_fail_only_for_touched_files(self):
+        from unittest import mock
+        import interface_emit
+        static = ["the raw host dispatches fn-b (host/x.lisp) and no definterface declares it",
+                  "the raw host dispatches fn-c (host/y.lisp) and no definterface declares it"]
+        out = io.StringIO()
+        with mock.patch.object(host_check, "touched_host_files", lambda root: ["host/x.lisp"]), \
+                mock.patch.object(interface_emit, "declarations", lambda root: self.DECLS), \
+                mock.patch.object(interface_emit, "host_reading", lambda root: self.READING), \
+                mock.patch.object(interface_emit, "findings", lambda d, r, root: list(static)), \
+                contextlib.redirect_stdout(out):
+            found = host_check.interface_step([], echo=False, static_always=False)
+        self.assertEqual(found, ["interfaces: " + static[0]])
+        self.assertIn("warn interfaces: " + static[1], out.getvalue())
+
     def test_inside_load_an_untouched_branch_skips_the_static_half(self):
         from unittest import mock
         import interface_emit
