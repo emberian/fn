@@ -390,7 +390,7 @@
         (load "host/native/extent.lisp")
         ; DEFLATE (lib/libfn-deflate, vendored zlib; untrusted: ACL2's
         ; inflater checks every stream it reads): the COMPRESS layer's
-        ; outbound compressor (RFC 8054), the stored payloads' encoder, and
+        ; outbound compressor (RFC 8054), the stored payloads' SBCL encoder, and
         ; the host side of ACL2's inflater (books/deflate-inflate.lisp).
         (load "host/native/deflate.lisp")
         ; Build-time entry profile.  tools/build_native_host.sh always supplies

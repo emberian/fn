@@ -338,8 +338,11 @@ dictionary: the first four octets of its BLAKE3 digest, 0 for none
   `books/deflate-inflate.lisp`). The COMPRESS wire uses the same inflater.
   An :ok answer is exactly N octets, and the stream ended at its final
   block or at a sync flush at the end of its input.
-- **The encoder is untrusted.** zlib (`host/native/fn-deflate.c`
-  `fn_deflate_payload`, level 9, over the current dictionary) proposes C.
+- **The encoder is untrusted.** The image's SBCL deflater
+  (`host/native/deflate.lisp` `fnn-ldf-deflate-payload`, zlib's level-9
+  search limits, over the current dictionary) proposes C; it replaced
+  zlib's `fn_deflate_payload` after ember's 2x-of-zlib gate
+  (`planning/evidence/deflater-gate-2026-09-29/result.md`).
   The append takes the frame only when the decoder gives the span back
   (`fn-lzr-append-decide`). A wrong candidate is a named store fault; a
   candidate that does not shrink the record keeps it as it is.
