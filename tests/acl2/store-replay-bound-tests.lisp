@@ -51,6 +51,8 @@
       :hints (("Goal" :do-not-induct t
                :in-theory (disable fn-srb-record-overhead fn-bs-profile-admittedp))))))
 
+; KEYSTONE fn-srb-admitted-history-is-within-the-bound (PRF-280): the
+; witness and one removal per hypothesis (srt-without-*) follow.
 ; The witness: two articles of 2,048 payload octets encoded at 2,600.
 (assert! (equal (srt-hyps *srt-small* '(2600 2600) '(2048 2048)) '(t t t t)))
 (assert! (srt-conclusion *srt-small* '(2600 2600)))
