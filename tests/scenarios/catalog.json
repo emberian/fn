@@ -5602,6 +5602,32 @@
       }
     },
     {
+      "id": "SCN-204",
+      "title": "A per-group expiry policy releases what it expires through `store reclaim`, keeps expired distinct from absent, never resurrects or renumbers, and a death mid-expiry completes the same expiry",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "steps": [
+        "Post to fn.test articles with a past Expires:, none, and a future one, and one cross-posted to fn.keep with a past Expires:.",
+        "`store reclaim --dry-run` with no policy; `retention expire fn.test purge 30`; dry run; `store reclaim`.",
+        "Serve ARTICLE/STAT by Message-ID and number, GROUP; re-POST an expired article; POST a new one.",
+        "`retention expire fn.test octets N` over four equal articles (N a little over two).",
+        "Developer image: on a copy per state-checkpoint cut, kill the expiring reclaim; `status`; `store reclaim --recorded` (or a rerun)."
+      ],
+      "expected": [
+        "Nothing expires without a policy; the two past-Expires fn.test articles expire; the future one, the one without Expires: and the cross-post stay.",
+        "430/423 article reclaimed for the expired; 430 no article for a never-held Message-ID; GROUP's high water unchanged; the re-POST refused; the new POST takes the next number.",
+        "The two oldest leave.",
+        "Every copy reopens and ends with the same two articles expired."
+      ],
+      "evidence": [
+        "tests/test_native_expiry.py"
+      ]
+    },
+    {
       "id": "SCN-194",
       "title": "Memory credits follow the buffer: the batch in flight keeps its article's credit after its poster hangs up, until its barrier returns; many large posters and readers at once never fault the node",
       "milestone": "M6",
@@ -5644,136 +5670,6 @@
       "evidence": [
         "books/owner-commit-fairness.lisp",
         "tests/test_native_owner_scheduler.py"
-      ]
-    },
-    {
-      "id": "SCN-202",
-      "title": "The adopted default F4 bars classify an unresolved write: try-later past D, the held poster told uncertain once at H (not at D), the same article re-sent answered try-later during the stall and `already stored here' after it, and a restart a new clock domain",
-      "milestone": "M5",
-      "status": "specified",
-      "requirements": [
-        "HST-031"
-      ],
-      "steps": [
-        "tests/test_native_slow_disk.py on the developer image with FN_NATIVE_TEST_DISK_STALL_FILE and no policy rows (D 5,000 ms, H 30,000 ms, cadence 1,000 ms): a warm POST; the stall file created; one POST (held); health at 2 s and at 7 s; a POST command and the same article's POST command on two other connections; a GROUP; wait for the held poster's answer; health; the stall file removed; the same article re-sent; SIGTERM, restart, `store ROOT journal'."
-      ],
-      "expected": [
-        "health `disk ok' exit 0 under D; `disk slow ... deadline-ms=5000 stall-ms=30000' exit 0 past D; both POST commands `440 posting not permitted now; the disk is slow'; the held poster `441' uncertain (no try-later) after at least 29.5 s, then closed, never answered again; health exit 28 `disk stalled' stall-ms=30000; after recovery the same article `441 posting failed; this article is already stored here'; every start entry of decisions.fnj has reading 0 and usable 1, and `store ROOT journal' exits 0 with `segments=2' and `replay=agrees'."
-      ],
-      "evidence": [
-        "tests/test_native_slow_disk.py",
-        "planning/evidence/time-bars-2026-09-28.md"
-      ],
-      "implementation": {
-        "test": "tests.test_native_slow_disk",
-        "cases": [
-          "test_the_adopted_default_bars_classify_an_unresolved_write"
-        ],
-        "native": true,
-        "record": "planning/evidence/time-bars-2026-09-28.md"
-      }
-    },
-    {
-      "id": "SCN-198",
-      "title": "Power is cut under a committing node while a reader polls GROUP/OVER; every number the reader was served before the cut is served with the same Message-ID after recovery, and a fresh POST takes a number above all of them",
-      "milestone": "M2",
-      "status": "implemented",
-      "implementation": {
-        "test": "tools/power_loss.py",
-        "cases": [],
-        "native": true,
-        "record": "planning/evidence/durability-numbers-2026-09-28.md",
-        "log": "planning/evidence/durability-numbers-2026-09-28/obs1.log"
-      },
-      "requirements": [
-        "OBJ-005",
-        "STO-005"
-      ],
-      "steps": [
-        "tools/power_loss.py workload --observe --posters 4: a reader thread polls GROUP fn.test and OVER 1- and writes a seen-N mark into the dm-log-writes log after the first reply serving N.",
-        "For each cut, the numbers whose seen mark precedes the cut must be served after recovery by the same Message-ID (observed-number-reissued / observed-number-lost otherwise), and the fresh POST's number is above every observed one."
-      ],
-      "evidence": [
-        "planning/evidence/durability-numbers-2026-09-28.md",
-        "tools/power_loss.py",
-        "planning/evidence/durability-numbers-2026-09-28/cuts-obs1.jsonl"
-      ],
-      "expected": "No observed number reissued or lost; a lost unacknowledged POST's number may be taken by the next POST (never observed)."
-    },
-    {
-      "id": "SCN-204",
-      "title": "A per-group expiry policy releases what it expires through `store reclaim`, keeps expired distinct from absent, never resurrects or renumbers, and a death mid-expiry completes the same expiry",
-      "milestone": "M5",
-      "status": "specified",
-      "requirements": [
-        "RET-008",
-        "STO-017"
-      ],
-      "steps": [
-        "Post to fn.test articles with a past Expires:, none, and a future one, and one cross-posted to fn.keep with a past Expires:.",
-        "`store reclaim --dry-run` with no policy; `retention expire fn.test purge 30`; dry run; `store reclaim`.",
-        "Serve ARTICLE/STAT by Message-ID and number, GROUP; re-POST an expired article; POST a new one.",
-        "`retention expire fn.test octets N` over four equal articles (N a little over two).",
-        "Developer image: on a copy per state-checkpoint cut, kill the expiring reclaim; `status`; `store reclaim --recorded` (or a rerun)."
-      ],
-      "expected": [
-        "Nothing expires without a policy; the two past-Expires fn.test articles expire; the future one, the one without Expires: and the cross-post stay.",
-        "430/423 article reclaimed for the expired; 430 no article for a never-held Message-ID; GROUP's high water unchanged; the re-POST refused; the new POST takes the next number.",
-        "The two oldest leave.",
-        "Every copy reopens and ends with the same two articles expired."
-      ],
-      "evidence": [
-        "tests/test_native_expiry.py"
-      ]
-    },
-    {
-      "id": "SCN-205",
-      "title": "A reader logs in with AUTHINFO SASL: PLAIN over TLS, SCRAM-SHA-256 in clear and over TLS, and SCRAM-SHA-256-PLUS bound to the connection's tls-exporter value",
-      "milestone": "M3",
-      "status": "specified",
-      "requirements": [
-        "NNT-056"
-      ],
-      "steps": [
-        "A node with a plaintext reader listener offering STARTTLS, an implicit-TLS listener, required authentication and one credential written by `principal set-password`.",
-        "CAPABILITIES in clear, over TLS and after a login; AUTHINFO SASL PLAIN, SCRAM-SHA-256 and SCRAM-SHA-256-PLUS exchanges, a wrong password and a replayed final message."
-      ],
-      "expected": [
-        "The SASL label lists the mechanisms offered now and survives the login; PLAIN in clear is 483; SCRAM answers 383 then 283 with the server's v=; a wrong password and a replayed final message are 481; PLUS succeeds only with the connection's own exporter value."
-      ],
-      "execution_scope": "Specified by lane sasl increment 1 (the mechanism books); the served arm and tests/test_native_sasl.py come with increment 2."
-    },
-    {
-      "id": "SCN-197",
-      "title": "Long header fields: a 900-octet Subject and about 9,000 octets of folded References are accepted and served whole by OVER, XOVER and HDR; the same References on one line is refused by the line bound's own 441",
-      "milestone": "M4",
-      "status": "implemented",
-      "requirements": [
-        "STO-030",
-        "NNT-005"
-      ],
-      "steps": [
-        "`init fn.test`; start the owner (plain listener, default profile).",
-        "POST <long> with Subject of 900 octets and References of 200 Message-IDs folded one per line; POST <oneline> with the same References on one line; POST <edge> with a 998-octet Subject line and <over> with a 999-octet one.",
-        "GROUP fn.test; OVER and XOVER of the group's range; OVER <long>; HDR Subject <long>; HDR References <long>; ARTICLE <long>; STAT <oneline>."
-      ],
-      "expected": [
-        "<long> and <edge> 240; <oneline> and <over> `441 posting failed; a header line is longer than 998 octets (RFC 5322 section 2.1.1); fold it`; STAT <oneline> 430.",
-        "OVER and XOVER carry the whole Subject (900 octets) and the whole References (the unfolded value, RFC 3977 section 8.3.2); HDR answers the same fields; ARTICLE carries the posted folded lines."
-      ],
-      "implementation": {
-        "test": "tests.test_native_header_lines",
-        "cases": [
-          "NativeHeaderLineTests.test_long_fields_folded_are_served_whole_and_a_long_line_is_refused_by_name"
-        ],
-        "native": true,
-        "record": "planning/evidence/nntp-bugs-2026-09-28.md",
-        "log": "planning/evidence/nntp-bugs-2026-09-28/native-n3-test_native_header_lines.log"
-      },
-      "evidence": [
-        "tests/test_native_header_lines.py",
-        "planning/evidence/nntp-bugs-2026-09-28.md",
-        "planning/evidence/nntp-bugs-2026-09-28/native-n3-test_native_header_lines.log"
       ]
     },
     {
@@ -5889,6 +5785,110 @@
       "evidence": [
         "tests/test_bp_obligation_native.py",
         "planning/evidence/operations-2026-09-28.md"
+      ]
+    },
+    {
+      "id": "SCN-202",
+      "title": "The adopted default F4 bars classify an unresolved write: try-later past D, the held poster told uncertain once at H (not at D), the same article re-sent answered try-later during the stall and `already stored here' after it, and a restart a new clock domain",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-031"
+      ],
+      "steps": [
+        "tests/test_native_slow_disk.py on the developer image with FN_NATIVE_TEST_DISK_STALL_FILE and no policy rows (D 5,000 ms, H 30,000 ms, cadence 1,000 ms): a warm POST; the stall file created; one POST (held); health at 2 s and at 7 s; a POST command and the same article's POST command on two other connections; a GROUP; wait for the held poster's answer; health; the stall file removed; the same article re-sent; SIGTERM, restart, `store ROOT journal'."
+      ],
+      "expected": [
+        "health `disk ok' exit 0 under D; `disk slow ... deadline-ms=5000 stall-ms=30000' exit 0 past D; both POST commands `440 posting not permitted now; the disk is slow'; the held poster `441' uncertain (no try-later) after at least 29.5 s, then closed, never answered again; health exit 28 `disk stalled' stall-ms=30000; after recovery the same article `441 posting failed; this article is already stored here'; every start entry of decisions.fnj has reading 0 and usable 1, and `store ROOT journal' exits 0 with `segments=2' and `replay=agrees'."
+      ],
+      "evidence": [
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/time-bars-2026-09-28.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_slow_disk",
+        "cases": [
+          "test_the_adopted_default_bars_classify_an_unresolved_write"
+        ],
+        "native": true,
+        "record": "planning/evidence/time-bars-2026-09-28.md"
+      }
+    },
+    {
+      "id": "SCN-198",
+      "title": "Power is cut under a committing node while a reader polls GROUP/OVER; every number the reader was served before the cut is served with the same Message-ID after recovery, and a fresh POST takes a number above all of them",
+      "milestone": "M2",
+      "status": "implemented",
+      "implementation": {
+        "test": "tools/power_loss.py",
+        "cases": [],
+        "native": true,
+        "record": "planning/evidence/durability-numbers-2026-09-28.md",
+        "log": "planning/evidence/durability-numbers-2026-09-28/obs1.log"
+      },
+      "requirements": [
+        "OBJ-005",
+        "STO-005"
+      ],
+      "steps": [
+        "tools/power_loss.py workload --observe --posters 4: a reader thread polls GROUP fn.test and OVER 1- and writes a seen-N mark into the dm-log-writes log after the first reply serving N.",
+        "For each cut, the numbers whose seen mark precedes the cut must be served after recovery by the same Message-ID (observed-number-reissued / observed-number-lost otherwise), and the fresh POST's number is above every observed one."
+      ],
+      "evidence": [
+        "planning/evidence/durability-numbers-2026-09-28.md",
+        "tools/power_loss.py",
+        "planning/evidence/durability-numbers-2026-09-28/cuts-obs1.jsonl"
+      ],
+      "expected": "No observed number reissued or lost; a lost unacknowledged POST's number may be taken by the next POST (never observed)."
+    },
+    {
+      "id": "SCN-205",
+      "title": "A reader logs in with AUTHINFO SASL: PLAIN over TLS, SCRAM-SHA-256 in clear and over TLS, and SCRAM-SHA-256-PLUS bound to the connection's tls-exporter value",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-056"
+      ],
+      "steps": [
+        "A node with a plaintext reader listener offering STARTTLS, an implicit-TLS listener, required authentication and one credential written by `principal set-password`.",
+        "CAPABILITIES in clear, over TLS and after a login; AUTHINFO SASL PLAIN, SCRAM-SHA-256 and SCRAM-SHA-256-PLUS exchanges, a wrong password and a replayed final message."
+      ],
+      "expected": [
+        "The SASL label lists the mechanisms offered now and survives the login; PLAIN in clear is 483; SCRAM answers 383 then 283 with the server's v=; a wrong password and a replayed final message are 481; PLUS succeeds only with the connection's own exporter value."
+      ],
+      "execution_scope": "Specified by lane sasl increment 1 (the mechanism books); the served arm and tests/test_native_sasl.py come with increment 2."
+    },
+    {
+      "id": "SCN-197",
+      "title": "Long header fields: a 900-octet Subject and about 9,000 octets of folded References are accepted and served whole by OVER, XOVER and HDR; the same References on one line is refused by the line bound's own 441",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "STO-030",
+        "NNT-005"
+      ],
+      "steps": [
+        "`init fn.test`; start the owner (plain listener, default profile).",
+        "POST <long> with Subject of 900 octets and References of 200 Message-IDs folded one per line; POST <oneline> with the same References on one line; POST <edge> with a 998-octet Subject line and <over> with a 999-octet one.",
+        "GROUP fn.test; OVER and XOVER of the group's range; OVER <long>; HDR Subject <long>; HDR References <long>; ARTICLE <long>; STAT <oneline>."
+      ],
+      "expected": [
+        "<long> and <edge> 240; <oneline> and <over> `441 posting failed; a header line is longer than 998 octets (RFC 5322 section 2.1.1); fold it`; STAT <oneline> 430.",
+        "OVER and XOVER carry the whole Subject (900 octets) and the whole References (the unfolded value, RFC 3977 section 8.3.2); HDR answers the same fields; ARTICLE carries the posted folded lines."
+      ],
+      "implementation": {
+        "test": "tests.test_native_header_lines",
+        "cases": [
+          "NativeHeaderLineTests.test_long_fields_folded_are_served_whole_and_a_long_line_is_refused_by_name"
+        ],
+        "native": true,
+        "record": "planning/evidence/nntp-bugs-2026-09-28.md",
+        "log": "planning/evidence/nntp-bugs-2026-09-28/native-n3-test_native_header_lines.log"
+      },
+      "evidence": [
+        "tests/test_native_header_lines.py",
+        "planning/evidence/nntp-bugs-2026-09-28.md",
+        "planning/evidence/nntp-bugs-2026-09-28/native-n3-test_native_header_lines.log"
       ]
     },
     {

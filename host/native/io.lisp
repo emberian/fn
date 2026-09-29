@@ -2554,23 +2554,37 @@ the checkpoint name, fence the root.  Before the rename a failure is known
 uncertain (exit 3): the next open reads the old or the new file, never a
 torn one (fn-bs-scp-program-crash-is-old-or-new), and a corrupt or missing
 one falls back to full replay."
+  (fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets)))
+
+(defun fnn-state-checkpoint-stage (store octets)
+  "fnn-state-checkpoint-write's first half: the staged file written and fenced
+(cuts created, written, staged-durable).  A failure is known: the old
+checkpoint stays.  Answers the staged path, for fnn-state-checkpoint-install
+(Q16's reclaim pass stages off the owner mutex and installs under it)."
   (let ((stage (fnn-join (fnn-staging store)
-                         (format nil ".stage-checkpoint-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
-        (attempted nil))
+                         (format nil ".stage-checkpoint-~d-~a" (sb-posix:getpid) (fnn-random-hex 12)))))
     (handler-case
         (progn
           (fnn-write-staged-at store stage octets
                                :state-checkpoint-created :state-checkpoint-written)
           (fnn-at store :state-checkpoint-staged-durable)
-          (setq attempted t)
-          (fnn-replace stage (fnn-state-checkpoint-path store))
-          (fnn-at store :state-checkpoint-replaced)
-          (fnn-fsync-dir (fnn-store-root store))
-          (fnn-at store :state-checkpoint-durable))
+          stage)
       (fnn-os-error (e)
-        (if attempted
-            (fnn-indeterminate "state checkpoint replacement is indeterminate: ~a" e)
-            (fnn-refuse-io "known failure before the state checkpoint replacement: ~a" e))))))
+        (fnn-refuse-io "known failure before the state checkpoint replacement: ~a" e)))))
+
+(defun fnn-state-checkpoint-install (store stage)
+  "fnn-state-checkpoint-write's second half: the staged file STAGE renamed
+onto the checkpoint name and the root fenced (cuts replaced, durable).  From
+the rename on the outcome is uncertain (the old or the new file, never a torn
+one: fn-bs-scp-program-crash-is-old-or-new)."
+  (handler-case
+      (progn
+        (fnn-replace stage (fnn-state-checkpoint-path store))
+        (fnn-at store :state-checkpoint-replaced)
+        (fnn-fsync-dir (fnn-store-root store))
+        (fnn-at store :state-checkpoint-durable))
+    (fnn-os-error (e)
+      (fnn-indeterminate "state checkpoint replacement is indeterminate: ~a" e))))
 
 (defun fnn-plan-p (plan &optional (st (fnn-live-octets)))
   "A state checkpoint plan (books/store-checkpoint-buffer.lisp fn-sccb-plan):
@@ -2973,6 +2987,12 @@ one walk: fn-scka-srcs-n-compose).  READS the arena.  The last state,
       (unless (and (consp walk) (= (length walk) 3))
         (fnn-fault "ACL2 returned a malformed checkpoint walk")))))
 
+(defvar *fnn-checkpoint-frames* :off
+  "The owner's publication binds this to a list: the arena run's payload
+frames written, newest first, each (EOFF ELEN HANDLES) -- the entry's file
+offset (the frame start less 32), its protected prefix's length, and the
+step's handles (fn-xrt-step-handles).  :off for the offline verbs.")
+
 (defun fnn-checkpoint-write-arena-steps (fd arun sequence segment-bound file-bound st fault)
   "Write the arena run's frames to FD step by step (fn-scka-write-step: step 0
 the head, each later step one batch of whole canonical payloads read through
@@ -2997,6 +3017,21 @@ the publication buffer ST."
               (fnn-refuse-io "the checkpoint arena run refused by name: ~a" verdict))
             (unless (fnn-plan-p frames st)
               (fnn-fault "ACL2 returned a malformed checkpoint arena step"))
+            ;; The owner's publication keeps, per payload frame, where it
+            ;; lies and the handles it holds, for the reseat after the
+            ;; install (books/extent-retire.lisp fn-xrt-step-handles; the
+            ;; frame's entry opens 32 octets before it, at the previous
+            ;; frame's trailer).
+            (when (listp *fnn-checkpoint-frames*)
+              (let ((handles (fnn-core 'fn-xrt-step-handles state)))
+                (when (and (consp handles) (= (length frames) 1))
+                  (let ((at (sb-posix:lseek fd 0 sb-posix:seek-cur))
+                        (frame (first frames)))
+                    (when (>= at 32)
+                      (push (list (- at 32)
+                                  (+ 32 (length (first frame)) (- (third frame) (second frame)))
+                                  handles)
+                            *fnn-checkpoint-frames*))))))
             (fnn-plan-write-all fd frames st)
             (setq state next)
             (incf steps)
@@ -5582,7 +5617,7 @@ tree root), or stop the build."
     ;; environment readings the image and the extracted program then share.
     "FN_NATIVE_TEST_CLOCK" "FN_NATIVE_TEST_ENTROPY"
     "FN_NATIVE_STATE_CHECKPOINT_FAULT" "FN_NATIVE_IMPORT_FAULT" "FN_NATIVE_EXPORT_FAULT"
-    "FN_NATIVE_CHECKPOINT_BUDGET_TEST"
+    "FN_NATIVE_CHECKPOINT_BUDGET_TEST" "FN_NATIVE_RECLAIM_FAULT"
     "FN_NATIVE_DISK_FREE"
     "FN_NATIVE_EXTENT_CACHE_TEST_OFF"
     ;; host/native/digest.lisp: the matched measurement's reference arm.
@@ -6391,6 +6426,17 @@ for a later COMPLETE."
           (dolist (entry due)
             (dolist (h (cdr entry)) (fnn-call 'fn-arena-release h arena))))))))
 
+
+(defun fnn-log-member-files (log)
+  "The realizer file ids the log's members in flight or fenced name (their
+COMPLETE reseats them there): fn-xrt-scan-may-start's and fn-xrt-close-set's
+NAMED."
+  (if log
+      (fnn-log-with-kernel (log)
+        (remove-duplicates
+         (loop for m in (append (fnn-log-inflight log) (fnn-log-fenced log))
+               when (and (consp m) (integerp (second m))) collect (second m))))
+    nil))
 
 (defun fnn-log-fence (log)
   "P-BATCH's fence (fn-lg-fence-program): the barrier, then the kernel's

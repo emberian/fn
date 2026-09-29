@@ -2692,6 +2692,10 @@
         "PRF-271",
         "PRF-327",
         "PRF-918",
+        "PRF-927",
+        "PRF-930",
+        "PRF-939",
+        "PRF-966",
         "PRF-941"
       ],
       "verification": [
@@ -3274,7 +3278,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-172",
-        "PRF-304"
+        "PRF-304",
+        "PRF-967"
       ],
       "verification": [
         "proof",
@@ -5037,64 +5042,17 @@
       "implementation_note": "Lane health-truth-journal (PKT-872). ENOSPC mid-line used to leave torn octets the next entry was appended after (fitness f2-full: malformed-at-18416 forever). The writer's rule is ACL2's (books/owner-time-journal-writer.lisp); the host truncates with ftruncate, which needs no free space. A developer selector FN_NATIVE_TEST_JOURNAL_FAIL_FILE injects the failure."
     },
     {
-      "id": "HST-031",
-      "title": "The adopted F4 bars: a deadline is a notification, never a cancellation; an unresolved write's late completion is consumed exactly once into its own generation, never a second reply and never an early release of what the I/O owns; a late page is a named unavailable outcome, never absence; a restart is a new clock domain",
-      "specification": "specs/host.md#the-disk-as-an-adversarial-environment",
-      "milestone": "M5",
-      "status": "implemented",
-      "proof_targets": [
-        "PRF-384",
-        "PRF-385"
-      ],
-      "verification": [
-        "proof",
-        "integration",
-        "test"
-      ],
-      "evidence": [
-        "books/owner-time-bars.lisp",
-        "books/feed-restart-domain.lisp",
-        "books/peer-feed.lisp",
-        "books/owner-time-journal.lisp",
-        "tests/acl2/owner-time-bars-tests.lisp",
-        "tests/acl2/feed-restart-domain-tests.lisp",
-        "host/native/owner.lisp",
-        "tests/test_native_slow_disk.py",
-        "planning/design-time-model-2026-09-27.md",
-        "planning/evidence/time-bars-2026-09-28.md"
-      ],
-      "implementation_note": "Lane time-bars (row F1 of COMPLETE-BEFORE-6.6.0). Bars (ember 2026-09-28): D 5 s, H 30 s with at most 1 s notification slack, cached health p99 <= 250 ms and <= 1 s under the injected stall, warm reads <= 1 s, cold page-dependent reads a declared 5 s dependency deadline then 403 (design section 4b). The committer's told-connection list moved into ACL2 (fn-otb-*); the journal's start entry records the wall observation, no monotonic origin; the push feed's restart forgets the previous process's back-off deadline. The cold-read decision is the interface row A4's asynchronous page fault calls; until A4 a cold extent read is synchronous under the owner."
-    },
-    {
-      "id": "NNT-056",
-      "title": "AUTHINFO SASL: SCRAM-SHA-256 (and -PLUS over TLS 1.3 with tls-exporter) and PLAIN over TLS, with ACL2 deciding the whole exchange and the server never storing the password",
-      "specification": "specs/nntp.md#authinfo-sasl-nnt-056",
-      "milestone": "M3",
-      "status": "specified",
-      "proof_targets": [
-        "PRF-915"
-      ],
-      "verification": [
-        "proof",
-        "test",
-        "scenario"
-      ],
-      "evidence": [
-        "books/hmac-sha256.lisp",
-        "books/scram.lisp",
-        "tests/acl2/hmac-sha256-tests.lisp",
-        "tests/acl2/scram-tests.lisp"
-      ],
-      "implementation_note": "RFC 4643 section 2.4 with PLAIN (RFC 4616), SCRAM-SHA-256 (RFC 5802, RFC 7677) and SCRAM-SHA-256-PLUS (RFC 9266 tls-exporter). DIGEST-MD5 (RFC 4643's mandatory mechanism) is not implemented: RFC 6331 made it Historic. Increment 1 (lane sasl): the HMAC-SHA-256/PBKDF2 and SCRAM mechanism books. Increment 2: the exchange (books/sasl.lisp), verifier v2 and the served AUTHINFO SASL arm."
-    },
-    {
       "id": "RET-008",
       "title": "A per-group expiry policy is an authorized release: the operator's keep/default/purge days and octets window, honouring a posted Expires: within the bounds, released through the one reclaim path with every holder still in force",
       "specification": "specs/storage.md#content-reclamation-under-d13-sto-014",
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-918"
+        "PRF-918",
+        "PRF-927",
+        "PRF-930",
+        "PRF-939",
+        "PRF-966"
       ],
       "verification": [
         "proof",
@@ -5102,10 +5060,11 @@
       ],
       "evidence": [
         "tests/acl2/expiry-tests.lisp",
-        "tests/test_native_expiry.py"
+        "tests/test_native_expiry.py",
+        "tests/acl2/owner-reclaim-tests.lisp"
       ],
       "implementation_note": "`retention expire {GROUP|*} {clear | [keep D] [default D] [purge D] [octets N]}` stages five configuration quota rows (books/expiry-policy.lisp); `store reclaim` builds its context with the set the policy expires at its recorded instant (books/expiry.lisp fn-xpy-ctx, host/checkpoint-host.lisp fn-store-reclaim-context) and releases an expired article exactly as a released one (books/expiry-verdict.lisp): the tombstone, the checkpoint and the drop. An article leaves only when every group it is filed in expires it. Served: `423/430 article reclaimed`, distinct from `withdrawn` and from no article; the Message-ID and the numbers stay.",
-      "note": "OPEN: expiry runs offline (`store reclaim` refuses while an owner runs); expiry while serving needs the owner's checkpoint publication to carry the rewrite. GROUP's count and low water and LISTGROUP still include a reclaimed article (pre-existing, reclaim). Reclaim frees bytes, never transactions: a count-full store stays count-full (Q11, D13)."
+      "note": "OPEN: expiry runs offline. A running owner answers `store reclaim --dry-run` (the fold over its rows, PRF-927) and refuses `store reclaim` by name (offline-only) until the installing pass lands (lane online-reclaim NEXT: checkpoint of the rewritten capture, live swap, drop; online disk release also needs the extent descriptors of dropped segments closed). GROUP's count and low water and LISTGROUP still include a reclaimed article (pre-existing, reclaim). Reclaim frees bytes, never transactions: a count-full store stays count-full (Q11, D13)."
     },
     {
       "id": "HST-032",
@@ -5214,6 +5173,57 @@
         "tests/test_bp_obligation_native.py"
       ],
       "implementation_note": "Lane operations (PKT-869). `fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK REASON...}' over the FNWF workflow journal, offline beside the store as the other obligation verbs are (a served store refuses). The controls are durable records of their own application journal (domain :carry at JOURNAL/carry, frame FNCC: books/bp-carry-frame.lisp), replayed over the workflow image, never FNWF kinds: books/frame-journal.lisp has about 1,100 dependents and each FNWF kind doubled books/frame's fn-frame-workflow-protected guard proof (476k to 874k steps for one). A drop stops the carrying and keeps the Store pin: books/retention.lisp releases a pin only with the evidence it was undertaken against (the receipt's), so an operator's abandonment of the pin is a new evidence kind, a decision for the register. Open: the verbs act on a stopped BP node; the application journals' lifetime namespace (app-journal.lisp *fn-aj-max-records* 4096, 16 MiB for FNWF) is a BP data cap (bounds inventory 1.4)."
+    },
+    {
+      "id": "HST-031",
+      "title": "The adopted F4 bars: a deadline is a notification, never a cancellation; an unresolved write's late completion is consumed exactly once into its own generation, never a second reply and never an early release of what the I/O owns; a late page is a named unavailable outcome, never absence; a restart is a new clock domain",
+      "specification": "specs/host.md#the-disk-as-an-adversarial-environment",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-384",
+        "PRF-385"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-time-bars.lisp",
+        "books/feed-restart-domain.lisp",
+        "books/peer-feed.lisp",
+        "books/owner-time-journal.lisp",
+        "tests/acl2/owner-time-bars-tests.lisp",
+        "tests/acl2/feed-restart-domain-tests.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_slow_disk.py",
+        "planning/design-time-model-2026-09-27.md",
+        "planning/evidence/time-bars-2026-09-28.md"
+      ],
+      "implementation_note": "Lane time-bars (row F1 of COMPLETE-BEFORE-6.6.0). Bars (ember 2026-09-28): D 5 s, H 30 s with at most 1 s notification slack, cached health p99 <= 250 ms and <= 1 s under the injected stall, warm reads <= 1 s, cold page-dependent reads a declared 5 s dependency deadline then 403 (design section 4b). The committer's told-connection list moved into ACL2 (fn-otb-*); the journal's start entry records the wall observation, no monotonic origin; the push feed's restart forgets the previous process's back-off deadline. The cold-read decision is the interface row A4's asynchronous page fault calls; until A4 a cold extent read is synchronous under the owner."
+    },
+    {
+      "id": "NNT-056",
+      "title": "AUTHINFO SASL: SCRAM-SHA-256 (and -PLUS over TLS 1.3 with tls-exporter) and PLAIN over TLS, with ACL2 deciding the whole exchange and the server never storing the password",
+      "specification": "specs/nntp.md#authinfo-sasl-nnt-056",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-915"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/hmac-sha256.lisp",
+        "books/scram.lisp",
+        "tests/acl2/hmac-sha256-tests.lisp",
+        "tests/acl2/scram-tests.lisp"
+      ],
+      "implementation_note": "RFC 4643 section 2.4 with PLAIN (RFC 4616), SCRAM-SHA-256 (RFC 5802, RFC 7677) and SCRAM-SHA-256-PLUS (RFC 9266 tls-exporter). DIGEST-MD5 (RFC 4643's mandatory mechanism) is not implemented: RFC 6331 made it Historic. Increment 1 (lane sasl): the HMAC-SHA-256/PBKDF2 and SCRAM mechanism books. Increment 2: the exchange (books/sasl.lisp), verifier v2 and the served AUTHINFO SASL arm."
     },
     {
       "id": "NNT-057",

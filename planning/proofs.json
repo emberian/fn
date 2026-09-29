@@ -14209,6 +14209,193 @@
         "fn-lgl-fork-refused",
         "fn-lgl-accepted-shares-lineage"
       ]
+    },
+    {
+      "id": "PRF-927",
+      "title": "Reclamation over a running owner's rows is the offline reclamation: the rewritten rows' octets are the offline rewrite of the history, the fold is the offline fold, and the decision names exactly the rewritten articles",
+      "statement": "Subject: host/owner-host.lisp fn-owner-orc-chunk = books/owner-reclaim.lisp fn-orc-chunk (called by host/native/owner.lisp fnn-owner-reclaim-walk, from fnn-owner-reclaim-dry-run), and fn-owner-orc-decide = fn-rci-decide-stream / fn-lgr-decide-stream over its fold. fn-orc-rewrite-row-is-the-offline-event: the octets (fn-store-event-encode of alpha) of the rewritten row are fn-rclp-event of the row's octets, no hypothesis; fn-orc-rewrite-rows-is-the-offline-rewrite: for any rows, context and arena, the rewritten rows' octets are fn-rclp-events of the rows' octets (so PRF-119's theorems about the offline rewrite -- a held article is never touched, a reclaimed one stays reclaimed, a rerun rewrites nothing -- hold of the online rewrite); fn-orc-fold-is-the-offline-fold: the fold over the rows is fn-rcls-fold over their octets; fn-orc-decision-names-the-rewritten-articles: when the recorded decision over the fold reclaims, the configuration was recorded, the run is not a dry run, the profile is admitted, and the Message-IDs and freed octets it reports are fn-rclp-rewritten-msgids and fn-rclp-freed of the rows' octets. fn-orc-rewrite-rows-of-append and fn-orc-fold-of-append: the host's chunks compose to the whole history's rewrite and fold. fn-orc-one-pass-in-flight, fn-orc-never-past-a-deferral: the request's answer. Scope: a running owner answers `store reclaim --dry-run` (nothing written); the installing pass (checkpoint of the rewritten capture, live swap, drop) is open.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-119",
+        "PRF-918"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-reclaim.lisp",
+        "tests/acl2/owner-reclaim-tests.lisp",
+        "tests/test_native_expiry.py"
+      ],
+      "progress_note": "Lane online-reclaim (2026-09-29, Q16). REPL-admitted on hbox and persvati. Open: the installing pass while serving (lanedumps/online-reclaim.md NEXT).",
+      "events": [
+        "fn-orc-rewrite-row-is-the-offline-event",
+        "fn-orc-rewrite-rows-is-the-offline-rewrite",
+        "fn-orc-fold-is-the-offline-fold",
+        "fn-orc-decision-names-the-rewritten-articles",
+        "fn-orc-rewrite-rows-of-append",
+        "fn-orc-fold-of-append",
+        "fn-orc-one-pass-in-flight",
+        "fn-orc-never-past-a-deferral"
+      ]
+    },
+    {
+      "id": "PRF-930",
+      "title": "A running owner gives the disk blocks of the files a checkpoint publication dropped back while serving: every live payload the installed checkpoint holds is reseated at its frame without changing the arena, and a dropped file's descriptor closes only when no extent and no log member in flight names it and no off-mutex reader pinned before that was found still runs",
+      "statement": "Subject: host/native/owner.lisp fnn-owner-release-extents (called by fnn-owner-publish-captured after a durable install) calls books/extent-retire.lisp fn-xrt-reseat-checkpoint-frame per payload frame the arena run wrote (host/native/io.lisp fnn-checkpoint-write-arena-steps records each frame's entry offset and fn-xrt-step-handles), then, in one owner-mutex hold, fn-xrt-quiet-files over the concrete arena's file count column (one read per retired file, never a walk of the extent column; lane composed-owner-4's fn-arx-file-count), the quiet files pending at a fresh arena-reader stamp S (host/native/io.lisp fnn-arena-stamp, books/arena-reader-pins.lisp PRF-941); host/native/extent.lisp fnn-extent-close closes a pending group once fnn-arena-clear-p S answers that no other off-mutex reader is pinned at or below S. fn-xrt-reseat-frame-keeps-the-arena (KEYSTONE): when the file durably holds, at the frame entry's offset, the octets the buffer holds (A-DURABLE-EXTENT's faithful file), the reseat leaves the arena (every handle's payload) unchanged; each payload is the commit's reseat (PRF-309 fn-arx-commit-reseat) with R the payload's own octets, so a wrong pairing reseats nothing. fn-xrt-quiet-files-are-unnamed (KEYSTONE): under the arena's correspondence (fn-arena$xcorr, kept by every export), a quiet file is retired, named by no log member in flight, and named by no extent entry at any handle, so a reader pinned after S never reaches it; a reader pinned at or below S may hold an older entry and the close waits for it (fn-arpn-clear-through-p). Before this every extent descriptor was held for the process's life, so the online compaction (PKT-868) freed no disk until restart. Scope: the realizer file table and descriptors are host state; the reseat's progress (every checkpoint payload found in its frame) is observed by the native (df shrinks), not proved.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-309",
+        "PRF-938",
+        "PRF-941"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/extent-retire.lisp",
+        "tests/acl2/extent-retire-tests.lisp",
+        "host/native/extent.lisp",
+        "host/native/owner.lisp",
+        "host/native/io.lisp"
+      ],
+      "progress_note": "Lane online-reclaim-2 (2026-09-29, Q16 (b)). REPL-admitted on persvati.",
+      "events": [
+        "fn-xrt-reseat-frame-keeps-the-arena",
+        "fn-xrt-reseat-checkpoint-frame-keeps-the-arena",
+        "fn-xrt-quiet-files-are-unnamed"
+      ]
+    },
+    {
+      "id": "PRF-939",
+      "title": "A running owner installs `store reclaim --recorded`: the pass's second copy of the history is reserved in the credit ledger or refused by name, the swap is taken only over exactly the captured Store with the commit pipeline idle and no other off-mutex reader, the swapped owner serves the Store the full open of the rewritten history installs, and every pass cut recovers to the old or the new publication",
+      "statement": "Subject: host/native/owner.lisp fnn-owner-reclaim-pass (called by host/native/admin.lisp fnn-owner-reclaim-request for --recorded) through host/owner-host.lisp fn-owner-orcp-capture (fn-orcp-reserve), fn-owner-orcp-intern-chunk (fn-orcp-intern-rows), fn-owner-orcp-rebuild (fn-orcp-rebuild), fn-owner-orcp-swap-word (fn-orcp-swap-decision over fn-orcp-swap-word), fn-owner-orcp-swap (fn-orcp-swapped-ocfg over fn-orcp-swapped-owner) and fn-owner-orcp-finish (fn-orcp-release). fn-orcp-reserve-keeps-funded / -holds-the-estimate (KEYSTONE): the reservation under :reclaim never over-commits the ledger and, admitted, holds exactly fn-orcp-estimate while every other operation's credit is unchanged; fn-orcp-reserve-refused-by-name: past the budget it is (:refused :memory-budget-exhausted) with the ledger kept. fn-orcp-swap-only-over-the-capture (KEYSTONE): :swap only when count, frontier and Store are the captured ones, the pipeline idle and no other reader. fn-orcp-swapped-history-is-the-offline-rewrite: then the rewritten rows' octets are fn-rclp-events of the rows now (PRF-927's keystone). fn-orcp-rebuild-is-the-full-open and fn-orcp-swapped-store-is-the-full-open (KEYSTONE): the rebuilt owner is fn-ock-recover-full of the rewritten rows, and the swapped owner serves its Store. fn-orcp-every-cut-is-old-or-new, fn-orcp-new-exactly-from-the-install, fn-orcp-rerun-rewrites-nothing: cuts before the install leave the old publication, from it the new, and a rerun rewrites nothing more. Scope: a delta (records committed after the capture) defers the pass by name until the carried finalize verdict lands (lane incremental-finalize); that the re-pinned connections satisfy fn-own-conns-okp over the rebuilt Store is not yet proved; `store reclaim` without --recorded (recording the instant live) stays offline-only. The swap installs only when fn-orcp-swap-decision answers :swap (the rebuild installed, the live configuration is the rebuilt one, every re-pinned session bounded by its domain; else :unbound by name, before the install); then every connection of the swapped owner has its history over the rebuilt Store (fn-ocl-conns-historyp, the connection clause of fn-ocl-relation): fn-orcn-swap-over-the-rebuild-keeps-conn-histories (books/owner-reclaim-conns.lisp).",
+      "milestone": "M5",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-927",
+        "PRF-930",
+        "PRF-380"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-reclaim-pass.lisp",
+        "tests/acl2/owner-reclaim-conns-tests.lisp",
+        "books/owner-reclaim-conns.lisp",
+        "tests/acl2/owner-reclaim-pass-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/admin.lisp",
+        "tests/test_native_expiry.py"
+      ],
+      "progress_note": "Lane online-reclaim-3 (2026-09-29, Q16 (a)). REPL-admitted on persvati (book + 58 test forms incl. 5 must-fails). Lane online-reclaim-4: the re-pinned connections keystone (owner-reclaim-conns, fn-orcn-), REPL-admitted on hbox with 24 test forms.",
+      "events": [
+        "fn-orcp-reserve-keeps-funded",
+        "fn-orcp-reserve-holds-the-estimate",
+        "fn-orcp-reserve-refused-by-name",
+        "fn-orcp-release-frees-the-pass",
+        "fn-orcp-swap-only-over-the-capture",
+        "fn-orcp-swapped-history-is-the-offline-rewrite",
+        "fn-orcp-every-cut-is-old-or-new",
+        "fn-orcp-new-exactly-from-the-install",
+        "fn-orcp-rerun-rewrites-nothing",
+        "fn-orcp-rebuild-is-the-full-open",
+        "fn-orcp-swapped-store-is-the-full-open",
+        "fn-orcn-swapped-conns-have-history",
+        "fn-orcn-rebuilt-owner-has-ocl-relation",
+        "fn-orcn-swap-over-the-rebuild-keeps-conn-histories"
+      ]
+    },
+    {
+      "id": "PRF-966",
+      "title": "The owner the installing reclaim pass swaps in is ready: after the open's three recovery barriers, delivered in the swap quantum, a POST queued after the swap is taken exactly as the live owner would take it; served without them the swapped owner is :recovering and never takes",
+      "statement": "Subject: host/native/owner.lisp fnn-owner-reclaim-pass, whose swap quantum after fn-owner-orcp-swap (fn-orcp-swapped-ocfg) calls fnn-owner-reclaim-barriers: the open's three barriers (fnn-store-recovery-barriers) each delivered through fnn-owner-observe -> host/owner-host.lisp fn-owner-io -> fn-rcon-ocfg-io, as fnn-owner-install delivers them; fn-orrd-ready-ocfg is that composition (fn-orrd-barriers of the swapped configuration, *fn-sf-recovery-barrier-count* :ok barriers). fn-orrd-a-post-after-the-swap-is-taken-as-before (KEYSTONE): over the pass's rebuild, when fn-orcp-swap-decision answers :swap, the served owner's Store is :ready, its queue is the live owner's, it takes exactly when the live pipeline would (nothing staged, in flight or pending, a queued submission), and its (:take) step takes the live queue's head. fn-orrd-the-swap-without-the-barriers-never-takes: the swapped configuration served without the barriers is :recovering and its (:take) is the identity on the owner -- the defect native-orp4 found (the POST after the swap never got its final reply). fn-orrd-rebuilt-store-is-the-open: a rebuild that installed is the host open's state (fn-cpo-open-observed of the rewritten rows, fn-sn-open-okp). Scope: a barrier that fails, or an owner not :ready after them, is a recovery event (fnn-indeterminate) because the publication is already installed.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-939"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-reclaim-ready.lisp",
+        "tests/acl2/owner-reclaim-ready-tests.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_expiry.py"
+      ],
+      "progress_note": "Lane online-reclaim-5 (2026-09-29, Q16 (a)): diagnosed from native-orp4's owner stderr (START members=0 after the swap: the take refused outside :ready). REPL-admitted on persvati (book 16 forms; tests incl. 2 must-fails).",
+      "events": [
+        "fn-orrd-a-post-after-the-swap-is-taken-as-before",
+        "fn-orrd-the-swap-without-the-barriers-never-takes",
+        "fn-orrd-swapped-ready-phase",
+        "fn-orrd-rebuilt-store-is-the-open"
+      ]
+    },
+    {
+      "id": "PRF-967",
+      "title": "An operator request against a running owner never prints NONE beside a fault: the printed word is the owner's word when it named one, else the status's own name",
+      "statement": "Subject: host/native/operator-live.lisp fnn-operator-live-request (`store reclaim`, `store compact`, `store checkpoint` against a live owner) prints the request's verb and fn-crqw-request-word of the reply's status and word. fn-crqw-request-word-names-the-outcome (KEYSTONE): for every control status the word is never `NONE`; it is the owner's word when the owner named one and fn-nctrl-reason-word of the status (`fault`, `uncertain`, ...) when it named none. Before this a faulted reclaim printed `reclaim NONE` next to exit FAULT (4).",
+      "milestone": "M4",
+      "requirements": [
+        "HST-010"
+      ],
+      "depends_on": [
+        "PRF-172"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/control-request-word.lisp",
+        "tests/acl2/control-request-word-tests.lisp",
+        "host/native/operator-live.lisp",
+        "host/native-control-host.lisp"
+      ],
+      "progress_note": "Lane online-reclaim-5 (2026-09-29): REPL-admitted on persvati (tests 15 forms incl. 1 must-fail).",
+      "events": [
+        "fn-crqw-request-word-names-the-outcome"
+      ]
+    },
+    {
+      "id": "PRF-987",
+      "title": "A running owner's `store reclaim` records its instant through the live reconfiguration, and that record decides the context the offline `store reclaim` decides at the same instant",
+      "statement": "Subject: host/owner-host.lisp fn-owner-orc-instant-stage (called by host/native/admin.lisp fnn-owner-reclaim-request under fnn-owner-live-reconfigure-locked, before the installing pass): for a representable NOW (the clock's stamp) it stages, through fn-owner-reconfigure-deltas, the owner model's reconfiguration record fn-ocfg-reconfig-record over the one delta fn-rci-delta NOW; an unrepresentable instant is refused by name :reclaim-instant before anything is staged. fn-orli-live-record-is-the-recorded-config-by-definition: applying that record to the configuration CFG is fn-rci-recorded-config at the owner's configuration generation, next txid, generation + 1 and clock stamp (the offline record's shape, books/reclaim-instant.lisp). KEYSTONE fn-orli-live-record-decides-the-context: for NOW nil or a natural (fn-rci-instantp), the context a replay derives from the configuration the live record yields (fn-rci-context) is fn-rclp-ctx of the retention rule CFG held and NOW, so with PRF-327 the pass the live request runs over the recorded configuration decides what the offline `store reclaim` decides at that instant.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-327",
+        "PRF-939"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-reclaim-instant.lisp",
+        "tests/acl2/owner-reclaim-instant-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/admin.lisp",
+        "tests/test_native_expiry.py"
+      ],
+      "progress_note": "Lanes online-reclaim-6/-7 (2026-09-29, Q16 item 3). REPL-admitted on persvati.",
+      "events": [
+        "fn-orli-live-record-is-the-recorded-config-by-definition",
+        "fn-orli-live-record-decides-the-context"
+      ]
     }
   ]
 }

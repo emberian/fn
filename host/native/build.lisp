@@ -196,6 +196,10 @@
 (include-book "books/bp-carry-frame")
 (include-book "books/bp-carry-control")
 (include-book "books/owner-compact-request")
+(include-book "books/owner-reclaim")
+;; Q16 (b): online disk release (fn-xrt-; host/native/owner.lisp
+;; fnn-owner-release-extents).
+(include-book "books/extent-retire")
 (include-book "books/bp-request-plan")
 (include-book "books/journal-publish")
 (include-book "books/app-journal")
