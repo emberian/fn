@@ -302,7 +302,8 @@
 
 (definterface fn-bs-init-pub-admission
   :class ::common-lisp-compliant
-  :keystones (fn-bs-init-pub-admission-proceeds-only-on-nothing))
+  :keystones (fn-bs-init-pub-admission-proceeds-only-on-nothing
+              fn-bs-init-pub-admission-decides-by-what-is-present))
 
 (definterface fn-clock-observation
   :class ::common-lisp-compliant)
@@ -1955,7 +1956,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-hsig-authorized-injected-carried-submission-event
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-hsig-authorized-injected-carried-submission-event-decides))
 
 (definterface fn-hsig-host-authored-source-fields
   :class ::program)
@@ -2357,19 +2359,27 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-receive
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-receive-keeps-the-three-outcomes-distinct
+              fn-bpn-host-receive-of-host-send-hands-over-the-adu))
 
 (definterface fn-bpn-host-receive-adu
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-receive-keeps-the-three-outcomes-distinct
+              fn-bpn-host-receive-of-host-send-hands-over-the-adu))
 
 (definterface fn-bpn-host-receive-outcome
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-receive-keeps-the-three-outcomes-distinct
+              fn-bpn-host-receive-of-host-send-hands-over-the-adu))
 
 (definterface fn-bpn-host-receive-reason
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-receive-keeps-the-three-outcomes-distinct))
 
 (definterface fn-bpn-host-send
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-receive-of-host-send-hands-over-the-adu))
 
 (definterface fn-bpn-host-sent-summary
   :class ::ideal)

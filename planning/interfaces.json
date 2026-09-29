@@ -4,8 +4,8 @@
   "coverage": {
     "declared": 1117,
     "declared_and_dispatched": 1102,
-    "guard_verified": 378,
-    "with_keystone": 113
+    "guard_verified": 383,
+    "with_keystone": 119
   },
   "entries": [
     {
@@ -1070,6 +1070,9 @@
       "keystones": [
         {
           "theorem": "fn-bs-init-pub-admission-proceeds-only-on-nothing"
+        },
+        {
+          "theorem": "fn-bs-init-pub-admission-decides-by-what-is-present"
         }
       ],
       "extraction": null,
@@ -9360,7 +9363,11 @@
       "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-hsig-authorized-injected-carried-submission-event-decides"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "dispatched_from": [
@@ -11347,10 +11354,17 @@
       "name": "fn-bpn-host-receive",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-host-receive-keeps-the-three-outcomes-distinct"
+        },
+        {
+          "theorem": "fn-bpn-host-receive-of-host-send-hands-over-the-adu"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "dispatched_from": [
@@ -11362,10 +11376,17 @@
       "name": "fn-bpn-host-receive-adu",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-host-receive-keeps-the-three-outcomes-distinct"
+        },
+        {
+          "theorem": "fn-bpn-host-receive-of-host-send-hands-over-the-adu"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "dispatched_from": [
@@ -11377,10 +11398,17 @@
       "name": "fn-bpn-host-receive-outcome",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-host-receive-keeps-the-three-outcomes-distinct"
+        },
+        {
+          "theorem": "fn-bpn-host-receive-of-host-send-hands-over-the-adu"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "dispatched_from": [
@@ -11392,10 +11420,14 @@
       "name": "fn-bpn-host-receive-reason",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-host-receive-keeps-the-three-outcomes-distinct"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "dispatched_from": [
@@ -11407,10 +11439,14 @@
       "name": "fn-bpn-host-send",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-host-receive-of-host-send-hands-over-the-adu"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "dispatched_from": [

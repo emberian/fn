@@ -13513,6 +13513,37 @@
           "name": "fn-bpcc-frame-decode-of-sealed"
         }
       ]
+    },
+    {
+      "id": "PRF-942",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-pub-admission-decides-by-what-is-present"
+        }
+      ]
+    },
+    {
+      "id": "PRF-943",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-authorized-injected-carried-submission-event-decides"
+        }
+      ]
+    },
+    {
+      "id": "PRF-944",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-receive-keeps-the-three-outcomes-distinct"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-receive-of-host-send-hands-over-the-adu"
+        }
+      ]
     }
   ]
 }
