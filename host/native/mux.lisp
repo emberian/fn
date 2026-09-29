@@ -109,7 +109,13 @@
   (await nil)
   ;; PKT-875: the output queued is a batch's completion (a POST's reply):
   ;; a stop's drain waits for it to leave (fnn-mux-iterate's count).
-  (replying nil))
+  (replying nil)
+  ;; RFC 8054 (lane compress): the COMPRESS DEFLATE layer once installed:
+  ;; ZIN the inbound inflater (ACL2's, host/native/deflate.lisp fnn-zin),
+  ;; ZOUT the outbound compressor (zlib); ZSTASH the octets that followed
+  ;; the COMPRESS line in its read (already compressed), until the layer
+  ;; is installed.
+  (zin nil) (zout nil) (zstash nil))
 
 (defun fnn-mux-ticks (seconds)
   (+ (fnn-now) (round (* seconds internal-time-units-per-second))))
@@ -189,7 +195,8 @@ ACL2 lets one served step read (fnn-mux-read-buffer)."
   (let ((channel (fnn-mux-conn-channel conn)) (fd (fnn-mux-conn-fd conn))
         (buffer (fnn-mux-read-buffer service loop)))
     (cond (channel (fnn-tls-read-now channel (length buffer) buffer))
-          ((fnn-owner-service-tls-context service) (fnn-mux-peek-plain fd buffer))
+          ((and (fnn-owner-service-tls-context service) (null (fnn-mux-conn-zin conn)))
+           (fnn-mux-peek-plain fd buffer))
           (t (fnn-mux-read-plain fd buffer)))))
 
 (defun fnn-mux-write-now (conn)
@@ -275,6 +282,9 @@ the TLS session, then the socket.  Idempotent."
            (fnn-mux-conn-class conn))))
       (when (fnn-mux-conn-channel conn)
         (ignore-errors (fnn-tls-close-channel (fnn-mux-conn-channel conn))))
+      (when (fnn-mux-conn-zout conn)
+        (ignore-errors (fnn-zout-free (fnn-mux-conn-zout conn)))
+        (setf (fnn-mux-conn-zout conn) nil))
       (fnn-socket-shut (fnn-mux-conn-socket conn))
       (setf (fnn-mux-loop-conns loop)
             (delete conn (fnn-mux-loop-conns loop) :test #'eq))
@@ -348,7 +358,7 @@ plan remains."
     ;; The named non-semantic scope (and its private test injection) of the
     ;; worker's send, fnn-owner-connection-call's.
     (fnn-owner-connection-call service op (lambda () nil))
-    (setf (fnn-mux-conn-out conn) (fnn-octets octets)
+    (setf (fnn-mux-conn-out conn) (fnn-mux-z-out conn (fnn-octets octets))
           (fnn-mux-conn-out-at conn) 0
           (fnn-mux-conn-out-op conn) op
           (fnn-mux-conn-out-deadline conn) (fnn-mux-ticks +fnn-mux-send-seconds+)
@@ -361,7 +371,8 @@ plan remains."
 window now, each next one when the socket took the last (fnn-mux-flush).
 The connection holds one window and the plan's continuation, never the
 whole reply; a plan with nothing to write runs AFTER at once."
-  (multiple-value-bind (octets rest donep) (fnn-owner-render-next plan)
+  (multiple-value-bind (octets rest donep)
+      (fnn-owner-render-next plan (and (fnn-mux-conn-zout conn) t))
     (setf (fnn-mux-conn-plan conn) (if donep nil rest))
     (if (> (length octets) 0)
         (fnn-mux-queue loop conn octets :send-reply after)
@@ -386,9 +397,10 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
         (return-from fnn-mux-flush nil))
       (let ((plan (fnn-mux-conn-plan conn)))
         (if plan
-            (multiple-value-bind (octets rest donep) (fnn-owner-render-next plan)
+            (multiple-value-bind (octets rest donep)
+      (fnn-owner-render-next plan (and (fnn-mux-conn-zout conn) t))
               (setf (fnn-mux-conn-plan conn) (if donep nil rest)
-                    (fnn-mux-conn-out conn) octets
+                    (fnn-mux-conn-out conn) (fnn-mux-z-out conn octets)
                     (fnn-mux-conn-out-at conn) 0
                     (fnn-mux-conn-out-deadline conn) (fnn-mux-ticks +fnn-mux-send-seconds+)))
           (let ((after (fnn-mux-conn-after conn)))
@@ -416,13 +428,80 @@ contract, without blocking the loop)."
                (fnn-mux-conn-drain-deadline conn)
                (fnn-mux-ticks +fnn-mux-drain-seconds+)))))))
 
+(defvar *fnn-mux-working* nil
+  "The connection whose fnn-mux-work loop is running on this thread, if any.")
+
+;; A reply that the socket takes at once ran AFTER inside the step that queued
+;; it, and AFTER re-entered fnn-mux-work for the same connection: one nesting
+;; of work -> step -> queue -> flush -> after per step boundary of a read's
+;; held input, so the depth grew with what one client sent (lane depth-debt,
+;; tools/raw_depth_check.py).  Inside that connection's own work loop, AFTER
+;; now only re-arms the idle timer: the running loop steps the rest of the
+;; input, as the nested call did, in the same order.
 (defun fnn-mux-after (loop conn after)
   (case after
     (:close (fnn-mux-begin-drain loop conn))
     (:starttls (fnn-mux-request-handshake loop conn))
+    (:compress (fnn-mux-install-compress loop conn))
     (t (when (eq (fnn-mux-conn-phase conn) :serving)
          (fnn-mux-arm-idle conn)
-         (fnn-mux-work loop conn)))))
+         (unless (eq *fnn-mux-working* conn)
+           (fnn-mux-work loop conn))))))
+
+;;; RFC 8054 COMPRESS DEFLATE (lane compress).  The layer is installed once
+;;; the 206 has been written (fnn-mux-after :compress); from then on every
+;;; octet read goes through ACL2's inflater and every window written through
+;;; zlib.  ACL2 decided the 206 (books/nntp-auth.lisp fn-auth-compress) and
+;;; the host asks the session whether a layer is owed
+;;; (host/owner-host.lisp fn-owner-compress-owed), never the octets.
+
+(defun fnn-mux-z-out (conn octets)
+  "OCTETS as the connection sends them: compressed and sync-flushed once the
+layer is installed."
+  (if (fnn-mux-conn-zout conn)
+      (fnn-zout-sync (fnn-mux-conn-zout conn) octets)
+    octets))
+
+(defun fnn-mux-z-in (loop conn raw)
+  "Inflate RAW (with what an earlier call left) into the plaintext the next
+step reads, at most one served read of it (ACL2's output bound).  T when
+plaintext is in hand; NIL when more compressed input is needed or the
+stream was refused (its line logged, the connection closed)."
+  (let ((service (fnn-mux-service loop)))
+    (multiple-value-bind (plain status)
+        (fnn-zin-inflate (fnn-mux-conn-zin conn) raw
+                         (length (fnn-mux-read-buffer service loop)))
+      (cond ((stringp status)
+             (ignore-errors (fnn-log-line (map 'list #'char-code status)))
+             (fnn-mux-finish loop conn)
+             nil)
+            ((> (length plain) 0)
+             (setf (fnn-mux-conn-input conn) plain)
+             t)
+            (t (setf (fnn-mux-conn-want conn) :input)
+               nil)))))
+
+(defun fnn-mux-install-compress (loop conn)
+  "The 206 is written: install the layer, tell the owner the owed layer is
+established (the session leaves its hold), then serve what the client
+already sent compressed."
+  (let ((service (fnn-mux-service loop))
+        (cid (fnn-mux-conn-cid conn)))
+    (setf (fnn-mux-conn-zin conn) (fnn-zin-new)
+          (fnn-mux-conn-zout conn) (fnn-zout-new))
+    (fnn-owner-serialized
+     service cid
+     (lambda ()
+       (unless (eq (fnn-owner-action 'fn-owner-tls-established cid) :ok)
+         (fnn-fault "owner rejected the established compression layer")))
+     (fnn-mux-conn-class conn))
+    (let ((stash (fnn-mux-conn-zstash conn)))
+      (setf (fnn-mux-conn-zstash conn) nil)
+      (fnn-mux-arm-idle conn)
+      (if (and stash (> (length stash) 0))
+          (when (fnn-mux-z-in loop conn stash)
+            (fnn-mux-work loop conn))
+        (fnn-mux-work loop conn)))))
 
 (defun fnn-mux-step (loop conn)
   "One served step over the held input and what follows it: the worker's
@@ -466,6 +545,24 @@ the same octets are handed to the next step."
       ;; carried here is ever read from the socket twice.
       (setf (fnn-mux-conn-input conn) nil)
       (cond
+        ((and (eq starttls :deflate) (not closing))
+         ;; RFC 8054: the octets after the COMPRESS line are the client's
+         ;; compressed stream (it MUST NOT pipeline, but may); held for the
+         ;; inflater until the layer is installed.  Over a TLS context with
+         ;; no channel the read was a peek: only CONSUMED octets were taken
+         ;; and the rest is still the socket's.
+         (if (and (null channel) (fnn-owner-service-tls-context service))
+             (fnn-tls-consume-plaintext (fnn-mux-conn-fd conn)
+                                        (subseq incoming 0 consumed) 10)
+           (when (< consumed (length incoming))
+             (setf (fnn-mux-conn-zstash conn) (subseq incoming consumed)))))
+        ((fnn-mux-conn-zin conn)
+         ;; Compressed: the input is plaintext ACL2's inflater produced, not
+         ;; a socket read or a TLS record; the suffix is the next step's.
+         (when (/= consumed (length incoming))
+           (when (and (zerop consumed) (not closing))
+             (fnn-fault "owner consumed no octets and left the connection open"))
+           (setf (fnn-mux-conn-input conn) (subseq incoming consumed))))
         (channel
          ;; Once protected, no transport suffix may be reclassified as a
          ;; second handshake.  A closing step stops at the octet that closed
@@ -488,7 +585,7 @@ the same octets are handed to the next step."
          (when (and (zerop consumed) (not closing) (not starttls))
            (fnn-fault "owner consumed no octets and left the connection open"))
          (setf (fnn-mux-conn-input conn) (subseq incoming consumed))))
-      (when starttls
+      (when (eq starttls t)
         (when channel
           (fnn-fault "owner requested STARTTLS on a protected channel"))
         (unless (fnn-owner-service-tls-context service)
@@ -497,7 +594,10 @@ the same octets are handed to the next step."
       ;; fn-splan-step-handshake-owed): never with the step's own close or the
       ;; exposure's.  CLOSING with it is only a service stop (the drain was
       ;; uncertain), and a stopping service is closed, not upgraded.
-      (let ((after (cond (closing :close) (starttls :starttls) (t nil))))
+      (let ((after (cond (closing :close)
+                         ((eq starttls :deflate) :compress)
+                         (starttls :starttls)
+                         (t nil))))
         (if (and (consp plan) (eq (first plan) :await))
             (fnn-mux-await loop conn (second plan) (third plan) after)
           (fnn-mux-queue-plan loop conn plan after))))))
@@ -539,15 +639,23 @@ builds it for a step that drained in its own quantum."
 (defun fnn-mux-work (loop conn)
   "Step the held input while the connection may: serving, no reply queued,
 no exposure wait pending."
-  (let ((service (fnn-mux-service loop)))
+  (let ((service (fnn-mux-service loop))
+        (*fnn-mux-working* conn))
     (loop while (and (eq (fnn-mux-conn-phase conn) :serving)
-                     (fnn-mux-conn-input conn)
+                     (or (fnn-mux-conn-input conn)
+                         (and (fnn-mux-conn-zin conn)
+                              (fnn-zin-pending (fnn-mux-conn-zin conn))))
                      (null (fnn-mux-conn-out conn))
                      (null (fnn-mux-conn-await conn))
                      (null (fnn-mux-conn-resume-at conn)))
           do (when (or *fnn-sigterm-requested* (fnn-owner-service-stopping service))
                (return))
-             (fnn-mux-step loop conn))))
+             (if (fnn-mux-conn-input conn)
+                 (fnn-mux-step loop conn)
+               ;; A :full stop left compressed octets in hand: inflate the
+               ;; next read's worth without waiting for the socket.
+               (unless (fnn-mux-z-in loop conn (fnn-make-octets 0))
+                 (return))))))
 
 (defun fnn-mux-readable (loop conn)
   (let* ((service (fnn-mux-service loop))
@@ -562,6 +670,11 @@ no exposure wait pending."
     (cond ((member incoming '(:input :output))
            (setf (fnn-mux-conn-want conn) incoming))
           ((zerop (length incoming)) (fnn-mux-finish loop conn))
+          ((fnn-mux-conn-zin conn)
+           (setf (fnn-mux-conn-want conn) nil)
+           (fnn-mux-arm-idle conn)
+           (when (fnn-mux-z-in loop conn incoming)
+             (fnn-mux-work loop conn)))
           (t (setf (fnn-mux-conn-want conn) nil
                    (fnn-mux-conn-input conn) incoming)
              (fnn-mux-arm-idle conn)
@@ -704,12 +817,19 @@ answers :wait (the node's slots or this second's starts are spent)."
               (fnn-mux-conn-want conn) nil
               (fnn-mux-conn-hs-deadline conn) nil)
         (fnn-mux-handshake-release loop conn)
-        (fnn-owner-serialized
-         service cid
-         (lambda ()
-           (unless (eq (fnn-owner-action 'fn-owner-tls-established cid) :ok)
-             (fnn-fault "owner rejected established TLS")))
-         (fnn-mux-conn-class conn))
+        ;; RFC 4643 2.4 over TLS: a fresh seed and the RFC 9266 tls-exporter
+        ;; value, read off the mutex; the context follows the established
+        ;; event, since the STARTTLS 382 cleared the old one.
+        (let ((seed (fnn-owner-sasl-seed))
+              (binding (fnn-tls-exporter (fnn-mux-conn-channel conn)
+                                         (fnn-core 'fn-owner-sasl-binding-octets))))
+          (fnn-owner-serialized
+           service cid
+           (lambda ()
+             (unless (eq (fnn-owner-action 'fn-owner-tls-established cid) :ok)
+               (fnn-fault "owner rejected established TLS"))
+             (fnn-owner-sasl-context cid seed binding))
+           (fnn-mux-conn-class conn)))
         (fnn-mux-start-waiting-handshake loop)
         (let ((greeting (fnn-mux-conn-greeting conn)))
           (setf (fnn-mux-conn-greeting conn) nil)
@@ -749,8 +869,12 @@ answers :wait (the node's slots or this second's starts are spent)."
   "The accept: the peer's address, then ACL2's admission and open in one
 call (books/public-exposure.lisp fn-exp-open), as the worker did it.  HS-MS
 is the deadline of the handshake ACL2 already admitted (implicit TLS)."
-  (let ((service (fnn-mux-service loop))
-        (socket (fnn-mux-conn-socket conn)))
+  (let* ((service (fnn-mux-service loop))
+         (socket (fnn-mux-conn-socket conn))
+         ;; A plaintext connection's SASL context (no binding), read off the
+         ;; mutex; an implicit-TLS one gets its context after the handshake
+         ;; (fnn-mux-handshake-step), before its first read either way.
+         (seed (and (not (fnn-mux-conn-implicit-tls conn)) (fnn-owner-sasl-seed))))
     (multiple-value-bind (family address) (fnn-owner-socket-address service socket)
       (multiple-value-bind (opened greeting peerp)
           (fnn-owner-serialized
@@ -763,11 +887,15 @@ is the deadline of the handshake ACL2 already admitted (implicit TLS)."
                                          family address)))
                (unless (or (null peer) (fnn-octet-list-p peer))
                  (fnn-fault "owner returned a malformed peer identity"))
-               (let ((opened (fnn-owner-core 'fn-owner-exposure-open
-                                             family address peer)))
+               (let* ((opened (fnn-owner-core 'fn-owner-exposure-open
+                                              family address peer))
+                      ;; The greeting before the context's step replaces
+                      ;; fn-owner-output (it emits no reply).
+                      (greeting (fnn-owner-octets-global 'fn-owner-output)))
                  (when opened (fnn-owner-log))
-                 (values opened (fnn-owner-octets-global 'fn-owner-output)
-                         (and peer t)))))
+                 (when (and seed (integerp opened))
+                   (fnn-owner-sasl-context opened seed nil))
+                 (values opened greeting (and peer t)))))
            ;; The open arrived on the served socket: a reader quantum.  The
            ;; connection's later quanta carry its class (ACL2 named a peer:
            ;; :transit).

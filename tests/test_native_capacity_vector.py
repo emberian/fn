@@ -47,7 +47,7 @@ GROUP = "fn.test"
 # The rotation and drop cuts of compaction and reclamation over the log
 # (host/native/io.lisp fnn-log-prepare-spare / fnn-log-rotate /
 # fnn-log-make-durable / fnn-log-drop: FN_NATIVE_LOG_FAULT).
-LOG_CUTS = ["rotate-created", "rotate-fenced", "rotate-renamed", "rotate-durable",
+LOG_CUTS = ["rotate-created", "rotate-fenced", "rotate-renamed", "rotate-headed", "rotate-durable",
             "drop-unlinked", "drop-durable"]
 
 

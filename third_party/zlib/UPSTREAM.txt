@@ -1,0 +1,41 @@
+zlib 1.3.2, the DEFLATE compressor RFC 8054 section 4 names (deflate.c, trees.c).
+
+Upstream:  https://zlib.net/ (https://github.com/madler/zlib)
+Release:   1.3.2 (2026-02-17)
+Tarball:   https://zlib.net/zlib-1.3.2.tar.gz
+           SHA-256 bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16
+           (the same digest Homebrew's zlib 1.3.2 formula pins)
+Copied:    LICENSE, adler32.c, crc32.c, crc32.h, deflate.c, deflate.h, trees.c,
+           trees.h, zutil.c, zutil.h, zlib.h, zconf.h -> this directory
+           (unmodified)
+Licence:   LICENSE (the zlib licence) for everything copied.
+Not copied: the inflater (inflate.c, inftrees.c, inffast.c, infback.c), the
+           gzip file layer, compress/uncompress, the programs.  fn never
+           decompresses in C: a client's COMPRESS DEFLATE stream is decoded by
+           ACL2 (books/deflate-inflate.lisp fn-zin-feed).
+
+Role: the OUTBOUND compressor of an NNTP COMPRESS DEFLATE session only
+(host/native/fn-deflate.c, host/native/deflate.lisp).  It compresses octets
+ACL2 already decided (the rendered reply windows) with a sync flush after
+each; a fault here can garble only what the server sends, never what it reads
+or stores.  libdeflate is not used: its streams always end with a final block,
+and an RFC 8054 stream never ends.
+
+Refresh: fetch the release tarball, check its SHA-256 against the published
+digest (Homebrew's formula pins it), re-copy the same files, update the lines
+above and the digests below, rebuild (tools/build_deflate.sh) and rerun
+tests/test_deflate_library.py.
+
+SHA-256 of the vendored files (shasum -a 256, from this directory):
+e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2  LICENSE
+9cd1443a24ff2a3053961695bd432035c58347386a420d3388232376ebabe211  adler32.c
+da37f3483e77c20f64c28cf55d62d7bed9d62af33eb401be906835d84539b9c9  crc32.c
+ea9ca4eb51b1a71aaf214b99f4a9fab177253d6268cae8e4c26d44d1812e52c2  deflate.c
+a16217d5ea6d8342ff08afe5207b1dab620f05610e121dda55b4f9aae9de4f68  trees.c
+1279908a15580224a2c1f377555ffdd150327fed71801aa77fc35978dcb741c8  zutil.c
+9a2223575183ac2ee8a247f20bf3ac066e8bd0140369556bdbdffc777435749e  crc32.h
+21f4ea0973dab272fb26e93305ccf8628c8dc07e6c5df09a9861825b1920ba5d  deflate.h
+bb0a9d3ca88ee00c81adb7c636e73b97085f6ef1b52d6d58edbe2b6dc3adeb4d  trees.h
+cb7c2c84211473b4699223edd363d3207b43b9578e739b5bf638f42204ea6e0f  zconf.h
+818667d6ab6a37fe7469cb06a7f0cb2c2cb2f2c948a03e5accf1a4a74bf3020a  zlib.h
+a12243cc6d338ffad0c8e3500fbc05bc7fdcdc25a469393b1c2f7e5df307fff3  zutil.h

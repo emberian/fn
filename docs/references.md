@@ -14,7 +14,7 @@ specific audited profile. This list is a reading map, not that audit.
 | [RFC 4643](../rfc4643.txt) | NNTP authentication |
 | [RFC 4644](../rfc4644.txt) | Streaming feeds, a later capability |
 | [RFC 6048](../rfc6048.txt) | Additional LIST facilities |
-| [RFC 8054](../rfc8054.txt) | Compression, a later capability |
+| [RFC 8054](../rfc8054.txt) | Compression: COMPRESS DEFLATE after login (specs/nntp.md, NNT-054) |
 | [RFC 4707](../rfc4707.txt) | News administration; outside the first profile |
 | [RFC 8315](../rfc8315.txt) | Cancel locks; relevant to later cancellation policy |
 | [tin reference collection](https://www.tin.org/docs.html) | Discovery index; not itself a conformance specification |

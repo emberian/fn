@@ -52,11 +52,12 @@
 (defun fnn-bp-monotonic-now ()
   "Milliseconds on Linux CLOCK_BOOTTIME, whose origin survives process death.
 This is host clock evidence, not an ACL2 expiry decision.  A reboot starts a
-new origin and needs a separately identified recovery epoch."
+new origin and needs a separately identified recovery epoch.  ACL2 converts
+the reading (books/clock-wall-reading.lisp fn-otm-boottime-ms; PRF-305)."
   #+(and sbcl linux)
   (multiple-value-bind (seconds nanoseconds)
       (sb-unix::clock-gettime 7) ; Linux CLOCK_BOOTTIME includes suspend time.
-    (+ (* 1000 seconds) (floor nanoseconds 1000000)))
+    (fnn-core 'fn-otm-boottime-ms seconds nanoseconds))
   #-(and sbcl linux)
   (error "BP monotonic clock requires Linux CLOCK_BOOTTIME"))
 

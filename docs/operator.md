@@ -144,7 +144,8 @@ that, every `restart` is quietly refused while looking like success. Run
 If you move the store or log folder, add the new place to `ReadWritePaths`
 in the service file. Otherwise the service cannot write there.
 
-On a Mac, install `share/fn/launchd/net.fn.plist` as
+No release targets macOS. From a checkout on a Mac, render
+`packaging/net.fn.native.plist.in` (replace `@PREFIX@`) into
 `/Library/LaunchDaemons/net.fn.plist`, then run
 `sudo launchctl bootstrap system /Library/LaunchDaemons/net.fn.plist`.
 
@@ -163,6 +164,23 @@ fn operator CONFIG status
 This shows how many articles the store holds and how much room is left
 (`headroom`). It works while the node runs, and while it is stopped.
 `status --watch 60` repeats every 60 seconds.
+
+While the node runs, the node itself answers. While it is stopped, `status`
+reads only the newest checkpoint's header and the sizes of the journal's
+files, so it is quick at any size and it does not replay the log:
+
+```text
+stopped checkpoint=1200 journal-octets=51840 transactions-at-most=2434
+profile format=10 max-transactions=100000 ...
+```
+
+`checkpoint=` is the number of records the checkpoint covers (`none` before
+the first one); `transactions-at-most=` is a bound (the covered count plus
+the most records the journal's octets could hold), never below the real
+count. The exact counts of a stopped store are `status --replay` (which
+replays the log, as `recover` does) or the running node's `status`. If an
+owner holds the store but answers nothing on its socket (it is starting or
+stopping), `status` refuses by name: `owner-holds-the-store`.
 
 ### Health
 
@@ -201,7 +219,11 @@ connections, refusals and limits in force.
 ### The log
 
 The log is `log/fn.log` in the node folder (on OpenBSD, syslog). fn only
-adds to it; it never empties or rotates it. Each post and each connection
+adds to it; it never empties or rotates it by itself. To rotate it, move
+the file and send the node `SIGHUP` (`kill -HUP PID`, or
+`systemctl kill -s HUP fn`): the node reopens `log/fn.log` at its next
+accept and keeps writing there, so a logrotate rule with `postrotate` and
+that signal works (no `copytruncate` needed). Each post and each connection
 gets one line, starting with the outcome:
 
 ```
@@ -374,8 +396,9 @@ Every post by a login carries a line like this:
 Injection-Info: news.example.org; posting-account="8c59...f172"; mail-complaints-to="abuse@example.org"
 ```
 
-The `posting-account` value is the same for every post by one login. So
-anyone can tell that two posts came from the same login. Nobody can work
+The `posting-account` value is the same for every post by one account
+(the principal a login signs in as; usually one login is one account). So
+anyone can tell that two posts came from the same account. Nobody can work
 out the login name from it without your node's secret key. Tell the
 people you give logins to.
 
@@ -585,8 +608,9 @@ fn operator /etc/fn/fn.toml peer distributions far fn,local
 ```
 
 If a peer's log line says `reason=mode-stream-refused`, that peer's server
-cannot stream. Stop the node, run `peer remove NAME`, add the peer again
-with `false` as the streaming word, and start the node.
+cannot stream. Run `peer set NAME --streaming false`; like `peer add`,
+`peer remove`, `peer pull` and `peer feed`, it applies to the running node
+(review item 8).
 
 Every node needs its own name, set once. Without it, fn cannot spot
 articles that loop back to it:
@@ -651,6 +675,31 @@ detect or repair it. Restore only the newest backup of a node whose
 readers have seen its numbers, or tell its readers to reset their
 newsreader's record of what they have read for the node.
 
+A restored backup is a **new lineage** once it takes an article of its own.
+It serves, and it keeps every article the backup held; but from the point
+the two copies parted, each log carries its own ancestry, so a checkpoint
+file from one copy put beside the other copy's log is refused by name
+(`open refused reason=foreign-lineage`), never replayed as that copy's
+history. Keep one copy serving. What the node cannot tell you is that a
+restore happened at all: a complete restore of every file is an old,
+legitimate state of the node, and it starts, reissuing numbers as the
+paragraph above says. If that matters to you, keep a note of the newest
+article number outside the node before you restore.
+
+Proposed, not built: `store adopt`, for the deliberate fork. Rather than
+starting a restored copy as if nothing had happened, `adopt` would fence the
+old writer (the original copy stopped, and refused while a newer state of it
+can be reached), name the exact source and the point it parted from (the
+backup's segment and chain value), write a durable, attributed adoption
+record into the log -- a new branch identity with its parent and fork point,
+chained like every other record, so the same ancestry authenticates it --
+and report what continuity is lost: article numbers past the fork point may
+be reused (a branch label is not allocation evidence; tell your peers),
+obligations pending at the fork do not vanish, and the node's secret key and
+its peers' expectations are the old node's. Never a `--force` that inspects,
+adopts and continues in one step; never a merge of two forks by clock or by
+the larger counter. It needs a row of its own before it is built.
+
 An **export** (`store export`) is different. It carries the store's history
 for moving to a new store, not the node's secrets or settings. Keep backups
 and exports both.
@@ -695,7 +744,9 @@ no clear answer. It may be saved; it may not. fn will not guess.
 
 1. **Do not retry blindly.** Retrying a post with the same Message-ID is
    safe. Posting it again under a new one may make a copy.
-2. **Stop the node and run `recover`:**
+2. **Run `recover`.** On a running node it answers `recover accepted
+   owner=serving` (the node's own open already recovered the store) and
+   prints the node's status; there is nothing to stop. On a stopped node:
 
    ```
    fn operator CONFIG recover
@@ -785,7 +836,9 @@ The memory refusals, and what to do:
   `MemoryMax`) gives. Raise the limit, or lower the store's limits to fit
   (`policy set max-transactions N`, `max-history-octets N` or
   `max-article-octets N`; a limit below what the store already holds is
-  refused, `below-current-use`).
+  refused, `below-current-use`). `store export`
+  takes the same check, so a store that fits nowhere here is not exported
+  here either (review item 4).
 - `fn: refused machine-cannot-hold-threads reservation=R MB machine=M MB`:
   the same, for the whole node with its threads. Raise the limit.
 - `refused connections-exceed-memory capacity=C holds=B ...`: the node
@@ -809,7 +862,9 @@ wrong folder (for example, the disk is not mounted).
 ### A post whose answer was lost
 
 Someone's newsreader lost the answer to a post, and trying again was
-refused. With the node stopped, look the post up by its Message-ID:
+refused. Look the post up by its Message-ID, while the node runs (the node
+answers from its own table) or while it is stopped (the store is opened
+read-only):
 
 ```text
 fn operator /path/to/fn.toml store inspect '<fn-client.20260922T034404Z.3fd1ce9e@yue.invalid>'
@@ -820,6 +875,23 @@ absent <never-posted@fn.example.invalid> nothing is stored here under this Messa
 
 `accepted` means it was saved (even if it was later withdrawn). `absent`
 means it was not. Tell the person which answer you got.
+
+### Which articles are in a group?
+
+`store inspect --group GROUP` lists a group's memberships: a first line
+`inspect group=GROUP members=N`, then one line per article number with its
+Message-ID, in number order. It answers while the node runs (the node
+reports the archive it serves) and while it is stopped (the store is opened
+read-only: the checkpoint and its suffix). A group the node does not carry
+is refused by name (`refused unknown-group group=GROUP ...`, exit 1).
+
+```text
+fn operator /path/to/fn.toml store inspect --group fn.test
+inspect group=fn.test members=3
+1 <auto-0@example.invalid>
+2 <auto-1@example.invalid>
+3 <auto-2@example.invalid>
+```
 
 ### Why was an article withdrawn?
 
@@ -1026,6 +1098,9 @@ with `policy set max-transactions N` (and `max-history-octets`,
   in batches (XFNCATCHUP), each batch checked against the peer's digest before
   any article is offered to this node's own verdict; the round resumes after a
   restart ([catching up](peering-with-a-friend.md#catching-up); spec peering 1.2.9).
-- `capacity N`: the room reserved for held articles.
+- `capacity N`: the retention ledger's size, in its units (one per record
+  plus one per 4,096 octets of article), shown by `status` as
+  `charge-capacity` next to `charge-reserved`, the part held articles use
+  (review item 15; [the ledger](operator-internals.md)).
 - `pins`, `obligations`: what the store is holding, and why.
 - `run`: what the service runs.

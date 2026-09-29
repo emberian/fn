@@ -614,8 +614,10 @@
                              fn-sccb-frame-octets fn-sccr-planp fn-sccr-framep
                              fn-sccr-at-is-nth fn-sctr-planp-first-frame))))))
 
-(local
- (defthm fn-sctr-next-run-ok-shape
+; Exported (lane depth-debt-6, row K2): books/store-checkpoint-arena-load's
+; fn-scka-open-run reads the :ok run's bounds exactly as fn-sct-load does,
+; and its guard needs the same shape fact outside this book.
+(defthm fn-sctr-next-run-ok-shape
    (implies (and (fn-sctr-restp rest fn-octets)
                  (eq (car (fn-sctr-next-run rest s fn-octets)) :ok))
             (and (natp (nth 1 (fn-sctr-next-run rest s fn-octets)))
@@ -633,13 +635,12 @@
                                                                     s fn-octets)))))
             :in-theory (e/d (fn-sctr-next-run fn-sctr-restp)
                             (fn-sctr-run-decode fn-sctr-run-decode-ok-shape
-                             fn-sctr-planp-from-first-a fn-sccr-planp fn-sccr-at-is-nth))))))
+                             fn-sctr-planp-from-first-a fn-sccr-planp fn-sccr-at-is-nth)))))
 
-(local
- (defthm fn-sctr-restp-of-plan
+(defthm fn-sctr-restp-of-plan
    (implies (fn-sccr-planp plan (if (consp plan) (fn-sccr-at 1 (car plan)) 0) fn-octets)
             (fn-sctr-restp plan fn-octets))
-   :hints (("Goal" :in-theory (enable fn-sctr-restp)))))
+   :hints (("Goal" :in-theory (enable fn-sctr-restp))))
 
 (in-theory (disable fn-sctr-next-run fn-sctr-restp))
 

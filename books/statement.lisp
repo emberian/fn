@@ -42,7 +42,7 @@
 ; The result records and item lists (statement-items) and the item codec,
 ; behind its seam (statement-seam): this book and every book above it call
 ; the constrained `fn-stmt-encode-items' and `fn-stmt-decode-items-bounded'
-; and see them only through the seam's constraints (plan 2026-09-22 §4.1).
+; and see them only through the seam's constraints (plan 2026-09-22 section 4.1).
 (include-book "statement-seam")
 
 ;; Convergence: the codecs cluster withdraws its proof vocabulary on export;

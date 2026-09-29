@@ -37,6 +37,11 @@
   :hints (("Goal" :in-theory (enable fn-ncline-chars-octets fn-cbor-octet-listp
                                      fn-cbor-octetp))))
 
+(defthm fn-ncline-chars-octets-true-listp
+  (implies (not (equal (fn-ncline-chars-octets chars) :bad))
+           (true-listp (fn-ncline-chars-octets chars)))
+  :hints (("Goal" :in-theory (enable fn-ncline-chars-octets))))
+
 ; The line a reply carries: LINE's octets when it is a non-empty printable
 ; string within the bound, else nil (no line: the reply is kind 18).
 (defun fn-ncline-line (line)
@@ -190,7 +195,7 @@
                             (:e fn-nctrl-open) (:e fn-frame-fields-octets)
                             fn-frame-fields-parse)))))
 
-; KEYSTONE (row S1: the operator reads ACL2's sentence).  The owner seals the
+; KEYSTONE (row S1, PRF-975: the operator reads ACL2's sentence).  The owner seals the
 ; line its decision rendered (host/native/control.lisp fnn-control-reply-octets
 ; through fn-native-control-host-lined-reply-encode); the client reads it
 ; (fn-native-control-lined-reply-read), steps

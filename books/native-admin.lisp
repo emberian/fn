@@ -571,6 +571,34 @@
 
 (in-theory (disable fn-native-admin-complaints-wordsp))
 
+; Row S10: the `policy set' keys that take a decimal count: the public
+; reader port's exposure limits (books/public-exposure-rows.lisp), the relay
+; checks' limits (books/relay-checks.lisp) and the store limits
+; (books/limits-live.lisp: max-transactions, max-history-octets,
+; max-article-octets).
+(defun fn-native-admin-counted-policy-keyp (key)
+  (declare (xargs :guard t))
+  (and (or (fn-exp-limit-slotp key)
+           (and (fn-rck-limit-slotp key)
+                (not (equal key *fn-rck-require-path-slot*)))
+           (member-equal key '("max-transactions" "max-history-octets"
+                               "max-article-octets" "compress-min-octets")))
+       t))
+
+; Row S10: every `policy set' key the grammar above has an arm for: the
+; counted ones and the worded ones (the path identity, the posting policy,
+; the trusted range, the anonymous policy, the complaints address, the
+; relay's require-path switch).  A key outside this set is unknown by name;
+; a known key with a malformed value keeps its own arm's answer.
+(defun fn-native-admin-known-policy-keyp (key)
+  (declare (xargs :guard t))
+  (and (or (fn-native-admin-counted-policy-keyp key)
+           (member-equal key (list "path-identity" "posting-policy"
+                                   *fn-exp-trusted-slot* *fn-exp-policy-slot*
+                                   *fn-ipp-complaints-slot*
+                                   *fn-rck-require-path-slot*)))
+       t))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t
@@ -769,6 +797,23 @@
                                 (fn-native-admin-decimal-value
                                  (coerce (cadddr words) 'list))
                                 nil nil))
+
+       ; Row S10 (lane operability-2): `policy set KEY VALUE' that no arm
+       ; above took is refused by name, not by the usage line: a counted
+       ; key with a value that is no decimal count, else a key the node
+       ; does not have.  (A known key with a wrong non-numeric value keeps
+       ; the usage line: the line names the values.)
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (fn-native-admin-counted-policy-keyp (caddr words))
+             (not (fn-native-admin-decimalp (cadddr words))))
+        (fn-native-admin-result :refused :policy-value-not-a-number nil nil 0 nil nil))
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (not (fn-native-admin-known-policy-keyp (caddr words))))
+        (fn-native-admin-result :refused :unknown-policy-key nil nil 0 nil nil))
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
        ; D13 (STO-014): the operator's content-retention rule.  Two
@@ -813,7 +858,7 @@
           (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil))
          ((and (consp (cdr words))
                (member-equal (cadr words) '("budget" "carries" "pull" "distributions"
-                                            "catch-up" "feed")))
+                                            "catch-up" "feed" "set")))
           (fn-native-admin-peer-extend-plan words))
          (t (fn-native-admin-peer-plan words))))
        ; PRF-164 (PKT-439): invitation-code accounts.  `account list' is a
@@ -939,6 +984,16 @@
        ; (fn-native-admin-result-owner-requestp; books/owner-compact-request).
        ((equal words '("compaction" "request"))
         (fn-native-admin-result :accepted nil :request-compaction nil 0 nil nil))
+       ; Row S3 (lane operability-2): what `store inspect ID' sends a running
+       ; owner (host/native/operator.lisp fnn-operator-execute-inspect): a
+       ; request for its own lookup of ID, no configuration record
+       ; (books/owner-maintenance-request.lisp fn-omr-inspect-word).
+       ((and (equal (fn-ncfg-first words) "inspect")
+             (equal (fn-ncfg-second words) "request")
+             (stringp (fn-ncfg-nth 2 words))
+             (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest words)))))
+        (fn-native-admin-result :accepted nil :request-inspect nil 0 nil
+                                (fn-ncfg-nth 2 words)))
        ; Q16: what `store reclaim' sends a running owner
        ; (host/native/operator.lisp fnn-operator-execute-store-action): a
        ; request for its reclaim pass (books/owner-reclaim.lisp), no
@@ -957,12 +1012,20 @@
   (declare (xargs :guard t))
   (and (equal (fn-native-admin-result-status result) :accepted)
        (member-equal (fn-native-admin-result-kind result)
-                     '(:request-compaction :request-reclaim :request-reclaim-recorded
-                       :request-reclaim-dry-run))
+                     '(:request-compaction :request-inspect :request-reclaim
+                       :request-reclaim-recorded :request-reclaim-dry-run))
        t))
 
+; Row S3: the Message-ID an inspect request carries (its value field), or nil.
+(defun fn-native-admin-result-inspect-msgid (result)
+  (declare (xargs :guard t))
+  (and (fn-native-admin-result-owner-requestp result)
+       (equal (fn-native-admin-result-kind result) :request-inspect)
+       (stringp (fn-native-admin-result-value result))
+       (fn-native-admin-result-value result)))
+
 ; Q16: the reclaim pass's mode an accepted reclaim request names, or nil
-; (the compaction request).
+; (the compaction and inspect requests).
 (defun fn-native-admin-result-reclaim-mode (result)
   (declare (xargs :guard t))
   (and (fn-native-admin-result-owner-requestp result)
@@ -1089,6 +1152,14 @@
       ; (`fn-pcb-extend-deltas-apply-as-the-extend-delta').
       ; `peer feed NAME pause|resume' (books/feed-pause.lisp): the deltas
       ; that set the one pause row, removing the other.
+      ; Row S5: `peer set' (books/peer-set.lisp fn-pset-plan): the one
+      ; :set-peer delta of the edited record and the kept extension rows.
+      (if (fn-pset-plan-valuep (fn-native-admin-result-value plan))
+          (let ((pset (fn-pset-plan
+                       (fn-record-octets-string (fn-native-admin-result-name plan))
+                       (cadr (fn-native-admin-result-value plan))
+                       peers)))
+            (if (equal (car pset) :ok) (cadr pset) nil))
       (if (fn-fps-plan-rowsp (fn-native-admin-result-value plan))
           (fn-fps-deltas
            (fn-record-octets-string (fn-native-admin-result-name plan))
@@ -1097,8 +1168,30 @@
         (fn-pcb-extend-deltas
          (fn-record-octets-string (fn-native-admin-result-name plan))
          (fn-native-admin-result-value plan)
-         peers))
+         peers)))
     (fn-native-admin-plan-deltas plan)))
+
+; Why an accepted plan has no delta over the table PEERS, by name, for the
+; host to print (live: host/native-admin-host.lisp
+; fn-native-admin-host-owner-reconfigure; offline: fn-native-admin-host-
+; apply): `peer set''s own refusal (books/peer-set.lisp fn-pset-plan), or
+; :no-such-peer for an extension of a peer the table does not hold; nil when
+; the plan has its deltas.
+(defun fn-native-admin-plan-refusal-over (plan peers)
+  (declare (xargs :guard t))
+  (cond ((fn-native-admin-plan-deltas-over plan peers) nil)
+        ((and (equal (fn-native-admin-result-status plan) :accepted)
+              (equal (fn-native-admin-result-kind plan) :extend-peer)
+              (fn-pset-plan-valuep (fn-native-admin-result-value plan)))
+         (let ((pset (fn-pset-plan
+                      (fn-record-octets-string (fn-native-admin-result-name plan))
+                      (cadr (fn-native-admin-result-value plan))
+                      peers)))
+           (if (equal (car pset) :refused) (cadr pset) :no-delta)))
+        ((and (equal (fn-native-admin-result-status plan) :accepted)
+              (equal (fn-native-admin-result-kind plan) :extend-peer))
+         :no-such-peer)
+        (t :no-delta)))
 
 (defthm fn-native-admin-plan-deltas-over-other-plans-by-definition
   (implies (not (equal (fn-native-admin-result-kind plan) :extend-peer))

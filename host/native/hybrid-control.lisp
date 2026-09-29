@@ -217,8 +217,7 @@
                (setq socket (fnn-control-connect control-path))
                (let ((fd (fnn-socket-fd socket)))
                  (setq stage :after-submission)
-                 (fnn-send-all fd (fnn-octets request) +fnn-control-io-seconds+)
-                 (sb-bsd-sockets:socket-shutdown socket :direction :output)
+                 (fnn-control-send-request socket fd (fnn-octets request))
                  (let* ((reply (fnn-control-read-frame
                                 socket (fnn-core 'fn-native-control-host-max-frame)))
                         (status (and (typep reply 'fnn-octets)

@@ -24,7 +24,16 @@ scripts' rule, once, for all four files:
   elements theirs added (an element ours removed stays removed); when both
   changed anything else differently, that is a real conflict;
 * proofs.json `events` arrays are generated (tools/ledger.py --write from
-  proof-events.json), so ours is kept and the caller regenerates.
+  proof-events.json), so they are never merged element-wise: the side that
+  changed them wins (theirs when ours is the base's), and when BOTH sides
+  changed them ours is kept and the driver prints a `REGENERATE` line naming
+  the rows -- the file is then stale until `python3 tools/ledger.py --write`
+  runs (a plain text merge, or the old keep-ours rule, left dev's newer
+  events behind silently: assurance-hygiene-3, 2026-09-29);
+* planning/reach-baseline.json is not id-keyed rows but one mapping
+  (`accepted`: "PRF-n:event" -> reason); it merges key by key, three-way,
+  with the same field rule (an entry one side removed and the other left
+  alone stays removed).
 
 The claims ledger (tools/next_id.py, build/coordinator/id-claims.jsonl) is
 read after the merge: a row the merge adds whose id nobody claimed is named
@@ -89,6 +98,8 @@ import time
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 GENERATED_FIELDS = {"planning/proofs.json": {"events"}}
+KEYED_DOCUMENTS = {"planning/reach-baseline.json": "accepted"}
+REGENERATE = {"planning/proofs.json": "python3 tools/ledger.py --write"}
 MISSING = object()
 
 
@@ -134,14 +145,45 @@ def merge_mapping(base: dict, ours: dict, theirs: dict, where: str,
     out: dict = {}
     for key in list(ours) + [key for key in theirs if key not in ours]:
         if key in skip:
-            if key in ours:
-                out[key] = ours[key]
+            value = generated_value(base.get(key, MISSING), ours.get(key, MISSING),
+                                    theirs.get(key, MISSING))
+            if value is not MISSING:
+                out[key] = value
             continue
         value = merge_value(base.get(key, MISSING), ours.get(key, MISSING),
                             theirs.get(key, MISSING), f"{where} {key}", conflicts)
         if value is not MISSING:
             out[key] = value
     return out
+
+
+def generated_value(base, ours, theirs):
+    """A generated field: the side that changed it; ours when both did."""
+    if ours == base and theirs is not MISSING:
+        return theirs
+    return ours
+
+
+def stale_generated(base, ours, theirs, path: str) -> list[str]:
+    """The ids whose generated fields both sides changed (ours kept: stale)."""
+    fields = GENERATED_FIELDS.get(path, set())
+    key = rows_key(ours) or rows_key(theirs)
+    if not fields or key is None:
+        return []
+    by = lambda document: {row["id"]: row for row in (
+        document.get(key, []) if isinstance(document, dict) else [])}
+    base_by, theirs_by = by(base), by(theirs)
+    stale = []
+    for row in ours.get(key, []):
+        other, old = theirs_by.get(row["id"]), base_by.get(row["id"], {})
+        if other is None:
+            continue
+        for field in sorted(fields):
+            mine, their = row.get(field, MISSING), other.get(field, MISSING)
+            if mine != their and mine != old.get(field, MISSING) \
+                    and their != old.get(field, MISSING):
+                stale.append(f"{row['id']} {field}")
+    return stale
 
 
 def short(value) -> str:
@@ -198,8 +240,28 @@ def merge_rows(base: list, ours: list, theirs: list, skip: set[str],
     return out
 
 
+def merge_keyed(base: dict, ours: dict, theirs: dict, key: str,
+                conflicts: list[str]) -> dict:
+    """A document whose KEY maps entry names to values: entry by entry,
+    three-way; a conflict names the entry (`CONFLICT PRF-1:ev value: ...`)."""
+    merged = merge_mapping(base, ours, theirs, "(top level)", conflicts, skip={key})
+    b, o, t = (d.get(key, {}) if isinstance(d.get(key), dict) else {}
+               for d in (base, ours, theirs))
+    entries: dict = {}
+    for name in list(o) + [name for name in t if name not in o]:
+        value = merge_value(b.get(name, MISSING), o.get(name, MISSING),
+                            t.get(name, MISSING), f"{name} value", conflicts)
+        if value is not MISSING:
+            entries[name] = value
+    merged[key] = entries
+    return merged
+
+
 def merge_documents(base, ours, theirs, path: str) -> tuple[object, list[str]]:
     conflicts: list[str] = []
+    if path in KEYED_DOCUMENTS:
+        return merge_keyed(base if isinstance(base, dict) else {}, ours, theirs,
+                           KEYED_DOCUMENTS[path], conflicts), conflicts
     key = rows_key(ours) or rows_key(theirs) or rows_key(base)
     if key is None:
         raise ValueError(f"{path}: no id-keyed list of rows")
@@ -427,6 +489,12 @@ def main(argv: list[str]) -> int:
               + (f"recorded in {written}; `merge_registry.py --pending` lists them"
                  if written else "NOT recorded (the conflict record is not writable)"),
               file=sys.stderr)
+    stale = stale_generated(base, ours, theirs, path)
+    if stale:
+        print(f"merge_registry: {path}: REGENERATE: both sides changed the generated "
+              f"field of {len(stale)} row(s) ({', '.join(stale[:5])}"
+              f"{', ...' if len(stale) > 5 else ''}); ours kept, so the file is stale "
+              f"until `{REGENERATE.get(path, 'its generator')}` runs", file=sys.stderr)
     for line in claim_notes(base, merged, ours, theirs, conflicts):
         print(f"merge_registry: {path}: {line}", file=sys.stderr)
     rows = merged[rows_key(merged)] if rows_key(merged) else []

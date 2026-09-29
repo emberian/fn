@@ -26,6 +26,12 @@
 ;             and the status line).  A reply larger than that (an OVER or
 ;             LISTGROUP over a large range) is outside the stated workload
 ;             until the owner renders replies in windows (PKT-644);
+;     compress the COMPRESS DEFLATE layer's inflater (RFC 8054; lane
+;             compress): the 32 KiB window, the Huffman table, one read of
+;             output and two of input (a read and the compressed octets a
+;             stopped call left), 56 KiB (*fn-cbud-compress-heap-octets*,
+;             fn-cbud-compress-heap-covers-the-inflater); every connection is
+;             charged it, since any authenticated one may start a layer;
 ;     parser  the wire state's command line, an octet list of at most one
 ;             line (512 octets), 16 octets of heap per octet
 ;             (*fn-heap-octets-per-list-octet*), twice for the collector's
@@ -38,6 +44,8 @@
 ;             held none of it.
 ;   NATIVE PART, outside it:
 ;     kernel  the socket's kernel buffers at their defaults, measured;
+;     deflate zlib's outbound stream of a COMPRESS layer
+;             (books/nntp-compress.lisp fn-zc-deflate-state-octets), 56 KiB;
 ;     tls     OpenSSL's or LibreSSL's session with SSL_MODE_RELEASE_BUFFERS
 ;             (host/native/tls.lisp), measured, when a TLS context is
 ;             loaded (implicit TLS or STARTTLS reachable).
@@ -88,6 +96,8 @@
 (include-book "heap-figure")
 (include-book "public-exposure")
 (include-book "profile-limits") ; its figures are rows there
+(include-book "nntp-compress")
+(include-book "deflate-inflate")
 
 ; -----------------------------------------------------------------------------
 ; The per-connection figure.  The measured constants are pinned by the native
@@ -147,6 +157,29 @@
 (defconst *fn-cbud-kernel-octets* 212992)
 (defconst *fn-cbud-tls-octets* 131072)
 (defconst *fn-cbud-thread-runtime-octets* (* (fn-profile-limit :thread-runtime-mib) 1024 1024))
+(defconst *fn-cbud-compress-heap-octets* 57344)
+(defconst *fn-cbud-compress-native-octets* 57344)
+
+; The two COMPRESS terms hold what a layer allocates: the inflater's window
+; and table (fn-zin-buffer-sizes), its output (one read) and its input (two
+; reads); zlib's state for the parameters ACL2 gives it.
+(defthm fn-cbud-compress-heap-covers-the-inflater
+  (<= (+ *fn-zin-window* *fn-zin-tab-octets* (* 3 *fn-cbud-read-quantum*))
+      *fn-cbud-compress-heap-octets*)
+  :rule-classes nil)
+
+(defthm fn-cbud-compress-native-covers-zlib
+  (<= (fn-zc-deflate-state-octets) *fn-cbud-compress-native-octets*)
+  :rule-classes nil)
+
+; The heap term also holds the outbound side's buffer: one window's
+; compressed output under the flush schedule (books/nntp-compress.lisp
+; fn-zc-sync-output-octets of fn-zc-window-octets), next to the inflater.
+(defthm fn-cbud-compress-heap-covers-the-layer
+  (<= (+ *fn-zin-window* *fn-zin-tab-octets* (* 3 *fn-cbud-read-quantum*)
+         (fn-zc-sync-output-octets (fn-zc-window-octets)))
+      *fn-cbud-compress-heap-octets*)
+  :rule-classes nil)
 
 ;; THE HANDSHAKES (PRF-986, books/tls-handshake-budget.lisp; lane
 ;; tls-handshake-budget-2).  A TLS handshake in progress holds native memory
@@ -190,11 +223,13 @@
   (+ *fn-cbud-record-octets*
      *fn-cbud-read-octets*
      (+ (* 2 (nfix article)) *fn-cbud-reply-status-octets*)
-     (* 2 *fn-heap-octets-per-list-octet* *fn-cbud-line-octets*)))
+     (* 2 *fn-heap-octets-per-list-octet* *fn-cbud-line-octets*)
+     *fn-cbud-compress-heap-octets*))
 
 (defun fn-cbud-conn-native-octets (tlsp)
   (declare (xargs :guard t))
-  (+ *fn-cbud-kernel-octets* (if tlsp *fn-cbud-tls-octets* 0)))
+  (+ *fn-cbud-kernel-octets* *fn-cbud-compress-native-octets*
+     (if tlsp *fn-cbud-tls-octets* 0)))
 
 ; The per-connection figure holds a step's read and its suffix under any
 ; limits.

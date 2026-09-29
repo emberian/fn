@@ -33,6 +33,7 @@
                                    fn-bpf-fragment-listp-car-and-cdr
                                    fn-bpf-fragmentp-fields)))))
 
+(verify-guards fn-bpnf-arrival-count-loop)
 (verify-guards fn-bpnf-arrival-count)
 (verify-guards fn-bpnf-find-arrival)
 (verify-guards fn-bpnp-forward-attempt-record)
@@ -51,6 +52,7 @@
 (verify-guards fn-bpnp-stranded-slotp)
 (verify-guards fn-bpnp-attempted-held)
 (verify-guards fn-bpnp-attempt-matches-heldp)
+(verify-guards fn-bpnp-attempt-replace-loop)
 (verify-guards fn-bpnp-attempt-replace)
 (verify-guards fn-bpnp-attempt-apply)
 (verify-guards fn-bpnp-transfer-outcomep)
@@ -63,6 +65,7 @@
 (verify-guards fn-bpnp-attempt-slot-namesp)
 (verify-guards fn-bpnp-resume-slot-namesp)
 (verify-guards fn-bpnp-forward-result-matches-heldp)
+(verify-guards fn-bpnp-forward-result-replace-loop)
 (verify-guards fn-bpnp-forward-result-replace)
 (verify-guards fn-bpnp-forward-result-apply)
 (verify-guards fn-bpnp-deferral-record)
@@ -71,5 +74,6 @@
 (verify-guards fn-bpnp-busy-slot)
 (verify-guards fn-bpnp-deferred-held)
 (verify-guards fn-bpnp-deferral-matches-heldp)
+(verify-guards fn-bpnp-deferral-replace-loop)
 (verify-guards fn-bpnp-deferral-replace)
 (verify-guards fn-bpnp-deferral-apply)

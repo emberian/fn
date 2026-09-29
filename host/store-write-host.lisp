@@ -639,7 +639,7 @@
           (stored (reverse (nth 6 replay))))
       (mv-let (decoded fold) (fn-lgb-decode-next chunk (nth 5 replay))
         (let ((next (if (consp decoded)
-                        (fn-store-log-next-txid-of-events decoded (nth 3 replay))
+                        (fn-ofw-wire-next decoded (nth 3 replay))
                       (nth 3 replay))))
           (mv-let (acc fn-arena)
             (cond ((not (fn-xw-some places)) (fn-srs-intern-step (nth 0 replay) decoded fn-arena))
@@ -1482,7 +1482,7 @@
   ; reading of the wall clock (fn-otm-wall-reading) and its observation
   (declare (xargs :mode :program))
   (let* ((clock (fn-hx-clock))
-         (reading (fn-otm-wall-reading (cadr clock) (caddr clock) 946684800))
+         (reading (fn-otm-wall-reading (cadr clock) (caddr clock)))
          (ok (and (true-listp reading) (equal (len reading) 2)
                   (integerp (car reading)) (<= 0 (car reading)) (booleanp (cadr reading)))))
     (if (not ok) (fn-xw-fault "ACL2 returned a malformed wall reading")

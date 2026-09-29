@@ -468,20 +468,64 @@
                                       fn-cu-list fn-pull-at revappend-removal))))
 
 ; Frame and handle every complete line in the buffer, at most FUEL of them.
-(defun fn-cu-drain (r fuel)
-  (declare (xargs :guard (natp fuel) :measure (nfix fuel)
-                  :guard-hints (("Goal" :in-theory (disable fn-cu-on-line)))))
+; Executes by a loop (lane depth-debt, PRF-919): FUEL is one more than the
+; peer's buffered input octets, and the recursion took a frame per reply line
+; of it.  The loop threads R the same way and carries the effects reversed.
+(defun fn-cu-drain-loop (r fuel acc)
+  (declare (xargs :guard (natp fuel) :measure (nfix fuel) :verify-guards nil))
   (if (or (zp fuel) (not (equal (fn-cu-r-phase r) :reply)))
-      (mv r nil)
+      (mv r (fn-ag-rev-onto acc nil))
     (mv-let (status line rest) (fn-cu-split (fn-cu-r-buf r))
-      (cond ((equal status :need) (mv r nil))
-            ((equal status :long) (fn-cu-fail r :line-too-long))
+      (cond ((equal status :need) (mv r (fn-ag-rev-onto acc nil)))
+            ((equal status :long)
+             (mv-let (r2 effects) (fn-cu-fail r :line-too-long)
+               (mv r2 (fn-ag-rev-onto acc effects))))
             (t (mv-let (r2 effects continuep)
                  (fn-cu-on-line (fn-cu-with r :buf rest) line)
                  (if continuep
-                     (mv-let (r3 more) (fn-cu-drain r2 (1- fuel))
-                       (mv r3 (append effects more)))
-                   (mv r2 effects))))))))
+                     (fn-cu-drain-loop r2 (1- fuel) (fn-ag-rev-onto effects acc))
+                   (mv r2 (fn-ag-rev-onto acc effects)))))))))
+
+(defun fn-cu-drain (r fuel)
+  (declare (xargs :guard (natp fuel) :measure (nfix fuel) :verify-guards nil
+                  :guard-hints (("Goal" :in-theory (disable fn-cu-on-line)))))
+  (mbe :logic
+       (if (or (zp fuel) (not (equal (fn-cu-r-phase r) :reply)))
+           (mv r nil)
+         (mv-let (status line rest) (fn-cu-split (fn-cu-r-buf r))
+           (cond ((equal status :need) (mv r nil))
+                 ((equal status :long) (fn-cu-fail r :line-too-long))
+                 (t (mv-let (r2 effects continuep)
+                      (fn-cu-on-line (fn-cu-with r :buf rest) line)
+                      (if continuep
+                          (mv-let (r3 more) (fn-cu-drain r2 (1- fuel))
+                            (mv r3 (append effects more)))
+                        (mv r2 effects)))))))
+       :exec (mv-let (r2 effects) (fn-cu-drain-loop r fuel nil) (mv r2 effects))))
+
+(encapsulate ()
+  (local (defthm fn-cu-rev-onto-of-rev-onto
+    (equal (fn-ag-rev-onto (fn-ag-rev-onto a acc) b)
+           (fn-ag-rev-onto acc (append a b)))))
+  (defthm fn-cu-drain-loop-is-rev-onto
+    (equal (fn-cu-drain-loop r fuel acc)
+           (list (mv-nth 0 (fn-cu-drain r fuel))
+                 (fn-ag-rev-onto acc (mv-nth 1 (fn-cu-drain r fuel)))))
+    :hints (("Goal" :induct (fn-cu-drain-loop r fuel acc)
+                    :in-theory (disable fn-cu-on-line fn-cu-split)))))
+
+(verify-guards fn-cu-drain-loop
+  :hints (("Goal" :in-theory (disable fn-cu-on-line))))
+(defthm fn-cu-drain-shape
+  (equal (list (mv-nth 0 (fn-cu-drain r fuel)) (mv-nth 1 (fn-cu-drain r fuel)))
+         (fn-cu-drain r fuel))
+  :hints (("Goal" :induct (fn-cu-drain r fuel)
+                  :in-theory (disable fn-cu-on-line fn-cu-split))))
+
+(verify-guards fn-cu-drain
+  :hints (("Goal" :in-theory (disable fn-cu-on-line fn-cu-split fn-cu-drain-loop
+                                      fn-cu-drain-loop-is-rev-onto)
+                  :use ((:instance fn-cu-drain-loop-is-rev-onto (acc nil))))))
 
 (defun fn-cu-event-octets (event)
   (declare (xargs :guard t))
@@ -782,15 +826,47 @@
                (fn-cu-list rows)))
       nil)))
 
-(defun fn-cu-plans-of (names peers)
+; Executes by a loop (lane depth-debt, PRF-919): NAMES are the configured
+; peers, operator data with no fixed cap (D27).  (mbe :logic <the recursion,
+; unchanged> :exec <a loop>), equal by fn-cu-plans-of-loop-is-rev-onto
+; (books/rev-onto.lisp).
+(defun fn-cu-plans-of-loop (names peers acc)
   (declare (xargs :guard t))
   (if (consp names)
-      (let ((plan (fn-cu-plan-of-rows (car names)
-                                      (fn-cfg-rows-with-key peers (car names)))))
-        (if plan
-            (cons plan (fn-cu-plans-of (cdr names) peers))
-          (fn-cu-plans-of (cdr names) peers)))
-    nil))
+      (fn-cu-plans-of-loop
+       (cdr names) peers
+       (let ((plan (fn-cu-plan-of-rows (car names)
+                    (fn-cfg-rows-with-key peers (car names)))))
+         (if plan (cons plan acc) acc)))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-cu-plans-of (names peers)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp names)
+           (let ((plan (fn-cu-plan-of-rows (car names)
+                        (fn-cfg-rows-with-key peers (car names)))))
+             (if plan
+                 (cons plan (fn-cu-plans-of (cdr names) peers))
+               (fn-cu-plans-of (cdr names) peers)))
+         nil)
+       :exec (fn-cu-plans-of-loop names peers nil)))
+
+(defthm fn-cu-plans-of-loop-is-rev-onto
+  (equal (fn-cu-plans-of-loop names peers acc)
+         (fn-ag-rev-onto acc (fn-cu-plans-of names peers)))
+  :hints (("Goal" :induct (fn-cu-plans-of-loop names peers acc)
+                  :in-theory (union-theories
+                              '(fn-cu-plans-of-loop fn-cu-plans-of
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-cu-plans-of
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-cu-plans-of fn-ag-rev-onto
+                                fn-cu-plans-of-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; KEYSTONE SUBJECT.  The peers this node catches up from
 ; (host/owner-host.lisp `fn-owner-catchup-plans').

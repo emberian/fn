@@ -412,9 +412,9 @@
 
 
 ; -----------------------------------------------------------------------------
-; The wide uint (D27, design 2026-09-25-bounds §2.3, packet P6).
+; The wide uint (D27, design 2026-09-25-bounds section 2.3, packet P6).
 ;
-; RFC 8949 §3 gives a uint an eight-octet argument (additional information
+; RFC 8949 section 3 gives a uint an eight-octet argument (additional information
 ; 27).  The profile above stops at the four-octet argument, and every existing
 ; caller keeps that domain: nothing above changes.  A codec whose integer
 ; fields are 64-bit (the transaction record's sequence, transaction ID,
@@ -424,7 +424,7 @@
 ; narrow one accepts (cbor-invariants: `fn-cbor-encode-uint-wide-is-narrow',
 ; `fn-cbor-decode-prechecked-wide-extends-narrow'), so no existing encoding
 ; moves.  An eight-octet argument is canonical only above 2^32 - 1 (RFC 8949
-; §4.2.1, shortest form).
+; section 4.2.1, shortest form).
 
 (defconst *fn-cbor-max-uint64* 18446744073709551615)
 

@@ -21,9 +21,11 @@
            (otherwise nil))))
     (if payload (fn-nctrl-seal *fn-thlc-request-kind* payload) :bad)))
 
-(defun fn-thlc-request-decode (octets)
+; The payload grammar over an opened frame; the decode below is the open
+; (fn-nctrl-open) followed by it, and books/native-control-buffer.lisp opens
+; the frame in place and calls the grammar.
+(defun fn-thlc-request-payload-decode (opened)
   (declare (xargs :guard t))
-  (let ((opened (fn-nctrl-open octets *fn-thlc-request-kind*)))
     (if (not (fn-frame-result-okp opened)) (list :refused :frame)
       (let ((payload (fn-frame-result-payload opened)))
         (cond
@@ -36,7 +38,11 @@
          ((and (fn-cbor-octet-listp payload)
                (equal (len payload) 5) (equal (car payload) 2))
           (list :topic :report (fn-cbor-u32-from (cdr payload)) nil))
-         (t (list :refused :request)))))))
+         (t (list :refused :request))))))
+
+(defun fn-thlc-request-decode (octets)
+  (declare (xargs :guard t))
+  (fn-thlc-request-payload-decode (fn-nctrl-open octets *fn-thlc-request-kind*)))
 
 (defun fn-thlc-status-code (status)
   (case status (:accepted 0) (:refused 1) (:uncertain 2)

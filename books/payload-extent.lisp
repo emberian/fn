@@ -35,6 +35,7 @@
 (include-book "store-intern")
 (include-book "store-recover-stream")
 (include-book "blake3-stobj")
+(include-book "packed-octets")
 ; The held row from one parse of the article (lane snapshot-open-3).
 (include-book "store-intern-once")
 
@@ -48,20 +49,78 @@
 (local (in-theory (enable (:definition fn-arn-extent-guardp)
                           (:definition fn-arn-extentp)
                           (:rewrite fn-arn-payload-listp-true-listp)
-                          (:rewrite fn-bs-stxa-is-no-other-wire-event)
+                          (:rewrite fn-stxa-is-no-other-wire-event)
                           (:rewrite fn-intern-event-arena))))
 
 ; -----------------------------------------------------------------------------
-; 1. Octets as a big-endian natural (the trailer, 32 octets: one bignum).
+; 1. The entry's recorded trailer as one natural: the extent descriptor's
+;    COMMITMENT (lane extent-identity, 2026-09-29; PRF-994).
+;
+; A descriptor (FILE EOFF ELEN POFF PLEN TRAILER) names the entry whose
+; protected prefix is [EOFF, EOFF+ELEN) and carries, as TRAILER, the natural
+; of the 32 trailer octets the log wrote after that prefix (fn-bch-pack,
+; books/packed-octets.lisp: injective on octet lists,
+; fn-arx-trailer-nat-injective).  The realizer (host/native/extent.lisp)
+; decides every read against it (books/payload-extent-read.lisp
+; fn-arx-entry-verdict-buffer): a self-consistent entry that is not the one
+; the descriptor names is refused BY NAME.  Until this lane the field was 0
+; and the realizer checked a read against the trailer it had just read
+; (GPT-6, warranty-quality-proof-engineering.md section 2).
 
-(defun fn-arx-octets-nat (xs acc)
-  (declare (xargs :guard (natp acc)))
-  (if (atom xs)
-      (nfix acc)
-    (fn-arx-octets-nat (cdr xs) (+ (* 256 (nfix acc)) (nfix (car xs))))))
+(defun fn-arx-trailer-nat (octets)
+  (declare (xargs :guard t))
+  (fn-bch-pack octets))
 
-(defthm fn-arx-octets-nat-natp
-  (natp (fn-arx-octets-nat xs acc))
+(defthm fn-arx-trailer-nat-natp
+  (natp (fn-arx-trailer-nat octets))
+  :rule-classes :type-prescription)
+
+(local
+ (defthm fn-arx-cbor-octet-listp-is-bch-octetsp
+   (implies (fn-cbor-octet-listp xs) (fn-bch-octetsp xs))))
+
+; Two octet lists with the same commitment are the same octets.
+(defthm fn-arx-trailer-nat-injective
+  (implies (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b)
+                (equal (fn-arx-trailer-nat a) (fn-arx-trailer-nat b)))
+           (equal a b))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-bch-unpack-of-pack (xs a))
+                        (:instance fn-bch-unpack-of-pack (xs b)))
+           :in-theory (disable fn-bch-unpack-of-pack fn-bch-unpack-of-pack-is-bytes
+                               fn-bch-pack fn-bch-unpack fn-bch-bytes-when-octetsp))))
+
+; The commitment of the 32 octets at J of OCTETS.
+(defun fn-arx-trailer-nat-at (j octets)
+  (declare (xargs :guard (and (natp j) (true-listp octets))))
+  (fn-arx-trailer-nat (take *fn-frame-trailer-octets* (nthcdr j octets))))
+
+; A record's PLACE (START N ROFF RLEN) from the walk below, with its
+; entry's commitment attached: (START N ROFF RLEN TRAILER), the trailer
+; read at the entry's last 32 octets of OCTETS, the octets from file
+; offset BASE.  fn-arx-extent-of and fn-arx-commit-extent
+; (books/payload-commit-extent.lisp) carry it into the descriptor.
+(defun fn-arx-place-trailer (place base octets)
+  (declare (xargs :guard (and (true-listp place) (natp base) (true-listp octets))))
+  (let ((start (nfix (nth 0 place)))
+        (n (nfix (nth 1 place))))
+    (fn-arx-trailer-nat-at (nfix (- (+ start n) (+ base *fn-frame-trailer-octets*))) octets)))
+
+(defun fn-arx-attach-trailers (places base octets)
+  (declare (xargs :guard (and (true-listp places) (natp base) (true-listp octets))))
+  (if (atom places)
+      nil
+    (cons (if (true-listp (car places))
+              (list (nth 0 (car places)) (nth 1 (car places)) (nth 2 (car places))
+                    (nth 3 (car places)) (fn-arx-place-trailer (car places) base octets))
+            (car places))
+          (fn-arx-attach-trailers (cdr places) base octets))))
+
+(defthm fn-arx-attach-trailers-len
+  (equal (len (fn-arx-attach-trailers places base octets)) (len places)))
+
+(defthm fn-arx-attach-trailers-true-listp
+  (true-listp (fn-arx-attach-trailers places base octets))
   :rule-classes :type-prescription)
 
 ;; -----------------------------------------------------------------------------
@@ -181,8 +240,9 @@
       t
     (and (consp r) (equal (car p) (car r)) (fn-arx-prefixp (cdr p) (cdr r)))))
 
-; The record R (octets) at its PLACE (START N ROFF RLEN) in FILE, decoded as
-; the record W: the extent (FILE START N-32 POFF PLEN 0), or nil when the
+; The record R (octets) at its PLACE (START N ROFF RLEN TRAILER) in FILE,
+; decoded as the record W: the extent (FILE START N-32 POFF PLEN TRAILER),
+; TRAILER the entry's commitment (fn-arx-attach-trailers), or nil when the
 ; place is not R's (its length, or a record not inside the entry's protected
 ; prefix) or R does not hold W's payload at the codec's place.
 (defun fn-arx-extent-of (file position r w)
@@ -200,7 +260,8 @@
              (<= (+ start *fn-arx-record-at*) roff)
              (<= (+ roff rlen *fn-frame-trailer-octets*) (+ start n))
              (fn-arx-prefixp p (nthcdr k r)))
-        (list (nfix file) start (- n *fn-frame-trailer-octets*) (+ roff k) plen 0)
+        (list (nfix file) start (- n *fn-frame-trailer-octets*) (+ roff k) plen
+              (nfix (nth 4 position)))
       nil)))
 
 (defthm fn-arx-extent-of-extentp
@@ -271,10 +332,31 @@
                             (a fn-arena) (xs (fn-durable-octets file poff plen)))))))
 
 ; WS the decoded events, RS their octets, PS their positions (FILE . POSITION).
-(defun fn-arx-intern-events (ws rs ps keyring generation fn-arena)
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of data with no fixed cap.  The :logic is
+; the recursion, unchanged; the :exec is the loop, equal by the lemma below.
+(defun fn-arx-intern-events-loop (ws rs ps keyring generation acc fn-arena)
   (declare (xargs :stobjs fn-arena
                   :guard (and (fn-prin-keyringp keyring) (natp generation))
                   :guard-hints (("Goal" :in-theory (disable fn-arx-intern-event)))))
+  (if (atom ws)
+      (mv (fn-ag-rev-onto acc nil) fn-arena)
+    (let* ((r (and (consp rs) (car rs)))
+           (p (and (consp ps) (consp (car ps)) (car ps)))
+           (file (nfix (and (consp p) (car p))))
+           (position (and (consp p) (cdr p))))
+      (mv-let (row fn-arena)
+        (fn-arx-intern-event (car ws) r position file keyring generation fn-arena)
+        (if (eq row :bad)
+            (mv :bad fn-arena)
+          (fn-arx-intern-events-loop (cdr ws) (and (consp rs) (cdr rs)) (and (consp ps) (cdr ps))
+                                     keyring generation (cons row acc) fn-arena))))))
+
+(defun fn-arx-intern-events (ws rs ps keyring generation fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-prin-keyringp keyring) (natp generation))
+                  :verify-guards nil))
+  (mbe :logic
   (if (atom ws)
       (mv nil fn-arena)
     (let* ((r (and (consp rs) (car rs)))
@@ -290,7 +372,19 @@
                                 keyring generation fn-arena)
           (if (eq rest :bad)
               (mv :bad fn-arena)
-            (mv (cons row rest) fn-arena))))))))
+            (mv (cons row rest) fn-arena)))))))
+  :exec (fn-arx-intern-events-loop ws rs ps keyring generation nil fn-arena)))
+
+(defthm fn-arx-intern-events-loop-is-rev-onto
+  (equal (fn-arx-intern-events-loop ws rs ps keyring generation acc fn-arena)
+         (mv-let (r a) (fn-arx-intern-events ws rs ps keyring generation fn-arena)
+           (mv (if (eq r :bad) :bad (fn-ag-rev-onto acc r)) a)))
+  :hints (("Goal" :induct (fn-arx-intern-events-loop ws rs ps keyring generation acc fn-arena)
+                  :do-not '(generalize fertilize eliminate-destructors)
+                  :in-theory (disable fn-arx-intern-event nfix))))
+
+(verify-guards fn-arx-intern-events
+  :hints (("Goal" :in-theory (disable fn-arx-intern-event))))
 
 (defthm fn-arx-intern-events-true-listp
   (or (true-listp (mv-nth 0 (fn-arx-intern-events ws rs ps keyring generation fn-arena)))

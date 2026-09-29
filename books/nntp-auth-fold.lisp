@@ -9,6 +9,40 @@
 ;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
 (local (in-theory (disable (tau-system))))
 
+; AUTHINFO SASL (NNT-056) keeps the pinned configuration too.
+(local (defthm fn-auth-fold-sasl-finish-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session (fn-auth-sasl-finish as st response)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-finish fn-auth-sasl-refuse
+                                   fn-auth-bind-principal-peer fn-auth-with-base)
+                                  (fn-auth-single fn-auth-find-cred fn-sasl-step
+                                   fn-sasl-response-login fn-auth-sasl-effects
+                                   fn-auth-sasl-line-okp fn-auth-principal-match
+                                   fn-node-statep))))))
+
+(local (defthm fn-auth-fold-sasl-command-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session (fn-auth-sasl-command as margs)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-command fn-auth-sasl-refuse)
+                                  (fn-auth-sasl-finish fn-auth-sasl-decode
+                                   fn-auth-single fn-sasl-mech fn-sasl-offeredp))))))
+
+(local (defthm fn-auth-fold-sasl-continue-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session (fn-auth-sasl-continue as line)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-continue fn-auth-sasl-refuse)
+                                  (fn-auth-sasl-finish fn-auth-sasl-decode
+                                   fn-auth-single))))))
+
+(local (defthm fn-auth-fold-install-context-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session (fn-auth-install-context as wire-event)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (enable fn-auth-install-context)))))
+
 (local
  (defthm fn-auth-fold-authinfo-keeps-the-config
    (equal (fn-auth-session-config
@@ -275,6 +309,19 @@
                             fn-cu-select fn-cu-initial-line fn-cu-render-lines
                             fn-cu-chain-over fn-cu-parse-request)))))
 
+;; NNT-055: the XFN-ZARTICLE arm: a single, a block, or ARTICLE's retrieval.
+(defthm fn-auth-fold-zar-command-has-no-offer
+  (not (fn-post-offeredp
+        (fn-nntp-result-effects
+         (fn-zar-command session archive index args fn-arena))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-zar-command fn-nntp-msgid-retrieval-indexed fn-post-offeredp
+                            fn-nntp-msgid-retrieval
+                            fn-nntp-reply-effect fn-nntp-article-response)
+                           (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets fn-zar-decide
+                            fn-zar-initial fn-zdn-body-lines fn-zar-line-okp
+                            fn-nntp-stuff-lines fn-nntp-crlf)))))
+
 (local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defthm fn-auth-fold-archive-command-pinned-has-no-offer
   (not (fn-post-offeredp
@@ -292,6 +339,12 @@
                  fn-nntp-archive-command fn-nntp-keywordp
                  fn-nntp-stuff-lines fn-nntp-crlf)))))
 (local (in-theory (disable (tau-system))))
+
+;; XFN-ZARTICLE's row answers a withdrawn article as ARTICLE does (NNT-055).
+(defthm fn-auth-fold-withdrawn-reply-has-no-offer
+  (not (fn-post-offeredp (fn-nntp-result-effects (fn-nntp-withdrawn-reply session flag))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-withdrawn-reply fn-post-offeredp fn-nntp-reply-effect)
+                                  (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets)))))
 
 (defthm fn-auth-fold-command-pinned-offers-only-post
   (implies (not (fn-nntp-keywordp (car tokens) "POST"))
@@ -555,6 +608,57 @@
           (fn-auth-fold-post-awaiting as))
    :hints (("Goal" :in-theory (enable fn-auth-fold-post-awaiting)))))
 
+; AUTHINFO SASL (NNT-056) keeps the base session's POST state: its arms
+; rebuild the pending, subject and context fields, and a login binds a role
+; only through fn-auth-bind-principal-peer, which keeps the POST base.
+(local
+ (defthm fn-auth-fold-sasl-finish-keeps-post-awaiting
+   (equal (fn-post-session-awaiting
+           (fn-peer-session-base
+            (fn-auth-session-base
+             (fn-post-result-session (fn-auth-sasl-finish as st response)))))
+          (fn-post-session-awaiting
+           (fn-peer-session-base (fn-auth-session-base as))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-auth-sasl-finish fn-auth-sasl-refuse fn-auth-bind-principal-peer
+                   fn-auth-with-base fn-auth-fold-post-awaiting)
+                 (fn-auth-single fn-auth-find-cred fn-sasl-step fn-sasl-response-login
+                  fn-auth-sasl-effects fn-auth-sasl-line-okp
+                  fn-auth-principal-match fn-node-statep))))))
+
+(local
+ (defthm fn-auth-fold-sasl-command-keeps-post-awaiting
+   (equal (fn-post-session-awaiting
+           (fn-peer-session-base
+            (fn-auth-session-base (fn-post-result-session (fn-auth-sasl-command as margs)))))
+          (fn-post-session-awaiting
+           (fn-peer-session-base (fn-auth-session-base as))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-auth-sasl-command fn-auth-sasl-refuse fn-auth-fold-post-awaiting)
+                 (fn-auth-sasl-finish fn-auth-sasl-decode fn-auth-single
+                  fn-sasl-mech fn-sasl-offeredp))))))
+
+(local
+ (defthm fn-auth-fold-sasl-continue-keeps-post-awaiting
+   (equal (fn-post-session-awaiting
+           (fn-peer-session-base
+            (fn-auth-session-base (fn-post-result-session (fn-auth-sasl-continue as line)))))
+          (fn-post-session-awaiting
+           (fn-peer-session-base (fn-auth-session-base as))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-auth-sasl-continue fn-auth-sasl-refuse fn-auth-fold-post-awaiting)
+                 (fn-auth-sasl-finish fn-auth-sasl-decode fn-auth-single))))))
+
+(local
+ (defthm fn-auth-fold-install-context-keeps-post-awaiting
+   (equal (fn-post-session-awaiting
+           (fn-peer-session-base
+            (fn-auth-session-base (fn-post-result-session (fn-auth-install-context as wire-event)))))
+          (fn-post-session-awaiting
+           (fn-peer-session-base (fn-auth-session-base as))))
+   :hints (("Goal" :in-theory (enable fn-auth-install-context
+                                      fn-auth-fold-post-awaiting)))))
+
 (local
  (defthm fn-auth-fold-authinfo-keeps-post-awaiting
    (equal (fn-auth-fold-post-awaiting
@@ -564,7 +668,7 @@
             (e/d (fn-auth-authinfo fn-auth-bind-principal-peer
                    fn-auth-with-base fn-auth-fold-post-awaiting)
                  (fn-auth-single fn-auth-find-cred fn-auth-checkp
-                  fn-auth-token-argp fn-nntp-keywordp
+                  fn-auth-token-argp fn-nntp-keywordp fn-auth-sasl-command
                   fn-auth-principal-match fn-node-statep))))))
 
 (local
@@ -577,6 +681,16 @@
                    fn-auth-with-base fn-auth-fold-post-awaiting)
                  (fn-auth-single fn-auth-principal-rolep))))))
 
+; RFC 8054: COMPRESS keeps the base session (fn-auth-compress rebuilds
+; only the compression field and the hold).
+(local
+ (defthm fn-auth-fold-compress-keeps-post-awaiting
+   (equal (fn-auth-fold-post-awaiting
+           (fn-post-result-session (fn-auth-compress as args)))
+          (fn-auth-fold-post-awaiting as))
+   :hints (("Goal" :in-theory (e/d (fn-auth-compress fn-auth-fold-post-awaiting)
+                                   (fn-auth-single fn-zc-decide))))))
+
 (local
  (defthm fn-auth-fold-command-keeps-post-awaiting
    (implies (fn-auth-command as config keyword args)
@@ -586,7 +700,9 @@
                    (fn-auth-fold-post-awaiting as)))
    :hints (("Goal" :in-theory
             (e/d (fn-auth-command)
-                 (fn-auth-authinfo fn-auth-starttls fn-auth-single
+                 (fn-auth-authinfo fn-auth-starttls fn-auth-single fn-auth-compress
+                  fn-auth-compressed-refusedp fn-zc-capability-lines fn-zdn-capability-lines
+                  fn-auth-compress-mayp
                   fn-auth-fold-post-awaiting
                   fn-auth-gatedp fn-auth-postingp fn-nntp-keywordp
                   fn-nntp-keyword-tokenp fn-nntp-multi
@@ -608,7 +724,7 @@
            (e/d (fn-auth-step-pinned fn-auth-tls-eventp
                   fn-auth-tls-established
                   fn-auth-fold-post-awaiting)
-                (fn-auth-delegate-pinned fn-auth-command
+                (fn-auth-delegate-pinned fn-auth-command fn-auth-sasl-continue fn-auth-install-context
                  fn-auth-authinfo fn-auth-starttls
                  fn-nntp-tokenize
                  fn-nntp-keywordp fn-nntp-command-inputp
@@ -636,7 +752,7 @@
                             fn-auth-tls-established
                             fn-auth-fold-post-awaiting
                             fn-served-post-command-eventp)
-                           (fn-auth-delegate-pinned fn-auth-command
+                           (fn-auth-delegate-pinned fn-auth-command fn-auth-sasl-continue fn-auth-install-context
                             fn-auth-postingp fn-nntp-tokenize))
            :use ((:instance fn-auth-fold-auth-step-starts-post-awaiting-only-on-post)
                  (:instance fn-auth-no-posters-means-no-posting)
