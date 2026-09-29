@@ -168,7 +168,8 @@ static int fnx_statfs(const char *p, unsigned char *buf) {
   (let ((r (%lock-shared path)))
     (cond ((= r 1000000) '|KEYWORD::NOT-REGULAR|)
           ((= r 1000001) '|KEYWORD::LOCKED|)
-          ((< r 0) (list kw-error (- r) "open"))
+          ;; the text is the image's fnn-os-error report (fnn-open names the path)
+          ((< r 0) (list kw-error (- r) (hx-os-text (- r) path)))
           (else kw-ok))))
 
 (define (a-hx-fsync-dir path)
