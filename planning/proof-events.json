@@ -13210,6 +13210,23 @@
           "name": "fn-xpy-rci-recorded-context-is-the-decided-context"
         }
       ]
+    },
+    {
+      "id": "PRF-937",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ofr-replay-ok-frontier-admits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofr-loop-ok-within-frontier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofr-apply-record-idle-past-txid"
+        }
+      ]
     }
   ]
 }

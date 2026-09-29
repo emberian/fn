@@ -13861,6 +13861,28 @@
         "fn-xpy-rci-recorded-config-keeps-the-policy",
         "fn-xpy-rci-recorded-context-is-the-decided-context"
       ]
+    },
+    {
+      "id": "PRF-937",
+      "title": "The open's transaction frontier admits every history the replay accepts: a configuration record above every event (refused POSTs on a full budget) no longer makes a clean store checkpoint-damaged",
+      "statement": "Subject: the configured open's frontier, host/native/io.lisp fnn-recover-log and host/store-open-host.lisp (the extraction open) joining host/store-node-host.lisp fn-store-cfg-next-txid = books/open-frontier.lisp fn-ofr-configs-next with the events' fold and the checkpoint floor; the replay is books/config-physical-replay.lisp fn-cpr-replay, and the check it passes is fn-rii-sco-finalize-configured's fn-rii-advance-idlep (= fn-replay-advance-okp, fn-rii-advance-idlep-is-advance-okp). fn-ofr-replay-ok-frontier-admits: whenever fn-cpr-replay accepts a history (any interleaving of Store events of every kind -- articles, composites, retention undertakings and releases, identity, consumer and topic events -- and configuration records, with any txid gaps, which is what a refused or aborted transaction leaves) and FLOOR is a natural, the replayed node is idle at or below fn-ofr-frontier (the max of every event's txid+1, every configuration record's txid, FLOOR). fn-ofr-loop-ok-within-frontier is the general form from any idle node at or below ACC (the open over a checkpoint: ACC its floor). Scope: the host's events fold (fn-store-log-next-txid-of-events) reads wire events, not the interned rows the replay reads; their txids agree by fn-rcon-wire-event-txid-is-wire-event-txid / fn-rcon-store-event-txid-is-store-event-txid, not restated here. That the durable history a clean stop leaves replays :ok is lane closure-theorems' (books/closure-open.lisp).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-011",
+        "STO-025"
+      ],
+      "depends_on": [
+        "PRF-083",
+        "PRF-186"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/open-frontier.lisp",
+        "tests/acl2/open-frontier-tests.lisp",
+        "tests/test_native_checkpoint_auto.py"
+      ],
+      "progress_note": "Lane limits-live-2 (2026-09-29), row B10: the checkpoint-damaged bug of the operability review's walk F3."
     }
   ]
 }
