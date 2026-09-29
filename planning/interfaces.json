@@ -4,7 +4,7 @@
   "coverage": {
     "declared": 1224,
     "declared_and_dispatched": 1207,
-    "guard_verified": 551,
+    "guard_verified": 549,
     "with_keystone": 158
   },
   "entries": [
