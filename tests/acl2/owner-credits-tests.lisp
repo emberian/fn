@@ -123,8 +123,9 @@
                       (fn-own-enqueue (fn-ocfg-owner *oast-open*)
                                       (fn-own-sub-make 0 0 nil :witness))))
 ; A complete submission holds its charge, not the reserve (lane
-; credits-stall): an empty witness article, one line of lists.
-(assert-event (equal (fn-mca-need *mcat-queued0* 0 *mcat-r*) 16384))
+; credits-stall): an empty witness article, the records' cells, twice (lane
+; chunked-body-2: the queue holds it packed, fn-psub-sub-heap).
+(assert-event (equal (fn-mca-need *mcat-queued0* 0 *mcat-r*) 1024))
 (defconst *mcat-lnone* (mcat-ledger 0 nil))
 (assert-event (not (<= (fn-mca-need *mcat-queued0* 0 *mcat-r*) (fn-mca-held *mcat-lnone* 0))))
 (defconst *mcat-uncovered* (mcat-read *mcat-lnone* *mcat-queued0* *orrt-views* 0 *t2r-post* *t2-s1* 32 *mcat-r*))
@@ -215,14 +216,14 @@
 ; reserve plus the charge.  MUTATION: charged a reserve per queued
 ; submission (the credit before this lane), the same read needs two
 ; reserves and the room is one: refused.
-(defconst *mcat-q-l* (mcat-ledger *mcat-r* (list (cons (fn-mca-conn-key 0) (cons 0 16384)))))
+(defconst *mcat-q-l* (mcat-ledger *mcat-r* (list (cons (fn-mca-conn-key 0) (cons 0 1024)))))
 (assert-event (fn-mcr-fundedp *mcat-q-l*))
 (defconst *mcat-q-post* (mcat-read *mcat-q-l* *mcat-queued0* *orrt-views* 0 *t2r-post* *t2-s1* 32 *mcat-r*))
 (assert-event (fn-post-offeredp (fn-own-tls-result-effects (car *mcat-q-post*))))
-(assert-event (equal (fn-mca-held (cdr *mcat-q-post*) 0) (+ *mcat-r* 16384)))
+(assert-event (equal (fn-mca-held (cdr *mcat-q-post*) 0) (+ *mcat-r* 1024)))
 (assert-event (fn-mcr-fundedp (cdr *mcat-q-post*)))
 (assert-event (< (+ (fn-mcr-budget *mcat-q-l*) 0)
-                 (+ (- (fn-mcr-total *mcat-q-l*) 16384) (* 2 *mcat-r*))))
+                 (+ (- (fn-mcr-total *mcat-q-l*) 1024) (* 2 *mcat-r*))))
 ; The charge of a submission never exceeds the reserve.
 (assert-event (equal (fn-mca-sub-charge (fn-own-sub-make 0 0 nil
                                                          (fn-inj-make-decision :injected nil "m" nil

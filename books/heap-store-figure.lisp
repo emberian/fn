@@ -253,6 +253,7 @@
 (defconst *fn-heap-open-list-copies* 2)
 (defconst *fn-heap-open-record-octets* 1024)
 (defconst *fn-heap-inflight-header-copies* 3)
+(defconst *fn-heap-message-id-octets* 250)       ; RFC 5536 section 3.1.3
 
 ; THE ARENA's cost, a named parameter: today's paged arena (arena-offheap
 ; stage 1): the payload octets, under one page of the last page's slack, and
@@ -649,7 +650,6 @@
 (defconst *fn-heap-packed-store-octets* 64)
 (defconst *fn-heap-packed-natural-octets* 48)
 (defconst *fn-heap-packed-groups-octets* 64)
-(defconst *fn-heap-message-id-octets* 250)
 (defconst *fn-heap-submission-record-octets* 512)
 
 (defun fn-heap-article-wire-octets (profile)
@@ -728,6 +728,43 @@
   :hints (("Goal" :in-theory (disable fn-heap-article-reserve-octets fn-heap-articles-octets)
            :nonlinearp t)))
 
+(local
+ (defthm fn-heap-floor-512-monotone
+   (implies (and (natp a) (natp b) (<= a b))
+            (<= (floor a 512) (floor b 512)))
+   :rule-classes nil))
+
+(local
+ (defthm fn-heap-article-wire-octets-monotone
+   (implies (<= (nfix (fn-bs-profile-max-article-octets p1))
+                (nfix (fn-bs-profile-max-article-octets p2)))
+            (<= (fn-heap-article-wire-octets p1) (fn-heap-article-wire-octets p2)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-heap-article-wire-octets)
+                                   (fn-bs-profile-max-article-octets))
+                   :use ((:instance fn-heap-floor-512-monotone
+                                    (a (nfix (fn-bs-profile-max-article-octets p1)))
+                                    (b (nfix (fn-bs-profile-max-article-octets p2)))))))))
+
+(local
+ (defthm fn-heap-article-reserve-octets-monotone
+   (implies (and (<= (nfix (fn-bs-profile-max-article-octets p1))
+                     (nfix (fn-bs-profile-max-article-octets p2)))
+                 (<= (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p1))
+                     (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p2))))
+            (<= (fn-heap-article-reserve-octets p1) (fn-heap-article-reserve-octets p2)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-heap-article-reserve-octets fn-heap-article-queued-octets)
+                                   (fn-heap-article-wire-octets
+                                    fn-bs-profile-max-article-octets fn-bs-profile-field))
+                   :use (fn-heap-article-wire-octets-monotone)))))
+
+(local
+ (defthm fn-heap-articles-of-reserve-monotone
+   (implies (and (natp r1) (natp r2) (<= r1 r2))
+            (<= (max r1 (min (* 32 r1) b)) (max r2 (min (* 32 r2) b))))
+   :rule-classes nil))
+
 (defthm fn-heap-articles-octets-monotone
   (implies (and (<= (nfix (fn-bs-profile-max-article-octets p1))
                     (nfix (fn-bs-profile-max-article-octets p2)))
@@ -735,10 +772,16 @@
                     (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p2))))
            (<= (fn-heap-articles-octets p1) (fn-heap-articles-octets p2)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-heap-articles-octets fn-heap-article-reserve-octets
-                                   fn-heap-article-wire-octets fn-heap-article-queued-octets)
-                                  (fn-bs-profile-max-article-octets
-                                   fn-bs-profile-field)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-heap-articles-octets posp natp
+                                                fn-heap-article-reserve-octets-posp)
+                                              (theory 'minimal-theory))
+                  :use (fn-heap-article-reserve-octets-monotone
+                        (:instance fn-heap-article-reserve-octets-posp (profile p1))
+                        (:instance fn-heap-article-reserve-octets-posp (profile p2))
+                        (:instance fn-heap-articles-of-reserve-monotone
+                                   (r1 (fn-heap-article-reserve-octets p1))
+                                   (r2 (fn-heap-article-reserve-octets p2))
+                                   (b *fn-heap-article-slot-budget*))))))
 
 (in-theory (disable fn-heap-article-slots fn-heap-articles-octets
                     fn-heap-article-reserve-octets))
