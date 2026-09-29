@@ -13196,10 +13196,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-psub-pack-dc-is-pack"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-psub-unpack-of-pack-octets"
         },
         {

@@ -20,8 +20,6 @@
 ; is not an octet list (a list of joinable names) is kept as (:raw . X).
 ;
 ; KEYSTONES
-;   fn-psub-pack-dc-is-pack          the divide and conquer the host runs is
-;                                    the logical packing (no frame per octet);
 ;   fn-psub-unpack-of-pack-octets    the octets round trip (no hypothesis);
 ;   fn-psub-unpack-of-pack-groups    the groups round trip (no hypothesis);
 ;   fn-psub-unpack-of-pack-sub       the submission round trip (no
@@ -115,7 +113,9 @@
    :rule-classes nil
    :hints (("Goal" :use ((:instance fn-psub-first-splits))))))
 
-; KEYSTONE: the divide and conquer is the logical packing of the first N.
+; The divide and conquer is the logical packing of the first N (a lemma of
+; the round trip below, which is what the host's call, fn-psub-pack-octets,
+; is held to).
 (defthm fn-psub-pack-dc-is-pack
   (implies (<= (nfix n) (len xs))
            (equal (fn-psub-pack-dc xs n)

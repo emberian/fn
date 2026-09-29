@@ -159,6 +159,62 @@
             (fn-served-result-conn (in-arena-fn-served-run *wb-arena* *wb-bad-conn* nil))))
           (fn-wire-state-body-limit (fn-served-conn-wire *wb-bad-conn*)))))
 
+;; -----------------------------------------------------------------------------
+;; B6b (lane chunked-body-2, PRF-929).
+;; fn-tb-served-run-holds-at-most-the-body-limit-mid-article: hypothesis
+;; (fn-wire-statep (fn-served-conn-wire conn)), and mid-article.
+;;
+;; Positive: the article in flight above holds its forty octets, within the
+;; limit and one.
+(assert-event (<= (fn-wire-held-octets *wb-w1*)
+                  (+ 1 (fn-wire-state-body-limit *wb-w1*))))
+;; A LINE past the body limit: one body line of 100 octets and no LF.  Before
+;; the lane the wire held the body limit AND the line (up to the article line
+;; limit) until the LF; now it closes :body-overlimit at the octet that dooms
+;; the line, so nothing past the limit and one is ever held.
+(defconst *wb-long-line*
+  (in-arena-fn-served-run *wb-arena* *wb-conn*
+                          (list *wb-post* *wb-head* '(13 10)
+                                (make-list 100 :initial-element 120))))
+(defconst *wb-w3* (fn-served-conn-wire (fn-served-result-conn *wb-long-line*)))
+(assert-event (equal (fn-wire-state-mode *wb-w3*) :closed))
+(assert-event (fn-served-closingp (fn-served-result-effects *wb-long-line*)))
+;; The same line under a body limit it fits stays held, mid-article.
+(defconst *wb-short-line*
+  (in-arena-fn-served-run *wb-arena* *wb-conn*
+                          (list *wb-post* *wb-head* '(13 10)
+                                (make-list 10 :initial-element 120))))
+(defconst *wb-w4* (fn-served-conn-wire (fn-served-result-conn *wb-short-line*)))
+(assert-event (equal (fn-wire-state-mode *wb-w4*) :article))
+(assert-event (<= (fn-wire-held-octets *wb-w4*) (+ 1 (fn-wire-state-body-limit *wb-w4*))))
+;; books/wire.lisp KEYSTONE fn-wire-statep-article-holds-at-most-the-body-limit
+;; (hypotheses: fn-wire-statep, article mode): the wire above is one, holding
+;; 48 octets under the limit 64; the corrupted record below is not a wire
+;; state and holds 102 under 10.
+(assert-event (and (fn-wire-statep *wb-w4*) (equal (fn-wire-state-mode *wb-w4*) :article)
+                   (<= (fn-wire-held-octets *wb-w4*) (+ 1 (fn-wire-state-body-limit *wb-w4*)))))
+(assert-event (and (not (fn-wire-statep *wb-bad-wire*))
+                   (equal (fn-wire-state-mode *wb-bad-wire*) :article)
+                   (not (<= (fn-wire-held-octets *wb-bad-wire*)
+                            (+ 1 (fn-wire-state-body-limit *wb-bad-wire*))))))
+;; Command mode (the other hypothesis removed): a wire state holding a
+;; command line of 100 octets under a body limit of 10 -- the line limit
+;; bounds it, not the body limit.
+(defconst *wb-cmd-wire* (fn-wire-make-state :command (make-list 100 :initial-element 65) 100
+                                            nil nil 0 510 10))
+(assert-event (and (fn-wire-statep *wb-cmd-wire*)
+                   (not (equal (fn-wire-state-mode *wb-cmd-wire*) :article))
+                   (not (<= (fn-wire-held-octets *wb-cmd-wire*)
+                            (+ 1 (fn-wire-state-body-limit *wb-cmd-wire*))))))
+;; Hypothesis removed (a corrupted-state witness: no open builds it): the
+;; record above, mid-article with 102 octets under a limit of 10, is not a
+;; wire state, and a run keeps them: the conclusion fails.
+(defconst *wb-bad-w* (fn-served-conn-wire
+                      (fn-served-result-conn (in-arena-fn-served-run *wb-arena* *wb-bad-conn* nil))))
+(assert-event (equal (fn-wire-state-mode *wb-bad-w*) :article))
+(assert-event (not (<= (fn-wire-held-octets *wb-bad-w*)
+                       (+ 1 (fn-wire-state-body-limit *wb-bad-w*)))))
+
 ; -----------------------------------------------------------------------------
 ; F2.  fn-tb-open-peer-body-limit-is-the-profile-bound: hypotheses
 ; (fn-bs-profile-admittedp profile), (equal o2 (mv-nth 1 (fn-osb-install o
