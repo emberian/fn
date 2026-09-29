@@ -6,7 +6,7 @@
 (in-package "ACL2")
 ; The certified acceptance core every scenario below calls.  tools/
 ; run_simulator.py also includes it; a repeated include-book is redundant.
-(include-book "../books/acceptance")
+(include-book "../../books/acceptance")
 
 (defconst *fn-sim-groups* '("fn.letters" "fn.test"))
 (defconst *fn-sim-message-id* "<simulator@example.invalid>")

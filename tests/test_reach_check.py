@@ -423,12 +423,28 @@ class LoadedHostTests(unittest.TestCase):
                              {"host/native/build.lisp", "host/a-host.lisp", "host/b-host.lisp",
                               "host/native/io.lisp", "host/native/digest.lisp"})
 
-    def test_the_test_only_index_host_seeds_nothing(self):
-        graph = reach_check.Graph()
-        self.assertIn("host/index-host.lisp", graph.unloaded_hosts)
-        self.assertIn("host/owner-host.lisp", graph.loaded_hosts)
-        self.assertNotEqual(graph.via.get("fn-index-host-open"), "host/index-host.lisp")
+    def test_a_build_run_from_its_own_directory_resolves_there(self):
+        # The extraction world (tools/extract/world-host.lisp) runs from
+        # tools/extract and names `../../host/...' (Q7k).
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host").mkdir()
+            (root / "tools/extract").mkdir(parents=True)
+            (root / "tools/extract/world-host.lisp").write_text(
+                '(ld "../../host/port-host.lisp" :ld-error-action :error)\n')
+            (root / "host/port-host.lisp").write_text("(defun p () 1)\n")
+            self.assertEqual(
+                reach_check.loaded_host_files({"tools/extract/world-host.lisp": "tools/extract"}, root),
+                {"tools/extract/world-host.lisp", "host/port-host.lisp"})
+            self.assertEqual(
+                reach_check.loaded_host_files(("tools/extract/world-host.lisp",), root),
+                {"tools/extract/world-host.lisp"})
 
+    def test_the_extraction_worlds_ports_are_host_lines(self):
+        graph = reach_check.Graph()
+        self.assertIn("host/store-open-host.lisp", graph.loaded_hosts)
+        self.assertIn("host/owner-host.lisp", graph.loaded_hosts)
+        self.assertNotIn("host/native/build-store-test.lisp", graph.loaded_hosts)
 
 if __name__ == "__main__":
     unittest.main()

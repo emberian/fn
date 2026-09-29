@@ -31,8 +31,9 @@ Each was true, proved, certified, and irrelevant to the running server.
 
 WHAT IT MEASURES.  The call graph over `books/*.lisp' and `host/*.lisp',
 seeded from every function a LOADED host file defines (one the image
-builds, host/native/build.lisp and build-dtn.lisp, `ld' or `load':
-host/index-host.lisp, loaded by nothing, seeds nothing; PKT-412), every book
+builds, host/native/build.lisp and build-dtn.lisp, or the extraction world
+tools/extract/world-host.lisp `ld' or `load'; a host file no build loads
+seeds nothing, PKT-412, and tools/host_loaded_check.py refuses it), every book
 symbol a loaded host file names, and every book symbol a `tools/*.py' bridge names in a string --- the
 bridges really do call ACL2 by building forms as text, so those are host
 lines too.  A `defabsstobj' export is a function whose body is its :logic and
@@ -322,16 +323,25 @@ def stobj_attachments(paths) -> dict[str, set[str]]:
     return found
 
 
-# The image builds whose loads are the running server's host lines.  A host
-# file neither build loads (host/index-host.lisp: test-only, loaded by
-# nothing) is not a host line and seeds nothing (PKT-412).
-IMAGE_BUILDS = ("host/native/build.lisp", "host/native/build-dtn.lisp")
+# The builds whose loads are the running server's host lines, each with the
+# directory ACL2 runs it from: the two images, and the extraction world the
+# served product (the SBCL core) is extracted from, which adds the FN-XO
+# ports (host/store-open-host.lisp, store-write-host.lisp,
+# interfaces-extract.lisp).  A host file no build loads is not a host line
+# and seeds nothing (PKT-412); tools/host_loaded_check.py refuses one (Q7k).
+IMAGE_BUILDS = {"host/native/build.lisp": ".",
+                "host/native/build-dtn.lisp": ".",
+                "tools/extract/world-host.lisp": "tools/extract"}
+# A test image's build: what it loads is loaded (host_loaded_check), but a
+# test image is not the server, so it seeds nothing here.
+TEST_IMAGE_BUILDS = {"host/native/build-store-test.lisp": "."}
 RAW_LOAD = re.compile(r'\(load\s+"([^"]+\.lisp)"')
 RAW_LOAD_BESIDE = re.compile(r'\(load\s+\(merge-pathnames\s+"([^"]+\.lisp)"')
 
 
 def loaded_host_files(builds=IMAGE_BUILDS, root: pathlib.Path = ROOT) -> set[str]:
-    """Every host file an image build loads, root-relative: the build script,
+    """Every host file BUILDS (a sequence of root-run builds, or a mapping of
+    build to the directory it runs from) load, root-relative: the build script,
     each `ld' host file (an ld inside one in place: host_check.ld_sequence)
     and each raw file it `load's, following a raw file's own loads (a
     root-relative string, or a `merge-pathnames' beside the loading file)."""
@@ -342,7 +352,8 @@ def loaded_host_files(builds=IMAGE_BUILDS, root: pathlib.Path = ROOT) -> set[str
         if not (root / build).is_file():
             continue
         work.append(build)
-        work += host_check.ld_sequence(build, root)
+        cbd = builds.get(build, ".") if isinstance(builds, dict) else "."
+        work += host_check.ld_sequence(build, root, cbd=cbd)
     while work:
         relative = work.pop()
         if relative in found or not (root / relative).is_file():

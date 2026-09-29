@@ -274,7 +274,7 @@ their call sites:
 | `*fn-bpi-host-group-map*` | `host/bp-ingress-host.lisp` | `fn-cfg-bp-group-map`, derived from the live group table — the hand-synchronised octet/name pairs disappear |
 | `*fn-bpi-host-policy-id*`, `*fn-bpi-host-terms-id*`, `*fn-bpi-host-issuer-eid*` | `host/bp-ingress-host.lisp` | `(fn-cfg-policy v :acceptance)`, `:terms`, `:issuer-eid` |
 | `*fn-reader-groups*`, `*fn-reader-archive*`, `*fn-reader-id*`, `*fn-reader-payload*` | `host/reader-host.lisp` | a test fixture: move to `tests/acl2/reader-fixture.lisp` built over an explicit configuration record. The seed archive is not a deployment default |
-| `*fn-sim-groups*` | `host/simulator.lisp` | the scenario's own configuration record |
+| `*fn-sim-groups*` | `tests/acl2/simulator.lisp` | the scenario's own configuration record |
 | `DEFAULT_CONFIG["capacity"]`, `["group_table"]` | `tools/run_store.py` | the configuration record history, through the bridge |
 
 `*fn-reader-greeting*` stays: it is a protocol response, not a deployment

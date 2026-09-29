@@ -8252,8 +8252,6 @@
         "books/owner-store-indexed.lisp",
         "tests/acl2/bp-native-app-fast-tests.lisp",
         "tests/acl2/owner-store-indexed-tests.lisp",
-        "host/bp-receipt-host.lisp",
-        "host/bp-receive-host.lisp",
         "host/bp-native-app-host.lisp",
         "planning/evidence/hot-path-fixes-bp-2026-09-26.md",
         "planning/evidence/manifests/certify-20260927T021015Z-1915504.json"
@@ -10645,7 +10643,6 @@
         "host/owner-host.lisp",
         "host/store-node-host.lisp",
         "host/store-host.lisp",
-        "host/bp-ingress-host.lisp",
         "planning/evidence/host-decisions-2026-09-27.md"
       ],
       "progress_note": "Lane host-decisions (Opus 5.5, 2026-09-27; prepare-served's host-decision list, item 1). Teeth: tests/acl2/post-fields-tests.lisp: REACHABLE witnesses over the identities and evidence the node builds for a POST (fn-id-subject-of-payload, fn-id-obligation-of through the digest attachment; fn-pfld-post-evidence with and without a path identity), each keystone's complete antecedent and conclusion; each conjunct of the article verdict removed refuses; BOUNDARY witnesses at 256/257/512 octets (the old host limit admitted 512, the record refuses it); the printable hypothesis needed (a space is a metadata octet the check refuses); the identity bound needed (129 octets renders 258); must-fail of the exactness keystone without its hypothesis and of the identity keystone without its bound.",
@@ -10983,7 +10980,6 @@
       "evidence": [
         "books/clock-reading.lisp",
         "tests/acl2/clock-reading-tests.lisp",
-        "host/bp-ingress-host.lisp",
         "planning/evidence/host-decisions-2-2026-09-27.md"
       ],
       "progress_note": "Lane host-decisions-2 (Opus 5.5, 2026-09-27; packet C). Teeth: tests/acl2/clock-reading-tests.lisp: one DTN epoch in the tree (equal to the NNTP book's); a 2026 reading with 500 ms bound (wall, error and monotonic asserted); the epoch itself usable, one millisecond before it not; each usability conjunct removed takes the wall away (no claim, negative reading, negative and non-numeric error); a malformed monotonic counter is still an observation.",
@@ -11467,7 +11463,7 @@
         "tests/acl2/pagestore-refine-tests.lisp",
         "planning/evidence/arena-store-2026-09-27.md"
       ],
-      "pending_subject": "host wiring behind its own driver (host/native/proto-pagestore.lisp) until fn-hist lives in pages (lane arena-store milestone 5); the owner does not call it.",
+      "pending_subject": "no host calls the page store: its prototype driver (host/native/proto-pagestore.lisp) was retired as a prototype no build loaded (Q7k, tooling-truth-2, 2026-09-29; planning/retired-paths.json); the page store is hosted when fn-hist lives in pages (lane arena-store milestone 5).",
       "progress_note": "Page 0 (the owner's root slots) is the model's reserved page: pgs-disk-keeps keeps it, pgs-g-start marks it (pgs-g-start-facts), so allocation freshness and both reclamation keystones cover it. Reach: pgs-reclaim-is-g-install ties pgs-reclaim to pgs-g-install, which fnps-reclaim calls. Open: L-PGS-LAZY-SHAPE, the host's lazy open defers the shape check of table pages written by older commits to first touch while the model's lazy open checks them (eager equals the model; record section 5); the per-disk marking composition is a hypothesis of pgs-g-reclaim-sound; A-PGS-HOST-IO names the fill; milestone 5 (fn-hist columns in FNADTSN1 regions on these pages) not started. Reach (arena-store-5, 2026-09-28): pgs-x-commit-refines-commit and pgs-x-commit-refines-crash tie pgs-commit, pgs-crash and pgs-plan-commit to pgs-x-commit (fnps-commit), pgs-x-fork-refines ties pgs-fork to pgs-x-fork (fnps-cmd-branch), through reach_check's square with the abstraction from the concrete state; the five HOST rows of planning/reach-baseline.json are gone.",
       "events": [
         "pgs-open-after-commit",
