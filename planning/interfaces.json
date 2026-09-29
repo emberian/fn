@@ -4,7 +4,7 @@
   "coverage": {
     "declared": 1122,
     "declared_and_dispatched": 1103,
-    "guard_verified": 385,
+    "guard_verified": 386,
     "with_keystone": 128
   },
   "entries": [
@@ -1559,10 +1559,6 @@
           "true-listp"
         ],
         [
-          "k",
-          "fn-lg-rotation-indexp"
-        ],
-        [
           "unit",
           "natp"
         ]
@@ -1589,10 +1585,6 @@
         [
           "c",
           "true-listp"
-        ],
-        [
-          "k",
-          "fn-lg-rotation-indexp"
         ],
         [
           "unit",
@@ -1661,7 +1653,7 @@
       "name": "fn-lgl-refusal-text",
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],

@@ -398,16 +398,19 @@
   :class ::common-lisp-compliant
   :kinds ((c true-listp)))
 
+;; K's range (fn-lg-rotation-indexp) and the chain's last digest are guard
+;; conjuncts no entry kind names (*fn-entry-guard-kinds*): fnn-log-rotate
+;; passes the index ACL2 answered (nil = segment-index-exhausted, refused).
 (definterface fn-lgc-rotate
   :class ::common-lisp-compliant
-  :kinds ((c true-listp) (k fn-lg-rotation-indexp) (unit natp))
+  :kinds ((c true-listp) (unit natp))
   :keystones (fn-lgc-rotate-refines))
 
 ;; The rotation entry the host writes at offset 0 of the rotated-to segment
 ;; (lane store-lineage; books/store-log-kernel-concrete.lisp).
 (definterface fn-lgc-rotation-octets
   :class ::common-lisp-compliant
-  :kinds ((c true-listp) (k fn-lg-rotation-indexp) (unit natp)))
+  :kinds ((c true-listp) (unit natp)))
 
 ;; The open's lineage decision over the checkpoint's F row and the segment's
 ;; head (books/store-log-lineage.lisp, PRF-979; host fnn-log-lineage-genesis).
@@ -422,7 +425,7 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-lgl-refusal-text
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-lgc-rotate-admitsp
   :class ::common-lisp-compliant
