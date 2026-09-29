@@ -17389,6 +17389,42 @@
       "progress_note": "Lane decision-keystones-6: the bp book entries, one keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
     },
     {
+      "id": "PRF-1047",
+      "title": "fn-bpn-report-observe-next answers nil exactly when no held row after AFTER observes as a report for the node, else the answer of such a row with the least arrival",
+      "statement": "books/bp-report-observe.lisp, called by host/native/bp-node.lisp's report drive (the next observed report after the arrival it last consumed). A held row YIELDS (fn-bpn-report-observe-yieldsp) when its arrival is a natural after AFTER (nil: every arrival) and fn-bpn-report-observe-held answers for the node with a natural arrival. KEYSTONE fn-bpn-report-observe-next-selects-exactly-the-least-yielding-row, two-sided and hypothesis-free: the answer is non-nil iff some held row yields (fn-bpn-report-observe-any-yields); a non-nil answer is the answer of a yielding row (fn-bpn-report-observe-answer-of-a-yielding-row) whose arrival is at most every yielding row's (fn-bpn-report-observe-arrival-at-most-every-yield). Proved through the scan's invariant over its carried selection (fn-bpn-report-observe-next-aux-selects-the-least-yield). Teeth: tests/acl2/bp-report-observe-tests.lisp (the authored fixture's arrival-2 report for the local node; the nil side after 2 and for the peer; a mutation witness for a selector ignoring AFTER).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-005",
+        "REP-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-report-observe.lisp",
+        "tests/acl2/bp-report-observe-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-6: the bp book entries, one two-sided keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
+    },
+    {
+      "id": "PRF-1048",
+      "title": "fn-bpn-report-outbox-next answers nil exactly when no held row after AFTER has an outbox view, else the view of such a row with the least arrival under the scan's own comparison",
+      "statement": "books/bp-report-outbox.lisp, called by host/native/bp-node.lisp's report drive (the next outbox view after the arrival it last consumed). A held row YIELDS (fn-bpn-report-outbox-yieldsp) when its arrival is after AFTER (nil: every row) and fn-bpn-report-outbox-view answers (a tombstoned report with a decodable payload). KEYSTONE fn-bpn-report-outbox-next-selects-exactly-the-least-yielding-row, two-sided and hypothesis-free: the answer is non-nil iff some held row yields (fn-bpn-report-outbox-any-yields); a non-nil answer is the view of a yielding row (fn-bpn-report-outbox-view-of-a-yielding-row) and no yielding row's view has a smaller arrival under the scan's comparison (fn-bpn-report-outbox-arrival-at-most-every-yield). Proved through the scan's invariant over its carried selection (fn-bpn-report-outbox-next-aux-selects-the-least-yield). Teeth: tests/acl2/bp-report-outbox-tests.lisp (two tombstones at arrivals 1 then 0 in list order: least 0 with no AFTER, 1 after 0, nil after 1; a mutation witness for a list-order selector).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-005",
+        "REP-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-report-outbox.lisp",
+        "tests/acl2/bp-report-outbox-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-6: the bp book entries, one two-sided keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
+    },
+    {
       "id": "PRF-1037",
       "title": "THE SWITCH: the catalog's Message-ID column is served from the paged table (lane paged-history-5, row P2): fn-cat-msgid-seqs reads a nested fn-mpxt whose logical value is the fold fn-mpxt-build of the rows under the table's own key; the served refusal fn-cat-msgid-saturatedp is the fold's outcome for one more row",
       "statement": "Subjects: books/catalog.lisp, the concrete stobj fn-cat$c with the paged Message-ID table fn-cat$c-mpx (a nested fn-mpxt, books/msgid-pages-exec), its next generation fn-cat$c-mpx2 and the unplaced count fn-cat$c-unplaced, replacing the hash fn-cat$c-msgids; the abstraction relation fn-cat$corr-base states EQUALITY: (nth 2 c) = fn-mpxt-build key rows, (nth 9 c) = fn-mpxt-build-buffer, (nth 10 c) = fn-mpxt-build-unplaced, key = fn-cat-key-of c (the table's own key octets). Host caller: every served Message-ID finder calls the abstract export fn-cat-msgid-seqs (served-columns fn-scol-find-row, served-catalog fn-scat-msgid-article, served-catalog-owner); its logic fn-cat$a-msgid-seqs is unchanged (design B.6, the 5u method: no served book changes). (1) fn-cat-msgid-seqs{correspondence-bl}: the executable reader -- fn-cat$c-confirm (the twin of fn-mpxt-confirm over the rows array, a candidate at or past the count dropped) of fn-mpxt-candidates of the tag from the nested table, or the degraded scan fn-cat$c-scan-msgid when a row could not be placed -- equals fn-cat-seqs-for under the relation, by KEYSTONE fn-mpxt-seqs-is-cat-msgid-seqs (PRF-970, folded in from the retired bridge book msgid-pages-catalog) under fn-mpxt-build-faithful (PRF-1018) when the unplaced count is 0, and by fn-ctg-scan-is-seqs-for otherwise. (2) The commit is the fold's step: fn-ctg-index-add-is-the-fold (the index's add on tables that are the fold of the rows is fn-mpxt-build-append for a row carrying the added Message-ID; the step is BOUNDED: below the word limit the entry is placed or counted unplaced, at the limit counted unplaced without a write), so fn-cat-commit{correspondence} preserves the equality; withdraw and redecide keep it by fn-mpxt-build-of-update-nth-same-msgid; the clear and the creator meet the fold's base case by fn-mpxt-clear-is-build-nil and fn-mpxt-create-is-build-nil (7h: the cleared table is canonical, fn-mpxt-set-key-is-a-list). (3) The served refusal: fn-cat-msgid-saturatedp key msgid fn-cat, logic fn-mpxt-build-saturatedp (the fold over a local table, executable and guard-verified), exec the table's own fn-mpxt-saturatedp when KEY is the table's key (fn-mpxt-key-samep, no conses) else the fold over fn-cat$c-rows-below-count (unreachable-in-composition: the host passes the ring's key the open installed; O(count) when reached); KEYSTONE fn-cat-msgid-saturatedp-is-the-outcome over the opened view: the fold over the rows and one more row carrying MSGID leaves the unplaced count unchanged exactly when the refusal does not fire -- the POST that is accepted is indexed (the host boundary switch is paged-history-6's). (4) fn-cat-clear-keyed key: the clear with the ring's key installed (fn-mpxt-key-octets-of-set-key: a 32-octet key reads back as itself); fn-cat-index-health key: (pages count unplaced stuck) of the fold. Scope: the concrete tables only; the served path never evaluates the relation; the heap holds 16 octets an entry and no Message-ID string (the figure's restatement is paged-history-6's).",

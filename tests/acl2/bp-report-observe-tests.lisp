@@ -87,3 +87,39 @@
 (assert-event
  (and (fn-bpnf-held-administrative-headerp (bproa-held))
       (fn-bpn-report-observe-held (bproa-state) (bproa-held) *bpnm-local*)))
+
+;; KEYSTONE teeth (PRF-1047,
+;; fn-bpn-report-observe-next-selects-exactly-the-least-yielding-row).
+;; Reachable positive witness, the complete antecedent and conclusion: for
+;; the local node with no AFTER a held row of (bproa-state) yields, the
+;; answer is the answer of a yielding row, and its arrival (2) is at most
+;; every yielding row's.
+(assert-event
+ (let* ((st (bproa-state))
+        (rows (fn-bpnf-held-list st))
+        (r (fn-bpn-report-observe-next st *bpnm-local* nil)))
+   (and (consp rows)
+        (fn-bpn-report-observe-any-yields st rows *bpnm-local* nil)
+        r
+        (equal (fn-bpn-nth 1 r) 2)
+        (fn-bpn-report-observe-answer-of-a-yielding-row
+         r st rows *bpnm-local* nil)
+        (fn-bpn-report-observe-arrival-at-most-every-yield
+         2 st rows *bpnm-local* nil))))
+;; The nil side both ways: after arrival 2 no row yields and the answer is
+;; nil; for the peer node no row yields and the answer is nil.
+(assert-event
+ (let* ((st (bproa-state))
+        (rows (fn-bpnf-held-list st)))
+   (and (not (fn-bpn-report-observe-any-yields st rows *bpnm-local* 2))
+        (null (fn-bpn-report-observe-next st *bpnm-local* 2))
+        (not (fn-bpn-report-observe-any-yields st rows *bpnm-peer* nil))
+        (null (fn-bpn-report-observe-next st *bpnm-peer* nil)))))
+;; Tooth (MUTATION witness): a selector that ignored AFTER would answer the
+;; arrival-2 report after arrival 2, which no row yields.
+(must-fail-checked
+ (assert-event
+  (let* ((st (bproa-state))
+         (rows (fn-bpnf-held-list st)))
+    (iff (fn-bpn-report-observe-next st *bpnm-local* nil)
+         (fn-bpn-report-observe-any-yields st rows *bpnm-local* 2)))))
