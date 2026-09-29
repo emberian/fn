@@ -70,9 +70,21 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         # suffix, KEYSTONE fn-scka-next-checkpoint-is-capture), the arena
         # run's setup and fn-scka-publication-setup (fn-ockp-setup with the
         # decision over the whole file); the arena run is written first.
-        self.assertIn("(fnn-core 'fn-owner-sco-prepare base base-payloads configs records", publish)
+        # composed-owner: fn-owner-sco-prepare in its two halves, with the
+        # history image of NEXT's records built between them and its binding
+        # carried in the F row's position (fnn-history-image-build), the
+        # image written first (fnn-history-image-write).
+        self.assertIn("(fnn-core 'fn-owner-sco-next base base-payloads configs records", publish)
+        self.assertIn("(fnn-core 'fn-owner-sco-setup-of prepared frontier revision position2", publish)
+        self.assertIn("(fnn-history-image-build", publish)
+        self.assertIn("(fnn-history-image-write fd image)", publish)
         self.assertIn("(fnn-live-octets-pub) arun)", publish)
-        prepare = native_cuts.host_function(owner_host, "fn-owner-sco-prepare")
+        # the reported octets are the file's, the stream's free space what
+        # the image leaves: both ACL2's (host/store-node-host.lisp)
+        self.assertIn("(fnn-core 'fn-his-file-octets (fnn-history-image-np image)", publish)
+        self.assertIn("(fnn-core 'fn-his-stream-free free (fnn-history-image-np image))", publish)
+        prepare = (native_cuts.host_function(owner_host, "fn-owner-sco-next")
+                   + native_cuts.host_function(owner_host, "fn-owner-sco-setup-of"))
         # (the base is kept stripped of its event index and restored here:
         # fn-scka-restore-base-of-strip-of-capture, PKT-PRS-2)
         self.assertIn("(fn-scka-next-checkpoint (fn-scka-restore-base base) h0 configs records", prepare)
@@ -216,8 +228,12 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         # at the development profile's batch), never as one file.
         self.assertGreaterEqual(steps, 4)
         self.node.stop(process=owner)
-        # The file the owner wrote has the octets ACL2 named (the estimate,
-        # the plan's octets and the list codec's file are one length).
+        # The file the owner wrote has the octets ACL2 named: the history
+        # image's region, then the stream (the estimate, the plan's octets
+        # and the list codec's file are one length), summed by ACL2's
+        # fn-his-file-octets (host/store-node-host.lisp; composed-owner-6:
+        # the line named the stream alone after the A2 wiring put the image
+        # in the file).
         self.assertTrue(self.path().exists())
         self.assertEqual(self.path().stat().st_size, octets)
         published = self.digest()
@@ -368,8 +384,20 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         lines = [l for l in self.status_lines() if l.startswith("checkpoint-file")]
         self.assertEqual(lines, ["checkpoint-file=absent deferred=exceeds-budget estimate={} budget={}"
                                  .format(estimate, budget)])
+        # PKT-542 (PRF-963): health's tenth state is held with the same
+        # figures, so the node never reads healthy while every restart would
+        # be a full replay (the development profile's unqualified-profile is
+        # an earlier held state, so the exit is that state's, never 0 or 19).
+        health = self.op("health")
+        text = health.stdout.decode("ascii")
+        self.assertIn("\ncheckpoint-deferred held reason=exceeds-budget estimate={} budget={}\n"
+                      .format(estimate, budget), text)
+        self.assertTrue(20 <= health.returncode <= 29, (health.returncode, text))
         self.assertEqual(self.headroom()["transactions-used"], 66)
         self.node.stop(process=owner)
+        # Offline the publisher is unobserved, never clear.
+        offline = self.op("health").stdout.decode("ascii")
+        self.assertIn("\ncheckpoint-deferred unobserved", offline)
         self.assertFalse(self.path().exists())
         # Offline: no owner, no publisher, no deferral; the store opens by
         # full replay with every article.
@@ -440,7 +468,7 @@ class AutoCheckpointTests(AutoCheckpointFixture):
     def test_a_death_at_each_rotation_cut_of_the_owner_loses_nothing_acknowledged(self):
         # HST-033 (SCN-199): the owner's rotation with its file I/O off the
         # owner mutex.  At each of its cuts (the spare staged: rotate-created,
-        # rotate-fenced; the switch: rotate-renamed; journal/'s fence:
+        # rotate-fenced; the switch: rotate-renamed; the head: rotate-headed; journal/'s fence:
         # rotate-durable) the owner dies (FN_NATIVE_LOG_FAULT); every POST it
         # acknowledged is in the store after `recover', no staged spare is
         # left, and a fresh owner publishes the whole history.
@@ -448,7 +476,7 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         pristine = self.root / "pristine-store"
         import shutil
         shutil.copytree(self.store, pristine)
-        for cut in ("rotate-created", "rotate-fenced", "rotate-renamed", "rotate-durable"):
+        for cut in ("rotate-created", "rotate-fenced", "rotate-renamed", "rotate-headed", "rotate-durable"):
             with self.subTest(cut=cut):
                 shutil.rmtree(self.store)
                 shutil.copytree(pristine, self.store)

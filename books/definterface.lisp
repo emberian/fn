@@ -54,7 +54,7 @@
 
 (in-package "ACL2")
 
-(defconst *fn-di-keys* '(:class :kinds :exempt :keystones :root :direct))
+(defconst *fn-di-keys* '(:class :kinds :exempt :keystones :root :direct :delegates))
 
 (defconst *fn-di-classes* '(:common-lisp-compliant :ideal :program))
 
@@ -130,6 +130,10 @@
          (not (and (stringp (fn-di-get :direct kvs))
                    (< 0 (length (fn-di-get :direct kvs))))))
     (list :bad-direct (fn-di-get :direct kvs)))
+   ((and (assoc-keyword :delegates kvs)
+         (not (and (symbolp (fn-di-get :delegates kvs))
+                   (fn-di-get :delegates kvs))))
+    (list :bad-delegates (fn-di-get :delegates kvs)))
    (t nil)))
 
 ; -----------------------------------------------------------------------------
@@ -243,6 +247,23 @@
          (msg ":exempt names ~x0, which the guard kinds" (car (car exempt))))
         (t (fn-di-exempt-problem (cdr exempt) formals kinds))))
 
+(defun fn-di-delegates-problem (name callee w)
+  (declare (xargs :mode :program))
+  ; :delegates CALLEE: NAME's decision is CALLEE's because NAME's body is
+  ; exactly CALLEE applied to NAME's formals -- every theorem about CALLEE is
+  ; one about NAME by definition (tools/coverage.py files the entry as
+  ; plumbing that delegates, and refuses it when CALLEE has no direct
+  ; theorem).  A wrapper that branches, projects or reorders is not one.
+  (cond ((null callee) nil)
+        ((eq (getpropc callee 'formals :none w) :none)
+         (msg ":delegates ~x0, which is not a function in this world" callee))
+        ((not (equal (getpropc name 'unnormalized-body nil w)
+                     (cons callee (getpropc name 'formals nil w))))
+         (msg "~x0's body is not exactly ~x1 applied to ~x0's formals, so it ~
+               does not delegate its decision to ~x1"
+              name callee))
+        (t nil)))
+
 (defun fn-di-problem (name kvs w)
   (declare (xargs :mode :program))
   ; nil, or a msg naming the first check the world refutes
@@ -258,6 +279,7 @@
      ((fn-di-exempt-problem (fn-di-get :exempt kvs) formals
                             (fn-di-world-kinds name w)))
      ((fn-di-keystones-problem name (fn-di-get :keystones kvs) w))
+     ((fn-di-delegates-problem name (fn-di-get :delegates kvs) w))
      (t nil))))
 
 (defun fn-di-refusal-text (reason)
@@ -267,7 +289,30 @@
     (:unknown-keyword (msg "unknown keyword(s) ~&0; the keywords are ~&1."
                            (cdr reason) *fn-di-keys*))
     (:bad-root (msg ":root ~x0 is not :extract or :extract-extra." (cadr reason)))
+    (:bad-delegates (msg ":delegates ~x0 is not a function name." (cadr reason)))
     (otherwise (msg "malformed form: ~x0." reason))))
+
+; The events a checked declaration adds: the table entry, and for a declared
+; :delegates CALLEE the wrapper equation NAME-is-CALLEE-by-definition, which
+; NAME's definition proves at once (the 2026-09-29 review: a true alias gets
+; its equating theorem generated, so the world -- not a source-form rule --
+; carries that every theorem about CALLEE is one about NAME; a wrapper that
+; transforms gets a keystone instead).  :rule-classes nil: it is a
+; restatement, cited by nothing, and never a rewrite.
+(defun fn-di-events (name kvs w)
+  (declare (xargs :mode :program))
+  (let ((callee (fn-di-get :delegates kvs))
+        (formals (getpropc name 'formals nil w)))
+    (if callee
+        `(progn (table fn-interfaces ',name ',kvs)
+                (defthm ,(intern-in-package-of-symbol
+                          (concatenate 'string (symbol-name name) "-IS-"
+                                       (symbol-name callee) "-BY-DEFINITION")
+                          name)
+                  (equal (,name ,@formals) (,callee ,@formals))
+                  :rule-classes nil
+                  :hints (("Goal" :in-theory '(,name)))))
+      `(table fn-interfaces ',name ',kvs))))
 
 (defmacro definterface (name &rest kvs)
   (let ((reason (fn-di-refusal name kvs)))
@@ -278,5 +323,5 @@
         (let ((problem (fn-di-problem ',name ',kvs (w state))))
           (if problem
               (er soft 'definterface "~x0: ~@1" ',name problem)
-            (value '(table fn-interfaces ',name ',kvs))))
+            (value (fn-di-events ',name ',kvs (w state)))))
 ))))

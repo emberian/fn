@@ -1,4 +1,4 @@
-; fn: the byte-level storage model under the file kernel (crash model v2, §1).
+; fn: the byte-level storage model under the file kernel (crash model v2, section 1).
 ;
 ; A store is a table of inodes (octet lists), a table of directories (name
 ; maps), and an ordered list of PENDING operations the process has issued and
@@ -13,7 +13,7 @@
 ; EIO/ENOSPC with partial progress are explicit transitions, and a failed
 ; fsync lands a torn selection and discards the rest (fsyncgate).
 ;
-; The definitions are specs/crash-model-v2.md §1.2-1.6 with three changes
+; The definitions are specs/crash-model-v2.md section 1.2-1.6 with three changes
 ; the well-formedness keystones of byte-store-invariants required, each
 ; recorded in that document's status section:
 ;   * fn-bs-statep carries three more conjuncts: every inode id in the table is

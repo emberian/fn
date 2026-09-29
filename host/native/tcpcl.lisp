@@ -67,7 +67,7 @@
 ;;; keepalive and idle timeout mean.
 
 (defun fnn-tcl-now ()
-  (floor (* 1000 (get-internal-real-time)) internal-time-units-per-second))
+  (fnn-monotonic-ms))
 
 ;;; The read timeout: below half the negotiated interval so that a keepalive
 ;;; is never missed by the wakeup granularity.  The interval is the machine's;

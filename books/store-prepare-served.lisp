@@ -48,7 +48,7 @@
   :hints (("Goal" :in-theory (enable fn-store-prepare-carried-next))))
 
 ; A served record past the bound leaves the Store unchanged and is named.
-(defthm fn-psrv-store-prepare-refuses-exhausted
+(defthm fn-psrv-store-prepare-refuses-exhausted-by-definition
   (implies (and (fn-record-p w)
                 (fn-cnode-selection-servedp config (fn-record-groups w))
                 (not (fn-psrv-store-numberedp s w)))

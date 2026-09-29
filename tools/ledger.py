@@ -518,6 +518,8 @@ class Book:
     in_theory_forms: list[object] = field(default_factory=list)
     # Each ``must-fail`` as (line, arguments), for the teeth-form lint.
     must_fail_forms: list[tuple[int, list]] = field(default_factory=list)
+    # defmacro name -> its body forms (after the lambda list).
+    macro_bodies: dict[str, list] = field(default_factory=dict)
     # The theorem names of must-fails a ``defkeystone`` generated beside a
     # ground counterexample (its removal or mutant witness).
     paired_must_fails: set[str] = field(default_factory=set)
@@ -1125,6 +1127,9 @@ def record(book: Book, form: object, line: int, *, local: bool,
         book.defmacros += 1
         if len(form) >= 2 and isinstance(form[1], Sym):
             book.definitions.add(str(form[1]))
+            # The body, for the teeth-form lint: a must-fail over a macro
+            # names what the macro's expansion names (PKT-364).
+            book.macro_bodies[str(form[1])] = form[3:]
             book.macros.add(str(form[1]))
         return
     if name in ("defun-sk", "defstobj", "defabsstobj", "defabbrev") and len(form) >= 2 \
@@ -1173,7 +1178,8 @@ class Tree:
     """The whole readable tree: books, functions, theorems, roots."""
 
     def __init__(self, books: dict[str, Book], roots: list[str],
-                 hosts: "dict[str, HostFile] | None" = None, *, eager: bool = True) -> None:
+                 hosts: "dict[str, HostFile] | None" = None, *, eager: bool = True,
+                 suspect_cache: "Path | None" = None) -> None:
         self.books = books
         self.roots = roots
         # ACL2 `ld` wrappers and explicit raw `load` adapters: see host_names.
@@ -1200,13 +1206,66 @@ class Tree:
         # builds the tree with eager=False and asks `suspects_of' for its
         # own theorems only; `suspects' computes the whole map on first use.
         self._suspects: "dict[str, list[str]] | None" = None
+        # C8: the suspect reasons persist per theorem under a key naming
+        # everything the detectors read (suspect_keys), so a one-book edit
+        # re-judges that book's theorems and those whose definitions moved.
+        self._suspect_cache = suspect_cache
         if eager:
             self._suspects = self._all_suspects()
 
     def _all_suspects(self) -> dict[str, list[str]]:
-        return {name: reasons for name, reasons in
-                ((theorem.name, self.suspect_reasons(theorem))
-                 for theorem in self.theorems.values()) if reasons}
+        if self._suspect_cache is None:
+            return {name: reasons for name, reasons in
+                    ((theorem.name, self.suspect_reasons(theorem))
+                     for theorem in self.theorems.values()) if reasons}
+        keys = self.suspect_keys()
+        cached = _suspect_cache_read(self._suspect_cache)
+        fresh: dict[str, list[str]] = {}
+        found: dict[str, list[str]] = {}
+        for name, theorem in self.theorems.items():
+            key = keys[name]
+            reasons = cached.get(key)
+            if reasons is None:
+                reasons = self.suspect_reasons(theorem)
+            fresh[key] = reasons
+            if reasons:
+                found[name] = reasons
+        self.suspect_recomputed = sum(1 for key in fresh if key not in cached)
+        if fresh != cached:
+            _suspect_cache_write(self._suspect_cache, fresh)
+        return found
+
+    def suspect_keys(self) -> dict[str, str]:
+        """Each theorem's key: its own forms, the statement of every theorem
+        it names, and the definitional closure of every function it names
+        (both sides of each definition, through every symbol of its body),
+        plus, for a `*-preserves-*` name, the functions its subject prefix
+        names.  That is everything `suspect_reasons' reads: the lemma
+        lookups of detectors 1-2, the unfolding of 3-6 (to any depth), the
+        name set of 7."""
+        own = {name: _form_digest((f.formals, f.body)) for name, f in self.functions.items()}
+        edges = {name: sorted(symbols_of(f.body) & own.keys() - {name})
+                 for name, f in self.functions.items()}
+        closure = _closure_digests(own, edges)
+        statements = {name: _form_digest(t.statement) for name, t in self.theorems.items()}
+        by_prefix: "dict[str, list[str]]" = {}
+        keys = {}
+        for name, theorem in self.theorems.items():
+            h = hashlib.blake2b(digest_size=20)
+            h.update(_form_digest((theorem.name, theorem.statement, theorem.hints)).encode())
+            for symbol in sorted(symbols_of([theorem.statement, theorem.hints])):
+                if symbol in closure:
+                    h.update(b"f" + symbol.encode() + b"=" + closure[symbol].encode())
+                if symbol in statements:
+                    h.update(b"t" + symbol.encode() + b"=" + statements[symbol].encode())
+            if "-preserves-" in name:
+                subject = name.split("-preserves-")[0]
+                if subject not in by_prefix:
+                    by_prefix[subject] = sorted(
+                        f for f in self.functions if f == subject or f.startswith(subject + "-"))
+                h.update(b"p" + "\0".join(by_prefix[subject]).encode())
+            keys[name] = h.hexdigest()
+        return keys
 
     @property
     def suspects(self) -> dict[str, list[str]]:
@@ -1545,6 +1604,109 @@ class Tree:
             return None  # the name does not claim a function we know
         return (f"preserves-no-subject-call: the statement never calls "
                 f"{subject} or a {subject}- transition")
+
+
+def symbols_of(form: object, found: "set[str] | None" = None) -> set[str]:
+    """Every symbol anywhere in FORM, quoted subforms included."""
+    found = set() if found is None else found
+    stack = [form]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, Sym):
+            found.add(str(item))
+        elif isinstance(item, list):
+            stack.extend(item)
+    return found
+
+
+def _form_digest(form: object) -> str:
+    return hashlib.blake2b(repr(form).encode(), digest_size=16).hexdigest()
+
+
+def _closure_digests(own: dict[str, str], edges: dict[str, list[str]]) -> dict[str, str]:
+    """Each node's digest over its own and everything it reaches (Tarjan's
+    strongly connected components, iteratively; a cycle shares one digest)."""
+    index: dict[str, int] = {}
+    low: dict[str, int] = {}
+    on_stack: set[str] = set()
+    stack: list[str] = []
+    component: dict[str, int] = {}
+    components: list[list[str]] = []
+    counter = 0
+    for start in sorted(own):
+        if start in index:
+            continue
+        work = [(start, 0)]
+        while work:
+            node, position = work.pop()
+            if position == 0:
+                index[node] = low[node] = counter
+                counter += 1
+                stack.append(node)
+                on_stack.add(node)
+            successors = edges.get(node, [])
+            for next_position in range(position, len(successors)):
+                child = successors[next_position]
+                if child not in index:
+                    work.append((node, next_position + 1))
+                    work.append((child, 0))
+                    break
+                if child in on_stack:
+                    low[node] = min(low[node], index[child])
+            else:
+                if low[node] == index[node]:
+                    members = []
+                    while True:
+                        member = stack.pop()
+                        on_stack.discard(member)
+                        component[member] = len(components)
+                        members.append(member)
+                        if member == node:
+                            break
+                    components.append(sorted(members))
+                if work:
+                    parent = work[-1][0]
+                    low[parent] = min(low[parent], low[node])
+    # Components complete in reverse topological order: callees first.
+    digests: list[str] = []
+    for members in components:
+        h = hashlib.blake2b(digest_size=16)
+        reached = set()
+        for member in members:
+            h.update(member.encode() + b"=" + own[member].encode())
+            reached.update(component[c] for c in edges.get(member, []))
+        for other in sorted(reached - {component[members[0]]}):
+            h.update(digests[other].encode())
+        digests.append(h.hexdigest())
+    return {name: digests[component[name]] for name in own}
+
+
+def _suspect_cache_read(path: Path) -> dict[str, list[str]]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(data, dict) or data.get("format") != _suspect_cache_format():
+        return {}
+    entries = data.get("entries")
+    return entries if isinstance(entries, dict) else {}
+
+
+def _suspect_cache_write(path: Path, entries: dict[str, list[str]]) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, name = tempfile.mkstemp(prefix=path.name + ".", dir=path.parent)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump({"format": _suspect_cache_format(), "entries": entries}, handle)
+        os.replace(name, path)
+    except OSError:
+        pass
+
+
+def _suspect_cache_format() -> str:
+    """The detectors are this file: a changed ledger.py is a fresh cache."""
+    return hashlib.sha256(b"fn-suspect-cache-1\0" + Path(__file__).resolve().read_bytes()
+                          ).hexdigest()
 
 
 def logic_body(function: Function) -> object:
@@ -2069,8 +2231,54 @@ def statement_of(body: object) -> object:
     return body[index] if isinstance(body, list) and len(body) > index else None
 
 
-def concrete_witness(form: object) -> bool:
-    """Does this form mention a constant: a literal, a keyword, a defconst?"""
+def _template(form: object) -> object:
+    """A macro body's backquoted template with its unquoted parts dropped:
+    what every expansion contains whatever the arguments."""
+    if isinstance(form, list):
+        if head(form) in ("unquote", "unquote-splicing"):
+            return None
+        return [_template(item) for item in form]
+    return form
+
+
+def macro_witness(body: list, macros: dict, depth: int = 0) -> bool:
+    """Does every expansion of a macro with BODY name a constant?  Its
+    backquoted templates are read (the unquoted arguments are the caller's);
+    a body without a template is read whole less its keywords and lambda
+    keywords, which are the macro's plumbing, not a value."""
+    templates: list = []
+
+    def collect(form: object) -> None:
+        if isinstance(form, list):
+            if head(form) == "quasiquote" and len(form) > 1:
+                templates.append(_template(form[1]))
+                return
+            for item in form:
+                collect(item)
+    for item in body:
+        collect(item)
+    if templates:
+        return any(concrete_witness(t, macros, depth + 1) for t in templates)
+
+    def plain(form: object) -> object:
+        if isinstance(form, list):
+            if head(form) == "declare":
+                return None
+            return [plain(item) for item in form]
+        if isinstance(form, Sym) and str(form).startswith((":", "&")):
+            return None
+        if isinstance(form, str) and not isinstance(form, Sym):
+            return None  # a documentation string
+        return form
+    return any(concrete_witness(plain(item), macros, depth + 1) for item in body[-1:])
+
+
+def concrete_witness(form: object, macros: "dict | None" = None, depth: int = 0) -> bool:
+    """Does this form mention a constant: a literal, a keyword, a defconst?
+    A call of one of MACROS (name -> body) mentions what its expansion does
+    (PKT-364: a witness whose constant sits inside a macro read as bare)."""
+    if form is None:
+        return False
     if isinstance(form, Sym):
         text = str(form)
         if text.startswith(":"):
@@ -2083,13 +2291,21 @@ def concrete_witness(form: object) -> bool:
     if isinstance(form, list):
         if head(form) == "quote":
             return True
-        return any(concrete_witness(item) for item in form)
+        if (macros and depth < 8 and form and isinstance(form[0], Sym)
+                and str(form[0]) in macros
+                and macro_witness(macros[str(form[0])], macros, depth)):
+            return True
+        return any(concrete_witness(item, macros, depth) for item in form)
     return False
 
 
 def teeth_form(tree: "Tree") -> list[dict]:
     """``must-fail`` bodies that are general claims rather than witnesses."""
     findings: list[dict] = []
+    macros: dict = {}
+    for book in tree.books.values():
+        for name, body in book.macro_bodies.items():
+            macros.setdefault(name, body)
     for book in sorted(tree.books.values(), key=lambda b: b.path):
         for line, arguments in book.must_fail_forms:
             body = next((item for item in arguments
@@ -2097,7 +2313,7 @@ def teeth_form(tree: "Tree") -> list[dict]:
                         None)
             if head(body) not in ("thm", "defthm", "defthmd"):
                 continue
-            if concrete_witness(statement_of(body)):
+            if concrete_witness(statement_of(body), macros):
                 continue
             if (head(body) != "thm" and len(body) > 1
                     and str(body[1]) in book.paired_must_fails):
@@ -2990,7 +3206,8 @@ def load_tree(*, lazy: bool = False) -> Tree:
     tree = Tree({relative: analyze_book(path, relative) for path, relative in books},
                 roots,
                 {relative: analyze_host(path, relative) for path, relative in hosts},
-                eager=not lazy)
+                eager=not lazy,
+                suspect_cache=(directory / "suspects.json") if directory is not None else None)
     _TREE_CACHE = (key, tree)
     if lazy:
         return tree
@@ -3263,8 +3480,22 @@ def check_theorem_event(tree: Tree, ident: str, name: str) -> list[str]:
                         f"Makefile certification root reaches")
     if name in tree.suspects:
         problems.append(f"{ident}: {name} is SUSPECT ("
-                        + "; ".join(tree.suspects[name]) + ")")
+                        + "; ".join(tree.suspects[name]) + "); " + suspect_advice(name))
     return problems
+
+
+UNCITED_SUFFIXES = ("-by-definition", "-unfolds")
+
+
+def suspect_advice(name: str) -> str:
+    """What to do with a cited SUSPECT event (AGENTS.md, "Cite keystones"):
+    reclaim-equivalence renamed its lemma `-by-definition`, kept citing it,
+    and lost a round to this refusal (obstructions-6 item 52)."""
+    if name.endswith(UNCITED_SUFFIXES):
+        return ("a `-unfolds` / `-by-definition` lemma is never cited as an event: "
+                "drop it from planning/proof-events.json and cite the keystone it serves")
+    return ("cite the keystone instead; if this lemma is a restatement, name it "
+            "`-unfolds` or `-by-definition` AND do not cite it as an event")
 
 
 def check_function_event(tree: Tree, ident: str, name: str) -> list[str]:
@@ -3368,7 +3599,7 @@ def apply_events(regenerated: dict[str, list[str]],
         if dropped:
             print(f"WARN: {entry['id']}: proofs.json events not in "
                   f"planning/proof-events.json are dropped (edit proof-events.json; "
-                  f"proofs.json's events are generated): {', '.join(dropped)}",
+                  f"proofs.json's events are generated): {', '.join(n.get('name', str(n)) if isinstance(n, dict) else str(n) for n in dropped)}",
                   file=sys.stderr)
         if names:
             entry["events"] = names

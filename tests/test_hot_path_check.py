@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import sys
 import tempfile
@@ -169,6 +170,63 @@ class FakeTree(unittest.TestCase):
         fresh, stale = hot_path_check.compare(self.analysis, listed)
         self.assertEqual(fresh, ["fk-count len N"])
         self.assertEqual(stale, ["fk-gone len N"])
+
+
+class ServedChains(unittest.TestCase):
+    """obstructions-6 item 51: --why-served lists EVERY served chain to a find."""
+
+    BOOK = """
+(defun mc-records (s) (declare (xargs :guard t)) (car s))
+(defun mc-walk (xs) (declare (xargs :guard t))
+  (if (consp xs) (+ 1 (mc-walk (cdr xs))) 0))
+(defun mc-a (s) (declare (xargs :guard t)) (mc-walk (mc-records s)))
+(defun mc-b (s) (declare (xargs :guard t)) (mc-walk (mc-records s)))
+(defun mc-both (s) (declare (xargs :guard t)) (list (mc-a s) (mc-b s)))
+"""
+    HOST = """
+(defun mc-host-one (state)
+  (declare (xargs :stobjs state :mode :program))
+  (mc-both (f-get-global 'mc-store state)))
+(defun mc-host-two (state)
+  (declare (xargs :stobjs state :mode :program))
+  (mc-a (f-get-global 'mc-store state)))
+(defun mc-host-open (state)
+  (declare (xargs :stobjs state :mode :program))
+  (mc-a (f-get-global 'mc-store state)))
+"""
+
+    def test_every_served_chain_is_listed_and_cold_entries_are_counted(self) -> None:
+        dims = {"seeds": {"mc-records": "N"}, "host_dispatchers": {"names": ["fnn-core"]},
+                "cold_entries": {"words": ["open"], "served_words": []}}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for relative, text in (("books/mc.lisp", self.BOOK),
+                                   ("host/mc-host.lisp", self.HOST),
+                                   ("tests/drive.py",
+                                    "# mc-host-one mc-host-two mc-host-open\n"),
+                                   ("tools/dims.json", json.dumps(dims))):
+                (root / relative).parent.mkdir(parents=True, exist_ok=True)
+                (root / relative).write_text(text)
+            analysis = hot_path_check.analyze(root, root / "tools" / "dims.json")
+        find = analysis.finds["mc-walk recursion N"]
+        chains, capped = hot_path_check.served_chains(analysis, find)
+        self.assertFalse(capped)
+        names = {host: sorted(tuple(name for name, _ in chain) for chain in found)
+                 for host, found in chains.items()}
+        self.assertEqual(names, {
+            "mc-host-one": [("mc-host-one", "mc-both", "mc-a", "mc-walk"),
+                            ("mc-host-one", "mc-both", "mc-b", "mc-walk")],
+            "mc-host-two": [("mc-host-two", "mc-a", "mc-walk")]})
+        out = io.StringIO()
+        self.assertEqual(hot_path_check.why_served(analysis, "mc-walk", {}, out), 0)
+        text = out.getvalue()
+        self.assertIn("3 served chain(s) from 2 served entries; 1 cold/uncalled", text)
+        self.assertIn("mc-host-one:", text)
+        self.assertRegex(text, r"mc-host-one:\d+ -> mc-both:\d+ -> mc-b:\d+ -> mc-walk "
+                               r"\[recursion\]")
+        self.assertEqual(hot_path_check.why_served(analysis, "no-such", {}, io.StringIO()), 1)
+        _, capped = hot_path_check.served_chains(analysis, find, cap=2)
+        self.assertTrue(capped)
 
 
 class RealTree(unittest.TestCase):

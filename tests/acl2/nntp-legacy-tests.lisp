@@ -204,12 +204,12 @@
                     "IMPLEMENTATION fn-nntp-lab"))))
 (defconst *lg-help-lines*
   '("CAPABILITIES HELP QUIT MODE DATE POST"
-    "AUTHINFO STARTTLS XREDEEM"
+    "AUTHINFO STARTTLS XREDEEM COMPRESS"
     "GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS"
     "ARTICLE HEAD BODY STAT"
     "OVER XOVER HDR XHDR XPAT"
     "IHAVE CHECK TAKETHIS"
-    "XFNCATCHUP"))
+    "XFNCATCHUP XFN-ZARTICLE"))
 (assert-event (equal (lg-reply *lg-env* "HELP")
                      (lg-block "100 help text follows" *lg-help-lines*)))
 

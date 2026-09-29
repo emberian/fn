@@ -233,7 +233,7 @@
 ; (no node lock: the poster wrote one; the Injection-Info line carries
 ; alice's posting-account parameter, PKT-597)
  (and (equal *cdt-locked-octets*
-             (fn-ipp-injected-octets (cdt-d *cdt-locked* *cdt-a*) *cdt-ring1* (cdt-text "alice") nil))
+             (fn-ipp-injected-octets (cdt-d *cdt-locked* *cdt-a*) *cdt-ring1* *cdt-alice* nil))
       (not (equal *cdt-locked* *cdt-relocked*))
       (fn-inj-injectedp (cdt-d *cdt-relocked* *cdt-b*))
       (equal (cdt-entry *cdt-locked-octets*

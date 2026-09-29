@@ -120,7 +120,6 @@
                                              (append *rpt-articles* *rpt-articles*))))
                      (fn-find-article *rpt-msgid* (append *rpt-articles* *rpt-articles*))))
 (assert-event (equal (cdr (hons-get "<absent@rpt.invalid>" (fn-rcl-nth 6 *rpt-ctx*))) nil))
-
 ; fn-rclp-event-never-touches-a-held-article (KEYSTONE, PRF-119/PRF-088, the
 ; per-record rewrite the host calls): the article's record O under the
 ; theorem's own context (RULE NOW H VERDICTS ARTICLES EXPIRED), one witness

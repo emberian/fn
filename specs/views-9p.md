@@ -6,7 +6,7 @@ NNTP projection defined in [the NNTP contract](nntp.md) and implemented in
 membership or framing decision is made here or in the host.
 
 The server is `tools/fn9p.py`; the ACL2 adapter it reads
-through is [`host/ninep-host.lisp`](../host/ninep-host.lisp).
+through is `host/ninep-host.lisp` (retired: planning/retired-paths.json).
 
 ## The tree
 

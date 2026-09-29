@@ -593,6 +593,17 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
               (fn-nop-msgid-wordp (cadr words)))
          (fn-nop-result :accepted :plan "store" config
                         (list :inspect (cadr words))))
+        ; Row S3d (lane operability-5): `store inspect --group GROUP', the
+        ; group's memberships, article numbers to Message-IDs
+        ; (books/owner-inspect-group.lisp fn-oig-report), over the stopped
+        ; store or the running owner's archive.  GROUP as typed
+        ; (fn-cevg-groupp): the report looks it up.
+        ((and (consp words) (equal (car words) "inspect")
+              (consp (cdr words)) (equal (cadr words) "--group")
+              (consp (cddr words)) (null (cdddr words))
+              (fn-cevg-groupp (caddr words)))
+         (fn-nop-result :accepted :plan "store" config
+                        (list :inspect-group (caddr words))))
         ((and (consp words) (equal (car words) "checkpoint") (null (cdr words)))
          (fn-nop-result :accepted :plan "store" config (list :checkpoint)))
         ((and (consp words) (equal (car words) "reclaim") (null (cdr words)))
@@ -639,7 +650,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
   "Bounded operator help output, selected only from ACL2-normalized subjects."
   (declare (xargs :guard t))
   (cond ((equal subject "init")
-         "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; a different one is a reinstall: store export, then store import --FIELD N)")
+         "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; raise max-transactions, max-history-octets or max-article-octets later with policy set, on the running node)")
         ((equal subject "run") "usage: fn operator CONFIG run [--once]")
         ((equal subject "show")
          "usage: fn operator CONFIG show [TABLE KEY] (the normalized configuration as fn.toml, or one key's value)")
@@ -657,7 +668,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
         ((equal subject "recover") "usage: fn operator CONFIG recover [--repair truncate SEGMENT:OFFSET] (the repair only as a log-damaged refusal names it: the damaged segment is kept under quarantine/, then the log is truncated before the damage)")
         ((equal subject "store")
-         "usage: fn operator CONFIG store {export ARCHIVE-DIR | import ARCHIVE-DIR [--FIELD N ...] | compact | checkpoint | reclaim [--dry-run | --recorded] | inspect MESSAGE-ID | rebind-filesystem [--storage-require-durable on|off]} (offline; refused while an owner runs; rebind-filesystem records the filesystem the store is on now, after a deliberate move or a restore; import makes a new store: the configured store must not exist, and the archive's profile, with any field raised, is the new store's)")
+         "usage: fn operator CONFIG store {export ARCHIVE-DIR | import ARCHIVE-DIR [--FIELD N ...] | compact | checkpoint | reclaim [--dry-run | --recorded] | inspect MESSAGE-ID | inspect --group GROUP | rebind-filesystem [--storage-require-durable on|off]} (offline; refused while an owner runs; rebind-filesystem records the filesystem the store is on now, after a deliberate move or a restore; import makes a new store: the configured store must not exist, and the archive's profile, with any field raised, is the new store's)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME | group describe NAME [TEXT ...] (LIST NEWSGROUPS shows TEXT; no TEXT clears it) | group policy NAME y|n | group moderate NAME --moderators LOGIN[,LOGIN...] [--queue QUEUE] [--submission ADDRESS] | group moderate NAME --off | group subscribe-default [NAME ...] (LIST SUBSCRIPTIONS recommends the NAMEs in order; none clears it)")
         ((equal subject "motd")
          "usage: fn operator CONFIG motd {set LINE [LINE ...] | clear} (LIST MOTD shows one LINE per argument, each at most 256 octets)")
@@ -671,15 +682,15 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "control")
          "usage: fn operator CONFIG control {grant PRINCIPAL-HEX cancel NAMESPACE | revoke PRINCIPAL-HEX cancel NAMESPACE | list | log | evidence MESSAGE-ID} (NAMESPACE is a group name or one ending in .*; spec peering 8; log lists the withdrawal records, evidence shows one article's decision context)")
         ((equal subject "peer")
-         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- source-address|principal VALUE [PROFILE ALLOW-CLEAR] STREAMING [starttls|implicit SERVER-NAME ANCHOR-PEM] | peer remove NAME | peer list | peer pull NAME SECONDS | peer catch-up NAME SECONDS | peer feed NAME pause|resume | peer budget NAME OCTETS COUNT | peer keygen KEYDIR | peer genesis KEYDIR | peer invite NAME GROUPS HOST PORT PATH KEYDIR OUT MY-HOST|- MY-PORT|- | peer accept FILE KEYDIR PATH REACHABLE|- OUT | peer confirm ACCEPTANCE INVITATION (KEYDIR, FILE and OUT absolute; keygen makes a new KEYDIR with both key pairs and runs genesis; spec peering 9)")
+         "usage: fn operator CONFIG peer set NAME [--host HOST] [--port PORT] [--take GROUPS|-] [--send GROUPS|-] [--streaming true|false] [--tls clear|starttls|implicit] [--server-name NAME|-] [--anchor PEM|-] [--login FILE|-] [--allow-clear true|false] [--principal HEX | --source-address IPV4] (changes the named fields of a peer, live; every other field and the pull, carries and budget settings stay) | peer login NAME LOGIN FILE (asks the password your friend gave you twice, writes FILE for NAME and sets it as NAME's login) | peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- source-address|principal VALUE [PROFILE ALLOW-CLEAR] STREAMING [starttls|implicit SERVER-NAME ANCHOR-PEM] | peer remove NAME | peer list | peer pull NAME SECONDS | peer catch-up NAME SECONDS | peer feed NAME pause|resume | peer budget NAME OCTETS COUNT | peer keygen KEYDIR | peer genesis KEYDIR | peer invite NAME GROUPS HOST PORT PATH KEYDIR OUT MY-HOST|- MY-PORT|- | peer accept FILE KEYDIR PATH REACHABLE|- OUT | peer confirm ACCEPTANCE INVITATION (KEYDIR, FILE and OUT absolute; peer add, set, remove, pull and feed apply to the running node; keygen makes a new KEYDIR with both key pairs and runs genesis; spec peering 9)")
         ((equal subject "bp-boundary")
          "usage: fn operator CONFIG bp-boundary add NAME PATH BP-EID PORT [INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] [carries SOURCE-EID ...] (IPv4 loopback; the short form grants no inbound articles; carries lists the source EIDs this neighbour may relay, each judged under its own enrollment here)")
         ((equal subject "bp-route")
          "usage: fn operator CONFIG bp-route {add PATTERN BOUNDARY [PRIORITY] | remove PATTERN BOUNDARY} (PATTERN is a BP EID, or one ending in * for every EID with that prefix; the next hop of held transit, spec bp-node-machine 4.7)")
         ((equal subject "policy")
-         "usage: fn operator CONFIG policy set {path-identity IDENTITY | posting-policy bound-logins|open}")
+         "usage: fn operator CONFIG policy set KEY VALUE, KEY one of: path-identity IDENTITY | posting-policy bound-logins|open | complaints-to ADDR | anonymous none|open | exposure-connections N | exposure-per-address N | exposure-steps-per-second N | exposure-idle-seconds N | exposure-first-seconds N | exposure-auth-failures N | exposure-posts-per-minute N | exposure-trusted CIDR[,CIDR...]|none | relay-date-skew SECONDS | refused-offer-capacity N | relay-require-path 0|1 | log-batch-records N | log-batch-octets N | barrier-deadline-ms N | barrier-stall-ms N | clock-event-ms N | compress-min-octets N | disk-reserve-octets N | max-transactions N | max-history-octets N | max-article-octets N (each applies to a running node at once, the three store limits as their answer says: now, at the next start, or refused by name)")
         ((equal subject "principal")
-         "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin, restart to apply; bind and unbind apply to a running node at once)")
+         "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin; its last word says when it applies: applied (the running node took it), effective-at-next-start (no node running) or restart-required (fn.toml names no [control] path); bind and unbind apply to a running node at once)")
         ((equal subject "consumer")
          "usage: fn operator CONFIG consumer {bind NAME --account LOGIN | unbind NAME | show} (bind confines local consumer NAME to the groups LOGIN may read: its poll and ack then need LOGIN's password and serve only the events of a group LOGIN's access rule admits; unbind returns it to the operator's unrestricted consumer; show is the account list report; apply to a running node at once; spec consumer-progress Bound consumers)")
         ((equal subject "account")
@@ -697,7 +708,11 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ;; values and absolute paths; what the documents say, and whether they are
 ;; accepted, is books/peer-invite.lisp's, asked by host/native/peer-invite.lisp.
 (defconst *fn-nop-peering-arity*
-  '(("keygen" . 1) ("genesis" . 1) ("invite" . 9) ("accept" . 5) ("confirm" . 2)))
+  '(("keygen" . 1) ("genesis" . 1) ("invite" . 9) ("accept" . 5) ("confirm" . 2)
+    ; Row S5: `peer login NAME LOGIN FILE' writes the FNAUTH1 file from two
+    ; password entries (books/peer-set.lisp fn-pset-login-file) and sets it
+    ; as the peer's login (`peer set NAME --login FILE').
+    ("login" . 3)))
 
 (defun fn-nop-peering-verbp (word)
   (declare (xargs :guard t))
@@ -722,6 +737,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                                     (fn-nop-absolute-pathp (nth 4 args))))
         ((equal verb "confirm") (and (fn-nop-absolute-pathp (nth 0 args))
                                      (fn-nop-absolute-pathp (nth 1 args))))
+        ((equal verb "login") (fn-nop-absolute-pathp (nth 2 args)))
         (t nil)))
 
 (defun fn-nop-parse-peering (words config)
@@ -833,7 +849,9 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
           ; (books/native-admin.lisp `fn-native-admin-control-plan').
           ((member-equal (fn-native-admin-result-reason plan)
                          '(:reserved-group-name :namespace-pattern :principal
-                           :verb-not-grantable))
+                           :verb-not-grantable
+                           ; Row S10: `policy set' refused by name.
+                           :unknown-policy-key :policy-value-not-a-number))
            (fn-nop-refused (list :administration (fn-native-admin-result-reason plan))
                            command config argv))
           (t (fn-nop-usage (list :administration (fn-native-admin-result-reason plan))
@@ -930,6 +948,13 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((equal command "status")
              (cond ((null rest)
                     (fn-nop-result :accepted :plan "status" config (list :status)))
+                   ; Row S3: on a stopped store `status' reads the checkpoint
+                   ; header (books/owner-maintenance-request.lisp); `--replay'
+                   ; asks for the report over the replayed log.
+                   ((and (equal (fn-ncfg-first rest) "--replay")
+                         (null (fn-ncfg-rest rest)))
+                    (fn-nop-result :accepted :plan "status" config
+                                   (list :status :replay)))
                    ((and (equal (fn-ncfg-first rest) "--watch")
                          (null (fn-ncfg-rest (fn-ncfg-rest rest)))
                          (fn-nop-watch-seconds (fn-ncfg-second rest)))
@@ -1514,6 +1539,147 @@ formed and the operator asked for something the node declined to do."
       (fn-ncfg-second (fn-native-operator-result-arguments result))
     nil))
 
+;; PKT-786: the credential file an accepted `account hash' plan reads (the
+;; configuration's auth path), or nil.
+(defun fn-native-operator-result-account-hash-auth-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-account-hash-login result)
+      (fn-record-string-octets
+       (fn-native-config-auth-path (fn-native-operator-result-config result)))
+    nil))
+
+;; PKT-786: the account a login posts under.  The served path keys the
+;; posting-account value by the session's subject (books/served.lisp
+;; fn-served-account): the principal of the credential the connection's
+;; pinned table finds for the login, the credential file's rows first, then
+;; the redeemed accounts' (books/nntp-auth.lisp fn-auth-config-with-accounts).
+;; The operator reads the credential file; a login the file does not hold is
+;; an invitation-code account, live or deleted (a deleted login is never given
+;; out again), whose principal is its local principal (fn-auth-account-cred).
+(defun fn-nop-login-principal (login creds)
+  (declare (xargs :guard t))
+  (let ((cred (fn-auth-find-cred login creds)))
+    (if cred (fn-auth-cred-principal cred) (fn-acct-local-principal login))))
+
+;; The credential file's rows as the owner's bounded load reads them (the
+;; policy flags do not change the rows: fn-nop-auth-file-creds-of-any-policy).
+(defun fn-nop-auth-file-creds (octets presentp max-credentials)
+  (declare (xargs :guard t))
+  (let ((loaded (fn-native-auth-load octets presentp nil nil nil max-credentials)))
+    (if (equal (fn-native-auth-result-status loaded) :accepted)
+        (fn-auth-config-creds (fn-native-auth-result-config loaded))
+      :refused)))
+
+;; The host-called subject of `account hash LOGIN' (host/native-operator-
+;; host.lisp fn-native-operator-host-account-hash-text): the posting-account
+;; value of LOGIN's account under SECRET, or nil when the credential file is
+;; one the owner's load refuses.
+(defun fn-nop-account-hash (secret login octets presentp max-credentials)
+  (declare (xargs :guard t))
+  (let ((creds (fn-nop-auth-file-creds octets presentp max-credentials)))
+    (if (equal creds :refused)
+        nil
+      (fn-ipp-account-hash secret
+                           (fn-nop-login-principal (fn-ipp-octets login) creds)))))
+
+(local (defthm fn-nop-auth-configp-of-make-config
+  (implies (and (booleanp a) (booleanp b) (booleanp c))
+           (equal (fn-auth-configp (fn-auth-make-config a b c creds))
+                  (fn-auth-cred-listp creds)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-configp) (fn-auth-cred-listp))))))
+
+(defthm fn-nop-auth-file-creds-of-any-policy
+  (implies (equal (fn-native-auth-result-status
+                   (fn-native-auth-load octets presentp requiredp protected-onlyp
+                                        tls-availablep max-credentials))
+                  :accepted)
+           (equal (fn-nop-auth-file-creds octets presentp max-credentials)
+                  (fn-auth-config-creds
+                   (fn-native-auth-result-config
+                    (fn-native-auth-load octets presentp requiredp protected-onlyp
+                                         tls-availablep max-credentials)))))
+  :hints (("Goal" :in-theory (e/d (fn-native-auth-load) (fn-auth-configp fn-auth-make-config fn-native-auth-parse-lines fn-ncfg-lines))))
+  :rule-classes nil)
+
+(local (defthm fn-nop-find-cred-of-append
+  (implies (fn-auth-cred-listp a)
+           (equal (fn-auth-find-cred name (append a b))
+                  (or (fn-auth-find-cred name a) (fn-auth-find-cred name b))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-find-cred fn-auth-cred-listp) (fn-auth-credp))))))
+
+(local (defthm fn-nop-account-cred-principal-is-its-names
+  (equal (fn-auth-cred-principal (fn-auth-account-cred row))
+         (fn-acct-local-principal (fn-auth-cred-name (fn-auth-account-cred row))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-account-cred) (fn-acct-local-principal))))))
+(local (defthm fn-nop-find-cred-of-account-creds
+  (implies (fn-auth-find-cred name (fn-auth-account-creds rows))
+           (equal (fn-auth-cred-principal
+                   (fn-auth-find-cred name (fn-auth-account-creds rows)))
+                  (fn-acct-local-principal name)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-find-cred fn-auth-account-creds)
+                                  (fn-auth-credp fn-auth-account-cred fn-acct-local-principal))))))
+
+(local (defthm fn-nop-configp-has-a-cred-list
+  (implies (fn-auth-configp x) (fn-auth-cred-listp (fn-auth-config-creds x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-auth-configp) (fn-auth-cred-listp))))))
+(defthm fn-nop-login-principal-is-the-served-tables
+  (implies (and (fn-auth-configp acfg)
+                (fn-auth-find-cred login (fn-auth-config-creds
+                                          (fn-auth-config-with-accounts acfg v))))
+           (equal (fn-nop-login-principal login (fn-auth-config-creds acfg))
+                  (fn-auth-cred-principal
+                   (fn-auth-find-cred login (fn-auth-config-creds
+                                             (fn-auth-config-with-accounts acfg v))))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-config-with-accounts)
+                                  (fn-auth-configp fn-auth-find-cred fn-auth-account-creds
+                                   fn-acct-local-principal))))
+  :rule-classes nil)
+
+(local (defthm fn-nop-a-cred-list-is-not-refused
+  (implies (fn-auth-cred-listp x) (not (equal x :refused)))
+  :rule-classes :forward-chaining))
+
+; KEYSTONE (PKT-786): the value `account hash LOGIN' prints is the value an
+; article posted by LOGIN carries.  Whatever policy flags the owner loaded the
+; credential file under, when the connection's pinned table (the file's rows,
+; then the redeemed accounts' of any configuration value V) finds LOGIN, the
+; operator's value is the posting-account value of that credential's
+; principal: the session subject books/served.lisp fn-served-account records
+; as the submission's account, which books/injection-info-params.lisp
+; fn-ipp-injected-octets hashes.  Teeth: tests/acl2/injection-info-params-tests.lisp.
+(defthm fn-nop-account-hash-is-the-served-account-value
+  (implies (and (equal (fn-native-auth-result-status
+                        (fn-native-auth-load octets presentp requiredp protected-onlyp
+                                             tls-availablep max-credentials))
+                       :accepted)
+                (equal acfg (fn-native-auth-result-config
+                             (fn-native-auth-load octets presentp requiredp protected-onlyp
+                                                  tls-availablep max-credentials)))
+                (fn-auth-find-cred (fn-ipp-octets login)
+                                   (fn-auth-config-creds
+                                    (fn-auth-config-with-accounts acfg v))))
+           (equal (fn-nop-account-hash secret login octets presentp max-credentials)
+                  (fn-pa-account-value
+                   secret
+                   (fn-ipp-octets
+                    (fn-auth-cred-principal
+                     (fn-auth-find-cred (fn-ipp-octets login)
+                                        (fn-auth-config-creds
+                                         (fn-auth-config-with-accounts acfg v))))))))
+  :hints (("Goal" :use ((:instance fn-nop-auth-file-creds-of-any-policy)
+                        (:instance fn-native-auth-load-accepted-is-config
+                                   (protected protected-onlyp) (tls tls-availablep))
+                        (:instance fn-nop-login-principal-is-the-served-tables
+                                   (login (fn-ipp-octets login))))
+           :in-theory (e/d (fn-ipp-account-hash)
+                           (fn-native-auth-load-accepted-is-config
+                            fn-nop-auth-file-creds fn-nop-login-principal
+                            fn-native-auth-load fn-auth-configp
+                            fn-auth-config-with-accounts fn-auth-find-cred
+                            fn-pa-account-value fn-ipp-octets))))
+  :rule-classes nil)
+
 ;; PRF-164: the seconds of an accepted `account invite' plan, or nil.
 (defun fn-native-operator-result-account-invite-seconds (result)
   (declare (xargs :guard t))
@@ -1698,6 +1864,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                          :inspect)
                   :inspect)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :inspect-group)
+                  :inspect-group)
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                          :rebind-filesystem)
                   :rebind-filesystem)
@@ -2566,7 +2735,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
 
 (defconst *fn-nop-store-actions*
   '(:run :post :status :health :recover :compact :checkpoint :reclaim
-    :reclaim-dry-run :reclaim-recorded :export :admin :inspect
+    :reclaim-dry-run :reclaim-recorded :export :admin :inspect :inspect-group
     :peering :principal :keys :tls :carry))
 
 (defun fn-native-operator-result-needs-storep (result)
@@ -2706,12 +2875,19 @@ control path no supported platform binds whole."
   (let ((status (fn-native-operator-result-status result))
         (reason (fn-native-operator-result-reason result))
         (command (fn-native-operator-result-command result)))
-    (cond ((and (equal status :refused) (equal reason :control-path-too-long))
+    (cond ; Row S10: `policy set KEY VALUE' refused by name, with what it takes.
+          ((and (equal status :refused)
+                (equal reason (list :administration :unknown-policy-key)))
+           "policy set: no key by that name; the keys are path-identity, posting-policy, exposure-connections, exposure-per-address, exposure-steps-per-second, exposure-idle-seconds, exposure-first-seconds, exposure-auth-failures, exposure-posts-per-minute, relay-date-skew, refused-offer-capacity, relay-require-path, max-transactions, max-history-octets, max-article-octets (docs/operator.md)")
+          ((and (equal status :refused)
+                (equal reason (list :administration :policy-value-not-a-number)))
+           "policy set: that key takes a decimal count (digits only); run: fn operator CONFIG policy set KEY N")
+          ((and (equal status :refused) (equal reason :control-path-too-long))
            "the control socket path ([control] path, else the [store] path with /control.sock) is longer than 103 octets, which a Unix socket cannot bind on every platform; set a shorter [control] path in fn.toml")
           ((and (equal status :refused) (equal reason :no-store))
            "no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)")
           ((and (equal status :usage) (equal reason :mission-fixes-profile))
-           "under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. To raise a bound later: fn operator CONFIG store export DIR, reinstall, then fn operator CONFIG store import DIR --FIELD N; or delete the mission line from fn.toml to choose a profile at init")
+           "under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. To raise a bound later: fn operator CONFIG policy set max-transactions|max-history-octets|max-article-octets N; or delete the mission line from fn.toml to choose a profile at init")
           ((and (equal status :usage) (fn-nop-help-subjectp command))
            (fn-nop-help-text command))
           (t nil))))
@@ -2736,6 +2912,17 @@ control path no supported platform binds whole."
            (stringp (fn-ncfg-second (fn-native-operator-result-arguments result))))
       (fn-record-string-octets
        (fn-ncfg-second (fn-native-operator-result-arguments result)))
+    nil))
+
+; Row S3d: the group `store inspect --group GROUP' names, or nil.
+(defun fn-native-operator-result-inspect-group (result)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "store")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :inspect-group)
+           (stringp (fn-ncfg-second (fn-native-operator-result-arguments result))))
+      (fn-ncfg-second (fn-native-operator-result-arguments result))
     nil))
 
 (defun fn-nop-octets-text (octets)

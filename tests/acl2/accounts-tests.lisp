@@ -38,7 +38,7 @@
   '(fn-cfg-apply-delta (at-v1) 2 *at-stamp* (fn-acct-plan-delta (at-plan1))))
 (defmacro at-row (v digest) `(fn-cfg-account-row (fn-cfg-accounts ,v) ,digest))
 
-; The representation: a digest is 64 hex characters, a verifier's text 96,
+; The representation: a digest is 64 hex characters, a verifier's text 224,
 ; and the text is the verifier.
 (assert-event (fn-cfg-account-digestp (at-digest)))
 (assert-event (fn-cfg-account-verifier-hexp

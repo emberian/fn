@@ -173,6 +173,14 @@ unbounded (&rest or &key)."
 (defconstant +fnn-exit-fault+ 4)
 
 (defun fnn-socket-fd (socket) (declare (ignore socket)) 7)
+;; Row A4 (c) (host/native/owner.lisp fnn-owner-chunk-span-no-io): the served
+;; read runs first with the realizer's cold-extent throw armed; the stub says
+;; the cache is on, so each step takes that path, and the recording ACL2
+;; boundary below never meets a cold payload (no line throws
+;; fnn-extent-cold), so every read is warm and the cold line's prefetch is
+;; declared unreached.  The cold 403 itself is tests/test_native_slow_disk.py's.
+(defvar *fnn-extent-no-io* nil)
+(defun fnn-extent-no-io-usable-p () t)
 (defun fnn-socket-shut (socket) (declare (ignore socket)) nil)
 (defun fnn-tls-close-channel (channel) (declare (ignore channel)) nil)
 ;; host/native/tls.lisp's condition (tls.lisp is not extracted): the loop's
@@ -249,7 +257,10 @@ unbounded (&rest or &key)."
     (fn-owner-close :closed)
     (fn-owner-exposure-idle :keep)
     (fn-owner-exposure-release :released)
-    (fn-owner-tls-established :ok)))
+    (fn-owner-tls-established :ok)
+    ;; The plaintext open installs the SASL context (books/nntp-auth.lisp
+    ;; (:sasl-context SEED BINDING)); it emits no reply.
+    (fn-owner-sasl-context :ok)))
 
 (defun fnn-owner-octets-global (name)
   (ecase name (fn-owner-output *output*)))
@@ -302,11 +313,16 @@ unbounded (&rest or &key)."
     ;; epoch and T at or after it, else (0 NIL).  The stub answers the
     ;; model's value on the host's raw reading.
     (fn-otm-wall-reading
-     (destructuring-bind (seconds microseconds offset) args
+     (destructuring-bind (seconds microseconds) args
        (if (and (integerp seconds) (integerp microseconds) (<= 0 microseconds)
-                (<= offset seconds))
-           (list (+ (* 1000 (- seconds offset)) (floor microseconds 1000)) t)
+                (<= 946684800 seconds))
+           (list (+ (* 1000 (- seconds 946684800)) (floor microseconds 1000)) t)
          (list 0 nil))))
+    ;; The monotonic milliseconds are ACL2's too (books/clock-wall-reading.lisp
+    ;; fn-otm-monotonic-ms, PRF-305): the stub answers the model's value.
+    (fn-otm-monotonic-ms
+     (destructuring-bind (ticks units) args
+       (floor (* ticks 1000) units)))
     (fn-splan-step-p t)
     (fn-splan-step-closep (second *step*))
     (fn-splan-step-handshake-owed (third *step*))
@@ -327,7 +343,14 @@ unbounded (&rest or &key)."
     ;; A transit peer's read proceeds (fn-otm-peer-read-proceeds-p); these
     ;; scenarios are reader connections, which never ask.
     (fn-otm-peer-read-proceeds-p t)
-    (fn-otm-log-line nil)))
+    (fn-otm-log-line nil)
+    ;; books/sasl.lisp *fn-sasl-seed-octets*.
+    (fn-owner-sasl-seed-octets 32)))
+
+;; The OS CSPRNG (host/native/io.lisp): the connection's SASL seed.
+(defun fnn-csprng-octets (width what)
+  (declare (ignore what))
+  (make-list width :initial-element 0))
 (defun fnn-owner-render-next (plan)
   (if plan
       (values (first plan) (rest plan) (null (rest plan)))
@@ -349,6 +372,7 @@ unbounded (&rest or &key)."
 (defparameter *unreached*
   '(;; Implicit TLS and STARTTLS: no scenario negotiates TLS.
     fnn-tls-accept-begin fnn-tls-accept-step fnn-tls-channel-of fnn-%ssl-free
+    fnn-tls-exporter
     ;; The pull feed's own-quantum commit (a logical connection has no socket).
     fnn-owner-commit-queued-locked
     ;; The slow disk sheds the queued POSTs (every admission here is :admit).
@@ -356,7 +380,9 @@ unbounded (&rest or &key)."
     ;; A submission drained in its own quantum (these scenarios batch).
     fnn-owner-drain-one
     ;; XREDEEM (PRF-164): no connection here waits for a redeem.
-    fnn-owner-redeem-quantum))
+    fnn-owner-redeem-quantum
+    ;; Row A4 (c): no read here meets a cold payload (see the stub above).
+    fnn-extent-prefetch))
 
 (dolist (name *unreached*)
   (let ((name name))

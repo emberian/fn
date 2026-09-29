@@ -172,7 +172,13 @@ def source_for(msgid, body=b"exact post source\r\n"):
             + msgid.encode() + b"\r\n\r\n.dot-prefixed line\r\n" + body)
 
 
-@unittest.skipUnless(HAVE_LIBS, "pip install cryptography dilithium-py")
+# PKT-375: without pyca/cryptography and dilithium-py (the laptop's system
+# Python) these verdicts are NOT RUN, and say so; hbox's tool Python has both.
+NOT_RUN = ("NOT RUN: fn_verify's verdicts need pyca/cryptography and dilithium-py "
+           "(uv pip install cryptography dilithium-py; hbox's tool Python has both)")
+
+
+@unittest.skipUnless(HAVE_LIBS, NOT_RUN)
 class FakeNodeVerifyTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -655,7 +661,7 @@ class LyingProxy:
 
 @unittest.skipUnless(os.environ.get("FN_RUN_VERIFY_E2E") == "1",
                      "set FN_RUN_VERIFY_E2E=1, FN_NATIVE_HOST, FN_ACL2, FN_TEST_OPENSSL")
-@unittest.skipUnless(HAVE_LIBS, "pip install cryptography dilithium-py")
+@unittest.skipUnless(HAVE_LIBS, NOT_RUN)
 class NativeVerifyTests(unittest.TestCase):
     USER, PASSWORD = "verify-reader", "correct-horse-verify"
 

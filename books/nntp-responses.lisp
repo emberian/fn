@@ -767,14 +767,14 @@
   ; understood.  The lines are the rows of the served command table,
   ; *fn-nntp-served-command-table* in books/nntp-help.lisp: every keyword
   ; the served dispatcher fn-auth-step-pinned recognizes, including the
-  ; authentication layer's AUTHINFO, STARTTLS and XREDEEM and the peer
+  ; authentication layer's AUTHINFO, STARTTLS, XREDEEM and COMPRESS and the peer
   ; layer's IHAVE, CHECK and TAKETHIS (PRF-194: a keyword outside the table
   ; is answered 500 by the served step, and these lines render the table).
   (fn-nntp-multi session (fn-proto-text "HELP" :text)
                  (list (fn-nntp-string-octets
                         "CAPABILITIES HELP QUIT MODE DATE POST")
                        (fn-nntp-string-octets
-                        "AUTHINFO STARTTLS XREDEEM")
+                        "AUTHINFO STARTTLS XREDEEM COMPRESS")
                        (fn-nntp-string-octets
                         "GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS")
                        (fn-nntp-string-octets
@@ -783,8 +783,9 @@
                         "OVER XOVER HDR XHDR XPAT")
                        (fn-nntp-string-octets
                         "IHAVE CHECK TAKETHIS")
-                       ;; PRF-325: the catch-up stream (books/peer-catchup-serve.lisp).
-                       (fn-nntp-string-octets "XFNCATCHUP"))))
+                       ;; PRF-325: the catch-up stream (books/peer-catchup-serve.lisp);
+                       ;; PRF-993: the stored-payload retrieval (books/nntp-zarticle.lisp).
+                       (fn-nntp-string-octets "XFNCATCHUP XFN-ZARTICLE"))))
 
 ; -----------------------------------------------------------------------------
 ; Reader environment: the clock observation and the persisted group-creation

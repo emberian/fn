@@ -47,7 +47,9 @@
                      '(fn-sn-statep (fn-own-store o))))
 (assert-event (equal (guard 'fn-own-step nil (w state))
                      '(if (fn-arena-p fn-arena)
-                          (fn-sn-statep (fn-own-store o))
+                          (if (fn-sn-statep (fn-own-store o))
+                              (fn-own-eventp event)
+                            'nil)
                         'nil)))
 
 ; -----------------------------------------------------------------------------
@@ -342,7 +344,9 @@
 (defconst *own-auth-cred*
   (fn-auth-make-cred
    (fn-nntp-string-octets "reader") *own-auth-principal*
-   (fn-authsec-verifier *own-auth-salt* *own-auth-digest*) t))
+   (fn-authsec-verifier *own-auth-salt* *own-auth-digest*
+                     (car (fn-scram-keys (fn-nntp-string-octets "correct-horse") *own-auth-salt* 4096))
+                     (cadr (fn-scram-keys (fn-nntp-string-octets "correct-horse") *own-auth-salt* 4096))) t))
 (defconst *own-auth-config*
   (fn-auth-make-config t nil t (list *own-auth-cred*)))
 (defconst *own-principal-peer-record*

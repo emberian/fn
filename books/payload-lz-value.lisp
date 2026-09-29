@@ -1,8 +1,8 @@
 ; fn: the value of a compressed payload (lane compression-extents, PRF-326).
 ;
 ; `fn-lzr-lz-value dict c n' is what an arena handle over a compressed
-; extent holds: the N octets C decodes to against DICT (books/payload-lz.lisp,
-; the proved decoder), always N octets long.  The arena's compressed seal and
+; extent holds: the N octets C decodes to against DICT (books/payload-deflate.lisp,
+; the proved DEFLATE decoder), always N octets long.  The arena's compressed seal and
 ; reseat (books/payload-arena.lisp) are defined over it, and the host's
 ; realizer for a compressed extent (A-DURABLE-LZ, books/assumptions.lisp)
 ; answers it: the host reads C, runs this decoder, and REFUSES by name
@@ -12,29 +12,29 @@
 ; so the value is the payload (`fn-lzr-lz-value-of-decode').
 
 (in-package "ACL2")
-(include-book "payload-lz")
+(include-book "payload-deflate")
 
 ;; The decoder's answer: a pair, and an :ok answer is octets.
 (defthm fn-lzr-decode-consp
-  (and (consp (fn-lz-decode dict c n))
-       (true-listp (fn-lz-decode dict c n)))
+  (and (consp (fn-pzd-decode dict c n))
+       (true-listp (fn-pzd-decode dict c n)))
   :rule-classes :type-prescription
-  :hints (("Goal" :in-theory (disable fn-lz-decode-buf))))
+  :hints (("Goal" :in-theory (disable fn-zin-payload-bufs))))
 
 (defthm fn-lzr-decode-octets
   (implies (and (fn-cbor-octet-listp dict) (fn-cbor-octet-listp c)
-                (equal (car (fn-lz-decode dict c n)) :ok))
-           (fn-cbor-octet-listp (cadr (fn-lz-decode dict c n))))
-  :hints (("Goal" :in-theory (disable fn-lz-run))))
+                (equal (car (fn-pzd-decode dict c n)) :ok))
+           (fn-cbor-octet-listp (cadr (fn-pzd-decode dict c n))))
+  :hints (("Goal" :in-theory (disable fn-zin-payload-with))))
 
 (defthm fn-lzr-decode-true-listp
   (implies (and (fn-cbor-octet-listp dict) (fn-cbor-octet-listp c)
-                (equal (car (fn-lz-decode dict c n)) :ok))
-           (true-listp (cadr (fn-lz-decode dict c n))))
-  :hints (("Goal" :in-theory (disable fn-lz-decode fn-lzr-decode-octets)
+                (equal (car (fn-pzd-decode dict c n)) :ok))
+           (true-listp (cadr (fn-pzd-decode dict c n))))
+  :hints (("Goal" :in-theory (disable fn-pzd-decode fn-lzr-decode-octets)
            :use fn-lzr-decode-octets)))
 
-(in-theory (disable fn-lz-decode))
+(in-theory (disable fn-pzd-decode))
 
 (defun fn-lzr-zeros (n)
   (declare (xargs :guard (natp n)))
@@ -42,7 +42,7 @@
 
 (defun fn-lzr-lz-value (dict c n)
   (declare (xargs :guard (and (fn-cbor-octet-listp dict) (fn-cbor-octet-listp c) (natp n))))
-  (let ((r (fn-lz-decode dict c n)))
+  (let ((r (fn-pzd-decode dict c n)))
     (if (and (eq (car r) :ok) (true-listp (cadr r)) (equal (len (cadr r)) (nfix n)))
         (cadr r)
       (fn-lzr-zeros (nfix n)))))
@@ -63,10 +63,10 @@
 (defthm fn-lzr-lz-value-octets
   (implies (and (fn-cbor-octet-listp dict) (fn-cbor-octet-listp c))
            (fn-cbor-octet-listp (fn-lzr-lz-value dict c n)))
-  :hints (("Goal" :in-theory (disable fn-lz-run))))
+  :hints (("Goal" :in-theory (disable fn-zin-payload-with))))
 
 (defthm fn-lzr-lz-value-of-decode
-  (implies (and (equal (fn-lz-decode dict c n) (list :ok payload))
+  (implies (and (equal (fn-pzd-decode dict c n) (list :ok payload))
                 (true-listp payload)
                 (equal (len payload) (nfix n)))
            (equal (fn-lzr-lz-value dict c n) payload)))

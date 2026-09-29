@@ -69,7 +69,22 @@ the files build.lisp `load`s, in build.lisp's order.  It then reports:
         counted, never failed, and a load-time call of one is skipped
         (`return-value' restart) so the rest of the file still loads.
 
-What it cannot see: the arity of a call into a book function (the bare image
+It first runs tools/extract/world.py --check (the umbrellas against the
+build scripts; a stale umbrella is a FAIL: limits-live-5's host include-book
+passed --load and died in the image build's acquire).  `make
+host-convert-check FILE=...` (tools/host_convert_check.py) runs this with
+every other pre-image gate, including the certified-world class check.
+THE WORLD (obstructions-6 item 40): when the build script's include-books
+have certificates in the tree -- or `certs.py install-set` can install them
+from FN_CERT_CACHE / the box's farm cache -- --load first runs the build's
+ACL2-mode prefix (image-world and the host `ld`s, where definterface checks
+each declaration and generates its `-by-definition` equations) and loads the
+raw files over it; an error in the prefix is a FAIL naming its host file.
+Its first line says which world it ran in: `WORLD CERTIFIED UMBRELLA ...` or
+`WORLD BARE ACL2 -- ...` with the reason.  `--bare` forces the seconds-scale
+bare load (make check's, whose default step runs the prefix already);
+`--require-world` makes an unavailable umbrella NOT RUN (exit 2).
+In a bare load it cannot see: the arity of a call into a book function (the bare image
 does not know it), anything the FFI initializers do (`fnn-crypto-initialize'
 and its siblings are build.lisp's calls, not the files'), and translate
 errors in the ACL2-mode host files (tools/host_translate_check.py).  Exit 0
@@ -258,7 +273,23 @@ def world_text() -> str:
 
 
 def world_names(text: str) -> set[str]:
-    return {name.lower() for name in WORLD_DEF.findall(text)}
+    return {name.lower() for name in WORLD_DEF.findall(text)} | stobj_world_names()
+
+
+def stobj_world_names() -> set[str]:
+    """The names every `defstobj'/`defabsstobj' in the world generates (the
+    creator, recognizer, field accessors and updaters): no `def' form spells
+    them, so WORLD_DEF cannot see them, and `create-fn-zin-st' (host/native/
+    deflate.lisp's fnn-zin-new) was reported undefined (compress-4)."""
+    found: set[str] = set()
+    for directory in WORLD_DIRS:
+        base = ROOT / directory
+        paths = base.rglob("*.lisp") if directory == "books" else base.glob("*.lisp")
+        for path in sorted(paths):
+            text = path.read_text(encoding="utf-8", errors="replace").lower()
+            if "(defstobj" in text or "(defabsstobj" in text:
+                found |= {name.lower() for name in stobj_names(path)}
+    return found
 
 
 def in_world(name: str, defined: set[str], text: str) -> bool:
@@ -383,7 +414,7 @@ WORLD_UNBOUND = re.compile(r"\(DEF[A-Z-]*\s+([^\s()]+)\):\s+The variable ([^\s]+
 
 
 def classify_load(output: str, world_defined: set[str], world_source: str,
-                  definers: dict[str, str] | None = None
+                  definers: dict[str, str] | None = None, world_loaded: bool = False
                   ) -> tuple[list[str], dict[str, int], bool]:
     """(findings, counts, completed) from a --load transcript.
 
@@ -462,6 +493,15 @@ def classify_load(output: str, world_defined: set[str], world_source: str,
                 continue  # the summary of UNDEFINED lines, classified there
             label = next((label for words, label in FAILING_WARNINGS
                           if words in lowered), None)
+            if label == "redefinition" and world_loaded:
+                # Over the certified world, a raw file's defun of a book
+                # function is the image's intended raw override (extent.lisp,
+                # signatures.lisp): what the build does.  Only a name a
+                # second RAW file defines is a finding (item 40, hbox run).
+                overridden = re.search(r"redefining (?:ACL2_\*1\*_)?ACL2::(\S+)", text)
+                if overridden and in_world(overridden.group(1), world_defined, world_source):
+                    counts["warnings"] += 1
+                    continue
             if label:
                 findings.append(f"{label} (in or before {current}): {text}")
             else:
@@ -469,13 +509,152 @@ def classify_load(output: str, world_defined: set[str], world_source: str,
     return findings, counts, completed
 
 
+# --- --load's world (obstructions-6 item 40) ---------------------------------
+#
+# A bare ACL2 never evaluates the ACL2-mode prefix of the build script: the
+# include of books/image-world and the host `ld`s, where definterface checks
+# each declaration against the certified world and generates its
+# `-by-definition` equations.  decision-keystones-3's `::ideal` declaration of
+# five common-lisp-compliant entries passed a bare --load and failed the
+# 25-minute hbox image build.  So --load runs the raw files OVER that prefix
+# whenever its certificates are here or in the box's certificate cache, and
+# says which world it ran in; --bare keeps the seconds-scale check.
+
+WORLD_OK = LOAD_TAG + "-WORLD-OK"
+WORLD_LD = LOAD_TAG + "-LD"
+
+
+def world_prefix(build: str) -> list[object]:
+    import host_translate_check
+    return host_translate_check.prefix(ROOT / build)
+
+
+def world_missing(forms: list[object]) -> list[str]:
+    import host_translate_check
+    return host_translate_check.uncertified(forms)
+
+
+def world_session(forms: list[object]) -> str:
+    """The build's ACL2-mode prefix as a piped session, each `ld` announced so
+    an error inside it names its host file, then the world marker."""
+    import host_translate_check
+    from ledger import head
+    lines = []
+    for form in forms:
+        if head(form) == "ld" and len(form) >= 2 and isinstance(form[1], str):
+            lines.append(f'(value-triple (cw "{WORLD_LD} ~s0~%" "{form[1]}"))')
+        lines.append(host_translate_check.text(form))
+    lines.append(f'(value-triple (cw "{WORLD_OK}~%"))')
+    return "\n".join(lines) + "\n"
+
+
+def world_findings(output: str) -> tuple[list[str], bool]:
+    """(the prefix's errors, each naming the host `ld` it was in; did the
+    prefix reach its end marker)."""
+    import host_translate_check
+    findings, current, reached = [], "the include-books", False
+    lines = output.splitlines()
+    for index, line in enumerate(lines):
+        if line.startswith(WORLD_LD + " ") or (WORLD_LD + " ") in line:
+            current = line.split(WORLD_LD + " ", 1)[1].strip()
+        elif WORLD_OK in line:
+            reached = True
+            break
+        elif any(marker in line for marker in host_translate_check.ERRORS):
+            detail = " ".join(part.strip() for part in lines[index:index + 3])
+            findings.append(f"world: in {current}: {detail[:400]}")
+    return findings, reached
+
+
+def certificate_cache() -> Path | None:
+    """FN_CERT_CACHE, else this box's farm cache, else ~/.cache/fn-certs."""
+    candidates = [os.environ.get("FN_CERT_CACHE", "")]
+    try:
+        import farm
+        candidates += [host["cache"] for host in farm.HOSTS.values()]
+    except Exception:  # noqa: BLE001  farm imports the world of tools; optional here
+        pass
+    candidates.append("~/.cache/fn-certs")
+    for candidate in candidates:
+        if candidate and Path(candidate).expanduser().is_dir():
+            return Path(candidate).expanduser()
+    return None
+
+
+def install_world(forms: list[object], acl2: Path, runner=None) -> str:
+    """Install the prefix's books from the certificate cache; '' or why not."""
+    from ledger import head
+    cache = certificate_cache()
+    if cache is None:
+        return "no certificate cache on this machine (FN_CERT_CACHE unset)"
+    roots = [form[1] for form in forms
+             if head(form) == "include-book" and len(form) >= 2 and isinstance(form[1], str)]
+    argv = [sys.executable, str(ROOT / "tools" / "certs.py"), "--root", str(ROOT),
+            "--cache", str(cache), "--acl2", str(acl2), "install-set", *roots]
+    if runner is None:
+        runner = lambda argv: subprocess.run(argv, cwd=ROOT, capture_output=True, text=True)
+    done = runner(argv)
+    missing = world_missing(forms)
+    tail = " ".join(((done.stdout or "") + (done.stderr or "")).split()[-30:])
+    if getattr(done, "returncode", 0):
+        return (f"certs.py install-set {' '.join(roots)} from {cache} exited "
+                f"{done.returncode}: {tail}")
+    if missing:
+        return (f"{len(missing)} of its books have no certificate here or in {cache} "
+                f"(e.g. {missing[0]}; certs.py install-set said: {tail})")
+    return ""
+
+
+def choose_world(build: str, acl2: Path, bare: bool, install: bool = True,
+                 runner=None) -> tuple[list[object] | None, str]:
+    """(the prefix forms to load first, or None; the sentence naming the world)."""
+    if bare:
+        return None, "BARE ACL2 (--bare): definterface's checks NOT evaluated"
+    forms = world_prefix(build)
+    from ledger import head as _head
+    if not any(_head(form) == "include-book" for form in forms):
+        return None, f"BARE ACL2 -- {build} includes no book (no certified world to load)"
+    if world_missing(forms):
+        why = install_world(forms, acl2, runner) if install else "certificates not installed"
+        if why:
+            return None, (f"BARE ACL2 -- the certified umbrella is not available: {why}; "
+                          "definterface's checks and the -by-definition equations were "
+                          "NOT evaluated")
+    from ledger import head
+    includes = [form[1] for form in forms if head(form) == "include-book"]
+    lds = sum(1 for form in forms if head(form) == "ld")
+    return forms, (f"CERTIFIED UMBRELLA -- {', '.join(includes)} and {lds} host lds "
+                   f"of {build}, in order (definterface's checks evaluated)")
+
+
+CERTIFICATE_TROUBLE = ("There is a problem with the certificate", "[Uncertified]",
+                       "Warning [Uncertified]")
+
+
+def certificate_trouble(output: str) -> str:
+    """The first include-book whose certificate would not load, before the
+    prefix's end marker ('' when none): the umbrella is not loadable here,
+    which says nothing about the host files (host_translate_check's NOT RUN)."""
+    lines = output.split(WORLD_OK, 1)[0].splitlines()
+    if not any(marker in line for line in lines for marker in CERTIFICATE_TROUBLE):
+        return ""
+    for line in lines:
+        match = re.search(r'INCLUDE-BOOK "([^"]+)"', line)
+        if match and "Failure" in line:
+            return f"include-book {match.group(1)} failed on its certificate"
+    return "an include-book's certificate would not load"
+
+
 def load_check(acl2: Path, files: list[str], timeout: int,
-               log_dir: Path | None = None) -> int:
+               log_dir: Path | None = None, world: list[object] | None = None,
+               world_note: str = "BARE ACL2", require_world: bool = False,
+               bare_acl2: Path | None = None, reinstall: bool = True) -> int:
     import tempfile
     with tempfile.TemporaryDirectory(prefix="fn-host-load-") as scratch:
         driver = Path(scratch) / "driver.lsp"
         driver.write_text(load_driver(files), encoding="utf-8")
-        session = ("(defttag :fn-host-load-check)\n"
+        session = ((world_session(world) if world is not None else "")
+                   + "(defttag :fn-host-load-check)\n"
                    f'(progn! (set-raw-mode t) (load "{driver}"))\n(good-bye)\n')
         started = time.monotonic()
         try:
@@ -490,9 +669,40 @@ def load_check(acl2: Path, files: list[str], timeout: int,
         elapsed = time.monotonic() - started
     if log_dir is not None:
         (log_dir / "load.log").write_text(output)
+    if world is not None:
+        trouble = certificate_trouble(output)
+        if trouble and reinstall:
+            # Per-book installs (remote_check's `certs.py install`) can leave
+            # pairs from different origins that do not compose (hbox and
+            # persvati at 1f0503c1d); one coherent set for the prefix's roots
+            # usually does.  Once.
+            why = install_world(world, bare_acl2 or acl2)
+            print("host_check --load: the umbrella's certificates did not compose ("
+                  f"{trouble}); reinstalled the prefix's roots as one set"
+                  + (f" -- {why}" if why else "") + "; retrying", flush=True)
+            if not why:
+                return load_check(acl2, files, timeout, log_dir, world, world_note,
+                                  require_world, bare_acl2, reinstall=False)
+        if trouble:
+            if log_dir is not None:
+                (log_dir / "load-world.log").write_text(output)
+            note = (f"BARE ACL2 -- the certified umbrella did not load here ({trouble}: the "
+                    "installed certificates do not compose); definterface's checks and the "
+                    "-by-definition equations were NOT evaluated")
+            if require_world:
+                print(f"host_check --load: NOT RUN -- {note}", file=sys.stderr)
+                return 2
+            return load_check(bare_acl2 or acl2, files, timeout, log_dir, None, note)
     source = world_text()
     findings, counts, completed = classify_load(output, world_names(source), source,
-                                                raw_definers())
+                                                raw_definers(), world is not None)
+    if world is not None:
+        prefix_findings, reached = world_findings(output)
+        findings = prefix_findings + findings
+        if not reached:
+            findings.insert(0, "world: the build's ACL2-mode prefix did not reach its end "
+                               "marker (see the transcript's tail)")
+    print(f"host_check --load: WORLD {world_note}")
     for finding in findings:
         print(f"FAIL {finding}")
     if not completed:
@@ -500,9 +710,12 @@ def load_check(acl2: Path, files: list[str], timeout: int,
               "the transcript's tail:")
         print("\n".join(output.splitlines()[-25:]))
     print(f"host_check --load: {counts['files']} of {len(files)} raw files loaded in one "
-          f"bare {acl2.name} in {elapsed:.1f} s; {len(findings)} finding(s); "
+          f"{'bare ' if world is None else ''}{acl2.name}"
+          f"{'' if world is None else ' over the certified umbrella'} in {elapsed:.1f} s; "
+          f"{len(findings)} finding(s); "
           f"{counts['world']} undefined names and {counts['world_calls']} load-time calls "
-          f"belong to the certified world (not loaded here); {counts['warnings']} other "
+          f"belong to the certified world"
+          f"{' (not loaded here)' if world is None else ''}; {counts['warnings']} other "
           "compiler warnings")
     return 1 if findings or not completed else 0
 
@@ -658,7 +871,170 @@ def world_resolve(root: Path, base: Path, reference: str) -> Path:
     return Path(os.path.normpath(target))
 
 
-def world_of(build: str, root: Path = ROOT) -> tuple[set[str], list[str], list[str]]:
+# --- the ld host files' forward references (item 14, obstructions-3) --------
+#
+# ACL2 translates each `ld` host file's definitions in the order the image
+# `ld`s them, and refuses a call of a function no earlier event defined.
+# `--load` loads only the raw files, so twice on 2026-09-29 (online-reclaim-4,
+# limits-live-4) a forward reference in host/owner-host.lisp passed it and
+# the image build refused it ten minutes later.  This is the static half,
+# seconds and no ACL2: every call in an ld host file, in build order, of a
+# name that only a LATER top-level form of the ld files defines and no book
+# of the image's world defines.  A mutual-recursion (one top-level form) may
+# call its own members.  The dynamic half is the default mode (the ld prefix
+# through ACL2 in the certified world), which hbox_native runs before it
+# builds an image.
+
+def _callers():
+    try:
+        from tools import callers
+    except ImportError:
+        import callers
+    return callers
+
+
+def ld_sequence(build: str = BUILD_SCRIPT, root: Path = ROOT,
+                cbd: str = ".") -> list[str]:
+    """The ld host files BUILD loads, in its order (an ld inside one in place).
+    CBD is the root-relative directory ACL2's connected book directory is at
+    when BUILD runs: the tree's root for the image builds, tools/extract for
+    the extraction world (tools/extract/world-host.lisp, `../../host/...')."""
+    import ledger
+    order: list[str] = []
+
+    def walk(form, base: Path) -> None:
+        if not isinstance(form, list) or not form or form[0] in ("quote", "quasiquote"):
+            return
+        if form[0] == "ld" and len(form) >= 2 and isinstance(form[1], str) \
+                and not isinstance(form[1], ledger.Sym):
+            path = world_resolve(root, base, form[1])
+            relative = path.relative_to(root).as_posix() if path.is_relative_to(root) \
+                else path.as_posix()
+            if relative in order or not path.is_file():
+                return
+            order.append(relative)
+            for inner, _ in ledger.Reader(path.read_text(encoding="utf-8")).top_level():
+                walk(inner, path.parent)
+            return
+        if form[0] in ("defun", "defmacro", "defund", "include-book", "load"):
+            return
+        for item in form[1:]:
+            walk(item, base)
+
+    script = root / build
+    for form, _ in ledger.Reader(script.read_text(encoding="utf-8")).top_level():
+        walk(form, Path(os.path.normpath(root / cbd)))
+    return order
+
+
+def top_level_facts(text: str) -> list[tuple[set[str], list[tuple[str, int]], list[str]]]:
+    """Per top-level form of TEXT: the names it defines (at any depth), the
+    (name, line) of every call in it (an atom in a list's first position,
+    not quoted), and the files it `ld`s, in order."""
+    callers = _callers()
+    facts: list[tuple[set[str], list[tuple[str, int]], list[str]]] = []
+    line, index, depth = 1, 0, 0
+    after_open = False
+    stack: list[list] = []   # [head, name, position]
+    while index < len(text):
+        match = callers.TOKEN.match(text, index)
+        kind, value, index = match.lastgroup, match.group(), match.end()
+        if kind == "nl":
+            line += 1
+            continue
+        if kind in ("comment", "space", "other", "quote", "function"):
+            continue
+        if kind == "block":
+            end = callers.skip_block(text, index)
+            line += text.count("\n", index, end)
+            index = end
+            continue
+        if kind in ("string", "char"):
+            line += value.count("\n")
+            after_open = False
+            if stack:
+                if (kind == "string" and stack[-1][0] == "ld" and stack[-1][2] == 1
+                        and not stack[-1][3]):
+                    facts[-1][2].append(value[1:-1])
+                stack[-1][2] += 1
+            continue
+        if kind == "open":
+            if not stack:
+                facts.append((set(), [], []))
+            quoted = text[match.start() - 1:match.start()] in ("'", "`")
+            stack.append([None, None, 0, quoted or (bool(stack) and stack[-1][3])])
+            after_open = True
+            continue
+        if kind == "close":
+            if stack:
+                head, name, _, _ = stack.pop()
+                if head in callers.DEFINERS and name and facts:
+                    facts[-1][0].add(name)
+                if stack:
+                    stack[-1][2] += 1
+            after_open = False
+            continue
+        name = callers.bare(value)
+        if stack:
+            frame = stack[-1]
+            if frame[2] == 0:
+                frame[0] = name
+                if after_open and not frame[3]:
+                    facts[-1][1].append((name, line))
+            elif frame[2] == 1 and frame[1] is None:
+                frame[1] = name
+            frame[2] += 1
+        after_open = False
+    return facts
+
+
+def forward_references(build: str = BUILD_SCRIPT, root: Path = ROOT) -> list[str]:
+    """`FILE:LINE: NAME is called before its definition (FILE:LINE of it)`."""
+    callers = _callers()
+    book_defined, _, _ = world_of(build, root, ld_definitions=False)
+    book_defined = {name.lower() for name in book_defined}
+    first: dict[str, tuple[int, str]] = {}      # name -> (form ordinal, file:line)
+    per_file = []
+    seen: set[str] = set()
+
+    def visit(relative: str) -> None:
+        # An `ld` inside a file runs where it stands: its forms come before
+        # the rest of the file's (host/native-admin-host.lisp lds owner-host).
+        seen.add(relative)
+        path = root / relative
+        text = path.read_text(encoding="utf-8", errors="replace")
+        spans = {}
+        for defined, first_line, _ in callers.definitions(text):
+            spans.setdefault(defined, first_line)
+        for defined, calls, loads in top_level_facts(text):
+            ordinal = len(per_file)
+            for name in defined:
+                first.setdefault(name, (ordinal, f"{relative}:{spans.get(name, '?')}"))
+            per_file.append((ordinal, relative, defined, calls))
+            for target in loads:
+                inner = world_resolve(root, path.parent, target)
+                inner_relative = (inner.relative_to(root).as_posix()
+                                  if inner.is_relative_to(root) else inner.as_posix())
+                if inner.is_file() and inner_relative not in seen:
+                    visit(inner_relative)
+
+    for relative in ld_sequence(build, root):
+        if relative not in seen:
+            visit(relative)
+    found = []
+    for ordinal, relative, defined, calls in per_file:
+        for name, line in calls:
+            if name in defined or name in book_defined or name not in first:
+                continue
+            later, where = first[name]
+            if later > ordinal:
+                found.append(f"{relative}:{line}: {name} is called before its definition "
+                             f"({where}); ACL2 refuses the call when it translates this form")
+    return found
+
+
+def world_of(build: str, root: Path = ROOT,
+             ld_definitions: bool = True) -> tuple[set[str], list[str], list[str]]:
     """(defined names, raw files loaded, problems) of BUILD's image.
 
     The world is every book BUILD includes and everything those books include
@@ -704,7 +1080,8 @@ def world_of(build: str, root: Path = ROOT) -> tuple[set[str], list[str], list[s
             host = ledger.analyze_host(path, rel(path))
             if host.read_error:
                 problems.append(f"{rel(path)}: unreadable: {host.read_error}")
-            defined.update(host.defines)
+            if ld_definitions:
+                defined.update(host.defines)
             for inner, _ in host.forms:
                 walk(inner, path.parent, rel(path))
             return
@@ -915,6 +1292,28 @@ def build_order_main(timeout: int) -> int:
     return 0 if all(code == 0 for code in codes) else 2
 
 
+def world_stale(runner=None) -> list[str]:
+    """tools/extract/world.py --check's findings (the umbrellas books/image-world*
+    against what the build scripts include), printed as FAIL lines.
+
+    `--load` runs it (obstructions-5 item 34): limits-live-5's host
+    include-book passed --load and died in the image build's acquire step
+    (FN_IMAGE_WORLD_OPEN) because the umbrellas were not regenerated.
+    """
+    if runner is None:
+        def runner():
+            done = subprocess.run([sys.executable, str(ROOT / "tools/extract/world.py"),
+                                   "--check"], cwd=ROOT, capture_output=True, text=True)
+            return done.returncode, done.stdout + done.stderr
+    code, output = runner()
+    found = [line.strip() for line in output.splitlines() if line.strip()] if code else []
+    for line in found:
+        print(f"FAIL {line}")
+    print(f"host_check --load: world.py --check "
+          + ("current" if not found else f"STALE ({len(found)}): run python3 tools/extract/world.py"))
+    return found
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -939,14 +1338,34 @@ def main(argv: list[str] | None = None) -> int:
                         help="static: every name a raw host/native file passes to fnn-core* "
                              "or fnn-call is defined in the world of the image that loads it "
                              "(build.lisp, build-dtn.lisp; FILEs name other build scripts)")
-    parser.add_argument("--build", default=BUILD_SCRIPT,
+    parser.add_argument("--forward", action="store_true",
+                        help="static: a call in an ld host file of a name only a later "
+                             "form of the ld files defines (no ACL2; --load runs it too)")
+    parser.add_argument("--build", default=None,
                         help="with --load: the build script whose raw load order to use")
+    parser.add_argument("--bare", action="store_true",
+                        help="with --load: a bare ACL2 (seconds), not the build's "
+                             "certified prefix; definterface's checks are NOT evaluated")
+    parser.add_argument("--require-world", action="store_true",
+                        help="with --load: exit 2 NOT RUN when the certified umbrella is "
+                             "not available, rather than falling back to a bare ACL2")
     args = parser.parse_args(argv)
 
     if args.tables:
         return tables_main(args.files)
     if args.world:
         return world_main(args.files)
+    if args.forward or args.load:
+        forward = []
+        for build in ([args.build] if args.build else WORLD_BUILDS):
+            forward += [one for one in forward_references(build) if one not in forward]
+        for one in forward:
+            print(f"FAIL {one}")
+        print(f"host_check --forward: {len(forward)} forward reference(s) in the ld host "
+              "files, in build order")
+        if args.forward:
+            return 1 if forward else 0
+    stale = world_stale() if args.load else []
     acl2 = executable()
     if args.load:
         if acl2 is None:
@@ -958,10 +1377,10 @@ def main(argv: list[str] | None = None) -> int:
                   "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k); make check "
                   "counts this as a failed step", file=sys.stderr)
             return 2
-        order = raw_load_order(args.build)
+        order = raw_load_order(args.build or BUILD_SCRIPT)
         unknown = [name for name in args.files if name not in order]
         if unknown:
-            print("host_check --load: not loaded by " + args.build + ": " + ", ".join(unknown),
+            print("host_check --load: not loaded by " + (args.build or BUILD_SCRIPT) + ": " + ", ".join(unknown),
                   file=sys.stderr)
             return 2
         # A raw file needs the ones before it: FILEs load the order through
@@ -971,7 +1390,21 @@ def main(argv: list[str] | None = None) -> int:
         log_dir = Path(args.log_dir).resolve() if args.log_dir else None
         if log_dir is not None:
             log_dir.mkdir(parents=True, exist_ok=True)
-        return load_check(acl2, files, args.timeout_seconds, log_dir)
+        build = args.build or BUILD_SCRIPT
+        world, note = choose_world(build, acl2, args.bare)
+        if world is None and args.require_world and not args.bare:
+            print(f"host_check --load: NOT RUN -- {note}", file=sys.stderr)
+            return 2
+        bare_acl2 = acl2
+        if world is not None and os.environ.get("FN_IMAGE_ACL2"):
+            # The image's launcher (tls64k): the production prefix exhausts
+            # SBCL's default thread-local storage (host_translate_check).
+            image = Path(os.environ["FN_IMAGE_ACL2"])
+            if image.is_file():
+                acl2 = image
+        loaded = load_check(acl2, files, args.timeout_seconds, log_dir, world, note,
+                            args.require_world, bare_acl2)
+        return 1 if (forward or stale) and loaded == 0 else loaded
     if not args.alone:
         if args.files:
             print("host_check: FILEs without a mode: use --alone FILE... (a diagnosis) "

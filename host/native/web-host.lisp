@@ -72,13 +72,19 @@
 (defun fnn-web-open (service family address protected)
   "A logical reader connection for the browser at FAMILY/ADDRESS: the owner's
 exposure admission decides (the id, or NIL when it refused)."
-  (let ((opened
+  (let* ((seed (fnn-owner-sasl-seed))
+         (opened
           (fnn-owner-serialized
            service nil
            (lambda ()
              (fnn-owner-advance-clock)
              (let ((id (fnn-owner-core 'fn-owner-exposure-open family address nil)))
                (when id (fnn-owner-log))
+               ;; The session's SASL context (books/nntp-auth.lisp): a fresh
+               ;; seed and no channel binding (the browser's TLS layer is not
+               ;; one an NNTP client can bind to).  (:tls-established) below
+               ;; keeps it.
+               (when (integerp id) (fnn-owner-sasl-context id seed nil))
                id))
            :reader)))
     (when (and opened (not (and (integerp opened) (>= opened 0))))

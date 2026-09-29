@@ -3,8 +3,8 @@
 ;
 ; Before this book nothing in fn-bp called fn-retain-release: an authorized
 ; receipt only made a work stop being fn-bp-work-outstandingp, and the node's
-; retention ledger compared release evidence as a bare string (review §4, row
-; 1; §6 item 6).  This book adds two decisions over the workflow state's node
+; retention ledger compared release evidence as a bare string (review section 4, row
+; 1; section 6 item 6).  This book adds two decisions over the workflow state's node
 ; image, both total and both no-ops on refusal:
 ;
 ;   fn-bprl-undertake         admit the :forward pin for a durable outstanding

@@ -534,30 +534,58 @@
 ; does not cover and the trailer its first entry chains from
 ; (books/store-log-segments.lisp: the capture ROTATED the active segment at
 ; S, so every record below S is in the segments below K).  NIL: no log
-; position (the open scans the log from segment 1).
+; position (the open scans the log from segment 1).  (K GENESIS BINDING)
+; when the file carries the history image (lane composed-owner,
+; books/history-image-snapshot.lisp): BINDING names the image's commit
+; record and binds it to this store, this codec and the prefix GENESIS
+; identifies (books/history-image-binding.lisp fn-hib-check); the open
+; checks it before it adopts the image.
 (defun fn-sct-log-positionp (log)
   (declare (xargs :guard t))
   (or (null log)
-      (and (true-listp log) (equal (len log) 2)
+      (and (true-listp log) (or (equal (len log) 2) (equal (len log) 3))
            (posp (car log))
            (fn-cbor-octet-listp (cadr log))
            (equal (len (cadr log)) 32))))
 
-(defun fn-sct-f-row (s frontier revision log)
+; The prefix's transaction bound (books/store-files.lisp fn-sf-next-lower):
+; one past the last record's transaction, 0 for the empty prefix.  A guard-t
+; twin, for the F row of any capture; equal by fn-sct-next-lower-is-next-lower.
+; The open takes NEXT from the F row (host/store-node-host.lisp
+; fn-store-sn-recover-from-checkpoint), never from a walk of the records:
+; books/store-finalize-incremental.lisp fn-sfi-extend-open-is-rii-extend-open
+; needs exactly this number (PRF-946, PRF-992).
+(defun fn-sct-next-lower (records lower)
   (declare (xargs :guard t))
-  (list *fn-sct-schema* s frontier revision log))
+  (if (consp records)
+      (fn-sct-next-lower (cdr records)
+                         (+ 1 (fix (fn-store-event-txid (car records)))))
+    lower))
+
+(defthm fn-sct-next-lower-is-next-lower
+  (equal (fn-sct-next-lower records lower)
+         (fn-sf-next-lower records lower)))
+
+(in-theory (disable fn-sct-next-lower))
+
+; The F row: the schema, S (the record count), the frontier, the revision,
+; the log position and NEXT (the prefix's transaction bound, PRF-992).
+(defun fn-sct-f-row (s frontier revision log next)
+  (declare (xargs :guard t))
+  (list *fn-sct-schema* s frontier revision log next))
 
 (defun fn-sct-f-rowp (row)
   (declare (xargs :guard t))
-  (and (true-listp row) (equal (len row) 5)
+  (and (true-listp row) (equal (len row) 6)
        (equal (car row) *fn-sct-schema*)
        (natp (cadr row))
-       (fn-sct-log-positionp (nth 4 row))))
+       (fn-sct-log-positionp (nth 4 row))
+       (natp (nth 5 row))))
 
 (defun fn-sct-tables-of-capture (c frontier revision log)
   (declare (xargs :guard t))
   (let ((e (fn-sco-records c)))
-    (list (fn-sct-f-row (len e) frontier revision log)
+    (list (fn-sct-f-row (len e) frontier revision log (nfix (fn-sct-next-lower e 0)))
           (fn-sct-payloads e)
           e
           (list (fn-sco-cpr c) (fn-sco-identity c) (fn-sco-consumer c)
@@ -569,6 +597,8 @@
 (defun fn-sct-tables-p (tables) (declare (xargs :guard t)) (fn-sco-at 1 tables))
 (defun fn-sct-tables-e (tables) (declare (xargs :guard t)) (fn-sco-at 2 tables))
 (defun fn-sct-tables-r (tables) (declare (xargs :guard t)) (fn-sco-at 3 tables))
+; The F row's NEXT (PRF-992): the checkpoint's transaction bound.
+(defun fn-sct-tables-next (tables) (declare (xargs :guard t)) (fn-sco-at 5 (fn-sct-tables-f tables)))
 
 ; The value the tables mean: the capture's 7-tuple, its event index rebuilt
 ; from E as fn-sco-capture builds it.
@@ -599,6 +629,40 @@
                                   (fn-sco-cpr-prefix fn-replay-identity-loop
                                    fn-cpe-projection-replay fn-th-prefix-loop
                                    fn-cei-build-aux)))))
+
+(local
+ (defthm fn-sct-next-lower-of-true-list-fix
+   (equal (fn-sf-next-lower (true-list-fix x) lower)
+          (fn-sf-next-lower x lower))))
+
+; The F row's NEXT is the transaction bound of the records the tables carry
+; (PRF-992): of the capture's records, and of the records of the capture the
+; tables mean at the load (fn-sct-capture-of-tables true-list-fixes E).  The
+; row holds a natural (nfix: in the logic the bound of arbitrary records may
+; be negative; of every observed history it is a natural, and the nfix is
+; the identity there).  The open reads it from the F row and hands it to
+; fn-sfi-extend-open, whose keystone asks for (fn-sf-next-lower (fn-sco-records c) 0).
+(defthm fn-sct-next-of-tables-of-capture
+  (equal (fn-sct-tables-next (fn-sct-tables-of-capture c frontier revision log))
+         (nfix (fn-sf-next-lower (fn-sco-records c) 0)))
+  :hints (("Goal" :in-theory (e/d (fn-sct-tables-next fn-sct-tables-f
+                                   fn-sct-tables-of-capture fn-sct-f-row fn-sco-at)
+                                  (fn-sct-payloads fn-sco-records fn-sco-cpr fn-sco-identity
+                                   fn-sco-consumer fn-sco-topic)))))
+
+(defthm fn-sct-next-of-tables-is-bound-of-loaded-records
+  (equal (fn-sct-tables-next (fn-sct-tables-of-capture c frontier revision log))
+         (nfix (fn-sf-next-lower
+                (fn-sco-records (fn-sct-capture-of-tables
+                                 (fn-sct-tables-of-capture c frontier revision log)))
+                0)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-sct-capture-of-tables fn-sct-tables-e
+                                   fn-sct-tables-of-capture fn-sct-tables-f fn-sct-f-row
+                                   fn-sco-make fn-sco-records fn-sco-at)
+                                  (fn-sct-payloads fn-sco-cpr fn-sco-identity
+                                   fn-sco-consumer fn-sco-topic fn-cei-build-aux
+                                   fn-sct-next-of-tables-of-capture)))))
 
 ; -----------------------------------------------------------------------------
 ; The encoder's table and the decoder's agree: the capture's event index
@@ -698,7 +762,8 @@
 (local
  (defthm fn-sct-tables-of-capture-shape
    (let ((tables (fn-sct-tables-of-capture (fn-sco-capture configs records) frontier revision log)))
-     (and (equal (nth 0 tables) (fn-sct-f-row (len records) frontier revision log))
+     (and (equal (nth 0 tables) (fn-sct-f-row (len records) frontier revision log
+                                              (nfix (fn-sct-next-lower (true-list-fix records) 0))))
           (equal (nth 1 tables) (fn-sct-payloads (true-list-fix records)))
           (equal (nth 2 tables) (true-list-fix records))
           (equal (nth 3 tables)
@@ -751,7 +816,9 @@
                            (fn-sco-capture fn-sco-event-index fn-sco-records
                             fn-cei-build fn-cei-build-aux fn-sct-payloads fn-sco-cpr
                             fn-sco-identity fn-sco-consumer fn-sco-topic
-                            fn-sct-agreep-of-build)))))
+                            fn-sct-agreep-of-build
+                            ; NEXT stays an opaque natural here (PRF-992)
+                            fn-sct-next-lower-is-next-lower nfix)))))
 
 (in-theory (disable fn-sct-tables-of-capture fn-sct-capture-of-tables
                     fn-sct-table-programs fn-sct-decode-programs))

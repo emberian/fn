@@ -26,6 +26,7 @@
 (in-package "ACL2")
 (include-book "store-intern")
 (include-book "records-concrete")
+(local (in-theory (enable fn-rcon-event-twin-rules)))  ; Q3f: the concrete twins' equalities
 
 ; -----------------------------------------------------------------------------
 ; 1. The decode of a list of record octets (the host's fn-store-decode-records,

@@ -23,12 +23,14 @@
     "# `fn principal set-password`.  Each entry is the verifier of")
    (list 10)
    (fn-record-string-octets
-    "# books/auth-secret.lisp: a 16-octet salt and the tagged SHA-256")
+    "# books/auth-secret.lisp: a 16-octet salt, the tagged digest of")
    (list 10)
    (fn-record-string-octets
-    "# of salt || secret.  The secret itself is not stored.  This v1") (list 10)
+    "# salt || secret, and SCRAM-SHA-256's StoredKey and ServerKey.") (list 10)
    (fn-record-string-octets
-    "# verifier is not a tunable-cost or memory-hard password KDF.") (list 10)
+    "# The secret itself is not stored.  The fast digest is not a") (list 10)
+   (fn-record-string-octets
+    "# tunable-cost or memory-hard password KDF.") (list 10)
    (fn-record-string-octets
     "# AUTHINFO still carries the secret over an unprotected") (list 10)
    (fn-record-string-octets
@@ -377,6 +379,14 @@
       (fn-record-string-octets "digest")
       (fn-id-hex-octets (fn-authsec-octets
                          (fn-authsec-ver-digest verifier))))
+     (fn-native-auth-admin-field
+      (fn-record-string-octets "scram_stored_key")
+      (fn-id-hex-octets (fn-authsec-octets
+                         (fn-authsec-ver-stored-key verifier))))
+     (fn-native-auth-admin-field
+      (fn-record-string-octets "scram_server_key")
+      (fn-id-hex-octets (fn-authsec-octets
+                         (fn-authsec-ver-server-key verifier))))
      (fn-native-auth-admin-signing-field name bindings)
      (fn-record-string-octets
       (if (fn-auth-cred-postingp credential)

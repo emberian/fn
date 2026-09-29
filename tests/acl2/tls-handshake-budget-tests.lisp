@@ -1,0 +1,126 @@
+; Witnesses and teeth for books/tls-handshake-budget.lisp (lane
+; tls-handshake-budget, 2026-09-29; PRF-986).  The states are REACHED from
+; fn-hsb-initial through the calls host/owner-host.lisp makes
+; (fn-owner-handshake-admit -> fn-hsb-admit, fn-owner-handshake-done ->
+; fn-hsb-done, fn-owner-handshake-leave -> fn-hsb-leave); corrupted states
+; are labelled.
+(in-package "ACL2")
+(include-book "../../books/tls-handshake-budget")
+(include-book "must-fail-checked")
+
+; N = 3 per minute, L = 2 in flight, D = 5,000 ms.
+(defconst *hsbt-hl* (fn-hsb-limits 3 2 5000))
+(defconst *hsbt-a* '(:inet 192 0 2 1))
+(defconst *hsbt-b* '(:inet 198 51 100 7))
+(defconst *hsbt-v6* '(:inet6 32 1 13 184 0 0 0 1 0 0 0 0 0 0 0 9))
+
+(defun hsbt-admit (s addr now q) (fn-hsb-admit s *hsbt-hl* nil addr now q))
+(defun hsbt-s (r) (fn-hsb-state r))
+
+; --- A reached run.  At 1,000 ms source A starts two handshakes (ids 1, 2);
+; a third waits (two in flight); 1 ends; the waiting socket still waits (two
+; started this second); at 2,000 ms it is admitted (id 3, A's third token);
+; at 2,500 ms a fourth from A is refused by name (its bucket is empty), and
+; after 2 ends, source B is admitted (id 4).
+(defconst *hsbt-r1* (hsbt-admit (fn-hsb-initial) *hsbt-a* 1000 nil))
+(assert-event (and (equal (fn-hsb-verdict *hsbt-r1*) :admit) (equal (fn-hsb-detail *hsbt-r1*) 1)))
+(defconst *hsbt-r2* (hsbt-admit (hsbt-s *hsbt-r1*) *hsbt-a* 1000 nil))
+(assert-event (and (equal (fn-hsb-verdict *hsbt-r2*) :admit) (equal (fn-hsb-detail *hsbt-r2*) 2)))
+(defconst *hsbt-r3* (hsbt-admit (hsbt-s *hsbt-r2*) *hsbt-a* 1000 nil))
+(assert-event (equal (fn-hsb-verdict *hsbt-r3*) :wait))
+(assert-event (equal (fn-hsb-waiting (hsbt-s *hsbt-r3*)) 1))
+(defconst *hsbt-s4* (fn-hsb-done (hsbt-s *hsbt-r3*) 1))
+(defconst *hsbt-r5* (hsbt-admit *hsbt-s4* *hsbt-a* 1000 t))
+(assert-event (equal (fn-hsb-verdict *hsbt-r5*) :wait))
+(defconst *hsbt-r6* (hsbt-admit (hsbt-s *hsbt-r5*) *hsbt-a* 2000 t))
+(assert-event (and (equal (fn-hsb-verdict *hsbt-r6*) :admit) (equal (fn-hsb-detail *hsbt-r6*) 3)
+                   (equal (fn-hsb-waiting (hsbt-s *hsbt-r6*)) 0)))
+(defconst *hsbt-r7* (hsbt-admit (hsbt-s *hsbt-r6*) *hsbt-a* 2500 nil))
+(assert-event (and (equal (fn-hsb-verdict *hsbt-r7*) :refuse)
+                   (equal (fn-hsb-detail *hsbt-r7*) :handshake-budget)))
+(assert-event (equal (fn-hsb-refusal-line :handshake-budget *hsbt-a*)
+                     "tls refused reason=handshake-budget source=192.0.2.1"))
+(defconst *hsbt-r8* (hsbt-admit (fn-hsb-done (hsbt-s *hsbt-r7*) 2) *hsbt-b* 2500 nil))
+(assert-event (and (equal (fn-hsb-verdict *hsbt-r8*) :admit) (equal (fn-hsb-detail *hsbt-r8*) 4)))
+; A trusted source is exempt from the per-source budget (only).
+(assert-event (equal (fn-hsb-verdict (fn-hsb-admit (fn-hsb-done (hsbt-s *hsbt-r7*) 2)
+                                                   *hsbt-hl* t *hsbt-a* 2500 nil))
+                     :admit))
+; An IPv6 source is its /64.
+(assert-event (equal (fn-hsb-source-key *hsbt-v6*) '(:inet6 32 1 13 184 0 0 0 1)))
+(assert-event (equal (fn-hsb-refusal-line :busy *hsbt-v6*)
+                     "tls refused reason=busy source=2001:0db8:0000:0001::/64"))
+; Too many waiting: with L = 1 the queue holds 32; the 33rd is refused busy.
+(defun hsbt-fill (s n)
+  (if (zp n) s
+    (hsbt-fill (fn-hsb-state (fn-hsb-admit s (fn-hsb-limits 3 1 5000) t *hsbt-b* 1000 nil))
+               (1- n))))
+(defconst *hsbt-full* (hsbt-fill (fn-hsb-initial) 33))
+(assert-event (and (equal (len (fn-hsb-flight *hsbt-full*)) 1)
+                   (equal (fn-hsb-waiting *hsbt-full*) 32)))
+(assert-event (equal (fn-hsb-admit *hsbt-full* (fn-hsb-limits 3 1 5000) t *hsbt-b* 1000 nil)
+                     (list :refuse *hsbt-full* :busy)))
+
+; --- KEYSTONE fn-hsb-steps-keep-the-bound: a reached positive witness (the
+; antecedent and every conjunct of the conclusion).
+(defconst *hsbt-s* (hsbt-s *hsbt-r6*))
+(assert-event (fn-hsb-okp *hsbt-s* *hsbt-hl*))
+(assert-event (and (fn-hsb-okp (fn-hsb-state (hsbt-admit *hsbt-s* *hsbt-b* 2000 nil)) *hsbt-hl*)
+                   (fn-hsb-okp (fn-hsb-done *hsbt-s* 2) *hsbt-hl*)
+                   (fn-hsb-okp (fn-hsb-leave *hsbt-s*) *hsbt-hl*)))
+; Hypothesis removal (CORRUPTED STATE, not reachable): three in flight under
+; L = 2 -- the omitted (fn-hsb-okp s hl) fails, and so does the conclusion.
+(defconst *hsbt-bad* (fn-hsb-make 9 1 0 '((6 . a) (7 . b) (8 . c)) 0 nil))
+(assert-event (not (fn-hsb-okp *hsbt-bad* *hsbt-hl*)))
+(assert-event (not (fn-hsb-okp (fn-hsb-state (hsbt-admit *hsbt-bad* *hsbt-b* 1000 nil)) *hsbt-hl*)))
+
+; --- KEYSTONE fn-hsb-admits-per-tick-are-bounded: three sources offer a
+; handshake each in tick 1 and a slot is freed between: two are admitted in
+; the tick, exactly L.
+(defconst *hsbt-events*
+  (list (list :admit *hsbt-hl* nil *hsbt-a* 1000 nil)
+        (list :admit *hsbt-hl* nil *hsbt-b* 1100 nil)
+        (list :done 1)
+        (list :admit *hsbt-hl* nil *hsbt-v6* 1200 nil)))
+(assert-event (fn-hsb-events-under 2 *hsbt-events*))
+(assert-event (equal (fn-hsb-admits-in-tick 1 (fn-hsb-initial) *hsbt-events*) 2))
+; Hypothesis removal: under a claimed LMAX of 1 the events (decided at L = 2)
+; are not under it, and the count 2 exceeds it.
+(assert-event (not (fn-hsb-events-under 1 *hsbt-events*)))
+(assert-event (< 1 (fn-hsb-admits-in-tick 1 (fn-hsb-initial) *hsbt-events*)))
+
+; --- KEYSTONE fn-hsb-source-admits-are-bounded: A offers four handshakes
+; within [0, 1000] at N = 3 (one slot freed after each): three are admitted,
+; 3 x 60,000 <= 3 x 60,000 + 3 x 1,000.
+(defconst *hsbt-flood*
+  (list (list :admit *hsbt-hl* nil *hsbt-a* 0 nil) (list :done 1)
+        (list :admit *hsbt-hl* nil *hsbt-a* 0 nil) (list :done 2)
+        (list :admit *hsbt-hl* nil *hsbt-a* 1000 nil) (list :done 3)
+        (list :admit *hsbt-hl* nil *hsbt-a* 1000 nil)))
+(assert-event (and (fn-hsb-events-timed *hsbt-flood* 0 1000 3) (<= 0 1000) (natp 3)))
+(assert-event (equal (fn-hsb-source-admits (fn-hsb-source-key *hsbt-a*) (fn-hsb-initial) *hsbt-flood*) 3))
+(assert-event (<= (* 60000 3) (+ (* 3 60000) (* 3 (- 1000 0)))))
+; Hypothesis removal, each retained hypothesis holding and the omitted one
+; failing, with the conclusion failing:
+; (a) the times: the same flood spread to 180,000 ms is not within [0, 1000]
+;     (the rate and T0 <= T1 hold), and 4 admissions exceed 3 x 60,000 + 3,000.
+(defconst *hsbt-slow*
+  (list (list :admit *hsbt-hl* nil *hsbt-a* 0 nil) (list :done 1)
+        (list :admit *hsbt-hl* nil *hsbt-a* 0 nil) (list :done 2)
+        (list :admit *hsbt-hl* nil *hsbt-a* 1000 nil) (list :done 3)
+        (list :admit *hsbt-hl* nil *hsbt-a* 180000 nil)))
+(assert-event (and (not (fn-hsb-events-timed *hsbt-slow* 0 1000 3))
+                   (fn-hsb-events-timed *hsbt-slow* 0 180000 3)))
+(assert-event (< (+ (* 3 60000) (* 3 1000))
+                 (* 60000 (fn-hsb-source-admits (fn-hsb-source-key *hsbt-a*) (fn-hsb-initial) *hsbt-slow*))))
+; (b) the rate: decided at N = 3, claimed at N = 1: not timed at 1, and
+;     3 admissions exceed 1 x 60,000 + 1 x 1,000.
+(assert-event (not (fn-hsb-events-timed *hsbt-flood* 0 1000 1)))
+(assert-event (< (+ 60000 1000)
+                 (* 60000 (fn-hsb-source-admits (fn-hsb-source-key *hsbt-a*) (fn-hsb-initial) *hsbt-flood*))))
+; (c) T0 <= T1: no events, T0 = 100,000 > T1 = 0: the bound is negative.
+(assert-event (and (fn-hsb-events-timed nil 100000 0 3) (not (<= 100000 0))))
+(assert-event (< (+ (* 3 60000) (* 3 (- 0 100000))) 0))
+; (d) (natp n): no events, N = -1: timed holds, the bound is negative.
+(assert-event (and (fn-hsb-events-timed nil 0 1000 -1) (not (natp -1))))
+(assert-event (< (+ (* -1 60000) (* -1 (- 1000 0))) 0))

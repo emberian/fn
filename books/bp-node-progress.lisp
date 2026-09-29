@@ -13,7 +13,7 @@
 
 (defconst *fn-bpnp-max-routes* 64)
 ; This deployed profile keeps one received-FNBS control record above exact
-; cleanup debt.  The policy slot in spec §2.1 is not yet a host input.
+; cleanup debt.  The policy slot in spec section 2.1 is not yet a host input.
 (defconst *fn-bpnp-control-margin* 1)
 
 (defun fn-bpnp-single-peer-routes (peer)

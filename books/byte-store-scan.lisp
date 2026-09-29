@@ -467,52 +467,12 @@
   (implies (fn-stxa-p x) (consp x))
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (enable fn-stxa-p fn-stxa-shapep))))
-(defthm fn-bs-stxa-is-no-other-wire-event
-  (implies (fn-stxa-p x)
-           (and (not (fn-record-p x)) (not (fn-store-retention-event-p x))
-                (not (fn-stxe-p x)) (not (fn-stxk-p x))
-                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
-  :hints (("Goal" :in-theory (enable fn-record-p fn-record-shapep fn-store-retention-event-p
-                                     fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                                     fn-stxa-p fn-stxa-shapep fn-cpe-eventp
-                                     fn-th-topic-eventp fn-th-local-admin-eventp))))
-(defthm fn-bs-record-is-no-other-wire-event
-  (implies (fn-record-p x)
-           (and (not (fn-store-retention-event-p x))
-                (not (fn-stxe-p x)) (not (fn-stxk-p x))
-                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
-  :hints (("Goal" :in-theory (enable fn-record-p fn-record-shapep fn-store-retention-event-p
-                                     fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                                     fn-cpe-eventp
-                                     fn-th-topic-eventp fn-th-local-admin-eventp))))
-(defthm fn-bs-hstxa-is-no-wire-event
-  (implies (fn-hstxa-p x)
-           (and (not (fn-record-p x)) (not (fn-store-retention-event-p x))
-                (not (fn-stxe-p x)) (not (fn-stxk-p x)) (not (fn-stxa-p x))
-                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
-  :hints (("Goal" :use ((:instance fn-hstxa-p-forward-shape))
-           :in-theory (e/d (fn-record-p fn-record-shapep fn-store-retention-event-p
-                            fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                            fn-stxa-p fn-stxa-shapep fn-cpe-eventp
-                            fn-th-topic-eventp fn-th-local-admin-eventp)
-                           (fn-hstxa-p)))))
-(defthm fn-bs-held-is-no-wire-event
-  (implies (fn-held-p x)
-           (and (not (fn-record-p x)) (not (fn-store-retention-event-p x))
-                (not (fn-stxe-p x)) (not (fn-stxk-p x)) (not (fn-stxa-p x))
-                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
-  :hints (("Goal" :use ((:instance fn-held-p-forward-shape)
-                        (:instance fn-held-p-forward-natural-head))
-           :in-theory (e/d (fn-record-p fn-record-shapep fn-store-retention-event-p
-                            fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                            fn-stxa-p fn-stxa-shapep fn-cpe-eventp fn-held-shapep
-                            fn-th-topic-eventp fn-th-local-admin-eventp)
-                           (fn-held-p)))))
-(defthm fn-bs-hstxa-is-not-held
-  (implies (fn-hstxa-p x) (not (fn-held-p x)))
-  :hints (("Goal" :use ((:instance fn-hstxa-p-forward-shape)
-                        (:instance fn-held-p-forward-natural-head))
-           :in-theory (disable fn-hstxa-p fn-held-p))))
+; (PKT-745) the disjointness facts are books/store-events.lisp's, one copy.
+; This book exported four of them enabled and withdrew the fifth at its end
+; (rule-hygiene), so the fifth is enabled locally only.
+(in-theory (enable fn-hstxa-is-no-wire-event fn-held-is-no-wire-event
+                   fn-hstxa-is-not-held fn-record-is-no-other-wire-event))
+(local (in-theory (enable fn-stxa-is-no-other-wire-event)))
 (defthm fn-bs-held-wire-sequence
   (equal (fn-record-sequence (fn-held-wire h b)) (fn-record-sequence h))
   :hints (("Goal" :in-theory (enable fn-held-wire))))
@@ -3133,5 +3093,4 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-bs-natural-head-is-no-other-wire-event)
-                    (:rewrite fn-bs-stxa-is-no-other-wire-event)))
+(in-theory (disable (:rewrite fn-bs-natural-head-is-no-other-wire-event)))

@@ -480,13 +480,19 @@
                 nil)))
     (cond ((not (equal version 4))
            (if (equal (fn-tcl-session-role s) :passive)
-               ; section 4.3: send own header, then Version mismatch
+               ; section 4.3: send own header and IMMEDIATELY terminate with
+               ; Version mismatch.  No TCPCLv4 session exists, so what the
+               ; peer sends after its header is not v4 messages: the session
+               ; closes here rather than waiting for a SESS_TERM reply, and
+               ; the rest of the peer's header is never parsed (no
+               ; MSG_REJECT, section 5.1.2 presumes a v4 session; PKT-650).
                (fn-tcl-make-result
-                (fn-tcl-make-session :passive :ending (fn-tcl-session-local s) tls nil nil
+                (fn-tcl-make-session :passive :closed (fn-tcl-session-local s) tls nil nil
                                      nil nil (fn-tcl-session-next-xfer-id s)
                                      (fn-tcl-session-last-rx s) now :sent)
                 (append own (list (fn-tcl-send-event
-                                   (fn-tcl-make-sess-term 0 *fn-tcl-term-version-mismatch*))))
+                                   (fn-tcl-make-sess-term 0 *fn-tcl-term-version-mismatch*))
+                                  (list :close)))
                 nil)
              ; the active entity closes (section 4.3)
              (fn-tcl-make-result
