@@ -73,7 +73,13 @@
          (fn-bpnf-cl-ingressp (fn-bpn-nth 3 event))
          (fn-clock-observationp (fn-bpn-nth 4 event))))
    ((equal (fn-cbor-ag-car event) :persist-result)
-    (and (true-listp event) (equal (len event) 4)
+    ;; The six-element form carries the host's reassembly job and the
+    ;; profile's bundle octets (books/bp-node-fragment-step, Q4a).
+    (and (true-listp event)
+         (or (equal (len event) 4)
+             (and (equal (len event) 6)
+                  (fn-bpn-nth 4 event)
+                  (natp (fn-bpn-nth 5 event))))
          (fn-frame-natp (fn-bpn-nth 1 event))
          (fn-frame-natp (fn-bpn-nth 2 event))
          (if (member-equal (fn-bpn-nth 3 event)
@@ -95,7 +101,13 @@
          (fn-cbor-octet-listp (fn-bpn-nth 5 event))
          (<= (len (fn-bpn-nth 5 event)) 256)))
    ((equal (fn-cbor-ag-car event) :family)
-    (and (true-listp event) (equal (len event) 3)
+    ;; The five-element form carries the host's reassembly job and the
+    ;; profile's bundle octets (books/bp-node-fragment-step, Q4a).
+    (and (true-listp event)
+         (or (equal (len event) 3)
+             (and (equal (len event) 5)
+                  (fn-bpn-nth 3 event)
+                  (natp (fn-bpn-nth 4 event))))
          (fn-frame-natp (fn-bpn-nth 1 event))
          (fn-clock-observationp (fn-bpn-nth 2 event)) t))
    ((equal (fn-cbor-ag-car event) :expire-held)

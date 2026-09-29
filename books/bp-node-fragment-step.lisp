@@ -2,6 +2,7 @@
 ; replacement. All ordinary events delegate to fn-bpnf-step on the same state.
 (in-package "ACL2")
 (include-book "bp-fnbs-family-replay")
+(include-book "bp-node-fragment-job")
 
 (set-verify-guards-eagerness 0)
 
@@ -90,6 +91,166 @@
                                 (fn-bpn-nth 4 issued) :uncertain))
          (list (list :family-answer :uncertain))))))))
 
+;; ---------------------------------------------------------------------------
+;; Q4a increment B: the two steps above over the host-carried reassembly job
+;; (books/bp-node-fragment-job).  fn-bpfj-plan-at / fn-bpfj-apply-at read the
+;; whole image out of a finished job and refuse an image past LIMIT (the
+;; profile's bundle octets) by name.  The twins equal the steps above whenever
+;; the job is well-formed and finished and the image is within the limit
+;; (fn-bpfj-plan-at-is-the-plan-at, fn-bpfj-apply-at-is-the-apply-at); a stale
+;; or unfinished job plans as (:stale :job) / (:pending :job), which is no
+;; effect and no fault: the host starts the job again.  Both stay enabled so
+;; every proof over fn-bpnf-fragment-step sees the same shapes as before.
+
+(defun fn-bpfj-propose-step (st anchor-arrival observation job limit)
+  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+                  :verify-guards nil))
+  (if (or (fn-bpnf-issued st)
+          (fn-bpnf-waits st)
+          (not (fn-frame-natp (fn-bpnf-epoch st)))
+          (not (fn-frame-natp (fn-bpnf-next-op st)))
+          (>= (fn-bpnf-next-op st) *fn-frame-max-nat*)
+          (not (fn-frame-natp (fn-bpnf-next-arrival st)))
+          (not (equal (fn-bpnf-arrival-count
+                       anchor-arrival (fn-bpnf-held-list st)) 1)))
+      (fn-bpnf-answer st nil)
+    (let* ((anchor (fn-bpnf-find-arrival
+                    anchor-arrival (fn-bpnf-held-list st)))
+           (plan (fn-bpfj-plan-at st anchor observation job limit))
+           (record (fn-bpnf-family-record-at
+                    (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                    anchor-arrival (fn-bpnf-next-arrival st)
+                    (fn-bpn-nth 2 plan) observation)))
+      (if (not (and (equal (car plan) :ready)
+                    (fn-bpnf-family-record-atp record)
+                    (not (equal (fn-bpnf-family-v1-frame record) :bad))
+                    (equal (car (fn-bpfj-apply-at
+                                 st record (fn-bpnf-next-arrival st) job limit))
+                           :ready)))
+          (fn-bpnf-answer st nil)
+        (fn-bpnf-answer
+         (fn-bpnf-state-with-arrival
+          (fn-bpnf-base st) (fn-bpnf-held-list st)
+          (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
+          (fn-bpnf-correlation st)
+          (fn-bpnf-operation (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                             :family record :pending)
+          (fn-bpnf-waits st) (fn-bpnf-epoch st)
+          (1+ (fn-bpnf-next-op st))
+          (1+ (fn-bpnf-next-arrival st)))
+         (list (list :persist-family (fn-bpnf-epoch st)
+                     (fn-bpnf-next-op st) record)))))))
+
+(defun fn-bpfj-persist-step (st epoch op result job limit)
+  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+                  :verify-guards nil))
+  (let ((issued (fn-bpnf-issued st)))
+    (if (not (and (fn-bpnf-family-issuedp st)
+                  (equal (fn-bpn-nth 5 issued) :pending)
+                  (fn-bpnf-operation-matchp issued epoch op)))
+        (fn-bpnf-answer st nil)
+      (cond
+       ((equal result :durable)
+        (let* ((record (fn-bpn-nth 4 issued))
+               (arrival (fn-bpn-nth 4 record))
+               (applied
+                (if (equal (fn-bpnf-next-arrival st) (1+ (fix arrival)))
+                    (fn-bpfj-apply-at st record arrival job limit)
+                  (list :fault :family-frontier))))
+          (if (not (equal (fn-cbor-ag-car applied) :ready))
+              (fn-bpnf-answer
+               (fn-bpnf-with-issued
+                st (fn-bpnf-operation epoch op :family record :uncertain))
+               (list (list :family-answer :uncertain)))
+            (fn-bpnf-answer
+             (fn-bpnf-state-with-arrival
+              (fn-bpnf-base st) (fn-bpn-nth 1 applied)
+              (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
+              (fn-bpnf-correlation st) nil (fn-bpnf-waits st)
+              (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+              (fn-bpnf-next-arrival st))
+             (list (list :family-ready
+                         (fn-bpnf-held-key
+                          (fn-bpnf-held-principal (fn-bpn-nth 2 applied))
+                          (fn-bpnf-held-id (fn-bpn-nth 2 applied)))))))))
+       ((equal result :refused)
+        (fn-bpnf-answer (fn-bpnf-with-issued st nil)
+                        (list (list :family-answer :refused))))
+       (t
+        (fn-bpnf-answer
+         (fn-bpnf-with-issued
+          st (fn-bpnf-operation epoch op :family
+                                (fn-bpn-nth 4 issued) :uncertain))
+         (list (list :family-answer :uncertain))))))))
+
+;; The record's anchor is the anchor the proposal was made for.
+(defthm fn-bpfj-record-anchor-of-family-record-at
+  (equal (fn-bpfj-record-anchor
+          st (fn-bpnf-family-record-at epoch op anchor-arrival
+                                       whole-arrival wire observation))
+         (fn-bpnf-find-arrival anchor-arrival (fn-bpnf-held-list st)))
+  :hints (("Goal" :in-theory (enable fn-bpfj-record-anchor
+                                     fn-bpnf-family-record-at fn-bpn-nth))))
+
+;; KEYSTONE (Q4a increment B).  Within the limit, a finished well-formed job
+;; proposes exactly what the whole-family step proposes.
+(defthm fn-bpfj-propose-step-is-the-propose-step
+  (implies (and (fn-bpfj-wf st (fn-bpnf-find-arrival
+                                anchor-arrival (fn-bpnf-held-list st))
+                            job)
+                (fn-bpfj-finishedp job)
+                (natp limit)
+                (<= limit *fn-bpnf-max-held-image*)
+                (<= (fn-bpfj-image-octets
+                     st (fn-bpnf-find-arrival anchor-arrival (fn-bpnf-held-list st)))
+                    limit))
+           (equal (fn-bpfj-propose-step st anchor-arrival observation job limit)
+                  (fn-bpnf-family-propose-step st anchor-arrival observation)))
+  :hints (("Goal" :in-theory (e/d (fn-bpfj-propose-step
+                                   fn-bpnf-family-propose-step
+                                   fn-bpfj-plan-at-is-the-plan-at
+                                   fn-bpfj-apply-at-is-the-apply-at
+                                   fn-bpfj-record-anchor-of-family-record-at)
+                                  (fn-bpnf-family-plan-at
+                                   fn-bpnf-family-apply-at
+                                   fn-bpnf-family-record-at
+                                   fn-bpnf-family-record-atp
+                                   fn-bpnf-family-v1-frame
+                                   fn-bpnf-state-with-arrival
+                                   fn-bpnf-answer fn-bpnf-operation)))))
+
+;; KEYSTONE (Q4a increment B).  The same for the persist step.
+(defthm fn-bpfj-persist-step-is-the-persist-step
+  (implies (and (fn-bpfj-wf st (fn-bpfj-record-anchor
+                                st (fn-bpn-nth 4 (fn-bpnf-issued st)))
+                            job)
+                (fn-bpfj-finishedp job)
+                (natp limit)
+                (<= limit *fn-bpnf-max-held-image*)
+                (<= (fn-bpfj-image-octets
+                     st (fn-bpfj-record-anchor
+                         st (fn-bpn-nth 4 (fn-bpnf-issued st))))
+                    limit))
+           (equal (fn-bpfj-persist-step st epoch op result job limit)
+                  (fn-bpnf-family-persist-step st epoch op result)))
+  :hints (("Goal" :in-theory (e/d (fn-bpfj-persist-step
+                                   fn-bpnf-family-persist-step
+                                   fn-bpfj-apply-at-is-the-apply-at)
+                                  (fn-bpnf-family-apply-at
+                                   fn-bpnf-state-with-arrival
+                                   fn-bpnf-with-issued
+                                   fn-bpnf-answer fn-bpnf-operation
+                                   fn-bpnf-operation-matchp
+                                   fn-bpnf-family-issuedp)))))
+
+;; A ready job plan, like a ready family plan, binds live source rows.
+(defthm fn-bpfj-plan-at-ready-binds-live-source-rows
+  (implies (equal (car (fn-bpfj-plan-at st anchor observation job limit))
+                  :ready)
+           (fn-bpnf-family-rows-livep
+            (fn-bpnf-active-set st anchor) observation))
+  :hints (("Goal" :in-theory (enable fn-bpfj-plan-at))))
+
 (defun fn-bpnf-fragment-step (st event)
   (declare (xargs :guard
                   (and (fn-bpn-machine-statep (fn-bpnf-base st))
@@ -108,11 +269,21 @@
     (fn-bpnf-answer st nil))
    ((and (fn-bpnf-family-issuedp st)
          (equal (fn-cbor-ag-car event) :persist-result))
-    (fn-bpnf-family-persist-step
-     st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event) (fn-bpn-nth 3 event)))
+    ;; (:persist-result EPOCH OP RESULT JOB LIMIT) carries the host's job.
+    (if (fn-bpn-nth 4 event)
+        (fn-bpfj-persist-step
+         st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event) (fn-bpn-nth 3 event)
+         (fn-bpn-nth 4 event) (fn-bpn-nth 5 event))
+      (fn-bpnf-family-persist-step
+       st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event) (fn-bpn-nth 3 event))))
    ((equal (fn-cbor-ag-car event) :family)
-    (fn-bpnf-family-propose-step
-     st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)))
+    ;; (:family ANCHOR-ARRIVAL OBSERVATION JOB LIMIT) carries the host's job.
+    (if (fn-bpn-nth 3 event)
+        (fn-bpfj-propose-step
+         st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+         (fn-bpn-nth 3 event) (fn-bpn-nth 4 event))
+      (fn-bpnf-family-propose-step
+       st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event))))
    (t (fn-bpnf-step st event))))
 
 (defun fn-bpnf-family-next-aux (st held observation)
@@ -674,6 +845,47 @@
                 st (fn-bpnf-held-list st) observation nil
                 (fn-bpnf-zero-family-keys (fn-bpnf-held-list st))))))
 
+;; ---------------------------------------------------------------------------
+;; Q4a increment B: the candidate a job is started for.  fn-bpnf-family-next
+;; plans (reassembles) each family it looks at; this selector reassembles
+;; nothing: the first family not in TRIED that is active, unique at its
+;; arrival, live, and holds an offset-zero source.  Its plan is read from the
+;; finished job by fn-bpfj-propose-step; a family whose plan is not ready is
+;; added to TRIED by the host and the selector is asked again.
+
+(defun fn-bpfj-candidate (st held observation tried zero)
+  (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                              (true-listp tried) (true-listp zero))
+                  :measure (acl2-count held)
+                  :verify-guards nil))
+  (if (consp held)
+      (let ((h (car held)))
+        (if (not (fn-bpnf-fragment-candidatep h))
+            (fn-bpfj-candidate st (cdr held) observation tried zero)
+          (let ((key (fn-bpnf-fragment-family-key h)))
+            (if (or (not (member-equal key zero))
+                    (member-equal key tried))
+                (fn-bpfj-candidate st (cdr held) observation tried zero)
+              (if (and (fn-bpnf-active-fragmentp h)
+                       (equal (fn-bpnf-arrival-count
+                               (fn-bpn-nth 3 h) (fn-bpnf-held-list st)) 1)
+                       (fn-bpnf-family-rows-livep
+                        (fn-bpnf-active-set st h) observation))
+                  (list :ready (fn-bpn-nth 3 h) key)
+                (fn-bpfj-candidate st (cdr held) observation
+                                   (cons key tried) zero))))))
+    nil))
+
+(defun fn-bpfj-next-candidate (st observation tried)
+  (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                              (true-listp tried))
+                  :verify-guards nil))
+  (if (or (fn-bpnf-issued st) (fn-bpnf-waits st)
+          (not (fn-frame-natp (fn-bpnf-next-arrival st))))
+      nil
+    (fn-bpfj-candidate st (fn-bpnf-held-list st) observation tried
+                       (fn-bpnf-zero-family-keys (fn-bpnf-held-list st)))))
+
 (defthm fn-bpnf-fragment-step-delegates-ordinary-events
   (implies (and (not (fn-bpnf-family-issuedp st))
                 (not (equal (fn-cbor-ag-car event) :family)))
@@ -710,8 +922,18 @@
                   fn-bpnf-family-plan-at-ready-binds-live-source-rows
                   (anchor (fn-bpnf-find-arrival
                            (fn-bpn-nth 1 event) (fn-bpnf-held-list st)))
-                  (observation (fn-bpn-nth 2 event))))
+                  (observation (fn-bpn-nth 2 event)))
+                 ;; The job form (Q4a increment B) routes to
+                 ;; fn-bpfj-propose-step, whose plan is fn-bpfj-plan-at.
+                 (:instance
+                  fn-bpfj-plan-at-ready-binds-live-source-rows
+                  (anchor (fn-bpnf-find-arrival
+                           (fn-bpn-nth 1 event) (fn-bpnf-held-list st)))
+                  (observation (fn-bpn-nth 2 event))
+                  (job (fn-bpn-nth 3 event))
+                  (limit (fn-bpn-nth 4 event))))
            :in-theory (disable fn-bpnf-family-plan-at
+                               fn-bpfj-plan-at fn-bpfj-apply-at
                                fn-bpnf-family-apply-at
                                fn-bpnf-family-v1-frame
                                fn-bpnf-family-record-atp
