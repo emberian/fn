@@ -1086,3 +1086,55 @@
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
                                    (x (cdr (fn-oop-transit-outcome oc id kind reason word)))))
            :in-theory (disable fn-oop-transit-outcome fn-oop-transit-outcome-is-own-transit-outcome))))
+
+; ---------------------------------------------------------------------------
+; THE EXPOSURE TABLE AND THE OWNER'S CONNECTIONS (row Q3c item 3).  The host
+; keeps the exposure table (books/public-exposure.lisp) in the state global
+; fn-owner-exposure beside the owner: fn-owner-exposure-open registers the
+; connection fn-exp-open opened (fn-exp-register, only when the owner holds
+; it), fn-owner-exposure-release (after fn-owner-close, or the fault) drops
+; its entry (fn-exp-release).  The relation between the two is INCLUSION,
+; not equality: every exposure entry names an open connection, while a
+; logical transit connection (host/native/pull-service.lisp fnn-pull-local-open:
+; fn-owner-open-peer, no socket) is an owner connection with no exposure entry
+; by design ("never for a logical connection, which has no exposure record").
+; Stated over the pairs the host composes.
+
+(defun fn-ohr-exposure-entries-openp (entries conns)
+  (declare (xargs :guard t))
+  (if (consp entries)
+      (and (fn-own-find-conn (fn-exp-entry-id (car entries)) conns)
+           (fn-ohr-exposure-entries-openp (cdr entries) conns))
+    t))
+
+(defthm fn-ohr-exposure-entries-openp-of-remove
+  (implies (fn-ohr-exposure-entries-openp entries conns)
+           (fn-ohr-exposure-entries-openp (fn-exp-remove id entries) (fn-own-remove-conn id conns)))
+  :hints (("Goal" :induct (fn-exp-remove id entries)
+           :in-theory (enable fn-exp-remove fn-ohr-exposure-entries-openp
+                              fn-own-find-conn-of-remove-conn-other))))
+
+; RELEASE with CLOSE (fn-owner-exposure-release after fn-owner-close's :close step).
+(defthm fn-ohr-exposure-release-close-keeps-entries-open
+  (implies (fn-ohr-exposure-entries-openp (fn-exp-conns xs) (fn-own-conns (fn-ocfg-owner oc)))
+           (fn-ohr-exposure-entries-openp (fn-exp-conns (fn-exp-release xs id))
+                                          (fn-own-conns (fn-ocfg-owner (fn-ocfg-close oc id)))))
+  :hints (("Goal" :in-theory (e/d (fn-exp-release fn-ocfg-close fn-own-close)
+                                  (fn-exp-remove fn-own-remove-conn fn-exp-find fn-exp-drop
+                                   fn-exp-count-address fn-own-remove-subs)))))
+
+; RELEASE with HOST-FAULT (fn-owner-exposure-release after fn-owner-fault).
+(defthm fn-ohr-exposure-release-fault-keeps-entries-open
+  (implies (fn-ohr-exposure-entries-openp (fn-exp-conns xs) (fn-own-conns (fn-ocfg-owner oc)))
+           (fn-ohr-exposure-entries-openp (fn-exp-conns (fn-exp-release xs id))
+                                          (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-fault oc id))))))
+  :hints (("Goal" :in-theory (e/d (fn-exp-release fn-ocfg-fault fn-own-fault fn-own-close)
+                                  (fn-exp-remove fn-own-remove-conn fn-exp-find fn-exp-drop
+                                   fn-exp-count-address fn-own-remove-subs fn-own-fault-effects)))))
+
+(defthm fn-ohr-exposure-entries-openp-of-more-conns
+  (implies (and (fn-ohr-exposure-entries-openp entries conns)
+                (fn-own-conn-shapep conn))
+           (fn-ohr-exposure-entries-openp entries (cons conn conns)))
+  :hints (("Goal" :induct (fn-ohr-exposure-entries-openp entries conns)
+           :in-theory (enable fn-ohr-exposure-entries-openp fn-own-find-conn))))
