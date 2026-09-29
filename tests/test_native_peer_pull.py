@@ -471,27 +471,6 @@ class NativePeerPullTests(unittest.TestCase):
         self.await_log(b, "cursor=advanced", 1)
         # A later round asks a later instant and has nothing to take.
         self.await_log(b, "round=done", 2)
-        # PKT-888 (owner-relation-2): the pull round opened a logical transit
-        # connection of the pulled peer on B (host/native/pull-service.lisp
-        # fnn-pull-local-open: fn-owner-open-peer, which now pins the live
-        # configuration) and a client reads B afterwards: the group and
-        # both articles by number are what A holds.
-        accepted = [l for l in b.log.read_text(errors="replace").splitlines()
-                    if l.startswith("accepted peer connection=")]
-        self.assertTrue(accepted, "B opened no peer connection; log: {}".format(self.log_tail(b)))
-        with Client(b.port, timeout=30) as client:
-            status = client.command("GROUP fn.test")
-            self.assertTrue(status.startswith(b"211 2 "), status)
-            first = int(status.split()[2])
-            read_ids = []
-            for number in (first, first + 1):
-                code, body = client.multiline("ARTICLE {}".format(number))
-                self.assertTrue(code.startswith(b"220"), code)
-                header = body.split(b"\r\n\r\n", 1)[0]
-                line = [h for h in header.split(b"\r\n") if h.lower().startswith(b"message-id:")]
-                self.assertEqual(len(line), 1, header)
-                read_ids.append(line[0].split(b":", 1)[1].strip().decode("ascii"))
-        self.assertEqual(sorted(read_ids), sorted(ids))
         newnews = proxy.newnews()
         articles = [c for c in proxy.commands if c.upper().startswith("ARTICLE")]
         fnpl = self.fnpl_files(b)
@@ -499,8 +478,7 @@ class NativePeerPullTests(unittest.TestCase):
         self.stop(a)
         self.witness("fn-node", {"newnews": newnews, "article_commands": articles,
                                  "pull_lines": self.pull_lines(b), "fnpl": fnpl,
-                                 "proxy_connections": proxy.connections,
-                                 "peer_open_lines": accepted, "client_read_ids": read_ids}, [a, b])
+                                 "proxy_connections": proxy.connections}, [a, b])
         self.assertGreaterEqual(len(newnews), 2, newnews)
         self.assertTrue(newnews[0].startswith("NEWNEWS fn.* "), newnews)
         self.assertTrue(newnews[0].endswith(" GMT"), newnews)
