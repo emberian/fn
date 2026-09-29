@@ -190,11 +190,28 @@
 (in-theory (disable fn-bch-tail-ok-logic))
 
 ; The octets a store holds, oldest first (the abstraction).
-(defun fn-bch-blocks-octets (blocks)
+; Executes by a loop, newest block first, each block's octets consed in
+; front of the rest (no frame per block).
+(defun fn-bch-blocks-octets-onto (blocks acc)
   (declare (xargs :guard t))
   (if (consp blocks)
-      (append (fn-bch-blocks-octets (cdr blocks)) (fn-bch-unpack (car blocks)))
-    nil))
+      (fn-bch-blocks-octets-onto
+       (cdr blocks)
+       (fn-bch-rev-onto (fn-bch-unpack-rev-onto (car blocks) nil) acc))
+    acc))
+
+(defun fn-bch-blocks-octets (blocks)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp blocks)
+                  (append (fn-bch-blocks-octets (cdr blocks)) (fn-bch-unpack (car blocks)))
+                nil)
+       :exec (fn-bch-blocks-octets-onto blocks nil)))
+
+(local (defthm fn-bch-blocks-octets-onto-is
+         (equal (fn-bch-blocks-octets-onto blocks acc)
+                (append (fn-bch-blocks-octets blocks) acc))))
+
+(verify-guards fn-bch-blocks-octets)
 
 (defun fn-bch-octets (s)
   (declare (xargs :guard t))
@@ -397,12 +414,21 @@
 
 ; The lines joined, each followed by CR LF (the specification of the body
 ; the wire holds).
-(defun fn-bch-join (lines)
+; Executes by a loop: the text built reversed, then reversed once.
+(defun fn-bch-join-rev-onto (lines acc)
   (declare (xargs :guard t))
   (if (consp lines)
-      (append (fn-ag-rev-onto (fn-ag-rev-onto (car lines) nil) nil)
-              (list* 13 10 (fn-bch-join (cdr lines))))
-    nil))
+      (fn-bch-join-rev-onto (cdr lines)
+                            (list* 10 13 (fn-ag-rev-onto (car lines) acc)))
+    acc))
+
+(defun fn-bch-join (lines)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp lines)
+                  (append (fn-ag-rev-onto (fn-ag-rev-onto (car lines) nil) nil)
+                          (list* 13 10 (fn-bch-join (cdr lines))))
+                nil)
+       :exec (fn-ag-rev-onto (fn-bch-join-rev-onto lines nil) nil)))
 
 (defun fn-bch-no-lf-p (xs)
   (declare (xargs :guard t))
@@ -418,6 +444,15 @@
 
 (local (defthm fn-bch-rev-onto-is-revappend
          (equal (fn-ag-rev-onto xs acc) (revappend xs acc))))
+
+(local (defthm fn-bch-join-rev-onto-is
+         (equal (fn-bch-join-rev-onto lines acc)
+                (revappend (fn-bch-join lines) acc))))
+
+(local (defthm fn-bch-join-true-listp
+         (true-listp (fn-bch-join lines))))
+
+(verify-guards fn-bch-join)
 
 (local (defthm fn-bch-no-lf-p-true-listp
          (implies (fn-bch-no-lf-p xs) (true-listp xs))
@@ -932,6 +967,24 @@
                                fn-bch-body-okp-dot fn-bch-body-okp-of-push-list
                                fn-bch-body-okp-line fn-bch-held-lines-of-line
                                fn-bch-body-okp fn-bch-held-lines))))
+
+;  KEYSTONE (the article the terminator reads out IS what the store holds):
+; at a line start the completed lines, each followed by CR LF, are exactly
+; the store's octets -- the body the connection received, unstuffed.
+(defthm fn-bch-join-of-terminator-lines
+  (implies (and (fn-bch-body-okp b n l)
+                (equal (fn-bch-partial-len b n) 0))
+           (equal (fn-bch-join (fn-ag-rev-onto (fn-bch-lines-rev b) nil))
+                  (fn-bch-octets b)))
+  :hints (("Goal" :use ((:instance fn-bch-body-okp-facts)
+                        (:instance fn-bch-body-okp-terminator-lines)
+                        (:instance fn-bch-partial-len-plus)
+                        (:instance fn-bch-held-text-at-length)
+                        (:instance fn-bch-framedp-facts (text (fn-bch-octets b))))
+                  :in-theory (e/d (fn-bch-held-lines)
+                                  (fn-bch-body-okp-terminator-lines fn-bch-partial-len-plus
+                                   fn-bch-held-text-at-length fn-bch-framedp-facts
+                                   fn-bch-body-okp)))))
 
 (defthm fn-bch-body-okp-forward
   (implies (fn-bch-body-okp b n l)

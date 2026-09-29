@@ -261,6 +261,41 @@
                           (fn-wire-reverse-lines (fn-bch-lines-rev body)))))))
   :hints (("Goal" :in-theory (enable fn-wire-after-line fn-wire-partial-len))))
 
+;  KEYSTONE (B6, the boundary between the store and the article event): the
+; article a byte ends is the lines the store held -- its completed lines
+; (fn-wire-body-lines, the abstraction) -- and those lines, each followed by
+; CR LF, are exactly the store's octets.  The subject is fn-wire-feed-byte,
+; the byte step of the served scan (books/wire-scan.lisp fn-wire-scan, from
+; host/owner-host.lisp fn-owner-chunk-span-at).
+(local (defthm fn-wire-reverse-lines-aux-is-rev-onto-1
+         (equal (fn-wire-reverse-lines-aux lines acc)
+                (fn-ag-rev-onto lines acc))
+         :hints (("Goal" :in-theory (enable fn-wire-reverse-lines-aux)))))
+
+(defthm fn-wire-article-event-is-the-held-body
+  (implies (and (fn-wire-statep ws)
+                (consp (fn-wire-result-events (fn-wire-feed-byte ws byte)))
+                (equal (car (car (fn-wire-result-events (fn-wire-feed-byte ws byte))))
+                       :article))
+           (let ((lines (cadr (car (fn-wire-result-events (fn-wire-feed-byte ws byte))))))
+             (and (equal lines (fn-wire-body-lines ws))
+                  (equal (fn-bch-join lines)
+                         (fn-bch-octets (fn-wire-state-body-rev ws))))))
+  :hints (("Goal" :in-theory (e/d (fn-wire-feed-byte fn-wire-after-line fn-wire-close
+                                   fn-wire-take-octet fn-wire-statep fn-wire-body-lines
+                                   fn-wire-partial-len fn-wire-reverse-lines
+                                   fn-wire-article-event fn-wire-reject-event
+                                   fn-wire-command-event)
+                                  ())
+                  :use ((:instance fn-bch-body-okp-terminator-lines
+                                   (b (fn-wire-state-body-rev ws))
+                                   (n (fn-wire-state-body-size ws))
+                                   (l (fn-wire-state-line-len ws)))
+                        (:instance fn-bch-join-of-terminator-lines
+                                   (b (fn-wire-state-body-rev ws))
+                                   (n (fn-wire-state-body-size ws))
+                                   (l (fn-wire-state-line-len ws)))))))
+
 (defthm fn-wire-feed-byte-silent-step-stays-open
   (implies (and (fn-wire-statep wire-state)
                 (not (equal (fn-wire-state-mode wire-state) :closed))

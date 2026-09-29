@@ -12918,6 +12918,55 @@
           "name": "fn-ocp-no-start-next-while-a-shut-out-class-waits"
         }
       ]
+    },
+    {
+      "id": "PRF-922",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bch-unpack-of-pack"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-pack-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-digits-onto-is-digits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-unpack-is-digits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-octets-of-push-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-wf-is-of-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-body-okp-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-body-okp-whole-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bch-join-of-terminator-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bchs-push-span-is-push-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-article-event-is-the-held-body"
+        }
+      ]
     }
   ]
 }

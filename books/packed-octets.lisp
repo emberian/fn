@@ -59,11 +59,58 @@
       (+ (fn-bch-byte (car xs)) (* 256 (fn-bch-pack (cdr xs))))
     1))
 
-(defun fn-bch-unpack (n)
+(defun fn-bch-rev-onto (xs acc)
+  (declare (xargs :guard t))
+  (if (consp xs) (fn-bch-rev-onto (cdr xs) (cons (car xs) acc)) acc))
+
+; The low digit first, the top (sentinel) digit dropped.  Executes by a loop
+; (the digits reversed, then reversed back): no frame per octet.
+(defun fn-bch-unpack-rev-onto (n acc)
   (declare (xargs :guard t :measure (nfix n)))
   (if (and (natp n) (<= 256 n))
-      (cons (mod n 256) (fn-bch-unpack (floor n 256)))
-    nil))
+      (fn-bch-unpack-rev-onto (floor n 256) (cons (mod n 256) acc))
+    acc))
+
+(defun fn-bch-unpack (n)
+  (declare (xargs :guard t :measure (nfix n) :verify-guards nil))
+  (mbe :logic (if (and (natp n) (<= 256 n))
+                  (cons (mod n 256) (fn-bch-unpack (floor n 256)))
+                nil)
+       :exec (fn-bch-rev-onto (fn-bch-unpack-rev-onto n nil) nil)))
+
+(defthm fn-bch-rev-onto-of-list-is-revappend
+  (equal (fn-bch-rev-onto xs acc) (revappend xs acc)))
+
+(defthm fn-bch-unpack-rev-onto-is
+  (equal (fn-bch-unpack-rev-onto n acc)
+         (revappend (fn-bch-unpack n) acc)))
+
+(local (defthm fn-bch-revappend-append-acc
+         (equal (revappend x (append a b))
+                (append (revappend x a) b))))
+
+(local (defthm fn-bch-revappend-to-append
+         (implies (syntaxp (not (equal acc ''nil)))
+                  (equal (revappend x acc)
+                         (append (revappend x nil) acc)))
+         :hints (("Goal" :use ((:instance fn-bch-revappend-append-acc (a nil) (b acc)))
+                  :in-theory (disable fn-bch-revappend-append-acc)))))
+
+(local (defthm fn-bch-revappend-gen
+         (implies (true-listp x)
+                  (equal (revappend (revappend x acc) nil)
+                         (append (revappend acc nil) x)))
+         :hints (("Goal" :induct (revappend x acc)))))
+
+(local (defthm fn-bch-unpack-true-listp
+         (true-listp (fn-bch-unpack n))))
+
+(local (defthm fn-bch-revappend-revappend-nil
+         (implies (true-listp x)
+                  (equal (revappend (revappend x nil) nil) x))
+         :hints (("Goal" :use ((:instance fn-bch-revappend-gen (acc nil)))))))
+
+(verify-guards fn-bch-unpack)
 
 (defun fn-bch-packedp (n)
   (declare (xargs :guard t :measure (nfix n)))

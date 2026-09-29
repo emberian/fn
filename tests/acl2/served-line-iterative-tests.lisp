@@ -163,13 +163,13 @@
 ; (fn-wire-partial-len).  The octet-list line this replaced was walked per
 ; octet: an article of one 4 MiB line stopped the owner at 1 MiB of stack
 ; (native r1).
-(defconst *sli-t-block* (fn-bch-pack (make-list 512 :initial-element 76)))
-(defconst *sli-t-tail* (fn-bch-pack (make-list 256 :initial-element 76)))
-(defconst *sli-t-store*
-  (fn-bch-make 39062 256 *sli-t-tail* (make-list 39062 :initial-element *sli-t-block*)))
-(assert-event (equal (fn-bch-length *sli-t-store*) 20000000))
+(defconst *sli-t-packed-block* (fn-bch-pack (make-list 512 :initial-element 76)))
+(defconst *sli-t-packed-tail* (fn-bch-pack (make-list 256 :initial-element 76)))
+(defconst *sli-t-packed-store*
+  (fn-bch-make 39062 256 *sli-t-packed-tail* (make-list 39062 :initial-element *sli-t-packed-block*)))
+(assert-event (equal (fn-bch-length *sli-t-packed-store*) 20000000))
 (defconst *sli-t-article-state*
-  (fn-wire-make-state :article nil 20000000 *sli-t-store* nil 0 20000001 20000002))
+  (fn-wire-make-state :article nil 20000000 *sli-t-packed-store* nil 0 20000001 20000002))
 (assert-event
  (let ((r (fn-wire-after-line *sli-t-article-state* nil)))
    (and (null (fn-wire-result-events r))
@@ -179,7 +179,7 @@
 ; One octet less of budget and the same line closes the wire (over limit).
 (assert-event
  (consp (fn-wire-result-events
-         (fn-wire-after-line (fn-wire-make-state :article nil 20000000 *sli-t-store*
+         (fn-wire-after-line (fn-wire-make-state :article nil 20000000 *sli-t-packed-store*
                                                  nil 0 20000001 20000001)
                              nil))))
 

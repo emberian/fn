@@ -108,3 +108,38 @@
 (assert-event (let ((s (fn-bch-of (bcht-repeat 300 7))))
                 (equal (fn-bch-octets (bcht-span s *bcht-buffer* 0 (len *bcht-buffer*)))
                        (append (bcht-repeat 300 7) *bcht-buffer*))))
+
+; -----------------------------------------------------------------------------
+; The held body (books/body-chunks.lisp): fn-bch-body-okp-line,
+; fn-bch-body-okp-terminator-lines and the keystone
+; fn-bch-join-of-terminator-lines.
+
+(defconst *bcht-held* (fn-bch-of *bcht-octets*))
+(defconst *bcht-n* (len *bcht-octets*))
+(assert-event (and (fn-bch-body-okp *bcht-held* *bcht-n* 0)
+                   (equal (fn-bch-partial-len *bcht-held* *bcht-n*) 0)
+                   (equal (fn-ag-rev-onto (fn-bch-lines-rev *bcht-held*) nil) *bcht-lines*)
+                   (equal (fn-bch-held-lines *bcht-held* *bcht-n*) *bcht-lines*)
+                   (equal (fn-bch-join (fn-ag-rev-onto (fn-bch-lines-rev *bcht-held*) nil))
+                          (fn-bch-octets *bcht-held*))))
+; A current line in progress (three octets after a leading dot, line length
+; four): the invariant holds with the partial, and completing it appends it.
+(defconst *bcht-partial* (fn-bch-push-list *bcht-held* '(120 121 122)))
+(assert-event (and (fn-bch-body-okp *bcht-partial* *bcht-n* 4)
+                   (equal (fn-bch-partial-len *bcht-partial* *bcht-n*) 3)
+                   (equal (fn-bch-held-lines
+                           (fn-bch-push (fn-bch-push *bcht-partial* 13) 10)
+                           (+ 2 *bcht-n* 3))
+                          (append *bcht-lines* '((120 121 122))))))
+; Hypothesis removal (fn-bch-join-of-terminator-lines, a partial held): the
+; terminator's lines joined are not the octets.
+(assert-event (and (fn-bch-body-okp *bcht-partial* *bcht-n* 3)
+                   (not (equal (fn-bch-partial-len *bcht-partial* *bcht-n*) 0))
+                   (not (equal (fn-bch-join (fn-ag-rev-onto (fn-bch-lines-rev *bcht-partial*) nil))
+                               (fn-bch-octets *bcht-partial*)))))
+; Hypothesis removal (the invariant): a store holding "ab" as completed text
+; is not a held body, and its lines joined are not its octets.
+(assert-event (and (not (fn-bch-body-okp (fn-bch-of '(97 98)) 2 0))
+                   (equal (fn-bch-partial-len (fn-bch-of '(97 98)) 2) 0)
+                   (not (equal (fn-bch-join (fn-ag-rev-onto (fn-bch-lines-rev (fn-bch-of '(97 98))) nil))
+                               '(97 98)))))

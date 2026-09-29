@@ -55,7 +55,7 @@
   (equal (fn-wire-state-body-limit
           (fn-wire-result-state (fn-wire-feed-byte w byte)))
          (fn-wire-state-body-limit w))
-  :hints (("Goal" :in-theory (enable fn-wire-feed-byte))))
+  :hints (("Goal" :in-theory (enable fn-wire-feed-byte fn-wire-take-octet))))
 
 (defthm fn-tb-wire-begin-article-keeps-the-body-limit
   (equal (fn-wire-state-body-limit
@@ -149,7 +149,7 @@
   (equal (fn-wire-state-line-limit
           (fn-wire-result-state (fn-wire-feed-byte w byte)))
          (fn-wire-state-line-limit w))
-  :hints (("Goal" :in-theory (enable fn-wire-feed-byte))))
+  :hints (("Goal" :in-theory (enable fn-wire-feed-byte fn-wire-take-octet))))
 
 (defthm fn-tb-dispatch-core-line-ceiling
   (<= (fn-tb-line-ceiling (fn-served-result-conn

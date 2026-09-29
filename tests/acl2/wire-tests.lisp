@@ -444,3 +444,34 @@
          (fn-wire-render-feed-command
           '(67 72 69 67 75 32 60 105 64 110 62 13 10 120 13 10) 32 64))
         :offer-has-body))
+
+; -----------------------------------------------------------------------------
+; Teeth for fn-wire-article-event-is-the-held-body (books/wire-invariants,
+; lane chunked-body B6).  Reachable witness: two lines and a dot line held,
+; the terminator's LF emits their lines, and those lines joined with CR LF
+; are the store's octets.
+(defconst *fn-wire-before-lf*
+  (fn-wire-result-state
+   (fn-wire-feed *fn-wire-article-start* '(97 98 13 10 46 46 13 10 46 13))))
+(defconst *fn-wire-terminated* (fn-wire-feed-byte *fn-wire-before-lf* 10))
+(assert-event
+ (let ((events (fn-wire-result-events *fn-wire-terminated*)))
+   (and (fn-wire-statep *fn-wire-before-lf*)
+        (consp events)
+        (equal (car (car events)) :article)
+        (equal (cadr (car events)) (fn-wire-body-lines *fn-wire-before-lf*))
+        (equal (cadr (car events)) '((97 98) (46)))
+        (equal (fn-bch-join (cadr (car events)))
+               (fn-bch-octets (fn-wire-state-body-rev *fn-wire-before-lf*))))))
+; Hypothesis removal (CORRUPTED STATE, no open builds it): a store holding
+; "ab" with no CR LF charged as two completed octets is not a wire state;
+; the terminator's lines ("ab" is no line) joined are not its octets.
+(defconst *fn-wire-bad-store*
+  (fn-wire-make-state :article nil 1 (fn-bch-of '(97 98)) t 2 32 64))
+(assert-event
+ (let ((events (fn-wire-result-events (fn-wire-feed-byte *fn-wire-bad-store* 10))))
+   (and (not (fn-wire-statep *fn-wire-bad-store*))
+        (consp events)
+        (equal (car (car events)) :article)
+        (not (equal (fn-bch-join (cadr (car events)))
+                    (fn-bch-octets (fn-wire-state-body-rev *fn-wire-bad-store*)))))))
