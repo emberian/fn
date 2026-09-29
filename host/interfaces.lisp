@@ -3343,7 +3343,8 @@
   :class ::program)
 
 (definterface fn-native-live-status-host-inspect-group-exit
-  :class ::program)
+  :class ::program
+  :exempt ((octets "the report's own octets, read back for its exit (fn-oig-report-exit decides 0 or 1 from the report's first word)")))
 
 (definterface fn-native-live-status-host-max-frame
   :class ::program)
@@ -4062,7 +4063,8 @@
   :class :common-lisp-compliant)
 
 (definterface fn-oex-word-of-octets
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :exempt ((octets "compared whole with each reason word's octets (fn-oex-word-reads-back); other octets are no word (nil)")))
 
 (definterface fn-oex-status-no-owner-line
   :class :common-lisp-compliant)
@@ -4117,7 +4119,9 @@
 
 ; host/native/operator.lisp dispatches it (lane operability-2/-5).
 (definterface fn-omr-inspect-live-report
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :exempt ((msgid-octets "rendered into the report's line as the operator typed it (fn-native-operator-inspect-report); any list renders")
+           (word-octets "compared whole with the reason word of :found (fn-omr-inspect-foundp): any value decides absent")))
 
 ; host/native/admin.lisp dispatches it (lane operability-2/-5).
 (definterface fn-omr-inspect-status
@@ -4145,11 +4149,15 @@
 
 ; host/native/io.lisp dispatches it (lane operability-2/-5).
 (definterface fn-omr-stopped-health-report
-  :class :ideal)
+  :class :ideal
+  :kinds ((journal-octets natp))
+  :exempt ((config-octets "fn-spo-config-open decides the open verdict first and refuses a malformed config by name")))
 
 ; host/native/io.lisp dispatches it (lane operability-2/-5).
 (definterface fn-omr-stopped-report
-  :class :ideal)
+  :class :ideal
+  :kinds ((journal-octets natp))
+  :exempt ((config-octets "fn-spo-config-open decides the open verdict first and refuses a malformed config by name")))
 
 ;; books/owner-time-bars.lisp
 
