@@ -195,8 +195,14 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   within the slots; a read of one connection leaves every other connection's
   article mode unchanged (the frame, `books/owner-article-held.lisp`). Host
   subject: `fn-owner-chunk-span-at` (`host/owner-host.lisp`).
-- Evidence: THEOREM (PRF-377). MEASURED: the in-flight count under the small
-  preset, 32 admitted and not 33 (credits record).
+- Evidence: THEOREM (PRF-377) for the admission, whose host subject is
+  `fn-oas-read-span`. The two figure events, `fn-heap-article-slots-are-held`
+  and `fn-heap-article-slots-bounds`, are about `fn-heap-article-slots`,
+  which no host line reaches at the merged revision (`tools/reach_check.py`
+  reports the second as a NEW unreachable subject there): they bound the
+  model's slot count, and the running server exercises them only through
+  the figure the launcher is handed. MEASURED: the in-flight count under
+  the small preset, 32 admitted and not 33 (credits record).
 - Exceeded: `440 posting not permitted now; the articles in flight fill the
   memory, try again later` on POST, or `400` and close on a transfer
   (`fn-oas` refusal lines); the process continues; there is no exit code
@@ -471,9 +477,9 @@ under "Not bounded".
   `tools/build_native_host.sh`).
 - Evidence: THEOREM (PRF-198) for the reservation; the constant itself is
   a chosen number, and its sufficiency is what **S1**'s lint approximates.
-- Exceeded: `Control stack exhausted` is re-signalled as global and exits 4
-  (`:fault`) with `fault operator run ACL2 error in <fn>`; some deaths are
-  SBCL's "fatal (pseudo-atomic)" with no clean exit at all (serve-depth
+- Exceeded: a control stack exhaustion is re-signalled as global and exits 4
+  (`:fault`), the fault line naming the ACL2 function it happened in; some
+  deaths are SBCL's "fatal (pseudo-atomic)" with no clean exit at all (serve-depth
   record). There is no dedicated code; a stack exhaustion is a crash, and
   the model's job (**S1**) is that a served path never reaches it.
 - Not bounded: the OpenBSD guest's constants were never run under this row.
@@ -674,7 +680,11 @@ class and quotes what has been measured with its scope.
   online compaction.
 - Exceeded: as **D2**.
 - Not bounded: the transient of **D3**; expiry's own pass is offline on this
-  tree, so its work per step is the offline reclaim's.
+  tree, so its work per step is the offline reclaim's, and at the merged
+  revision `tools/hot_path_check.py` and `tools/depth_check.py` report two
+  new recursions on that path (`fn-xpy-walk`, `fn-xpy-header-block` in
+  books/expiry.lisp): a walk over the article set per reclaim, unbounded by
+  a theorem.
 
 ## When reality exceeds the model
 
