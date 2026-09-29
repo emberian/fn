@@ -17407,10 +17407,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-osr-store-trace-preserves-independent-live"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-osr-finish-preserves-live-carry"
         },
         {
