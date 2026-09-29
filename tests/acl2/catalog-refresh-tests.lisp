@@ -13,11 +13,9 @@
 ; idle (the refresh does nothing, the apply advances); a view whose raw list
 ; already holds the article (the refresh finds no change, the apply conses
 ; it again); a view whose verdicts already hold the pair (the two verdict
-; lists differ).  The `(consp a)' hypothesis: every acceptance article is a
-; cons (fn-article-listp), no reachable state falsifies it, and the theorem
-; may hold without it; it is NOT removed because the weakened theorem is not
-; proved (AGENTS.md: failed proof search is not a counterexample) and NOT
-; witnessed, and this sentence is the label.
+; lists differ); an atom article (a CORRUPTED state -- every acceptance
+; article is a cons, fn-article-listp -- where the refresh rebuilds and the
+; apply extends, and they differ).
 ;
 ; On the catalog: the mixed history of the relation tests loaded on live
 ; stobjs, then a commit (`fn-cat-view-articles-of-commit-advanced' and
@@ -166,6 +164,38 @@
                                      (fn-own-view-verdicts *crt-view-v*))))))
 (assert-event (not (equal (fn-own-view (fn-own-refresh (fn-crf-with-store *crt-o-v* *crt-s*)))
                           (fn-crf-apply-article *crt-view-v* *crt-a1* *crt-verdict* *crt-s*))))
+
+; Hypothesis removal: the article is an atom (assurance-hygiene-2), a
+; CORRUPTED state (every acceptance article is a cons, fn-article-listp).
+; The finished store with NIL consed onto its acceptance's articles and
+; (NIL . verdict) onto its verdicts, and a view whose raw list and verdicts
+; are the store's before it: idle, both list hypotheses hold, and the
+; refresh -- whose verdict-growth test fn-ctl-verdicts-grow-by-p asks
+; (consp a), so it rebuilds -- differs from the apply, which extends.
+(defconst *crt-st0* (fn-node-acceptance (fn-sn-node *crt-s*)))
+(defconst *crt-node-atom*
+  (let ((node0 (fn-sn-node *crt-s*)))
+    (fn-node-make-state
+     (fn-make-state (fn-state-groups *crt-st0*) (fn-state-nexts *crt-st0*)
+                    (cons nil (fn-state-articles *crt-st0*))
+                    (fn-state-next-txid *crt-st0*) (fn-state-pending *crt-st0*)
+                    (fn-state-fenced *crt-st0*))
+     (fn-node-retention node0) (fn-node-stage node0) (fn-node-bindings node0))))
+(defconst *crt-s-atom* (fn-sn-update-accepted *crt-s* (fn-sn-files *crt-s*) *crt-node-atom*
+                                              (fn-sn-index *crt-s*) nil *crt-verdict*))
+(defconst *crt-view-atom*
+  (crt-view-with-verdicts (crt-view-with-raw *crt-view* (fn-state-articles *crt-st0*))
+                          (fn-sn-verdicts *crt-s*)))
+(defconst *crt-o-atom* (crt-owner-with-view *crt-completing* *crt-view-atom*))
+(assert-event (and (fn-own-store-idlep *crt-s-atom*)
+                   (not (consp nil))
+                   (equal (fn-state-articles (fn-node-acceptance (fn-sn-node *crt-s-atom*)))
+                          (cons nil (fn-own-view-raw *crt-view-atom*)))
+                   (equal (fn-sn-verdicts *crt-s-atom*)
+                          (cons (cons (fn-article-msgid nil) *crt-verdict*)
+                                (fn-own-view-verdicts *crt-view-atom*)))))
+(assert-event (not (equal (fn-own-view (fn-own-refresh (fn-crf-with-store *crt-o-atom* *crt-s-atom*)))
+                          (fn-crf-apply-article *crt-view-atom* nil *crt-verdict* *crt-s-atom*))))
 
 ; The plain case (fn-crf-apply-article-plain) on the same state: the article
 ; withdraws nothing and is not withdrawn, so the trie is extended and the
