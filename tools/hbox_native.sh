@@ -415,12 +415,17 @@ cd "$T" || exit 0
 tstep() {
     name=$1; shift
     echo "== $name $(date -u +%H:%M:%SZ) load $(cut -d' ' -f1-3 /proc/loadavg)"
-    "$@" > $L/$name.log 2>&1
+    # A failed test's processes' stderr lands in $L/stderr/$name (and its
+    # digest in the module log after the failure): tools/test_budget.py.
+    FN_NATIVE_STDERR_DIR=$L/stderr/$name "$@" > $L/$name.log 2>&1
     rc=$?
     verdict=$(python3 tools/test_budget.py --verdict $L/$name.log)
     vrc=$?
     [ $rc -ne 0 ] || rc=$vrc
     echo "   $name exit $rc $(date -u +%H:%M:%SZ): $verdict ($L/$name.log)"
+    if [ -d $L/stderr/$name ]; then
+        echo "   $name: stderr of each failed test's processes in $L/stderr/$name ($(ls $L/stderr/$name | wc -l) files)"
+    fi
     echo $rc > $S/rc/$name
 }
 case $1 in

@@ -57,16 +57,42 @@ class _TimedResult(unittest.TextTestResult):
         super().__init__(*args, **kwargs)
         self.timings: list[tuple[str, float]] = []
         self._started: dict[str, float] = {}
+        self._failed: set[str] = set()
 
     def startTest(self, test):
         self._started[test.id()] = time.monotonic()
         super().startTest(test)
 
+    def addFailure(self, test, err):
+        super().addFailure(test, err)
+        self._failed.add(test.id())
+
+    def addError(self, test, err):
+        super().addError(test, err)
+        if isinstance(test, unittest.TestCase):
+            self._failed.add(test.id())
+
     def stopTest(self, test):
         started = self._started.pop(test.id(), None)
         if started is not None:
             self.timings.append((test.id(), round(time.monotonic() - started, 3)))
+        self._native_stderr(test.id())
         super().stopTest(test)
+
+    def _native_stderr(self, test_id: str) -> None:
+        """A failed native test's processes' stderr (tests/native_harness.py
+        records them), printed after the failure and kept under
+        $FN_NATIVE_STDERR_DIR; a passing test's records are dropped."""
+        harness = sys.modules.get("tests.native_harness") or sys.modules.get("native_harness")
+        if harness is None or not hasattr(harness, "failure_stderr"):
+            return
+        if test_id in self._failed:
+            text = harness.failure_stderr(test_id, os.environ.get("FN_NATIVE_STDERR_DIR"))
+            if text:
+                self.stream.write("\n== stderr of the processes " + test_id + " started\n"
+                                  + text + "\n")
+                self.stream.flush()
+        harness.forget(test_id)
 
 
 def _flatten(suite) -> list:
