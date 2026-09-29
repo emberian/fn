@@ -34,7 +34,9 @@ sub-book checksum mismatch.  Keying by the book's own content would report
 "cached" for a pair that cannot be used.  The key is therefore the SHA-256 of
 the sorted ``<path>:<sha256>`` listing of the book and its whole local include
 closure, which also keeps two same-byte books apart, since each listing names
-its own path.
+its own path.  Each digest is of the book's read forms (``form_hash``), not its
+bytes: ACL2's own book-hash is a checksum of the forms it reads, so a comment
+or layout edit leaves every certificate valid, and the key agrees.
 
 **A closure may be composed from several snapshot origins.**  An ACL2
 certificate's post-alist names every sub-book by the absolute path it was
@@ -433,10 +435,58 @@ def closure_listing(books: dict[str, str]) -> list[str]:
     return sorted(f"{book}.lisp:{digest}" for book, digest in books.items())
 
 
+# What the key hashes changed from each closure book's bytes to its read
+# forms (`form_hash`); the tag keeps the two key spaces apart.
+KEY_VERSION = "fn-cert-key-v2 forms"
+
+
+def form_hash(source: Path) -> str:
+    """SHA-256 of the book's forms as ACL2 reads them: ``ledger.canonical_text``.
+
+    ACL2 8.7 with ``ACL2_BOOK_HASH_ALISTP=NIL`` (every fn launcher) computes a
+    certificate's book-hash as ``check-sum-obj`` of the portcullis commands,
+    the expansion alist, the list of forms READ from the book and the cert
+    data (other-events.lisp `book-hash`); a comment or a blank changes no
+    read form, so ACL2 accepts the book's certificate and every dependent's
+    unchanged.  Measured 2026-09-28 (planning/evidence/cert-images-2026-09-28.md):
+    a comment edit keeps the book-hash; adding a form changes it and ACL2
+    marks the book and its includers uncertified.  So the key follows the
+    forms and a comment-only edit recertifies nothing.  A docstring is part of
+    a form and changes both.
+    """
+    stat = source.stat()
+    key = (str(source), stat.st_mtime_ns, stat.st_size)
+    remembered = _FORMS.get(key)
+    if remembered is None:
+        text = source.read_bytes().decode("latin-1")
+        try:
+            canonical = ledger.canonical_text(text)
+        except ledger.ReadError as error:
+            raise UnreadableBook(f"{source.name}: {error}") from None
+        remembered = hashlib.sha256(canonical.encode("latin-1")).hexdigest()
+        _FORMS[key] = remembered
+    return remembered
+
+
+_FORMS: dict[tuple[str, int, int], str] = {}
+
+
+def key_listing(root: Path, books: dict[str, str]) -> list[str]:
+    """``<path>.lisp:<form hash>`` per closure book: what the key hashes."""
+    base = root.resolve()
+    return sorted(f"{book}.lisp:{form_hash(base / f'{book}.lisp')}" for book in books)
+
+
 def closure_key(root: Path, name: str) -> tuple[str, list[str]]:
-    """The cache key for one book, and the listing the key hashes."""
-    listing = closure_listing(closure(root, name))
-    return hashlib.sha256("\n".join(listing).encode("utf-8")).hexdigest(), listing
+    """The cache key for one book, and the listing the key hashes.
+
+    The listing names each closure book's read forms (`form_hash`), not its
+    bytes.  Whether a certificate was produced from these very sources is a
+    separate question, answered with bytes by `publish` (`closure_drift`).
+    """
+    listing = key_listing(root, closure(root, name))
+    text = KEY_VERSION + "\n" + "\n".join(listing)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest(), listing
 
 
 def origin_token(origin: str) -> str:
@@ -1120,7 +1170,7 @@ def load_manifests(root: Path, path: Path | None = None) -> list[dict]:
             continue
         if isinstance(manifest, dict):
             manifest.setdefault("evidence", str(candidate))
-            loaded.append(manifest)
+            loaded.append(read_as_current(manifest, root))
     return loaded
 
 
@@ -1184,6 +1234,81 @@ def certified_books(manifests: list[dict],
                 certification_provenance=manifest_provenance(manifest),
                 fasl=compiled.get(book)))
     return found
+
+
+FORM_DIGESTS = "source_form_digests_sha256"
+
+
+def manifest_sources(manifest: dict, root: Path,
+                     field_name: str = "source_digests_sha256") -> dict[str, str]:
+    """The manifest's recorded source digests, read against ``root`` today.
+
+    A manifest records each closure book's bytes and, since the key moved to
+    forms, its read forms (``source_form_digests_sha256``).  A book whose
+    bytes changed while its forms did not (a comment or layout edit) is, to
+    ACL2, the book that run certified: the book-hash is a checksum of the read
+    forms, so the certificate and every includer's stay valid.  For such a
+    book this returns the *current* byte digest, so every consumer's plain
+    digest comparison (`certified_claims.certifies`, `closure_drift`,
+    green_check, current_view, proof_cost) accepts it.  Every other entry is
+    returned as recorded; a manifest without form digests is unchanged.
+    """
+    recorded = manifest.get(field_name + AS_RECORDED, manifest.get(field_name)) or {}
+    forms = manifest.get(FORM_DIGESTS)
+    if not isinstance(recorded, dict) or not isinstance(forms, dict) or not forms:
+        return recorded if isinstance(recorded, dict) else {}
+    base = root.resolve()
+    current = dict(recorded)
+    for path, digest in recorded.items():
+        form = forms.get(path)
+        if form is None or not isinstance(digest, str):
+            continue
+        try:
+            now_bytes, now_form = _current_digests(base / path)
+        except (OSError, UnreadableBook):
+            continue
+        if now_form == form:
+            current[path] = now_bytes
+    return current
+
+
+def _current_digests(source: Path) -> tuple[str, str]:
+    """(bytes, forms) digests of one source, remembered while its stat holds."""
+    stat = source.stat()
+    key = (str(source), stat.st_mtime_ns, stat.st_size)
+    remembered = _DIGESTS.get(key)
+    if remembered is None:
+        remembered = (content_hash(source), form_hash(source))
+        _DIGESTS[key] = remembered
+    return remembered
+
+
+_DIGESTS: dict[tuple[str, int, int], tuple[str, str]] = {}
+
+
+AS_RECORDED = "_as_recorded"
+READ_AS_CURRENT = ("source_digests_sha256", "source_digests_sha256_after")
+
+
+def read_as_current(manifest: dict, root: Path) -> dict:
+    """``manifest`` with its source digests read against ``root`` (in place).
+
+    Every manifest `load_manifests` returns has been through this, so a
+    comment-only edit since a run keeps that run's verdict for the book
+    everywhere a verdict is read.  A translated field keeps what the run wrote
+    under ``<field>_as_recorded``.  Idempotent.
+    """
+    if not isinstance(manifest, dict) or not manifest.get(FORM_DIGESTS):
+        return manifest
+    for name in READ_AS_CURRENT:
+        if not isinstance(manifest.get(name), dict):
+            continue
+        current = manifest_sources(manifest, root, name)
+        original = manifest.get(name + AS_RECORDED, manifest[name])
+        if current != original:
+            manifest[name + AS_RECORDED] = original
+        manifest[name] = current
+    return manifest
 
 
 def closure_drift(listing: list[str], recorded: dict[str, str]) -> list[str]:
@@ -1260,10 +1385,13 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
             continue
         try:
             key, listing = closure_key(root, name)
+            sources = closure_listing(closure(root, name))
         except UnreadableBook as error:
             report.unreadable.append(f"{name}: {error}")
             continue
-        moved = closure_drift(listing, record.closure_sources)
+        # Bytes, not forms: the manifest vouches for the exact sources it
+        # certified, and that is what an entry must be filed on.
+        moved = closure_drift(sources, record.closure_sources)
         if moved:
             # The key would describe source this certificate was not produced
             # from: a real pair filed under the wrong closure.
@@ -1302,6 +1430,7 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
     meta = {
         "book": name,
         "closure_key": key,
+        "key_version": KEY_VERSION,
         "closure": listing,
         "cert_sha256": record.cert,
         "port_sha256": content_hash(port) if port is not None else None,
@@ -1600,6 +1729,84 @@ def prune(cache: Path, keep: Iterable[str], dry_run: bool = False) -> PruneRepor
     return report
 
 
+@dataclass
+class RekeyReport:
+    cache: Path
+    books: int = 0
+    rekeyed: int = 0
+    already: int = 0
+    without_entry: int = 0
+
+    def lines(self) -> list[str]:
+        return [f"rekey: cache {self.cache}, {self.books} books; entries filed under "
+                f"their form key {self.rekeyed}, already there {self.already}, "
+                f"books with no byte-keyed entry {self.without_entry}"]
+
+
+def legacy_byte_key(root: Path, name: str) -> str:
+    """The key before `KEY_VERSION`: the closure's byte digests.  Only `rekey`."""
+    listing = closure_listing(closure(root, name))
+    return hashlib.sha256("\n".join(listing).encode("utf-8")).hexdigest()
+
+
+def rekey(root: Path, cache: Path, names: list[str] | None = None) -> RekeyReport:
+    """File every entry made for this tree's exact bytes under its form key too.
+
+    Run once per cache when the key moved to forms (2026-09-28), against a
+    checkout of the commit that moved it, so the next run does not recertify
+    what the cache already holds.  An entry is linked (hard links, the bytes
+    are immutable) only under the key of a book whose whole closure has the
+    bytes the old key named, so it describes exactly this tree's forms.
+    """
+    report = RekeyReport(cache=cache)
+    # The books under books/ and tests/acl2/ and everything they include (the
+    # host files some test books include are certified books too).
+    wanted: set[str] = set()
+    for source in book_sources(root, names):
+        if source.is_file():
+            with contextlib.suppress(UnreadableBook):
+                wanted.update(closure(root, book_name(root, source)))
+    for name in sorted(wanted):
+        report.books += 1
+        try:
+            old = cache / legacy_byte_key(root, name)
+            key, listing = closure_key(root, name)
+            sources = closure_listing(closure(root, name))
+        except UnreadableBook:
+            continue
+        if not old.is_dir():
+            report.without_entry += 1
+            continue
+        for directory in sorted(old.iterdir()):
+            meta = read_meta(directory)
+            if not meta or meta.get("closure") != sources:
+                continue
+            target = cache / key / directory.name
+            if (target / "meta.json").is_file():
+                report.already += 1
+                continue
+            staging = Path(tempfile.mkdtemp(prefix=".rekey-", dir=cache))
+            with entry_lock(directory, exclusive=False):
+                if not entry_matches_meta(directory, meta):
+                    shutil.rmtree(staging)
+                    continue
+                for path in directory.iterdir():
+                    if path.name not in ("meta.json", ".entry.lock") and path.is_file():
+                        os.link(path, staging / path.name)
+            meta.update({"closure_key": key, "closure": listing,
+                         "closure_sources": sources, "key_version": KEY_VERSION,
+                         "rekeyed_from": old.name})
+            write_text_atomic(staging / "meta.json", json.dumps(meta, indent=2, sort_keys=True) + "\n")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                os.rename(staging, target)
+                report.rekeyed += 1
+            except OSError:
+                shutil.rmtree(staging, ignore_errors=True)
+                report.already += 1
+    return report
+
+
 def mirror(cache: Path, remote: str,
            run=subprocess.run) -> subprocess.CompletedProcess:
     """rsync the cache to a farm box.  Entries are immutable, so no --delete."""
@@ -1612,7 +1819,8 @@ def mirror(cache: Path, remote: str,
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("action", choices=("publish", "install", "install-set",
-                                           "install-partial", "status", "prune"))
+                                           "install-partial", "status", "prune",
+                                           "rekey"))
     parser.add_argument("books", nargs="*", default=None,
                         help="repository-relative book names without .lisp "
                              "(default: every book under books/ and tests/acl2/)")
@@ -1702,6 +1910,8 @@ def main(argv: list[str] | None = None) -> int:
         report = prune(cache, keep, dry_run=arguments.dry_run)
         if arguments.list_all:
             report.listed = len(report.unreadable)
+    elif arguments.action == "rekey":
+        report = rekey(root, cache, names)
     else:
         report = status(root, cache)
     for line in report.lines():
