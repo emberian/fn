@@ -36,7 +36,7 @@
                     (nfix (fn-own-view-version (fn-own-view o)))))))
 
 (defthm fn-sjh-rd-orr-keeps
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
@@ -55,7 +55,7 @@
                  (:instance fn-scj-read-at-view-keeps (v (car views)) (w (fn-own-view (fn-ocfg-owner oc))))))))
 
 (defthm fn-sjh-rd-okp-of-orr
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-okp (fn-ocfg-owner (fn-own-tls-result-owner
@@ -162,7 +162,7 @@
   :hints (("Goal" :in-theory '(fn-sjh-views-okp))))
 
 (defthm fn-sjh-rd-okp-of-otm
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-okp (fn-ocfg-owner (fn-own-tls-result-owner
@@ -277,7 +277,7 @@
   :hints (("Goal" :in-theory '(fn-sjh-rd-with-allow-fields))))
 
 (defthm fn-sjh-rd-otm-okp
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-rd-result-okp (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat)
@@ -285,7 +285,7 @@
   :hints (("Goal" :in-theory '(fn-sjh-rd-result-okp fn-sjh-rd-okp-of-otm))))
 
 (defthm fn-sjh-rd-posting-off-okp
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-rd-result-okp (fn-oas-posting-off-read oc views id i end cache s fn-octets fn-arena fn-cat)
@@ -299,7 +299,7 @@
                             (o2 (fn-ocfg-owner (fn-otm-owner-with-allow oc id nil))))))))
 
 (defthm fn-sjh-rd-oas-okp
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-rd-result-okp (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat)
@@ -314,7 +314,7 @@
                                fn-sjh-rd-owner-closed-okp))))
 
 (defthm fn-sjh-rd-refused-read-okp
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-rd-result-okp (fn-mca-refused-read oc views id i end cache s fn-octets fn-arena fn-cat)
@@ -324,7 +324,7 @@
 ; The read the host calls (host/owner-host.lisp fn-owner-chunk-span-at):
 ; fn-mca-read-span's result, whichever credit branch it takes.
 (defthm fn-sjh-rd-mca-okp
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-rd-result-okp (car (fn-mca-read-span credits oc views id i end cache s slots reserve
@@ -339,7 +339,7 @@
 ; ...)); fn-sjh-okp with the same pending row, under the two named premises
 ; above.
 (defthm fn-sjh-okp-at-owner-chunk-span
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-okp (fn-ocfg-owner

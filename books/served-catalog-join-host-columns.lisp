@@ -261,7 +261,7 @@
 ; The read keystone with the column premise carried (fn-sjh-colsp gives
 ; fn-scol-okp): host/owner-host.lisp fn-owner-chunk-span-at.
 (defthm fn-sjh-okp-at-owner-chunk-span-carried
-  (implies (and (fn-sjh-colsp pending fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-sjh-colsp pending fn-arena fn-cat)
                 (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-okp (fn-ocfg-owner

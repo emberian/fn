@@ -301,7 +301,7 @@
   :hints (("Goal" :in-theory '(fn-otm-unshed-ocfg fn-sjh-rd-with-allow-fields fn-sjh-rd-with-refused-fields))))
 
 (defthm fn-sjh-vw-otm-view
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-vw-result-viewp (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat) oc))
@@ -315,7 +315,7 @@
                             (o2 (fn-ocfg-owner (fn-otm-shed-ocfg oc id))))))))
 
 (defthm fn-sjh-vw-posting-off-view
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-vw-result-viewp (fn-oas-posting-off-read oc views id i end cache s fn-octets fn-arena fn-cat) oc))
@@ -344,7 +344,7 @@
 
 
 (defthm fn-sjh-vw-oas-view
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-vw-result-viewp (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat) oc))
@@ -356,14 +356,14 @@
                                fn-sjh-vw-owner-closed-view))))
 
 (defthm fn-sjh-vw-refused-read-view
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-vw-result-viewp (fn-mca-refused-read oc views id i end cache s fn-octets fn-arena fn-cat) oc))
   :hints (("Goal" :in-theory '(fn-mca-refused-read fn-sjh-vw-posting-off-view fn-sjh-vw-close-result-view))))
 
 (defthm fn-sjh-vw-mca-view
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-vw-result-viewp (car (fn-mca-read-span credits oc views id i end cache s slots reserve
@@ -375,7 +375,7 @@
 ; KEYSTONE (the captured views across the host's served read,
 ; fn-owner-chunk-span-at): the view and the catalog stay.
 (defthm fn-sjh-viewsp-at-owner-chunk-span
-  (implies (and (fn-sjh-colsp pending fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-sjh-colsp pending fn-arena fn-cat)
                 (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
                 (fn-sjh-viewsp views (fn-ocfg-owner oc) fn-cat))
            (fn-sjh-viewsp views
@@ -771,7 +771,7 @@
            :use ((:instance fn-sjh-okp-at-owner-open-captured)))))
 
 (defthm fn-sjh-okp-at-owner-chunk-span-fully-carried
-  (implies (and (fn-sjh-colsp pending fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-sjh-colsp pending fn-arena fn-cat)
                 (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
                 (fn-sjh-viewsp views (fn-ocfg-owner oc) fn-cat))
            (fn-sjh-okp (fn-ocfg-owner
