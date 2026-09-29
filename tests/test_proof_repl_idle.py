@@ -10,6 +10,8 @@ with a private slot pool and a timeout of seconds (`--idle-seconds`).
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 import os
 import pathlib
@@ -53,6 +55,89 @@ class DefaultTests(unittest.TestCase):
         self.assertIsNone(proof_repl.reap_reason(fresh, None, 3600))
         # Never stopping (deadline 0) is honoured unless an idle threshold is given.
         self.assertIsNone(proof_repl.reap_reason(live, None, None))
+
+
+class GcTests(unittest.TestCase):
+    """Q7g: `gc` stops every session idle 30 min or more, on this machine or each box."""
+
+    def test_gc_reaps_idle_thirty_minutes_in_every_tree(self):
+        seen = []
+        with mock.patch.object(proof_repl, "reap", lambda a: seen.append(a) or 0):
+            self.assertEqual(proof_repl.main(["gc", "--dry-run"]), 0)
+        (a,) = seen
+        self.assertEqual((a.idle, a.all, a.dry_run, a.lane), (30.0, True, True, None))
+        self.assertIsNone(proof_repl.reap_reason(
+            {"state": {}, "server": True, "socket": True, "idle": 29 * 60, "deadline": 0}, None, a.idle * 60))
+        self.assertIsNotNone(proof_repl.reap_reason(
+            {"state": {}, "server": True, "socket": True, "idle": 31 * 60, "deadline": 0}, None, a.idle * 60))
+
+    def test_gc_each_box_runs_it_on_every_box_and_survives_one_unreachable(self):
+        calls = []
+        real_main = proof_repl.main
+
+        def fake_main(argv=None):
+            if argv and argv[0] == "gc" and "--host" in argv:
+                calls.append(argv)
+                if argv[argv.index("--host") + 1] == "hbox":
+                    raise SystemExit("ssh: connect to host hbox: refused")
+                return 0
+            return real_main(argv)
+        with mock.patch.object(proof_repl, "main", fake_main), \
+                contextlib.redirect_stdout(io.StringIO()):
+            rc = proof_repl.gc(argparse.Namespace(each_box=True, idle=45.0, dry_run=False, root=None))
+        self.assertEqual(rc, 1)
+        self.assertEqual(sorted(argv[argv.index("--host") + 1] for argv in calls), sorted(proof_repl.REMOTE_TREES))
+        self.assertTrue(all(argv[:3] == ["gc", "--idle", "45"] for argv in calls))
+
+
+class DiffAndKeepGoingTests(unittest.TestCase):
+    """Q7g: `diff NAME BOOK` (owner-relation's false green) and `send --keep-going`."""
+    BOOK = """(in-package "ACL2")
+(include-book "std/lists/rev" :dir :system)
+(defun f (x) x)
+(local (defthm f-id (equal (f x) x)))
+(defthmd f-id-2 (equal (f x) x) :rule-classes nil)
+(define-ish g (x) x)
+"""
+
+    def test_items_unwrap_local_and_compare_defthmd_as_defthm(self):
+        items = dict(proof_repl.diff_items(self.BOOK))
+        self.assertEqual(sorted(items), ["f", "f-id", "f-id-2", "g"])
+        self.assertTrue(items["f-id"].startswith("(defthm f-id"))
+        self.assertTrue(items["f-id-2"].startswith("(defthm f-id-2"))
+        form = proof_repl.diff_form(list(items.items()))
+        self.assertIn("(get-event 'f-id-2 (w state))", form)
+        self.assertEqual(form.count("(cons '"), 4)
+
+    def test_diff_reports_a_differing_event_and_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            book = pathlib.Path(d) / "b.lisp"
+            book.write_text(self.BOOK)
+            answer = {"output": "((F . :SAME) (F-ID . :DIFFERS) (F-ID-2 . :SAME) (G . :MACRO))\n"}
+            out = io.StringIO()
+            with mock.patch.object(proof_repl, "ask", lambda *a, **k: answer), contextlib.redirect_stdout(out):
+                rc = proof_repl.main(["diff", "s", str(book), "--host", "laptop"])
+            self.assertEqual(rc, 1)
+            self.assertIn("DIFFERS    f-id", out.getvalue())
+            self.assertIn("1 differs, 1 macro, 2 same of 4", out.getvalue())
+            answer["output"] = "((F . :SAME) (F-ID . :SAME) (F-ID-2 . :SAME) (G . :MACRO))"
+            with mock.patch.object(proof_repl, "ask", lambda *a, **k: answer), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(proof_repl.main(["diff", "s", str(book), "--host", "laptop"]), 0)
+
+    def test_send_keep_going_sends_past_a_refusal(self):
+        sent = []
+
+        def fake_ask(name, request, **kw):
+            sent.append(request["form"])
+            return {"output": "", "error": len(sent) == 1}
+        with mock.patch.object(proof_repl, "ask", fake_ask), contextlib.redirect_stdout(io.StringIO()):
+            rc = proof_repl.main(["send", "s", "(defthm a t) (defthm b t)", "--keep-going", "--host", "laptop"])
+        self.assertEqual((rc, len(sent)), (1, 2))
+        sent.clear()
+        with mock.patch.object(proof_repl, "ask", fake_ask), contextlib.redirect_stdout(io.StringIO()):
+            proof_repl.main(["send", "s", "(defthm a t) (defthm b t)", "--host", "laptop"])
+        self.assertEqual(len(sent), 1)
 
 
 class DiscoveryTests(unittest.TestCase):
