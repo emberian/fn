@@ -297,11 +297,17 @@ answer (:live), or the refusal of a store whose lock an owner holds (:held)."
       ;; Row S1: a reply that carries the owner's line (a limit decision,
       ;; books/native-control-line.lisp kind 23) prints that line, ACL2's
       ;; octets (fn-native-control-printed-line-is-the-decisions).
-      (let ((printed (and line (fnn-core 'fn-native-control-host-lined-detail
-                                         (list :status status word line))))
+      ;; A reply with no line (LINE nil: every refusal that names only its
+      ;; word, PKT-453 (a)) prints the word.  NIL is an octet list (the
+      ;; empty one), so the test is for a line with octets, never for an
+      ;; octet list: `control revoke' printed `REFUSED ' and no word
+      ;; (BF's 48-module run at 444fb9f41, test_native_control).
+      (let ((printed (and (consp line)
+                          (fnn-core 'fn-native-control-host-lined-detail
+                                    (list :status status word line))))
             (detail (fnn-operator-status-detail status word)))
         (values (fnn-core 'fn-native-control-host-status-exit-code status)
-                (cond ((fnn-octet-list-p printed)
+                (cond ((consp printed)
                        (format nil "~a ~a" status (fnn-octets-string (fnn-octets printed))))
                       ((not (eq detail status)) detail)))))))
 

@@ -790,3 +790,23 @@
                       (fn-served-conn-session
                        (fn-served-result-conn
                         (in-arena-fn-t-served-login *sr-arena* *fn-t-served-peer*))))) nil)))
+
+; KEYSTONE fn-served-feed-of-quit-connection (PRF-312).  Positive: the
+; connection the GROUP / STAT / QUIT run leaves is quit, and feeding it a
+; further GROUP answers nothing and keeps it.
+(bpr-lift fn-served-feed 2)
+(defconst *fn-t-served-quit-conn*
+  (fn-served-result-conn
+   (in-arena-fn-served-step *sr-arena* *fn-t-served-conn* *fn-t-served-command*)))
+(assert-event
+ (and (fn-served-quitp *fn-t-served-quit-conn*)
+      (equal (in-arena-fn-served-feed *sr-arena* *fn-t-served-quit-conn*
+                                      *fn-t-served-group-command*)
+             (fn-served-make-result *fn-t-served-quit-conn* nil))))
+; The hypothesis removed: the open connection is not quit, and the same
+; GROUP is answered 211.
+(assert-event
+ (and (not (fn-served-quitp *fn-t-served-conn*))
+      (not (equal (in-arena-fn-served-feed *sr-arena* *fn-t-served-conn*
+                                           *fn-t-served-group-command*)
+                  (fn-served-make-result *fn-t-served-conn* nil)))))

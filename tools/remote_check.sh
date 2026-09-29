@@ -253,7 +253,9 @@ if [ -n "$SHIP" ]; then
         [ -e "$ROOT/$path" ] || { echo "remote_check: --ship $path: not in this worktree" >&2; exit 2; }
     done
     # shellcheck disable=SC2086
-    (cd "$ROOT" && tar cf - $SHIP) | remote "cd $TREE && tar xf -" || {
+    # macOS tar must not add AppleDouble ._ companions for provenance xattrs:
+    # shipping a book then made the box's *.lisp scan decode a binary sidecar.
+    (cd "$ROOT" && COPYFILE_DISABLE=1 tar cf - $SHIP) | remote "cd $TREE && tar xf -" || {
         echo "remote_check: --ship could not copy $SHIP to $BOX" >&2; exit 3; }
     echo "remote_check: shipped$SHIP"
 fi

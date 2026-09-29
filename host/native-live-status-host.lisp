@@ -117,7 +117,15 @@
                                    ;; HST-026: SCHED is the snapshot
                                    ;; (S NOW) of books/owner-time-model.lisp:
                                    ;; the scheduler's lines, then the disk's.
-                                   (fn-otm-health-lines sched)))
+                                   (fn-otm-health-lines sched)
+                                   ;; THE SWITCH (PRF-1037): the keyed
+                                   ;; Message-ID index's line, from
+                                   ;; fn-cat-index-health under the ring's
+                                   ;; key (books/post-admission-keyed.lisp
+                                   ;; fn-pak-index-health-line).
+                                   (fn-pak-index-health-line
+                                    (fn-cat-index-health (fn-owner-mpx-key state)
+                                                         fn-cat))))
                           ;; PRF-211: `status' ends with the capacity line
                           ;; (books/public-exposure.lisp fn-exp-capacity-line);
                           ;; HST-026: then the disk line.
@@ -248,6 +256,10 @@
 (defun fn-native-health-host-run-started-line ()
   (declare (xargs :mode :program))
   (fn-nh-run-started-line))
+
+(defun fn-native-health-host-run-opened-line (ms)
+  (declare (xargs :mode :program))
+  (fn-nh-run-opened-line ms))
 
 (defun fn-native-health-host-run-stopped-line (code reason)
   (declare (xargs :mode :program))

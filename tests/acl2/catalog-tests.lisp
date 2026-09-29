@@ -199,3 +199,79 @@
  (defthm cat-r-commit-keeps-rows-without-bound
    (equal (fn-cat-at 2 (fn-cat-commit *cat-h2* *cat-a*)) (fn-cat-at 2 *cat-a*))
    :rule-classes nil))
+
+; -----------------------------------------------------------------------------
+; THE SWITCH's exports (PRF-1037, lane paged-history-6): the keyed clear, the
+; served refusal and the index health, on the live local catalog.  The
+; keystone fn-cat-msgid-saturatedp-is-the-outcome on ground rows: the fold
+; over the three rows and one more row carrying MSGID places it exactly
+; when the refusal does not fire.  A saturated ground table is out of reach
+; (a home page holds *fn-mpxt-page-slots* rows before its overflow), so the
+; refusing branch has no ground witness here; the executable's answer under
+; the table's own key and under another key (the fold, unreachable in
+; composition) agree.
+
+(assert-event
+ (and (eq (symbol-class 'fn-cat$c-clear-keyed (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-cat$c-msgid-saturatedp (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-cat$c-index-health (w state)) :common-lisp-compliant)))
+
+(defconst *cat-key*
+  (fn-mpxt-key-of-entry (fn-ns-create-entry '(99 97 116) (make-list 32 :initial-element 3))))
+(defconst *cat-other-key*
+  (fn-mpxt-key-of-entry (fn-ns-create-entry '(99 97 116) (make-list 32 :initial-element 4))))
+(defconst *cat-h3* (cat-held 3 "<d@x>" '("fn.test") 400))
+(defconst *cat-rows* (list *cat-h0* *cat-h1* *cat-h2*))
+
+; The keystone's positive witness over the opened view: the complete
+; antecedent (MSGID is the fourth row's) and the conclusion (the iff, both
+; sides evaluated).
+(assert-event
+ (and (equal "<d@x>" (fn-record-msgid *cat-h3*))
+      (iff (equal (fn-mpxt-build-unplaced *cat-key* (append *cat-rows* (list *cat-h3*)))
+                  (fn-mpxt-build-unplaced *cat-key* *cat-rows*))
+           (not (fn-cat-msgid-saturatedp *cat-key* "<d@x>" *cat-rows*)))
+      (not (fn-cat-msgid-saturatedp *cat-key* "<d@x>" *cat-rows*))
+      (equal (fn-mpxt-build-unplaced *cat-key* (append *cat-rows* (list *cat-h3*))) 0)
+      ; fn-cat-clear-keyed-is-nil, fn-cat-index-health-is-the-build
+      (equal (fn-cat-clear-keyed *cat-key* *cat-rows*) nil)
+      (equal (fn-cat-index-health *cat-key* *cat-rows*)
+             (list (fn-mpxt-pages (fn-mpxt-build *cat-key* *cat-rows*))
+                   (fn-mpxt-count (fn-mpxt-build *cat-key* *cat-rows*))
+                   (fn-mpxt-build-unplaced *cat-key* *cat-rows*)
+                   (fn-mpxt-stuck (fn-mpxt-build *cat-key* *cat-rows*))))))
+
+(defun cat-keyed-exec-run (fn-cat)
+  (declare (xargs :stobjs fn-cat))
+  (let* ((fn-cat (fn-cat-clear-keyed *cat-key* fn-cat))
+         (fn-cat (fn-cat-commit *cat-h0* fn-cat))
+         (fn-cat (fn-cat-commit *cat-h1* fn-cat))
+         (fn-cat (fn-cat-commit *cat-h2* fn-cat))
+         (result (list (fn-cat-msgid-saturatedp *cat-key* "<d@x>" fn-cat)
+                       (fn-cat-msgid-saturatedp *cat-other-key* "<d@x>" fn-cat)
+                       (fn-cat-index-health *cat-key* fn-cat)
+                       (fn-cat-index-health *cat-other-key* fn-cat)
+                       (fn-cat-msgid-seqs "<b@x>" fn-cat)
+                       (fn-cat-msgid-seqs "<d@x>" fn-cat)))
+         ; a re-key clears the rows and the table: the next open's key
+         (fn-cat (fn-cat-clear-keyed *cat-other-key* fn-cat))
+         (result (append result (list (fn-cat-count fn-cat)
+                                      (fn-cat-index-health *cat-other-key* fn-cat)))))
+    (mv result fn-cat)))
+
+(defun cat-keyed-exec ()
+  (with-local-stobj fn-cat
+    (mv-let (result fn-cat) (cat-keyed-exec-run fn-cat) result)))
+
+(assert-event
+ (let ((r (cat-keyed-exec)))
+   (and (equal (nth 0 r) nil)                     ; not saturated, the table's own answer
+        (equal (nth 1 r) nil)                     ; the fold's answer, the same
+        (equal (nth 2 r) (fn-cat-index-health *cat-key* *cat-rows*))
+        (equal (nth 3 r) (fn-cat-index-health *cat-other-key* *cat-rows*))
+        (equal (cadr (nth 2 r)) 3) (equal (caddr (nth 2 r)) 0) (equal (cadddr (nth 2 r)) 0)
+        (equal (nth 4 r) '(1))                    ; the paged reader, PRF-1037
+        (equal (nth 5 r) nil)
+        (equal (nth 6 r) 0)
+        (equal (nth 7 r) (fn-cat-index-health *cat-other-key* nil))
+        (equal (cadr (nth 7 r)) 0))))

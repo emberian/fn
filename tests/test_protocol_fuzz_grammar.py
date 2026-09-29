@@ -10,8 +10,11 @@ draws in the same order.  A later change to the grammar edits the table and
 this file's expectation together, and names the difference here.
 
 Named differences (the table has them, the grammar does not send them):
-fuzz_nntp.UNFUZZED_ROWS -- XFNCATCHUP; and QUIT is sent in the fuzzer's own
-spellings (fuzz_nntp.RAW_ROWS), not through its row.
+fuzz_nntp.UNFUZZED_ROWS -- XFNCATCHUP; QUIT and COMPRESS are
+sent in the fuzzer's own spellings (fuzz_nntp.RAW_ROWS), not through their
+rows.  The AUTHINFO SASL mechanism choice follows the table (sasl-4's SCRAM
+additions).  XFN-ZARTICLE (NNT-055) takes the last hundredth of the
+ARTICLE family's share (compress-10), through its row's grammar.
 
     python3 -m unittest tests.test_protocol_fuzz_grammar
 """
@@ -49,7 +52,7 @@ class LegacyGen(fuzz_nntp.Gen):
             return [c(words)]
         if r < 0.24:
             return [c([self.choice([b"LAST", b"NEXT"])])]
-        if r < 0.36:
+        if r < 0.35:
             verb = self.choice([b"ARTICLE", b"HEAD", b"BODY", b"STAT"])
             arg = self.rng.random()
             words = [verb]
@@ -58,6 +61,11 @@ class LegacyGen(fuzz_nntp.Gen):
             elif arg < 0.8:
                 words.append(self.choice(RANGES))
             return [c(words)]
+        if r < 0.36:
+            # compress-10: XFN-ZARTICLE (NNT-055, named difference).
+            return [c([b"XFN-ZARTICLE", self.msgid(),
+                       self.choice([b"845aa5e18680ef219a9b0f0d0b959cd8886d5eabc12236aae19f301aed9de75e",
+                                    b"00", b"x"])])]
         if r < 0.44:
             kw = self.choice([b"", b"ACTIVE", b"NEWSGROUPS", b"OVERVIEW.FMT", b"HEADERS",
                               b"ACTIVE.TIMES", b"DISTRIB.PATS", b"MOTD", b"COUNTS", b"SUBSCRIPTIONS",
@@ -115,7 +123,13 @@ class LegacyGen(fuzz_nntp.Gen):
             if kind == 1:
                 return [c([b"AUTHINFO", b"PASS", b"fuzz-password"])]
             if kind == 2:
-                return [c([b"AUTHINFO", b"SASL", self.choice([b"PLAIN", b"PLAIN AGZ1enoAZnV6ei1wYXNzd29yZA==", b"X"])])]
+                # lane sasl-4 (NNT-056): the table's SASL mechanisms grew
+                # SCRAM-SHA-256 (with and without an initial response), the
+                # -PLUS mechanism fn does not offer, and two malformed PLAIN
+                # responses (named difference, compress-9).
+                return [c([b"AUTHINFO", b"SASL", self.choice([b"PLAIN", b"PLAIN AGZ1enoAZnV6ei1wYXNzd29yZA==", b"X",
+                                                              b"SCRAM-SHA-256", b"SCRAM-SHA-256 biwsbj1mdXp6LHI9ZnV6eg==",
+                                                              b"SCRAM-SHA-256-PLUS", b"PLAIN =", b"PLAIN !!!!"])])]
             if kind == 3:
                 return [c([b"AUTHINFO", self.choice([b"GENERIC", b"SIMPLE", b"", b"user"])])]
             if kind == 4:
@@ -150,7 +164,8 @@ class ProtocolFuzzGrammarTests(unittest.TestCase):
         sent = {"CAPABILITIES", "MODE", "GROUP", "LISTGROUP", "LAST", "NEXT",
                 "ARTICLE", "HEAD", "BODY", "STAT", "LIST", "OVER", "XOVER", "HDR",
                 "XHDR", "XPAT", "NEWGROUPS", "NEWNEWS", "HELP", "DATE", "POST",
-                "IHAVE", "CHECK", "TAKETHIS", "AUTHINFO", "XREDEEM", "STARTTLS"}
+                "IHAVE", "CHECK", "TAKETHIS", "AUTHINFO", "XREDEEM", "STARTTLS",
+                "XFN-ZARTICLE"}
         with_fuzz = {n for n, r in table.items() if r["fuzz"] is not None}
         self.assertEqual(with_fuzz - sent,
                          set(fuzz_nntp.UNFUZZED_ROWS) | set(fuzz_nntp.RAW_ROWS))

@@ -106,3 +106,88 @@
   (declare (xargs :guard t))
   (fn-bpn-report-observe-next-aux
    st (fn-bpnf-held-list st) node after nil))
+
+; ---------------------------------------------------------------------------
+; KEYSTONE for fn-bpn-report-observe-next (PRF-1047), the selection
+; host/native/bp-node.lisp's report drive makes: it asks for the next
+; observed report after the arrival it last consumed.  A held row YIELDS
+; when its arrival is a natural after AFTER and the row observes as a report
+; for NODE with a natural arrival in the answer; the selector answers nil
+; exactly when no held row yields, else the answer of a yielding row whose
+; arrival is at most every yielding row's.
+(defun fn-bpn-report-observe-yieldsp (st held node after)
+  (declare (xargs :guard t))
+  (and (natp (fn-bpn-nth 3 held))
+       (or (null after)
+           (and (natp after) (< after (fn-bpn-nth 3 held))))
+       (fn-bpn-report-observe-held st held node)
+       (natp (fn-bpn-nth 1 (fn-bpn-report-observe-held st held node)))
+       t))
+
+(defun fn-bpn-report-observe-any-yields (st held-list node after)
+  (declare (xargs :guard t))
+  (if (atom held-list)
+      nil
+    (or (fn-bpn-report-observe-yieldsp st (car held-list) node after)
+        (fn-bpn-report-observe-any-yields st (cdr held-list) node after))))
+
+(defun fn-bpn-report-observe-answer-of-a-yielding-row
+    (answer st held-list node after)
+  (declare (xargs :guard t))
+  (if (atom held-list)
+      nil
+    (or (and (fn-bpn-report-observe-yieldsp st (car held-list) node after)
+             (equal answer (fn-bpn-report-observe-held st (car held-list) node)))
+        (fn-bpn-report-observe-answer-of-a-yielding-row
+         answer st (cdr held-list) node after))))
+
+(defun fn-bpn-report-observe-arrival-at-most-every-yield
+    (arrival st held-list node after)
+  (declare (xargs :guard t))
+  (if (atom held-list)
+      t
+    (and (or (not (fn-bpn-report-observe-yieldsp st (car held-list) node after))
+             (<= arrival
+                 (fn-bpn-nth 1 (fn-bpn-report-observe-held st (car held-list) node))))
+         (fn-bpn-report-observe-arrival-at-most-every-yield
+          arrival st (cdr held-list) node after))))
+
+(defthm fn-bpn-report-observe-next-aux-selects-the-least-yield
+  (implies (or (null selected) (natp (fn-bpn-nth 1 selected)))
+           (let ((r (fn-bpn-report-observe-next-aux st held-list node after selected)))
+             (and (iff r (or selected
+                             (fn-bpn-report-observe-any-yields st held-list node after)))
+                  (implies r
+                           (and (natp (fn-bpn-nth 1 r))
+                                (or (equal r selected)
+                                    (fn-bpn-report-observe-answer-of-a-yielding-row
+                                     r st held-list node after))
+                                (fn-bpn-report-observe-arrival-at-most-every-yield
+                                 (fn-bpn-nth 1 r) st held-list node after)
+                                (implies selected
+                                         (<= (fn-bpn-nth 1 r) (fn-bpn-nth 1 selected))))))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-bpn-report-observe-next-aux st held-list node after selected)
+           :in-theory (e/d (fn-bpn-report-observe-next-aux)
+                           (fn-bpn-report-observe-held fn-bpn-nth)))))
+
+(defthm fn-bpn-report-observe-next-selects-exactly-the-least-yielding-row
+  (let ((r (fn-bpn-report-observe-next st node after))
+        (rows (fn-bpnf-held-list st)))
+    (and (iff r (fn-bpn-report-observe-any-yields st rows node after))
+         (implies r
+                  (and (fn-bpn-report-observe-answer-of-a-yielding-row
+                        r st rows node after)
+                       (fn-bpn-report-observe-arrival-at-most-every-yield
+                        (fn-bpn-nth 1 r) st rows node after)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpn-report-observe-next-aux-selects-the-least-yield
+                            (held-list (fn-bpnf-held-list st)) (selected nil)))
+           :in-theory (e/d (fn-bpn-report-observe-next)
+                           (fn-bpn-report-observe-next-aux
+                            fn-bpn-report-observe-any-yields
+                            fn-bpn-report-observe-answer-of-a-yielding-row
+                            fn-bpn-report-observe-arrival-at-most-every-yield
+                            fn-bpn-report-observe-held fn-bpn-nth
+                            fn-bpnf-held-list)))))

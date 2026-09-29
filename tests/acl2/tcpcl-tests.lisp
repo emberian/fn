@@ -556,55 +556,174 @@
 (assert-event (equal (fn-tcl-take 2 '(1 2 3)) '(1 2)))
 (assert-event (equal (fn-tcl-drop 2 '(1 2 3)) '(3)))
 
-; KEYSTONE teeth (PRF-1006: fn-tcl-encode is the canonical wire form, the
-; callee of host/tcpcl-host.lisp's fn-tcl-host-encode).  Per kind: the
-; antecedent by name (fn-tcl-messagep at the MRU; octet version and flags for
-; the contact header) and the conclusion of fn-tcl-decode-message-of-encode-KIND
-; / fn-tcl-decode-contact-of-encode, the peer reads exactly the message and
-; leaves the rest.  Then fn-tcl-accepted-message-is-canonical on an accepted
-; buffer, and a segment over the MRU: neither a message at that MRU nor
-; accepted at it.
+;; KEYSTONE teeth (PRF-1006: fn-tcl-encode is the canonical wire form, the
+;; callee of host/tcpcl-host.lisp's fn-tcl-host-encode).  Per keystone: a
+;; positive witness asserting the antecedent by name and the conclusion (the
+;; peer reads exactly the message and leaves the rest), then one removal per
+;; hypothesis: a value that keeps every retained hypothesis, fails the
+;; omitted one, and fails the conclusion, with the weakened statement a
+;; must-fail.  The removal values are not messages, so they are evaluated
+;; with guard checking off (fn-tcl-encode's guard is fn-tcl-messagep).
+(include-book "must-fail-checked")
 (defconst *t-tcl-rt-rest* '(9 9 9))
+
+;; fn-tcl-decode-contact-of-encode.  Positive: version 4, flags 1.
 (assert-event
  (and (fn-cbor-octetp 4) (fn-cbor-octetp 1)
       (equal (fn-tcl-decode-contact
               (append (fn-tcl-encode (fn-tcl-make-contact 4 1)) *t-tcl-rt-rest*))
              (fn-tcl-parse-ok (fn-tcl-make-contact 4 1) *t-tcl-rt-rest*))))
+;; Version not an octet (flags an octet): 256 is written as 0 and read back 0.
 (assert-event
- (and (fn-tcl-messagep *t-init-a* 3)
-      (equal (fn-tcl-decode-message
-              (append (fn-tcl-encode *t-init-a*) *t-tcl-rt-rest*) 3)
-             (fn-tcl-parse-ok *t-init-a* *t-tcl-rt-rest*))))
+ (with-guard-checking :none
+  (and (not (fn-cbor-octetp 256)) (fn-cbor-octetp 0)
+       (not (equal (fn-tcl-decode-contact
+                    (append (fn-tcl-encode (fn-tcl-make-contact 256 0)) *t-tcl-rt-rest*))
+                   (fn-tcl-parse-ok (fn-tcl-make-contact 256 0) *t-tcl-rt-rest*))))))
+(must-fail-checked
+ (defthm t-tcl-contact-of-encode-without-version
+   (implies (fn-cbor-octetp flags)
+            (equal (fn-tcl-decode-contact
+                    (append (fn-tcl-encode (fn-tcl-make-contact version flags)) rest))
+                   (fn-tcl-parse-ok (fn-tcl-make-contact version flags) rest)))
+   :hints (("Goal" :do-not-induct t))))
+;; Flags not an octet (version an octet): 256 is read back 0.
 (assert-event
- (and (fn-tcl-messagep *t-seg-1* 3)
-      (equal (fn-tcl-decode-message
-              (append (fn-tcl-encode *t-seg-1*) *t-tcl-rt-rest*) 3)
-             (fn-tcl-parse-ok *t-seg-1* *t-tcl-rt-rest*))))
+ (with-guard-checking :none
+  (and (fn-cbor-octetp 4) (not (fn-cbor-octetp 256))
+       (not (equal (fn-tcl-decode-contact
+                    (append (fn-tcl-encode (fn-tcl-make-contact 4 256)) *t-tcl-rt-rest*))
+                   (fn-tcl-parse-ok (fn-tcl-make-contact 4 256) *t-tcl-rt-rest*))))))
+(must-fail-checked
+ (defthm t-tcl-contact-of-encode-without-flags
+   (implies (fn-cbor-octetp version)
+            (equal (fn-tcl-decode-contact
+                    (append (fn-tcl-encode (fn-tcl-make-contact version flags)) rest))
+                   (fn-tcl-parse-ok (fn-tcl-make-contact version flags) rest)))
+   :hints (("Goal" :do-not-induct t))))
+
+;; fn-tcl-accepted-contact-is-canonical.  Positive: an accepted contact
+;; header followed by other octets is its encoding followed by its rest.
+(defconst *t-tcl-contact-buf* '(100 116 110 33 4 1 9 9 9))
 (assert-event
- (and (fn-tcl-messagep (fn-tcl-make-xfer-ack 1 0 5) 3)
-      (equal (fn-tcl-decode-message
-              (append (fn-tcl-encode (fn-tcl-make-xfer-ack 1 0 5)) *t-tcl-rt-rest*) 3)
-             (fn-tcl-parse-ok (fn-tcl-make-xfer-ack 1 0 5) *t-tcl-rt-rest*))))
+ (and (fn-cbor-octet-listp *t-tcl-contact-buf*)
+      (fn-tcl-parse-okp (fn-tcl-decode-contact *t-tcl-contact-buf*))
+      (equal (append (fn-tcl-encode (fn-tcl-parse-msg (fn-tcl-decode-contact *t-tcl-contact-buf*)))
+                     (fn-tcl-parse-rest (fn-tcl-decode-contact *t-tcl-contact-buf*)))
+             *t-tcl-contact-buf*)))
+;; Not an octet buffer (the decoder accepts): a version octet of 256 parses,
+;; and its encoding writes 0.
+(defconst *t-tcl-contact-256* '(100 116 110 33 256 0 9))
 (assert-event
- (and (fn-tcl-messagep (fn-tcl-make-xfer-refuse 6 258) 3)
-      (equal (fn-tcl-decode-message
-              (append (fn-tcl-encode (fn-tcl-make-xfer-refuse 6 258)) *t-tcl-rt-rest*) 3)
-             (fn-tcl-parse-ok (fn-tcl-make-xfer-refuse 6 258) *t-tcl-rt-rest*))))
+ (with-guard-checking :none
+  (and (not (fn-cbor-octet-listp *t-tcl-contact-256*))
+       (fn-tcl-parse-okp (fn-tcl-decode-contact *t-tcl-contact-256*))
+       (not (equal (append (fn-tcl-encode (fn-tcl-parse-msg (fn-tcl-decode-contact *t-tcl-contact-256*)))
+                           (fn-tcl-parse-rest (fn-tcl-decode-contact *t-tcl-contact-256*)))
+                   *t-tcl-contact-256*)))))
+(must-fail-checked
+ (defthm t-tcl-accepted-contact-without-octets
+   (implies (fn-tcl-parse-okp (fn-tcl-decode-contact buf))
+            (equal (append (fn-tcl-encode (fn-tcl-parse-msg (fn-tcl-decode-contact buf)))
+                           (fn-tcl-parse-rest (fn-tcl-decode-contact buf)))
+                   buf))
+   :hints (("Goal" :do-not-induct t))))
+;; Not accepted (an octet buffer): a header one octet short is :need, and
+;; nothing reconstructs it.
+(defconst *t-tcl-contact-short* '(100 116 110 33 4))
 (assert-event
- (and (fn-tcl-messagep (fn-tcl-make-sess-term 1 2) 3)
-      (equal (fn-tcl-decode-message
-              (append (fn-tcl-encode (fn-tcl-make-sess-term 1 2)) *t-tcl-rt-rest*) 3)
-             (fn-tcl-parse-ok (fn-tcl-make-sess-term 1 2) *t-tcl-rt-rest*))))
+ (with-guard-checking :none
+  (and (fn-cbor-octet-listp *t-tcl-contact-short*)
+       (not (fn-tcl-parse-okp (fn-tcl-decode-contact *t-tcl-contact-short*)))
+       (not (equal (append (fn-tcl-encode (fn-tcl-parse-msg (fn-tcl-decode-contact *t-tcl-contact-short*)))
+                           (fn-tcl-parse-rest (fn-tcl-decode-contact *t-tcl-contact-short*)))
+                   *t-tcl-contact-short*)))))
+(must-fail-checked
+ (defthm t-tcl-accepted-contact-without-accepted
+   (implies (fn-cbor-octet-listp buf)
+            (equal (append (fn-tcl-encode (fn-tcl-parse-msg (fn-tcl-decode-contact buf)))
+                           (fn-tcl-parse-rest (fn-tcl-decode-contact buf)))
+                   buf))
+   :hints (("Goal" :do-not-induct t))))
+
+;; fn-tcl-decode-message-of-encode-KIND: a positive witness per kind, and,
+;; where the keystone has the hypothesis, a value of that kind that is no
+;; message at the MRU and does not round-trip.
+(defmacro t-tcl-round-trips (m mru)
+  `(equal (fn-tcl-decode-message (append (fn-tcl-encode ,m) *t-tcl-rt-rest*) ,mru)
+          (fn-tcl-parse-ok ,m *t-tcl-rt-rest*)))
+(defmacro t-tcl-rt-without (name m)
+  `(must-fail-checked
+    (defthm ,name
+      (equal (fn-tcl-decode-message (append (fn-tcl-encode ,m) rest) mru)
+             (fn-tcl-parse-ok ,m rest))
+      :hints (("Goal" :do-not-induct t)))))
+
+;; fn-tcl-decode-message-of-encode-init.  Removal: keepalive 70000 is past
+;; u16 and is read back 4464.
+(assert-event (and (fn-tcl-messagep *t-init-a* 3) (t-tcl-round-trips *t-init-a* 3)))
 (assert-event
- (and (fn-tcl-messagep (fn-tcl-make-msg-reject 3 1) 3)
-      (equal (fn-tcl-decode-message
-              (append (fn-tcl-encode (fn-tcl-make-msg-reject 3 1)) *t-tcl-rt-rest*) 3)
-             (fn-tcl-parse-ok (fn-tcl-make-msg-reject 3 1) *t-tcl-rt-rest*))))
+ (with-guard-checking :none
+  (and (not (fn-tcl-messagep (fn-tcl-make-sess-init 70000 3 64 *t-node-a* nil) 3))
+       (not (t-tcl-round-trips (fn-tcl-make-sess-init 70000 3 64 *t-node-a* nil) 3)))))
+(t-tcl-rt-without t-tcl-init-without-message
+                  (fn-tcl-make-sess-init keepalive segment-mru transfer-mru node-id ext))
+
+;; fn-tcl-decode-message-of-encode-segment.  Removal: a segment over the MRU
+;; is neither a message at it nor accepted at it.
+(assert-event (and (fn-tcl-messagep *t-seg-1* 3) (t-tcl-round-trips *t-seg-1* 3)))
 (assert-event
- (and (fn-tcl-messagep (fn-tcl-make-keepalive) 3)
-      (equal (fn-tcl-decode-message
-              (append (fn-tcl-encode (fn-tcl-make-keepalive)) *t-tcl-rt-rest*) 3)
-             (fn-tcl-parse-ok (fn-tcl-make-keepalive) *t-tcl-rt-rest*))))
+ (and (not (fn-tcl-messagep *t-seg-1* 0))
+      (not (fn-tcl-parse-okp (fn-tcl-decode-message (fn-tcl-encode *t-seg-1*) 0)))
+      (not (t-tcl-round-trips *t-seg-1* 0))))
+(t-tcl-rt-without t-tcl-segment-without-message
+                  (fn-tcl-make-xfer-segment flags xfer-id ext data))
+
+;; fn-tcl-decode-message-of-encode-ack.  Removal: an acknowledged length of
+;; 2^64 is read back 0.
+(assert-event (and (fn-tcl-messagep (fn-tcl-make-xfer-ack 1 0 5) 3)
+                   (t-tcl-round-trips (fn-tcl-make-xfer-ack 1 0 5) 3)))
+(assert-event
+ (with-guard-checking :none
+  (and (not (fn-tcl-messagep (fn-tcl-make-xfer-ack 1 0 (expt 2 64)) 3))
+       (not (t-tcl-round-trips (fn-tcl-make-xfer-ack 1 0 (expt 2 64)) 3)))))
+(t-tcl-rt-without t-tcl-ack-without-message
+                  (fn-tcl-make-xfer-ack flags xfer-id acked-len))
+
+;; fn-tcl-decode-message-of-encode-refuse.  Removal: a transfer id of 2^64
+;; is read back 0.
+(assert-event (and (fn-tcl-messagep (fn-tcl-make-xfer-refuse 6 258) 3)
+                   (t-tcl-round-trips (fn-tcl-make-xfer-refuse 6 258) 3)))
+(assert-event
+ (with-guard-checking :none
+  (and (not (fn-tcl-messagep (fn-tcl-make-xfer-refuse 6 (expt 2 64)) 3))
+       (not (t-tcl-round-trips (fn-tcl-make-xfer-refuse 6 (expt 2 64)) 3)))))
+(t-tcl-rt-without t-tcl-refuse-without-message
+                  (fn-tcl-make-xfer-refuse reason xfer-id))
+
+;; fn-tcl-decode-message-of-encode-term and -reject have NO hypothesis: both
+;; fields are single octets written and read verbatim.  The positive witness
+;; is a message; a non-message (a reason of 256) round-trips too, which is
+;; why fn-tcl-messagep is not assumed.
+(assert-event (and (fn-tcl-messagep (fn-tcl-make-sess-term 1 2) 3)
+                   (t-tcl-round-trips (fn-tcl-make-sess-term 1 2) 3)))
+(assert-event
+ (with-guard-checking :none
+  (and (not (fn-tcl-messagep (fn-tcl-make-sess-term 1 256) 3))
+       (t-tcl-round-trips (fn-tcl-make-sess-term 1 256) 3))))
+(assert-event (and (fn-tcl-messagep (fn-tcl-make-msg-reject 3 1) 3)
+                   (t-tcl-round-trips (fn-tcl-make-msg-reject 3 1) 3)))
+(assert-event
+ (with-guard-checking :none
+  (and (not (fn-tcl-messagep (fn-tcl-make-msg-reject 256 1) 3))
+       (t-tcl-round-trips (fn-tcl-make-msg-reject 256 1) 3))))
+
+;; fn-tcl-decode-message-of-encode-keepalive (no hypothesis).
+(assert-event (and (fn-tcl-messagep (fn-tcl-make-keepalive) 3)
+                   (t-tcl-round-trips (fn-tcl-make-keepalive) 3)))
+
+;; fn-tcl-accepted-message-is-canonical.  Positive: a segment followed by
+;; other octets.
 (assert-event
  (let ((buf (append (fn-tcl-encode *t-seg-1*) *t-tcl-rt-rest*)))
    (and (fn-cbor-octet-listp buf)
@@ -612,6 +731,36 @@
         (equal (append (fn-tcl-encode (fn-tcl-parse-msg (fn-tcl-decode-message buf 3)))
                        (fn-tcl-parse-rest (fn-tcl-decode-message buf 3)))
                buf))))
+;; Not an octet buffer (accepted): an XFER_ACK whose transfer-id field holds
+;; an octet of 256 parses as id 256, and its encoding carries into the next
+;; octet.
+(defconst *t-tcl-ack-256* '(2 1 0 0 0 0 0 0 0 256 0 0 0 0 0 0 0 5 9))
 (assert-event
- (and (not (fn-tcl-messagep *t-seg-1* 0))
-      (not (fn-tcl-parse-okp (fn-tcl-decode-message (fn-tcl-encode *t-seg-1*) 0)))))
+ (with-guard-checking :none
+  (and (not (fn-cbor-octet-listp *t-tcl-ack-256*))
+       (fn-tcl-parse-okp (fn-tcl-decode-message *t-tcl-ack-256* 3))
+       (not (equal (append (fn-tcl-encode (fn-tcl-parse-msg (fn-tcl-decode-message *t-tcl-ack-256* 3)))
+                           (fn-tcl-parse-rest (fn-tcl-decode-message *t-tcl-ack-256* 3)))
+                   *t-tcl-ack-256*)))))
+(must-fail-checked
+ (defthm t-tcl-accepted-message-without-octets
+   (implies (fn-tcl-parse-okp (fn-tcl-decode-message buf mru))
+            (equal (append (fn-tcl-encode (fn-tcl-parse-msg (fn-tcl-decode-message buf mru)))
+                           (fn-tcl-parse-rest (fn-tcl-decode-message buf mru)))
+                   buf))
+   :hints (("Goal" :do-not-induct t))))
+;; Not accepted (an octet buffer): an unknown type octet.
+(assert-event
+ (with-guard-checking :none
+  (and (fn-cbor-octet-listp '(99))
+       (not (fn-tcl-parse-okp (fn-tcl-decode-message '(99) 3)))
+       (not (equal (append (fn-tcl-encode (fn-tcl-parse-msg (fn-tcl-decode-message '(99) 3)))
+                           (fn-tcl-parse-rest (fn-tcl-decode-message '(99) 3)))
+                   '(99))))))
+(must-fail-checked
+ (defthm t-tcl-accepted-message-without-accepted
+   (implies (fn-cbor-octet-listp buf)
+            (equal (append (fn-tcl-encode (fn-tcl-parse-msg (fn-tcl-decode-message buf mru)))
+                           (fn-tcl-parse-rest (fn-tcl-decode-message buf mru)))
+                   buf))
+   :hints (("Goal" :do-not-induct t))))
