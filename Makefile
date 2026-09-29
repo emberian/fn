@@ -263,6 +263,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-open \
 	books/store-checkpoint-codec \
 	tests/acl2/store-checkpoint-open-tests \
+	books/store-checkpoint-digest \
+	tests/acl2/store-checkpoint-digest-tests \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
 	tests/acl2/store-checkpoint-tables-tests \
