@@ -2674,7 +2674,7 @@
         "PRF-046"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tcpcl-delivery.lisp",
         "books/tcpcl-delivery-invariants.lisp",
@@ -13729,7 +13729,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tcpcl-delivery.lisp",
         "books/tcpcl-delivery-invariants.lisp",
@@ -17340,12 +17340,15 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "proposed",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tcpcl-delivery.lisp",
         "tests/acl2/tcpcl-delivery-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones-5: the bp book entries, one two-sided keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
+      "progress_note": "Lane decision-keystones-5: the bp book entries, one two-sided keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode).",
+      "events": [
+        "fn-tcl-delivery-plan-decides-exactly-by-the-held-final-ack-and-the-callback"
+      ]
     },
     {
       "id": "PRF-1037",
@@ -17361,7 +17364,7 @@
         "PRF-1018"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/catalog.lisp",
         "books/msgid-pages-exec.lisp",
