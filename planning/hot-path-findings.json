@@ -357,9 +357,9 @@
       "packet": "PKT-448 (a)"
     },
     "fn-gac-restrict-articles-loop recursion N": {
-      "class": "unexpected",
+      "class": "cold",
       "packet": "PKT-643",
-      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-gac-restrict-articles recursion N', same traversal, same class]"
+      "note": "lane nntp-bugs (PKT-643, PRF-913): a read-restricted session's view is prepared once per pin by host/owner-host.lisp fn-owner-chunk-span-at -> books/served-catalog-chain.lisp fn-scr-prepare-access -> books/group-access-cache.lisp fn-gacc-prepare: kept while the pin holds, grown by the acceptances since (fn-gacc-grow: one cut, one trie path copy and its bucket entries per article), built (this walk) only at a restart, a withdrawal (the control cut moves) or a new rule; every command reads it (fn-scr-cached-view). The per-command build in fn-scr-auth-delegate is the fallback when no prepared entry is keyed to the pin (a GROUP re-pin inside one read). [batch AZ: serve-depth (PRF-362) runs this walk as a loop]"
     },
     "fn-hist-load-events recursion N": {
       "class": "cold",
@@ -769,6 +769,20 @@
       "class": "unexpected",
       "packet": "PKT-324 (8)",
       "note": "lane obligations-paged (PRF-371): the obligations report's header count (len of the retention ledger), once per report on its first page, never per page; a count walk, no rendering (1,000,000 obligations: first page 0.06 s at syn1m-2k)."
+    },
+    "fn-gacc-prefix recursion N": {
+      "class": "cold",
+      "packet": "PKT-643",
+      "note": "lane nntp-bugs (PKT-643, PRF-913): the access cache's prepare (host/owner-host.lisp fn-owner-chunk-span-at -> fn-scr-prepare-access -> fn-gacc-prepare -> fn-gacc-refresh) walks the new visible article list only when the connection's pin moved, and stops at the first tail EQUAL (EQ first) to the entry's articles: k steps for the k acceptances since the entry; the whole list only when the entry is not a tail, where the build follows (the cold build: a restart, a withdrawal, a new rule)."
+    },
+    "fn-gacc-grow recursion N": {
+      "class": "cold",
+      "packet": "PKT-643",
+      "note": "lane nntp-bugs (PKT-643, PRF-913): the access cache's prepare (host/owner-host.lisp fn-owner-chunk-span-at -> fn-scr-prepare-access -> fn-gacc-prepare -> fn-gacc-refresh) walks the k articles accepted since the entry (fn-gacc-prefix's prefix), one cut, one trie path copy and its bucket entries each; never the retained history."
+    },
+    "fn-xpy-walk recursion N": {
+      "class": "cold",
+      "packet": "PKT-891"
     }
   },
   "note": "Every traversal of retained state that tools/hot_path_check.py finds on a path from a host entry, keyed 'function primitive dimension', with the packet that owns it (planning/backlog-2026-09-25.md; PKT-448's lettered items are the finds no earlier packet owned). This is a list, not a baseline: every entry here is a find the report prints, whatever its class. --strict fails on an unexpected find not listed here (NEW) and on a listed key that no longer occurs (STALE): remove an entry by removing the walk, in the same commit. 'confirmed' names the scaling row (planning/evidence/hot-path-checker-2026-09-26.md) that measured it; absent means static only."

@@ -396,46 +396,53 @@
 ; RFC 6048 section 2.2.2: LIST COUNTS answers name, high, low, count and
 ; status, "in the opposite order to the 211 response".  The three numbers are
 ; the GROUP summary's (RFC 3977 section 6.1.1), so a client reading both sees
-; one value; the status field is LIST ACTIVE's.  The count is the number of
+; one value; the status field is LIST ACTIVE's (RFC 6048 section 2.2.2),
+; `fn-nntp-closed-status' of the group under the connection's CLOSED list
+; (PKT-703: it was the constant "y", so a moderated group read `m' in LIST
+; ACTIVE and `y' here; books/nntp-list-counts.lisp
+; fn-nntp-counts-status-is-the-active-status).  The count is the number of
 ; articles available in the group, not an estimate:
 ; fn-nntp-group-count-is-listgroup-length (books/nntp-invariants).
 ; The line is rendered from a summary so the pinned bucket summary
-; (fn-gidx-counts-line, books/nntp.lisp) shares this renderer.
-(defun fn-nntp-counts-summary-line (group summary)
+; (fn-gidx-counts-line, books/nntp.lisp) and the catalog's
+; (fn-scat-counts-lines, books/served-catalog.lisp) share this renderer.
+(defun fn-nntp-counts-summary-line (group summary closed)
   (fn-nntp-append-pieces
    (list (fn-nntp-string-octets group) '(32)
          (fn-nntp-decimal-field (fn-nntp-summary-high summary)) '(32)
          (fn-nntp-decimal-field (fn-nntp-summary-low summary)) '(32)
-         (fn-nntp-decimal-field (fn-nntp-summary-count summary))
-         (fn-nntp-string-octets " y"))))
+         (fn-nntp-decimal-field (fn-nntp-summary-count summary)) '(32)
+         (fn-nntp-string-octets
+          (fn-nntp-closed-status (fn-nntp-string-octets group) closed)))))
 
-(defun fn-nntp-counts-line (archive group)
-  (fn-nntp-counts-summary-line group (fn-nntp-group-summary archive group)))
+(defun fn-nntp-counts-line (archive group closed)
+  (fn-nntp-counts-summary-line group (fn-nntp-group-summary archive group) closed))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-nntp-counts-lines-loop (archive groups acc)
+(defun fn-nntp-counts-lines-loop (archive groups closed acc)
   (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp groups)
       (fn-nntp-counts-lines-loop archive
                                  (cdr groups)
-                                 (cons (fn-nntp-counts-line archive (car groups)) acc))
+                                 closed
+                                 (cons (fn-nntp-counts-line archive (car groups) closed) acc))
     (revappend acc nil)))
 
-(defun fn-nntp-counts-lines (archive groups)
+(defun fn-nntp-counts-lines (archive groups closed)
   (mbe :logic
        (if (consp groups)
-           (cons (fn-nntp-counts-line archive (car groups))
-                 (fn-nntp-counts-lines archive (cdr groups)))
+           (cons (fn-nntp-counts-line archive (car groups) closed)
+                 (fn-nntp-counts-lines archive (cdr groups) closed))
          nil)
-       :exec (fn-nntp-counts-lines-loop archive groups nil)))
+       :exec (fn-nntp-counts-lines-loop archive groups closed nil)))
 
 (local
  (defthm fn-nntp-counts-lines-loop-is-revappend
-   (equal (fn-nntp-counts-lines-loop archive groups acc)
-          (revappend acc (fn-nntp-counts-lines archive groups)))
-   :hints (("Goal" :induct (fn-nntp-counts-lines-loop archive groups acc)
+   (equal (fn-nntp-counts-lines-loop archive groups closed acc)
+          (revappend acc (fn-nntp-counts-lines archive groups closed)))
+   :hints (("Goal" :induct (fn-nntp-counts-lines-loop archive groups closed acc)
                    :in-theory (union-theories '(fn-nntp-counts-lines-loop fn-nntp-counts-lines revappend car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
@@ -539,22 +546,24 @@
   (fn-nntp-multi session (fn-proto-text "LIST" :active)
                  (fn-nntp-active-status-lines archive groups closed)))
 
-(defun fn-nntp-list-counts (session archive groups)
+(defun fn-nntp-list-counts (session archive groups closed)
   (fn-nntp-multi session (fn-proto-text "LIST" :newsgroups)
-                 (fn-nntp-counts-lines archive groups)))
+                 (fn-nntp-counts-lines archive groups closed)))
 
 ; LIST COUNTS [wildmat] (RFC 6048 section 2.2.1): the same argument grammar
-; as LIST ACTIVE, the wildmat parsed once per command.
-(defun fn-nntp-list-counts-command (session archive args)
+; as LIST ACTIVE, the wildmat parsed once per command; CLOSED is the
+; environment's (`fn-nntp-env-closed'), the list LIST ACTIVE's status reads.
+(defun fn-nntp-list-counts-command (session archive closed args)
   (if (null args)
-      (fn-nntp-list-counts session archive (fn-state-groups archive))
+      (fn-nntp-list-counts session archive (fn-state-groups archive) closed)
     (if (and (consp args) (null (cdr args)))
         (let ((parsed (fn-wildmat-parse (car args))))
           (if (fn-wildmat-result-okp parsed)
               (fn-nntp-list-counts
                session archive
                (fn-nntp-filter-groups-by-wildmat
-                (fn-wildmat-result-value parsed) (fn-state-groups archive)))
+                (fn-wildmat-result-value parsed) (fn-state-groups archive))
+               closed)
             (fn-nntp-single session (fn-proto-text * :syntax))))
       (fn-nntp-single session (fn-proto-text * :syntax)))))
 
@@ -2963,7 +2972,8 @@
     (if (and (consp args)
              (fn-nntp-keyword-tokenp (car args))
              (fn-nntp-keywordp (car args) "COUNTS"))
-        (fn-nntp-list-counts-command session archive (cdr args))
+        (fn-nntp-list-counts-command session archive (fn-nntp-env-closed env)
+                                     (cdr args))
       ; NEWSGROUPS and MOTD read the reader listing (PRF-195).
       ; fn-nntp-list-response's NEWSGROUPS arm is therefore not reached
       ; from this dispatcher: it is `fn-nntp-list-newsgroups-described'

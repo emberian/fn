@@ -100,6 +100,24 @@
 (assert-event (equal (second *pot-id-r*) *pse-t2-reserved*))
 (assert-event (equal (first *pot-id-r*) (pot-store-word *pse-t2-reserved* (second *pot-id-r*) :refused)))
 
+;; RFC 3977 section 6 (PKT-615): the same composite with its group's
+;; watermark at the bound (a CONSTRUCTED boundary state,
+;; owner-prepare-served-tests' pst-with-next; the composite is filed in
+;; fn.test): refused by name, the
+;; owner unchanged, and the word the keystone's refusal kind.
+(make-event `(defconst *pot-id-x-oc*
+               ',(pst-with-next *pse-k2-reserved* "fn.test" *fn-nntp-max-article-number*)))
+(make-event `(defconst *pot-id-x* ',(pot-identity *pot-id-x-oc* *pse-comp* *ois-h*)))
+(assert-event (equal (first *pot-id-x*) :article-numbers-exhausted))
+(assert-event (equal (second *pot-id-x*) *pot-id-x-oc*))
+(assert-event (equal (first *pot-id-x*)
+                     (pot-store-word *pot-id-x-oc* (second *pot-id-x*)
+                                     (fn-pout-identity-refusal-kind *pot-id-x-oc* *pse-comp* *ois-h*))))
+;; The article entry at the same boundary.
+(defconst *pot-art-x* (pot-article *pst-at-bound* *acar-t-record* 1000000 (pst-carry *pst-at-bound*)))
+(assert-event (equal (first *pot-art-x*) :article-numbers-exhausted))
+(assert-event (equal (second *pot-art-x*) *pst-at-bound*))
+
 ; -----------------------------------------------------------------------------
 ; fn-pout-prepare-topic-answers-the-store-change.
 (defconst *pot-topic* (pot-topic *lgt-reserved* *pse-topic-event*))

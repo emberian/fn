@@ -604,10 +604,13 @@
                 (fn-scar-view-indexedp (fn-ocfg-owner oc)))
            (fn-lgoc-invariantp (fn-psrv-prepare oc record budget carry)))
   :hints (("Goal"
-           :cases ((fn-psrv-event-servedp (fn-ocfg-config oc) record))
+           :cases ((and (fn-psrv-event-servedp (fn-ocfg-config oc) record)
+                        (fn-psrv-event-numberedp oc record))
+                   (not (fn-psrv-event-servedp (fn-ocfg-config oc) record)))
            :use (fn-lgoc-pidx-sbud-prepare-preserves-invariant
                  fn-prc-sbud-prepare-is-pidx-sbud-prepare
-                 fn-psrv-prepare-refuses-unserved fn-psrv-prepare-when-served)
+                 fn-psrv-prepare-refuses-unserved fn-psrv-prepare-refuses-exhausted
+                 fn-psrv-prepare-when-served)
            :in-theory '(fn-psrv-event-servedp))))
 
 (defthm fn-psrv-ccar-ocfg-prepare-identity-is-owner-with-store
@@ -636,8 +639,11 @@
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-psrv-prepare-identity oc e)))
   :hints (("Goal"
-           :cases ((fn-psrv-event-servedp (fn-ocfg-config oc) e))
+           :cases ((and (fn-psrv-event-servedp (fn-ocfg-config oc) e)
+                        (fn-psrv-event-numberedp oc e))
+                   (not (fn-psrv-event-servedp (fn-ocfg-config oc) e)))
            :use ((:instance fn-psrv-prepare-refuses-unserved (record e))
+                 (:instance fn-psrv-prepare-refuses-exhausted (record e))
                  (:instance fn-psrv-prepare-when-served (record e))
                  fn-psrv-invariant-served-is-fold-served
                  (:instance fn-psrv-ccar-sn-prepare-identity-preserves

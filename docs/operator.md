@@ -517,6 +517,28 @@ articles that loop back to it:
 fn operator CONFIG policy set path-identity news.example.org
 ```
 
+### Articles carried over BP
+
+An article carried to a peer over BP (the DTN build) is a forwarding
+obligation in the sender's workflow journal: the store keeps it until the
+peer's receipt comes back. With the BP node stopped, see and steer them:
+
+```
+fn operator CONFIG carry /srv/fn/workflow list
+fn operator CONFIG carry /srv/fn/workflow inspect WORK
+fn operator CONFIG carry /srv/fn/workflow pause WORK      # or * for all
+fn operator CONFIG carry /srv/fn/workflow resume WORK     # or *
+fn operator CONFIG carry /srv/fn/workflow drop WORK the reason
+```
+
+`list` prints one line per work: its Message-ID, peer, status, whether the
+store still pins the article (`pinned=yes`), its hold (`none`, `paused`,
+`dropped` with the reason) and its last attempt. While a work is paused or
+dropped, `bp-obligation request` for it is refused (`reason=carry-paused`,
+`reason=carry-dropped`) and nothing is written. A drop is final. It stops the
+carrying but does not free the article: only the peer's receipt releases the
+store's pin.
+
 ## 9. Backups and new releases
 
 ### Back up
@@ -755,16 +777,21 @@ new store with bigger limits: `store export`, a fresh install, then
 
 The store is a log that grows with each post. Now and then the running
 node saves a summary (a checkpoint) and deletes the parts of the log it
-covers, so a restart reads less. You can do the same by hand, with the node
-stopped. It changes no article, and the next start opens from the
-checkpoint (`OWNER-OPEN open=checkpoint:N`). It needs about 4 MiB free:
+covers, so a restart reads less. You can ask for one at any time, while
+the node runs: it answers `requested` (or `nothing-to-compact`, or
+`coalesced` when one is already running) and does it in the background while
+it keeps serving; its log says `CHECKPOINT auto sequence=N ...` when it is
+done. With the node stopped the same command does it at once. It changes no
+article, and the next start opens from the checkpoint
+(`OWNER-OPEN open=checkpoint:N`). It needs about 4 MiB free:
 
 ```text
 fn operator /path/to/fn.toml store compact
 ```
 
-It answers `compacted steps=checkpoint,drop records=N`. On a store of
-40,000 short articles it took under three minutes.
+Stopped, it answers `compacted steps=checkpoint,drop records=N`. On a store
+of 40,000 short articles it took under three minutes. A running node needs
+its `[control]` socket for the request.
 
 ## 11. How much one node can handle
 

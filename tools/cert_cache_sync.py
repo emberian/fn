@@ -32,6 +32,7 @@ import argparse
 import json
 import shlex
 import shutil
+import tempfile
 import subprocess
 import sys
 import time
@@ -173,10 +174,14 @@ def sync(source: str, target: str, hours: float, dry_run: bool = False,
               " (one toolchain on both boxes is what makes the caches interchangeable)")
     if dry_run or not decided["copy"]:
         return 0
-    staging = ROOT / "build" / "cert-cache-sync" / f"{source}-{target}"
-    shutil.rmtree(staging, ignore_errors=True)
-    staging.mkdir(parents=True)
-    listing = staging.parent / f"{source}-{target}.list"
+    # One staging directory and list per invocation: two syncs of the same
+    # pair from one worktree (concurrent `farm.py wait`s) shared a fixed
+    # name, and the first to finish removed the other's list ("persvati-
+    # hbox.list missing", batch BB 2026-09-29).
+    base = ROOT / "build" / "cert-cache-sync"
+    base.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f"{source}-{target}-", dir=base))
+    listing = staging.with_suffix(".list")
     listing.write_text("\n".join(decided["copy"]) + "\n")
     try:
         for command in (

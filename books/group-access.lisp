@@ -884,95 +884,22 @@
                                   (fn-gac-restrict-articles fn-gac-filter-groups
                                    fn-gac-filter-pairs fn-statep)))))
 
-; -----------------------------------------------------------------------------
-; PKT-643: the restricted view carried with the pin.
-;
-; A restricted session's view is a function of its rule's read text and the
-; connection's pin (archive, index, control).  The owner computes it at the
-; pin -- a reader connection's open and each advance (books/owner.lisp
-; `fn-own-pin-control') -- for every read text of the connection's
-; configuration, and carries the table in the pin's control slot, as the
-; enrollment keyring rides there (books/nntp-enrollment.lisp `fn-enr-pin').
-; The carried served step (books/served-carried.lisp
-; `fn-scar-auth-delegate-pinned') reads its rule's entry instead of
-; rebuilding the view per command.  Keystones: an entry the table holds is
-; the per-command restriction (`fn-gac-views-find-is-restriction'); the
-; table built at the pin holds every rule the configuration can assign
-; (`fn-gac-access-views-covers-pattern').
+;; -----------------------------------------------------------------------------
+;; PKT-643: the restricted view as one value.
+;;
+;; A restricted session's view is a function of its rule's read text and the
+;; connection's pin (archive and control): the restricted store and its
+;; index (the index reads only the control's withdrawn list and records).
+;; books/group-access-cache.lisp prepares it once per pin and keeps it; the
+;; served delegate (books/served-catalog-chain.lisp fn-scr-auth-delegate)
+;; reads it instead of building it per command.  fn-gac-view-entry-is-per-
+;; command equates it with the per-command restriction of a pinned index.
 
-; The read texts a table can assign, as `fn-gac-pattern' reads field 1.
-(defun fn-gac-read-texts (table)
-  (declare (xargs :guard t))
-  (if (consp table)
-      (let ((row (car table))
-            (rest (fn-gac-read-texts (cdr table))))
-        (if (and (consp row) (consp (cdr row)) (consp (cddr row))
-                 (consp (cdddr row))
-                 (equal (car (cdddr row)) 3)
-                 (not (equal (cadr row) "*")))
-            (let ((text (if (stringp (cadr row)) (cadr row) "")))
-              (if (fn-ag-member text rest) rest (cons text rest)))
-          rest))
-    nil))
-
-; The view of TEXT over a pin: the restricted store and its index.  The
-; index reads only the control's withdrawn list and records.
 (defun fn-gac-view-entry (text archive control)
   (declare (xargs :guard t))
   (let ((rs (fn-gac-restrict-state text archive)))
     (cons rs (fn-gac-restrict-index text (fn-gidx-pin-with-control nil nil control)
                                     (fn-state-articles rs)))))
-
-(defun fn-gac-access-views (texts archive control)
-  (declare (xargs :guard t))
-  (if (consp texts)
-      (cons (cons (car texts) (fn-gac-view-entry (car texts) archive control))
-            (fn-gac-access-views (cdr texts) archive control))
-    nil))
-
-(defun fn-gac-views-find (text views)
-  (declare (xargs :guard t))
-  (if (consp views)
-      (if (and (consp (car views)) (equal (car (car views)) text))
-          (car views)
-        (fn-gac-views-find text (cdr views)))
-    nil))
-
-; The control pin with the table in its fifth slot; the first four
-; (tag, withdrawn list, records, keyring slot) are the control's.
-(defun fn-gac-pin-with-access (control views)
-  (declare (xargs :guard t))
-  (list :fn-control (fn-ctl-pin-withdrawn control) (fn-ctl-pin-ws control)
-        (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr control))))
-        (cons :access views)))
-
-(defun fn-gac-pin-access (control)
-  (declare (xargs :guard t))
-  (let ((slot (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr control)))))))
-    (if (and (consp slot) (eq (car slot) :access)) (cdr slot) nil)))
-
-(defun fn-gac-views-okp (views archive control)
-  (declare (xargs :guard t))
-  (if (consp views)
-      (and (consp (car views))
-           (equal (cdr (car views))
-                  (fn-gac-view-entry (car (car views)) archive control))
-           (fn-gac-views-okp (cdr views) archive control))
-    t))
-
-(defthm fn-gac-pin-with-access-fields
-  (and (equal (fn-ctl-pin-withdrawn (fn-gac-pin-with-access control views))
-              (fn-ctl-pin-withdrawn control))
-       (equal (fn-ctl-pin-ws (fn-gac-pin-with-access control views))
-              (fn-ctl-pin-ws control))
-       (equal (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-                (fn-gac-pin-with-access control views)))))
-              (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr control)))))
-       (equal (fn-gac-pin-access (fn-gac-pin-with-access control views))
-              views)
-       (fn-gac-pin-with-access control views))
-  :hints (("Goal" :in-theory (enable fn-ctl-pin-withdrawn fn-ctl-pin-ws
-                                     fn-ag-car fn-ag-cdr))))
 
 (defthm fn-gac-view-entry-reads-withdrawn-and-records
   (implies (and (equal (fn-ctl-pin-withdrawn c1) (fn-ctl-pin-withdrawn c2))
@@ -983,28 +910,6 @@
   :hints (("Goal" :in-theory (e/d (fn-gac-view-entry fn-gac-restrict-index)
                                   (fn-gac-restrict-state fn-midx-build fn-gidx-build
                                    fn-gac-restrict-articles)))))
-
-(defthm fn-gac-view-entry-of-pin-with-access
-  (equal (fn-gac-view-entry text archive (fn-gac-pin-with-access control views))
-         (fn-gac-view-entry text archive control))
-  :hints (("Goal" :in-theory (disable fn-gac-view-entry fn-gac-pin-with-access))))
-
-(defthm fn-gac-views-okp-of-access-views
-  (fn-gac-views-okp (fn-gac-access-views texts archive control) archive control)
-  :hints (("Goal" :in-theory (disable fn-gac-view-entry))))
-
-(defthm fn-gac-views-okp-of-pin-with-access
-  (equal (fn-gac-views-okp views archive (fn-gac-pin-with-access control views2))
-         (fn-gac-views-okp views archive control))
-  :hints (("Goal" :in-theory (disable fn-gac-view-entry fn-gac-pin-with-access))))
-
-; KEYSTONE: a carried entry is the per-command restriction.
-(defthm fn-gac-views-find-is-restriction
-  (implies (and (fn-gac-views-okp views archive control)
-                (fn-gac-views-find text views))
-           (equal (cdr (fn-gac-views-find text views))
-                  (fn-gac-view-entry text archive control)))
-  :hints (("Goal" :in-theory (disable fn-gac-view-entry))))
 
 ; The per-command index of a pinned view is the entry's: fn-gac-restrict-index
 ; reads a pin's control and nothing else of it.
@@ -1019,31 +924,4 @@
                                   (fn-gac-restrict-state fn-midx-build fn-gidx-build
                                    fn-gac-restrict-articles)))))
 
-(defthm fn-gac-views-find-of-access-views
-  (iff (fn-gac-views-find text (fn-gac-access-views texts archive control))
-       (member-equal text texts))
-  :hints (("Goal" :in-theory (disable fn-gac-view-entry))))
-
-(defthm fn-gac-member-read-texts
-  (implies (and (consp (fn-gac-rule table login))
-                (not (equal (cadr (fn-gac-rule table login)) "*")))
-           (member-equal (if (stringp (cadr (fn-gac-rule table login)))
-                             (cadr (fn-gac-rule table login))
-                           "")
-                         (fn-gac-read-texts table)))
-  :hints (("Goal" :in-theory (enable fn-gac-rule))))
-
-; KEYSTONE (once per pin): the table built at the pin holds an entry for
-; every read text the configuration assigns any login, so no restricted
-; command of a connection pinned with it rebuilds its view.
-(defthm fn-gac-access-views-covers-pattern
-  (implies (fn-gac-pattern table login 1)
-           (fn-gac-views-find (fn-gac-pattern table login 1)
-                              (fn-gac-access-views (fn-gac-read-texts table)
-                                                   archive control)))
-  :hints (("Goal" :in-theory (e/d (fn-gac-pattern) (fn-gac-read-texts fn-gac-rule))
-           :use ((:instance fn-gac-member-read-texts)))))
-
-(in-theory (disable fn-gac-read-texts fn-gac-view-entry fn-gac-access-views
-                    fn-gac-views-find fn-gac-pin-with-access fn-gac-pin-access
-                    fn-gac-views-okp))
+(in-theory (disable fn-gac-view-entry))

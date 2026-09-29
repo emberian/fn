@@ -194,14 +194,14 @@
                                               (executable-counterpart-theory :here))))))
 
 ; The served read, admitted or not, at the gate's value S.
-(defun fn-otm-read-span (oc views id i end s fn-octets fn-arena fn-cat)
+(defun fn-otm-read-span (oc views id i end cache s fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (natp i) (natp end) (<= i end)
                               (<= end (fn-octets-len fn-octets))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
   (if (eq (fn-otm-admit-post s) :shed)
       (let* ((allow (fn-otm-conn-allow oc id))
-             (result (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end
+             (result (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end cache
                                        fn-octets fn-arena fn-cat))
              (effects (fn-own-tls-result-effects result)))
         (fn-own-tls-make-result
@@ -211,7 +211,7 @@
            effects)
          (fn-otm-unshed-ocfg (fn-own-tls-result-owner result) id allow)
          (fn-own-tls-result-repinned result)))
-    (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat)))
+    (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat)))
 
 ; The class a peer connection's read enters the gate as: while the disk
 ; sheds, a reader-class quantum (admitted while the batch is in flight; the
@@ -231,8 +231,8 @@
 ;; fn-orr-read-span (PRF-288, PRF-296) is a theorem about the host's call.
 (defthm fn-otm-read-span-when-admitted-unfolds
   (implies (not (eq (fn-otm-admit-post s) :shed))
-           (equal (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat)
-                  (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat))))
+           (equal (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat)
+                  (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat))))
 
 ;; The served machine's 440 under a closed posting bit is the one effect
 ;; *fn-otm-generic-440*: fn-otm-disk-effects replaces exactly that reply.
@@ -405,15 +405,15 @@
  (defthm fn-otm-shed-read-effects
    (implies (eq (fn-otm-admit-post s) :shed)
             (equal (fn-own-tls-result-effects
-                    (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat))
+                    (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat))
                    (if (fn-otm-conn-allow oc id)
                        (fn-otm-disk-effects
                         (fn-own-tls-result-effects
-                         (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end
+                         (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end cache
                                            fn-octets fn-arena fn-cat))
                         (fn-otm-post-command-reply s) (fn-otm-shed-reply s))
                      (fn-own-tls-result-effects
-                      (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end
+                      (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end cache
                                         fn-octets fn-arena fn-cat)))))
    :hints (("Goal" :in-theory (e/d (fn-otm-read-span)
                                    (fn-orr-read-span fn-otm-shed-ocfg fn-otm-unshed-ocfg
@@ -428,11 +428,11 @@
                   (fn-own-find-conn id (fn-own-conns
                                         (fn-ocfg-owner
                                          (fn-own-tls-result-owner
-                                          (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end
+                                          (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end cache
                                                             fn-octets fn-arena fn-cat)))))))
             (equal (fn-otm-conn-allow
                     (fn-own-tls-result-owner
-                     (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat))
+                     (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat))
                     id)
                    (fn-otm-conn-allow oc id)))
    :hints (("Goal" :in-theory (e/d (fn-otm-read-span fn-otm-unshed-ocfg fn-otm-owner-with-allow
@@ -448,12 +448,12 @@
             (equal (fn-own-refused
                     (fn-ocfg-owner
                      (fn-own-tls-result-owner
-                      (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat))))
+                      (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat))))
                    (fn-otm-strip-shed
                     (fn-own-refused
                      (fn-ocfg-owner
                       (fn-own-tls-result-owner
-                       (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end
+                       (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end cache
                                          fn-octets fn-arena fn-cat)))))))
    :hints (("Goal" :in-theory (e/d (fn-otm-read-span fn-otm-unshed-ocfg)
                                    (fn-orr-read-span fn-otm-shed-ocfg fn-otm-owner-with-allow
@@ -480,8 +480,8 @@
 (defthm fn-otm-read-span-while-shedding
   (implies (eq (fn-otm-admit-post s) :shed)
            (let* ((shed (fn-otm-shed-ocfg oc id))
-                  (inner (fn-orr-read-span shed views id i end fn-octets fn-arena fn-cat))
-                  (r (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat))
+                  (inner (fn-orr-read-span shed views id i end cache fn-octets fn-arena fn-cat))
+                  (r (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat))
                   (c (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
              (and (implies (and c (fn-own-conn-shapep c))
                            (not (fn-otm-conn-allow shed id)))

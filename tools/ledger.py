@@ -206,6 +206,90 @@ class Reader:
         return number(text) if is_number(text) else Sym(text.lower())
 
 
+# The Common Lisp reader's whitespace[2] characters that end a `;` comment's
+# line or separate tokens.  Exactly these: a character this scanner calls
+# whitespace must be whitespace to ACL2 too, or two sources ACL2 reads
+# differently would scan alike.  (Unicode's wider `isspace` is not safe:
+# a no-break space is a constituent to ACL2.)
+_BLANK = " \t\n\r\f"
+# Terminating macro characters: each ends a token and is a token by itself.
+_TERMINATING = "()'`,"
+# A delimiter run: whitespace, or a `;` comment through its newline.
+_CANONICAL_GAP = re.compile(r"(?:[ \t\n\r\f]+|;[^\n]*(?:\n|\Z))+")
+# One token: a terminating macro character, a string, or a run of
+# constituents with `\\x` and `|...|` escapes (a `#` mid-token is a constituent,
+# so `a#|b|#c` is one symbol, as it is to ACL2).
+_CANONICAL_TOKEN = re.compile(
+    r"""[()'`,]|"(?:[^"\\]+|\\.)*"|(?:[^ \t\n\r\f()'`,";\\|]+|\\.|\|(?:[^|\\]+|\\.)*\|)+""",
+    re.DOTALL)
+_BLOCK_MARK = re.compile(r"#\||\|#")
+# The same scan as one substitution, for a source with no `#|`: every string,
+# `|...|` and `\\x` is kept (so a `;` or blank inside one is not a delimiter)
+# and every delimiter run becomes one space.
+_CANONICAL_FAST = re.compile(
+    r"""("(?:[^"\\]+|\\.)*"|\|(?:[^|\\]+|\\.)*\||\\.)|(?:[ \t\n\r\f]+|;[^\n]*(?:\n|\Z))+""",
+    re.DOTALL)
+
+
+def _canonical_piece(match: re.Match) -> str:
+    return match.group(1) or " "
+
+
+def canonical_text(source: str) -> str:
+    """``source`` with every comment and whitespace run made one space.
+
+    The cache key of a certificate (``tools/certs.py``) hashes this, so a
+    comment-only or layout-only edit keeps the key.  The rule it must keep:
+    two sources with the same canonical text are read by ACL2 as the same
+    forms.  It does, because it only replaces what the Common Lisp reader
+    treats as a delimiter -- a run of whitespace, a ``;`` comment up to its
+    newline, a ``#|...|#`` comment (nested) that starts a token -- by one
+    space, and keeps every token byte for byte: strings with their escapes,
+    ``|...|`` and ``\\`` escapes inside symbols, character names, ``#``
+    dispatches.  Nothing is lowercased, parsed as a number or interned (that
+    is `Reader`'s job and would conflate what ACL2 distinguishes, ``|Foo|``
+    against ``foo``).  Where a gap is optional (``(a)`` against ``( a )``)
+    the texts differ, which only costs a recertification.  Docstrings are
+    strings, so they stay: ACL2's book-hash covers them.
+    """
+    if "#|" not in source and source.count('"') % 2 == 0:
+        return _CANONICAL_FAST.sub(_canonical_piece, source).strip(" ")
+    return _canonical_slow(source)
+
+
+def _canonical_slow(source: str) -> str:
+    out: list[str] = []
+    n = len(source)
+    i = 0
+    gap = False
+    while i < n:
+        m = _CANONICAL_GAP.match(source, i)
+        if m:
+            gap, i = True, m.end()
+            continue
+        if source.startswith("#|", i):
+            depth, j = 1, i + 2
+            while j < n and depth:
+                k = _BLOCK_MARK.search(source, j)
+                if k is None:
+                    break
+                depth += 1 if k.group() == "#|" else -1
+                j = k.end()
+            if depth:
+                raise ReadError("unterminated block comment")
+            gap, i = True, j
+            continue
+        m = _CANONICAL_TOKEN.match(source, i)
+        if not m:
+            raise ReadError(f"unterminated string or escape at line {source.count(chr(10), 0, i) + 1}")
+        if gap and out:
+            out.append(" ")
+        gap = False
+        out.append(m.group())
+        i = m.end()
+    return "".join(out)
+
+
 NUMBER = re.compile(r"[+-]?(?:\d+/\d+|\d*\.\d+(?:[eE][+-]?\d+)?|\d+\.?(?:[eE][+-]?\d+)?)\Z")
 
 
@@ -3234,6 +3318,8 @@ def derived_status(entry: dict, names: list[str], books: set[str],
         path = root / relative
         try:
             value = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(value, dict):
+                value = certified_claims.certs.read_as_current(value, root)
         except (OSError, ValueError):
             continue
         if isinstance(value, dict):

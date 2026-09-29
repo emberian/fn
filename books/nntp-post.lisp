@@ -166,6 +166,9 @@
   (declare (xargs :guard t))
   (cond
    ((equal reason :unparsable) (fn-proto-text "POST" :refused-unparsable))
+   ;; PKT-506: RFC 5322 section 2.1.1's line bound, by name
+   ;; (books/injection.lisp fn-inj-parse-refusal).
+   ((equal reason :line-length) (fn-proto-text "POST" :refused-line-length))
    ;; PRF-230: the store profile's header limits, each by its field name.
    ((equal reason :header-fields-limit) (fn-proto-text "POST" :refused-header-fields-limit))
    ((equal reason :header-lines-limit) (fn-proto-text "POST" :refused-header-lines-limit))
@@ -533,6 +536,11 @@
                        ;; fn-cvec-article-refusal-word; lane membership-budget):
                        ;; "441 posting failed; the store cannot pay for this article's groups: ..."
                        :memberships
+                       ;; RFC 3977 section 6: a group's next article number
+                       ;; would pass 2,147,483,647 (the admission's number
+                       ;; test, books/owner-prepare-served.lisp
+                       ;; fn-psrv-event-numberedp; PKT-615).
+                       :article-numbers-exhausted
                        :storage-failed
                        ;; A signed POST refused at its FN-Authorship carrier
                        ;; (books/peer-authored-accept.lisp fn-pa-served-word):
@@ -573,6 +581,8 @@
     "the store is full: no capacity for this article (unaffordable); the node's operator can raise it")
    ((equal kind :memberships)
     "the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)")
+   ((equal kind :article-numbers-exhausted)
+    "a group this article is posted to has no article number left (RFC 3977 section 6 ends at 2147483647), nothing was stored (article-numbers-exhausted)")
    ((equal kind :storage-failed)
     "the store could not write the article, nothing was stored")
    ((equal kind :article)
