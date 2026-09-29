@@ -687,7 +687,6 @@
           (fn-peer-evidence peer cfg)
           (fn-charge-for-payload (len (fn-peer-relayed-octets cfg peer octets)))
           (fn-record-stamp-of-observation clock))))
-(verify-guards fn-peer-injection-arguments)
 
 ; (mv node2 decision).  On :want it is exactly one fn-node-prepare; it never
 ; calls fn-accept-prepare directly and never touches retention itself.
@@ -1919,6 +1918,7 @@
 (verify-guards fn-peer-decide-transfer)
 (verify-guards fn-peer-header-limit-refusal)
 (verify-guards fn-peer-decide-transfer-under)
+(verify-guards fn-peer-injection-arguments)
 ; fn-peer-session-consistentp: OPEN, and not needed.  It calls
 ; fn-post-session-consistentp (books/nntp-post.lisp), which is itself
 ; :verify-guards nil; it is a specification predicate, not on the served
