@@ -24,7 +24,8 @@
   (fn-native-operator-run config-octets argv-octets))
 
 (defun fn-native-operator-host-run-at (cwd config-path config-octets argv-octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (and (fn-cbor-octet-listp cwd) (fn-cbor-octet-listp config-path))))
   (fn-native-operator-run-at cwd config-path config-octets argv-octets))
 
 (defun fn-native-operator-host-result-carry-fields (result)
@@ -321,7 +322,7 @@
   (fn-native-operator-result-account-hash-auth-path-octets result))
 (defun fn-native-operator-host-account-hash-text (secret login octets presentp
                                                          max-credentials)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program :guard (fn-cbor-octet-listp octets)))
   (cond ((not (and (fn-ns-ringp secret) (fn-ipp-login-wordp login))) nil)
         ((fn-nop-account-hash secret login octets presentp max-credentials)
          (fn-record-octets-string
