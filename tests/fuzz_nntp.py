@@ -213,8 +213,9 @@ import protocol_emit  # noqa: E402  (the table, read without evaluating a book)
 PROTOCOL = {row["name"]: row for row in protocol_emit.load()["rows"]}
 # Table rows with a :fuzz production that no step sends (named, not silent).
 # XFN-ZARTICLE (NNT-055, lanes compress-5/-6): its answer is a DEFLATE block
-# in a length-counted body, which this transcript reader does not parse; its
-# :fuzz production is exercised by tests/test_native_compress.py instead.
+# in a length-counted body, which this transcript reader does not parse; the
+# served command is exercised by tests/test_native_compression.py's zarticle
+# tests, not by this fuzzer (an open gap, compress-9's LANEDUMP).
 UNFUZZED_ROWS = ["XFNCATCHUP", "XFN-ZARTICLE"]
 # Rows the fuzzer sends in its own spellings (QUIT_SPELLINGS: lower case, an
 # argument, no mutation; COMPRESS as UNKNOWN_VERBS' "COMPRESS DEFLATE", whose
