@@ -241,7 +241,7 @@
 
 (defun fn-owner-ocfg (state)
   ; Internal, single-valued accessor for host wrappers.
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (f-get-global 'fn-owner state))
 
 ; `fn-owner' has one canonical value: the configured owner.  These are the
@@ -249,7 +249,7 @@
 ; connection membership must use fn-owner-step's fn-ocfg transition; a core
 ; operation which preserves membership may use fn-owner-replace-core.
 (defun fn-owner-core (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (fn-ocfg-owner (f-get-global 'fn-owner state)))
 
 ;; A live owner's administrative publication (PKT-837): the authorization
@@ -295,7 +295,7 @@
 (defun fn-owner-config (state)
   ; The one live configuration.  No host global shadows this value: every
   ; caller reads the generation replayed into and published by fn-ocfg.
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (fn-ocfg-config (fn-owner-ocfg state)))
 
 ;; The injection configuration the owner has installed (fn-own-config): the
@@ -314,7 +314,7 @@
   (value (fn-own-config (fn-owner-core state))))
 
 (defun fn-owner-install-ocfg (oc state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (f-put-global 'fn-owner oc state))
 
 (defun fn-owner-replace-core (owner state)
@@ -538,7 +538,7 @@
        config-records frontier max-conns fn-arena fn-hist state))))
 
 (defun fn-owner-store (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (fn-own-store (fn-owner-core state)))
 
 ; The Store's persisted profile, carried from open.  VALUES is what
@@ -1152,7 +1152,7 @@
                 fn-hist state)))))))
 
 (defun fn-owner-node (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (fn-sn-node (fn-owner-store state)))
 
 (defun fn-owner-step (event fn-arena state)
@@ -2510,7 +2510,7 @@
         fn-hist state)))
 
 (defun fn-owner-consumer-local-wait-admit (waiters state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (value (fn-cwait-admit waiters)))
 
 (defun fn-owner-consumer-local-bound-ack (cursor-octets secret state)
@@ -3308,7 +3308,7 @@
 ;; D09 subject), or nil; the plan and event are ACL2's.  ROWS are the live
 ;; configuration's authorities rows (C2).
 (defun fn-owner-key-statement-request (event state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (value (fn-ks-pop-request event)))
 
 ;; Lane ack-before-barrier (books/owner-ack-after-barrier.lisp): whether the
@@ -3317,7 +3317,7 @@
 ;; (host/native/owner.lisp fnn-owner-statement-committed).  KEYSTONE
 ;; fn-oab-plan-only-after-the-fence: the executor decides only such events.
 (defun fn-owner-statement-fence (event state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (value (fn-oab-fence-before-change event)))
 
 ;; The grants a statement is decided under (books/key-statements.lisp
@@ -3398,7 +3398,7 @@
                                (third coordinates))))
 
 (defun fn-owner-key-statement-redecide-log-line (plan outcome state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (value (fn-ks-redecide-log-line plan outcome)))
 
 ;; D27: the signed composite against the profile the owner was handed at
