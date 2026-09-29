@@ -48,7 +48,7 @@
              *spt-s*)))
 
 ; RFC 3977 section 6 (PKT-615; books/store-prepare-served.lisp
-; fn-psrv-store-prepare-refuses-exhausted).  A CONSTRUCTED boundary state:
+; fn-psrv-store-prepare-refuses-exhausted-by-definition).  A CONSTRUCTED boundary state:
 ; the Store's node with fn.test's watermark at 2,147,483,647 (reaching it
 ; takes that many articles).  Every hypothesis holds (a record, served, its
 ; numbers past the bound) and so does the conclusion: the Store unchanged,

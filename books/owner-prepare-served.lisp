@@ -141,12 +141,12 @@
                 (equal (fn-psrv-prepare-identity oc record) oc)
                 (equal (fn-psrv-identity-refusal-kind oc record) :refused))))
 
-; KEYSTONE (the admission refuses by name past RFC 3977 section 6's bound):
-; an article whose groups are served but whose numbers would pass the bound
-; leaves the owner unchanged at every budget and is answered
+; By definition (the admission refuses by name past RFC 3977 section 6's
+; bound; an arm of fn-psrv-prepare, not a keystone): an article whose groups are served but
+; whose numbers would pass the bound leaves the owner unchanged at every budget and is answered
 ; :article-numbers-exhausted; teeth in
 ; tests/acl2/store-number-bound-tests.lisp.
-(defthm fn-psrv-prepare-refuses-exhausted
+(defthm fn-psrv-prepare-refuses-exhausted-by-definition
   (implies (and (fn-psrv-event-servedp (fn-ocfg-config oc) record)
                 (not (fn-psrv-event-numberedp oc record)))
            (and (equal (fn-psrv-prepare oc record budget carry) oc)

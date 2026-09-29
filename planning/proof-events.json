@@ -13557,6 +13557,31 @@
         {
           "kind": "theorem",
           "name": "fn-onb-boundp-at-owner-prepare-buffer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onb-boundp-at-owner-prepare-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onb-boundp-when-open-okp"
+        }
+      ]
+    },
+    {
+      "id": "PRF-921",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-snb-replay-apply-record-keeps-nexts-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snb-replay-keeps-nexts-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snb-replayed-acceptance-is-projection"
         }
       ]
     }

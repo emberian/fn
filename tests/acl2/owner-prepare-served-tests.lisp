@@ -295,7 +295,7 @@
 
 ; -----------------------------------------------------------------------------
 ; RFC 3977 section 6's number bound (PKT-615, lane join-f2-615):
-; fn-psrv-prepare-refuses-exhausted.  The witnesses are *lgt-reserved* with
+; fn-psrv-prepare-refuses-exhausted-by-definition.  The witnesses are *lgt-reserved* with
 ; fn.letters' watermark set in its Store's node: a CONSTRUCTED boundary
 ; state (reaching it takes 2,147,483,646 articles in the group), labelled so.
 (defun pst-with-next (oc group n)
