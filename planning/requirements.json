@@ -4502,7 +4502,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-230",
-        "PRF-905"
+        "PRF-905",
+        "PRF-978"
       ],
       "verification": [
         "proof",
@@ -4514,7 +4515,10 @@
         "books/injection.lisp",
         "planning/evidence/header-limits-profile-2026-09-27.md",
         "books/article-line-bound.lisp",
-        "tests/test_native_header_lines.py"
+        "tests/test_native_header_lines.py",
+        "books/bp-transit-join.lisp",
+        "tests/acl2/bp-transit-join-tests.lisp",
+        "host/bp-native-app-host.lisp"
       ],
       "implementation_note": "Fields 13 to 15 (format 10) (defaults 64, 256, 16,384); the served POST refuses by them (PRF-230, SCN-156). Open: peer and BP ingress (PKT-660). A header LINE over RFC 5322 section 2.1.1's 998 octets is refused by its own name, :line-length (PRF-905, PKT-506): the line bound is the RFC's, not a limit on a field, which is admitted folded."
     },
@@ -5433,6 +5437,29 @@
         "tests/test_native_operator_refusals.py"
       ],
       "implementation_note": "Lane operability-2 (row S10, 2026-09-29): items (a) the post reason, (c) policy set, (e) SIGHUP. Open: (b) init refusals with numbers and the development preset for unnamed init fields; (d) the unread [ops]/[alerts] keys (implement a size-rotation decision or delete them; both edit books/native-config)."
+    },
+    {
+      "id": "REP-016",
+      "title": "A TCPCL passive entity that receives a Contact Header of a version it does not implement sends its own header and SESS_TERM Version mismatch and closes at once: nothing after the peer's header is parsed as a TCPCLv4 message and no MSG_REJECT is sent (RFC 9174 section 4.3)",
+      "specification": "specs/tcpcl.md#5-rfc-9174-clause-matrix",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-977"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "rfc9174.txt",
+        "books/tcpcl-session.lisp",
+        "books/tcpcl-invariants.lisp",
+        "tests/acl2/tcpcl-tests.lisp",
+        "host/native/tcpcl.lisp",
+        "tests/test_bp_service_native.py",
+        "planning/evidence/bp-cursors-2026-09-27.md"
+      ]
     }
   ]
 }
