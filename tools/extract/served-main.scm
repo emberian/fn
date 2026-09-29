@@ -154,9 +154,39 @@
                           n (- t1 t0) (/ (* 1000.0 (- t1 t0)) n) (- g1 g0))))))
           (else (error "usage: model|socket FILE | bench FILE N")))))
 
+;; The writable store verbs (lane extract-writable): `store ROOT recover',
+;; `store ROOT post ...', `store ROOT node-secret create|rotate', as the
+;; developer image's `--fn store ...' runs them.  host/store-write-host.lisp's
+;; fn-xw-main (extracted) does the command and prints its lines; this driver
+;; reports the condition that ended it as fnn-main does, with ACL2's exit
+;; code for its class (fnn-exit-code-for: fn-outcome-host-condition-exit-code).
+(define (store-exit-class class)
+  (case class
+    ((|KEYWORD::INDETERMINATE|) '|KEYWORD::INDETERMINATE|)
+    ((|KEYWORD::FAULT| |KEYWORD::OS| |KEYWORD::INTERNAL|) '|KEYWORD::FAULT|)
+    ((|KEYWORD::USAGE|) '|KEYWORD::USAGE|)
+    (else '|KEYWORD::REFUSAL|)))
+(define (store-report result)
+  (let ((class (car result)) (port (current-error-port)))
+    (if (eq? class '|KEYWORD::EXIT|)
+        (exit (|b:ACL2::FN-OUTCOME-CODE| (cadr result)))
+        (begin
+          (cond ((eq? class '|KEYWORD::USAGE|) (display "fn-host: error: " port))
+                ((eq? class '|KEYWORD::INTERNAL|) (display "store: internal error: " port))
+                (else (display "store: " port)))
+          (display (cadr result) port) (newline port)
+          (exit (|b:ACL2::FN-OUTCOME-HOST-CONDITION-EXIT-CODE| (store-exit-class class)))))))
+(define (run-store args)
+  (let ((lg (|f:ACL2::CREATE-FN-OCTETS$C|)) (arena (|f:ACL2::CREATE-FN-ARENA$X|)))
+    (call-with-values (lambda () (|b:ACL2::FN-XW-MAIN| args lg arena acl2-state))
+      (lambda (result lg2 arena2 st) (store-report result)))))
+
 (native-self-check (lambda (octets) (vector (list->u8vector octets) (length octets))))
 (let ((args (command-line-arguments)))
-  (if (and (pair? args) (string=? (car args) "probe"))
-      (run-probes)
-      (condition-case (main args)
-        (e (fn-fault) (fault-exit e)))))
+  (cond ((and (pair? args) (string=? (car args) "probe")) (run-probes))
+        ((and (pair? args) (string=? (car args) "store"))
+         (condition-case (run-store args)
+           (e (fn-fault) (fault-exit e))))
+        (else
+         (condition-case (main args)
+           (e (fn-fault) (fault-exit e))))))
