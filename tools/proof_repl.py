@@ -410,6 +410,12 @@ def select_range(all_forms: list[str], start: str | None = None,
     if end < begin:
         raise SystemExit(f"proof-repl: the range ends (form {end}) before it begins "
                          f"(form {begin + 1})")
+    if end == begin:
+        # closure-theorems-2: `--from X --until X` sent nothing and said
+        # nothing; --until is exclusive, --through inclusive.
+        raise SystemExit(f"proof-repl: the range is empty (form {begin + 1} up to but "
+                         f"not including form {end + 1}): --until stops BEFORE its "
+                         "event; --through includes it")
     return range(begin, end)
 
 

@@ -1456,6 +1456,14 @@ class ObstructionsTwoTests(unittest.TestCase):
             proof_repl.main(["send", "n", "(+ 1 2)", "--host", "hbox", "--no-sync"])
         self.assertEqual(len(sent), 2)
 
+    def test_an_empty_range_is_refused_and_says_until_is_exclusive(self):
+        forms = ["(defun a () 1)", "(defthm b t)", "(defthm c t)"]
+        with self.assertRaises(SystemExit) as refused:
+            proof_repl.select_range(forms, "b", "b")
+        self.assertIn("--through includes it", str(refused.exception))
+        self.assertEqual(proof_repl.select_range(forms, "b", None, "b"), range(1, 2))
+        self.assertEqual(proof_repl.select_range(forms, "a", "c"), range(0, 2))
+
     def test_a_failed_from_source_dependency_falls_back_to_certify_missing(self):
         calls = []
 
