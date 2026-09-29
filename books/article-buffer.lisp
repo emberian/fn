@@ -518,6 +518,31 @@
                                  (:induction fn-article-parse-lines))
                                (theory 'minimal-theory))))))
 
+; An :ok parse carries its article.
+(local
+ (defthm fn-ars-parse-lines-ok-shape
+   (implies (fn-article-result-okp
+             (fn-article-parse-lines octets limits lines-left header-bytes
+                                     nfields fields-rev current header-rev))
+            (let ((r (fn-article-parse-lines octets limits lines-left header-bytes
+                                             nfields fields-rev current header-rev)))
+              (and (consp (cdr r)) (true-listp (cadr r)))))
+   :hints (("Goal" :induct (fn-article-parse-lines octets limits lines-left
+                                                   header-bytes nfields fields-rev
+                                                   current header-rev)
+                   :expand ((:free (limits lines-left header-bytes nfields
+                                     fields-rev current header-rev)
+                                   (fn-article-parse-lines
+                                    octets limits lines-left header-bytes
+                                    nfields fields-rev current header-rev)))
+                   :in-theory (union-theories
+                               '(fn-ars-result-okp-is-line-okp
+                                 fn-ars-line-okp-of-error
+                                 fn-article-ok fn-article-make
+                                 car-cons cdr-cons
+                                 (:induction fn-article-parse-lines))
+                               (theory 'minimal-theory))))))
+
 (defthm fn-ars-body-is-located
   (implies (and (fn-octets-p fn-octets)
                 (fn-article-result-okp (fn-ars-parse-under limits fn-octets)))
@@ -528,12 +553,19 @@
                   (fn-article-body
                    (fn-article-result-article
                     (fn-article-parse-under fn-octets limits)))))
-  :hints (("Goal" :in-theory (e/d (fn-article-parse-under fn-ars-of fn-ars-suffixp)
+  :hints (("Goal" :in-theory (e/d (fn-article-parse-under fn-ars-of fn-ars-suffixp
+                                   fn-article-result-okp fn-article-result-article
+                                   fn-article-body)
                                   (fn-article-parse-lines fn-ars-parse-lines
                                    fn-article-limit-lines fn-ars-suffixp-len
                                    fn-ars-parse-under-is-article-parse-under))
                   :use ((:instance fn-ars-parse-under-is-article-parse-under)
                         (:instance fn-ars-parse-lines-body-is-suffix
+                                   (octets fn-octets)
+                                   (lines-left (1+ (fn-article-limit-lines limits)))
+                                   (header-bytes 0) (nfields 0) (fields-rev nil)
+                                   (current nil) (header-rev nil))
+                        (:instance fn-ars-parse-lines-ok-shape
                                    (octets fn-octets)
                                    (lines-left (1+ (fn-article-limit-lines limits)))
                                    (header-bytes 0) (nfields 0) (fields-rev nil)
