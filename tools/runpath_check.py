@@ -72,7 +72,7 @@ PROCESS_SITES = {
     ("host/native/workflow.lisp", "fnn-workflow-ion-run-helper"):
         "the operator-named pinned ION helper of `fn --fn app-journal "
         "workflow-ion-submit ... PINNED_HELPER ...` (experimental offline "
-        "ION/LTP; docs/operator.md); :search nil, so only the absolute path "
+        "ION/LTP; docs/operator-internals.md); :search nil, so only the absolute path "
         "the operator gives; not on the NNTP service or operator path",
 }
 
@@ -147,7 +147,7 @@ SYSTEM_SCRIPTS = {"/bin/sh", "/bin/ksh", "/etc/rc.d/rc.subr"}
 # The oldest glibc a Linux release runs on: Debian 12's 2.36 (lane
 # release-glibc-floor, 2026-09-26; dregg-infra's edge boxes).  Every bundled
 # ELF object's GLIBC_x.y version needs must be at or below it; the release
-# build runs this check before packing (docs/operator.md, "From the release
+# build runs this check before packing (docs/operator-internals.md, "From the release
 # tarball"; docs/install.md's requirements line).  The one place it is set.
 GLIBC_FLOOR = (2, 36)
 GLIBC_VERSION_RE = re.compile(r"^GLIBC_(\d+)\.(\d+)(?:\.(\d+))?$")

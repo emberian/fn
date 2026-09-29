@@ -271,7 +271,7 @@ their call sites:
 | `*fn-store-max-text*` | `host/store-host.lisp` | deleted 2026-09-27 (lane host-decisions): the three fields it bounded are node-generated (identity renderings, the provenance wire), so their bound is the record codec's metadata domain, `*fn-record-max-metadata*`, checked by `fn-pfld-textp` (`books/post-fields.lisp`, KEYSTONE `fn-pfld-textp-is-exactly-the-record-metadata-domain`); not a served configuration limit and not a profile field |
 | `*fn-store-max-payload*` | `host/store-host.lisp` | deleted 2026-09-24: the persisted profile's payload field, `fn-sbud-payload-bound` (`books/store-budget-naming.lisp`), ceiling `*fn-record-max-payload*`; `fn-sbud-post-boundary` takes the profile as an argument. The payload bound is a profile field, fixed at init, not a served configuration limit |
 | `*fn-bpi-host-destination*` | `host/bp-ingress-host.lisp` | `(fn-cfg-policy v :bp-destination)` |
-| `*fn-bpi-host-group-map*` | `host/bp-ingress-host.lisp` | `fn-cfg-bp-group-map`, derived from the live group table — the hand-synchronised octet/name pairs disappear |
+| `*fn-bpi-host-group-map*` | `host/bp-ingress-host.lisp` | not yet deleted: the hand-synchronised octet/name pairs are still a host constant. What landed is the check, not the derivation: `fn-bpi-policy-appliesp-carried` (`books/bp-ingress-carried.lisp`) refuses a policy whose map values (`fn-bpi-map-values`) are not the store's live group list (`fn-sn-groups`), so a stale map refuses every ADU rather than misfiling one. Deriving the map from the group table is open |
 | `*fn-bpi-host-policy-id*`, `*fn-bpi-host-terms-id*`, `*fn-bpi-host-issuer-eid*` | `host/bp-ingress-host.lisp` | `(fn-cfg-policy v :acceptance)`, `:terms`, `:issuer-eid` |
 | `*fn-reader-groups*`, `*fn-reader-archive*`, `*fn-reader-id*`, `*fn-reader-payload*` | `host/reader-host.lisp` | a test fixture: move to `tests/acl2/reader-fixture.lisp` built over an explicit configuration record. The seed archive is not a deployment default |
 | `*fn-sim-groups*` | `tests/acl2/simulator.lisp` | the scenario's own configuration record |
@@ -342,9 +342,12 @@ deleted: the fact log *is* the configuration record history.
     (fn-own-refuse o id (fn-own-reconfig-refusal o deltas))))
 ```
 
-`fn-own-reconfig-refusal` returns a *named reason*, never `nil`: `:no-clock`,
-`:busy`, `:not-ready`, `:stale-generation`, or one of the admissibility reasons
-of §2.3. The D13 three-outcome rule applies unchanged: refused, uncertain and
+As landed (§8) the event is `fn-ocfg-reconfigure` over the owner paired with
+its configuration (`books/owner-config.lisp`), and its refusal,
+`fn-ocfg-reconfig-refusal`, returns a *named reason*, never `nil`:
+`:no-such-connection`, `:no-clock`, `:busy`, `:not-ready`, `:malformed-delta`,
+`:stale-generation`, `:group-pinned-by-reader`, `:group-staged`, or an
+admissibility reason of `fn-cfg-admissible-reason` (§2.3), else `:record`. The D13 three-outcome rule applies unchanged: refused, uncertain and
 accepted stay distinct out to the control-channel reply and the CLI exit code.
 
 ### 2.2 Per-connection pinned configuration generation
@@ -366,8 +369,12 @@ writable field:
                                (fn-own-conn-frontier conn))))))
 ```
 
-`fn-own-view` likewise gains `fn-own-view-config`. `fn-own-open` pins the view's
-configuration; `fn-own-advance` re-pins to the newest; nothing else writes it.
+As landed (§8) neither the view nor the connection gained a slot: the pin is
+the table `fn-ocfg-pins` beside the owner. `fn-ocfg-open` pins the live
+configuration, `fn-ocfg-advance` and a read whose `GROUP` or `LISTGROUP`
+advanced the connection (`fn-ocfg-with-read-owner`, NNT-042) re-pin it to the
+live configuration, and `fn-ocfg-close`, `fn-ocfg-fault` and a read that closes
+the connection drop the pin; a reconfiguration writes none.
 
 ### 2.3 The exact rules
 
@@ -385,9 +392,9 @@ configuration; `fn-own-advance` re-pins to the newest; nothing else writes it.
          node                                   ; refused, node unchanged
        ...))
    ```
-3. The single pending slot: while a post is staged, `fn-own-reconfigure`
-   refuses with `:busy`, and while a reconfiguration is staged, `fn-own-begin`
-   refuses. A post therefore *cannot* straddle a generation bump; the only
+3. The single pending slot: while a post is staged, `fn-ocfg-reconfigure`
+   refuses with `:busy`, and while a reconfiguration is staged, `fn-ocfg-step`
+   leaves the state unchanged on `:begin` and `:take`. A post therefore *cannot* straddle a generation bump; the only
    reachable straddle is the client-level one, where a connection began
    composing at *g* and the generation moved before `:begin`, and that is
    refused with `:stale-generation`.
@@ -398,9 +405,12 @@ Replay re-runs check 2 on the durable record. A record whose
 
 **Readers.** A connection observes exactly one configuration generation until
 it is advanced. `fn-own-read-step` steps `fn-nntp-step` against the connection's
-pinned archive and pinned config and writes neither. Only `(:advance id)` moves
-the pin; `(:reopen ...)` drops all connections rather than silently re-pinning
-them. Stated as `fn-own-conn-config-stable-without-advance` (§3.2).
+pinned archive and pinned config and writes neither. Only `(:advance id)` and
+a `GROUP` or `LISTGROUP` that advances the connection (NNT-042) move the pin;
+`(:reopen ...)` drops all connections rather than silently re-pinning them.
+Stated as `fn-ocfg-pin-is-stable-without-advance` (§8), whose trace predicate
+`fn-ocfg-repins-forp` counts every `:advance`, `:close`, `:fault`, `:octets`
+and `:read` event on that connection as a possible pin change.
 
 **Group removal.** Never while any obligation or pin references the group.
 Admissibility splits into a replay-checkable layer and an owner layer, because
@@ -426,8 +436,11 @@ reader pins are not durable state:
           (t nil))))
 ```
 
-`fn-own-group-pinned-by-readerp` holds when some connection's
-`fn-nntp-session-group` is that name, at *any* pinned generation. The entry and
+As landed (§8) the owner layer is `fn-ocfg-group-pinned-by-readerp`: it holds
+when a `:create-group` or `:remove-group` delta of the list names the group
+some connection's reader session (`fn-nntp-session-group` of
+`fn-auth-reader-session`) stands in, at *any* pinned generation, and
+`fn-ocfg-reconfig-refusal` then answers `:group-pinned-by-reader`. The entry and
 its watermark are never deleted; `:remove-group` only sets `retired-gen`, so
 NNT-006's "allocation watermarks survive removal and restart" is structural
 rather than a rule to remember, and re-creating the name resumes its numbering.
@@ -518,19 +531,21 @@ and by the refusal direction, which is what stops a half-applied record:
            (equal (fn-node-apply-config node record) node)))
 ```
 
-Teeth. `fn-cfg-apply-config-is-atomic`: drop `fn-node-statep` (a malformed node
-whose groups already disagree with its config); drop `fn-cfg-recordp` (a record
-with a non-`natp` generation); drop admissibility (a `(:set-capacity 0)` under
-a nonzero reservation, which breaks `fn-node-statep` of the result); drop the
-generation equality (a record claiming generation `g+7`, so the state's
-generation and the record history disagree). Witness: a three-delta record
-(`:create-group`, `:set-capacity`, `:set-peers`) over a node with two groups,
-one staged-then-completed article and a live reservation, where each of the
-three intermediate values differs from the final value.
-`fn-node-state-is-single-generation` must not be stated as
-`fn-node-statep → fn-node-statep`; the separating witness is a hand-built
-5-tuple whose acceptance groups are the *previous* generation's table and whose
-config is the next, which must fail `fn-node-statep`.
+Landed (§8) over the configured node `fn-cnode`, not as these three
+statements. The atomic application is `fn-cnode-apply-config-preserves-state`
+(the result is again `fn-cnode-statep`) with
+`fn-cnode-apply-config-bumps-the-generation`; the no-mix half is carried as the
+two equalities of `fn-cnode-statep` (the acceptance groups are the allocation
+domain `fn-cnode-domain`, the retention capacity the configured capacity) and
+is not exported as a separate theorem; the refusal direction is
+`fn-cnode-inadmissible-config-changes-nothing` (`-by-definition`). Teeth in
+`tests/acl2/config-tests.lisp`: a retire record over a node with two completed
+articles and a reservation total of 2, then a revival, each result
+`fn-cnode-statep`; refusals that return the node unchanged (a retire of a name
+no longer served, any record while a transaction is staged); a capacity
+decrease below the reservation refused and one to exactly the reservation
+admitted. The proposal's per-hypothesis `must-fail` teeth and its three-delta
+witness are not written.
 
 ### 3.2 Reader consistency
 
@@ -580,9 +595,17 @@ a hand-built owner whose connection carries a config generation the record
 prefix does not produce. Drop the connection-exists hypothesis: `fn-own-read-step`
 on an unknown id returns `nil` effects, while the right-hand side is the reply
 of the *stepped* session — a `must-fail` that separates by more than the empty
-list, because the chosen event is `LIST ACTIVE`, whose reply is non-empty. Drop
-`fn-own-no-advance-forp`: an event list containing `(:advance id)` around a
-committed reconfiguration.
+list, because the chosen event is `LIST ACTIVE`, whose reply is non-empty.
+
+Landed (§8) over the pin table: `fn-ocfg-pin-is-stable-without-advance` with
+the trace predicate `fn-ocfg-repins-forp`, and
+`fn-ocfg-list-active-lists-the-pinned-served-table`. Their teeth in
+`tests/acl2/owner-config-tests.lisp`: a non-inert event list (an `(:open)` that
+writes the table, a clock observation) leaves a generation-1 pin in place;
+dropping the pin hypothesis, an identifier one `(:open)` then pins; dropping
+the no-re-pin hypothesis, `(:advance 0)` moves the pin from generation 1 to 2;
+and `LIST ACTIVE` answers two different group lists on two connections of one
+owner pinned at two generations.
 
 ### 3.3 Acceptance/configuration binding
 
@@ -612,22 +635,24 @@ generation, and replay reproduces that binding.
          (fn-node-config node)))
 ```
 
-`fn-cfg-bindings-of-node` collects `(msgid config-generation . groups)` from
-`fn-state-articles`; `fn-cfg-bindings-of-records` collects the same triples from
-the `:article` journal records, skipping none. An omitted or fabricated binding
-fails the equality regardless of whether the rest is right.
+The proposal's two enumerations were to collect `(msgid config-generation .
+groups)` from the node's articles and from the `:article` journal records.
+Landed differently (§8): the article record gained no configuration generation
+(its eleventh slot is the stamp, `fn-record-stamp`), so there is no per-article
+binding triple and neither enumeration exists. The binding is enforced where an
+article enters the configured node instead: `fn-cnode-prepare` stages only when
+the caller's pin is the node's generation and every offered group is served
+(`fn-cnode-prepare-stages-only-served-groups`), and replay's
+`fn-cnode-apply-record` refuses an article record whose groups the
+configuration in force does not serve. The untrusted-article half is
+`fn-cnode-article-transitions-never-change-config`, over prepare, complete and
+recover, with no hypotheses and no separate witness.
 
-Teeth. Witness: an article accepted at generation 2 into a group retired at
-generation 3, still bound and still retrievable at generation 4 — the case that
-makes the per-article generation load-bearing rather than decorative. Drop
-`fn-node-statep`: a node whose articles list holds a membership in a name that
-was never created. Drop `fn-replay-okp`: a faulted replay whose node is the
-partial one. Drop `fn-jrec-listp`: a record list with a 10-slot article record,
-so the eleventh slot reads as `nil` and the binding triple is wrong.
-`fn-node-article-prepare-never-changes-config` has no hypotheses, so its tooth
-is a separating witness rather than a `must-fail`: a `fn-node-prepare` call
-whose `groups` argument is a group name and whose `payload` spells a
-`(:create-group ...)` delta, which must leave the configuration untouched.
+Teeth in `tests/acl2/config-tests.lisp`: a prepare under a stale pin
+(generation 0) returns the node unchanged; after retiring `fn.test` both of its
+articles stay bound, the domain keeps its watermark, and a post into it is
+refused by the configured node while the plain node would still stage it;
+revival at generation 3 resumes its numbering at 3.
 
 ### 3.4 Reservation preservation across reconfiguration
 
@@ -758,9 +783,12 @@ in `events` (the only event that could lower a generation, and does not).
 ```
 
 The generation still bumps — a peer change is durable and ordered — but nothing
-a reader or an acceptance decision can see is touched. Tooth: drop
-`fn-cfg-transport-only-deltasp` with a change list containing one
-`(:create-group ...)`, which must fail the first conjunct.
+a reader or an acceptance decision can see is touched. Landed only at the
+value level: `fn-cfg-peer-deltas-change-only-peers` (`books/peer-config.lisp`)
+proves that a `:set-peer` or `:remove-peer` delta leaves every slot of the
+value but the peers slot equal. The node-level statement above, restated over
+`fn-cnode-apply-config`, its transport-only predicate and its tooth (a change
+list with one `(:create-group ...)`) are open.
 
 ## 4. What existing theorems change
 
@@ -795,8 +823,12 @@ is what makes the per-connection verdict meaningful rather than incidental:
 
 `fn-nntp-step` takes the config, reads the carried verdict, and
 `fn-nntp-step-preserves-carried-projection` keeps its shape with the extra
-argument. `host/reader-host.lisp`'s `fn-reader-use-store` reads the config from
-`fn-node-config` of the store's node instead of assuming one.
+argument. Not landed (packet R5): `fn-nntp-projectionp` still takes the
+archive alone and `fn-nntp-step` no configuration. `host/reader-host.lisp`'s
+`fn-reader-use-store` installs `fn-rdc-store-selection` of the store's
+acceptance state and verdicts; the plain node carries no configuration (that is
+`fn-cnode-config` of the configured node), and a served connection's
+configuration is its owner pin, `fn-ocfg-conn-config`.
 
 **`fn-snt-relation` carries the configuration.** Its `let*` loses `groups` and
 `capacity` and every `fn-sf-replay-node groups capacity ...` call drops two
@@ -848,11 +880,16 @@ migration is by re-init with a configuration record, because no deployed store
 exists (`specs/store-experiment.md` is an experiment).
 
 **`fn-own-every-fact-is-clock-stamped` and friends.** The three group-fact
-theorems of the owner design (`specs/owner.md`, on the pending owner lane) are subsumed:
-`fn-own-declared-group-is-replayed` becomes §3.5's replay statements over the
-real record history, and `fn-own-declare-group-without-clock-is-refused` becomes
-`fn-own-reconfigure-without-clock-is-refused` with reason `:no-clock`. The
-owner's first open item ("persist the group-configuration fact log") closes.
+theorems of the owner design (`specs/owner.md`, on the pending owner lane) were to
+be subsumed: `fn-own-declared-group-is-replayed` was to become §3.5's replay statements over
+the real record history, and `fn-own-declare-group-without-clock-is-refused` a
+no-clock refusal of the reconfiguration event. Not done: `(:declare-group
+name)` and its in-process fact log remain (`fn-own-declare-group`), and the
+three fact theorems stand in `books/owner-invariants-outcome.lisp`. The
+reconfiguration event beside it refuses without a clock through
+`fn-ocfg-reconfig-refusal` (`:no-clock`), and
+`fn-ocfg-refused-reconfiguration-changes-nothing` is the no-change half; no
+separate no-clock theorem is stated.
 
 ## 5. Migration
 
@@ -878,8 +915,9 @@ record's content is a single named constant in `tools/run_store.py`, so it is
 one deletable line when packet R4 lands operator-supplied configuration.*
 
 **Packet R2 — the node transition and its keystones.** Owner: model + proofs.
-`fn-node-apply-config`, the two `fn-node-statep` coherence conjuncts,
-`fn-node-prepare`'s generation check, and §3.1, §3.3, §3.4, §3.7 with their
+The configuration transition, the two coherence conjuncts and the prepare-time
+generation check (landed over the configured node as `fn-cnode-apply-config`,
+`fn-cnode-statep` and `fn-cnode-prepare`, §8), and §3.1, §3.3, §3.4, §3.7 with their
 teeth. `fn-replay-apply-record` dispatches on `fn-jrec-kind` and faults on a
 config record whose change is inadmissible or whose generation is not the
 successor.
@@ -899,8 +937,11 @@ and §3.6 with their teeth. Delete `fn-own-facts`, `fn-own-group-fact-*`,
 further events; the owner state shrinks by one slot rather than growing.*
 
 **Packet R4 — hosts and the CLI.** Owner: host lane. Delete every `defconst`
-in §1.7's table; thread the store's configuration into `fn-store-post-boundary`,
-`fn-store-group-names` and the lab BP ingress host's policy and context (that host since retired, Q7k 2026-09-29); move the
+in §1.7's table; thread the store's configuration into the post boundary (landed
+as `fn-sbud-post-boundary` over the persisted profile, §1.7), the host's group
+lookups (landed as positions in the configured domain, `fn-store-group-codes`),
+and the lab BP ingress host's `fn-bpi-host-policy` and `fn-bpi-host-context`
+(that host since retired, Q7k 2026-09-29); move the
 reader seed to `tests/acl2/reader-fixture.lisp`. `run_store.py` gains
 `reconfigure` (deltas in, D13 exit codes out) and `config` (print the generation
 and value); `run_owner.py` gains a `RECONFIGURE` control line. `DEFAULT_CONFIG`
@@ -1040,12 +1081,13 @@ differences are deliberate:
   (a core-cluster signature change with whole-tree blast radius, recorded
   open below), and the compatibility statement is the ground equality above.
   The RFC 3977 section 3.1 ceiling is cited once, `fn-cnode-line-ceiling` =
-  `*fn-nntp-max-initial-line-octets*`; `fn-cfg-host-line-ceiling` and its
-  `510` are gone.
+  `*fn-nntp-max-initial-line-octets*`; the host's copy of the ceiling and its
+  `510` are gone from `host/config-host.lisp`.
 - **Store host (R4).** `*fn-store-groups*`, `*fn-store-group-table-id*`,
-  `fn-store-group-code`, `fn-store-group-of-name`, `fn-store-group-names`,
-  `fn-cfg-host-default-octets`, `fn-cfg-host-replay-octets` and
-  `DEFAULT_CONFIG["group_table"]` are deleted. A store's group table is its
+  the host's code and name lookups over that compiled table, its fixed default
+  record and its one-record replay wrapper, and `DEFAULT_CONFIG["group_table"]`
+  are deleted; `fn-cfg-host-initial-octets` (`host/config-host.lisp`) builds
+  generation 1 from the operator's group names. A store's group table is its
   configuration record history under `config/NNNNNNNN.cfg` (one record per
   generation); `run_store.py init --group <name>...` writes generation 1 from
   its arguments (default: the two experimental groups, so every existing test
@@ -1212,13 +1254,15 @@ differences are deliberate:
   fields are uint32, so a clock time beyond 2^32 is outside the codec; the
   64-bit stamp is an open item for the next codec schema.
 - **Still open after `w9/reconfig`.** (7) The served port answers
-  `LIST ACTIVE` from the allocation domain, not from the pin:
-  `fn-nntp-dispatch` supplies `(fn-state-groups archive)` at
-  [`books/nntp-responses.lisp`](../books/nntp-responses.lisp) lines 225, 308
-  and 319, so `fn-ocfg-list-active` is not yet the function the host calls and
-  the equating theorem is written down in the book but deliberately not
-  stated. The fix is one served-table argument on `fn-served-conn`,
-  `fn-served-dispatch` and `fn-nntp-dispatch`; owner, the NNTP cluster. (8)
+  `LIST ACTIVE` from the allocation domain, not from the pin: the served
+  port reaches `fn-served-dispatch`, and the responders of
+  [`books/nntp-responses.lisp`](../books/nntp-responses.lisp)
+  (`fn-nntp-list-response`, `fn-nntp-list-active-or-newsgroups`) supply
+  `(fn-state-groups archive)`, so `fn-ocfg-list-active` is not yet the
+  function the host calls and the equating theorem is written down in
+  `books/owner-config.lisp` but deliberately not stated. The fix is one
+  served-table argument on the served connection (`fn-served-connp`),
+  `fn-served-dispatch` and those responders; owner, the NNTP cluster. (8)
   `fn-own-reopen` replays the article history only, so the owner cannot state
   the recovered generation; section 3.5's owner statement has no subject and
   is not stated. Its store-level half is proved

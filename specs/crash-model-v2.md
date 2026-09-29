@@ -452,15 +452,18 @@ operation it is `:apply` or `:drop`. Missing choices are conservative loss.
          (equal image (fn-bs-crash s choices)))))
 ```
 
-An executable decision procedure `fn-bs-image-admissiblep (s image)` is also
-required (the campaign calls it, §5). Under `fn-bs-pending-disjointp`, which
+An executable decision procedure over `(s image)` is also required (§5's
+campaign would call it); no book defines one yet. Under
+`fn-bs-pending-disjointp`, which
 says no two pending writes of one inode overlap and no name carries more than
 two pending entry operations, admissibility is decidable per inode and per
 name: a unit outside every pending write is unchanged, a unit inside one is
 unconstrained, and a name's value is the durable one or the target of one of
-its pending operations. The theorem `fn-bs-image-admissiblep-iff-crash-imagep`
-under that hypothesis is a P1 obligation; every program in §2 satisfies the
-hypothesis at every cut (`fn-bs-program-pending-disjoint`).
+its pending operations. Its equivalence with `fn-bs-crash-imagep` under that
+hypothesis is an open P1 obligation. Every program in §2 satisfies the
+hypothesis at every cut of its ground runs (`fn-bs-run-pending-disjointp`,
+asserted per step in `books/byte-store-programs.lisp`); no theorem states it
+for every run.
 
 ### 1.6 Syscalls with outcomes
 
@@ -734,8 +737,11 @@ transition; across the states the host observes between two reads of one
 open, `fn-bs-read-ranges-concatenate` holds under A-HOST-EXCLUSIVE-READ
 (books/assumptions.lisp), which stands for the store lock. The Store
 checkpoint's publish program `fn-bs-scp-program` has the profile program's
-shape and its old-or-new crash keystone; its `:rename` into `:root` and the
-root fsync are not yet admitted by `fn-bs-k0-step-inputp`.
+shape and its old-or-new crash keystone
+(`fn-bs-scp-program-crash-is-old-or-new`,
+books/byte-store-state-checkpoint-program.lisp). No K0 relation theorem
+covers its steps yet, the `:rename` into `:root` and the root fsync
+included.
 
 ## 2. The host's programs over the model
 
@@ -1807,7 +1813,7 @@ candidate, plus the one bit "the link may have been issued".
 (defthm fn-bs-journal-crash-image-scans ...)
 
 ; K9c.  Both outcomes replay.  The workflow host preflights the extended
-; history before staging (workflow_journal.py:203 history_preflight), so
+; history before staging (host/workflow-host.lisp fn-workflow-preflight-history), so
 ; replay of published ++ [candidate] is as valid as replay of published; the
 ; replay theorems fn-bp-trace-preserves-state and the receiver's
 ; fn-bprv-* take the scanned list as their input.
@@ -1828,9 +1834,13 @@ candidate, plus the one bit "the link may have been issued".
                (equal (fn-bs-content image (fn-bs-lookup image :inbound name)) frame))))
 ```
 
-`fn-bp-history-preflight`, `fn-bp-replay`, `fn-frame-journal-decode` stand
-for the workflow book's actual replay entry and the frame book's
-kind-dispatching decoder; P5 names them exactly. The BPA delete stays outside
+In the sketch the preflight and the replay stand for the served replay entry
+`fn-bpiw-replay-journal` (books/bp-ion-workflow.lisp), which the host runs
+over the extended history before staging (`fn-workflow-preflight-history`)
+and over the scanned list at open (`fn-workflow-install-replay`); the frame
+decoder stands for the per-kind decoders `fn-frame-workflow-decode` (FNWF)
+and `fn-frame-receipt-decode` (FNRJ) in books/frame-journal.lisp. K9, K9b,
+K9c and K10 are not proved; P5 states them over these names. The BPA delete stays outside
 the model (`receive:bpa-deleted`); it is a transport effect, and the campaign
 keeps checking it against `_in_inventory`.
 
@@ -1999,7 +2009,7 @@ future assumption would need, so that no theorem here is read as claiming it:
 | `fn-frame-digest` encapsulate (A-CRYPTO) | **Unchanged**; A-CRYPTO-TRAILER is a second encapsulate beside it, not a twin | It says nothing about digests; it bounds nature's tears |
 | The six-cut table (store-fault-matrix.md §"Process-death cuts") and `tests/store_crash_child.py` | **Retired**; regenerated from the `:cut` steps of §2.2 | Subsumed by the campaign since `3cb1bae`; v2 makes the table a program |
 | `cuts.py` `model` strings | **Replaced** by `(program, step-index)` references; the two `gap` rows become K9 references | |
-| `specs/store-exploration.md` "crash choices in the data-durable phases are asserted covered" | **Retired** as a coverage claim | Coverage is the campaign's differential check against `fn-bs-image-admissiblep` |
+| `specs/store-exploration.md` "crash choices in the data-durable phases are asserted covered" | **Retired** as a coverage claim | Coverage is the campaign's differential check against §1.5's decision procedure (not yet defined) |
 | `_frontier_with_checksum`, `config_with_checksum` (run_store.py:567, 174) | **Deleted** by P4; frontier and config become `fn-frame` frames | The assurance rule "integrity trailers are ACL2-owned" |
 | `fn-checkpoint-*` (checkpoint.lisp) | **Unchanged**; P-CHECKPOINT programs get K12 (present-or-absent exact generation; old-or-new selection) after P8 | The logical checkpoint book never chose bytes; v2 supplies them |
 
@@ -2068,7 +2078,7 @@ Two classes, distinguished by admissibility:
 ### 5.4 Journals and inbox
 
 The same three additions over P-JOURNAL (FNWF, FNRJ) and P-INBOX (FNBI),
-with `fn-bs-scan-journal` and K9/K10 as the reference. The two `gap` rows of
+with §3.4's journal scan (sketched beside `fn-bs-scan-store`, not yet defined) and K9/K10 as the reference. The two `gap` rows of
 `cuts.py` gain `program="journal", step=<index of the :link step>` and lose
 their `gap` string; `model_gaps()` must return empty after P5.
 
@@ -2091,7 +2101,7 @@ suite; each certifies its own roots and runs the filtered tests it names.
 | # | Packet | Owner | Deliverables | Acceptance |
 | --- | --- | --- | --- | --- |
 | P0 | Register and adopt | this lane, then coordinator | This document; `DESIGN-crash-model-v2-summary.md`; `fn-bs-` row in `docs/prefixes.md` when P1 opens | `make check` green with the new spec present; decision recorded in `planning/decisions.md` |
-| P1 | Byte-store kernel | lane `w5/bs-kernel` | `books/byte-store.lisp` (§1.2-1.6), `fn-bs-image-admissiblep` and `fn-bs-image-admissiblep-iff-crash-imagep`, §1.7 theorems, `tests/acl2/byte-store-tests.lisp` | Certifies; guard-verified; teeth: `must-fail` for "fenced content lost", "unissued write appears", "cross-inode damage", "entry neither old nor a target", "refence after error fences something"; a witness where a dropped rename leaves the old frontier and a dropped link leaves no name |
+| P1 | Byte-store kernel | lane `w5/bs-kernel` | `books/byte-store.lisp` (§1.2-1.6), §1.5's decision procedure and its equivalence with `fn-bs-crash-imagep`, §1.7 theorems, `tests/acl2/byte-store-tests.lisp` | Certifies; guard-verified; teeth: `must-fail` for "fenced content lost", "unissued write appears", "cross-inode damage", "entry neither old nor a target", "refence after error fences something"; a witness where a dropped rename leaves the old frontier and a dropped link leaves no name |
 | P2 | Programs and the transcription check | lane `w5/bs-programs` (host + proof) | `books/byte-store-programs.lisp` (§2.1-2.2), D1-D5 as `assert-event`s, `tools/transcribe_check.py`, P-INIT cuts added to `run_store.py` | Table test green; every durable syscall in the six host functions has a step and a cut; `python3 tests/campaign/cuts.py` count equals the number of `:cut` steps; `transcribe_check.py` fails when one host line is moved |
 | P3 | Scan, relation, store keystones | lane `w5/bs-scan` | `books/byte-store-scan.lisp` (§3.1-3.3, K0-K8), tests with witnesses at every cut | Certifies; K4 replaces the PRF-007 citation via `tools/ledger.py`; teeth: drop `:fsync-file` before `:link` in a test program and K1 `must-fail` with a torn record under a final name |
 | P4 | ACL2-owned frontier and config frames; trailer theorems | lane `w5/bs-frame` (host + proof) | New store frame kinds for frontier and config; `fn-bs-frontier-decode` defined, encapsulate removed; `books/byte-store-frame.lisp` (K11a-d); `_frontier_with_checksum` and `config_with_checksum` deleted; store format bump with a migration note in `store-experiment.md` | Certifies; `grep -n checksum tools/run_store.py` returns nothing; `tests/test_store.py` corruption rows pass against the new frames; tooth: a truncated frame validating `must-fail` |
@@ -2125,7 +2135,7 @@ no pieces, while `fn-bs-apply-op` splices it and zero-extends the inode when
 the offset is past the end.  The view of
 `(:byte-store 4 ((0)) NIL ((:write 0 5 NIL)) 1)` is five zero octets and no
 crash image of that state has them, so
-`fn-bs-view-is-an-admissible-image` was FALSE as stated.  `write(2)` of zero
+§1.7's view theorem (the view is an admissible image) was FALSE as stated.  `write(2)` of zero
 octets changes nothing on POSIX and `fn-bs-write` issues no operation for it,
 so `fn-bs-statep` now carries `fn-bs-writes-nonemptyp`, a domain invariant of
 the model's own syscalls in the same sense as `fn-bs-writes-knownp`.  The
@@ -2144,14 +2154,14 @@ prescribes); guard verification is open.
 | --- | --- | --- |
 | K0 (model well-formedness): `fn-bs-statep` preserved by `fn-bs-crash` (admissible choices), both fences, and every syscall for every outcome | `byte-store-invariants` | **proved**: `fn-bs-{crash,fence-file,fence-dir,create,write,fsync-file,fsync-dir,link,rename,unlink,mkdir}-preserves-statep`. `unlink` and the source path of `rename` need no `dir-idp`/`namep` hypotheses (the lookup types them). |
 | `fn-bs-fence-file-drains-exactly-its-inode`, `fn-bs-fence-dir-drains-exactly-its-directory` | `byte-store-invariants` | **proved**, no `fn-bs-statep` hypothesis; plus `-touches-only-its-{inode,directory}` |
-| `fn-bs-crash-keeps-fenced-content` (A-DURABILITY positive half) | `byte-store-invariants` | **proved**, no `fn-bs-statep` hypothesis. `fn-bs-crash-invents-nothing` and `fn-bs-tear-touches-only-its-inode` are the same statement (`fn-bs-fencedp` unfolds to their hypothesis; the latter's `ino` is unused) and are not separate events. |
+| `fn-bs-crash-keeps-fenced-content` (A-DURABILITY positive half) | `byte-store-invariants` | **proved**, no `fn-bs-statep` hypothesis. §1.7's "a crash invents nothing" and "a tear touches only its inode" are this statement (`fn-bs-fencedp` unfolds to their hypothesis; the latter's `ino` is unused) and are not separate events. |
 | `fn-bs-crash-keeps-quiet-directory` | `byte-store-invariants` | **proved** (the directory half of the above; not in §1.7) |
 | `fn-bs-crash-entry-is-old-or-a-pending-target` (A-WRITE-ISOLATION namespace half) | `byte-store-invariants` | **proved** with `(fn-bs-dir-idp dir) (fn-bs-namep name)` in place of `fn-bs-statep` |
 | `fn-bs-refence-after-error-fences-nothing` (fsyncgate) | `byte-store-invariants` | **proved** with no hypothesis: after `:ok` the set was drained, after an error discarded; either way a second fence finds nothing |
 | `fn-bs-lose-everything-is-an-admissible-image`, `fn-bs-crash-with-no-choices-is-the-durable-state` | `byte-store-invariants` | **proved** (the bottom of the image lattice; the top is the view, below) |
 | `fn-bs-splice-composition`, `fn-bs-view-choices`, `fn-bs-view-choices-are-choices` | `byte-store-invariants` | **proved** (w9/storage): the composition lemma the view theorem's obligation named, and the nothing-lost choice list with its admissibility for every pending list and every unit |
-| `fn-bs-view-is-an-admissible-image` | — | **open**, with a smaller obligation stated at its place in the book. The composition lemma is discharged and the witness choice list exists; what remains is two index facts for `1 <= i <= count-1`, `(equal start_i (+ offset k_i))` and `(equal (min (+ offset L) (* (+ u0 i 1) unit)) (+ offset k_(i+1)))`, where `start_i = (max offset (* (+ (floor offset unit) i) unit))` and `k_i = (min L (- start_i offset))`. With them the induction on `i` closes, its step being `fn-bs-splice-composition` then `fn-bs-take-split` and its base `fn-bs-take-of-len-is-identity`. The attempt exhausts a 2,000,000 step limit re-deriving the two facts inside every branch of `fn-bs-tear-write`; state them as `:linear` rules over a named `fn-bs-piece-start` and open the tear once by `:expand`. |
-| `fn-bs-image-admissiblep` and `-iff-crash-imagep` (§1.5 decision procedure) | — | **open** (P1 residual; P6 needs it) |
+| §1.7's view theorem (the view is an admissible image) | — | **open**, with a smaller obligation stated at its place in `books/byte-store-invariants.lisp`. The composition lemma is discharged and the witness choice list exists; what remains is two index facts for `1 <= i <= count-1`, `(equal start_i (+ offset k_i))` and `(equal (min (+ offset L) (* (+ u0 i 1) unit)) (+ offset k_(i+1)))`, where `start_i = (max offset (* (+ (floor offset unit) i) unit))` and `k_i = (min L (- start_i offset))`. With them the induction on `i` closes, its step being `fn-bs-splice-composition` then `fn-bs-take-split` and its base `fn-bs-take-of-len-is-identity`. The attempt exhausts a 2,000,000 step limit re-deriving the two facts inside every branch of `fn-bs-tear-write`; state them as `:linear` rules over a named piece-start function and open the tear once by `:expand`. |
+| §1.5's decision procedure and its equivalence with `fn-bs-crash-imagep` | — | **open**, no book defines it (P1 residual; P6 needs it) |
 | A-CRASH-IMAGE `fn-assume-physical-crash`, A-CRYPTO-TRAILER `fn-assume-crash-tearp` (§3.6) | `assumptions` | **admitted** as encapsulates with the stated constraints, **moved to `books/assumptions.lisp`** (P7) by lane `w9/storage-2` on 2026-09-20, with `fn-bs-torn-variantp`: that book now includes `byte-store-invariants`, and `books/relay`, `books/bp-release` and `books/scheduler-invariants` carry the byte-store closure. No cycle; the constraints did not change. The tearp witness is "no tears, of an empty write" until the view theorem lands. |
 
 ### The programs (`books/byte-store-programs.lisp`, §2)
@@ -2165,8 +2175,8 @@ events `:frontier-dir` / `:record-dir`, not §2.2's `:frontier-directory` /
 `:record-directory`. D1-D3 are `assert-event`s over the constants with one
 violating program each; D4 is `fn-bs-run-stops-at-first-error-by-definition`
 (`:rule-classes nil`); D5 is asserted on the ground runs at every step
-(`fn-bs-run-pending-disjointp`), not yet the theorem
-`fn-bs-program-pending-disjoint`. P-JOURNAL (both halves), P-INBOX with its
+(`fn-bs-run-pending-disjointp`); no theorem yet states it for every
+run. P-JOURNAL (both halves), P-INBOX with its
 reconciliation branch and both P-CHECKPOINT programs are transcribed by lane
 `w9/storage` (2026-09-20) with the host's own cut names, and carry the same
 ground assertions. `tools/transcribe_check.py` is §2.3's check, in both
@@ -2217,10 +2227,10 @@ formula. No process-death cut or byte-crash outcome was removed.
 
 | Keystone | Status |
 | --- | --- |
-| K0 `fn-bs-program-step-preserves-relation` | **open, with bounded establishment/preservation packets**: `byte-store-relation` proves the metadata initializer's exact final image and relation establishment under `fn-bs-initial-inputp`; `byte-store-initializer` separately proves the current host's **fresh whole byte image** and its kernel-relation projection under its physical fresh-input contract plus that metadata binding. The image theorem, rather than the projection, covers config-history durability; a reachable fence-free witness separates them. It does not prove existing/retry initialization. `tools/transcribe_check.py` now names this current subject but reports its helper-inlining limit, so its zero missing-host-cut count does not claim every new model cut is host-injectable; current `faults.at` labels map to the post-helper/final-barrier cuts and the remaining distinct model cuts await host instrumentation. Every pair of the first successful frontier program is related under a positive write unit and `fn-bs-frontier-inputp`. `byte-store-program-invariants` proves arbitrary-history allocation freshness, the ready-state authority quietness obligation, frontier noncommit observations (including known-failure and uncertain callbacks), and the successful directory observation under an independently stated committed-byte predicate. General syscall preservation, recovery establishment, retained-history composition, config-history refinement, and existing/retry initialization remain open. |
+| K0 (every program step preserves the relation) | **open, with bounded establishment/preservation packets**: `byte-store-relation` proves the metadata initializer's exact final image and relation establishment under `fn-bs-initial-inputp`; `byte-store-initializer` separately proves the current host's **fresh whole byte image** and its kernel-relation projection under its physical fresh-input contract plus that metadata binding. The image theorem, rather than the projection, covers config-history durability; a reachable fence-free witness separates them. It does not prove existing/retry initialization. `tools/transcribe_check.py` now names this current subject but reports its helper-inlining limit, so its zero missing-host-cut count does not claim every new model cut is host-injectable; current `faults.at` labels map to the post-helper/final-barrier cuts and the remaining distinct model cuts await host instrumentation. Every pair of the first successful frontier program is related under a positive write unit and `fn-bs-frontier-inputp`. `byte-store-program-invariants` proves arbitrary-history allocation freshness, the ready-state authority quietness obligation, frontier noncommit observations (including known-failure and uncertain callbacks), and the successful directory observation under an independently stated committed-byte predicate. General syscall preservation, recovery establishment, retained-history composition, config-history refinement, and existing/retry initialization remain open. |
 | K1 `fn-bs-store-crash-image-scans` | **proved 2026-09-21** (lane `w11/k1-scan`, laptop `build/acl2/certify-20260921T024339Z-59112`). The namespace clause closed first (2026-09-20, lane `w9/storage-3`, hbox `build/acl2/certify-20260920T204940Z-1181403`): `fn-bs-apply-entries-names-is-names-after` (`tools/proof_profile.py` named four opened recognizers as the cause and closing them took it from an induction-depth-limit blowout at 2,016,278 prover steps to 33,789), then `fn-bs-crash-names-is-names-after`, `fn-bs-crash-image-names-are-an-outcome` and `fn-bs-crash-image-transaction-names`. The other three are `fn-bs-crash-image-reads-the-config`, `fn-bs-crash-image-frontier-decodes-to-a-natural` and `fn-bs-crash-image-records-do-not-fault`, over the per-name and per-window vocabulary of section 8 of the book. **No trailer assumption is used**, as this section predicted. |
 | K2 `fn-bs-store-crash-image-is-kernel-admissible` | **proved 2026-09-21** (lane `w11/k1-scan`, same run), with the three model questions decided before it. [D14-a](../planning/decisions.md) (lane `w9/storage-3`) keeps `books/byte-store-scan.lisp`'s `(fn-bs-txn-name (len (fn-bs-durable-names bs :transactions)))` and withdraws §3.2's `(fn-bs-txn-name (len (fn-sf-records ks)))`; the duplicate-record image is excluded by the publish window's `(equal (fn-bs-durable-records bs) (fn-sf-records ks))`, an equality of LISTS. [D14-b](../planning/decisions.md) (lane `w10/kernel-freedom`) makes K2's CONCLUSION the platform predicate `fn-sf-recovery-crash-imagep` rather than the reliance predicate `fn-sf-crash-imagep`, which is unchanged. [D14-c](../planning/decisions.md) (lane `w11/bytestore-k2`) adds the frontier arm K2f. **Both rollback arms are LIVE in the proof and neither is decoration**: outside the window the read is one `fn-sf-crash-imagep` already admits, so that half is `fn-sf-crash-imagep-implies-recovery-crash-imagep` applied; inside it a crash that loses the pending link reads the durable record list, which is the scanned list without its last element, and one that loses the pending rename reads the durable frontier, which is the scanned one minus one. |
-| K2r `fn-bs-replay-window-carries-no-success` | **retired 2026-09-20 into a certified kernel theorem** (D14-b, lane `w10/kernel-freedom`). The obligation was "a crash in the recovery window risks no acknowledged record", stated at the byte level because the kernel could not express it. It is now `fn-sf-recovery-admissible-image-facts` (`books/store-files-invariants.lisp`): an acknowledged pair of the pre-crash state names a record of EVERY image the platform may leave, the rolled-back one included, because the arm that drops a record carries `(null (fn-sf-successes s))` as a conjunct. Nothing at the byte level has to carry it any more. |
+| K2r (the recovery window carries no success) | **retired 2026-09-20 into a certified kernel theorem** (D14-b, lane `w10/kernel-freedom`). The obligation was "a crash in the recovery window risks no acknowledged record", stated at the byte level because the kernel could not express it. It is now `fn-sf-recovery-admissible-image-facts` (`books/store-files-invariants.lisp`): an acknowledged pair of the pre-crash state names a record of EVERY image the platform may leave, the rolled-back one included, because the arm that drops a record carries `(null (fn-sf-successes s))` as a conjunct. Nothing at the byte level has to carry it any more. |
 | K3 `fn-bs-store-recovery-is-a-kernel-crash` | **proved 2026-09-21** (lane `w11/k1-scan`), in `books/byte-store-keystones.lisp`: K2 and `fn-sf-recovery-crash-realizes-every-admissible-image` (**certified**, `books/store-files-invariants.lisp`, D14-b and D14-c) over all four arms. The constructor is `fn-sf-image-crash`, which selects among `fn-sf-crash` at the two choice functions, `fn-sf-crash-rollback` and `fn-sf-crash-frontier-rollback`. |
 | K2f (the frontier sub-case of K2) | **modelled 2026-09-20** ([D14-c](../planning/decisions.md), lane `w11/bytestore-k2`) and **discharged 2026-09-21** inside K2 (lane `w11/k1-scan`), in the shape `w10/kernel-freedom` named plus one conjunct it did not: the two rollbacks are exclusive. The recovery window can also be entered with a pending `:root` entry operation -- die at `frontier-replaced` (`tools/run_store.py:1305`), reopen, and the rename is drained only by `fsync_dir(self.root)` at `:1216`, the FOURTH recovery barrier, so at `recover-replayed` (`:1207`) and the first three `recover-barrier` cuts (`:1228`) a crash rolls the frontier back to the durable value, which the kernel does not hold. `fn-sf-recovery-crash-imagep` carries the arm, `fn-sf-frontier-rollback-visiblep` is its gate, `fn-sf-crash-frontier-rollback` inhabits it, and `fn-bs-replay-matches-scan` carries the byte clause. The gate's `posp` conjunct is what makes the rolled-back value a natural in K2's frontier clause, and its `fn-sf-record-listp` conjunct admits exactly the reachable window. |
 | K4 `fn-bs-acknowledged-record-survives-byte-crash`, and `fn-bs-crash-image-reopens` beside it | The byte proof requires the maintained `fn-csi-full-relationp`, byte/kernel relation, modeled crash image, and observed identity **and topic** replay. `fn-bs-crash-image-consumer-replay-ok` composes K2's exact scanned image with strict replay of the E2 completed Store prefix, including both recovery rollback arms; consumer validity is derived, not assumed over the scan. Topic replay is an honest additional observed premise until the maintained topic/crash relation proves it for actual Store traces. `fn-bs-crash-image-reopens` then applies the host's `fn-sn-open-observed` guarantee in both windows. K4 adds retention of an acknowledged pair. **K4's recovery-window instances are vacuous** because that window has no current-process successes; the conditional reopen theorem covers it without a success premise. General K0 establishment of these relations across all physical call traces remains open. |

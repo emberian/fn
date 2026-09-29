@@ -294,9 +294,14 @@ answer (:live), or the refusal of a store whose lock an owner holds (:held)."
       (values (fnn-core 'fn-native-control-host-status-exit-code :refused) nil)
     (multiple-value-bind (status word)
         (fnn-control-admin control-path argv)
-      (let ((detail (fnn-operator-status-detail status word)))
+      (let ((detail (fnn-operator-status-detail status word))
+            ;; Row S1: an accepted reply that names a word (a limit
+            ;; decision, books/limits-live.lisp fn-lim-reply-note) prints it.
+            (note (and word (fnn-core 'fn-lim-reply-note status word))))
         (values (fnn-core 'fn-native-control-host-status-exit-code status)
-                (and (not (eq detail status)) detail))))))
+                (cond ((and (consp note) (fnn-octet-list-p note))
+                       (format nil "~a ~a" status (fnn-octets-string (fnn-octets note))))
+                      ((not (eq detail status)) detail)))))))
 
 (defun fnn-operator-live-request (control-path argv)
   "PKT-868: an administrative vector the live owner answers with a word of
@@ -304,10 +309,15 @@ its own state (the compaction request): the exit code of ACL2's status, and
 the word printed as ACL2 rendered it (the reply detail names only refusals)."
   (multiple-value-bind (status word) (fnn-control-admin control-path argv)
     ;; The request's own first word names it ("compaction requested",
-    ;; "reclaim requested").
+    ;; "reclaim requested"); ACL2 decides the word printed after it: the
+    ;; owner's, else the status's name ("reclaim fault", never "reclaim
+    ;; NONE" beside exit FAULT; books/control-request-word.lisp).
     (when (and (fnn-octet-list-p word) (consp argv) (fnn-octet-list-p (first argv)))
-      (fnn-out "~a ~a" (fnn-octets-string (fnn-octets (first argv)))
-               (fnn-octets-string (fnn-octets word))))
+      (let ((printed (fnn-core 'fn-crqw-request-word status word)))
+        (unless (fnn-octet-list-p printed)
+          (fnn-fault "ACL2 returned a malformed request word"))
+        (fnn-out "~a ~a" (fnn-octets-string (fnn-octets (first argv)))
+                 (fnn-octets-string (fnn-octets printed)))))
     (fnn-core 'fn-native-control-host-status-exit-code status)))
 
 (setq *fnn-operator-live-owner*

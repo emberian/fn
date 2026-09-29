@@ -83,7 +83,7 @@ path = "$OLD/log/fn.log"
 EOF
 PW=$(openssl rand -hex 16)
 printf 'tester %s\n' "$PW" >"$OLD/credentials.txt"; chmod 600 "$OLD/credentials.txt"
-# The small preset's fields (docs/operator.md, "The process heap"): with no
+# The small preset's fields (docs/operator-internals.md, "The process heap"): with no
 # profile flag, init writes the D27 default on a machine of 4 GiB or more (this
 # scope's memory.max included), which a release's bin/fn refuses (PKT-582).
 SMALL="--max-transactions 16384 --max-history-octets 8388608 --max-record-octets 196608 --max-article-octets 32768 --max-groups-per-article 16 --max-open-suffix 128"
