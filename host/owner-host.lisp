@@ -29,6 +29,7 @@
 ; exception in the serve loop ended the process for every connection.
 (include-book "../books/owner-config")
 (include-book "../books/state-globals")
+(include-book "../books/owner-retain-state")
 ; The compression threshold (fn-owner-compress-min-octets; PRF-341).
 (include-book "../books/payload-lz-append")
 ;; RFC 8054 COMPRESS DEFLATE: the inflater the host calls per connection
@@ -38,17 +39,21 @@
 (include-book "../books/owner-checkpoint-open")
 ; PKT-868: the operator's compaction request on a running owner.
 (include-book "../books/owner-compact-request")
+; S3b: the native export request/status decisions belong to the full image.
+(include-book "../books/owner-export-request")
 ; Row S10 (lane operability-2): a refused control post completion names the
 ; Store's word on the reply and the line.
 (include-book "../books/owner-control-post-reason")
 ; W5b: the transit AUTHORITY verdict beside the byte decision (fn-pta-decide),
 ; from the store's carried index and keyring.
 (include-book "../books/peer-transit-authority")
+(include-book "../books/article-subject")
 ; Q16: content reclamation on a running owner (fn-orc-).
 (include-book "../books/owner-reclaim")
 (include-book "../books/owner-reclaim-conns")
 ;; online-reclaim-5: the swapped owner is :ready after the open's barriers.
 (include-book "../books/owner-reclaim-ready")
+(include-book "../books/owner-reclaim-carry")
 ; Q16 (b): online disk release of dropped files (fn-xrt-).
 (include-book "../books/extent-retire")
 ; The publication through the octet buffer, decided before it is encoded
@@ -419,8 +424,7 @@
              ; owner opens with (books/post-retain-carried.lisp
              ; fn-prc-refresh of nil; fn-prc-carryp-of-refresh), so the
              ; first POST's refresh is a delta, not a build.
-             (state (f-put-global
-                     'fn-owner-retain-carry
+             (state (fn-owner-retain-carry-put
                      (fn-prc-refresh nil (fn-node-retention
                                           (fn-sn-node
                                            (fn-own-store (fn-owner-core state)))))
@@ -592,6 +596,12 @@
     (if (equal verdict :installed)
         (let* ((state (fn-owner-replace-core next state))
                (state (f-put-global 'fn-owner-store-profile values state))
+               ; PRF-996: the carried (REQUESTED . FUNDED) the live status
+               ; and health report (books/limits-live.lisp fn-lim-report-
+               ; octets).  At the open both are the history's effective
+               ; profile (fnn-load-config: fn-store-lim-effective), the one
+               ; the launcher reserved; fn-owner-limit-decided moves it.
+               (state (f-put-global 'fn-owner-limit-carry (cons values values) state))
                ; PRF-284: the profile's admission, decided once here
                ; (fn-pvc-carryp-of-make); see fn-owner-profile-carry.
                (state (f-put-global 'fn-owner-profile-carry
@@ -642,6 +652,39 @@
   (if (boundp-global 'fn-owner-store-profile state)
       (f-get-global 'fn-owner-store-profile state)
     nil))
+
+;; PRF-996: the running owner's carried (REQUESTED . FUNDED)
+;; (books/limits-live.lisp fn-lim-carry-after): the profile the configuration
+;; history requests and the one this owner serves, NIL before its open.  The
+;; live `policy set' decides over it (host/native/admin.lisp
+;; fnn-owner-limit-serialized), and `status' and `health' report it
+;; (fn-owner-limit-report), neither walking the history:
+;; fn-lim-carry-after-is-the-history keeps REQUESTED the history's.
+(defun fn-owner-limit-carry (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-limit-carry state)
+      (f-get-global 'fn-owner-limit-carry state)
+    nil))
+
+;; The carry as an error triple, for the native host (fnn-owner-core).
+(defun fn-owner-limit-carried (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-owner-limit-carry state)))
+
+;; After decision D of `policy set FIELD N' is published (accepted) or
+;; refused, the carry becomes fn-lim-carry-after; the answer is the new
+;; funded profile, which the caller installs (fn-owner-apply-limit-profile)
+;; when it moved.
+(defun fn-owner-limit-decided (field n d state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((carry (fn-lim-carry-after field n d (fn-owner-limit-carry state)))
+         (state (f-put-global 'fn-owner-limit-carry carry state)))
+    (value (fn-lim-carry-funded carry))))
+
+;; The live report's limit lines (fn-lim-reported-triple-is-the-decisions).
+(defun fn-owner-limit-report (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-lim-report-octets (fn-owner-limit-carry state)))
 
 ; The carried verdict of the profile (books/store-profile-carried.lisp).
 ; Its writers are fn-owner-install-profile (fn-pvc-make of the profile it
@@ -1572,14 +1615,11 @@
 ;; global's writers are fn-owner-install-extended (every recovery: the
 ;; refresh of nil, so the first POST pays no build), fn-owner-prepare-buffer
 ;; and fn-owner-prepare, which store fn-prc-refresh of the value read here;
-;; so it always satisfies fn-prc-carryp (fn-prc-carryp-of-refresh; nil by
-;; fn-prc-carryp-when-atom).  The recognizer names no owner state, so no
-;; owner step between two POSTs can falsify it.
-(defun fn-owner-retain-carry (state)
-  (declare (xargs :stobjs state :guard t))
-  (if (boundp-global 'fn-owner-retain-carry state)
-      (f-get-global 'fn-owner-retain-carry state)
-    nil))
+;; and prepare-identity/finish-synced refresh it; orcp-swap installs the
+;; rebuild's field 2. The getter/setter effects are proved in
+;; books/owner-retain-state.lisp. Complete initialization and transition
+;; preservation remain obligations; raw owner entries stay disabled.
+; Defined under the same name by books/owner-retain-state.lisp.
 
 ; THE OWNER'S POST ENTRY (records-flip).  The duplicate test is the Store's
 ; entry over the arena (fn-store-existing-action, KEYSTONE
@@ -1680,8 +1720,7 @@
                                     next))))
                  (state (if (equal record :clock-unusable)
                             state
-                          (let ((state (f-put-global 'fn-owner-retain-carry
-                                                     carry state)))
+                          (let ((state (fn-owner-retain-carry-put carry state)))
                             (fn-owner-install-ocfg (cdr outcome) state)))))
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena fn-hist state)
@@ -1845,8 +1884,7 @@
                                     next))))
                  (state (if (equal record :clock-unusable)
                             state
-                          (let ((state (f-put-global 'fn-owner-retain-carry
-                                                     carry state)))
+                          (let ((state (fn-owner-retain-carry-put carry state)))
                             (fn-owner-install-ocfg (cdr outcome) state)))))
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena fn-hist state)
@@ -1944,7 +1982,7 @@
                                       (fn-arena-count fn-arena) carry)
       (let* ((row (fn-oii-identity-row event (fn-sn-keyring s) (fn-sn-keyring-generation s)
                                        (fn-arena-count fn-arena)))
-             (state (f-put-global 'fn-owner-retain-carry carry state))
+             (state (fn-owner-retain-carry-put carry state))
              (state (fn-owner-install-ocfg next state)))
         (cond ((not (equal word :prepared)) (value word))
               ((fn-oii-identity-sealsp event)
@@ -2167,12 +2205,13 @@
          ;; fn-irc-rix-ocfg-complete (books/identity-retain-carried.lisp),
          ;; its gate and finish applying an identity, consumer or topic
          ;; record through the carried obligation-id trie brought to the
-         ;; Store node's ledger (KEYSTONE
-         ;; fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete).
+         ;; Store node's ledger (boundary fn-irc-rix-ocfg-complete-is-rix,
+         ;; then derived composition
+         ;; fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete-by-definition).
          (carry (fn-prc-refresh (fn-owner-retain-carry state)
                                 (fn-node-retention
                                  (fn-sn-node (fn-own-store before)))))
-         (state (f-put-global 'fn-owner-retain-carry carry state))
+         (state (fn-owner-retain-carry-put carry state))
          (state (fn-owner-install-ocfg
                  (fn-irc-rix-ocfg-complete (fn-owner-ocfg state) fn-hist carry)
                  state))
@@ -2711,6 +2750,9 @@
       (let* ((decision (fn-own-sub-decision sub))
              (node (fn-sn-node (fn-own-store owner)))
              (cfg (fn-owner-config state))
+             ; Authority uses THIS connection's pinned configuration. A
+             ; replacement governs later connections, not a queued old one.
+             (authority-cfg (fn-ocfg-conn-config (fn-owner-ocfg state) (fn-own-sub-id sub)))
              (peer (fn-peer-submission-peer decision))
              (msgid (fn-peer-submission-msgid decision))
              (octets (fn-peer-submission-octets decision))
@@ -2730,7 +2772,7 @@
           (mv-let (d authority)
             (fn-pta-decide (fn-sn-index (fn-own-store owner))
                            (fn-sn-keyring (fn-own-store owner))
-                           (fn-cfg-value cfg) (fn-cfg-generation cfg)
+                           (fn-cfg-value authority-cfg) (fn-cfg-generation authority-cfg)
                            node cfg peer msgid octets (fn-own-clock owner) id subject
                            (fn-own-config-header-limits (fn-own-config owner)))
           (let* ((args (fn-peer-injection-arguments node cfg peer msgid octets
@@ -2741,6 +2783,11 @@
                  (state (f-put-global 'fn-owner-transit-reason
                                       (fn-peer-decision-reason d) state))
                  (state (f-put-global 'fn-owner-transit-authority authority state))
+                 ; Versioned route-independent LEGACY article subject. The
+                 ; bytes commitment argument keeps its original meaning.
+                 (state (f-put-global 'fn-owner-transit-article-subject
+                                      (fn-id-text (fn-asj-subject octets)) state))
+                 (state (f-put-global 'fn-owner-transit-bytes-subject subject-octets state))
                  ; (nth 3 args) is fn-peer-scope-groups' answer: the list
                  ; fn-peer-injection-arguments hands fn-node-prepare as the
                  ; memberships (generation, msgid, octets, GROUPS, id,
@@ -3005,7 +3052,15 @@
                                       ; unbound until a transit's authority
                                       ; decision sets it: the empty authority
                                       (and (boundp-global 'fn-owner-transit-authority state)
-                                           (f-get-global 'fn-owner-transit-authority state))))))
+                                           (f-get-global 'fn-owner-transit-authority state))))
+                                    (fn-olog-field
+                                     "article-subject"
+                                     (and (boundp-global 'fn-owner-transit-article-subject state)
+                                          (f-get-global 'fn-owner-transit-article-subject state)))
+                                    (fn-olog-field
+                                     "bytes-subject"
+                                     (and (boundp-global 'fn-owner-transit-bytes-subject state)
+                                          (f-get-global 'fn-owner-transit-bytes-subject state)))))
                              state)))
     (value :ok)))
 
@@ -3885,14 +3940,26 @@
 ;; defaults of every absent row.
 ;; NNT-041: several listeners.  The node is public when any listener is
 ;; (fn-exp-address-publicp decides each).
+;; The listener projections the raw host hands the install (host/native/
+;; owner.lisp fnn-owner-run: one (FAMILY ADDRESS-OCTETS) per bound listener,
+;; ACL2's projected family and the address as a list): the shape the two
+;; guards below read, and nothing else about them (K2, depth-debt-9).
+(defun fn-owner-exposure-projectionsp (projections)
+  (declare (xargs :guard t))
+  (if (atom projections)
+      (null projections)
+    (and (consp (car projections))
+         (consp (cdr (car projections)))
+         (fn-owner-exposure-projectionsp (cdr projections)))))
+
 (defun fn-owner-exposure-projections-publicp (projections)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard (fn-owner-exposure-projectionsp projections)))
   (and (consp projections)
        (or (fn-exp-address-publicp (car (car projections)) (cadr (car projections)))
            (fn-owner-exposure-projections-publicp (cdr projections)))))
 
 (defun fn-owner-exposure-install-set (projections state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (fn-owner-exposure-projectionsp projections)))
   (let* ((publicp (fn-owner-exposure-projections-publicp projections))
          (state (f-put-global 'fn-owner-exposure (fn-exp-initial) state))
          (state (f-put-global 'fn-owner-exposure-close nil state))
@@ -4766,20 +4833,7 @@ existing port only after fn-fc has made this connection ready."
 ; profile): the retention carry, the record octets, the completion debt, the
 ; carried usage.  (list E OC CARRY OCTETS DEBT USAGE), OC :fault on a
 ; refused open.
-(defun fn-owner-orcp-rebuild (rows configs frontier max-conns)
-  (declare (xargs :mode :program))
-  (let* ((r (fn-orcp-rebuild rows configs frontier max-conns))
-         (oc (cadr r)))
-    (if (equal oc :fault)
-        (list (car r) :fault nil nil nil nil)
-      (let* ((s (fn-own-store (fn-ocfg-owner oc)))
-             (records (fn-sf-records (fn-sn-files s)))
-             (count (fn-sf-records-count (fn-sn-files s))))
-        (list (car r) oc
-              (fn-prc-refresh nil (fn-node-retention (fn-sn-node s)))
-              (cons count (fn-sbud-bytes-used s))
-              (cons count (fn-cvec-record-debt records))
-              (cons count (fn-pcb-tally-records records nil)))))))
+; Defined by books/owner-reclaim-carry.lisp under the same host-called name.
 
 ; Off the mutex, into FRESH catalog and history instances (the served ones
 ; untouched): the catalog of the rebuilt Store's rows and its history
@@ -4839,7 +4893,7 @@ existing port only after fn-fc has made this connection ready."
          (swapped (fn-ocfg-owner next))
          (state (fn-owner-install-ocfg next state))
          (count (fn-sf-records-count (fn-sn-files (fn-own-store swapped))))
-         (state (f-put-global 'fn-owner-retain-carry (nth 2 rebuilt) state))
+         (state (fn-owner-retain-carry-put (nth 2 rebuilt) state))
          (state (f-put-global 'fn-owner-record-octets (nth 3 rebuilt) state))
          (state (f-put-global 'fn-owner-record-debt (nth 4 rebuilt) state))
          (state (f-put-global 'fn-owner-carried-usage (nth 5 rebuilt) state))

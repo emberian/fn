@@ -130,6 +130,10 @@ def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
     healing, overran, unmeasured = healing_measure(scenario, journal)
     if unmeasured:
         return harness_failure(scenario, journal, unmeasured)
+    if scenario.contract == "acceptance-model":
+        return check_acceptance_model(scenario, journal, budget, healing, overran)
+    if scenario.contract == "page-io-ownership":
+        return check_page_io(scenario, journal, budget, healing, overran)
     narrowing = journal.narrowing()
     if len(narrowing) > budget.max_records:
         return Verdict("inconclusive", scenario.id, journal.digest(),
@@ -182,6 +186,148 @@ def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
     return Verdict(kind, scenario.id, journal.digest(),
                    cause=("missing:" + ",".join(missing)) if missing else None,
                    **common).sign()
+
+
+def check_page_io(scenario, journal, budget, healing, overran):
+    """PRF-1057 token cancellation/settlement rules over observed actual I/O.
+
+    The host-called fn-pio-complete's publication criterion and file-clear
+    rule justify the independent token-state checker. Native integration,
+    actual worker death and the scenario's full composition stay pending.
+    """
+    rows = [r for r in journal.of_kind("environment") if r.get("event") == "page-io"]
+    if len(journal.records) > budget.max_records or budget.max_histories < 1:
+        return Verdict("inconclusive", scenario.id, journal.digest(),
+                       cause="budget:page-io", budget=asdict(budget)).sign()
+    held = [r for r in rows if r.get("phase") == "held"]
+    if len(held) != 1:
+        return harness_failure(scenario, journal, "page-io-issued-hold-unobserved")
+    token = held[0].get("token")
+    if (not isinstance(token, list) or len(token) != 6
+            or any(type(v) is not int or v < 0 for v in token)
+            or held[0].get("file") != token[2]):
+        return harness_failure(scenario, journal, "page-io-token-malformed")
+    cancelled = blocked = settled = closed = published = False
+    seen_hold = False
+    activation = [r for r in journal.of_kind("environment") if r.get("event") == "fault-fired"]
+    if len(activation) != 1 or activation[0].get("token") != token:
+        return harness_failure(scenario, journal, "page-io-activation-token-unobserved")
+
+    def violation(row, rule):
+        return Verdict("violation", scenario.id, journal.digest(), surviving=0,
+                       explanation=dict(record=row, rule=rule),
+                       pending_rules=["page-io-native-composition"]).sign()
+
+    for row in rows:
+        phase = row.get("phase")
+        if phase == "held":
+            seen_hold = True
+        elif phase == "cancelled":
+            if not seen_hold or row.get("token") != token or settled:
+                return violation(row, "cancel-issued-token")
+            cancelled = True
+        elif phase == "close-held" and row.get("file") == token[2]:
+            if not cancelled or settled or closed:
+                return violation(row, "retirement-retains-issued-owner")
+            blocked = True
+        elif phase == "settled":
+            completion = row.get("token")
+            if completion == token:
+                if not cancelled or not blocked or settled or row.get("answer") != ":CANCELLED":
+                    return violation(row, "cancelled-completion-discards-once")
+                settled = True
+            elif row.get("answer") == ":PUBLISH":
+                if (not settled or not closed or not isinstance(completion, list)
+                        or len(completion) != 6
+                        or any(type(v) is not int or v < 0 for v in completion)
+                        or completion[0] <= token[0] or completion[2] == token[2]):
+                    return violation(row, "replacement-publishes-own-issued-identity")
+                published = True
+            else:
+                return violation(row, "unexpected-completion-identity")
+        elif phase == "closed" and row.get("file") == token[2]:
+            if not settled or closed:
+                return violation(row, "close-after-settlement")
+            closed = True
+        elif phase in ("stale", "duplicate") and row.get("answer") != ":STALE":
+            return violation(row, "stale-completion-does-nothing")
+    terminal = [r for r in journal.of_kind("environment") if r.get("event") == "io-terminal"]
+    if len(terminal) != 1 or terminal[0].get("token") != token:
+        return harness_failure(scenario, journal, "page-io-terminal-unobserved")
+    client_rows = journal.of_kind("client")
+    clients = {r.get("operation"): r for r in client_rows}
+    expected = {"read-prior", "cancel", "retire", "deliver", "read-retained"}
+    if (set(clients) != expected or len(client_rows) != len(expected)
+            or {o.id for o in scenario.operations} != expected):
+        return harness_failure(scenario, journal, "page-io-operation-unobserved")
+    if any(clients[operation].get("token") != token for operation in ("cancel", "deliver")):
+        return violation(clients["cancel"], "interleave-targets-issued-token")
+    if not str(clients["read-prior"].get("status", "")).startswith("403 article temporarily unavailable"):
+        return violation(clients["read-prior"], "cancelled-request-stays-distinct")
+    if not clients["retire"].get("installed") or clients["retire"].get("returncode") != 0:
+        return violation(clients["retire"], "retirement-actually-installed")
+    observed = {"issued-read-held"}
+    if settled:
+        observed.add("cancelled-read-settled")
+    if closed:
+        observed.add("retired-file-closed")
+    if published and clients["read-retained"].get("result") == "match":
+        observed.add("read-completed")
+    missing = sorted(set(scenario.witnesses) - observed)
+    kind = ("healing-overran" if overran and healing["bound"]["kind"] == "seconds"
+            else "no-witness" if missing else "consistent")
+    return Verdict(kind, scenario.id, journal.digest(), surviving=1,
+                   witnesses_observed=sorted(observed), witnesses_missing=missing,
+                   pending_rules=["page-io-native-composition"], healing=healing,
+                   diagnostics=["new socket is not native CID-reuse evidence; worker thread death unclaimed"],
+                   budget=asdict(budget)).sign()
+
+
+def check_acceptance_model(scenario, journal, budget, healing, overran):
+    """Every model observation must fit one independent sequential fixture.
+    Model observations never stand in for native socket or disk evidence.
+    """
+    rows = [r for r in journal.of_kind("client") if r.get("event") == "model-step"]
+    if budget.max_histories < 1:
+        return Verdict("inconclusive", scenario.id, journal.digest(),
+                       cause="budget:histories", budget=asdict(budget)).sign()
+    if len(rows) > budget.max_records:
+        return Verdict("inconclusive", scenario.id, journal.digest(),
+                       cause="budget:records", budget=asdict(budget)).sign()
+    if [r.get("operation") for r in rows] != [o.id for o in scenario.operations]:
+        return harness_failure(scenario, journal, "model-schedule-incomplete")
+    state = dict(published=set(), pending=None, generation=None, fenced=False)
+    observed = set()
+    for operation, row in zip(scenario.operations, rows):
+        before = state
+        state = contract.acceptance_model_step(state, operation)
+        expected = contract.acceptance_model_view(state)
+        if any(row.get(key) != value for key, value in expected.items()):
+            return Verdict("violation", scenario.id, journal.digest(),
+                           explanation=dict(record=row, expected=expected,
+                                            rule="acceptance-model-step"),
+                           surviving=0, pending_rules=["acceptance-model-composition"]).sign()
+        if before["pending"] is None and state["pending"] is not None:
+            observed.add("model-prepared")
+        if state["published"] - before["published"]:
+            observed.add("model-published")
+    terminals = [r for r in journal.of_kind("environment")
+                 if r.get("event") == "model-terminal"]
+    if len(terminals) != 1 or any(terminals[0].get(key) != value
+                                for key, value in contract.acceptance_model_view(state).items()):
+        return harness_failure(scenario, journal, "model-terminal-unobserved")
+    if state["pending"] is None and not state["fenced"]:
+        observed.add("model-settled")
+    missing = sorted(set(scenario.witnesses) - observed)
+    if overran and healing["bound"]["kind"] == "seconds":
+        kind = "healing-overran"
+    else:
+        kind = "no-witness" if missing else "consistent"
+    return Verdict(kind, scenario.id, journal.digest(), surviving=1,
+                   witnesses_observed=sorted(observed), witnesses_missing=missing,
+                   pending_rules=["acceptance-model-composition"],
+                   diagnostics=["Logical pending ownership only; no native I/O executed."],
+                   healing=healing, budget=asdict(budget)).sign()
 
 
 def independent_per_membership(scenario: Scenario, journal: Journal) -> bool:

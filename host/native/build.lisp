@@ -259,6 +259,8 @@
 (include-book "books/bp-report-author")
 (include-book "books/bp-node-progress")
 (include-book "books/bp-node-progress-guards")
+(include-book "books/bp-node-job-offer-guards")
+(include-book "books/bp-node-control")
 ;; PKT-261: per-destination dispatch and the forward plan
 ;; (fnn-bpnode-dispatch-one, fnn-bpnode-forward-contact).
 (include-book "books/bp-node-forward-plan")
@@ -396,6 +398,9 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        ;; D40: the raw-dispatched entries, from the fn-interfaces table of
+        ;; this world (an unknown or unverified target stops the build).
+        (fnn-install-raw-dispatch)
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
         ; DEFLATE (lib/libfn-deflate, vendored zlib; untrusted: ACL2's
@@ -461,6 +466,7 @@
         ; derivation, serialization, reporting and persistence transitions.
         (load "host/native/auth-admin.lisp")
         (load "host/native/immutable-publish.lisp")
+        (load "host/native/auth-read.lisp")
         (load "host/native/admin.lisp")
         ; The writable NNTP owner.  It registers the `owner' verb and calls
         ; only host/owner-host.lisp wrappers for protocol and state decisions.
@@ -473,6 +479,7 @@
         (load "host/native/feed-service.lisp")
         ; The NEWNEWS pull feed, the same owner's other lifecycle extension.
         (load "host/native/pull-service.lisp")
+        (load "host/native/control-transport.lisp")
         (load "host/native/control.lisp")
         (load "host/native/topic-local.lisp")
         (load "host/native/consumer-local.lisp")
@@ -500,6 +507,7 @@
         ; The node's own web face: an owner start hook the operator's `run'
         ; installs when ACL2 planned one from the profile's [web] table.
         (load "host/native/web-host.lisp")
+        (load "host/native/operator-control-client.lisp")
         (load "host/native/operator-live.lisp")
         (load "host/native/checkpoint.lisp")
         ; The attach-stobj prototype's smoke verb (developer image only).
@@ -515,6 +523,7 @@
         (load "host/native/bp-contact.lisp")
         ; After FNBS: `bp-obligation request' hands its ADU to the carrier.
         (load "host/native/bp-obligation.lisp")
+        (load "host/native/bp-control.lisp")
         (load "host/native/bp-node.lisp")
         ; `acl2 session': developer images only (the test fixtures' ACL2).
         (load "host/native/acl2-session.lisp")

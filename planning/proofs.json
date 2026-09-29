@@ -2230,7 +2230,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/manifests/certify-20260924T070931Z-1040432.json",
         "planning/evidence/feed-tls-teeth-2026-09-22.md",
@@ -2384,7 +2384,7 @@
         "PRF-047"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/manifests/certify-20260924T070931Z-1040432.json",
         "planning/evidence/feed-tls-teeth-2026-09-22.md",
@@ -2428,7 +2428,7 @@
         "PRF-015"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "At this source, green_check finds books/nntp-newnews green at its exact include closure in certify-20260923T232942Z-484654, its test book green in certify-20260924T005919Z-653679, books/nntp-invariants green in certify-20260923T232820Z-480447, and books/nntp-effects green in certify-20260923T232942Z-484654; none has moved dependencies. These are archived certification records, not a current native image qualification. The earlier T2b affected-closure run is certify-20260923T170842Z-2026382; native served-reader validation remains separate.",
       "evidence": [
         "books/nntp-newnews.lisp",
@@ -2710,7 +2710,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-clock-domain.lisp",
         "tests/acl2/bp-clock-domain-tests.lisp",
@@ -3415,7 +3415,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/control-classify.lisp",
         "books/peer-authored-accept.lisp",
@@ -4198,7 +4198,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-carriage-rows.lisp",
         "books/peer-carriage.lisp",
@@ -4522,7 +4522,7 @@
         "PRF-084"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "books/config.lisp",
@@ -4565,7 +4565,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-pull.lisp",
         "books/scheduler-peers.lisp",
@@ -4689,7 +4689,7 @@
         "PRF-099"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "books/key-statements.lisp",
@@ -4970,7 +4970,7 @@
         "PRF-100"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-pull-session.lisp",
         "books/peer-pull.lisp",
@@ -5027,9 +5027,10 @@
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T063856Z-608753.json",
         "planning/evidence/manifests/certify-20260926T061654Z-546487.json",
-        "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
+        "planning/evidence/manifests/certify-20260926T102113Z-288651.json",
+        "books/bp-node-fragment-jobs.lisp"
       ],
-      "progress_note": "Lane bp-lifecycle (2026-09-25, wave 2), PKT-171. Teeth in tests/acl2/bp-fragment-sweep-tests (a 70000-octet ADU in 100 fragments, out of order and overlapping, every outcome against the spec, one witness per hypothesis of fn-bpfw-exact-canvas-reassembles) and tests/acl2/bp-fragment-send-tests (the 100-fragment and 70000-octet plans the capped reference refuses; a must-fail per hypothesis). Native: tests/test_bp_fragment_node_native test_seventy_fragments_across_a_kill_reassemble_once. See the record for the manifest and native SHAs.",
+      "progress_note": "Lane bp-lifecycle (2026-09-25, wave 2), PKT-171. Teeth in tests/acl2/bp-fragment-sweep-tests (a 70000-octet ADU in 100 fragments, out of order and overlapping, every outcome against the spec, one witness per hypothesis of fn-bpfw-exact-canvas-reassembles) and tests/acl2/bp-fragment-send-tests (the 100-fragment and 70000-octet plans the capped reference refuses; a must-fail per hypothesis). Native: tests/test_bp_fragment_node_native test_seventy_fragments_across_a_kill_reassemble_once. See the record for the manifest and native SHAs. Lane bp-remainder-4 (Fable, 2026-09-29): fn-bpfj-apply-conserves-jobs, the same over the kind-18 application read from the host-carried job (fn-bpfj-apply, any job); fn-bpnp-step-family-events-keep-jobs-agreeing now covers the (:family ... JOB LIMIT) and (:persist-result ... JOB LIMIT) forms through the twins' local lemmas.",
       "events": [
         "fn-bpfw-reassemble-is-spec",
         "fn-bpf-reassemble-is-capped-spec",
@@ -5637,7 +5638,7 @@
         "PRF-124"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/key-statements.lisp",
         "tests/acl2/key-statements-tests.lisp",
@@ -5824,7 +5825,7 @@
         "PRF-124"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "tests/acl2/peer-invite-tests.lisp",
@@ -6008,7 +6009,7 @@
         "PRF-140"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/key-statements.lisp",
         "tests/acl2/key-statements-tests.lisp",
@@ -6372,7 +6373,7 @@
         "PRF-125"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-pull.lisp",
         "books/peer-pull-session.lisp",
@@ -6565,7 +6566,7 @@
         "PRF-160"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "tests/acl2/peer-invite-tests.lisp",
@@ -7155,7 +7156,7 @@
         "PRF-171"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/node-config.lisp",
         "books/config-physical-replay.lisp",
@@ -7976,7 +7977,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-held-payload.lisp",
         "tests/acl2/bp-held-payload-tests.lisp",
@@ -9009,7 +9010,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-bpah-handoff-report-is-application-disposition",
         "fn-bpah-persist-delivery-reports-the-record",
@@ -9100,7 +9101,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-bpfr-step-resumes",
         "fn-bpfr-run-is-reassemble",
@@ -9115,7 +9116,7 @@
         "tests/acl2/bp-fragment-resume-tests.lisp",
         "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ],
-      "progress_note": "Lane bp-fragments-10mib-2 (2026-09-27): REPL-admitted and certified with certify_books.py --incremental on persvati; no host caller yet."
+      "progress_note": "Lane bp-fragments-10mib-2 (2026-09-27): REPL-admitted and certified with certify_books.py --incremental on persvati; no host caller yet. Lane bp-remainder-4 (Fable, 2026-09-29): fn-bpfr-statep (the sweep state's shape between steps, never its cells) is the guard of fn-bpfr-step / -resume / -run / -finish, all guard-verified; fn-bpfr-step-keeps-statep and -keeps-cells-true-listp carry it across the host's loop."
     },
     {
       "id": "PRF-252",
@@ -11862,7 +11863,7 @@
         "PRF-294"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-intern-once.lisp",
         "books/payload-extent.lisp",
@@ -11922,7 +11923,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-catchup-serve.lisp",
         "books/peer-catchup-effects.lisp",
@@ -12219,7 +12220,7 @@
         "PRF-343"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/protocol-table.lisp",
         "books/protocol-dispatch.lisp",
@@ -12940,7 +12941,7 @@
         "PRF-346"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/catalog.lisp",
         "books/served-catalog-view.lisp",
@@ -13341,7 +13342,7 @@
         "PRF-164"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/clock-unit.lisp",
         "books/accounts.lisp",
@@ -13421,7 +13422,7 @@
         "PRF-374"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/clock-unit.lisp",
         "books/config.lisp",
@@ -13497,7 +13498,7 @@
         "PRF-362"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-admin-peer-budget.lisp",
         "books/config.lisp",
@@ -13528,7 +13529,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/feed-link-backoff.lisp",
         "tests/acl2/feed-link-backoff-tests.lisp",
@@ -13556,7 +13557,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/feed-pause.lisp",
         "tests/acl2/feed-pause-tests.lisp",
@@ -13675,7 +13676,7 @@
         "PRF-378"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/config.lisp",
         "tests/acl2/config-field-max-tests.lisp",
@@ -14921,7 +14922,7 @@
         "PRF-186"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/open-frontier.lisp",
         "tests/acl2/open-frontier-tests.lisp",
@@ -15121,7 +15122,7 @@
         "PRF-969"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/catalog.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -15811,9 +15812,11 @@
       ],
       "evidence": [
         "books/bp-node-fragment-job.lisp",
-        "tests/acl2/bp-node-fragment-job-tests.lisp"
+        "tests/acl2/bp-node-fragment-job-tests.lisp",
+        "books/bp-fragment-job-shape.lisp",
+        "tests/acl2/bp-node-fragment-step-job-tests.lisp"
       ],
-      "progress_note": "Lane bp-remainder-2 (Fable, 2026-09-29): REPL-admitted on hbox (13 defthms; the reading keystones 200 to 850 prover steps); teeth loaded on persvati. Host: none yet -- the next increment routes a job-bearing (:family anchor observation job) / (:persist-result epoch op result job) event through fn-bpnf-fragment-step to fn-bpfj-propose/-persist twins, adds the debt-delta twin in bp-node-progress, and has bp-service's fnn-bps-fragment-progress step the job per scheduling step with the profile's bundle octets as the limit; SCN-067 and the 10 MiB transfer then run natively."
+      "progress_note": "Lane bp-remainder-2 (Fable, 2026-09-29): REPL-admitted on hbox (13 defthms). Lane bp-remainder-3 (Fable, 2026-09-29): host-reached -- Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). The debt-delta twin in bp-node-progress is deferred (the credit path still reassembles once per proposal and once per result, today's cost); the whole-bundle encode stays one step's work until PKT-585. Lane bp-remainder-4 (Fable, 2026-09-29): the job's shape is books/bp-fragment-job-shape (fn-bpfj-jobp: what a step needs, linear in the fragments; fn-bpfj-readable-jobp: the cells a true list too, for the readings), the guard of fn-bpfj-start / -step / -finishedp / -query / -plan / -apply and of the twins, checked by fn-bpnf-host-eventp of a job-carrying event; fn-bpfj-start-is-readable and fn-bpfj-step-keeps-readable carry it across the host's loop; every fn-bpfj-* the host reaches is guard-verified in books/bp-node-fragment-guards (fn-bpfj-image-octets, a specification function, is not)."
     },
     {
       "id": "PRF-991",
@@ -16245,7 +16248,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-set.lisp",
         "books/native-admin-peer.lisp",
@@ -16285,7 +16288,7 @@
     {
       "id": "PRF-996",
       "title": "Live limits keep three values: the requested policy, the funded limit the running process admits under, and the representation ceiling; a recorded change never funds",
-      "statement": "books/limits-live.lisp (GPT-6, planning/review-2026-09-29-gpt6-decisions.md section 7). KEYSTONE fn-lim-funded-after-decide: for every live decision D = fn-lim-decide FIELD N VALUES USE RUN-MB CORE NURSERY OBSERVATIONS OBSERVED and candidate C = fn-lim-apply-row VALUES FIELD N, the profile the owner serves afterwards (fn-lim-funded-after D FUNDED C) is FUNDED unless D is :applied, and on :applied it is C, admitted (fn-bs-profile-admittedp), with the store's use at most N, N at most the ceiling (fn-lim-ceiling FIELD) and D's heap figure at most RUN-MB. KEYSTONE fn-lim-resource-refusal-is-the-reservations: D's refusal class (fn-lim-refusal-class) is :resource exactly when FIELD is live, N is within the ceiling and the use, C is admitted, and the launcher's run reservation (fn-heap-status-decide C ...) answers no heap; policy (not live, below use) and representation (past the ceiling, invalid profile) refusals are never resource ones. fn-lim-decide refuses N past fn-lim-ceiling (the configuration delta's u32, fn-cfg-deltap; T also the txid width, A the article codec) by name, :above-representation-ceiling, before the profile or the machine is consulted; fn-lim-decide-accepted-keeps-use-within gains N <= the ceiling. Host: host/native/admin.lisp fnn-owner-limit-serialized installs (fn-lim-funded-after D FUNDED C) with FUNDED the owner's served profile and replies fn-lim-reply-line (the decision sentence; then `limit FIELD requested=R funded=U ceiling=C'); fnn-admin-execute-limit replies it with funded=none; host/native/heap.lisp fnn-lim-print-values prints fn-lim-values-lines for the three fields on an offline `status' (host/native/operator.lisp fnn-operator-status-once, :offline route). Scope: the running owner's `status'/`health' do not yet print the three values (NEXT: an FNLS :limits report kind the owner answers from its served profile); the start's own refusal is the launcher's reservation refusal (heap-reservation.lisp fn-heap-reserve-report-line), the same words this class names :resource. Local policy, no RFC requirement.",
+      "statement": "books/limits-live.lisp (GPT-6, planning/review-2026-09-29-gpt6-decisions.md section 7). KEYSTONE fn-lim-funded-after-decide: for every live decision D = fn-lim-decide FIELD N VALUES USE RUN-MB CORE NURSERY OBSERVATIONS OBSERVED and candidate C = fn-lim-apply-row VALUES FIELD N, the profile the owner serves afterwards (fn-lim-funded-after D FUNDED C) is FUNDED unless D is :applied, and on :applied it is C, admitted (fn-bs-profile-admittedp), with the store's use at most N, N at most the ceiling (fn-lim-ceiling FIELD) and D's heap figure at most RUN-MB. KEYSTONE fn-lim-resource-refusal-is-the-reservations: D's refusal class (fn-lim-refusal-class) is :resource exactly when FIELD is live, N is within the ceiling and the use, C is admitted, and the launcher's run reservation (fn-heap-status-decide C ...) answers no heap; policy (not live, below use) and representation (past the ceiling, invalid profile) refusals are never resource ones. fn-lim-decide refuses N past fn-lim-ceiling (the configuration delta's u32, fn-cfg-deltap; T also the txid width, A the article codec) by name, :above-representation-ceiling, before the profile or the machine is consulted, and the operator's parser takes any decimal natural for a live field (books/native-admin.lisp fn-native-admin-naturalp), so that refusal is what `policy set' answers past the ceiling (exit refused, never a usage line); fn-lim-decide-accepted-keeps-use-within gains N <= the ceiling. Host: host/native/admin.lisp fnn-owner-limit-serialized installs (fn-lim-funded-after D FUNDED C) with FUNDED the owner's served profile and replies fn-lim-reply-line (the decision sentence; then `limit FIELD requested=R funded=U ceiling=C'); fnn-admin-execute-limit replies it with funded=none; host/native/heap.lisp fnn-lim-print-values prints fn-lim-values-lines for the three fields on an offline `status' (host/native/operator.lisp fnn-operator-status-once, :offline route). The running owner carries (REQUESTED . FUNDED) (host/owner-host.lisp fn-owner-limit-carry: both the history's effective profile at its open, fn-owner-install-profile; fn-lim-carry-after after each accepted, published `policy set', fn-owner-limit-decided) and decides the live `policy set' over it; its `status' and `health' append fn-lim-report-octets of the carry (host/native-live-status-host.lisp fn-native-live-status-host-answer), no history walk. KEYSTONE fn-lim-reported-triple-is-the-decisions: for a live FIELD with VALUES and FUNDED given, the reply fn-lim-reply-line FIELD N D OPEN-MS VALUES FUNDED is the decision sentence, `; ', then fn-lim-values-line FIELD of the carry after D (fn-lim-carry-after FIELD N D (VALUES . FUNDED)), and that line is a member of the report's lines (fn-lim-report-lines) over that carry. KEYSTONE fn-lim-carry-after-is-the-history: when the carry's requested profile is fn-lim-effective SEALED RECORDS and FIELD is live, after D it is fn-lim-effective SEALED over RECORDS with the verb's record (fn-cfg-record-make S TX GEN (fn-lim-deltas FIELD N) STAMP) appended when D is accepted, and fn-lim-effective SEALED RECORDS when refused. Scope: the start's own refusal is the launcher's reservation refusal (heap-reservation.lisp fn-heap-reserve-report-line), the same words this class names :resource. Local policy, no RFC requirement.",
       "milestone": "M5",
       "requirements": [
         "STO-038"
@@ -16602,7 +16605,7 @@
         "PRF-915"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/sasl.lisp",
         "books/auth-secret.lisp",
@@ -17092,7 +17095,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-machine-codec.lisp",
         "host/bp-node-machine-host.lisp",
@@ -17115,7 +17118,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-fnbs-delivery-publication.lisp",
         "tests/acl2/bp-fnbs-delivery-publication-tests.lisp"
@@ -17331,7 +17334,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-host-machine.lisp",
         "tests/acl2/bp-node-host-machine-tests.lisp"
@@ -17418,7 +17421,7 @@
         "PRF-1018"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/catalog.lisp",
         "books/msgid-pages-exec.lisp",
@@ -17445,7 +17448,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-rotation-codec.lisp",
         "tests/acl2/bp-node-rotation-codec-tests.lisp"
@@ -17499,7 +17502,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-host-machine.lisp",
         "books/bp-node-machine-codec.lisp",
@@ -17593,7 +17596,7 @@
         "PRF-1020"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/response-plan-pins.lisp",
         "tests/acl2/response-plan-pins-tests.lisp",
@@ -17660,6 +17663,321 @@
       ],
       "progress_note": "Clean persvati REPL: gpt61-nbw4 25/25 forms (21 same +2 macro named forms), gpt61-nbwt4 12/12 (11 named exact), gpt61-nbwc2 10/10 (6 named exact), gpt61-nbwct3 16/16 including actual intern/commit/lookup positive and literal hypothesis removal for F, exact facts and ok. All stopped. Source-dependency loads are not certificates. No host call, qualified image, allocator measurement or completed Q5c/J1 claim. Work/fuel models loop iterations and output length, not measured physical resources. Numeric setup still requires maintained codec/profile premise. Legacy parse/cache hydration remains owned open. The two named library theorems are retained as component evidence, not cited registry events: no served keystone is claimed until the actual host-called byte cursor composes them.",
       "events": []
+    },
+    {
+      "id": "PRF-1050",
+      "title": "Snapshot blessing is accepted exactly when the completion marker, read-only open and node-secret observations hold; every failure names its first missing observation",
+      "statement": "Host-called fn-osn-bless-word in host/native/io.lisp fnn-command-store-bless-snapshot. KEYSTONE fn-osn-bless-word-blessed-exactly-when: blessed iff markerp and open=:ok and keysp; missing marker answers :snapshot-incomplete, otherwise non-ok open answers :open-refused, otherwise missing key answers :no-node-secret. fn-osn-absent-marker-never-opens makes the absent-marker result independent of an open observation; host checks fn-osn-bless-open-needed before opening. This proves the decision over supplied observations, not the snapshot producer's capture, freshness, or the disk/key implementations.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-039"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/owner-snapshot-request.lisp",
+        "tests/acl2/owner-snapshot-request-tests.lisp"
+      ],
+      "progress_note": "Claim inherited from operability-12. S7a host wiring completed by gpt61-operability; native observation pending union image. No running snapshot producer claim."
+    },
+    {
+      "id": "PRF-1026",
+      "title": "Replay admits a record under the history at its position, never under a limit value: the open's configuration fold is invariant under the history's :set-limit values",
+      "statement": "books/replay-historical-limits.lisp (row S1 item 3). KEYSTONE fn-rhl-extend-open-is-limit-free: for every frontier F, prefix P and suffix Q with (fn-sn-observed-historyp F (append P Q)), and every two configuration histories C1, C2 that differ only in the values of their :set-limit deltas (fn-rhl-configs-variantp: each pair of records equal once those values are blanked, fn-rhl-blank-record, and decoded, fitting and within the limit ceilings alike), the configuration fold the host's open returns first (fn-sco-cpr-finish of the extension's fold, fn-rii-sco-store-open's REPLAYED) over the capture of P under Ci extended by Q is the same up to the configuration's limits slot (fn-rhl-blank-result): the same verdict, position and node. Host: host/store-node-host.lisp fn-store-sn-recover-rows calls fn-rii-sco-extend-open. Through fn-sco-extend-of-capture-when-history it is fn-rhl-cpr-replay-limit-variant over fn-cpr-replay, from the position-by-position fold's fn-rhl-cpr-loop-limit-variant: fn-cfg-apply, fn-cfg-delta-reason and fn-cfg-admissible-reason read no limit (congruences under fn-rhl-veq); admissibility splits into the blanked history's and each :set-limit value's ceiling (fn-rhl-admissiblep-is-blank-and-admitted). The retention capacity (:set-capacity) is decided historically and is not covered (the hypothesis-removal witness). Scope: the fold; the open's log-scan bounds are the sealed profile's.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-038"
+      ],
+      "depends_on": [
+        "PRF-996"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/replay-historical-limits.lisp",
+        "tests/acl2/replay-historical-limits-tests.lisp"
+      ],
+      "progress_note": "Lane limits-live-8 2026-09-29, row S1 item 3."
+    },
+    {
+      "id": "PRF-1008",
+      "title": "The BP fragment family proposal over the host-carried reassembly job equals the whole-family proposal within the profile's limit",
+      "statement": "books/bp-node-fragment-step.lisp (Q4a increment B; D27). fn-bpfj-propose-step is fn-bpnf-family-propose-step with its plan read by fn-bpfj-plan-at from the finished job and its apply by fn-bpfj-apply-at; fn-bpfj-propose-step-is-the-propose-step: when the job is well-formed at the anchor (fn-bpfj-wf), finished, LIMIT is a natural at most *fn-bpnf-max-held-image* and the family's image (fn-bpfj-image-octets) is within LIMIT, the two steps are equal. Past the limit the job plan refuses by name (PRF-989) and the step issues nothing; a stale or unfinished job plans as (:stale :job) / (:pending :job) and issues nothing. fn-bpnf-fragment-step routes (:family anchor observation job limit) to the twin and (:family anchor observation) to the family step; fn-bpfj-next-candidate selects the family a job is started for without reassembling (its completeness against fn-bpnf-family-select is open).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008"
+      ],
+      "depends_on": [
+        "PRF-989"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bpfj-record-anchor-of-family-record-at",
+        "fn-bpfj-propose-step-is-the-propose-step",
+        "fn-bpfj-plan-at-ready-binds-live-source-rows"
+      ],
+      "evidence": [
+        "books/bp-node-fragment-step.lisp",
+        "tests/acl2/bp-node-fragment-step-job-tests.lisp"
+      ],
+      "progress_note": "Lane bp-remainder-3 (Fable, 2026-09-29): REPL-admitted on hbox; Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step)."
+    },
+    {
+      "id": "PRF-1009",
+      "title": "The BP fragment family kind-18 result over the host-carried reassembly job applies exactly the whole-family result within the profile's limit",
+      "statement": "books/bp-node-fragment-step.lisp (Q4a increment B; D27). fn-bpfj-persist-step is fn-bpnf-family-persist-step with its application read by fn-bpfj-apply-at from the finished job the proposal was made from; fn-bpfj-persist-step-is-the-persist-step: under PRF-1008's hypotheses at the issued record's anchor, the two steps are equal, so a durable kind-18 retires the family's fragments and holds the whole image exactly as before, an uncertain or refused result answers as before. fn-bpnf-fragment-step routes (:persist-result epoch op result job limit) to the twin; the host carries the proposal's job into its result (bp-service *fnn-bps-fragment-job*).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008"
+      ],
+      "depends_on": [
+        "PRF-1008"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bpfj-persist-step-is-the-persist-step"
+      ],
+      "evidence": [
+        "books/bp-node-fragment-step.lisp",
+        "tests/acl2/bp-node-fragment-step-job-tests.lisp"
+      ],
+      "progress_note": "Lane bp-remainder-3 (Fable, 2026-09-29): REPL-admitted on hbox; Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step)."
+    },
+    {
+      "id": "PRF-1060",
+      "title": "The host-called off-mutex owner rebuild constructs a valid retention carry",
+      "statement": "Subject: books/owner-reclaim-carry.lisp fn-owner-orcp-rebuild, called by host/native/owner.lisp fnn-owner-reclaim-pass. fn-owner-orcp-rebuild-establishes-retain-carry: unconditionally, fn-prc-carryp holds of field 2 of its returned list. A refused open returns nil there; a successful rebuild constructs fn-prc-refresh of nil against the rebuilt Store retention ledger. This establishes the returned value only; it does not prove that the live swap installs it unchanged, that the other carry-writing transitions preserve it, or the complete guards of raw owner entries. The moved cold function remains :ideal, not guard-verified; raw owner dispatch remains disabled. Local policy; no RFC requirement.",
+      "depends_on": [
+        "PRF-289"
+      ],
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-reclaim-carry.lisp",
+        "tests/acl2/owner-reclaim-carry-tests.lisp"
+      ],
+      "progress_note": "Execution-costs takeover: exact unchanged definition moved from host to book; clean REPL admits carry theorem and nonempty reachable witness. Certification and native union image are runner-owned and pending.",
+      "events": [
+        "fn-owner-orcp-rebuild-establishes-retain-carry"
+      ]
+    },
+    {
+      "id": "PRF-1057",
+      "title": "Issued cold page reads retain identity and worker ownership through cancellation and late completion",
+      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-941",
+        "PRF-994"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/page-read-ownership.lisp",
+        "tests/acl2/page-read-ownership-tests.lisp",
+        "host/native/extent.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_page_io.py",
+        "planning/evidence/page-read-ownership-certify-20260929T220145Z.json"
+      ],
+      "events": [
+        "fn-pio-completion-publishes-only-the-issued-identity",
+        "fn-pio-cancellation-retains-worker-ownership",
+        "fn-pio-close-waits-for-every-worker",
+        "fn-pio-successive-file-issues-have-distinct-identities"
+      ],
+      "progress_note": "Ownership first-slice one-book certificate is committed with exact source hash; subsequent joined-result and core-incarnation source increments have clean REPL/teeth and raw-load checks, with current book digest certification and matching native pending runner union. No funded pool admission or native pass transferred."
+    },
+    {
+      "id": "PRF-1067",
+      "title": "The owner retention carry state boundary writes exactly and frames unrelated globals",
+      "statement": "Subject: books/owner-retain-state.lisp fn-owner-retain-carry and fn-owner-retain-carry-put, called by host/owner-host.lisp fn-owner-prepare-buffer and the other carry writers. fn-owner-retain-carry-of-put: unconditionally, reading the state returned by the carry setter returns the supplied value. fn-owner-retain-carry-of-other-global-put: under key unequal to fn-owner-retain-carry, putting another global leaves the carry read unchanged. This is an exact state effects boundary, not a proof that a supplied carry satisfies fn-prc-carryp, that initialization supplies the proved value, or that a complete owner transition preserves its guard; raw owner entries stay disabled. Local policy; no RFC requirement.",
+      "depends_on": [],
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-retain-state.lisp",
+        "tests/acl2/owner-retain-state-tests.lisp"
+      ],
+      "progress_note": "Clean fresh REPL admits the exact getter/setter and frame theorems (583 prover steps for seven source forms). Live ACL2 state witness asserts both literal conclusions and the full frame antecedent; equal-key changed-value witness refutes removal of its only hypothesis. Matching union host load, certificate manifest and native remain pending.",
+      "events": [
+        "fn-owner-retain-carry-of-put",
+        "fn-owner-retain-carry-of-other-global-put"
+      ]
+    },
+    {
+      "id": "PRF-1055",
+      "title": "Productive outbound NNTP offer for a queued article",
+      "statement": "A selectable feed (valid feed and observation, active contact, natural connection, elapsed backoff, no inflight article, queued head) and representable FNFD offer record cause the host-called fn-own-feed-port-tick-peer to return :accepted, the exact CHECK/IHAVE :command for that Message-ID, its :feed-offer record, the offered attempt in the queue and next-attempt+1. This is an offer, not article handoff.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-1000"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/productive-transfer.lisp",
+        "tests/acl2/productive-transfer-tests.lisp",
+        "specs/productive-contract.md",
+        "tests/test_native_peering.py"
+      ],
+      "progress_note": "2026-09-29 productive-read-transfer Codex continuation: clean persvati pct61 REPL admission; complete literal positive/removal/mutant teeth admitted. Runner owns union certification and source-matched native execution; neither supplied by admission. tests.test_native_peering.NativePeeringTests.test_productive_local_transfer_precedes_remote_acceptance observes the full article while the scripted peer withholds 239. Full READ/auth/wire composition and inbound durable transit remain open.",
+      "events": [
+        "fn-pct-tick-offers-the-queued-article"
+      ]
+    },
+    {
+      "id": "PRF-1056",
+      "title": "Outbound NNTP tick quiet/refusal preserves queued work",
+      "statement": "The host-called fn-own-feed-port-tick-peer returns accepted-quiet with unchanged feed and no records/effects for a valid feed with no selection; a bound malformed or unrepresentable feed transition returns :refused with table unchanged and no records/effects. A missing entry is :ignored, not :refused.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-1000"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/productive-transfer.lisp",
+        "tests/acl2/productive-transfer-tests.lisp",
+        "specs/productive-contract.md",
+        "tests/test_native_peering.py"
+      ],
+      "progress_note": "2026-09-29 productive-read-transfer Codex continuation: clean persvati pct61 REPL admission; complete literal positive/removal/mutant teeth admitted. Runner owns union certification and source-matched native execution; neither supplied by admission. tests.test_native_peering.NativePeeringTests.test_productive_local_transfer_precedes_remote_acceptance observes the full article while the scripted peer withholds 239. Full READ/auth/wire composition and inbound durable transit remain open.",
+      "events": [
+        "fn-pct-tick-hands-nothing-otherwise"
+      ]
+    },
+    {
+      "id": "PRF-1062",
+      "title": "Productive requested article handoff to the local NNTP transport",
+      "statement": "For a valid feed, reply 335/238 naming an offered Message-ID, natural connection and representable FNFD sent record, host-called fn-own-feed-port-observe-peer returns :accepted and exactly its :command carrying article octets (prefixed TAKETHIS for streaming), its :feed-sent record naming the same attempt, a sent queue entry and unchanged next-attempt. fn-owner-feed-octets supplies fn-ofa-feed-article bytes; native publication journals before socket write. This local effect is distinct from successful write, peer acceptance, durable retention and application processing.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-1000"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/productive-transfer.lisp",
+        "tests/acl2/productive-transfer-tests.lisp",
+        "specs/productive-contract.md",
+        "tests/test_native_peering.py"
+      ],
+      "progress_note": "2026-09-29 productive-read-transfer Codex continuation: clean persvati pct61 REPL admission; complete literal positive/removal/mutant teeth admitted. Runner owns union certification and source-matched native execution; neither supplied by admission. tests.test_native_peering.NativePeeringTests.test_productive_local_transfer_precedes_remote_acceptance observes the full article while the scripted peer withholds 239. Full READ/auth/wire composition and inbound durable transit remain open.",
+      "events": [
+        "fn-pct-requested-article-is-handed-to-the-local-transport"
+      ]
+    },
+    {
+      "id": "PRF-1058",
+      "title": "relay-v1 projection invariant and protected-byte preservation",
+      "statement": "The subject computed by host/owner-host.lisp fn-owner-transit-decide calls fn-asj-project (the existing fn-pu-strip). Complete Path/Xref removal followed by any finite list of trace-block insertions at valid header boundaries preserves its exact byte string. Its body equals the original body; for true-listp input its bytes are a subsequence of the original. Native signed-source subjects and fn-id-subject-of-payload retain their existing meanings. fn-asj-subject-of-equal-projections-by-definition connects the host-called subject to projection equality; no converse digest-injectivity claim.",
+      "milestone": "M4",
+      "requirements": [
+        "OBJ-008"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/article-subject.lisp",
+        "tests/acl2/article-subject-tests.lisp",
+        "tests/test_native_article_subject.py",
+        "specs/substrate-transport.md"
+      ],
+      "progress_note": "Clean projection REPL55forms and teeth28forms pass; runner owns certification and new image-native coordinate. Durable binding retention remains separate.",
+      "events": [
+        "fn-asj-permitted-relay-transform-preserves-projection",
+        "fn-asj-body-of-strip",
+        "fn-asj-strip-preserves-byte-order"
+      ]
+    },
+    {
+      "id": "PRF-1061",
+      "title": "Explicit group authority publication preserves prior group fields",
+      "statement": "Host-called fn-native-admin-plan-deltas produces set-group-authority code29. fn-cfg-apply-delta, reached by live publication and durable fn-config-replay, installs authority and generation in an existing group while preserving the prior six fields. Existing group is the sole hypothesis; a missing group affirmatively fails the installation conclusion. Authority is never inferred from posting policy-id. Connection pins consumed by fn-owner-transit-decide determine the boundary for replacements. This is the configuration publication property, not verified statement/key enrollment or portable group authority.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-007"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config-invariants.lisp",
+        "tests/acl2/group-authority-tests.lisp",
+        "tests/test_native_group_authority.py",
+        "specs/reconfiguration.md"
+      ],
+      "progress_note": "Clean config-invariants75forms, native-admin120forms, ADTgroup28forms, config teeth27forms and peer-transit-authority25forms; operator code29 and new authority slot. Statement/hybrid snapshot bridge remains active. New immutable image/native coordinate pending runner; no productive admitted claim from unsigned gate fixture.",
+      "events": [
+        "fn-cfg-set-group-authority-installs-binding"
+      ]
+    },
+    {
+      "id": "PRF-1063",
+      "title": "Serialized BP control startup binds actual CONFIG.store and grants only same-owner parsed route mutations",
+      "statement": "Host-called subjects books/bp-node-control.lisp fn-bpnc-startup and fn-bpnc-turn-plan, called by host/native/bp-control.lisp fnn-bpnc-start and fnn-bpnc-handle. A ready startup implies the actual native-config load was accepted and its parsed Store octets equal the supplied Store argument. An execute grant implies same-owner evidence, an admin projection, and exactly the accepted native-admin plan whose kind is set-bp-route or remove-bp-route. This boundary restricts the existing durable owner admin path; it does not itself prove disk honesty or listener rebinding. Complete positive and hypothesis-removal teeth use parsed valid config and route vectors; mutation teeth refuse nonowner and unrelated group admin.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-002",
+        "HST-010"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-node-control.lisp",
+        "tests/acl2/bp-node-control-tests.lisp",
+        "host/native/bp-control.lisp"
+      ],
+      "progress_note": "Clean persvati proof REPL bpnc-clean admitted 17/17 forms, 17150 prover steps; exact teeth18/18. Matching combined image/native evidence pending; no qualification claim.",
+      "events": [
+        "fn-bpnc-ready-startup-binds-the-parsed-store",
+        "fn-bpnc-grant-is-the-authorized-route-plan"
+      ]
+    },
+    {
+      "id": "PRF-1064",
+      "title": "BP control listener complete bind install retire protocol",
+      "statement": "Host-called subjects fn-bpnc-socket-initial, fn-bpnc-socket-action and fn-bpnc-socket-step, called by fnn-bpnc-start/step/retire. The composed open run reaches live exactly when the startup is ready and both bind and install completions succeed. From prepared, bound or live, stop produces an actual retire effect; its completion reaches closed on success or fenced otherwise, with no next effect. Raw listener, lease and installed inode ownership are retained until retirement. Teeth assert the entire equivalence for successful open and both failed completions; positive retirement success/failure and corrupt-phase hypothesis removal. Scope is the explicit control listener; BP transport listener rebinding remains open.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-002",
+        "HST-010"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-node-control.lisp",
+        "tests/acl2/bp-node-control-tests.lisp",
+        "host/native/bp-control.lisp"
+      ],
+      "progress_note": "Clean persvati proof REPL bpnc-clean admitted 17/17 forms, 17150 prover steps; exact teeth18/18. Matching combined image/native evidence pending; no qualification claim.",
+      "events": [
+        "fn-bpnc-open-run-live-iff-both-completions-succeed",
+        "fn-bpnc-retirement-stops-the-control-listener"
+      ]
     }
   ]
 }

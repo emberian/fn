@@ -21,6 +21,8 @@
 (include-book "../books/payload-commit-extent")
 ; The served read's entry check over the realizer's buffer (PRF-295).
 (include-book "../books/payload-extent-read")
+; Issued cold reads retain ownership through timeout, until actual completion.
+(include-book "../books/page-read-ownership")
 ; Compressed records (PRF-326, PRF-341): the append's plan and decision
 ; (fnn-log-compress), the read's expansion (fnn-log-read-record), the
 ; replay's compressed extents, the commit's compressed reseat, and the

@@ -6,7 +6,10 @@
 
 (defun fn-bpnf-delete-publication-authorize
   (st epoch op record lock-owned final-absent)
-  (declare (xargs :guard t))
+  ;; The *1* class (Q4a item 2): host-called; the guard names the kinds the
+  ;; host passes (the entry guard checks them by name) and the wrapper runs raw.
+  (declare (xargs :guard (and (fn-frame-natp epoch) (fn-frame-natp op))
+                  :verify-guards nil))
   (let* ((issued (fn-bpnf-issued st))
          (detail (fn-bpn-nth 4 issued)))
     (if (and (fn-bpnf-operationp issued)
@@ -44,11 +47,17 @@
        (equal (nth 6 operation) (fn-jpub-initial t))))
 
 (defun fn-bpnf-delete-publication-name (operation)
-  (declare (xargs :guard t)) (nth 4 operation))
+  (declare (xargs :guard (true-listp operation))) (nth 4 operation))
 (defun fn-bpnf-delete-publication-frame (operation)
-  (declare (xargs :guard t)) (nth 5 operation))
+  (declare (xargs :guard (true-listp operation))) (nth 5 operation))
 (defun fn-bpnf-delete-publication-publisher (operation)
-  (declare (xargs :guard t)) (nth 6 operation))
+  (declare (xargs :guard (true-listp operation))) (nth 6 operation))
+
+(verify-guards fn-bpnf-delete-publication-authorize)
+(verify-guards fn-bpnf-delete-publication-operationp)
+(verify-guards fn-bpnf-delete-publication-name)
+(verify-guards fn-bpnf-delete-publication-frame)
+(verify-guards fn-bpnf-delete-publication-publisher)
 
 (defthm fn-bpnf-delete-publication-success-binds-exact-echo
   (implies (equal (car (fn-bpnf-delete-publication-authorize

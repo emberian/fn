@@ -99,7 +99,19 @@ refusal exactly when the reservation cannot hold the requested profile
 (`fn-lim-resource-refusal-is-the-reservations`), the same words a start that
 cannot fund its store refuses with. `policy set` replies with the decision
 and `limit FIELD requested=R funded=U ceiling=C`; an offline `status` prints
-that line for each field with `funded=none`.
+that line for each field with `funded=none`. Its inexpensive stopped report
+retains the sealed header's profile; `status --replay` opens the history and
+reports its effective limits. A restart installs that effective profile as
+both requested and funded. The live-limit parser accepts canonical decimal
+naturals including values beyond u32 so `fn-lim-decide` names the representation
+ceiling; malformed numbers remain a parser refusal.
+Replay admits a record under the history at its position, never under a
+limit value (PRF-1026, `fn-rhl-extend-open-is-limit-free`): the open's
+configuration fold is the same, up to the configuration's limits, for two
+histories that differ only in their `:set-limit` values, so an article
+accepted before A is lowered below its size is replayed after the lowering.
+What replay decides historically is the retention capacity (`:set-capacity`),
+carried in the node.
 
 STO-015: a namespace the store holds is bounded by the operator's profile,
 never by a constant (D27). Configuration generations and AUTHINFO
@@ -1441,6 +1453,47 @@ Retired with the pack layer (lane flip-cleanup, 2026-09-27): the reclaiming
 pack (the decision that dropped the derived checkpoint, published, selected and
 retired a pack generation, with its reclaim-* cuts), whose native steps
 PKT-838 deleted.
+
+#### Issued page reads across retirement (PRF-1057, SCN-216)
+
+A cold extent read issued off the owner mutex has an immutable process-local
+token: monotonically allocated read identity, original connection identity,
+file incarnation identity, entry offset, protected length and expected
+trailer. The token is distinct from an OS descriptor, a Message-ID, a
+connection slot and a durable transaction identity. ACL2 also derives fresh
+process-local incarnation names: successive admitted file allocations are
+distinct; failed opens spend their name and invalid carried counters refuse
+instead of resetting. Definite launch failure settles without a worker or
+buffer being created. Its ACL2 ownership row
+(`books/page-read-ownership.lisp`) begins `:issued`. Timeout or cancellation
+changes it to `:cancelled`, retaining its identity and worker ownership;
+neither observation establishes that pread stopped. Actual worker death observed by the owner and joined completion
+settles the matching row once. Only a still-issued matching completion whose
+full read passed the commitment verdict can publish into the verified
+extent cache. Cancelled success discards its data; short read, error or
+failed integrity check settles with a named fault; stale or duplicate
+completion publishes and releases nothing. A late store fault stops the
+owner even after its original request returned 403.
+
+Retirement additionally waits for every issued or cancelled worker naming
+the file. The generation-pin gate still applies independently. The host
+acquires issued ownership under the owner mutex at validated descriptor
+capture, before launching the worker or allowing retirement; it preserves deferred
+close groups and retries them after actual completion, after dropping the
+extent mutex. This is a stronger fn resource-ownership guarantee around
+RFC 3977 section 3.2.1's 403 reply, not an RFC descriptor-lifetime rule.
+The host's OS calls, mutexes, thread-launch outcome and faithful storage of
+ACL2's ownership rows remain in A-HOST. The theorem concerns the host-called
+completion and close decisions, not OS thread correctness.
+
+Scope: this increment does not establish funded admission for cold read
+buffers or workers. Repeated timeouts can still accumulate detached workers;
+this is a P12 blocker. The operator-supported resource vector must charge
+each issued worker, its buffer and shared file incarnation before allocation,
+retain charges through cancellation, refund worker resources only on actual
+settlement, and keep cached-buffer charges until eviction.
+No guessed ceiling on stored articles or a connection-count shortcut closes
+that obligation.
 
 ### The maintenance reservation (STO-019)
 
