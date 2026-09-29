@@ -2516,7 +2516,7 @@
               fn-bpnp-receipt-reoffer-after-uncertain
               fn-bpnp-receipt-contact-offers-the-queued-job
               fn-bpnp-receipt-contact-event-needs-a-queued-job
-              fn-bpnp-contact-closes-only-when-nothing-owed-remains
+              fn-bpnj-contact-offers-while-a-ready-job-remains
               fn-bpnj-step-forwarded-needs-a-durable-finished-record
               fn-bpnj-new-arms-preserve-the-lifecycle-invariant
               fn-bpnj-named-result-is-the-transport-outcome
