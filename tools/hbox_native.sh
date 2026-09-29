@@ -102,7 +102,8 @@
 # each is its own process, its own MemoryMax scope and its own ports; a
 # group of 20 modules at 4 jobs on hbox takes about a quarter of the serial
 # time), --certify-jobs N|auto (certify, default auto: tools/chain_schedule.py), --no-build (reuse the images already in that
-# scratch tree; the re-ship keeps the tree's .cert/.port/.fasl files, which it
+# scratch tree -- the one --label names; refused before anything ships when
+# it lacks one, naming the runs of NAME that hold them; the re-ship keeps the tree's .cert/.port/.fasl files, which it
 # used to delete, leaving REPL sessions there refusing include-book),
 # --image-set SHA (no certify and no build: link the prebuilt images the batch
 # published for dev commit SHA from hbox:/tank/fn/images/SHA, verified by its
@@ -610,6 +611,36 @@ fi
 # A box reserved for a measurement (tools/boxes.sh reserve) waits here, printing
 # who holds it and until when; the holder's own runs (this worktree) pass.
 FN_BOX_AS=${FN_BOX_AS:-$(basename "$HERE")} sh "$FN_HBOX_NATIVE_COPY/boxes.sh" wait "$HOST" || exit 3
+# --no-build reuses THIS label's tree (item 74): a tree without the images the
+# run needs used to fail at the first module's `need`, after the re-ship.
+# Refuse up front, naming the runs of NAME on the box that hold them (a
+# worktree run's default label is a fresh wt-TIMESTAMP: pass --label).
+if [ $BUILD -eq 0 ] && [ -z "$IMAGE_SET" ] && [ -z "$REUSE" ]; then
+    NEEDED=
+    for image in $(echo "$IMAGES" | tr ',' ' '); do
+        case $image in
+            production) NEEDED="$NEEDED build/fn-host" ;;
+            developer) NEEDED="$NEEDED build/fn-host-developer" ;;
+            reference) NEEDED="$NEEDED build/fn-host-reference" ;;
+            developer-stripped) NEEDED="$NEEDED build/fn-host-developer-stripped" ;;
+            dtn) NEEDED="$NEEDED build/fn-host-dtn" ;;
+            dtn-developer) NEEDED="$NEEDED build/fn-host-dtn-developer" ;;
+        esac
+    done
+    if [ -n "$NEEDED" ]; then
+        MISSING=$(ssh -n "$HOST" ": fn-no-build-images; if cd $S/tree 2>/dev/null; then for f in $NEEDED; do [ -x \$f ] || echo \$f; done; else echo $NEEDED; fi" | tr '\n' ' ' | sed 's/ *$//')
+        if [ -n "$MISSING" ]; then
+            RUNS=$(ssh -n "$HOST" ": fn-no-build-runs; cd $BASE/$NAME 2>/dev/null && for d in native-*; do ok=1; for f in $NEEDED; do [ -x \$d/tree/\$f ] || ok=0; done; [ \$ok = 1 ] && echo \${d#native-}; done" | tr '\n' ' ' | sed 's/ *$//')
+            echo "hbox_native: --no-build reuses $HOST:$S/tree (--label $LABEL), which lacks: $MISSING" >&2
+            if [ -n "$RUNS" ]; then
+                echo "hbox_native: runs of $NAME on $HOST holding every image this run needs: $RUNS -- pass --label ONE (or --reuse-image $NAME/native-ONE)" >&2
+            else
+                echo "hbox_native: no run of $NAME on $HOST holds them: drop --no-build to build, or --image-set SHA / --reuse-image RUN" >&2
+            fi
+            exit 2
+        fi
+    fi
+fi
 echo "hbox_native: $SOURCE -> $HOST:$S"
 ssh -n "$HOST" "mkdir -p $S/tree $S/logs" || { echo "hbox_native: cannot create $S on $HOST" >&2; exit 3; }
 # --no-build keeps the tree's certificates: its images and any REPL session

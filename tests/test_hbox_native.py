@@ -86,6 +86,40 @@ class HboxNativeDryRunTests(unittest.TestCase):
                                capture_output=True, text=True, timeout=120)
                 self.assertNotIn(".cert", log.read_text())
 
+    def test_no_build_refuses_a_tree_without_its_images_up_front(self):
+        # item 74: the refusal comes before any rsync/ship, and names the
+        # runs of NAME on the box that hold the images.
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "calls"
+            answers = Path(directory) / "runs"
+            stub = Path(directory) / "ssh"
+            stub.write_text('#!/bin/sh\necho "ssh $*" >> %s\ncase "$*" in\n'
+                            '*fn-no-build-images*) echo build/fn-host-developer ;;\n'
+                            '*fn-no-build-runs*) cat %s ;;\nesac\ncat > /dev/null\nexit 0\n'
+                            % (log, answers))
+            stub.chmod(0o755)
+            rsync = Path(directory) / "rsync"
+            rsync.write_text('#!/bin/sh\necho "rsync $*" >> %s\nexit 0\n' % log)
+            rsync.chmod(0o755)
+            env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}", "FN_HBOX": "hbox"}
+            for held, words in (("abc\nxyz\n", "holding every image this run needs: abc xyz "
+                                                 "-- pass --label ONE"),
+                                ("", "no run of t on hbox holds them")):
+                answers.write_text(held)
+                log.write_text("")
+                done = subprocess.run(["sh", str(SCRIPT), "--no-build", "--name", "t", "--label",
+                                       "fresh", ".", "tests.test_native_owner"], cwd=ROOT,
+                                      env=env, capture_output=True, text=True, timeout=120,
+                                      stdin=subprocess.DEVNULL)
+                self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+                self.assertIn("--no-build reuses hbox:/tank/fn/scratch/t/native-fresh/tree "
+                              "(--label fresh), which lacks: build/fn-host-developer", done.stderr)
+                self.assertIn(words, done.stderr)
+                self.assertNotIn("rsync", log.read_text())
+                self.assertNotIn("mkdir -p", log.read_text())
+
     def test_default_builds_the_developer_image_only(self):
         answer = dry("HEAD", "tests.test_native_owner")
         self.assertEqual(answer.returncode, 0, answer.stderr)
