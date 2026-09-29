@@ -833,7 +833,9 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
           ; (books/native-admin.lisp `fn-native-admin-control-plan').
           ((member-equal (fn-native-admin-result-reason plan)
                          '(:reserved-group-name :namespace-pattern :principal
-                           :verb-not-grantable))
+                           :verb-not-grantable
+                           ; Row S10: `policy set' refused by name.
+                           :unknown-policy-key :policy-value-not-a-number))
            (fn-nop-refused (list :administration (fn-native-admin-result-reason plan))
                            command config argv))
           (t (fn-nop-usage (list :administration (fn-native-admin-result-reason plan))
@@ -930,6 +932,13 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((equal command "status")
              (cond ((null rest)
                     (fn-nop-result :accepted :plan "status" config (list :status)))
+                   ; Row S3: on a stopped store `status' reads the checkpoint
+                   ; header (books/owner-maintenance-request.lisp); `--replay'
+                   ; asks for the report over the replayed log.
+                   ((and (equal (fn-ncfg-first rest) "--replay")
+                         (null (fn-ncfg-rest rest)))
+                    (fn-nop-result :accepted :plan "status" config
+                                   (list :status :replay)))
                    ((and (equal (fn-ncfg-first rest) "--watch")
                          (null (fn-ncfg-rest (fn-ncfg-rest rest)))
                          (fn-nop-watch-seconds (fn-ncfg-second rest)))
@@ -2847,7 +2856,14 @@ control path no supported platform binds whole."
   (let ((status (fn-native-operator-result-status result))
         (reason (fn-native-operator-result-reason result))
         (command (fn-native-operator-result-command result)))
-    (cond ((and (equal status :refused) (equal reason :control-path-too-long))
+    (cond ; Row S10: `policy set KEY VALUE' refused by name, with what it takes.
+          ((and (equal status :refused)
+                (equal reason (list :administration :unknown-policy-key)))
+           "policy set: no key by that name; the keys are path-identity, posting-policy, exposure-connections, exposure-per-address, exposure-steps-per-second, exposure-idle-seconds, exposure-first-seconds, exposure-auth-failures, exposure-posts-per-minute, relay-date-skew, refused-offer-capacity, relay-require-path, max-transactions, max-history-octets, max-article-octets (docs/operator.md)")
+          ((and (equal status :refused)
+                (equal reason (list :administration :policy-value-not-a-number)))
+           "policy set: that key takes a decimal count (digits only); run: fn operator CONFIG policy set KEY N")
+          ((and (equal status :refused) (equal reason :control-path-too-long))
            "the control socket path ([control] path, else the [store] path with /control.sock) is longer than 103 octets, which a Unix socket cannot bind on every platform; set a shorter [control] path in fn.toml")
           ((and (equal status :refused) (equal reason :no-store))
            "no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)")

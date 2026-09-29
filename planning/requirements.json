@@ -5380,6 +5380,59 @@
         "books/nntp-compress-dict.lisp",
         "tests/acl2/nntp-compress-dict-tests.lisp"
       ]
+    },
+    {
+      "id": "HST-036",
+      "title": "Maintenance while serving: `recover' and `store inspect' on a running owner are answered by that owner (recover accepted by name, its status following; inspect as the owner's own lookup rendering the offline report), refused by name with what it would take when an owner holds the lock and answers nothing; `status' and `health' on a stopped store read the checkpoint header and the journal's sizes (a bound on the transactions), never a replay; `status --replay' is the replayed report",
+      "specification": "specs/host.md#operator-commands-and-owner-critical-sections",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-964",
+        "PRF-965"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-maintenance-request.lisp",
+        "tests/acl2/owner-maintenance-request-tests.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "host/native/admin.lisp",
+        "host/native/operator.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_maintenance_live.py"
+      ],
+      "implementation_note": "Lane operability-2 (row S3, 2026-09-29): PKT-868's owner-request route (the administrative vector over the control socket, ACL2's liveness decision) carries `inspect request ID'; `recover' with a live owner is a status read; the stopped report is fn-omr-stopped-report over config.json, the checkpoint's 37-octet header and lstat sizes. `store export' on the running owner is the row's remaining item (S3b)."
+    },
+    {
+      "id": "HST-037",
+      "title": "Operator refusals name their reason: a `post' the Store refuses at completion answers the Store's word (never a bare REFUSED) and logs ` reason=WORD'; `policy set KEY VALUE' with a key the node does not have, or a counted key with a value that is no decimal count, is refused by name (unknown-policy-key, policy-value-not-a-number) with what it would take, never the usage line; SIGHUP's log reopen is documented",
+      "specification": "specs/host.md#operator-commands-and-owner-critical-sections",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-972"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-control-post-reason.lisp",
+        "tests/acl2/owner-control-post-reason-tests.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "docs/operator.md",
+        "tests/test_native_operator_refusals.py"
+      ],
+      "implementation_note": "Lane operability-2 (row S10, 2026-09-29): items (a) the post reason, (c) policy set, (e) SIGHUP. Open: (b) init refusals with numbers and the development preset for unnamed init fields; (d) the unread [ops]/[alerts] keys (implement a size-rotation decision or delete them; both edit books/native-config)."
     }
   ]
 }

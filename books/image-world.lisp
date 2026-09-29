@@ -103,6 +103,8 @@
 (include-book "bp-carry-frame")
 (include-book "bp-carry-control")
 (include-book "owner-compact-request")
+(include-book "owner-maintenance-request")
+(include-book "owner-control-post-reason")
 (include-book "owner-reclaim")
 (include-book "extent-retire")
 (include-book "bp-request-plan")

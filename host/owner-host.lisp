@@ -37,6 +37,9 @@
 (include-book "../books/owner-checkpoint-open")
 ; PKT-868: the operator's compaction request on a running owner.
 (include-book "../books/owner-compact-request")
+; Row S10 (lane operability-2): a refused control post completion names the
+; Store's word on the reply and the line.
+(include-book "../books/owner-control-post-reason")
 ; Q16: content reclamation on a running owner (fn-orc-).
 (include-book "../books/owner-reclaim")
 (include-book "../books/owner-reclaim-conns")
@@ -2910,10 +2913,24 @@
   (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((owner (fn-owner-core state))
          (result (fn-own-control-outcome-result owner word))
+         ; Row S10: the line names the Store's word when the completion
+         ; refused (books/owner-control-post-reason.lisp), and the word is
+         ; kept for the reply (fn-owner-control-reason).
          (state (f-put-global 'fn-owner-log-line
-                              (fn-olog-control-post-line owner word) state))
+                              (fn-ocpr-log-line owner word) state))
+         (state (f-put-global 'fn-owner-control-reason
+                              (fn-ocpr-reason result word) state))
          (state (fn-owner-step (list :control-outcome word) fn-arena state)))
     (value result)))
+
+; Row S10: the reason the last control completion kept (nil when it was not
+; a refusal, or none completed yet); host/native/owner.lisp's reply site
+; takes it when the admission decision names none.
+(defun fn-owner-control-reason (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (if (boundp-global 'fn-owner-control-reason state)
+             (f-get-global 'fn-owner-control-reason state)
+           nil)))
 
 (defun fn-owner-bp-transit-outcome (word fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))

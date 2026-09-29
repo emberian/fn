@@ -14814,6 +14814,37 @@
           "name": "fn-bs-profile-logp-holds-exactly-for-a-valid-profile"
         }
       ]
+    },
+    {
+      "id": "PRF-964",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-omr-inspect-live-is-the-offline-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-omr-inspect-status-is-the-offline-exit"
+        }
+      ]
+    },
+    {
+      "id": "PRF-965",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-omr-transactions-at-most-bounds-the-count"
+        }
+      ]
+    },
+    {
+      "id": "PRF-972",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocpr-line-names-the-reason-exactly-when-refused"
+        }
+      ]
     }
   ]
 }

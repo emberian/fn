@@ -4744,9 +4744,69 @@ an owner holds the Store: `operator CONFIG status' asks that owner instead."
            +fnn-exit-ok+)
       (fnn-store-close store))))
 
-(defun fnn-command-status (root)
+(defun fnn-read-regular-prefix (path maximum)
+  "The first MAXIMUM octets of one regular, non-symlink file (all of it when
+it is shorter), or NIL when there is none."
+  (let ((st (fnn-check-regular path)))
+    (and st
+         (let ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
+           (unwind-protect
+                ;; One read of MAXIMUM octets: never the whole file
+                ;; (fnn-read-bounded-fd refuses a longer file by design).
+                (let* ((buffer (fnn-make-octets maximum))
+                       (count (fnn-read-fd fd buffer)))
+                  (if (= count (length buffer)) buffer (subseq buffer 0 count)))
+             (fnn-close fd))))))
+
+(defun fnn-stopped-observation (root)
+  "Row S3: what a stopped store's status is rendered from, nothing replayed:
+config.json's octets, the newest checkpoint's segment header (ACL2's
+fn-omr-header-octets of the file, no more), the journal's octets (every
+segment's lstat size) and the checkpoint file's lstat."
+  (let* ((store (make-fnn-store root))
+         (config (fnn-octet-list (fnn-read-regular-bounded (fnn-config-path store) 16384)))
+         (prefix (fnn-read-regular-prefix (fnn-state-checkpoint-path store)
+                                          (fnn-nat (fnn-core 'fn-omr-header-octets))))
+         (header (and prefix (fnn-octet-list prefix)))
+         (dir (fnn-journal-dir store))
+         (journal (loop for name in (fnn-log-segment-names store)
+                        for st = (fnn-lstat (fnn-join dir name))
+                        sum (if st (sb-posix:stat-size st) 0))))
+    (list config header journal (fnn-state-checkpoint-file-observation store))))
+
+(defun fnn-stopped-report (root kind &optional last)
+  "Row S3: `status' or `health' on a stopped store, from its checkpoint header
+and its journal's sizes (books/owner-maintenance-request.lisp
+fn-omr-stopped-report, fn-omr-stopped-health-report): (EXIT OCTETS) for
+:status, the health octets (their exit is the header's) for :health.  A
+writer lock an owner holds refuses by name first (fn-omr-route :held): the
+report is never rendered behind an owner."
+  (let ((lock (fnn-store-owner-observation root)))
+    (when (eq lock :unknown)
+      (fnn-indeterminate "the store's writer lock could not be observed"))
+    (when (eq (fnn-core 'fn-omr-route (if (eq lock :held) :held :offline)) :held)
+      (fnn-refuse "~a" (fnn-core 'fn-omr-held-line
+                                 (if (eq kind :health) "health" "status")))))
+  (destructuring-bind (config header journal obs) (fnn-stopped-observation root)
+    (if (eq kind :health)
+        (fnn-core 'fn-omr-stopped-health-report last config header journal obs)
+      (fnn-core 'fn-omr-stopped-report config header journal obs))))
+
+(defun fnn-command-stopped-status (root)
+  (let ((report (fnn-stopped-report root :status)))
+    (unless (and (consp report) (member (first report) '(0 1))
+                 (fnn-octet-list-p (second report)))
+      (fnn-fault "ACL2 returned a malformed stopped report"))
+    (fnn-write-report (second report))
+    (if (eql (first report) 0) +fnn-exit-ok+ +fnn-exit-refused+)))
+
+(defun fnn-command-status (root &optional replayp)
+  "Row S3: a stopped store's status is its checkpoint header's (no replay);
+`--replay' (REPLAYP) asks for the report over the replayed log."
   (fnn-filesystem-durability-warn root)
-  (fnn-command-live-report root :status))
+  (if replayp
+      (fnn-command-live-report root :status)
+    (fnn-command-stopped-status root)))
 
 (defun fnn-command-retention (root)
   "Report the replayed ACL2 ledger's pin count and reserved charge."
@@ -6342,21 +6402,23 @@ acknowledges past the committed records' count)."
     (dotimes (i count)
       (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-finish-one (fnn-log-kernel log))))))
 
-(defun fnn-log-rig-line (what log size)
+(defun fnn-log-rig-line (what log size &optional (base 0))
   ;; Not `fnn-log-line': that is the service log's one-argument writer
   ;; (above), which this rig's definition used to replace in the image, so
   ;; every owner start faulted in fn-lgk-acked (friend-blockers-2, 09:10Z).
   ;; The oracle's records are the segment's own, decoded again from its
-  ;; bytes (the concrete kernel keeps only their count).
+  ;; bytes (the concrete kernel keeps only their count).  BASE: the records
+  ;; before this segment (`log scan-store': the checkpoint's S and the
+  ;; closed segments scanned), so records= is the history's count.
   (let ((ks (fnn-log-kernel log))
         ;; From the segment's own genesis (a store's segment 1 chains from
-        ;; its genesis record: `log scan-store'), the log's constant one
-        ;; for a bare rig segment.
+        ;; its genesis record, a suffix segment from the checkpoint's F row:
+        ;; `log scan-store'), the log's constant one for a bare rig segment.
         (records (fnn-log-open-kernel (fnn-log-fd log) (fnn-log-extent log)
                                       (fnn-log-unit log) (fnn-log-max log)
                                       (or (fnn-log-genesis log) *fn-lg-genesis*))))
     (fnn-out "~a records=~d frontier=~d next=~d last=~a workload=~(~a~)"
-             what (fnn-core 'fn-lgc-acked ks) (fnn-core 'fn-lgc-frontier ks)
+             what (+ base (fnn-nat (fnn-core 'fn-lgc-acked ks))) (fnn-core 'fn-lgc-frontier ks)
              (fnn-core 'fn-lgc-next-txid ks) (fnn-hex (fnn-core 'fn-lgc-last ks))
              (if (fnn-core 'fn-lg-workload-prefixp records 1 size)
                  "t" "nil"))))
@@ -7426,31 +7488,67 @@ observation (the COMPLETE re-signals it under the owner)."
 ;; then BATCHES batches of PER workload records, one `ACK' line after each
 ;; fence and its acknowledgements, flushed).
 (defun fnn-command-log-scan-store (root)
-  "`log scan-store ROOT': the rig's SCAN line over a format-10 store's first
-segment, every parameter the store's own and none typed: the profile from
-config.json (fnn-metadata-config-decode), the chain segment 1 starts from out
-of journal/000000.log under that profile (fnn-genesis-open: ACL2's
-fn-store-genesis-open, refused by name), the unit (fn-store-log-unit) and
-the record bound (fn-store-profile-max-record-octets; the entry header's
-length field is read against it).  Read only, no lock: the durable prefix a
-crash would keep, while an owner may run (tests/native_log_observation.py)."
+  "`log scan-store ROOT': the rig's SCAN line over a format-10 store's
+history as the open reads it (fnn-recover-log), every parameter the store's
+own and none typed: the profile from config.json (fnn-metadata-config-decode);
+the checkpoint's F row (fnn-state-checkpoint-load, fn-store-sco-log-position:
+the first suffix segment K and the chain recorded for it) or, when no
+checkpoint names one, segment 1 chained from journal/000000.log
+(fnn-genesis-open: ACL2's fn-store-genesis-open, refused by name); ACL2's
+plan over journal/ (books/store-log-segments.lisp fn-lgs-open-plan: the
+segments to scan in order, or refused by name -- history-short-of-
+checkpoint, checkpoint-damaged -- with the open's own words); the unit
+(fn-store-log-unit) and the record bound (fn-store-profile-max-record-octets;
+the entry header's length field is read against it).  The closed segments
+are streamed with the chain carried to the next (fnn-log-stream-segment,
+T8's step); the line is the active segment's, its records= the history's
+count as the open answers it: the checkpoint's S plus every record scanned.
+Read only, no lock, nothing renamed (an interrupted rotation's spare is the
+owner's to complete): the durable prefix a crash would keep, while an owner
+may run (tests/native_log_observation.py).  Before lane operability-4 this
+verb took segment 1 and the genesis chain unconditionally, so a store after
+`store compact' (whose covered segments are dropped) answered a host `no log
+segment' (tests/test_native_topic_local.py)."
   (let* ((store (make-fnn-store root))
          (raw (fnn-read-regular-bounded (fnn-config-path store) 16384))
          (profile (fnn-metadata-config-decode raw))
-         (genesis (progn (setf (fnn-store-config store) profile)
-                         (fnn-genesis-open store profile)))
+         (chain (progn (setf (fnn-store-config store) profile)
+                       (fnn-genesis-open store profile)))
          (unit (fnn-store-log-unit))
-         (max (fnn-store-log-max store))
-         (path (fnn-segment-path-at store 1))
-         (extent (fnn-log-observed-extent path))
-         (fd (fnn-log-open-segment path extent unit t)))
-    (unwind-protect
-         (fnn-log-rig-line "SCAN" (%make-fnn-log :path path :fd fd :unit unit :max max
-                                             :extent extent :genesis genesis
-                                             :kernel (nth-value 1 (fnn-log-open-kernel
-                                                                   fd extent unit max genesis)))
-                       0)
-      (fnn-close fd)))
+         (max (fnn-store-log-max store)))
+    (multiple-value-bind (status s) (fnn-state-checkpoint-load store)
+      (let* ((position (and (eq status :ok) (fnn-core-state 'fn-store-sco-log-position)))
+             (log-position (first position))
+             (plan (fnn-core 'fn-lgs-open-plan (fnn-log-segment-names store)
+                             (first log-position))))
+        (unless (and (consp plan) (member (first plan) '(:scan :refused)))
+          (fnn-fault "ACL2 returned a malformed log open plan"))
+        (when (equal plan '(:refused :no-segment))
+          (fnn-fault "missing store directory: ~a has no log segment (an init that did not finish: run init again)"
+                     (fnn-journal-dir store)))
+        (when (eq (first plan) :refused)
+          (error 'fnn-store-open-refusal
+                 :message (format nil "open refused reason=~(~a~): the log's segments do not hold the history~@[ from segment ~d~]"
+                                  (second plan) (first log-position))))
+        (let ((genesis (if log-position (second log-position) chain))
+              (base (if (eq status :ok) (fnn-nat s) 0)))
+          (loop for (k . more) on (second plan) do
+            (let* ((path (fnn-segment-path-at store k))
+                   (extent (fnn-log-observed-extent path))
+                   (fd (fnn-log-open-segment path extent unit t)))
+              (unwind-protect
+                   (if more
+                       (let ((read (fnn-log-stream-segment fd extent unit max genesis #'identity
+                                                           (file-namestring path))))
+                         (setq genesis (fnn-core 'fn-lgc-last read)
+                               base (+ base (fnn-nat (fnn-core 'fn-lgc-count read)))))
+                     (fnn-log-rig-line "SCAN"
+                                       (%make-fnn-log :path path :fd fd :unit unit :max max
+                                                      :extent extent :genesis genesis :index k
+                                                      :kernel (nth-value 1 (fnn-log-open-kernel
+                                                                            fd extent unit max genesis)))
+                                       0 base))
+                (fnn-close fd))))))))
   +fnn-exit-ok+)
 
 (defun fnn-command-log (command argv)

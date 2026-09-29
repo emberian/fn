@@ -5957,6 +5957,82 @@
         "480 before a login, 206 after; the label withdrawn once active; 502 for a second COMPRESS, STARTTLS and AUTHINFO; 503 unknown, 501 malformed; pipelined octets are the stream's first; the bomb refused (compress-bomb) and the malformed stream (compress-malformed), each closing the connection.",
         "The compressed store reports every article record compressed and `dictionaries=' the shipped baseline's DICT-ID 2220533217, holds fewer octets, and serves every article octet for octet as its uncompressed twin, after both recovers and the torn tail."
       ]
+    },
+    {
+      "id": "SCN-208",
+      "title": "`recover' and `store inspect' answer on the running owner; a stopped store's status is its checkpoint header's, with a bound the replayed count never exceeds",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-036"
+      ],
+      "steps": [
+        "A development-profile store; `run`; 3 POSTs; `operator recover`; `operator store inspect` of a stored and of a never-posted Message-ID; 2 POSTs; stop; `operator status`; `operator status --replay`; the offline inspect; `operator health`; `run`; `operator store checkpoint`; stop; `operator status`."
+      ],
+      "expected": [
+        "recover exits 0 with `recover accepted owner=serving` and the owner's `transactions=3` line (never `store is already locked`); inspect answers `accepted ... an article is stored here` exit 0 and `absent ...` exit 1 while the owner serves; the stopped status prints `stopped checkpoint=none journal-octets=B transactions-at-most=M` and no `transactions=` line, with M >= 5 = the `--replay` count; health carries `state=not-running` and the stopped line; after the checkpoint the stopped status prints `checkpoint=5`."
+      ],
+      "implementation": {
+        "test": "tests.test_native_maintenance_live",
+        "cases": [
+          "MaintenanceLiveTests.test_recover_and_inspect_answer_on_the_running_owner_and_a_stopped_status_reads_the_header"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
+    },
+    {
+      "id": "SCN-209",
+      "title": "An operator post the full store refuses names its reason on the reply and the line; `policy set' with an unknown key or a non-numeric count is refused by name",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-037"
+      ],
+      "steps": [
+        "A development store with --max-transactions 4; `run`; 2 POSTs; `operator post` until one is refused; `operator policy set bogus-key 1`; `operator policy set exposure-connections abc`; stop."
+      ],
+      "expected": [
+        "The refused post prints `refused operator post WORD` (a Store word, never the bare REFUSED) and the owner logs `refused post path=control message-id=ID ... reason=WORD` with the same word; the two policy commands exit 1 naming unknown-policy-key (with the key list) and policy-value-not-a-number (a decimal count), and print no usage line."
+      ],
+      "implementation": {
+        "test": "tests.test_native_operator_refusals",
+        "cases": [
+          "OperatorRefusalTests.test_a_post_the_store_refuses_names_its_reason_and_policy_set_refuses_by_name"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
+    },
+    {
+      "id": "SCN-210",
+      "title": "`store export DIR' answers on the running owner: requested and written while serving, refused by name when an export is in flight or DIR exists; the archive imports with the captured count",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-036"
+      ],
+      "steps": [
+        "A development-profile store; `run`; N POSTs; `operator store export DIR` while the owner serves (posting continues during it); `operator store export DIR` again; `operator store import DIR` into a fresh root; `operator status --replay` on the imported store; the owner's log."
+      ],
+      "expected": [
+        "The first export prints `export requested archive=DIR` then `exported archive=DIR: complete ...` exit 0 and never `store is already locked`; DIR/MANIFEST exists; the second answers `export refused reason=archive-exists ...` exit 1 (a request while the first is still writing answers `reason=export-in-flight`); the import opens and `status --replay` shows `transactions=` the count captured at the request (at most N, at least the POSTs acknowledged before it); the owner's log carries `EXPORT done records=... configuration=...`; serving continued (POSTs during the export were accepted)."
+      ],
+      "implementation": {
+        "test": "tests.test_native_maintenance_live",
+        "cases": [],
+        "native": true
+      },
+      "evidence": [
+        "books/owner-export-request.lisp",
+        "tests/acl2/owner-export-request-tests.lisp"
+      ]
     }
   ]
 }

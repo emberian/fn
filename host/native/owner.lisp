@@ -3397,10 +3397,15 @@ refused, not injected under a stale time (D10-a)."
                     ;; reason.lisp fn-nctrl-reason-word), a plain one the
                     ;; status alone.
                     (if (eq status :refused)
-                        (let ((reason (fnn-core-arena-state 'fn-owner-operator-refusal-reason
-                                                      (fnn-octet-list msgid)
-                                                      (mapcar #'fnn-octet-list groups)
-                                                      (fnn-octet-list payload))))
+                        ;; Row S10: a completion the Store refused names
+                        ;; the Store's word (books/owner-control-post-reason
+                        ;; fn-ocpr-reason, kept by fn-owner-control-outcome)
+                        ;; when the admission decision names none.
+                        (let ((reason (or (fnn-core-arena-state 'fn-owner-operator-refusal-reason
+                                                          (fnn-octet-list msgid)
+                                                          (mapcar #'fnn-octet-list groups)
+                                                          (fnn-octet-list payload))
+                                          (fnn-owner-core 'fn-owner-control-reason))))
                           (list :reason
                                 (fnn-core 'fn-native-control-host-refusal-status reason)
                                 reason))

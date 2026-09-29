@@ -15485,6 +15485,78 @@
         "tests/test_coverage.py"
       ],
       "progress_note": "Lane decision-keystones-2 (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati; certification in the lane's READY manifest."
+    },
+    {
+      "id": "PRF-964",
+      "title": "A served inspect renders as the offline one: the report the client prints from the owner's word is fn-native-operator-inspect-report of the owner's lookup",
+      "statement": "books/owner-maintenance-request.lisp. KEYSTONE fn-omr-inspect-live-is-the-offline-report: for any Message-ID octets and any lookup result FOUNDP, fn-omr-inspect-live-report of the reasoned reply's word (fn-nctrl-reason-word of fn-omr-inspect-word FOUNDP) equals fn-native-operator-inspect-report of FOUNDP: exit, verdict and printed line. fn-omr-inspect-status-is-the-offline-exit: the owner's reply status is :accepted exactly when the offline exit is 0. Subject: host/native/operator.lisp fnn-operator-execute-inspect-live, over the word host/native/admin.lisp fnn-owner-inspect-request answers (fnn-bridge-lookup-found-p under the owner mutex). Teeth: tests/acl2/owner-maintenance-request-tests.lisp (found, absent, a malformed word reads as absent).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-036"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-maintenance-request.lisp",
+        "tests/acl2/owner-maintenance-request-tests.lisp"
+      ],
+      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
+      "events": []
+    },
+    {
+      "id": "PRF-965",
+      "title": "A stopped store's status bounds the transactions from its checkpoint header and its journal's octets without a replay",
+      "statement": "books/owner-maintenance-request.lisp. KEYSTONE fn-omr-transactions-at-most-bounds-the-count: for natural COVERED, RECORDS and JOURNAL-OCTETS with RECORDS * *fn-omr-min-frame-octets* <= JOURNAL-OCTETS (every record frame is at least its header and trailer, 42 octets), COVERED + RECORDS <= fn-omr-transactions-at-most COVERED JOURNAL-OCTETS. fn-omr-stopped-line-is-header-and-octets-by-definition: the printed line is a function of the header's sequence field (fn-omr-covered-sequence, fn-scc-parse-header of the first 37 octets) and the journal's octets alone. Subject: host/native/io.lisp fnn-stopped-report (fnn-command-stopped-status, the health arm of host/native/operator.lisp fnn-operator-health-report). Teeth: the tests book's positive witness (12 covered, 5 records in 300 octets) and the removal of the octet premise (8 records cannot fit 300 octets and the bound does not cover them).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-036"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-maintenance-request.lisp",
+        "tests/acl2/owner-maintenance-request-tests.lisp"
+      ],
+      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
+      "events": []
+    },
+    {
+      "id": "PRF-988",
+      "title": "At most one export in flight on the running owner, never into an existing DIR: the request word is :requested exactly when none is in flight and DIR is absent",
+      "statement": "books/owner-export-request.lisp. KEYSTONE fn-oex-one-export-in-flight: for any observations INFLIGHTP (the service's exporter slot) and EXISTSP (DIR's lstat), an export in flight makes fn-oex-request-word answer :export-in-flight, and the word is :requested iff neither observation holds; fn-oex-request-accepted-exactly-when-requested: the reply status is :accepted iff the word is :requested. fn-oex-word-reads-back: every word the owner answers (request and status words) reads back as itself from its reply octets (fn-nctrl-reason-word). The archive's contents are the offline writer's own steps over the captured octets: books/store-export-stream.lisp fn-sxp-stream-is-the-export and books/store-export-durability.lisp fn-sxd-crash-is-incomplete-or-complete stand unchanged (cited, not restated).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-036"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-export-request.lisp",
+        "tests/acl2/owner-export-request-tests.lisp"
+      ],
+      "progress_note": "Lane operability-4 (2026-09-29): the decision book REPL-admitted on persvati (15 forms) with its teeth (36 assert-events, 0 refused): the keystone's reachable positive witness (in flight, DIR absent -> :export-in-flight, not :requested) and the hypothesis-removal witness (nothing in flight -> :requested); every word reads back; the lines name the reason and what it would take. The host wiring (the admin arms `export request DIR' / `export status', the owner's capture + export thread, the client's wait) and the native case are the successor's; the theorems' subject is what that host calls.",
+      "events": []
+    },
+    {
+      "id": "PRF-972",
+      "title": "The operator's post refused at completion names the Store's word on the log line and the reply",
+      "statement": "books/owner-control-post-reason.lisp. KEYSTONE fn-ocpr-line-names-the-reason-exactly-when-refused: fn-ocpr-log-line O WORD is fn-olog-control-post-line O WORD followed by ` reason=WORD' exactly when fn-own-control-outcome-result O WORD is :refused (and WORD a symbol), and the plain line for every other class. fn-ocpr-reason-is-the-word-when-refused-by-definition: the reply's reason is the Store's word for a refused completion, nil otherwise. Subjects: host/owner-host.lisp fn-owner-control-outcome (the line; the reason kept in fn-owner-control-reason) and host/native/owner.lisp's control reply site (the admission decision's reason, else this one). Teeth: tests/acl2/owner-control-post-reason-tests.lisp (the word for :refused, nothing for :accepted/:duplicate/:uncertain or a non-symbol; the plain line with no submission in flight); the positive witness is native (SCN-209).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-037"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-control-post-reason.lisp",
+        "tests/acl2/owner-control-post-reason-tests.lisp"
+      ],
+      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
+      "events": []
     }
   ]
 }
