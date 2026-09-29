@@ -94,8 +94,23 @@
                           (fn-retain-find-id (fn-record-obligation-id *sn-row*)
                                              (fn-retain-pins (fn-node-retention *hk-n-other*))))
                          (fn-record-release-evidence *sn-row*))))
-; Hypothesis removal: without the plain-article-record hypothesis the
-; statement is not a theorem (a retention event binds no Message-ID).
+; Hypothesis removal: a retention :undertake event replayed into the initial
+; node is ACCEPTED (n non-nil: the retained hypothesis holds), is not a
+; plain article record (the omitted hypothesis fails), and binds no
+; Message-ID (the conclusion fails): the hypothesis is not redundant.
+(defconst *hk-ev* (fn-store-retention-event-make :undertake 0 0 9 "fwd-1" "subject-1" "release-1" 1))
+(defconst *hk-en* (fn-replay-apply-record *hk-node0* *hk-ev*))
+(assert-event (fn-store-retention-event-p *hk-ev*))
+(assert-event (consp *hk-en*))
+(assert-event (not (fn-hkn-plain-article-record-p *hk-ev*)))
+(assert-event (equal (fn-retain-pins (fn-node-retention *hk-en*))
+                     (list (fn-retain-make-obligation "fwd-1" "subject-1" :forward "release-1" 1))))
+(assert-event (with-guard-checking
+               :none
+               (not (equal (fn-node-find-binding (fn-record-msgid *hk-ev*) (fn-node-bindings *hk-en*))
+                           (fn-node-make-binding (fn-record-msgid *hk-ev*)
+                                                 (fn-record-content-subject *hk-ev*)
+                                                 (fn-record-obligation-id *hk-ev*))))))
 (must-fail-checked
  (defthm hk-acceptance-without-the-plain-record-hypothesis-fails
    (let ((n (fn-replay-apply-record node record)))
@@ -164,28 +179,18 @@
                    (not (fn-retain-known-idp "archive-z" (fn-retain-pins *hk-r1*) (fn-retain-releases *hk-r1*)))
                    (not (fn-retain-known-idp "archive-z" (fn-retain-pins *hk-r0*) (fn-retain-releases *hk-r0*)))))
 
-; Hypothesis removal for fn-hkn-release-discharges-the-same-obligation: over
-; a list that is not an obligation list the statement fails -- an atom
-; "pin" matches nothing, its reduction (a five-field obligation) matches
-; the all-NIL request.  Every retained hypothesis-free conjunct is checked
-; and the conclusion fails.
+; fn-hkn-release-discharges-the-same-obligation carries no hypothesis: over
+; a list that is not an obligation list the release acts only on a found
+; cons pin, whose reduction keeps every identifying field.
 (defconst *hk-bad* (fn-retain-make-state 8 0 '(5) nil))
-(assert-event (not (fn-retain-obligation-listp (fn-retain-pins *hk-bad*))))
-(assert-event (not (equal (fn-retain-matching-releasep
-                           (fn-retain-find-id nil (fn-retain-pins (fn-hkn-release-retention *hk-bad* nil)))
-                           nil nil nil nil)
-                          (fn-retain-matching-releasep
-                           (fn-retain-find-id nil (fn-retain-pins *hk-bad*))
-                           nil nil nil nil))))
-(must-fail-checked
- (defthm hk-discharge-without-the-list-hypothesis-fails
-   (equal (fn-retain-matching-releasep
-           (fn-retain-find-id x (fn-retain-pins (fn-hkn-release-retention r id)))
-           x subject kind evidence)
-          (fn-retain-matching-releasep
-           (fn-retain-find-id x (fn-retain-pins r))
-           x subject kind evidence))
-   :rule-classes nil))
+(assert-event (with-guard-checking
+               :none
+               (equal (fn-retain-matching-releasep
+                       (fn-retain-find-id nil (fn-retain-pins (fn-hkn-release-retention *hk-bad* nil)))
+                       nil nil nil nil)
+                      (fn-retain-matching-releasep
+                       (fn-retain-find-id nil (fn-retain-pins *hk-bad*))
+                       nil nil nil nil))))
 
 ; THE ONE OBSERVABLE CHANGE (fn-hkn-release-enables-only-what-the-freed-
 ; charge-affords), and the FINDING the review asked for: the naive
