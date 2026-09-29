@@ -17040,6 +17040,28 @@
         "fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family",
         "fn-bpnf-family-record-at-epoch-and-op-are-frame-nats"
       ]
+    },
+    {
+      "id": "PRF-1025",
+      "title": "A reclaim's record carries the note of its decision, and `store reclaim --recorded` checks the note before it rewrites",
+      "statement": "books/reclaim-note.lisp fn-rcn-recorded-note-reads-back: the configuration the reclaim's record yields (fn-rcn-recorded-config: the instant delta fn-rci-delta NOW then the note delta fn-cfg-reclaim-note TEXT, one record) carries the recorded instant NOW, the retention rule unchanged, and the note TEXT (fn-rcn-config-note). fn-rcn-recorded-note-checks: for D the stream decision at the clock (fn-lgr-decide-stream at the configuration's rule and NOW) and TEXT = fn-rcn-of-decision NOW COUNT D, the --recorded rerun's check fn-rcn-check of that configuration, COUNT and the rerun's decision fn-rci-decide-stream answers :checked when D reclaims (:unchecked otherwise). fn-rcn-check answers :reclaim-note-mismatch for a note at the recorded instant that is not the rerun decision's (fn-rcn-check-refuses-a-foreign-note-by-definition). The note text is `at=CODE history=N reclaimed=K freed=F msgids=HEX' (HEX the SHA-256 of the reclaimed Message-IDs, each u32-length-prefixed). host: fnn-log-reclaim-steps (host/native/checkpoint.lisp) calls fn-store-reclaim-instant-record (host/checkpoint-host.lisp; fn-rcn-deltas over fn-rcn-of-decision) through fnn-reclaim-record-instant, and on --recorded calls fn-store-reclaim-note-check (fn-rcn-check) and refuses reclaim-note-mismatch before the rewrite. Scope: the offline `store reclaim`; the live owner pass records its instant without a note (books/owner-reclaim-instant.lisp) and its rerun is :unchecked. SHA-256 is fn-sha256 (the attachable seam): equal notes imply nothing about preimages in this logic.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-327",
+        "PRF-271"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": "tests/acl2/reclaim-note-tests.lisp (the fixture's reclaiming decision: note publishable, reads back, rerun :checked; teeth: a note over another history length or another decision :reclaim-note-mismatch, an earlier instant's note :unchecked, the empty note refused by the configuration); tests/test_native_replay_determinism.py test_f (the copy given the record reruns note=checked; a copy with one more article given the same record is refused reclaim-note-mismatch and unchanged).",
+      "progress_note": "correctness-remainder-9, 2026-09-29: PKT-855 (proto-determinism N2). REPL-admitted whole book and tests on persvati (from-source deps: books/config.lisp gained the delta kind :reclaim-note, code 28). Design: planning/design-reclaim-note-2026-09-29.md.",
+      "events": [
+        "fn-rcn-recorded-note-reads-back",
+        "fn-rcn-recorded-note-checks",
+        "fn-rcn-recorded-decision-is-the-decision"
+      ]
     }
   ]
 }

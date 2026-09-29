@@ -16850,6 +16850,23 @@
           "name": "fn-bpnf-family-record-at-epoch-and-op-are-frame-nats"
         }
       ]
+    },
+    {
+      "id": "PRF-1025",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rcn-recorded-note-reads-back"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcn-recorded-note-checks"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcn-recorded-decision-is-the-decision"
+        }
+      ]
     }
   ]
 }
