@@ -8486,9 +8486,7 @@
         "fn-auth-view-consistent",
         "fn-auth-view-consistent-back",
         "fn-auth-view-trie-corresponds",
-        "fn-auth-delegate-pinned-preserves-consistentp",
-        "fn-gac-views-find-is-restriction",
-        "fn-gac-access-views-covers-pattern"
+        "fn-auth-delegate-pinned-preserves-consistentp"
       ]
     },
     {
