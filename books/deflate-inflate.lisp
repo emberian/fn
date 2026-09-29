@@ -2494,29 +2494,53 @@
             (fn-cbor-octet-listp (nthcdr n x)))
    :hints (("Goal" :in-theory (enable nthcdr)))))
 
+(local
+ (defthm fn-zin-len-back-copy
+   (implies (and (posp off) (<= off (len xs)))
+            (equal (len (fn-oct-back-copy off n xs)) (+ (len xs) (nfix n))))
+   :hints (("Goal" :induct (fn-oct-back-copy off n xs)))))
+
 (defun fn-zin-payload-ready (dict fn-zin-win fn-zin-tab)
-  ; The window and the table for one payload, in three bulk writes each:
-  ; the ring's half zero, the preset (DICT's last 32 KiB) at the start of
-  ; the upper half and zeros after it; the table zero.  What
-  ; fn-zin-buffers-ready and fn-zin-load-preset make, without their
-  ; octet-at-a-time loops.  (mv H fn-zin-win fn-zin-tab), H the preset's
-  ; length.
+  ; The window and the table for one payload, in bulk writes: the ring's
+  ; half zero (one octet, then one back-copy of it: fn-octets-append-back),
+  ; the preset (DICT's last 32 KiB) at the start of the upper half and zeros
+  ; after it; the table zero.  What fn-zin-buffers-ready and
+  ; fn-zin-load-preset make, without their octet-at-a-time loops.
+  ; (mv H fn-zin-win fn-zin-tab), H the preset's length.
   (declare (xargs :stobjs (fn-zin-win fn-zin-tab)
-                  :guard (fn-cbor-octet-listp dict)))
+                  :guard (fn-cbor-octet-listp dict)
+                  :guard-hints (("Goal" :in-theory (disable fn-oct-back-copy (:e fn-oct-back-copy))))))
   (let* ((n (len dict))
          (tail (if (< *fn-zin-window* n) (nthcdr (- n *fn-zin-window*) dict) dict))
-         (h (len tail))
+         (h (min n *fn-zin-window*))
          (fn-zin-win (fn-zin-win-clear fn-zin-win))
          (fn-zin-win (fn-zin-win-reserve *fn-zin-win-octets* fn-zin-win))
-         (fn-zin-win (fn-zin-win-append-list (fn-zin-zero-list) fn-zin-win))
+         (fn-zin-win (fn-zin-win-append-octet 0 fn-zin-win))
+         (fn-zin-win (fn-zin-win-append-back 1 (1- *fn-zin-window*) fn-zin-win))
          (fn-zin-win (fn-zin-win-append-list tail fn-zin-win))
-         (fn-zin-win (fn-zin-win-append-list (nthcdr h (fn-zin-zero-list)) fn-zin-win))
+         (fn-zin-win (if (< h *fn-zin-window*)
+                         (let ((fn-zin-win (fn-zin-win-append-octet 0 fn-zin-win)))
+                           (fn-zin-win-append-back 1 (- *fn-zin-window* (+ 1 h)) fn-zin-win))
+                       fn-zin-win))
          (fn-zin-tab (fn-zin-tab-clear fn-zin-tab))
          (fn-zin-tab (fn-zin-tab-reserve *fn-zin-tab-octets* fn-zin-tab))
-         (fn-zin-tab (fn-zin-tab-append-list (nthcdr (- *fn-zin-window* *fn-zin-tab-octets*)
-                                                     (fn-zin-zero-list))
-                                             fn-zin-tab)))
+         (fn-zin-tab (fn-zin-tab-append-octet 0 fn-zin-tab))
+         (fn-zin-tab (fn-zin-tab-append-back 1 (1- *fn-zin-tab-octets*) fn-zin-tab)))
     (mv h fn-zin-win fn-zin-tab)))
+
+(defthm fn-zin-payload-ready-shape
+  (implies (fn-cbor-octet-listp dict)
+           (let ((r (fn-zin-payload-ready dict fn-zin-win fn-zin-tab)))
+             (and (natp (car r)) (<= (car r) *fn-zin-window*)
+                  (fn-cbor-octet-listp (mv-nth 1 r))
+                  (equal (len (mv-nth 1 r)) *fn-zin-win-octets*)
+                  (fn-cbor-octet-listp (mv-nth 2 r))
+                  (equal (len (mv-nth 2 r)) *fn-zin-tab-octets*))))
+  :hints (("Goal" :in-theory (disable fn-oct-back-copy (:e fn-oct-back-copy)
+                                      (:e fn-zin-win-append-back) (:e fn-zin-tab-append-back)
+                                      (:e fn-octets$a-append-back)))))
+
+(in-theory (disable fn-zin-payload-ready (:e fn-zin-payload-ready)))
 
 (defun fn-zin-payload-bufs (b dict start end lim fn-octets fn-zin-win fn-zin-tab fn-zin-out)
   ; THE HOST ENTRY for a stored payload (the host holds one window, table
@@ -2569,7 +2593,11 @@
 (defthm fn-zin-payload-ready-ignores-buffers
   (implies (syntaxp (not (and (equal fn-zin-win ''nil) (equal fn-zin-tab ''nil))))
            (equal (fn-zin-payload-ready dict fn-zin-win fn-zin-tab)
-                  (fn-zin-payload-ready dict nil nil))))
+                  (fn-zin-payload-ready dict nil nil)))
+  :hints (("Goal" :in-theory (e/d (fn-zin-payload-ready)
+                                  (fn-oct-back-copy (:e fn-oct-back-copy)
+                                   (:e fn-zin-win-append-back) (:e fn-zin-tab-append-back)
+                                   (:e fn-octets$a-append-back))))))
 
 (defthm fn-zin-payload-bufs-ignores-buffers
   (implies (syntaxp (not (and (equal fn-zin-win ''nil) (equal fn-zin-tab ''nil)
@@ -2594,7 +2622,9 @@
   (implies (and (fn-cbor-octet-listp dict) (fn-cbor-octet-listp c))
            (and (fn-cbor-octet-listp (cadr (fn-zin-payload-with b dict c lim)))
                 (true-listp (cadr (fn-zin-payload-with b dict c lim)))))
-  :hints (("Goal" :in-theory (disable fn-zin-loop-ahead))))
+  :hints (("Goal" :in-theory (disable fn-zin-loop-ahead fn-oct-back-copy (:e fn-oct-back-copy)
+                                      (:e fn-zin-win-append-back) (:e fn-zin-tab-append-back)
+                                      (:e fn-octets$a-append-back)))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE (the bomb, PRF-910).  The octets a call appends to the output
