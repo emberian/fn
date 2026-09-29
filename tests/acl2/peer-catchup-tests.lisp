@@ -339,3 +339,39 @@
  (equal (fn-cu-r-phase (car (cut-step *cut-resumed*
                                       (cons :remote (cut-reply 1 *cut-chain-1* "1000")))))
         :local-greeting))
+
+; KEYSTONE fn-cu-decode-of-encode (PRF-325).  Positive: the final cursor's
+; record under the pull chain's zero digest encodes and decodes back to
+; the record.  (make-event: the trailer digest is attached.)
+(defconst *cut-cu-values*
+  (list (fn-cu-cursor-peer *cut-final-cursor*)
+        (fn-cu-cursor-position *cut-final-cursor*)
+        (fn-cu-cursor-chain *cut-final-cursor*)))
+(make-event
+ `(defconst *cut-cu-frame* ',(fn-cu-encode :cu-cursor *cut-cu-values* *fn-pull-zero-digest*)))
+(assert-event
+ (and (fn-cu-record-okp :cu-cursor *cut-cu-values*)
+      (fn-frame-digestp *fn-pull-zero-digest*)
+      (not (equal *cut-cu-frame* :bad))
+      (equal (fn-cu-decode *cut-cu-frame* *fn-pull-zero-digest*)
+             (fn-frame-ok *fn-cu-magic* *fn-frame-version* :cu-cursor *cut-cu-values*))))
+; The third hypothesis removed: a position that is no natural is no record,
+; the encoder answers :bad, and :bad decodes to no record.
+(defconst *cut-cu-bad-values*
+  (list (fn-cu-cursor-peer *cut-final-cursor*) -1 (fn-cu-cursor-chain *cut-final-cursor*)))
+(assert-event
+ (and (equal (fn-cu-encode :cu-cursor *cut-cu-bad-values* *fn-pull-zero-digest*) :bad)
+      (not (equal (fn-cu-decode :bad *fn-pull-zero-digest*)
+                  (fn-frame-ok *fn-cu-magic* *fn-frame-version* :cu-cursor
+                               *cut-cu-bad-values*)))))
+; The first two hypotheses (a record, a digest) have NO counter-witness:
+; fn-cu-encode answers :bad unless both hold, so the third implies them.
+; The keystone without them is proved here.
+(defthm cut-cu-decode-of-encode-third-hypothesis-alone
+  (implies (not (equal (fn-cu-encode kind values digest) :bad))
+           (equal (fn-cu-decode (fn-cu-encode kind values digest) digest)
+                  (fn-frame-ok *fn-cu-magic* *fn-frame-version* kind values)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cu-decode-of-encode))
+           :in-theory (e/d (fn-cu-encode) (fn-cu-decode))))
+  :rule-classes nil)
