@@ -8809,7 +8809,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log.lisp",
         "tests/acl2/store-log-tests.lisp",
@@ -9135,7 +9135,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-crash.lisp",
         "planning/evidence/w6-log-core-2026-09-27.md",
@@ -9170,7 +9170,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-kernel.lisp",
         "planning/evidence/w6-log-core-2026-09-27.md",
@@ -9625,7 +9625,7 @@
         "PRF-245"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-route.lisp",
         "books/store-log-route-phases.lisp",
@@ -9673,7 +9673,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-segments.lisp",
         "tests/acl2/store-log-segments-tests.lisp",
@@ -9775,7 +9775,7 @@
         "PRF-273"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-extend.lisp",
         "books/store-init-log-publication.lisp",
@@ -10545,7 +10545,7 @@
         "PRF-264"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-kernel-concrete.lisp",
         "tests/acl2/store-log-kernel-concrete-tests.lisp",
@@ -11019,7 +11019,7 @@
         "A-HOST",
         "A-DURABLE-EXTENT"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-arena-seal-extent-payload",
         "fn-arena-extent-get{correspondence}",
@@ -11724,7 +11724,7 @@
         "A-CRYPTO",
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-buffer.lisp",
         "tests/acl2/store-log-buffer-tests.lisp",
@@ -14281,7 +14281,7 @@
         "PRF-270"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-lineage.lisp",
         "tests/acl2/store-log-lineage-tests.lisp",
@@ -14727,7 +14727,7 @@
         "A-HOST-EXCLUSIVE-READ (the range read only)",
         "fn-assume-log-sole-pending-writer (the recovery half only; an fn obligation)"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-durable.lisp",
         "books/byte-store-range-read.lisp",
