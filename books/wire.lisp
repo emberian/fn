@@ -553,6 +553,8 @@
            (fn-wire-state-body-limit x))
        (if (equal (fn-wire-state-mode x) :article)
            (and (null (fn-wire-state-line-rev x))
+                (<= (+ (fn-wire-state-body-size x) (fn-wire-state-line-len x))
+                    (+ 1 (fn-wire-state-body-limit x)))
                 (fn-bch-body-okp (fn-wire-state-body-rev x)
                                  (fn-wire-state-body-size x)
                                  (fn-wire-state-line-len x)))
@@ -858,6 +860,52 @@
              nil)
           (fn-wire-close wire-state :body-overlimit))))))
 
+;; The room on the current line (lane chunked-body-2, B6b).  Outside article
+;; mode it is the line limit.  In article mode it is also the body's room: an
+;; octet that would leave the completed line over the body limit dooms the
+;; article (its CR LF alone makes body-size + line-len + 2 > limit + 1, and
+;; the line cannot be the terminator, which is one octet), so the connection
+;; closes :body-overlimit at that octet instead of at the LF.  The store then
+;; never holds more than body-limit + 1 octets (the completed lines and the
+;; current one; fn-wire-held-octets), where before it could hold the body
+;; limit AND a line as long as the article line limit -- the term that set
+;; the article credit (books/heap-store-figure.lisp
+;; fn-heap-article-reserve-octets) at twice the article.
+(defun fn-wire-line-room (x)
+  (declare (xargs :guard t))
+  (let ((l (nfix (fn-wire-state-line-limit x))))
+    (if (equal (fn-wire-state-mode x) :article)
+        (min l (nfix (- (+ 1 (nfix (fn-wire-state-body-limit x)))
+                        (nfix (fn-wire-state-body-size x)))))
+      l)))
+
+(defthm fn-wire-line-room-natp
+  (natp (fn-wire-line-room x))
+  :rule-classes :type-prescription)
+
+(defthm fn-wire-line-room-within-line-limit
+  (<= (fn-wire-line-room x) (nfix (fn-wire-state-line-limit x)))
+  :rule-classes :linear)
+
+(defthm fn-wire-line-room-outside-article
+  (implies (not (equal (fn-wire-state-mode x) :article))
+           (equal (fn-wire-line-room x) (nfix (fn-wire-state-line-limit x)))))
+
+(defthm fn-wire-line-room-within-the-body
+  (implies (and (equal (fn-wire-state-mode x) :article)
+                (<= (nfix (fn-wire-state-body-size x)) (nfix (fn-wire-state-body-limit x))))
+           (<= (+ (nfix (fn-wire-state-body-size x)) (fn-wire-line-room x))
+               (+ 1 (nfix (fn-wire-state-body-limit x)))))
+  :rule-classes :linear)
+
+(defthm fn-wire-line-room-of-make-state
+  (equal (fn-wire-line-room (fn-wire-make-state mode line-rev line-len body-rev pending-crp
+                                                body-size line-limit body-limit))
+         (let ((l (nfix line-limit)))
+           (if (equal mode :article)
+               (min l (nfix (- (+ 1 (nfix body-limit)) (nfix body-size))))
+             l))))
+
 ; One ordinary octet (not CR, not LF) with room on the line.  In command mode
 ; it is consed onto the line; in article mode a line's leading dot is counted
 ; and dropped, and any other octet is appended to the store.
@@ -928,18 +976,24 @@
           (if (equal byte 10)
               (fn-wire-close wire-state :malformed)
             (if (< (fn-wire-state-line-len wire-state)
-                   (fn-wire-state-line-limit wire-state))
+                   (fn-wire-line-room wire-state))
                 (fn-wire-make-result (fn-wire-take-octet wire-state byte) nil)
-              (fn-wire-close wire-state :line-overlimit))))))))
+              (fn-wire-close wire-state
+                             (if (< (fn-wire-state-line-len wire-state)
+                                    (fn-wire-state-line-limit wire-state))
+                                 :body-overlimit
+                               :line-overlimit)))))))))
 
 (defthm fn-wire-feed-byte-preserves-statep
   (implies (fn-wire-statep wire-state)
            (fn-wire-statep
             (fn-wire-result-state (fn-wire-feed-byte wire-state byte))))
-  :hints (("Goal" :in-theory (enable fn-wire-feed-byte
-                                      fn-wire-after-line
-                                      fn-wire-close
-                                      fn-wire-statep))))
+  :hints (("Goal" :in-theory (e/d (fn-wire-feed-byte
+                                   fn-wire-after-line
+                                   fn-wire-close
+                                   fn-wire-statep)
+                                  (fn-wire-line-room-within-the-body
+                                   fn-wire-line-room-of-make-state)))))
 
 (defthm fn-wire-feed-byte-preserves-fast-statep
   (implies (fn-wire-fast-statep wire-state)
@@ -983,6 +1037,19 @@
                 (<= (fn-wire-state-body-size x) (fn-wire-state-body-limit x))
                 (<= (fn-wire-state-line-len x) (fn-wire-state-line-limit x))))
   :hints (("Goal" :in-theory (enable fn-wire-statep))))
+
+; KEYSTONE (lane chunked-body-2, B6b): mid-article a connection holds at
+; most the body limit and one octet -- the completed lines and the current
+; one together -- never the body limit AND a line (fn-wire-line-room).
+(defthm fn-wire-statep-article-holds-at-most-the-body-limit
+  (implies (and (fn-wire-statep x)
+                (equal (fn-wire-state-mode x) :article))
+           (<= (fn-wire-held-octets x)
+               (+ 1 (fn-wire-state-body-limit x))))
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-wire-statep-held-octets-bound))
+                  :in-theory (e/d (fn-wire-statep)
+                                  (fn-wire-statep-held-octets-bound fn-wire-held-octets)))))
 
 (defthm fn-wire-feed-byte-retained-input-is-bounded
   (implies (fn-wire-statep wire-state)
@@ -1391,3 +1458,6 @@
 ;; enables it where it is used.
 (in-theory (disable (:definition fn-wire-octet-listp)
                     (:rewrite fn-wire-octet-listp-cdr)))
+
+; The line's room is read through its lemmas outside this book.
+(in-theory (disable fn-wire-line-room))

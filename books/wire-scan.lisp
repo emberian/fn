@@ -28,6 +28,8 @@
 (include-book "wire-span")
 (include-book "body-chunks-span")
 (local (include-book "arithmetic/top" :dir :system))
+; The scan and the byte step both read the line's room; keep it one term.
+(local (in-theory (disable fn-wire-line-room-outside-article)))
 
 ; -----------------------------------------------------------------------------
 ; The run of ordinary octets from I: the first index K >= I that is END, or
@@ -130,7 +132,7 @@
        (natp (fn-wire-state-line-len wire-state))
        (natp (fn-wire-state-line-limit wire-state))
        (< (fn-wire-state-line-len wire-state)
-          (fn-wire-state-line-limit wire-state))
+          (fn-wire-line-room wire-state))
        (fn-wscan-ordinaryp (fn-octets-get i fn-octets))
        (not (and (equal (fn-wire-state-mode wire-state) :article)
                  (equal (fn-wire-state-line-len wire-state) 0)
@@ -138,9 +140,9 @@
 
 (local
  (defthm fn-wscan-plain-end-within-limit
-   (implies (and (natp i) (natp len) (natp limit) (<= len limit))
+   (implies (and (natp i) (natp len) (natp limit))
             (<= (+ len (- (fn-wscan-plain-end i end len limit fn-octets) i))
-                limit))
+                (max len limit)))
    :rule-classes :linear))
 
 (defthm fn-wscan-after-run-fast-statep
@@ -161,7 +163,7 @@
             (fn-wscan-after-run
              wire-state i
              (fn-wscan-plain-end i end (fn-wire-state-line-len wire-state)
-                                 (fn-wire-state-line-limit wire-state)
+                                 (fn-wire-line-room wire-state)
                                  fn-octets)
              fn-octets)))
   :hints (("Goal"
@@ -171,11 +173,12 @@
            :use ((:instance fn-wscan-after-run-fast-statep
                             (k (fn-wscan-plain-end
                                 i end (fn-wire-state-line-len wire-state)
-                                (fn-wire-state-line-limit wire-state)
+                                (fn-wire-line-room wire-state)
                                 fn-octets)))
                  (:instance fn-wscan-plain-end-within-limit
                             (len (fn-wire-state-line-len wire-state))
-                            (limit (fn-wire-state-line-limit wire-state)))))
+                            (limit (fn-wire-line-room wire-state)))
+                 (:instance fn-wire-line-room-within-line-limit (x wire-state))))
           (and stable-under-simplificationp
                '(:in-theory (e/d (fn-wire-fast-statep)
                                  (fn-wscan-after-run fn-wscan-plain-end
@@ -212,7 +215,7 @@
   (and (fn-wscan-runp wire-state i fn-octets)
        (null (fn-wire-state-line-rev wire-state))
        (let ((k (fn-wscan-plain-end i end (fn-wire-state-line-len wire-state)
-                                    (fn-wire-state-line-limit wire-state)
+                                    (fn-wire-line-room wire-state)
                                     fn-octets)))
          (and (< (+ 1 k) end)
               (equal (fn-octets-get k fn-octets) 13)
@@ -228,7 +231,7 @@
 (defthm fn-wscan-linep-line-ends-inside
   (implies (fn-wscan-linep wire-state i end fn-octets)
            (< (+ 1 (fn-wscan-plain-end i end (fn-wire-state-line-len wire-state)
-                                       (fn-wire-state-line-limit wire-state)
+                                       (fn-wire-line-room wire-state)
                                        fn-octets))
               end))
   :rule-classes :linear
@@ -254,7 +257,7 @@
          (fn-wsp-make wire-state nil end))
         ((fn-wscan-linep wire-state i end fn-octets)
          (let* ((k (fn-wscan-plain-end i end (fn-wire-state-line-len wire-state)
-                                       (fn-wire-state-line-limit wire-state)
+                                       (fn-wire-line-room wire-state)
                                        fn-octets))
                 (r (if (equal (fn-wire-state-mode wire-state) :article)
                        (fn-wire-after-line (fn-wscan-after-run wire-state i k fn-octets) nil)
@@ -266,7 +269,7 @@
              (fn-wire-scan (fn-wire-result-state r) (+ 2 k) end fn-octets))))
         ((fn-wscan-runp wire-state i fn-octets)
          (let ((k (fn-wscan-plain-end i end (fn-wire-state-line-len wire-state)
-                                      (fn-wire-state-line-limit wire-state)
+                                      (fn-wire-line-room wire-state)
                                       fn-octets)))
            (fn-wire-scan (fn-wscan-after-run wire-state i k fn-octets)
                          k end fn-octets)))
@@ -359,7 +362,7 @@
    (implies (and (not (equal (fn-wire-state-mode wire-state) :closed))
                  (not (equal (fn-wire-state-pending-crp wire-state) t))
                  (< (fn-wire-state-line-len wire-state)
-                    (fn-wire-state-line-limit wire-state))
+                    (fn-wire-line-room wire-state))
                  (fn-wscan-ordinaryp byte))
             (equal (fn-wire-feed-byte wire-state byte)
                    (fn-wire-make-result (fn-wire-take-octet wire-state byte) nil)))
@@ -404,6 +407,12 @@
    :hints (("Goal" :in-theory (disable fn-wscan-after-run-empty-fields)
                    :use ((:instance fn-wscan-after-run-empty-fields)
                          (:instance fn-wscan-make-state-of-fields-no-cr (x ws)))))))
+
+(local
+ (defthm fn-wscan-line-room-of-take-octet
+   (equal (fn-wire-line-room (fn-wire-take-octet ws x))
+          (fn-wire-line-room ws))
+   :hints (("Goal" :in-theory (enable fn-wire-line-room fn-wire-take-octet)))))
 
 (local
  (defthm fn-wscan-take-octet-shape
@@ -482,11 +491,11 @@
                     (fn-wscan-after-run
                      ws i
                      (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
-                                         (fn-wire-state-line-limit ws)
+                                         (fn-wire-line-room ws)
                                          fn-octets)
                      fn-octets)
                     (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
-                                        (fn-wire-state-line-limit ws)
+                                        (fn-wire-line-room ws)
                                         fn-octets)
                     end fn-octets)
                    (fn-wire-span-fold ws i end fn-octets)))
@@ -579,7 +588,7 @@
                  (equal (fn-wire-state-mode ws) :article))
             (equal (fn-wire-span-fold ws i end fn-octets)
                    (let* ((k (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
-                                                 (fn-wire-state-line-limit ws)
+                                                 (fn-wire-line-room ws)
                                                  fn-octets))
                           (r (fn-wire-after-line (fn-wscan-after-run ws i k fn-octets) nil)))
                      (if (consp (fn-wire-result-events r))
@@ -593,11 +602,11 @@
                   (:instance fn-wscan-span-fold-crlf
                              (s (fn-wscan-after-run
                                  ws i (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
-                                                          (fn-wire-state-line-limit ws)
+                                                          (fn-wire-line-room ws)
                                                           fn-octets)
                                  fn-octets))
                              (k (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
-                                                    (fn-wire-state-line-limit ws)
+                                                    (fn-wire-line-room ws)
                                                     fn-octets))))
             :in-theory (e/d (fn-wire-reverse-octets fn-wire-reverse-octets-aux)
                             (fn-wscan-span-fold-over-run-any
@@ -623,7 +632,7 @@
                  (not (equal (fn-wire-state-mode ws) :article)))
             (equal (fn-wire-span-fold ws i end fn-octets)
                    (let* ((k (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
-                                                 (fn-wire-state-line-limit ws)
+                                                 (fn-wire-line-room ws)
                                                  fn-octets))
                           (r (fn-wire-after-line
                               ws (fn-wscan-slice-onto i k nil fn-octets))))
@@ -638,11 +647,11 @@
                   (:instance fn-wscan-span-fold-crlf
                              (s (fn-wscan-after-run
                                  ws i (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
-                                                          (fn-wire-state-line-limit ws)
+                                                          (fn-wire-line-room ws)
                                                           fn-octets)
                                  fn-octets))
                              (k (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
-                                                    (fn-wire-state-line-limit ws)
+                                                    (fn-wire-line-room ws)
                                                     fn-octets))))
             :in-theory (e/d (fn-wire-reverse-octets)
                             (fn-wscan-span-fold-over-run-any
@@ -669,7 +678,7 @@
                  (natp i) (natp end) (< i end))
             (equal (fn-wire-span-fold ws i end fn-octets)
                    (let* ((k (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
-                                                 (fn-wire-state-line-limit ws)
+                                                 (fn-wire-line-room ws)
                                                  fn-octets))
                           (r (if (equal (fn-wire-state-mode ws) :article)
                                  (fn-wire-after-line (fn-wscan-after-run ws i k fn-octets) nil)
