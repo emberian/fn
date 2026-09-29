@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-reclaim-stream")
 (include-book "owner-served-invariants-tests")
+(include-book "must-fail-checked")
 
 (defconst *rst-s* (fn-own-store (cdr (osi-finish *osi-completing* *osi-cfg* *osi-completing-prior*))))
 
@@ -40,3 +41,20 @@
                 (and (equal (len acc) 3)
                      (equal (nth 0 acc) (len (rst-long)))
                      (equal (rev (nth 1 acc)) (fn-rclp-rewritten-msgids (rst-events) *rst-ctx*)))))
+
+; fn-rcls-step-reads-no-article-list / fn-rclp-event-reads-no-article-list
+; (row A8): the fixture's fold, and its released record's rewrite, are the
+; same with the context's article list replaced by nil; teeth: with the
+; INDEX replaced by nil instead (the slot the step does read) the fold
+; rewrites nothing and the record is not rewritten.
+(defconst *rst-no-articles* (update-nth 4 nil *rst-ctx*))
+(defconst *rst-no-index* (update-nth 6 nil *rst-ctx*))
+(assert-event (equal (fn-rcls-fold (rst-events) *rst-no-articles* (fn-rcls-init))
+                     (rst-acc (rst-events))))
+(assert-event (equal (fn-rclp-events (rst-events) *rst-no-articles*)
+                     (fn-rclp-events (rst-events) *rst-ctx*)))
+(assert-event (consp (nth 1 (rst-acc (rst-events)))))
+(must-fail-checked
+ (assert-event (equal (fn-rcls-fold (rst-events) *rst-no-index* (fn-rcls-init))
+                      (rst-acc (rst-events)))))
+(assert-event (atom (nth 1 (fn-rcls-fold (rst-events) *rst-no-index* (fn-rcls-init)))))
