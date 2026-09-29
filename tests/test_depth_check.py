@@ -124,9 +124,11 @@ class InterpretedTests(unittest.TestCase):
     guard-verified run *1*; their own class, per host file, served first."""
 
     def definition(self, text, path="books/x.lisp"):
-        from tools import callgraph
-        from tools.ledger import read_forms
-        form = read_forms(text)[0]
+        # depth_check's own callgraph and ledger: `tools.ledger`'s Sym is
+        # another class once a module earlier in the run imported `ledger`
+        # from tools/ (persvati's 13-module run, 2026-09-29).
+        callgraph = d.callgraph
+        form = d.ledger.read_forms(text)[0]
         return callgraph.Definition(name=str(form[1]).lower(), kind="function", path=path,
                                     line=1, form=form)
 
