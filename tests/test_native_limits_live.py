@@ -123,8 +123,8 @@ class LimitsLiveTests(AutoCheckpointFixture):
         replayed = self.op("status", "--replay")
         self.assertEqual(replayed.returncode, EXIT_OK, replayed.stderr.decode())
         self.assertIn("history-bound=805306368", replayed.stdout.decode())
-        # A restarted owner funds the recorded value.  Its default launcher
-        # reserves the new profile; the first owner deliberately used 4 GiB.
+        # A restarted owner funds the recorded value under the developer
+        # image's normal reservation; the first owner deliberately used 4 GiB.
         again = self.node.start()
         funded = "limit max-history-octets requested=805306368 funded=805306368 ceiling=4294967295"
         self.assertIn(funded, self.op("status").stdout.decode())
