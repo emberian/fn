@@ -47,7 +47,7 @@ CLEAN_ENV = {"PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "HOME": "/tmp", "LANG": "C
 REV_A = "a" * 40
 REV_B = "b" * 40
 GAP = re.compile(r"^the node will be away for about (\d+) s: its last start took (\d+) ms", re.M)
-UNMEASURED = re.compile(r"^the gap is unmeasured: no OWNER-OPEN line with ms=|^the gap is unmeasured", re.M)
+UNMEASURED = re.compile(r"^the gap is unmeasured: no run opened line with ms=|^the gap is unmeasured", re.M)
 OPENED = re.compile(rb"^run opened ms=(\d+)$", re.M)
 TRANSACTIONS = re.compile(rb"^transactions=(\d+) ", re.M)
 # The printed gap is the last open alone; the measured interval also holds

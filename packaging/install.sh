@@ -48,7 +48,7 @@
 #              that release refuses the store.
 #
 # The gap: "the node will be away for about N s", read from the last
-# OWNER-OPEN line of NODE/log/fn.log, whose `ms=' is the milliseconds the
+# `run opened ms=N` line of NODE/log/fn.log, whose `ms=' is the milliseconds the
 # node's last start took from the image's entry to the open (recovery
 # included; host/native/owner.lisp).  A measurement, not a promise: the
 # stop, the heap probe and the service manager add their own seconds, and
@@ -156,16 +156,16 @@ switch_to() {  # $1: the release that runs next (releases/NAME), $2: the one to 
 # --- the node, through the service manager ----------------------------------
 gap_line() {  # the gap to expect, from the node's last start
   log=$node/log/fn.log
-  last=$(grep 'OWNER-OPEN ' "$log" 2>/dev/null | tail -n 1 || true)
+  last=$(grep '^run opened ms=[0-9][0-9]*$' "$log" 2>/dev/null | tail -n 1 || true)
   ms=
-  case $last in *" ms="*) ms=${last##* ms=}; ms=${ms%% *} ;; esac
+  case $last in "run opened ms="*) ms=${last#run opened ms=} ;; esac
   case $ms in ''|*[!0-9]*) ms= ;; esac
   if [ -n "$ms" ]; then
     gap=$(( (ms + 999) / 1000 ))
     echo "the node will be away for about $gap s: its last start took $ms ms from the image's entry to the open ($log: $last); the stop and the heap probe add their own seconds"
   else
     gap=
-    echo "the gap is unmeasured: no OWNER-OPEN line with ms= in $log (the node's log is elsewhere, or it never ran)"
+    echo "the gap is unmeasured: no run opened line with ms= in $log (the node's log is elsewhere, or it never ran)"
   fi
 }
 stop_node() {
