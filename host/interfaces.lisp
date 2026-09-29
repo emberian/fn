@@ -2177,7 +2177,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpah-publication-authorize
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpah-publication-authorize-admits-exactly-the-issued-pending-delivery))
 
 (definterface fn-bpah-publication-frame
   :class ::ideal)
@@ -2521,7 +2522,8 @@
   :class ::ideal)
 
 (definterface fn-bpnf-delete-publication-authorize
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpnf-delete-publication-authorize-admits-exactly-the-issued-pending-deletion))
 
 (definterface fn-bpnf-delete-publication-frame
   :class ::ideal)
@@ -2542,7 +2544,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-family-publication-authorize
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family))
 
 (definterface fn-bpnf-family-publication-frame
   :class ::ideal)

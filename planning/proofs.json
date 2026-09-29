@@ -15132,49 +15132,7 @@
         "host/interfaces.lisp",
         "tests/acl2/tcpcl-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones-4: the theorems existed (tcpcl-octets) and no proof target cited them, which is why decision-keystones-3 withdrew fn-tcl-host-encode's delegation; registered here and the delegation restored under the strict rule.",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-tcl-decode-contact-of-encode"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tcl-decode-message-of-encode-init"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tcl-decode-message-of-encode-segment"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tcl-decode-message-of-encode-ack"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tcl-decode-message-of-encode-refuse"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tcl-decode-message-of-encode-term"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tcl-decode-message-of-encode-reject"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tcl-decode-message-of-encode-keepalive"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tcl-accepted-message-is-canonical"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tcl-accepted-contact-is-canonical"
-        }
-      ]
+      "progress_note": "Lane decision-keystones-4: the theorems existed (tcpcl-octets) and no proof target cited them, which is why decision-keystones-3 withdrew fn-tcl-host-encode's delegation; registered here and the delegation restored under the strict rule."
     },
     {
       "id": "PRF-1007",
@@ -15194,17 +15152,7 @@
         "host/interfaces.lisp",
         "tests/acl2/bp-receive-evidence-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones-4: the finding decision-keystones-3 withdrew the delegation for (an exact alias whose callee had no cited theorem) gets its callee's two-sided keystone; the delegation restored under the strict rule.",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-evidence-authorize-admits-exactly-the-locked-next-identity"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-evidence-successor-does-not-reuse-identity"
-        }
-      ]
+      "progress_note": "Lane decision-keystones-4: the finding decision-keystones-3 withdrew the delegation for (an exact alias whose callee had no cited theorem) gets its callee's two-sided keystone; the delegation restored under the strict rule."
     },
     {
       "id": "PRF-985",
@@ -15224,13 +15172,61 @@
         "host/interfaces.lisp",
         "tests/acl2/bp-node-machine-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones-4 (claimed by decision-keystones-3): the delegation callee's keystone; the host wrapper's :delegates declared under the strict rule.",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-lifecycle-publication-authorize-admits-exactly-the-pending-persist"
-        }
-      ]
+      "progress_note": "Lane decision-keystones-4 (claimed by decision-keystones-3): the delegation callee's keystone; the host wrapper's :delegates declared under the strict rule."
+    },
+    {
+      "id": "PRF-1013",
+      "title": "fn-bpah-publication-authorize authorizes the publication exactly for the issued pending delivery of the offered epoch and operation id under the held lock and an absent final name, and then carries the record, its stored name and frame",
+      "statement": "books/bp-fnbs-delivery-publication.lisp, called by host/native/bp-node.lisp's delivery publication. KEYSTONE fn-bpah-publication-authorize-admits-exactly-the-issued-pending-delivery, two-sided: the answer is an operation (the -operationp recognizer) iff the state's issued operation is a well-formed pending delivery matching the offered epoch and operation id whose carried record is the offered one, the state's epoch is the offered epoch and its next operation id the offered one plus one, the record is a well-formed stored record carrying that epoch and id, LOCK-OWNED and FINAL-ABSENT hold (the principal: the caller holds the publication lock; the evidence: the canonical final name observed absent) and the record frames; then the operation carries the epoch, the id, the record, the stored record name of the epoch and id, the record's frame and (fn-jpub-initial t); otherwise the answer is exactly the authority fault or the codec fault. With fn-bpah-delivery-record-epoch-and-op-are-frame-nats (a stored record's epoch and id are frame naturals). Subsumes the one-sided echo theorem of the book. Teeth: tests/acl2/bp-fnbs-delivery-publication-tests.lisp (the positive witness with the antecedent by name and every conclusion part; hypothesis-removal witnesses answering the fault exactly).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-fnbs-delivery-publication.lisp",
+        "tests/acl2/bp-fnbs-delivery-publication-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-4: the bp publication-authorize family, one two-sided shape per book (the PRF-985 template); REPL-admitted, certified by the tree's background cite (the 2026-09-29 mode)."
+    },
+    {
+      "id": "PRF-1014",
+      "title": "fn-bpnf-delete-publication-authorize authorizes the publication exactly for the issued pending deletion of the offered epoch and operation id under the held lock and an absent final name, and then carries the record, its stored name and frame",
+      "statement": "books/bp-fnbs-deletion-publication.lisp, called by host/native/bp-node.lisp's deletion publication. KEYSTONE fn-bpnf-delete-publication-authorize-admits-exactly-the-issued-pending-deletion, two-sided: the answer is an operation (the -operationp recognizer) iff the state's issued operation is a well-formed pending deletion matching the offered epoch and operation id whose carried record is the offered one, the state's epoch is the offered epoch and its next operation id the offered one plus one, the record is a well-formed stored record carrying that epoch and id, LOCK-OWNED and FINAL-ABSENT hold (the principal: the caller holds the publication lock; the evidence: the canonical final name observed absent) and the record frames; then the operation carries the epoch, the id, the record, the stored record name of the epoch and id, the record's frame and (fn-jpub-initial t); otherwise the answer is exactly the authority fault or the codec fault. With fn-bpn-report-delete-record-epoch-and-op-are-frame-nats (a stored record's epoch and id are frame naturals). Subsumes the one-sided echo theorem of the book. Teeth: tests/acl2/bp-fnbs-deletion-publication-tests.lisp (the positive witness with the antecedent by name and every conclusion part; hypothesis-removal witnesses answering the fault exactly).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-fnbs-deletion-publication.lisp",
+        "tests/acl2/bp-fnbs-deletion-publication-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-4: the bp publication-authorize family, one two-sided shape per book (the PRF-985 template); REPL-admitted, certified by the tree's background cite (the 2026-09-29 mode)."
+    },
+    {
+      "id": "PRF-1015",
+      "title": "fn-bpnf-family-publication-authorize authorizes the publication exactly for the issued pending family of the offered epoch and operation id under the held lock and an absent final name, and then carries the record, its stored name and frame",
+      "statement": "books/bp-fnbs-family-publication.lisp, called by host/native/bp-node.lisp's fragment-family publication. KEYSTONE fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family, two-sided: the answer is an operation (the -operationp recognizer) iff the state's issued operation is a well-formed pending family matching the offered epoch and operation id whose carried record is the offered one, the state's epoch is the offered epoch and its next operation id the offered one plus one, the record is a well-formed stored record carrying that epoch and id, LOCK-OWNED and FINAL-ABSENT hold (the principal: the caller holds the publication lock; the evidence: the canonical final name observed absent) and the record frames; then the operation carries the epoch, the id, the record, the stored record name of the epoch and id, the record's frame and (fn-jpub-initial t); otherwise the answer is exactly the authority fault or the codec fault. With fn-bpnf-family-record-at-epoch-and-op-are-frame-nats (a stored record's epoch and id are frame naturals). Subsumes the one-sided echo theorem of the book. Teeth: tests/acl2/bp-fnbs-family-publication-tests.lisp (the positive witness with the antecedent by name and every conclusion part; hypothesis-removal witnesses answering the fault exactly).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-fnbs-family-publication.lisp",
+        "tests/acl2/bp-fnbs-family-publication-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-4: the bp publication-authorize family, one two-sided shape per book (the PRF-985 template); REPL-admitted, certified by the tree's background cite (the 2026-09-29 mode)."
     }
   ]
 }

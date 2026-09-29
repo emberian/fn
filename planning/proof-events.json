@@ -14491,6 +14491,49 @@
           "name": "fn-bpn-lifecycle-publication-authorize-admits-exactly-the-pending-persist"
         }
       ]
+    },
+    {
+      "id": "PRF-1013",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-publication-authorize-admits-exactly-the-issued-pending-delivery"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-delivery-record-epoch-and-op-are-frame-nats"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1014",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-delete-publication-authorize-admits-exactly-the-issued-pending-deletion"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-delete-record-epoch-and-op-are-frame-nats"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-nth-is-nth-on-true-lists"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1015",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-record-at-epoch-and-op-are-frame-nats"
+        }
+      ]
     }
   ]
 }
