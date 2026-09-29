@@ -218,8 +218,12 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         owner = self.node.start()
         outcomes = []
         for n in range(13):
-            done = self.node.post("<full-{}@example.invalid>".format(n),
-                                  b"Subject: full\r\nFrom: a@example.invalid\r\n\r\nbody\r\n")
+            message_id = "<full-{}@example.invalid>".format(n)
+            payload = ("From: a <a@example.invalid>\r\nNewsgroups: fn.test\r\n"
+                       "Subject: full {}\r\nMessage-ID: {}\r\n"
+                       "Date: Tue, 29 Sep 2026 00:00:00 +0000\r\n\r\nbody\r\n"
+                       .format(n, message_id)).encode("ascii")
+            done = self.node.post(message_id, payload)
             outcomes.append(done.returncode)
         self.assertIn(EXIT_OK, outcomes)
         self.assertEqual(outcomes[-1], 1, "the thirteenth post is refused: the budget is full")
