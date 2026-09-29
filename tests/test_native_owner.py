@@ -238,10 +238,15 @@ class NativeOwnerTests(unittest.TestCase):
         self.assertEqual(
             faulted.command(b"CAPABILITIES"),
             b"403 internal fault; this connection is closed and the server continues\r\n")
-        # SCN-026: the 403 line and nothing else, then the server closes it.
+        # SCN-026: the 403 line and nothing else, then the server closes it
+        # (an orderly EOF or a reset: the owner aborts the faulted socket).
         self.assertEqual(faulted.pending, b"")
         faulted.sock.settimeout(30)
-        self.assertEqual(faulted.sock.recv(4096), b"")
+        try:
+            after = faulted.sock.recv(4096)
+        except ConnectionResetError:
+            after = b""
+        self.assertEqual(after, b"")
         self.assert_live_writer_and_reader(
             port, writer, reader, b"<after-native-handler-fault@example.invalid>")
         self.assertIsNone(process.poll(), "local handler fault stopped the owner")
