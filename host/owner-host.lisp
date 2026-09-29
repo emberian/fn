@@ -217,6 +217,13 @@
 (include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
+; The owner's calls into these books (host_check --books, obstructions-9 item
+; 83): the TLS handshake budget (fn-hsb-*), the number bound at the open
+; (fn-onb-open-okp) and the pinned outcomes (fn-oop-*).  No other host file
+; brought them into the image world, so its host-ld would fail.
+(include-book "../books/tls-handshake-budget")
+(include-book "../books/owner-number-bound")
+(include-book "../books/owner-outcome-pinned")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
