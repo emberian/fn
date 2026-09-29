@@ -38,8 +38,13 @@
 
 (defun fn-sbud-used (s)
   "Committed transactions of the Store state S: its file kernel's records."
-  (declare (xargs :guard t))
-  (len (fn-sf-records (fn-sn-files s))))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (enable fn-sf-records-count)))))
+  ;; PKT-759: executed as the kernel's carried count (fn-sf-records-count,
+  ;; whose logical body is this len), so no served POST, status or health
+  ;; answer walks the history to count it.
+  (mbe :logic (len (fn-sf-records (fn-sn-files s)))
+       :exec (fn-sf-records-count (fn-sn-files s))))
 
 (defun fn-sbud-budget (profile kind)
   "Transactions the persisted PROFILE admits for a record of KIND: its
