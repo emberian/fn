@@ -257,8 +257,8 @@
 
 (defun scct-scan-agree (conn i end fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil))
-  (equal (fn-scr-scan-span conn i end nil nil nil fn-octets fn-arena fn-cat)
-         (fn-scr-feed-span conn i end nil nil nil fn-octets fn-arena fn-cat)))
+  (equal (fn-scr-scan-span conn i end nil nil nil nil fn-octets fn-arena fn-cat)
+         (fn-scr-feed-span conn i end nil nil nil nil fn-octets fn-arena fn-cat)))
 
 (defun scct-scan-cuts (conn cut n fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil
@@ -280,10 +280,10 @@
               (let ((fn-octets (fn-octets-from-list octets fn-octets)))
                 (mv (list (scct-scan-cuts conn 0 (fn-octets-len fn-octets) fn-octets fn-arena fn-cat)
                           (fn-served-counted-consumed
-                           (fn-scr-step-span-core conn 0 (fn-octets-len fn-octets) nil nil nil
+                           (fn-scr-step-span-core conn 0 (fn-octets-len fn-octets) nil nil nil nil
                                                   fn-octets fn-arena fn-cat))
                           (fn-served-counted-consumed
-                           (fn-scr-feed-span conn 0 (fn-octets-len fn-octets) nil nil nil
+                           (fn-scr-feed-span conn 0 (fn-octets-len fn-octets) nil nil nil nil
                                              fn-octets fn-arena fn-cat)))
                     fn-octets fn-arena fn-cat))
               (mv v fn-arena fn-cat)))
