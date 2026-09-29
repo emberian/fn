@@ -5,7 +5,7 @@
     "declared": 1223,
     "declared_and_dispatched": 1206,
     "guard_verified": 478,
-    "with_keystone": 150
+    "with_keystone": 141
   },
   "entries": [
     {
@@ -7031,7 +7031,7 @@
       "name": "fn-owner-consumer-local-wait-admit",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -7844,7 +7844,7 @@
       "name": "fn-owner-key-statement-redecide-log-line",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -7876,7 +7876,7 @@
       "name": "fn-owner-key-statement-request",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -8754,7 +8754,7 @@
       "name": "fn-owner-statement-fence",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -11045,11 +11045,7 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-bpah-handoff-report-is-application-disposition"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -11671,14 +11667,10 @@
       "name": "fn-bpn-host-evidence-next-result-name",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "common-lisp-compliant",
+      "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-bpn-host-evidence-next-result-name-names-exactly-the-next-record"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -11835,14 +11827,10 @@
       "name": "fn-bpn-host-existing-sequence",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "common-lisp-compliant",
+      "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -11857,14 +11845,10 @@
       "name": "fn-bpn-host-existing-sequence-p",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "common-lisp-compliant",
+      "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -11879,14 +11863,10 @@
       "name": "fn-bpn-host-existing-sequence-value",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "common-lisp-compliant",
+      "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -13540,11 +13520,7 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-bpnp-dispatch-publication-authorize-admits-exactly-the-issued-pending-dispatch"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -13652,11 +13628,7 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -13704,11 +13676,7 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -14966,11 +14934,7 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-tcl-host-drive-bundle-has-held-final"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,

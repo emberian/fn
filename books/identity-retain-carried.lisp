@@ -533,6 +533,8 @@
     (fn-irc-psrv-prepare-identity
      oc (fn-oii-identity-row w (fn-sn-keyring s) (fn-sn-keyring-generation s) h)
      carry)))
+(verify-guards fn-irc-oiis-prepare-identity
+  :hints (("Goal" :in-theory (enable fn-sn-statep))))
 
 (defthm fn-irc-oiis-prepare-identity-is-oiis
   (implies (fn-prc-carryp carry)
@@ -551,6 +553,10 @@
             :prepared
           (fn-pout-identity-refusal-kind oc w h))
         next)))
+; Guard-verified (lane depth-debt-7, row K2): the entry the host calls runs
+; compiled, not as *1* code (the *1* class of bp-remainder-3's finding).
+(verify-guards fn-irc-pout-prepare-identity
+  :hints (("Goal" :in-theory (enable fn-sn-statep fn-sbud-oc-store))))
 
 ; KEYSTONE (host line): host/owner-host.lisp fn-owner-prepare-identity calls
 ; the left-hand side with the carry refreshed to the Store node's ledger; its

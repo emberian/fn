@@ -153,14 +153,18 @@
             :prepared
           (fn-pout-identity-refusal-kind oc w h))
         next)))
+; Guard-verified (lane depth-debt-7, row K2) over fn-oiis-prepare-identity's
+; guard: the owner's store is the budget book's fn-sbud-oc-store.
+(verify-guards fn-pout-prepare-identity
+  :hints (("Goal" :in-theory (enable fn-sn-statep fn-sbud-oc-store))))
 
 ; host/owner-host.lisp fn-owner-prepare-topic.
 ;
 ; The six callers of fn-ocfg-step below are guard-verified (lane depth-debt-6,
 ; row K2): each sends a literal event, so fn-ocfg-eventp opens to t, and the
 ; store state their guards state is fn-ocfg-step's.  fn-pout-prepare-identity
-; waits on fn-oiis-prepare-identity (books/owner-identity-served),
-; still :ideal.
+; is verified above, over fn-oiis-prepare-identity (books/owner-identity-served;
+; lane depth-debt-7).
 (defun fn-pout-prepare-topic (oc e)
   (declare (xargs :guard (fn-sn-statep (fn-sbud-oc-store oc))))
   (let ((next (fn-psrv-prepare-topic oc e)))
