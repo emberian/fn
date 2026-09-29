@@ -13602,6 +13602,40 @@
           "name": "fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct"
         }
       ]
+    },
+    {
+      "id": "PRF-961",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-store-publication-admissibility-admits-exactly-within-the-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-store-profile-read-bound-covers-every-admitted-publication"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge"
+        }
+      ]
+    },
+    {
+      "id": "PRF-962",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-spo-refusal-text-refuses-exactly-the-foreign-format"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gen-refusal-text-refuses-exactly-a-refused-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-report-names-the-format-exactly-for-a-valid-profile"
+        }
+      ]
     }
   ]
 }

@@ -837,7 +837,8 @@
   :kinds ((config-octet-records fn-octet-list-listp) (record-octets fn-cbor-octet-listp) (observed-name-octets fn-octet-list-listp)))
 
 (definterface fn-store-charge
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge))
 
 (definterface fn-store-checkpoint-clone-fence-name
   :class ::program)
@@ -893,14 +894,16 @@
   :class ::program)
 
 (definterface fn-store-genesis-octets
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-gen-octets-for)
 
 (definterface fn-store-genesis-open
   :class ::ideal
   :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-store-genesis-refusal-text
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-gen-refusal-text)
 
 (definterface fn-store-group-codes
   :class ::ideal
@@ -939,17 +942,21 @@
 
 (definterface fn-store-metadata-config-decode
   :class ::ideal
-  :kinds ((octets fn-cbor-octet-listp)))
+  :kinds ((octets fn-cbor-octet-listp))
+  :delegates fn-bs-config-decode)
 
 (definterface fn-store-metadata-config-frame
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-config-frame-for-profile)
 
 (definterface fn-store-metadata-config-open
   :class ::ideal
-  :kinds ((octets fn-cbor-octet-listp)))
+  :kinds ((octets fn-cbor-octet-listp))
+  :delegates fn-spo-config-open)
 
 (definterface fn-store-metadata-config-refusal-text
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-spo-refusal-text)
 
 (definterface fn-store-metadata-frontier-decode
   :class ::ideal
@@ -971,19 +978,24 @@
   :class ::program)
 
 (definterface fn-store-profile-admittedp
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-admittedp)
 
 (definterface fn-store-profile-logp
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-logp)
 
 (definterface fn-store-profile-max-record-octets
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-max-record-octets)
 
 (definterface fn-store-profile-read-bound
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-store-profile-read-bound-covers-every-admitted-publication))
 
 (definterface fn-store-profile-report
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-report)
 
 (definterface fn-store-prov-for-msgid
   :class ::program
@@ -993,7 +1005,9 @@
   :class ::program)
 
 (definterface fn-store-publication-admissibility
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-store-publication-admissibility-admits-exactly-within-the-profile
+              fn-store-profile-read-bound-covers-every-admitted-publication))
 
 (definterface fn-store-reclaim-context
   :class ::program)

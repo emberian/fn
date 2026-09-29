@@ -176,6 +176,7 @@
 (include-book "store-replay-bound")
 (include-book "store-profile-open")
 (include-book "store-mount-identity")
+(include-book "store-host-boundary")
 (include-book "store-profile-namespace")
 (include-book "store-log-route")
 (include-book "store-log-kernel-concrete")

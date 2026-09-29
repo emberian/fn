@@ -64,7 +64,7 @@ from tools import ledger  # noqa: E402
 SOURCES = ("host/interfaces.lisp", "host/interfaces-extract.lisp")
 REGISTRY = ROOT / "planning" / "interfaces.json"
 ROOTS_SH = ROOT / "tools" / "extract" / "roots.sh"
-KEYS = {":class", ":kinds", ":exempt", ":keystones", ":root", ":direct"}
+KEYS = {":class", ":kinds", ":exempt", ":keystones", ":root", ":direct", ":delegates"}
 
 # The subsystems a declaration is filed under (host/interfaces.lisp's
 # sections; planning/interfaces-gaps.md).  A name prefix decides first, then
@@ -163,6 +163,7 @@ def declarations(root: Path = ROOT) -> list[dict]:
                 "keystones": keystones,
                 "root": _sym(role).lstrip(":") if role is not None else None,
                 "direct": kv.get(":direct"),
+                "delegates": _sym(kv.get(":delegates")) if kv.get(":delegates") is not None else None,
             })
     return found
 
@@ -242,6 +243,7 @@ def render_registry(decls: list[dict], reading: dict) -> str:
             "keystones": d["keystones"],
             "extraction": d["root"],
             "direct": d["direct"],
+            "delegates": d.get("delegates"),
             "dispatched_from": sorted(reading["dispatched"].get(d["name"], ())),
             "applied_directly_in": sorted(reading["direct"].get(d["name"], ())),
         })

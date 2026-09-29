@@ -69,6 +69,14 @@ community function is a leaf) -- both
       allocation, budget, capacity or fence).  Each word must name at least
       one function of the world, or the rule is stale and `--check` says so.
 
+A DECLARED DELEGATION (`:delegates CALLEE` in host/interfaces.lisp, where
+definterface refuses it unless the entry's body is exactly CALLEE applied to
+the entry's formals): the entry is plumbing whose decision is CALLEE's, and
+CALLEE's direct theorems are the entry's by definition -- provided the world
+agrees (the entry calls exactly CALLEE) and CALLEE has a direct theorem;
+`--check` refuses a declared delegation the world does not bear out, so a
+delegation never hides a decision nobody proved anything about.
+
 Everything else is PLUMBING, filed by what the world shows: `straight-line`
 (no branch anywhere in the private closure), `codec` (branches only over
 encode/decode/render/parse helpers), `delegates` (its decision is another
@@ -344,6 +352,29 @@ def delegate(rows: list[dict]) -> None:
             row["why"] = "its decision is another entry's: " + ", ".join(delegates)
 
 
+def delegation(world: World, row: dict, callee: str) -> None:
+    """A declared `:delegates CALLEE`: file the entry as plumbing whose decision
+    is CALLEE's when the world bears it out (the entry's callees are exactly
+    CALLEE, which has a direct theorem); else keep the entry's kind and carry
+    the problem, which `check` refuses."""
+    name = row["name"]
+    if name not in world.functions:
+        return
+    edges = sorted(set(world.graph.get(name, ())))
+    direct = sorted(world.concl_index.get(callee, set()))
+    if edges != [callee]:
+        row["delegates_problem"] = "{} is declared to delegate to {} but calls {}".format(
+            name, callee, ", ".join(edges) or "nothing")
+    elif not direct:
+        row["delegates_problem"] = "{} delegates to {}, which no theorem's conclusion names".format(
+            name, callee)
+    else:
+        row["kind"] = "delegates"
+        row["why"] = ("its decision is {0}'s: the entry is exactly a call of it (declared "
+                      ":delegates); {0}'s direct theorems: {1}".format(callee, ", ".join(direct[:3])))
+        row["delegated_direct"] = direct
+
+
 def cover(world: World, registry: Registry, entry: str, entries: frozenset) -> dict:
     if entry not in world.functions:
         return {"status": "absent", "kind": "absent",
@@ -435,8 +466,11 @@ def build(world_path: Path, box: str | None = None, root: Path = ROOT) -> dict:
     rows = []
     for d in declared:
         row = {"name": d["name"], "subsystem": d["subsystem"], "declared_class": d["class"],
-               "keystones": d["keystones"], "dispatched_from": d["dispatched_from"]}
+               "keystones": d["keystones"], "dispatched_from": d["dispatched_from"],
+               "delegates": d.get("delegates")}
         row.update(cover(world, registry, d["name"], entries))
+        if d.get("delegates"):
+            delegation(world, row, d["delegates"])
         rows.append(row)
     delegate(rows)
     stale = sorted(word for word in DECISION_VOCABULARY
@@ -646,6 +680,9 @@ def check(cov: dict | None, root: Path = ROOT) -> tuple[list[str], list[str]]:
     for name in grown:
         problems.append("decision entry {} has no direct theorem and planning/coverage-baseline.json "
                         "does not list it".format(name))
+    for row in cov["entries"]:
+        if row.get("delegates_problem"):
+            problems.append("declared :delegates the world does not bear out: " + row["delegates_problem"])
     gaps = root / "planning" / "interfaces-gaps.md"
     if not gaps.is_file() or gaps.read_text(encoding="utf-8") != render_gaps(cov):
         problems.append("planning/interfaces-gaps.md is not what planning/coverage.json renders; "

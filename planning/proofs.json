@@ -14282,6 +14282,50 @@
         "tests/acl2/bp-node-forward-retry-tests.lisp"
       ],
       "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (937 steps); certification pending (the successor's farm round)."
+    },
+    {
+      "id": "PRF-961",
+      "title": "The store bounds the host reads are one guard-verified boundary: a publication is admitted exactly within the profile, the open's read bound covers every admitted publication, and the charge quoted is the receipt's",
+      "statement": "books/store-host-boundary.lisp (fn-store-charge, fn-store-publication-admissibility and fn-store-profile-read-bound moved from host/store-host.lisp and guard-verified; host/native/io.lisp calls them through the host file). KEYSTONE fn-store-publication-admissibility-admits-exactly-within-the-profile: the answer is :admissible or :refused, and :admissible iff the profile is admitted, both counts are naturals, the committed count is below the profile's max-transactions and the prospective payload is at most fn-bs-profile-record-ceiling. KEYSTONE fn-store-profile-read-bound-covers-every-admitted-publication (two host entries composed): an :admissible publication's payload plus *fn-frame-overhead-octets* is at most fn-store-profile-read-bound of the same profile, the bound the open reads each committed file under. KEYSTONE fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge: the charge is positive iff the argument is a natural, equals fn-charge-for-payload for one, and for an article's octets equals fn-ct-charge of the article. Teeth: tests/acl2/store-host-boundary-tests.lisp over the decoded development profile (positive witnesses with the antecedent checked by name; hypothesis removal: the committed count at T, the payload one past the ceiling, a non-natural, no admitted profile, each :refused; the read bound one octet short of ceiling+1; the charge 0 exactly for a non-length; symbol-class checks).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-015",
+        "STO-018"
+      ],
+      "depends_on": [
+        "PRF-102"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/store-host-boundary.lisp",
+        "tests/acl2/store-host-boundary-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-2 (Claude Fable 5.1, 2026-09-29; K4 of COMPLETE-BEFORE-6.6.0). REPL-admitted on persvati (8,218 steps for the book); certification in the lane's READY manifest."
+    },
+    {
+      "id": "PRF-962",
+      "title": "A host wrapper that is exactly a call of a book function delegates its decision to it by a checked declaration, and the three delegated-to functions that lacked a theorem have one: the two refusal-text lines are rendered exactly for a refusal, and the profile report names the format exactly for a valid profile",
+      "statement": "books/definterface.lisp `:delegates CALLEE' (refused unless the entry's unnormalized body is exactly CALLEE applied to the entry's formals; tests/acl2/definterface-tests.lisp) and tools/coverage.py (a declared delegation files the entry as plumbing whose decision is CALLEE's only when the world's call graph agrees and CALLEE has a direct theorem; `--check' refuses any other; tests/test_coverage.py). The ten fn-store-* wrappers of host/store-host.lisp declare it (host/interfaces.lisp). books/store-host-boundary.lisp proves the callee theorems: fn-spo-refusal-text-refuses-exactly-the-foreign-format (a line iff the verdict is (:refused :store-format); for fn-spo-config-open's own verdict iff the octets decode to no profile and name a foreign format), fn-gen-refusal-text-refuses-exactly-a-refused-open (a line iff the verdict is one of the four genesis refusals; for fn-gen-open's own verdict iff it is not the accepted :genesis), fn-bs-profile-report-names-the-format-exactly-for-a-valid-profile (an alist whose \\\"format\\\" is 10 iff fn-bs-profile-validp, else 0). Teeth: tests/acl2/store-host-boundary-tests.lisp (each refusal verdict rendered, an accepted and a foreign verdict not; fn-gen-open of no octets is the damaged refusal with its line; the report's format 10 for the development profile and 0 for none).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-036",
+        "STO-015"
+      ],
+      "depends_on": [
+        "PRF-961"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/definterface.lisp",
+        "tools/coverage.py",
+        "books/store-host-boundary.lisp",
+        "tests/acl2/store-host-boundary-tests.lisp",
+        "tests/acl2/definterface-tests.lisp",
+        "tests/test_coverage.py"
+      ],
+      "progress_note": "Lane decision-keystones-2 (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati; certification in the lane's READY manifest."
     }
   ]
 }
