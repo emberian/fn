@@ -10994,7 +10994,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/clock-reading.lisp",
         "tests/acl2/clock-reading-tests.lisp",
@@ -11006,7 +11006,9 @@
       ],
       "progress_note": "Lane host-decisions-2 (Opus 5.5, 2026-09-27; packet C). Teeth: tests/acl2/clock-reading-tests.lisp: one DTN epoch in the tree (equal to the NNTP book's); a 2026 reading with 500 ms bound (wall, error and monotonic asserted); the epoch itself usable, one millisecond before it not; each usability conjunct removed takes the wall away (no claim, negative reading, negative and non-numeric error); a malformed monotonic counter is still an observation. assurance-hygiene-4 (2026-09-29): the subject fn-clkr-observation-of-ns is not on the served path (its one caller, host/bp-ingress-host.lisp, is DEAD); the served wall decision is fn-otm-wall-reading (host/native/io.lisp fnn-owner-wall-milliseconds), and the cited KEYSTONE is now fn-clkr-wall-reading-is-the-ns-decision: for integer seconds and natural microseconds at the DTN epoch's offset, the served reading has a wall exactly when fn-clkr-observation-of-ns's ns reading is at or after the epoch, and the wall is the same milliseconds past it. fn-clkr-observation-of-ns-decides-the-wall stays in the book, uncited. assurance-hygiene-5 (2026-09-29): the open half closed. fn-otm-wall-reading lost its offset argument (the epoch is ACL2's constant; the offset hypothesis of the keystone is gone); fn-otm-monotonic-ms and fn-otm-boottime-ms convert the raw monotonic readings, the host's arithmetic deleted at every site; books/clock-reading is in both image worlds so host/interfaces.lisp names the keystones. Teeth: clock-reading-tests clkt-monotonic-* (two positives, removal witnesses for the rate, natp ticks, posp units, natp seconds and natp nanoseconds hypotheses).",
       "events": [
-        "fn-clkr-wall-reading-is-the-ns-decision"
+        "fn-clkr-wall-reading-is-the-ns-decision",
+        "fn-clkr-monotonic-readings-are-the-ns-decision",
+        "fn-clkr-wall-seconds-is-the-ns-decision"
       ]
     },
     {
@@ -11234,7 +11236,7 @@
         "PRF-288"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-model.lisp",
         "tests/acl2/owner-time-model-tests.lisp",
@@ -11729,7 +11731,7 @@
         "PRF-311"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-journal.lisp",
         "books/clock-wall-reading.lisp",
@@ -13018,7 +13020,7 @@
         "PRF-322"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-model.lisp",
         "tests/acl2/owner-time-space-tests.lisp",
@@ -13058,7 +13060,7 @@
         "PRF-322"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-journal-writer.lisp",
         "books/owner-time-journal.lisp",
@@ -13093,7 +13095,7 @@
         "PRF-311"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-stop-drain.lisp",
         "tests/acl2/owner-stop-drain-tests.lisp",
@@ -13698,7 +13700,7 @@
         "PRF-272"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-commit-fairness.lisp",
         "books/owner-commit-pipeline.lisp",
@@ -13754,7 +13756,7 @@
         "PRF-360"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-bars.lisp",
         "books/owner-time-journal.lisp",
@@ -14252,7 +14254,7 @@
         "PRF-384"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-bars.lisp",
         "tests/acl2/owner-time-bars-tests.lisp"
@@ -17231,12 +17233,16 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "proposed",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-fnbs-dispatch-publication.lisp",
         "tests/acl2/bp-fnbs-dispatch-publication-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones-5: the bp publication-authorize family, the dispatch and forward keystones (the PRF-1013 shape); REPL-admitted with the test books loaded from source (persvati, 0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
+      "progress_note": "Lane decision-keystones-5: the bp publication-authorize family, the dispatch and forward keystones (the PRF-1013 shape); REPL-admitted with the test books loaded from source (persvati, 0 refused), certified by the tree's background cite (the 2026-09-29 mode).",
+      "events": [
+        "fn-bpnp-dispatch-publication-authorize-admits-exactly-the-issued-pending-dispatch",
+        "fn-bpnp-dispatch-record-epoch-and-op-are-frame-nats"
+      ]
     },
     {
       "id": "PRF-1017",
@@ -17249,12 +17255,16 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "proposed",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-fnbs-forward-publication.lisp",
         "tests/acl2/bp-fnbs-forward-publication-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones-5: the bp publication-authorize family, the dispatch and forward keystones (the PRF-1013 shape); REPL-admitted with the test books loaded from source (persvati, 0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
+      "progress_note": "Lane decision-keystones-5: the bp publication-authorize family, the dispatch and forward keystones (the PRF-1013 shape); REPL-admitted with the test books loaded from source (persvati, 0 refused), certified by the tree's background cite (the 2026-09-29 mode).",
+      "events": [
+        "fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward",
+        "fn-bpnp-forward-publication-frame-not-bad-implies-frame-nats"
+      ]
     }
   ]
 }
