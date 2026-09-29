@@ -1593,17 +1593,17 @@
     "books": 1648,
     "books_in_root_closure": 1647,
     "roots": 1586,
-    "theorems": 27090,
+    "theorems": 27104,
     "functions": 17756,
-    "assert_events": 22420,
+    "assert_events": 22448,
     "must_fails": 2388,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
-      "verified": 3316,
-      "declared-off": 2072,
+      "verified": 3327,
+      "declared-off": 2068,
       "default-guarded": 9753,
-      "default-unguarded": 2615
+      "default-unguarded": 2608
     },
     "suspect_theorems": 1205,
     "export_hygiene_warnings": 317,
@@ -3356,7 +3356,7 @@
       "book": "books/bp-fnbs-deletion-publication.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
+      "theorems": 4,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -3409,7 +3409,7 @@
       "book": "books/bp-fnbs-delivery-publication.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
+      "theorems": 3,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -3576,7 +3576,7 @@
       "book": "books/bp-fnbs-family-publication.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
+      "theorems": 3,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -5115,7 +5115,7 @@
       "book": "books/bp-node-machine-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
+      "theorems": 3,
       "functions": 35,
       "guards": {
         "verified": 2,
@@ -6104,15 +6104,15 @@
       "book": "books/bp-receive-evidence.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 4,
+      "theorems": 8,
       "functions": 25,
       "guards": {
-        "verified": 0,
-        "declared-off": 6,
+        "verified": 11,
+        "declared-off": 2,
         "default-guarded": 0,
-        "default-unguarded": 19
+        "default-unguarded": 12
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 11,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -25414,7 +25414,7 @@
       "book": "books/store-checkpoint-arena-load.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 54,
+      "theorems": 55,
       "functions": 7,
       "guards": {
         "verified": 2,
@@ -31361,7 +31361,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 5,
+      "assert_events": 8,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 0,
@@ -31418,7 +31418,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 5,
+      "assert_events": 8,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 1,
@@ -31533,7 +31533,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 8,
+      "assert_events": 11,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 0,
@@ -32993,7 +32993,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 47,
+      "assert_events": 51,
       "must_fails": 4,
       "prover_refusals": 0,
       "defconsts": 38,
@@ -33496,10 +33496,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 10,
+      "assert_events": 15,
       "must_fails": 3,
       "prover_refusals": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -48732,10 +48732,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 146,
+      "assert_events": 156,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 65,
+      "defconsts": 66,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -56218,7 +56218,7 @@
     {
       "theorem": "fn-scka-select-named-refuses-the-arena-by-name",
       "book": "books/store-checkpoint-arena-load.lisp",
-      "line": 728,
+      "line": 748,
       "reasons": [
         "arm-of-definition: constant arguments select one IF/COND arm of fn-scka-select-named and the conclusion is that arm's value"
       ]
@@ -56226,7 +56226,7 @@
     {
       "theorem": "fn-scka-select-named-unfolds",
       "book": "books/store-checkpoint-arena-load.lisp",
-      "line": 732,
+      "line": 752,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-scka-select-named and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-scka-select-named and the conclusion is that branch's value"
