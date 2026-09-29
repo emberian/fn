@@ -278,7 +278,8 @@
 ;; accepts (the checkpoint-damaged bug, operability review 2026-09-29).
 ;; :bad records answer ACC: the open refuses them itself.
 (defun fn-store-cfg-next-txid (octet-records acc)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-octet-list-listp octet-records)))
   (let ((records (fn-store-cfg-decode-records octet-records)))
     (if (equal records :bad)
         (nfix acc)
@@ -287,7 +288,8 @@
 ;; The served profile: the sealed one under the configuration history's
 ;; :set-limit rows (books/limits-live.lisp fn-lim-effective).
 (defun fn-store-lim-effective (sealed octet-records)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-octet-list-listp octet-records)))
   (let ((records (fn-store-cfg-decode-records octet-records)))
     (if (equal records :bad)
         sealed
@@ -842,6 +844,26 @@ reopen predicate, writer-lock observation and observed final namespace."
   (value (fn-store-sco-encode-records
           (take (nfix count) (nthcdr (nfix start) (fn-sco-records (fn-store-sco-current state))))
           fn-arena)))
+
+; Row S3b (lane operability-7): the running owner's export
+; (host/native/owner.lisp fnn-owner-export-write) walks the captured record
+; list a chunk at a time, off the owner mutex, through the live arena its
+; capture pinned: the next N records' octets, each what the offline export
+; writes for that record (fn-store-sco-encode-records above), and the rest
+; of the list.  The chunking is the host's; for every chunking the entries
+; are fn-sxp-entries of the whole history (books/store-export-stream.lisp
+; fn-sxp-stream-is-the-export).  A walk, not (take n) over (len records):
+; the list is the store's whole history.
+(defun fn-store-sco-split (records n acc)
+  (declare (xargs :mode :program))
+  (if (or (atom records) (zp n))
+      (mv (revappend acc nil) records)
+    (fn-store-sco-split (cdr records) (1- n) (cons (car records) acc))))
+
+(defun fn-store-sco-encode-chunk (records n fn-arena)
+  (declare (xargs :mode :program :stobjs fn-arena))
+  (mv-let (chunk rest) (fn-store-sco-split records n nil)
+    (list (fn-store-sco-encode-records chunk fn-arena) rest)))
 
 ; The covered prefix's LAST record's octets, or NIL: the owner reads its
 ; pending key statement off the history's last record, which after a log

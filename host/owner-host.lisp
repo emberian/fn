@@ -851,6 +851,26 @@
                            nil)
                          (fn-gen-verdict-salt v)))))))
 
+; Row S3b (lane operability-7): `store export DIR' on the running owner
+; (host/native/owner.lisp fnn-owner-export-request).  fn-owner-oex-capture,
+; under the owner mutex and O(1): the values the export reads,
+; (RECORDS COUNT CONFIGS FRONTIER): the record list by pointer (a later
+; commit makes a new one and changes none of these), its carried count,
+; the configuration history (the decoded records; the archive carries the
+; config/ files' octets, which the export thread reads off the mutex and
+; cuts to this history's length) and the frontier txid at the capture (the
+; archive's frontier entry).  The words ACL2 answers the request with are
+; books/owner-export-request.lisp's (fn-oex-request-word over the two
+; observations the host took); the owner state is only read here.
+(defun fn-owner-oex-capture (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((st (fn-own-store (fn-owner-core state)))
+         (files (fn-sn-files st)))
+    (value (list (fn-sf-records files)
+                 (fn-sf-records-count files)
+                 (fn-sn-config-history st)
+                 (fn-sf-frontier files)))))
+
 ; Off the mutex, over the values captured above and the live arena, READ
 ; only (host/native/owner.lisp fnn-owner-publish-captured): NEXT, the capture
 ; of the captured rows' canonical rows (books/store-checkpoint-arena-writer.lisp
@@ -992,7 +1012,11 @@
 ; source revision and NOW (CLOCK's stamp: a dry run's instant; a reclaim
 ; decides at V's recorded one).  A reclaim is also the publication in flight
 ; (fn-owner-sco-inflight at COUNT, so no automatic one starts and a
-; compaction request coalesces), and its attempt is COUNT.
+; compaction request coalesces).  It does not take the publication's attempt
+; (fn-owner-sco-attempted): a pass that installs nothing publishes nothing, and
+; had it taken COUNT, the next `store checkpoint' at that count would answer
+; nothing-to-compact with a suffix past the durable checkpoint (the install
+; notes the attempt itself, fn-owner-orcp-swap).
 (defun fn-owner-orc-capture (mode clock override free revision state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((st (fn-own-store (fn-owner-core state)))
@@ -1002,7 +1026,6 @@
          (v (fn-cfg-value (fn-ocfg-config (fn-owner-ocfg state))))
          (dry (eq mode :dry-run))
          (state (f-put-global 'fn-owner-orc-pass mode state))
-         (state (if dry state (f-put-global 'fn-owner-sco-attempted count state)))
          (state (if dry state (f-put-global 'fn-owner-sco-inflight count state)))
          (stamp (fn-record-stamp-of-observation clock)))
     (value (list records count v st profile

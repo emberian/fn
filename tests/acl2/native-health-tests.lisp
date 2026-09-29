@@ -534,6 +534,14 @@
 ; the words is not one.
 (assert-event (equal (fn-nh-last-run (append *nht-log* (fn-nh-run-started-line) (list 10)))
                      '(:started)))
+; `run opened ms=N' (the start's measured length, host/native/owner.lisp) is
+; a line of its own that renders the count; the scan passes it over, so a
+; run whose last line is it is still :started (killed, not stopped).
+(assert-event (equal (fn-nh-run-opened-line 2140)
+                     (fn-record-string-octets "run opened ms=2140")))
+(assert-event (equal (fn-nh-last-run (append *nht-log* (fn-nh-run-started-line) (list 10)
+                                             (fn-nh-run-opened-line 2140) (list 10)))
+                     '(:started)))
 (assert-event (equal (fn-nh-last-run (fn-record-string-octets "LISTENING 119\n")) nil))
 (assert-event (equal (fn-nh-last-run nil) nil))
 (assert-event (equal (fn-nh-last-run (fn-record-string-octets "x run stopped exit=04\n")) nil))
