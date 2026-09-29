@@ -63,7 +63,7 @@ grouping into six lines and their order are local policy:
 ```text
 100 help text follows
 CAPABILITIES HELP QUIT MODE DATE POST
-AUTHINFO STARTTLS XREDEEM
+AUTHINFO STARTTLS XREDEEM COMPRESS
 GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS
 ARTICLE HEAD BODY STAT
 OVER XOVER HDR XHDR XPAT
@@ -1056,8 +1056,10 @@ RFC 5537 section 3.5 item 10 asks the injecting agent for the field; relaying
 agents never add or change it (section 3.6).
 
 What the node writes (fn guarantee). For a served POST decided under an
-authenticated login L, with the node secret installed, the one Injection-Info
-line of the stored article is
+authenticated login whose account (the principal its credential names, the
+session subject; books/served.lisp fn-served-account; PKT-786) is L, with
+the node secret installed, the one Injection-Info line of the stored article
+is
 
     Injection-Info: AGENT; posting-account="HEX"[; mail-complaints-to="ADDR"]
 
@@ -1136,9 +1138,17 @@ DQUOTE, backslash, ";", CR or LF and stands in the quoted-string as it is
 (`fn-ipp-addr-spec-has-no-quote-or-line-break`); anything else is refused.
 `fn operator CONFIG account hash LOGIN` prints the value an article posted
 under LOGIN carries (the host reads STORE/keys/node-secret.key with the
-owner's permission checks; ACL2 computes the value,
-fn-ipp-account-hash), which is how an operator answers a complaint that
-quotes a posting-account. Known limit: the parameters are computed from the
+owner's permission checks and the configuration's credential file under the
+store profile's max-credentials; ACL2 resolves LOGIN to its account, the
+principal the credential file names or else the invitation-code account's
+local principal, live or deleted, and computes the value,
+books/native-operator.lisp fn-nop-account-hash, keystone
+`fn-nop-account-hash-is-the-served-account-value`: when the served table
+finds LOGIN, the value is the one fn-ipp-injected-octets writes for that
+credential's principal), which is how an operator answers a complaint that
+quotes a posting-account. Two logins of one principal carry one value; a
+login renamed onto the same principal keeps it. A credential file the
+owner's load refuses is refused here too. Known limit: the parameters are computed from the
 live configuration when the writer stages the article and again when the
 completion is checked, so a `complaints-to` change between the two answers
 that one POST with the uncertain 441 (the article is durable; a same-source
@@ -1973,6 +1983,54 @@ submission and the ones taken are all of them
 the wire before the reply to any command after it. Before PKT-600 was
 repaired the second article of a read was never admitted and never
 answered.
+
+## Compression: COMPRESS (NNT-054, NNT-055)
+
+RFC 8054 adds `COMPRESS DEFLATE`: after `206`, every octet in both
+directions is a raw DEFLATE stream (RFC 1951), flushed after each response
+(section 2.2.2). fn serves it. The fn extension NNT-055
+(docs/extensions/nntp-compress-dict.md) presets a shipped dictionary, named
+by its BLAKE3 digest, in both streams and carries stored payloads as they
+are stored. It is specified but not yet served. It replaces the `COMPRESS
+LZ4` extension that was planned before the compression survey: fn uses one
+DEFLATE inflater for the wire and the store (the 2026-09-28 decision).
+
+What the RFC requires, and where fn stands:
+
+- **RFC requirement.** The label is `COMPRESS` with the algorithm list, never
+  advertised once a layer is active; a second `COMPRESS`, `STARTTLS` or
+  `AUTHINFO` after `206` is `502`; an unknown algorithm is `503`, a malformed
+  one `501`; the command is not pipelined (section 2.2.2). Invalid compressed
+  data closes the connection.
+- **Stronger fn guarantee: the inbound stream is decoded in ACL2.** The
+  client's stream is untrusted input on the served path, so its decoder is
+  `fn-zin-feed` (books/deflate-inflate.lisp, PRF-909): total and
+  guard-verified, a call bounded by its budget, its input and an output
+  bound LIM that the host sets to one served read (D27: a quantum yields,
+  never truncates). KEYSTONES `fn-zin-loop-split-input`,
+  `fn-zin-loop-split-budget`, `fn-zin-loop-out-free`, `fn-zin-loop-is-run`
+  and `fn-zin-run-append`: calls over whatever reads the network delivered,
+  in whatever quanta, are one run over the concatenated stream.
+  Malformed streams are refused by name (`fn-zin-refusal-text`: block type
+  3, stored LEN/NLEN, code counts, incomplete or over-subscribed codes, an
+  unassigned bit sequence, length code 286/287, distance code 30/31, a
+  distance before the stream's first octet).
+- **Stronger fn guarantee: the bomb is refused by name (PRF-910).** The
+  plaintext a connection's stream produces never exceeds 256 times the
+  compressed octets it read plus 65,536 (KEYSTONE `fn-zin-feed-bomb-bound`,
+  about the octets actually appended); the octet that would pass it is
+  refused (`compress-bomb`) and the connection closes. DEFLATE's own
+  ceiling is about 1032:1; NNTP commands and articles compress 2 to 10
+  times.
+- **Local policy.** A final block (BFINAL) ends the client's layer, which
+  RFC 8054 never ends; fn refuses it by name (`compress-ended`) and closes.
+- **Trust boundary: the outbound stream is zlib's.** The server's own
+  stream is written by vendored zlib 1.3.1 (host/native/fn-deflate.c,
+  `deflateInit2` with negative window bits, `Z_SYNC_FLUSH` after each
+  rendered window, RFC 8054 section 4). libdeflate cannot write it: its
+  streams always end with a final block. A zlib fault can only garble what
+  the server sends; nothing the server reads or stores passes through it,
+  and ACL2 decides every octet before it is compressed.
 
 ## Scope
 

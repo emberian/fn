@@ -1,4 +1,5 @@
 #!/bin/sh
+# witness: needs-image
 # The installed direct-native entry is an exec boundary, not a Python launcher.
 set -eu
 

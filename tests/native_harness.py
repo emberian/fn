@@ -315,6 +315,16 @@ def current_test_id():
     return None
 
 
+class _Finished:
+    """A `run` that completed: its exit and both streams, for a failure report."""
+
+    def __init__(self, returncode, stdout, stderr):
+        self.returncode, self.stdout_bytes, self.stderr_bytes = returncode, stdout, stderr
+
+    def poll(self):
+        return self.returncode
+
+
 def _register(argv, process, path=None):
     test = current_test_id()
     if test is None:
@@ -342,6 +352,8 @@ def _register(argv, process, path=None):
 
 
 def _stderr_bytes(process, handle):
+    if isinstance(process, _Finished):
+        return process.stderr_bytes or b""
     if isinstance(process, NativeProcess):
         return process.stderr.since(0)
     if handle is not None:
@@ -353,22 +365,54 @@ def _stderr_bytes(process, handle):
     return b""
 
 
+def _stdout_bytes(process):
+    """What PROCESS wrote on stdout, when the harness holds it (a `start`'s
+    drain keeps every octet it read; a `run` its capture), else None (a
+    `start_filed` pipe the test reads itself)."""
+    if isinstance(process, _Finished):
+        return process.stdout_bytes or b""
+    if isinstance(process, NativeProcess):
+        return process.stdout.since(0)
+    return None
+
+
+def stdout_tail(text):
+    decoded = (text or b"").decode("utf-8", "replace")
+    if len(text or b"") > STDERR_TAIL:
+        return "stdout (last {} of {} octets):\n{}".format(STDERR_TAIL, len(text),
+                                                         decoded[-STDERR_TAIL:])
+    return "stdout:\n{}".format(decoded)
+
+
 def failure_stderr(test, keep=None):
-    """Each process TEST started: its label, exit and stderr digest; the whole
-    stderr written under KEEP when given.  Empty when it started none."""
+    """Each process TEST started: its label, exit, stderr digest and stdout
+    tail; both streams written under KEEP when given.  Empty when it started
+    none.
+
+    EVERY process, not only the one the assertion was about: a two-process
+    BP test's failure was diagnosed by the RECEIVER's `(:BUNDLE-RECEIVED ...)`
+    stdout line, which the report dropped (bp-remainder-2; obstructions-5
+    item 43).  `run`'s completed commands count too.
+    """
     parts = []
     for number, (label, process, handle) in enumerate(_STARTED.get(test, ()), 1):
         text = _stderr_bytes(process, handle)
+        out = _stdout_bytes(process)
         where = ""
         if keep:
             directory = Path(keep)
             directory.mkdir(parents=True, exist_ok=True)
-            path = directory / "{}-{}-{}.stderr".format(
-                ".".join(test.split(".")[-2:]), number, label)
+            stem = "{}-{}-{}".format(".".join(test.split(".")[-2:]), number, label)
+            path = directory / (stem + ".stderr")
             path.write_bytes(text)
-            where = " (kept: {})".format(path)
+            where = " (kept: {}".format(path)
+            if out:
+                (directory / (stem + ".stdout")).write_bytes(out)
+                where += ", .stdout"
+            where += ")"
         parts.append("-- {} process {} [{}] exit={}{}\n{}".format(
-            test, number, label, process.poll(), where, stderr_digest(text)))
+            test, number, label, process.poll(), where, stderr_digest(text))
+            + ("" if out is None else "\n" + stdout_tail(out)))
     return "\n".join(parts)
 
 
@@ -986,6 +1030,7 @@ def run(argv, *, env=None, timeout=180, cwd=None, stdin=None, input=None, text=F
                             env=env or environment(), stdin=stdin, input=input,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             timeout=timeout, check=False)
+    _register(argv, _Finished(result.returncode, result.stdout, result.stderr))
     if text:
         result.stdout, result.stderr = (stream.decode("utf-8", "replace")
                                         for stream in (result.stdout, result.stderr))
@@ -999,6 +1044,15 @@ def class_case(cls):
     case = unittest.TestCase()
     case.addCleanup = cls.addClassCleanup
     return case
+
+
+def durable_root():
+    """A directory on durable storage for stores that require it (a mission's
+    init refuses tmpfs: store-mount-identity): FN_TEST_DURABLE_TMP when set
+    (tools/hbox_native.sh sets hbox's local ext4), else the tree's build/test-tmp."""
+    root = Path(os.environ.get("FN_TEST_DURABLE_TMP") or ROOT / "build" / "test-tmp")
+    root.mkdir(parents=True, exist_ok=True)
+    return root
 
 
 def scratch(case, prefix="fn-native-"):

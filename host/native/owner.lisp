@@ -734,6 +734,12 @@ checkpoint's S, or NIL."
   (let* ((mode (fnn-store-open-mode store))
          (s (and (eq (first mode) :checkpoint) (second mode)))
          (result (fnn-owner-action 'fn-owner-recover-from-store-open max-connections)))
+    ;; A watermark past RFC 3977 section 6's bound is a damaged Store, refused
+    ;; by name (books/owner-number-bound.lisp fn-onb-open-okp); the node does
+    ;; not start on it.
+    (when (eq result :article-numbers-damaged)
+      (fnn-refuse "store ~a is damaged: an article-number watermark exceeds RFC 3977's bound (2147483647)"
+                  (fnn-store-root store)))
     (unless (eq result :recovering)
       (fnn-fault "owner rejected committed history"))
     (unless (eq (fnn-owner-core 'fn-owner-sco-note-durable s) :noted)
@@ -1157,11 +1163,19 @@ stop, or nil.  It is not shut down here: its worker still owes that reply (the
 uncertain `441 ... do not repost'), sends it after the mutex is released and
 then closes the connection itself.  Setting STOPPING under this mutex is the
 fence; no semantic action of any worker, that one included, can run after it
-(fnn-owner-serialized refuses once STOPPING is set)."
+(fnn-owner-serialized refuses once STOPPING is set).
+
+ANSWERING is also remembered in SPARING (PKT-562): a later stop -- the run's
+cleanup stop, which passes no ANSWERING -- spares it too, so it cannot shut
+the socket while that worker is still writing its reply."
   (fnn-with-roster (service)
     (unless (fnn-owner-service-stopping service)
       (setf (fnn-owner-service-stopping service) t
             (fnn-owner-service-exit-code service) exit-code)))
+  (let ((sparing (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+                   (when answering
+                     (pushnew answering (fnn-owner-service-sparing service)))
+                   (copy-list (fnn-owner-service-sparing service)))))
   (let ((listener (fnn-owner-service-listener service)))
     (when listener
       ;; close(2) in another thread does not reliably wake a blocked accept(2)
@@ -1175,10 +1189,9 @@ fence; no semantic action of any worker, that one included, can run after it
   ;; raw read without making that integer available for reuse underneath it.
   (dolist (socket (fnn-with-roster (service)
                     (copy-list (fnn-owner-service-clients service))))
-    (unless (or (eq socket answering)
-                (member socket (fnn-owner-service-sparing service)))
+    (unless (member socket sparing)
       (ignore-errors
-        (sb-bsd-sockets:socket-shutdown socket :direction :io))))
+        (sb-bsd-sockets:socket-shutdown socket :direction :io)))))
   ;; The committer thread wakes, finds the owner stopping and returns.
   (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
     (sb-thread:condition-broadcast (fnn-owner-service-commit-ready service)))
@@ -2589,9 +2602,13 @@ members."
                 (length members))
        ;; Each member is answered from the owner before the stop (campaign
        ;; W1: the poster is told before the connection closes).
-       (setf (fnn-owner-service-sparing service)
-             (loop for m in members
-                   append (fnn-owner-awaiting-sockets service (first m))))
+       (let ((waiting (loop for m in members
+                            append (fnn-owner-awaiting-sockets service (first m)))))
+         ;; Added to, never replacing, a socket an earlier stop spared
+         ;; (PKT-562).
+         (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+           (setf (fnn-owner-service-sparing service)
+                 (union waiting (fnn-owner-service-sparing service)))))
        (loop for m in members for r in releases
              do (fnn-owner-commit-release-member service m r))
        (fnn-owner-stop-service-locked service +fnn-exit-uncertain+))
@@ -3380,10 +3397,15 @@ refused, not injected under a stale time (D10-a)."
                     ;; reason.lisp fn-nctrl-reason-word), a plain one the
                     ;; status alone.
                     (if (eq status :refused)
-                        (let ((reason (fnn-core-arena-state 'fn-owner-operator-refusal-reason
-                                                      (fnn-octet-list msgid)
-                                                      (mapcar #'fnn-octet-list groups)
-                                                      (fnn-octet-list payload))))
+                        ;; Row S10: a completion the Store refused names
+                        ;; the Store's word (books/owner-control-post-reason
+                        ;; fn-ocpr-reason, kept by fn-owner-control-outcome)
+                        ;; when the admission decision names none.
+                        (let ((reason (or (fnn-core-arena-state 'fn-owner-operator-refusal-reason
+                                                          (fnn-octet-list msgid)
+                                                          (mapcar #'fnn-octet-list groups)
+                                                          (fnn-octet-list payload))
+                                          (fnn-owner-core 'fn-owner-control-reason))))
                           (list :reason
                                 (fnn-core 'fn-native-control-host-refusal-status reason)
                                 reason))
@@ -3525,7 +3547,14 @@ EPIPE and the client saw a bare close)."
              (fnn-fault "owner returned malformed refusal log lines"))
            (dolist (line lines) (fnn-log-line line)))
          (let ((closing (fnn-core 'fn-splan-step-closep step))
-               (starttls (fnn-core 'fn-splan-step-handshake-owed step))
+               ;; T: a TLS handshake owed (382); :DEFLATE: the COMPRESS layer
+               ;; owed (206, RFC 8054), read off the session
+               ;; (host/owner-host.lisp fn-owner-compress-owed).
+               (starttls (or (and (fnn-core 'fn-splan-step-handshake-owed step) t)
+                             (let ((alg (fnn-owner-core 'fn-owner-compress-owed cid)))
+                               (unless (member alg '(nil :deflate))
+                                 (fnn-fault "owner returned a malformed compression layer"))
+                               alg)))
                (submitted (fnn-core 'fn-splan-step-submittedp step))
                (consumed (fnn-core 'fn-splan-step-consumed step))
                (completion nil)

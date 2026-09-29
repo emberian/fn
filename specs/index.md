@@ -49,13 +49,11 @@ distinct from every answer. A query kind the cache does not serve returns
 state that its `:ok` answers are the corresponding `books/nntp.lisp` folds over
 the same archive.
 
-`host/index-host.lisp` is the caller. `fn-index-host-observe` reads the
-selected archive's configuration once per selection/recovery;
-`fn-index-host-open` builds the cache at an observed generation;
-`fn-index-host-query` (line 74 of that file) calls `fn-nntp-index-cache-query`
-and installs its result. The host holds no enumeration logic:
-`fn-index-host-fold` exists only as the measurement baseline and test oracle,
-and is not a served path.
+No build loads a caller of the cache today: its host adapter
+(`host/index-host.lisp`) went with the Python host (python-diet T5b) and was
+removed again as a file no build loads (Q7k, 2026-09-29;
+`planning/retired-paths.json`). The theorems above are about the model; a
+served caller is open work, not a claim.
 
 The older generation-bound host cache is an independent read-only adapter;
 the served owner path below pins its own derived view. Its GROUP, NEXT and

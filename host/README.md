@@ -1,15 +1,16 @@
 # Host adapter
 
-The deterministic [simulator](simulator.lisp) executes the actual acceptance
-definitions in ACL2. Run it with `python3 tools/run_simulator.py` after certification.
-The [local reader bridge](reader-host.lisp) runs a seeded reader through a
-persistent ACL2 subprocess. Start `python3 tools/run_reader.py --port 8119`;
-it binds only to `127.0.0.1`. Read the
-[host contract](../specs/host.md) before changing packaging or an event loop.
+The files here are the host lines of a build: the images
+(`native/build.lisp`, `native/build-dtn.lisp`), the extraction world the served
+product is extracted from (`../tools/extract/world-host.lisp`) and the store-test
+image (`native/build-store-test.lisp`) load them with `ld` or raw `load`.
+`tools/host_loaded_check.py` refuses a file here that no build loads: a
+prototype or a retired host goes (its record stays in `planning/evidence`, the
+path in `planning/retired-paths.json`), and a test harness lives in `tests/`
+(the deterministic acceptance simulator is `tests/acl2/simulator.lisp`, run by
+`python3 tools/run_simulator.py` after certification).
 
-The first socket experiment is a loopback-only, seeded in-memory reader. It is
-independent of the qualified storage adapter and cannot accept durable posts.
-Record supported ACL2/Lisp versions and platform barriers.
-Do not create a second implementation of core semantics to make the host easier
-to package. Runtime configuration, authentication, and deployment are later
-deliverables tied to the first usable service milestone.
+Read the [host contract](../specs/host.md) before changing packaging or an
+event loop. Do not create a second implementation of core semantics to make the
+host easier to package: ACL2 owns every decision, the host performs I/O and
+calls it.

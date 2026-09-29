@@ -294,9 +294,21 @@ def certify_ids_of_farm_run(root: Path, farm_run: str) -> list[str] | None:
     try:
         text = (root / "build" / "farm" / f"{farm_run}.log").read_text(encoding="utf-8")
     except OSError:
-        return None
-    found = re.findall(r"Certification evidence: build/acl2/(" + RUN_ID_ERE + ")", text)
-    return list(dict.fromkeys(found))
+        text = None
+    if text is not None:
+        found = re.findall(r"Certification evidence: build/acl2/(" + RUN_ID_ERE + ")", text)
+        if found:
+            return list(dict.fromkeys(found))
+    # `farm.py submit`/`status` record the id the runner named at its start.
+    try:
+        record = json.loads((root / "build" / "farm" / f"{farm_run}.json").read_text(
+            encoding="utf-8"))
+    except (OSError, ValueError):
+        record = {}
+    recorded = record.get("certify_id") if isinstance(record, dict) else None
+    if isinstance(recorded, str) and RUN_ID.fullmatch(recorded):
+        return [recorded]
+    return None if text is None else []
 
 
 def add_command(run_id: str) -> str:
@@ -321,7 +333,9 @@ def cmd_add(args: argparse.Namespace, root: Path = ROOT) -> int:
         if found is None:
             print(f"evidence_manifests: {farm_run.group(0)} is a farm run id, and "
                   f"build/farm/{farm_run.group(0)}.log is not here to map it to "
-                  "its certify-... id: `farm.py wait BOX RUN` fetches it, or pass "
+                  "its certify-... id, nor a run record naming it: `farm.py status BOX` "
+                  "records it (the runner names it at its start), `farm.py wait BOX RUN` "
+                  "fetches the log, or pass "
                   "the certify id `farm.py wait` printed", file=sys.stderr)
             return 2
         if not found:

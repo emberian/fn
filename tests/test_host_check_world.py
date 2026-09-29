@@ -108,12 +108,16 @@ class TreeTests(unittest.TestCase):
         refused, notes = host_check.world_check()
         self.assertEqual(refused, [])
 
-    def test_the_lz_decoder_is_in_the_default_world(self):
+    def test_the_payload_decoder_is_in_the_default_world(self):
+        # The served payload read (the pooled DEFLATE decoder; LZ4 retired)
+        # and the COMPRESS inflater's stobj creator, which no `def' spells.
         defined, raw, _ = host_check.world_of("host/native/build.lisp")
-        self.assertIn("host/native/extent.lisp", raw)
-        self.assertIn("fn-lzr-lz-read", defined)
-        sites, _ = host_check.world_sites(ROOT / "host/native/extent.lisp")
-        self.assertIn("fn-lzr-lz-read", [name for _, name in sites])
+        self.assertIn("host/native/deflate.lisp", raw)
+        self.assertIn("fn-zpl-decode-bufs", defined)
+        self.assertIn("create-fn-zin-st", defined)
+        self.assertIn("create-fn-zin-st", host_check.stobj_world_names())
+        sites, _ = host_check.world_sites(ROOT / "host/native/deflate.lisp")
+        self.assertIn("fn-zpl-decode-bufs", [name for _, name in sites])
 
 
 if __name__ == "__main__":

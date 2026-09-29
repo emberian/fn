@@ -1,4 +1,12 @@
 PYTHON ?= python3
+# On a box, the toolchain SBCL (tools/farm.py HOSTS) first on PATH and as
+# FN_SBCL for every recipe: hbox's system /usr/bin/sbcl is 2.2.9 and a check
+# running `sbcl` by name got it (obstructions-5 item 41).  Off a box: nothing.
+TOOLCHAIN_SBCL := $(shell $(PYTHON) tools/native_env.py sbcl 2>/dev/null)
+ifneq ($(TOOLCHAIN_SBCL),)
+export FN_SBCL := $(TOOLCHAIN_SBCL)
+export PATH := $(patsubst %/,%,$(dir $(TOOLCHAIN_SBCL))):$(PATH)
+endif
 # Maximum concurrent ACL2 processes. Books still certify in local
 # include-book dependency order; 1 reproduces the sequential run.
 FN_CERTIFY_JOBS ?= 1
@@ -251,6 +259,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-import-publication-tests \
 	books/store-init-publication \
 	tests/acl2/store-init-publication-tests \
+	tests/acl2/store-host-boundary-tests \
+	tests/acl2/bp-node-host-sequence-tests \
 	tests/acl2/store-profile-facts-tests \
 	books/store-genesis \
 	tests/acl2/store-genesis-tests \
@@ -452,14 +462,17 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-log-initializer-tests \
 	books/owner-log-route \
 	tests/acl2/owner-log-route-tests \
-	books/payload-lz \
-	tests/acl2/payload-lz-tests \
+	books/deflate-inflate \
+	books/payload-deflate \
+	books/payload-lz-dict-1 \
+	books/payload-lz-dicts \
 	books/payload-lz-value \
 	books/payload-lz-record \
 	books/payload-lz-replay \
 	tests/acl2/payload-lz-record-tests \
 	books/payload-lz-append \
 	tests/acl2/payload-lz-append-tests \
+	tests/acl2/deflate-inflate-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
@@ -1008,6 +1021,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/octet-window \
 	books/subject-id-buffer \
 	tests/acl2/subject-id-buffer-tests \
+	books/article-buffer \
+	tests/acl2/article-buffer-tests \
+	books/frame-buffer \
+	books/native-control-buffer \
+	books/native-live-buffer \
+	tests/acl2/frame-buffer-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
@@ -1062,8 +1081,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-store-steps \
 	books/owner-log-ocl \
 	tests/acl2/owner-log-ocl-tests \
+	books/owner-outcome-pinned \
 	books/owner-host-relation \
 	tests/acl2/owner-host-relation-tests \
+	books/owner-host-relation-span \
 	books/config-owner-live-authorize \
 	tests/acl2/config-owner-live-authorize-tests \
 	books/store-number-bound \
@@ -1077,6 +1098,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-prepare-served-events-tests \
 	books/owner-number-bound \
 	tests/acl2/owner-number-bound-tests \
+	books/msgid-pages \
+	tests/acl2/msgid-pages-tests \
+	books/msgid-pages-exec \
+	books/msgid-pages-catalog \
+	tests/acl2/msgid-pages-exec-tests \
+	books/owner-number-bound-join \
+	tests/acl2/owner-number-bound-join-tests \
 	tests/acl2/owner-identity-served-tests \
 	tests/acl2/owner-prepare-served-abort-tests \
 	books/owner-prepare-outcome \
@@ -1155,11 +1183,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-event-index \
 	tests/acl2/consumer-event-index-tests \
 	books/history-columns \
-	books/msgid-pages \
-	tests/acl2/msgid-pages-tests \
-	books/msgid-pages-exec \
-	books/msgid-pages-catalog \
-	tests/acl2/msgid-pages-exec-tests \
 	books/history-columns-relation \
 	tests/acl2/history-columns-relation-tests \
 	tests/acl2/history-columns-tests \
@@ -1293,6 +1316,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/control-served-tests \
 	books/nntp-control \
 	tests/acl2/nntp-control-tests \
+	tests/acl2/served-empty-view-tests \
 	books/owner-control-read \
 	books/nntp-enrollment \
 	books/owner-enrollment-read \
@@ -1383,6 +1407,20 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-carry-control-tests \
 	books/bp-carry-waiver \
 	tests/acl2/bp-carry-waiver-tests \
+	tests/acl2/store-checkpoint-digest-tests \
+	tests/acl2/owner-maintenance-request-tests \
+	tests/acl2/owner-reclaim-conns-tests \
+	tests/acl2/owner-reclaim-pass-tests \
+	tests/acl2/owner-reclaim-ready-tests \
+	tests/acl2/control-request-word-tests \
+	tests/acl2/packed-submission-tests \
+	tests/acl2/body-chunks-tests \
+	tests/acl2/bp-node-fragment-job-tests \
+	tests/acl2/deflate-pool-tests \
+	tests/acl2/native-operator-stage-tests \
+	tests/acl2/nntp-compress-dict-tests \
+	tests/acl2/owner-control-post-reason-tests \
+	tests/acl2/owner-export-request-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/reader-open-carried \
@@ -1518,7 +1556,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/image-world-dtn \
 	books/image-world-store-test
 
-.PHONY: extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
+.PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -1553,6 +1591,13 @@ site:
 # (printed, never failing) instead of against the committed files, which a
 # lane must not commit.  Their generation still has to succeed, and every
 # other check is the same.
+# Every pre-image gate for a host-code conversion, as one target (item 34):
+# world.py --check, interface_emit --check, host_check --forward/--world/
+# --load FILE, and the certified-world class check (host_check's default).
+# On a box: tools/remote_check.sh auto --cmd 'make host-convert-check FILE=host/native/x.lisp'
+host-convert-check:
+	@$(PYTHON) tools/host_convert_check.py $(FILE)
+
 check-lane:
 	FN_LANE_CHECK=1 FN_LANE_CHECK_DIR=$$(mktemp -d "$${TMPDIR:-/tmp}/fn-lane-check.XXXXXX") $(MAKE) check
 
@@ -1572,6 +1617,8 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/main_last_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_main_last_check
 	@$(CHECK_EXECUTE)
 
 check-fast-lane:
@@ -1671,6 +1718,16 @@ check:
 # on build order with it).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_modes
+# Every host file is loaded by a build (Q7k): an image, the extraction world
+# or the store-test image; a prototype, a retired host or a test harness in
+# host/ is refused (KNOWN, shrink-only, names an exception with why).
+	@$(CHECK_STEP) $(PYTHON) tools/host_loaded_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_loaded_check
+# Every tests/*.sh witness says its class (raw: tests.test_native_raw_scripts
+# runs it; needs-image/needs-acl2: the convergence checklist names it;
+# helper) and a scenario-catalog row cites it (KNOWN shrink-only).
+	@$(CHECK_STEP) $(PYTHON) tools/witness_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_witness_check
 # specs/crash-model-v2.md section 2.3's transcription check for the native
 # host (the Python host and its transcribe_check retired, python-diet T5):
 # for each program tests/campaign/native_cuts.py names, the
@@ -1767,6 +1824,23 @@ check:
 # counts the sites left per file and only shrinks.
 	@$(CHECK_STEP) $(PYTHON) tools/clock_unit_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_clock_unit_check
+# The owner's ACL2 state globals (row Q3c, lane owner-relation-2): the host
+# keeps one canonical owner in `fn-owner' and every other `fn-owner-*' state
+# global is a side channel the adapter-retirement record
+# (planning/evidence/adapter-retirement-2026-09-26.md) wants folded into the
+# owner value or a wrapper's result.  tools/owner_globals_baseline.json holds
+# the distinct names per host file (95 across 8 files at the baseline) and
+# only shrinks.  Source-level, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/owner_globals_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_owner_globals_check
+
+# Host-called octet-list codecs (D27, row Q2 of COMPLETE-BEFORE-6.6.0): a host
+# dispatch that hands a codec an octet list consed from a byte vector
+# (fnn-octet-list).  tools/list_codec_baseline.json counts the sites per host
+# file and only shrinks; the target is zero (books/article-buffer.lisp is the
+# pattern: a buffer twin and its boundary theorem).
+	@$(CHECK_STEP) $(PYTHON) tools/list_codec_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_list_codec_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make
@@ -1804,6 +1878,11 @@ check:
 # nothing defines (lane tooling-leftovers).  No ACL2: NOT RUN, exit 2.
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --load
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_load.ClassifyTests
+# Every tests/*.py ends with its `if __name__ == "__main__":` block and calls
+# unittest.main() nowhere else (obstructions-5 item 36: test_farm and
+# test_native_bounds_blob ran nothing after a mid-file block).
+	@$(CHECK_STEP) $(PYTHON) tools/main_last_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_main_last_check
 # Every global hash table in host/ is :synchronized t, or declared
 # thread-confined or guarded-by a lock the file takes (static, no ACL2; lane
 # host-lints, after entry-guards-2's owner stop on an unsynchronized table).

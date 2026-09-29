@@ -245,6 +245,18 @@ class FailedTestStderrTests(unittest.TestCase):
             def test_passes(self):
                 native_harness.start([sys.executable, "-c", "pass"]).stop()
 
+            def test_two_processes(self):
+                # obstructions-5 item 43: the receiver's stdout line diagnosed
+                # the sender's defect; the report keeps every process's.
+                receiver = native_harness.start(
+                    [sys.executable, "-c", "print('(:BUNDLE-RECEIVED 7)')"])
+                receiver.wait(timeout=30)
+                receiver.stop()
+                native_harness.run([sys.executable, "-c",
+                                    "import sys; print('sender out'); "
+                                    "sys.stderr.write('sender err\\n'); sys.exit(6)"])
+                self.fail("send exit 6")
+
         stream = io.StringIO()
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(Cases)
         with mock.patch.dict(os.environ, {"FN_NATIVE_STDERR_DIR": keep}):
@@ -261,7 +273,13 @@ class FailedTestStderrTests(unittest.TestCase):
             self.assertIn("filed refusal line", out)
             self.assertNotIn("test_passes process", out)
             kept = sorted(path.name for path in Path(keep).iterdir())
-            self.assertEqual(len(kept), 2, kept)
+            self.assertEqual(len([n for n in kept if n.endswith(".stderr")]), 4, kept)
+            self.assertIn("(:BUNDLE-RECEIVED 7)", out)
+            self.assertIn("sender out", out)
+            self.assertIn("sender err", out)
+            self.assertIn("exit=6", out)
+            self.assertTrue(any(n.startswith("Cases.test_two_processes-1-") and
+                                n.endswith(".stdout") for n in kept), kept)
             self.assertTrue(any(name.startswith("Cases.test_refusal-1-") for name in kept), kept)
             text = b"".join(path.read_bytes() for path in Path(keep).iterdir())
             self.assertIn(b"filed refusal line", text)

@@ -231,10 +231,24 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertEqual(after.returncode, 0, after.stderr)
         self.assertEqual(after.stdout, before.stdout)
 
-    def test_a_reader_of_an_unbuilt_image_is_refused_by_name(self):
-        # PKT-437 (2): the default run builds only the developer image, and
-        # this module reads FN_NATIVE_HOST (the production image).
+    def test_without_images_the_list_is_what_the_modules_read(self):
+        # This module reads FN_NATIVE_HOST (the production image): without
+        # --images the run builds it rather than refusing (three lanes lost a
+        # launch each to the refusal, 2026-09-29).
         answer = dry("HEAD", "tests.test_native_hybrid_author")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        self.assertIn("images derived from what the modules read: --images "
+                      "developer,production; added production "
+                      "(tests.test_native_hybrid_author reads FN_NATIVE_HOST)", answer.stderr)
+        self.assertEqual(len(image_lines(answer.stdout)), 2)
+        # A module that reads only the developer image changes nothing.
+        plain = dry("HEAD", "tests.test_native_owner")
+        self.assertNotIn("images derived", plain.stderr)
+
+    def test_a_reader_of_an_unbuilt_image_is_refused_by_name(self):
+        # PKT-437 (2): an explicit --images developer, and this module reads
+        # FN_NATIVE_HOST (the production image).
+        answer = dry("--images", "developer", "HEAD", "tests.test_native_hybrid_author")
         self.assertEqual(answer.returncode, 2, answer.stdout)
         self.assertEqual(answer.stdout, "")
         self.assertIn("tests.test_native_hybrid_author reads FN_NATIVE_HOST: build the "
@@ -265,13 +279,14 @@ class HboxNativeDryRunTests(unittest.TestCase):
         # PKT-490 (2): tests.test_native_bounds_join reads FN_NATIVE_HOST only
         # through test_native_operator_verbs' IMAGE (exposure-reply-size set it
         # by hand).  Built: it is set.  Not built: a note, not a refusal.
-        both = dry("--images", "developer,production", "HEAD", "tests.test_native_bounds_join")
+        both = dry("--images", "developer,production", "--allow-skips", "HEAD",
+                   "tests.test_native_bounds_join")
         self.assertEqual(both.returncode, 0, both.stderr)
         join = next(line for line in both.stdout.splitlines()
                     if line.startswith("tstep test-tests.test_native_bounds_join "))
         self.assertIn("FN_NATIVE_HOST=$T/build/fn-host ", join)
         self.assertIn("FN_NATIVE_DEVELOPER_HOST=$T/build/fn-host-developer ", join)
-        developer = dry("HEAD", "tests.test_native_bounds_join")
+        developer = dry("--allow-skips", "HEAD", "tests.test_native_bounds_join")
         self.assertEqual(developer.returncode, 0, developer.stderr)
         self.assertIn("reads FN_NATIVE_HOST through a tests/ helper", developer.stdout + developer.stderr)
         self.assertNotIn("FN_NATIVE_HOST=", next(
@@ -396,6 +411,42 @@ class HarnessBudgetTests(unittest.TestCase):
 
 def image_text(runtime):
     return f'#!/bin/sh\nexec "{runtime}" --core "$0.core" "$@"\n'
+
+
+class GatedModuleTests(unittest.TestCase):
+    """obstructions-5 item 45: a module whose opt-in gate is unset is refused
+    at launch, naming the variable, unless --allow-skips (operability-4 built
+    25 minutes of images twice for a module that then skipped)."""
+
+    def test_an_unset_gate_is_refused_by_name(self):
+        done = dry(".", "tests.test_native_consumer_e2")
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertIn("gated by FN_RUN_CONSUMER_E2E", done.stderr)
+        self.assertIn("--allow-skips", done.stderr)
+
+    def test_allow_skips_notes_it_and_goes_on(self):
+        done = dry(".", "tests.test_native_consumer_e2", "--allow-skips")
+        self.assertNotIn("gated by", done.stderr)
+        self.assertIn("reads FN_RUN_CONSUMER_E2E (not set", done.stderr)
+
+    def test_the_gate_given_by_env_runs(self):
+        done = dry(".", "tests.test_native_consumer_e2", "--env", "FN_RUN_CONSUMER_E2E=1")
+        self.assertNotIn("gated by FN_RUN_CONSUMER_E2E", done.stderr)
+        # It reads a second gate; each unset one is named.
+        self.assertIn("gated by FN_RUN_CONSUMER_POLL_E2E", done.stderr)
+        done = dry(".", "tests.test_native_consumer_e2", "--env", "FN_RUN_CONSUMER_E2E=1",
+                   "--env", "FN_RUN_CONSUMER_POLL_E2E=1")
+        self.assertNotIn("gated by", done.stderr)
+
+    def test_plan_unit(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "tools"))
+        import native_env
+        _, refusals, _ = native_env.plan(["developer"], {}, ["tests.test_native_consumer_e2"])
+        self.assertTrue(any("gated by FN_RUN_CONSUMER_E2E" in r for r in refusals), refusals)
+        _, refusals, notes = native_env.plan(["developer"], {}, ["tests.test_native_consumer_e2"],
+                                             allow_skips=True)
+        self.assertFalse(any("gated by" in r for r in refusals), refusals)
 
 
 if __name__ == "__main__":

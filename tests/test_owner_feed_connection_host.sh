@@ -1,4 +1,5 @@
 #!/bin/sh
+# witness: needs-acl2
 set -eu
 cd "$(dirname "$0")/.."
 

@@ -517,7 +517,7 @@ class LaneAskTests(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()) as out:
             proof_repl.status(proof_repl.argparse.Namespace(name="w"))
         self.assertIn("WARNING: 1 from-source book(s) loaded form by form", out.getvalue())
-        self.assertIn("--ld-local", out.getvalue())
+        self.assertIn("--ld-leak", out.getvalue())
 
 
 class RemoteTests(unittest.TestCase):
@@ -758,7 +758,137 @@ class SourceDependencyTests(unittest.TestCase):
         self.assertEqual(order, ["books/base", "books/mid"])
         self.assertIn("from source, in this order: books/base, books/mid", detail)
         self.assertFalse(refused)
-        self.assertIn("outside this book's dependencies", why)
+        self.assertIn("--ld takes a DEPENDENCY of books/mid", why)
+        self.assertIn("books/mid does not include tests/acl2/mid-tests", why)
+
+    def test_ld_of_the_session_book_itself_says_it_takes_a_dependency(self):
+        # obstructions-5 item 42 (bp-remainder-2 read the old text the other way).
+        with tempfile.TemporaryDirectory() as temporary:
+            root = worktree(temporary + "/tree")
+            with mock.patch.object(proof_repl, "ROOT", root):
+                refused, why, _ = proof_repl.install_closure(
+                    "tests/acl2/mid-tests", ["tests/acl2/mid-tests"])
+        self.assertFalse(refused)
+        self.assertIn("not the book itself", why)
+        self.assertIn("--ld books/X", why)
+
+
+class RefusalHeadlineTests(unittest.TestCase):
+    """Item 27: a refused start says `--ld books/X` on its first line."""
+
+    GRAPH = {"tests/acl2/mid-tests": ["books/mid", "books/base"],
+             "books/mid": ["books/base"], "books/base": []}
+
+    def test_the_headline_names_the_root_cause_and_the_ld_command(self):
+        line = proof_repl.refusal_headline(self.GRAPH, ["books/base", "books/mid"])
+        self.assertTrue(line.startswith("proof-repl: REFUSED"), line)
+        self.assertIn("books/base.lisp (and 1 book(s) that include it)", line)
+        self.assertIn("`--ld books/base`", line)
+        self.assertNotIn("--ld books/mid", line)
+        self.assertIn("--certify-missing", line)
+
+    def test_install_closure_refusal_leads_with_it(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = worktree(temporary + "/tree")
+            cache = pathlib.Path(temporary) / "cache"
+            cache.mkdir()
+            fake_acl2 = pathlib.Path(temporary) / "acl2"
+            fake_acl2.write_text("#!/bin/sh\nexit 0\n")
+            fake_acl2.chmod(0o755)
+            with mock.patch.object(proof_repl, "ROOT", root), \
+                 mock.patch.dict(os.environ, {"FN_ACL2": str(fake_acl2)}), \
+                 mock.patch.object(proof_repl.certs, "cache_directory", return_value=cache), \
+                 mock.patch.object(proof_repl.acl2_toolchain, "fingerprint",
+                                   return_value=SimpleNamespace(
+                                       qualified=True,
+                                       identity=proof_repl.certs.stable_identity(
+                                           TEST_COMPATIBILITY), reason="")), \
+                 mock.patch.object(proof_repl.acl2_slots, "slot",
+                                   side_effect=lambda label: nullcontext()):
+                ok, detail, _ = proof_repl.install_closure("tests/acl2/mid-tests")
+        self.assertFalse(ok)
+        first = detail.splitlines()[0]
+        self.assertTrue(first.startswith("proof-repl: REFUSED"), detail)
+        self.assertIn("--ld books/base", first)
+
+
+class CertifyMissingTestBookTests(unittest.TestCase):
+    """Item 30: `start --certify-missing` on a tests/acl2 book whose
+    dependency is uncertified certifies it and then starts (bp-remainder saw a
+    refusal "no cached certificate" after the certify run said nothing left)."""
+
+    def run_start(self, temporary, break_install_set=False):
+        from tests.test_certs import SERIALIZED
+        root = worktree(temporary + "/tree", certified=["books/base"])
+        cache = pathlib.Path(temporary) / "cache"
+        base_manifest = manifest_for(root, ["books/base"], write=False)
+        base_manifest["compiled_digests_sha256"] = {
+            "books/base": proof_repl.certs.content_hash(root / "books/base.fasl")}
+        proof_repl.certs.publish(root, cache, [base_manifest], ["books/base"],
+                                 origin="/farm/run-base", origin_kind="run")
+        fake_acl2 = pathlib.Path(temporary) / "acl2"
+        fake_acl2.write_text("#!/bin/sh\nexit 0\n")
+        fake_acl2.chmod(0o755)
+        certified = []
+
+        def certify(command, cwd=None, stdout=None, stderr=None):
+            # What certify_books.py --incremental does for books/mid: a
+            # compiled pair in the tree, published under this worktree.
+            books = [word for word in command if word.startswith("books/")]
+            certified.extend(books)
+            for name in books:
+                (root / f"{name}.cert").write_bytes(SERIALIZED + name.encode())
+                (root / f"{name}.port").write_text("; port\n")
+                (root / f"{name}.fasl").write_bytes(b"FASL " + name.encode())
+                manifest = manifest_for(root, [name], write=False)
+                manifest["compiled_digests_sha256"] = {
+                    name: proof_repl.certs.content_hash(root / f"{name}.fasl")}
+                proof_repl.certs.publish(root, cache, [manifest], [name], origin=str(root))
+            return subprocess.CompletedProcess(command, 0)
+
+        real_sets = proof_repl.certs.artifact_sets
+        calls = {"n": 0}
+
+        def sets(*args, **kwargs):
+            calls["n"] += 1
+            return [] if break_install_set and certified else real_sets(*args, **kwargs)
+
+        with mock.patch.object(proof_repl, "ROOT", root), \
+             mock.patch.dict(os.environ, {"FN_ACL2": str(fake_acl2)}), \
+             mock.patch.object(proof_repl.certs, "cache_directory", return_value=cache), \
+             mock.patch.object(proof_repl.acl2_toolchain, "fingerprint",
+                               return_value=SimpleNamespace(
+                                   qualified=True,
+                                   identity=proof_repl.certs.stable_identity(TEST_COMPATIBILITY),
+                                   reason="")), \
+             mock.patch.object(proof_repl.acl2_slots, "slot",
+                               side_effect=lambda label: nullcontext()), \
+             mock.patch.object(proof_repl.certs.cert_alists, "acl2_certificate_pairs",
+                               side_effect=lambda paths, pairs, acl2, root:
+                                   {pair: (True, True) for pair in pairs}), \
+             mock.patch.object(proof_repl.certs, "artifact_sets", sets), \
+             mock.patch.object(proof_repl.subprocess, "run", certify):
+            ok, detail, order = proof_repl.install_closure(
+                "tests/acl2/mid-tests", auto="certify")
+        return root, ok, detail, certified
+
+    def test_the_certified_dependency_installs_and_the_session_starts(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root, ok, detail, certified = self.run_start(temporary)
+            self.assertEqual(certified, ["books/mid"])
+            self.assertTrue(ok, detail)
+            self.assertNotIn("REFUSED", detail)
+            self.assertTrue((root / "books/mid.cert").is_file())
+            self.assertTrue((root / "books/base.fasl").is_file())
+
+    def test_install_set_short_after_the_certify_takes_the_runners_install(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root, ok, detail, certified = self.run_start(temporary, break_install_set=True)
+            self.assertEqual(certified, ["books/mid"])
+            self.assertTrue(ok, detail)
+            self.assertIn("install-partial) covers the closure", detail)
+            self.assertTrue((root / "books/base.cert").is_file())
+            self.assertTrue((root / "books/mid.cert").is_file())
 
 
 class GraphTests(unittest.TestCase):
@@ -802,6 +932,22 @@ class GraphTests(unittest.TestCase):
                 graph = proof_repl.include_graph(root, "books/mid")
                 text = "\n".join(proof_repl.diagnose(graph, ["books/base"], cache, "1b4169e9" * 8))
         self.assertIn("only for ACL2 toolchain(s) d5f2b9f0, and this ACL2 is 1b4169e9", text)
+
+
+class UncompiledDiagnosisTests(unittest.TestCase):
+    def test_diagnosis_names_a_cache_entry_without_its_fasl(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = worktree(temporary + "/tree")
+            cache = pathlib.Path(temporary) / "cache"
+            with mock.patch.object(proof_repl, "ROOT", root):
+                key = proof_repl.certs.closure_key(root, "books/base")[0]
+                entry = cache / key / "0123456789abcdef"
+                entry.mkdir(parents=True)
+                (entry / "meta.json").write_text(json.dumps(
+                    {"toolchain_identity": "1b4169e9" * 8, "fasl_sha256": None}))
+                graph = proof_repl.include_graph(root, "books/mid")
+                text = "\n".join(proof_repl.diagnose(graph, ["books/base"], cache, "1b4169e9" * 8))
+        self.assertIn("only without their compiled file (.fasl)", text)
 
 
 class CacheStartupTests(unittest.TestCase):
@@ -1204,8 +1350,8 @@ class RealAcl2Tests(unittest.TestCase):
             capture_output=True, text=True, cwd=ROOT, timeout=300)
         try:
             started = cli("start", name, "build/proof-repl-real-ld/top",
-                          "--ld", "build/proof-repl-real-ld/dep", "--ld-local",
-                          "--load-limit", "0.001")
+                          "--ld", "build/proof-repl-real-ld/dep",
+                          "--load-limit", "0.001")  # encapsulated by default (item 32)
             # Stopped at `slow`: a partial load (item 25).
             self.assertEqual(started.returncode, proof_repl.PARTIAL_LOAD,
                              started.stdout + started.stderr)
@@ -1629,6 +1775,105 @@ class PartialLoadTests(unittest.TestCase):
                 code = proof_repl._start(args)
             self.assertEqual(code, proof_repl.PARTIAL_LOAD)
             self.assertIn("PARTIAL LOAD -- stopped at c", out.getvalue().splitlines()[-1])
+
+
+class SessionRecordLaneTests(unittest.TestCase):
+    """obstructions-5 item 31: a --host subcommand finds its lane and tree in
+    the record `start` wrote, with no FN_LANE in the environment."""
+
+    def setUp(self):
+        self.sessions = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.sessions, ignore_errors=True)
+        patcher = mock.patch.object(proof_repl, "SESSIONS", self.sessions)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        env = mock.patch.dict(os.environ, {}, clear=False)
+        env.start()
+        self.addCleanup(env.stop)
+        os.environ.pop("FN_LANE", None)
+        # From the main checkout: the tree's path names no lane.
+        lane = mock.patch.object(proof_repl, "ROOT", pathlib.Path("/main/fn"))
+        lane.start()
+        self.addCleanup(lane.stop)
+
+    def args(self, command, **extra):
+        return SimpleNamespace(command=command, name="s31", lane=None, remote_tree=None, **extra)
+
+    def test_send_reads_the_lane_and_tree_start_recorded(self):
+        proof_repl.remember_host("s31", "persvati", "fn-gates/mylane-repl", "books/x", "mylane")
+        lane, tree = proof_repl.remote_lane_and_tree(self.args("send"), "persvati")
+        self.assertEqual((lane, tree), ("mylane", "fn-gates/mylane-repl"))
+
+    def test_without_a_record_it_still_refuses_to_guess(self):
+        with self.assertRaises(SystemExit):
+            proof_repl.remote_lane_and_tree(self.args("status"), "persvati")
+
+    def test_a_record_for_another_box_is_not_used(self):
+        proof_repl.remember_host("s31", "hbox", "/tank/fn/gates/mylane-repl", "books/x", "mylane")
+        with self.assertRaises(SystemExit):
+            proof_repl.remote_lane_and_tree(self.args("stop"), "persvati")
+
+    def test_explicit_lane_wins_over_the_record(self):
+        proof_repl.remember_host("s31", "persvati", "fn-gates/mylane-repl", "books/x", "mylane")
+        args = self.args("send")
+        args.lane = "other"
+        self.assertEqual(proof_repl.remote_lane_and_tree(args, "persvati"),
+                         ("other", "fn-gates/other-repl"))
+
+    def test_start_never_reads_an_old_record(self):
+        proof_repl.remember_host("s31", "persvati", "fn-gates/old-repl", "books/x", "old")
+        with self.assertRaises(SystemExit):
+            proof_repl.remote_lane_and_tree(self.args("start"), "persvati")
+
+    def test_run_remote_sends_status_to_the_recorded_tree(self):
+        proof_repl.remember_host("s31", "persvati", "fn-gates/mylane-repl", "books/x", "mylane")
+        seen = []
+        with mock.patch.object(proof_repl, "box_settings",
+                               lambda host: {"acl2": "acl2", "cache": "/c"}), \
+                mock.patch.object(proof_repl.subprocess, "run",
+                                  lambda command, **kw: seen.append(command)
+                                  or SimpleNamespace(returncode=0)):
+            proof_repl.run_remote(SimpleNamespace(command="status", name="s31", lane=None,
+                                                  remote_tree=None, host="persvati"),
+                                  ["status", "s31", "--host", "persvati"])
+        script = seen[-1][-1]
+        self.assertIn("cd fn-gates/mylane-repl ", script)
+        self.assertIn("FN_LANE=mylane", script)
+
+
+class LdHonoursLocalTests(unittest.TestCase):
+    """obstructions-5 item 32: `start --ld` loads inside one encapsulate by
+    default (store-log-extend's local lemmas turned global form by form)."""
+
+    def parsed(self, *words):
+        seen = []
+        with mock.patch.object(proof_repl, "start", lambda args: seen.append(args) or 0):
+            proof_repl.main(["start", "n", "books/x", *words])
+        return seen[0]
+
+    def test_ld_is_encapsulated_by_default(self):
+        self.assertTrue(self.parsed("--ld", "books/store-log-extend").ld_local)
+
+    def test_ld_local_is_still_accepted(self):
+        self.assertTrue(self.parsed("--ld", "books/y", "--ld-local").ld_local)
+
+    def test_ld_leak_loads_form_by_form(self):
+        self.assertFalse(self.parsed("--ld", "books/y", "--ld-leak").ld_local)
+
+    def test_an_encapsulated_refusal_names_ld_leak(self):
+        class Refusing:
+            def send(self, form, timeout):
+                return ("ACL2 Error in ( ENCAPSULATE NIL ...): failed\n"
+                        if form.startswith("(encapsulate") else ""), False
+        scratch = ROOT / "build" / "proof-repl-ld32"
+        scratch.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, scratch, True)
+        (scratch / "dep.lisp").write_text('(in-package "ACL2")\n(local (defthm l (equal x x)))\n')
+        state = {"ld_loaded": {}}
+        ok = proof_repl.load_book(Refusing(), "build/proof-repl-ld32/dep", state, 10, set(),
+                                  record=False, encapsulate=True)
+        self.assertFalse(ok)
+        self.assertIn("--ld-leak", state["stopped_at"])
 
 
 if __name__ == "__main__":

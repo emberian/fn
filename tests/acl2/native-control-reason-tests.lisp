@@ -134,6 +134,38 @@
                      (fn-native-control-transport-outcome :after-submission)
                      (fn-native-control-transport-word :after-submission))))
 
+; ---------------------------------------------------------------------------
+; PKT-472 (e): fn-native-control-host-refusal-names-its-class.  Witness, per
+; class: the reply the host writes for a store/OS/socket error, read by the
+; client, prints the class's word, not NONE.
+(defun ncrt-host-detail (class)
+  (let ((step (fn-native-control-reasoned-client-step
+               (fn-native-control-reasoned-reply-read
+                (fn-native-control-reasoned-reply-encode
+                 :refused (fn-native-control-host-refusal-reason class))))))
+    (fn-native-control-reply-detail (cadr step) (caddr step))))
+(assert-event
+ (and (equal (ncrt-host-detail :store-error) (fn-record-string-octets "store-error"))
+      (equal (ncrt-host-detail :os-error) (fn-record-string-octets "os-error"))
+      (equal (ncrt-host-detail :socket-error) (fn-record-string-octets "socket-error"))
+      (not (equal (ncrt-host-detail :store-error) *fn-nctrl-no-reason-word*))))
+; Hypothesis removed (the class is one of the three): any other class names
+; no reason, and the reply prints NONE -- the answer before PKT-472 (e).
+(assert-event
+ (and (not (member-equal :timeout *fn-nctrl-host-refusal-classes*))
+      (equal (fn-native-control-host-refusal-reason :timeout) nil)
+      (equal (caddr (fn-native-control-reasoned-client-step
+                     (fn-native-control-reasoned-reply-read
+                      (fn-native-control-reasoned-reply-encode
+                       :refused (fn-native-control-host-refusal-reason :timeout)))))
+             *fn-nctrl-no-reason-word*)
+      (not (equal (ncrt-host-detail :timeout) (fn-nctrl-reason-word :timeout)))))
+(must-fail-checked
+ (defthm ncrt-host-refusal-without-membership
+   (not (equal (fn-nctrl-reason-word (fn-native-control-host-refusal-reason class))
+               *fn-nctrl-no-reason-word*))
+   :rule-classes nil))
+
 ; PKT-867 teeth for fn-native-control-admin-decode-of-encode and its reasoned
 ; twin.  Positive witnesses: the antecedent (the client can seal the argv)
 ; and the conclusion (the owner decodes that argv) both hold for 200 words

@@ -38,8 +38,9 @@
 ;
 ; Adding an export here adds it to every abstract stobj declared
 ; `:congruent-to fn-octets' (ACL2 requires their export lists to match
-; exactly): payload-lz's fn-lz-dict and fn-lz-out, bp-node-rotation-buffer's
-; fn-octets-bp, owner-checkpoint-writer's fn-octets-pub, and any driver's.
+; exactly): deflate-inflate's fn-zin-win, fn-zin-tab and fn-zin-out,
+; bp-node-rotation-buffer's fn-octets-bp, owner-checkpoint-writer's
+; fn-octets-pub, and any driver's.
 ;
 ; The host fills the array from a byte vector in raw Lisp (`fnn-octets-fill',
 ; host/native/io.lisp): `fn-octets-reserve', one `replace', then the fill

@@ -108,9 +108,9 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
-        ; The LZ4 block encoder of the compressed append (lib/libfn-lz4;
-        ; untrusted: ACL2's proved decoder checks every candidate).
-        (load "host/native/lz4.lisp")
+        ; The stored payloads' DEFLATE encoder and ACL2's payload decoder's
+        ; buffers (lib/libfn-deflate; untrusted: ACL2 checks every candidate).
+        (load "host/native/deflate.lisp")
         ; A developer image by definition (the header): its `store' selectors
         ; are developer-image selectors, refused by a production profile.
         (fnn-select-image-profile "developer")
@@ -118,7 +118,7 @@
         (defun fn-native-entry (st)
           (declare (ignore st))
           (fnn-crypto-startup)
-          (fnn-lz4-reset)
+          (fnn-deflate-reset)
           (fnn-main)
           (values nil :exited *the-live-state*))
         (setq *print-startup-banner* nil))

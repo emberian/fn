@@ -2,10 +2,10 @@
 ; frame, lane compression-extents, PRF-326).
 ;
 ; The witness is codec-c1's real held-out 1993 Usenet article (alt.atheism,
-; 750 octets, sha256 47eb37f1...2cba) and the blocks liblz4-HC 9 wrote for
-; it without and with a 2,749-octet dictionary; the four constants below are
-; copied from tests/acl2/payload-lz-tests.lisp (generated there by
-; planning/evidence/codec-c1-2026-09-27/witness.py).
+; 750 octets, sha256 47eb37f1...2cba) and the streams zlib 9 wrote for
+; it without and with a 2,749-octet dictionary; the article and dictionary come from
+; planning/evidence/codec-c1-2026-09-27/witness.py, the two streams from
+; planning/evidence/compress-2026-09-28/pz_witness.py.
 (in-package "ACL2")
 (include-book "../../books/payload-lz-replay")
 ; The codec attached to its seam, so the record's encoding and decoding execute.
@@ -53,35 +53,31 @@
     117 116 105 102 117 108 33 13 10 13 10 45 106 105 109 32 104 97 108 97 116
     13 10 13 10))
 
-; its liblz4-HC 9 block, no dictionary: 593 octets
+; the article's zlib 9 raw DEFLATE stream, no dictionary: 455 octets
 (defconst *plz-block*
-  '(241 33 80 97 116 104 58 32 99 97 110 116 97 108 111 117 112 101 46 115 114
-    118 46 99 115 46 99 109 117 46 101 100 117 33 100 97 115 45 110 101 119 115
-    46 104 97 114 118 97 114 100 21 0 78 104 117 115 99 22 0 225 107 117 104 117
-    98 46 99 99 46 117 107 97 110 115 19 0 241 14 119 117 112 111 115 116 33 101
-    109 111 114 121 33 115 111 108 46 99 116 114 46 99 111 108 117 109 98 105 97
-    34 0 240 84 117 114 115 97 33 112 111 111 104 33 104 97 108 97 116 13 10 78
-    101 119 115 103 114 111 117 112 115 58 32 97 108 116 46 97 116 104 101 105
-    115 109 13 10 83 117 98 106 101 99 116 58 32 82 101 58 32 65 109 101 114 105
-    99 97 110 115 32 97 110 100 32 69 118 111 108 117 116 105 111 110 13 10 77
-    101 115 115 97 103 101 45 73 68 58 32 60 51 48 48 54 57 64 99 0 64 46 98 101
-    97 122 0 161 109 62 13 10 70 114 111 109 58 32 111 0 16 64 122 0 1 28 0 128
-    115 32 40 74 105 109 32 72 22 0 255 25 41 13 10 68 97 116 101 58 32 49 32 65
-    112 114 32 57 51 32 50 50 58 53 48 58 49 49 32 71 77 84 13 10 82 101 112 108
-    121 45 84 111 69 0 13 128 83 101 110 100 101 114 58 32 42 1 20 64 129 0 0 63
-    0 242 22 102 101 114 101 110 99 101 115 58 32 60 57 51 48 56 57 46 49 52 51
-    48 52 56 73 79 51 48 52 51 54 64 77 65 73 78 69 46 6 0 240 2 69 68 85 62 32
-    60 106 48 61 53 108 51 61 64 114 112 105 54 1 96 62 13 10 76 105 110 64 0
-    254 1 49 48 13 10 13 10 73 110 32 97 114 116 105 99 108 101 43 0 243 6 44 32
-    106 111 104 110 115 100 50 64 106 101 99 51 50 50 46 105 116 115 46 29 0 112
-    32 40 68 97 110 32 74 32 0 231 111 110 41 32 119 114 105 116 101 115 58 13
-    10 62 81 0 15 155 0 10 63 44 32 60 181 0 6 23 40 81 0 39 13 10 105 0 16 45
-    16 0 240 19 89 111 117 32 100 111 110 39 116 32 107 110 111 119 32 109 101
-    44 32 98 117 116 32 116 97 107 101 32 116 104 105 115 32 104 217 1 245 38 97
-    110 121 119 97 121 46 32 32 66 114 97 118 111 32 102 111 114 32 71 79 40 68
-    83 41 32 61 32 48 46 32 13 10 66 101 97 117 116 105 102 117 108 33 32 32 83
-    105 109 112 108 121 32 98 19 0 0 104 0 224 45 106 105 109 32 104 97 108 97
-    116 13 10 13 10))
+  '(133 82 93 111 26 49 16 124 183 228 255 176 247 84 34 129 117 112 73 20
+    78 128 142 8 154 18 149 164 10 233 67 31 247 124 38 103 184 179 79 254
+    0 241 239 99 211 52 138 20 181 125 89 201 179 222 153 241 172 127 160 171
+    115 224 168 28 54 218 119 130 89 115 96 220 50 222 122 38 42 159 84 104
+    7 74 28 45 171 209 28 208 84 103 176 246 150 127 70 247 190 246 37 227
+    156 249 61 42 123 134 142 190 211 214 37 162 213 230 148 88 221 48 238 12
+    227 186 241 109 41 241 124 195 27 139 73 167 117 157 212 216 160 163 228 33
+    208 190 152 96 197 230 128 141 99 193 159 144 182 165 100 227 203 157 224 46
+    135 39 145 195 188 21 70 6 215 22 80 85 176 60 4 74 39 181 162 100
+    45 172 197 23 49 88 45 114 152 100 105 122 61 46 162 4 43 5 70 229
+    118 70 201 87 163 219 28 206 114 69 84 62 247 44 244 238 101 11 223 34
+    122 65 201 2 93 80 25 194 188 51 48 206 96 52 202 175 210 124 56 132
+    187 245 51 37 79 162 107 78 131 103 253 63 146 141 80 149 48 57 196 164
+    138 63 6 226 248 86 24 161 184 8 47 156 140 179 244 102 204 134 151 89
+    122 121 179 122 12 53 187 46 214 243 213 195 146 253 174 203 197 207 25 76
+    118 233 244 170 201 166 133 233 100 76 45 60 226 187 84 113 126 152 82 66
+    201 74 1 26 39 121 35 62 95 237 195 78 215 202 86 163 34 164 151 141
+    70 76 58 203 222 154 208 91 160 130 251 216 215 234 2 142 70 186 64 74
+    201 236 3 225 63 173 245 97 242 87 211 189 15 132 49 208 119 161 65 60
+    255 210 30 42 173 190 56 216 43 125 132 86 244 161 244 14 28 238 5 184
+    90 218 16 109 88 44 170 211 17 79 12 224 214 224 65 195 86 27 184 123
+    236 45 54 23 48 133 148 1 37 183 2 195 226 183 190 73 0 54 178 13
+    123 129 242 29 138 58 131 93 88 200 219 215 162 228 21))
 
 ; the dictionary: the previous held-out article of the group, 2749 octets
 (defconst *plz-dict*
@@ -219,33 +215,31 @@
     101 32 119 105 108 108 105 110 103 32 116 111 32 104 101 108 112 32 112 117
     116 32 105 116 32 116 111 103 101 116 104 101 114 46 13 10))
 
-; the article's liblz4-HC 9 block against that dictionary: 395 octets
+; the article's zlib 9 raw DEFLATE stream, against that dictionary: 333 octets
 (defconst *plz-dict-block*
-  '(15 189 10 56 209 107 117 104 117 98 46 99 99 46 117 107 97 110 134 1 4 200
-    10 241 7 101 109 111 114 121 33 115 111 108 46 99 116 114 46 99 111 108 117
-    109 98 105 97 34 0 250 0 117 114 115 97 33 112 111 111 104 33 104 97 108 97
-    116 183 10 15 164 10 7 115 65 109 101 114 105 99 97 57 9 80 69 118 111 108
-    117 106 1 11 148 10 96 51 48 48 54 57 64 99 0 83 46 98 101 97 114 223 9 2
-    145 10 1 111 0 16 64 122 0 1 28 0 128 115 32 40 74 105 109 32 72 22 0 5 134
-    10 21 49 134 10 114 50 58 53 48 58 49 49 134 10 81 82 101 112 108 121 107 10
-    15 69 0 11 8 174 10 20 64 129 0 11 140 10 242 11 57 51 48 56 57 46 49 52 51
-    48 52 56 73 79 51 48 52 51 54 64 77 65 73 78 69 46 6 0 243 2 69 68 85 62 32
-    60 106 48 61 53 108 51 61 64 114 112 105 86 11 3 121 10 33 49 48 119 8 6 66
-    5 13 43 0 243 6 44 32 106 111 104 110 115 100 50 64 106 101 99 51 50 50 46
-    105 116 115 46 29 0 0 125 11 48 110 32 74 32 0 56 111 110 41 184 10 6 81 0
-    15 155 0 10 63 44 32 60 181 0 6 23 40 81 0 39 13 10 105 0 16 45 16 0 0 211 3
-    2 126 4 1 167 10 19 109 13 9 36 116 97 231 4 18 104 142 6 49 121 119 97 125
-    9 65 114 97 118 111 214 5 240 9 71 79 40 68 83 41 32 61 32 48 46 32 13 10 66
-    101 97 117 116 105 102 117 108 33 38 10 101 109 112 108 121 32 98 19 0 0 104
-    0 224 45 106 105 109 32 104 97 108 97 116 13 10 13 10))
+  '(173 214 221 106 194 48 20 0 224 251 193 222 33 189 171 160 33 109 84 172
+    216 17 135 101 115 176 57 54 246 0 109 39 180 218 159 209 54 142 190 253
+    206 73 98 237 28 122 181 155 66 147 144 19 146 156 147 239 245 255 240 186
+    151 137 140 104 28 83 185 135 103 74 53 25 199 110 33 51 90 171 46 51
+    26 55 21 32 43 147 121 148 134 106 132 172 234 16 16 91 38 86 2 215
+    178 249 205 214 203 70 93 230 112 242 176 106 13 167 224 0 83 226 78 159
+    153 148 51 54 245 4 134 160 17 228 178 225 157 6 169 10 39 48 178 234
+    171 137 253 148 230 228 17 91 59 133 58 157 66 221 249 132 205 29 71 43
+    244 13 42 97 171 168 121 125 146 190 86 197 113 1 103 22 245 56 155 121
+    212 25 115 54 158 173 55 240 229 83 241 188 92 191 4 84 127 131 213 199
+    29 89 236 152 63 201 184 47 170 175 212 168 218 192 211 97 138 29 167 10
+    250 103 232 16 232 157 20 245 167 43 96 247 184 235 210 180 169 169 233 68
+    124 23 144 122 208 95 22 131 190 91 79 19 94 93 218 144 44 46 46 218
+    238 77 136 27 218 5 26 225 63 166 180 174 62 138 169 185 193 16 86 73
+    93 73 18 253 26 181 223 161 194 87 21 30 74 85 213 31 54 246 234 125
+    64 124 194 40 160 247 126 27 194 193 67 122 88 168 68 120 121 90 184 246
+    199 38 140 51 218 193 129 152 171 117 123 243 3))
 
 
 ; -----------------------------------------------------------------------------
-; KEYSTONE fn-lz-seal-form-denotes (no hypothesis): the reachable :lz
-; witness.  The liblz4-HC block of the real article seals as :lz, and the
-; form denotes exactly the article; so does the block written against the
-; dictionary, whose offsets reach back into the dictionary (it is 198
-; octets shorter than the block without one).
+; The frame books' functions are guard-verified; the payload witnesses
+; above are zlib's streams (the stream written against the dictionary is
+; 122 octets shorter than the one without).
 
 (assert-event
  (and (eq (symbol-class 'fn-lzr-seal (w state)) :common-lisp-compliant)
@@ -291,8 +285,8 @@
 (assert-event
  (and (fn-lzr-magicp *plr-z0*)
       (fn-lzr-magicp *plr-z1*)
-      (equal (len *plr-z0*) (+ (- (len *plr-r*) 750) 593 21))
-      (equal (len *plr-z1*) (+ (- (len *plr-r*) 750) 395 21))
+      (equal (len *plr-z0*) (+ (- (len *plr-r*) 750) 455 21))
+      (equal (len *plr-z1*) (+ (- (len *plr-r*) 750) 333 21))
       (< (len *plr-z1*) (len *plr-z0*))
       (< (len *plr-z0*) (len *plr-r*))
       (equal (fn-lzr-expand *plr-dicts* *plr-z0*) (list :ok *plr-r*))
@@ -305,7 +299,7 @@
  (and (equal (fn-lzr-seal nil 0 0 *plr-r* *plr-k* 750 *plz-block*) *plr-r*)
       (equal (fn-lzr-seal nil 0 751 *plr-r* *plr-k* 750 *plz-block*) *plr-r*)
       (equal (fn-lzr-seal nil 0 64 *plr-r* (1+ *plr-k*) 750 *plz-block*) *plr-r*)
-      (equal (fn-lzr-seal nil 0 64 *plr-r* *plr-k* 750 (fn-lz-literal-block *plz-article*))
+      (equal (fn-lzr-seal nil 0 64 *plr-r* *plr-k* 750 (fn-pzd-stored *plz-article*))
              *plr-r*)
       (equal (fn-lzr-seal nil 0 64 *plr-r* (len *plr-r*) 750 *plz-block*) *plr-r*)
       ; the dictionary block against the empty dictionary: refused by the seal
@@ -456,11 +450,11 @@
  (and (fn-lzr-extentp *plr-e*)
       (equal (nth 0 *plr-e*) 3)
       (equal (nth 1 *plr-e*) 4096)
-      (equal (nth 4 *plr-e*) 395)
+      (equal (nth 4 *plr-e*) 333)
       (equal (nth 6 *plr-e*) 750)
       (equal (nth 7 *plr-e*) 1)
       ; C sits at the extent's place in the frame
-      (equal (take 395 (nthcdr (- (nth 3 *plr-e*) (+ 4096 42)) *plr-z1*)) *plz-dict-block*)
+      (equal (take 333 (nthcdr (- (nth 3 *plr-e*) (+ 4096 42)) *plr-z1*)) *plz-dict-block*)
       (equal (fn-lzr-read *plz-dict* *plz-dict-block* 750) (list :ok *plz-article*))
       (equal (fn-lzr-read nil *plz-dict-block* 750) (list :refused :lz-decode))))
 
@@ -536,16 +530,16 @@
 ; fn-arena-seal-lz-extent-payload has no hypothesis: the witness is its
 ; instance at the real extent over a one-payload arena.
 (defthm plr-seal-lz-witness
-  (and (equal (fn-arena-payload 1 (fn-arena-seal-lz-extent 3 4096 (nth 2 *plr-e*) (nth 3 *plr-e*) 395
+  (and (equal (fn-arena-payload 1 (fn-arena-seal-lz-extent 3 4096 (nth 2 *plr-e*) (nth 3 *plr-e*) 333
                                                            0 750 *plz-dict* *plr-arena*))
-              (fn-lzr-lz-value *plz-dict* (fn-durable-octets 3 (nth 3 *plr-e*) 395) 750))
-       (equal (fn-arena-payload 0 (fn-arena-seal-lz-extent 3 4096 (nth 2 *plr-e*) (nth 3 *plr-e*) 395
+              (fn-lzr-lz-value *plz-dict* (fn-durable-octets 3 (nth 3 *plr-e*) 333) 750))
+       (equal (fn-arena-payload 0 (fn-arena-seal-lz-extent 3 4096 (nth 2 *plr-e*) (nth 3 *plr-e*) 333
                                                            0 750 *plz-dict* *plr-arena*))
               *plz-article*))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-arena-seal-lz-extent-payload
                                    (file 3) (eoff 4096) (elen (nth 2 *plr-e*)) (poff (nth 3 *plr-e*))
-                                   (plen 395) (trailer 0) (n 750) (dict *plz-dict*)
+                                   (plen 333) (trailer 0) (n 750) (dict *plz-dict*)
                                    (fn-arena *plr-arena*) (h 0)))
            :in-theory (disable fn-arena-seal-lz-extent-payload))))
 
@@ -553,19 +547,19 @@
 ; under the faithful write (the block the log holds at the extent is the real
 ; block), every other hypothesis affirmed at the ground arena.
 (defthm plr-reseat-lz-witness
-  (implies (equal (fn-durable-octets 3 (nth 3 *plr-e*) 395) *plz-dict-block*)
+  (implies (equal (fn-durable-octets 3 (nth 3 *plr-e*) 333) *plz-dict-block*)
            (and (fn-arena-p *plr-arena*)
                 (< 0 (fn-arena-count *plr-arena*))
-                (equal (fn-lzr-lz-value *plz-dict* (fn-durable-octets 3 (nth 3 *plr-e*) 395) 750)
+                (equal (fn-lzr-lz-value *plz-dict* (fn-durable-octets 3 (nth 3 *plr-e*) 333) 750)
                        (fn-arena-payload 0 *plr-arena*))
-                (equal (fn-arena-reseat-lz-extent 0 3 4096 (nth 2 *plr-e*) (nth 3 *plr-e*) 395 0 750
+                (equal (fn-arena-reseat-lz-extent 0 3 4096 (nth 2 *plr-e*) (nth 3 *plr-e*) 333 0 750
                                                   *plz-dict* *plr-arena*)
                        *plr-arena*)))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-arena-reseat-lz-extent-keeps-a-faithful-arena)
            :use ((:instance fn-arena-reseat-lz-extent-keeps-a-faithful-arena
                             (fn-arena *plr-arena*) (h 0) (file 3) (eoff 4096)
-                            (elen (nth 2 *plr-e*)) (poff (nth 3 *plr-e*)) (plen 395) (trailer 0)
+                            (elen (nth 2 *plr-e*)) (poff (nth 3 *plr-e*)) (plen 333) (trailer 0)
                             (n 750) (dict *plz-dict*))
                  (:instance fn-lzr-lz-value-of-decode
                             (dict *plz-dict*) (c *plz-dict-block*) (n 750)

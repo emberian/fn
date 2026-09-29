@@ -83,6 +83,8 @@ where the node requires one (480 otherwise).
   PASS password.
 - STARTTLS (RFC 4642 2.2): Turns on TLS on this connection before you
   log in.
+- COMPRESS * (RFC 8054 2.2): Compresses this connection with DEFLATE
+  (RFC 8054), after you log in.
 - XREDEEM (fn extension, PRF-164): Redeems an invitation code for a
   login.
 - XFNCATCHUP * (fn extension, PRF-325): A peer's batched catch-up over

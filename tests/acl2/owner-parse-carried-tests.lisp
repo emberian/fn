@@ -3,6 +3,7 @@
 (include-book "../../books/owner-parse-carried")
 (include-book "must-fail-checked")
 (include-book "owner-commit-carried-tests")
+(include-book "peer-authored-accept-tests")
 
 ; lane history-columns-3: the readers take the history stobj fn-hist.
 (defun fn-apc-own-finish-h (o cfg fn-arena carry)
@@ -90,6 +91,28 @@
 (assert-event (equal (fn-apc-transit-refusal-detail *apc-t-stored* nil nil nil nil *apc-t-carry*)
                      (fn-pcb-transit-refusal-detail *apc-t-stored* nil nil nil nil)))
 (assert-event (null (fn-apc-transit-refusal-detail *apc-t-stored* nil nil nil nil *apc-t-carry*)))
+; PKT-541: the twin names a revoked principal's refusal as the reference
+; does (fn-apc-admission-verdict-of-plan-is-reference), with an empty and
+; with a filled parse carry.
+(defconst *apc-t-pat-carry*
+  (list (cons *pat-relayed* (fn-article-parse *pat-relayed*))))
+(assert-event (fn-apc-p *apc-t-pat-carry*))
+(assert-event (equal (fn-apc-transit-refusal-detail *pat-relayed* *pat-after-revocation*
+                                                    nil :verified :verified nil)
+                     '(:no-local-binding :revoked-principal)))
+(assert-event (equal (fn-apc-transit-refusal-detail *pat-relayed* *pat-after-revocation*
+                                                    nil :verified :verified
+                                                    *apc-t-pat-carry*)
+                     '(:no-local-binding :revoked-principal)))
+(assert-event (equal (fn-apc-transit-verdict *pat-relayed* *pat-after-revocation* nil nil
+                                             :verified :verified *apc-t-pat-carry*)
+                     :revoked-principal))
+(assert-event (equal (fn-apc-transit-verdict *pat-relayed* *pat-after-revocation* nil t
+                                             :verified :verified *apc-t-pat-carry*)
+                     :revoked))
+(assert-event (equal (fn-apc-transit-refusal-detail *pat-relayed* nil nil nil nil
+                                                    *apc-t-pat-carry*)
+                     '(:no-local-binding :unenrolled)))
 (assert-event (equal (fn-apc-filing-plan *apc-t-stored* *apc-t-groups* nil *apc-t-carry*)
                      (fn-pa-filing-plan *apc-t-stored* *apc-t-groups* nil)))
 (assert-event (equal (fn-apc-filing-plan *apc-t-stored* *apc-t-groups* nil *apc-t-carry*)

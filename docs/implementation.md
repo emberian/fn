@@ -55,7 +55,7 @@ its scoped composition proofs now have the evidence described below.
 | [Logical checkpoint](../books/checkpoint.lisp) | Capture of the exact prefix node, consumed frontier, actual suffix replay and full-replay equivalence; an explicit rejection theorem for a suffix that reuses a transaction id below the checkpoint frontier | No persisted checkpoint codec, publication or crash generation selection |
 | [Derived index](../books/index.lisp) | Group/local-number materialization, soundness/completeness and independent range-query correspondence | Not yet a host index or performance improvement |
 | [Legacy BP ingress](../books/bp-ingress.lisp) | Exact article ADU parsing, configured group mapping and composed-store admission | Actual host/workflow exchange is integrated for the lab profile; native signing and authenticated receipts remain open |
-| [Simulator](../host/simulator.lisp) | Fixed traces executing the actual acceptance functions in ACL2 | No shadow semantics, network listener, or real disk adapter |
+| [Simulator](../tests/acl2/simulator.lisp) | Fixed traces executing the actual acceptance functions in ACL2 | No shadow semantics, network listener, or real disk adapter |
 
 Run the integrated checks from the repository root with `make test`, or run
 their components separately:

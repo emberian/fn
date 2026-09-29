@@ -109,7 +109,11 @@ usage() {
   exit 2
 }
 DRY=no REV_ARG=HEAD OUT="" FROM=1 TO=17
-RUNTIME=/tank/fn/scratch/glibc-floor/runtime-2.6.8
+# The glibc-floor runtime: the registered fixture (tools/fixtures.py
+# sbcl-floor-runtime-2.6.8, PKT-727), verified against its pinned SHA256SUMS
+# on the box before the tarball bundles it; --runtime-from names another.
+FLOOR_FIXTURE=sbcl-floor-runtime-2.6.8
+RUNTIME=/tank/fn/scratch/fixtures/$FLOOR_FIXTURE
 OB_VM=cutbld OB_BASE=/tank/fn/scratch/power-loss-openbsd
 HOST=${FN_HBOX:-hbox}
 BOX_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k
@@ -121,7 +125,7 @@ while [ "$#" -gt 0 ]; do
     --out) [ "$#" -ge 2 ] || usage; OUT=$2; shift 2 ;;
     --from) [ "$#" -ge 2 ] || usage; FROM=$2; shift 2 ;;
     --to) [ "$#" -ge 2 ] || usage; TO=$2; shift 2 ;;
-    --runtime-from) [ "$#" -ge 2 ] || usage; RUNTIME=$2; shift 2 ;;
+    --runtime-from) [ "$#" -ge 2 ] || usage; RUNTIME=$2; FLOOR_FIXTURE=""; shift 2 ;;
     --openbsd-vm) [ "$#" -ge 2 ] || usage; OB_VM=$2; shift 2 ;;
     *) usage ;;
   esac
@@ -354,11 +358,14 @@ g_hostile() {
 
 g_tarball_linux() {
   tb=fn-$VERSION-linux-x86_64.tar.gz
+  floor_check=""
+  [ -z "$FLOOR_FIXTURE" ] || floor_check="python3 tools/fixtures.py path $FLOOR_FIXTURE >/dev/null || { echo 'the glibc-floor runtime fixture $FLOOR_FIXTURE does not verify'; exit 4; }"
   script="set -eu
 [ ! -e $S/release ] || { echo 'exists: $S/release'; exit 4; }
 [ -x $RUNTIME/sbcl ] || { echo 'no glibc-floor runtime $RUNTIME'; exit 4; }
 mkdir -p $S/release-work $S/fresh
 cd $T
+$floor_check
 FN_CERT_CACHE=$BOX_CACHE FN_ACL2=$BOX_ACL2 sh packaging/release-tarball.sh --runtime-from $RUNTIME linux-x86_64 $REV $S/release $S/source.tar
 python3 tools/runpath_check.py --tarball $S/release/$tb
 cd $S/fresh && cp $S/release/$tb $S/release/SHA256SUMS . && sha256sum -c --ignore-missing SHA256SUMS
