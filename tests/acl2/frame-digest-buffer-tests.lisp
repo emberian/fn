@@ -165,7 +165,10 @@
                                                read (fn-durable-octets 3 100 10))
                   :ok)
            (equal (fn-frame-digest (fn-durable-octets 3 100 10)) (fn-durable-octets 3 110 32)))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-arx-entry-verdict-buffer-ok-digest-is-the-recorded-trailer
+                                   (file 3) (eoff 100) (elen 10)
+                                   (fn-octets (fn-durable-octets 3 100 10)))))))
 
 ; Hypothesis removal: the OLD check in the verdict's place does not give the
 ; conclusion (the executed counterexample above: (E1, T1) passes it with a
@@ -185,7 +188,9 @@
                                                (fn-durable-octets 3 110 32)
                                                (fn-durable-octets 3 100 10))
                   :ok))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-arx-entry-verdict-buffer-of-durable
+                                   (file 3) (eoff 100) (elen 10))))))
 
 (local
  (must-fail-checked
