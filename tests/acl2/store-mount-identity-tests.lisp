@@ -694,3 +694,20 @@
 (assert-event (null (fn-smid-unrecorded-warning (list :open))))
 (assert-event (null (fn-smid-refusal-text
                      (fn-smid-open-decision (list :absent) *smid-t-mounted* t))))
+
+; Teeth for fn-smid-durability-warning-warns-exactly-when-the-mount-is-unsafe
+; (PRF-954).  Reachable positive witnesses: the tmpfs and nobarrier stores
+; above warn, with their reasons.  Hypothesis removal: the plain mount has no
+; reason and no warning; an observation that is not one has neither.
+(assert-event
+ (and (consp (fn-smid-durability-warning *smid-t-tmpfs*))
+      (equal (fn-smid-unsafe-reason *smid-t-tmpfs*) :memory)
+      (consp (fn-smid-durability-warning *smid-t-nobarrier*))
+      (equal (fn-smid-unsafe-reason *smid-t-nobarrier*) :nobarrier)))
+(assert-event
+ (and (null (fn-smid-unsafe-reason *smid-t-mounted*))
+      (null (fn-smid-durability-warning *smid-t-mounted*))
+      (not (fn-smid-observationp nil))
+      (null (fn-smid-durability-warning nil))
+      (not (fn-smid-observationp '(1 2)))
+      (null (fn-smid-durability-warning '(1 2)))))

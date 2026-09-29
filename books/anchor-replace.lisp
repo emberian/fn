@@ -168,3 +168,32 @@
                     (:d fn-anchor-rp-trace)
                     (:d fn-anchor-rp-has-directory-okp)
                     (:d fn-anchor-rp-has-recovery-directory-okp)))
+
+; KEYSTONE (PRF-955).  The outcome word the host reads after a step
+; (host/native/anchor.lisp, fn-anchor-rp-outcome of the phase the step
+; reached) is one of five; from a phase that is not already terminal it is
+; :durable exactly after the replace's directory barrier answered :ok and
+; :recovered exactly after the recovery's; it is :uncertain exactly when the
+; step fenced and :fault exactly when the step knows the failure.  The two
+; step keystones above are lifted to the word the host acts on.
+(defthm fn-anchor-rp-outcome-is-terminal-only-after-the-directory-barrier
+  (let ((o (fn-anchor-rp-outcome (fn-anchor-rp-step phase event))))
+    (and (member-equal o (list :durable :recovered :fault :uncertain :pending))
+         (implies (not (equal phase :durable))
+                  (iff (equal o :durable)
+                       (and (equal phase :replace-visible) (consp event)
+                            (equal (car event) :directory-result)
+                            (equal (fn-anchor-rp-event-value event) :ok))))
+         (implies (not (equal phase :recovered))
+                  (iff (equal o :recovered)
+                       (and (equal phase :recover-directory) (consp event)
+                            (equal (car event) :recovery-directory-result)
+                            (equal (fn-anchor-rp-event-value event) :ok))))
+         (iff (equal o :uncertain) (equal (fn-anchor-rp-step phase event) :fenced))
+         (iff (equal o :fault) (equal (fn-anchor-rp-step phase event) :known-fail))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-anchor-rp-step-is-durable-only-after-directory-barrier
+                 fn-anchor-rp-step-is-recovered-only-after-directory-barrier)
+           :in-theory (e/d (fn-anchor-rp-outcome fn-anchor-rp-step)
+                           (fn-anchor-rp-event-value fn-anchor-rp-resultp)))))

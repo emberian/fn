@@ -1142,7 +1142,9 @@ configuration generation of the profile's `max-config-generations`; a
 refused publication refuses the reclaim before any rewrite.
 
 The host streams the history one record at a time into ACL2's fold
-(`fn-rcls-step` under the store's context `fn-rclp-ctx`) and keeps each
+(`fn-rcls-step` under the store's context `fn-rclp-ctx`, which carries its
+articles indexed by Message-ID so a record's step is one hashed lookup and
+never a walk of the article list: PRF-934, row A8) and keeps each
 record's rewrite (`fn-rclp-event`); `fn-lgr-decide-stream` then answers over
 the fold (KEYSTONE `fn-lgr-decide-stream-is-lgr-decide`: the whole-history
 decision, whose rewritten history is those rewrites): nothing
@@ -1155,6 +1157,20 @@ verdict does not need its payload, under a releasing rule
 (`fn-rclp-events-never-touch-a-held-article`); what a changed record is: the
 same record with the tombstone of its payload
 (`fn-rclp-event-decodes-to-the-tombstoned-record`).
+
+On a running owner the verb is a request the owner answers by name over its
+control socket (Q16, `books/owner-reclaim.lisp`, PRF-927). The owner's
+history is its rows (held rows whose payloads are arena handles); the pass
+rewrites and folds them in chunks off the owner mutex (`fn-orc-chunk`), and
+the rows' octets after the rewrite are exactly the offline rewrite of the
+history's octets (KEYSTONE `fn-orc-rewrite-rows-is-the-offline-rewrite`;
+the fold is the offline fold, `fn-orc-fold-is-the-offline-fold`), so the
+decision names exactly the rewritten articles
+(`fn-orc-decision-names-the-rewritten-articles`). Today the owner answers
+`--dry-run` (its report in the owner's log, posts and reads continuing) and
+refuses `store reclaim` and `--recorded` by name (`offline-only`) until the
+installing pass (the rewritten capture's checkpoint, the live swap, the
+drop) lands.
 
 What becomes available again, precisely: the payload octets of each
 reclaimed record, on disk when the covered segments are dropped, and in the

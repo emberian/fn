@@ -100,6 +100,7 @@
 (include-book "owner-feed")
 (include-book "msgid-index")
 (include-book "control-visible")
+(include-book "packed-submission")
 
 ; store's idle-phase predicate has no explicit guard; it is guard t and its
 ; body is one member-equal over a constant, so verify it here so that
@@ -509,6 +510,89 @@
                     (:d fn-own-sub-mark) (:d fn-own-sub-decision) (:d fn-own-sub-make)
                     (:d fn-own-sub-login) (:d fn-own-sub-account)
                     (:d fn-own-sub-make-author)))
+
+; The queued (packed) submission's fields (lane chunked-body-2, B6b;
+; fn-own-enqueue packs, fn-own-take-submission unpacks): the packing touches
+; only the decision's octets and an injection's groups.
+(defthm fn-own-sub-fields-of-pack
+  (and (equal (fn-own-sub-id (fn-psub-pack-sub x)) (fn-own-sub-id x))
+       (equal (fn-own-sub-version (fn-psub-pack-sub x)) (fn-own-sub-version x))
+       (equal (fn-own-sub-mark (fn-psub-pack-sub x)) (fn-own-sub-mark x))
+       (equal (fn-own-sub-login (fn-psub-pack-sub x)) (fn-own-sub-login x))
+       (equal (fn-own-sub-account (fn-psub-pack-sub x)) (fn-own-sub-account x))
+       (equal (fn-own-sub-decision (fn-psub-pack-sub x))
+              (fn-psub-pack-decision (fn-own-sub-decision x)))
+       (equal (fn-own-sub-shapep (fn-psub-pack-sub x)) (fn-own-sub-shapep x))
+       (equal (consp (fn-psub-pack-sub x)) (consp x)))
+  :hints (("Goal" :in-theory (enable fn-own-sub-id fn-own-sub-version fn-own-sub-mark
+                                     fn-own-sub-login fn-own-sub-account
+                                     fn-own-sub-decision fn-own-sub-shapep
+                                     fn-psub-pack-sub fn-psub-pack-decision))))
+
+(defthm fn-own-sub-fields-of-unpack
+  (and (equal (fn-own-sub-id (fn-psub-unpack-sub x)) (fn-own-sub-id x))
+       (equal (fn-own-sub-version (fn-psub-unpack-sub x)) (fn-own-sub-version x))
+       (equal (fn-own-sub-mark (fn-psub-unpack-sub x)) (fn-own-sub-mark x))
+       (equal (fn-own-sub-login (fn-psub-unpack-sub x)) (fn-own-sub-login x))
+       (equal (fn-own-sub-account (fn-psub-unpack-sub x)) (fn-own-sub-account x))
+       (equal (fn-own-sub-decision (fn-psub-unpack-sub x))
+              (fn-psub-unpack-decision (fn-own-sub-decision x)))
+       (equal (consp (fn-psub-unpack-sub x)) (consp x)))
+  :hints (("Goal" :in-theory (enable fn-own-sub-id fn-own-sub-version fn-own-sub-mark
+                                     fn-own-sub-login fn-own-sub-account
+                                     fn-own-sub-decision
+                                     fn-psub-unpack-sub fn-psub-unpack-decision))))
+
+; The decision's fields the queue's readers use, packed.
+(defthm fn-own-decision-heads-of-pack
+  (and (equal (car (fn-psub-pack-decision d)) (car d))
+       (equal (cadr (fn-psub-pack-decision d)) (cadr d))
+       (equal (caddr (fn-psub-pack-decision d)) (caddr d))
+       (implies (equal (car d) :transit)
+                (equal (cadddr (fn-psub-pack-decision d)) (cadddr d)))
+       (equal (consp (fn-psub-pack-decision d)) (consp d))
+       (equal (consp (cdr (fn-psub-pack-decision d))) (consp (cdr d)))
+       (equal (consp (cddr (fn-psub-pack-decision d))) (consp (cddr d)))
+       (equal (consp (cdddr (fn-psub-pack-decision d))) (consp (cdddr d)))
+       (equal (true-listp (fn-psub-pack-decision d)) (true-listp d))
+       (equal (len (fn-psub-pack-decision d)) (len d)))
+  :hints (("Goal" :in-theory (enable fn-psub-pack-decision))))
+
+(defthm fn-own-decision-fields-of-pack
+  (and (equal (fn-peer-submissionp (fn-psub-pack-decision d)) (fn-peer-submissionp d))
+       (equal (fn-peer-submission-peer (fn-psub-pack-decision d)) (fn-peer-submission-peer d))
+       (equal (fn-peer-submission-kind (fn-psub-pack-decision d)) (fn-peer-submission-kind d))
+       (implies (equal (car d) :transit)
+                (equal (fn-peer-submission-msgid (fn-psub-pack-decision d))
+                       (fn-peer-submission-msgid d)))
+       (equal (fn-inj-decision-status (fn-psub-pack-decision d)) (fn-inj-decision-status d))
+       (equal (fn-inj-decision-reason (fn-psub-pack-decision d)) (fn-inj-decision-reason d))
+       (equal (fn-inj-decision-msgid (fn-psub-pack-decision d)) (fn-inj-decision-msgid d)))
+  :hints (("Goal" :in-theory (e/d (fn-peer-submissionp
+                                   fn-peer-submission-shapep
+                                   fn-peer-submission-peer fn-peer-submission-kind
+                                   fn-peer-submission-msgid
+                                   fn-inj-decision-status fn-inj-decision-reason
+                                   fn-inj-decision-msgid fn-inj-nth fn-inj-car fn-inj-cdr)
+                                  (fn-psub-pack-decision fn-af-message-idp
+                                   fn-nntp-printable-tokenp))
+                  :expand ((:free (x) (fn-inj-nth 0 x)) (:free (x) (fn-inj-nth 1 x))
+                           (:free (x) (fn-inj-nth 2 x))))))
+
+(defthm fn-own-inj-injectedp-of-pack
+  (equal (fn-inj-injectedp (fn-psub-pack-decision d)) (fn-inj-injectedp d))
+  :hints (("Goal" :in-theory (e/d (fn-inj-injectedp) (fn-psub-pack-decision)))))
+
+; The decision a QUEUED submission carries: what the take installs.
+(defun fn-own-sub-queued-decision (sub)
+  (declare (xargs :guard t))
+  (fn-psub-unpack-decision (fn-own-sub-decision sub)))
+
+(defthm fn-own-sub-queued-decision-of-pack
+  (equal (fn-own-sub-queued-decision (fn-psub-pack-sub x))
+         (fn-own-sub-decision x)))
+
+(in-theory (disable fn-own-sub-queued-decision))
 
 ; -----------------------------------------------------------------------------
 ; The committed view record:
@@ -1590,12 +1674,22 @@
 ; Message-ID, so the second post on a connection would be a duplicate of the
 ; first whatever its body.  The injection clock is therefore per read and
 ; the reader pin is per connection.
+; The queue holds each submission PACKED (lane chunked-body-2, B6b;
+; books/packed-submission.lisp): its article's octets one natural, its groups
+; comma-joined into another, so a queued submission costs about an octet of
+; heap an octet of its article instead of sixteen.  fn-own-take-submission
+; unpacks it: the taken submission IS the enqueued one
+; (fn-own-take-installs-the-enqueued-submission's round trip,
+; fn-psub-unpack-of-pack-sub, holds with no hypothesis).  The fields the
+; queue's readers look at -- id, version, mark, login, account, the
+; Message-ID, whether it is transit or control -- are the packed record's
+; own (the fn-own-sub-*-of-pack lemmas below).
 (defun fn-own-enqueue (o sub)
   (declare (xargs :guard t))
   (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-               (fn-ag-append (fn-own-queue o) (list sub)) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
+               (fn-ag-append (fn-own-queue o) (list (fn-psub-pack-sub sub))) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
 
 ; The local control channel is a submission port, not a second store writer.
 ; Its identifier is outside the natural-number connection namespace, so it
@@ -2743,7 +2837,7 @@
            (consp (fn-own-queue o))
            (null (fn-own-pending o))
            (equal (fn-sf-phase (fn-sn-files (fn-own-store o))) :ready))
-      (let ((sub (car (fn-own-queue o))))
+      (let ((sub (fn-psub-unpack-sub (car (fn-own-queue o)))))
         (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                      (fn-own-next-id o) (fn-own-max-conns o) (fn-own-sub-id sub)
                      (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)

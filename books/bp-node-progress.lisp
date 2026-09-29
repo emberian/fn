@@ -1955,3 +1955,28 @@
                     (:definition fn-bpnp-busy-strandedp)
                     (:definition fn-bpnp-first-busy-stranded)
                     (:definition fn-bpnp-wait-for)))
+
+; KEYSTONE (PRF-956).  The sender's reading of a TCPCL session
+; (host/native/bp-node.lisp fnn-bpnode-forward-contact, the connection's
+; observed outcome and the peer's XFER_REFUSE reason code) keeps four results
+; distinct: :sent exactly for an acceptance; a refusal result exactly for a
+; peer refusal with a reason code, and it keeps that code; :failed exactly for
+; a refusal with no reason; and :uncertain for every other reading -- a
+; connection lost after the durable kind 8, a refusal whose reason is not a
+; code -- so the peer may hold the bundle and the row is retried, never
+; counted sent or failed.
+(defthm fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct
+  (let ((o (fn-bpnp-tcpcl-outcome observed reason)))
+    (and (iff (equal o :sent) (equal observed :accepted))
+         (iff (and (consp o) (equal (car o) :refused))
+              (and (equal observed :refused) (fn-frame-natp reason)))
+         (implies (and (consp o) (equal (car o) :refused))
+                  (equal (cadr o) reason))
+         (iff (equal o :failed) (and (equal observed :refused) (null reason)))
+         (iff (equal o :uncertain)
+              (not (or (equal observed :accepted)
+                       (and (equal observed :refused)
+                            (or (fn-frame-natp reason) (null reason))))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bpnp-tcpcl-outcome) (fn-frame-natp)))))

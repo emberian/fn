@@ -111,7 +111,7 @@
 (assert-event (equal (len (fn-own-queue *opt-queued*)) 1))
 (assert-event (fn-own-control-submissionp (car (fn-own-queue *opt-queued*))))
 (assert-event (equal (fn-inj-decision-octets
-                      (fn-own-sub-decision (car (fn-own-queue *opt-queued*))))
+                      (fn-own-sub-queued-decision (car (fn-own-queue *opt-queued*))))
                      *opt-injected*))
 ; Separating: the verb's former decision stored the payload as read, which is
 ; not a re-injection of anything (no Path line), and is what innd refused.
@@ -165,7 +165,7 @@
 (must-fail-checked
  (defthm opt-submission-without-submitted
    (let* ((q (fn-own-queue (fn-own-operator-submit o msgid groups octets stored)))
-          (d (fn-own-sub-decision (car q))))
+          (d (fn-own-sub-queued-decision (car q))))
      (and (equal (len q) 1)
           (fn-own-control-submissionp (car q))
           (fn-inj-injectedp d)))
@@ -290,7 +290,7 @@
 (defconst *opt-nd-queued*
   (fn-own-operator-submit *opt-0* *opt-msgid* *opt-groups* *opt-nodate* :absent))
 (assert-event (equal (fn-inj-decision-octets
-                      (fn-own-sub-decision (car (fn-own-queue *opt-nd-queued*))))
+                      (fn-own-sub-queued-decision (car (fn-own-queue *opt-nd-queued*))))
                      *opt-nd-injected*))
 (defconst *opt-nd-wire*
   (fn-record-make 0 0 0
@@ -460,3 +460,57 @@
          (fn-own-operator-decision *opt-config* *opt-blind* *opt-read*
                                    *opt-msgid* *opt-groups* *opt-payload*))
         :clock-unusable))
+
+; -----------------------------------------------------------------------------
+; Lane chunked-body-2 (B6b, PRF-928).  KEYSTONE
+; fn-own-take-installs-the-enqueued-submission: hypotheses (null inflight),
+; (null queue), (null pending), phase :ready.
+(defun opt-o (o store pending inflight)
+  (declare (xargs :mode :program))
+  (fn-own-make (if (eq store 'same) (fn-own-store o) store) (fn-own-view o) (fn-own-conns o)
+               (fn-own-next-id o) (fn-own-max-conns o)
+               (if (eq pending 'same) (fn-own-pending o) pending)
+               (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
+               (fn-own-queue o) (if (eq inflight 'same) (fn-own-inflight o) inflight)
+               (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
+(defconst *opt-pk-sub*
+  (fn-own-sub-make-author 7 3 nil
+                          (fn-inj-make-decision :injected nil (fn-nntp-string-octets "<pk@example.invalid>")
+                                                (list (fn-nntp-string-octets "fn.test") (fn-nntp-string-octets "fn.other"))
+                                                (make-list 3000 :initial-element 97))
+                          "login" 11))
+(defun opt-pk-hyps (o)
+  (declare (xargs :mode :program))
+  (list (null (fn-own-inflight o)) (null (fn-own-queue o)) (null (fn-own-pending o))
+        (equal (fn-sf-phase (fn-sn-files (fn-own-store o))) :ready)))
+(defun opt-pk-concl (o)
+  (declare (xargs :mode :program))
+  (equal (fn-own-inflight (fn-own-take-submission (fn-own-enqueue o *opt-pk-sub*)))
+         (fn-own-sub-make-author 7 3 (len (fn-own-ledger o))
+                                 (fn-own-sub-decision *opt-pk-sub*) "login" 11)))
+; Positive: the queue holds the submission PACKED (not the enqueued record),
+; and the take installs the enqueued one exactly.
+(assert-event (equal (opt-pk-hyps *opt-0*) '(t t t t)))
+(assert-event (not (equal (car (fn-own-queue (fn-own-enqueue *opt-0* *opt-pk-sub*))) *opt-pk-sub*)))
+(assert-event (natp (cdr (nth 4 (fn-own-sub-decision
+                                 (car (fn-own-queue (fn-own-enqueue *opt-0* *opt-pk-sub*))))))))
+(assert-event (opt-pk-concl *opt-0*))
+; Removed (null queue): another submission queued first is what the take installs.
+(defconst *opt-pk-q* (fn-own-enqueue *opt-0* (fn-own-sub-make 5 3 nil :witness)))
+(assert-event (equal (opt-pk-hyps *opt-pk-q*) '(t nil t t)))
+(assert-event (not (opt-pk-concl *opt-pk-q*)))
+; Removed (null inflight), a corrupted-state witness: nothing is taken.
+(defconst *opt-pk-i* (opt-o *opt-0* 'same 'same (fn-own-sub-make 5 3 0 :witness)))
+(assert-event (equal (opt-pk-hyps *opt-pk-i*) '(nil t t t)))
+(assert-event (not (opt-pk-concl *opt-pk-i*)))
+; Removed (null pending), a corrupted-state witness: nothing is taken.
+(defconst *opt-pk-p* (opt-o *opt-0* 'same 5 'same))
+(assert-event (equal (opt-pk-hyps *opt-pk-p*) '(t t nil t)))
+(assert-event (not (opt-pk-concl *opt-pk-p*)))
+; Removed (phase :ready): the store of a commit under way.
+(defconst *opt-pk-s*
+  (opt-o *opt-0* (fn-own-store (in-arena-fn-own-run *sr-arena* *opt-taken*
+                                                    (list '(:store (:io :start-frontier nil)))))
+         'same 'same))
+(assert-event (equal (opt-pk-hyps *opt-pk-s*) '(t t t nil)))
+(assert-event (not (opt-pk-concl *opt-pk-s*)))

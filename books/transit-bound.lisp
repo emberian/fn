@@ -24,14 +24,14 @@
 ;     within the line limit, which in article mode is the body limit plus
 ;     one (fn-wire-article-line-limit).
 ;   KEYSTONE fn-tb-served-run-retains-at-most-the-body-limit: however the
-;     peer's octets are cut into reads, the article octets a connection holds
-;     before its verdict never exceed the limit it was opened with.
+;     peer's octets are cut into reads, the completed lines a connection
+;     holds before its verdict never exceed the limit it was opened with,
+;     and everything it holds (fn-wire-held-octets: the completed lines and
+;     the current line) never exceeds that limit and the line ceiling.
 ;
-; What this does not bound: the representation's cost per octet.  The wire
-; retains octet lists (a cons per octet), so the heap cost of a transit
-; article in flight is a constant multiple of A, as it is for POST; the
-; concrete representation of the article in flight is the open D27 item the
-; input-loop-2 record names (its item 2).
+; The representation's cost per octet: since lane chunked-body (B6) the wire
+; holds an article in flight as packed blocks (books/body-chunks.lisp), about
+; one octet of heap an octet, where the octet lists it replaced cost sixteen.
 
 (in-package "ACL2")
 (include-book "owner-served-bound")
@@ -55,7 +55,7 @@
   (equal (fn-wire-state-body-limit
           (fn-wire-result-state (fn-wire-feed-byte w byte)))
          (fn-wire-state-body-limit w))
-  :hints (("Goal" :in-theory (enable fn-wire-feed-byte))))
+  :hints (("Goal" :in-theory (enable fn-wire-feed-byte fn-wire-take-octet))))
 
 (defthm fn-tb-wire-begin-article-keeps-the-body-limit
   (equal (fn-wire-state-body-limit
@@ -149,7 +149,7 @@
   (equal (fn-wire-state-line-limit
           (fn-wire-result-state (fn-wire-feed-byte w byte)))
          (fn-wire-state-line-limit w))
-  :hints (("Goal" :in-theory (enable fn-wire-feed-byte))))
+  :hints (("Goal" :in-theory (enable fn-wire-feed-byte fn-wire-take-octet))))
 
 (defthm fn-tb-dispatch-core-line-ceiling
   (<= (fn-tb-line-ceiling (fn-served-result-conn
@@ -248,19 +248,49 @@
   (implies (fn-wire-statep (fn-served-conn-wire conn))
            (let ((w (fn-served-conn-wire
                      (fn-served-result-conn (fn-served-run conn chunks fn-arena)))))
-             (and (<= (fn-wire-lines-size (fn-wire-state-body-rev w))
+             (and (<= (fn-wire-state-body-size w)
                       (fn-tb-limit conn))
-                  (<= (len (fn-wire-state-line-rev w))
-                      (fn-tb-line-ceiling conn)))))
+                  (<= (fn-wire-held-octets w)
+                      (+ (fn-tb-limit conn) (fn-tb-line-ceiling conn))))))
   :rule-classes nil
   :hints (("Goal"
            :in-theory (e/d (fn-tb-wire-ceiling)
                            (fn-served-run fn-wire-statep
                             fn-tb-served-run-line-ceiling
-                            fn-tb-served-run-preserves-wire-statep))
+                            fn-tb-served-run-preserves-wire-statep
+                            fn-wire-statep-held-octets-bound
+                            fn-wire-held-octets))
            :use ((:instance fn-tb-served-run-preserves-wire-statep)
                  (:instance fn-tb-served-run-line-ceiling)
+                 (:instance fn-tb-served-run-keeps-the-body-limit)
                  (:instance fn-wire-statep
+                            (x (fn-served-conn-wire
+                                (fn-served-result-conn
+                                 (fn-served-run conn chunks fn-arena)))))
+                 (:instance fn-wire-statep-held-octets-bound
+                            (x (fn-served-conn-wire
+                                (fn-served-result-conn
+                                 (fn-served-run conn chunks fn-arena)))))))))
+
+; KEYSTONE (lane chunked-body-2, B6b).  Mid-article the connection holds at
+; most the body limit and one octet -- the completed lines and the current
+; one together (books/wire.lisp fn-wire-line-room closes :body-overlimit at
+; the octet that dooms the line).  This is the wire's term of the article
+; credit (books/heap-store-figure.lisp fn-heap-article-reserve-octets).
+(defthm fn-tb-served-run-holds-at-most-the-body-limit-mid-article
+  (implies (fn-wire-statep (fn-served-conn-wire conn))
+           (let ((w (fn-served-conn-wire
+                     (fn-served-result-conn (fn-served-run conn chunks fn-arena)))))
+             (implies (equal (fn-wire-state-mode w) :article)
+                      (<= (fn-wire-held-octets w)
+                          (+ 1 (fn-wire-state-body-limit w))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (disable fn-served-run fn-wire-statep fn-wire-held-octets
+                               fn-tb-served-run-preserves-wire-statep
+                               fn-wire-statep-article-holds-at-most-the-body-limit)
+           :use ((:instance fn-tb-served-run-preserves-wire-statep)
+                 (:instance fn-wire-statep-article-holds-at-most-the-body-limit
                             (x (fn-served-conn-wire
                                 (fn-served-result-conn
                                  (fn-served-run conn chunks fn-arena)))))))))

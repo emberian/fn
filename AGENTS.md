@@ -89,7 +89,8 @@ the 2026-09-22 proof-engineering review. Green is not true.
   state and prove it preserved.
 - **Uncertain, refused and accepted stay distinct** at every boundary,
   exit codes and test expectations included.
-- **Counts are generated** (`tools/ledger.py`, `tools/current_view.py`);
+- **Counts are generated** (`tools/ledger.py`, `tools/current_view.py`,
+  `tools/coverage.py` for what the world says about each host-called entry);
   prose carries the property, its hypotheses and its scope. A conflict in a
   generated file is resolved by regenerating it.
 - **Quote the pessimistic number with its scope** in the same sentence; the

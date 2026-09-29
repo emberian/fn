@@ -32,6 +32,8 @@
 (include-book "bp-carry-frame")
 (include-book "bp-carry-control")
 (include-book "owner-compact-request")
+(include-book "owner-reclaim")
+(include-book "extent-retire")
 (include-book "bp-request-plan")
 (include-book "journal-publish")
 (include-book "app-journal")
@@ -262,3 +264,4 @@
 (include-book "bp-run-class")
 (include-book "bp-node-profile")
 (include-book "bp-node-profile-admission")
+(include-book "bp-node-host-transfer")

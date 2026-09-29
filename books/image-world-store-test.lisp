@@ -108,6 +108,8 @@
 (include-book "owner-config")
 (include-book "owner-checkpoint-open")
 (include-book "owner-compact-request")
+(include-book "owner-reclaim")
+(include-book "extent-retire")
 (include-book "config-owner-live")
 (include-book "config-owner-publish")
 (include-book "config-owner-carried")

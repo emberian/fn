@@ -161,7 +161,7 @@
       "name": "protected channel",
       "contract": "A gated command before login is answered 480 and changes nothing, AUTHINFO on a clear connection under `protected_only` is 483, and POST needs the principal's posting flag.",
       "host": {
-        "function": "fn-scar-ocfg-read-tls-prefix",
+        "function": "fn-mca-read-span",
         "file": "host/owner-host.lisp"
       },
       "bridge": "fn-scar-auth-step-pinned-is-auth-step-pinned",
@@ -199,7 +199,7 @@
       "name": "reading resumes",
       "contract": "A reader's pinned view answers the same across other connections' posts, and a local number naming an article is never reassigned.",
       "host": {
-        "function": "fn-scar-ocfg-read-tls-prefix",
+        "function": "fn-mca-read-span",
         "file": "host/owner-host.lisp"
       },
       "bridge": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
@@ -294,7 +294,7 @@
       "name": "signature verdict visible",
       "contract": "A reader's `HDR :fn-verified` reports the verdict the completion recorded for the article, and a carried article reads `carried`, never `verified`.",
       "host": {
-        "function": "fn-scar-ocfg-read-tls-prefix",
+        "function": "fn-mca-read-span",
         "file": "host/owner-host.lisp"
       },
       "bridge": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
@@ -408,7 +408,7 @@
       "name": "the human client",
       "contract": "LIST COUNTS answers each group's high, low and count from the connection's pinned view, and a numbered Message-ID lookup retrieves the same article, which the web reader renders.",
       "host": {
-        "function": "fn-scar-ocfg-read-tls-prefix",
+        "function": "fn-mca-read-span",
         "file": "host/owner-host.lisp"
       },
       "bridge": "fn-own-read-is-served-step-on-pinned-prefix",
@@ -428,7 +428,7 @@
       "name": "the Message-ID index on the served path",
       "contract": "A reader's Message-ID retrieval is answered from the connection's pinned trie and equals the archive scan, with no whole-store check per command.",
       "host": {
-        "function": "fn-scar-ocfg-read-tls-prefix",
+        "function": "fn-mca-read-span",
         "file": "host/owner-host.lisp"
       },
       "bridge": "fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix",
