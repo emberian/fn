@@ -17187,6 +17187,32 @@
       ]
     },
     {
+      "id": "PRF-1063",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-ready-startup-binds-the-parsed-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-grant-is-the-authorized-route-plan"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1064",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-open-run-live-iff-both-completions-succeed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-retirement-stops-the-control-listener"
+        }
+      ]
+    },
+    {
       "id": "PRF-1020",
       "events": [
         {

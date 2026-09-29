@@ -145,6 +145,7 @@
 (include-book "../../books/bp-node-progress")
 (include-book "../../books/bp-node-progress-guards")
 (include-book "../../books/bp-node-job-offer-guards")
+(include-book "../../books/bp-node-control")
 (include-book "../../books/bp-node-forward-plan")
 (include-book "../../books/bp-node-rotation")
 (include-book "../../books/bp-node-rotation-buffer")

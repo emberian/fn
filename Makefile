@@ -654,6 +654,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-progress-invariants \
 	books/bp-node-progress-guards \
 	books/bp-node-job-offer-guards \
+	books/bp-node-control \
 	books/bp-node-progress-premises \
 	tests/acl2/bp-node-progress-premises-tests \
 	books/bp-node-progress-bridge \
@@ -702,6 +703,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-job-offer \
 	books/bp-node-job-offer-progress \
 	tests/acl2/bp-node-job-offer-tests \
+	tests/acl2/bp-node-control-tests \
 	books/bp-node-job-cursor \
 	tests/acl2/bp-node-job-cursor-tests \
 	books/bp-node-run-class \
