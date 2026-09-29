@@ -5,9 +5,9 @@
 ; connection's compression state in its session; this book is what those
 ; answers are made of, so that the wide book carries only the arms:
 ;
-;   the algorithms fn offers        `fn-zc-algorithms' ("DEFLATE"; the fn
-;                                   extension LZ4 joins when its codec lands,
-;                                   docs/extensions/nntp-compress-lz4.md)
+;   the algorithms fn offers        `fn-zc-algorithms' ("DEFLATE"; a shared
+;                                   preset dictionary is negotiated by digest,
+;                                   docs/extensions/nntp-compress-dict.md)
 ;   the algorithm's grammar         `fn-zc-algorithm-syntaxp' (section 5.3:
 ;                                   1*20 of UPPER / DIGIT / "-" / "_",
 ;                                   case-sensitive)
