@@ -988,6 +988,12 @@
   :hints (("Goal" :induct (fn-mpxt-set-key-from i key fn-mpxt)
            :in-theory (enable unsigned-byte-p))))
 
+(defthm fn-mpxt-set-key-from-frame
+  (and (equal (fn-mpxt-pages (fn-mpxt-set-key-from i key fn-mpxt)) (fn-mpxt-pages fn-mpxt))
+       (equal (fn-mpxt-count (fn-mpxt-set-key-from i key fn-mpxt)) (fn-mpxt-count fn-mpxt))
+       (equal (fn-mpxt-w-length (fn-mpxt-set-key-from i key fn-mpxt)) (fn-mpxt-w-length fn-mpxt)))
+  :hints (("Goal" :induct (fn-mpxt-set-key-from i key fn-mpxt))))
+
 ; INSTALL the key into an emptied table (the open's step): the tags of the
 ; entries a table holds are its key's, so a key change empties it.
 (defun fn-mpxt-set-key (key fn-mpxt)
@@ -1361,7 +1367,7 @@
 
 ; The run, counting the pages it reads: (mv candidates pages).
 (defun fn-mpxt-run-counted (tag p k acc fn-mpxt)
-  (declare (xargs :stobjs fn-mpxt :measure (nfix k)
+  (declare (xargs :stobjs fn-mpxt :measure (nfix k) :verify-guards nil
                   :guard (and (natp tag) (natp p) (natp k)
                               (< p (fn-mpxt-pages fn-mpxt)) (fn-mpxt-wfp fn-mpxt)
                               (nat-listp acc))))
@@ -1373,6 +1379,15 @@
             (fn-mpxt-run-counted tag (fn-mpxt-next p (fn-mpxt-pages fn-mpxt)) (1- k) acc fn-mpxt)
             (mv acc (+ 1 pages)))
         (mv acc 1)))))
+
+(defthm fn-mpxt-run-counted-pages-natp
+  (natp (mv-nth 1 (fn-mpxt-run-counted tag p k acc fn-mpxt)))
+  :rule-classes ((:rewrite) (:type-prescription))
+  :hints (("Goal" :induct (fn-mpxt-run-counted tag p k acc fn-mpxt)
+           :in-theory (disable fn-mpxt-scan fn-mpxt-page-fullp))))
+
+(verify-guards fn-mpxt-run-counted
+  :hints (("Goal" :in-theory (disable fn-mpxt-scan fn-mpxt-page-fullp))))
 
 ; The counted run is the run, and its count is the run's pages.
 (defthm fn-mpxt-run-counted-is-run
@@ -1453,18 +1468,20 @@
          (fn-mpxt-no-adjacent-fullp (1- p) fn-mpxt))))
 
 (defthm fn-mpxt-no-adjacent-fullp-page
-  (implies (and (fn-mpxt-no-adjacent-fullp np fn-mpxt) (natp q) (< q np)
+  (implies (and (fn-mpxt-no-adjacent-fullp np fn-mpxt) (natp np) (natp q) (< q np)
                 (fn-mpxt-page-fullp q *fn-mpxt-page-slots* fn-mpxt))
            (not (fn-mpxt-page-fullp (fn-mpxt-next q (fn-mpxt-pages fn-mpxt)) *fn-mpxt-page-slots* fn-mpxt)))
   :hints (("Goal" :induct (fn-mpxt-no-adjacent-fullp np fn-mpxt)
-           :in-theory (disable fn-mpxt-page-fullp))))
+           :in-theory (disable fn-mpxt-page-fullp fn-mpxt-next))))
 
 (defthm fn-mpxt-full-run-at-most-one
-  (implies (and (fn-mpxt-no-adjacent-fullp (fn-mpxt-pages fn-mpxt) fn-mpxt)
+  (implies (and (fn-mpxtp fn-mpxt)
+                (fn-mpxt-no-adjacent-fullp (fn-mpxt-pages fn-mpxt) fn-mpxt)
                 (natp p) (< p (fn-mpxt-pages fn-mpxt)))
            (<= (fn-mpxt-full-run p k fn-mpxt) 1))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (disable fn-mpxt-page-fullp)
+  :hints (("Goal" :in-theory (disable fn-mpxt-page-fullp fn-mpxt-next fn-mpxt-no-adjacent-fullp-page)
+           :use ((:instance fn-mpxt-no-adjacent-fullp-page (np (fn-mpxt-pages fn-mpxt)) (q p)))
            :expand ((fn-mpxt-full-run p k fn-mpxt)
                     (fn-mpxt-full-run (fn-mpxt-next p (fn-mpxt-pages fn-mpxt)) (+ -1 k) fn-mpxt)))))
 
@@ -1489,12 +1506,23 @@
          (fn-mpxt-page-fullp (fn-mpx-home tag np) *fn-mpxt-page-slots* fn-mpxt)
          (fn-mpxt-page-fullp (fn-mpxt-next (fn-mpx-home tag np) np) *fn-mpxt-page-slots* fn-mpxt))))
 
+(local
+ (defthm fn-mpxt-next-in-one-page
+   (implies (and (natp p) (< p 1))
+            (equal (fn-mpxt-next p 1) p))))
+
 ; A placement that is not skewed lands (within the home page and its overflow).
 (defthm fn-mpxt-put-places-unless-skewed
   (implies (and (fn-mpxtp fn-mpxt) (natp tag) (posp (fn-mpxt-pages fn-mpxt))
                 (not (fn-mpxt-skewp tag fn-mpxt)))
            (mv-nth 0 (fn-mpxt-put tag seq fn-mpxt)))
-  :hints (("Goal" :in-theory (e/d (fn-mpxt-put) (fn-mpxt-page-fullp fn-mpxt-find-empty))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-put) (fn-mpxt-page-fullp fn-mpxt-find-empty fn-mpxt-next
+                                                  fn-mpxt-find-empty-nil-is-full))
+           :use ((:instance fn-mpxt-find-empty-nil-is-full
+                            (p (fn-mpx-home tag (fn-mpxt-pages fn-mpxt))) (k *fn-mpxt-page-slots*))
+                 (:instance fn-mpxt-find-empty-nil-is-full
+                            (p (fn-mpxt-next (fn-mpx-home tag (fn-mpxt-pages fn-mpxt)) (fn-mpxt-pages fn-mpxt)))
+                            (k *fn-mpxt-page-slots*)))
            :expand ((fn-mpxt-put-run tag seq (fn-mpx-home tag (fn-mpxt-pages fn-mpxt)) (fn-mpxt-pages fn-mpxt) fn-mpxt)
                     (fn-mpxt-put-run tag seq (fn-mpxt-next (fn-mpx-home tag (fn-mpxt-pages fn-mpxt)) (fn-mpxt-pages fn-mpxt))
                                      (+ -1 (fn-mpxt-pages fn-mpxt)) fn-mpxt)))))
@@ -1504,7 +1532,7 @@
   (implies (and (natp tag) (not (fn-mpxt-skewp tag fn-mpxt)))
            (<= (fn-mpxt-candidates-pages tag fn-mpxt) 2))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (disable fn-mpxt-page-fullp fn-mpxt-run-pages-is-one-plus-the-full-run)
+  :hints (("Goal" :in-theory (disable fn-mpxt-page-fullp fn-mpxt-run-pages-is-one-plus-the-full-run fn-mpxt-next)
            :expand ((fn-mpxt-run-pages (fn-mpx-home tag (fn-mpxt-pages fn-mpxt)) (fn-mpxt-pages fn-mpxt) fn-mpxt)
                     (fn-mpxt-run-pages (fn-mpxt-next (fn-mpx-home tag (fn-mpxt-pages fn-mpxt)) (fn-mpxt-pages fn-mpxt))
                                        (+ -1 (fn-mpxt-pages fn-mpxt)) fn-mpxt)))))
@@ -1514,7 +1542,7 @@
   (implies (and (fn-mpxtp fn-mpxt) (natp tag)
                 (fn-mpxt-no-adjacent-fullp (fn-mpxt-pages fn-mpxt) fn-mpxt))
            (not (fn-mpxt-skewp tag fn-mpxt)))
-  :hints (("Goal" :in-theory (disable fn-mpxt-page-fullp fn-mpxt-no-adjacent-fullp-page)
+  :hints (("Goal" :in-theory (disable fn-mpxt-page-fullp fn-mpxt-no-adjacent-fullp-page fn-mpxt-next)
            :use ((:instance fn-mpxt-no-adjacent-fullp-page
                             (np (fn-mpxt-pages fn-mpxt))
                             (q (fn-mpx-home tag (fn-mpxt-pages fn-mpxt))))))))
