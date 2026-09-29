@@ -76,15 +76,6 @@ case $(uname -s) in
   *) FN_LZ4_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-lz4.so ;;
 esac
 export FN_LZ4_LIBRARY
-# The COMPRESS DEFLATE outbound compressor (vendored zlib 1.3.2,
-# third_party/zlib/UPSTREAM.txt), built into the same lib/
-# (host/native/deflate.lisp); ACL2 decodes every inbound stream.
-sh tools/build_deflate.sh "$LIBDIR" >&2
-case $(uname -s) in
-  Darwin) FN_DEFLATE_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-deflate.dylib ;;
-  *) FN_DEFLATE_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-deflate.so ;;
-esac
-export FN_DEFLATE_LIBRARY
 # BLAKE3 (fn's digest) is the vendored C behind host/native/fn-blake3.c,
 # built beside it; host/native/digest.lisp loads it at build and every start.
 sh tools/build_blake3.sh "$LIBDIR" >&2
@@ -156,8 +147,14 @@ TLS_LINE=$(grep -a -o -E 'FN_NATIVE_TLS [0-9]+ [0-9]+' "$LOG" | tail -1 || true)
 if [ -n "$TLS_LINE" ]; then
     TLS_USED=$(echo "$TLS_LINE" | cut -d' ' -f2)
     TLS_CAP=$(echo "$TLS_LINE" | cut -d' ' -f3)
-    TLS_RUN=$(( ${FN_TLS_LIMIT:-65536} * 8 ))
-    [ "$TLS_RUN" -lt "$TLS_CAP" ] && TLS_CAP=$TLS_RUN
+    # The run's limit is the profile's (books/profile-limits.lisp
+    # :tls-limit, printed by the build as FN_NATIVE_TLS_LIMIT), or
+    # FN_TLS_LIMIT's override; never a copy of the number here.
+    RUN_TLS_LIMIT=${FN_TLS_LIMIT:-$(sed -n 's/.*FN_NATIVE_TLS_LIMIT \([0-9][0-9]*\).*/\1/p' "$LOG" | tail -1)}
+    if [ -n "$RUN_TLS_LIMIT" ]; then
+        TLS_RUN=$(( RUN_TLS_LIMIT * 8 ))
+        [ "$TLS_RUN" -lt "$TLS_CAP" ] && TLS_CAP=$TLS_RUN
+    fi
     TLS_PCT=${FN_TLS_BUDGET_PERCENT:-25}
     if [ $(( TLS_USED * 100 )) -gt $(( TLS_CAP * TLS_PCT )) ]; then
         echo "build_native_host: the build used TLS index $TLS_USED of $TLS_CAP, over ${TLS_PCT}% (tools/tls_check.py --measure names the books)" >&2
