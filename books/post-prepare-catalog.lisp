@@ -359,18 +359,20 @@
   (declare (xargs :guard (and (fn-sn-statep (fn-sbud-oc-store oc))
                               (fn-prc-carryp carry)
                               (fn-ppc-dup-okp (fn-sbud-oc-store oc) record dup))))
-  (if (fn-psrv-event-servedp (fn-ocfg-config oc) record)
+  (if (and (fn-psrv-event-servedp (fn-ocfg-config oc) record)
+           (fn-psrv-event-numberedp oc record))
       (fn-ppc-sbud-prepare oc record budget dup carry)
     oc))
 
 (defcong iff equal (fn-ppc-psrv-prepare oc record budget dup carry) 4
-  :hints (("Goal" :in-theory (e/d (fn-ppc-psrv-prepare) (fn-psrv-event-servedp)))))
+  :hints (("Goal" :in-theory (e/d (fn-ppc-psrv-prepare) (fn-psrv-event-servedp fn-psrv-event-numberedp)))))
 
 (defthm fn-ppc-psrv-prepare-is-psrv-prepare
   (equal (fn-ppc-psrv-prepare oc record budget (fn-ppc-dup-of (fn-ocfg-owner oc) record) carry)
          (fn-psrv-prepare oc record budget carry))
   :hints (("Goal" :in-theory (e/d (fn-ppc-psrv-prepare fn-psrv-prepare fn-ppc-sbud-prepare-is-prc)
-                                  (fn-psrv-event-servedp fn-ppc-dup-of fn-prc-sbud-prepare)))))
+                                  (fn-psrv-event-servedp fn-psrv-event-numberedp fn-ppc-dup-of
+                                   fn-prc-sbud-prepare)))))
 
 (in-theory (disable fn-ppc-psrv-prepare))
 
