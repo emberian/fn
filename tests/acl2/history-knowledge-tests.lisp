@@ -16,22 +16,25 @@
 ; 1. Knowledge (fn-hkn-reclamation-never-forgets-an-acceptance).
 
 (defconst *hk-absent* "<absent@example.invalid>")
-(defconst *hk-before* (fn-hkn-knowledge t (rpt-events) nil *rpt-msgid*))
-(defconst *hk-after* (fn-hkn-knowledge t (rpt-new) nil *rpt-msgid*))
+; The fixture's events are encoded by a :program helper (the record codec is
+; not executable under defconst's safe mode): the knowledge is computed
+; inside each assert-event.
+(defmacro hk-before () '(fn-hkn-knowledge t (rpt-events) nil *rpt-msgid*))
+(defmacro hk-after () '(fn-hkn-knowledge t (rpt-new) nil *rpt-msgid*))
 
 ; REACHABLE, positive: the fixture's article is retained in the history and
 ; reclaimed in the rewritten one; the keystone's five conjuncts hold of it.
-(assert-event (equal *hk-before* :accepted-retained))
-(assert-event (equal *hk-after* :accepted-reclaimed))
-(assert-event (and (equal (equal *hk-after* :not-accepted) (equal *hk-before* :not-accepted))
-                   (equal (equal *hk-after* :outcome-unresolved)
-                          (equal *hk-before* :outcome-unresolved))
-                   (equal (equal *hk-after* :history-unavailable)
-                          (equal *hk-before* :history-unavailable))
-                   (implies (equal *hk-before* :accepted-reclaimed)
-                            (equal *hk-after* :accepted-reclaimed))
-                   (implies (equal *hk-before* :accepted-retained)
-                            (member-eq *hk-after* '(:accepted-retained :accepted-reclaimed)))))
+(assert-event (equal (hk-before) :accepted-retained))
+(assert-event (equal (hk-after) :accepted-reclaimed))
+(assert-event (and (equal (equal (hk-after) :not-accepted) (equal (hk-before) :not-accepted))
+                   (equal (equal (hk-after) :outcome-unresolved)
+                          (equal (hk-before) :outcome-unresolved))
+                   (equal (equal (hk-after) :history-unavailable)
+                          (equal (hk-before) :history-unavailable))
+                   (implies (equal (hk-before) :accepted-reclaimed)
+                            (equal (hk-after) :accepted-reclaimed))
+                   (implies (equal (hk-before) :accepted-retained)
+                            (member-eq (hk-after) '(:accepted-retained :accepted-reclaimed)))))
 ; A second reclaim under the same context leaves the reclaimed answer.
 (assert-event (equal (fn-hkn-knowledge t (fn-rclp-events (rpt-new) *rpt-ctx*) nil *rpt-msgid*)
                      :accepted-reclaimed))
