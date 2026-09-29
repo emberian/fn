@@ -500,12 +500,19 @@
                   :in-theory (disable fn-wire-feed-proper-append fn-wire-feed-proper
                                       fn-wire-after-line))))
 
+(local
+ (defthm fn-wire-stuff-line-len-at-most-one-more
+   (<= (len (fn-wire-stuff-line s)) (+ 1 (len s)))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-wire-stuff-line)))))
+
 (defthm fn-wire-feed-proper-of-rendered-source-line
   (implies
    (and (fn-bch-wfp body)
         (equal (fn-bch-length body) body-size)
         (fn-wire-line-contentp source)
         (<= (len (fn-wire-stuff-line source)) line-limit)
+        (natp line-limit) (natp body-limit)
         (<= (+ body-size (fn-wire-line-cost source)) body-limit))
    (equal
     (fn-wire-feed-proper
@@ -529,6 +536,7 @@
 
 (defthm fn-wire-feed-proper-of-article-terminator
   (implies (and (posp line-limit)
+                (natp body-size) (natp body-limit) (<= body-size body-limit)
                 (equal (fn-bch-partial-len body body-size) 0))
            (equal
             (fn-wire-feed-proper

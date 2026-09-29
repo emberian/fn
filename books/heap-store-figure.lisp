@@ -590,12 +590,19 @@
      (* 2 *fn-heap-open-record-octets* (nfix on))))
 
 ; The request in flight and the two octet buffers.
+; And (lane chunked-body-2, B6b) the submission the committer took: the take
+; unpacks it (fn-own-take-submission), its octets, groups and Message-ID as
+; lists until the outcome, one at a time.
 (defun fn-heap-store-inflight-octets (profile)
   (declare (xargs :guard t))
   (+ (* 2 *fn-heap-list-octets-per-octet*
         (+ (nfix (fn-bs-profile-max-record-octets profile))
            (* *fn-heap-inflight-header-copies*
               (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile)))))
+     (* 2 *fn-heap-list-octets-per-octet*
+        (+ (nfix (fn-bs-profile-max-article-octets profile))
+           (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile))
+           *fn-heap-message-id-octets*))
      (* 2 (fn-ock-capture-budget profile))))
 
 ; THE ARTICLES IN FLIGHT (lane zero-copy-commit, 2026-09-28).  A connection
@@ -619,18 +626,52 @@
 (defconst *fn-heap-article-slots-most* 32)
 (defconst *fn-heap-article-line-octets* 512)
 
-; What one slot retains, the larger of its two forms: the body mid-article
-; (the wire's decoded lines, books/wire.lisp body-rev, and the partial line:
-; at most A + one line) and the queued submission (the decision: the
-; injected article, at most A, and the groups its Newsgroups header names,
-; at most the header bound HDR); octet lists, sixteen octets of heap per
-; octet, twice for the collector's copy.
+;; What one slot retains, the larger of its two forms (lane chunked-body-2,
+;; B6b; each an octet of heap about an octet, where the octet lists they
+;; replaced cost sixteen):
+;;   THE WIRE'S: the body mid-article, the wire's store of 512-octet packed
+;;   blocks (books/body-chunks.lisp), at most the body limit A and one octet
+;;   (books/wire.lisp fn-wire-line-room; KEYSTONE
+;;   fn-wire-statep-article-holds-at-most-the-body-limit).  A block is a
+;;   66-word bignum and a cons: *fn-heap-packed-block-octets*; the store's
+;;   own cells *fn-heap-packed-store-octets*.
+;;   THE QUEUE'S: the submission as fn-own-enqueue holds it
+;;   (books/packed-submission.lisp fn-psub-sub-heap): the article's octets one
+;;   natural (at most A, and a cons), the groups comma-joined into another (at
+;;   most the header bound HDR), the Message-ID an octet list of at most 250
+;;   (RFC 5536 section 3.1.3), the records' cells.
+;; Twice, for the collector's copy.  The article's LIST forms -- its lines at
+;; the terminator, the injection, and the submission the committer took and
+;; unpacked (one at a time: fn-own-take-submission requires none in flight)
+;; -- are the request in flight (fn-heap-store-inflight-octets), never a
+;; slot's.
+(defconst *fn-heap-packed-block-octets* 544)
+(defconst *fn-heap-packed-store-octets* 64)
+(defconst *fn-heap-packed-natural-octets* 48)
+(defconst *fn-heap-packed-groups-octets* 64)
+(defconst *fn-heap-message-id-octets* 250)
+(defconst *fn-heap-submission-record-octets* 512)
+
+(defun fn-heap-article-wire-octets (profile)
+  (declare (xargs :guard t))
+  (+ (* *fn-heap-packed-block-octets*
+        (floor (+ (nfix (fn-bs-profile-max-article-octets profile)) *fn-heap-article-line-octets*)
+               *fn-heap-article-line-octets*))
+     *fn-heap-packed-store-octets*))
+
+(defun fn-heap-article-queued-octets (profile)
+  (declare (xargs :guard t))
+  (+ *fn-heap-submission-record-octets*
+     *fn-heap-packed-natural-octets*
+     (nfix (fn-bs-profile-max-article-octets profile))
+     *fn-heap-packed-groups-octets*
+     (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile))
+     (* *fn-heap-list-octets-per-octet* *fn-heap-message-id-octets*)))
+
 (defun fn-heap-article-reserve-octets (profile)
   (declare (xargs :guard t))
-  (* 2 *fn-heap-list-octets-per-octet*
-     (+ *fn-heap-article-line-octets*
-        (nfix (fn-bs-profile-max-article-octets profile))
-        (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile)))))
+  (* 2 (max (fn-heap-article-wire-octets profile)
+            (fn-heap-article-queued-octets profile))))
 
 ; The octets the figure holds for articles in flight: the budget, but at
 ; least one reserve and at most one per slot of the default capacity.
@@ -694,7 +735,8 @@
                     (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p2))))
            (<= (fn-heap-articles-octets p1) (fn-heap-articles-octets p2)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-heap-articles-octets fn-heap-article-reserve-octets)
+  :hints (("Goal" :in-theory (e/d (fn-heap-articles-octets fn-heap-article-reserve-octets
+                                   fn-heap-article-wire-octets fn-heap-article-queued-octets)
                                   (fn-bs-profile-max-article-octets
                                    fn-bs-profile-field)))))
 

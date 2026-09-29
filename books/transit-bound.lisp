@@ -272,6 +272,29 @@
                                 (fn-served-result-conn
                                  (fn-served-run conn chunks fn-arena)))))))))
 
+; KEYSTONE (lane chunked-body-2, B6b).  Mid-article the connection holds at
+; most the body limit and one octet -- the completed lines and the current
+; one together (books/wire.lisp fn-wire-line-room closes :body-overlimit at
+; the octet that dooms the line).  This is the wire's term of the article
+; credit (books/heap-store-figure.lisp fn-heap-article-reserve-octets).
+(defthm fn-tb-served-run-holds-at-most-the-body-limit-mid-article
+  (implies (fn-wire-statep (fn-served-conn-wire conn))
+           (let ((w (fn-served-conn-wire
+                     (fn-served-result-conn (fn-served-run conn chunks fn-arena)))))
+             (implies (equal (fn-wire-state-mode w) :article)
+                      (<= (fn-wire-held-octets w)
+                          (+ 1 (fn-wire-state-body-limit w))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (disable fn-served-run fn-wire-statep fn-wire-held-octets
+                               fn-tb-served-run-preserves-wire-statep
+                               fn-wire-statep-article-holds-at-most-the-body-limit)
+           :use ((:instance fn-tb-served-run-preserves-wire-statep)
+                 (:instance fn-wire-statep-article-holds-at-most-the-body-limit
+                            (x (fn-served-conn-wire
+                                (fn-served-result-conn
+                                 (fn-served-run conn chunks fn-arena)))))))))
+
 ; -----------------------------------------------------------------------------
 ; The limit a transit connection opens with.  The subject is fn-own-open-peer,
 ; which host/owner-host.lisp fn-owner-open-peer calls at accept for a

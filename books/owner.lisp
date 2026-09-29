@@ -544,22 +544,55 @@
                                      fn-psub-unpack-sub fn-psub-unpack-decision))))
 
 ; The decision's fields the queue's readers use, packed.
+(defthm fn-own-decision-heads-of-pack
+  (and (equal (car (fn-psub-pack-decision d)) (car d))
+       (equal (cadr (fn-psub-pack-decision d)) (cadr d))
+       (equal (caddr (fn-psub-pack-decision d)) (caddr d))
+       (implies (equal (car d) :transit)
+                (equal (cadddr (fn-psub-pack-decision d)) (cadddr d)))
+       (equal (consp (fn-psub-pack-decision d)) (consp d))
+       (equal (consp (cdr (fn-psub-pack-decision d))) (consp (cdr d)))
+       (equal (consp (cddr (fn-psub-pack-decision d))) (consp (cddr d)))
+       (equal (consp (cdddr (fn-psub-pack-decision d))) (consp (cdddr d)))
+       (equal (true-listp (fn-psub-pack-decision d)) (true-listp d))
+       (equal (len (fn-psub-pack-decision d)) (len d)))
+  :hints (("Goal" :in-theory (enable fn-psub-pack-decision))))
+
 (defthm fn-own-decision-fields-of-pack
   (and (equal (fn-peer-submissionp (fn-psub-pack-decision d)) (fn-peer-submissionp d))
        (equal (fn-peer-submission-peer (fn-psub-pack-decision d)) (fn-peer-submission-peer d))
        (equal (fn-peer-submission-kind (fn-psub-pack-decision d)) (fn-peer-submission-kind d))
-       (implies (fn-peer-submissionp d)
+       (implies (equal (car d) :transit)
                 (equal (fn-peer-submission-msgid (fn-psub-pack-decision d))
                        (fn-peer-submission-msgid d)))
        (equal (fn-inj-decision-status (fn-psub-pack-decision d)) (fn-inj-decision-status d))
        (equal (fn-inj-decision-reason (fn-psub-pack-decision d)) (fn-inj-decision-reason d))
        (equal (fn-inj-decision-msgid (fn-psub-pack-decision d)) (fn-inj-decision-msgid d)))
-  :hints (("Goal" :in-theory (enable fn-psub-pack-decision fn-peer-submissionp
-                                     fn-peer-submission-shapep
-                                     fn-peer-submission-peer fn-peer-submission-kind
-                                     fn-peer-submission-msgid
-                                     fn-inj-decision-status fn-inj-decision-reason
-                                     fn-inj-decision-msgid fn-inj-nth))))
+  :hints (("Goal" :in-theory (e/d (fn-peer-submissionp
+                                   fn-peer-submission-shapep
+                                   fn-peer-submission-peer fn-peer-submission-kind
+                                   fn-peer-submission-msgid
+                                   fn-inj-decision-status fn-inj-decision-reason
+                                   fn-inj-decision-msgid fn-inj-nth fn-inj-car fn-inj-cdr)
+                                  (fn-psub-pack-decision fn-af-message-idp
+                                   fn-nntp-printable-tokenp))
+                  :expand ((:free (x) (fn-inj-nth 0 x)) (:free (x) (fn-inj-nth 1 x))
+                           (:free (x) (fn-inj-nth 2 x))))))
+
+(defthm fn-own-inj-injectedp-of-pack
+  (equal (fn-inj-injectedp (fn-psub-pack-decision d)) (fn-inj-injectedp d))
+  :hints (("Goal" :in-theory (e/d (fn-inj-injectedp) (fn-psub-pack-decision)))))
+
+; The decision a QUEUED submission carries: what the take installs.
+(defun fn-own-sub-queued-decision (sub)
+  (declare (xargs :guard t))
+  (fn-psub-unpack-decision (fn-own-sub-decision sub)))
+
+(defthm fn-own-sub-queued-decision-of-pack
+  (equal (fn-own-sub-queued-decision (fn-psub-pack-sub x))
+         (fn-own-sub-decision x)))
+
+(in-theory (disable fn-own-sub-queued-decision))
 
 ; -----------------------------------------------------------------------------
 ; The committed view record:
