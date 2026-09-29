@@ -3200,9 +3200,26 @@
 ; event) is its per-event law; (:take) is the writer step; (:outcome id word)
 ; feeds the durable outcome of the submission in flight back through the
 ; book, which renders the reply (fn-own-outcome).
+;
+; The owner event recognizer (lane depth-debt-6, row K2).  fn-own-step reads
+; an event's components through car/cdr chains and hands them to callees whose
+; guards are t on every component: the store events go whole to
+; fn-own-store-step (guarded on the store state alone, like fn-own-complete
+; and fn-own-bp-transit-submit), and every other arm's callee validates its
+; own arguments.  So the guard an event owes is only its spine, a proper
+; list, which makes each component read the car of a cons or of nil.  It is a
+; guard, never a served-path check: every host event is a `list' form
+; (host/owner-host.lisp, fn-owner-step's callers) and every book event a
+; literal (books/owner-prepare-outcome.lisp), so the recognizer holds by
+; construction wherever the step is called.
+(defun fn-own-eventp (event)
+  (declare (xargs :guard t))
+  (true-listp event))
 
 (defun fn-own-step (o event fn-arena)
-  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-sn-statep (fn-own-store o)) (fn-own-eventp event))
+                  :verify-guards nil))
   (case (car event)
     (:open (cdr (fn-own-open o (cadr event))))
     (:open-peer (cdr (fn-own-open-peer o (cadr event) (caddr event)
@@ -3243,6 +3260,7 @@
     (:feed-octets (cdr (fn-own-feed-reply o (cadr event) (caddr event)
                                           (cadddr event) fn-arena)))
     (otherwise o)))
+(verify-guards fn-own-step)
 
 (defun fn-own-run (o events fn-arena)
   (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))

@@ -655,15 +655,37 @@
                         (fn-ocfg-pin-remove id (fn-ocfg-pins oc))
                         (fn-ocfg-staged oc)))))
 
+; The configured owner's event recognizer (lane depth-debt-6, row K2): an
+; owner event (books/owner.lisp fn-own-eventp) whose one arm with a guard of
+; its own, (:reconfigure id deltas), is sent only to a well-formed live
+; configuration -- fn-ocfg-reconfigure's guard, restated on the arm that
+; needs it so the served arms (the pout events, :begin, :take, the store
+; events) owe nothing about the configuration.  Every other arm's callee is
+; guarded on t or on the store state.  A guard, never a served-path check:
+; the host's one :reconfigure sender (host/owner-host.lisp
+; fn-owner-reconfigure-deltas-admitted) establishes it on the live
+; configuration; every other host and book event is a `list' form or a
+; literal.
+(defun fn-ocfg-eventp (oc event)
+  (declare (xargs :guard t))
+  (and (fn-own-eventp event)
+       (or (not (eq (car event) :reconfigure))
+           (fn-cfgp (fn-ocfg-config oc)))))
+
 (defun fn-ocfg-pass (oc event fn-arena)
   ; Every owner event that touches no pin: the served port, the writer step,
   ; the store events, the clock.  The table goes through untouched.
-  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+                              (fn-own-eventp event))
                   :verify-guards nil))
   (fn-ocfg-with-owner oc (fn-own-step (fn-ocfg-owner oc) event fn-arena)))
+(verify-guards fn-ocfg-pass)
 
 (defun fn-ocfg-step (oc event fn-arena)
-  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+                              (fn-ocfg-eventp oc event))
                   :verify-guards nil))
   (case (car event)
     (:open (cdr (fn-ocfg-open oc (cadr event))))
@@ -679,6 +701,7 @@
     (:begin (if (fn-ocfg-staged oc) oc (fn-ocfg-pass oc event fn-arena)))
     (:take (if (fn-ocfg-staged oc) oc (fn-ocfg-pass oc event fn-arena)))
     (otherwise (fn-ocfg-pass oc event fn-arena))))
+(verify-guards fn-ocfg-step)
 
 (defun fn-ocfg-run (oc events fn-arena)
   (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
