@@ -197,3 +197,209 @@
                 (cadr (cadr (fn-rii-sco-extend-open *sfi-t-base* *sfi-t-configs* nil
                                                     *sfi-t-f0*))))
                :ok))))
+
+; -----------------------------------------------------------------------------
+; PRF-968: the carried resume (lane incremental-finalize-2).  The entries'
+; guard is the carried invariant, which is not executable (fn-rii-known-okp
+; is a defun-sk): the evaluator cannot check it, and with guard checking off
+; it runs the :logic side of every mbe, where the tries are not consulted.
+; So every witness runs the entries in raw Lisp through a :program wrapper,
+; which is what the :program host and the served image execute.
+
+(defun sfi-t-raw-resume (r configs events ix)
+  (declare (xargs :mode :program))
+  (fn-sfi-cpr-resume-carried r configs events ix))
+(defun sfi-t-raw-extend (c ix configs suffix frontier count next)
+  (declare (xargs :mode :program))
+  (fn-sfi-extend-open-carried c ix configs suffix frontier count next))
+(defun sfi-t-raw-steps (r configs events ix)
+  (declare (xargs :mode :program))
+  (fn-sfi-cpr-resume-carried-steps r configs events ix))
+
+(defconst *sfi-t-count* (len (fn-sco-records *sfi-t-base*)))
+(defconst *sfi-t-ix* (fn-sfi-carry *sfi-t-base*))
+(defconst *sfi-t-article-3*
+  (sfi-t-article 4 9 "<sfi-3@example.invalid>" "archive-sfi-3"))
+(defconst *sfi-t-f2* 10)
+
+; KEYSTONE positive witness (fn-sfi-extend-open-carried-is-rii-extend-open):
+; the complete antecedent -- the pair carried (fn-sfi-carry-is-carried: the
+; base's pause is configured, the carry non-nil), the carried verdict, the
+; count and the bound -- and the conclusion; the open :ok; the corollary's
+; shape (fn-sfi-extend-open-carried-finalizes-the-extension).
+(assert-event
+ (let ((round-1 (sfi-t-raw-extend *sfi-t-base* *sfi-t-ix* *sfi-t-configs* *sfi-t-q*
+                                  *sfi-t-f1* *sfi-t-count* *sfi-t-next*)))
+ (and (consp *sfi-t-ix*)
+      (fn-sco-pausedp (fn-sco-cpr *sfi-t-base*))
+      (fn-cnode-statep (fn-sco-at 1 (fn-sco-cpr *sfi-t-base*)))
+      (equal (fn-sn-open-kind (fn-sco-finalize *sfi-t-base* *sfi-t-configs* *sfi-t-f0*))
+             :ok)
+      (equal *sfi-t-count* (len (fn-sco-records *sfi-t-base*)))
+      (equal *sfi-t-next* (fn-sf-next-lower (fn-sco-records *sfi-t-base*) 0))
+      (equal (len round-1) 3)
+      (equal (list (car round-1) (caddr round-1))
+             (fn-rii-sco-extend-open *sfi-t-base* *sfi-t-configs* *sfi-t-q* *sfi-t-f1*))
+      (equal (car round-1) (fn-sco-extend *sfi-t-base* *sfi-t-configs* *sfi-t-q*))
+      (equal (fn-sn-open-kind (cadr (caddr round-1))) :ok)
+      (equal (cadr (caddr round-1))
+             (fn-sco-finalize (fn-sco-extend *sfi-t-base* *sfi-t-configs* *sfi-t-q*)
+                              *sfi-t-configs* *sfi-t-f1*)))))
+
+; The next round's facts, each O(|Q|) (fn-sfi-extend-open-carried-keeps-
+; carried, -count-and-bound; the carried Message-ID trie is the rebuilt one,
+; fn-sfi-carried-msgid-trie-is-the-rebuilt-trie), then round 2 from the
+; carried pair with no node pass: the twin's result again, :ok.
+(assert-event
+ (let* ((round-1 (sfi-t-raw-extend *sfi-t-base* *sfi-t-ix* *sfi-t-configs* *sfi-t-q*
+                                   *sfi-t-f1* *sfi-t-count* *sfi-t-next*))
+        (e1 (car round-1)) (ix1 (cadr round-1))
+        (count1 (+ *sfi-t-count* (len *sfi-t-q*)))
+        (next1 (fn-sf-next-lower *sfi-t-q* *sfi-t-next*))
+        (round-2 (sfi-t-raw-extend e1 ix1 *sfi-t-configs* (list *sfi-t-article-3*)
+                                   *sfi-t-f2* count1 next1)))
+   (and (fn-sco-pausedp (fn-sco-cpr e1))
+        (fn-cnode-statep (fn-sco-at 1 (fn-sco-cpr e1)))
+        (equal (car ix1) (car (fn-rii-ix-of (fn-cnode-node (fn-sco-at 1 (fn-sco-cpr e1))))))
+        (equal count1 (len (fn-sco-records e1)))
+        (equal next1 (fn-sf-next-lower (fn-sco-records e1) 0))
+        (equal next1 9)
+        (equal (list (car round-2) (caddr round-2))
+               (fn-rii-sco-extend-open e1 *sfi-t-configs* (list *sfi-t-article-3*)
+                                       *sfi-t-f2*))
+        (equal (fn-sn-open-kind (cadr (caddr round-2))) :ok)
+        (equal (fn-sf-next-lower (list *sfi-t-article-3*) next1) 10))))
+
+; HYPOTHESIS REMOVAL (1): the carried invariant.  The empty node's tries
+; stand in for the base's.  Retained: a configured pause.  Omitted: the
+; wrong Message-ID trie is not the rebuilt one, so fn-rii-okp fails
+; (fn-sfi-carried-msgid-trie-is-the-rebuilt-trie).  Conclusion: the served
+; path with the wrong trie ADMITS a duplicate Message-ID (a pause) that the
+; checkpoint's resume refuses; the carried trie refuses alike.
+(defconst *sfi-t-q-dup*
+  (list (sfi-t-article 3 8 "<sfi@example.invalid>" "archive-sfi-dup")))
+(defconst *sfi-t-ix-wrong*
+  (fn-rii-ix-of (fn-cnode-node (fn-cnode-initial (fn-cfg-initial)))))
+(assert-event
+ (let* ((r0 (fn-sco-cpr *sfi-t-base*))
+        (node (fn-cnode-node (fn-sco-at 1 r0))))
+   (and (fn-sco-pausedp r0)
+        (fn-cnode-statep (fn-sco-at 1 r0))
+        (not (equal (car *sfi-t-ix-wrong*) (car (fn-rii-ix-of node))))
+        (equal (car *sfi-t-ix*) (car (fn-rii-ix-of node)))
+        (equal (fn-replay-result-kind
+                (car (sfi-t-raw-resume r0 *sfi-t-configs* *sfi-t-q-dup* *sfi-t-ix-wrong*)))
+               :paused)
+        (equal (fn-replay-result-kind (fn-sco-cpr-resume r0 *sfi-t-configs* *sfi-t-q-dup*))
+               :fault)
+        (equal (fn-replay-result-kind
+                (car (sfi-t-raw-resume r0 *sfi-t-configs* *sfi-t-q-dup* *sfi-t-ix*)))
+               :fault))))
+(must-fail-checked
+ (defthm sfi-t-without-the-carried-invariant
+   (equal (car (fn-sfi-cpr-resume-carried (fn-sco-cpr *sfi-t-base*) *sfi-t-configs*
+                                          *sfi-t-q-dup* *sfi-t-ix-wrong*))
+          (fn-sco-cpr-resume (fn-sco-cpr *sfi-t-base*) *sfi-t-configs* *sfi-t-q-dup*))))
+
+; HYPOTHESIS REMOVAL (2): the carried verdict.  The bad base carries (its
+; pause is configured) and its verdict is not :ok; the carried open says :ok
+; under the lie and differs from the twin.
+(defconst *sfi-t-bad-ix* (fn-sfi-carry *sfi-t-bad-base*))
+(assert-event
+ (let ((bad-round (sfi-t-raw-extend *sfi-t-bad-base* *sfi-t-bad-ix* *sfi-t-configs*
+                                    *sfi-t-bad-q* *sfi-t-f1*
+                                    (len (fn-sco-records *sfi-t-bad-base*))
+                                    *sfi-t-bad-next*)))
+ (and (consp *sfi-t-bad-ix*)
+      (not (equal (fn-sn-open-kind
+                   (fn-sco-finalize *sfi-t-bad-base* *sfi-t-configs* *sfi-t-f0*))
+                  :ok))
+      (equal (fn-sn-open-kind (cadr (caddr bad-round))) :ok)
+      (not (equal (list (car bad-round) (caddr bad-round))
+                  (fn-rii-sco-extend-open *sfi-t-bad-base* *sfi-t-configs* *sfi-t-bad-q*
+                                          *sfi-t-f1*))))))
+(must-fail-checked
+ (defthm sfi-t-without-the-carried-verdict
+   (equal (list (car (fn-sfi-extend-open-carried *sfi-t-bad-base* *sfi-t-bad-ix* *sfi-t-configs*
+                                                 *sfi-t-bad-q* *sfi-t-f1*
+                                                 (len (fn-sco-records *sfi-t-bad-base*))
+                                                 *sfi-t-bad-next*))
+                (caddr (fn-sfi-extend-open-carried *sfi-t-bad-base* *sfi-t-bad-ix* *sfi-t-configs*
+                                                   *sfi-t-bad-q* *sfi-t-f1*
+                                                   (len (fn-sco-records *sfi-t-bad-base*))
+                                                   *sfi-t-bad-next*)))
+          (fn-rii-sco-extend-open *sfi-t-bad-base* *sfi-t-configs* *sfi-t-bad-q* *sfi-t-f1*))))
+
+; HYPOTHESIS REMOVAL (3) and (4): the bound and the count.  The bound
+; omitted (NEXT = 0 where the prefix left 8): at frontier 7 with no suffix
+; the twin refuses the history, the carried open reaches the node's frontier
+; check.  The count omitted (0 where the prefix has 3): the consumer fold
+; resumes at the wrong position and the extension differs.  The other
+; hypotheses hold in both.
+(assert-event
+ (and (equal (fn-sf-next-lower (fn-sco-records *sfi-t-base*) 0) 8)
+      (equal (cadr (caddr (sfi-t-raw-extend *sfi-t-base* *sfi-t-ix* *sfi-t-configs* nil 7
+                                            *sfi-t-count* 0)))
+             (fn-sn-open-error :frontier))
+      (equal (cadr (cadr (fn-rii-sco-extend-open *sfi-t-base* *sfi-t-configs* nil 7)))
+             (fn-sn-open-error :history))
+      (equal *sfi-t-count* 3)
+      (not (equal (car (sfi-t-raw-extend *sfi-t-base* *sfi-t-ix* *sfi-t-configs* *sfi-t-q*
+                                         *sfi-t-f1* 0 *sfi-t-next*))
+                  (fn-sco-extend *sfi-t-base* *sfi-t-configs* *sfi-t-q*)))))
+
+; THE BOUND (fn-sfi-cpr-resume-carried-steps-bounded): one suffix record,
+; one step; the count is the counters' advance, under |configs| + |Q|.
+(assert-event
+ (let* ((r0 (fn-sco-cpr *sfi-t-base*))
+        (r1 (car (sfi-t-raw-resume r0 *sfi-t-configs* *sfi-t-q* *sfi-t-ix*)))
+        (steps (sfi-t-raw-steps r0 *sfi-t-configs* *sfi-t-q* *sfi-t-ix*)))
+   (and (equal steps 1)
+        (equal steps (+ (- (fn-sco-at 2 r1) (fn-sco-at 2 r0))
+                        (- (fn-sco-at 3 r1) (fn-sco-at 3 r0))))
+        (<= steps (+ (len *sfi-t-configs*) (len *sfi-t-q*))))))
+
+; THE EXECUTED PATH: the callee closure over the :exec side of every mbe.
+; The carried resume reaches neither fn-cnode-statep (the paused-node check)
+; nor fn-rii-ix-of (the trie rebuild); the twin's resume reaches both; the
+; trie step fn-rii-ix-next is what runs; no rebuild anywhere in the entry;
+; the paused branch's drain and finalize name no node check -- only the
+; fault branch, fn-rii-sco-store-open, does.
+(mutual-recursion
+ (defun sfi-t-exec-fnnames (term)
+   (declare (xargs :mode :program))
+   (cond ((or (atom term) (fquotep term)) nil)
+         ((flambdap (ffn-symb term))
+          (append (sfi-t-exec-fnnames (lambda-body (ffn-symb term)))
+                  (sfi-t-exec-fnnames-lst (fargs term))))
+         ((and (eq (ffn-symb term) 'return-last)
+               (quotep (fargn term 1))
+               (eq (unquote (fargn term 1)) 'mbe1-raw))
+          (sfi-t-exec-fnnames (fargn term 2)))
+         (t (cons (ffn-symb term) (sfi-t-exec-fnnames-lst (fargs term))))))
+ (defun sfi-t-exec-fnnames-lst (terms)
+   (declare (xargs :mode :program))
+   (if (endp terms) nil
+     (append (sfi-t-exec-fnnames (car terms)) (sfi-t-exec-fnnames-lst (cdr terms))))))
+(defun sfi-t-exec-closure (fns seen wrld)
+  (declare (xargs :mode :program))
+  (cond ((endp fns) seen)
+        ((member-eq (car fns) seen) (sfi-t-exec-closure (cdr fns) seen wrld))
+        (t (let ((body (getpropc (car fns) 'unnormalized-body nil wrld)))
+             (sfi-t-exec-closure (append (sfi-t-exec-fnnames body) (cdr fns))
+                                 (cons (car fns) seen) wrld)))))
+(assert-event
+ (let ((mine (sfi-t-exec-closure '(fn-sfi-cpr-resume-carried) nil (w state)))
+       (twin (sfi-t-exec-closure '(fn-rii-sco-cpr-resume) nil (w state)))
+       (entry (sfi-t-exec-closure '(fn-sfi-extend-open-carried) nil (w state)))
+       (drain (sfi-t-exec-closure '(fn-rii-sco-cpr-finish-configured fn-sfi-finalize-carried)
+                                  nil (w state)))
+       (fault (sfi-t-exec-closure '(fn-rii-sco-store-open) nil (w state))))
+   (and (not (member-eq 'fn-cnode-statep mine))
+        (not (member-eq 'fn-rii-ix-of mine))
+        (member-eq 'fn-rii-ix-next mine)
+        (member-eq 'fn-cnode-statep twin)
+        (member-eq 'fn-rii-ix-of twin)
+        (not (member-eq 'fn-rii-ix-of entry))
+        (not (member-eq 'fn-cnode-statep drain))
+        (member-eq 'fn-cnode-statep fault))))

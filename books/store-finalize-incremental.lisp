@@ -454,3 +454,531 @@
 
 (in-theory (disable fn-sfi-historyp-extend fn-sfi-sn-statep-carried
                     fn-sfi-finalize-carried fn-sfi-extend-open))
+
+; -----------------------------------------------------------------------------
+; Section 4.  The carried resume (PRF-968): the paused fold with its tries.
+;
+; fn-rii-sco-cpr-resume (books/replay-identity-index.lisp) checks the paused
+; node (fn-cnode-statep) and rebuilds its tries (fn-rii-ix-of) at every
+; extension: two whole-node passes before the first suffix record, under the
+; swap's mutex.  Both are facts the previous extension established and its
+; pause dropped.  A carried pause keeps them: the paused fold with the tries
+; beside it, under fn-sfi-cpr-carriedp (the paused node configured, the
+; tries in fn-rii-okp with it), established once (fn-sfi-carry: the open's
+; one node pass) and re-established by every extension
+; (fn-sfi-extend-open-carried-keeps-carried).  The Message-ID trie carried
+; is the trie a rebuild would make (fn-sfi-carried-msgid-trie-is-the-rebuilt-
+; trie); the id trie is related to the rebuilt one by fn-rii-known-okp, a
+; defun-sk, not equal to it.
+;
+; The invariant is the entries' guard: verified, and not executable (the
+; defun-sk), exactly as the twin fold's own guard fn-rii-okp is.  So it is
+; an obligation the caller keeps, as PRF-946's NEXT and verdict are: the
+; pair (E, IX) comes only from fn-sfi-carry (the open's one node pass) or
+; the previous fn-sfi-extend-open-carried, and the host, in :program mode,
+; calls the entries raw, as the served image does.  An abstract stobj whose
+; recognizer is the invariant would make ACL2 hold it instead; ACL2 refuses
+; one here (stobj-attachment-restrictions: fn-cnode-statep reaches
+; fn-digest, attached in books/crypto-attach.lisp), so that route needs an
+; attachment-free node recognizer first.  A test drives the entries through
+; a :program wrapper, the served path.
+;
+; What the extension still copies is the record list itself, `append' and
+; `len' over (fn-sco-records c): O(|P|) list work, no node work.  The D27
+; representation of the records (rows in the arena, the count in the
+; checkpoint header) removes it; the fold does not.
+
+(defun fn-sfi-cpr-carriedp (r ix)
+  (declare (xargs :guard t))
+  (and (fn-sco-pausedp r)
+       (fn-cnode-statep (fn-sco-at 1 r))
+       (fn-rii-okp ix (fn-cnode-node (fn-sco-at 1 r)))))
+
+; fn-rii-sco-cpr-prefix keeping the tries: (RESULT . IX), RESULT the fold's
+; and IX the tries at its pause (at a fault, the tries where it stopped).
+(defun fn-sfi-cpr-prefix-carried (cn configs events config-sequence event-sequence ix)
+  (declare (xargs :guard (and (fn-cnode-statep cn)
+                              (fn-rii-okp ix (fn-cnode-node cn)))
+                  :verify-guards nil
+                  :measure (+ (len configs) (len events))))
+  (if (not (consp events))
+      (cons (fn-sco-paused cn config-sequence event-sequence) ix)
+    (let ((position (+ (nfix config-sequence) (nfix event-sequence))))
+      (if (mbe :logic (not (fn-cnode-statep cn)) :exec nil)
+          (cons (fn-replay-fault cn position :invalid-node) ix)
+        (if (fn-cpr-config-firstp configs events)
+            (let* ((record (car configs))
+                   (txid (fn-cfg-record-txid record))
+                   (node (fn-cnode-node cn)))
+              (cond ((not (fn-cfg-recordp record))
+                     (cons (fn-replay-fault cn position :invalid-config-record) ix))
+                    ((not (equal (fn-cfg-record-sequence record) config-sequence))
+                     (cons (fn-replay-fault cn position :config-sequence) ix))
+                    ((not (fn-replay-advance-okp node txid))
+                     (cons (fn-replay-fault cn position :config-txid) ix))
+                    (t (let ((at (fn-cnode-make
+                                  (fn-replay-advance-txid node txid)
+                                  (fn-cnode-config cn))))
+                         (if (mbe :logic (not (fn-cnode-statep at)) :exec nil)
+                             (cons (fn-replay-fault cn position :invalid-node) ix)
+                           (if (not (mbe :logic (fn-cnode-record-acceptablep
+                                              at record (fn-cnode-line-ceiling))
+                                         :exec (fn-cnode-carried-acceptablep
+                                                at record (fn-cnode-line-ceiling))))
+                               (cons (fn-replay-fault cn position :config-refusal) ix)
+                             (let ((next (fn-cnode-apply-config
+                                          at record (fn-cnode-line-ceiling))))
+                               (fn-sfi-cpr-prefix-carried
+                                next (cdr configs) events
+                                (+ 1 (nfix config-sequence)) event-sequence
+                                (fn-rii-ix-next ix node (fn-cnode-node next)
+                                                nil)))))))))
+          (let ((event (car events)))
+            (cond ((not (fn-store-event-p event))
+                   (cons (fn-replay-fault cn position :invalid-event) ix))
+                  ((not (equal (fn-store-event-sequence event) event-sequence))
+                   (cons (fn-replay-fault cn position :event-sequence) ix))
+                  (t (let ((next (fn-rii-cpr-apply-event cn event ix)))
+                       (if (mbe :logic (not (fn-cnode-statep next))
+                                :exec (not (consp next)))
+                           (cons (fn-replay-fault cn position :event-refusal) ix)
+                         (fn-sfi-cpr-prefix-carried
+                          next configs (cdr events)
+                          config-sequence (+ 1 (nfix event-sequence))
+                          (fn-rii-ix-next ix (fn-cnode-node cn)
+                                          (fn-cnode-node next) event))))))))))))
+
+; The fold's result is the twin fold's, with no hypothesis.
+(defthm fn-sfi-cpr-prefix-carried-car
+  (equal (car (fn-sfi-cpr-prefix-carried cn configs events cs es ix))
+         (fn-rii-sco-cpr-prefix cn configs events cs es ix))
+  :hints (("Goal" :induct (fn-sfi-cpr-prefix-carried cn configs events cs es ix)
+           :in-theory (e/d (fn-rii-sco-cpr-prefix)
+                           (fn-cnode-statep fn-cpr-config-firstp
+                            fn-rii-cpr-apply-event fn-cpr-apply-event
+                            fn-cnode-apply-config fn-cnode-record-acceptablep
+                            fn-cnode-carried-acceptablep fn-cfg-recordp
+                            fn-store-event-p fn-replay-advance-okp
+                            fn-replay-advance-txid fn-rii-ix-next
+                            fn-replay-fault fn-sco-paused)))))
+
+; One step keeps the relation (fn-rii-ix-next-keeps-okp at each step's shape).
+(local
+ (defthm fn-sfi-not-release-of-nil
+   (not (fn-rii-release-event-p nil))
+   :hints (("Goal" :in-theory (enable fn-rii-release-event-p)))))
+
+(local
+ (defthm fn-sfi-event-step-keeps-okp
+   (implies (and (fn-cnode-statep cn)
+                 (fn-rii-okp ix (fn-cnode-node cn))
+                 (consp (fn-cpr-apply-event cn event)))
+            (fn-rii-okp (fn-rii-ix-next ix (fn-cnode-node cn)
+                                        (fn-cnode-node (fn-cpr-apply-event cn event))
+                                        event)
+                        (fn-cnode-node (fn-cpr-apply-event cn event))))
+   :hints (("Goal" :in-theory (e/d (fn-cpr-apply-event)
+                                   (fn-cnode-statep fn-node-statep fn-store-event-p
+                                    fn-cpr-event-servedp fn-replay-apply-record
+                                    fn-rii-ix-next fn-rii-okp))))))
+
+; PRESERVATION: from a configured node under the relation, the pause the
+; fold reaches is configured and its tries are under the relation.
+(defthm fn-sfi-cpr-prefix-carried-keeps-carried
+  (implies (and (fn-cnode-statep cn)
+                (fn-rii-okp ix (fn-cnode-node cn))
+                (fn-sco-pausedp
+                 (car (fn-sfi-cpr-prefix-carried cn configs events cs es ix))))
+           (fn-sfi-cpr-carriedp
+            (car (fn-sfi-cpr-prefix-carried cn configs events cs es ix))
+            (cdr (fn-sfi-cpr-prefix-carried cn configs events cs es ix))))
+  :hints (("Goal" :induct (fn-sfi-cpr-prefix-carried cn configs events cs es ix)
+           :in-theory (e/d (fn-sfi-cpr-carriedp fn-sco-at fn-sco-paused
+                            fn-replay-fault fn-cnode-apply-config-preserves-state)
+                           (fn-cnode-statep fn-node-statep fn-cpr-config-firstp
+                            fn-rii-cpr-apply-event fn-cpr-apply-event
+                            fn-cnode-apply-config fn-cnode-record-acceptablep
+                            fn-cnode-carried-acceptablep fn-cfg-recordp
+                            fn-store-event-p fn-replay-apply-record
+                            fn-replay-advance-okp fn-replay-advance-txid
+                            fn-rii-ix-next fn-rii-okp)))))
+
+(local
+ (defthm fn-sfi-config-firstp-has-config
+   (implies (fn-cpr-config-firstp configs events) (consp configs))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-cpr-config-firstp)))))
+
+(verify-guards fn-sfi-cpr-prefix-carried
+  :hints (("Goal"
+           :use ((:instance fn-cpr-apply-event-statep-iff-consp
+                            (event (car events)))
+                 (:instance fn-cnode-advanced-node-is-configured
+                            (txid (fn-cfg-record-txid (car configs))))
+                 (:instance fn-cnode-record-acceptablep-is-the-carried-check
+                            (cn (fn-cnode-make
+                                 (fn-replay-advance-txid
+                                  (fn-cnode-node cn)
+                                  (fn-cfg-record-txid (car configs)))
+                                 (fn-cnode-config cn)))
+                            (record (car configs))
+                            (ceiling (fn-cnode-line-ceiling))))
+           :in-theory (e/d (fn-cnode-apply-config-preserves-state)
+                           (fn-cnode-statep fn-node-statep fn-cpr-config-firstp
+                            fn-cpr-apply-event fn-cnode-apply-config
+                            fn-cnode-record-acceptablep fn-cfg-recordp
+                            fn-store-event-p fn-replay-apply-record
+                            fn-rii-ix-next fn-rii-okp)))))
+
+; The resume from a carried pause: no node check, no trie rebuild.  The
+; empty suffix re-makes the pause as fn-sco-cpr-resume does.
+(defun fn-sfi-cpr-resume-carried (r configs events ix)
+  (declare (xargs :guard (fn-sfi-cpr-carriedp r ix) :verify-guards nil))
+  (let ((cs (fn-sco-at 2 r)) (cn (fn-sco-at 1 r)) (es (fn-sco-at 3 r)))
+    (if (not (consp events))
+        (cons (fn-sco-paused cn cs es) ix)
+      (fn-sfi-cpr-prefix-carried cn (fn-sco-nthcdr (nfix cs) configs) events
+                                 cs es ix))))
+
+(verify-guards fn-sfi-cpr-resume-carried
+  :hints (("Goal" :in-theory (e/d (fn-sfi-cpr-carriedp)
+                                  (fn-cnode-statep fn-rii-okp fn-sco-at
+                                   fn-sco-nthcdr)))))
+
+; KEYSTONE (PRF-968).  Under the carried invariant the resume is the
+; checkpoint's resume, for every configuration list and suffix.
+(defthm fn-sfi-cpr-resume-carried-is-sco-cpr-resume
+  (implies (fn-sfi-cpr-carriedp r ix)
+           (equal (car (fn-sfi-cpr-resume-carried r configs events ix))
+                  (fn-sco-cpr-resume r configs events)))
+  :hints (("Goal" :in-theory (e/d (fn-sfi-cpr-resume-carried fn-sfi-cpr-carriedp
+                                   fn-sco-cpr-resume)
+                                  (fn-cnode-statep fn-rii-okp fn-sco-at
+                                   fn-sco-nthcdr fn-sfi-cpr-prefix-carried
+                                   fn-rii-sco-cpr-prefix))
+           :expand ((:free (cf cs es)
+                     (fn-sco-cpr-prefix (fn-sco-at 1 r) cf events cs es))))))
+
+; The invariant survives the resume: the next extension skips both passes too.
+(defthm fn-sfi-cpr-resume-carried-keeps-carried
+  (implies (and (fn-sfi-cpr-carriedp r ix)
+                (fn-sco-pausedp (car (fn-sfi-cpr-resume-carried r configs events ix))))
+           (fn-sfi-cpr-carriedp
+            (car (fn-sfi-cpr-resume-carried r configs events ix))
+            (cdr (fn-sfi-cpr-resume-carried r configs events ix))))
+  :hints (("Goal" :in-theory (e/d (fn-sfi-cpr-resume-carried fn-sfi-cpr-carriedp
+                                   fn-sco-at fn-sco-paused)
+                                  (fn-cnode-statep fn-rii-okp fn-sco-nthcdr
+                                   fn-sfi-cpr-prefix-carried))
+           :use ((:instance fn-sfi-cpr-prefix-carried-keeps-carried
+                            (cn (fn-sco-at 1 r))
+                            (configs (fn-sco-nthcdr (nfix (fn-sco-at 2 r)) configs))
+                            (cs (fn-sco-at 2 r)) (es (fn-sco-at 3 r)))))))
+
+; The Message-ID trie carried is the one a rebuild makes.
+(defthm fn-sfi-carried-msgid-trie-is-the-rebuilt-trie
+  (implies (fn-rii-okp ix node)
+           (equal (car ix) (car (fn-rii-ix-of node))))
+  :hints (("Goal" :in-theory (e/d (fn-rii-okp fn-rii-ix-of)
+                                  (fn-rii-known-okp fn-midx-build fn-mxc-build
+                                   fn-rii-kbuild)))))
+
+; The one node pass, at the open: the tries built from the decoded
+; checkpoint's paused node, or NIL where there is no configured pause.
+(defun fn-sfi-carry (c)
+  (declare (xargs :guard t))
+  (let ((r (fn-sco-cpr c)))
+    (if (and (fn-sco-pausedp r) (fn-cnode-statep (fn-sco-at 1 r)))
+        (fn-rii-ix-of (fn-cnode-node (fn-sco-at 1 r)))
+      nil)))
+
+(defthm fn-sfi-carry-is-carried
+  (implies (fn-sfi-carry c)
+           (fn-sfi-cpr-carriedp (fn-sco-cpr c) (fn-sfi-carry c)))
+  :hints (("Goal" :in-theory (e/d (fn-sfi-carry fn-sfi-cpr-carriedp)
+                                  (fn-cnode-statep fn-rii-ix-of fn-sco-at fn-sco-cpr
+                                   fn-rii-okp)))))
+
+; -----------------------------------------------------------------------------
+; The bound, as a step count.  The steps twin walks the fold's path and counts
+; its iterations; the bound names the suffix and the configuration list only.
+; What an iteration costs is the trie step (fn-rii-ix-next: the changed
+; articles and one id) and the node step -- never the node's size: the test
+; book checks that the executed path (the :exec side of every mbe) of the
+; carried resume reaches neither fn-cnode-statep nor a trie builder.
+
+(defun fn-sfi-cpr-prefix-carried-steps (cn configs events cs es ix)
+  (declare (xargs :guard t :verify-guards nil
+                  :measure (+ (len configs) (len events))))
+  (if (not (consp events))
+      0
+    (if (not (fn-cnode-statep cn))
+        1
+      (if (fn-cpr-config-firstp configs events)
+          (let* ((record (car configs))
+                 (txid (fn-cfg-record-txid record))
+                 (node (fn-cnode-node cn)))
+            (if (or (not (fn-cfg-recordp record))
+                    (not (equal (fn-cfg-record-sequence record) cs))
+                    (not (fn-replay-advance-okp node txid)))
+                1
+              (let ((at (fn-cnode-make (fn-replay-advance-txid node txid)
+                                       (fn-cnode-config cn))))
+                (if (or (not (fn-cnode-statep at))
+                        (not (fn-cnode-record-acceptablep at record (fn-cnode-line-ceiling))))
+                    1
+                  (let ((next (fn-cnode-apply-config at record (fn-cnode-line-ceiling))))
+                    (+ 1 (fn-sfi-cpr-prefix-carried-steps
+                          next (cdr configs) events (+ 1 (nfix cs)) es
+                          (fn-rii-ix-next ix node (fn-cnode-node next) nil))))))))
+        (let ((event (car events)))
+          (if (or (not (fn-store-event-p event))
+                  (not (equal (fn-store-event-sequence event) es)))
+              1
+            (let ((next (fn-rii-cpr-apply-event cn event ix)))
+              (if (not (fn-cnode-statep next))
+                  1
+                (+ 1 (fn-sfi-cpr-prefix-carried-steps
+                      next configs (cdr events) cs (+ 1 (nfix es))
+                      (fn-rii-ix-next ix (fn-cnode-node cn) (fn-cnode-node next)
+                                      event)))))))))))
+
+(defthm fn-sfi-cpr-prefix-carried-steps-bounded
+  (<= (fn-sfi-cpr-prefix-carried-steps cn configs events cs es ix)
+      (+ (len configs) (len events)))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-sfi-cpr-prefix-carried-steps cn configs events cs es ix)
+           :in-theory (disable fn-cnode-statep fn-cpr-config-firstp
+                               fn-rii-cpr-apply-event fn-cnode-apply-config
+                               fn-cnode-record-acceptablep fn-cfg-recordp
+                               fn-store-event-p fn-replay-advance-okp
+                               fn-replay-advance-txid fn-rii-ix-next))))
+
+(defun fn-sfi-cpr-resume-carried-steps (r configs events ix)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (not (consp events))
+      0
+    (fn-sfi-cpr-prefix-carried-steps
+     (fn-sco-at 1 r) (fn-sco-nthcdr (nfix (fn-sco-at 2 r)) configs) events
+     (fn-sco-at 2 r) (fn-sco-at 3 r) ix)))
+
+(local
+ (defthm fn-sfi-len-nthcdr-bound
+   (<= (len (nthcdr n x)) (len x))
+   :rule-classes :linear))
+
+; THE BOUND (PRF-968): the carried resume's steps are bounded by the suffix
+; and the configuration list; no term of the bound names the node.
+(defthm fn-sfi-cpr-resume-carried-steps-bounded
+  (<= (fn-sfi-cpr-resume-carried-steps r configs events ix)
+      (+ (len configs) (len events)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-sfi-cpr-resume-carried-steps fn-sco-nthcdr)
+                                  (fn-sfi-cpr-prefix-carried-steps fn-sco-at))
+           :use ((:instance fn-sfi-cpr-prefix-carried-steps-bounded
+                            (cn (fn-sco-at 1 r))
+                            (configs (nthcdr (nfix (fn-sco-at 2 r)) configs))
+                            (cs (fn-sco-at 2 r)) (es (fn-sco-at 3 r)))))))
+
+; -----------------------------------------------------------------------------
+; The fused entry from a carried pause: fn-sfi-extend-open with the resume
+; above, COUNT the prefix's length carried beside NEXT, and both drains
+; through the configured drain (the carried node is configured with or
+; without a suffix).  (E' IX' RESULT): the extension, its carried tries, and
+; fn-rii-sco-extend-open's result.
+
+(defun fn-sfi-extend-open-carried (c ix configs suffix frontier count next)
+  (declare (xargs :guard (and (natp count) (natp next)
+                              (fn-sfi-cpr-carriedp (fn-sco-cpr c) ix))
+                  :verify-guards nil))
+  (let* ((records (true-list-fix (fn-sco-records c)))
+         (resumed (fn-sfi-cpr-resume-carried (fn-sco-cpr c) configs suffix ix))
+         (r (car resumed))
+         (e (fn-sco-make (append records suffix)
+                         r
+                         (fn-replay-identity-loop suffix (fn-sco-identity c))
+                         (fn-sco-consumer-resume (fn-sco-consumer c) suffix count)
+                         (fn-th-prefix-loop (fn-sco-topic c) suffix)
+                         (fn-cei-build-aux suffix count (fn-sco-event-index c))))
+         (refusal (fn-sopc-open-refusal e)))
+    (list e
+          (cdr resumed)
+          (cond (refusal refusal)
+                ((fn-sco-pausedp r)
+                 (let ((replayed (fn-rii-sco-cpr-finish-configured r configs)))
+                   (list replayed
+                         (fn-sfi-finalize-carried replayed e configs count next
+                                                  suffix frontier))))
+                (t (fn-rii-sco-store-open e configs frontier))))))
+
+(verify-guards fn-sfi-extend-open-carried
+  :hints (("Goal" :in-theory (e/d (fn-sfi-cnode-statep-has-node-statep
+                                   fn-rii-sco-cpr-finish-configured-is-finish
+                                   fn-sfi-cpr-carriedp)
+                                  (fn-sfi-cpr-resume-carried fn-sco-cpr-resume
+                                   fn-sco-pausedp fn-cnode-statep fn-node-statep
+                                   fn-cpr-loop fn-sopc-open-refusal
+                                   fn-rii-sco-store-open fn-sfi-finalize-carried
+                                   fn-sco-cpr-finish fn-rii-sco-cpr-finish-configured
+                                   fn-replay-identity-loop fn-sco-consumer-resume
+                                   fn-th-prefix-loop fn-cei-build-aux))
+           :use ((:instance fn-sfi-cpr-resume-carried-keeps-carried
+                            (r (fn-sco-cpr c)) (events suffix))
+                 (:instance fn-sfi-cpr-resume-carried-is-sco-cpr-resume
+                            (r (fn-sco-cpr c)) (events suffix))
+                 (:instance fn-rii-sco-cpr-finish-ok-is-configured
+                            (r (fn-sco-cpr-resume (fn-sco-cpr c) configs suffix)))))))
+
+(local
+ (defthm fn-sfi-len-of-true-list-fix
+   (equal (len (true-list-fix x)) (len x))))
+
+; The carried entry is the carried-verdict entry with the resume swapped.
+(defthm fn-sfi-extend-open-carried-is-extend-open
+  (implies (and (fn-sfi-cpr-carriedp (fn-sco-cpr c) ix)
+                (equal count (len (fn-sco-records c))))
+           (equal (fn-sfi-extend-open-carried c ix configs suffix frontier count next)
+                  (list (car (fn-sfi-extend-open c configs suffix frontier next))
+                        (cdr (fn-sfi-cpr-resume-carried (fn-sco-cpr c) configs suffix ix))
+                        (cadr (fn-sfi-extend-open c configs suffix frontier next)))))
+  :hints (("Goal" :in-theory (e/d (fn-sfi-extend-open-carried fn-sfi-extend-open
+                                   fn-rii-sco-cpr-finish-configured-is-finish
+                                   fn-sco-make fn-sco-cpr fn-sco-at)
+                                  (fn-sfi-cpr-resume-carried fn-rii-sco-cpr-resume
+                                   fn-sco-cpr-resume fn-sfi-cpr-carriedp fn-sco-pausedp
+                                   fn-cnode-statep fn-sopc-open-refusal
+                                   fn-rii-sco-store-open fn-sfi-finalize-carried
+                                   fn-rii-sco-store-open-is-sco-store-open
+                                   fn-sco-store-open fn-sco-finalize-from
+                                   fn-sco-finalize-from-unfolds
+                                   fn-sco-cpr-finish fn-rii-sco-cpr-finish-configured
+                                   fn-replay-identity-loop fn-sco-consumer-resume
+                                   fn-th-prefix-loop fn-cei-build-aux
+                                   fn-sco-records fn-sco-identity
+                                   fn-sco-consumer fn-sco-topic fn-sco-event-index)))))
+
+; KEYSTONE (PRF-968).  Under the carried invariant, the carried verdict and
+; the carried count and bound, the entry is the extension, its tries and the
+; classified open of the extension -- the host's fn-rii-sco-extend-open, with
+; neither whole-node pass.  f0 is free.
+(defthm fn-sfi-extend-open-carried-is-rii-extend-open
+  (implies (and (fn-sfi-cpr-carriedp (fn-sco-cpr c) ix)
+                (equal (fn-sn-open-kind (fn-sco-finalize c configs f0)) :ok)
+                (equal count (len (fn-sco-records c)))
+                (equal next (fn-sf-next-lower (fn-sco-records c) 0)))
+           (equal (fn-sfi-extend-open-carried c ix configs suffix frontier count next)
+                  (list (fn-sco-extend c configs suffix)
+                        (cdr (fn-sfi-cpr-resume-carried (fn-sco-cpr c) configs suffix ix))
+                        (fn-rii-classified-open (fn-sco-extend c configs suffix)
+                                                configs frontier))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-sfi-extend-open-carried-is-extend-open)
+                 (:instance fn-sfi-extend-open-is-rii-extend-open)
+                 (:instance fn-rii-sco-extend-open-is-extend-then-open))
+           :in-theory '(fn-rii-sco-extend-is-sco-extend car-cons cdr-cons))))
+
+; The statement for the swap (online-reclaim): the third component's second
+; element is the finalize of the extension whenever the pre-C1 refusal is
+; absent.
+(defthm fn-sfi-extend-open-carried-finalizes-the-extension
+  (implies (and (fn-sfi-cpr-carriedp (fn-sco-cpr c) ix)
+                (equal (fn-sn-open-kind (fn-sco-finalize c configs f0)) :ok)
+                (equal count (len (fn-sco-records c)))
+                (equal next (fn-sf-next-lower (fn-sco-records c) 0))
+                (not (fn-sopc-open-refusal (fn-sco-extend c configs suffix))))
+           (equal (cadr (caddr (fn-sfi-extend-open-carried c ix configs suffix
+                                                           frontier count next)))
+                  (fn-sco-finalize (fn-sco-extend c configs suffix)
+                                   configs frontier)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-sfi-extend-open-carried-is-rii-extend-open)
+                 (:instance fn-rii-classified-open-is-classified-open
+                            (e (fn-sco-extend c configs suffix))))
+           :in-theory (e/d (fn-sopc-classified-open fn-sco-store-open)
+                           (fn-sfi-extend-open-carried fn-rii-classified-open
+                            fn-sfi-cpr-resume-carried fn-sfi-cpr-carriedp
+                            fn-sfi-extend-open-carried-is-rii-extend-open
+                            fn-rii-classified-open-is-classified-open
+                            fn-sco-finalize fn-sco-extend fn-sopc-open-refusal
+                            fn-sco-cpr-finish fn-sco-finalize-from
+                            fn-sco-finalize-from-unfolds fn-sco-cpr
+                            fn-sco-records fn-sf-next-lower fn-sn-open-kind)))))
+
+; What the next round carries, each in O(|Q|): the invariant over the
+; extension's pause and tries, the count, and the bound.  The verdict is the
+; result itself (fn-sfi-extend-open-carried-finalizes-the-extension at :ok).
+(defthm fn-sfi-extend-open-carried-keeps-carried
+  (implies (and (fn-sfi-cpr-carriedp (fn-sco-cpr c) ix)
+                (fn-sco-pausedp
+                 (fn-sco-cpr (car (fn-sfi-extend-open-carried c ix configs suffix
+                                                              frontier count next)))))
+           (fn-sfi-cpr-carriedp
+            (fn-sco-cpr (car (fn-sfi-extend-open-carried c ix configs suffix
+                                                         frontier count next)))
+            (cadr (fn-sfi-extend-open-carried c ix configs suffix frontier count next))))
+  :hints (("Goal" :in-theory (e/d (fn-sfi-extend-open-carried fn-sco-make fn-sco-cpr
+                                   fn-sco-at)
+                                  (fn-sfi-cpr-resume-carried fn-sfi-cpr-carriedp
+                                   fn-sco-pausedp fn-sopc-open-refusal
+                                   fn-rii-sco-store-open fn-sfi-finalize-carried
+                                   fn-rii-sco-cpr-finish-configured
+                                   fn-replay-identity-loop fn-sco-consumer-resume
+                                   fn-th-prefix-loop fn-cei-build-aux fn-sco-records
+                                   fn-sco-identity fn-sco-consumer fn-sco-topic
+                                   fn-sco-event-index))
+           :use ((:instance fn-sfi-cpr-resume-carried-keeps-carried
+                            (r (fn-sco-cpr c)) (events suffix))))))
+
+(local
+ (defthm fn-sfi-next-lower-of-append
+   (equal (fn-sf-next-lower (append p q) lower)
+          (fn-sf-next-lower q (fn-sf-next-lower p lower)))))
+
+(local
+ (defthm fn-sfi-next-lower-of-true-list-fix
+   (equal (fn-sf-next-lower (true-list-fix p) lower)
+          (fn-sf-next-lower p lower))))
+
+(local
+ (defthm fn-sfi-len-of-append
+   (equal (len (append p q)) (+ (len p) (len q)))))
+
+(defthm fn-sfi-extend-open-carried-count-and-bound
+  (implies (equal count (len (fn-sco-records c)))
+           (let ((e (car (fn-sfi-extend-open-carried c ix configs suffix frontier
+                                                     count next))))
+             (and (equal (len (fn-sco-records e)) (+ count (len suffix)))
+                  (equal (fn-sf-next-lower (fn-sco-records e) 0)
+                         (fn-sf-next-lower suffix
+                                           (fn-sf-next-lower (fn-sco-records c) 0))))))
+  :hints (("Goal" :in-theory (e/d (fn-sfi-extend-open-carried fn-sco-make fn-sco-records
+                                   fn-sco-at)
+                                  (fn-sfi-cpr-resume-carried fn-sopc-open-refusal
+                                   fn-rii-sco-store-open fn-sfi-finalize-carried
+                                   fn-rii-sco-cpr-finish-configured fn-sf-next-lower
+                                   fn-replay-identity-loop fn-sco-consumer-resume
+                                   fn-th-prefix-loop fn-cei-build-aux fn-sco-cpr
+                                   fn-sco-identity fn-sco-consumer fn-sco-topic
+                                   fn-sco-event-index)))))
+
+(in-theory (disable fn-sfi-cpr-carriedp fn-sfi-cpr-prefix-carried
+                    fn-sfi-cpr-resume-carried fn-sfi-carry
+                    fn-sfi-cpr-prefix-carried-steps fn-sfi-cpr-resume-carried-steps
+                    fn-sfi-extend-open-carried))
+
+; -----------------------------------------------------------------------------
+; The bound for any decoded record list: fn-sf-next-lower's guard asks
+; fn-sf-record-valuesp; the open's caller computes NEXT from bytes.
+(defun fn-sfi-next-lower-total (records lower)
+  (declare (xargs :guard t))
+  (if (consp records)
+      (fn-sfi-next-lower-total (cdr records)
+                               (+ 1 (fix (fn-store-event-txid (car records)))))
+    lower))
+
+(defthm fn-sfi-next-lower-total-is-next-lower
+  (equal (fn-sfi-next-lower-total records lower)
+         (fn-sf-next-lower records lower)))
+
+(in-theory (disable fn-sfi-next-lower-total))
