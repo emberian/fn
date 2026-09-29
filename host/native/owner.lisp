@@ -364,25 +364,26 @@ quantum's reply in the cursor's place (and the cursor that remains)."
    class))
 
 (defun fnn-owner-render-next-quantum (service cid plan class &optional compressedp)
-  "fnn-owner-render-next, the plan's cursor quantum run first (under the
-owner mutex, as CID's CLASS) whenever the plan is at one: (values OCTETS
-PLAN-REST DONEP).  Each mutex hold covers at most one quantum; a sparse
-range can require several empty quanta before the next write."
-  (loop
+  "Render a window, running at most one cursor quantum under the owner
+mutex as CID's CLASS: (values OCTETS PLAN-REST DONEP YIELDP).  Empty
+progress yields with the exact continuation and response hold intact."
+  (multiple-value-bind (octets rest donep cursorp)
+      (fnn-owner-render-next plan compressedp)
+    (unless cursorp
+      (return-from fnn-owner-render-next-quantum (values octets rest donep nil)))
+    (setq plan (fnn-owner-cursor-step service cid rest class))
+    ;; A deterministic native witness: pause OFF the owner mutex while
+    ;; the response still owns its generation, before rendering/writing.
+    ;; Production refuses this selector (host/native/io.lisp).
+    (let ((stall (fnn-developer-selector "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM")))
+      (when (and stall (plusp (length stall)) (probe-file stall))
+        (fnn-err "OVER quantum-held cid=~d" cid)
+        (loop while (and (probe-file stall)
+                         (not (fnn-owner-service-stopping service)))
+              do (sleep 0.05))))
     (multiple-value-bind (octets rest donep cursorp)
         (fnn-owner-render-next plan compressedp)
-      (unless cursorp
-        (return (values octets rest donep)))
-      (setq plan (fnn-owner-cursor-step service cid rest class))
-      ;; A deterministic native witness: pause OFF the owner mutex while
-      ;; the response still owns its generation, before rendering/writing.
-      ;; Production refuses this selector (host/native/io.lisp).
-      (let ((stall (fnn-developer-selector "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM")))
-        (when (and stall (plusp (length stall)) (probe-file stall))
-          (fnn-err "OVER quantum-held cid=~d" cid)
-          (loop while (and (probe-file stall)
-                           (not (fnn-owner-service-stopping service)))
-                do (sleep 0.05)))))))
+      (values octets rest donep cursorp))))
 
 (defun fnn-owner-list-global (name)
   "An ACL2 octet list left in NAME, as the list (no vector is made)."

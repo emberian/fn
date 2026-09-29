@@ -92,6 +92,49 @@ class NativeOverPinsTests(unittest.TestCase):
     def test_cancelled_over_settles_ownership_before_reclaim_installs(self):
         self.held_response(True)
 
+    def test_sparse_quanta_retain_pipeline_and_hold_until_complete_reply(self):
+        base = self.node("sparse-base")
+        self.post_all(base, [("n0", GROUP, None, 0)] +
+                      [("gap%d" % n, GROUP, expiry.PAST, 0) for n in range(32)] +
+                      [("f0", GROUP, expiry.FUTURE, 0)])
+        base.operator("retention", "expire", GROUP, "purge", "30", expect=EXIT.OK)
+        reclaimed = self.reclaim(base)
+        self.assertIn(b"reclaimed=32", reclaimed.stdout)
+        replies = []
+        for name, window in (("sparse-small", "1"), ("sparse-whole", "100000000")):
+            node = self.copy_of(base, name)
+            owner = node.start(timeout=600, env={
+                "FN_NATIVE_OVER_WINDOW": window,
+                # A nonexistent pause path enables ownership diagnostics;
+                # this native exercises normal scheduling, without a stall.
+                "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM": str(self.root / "absent-stall"),
+            })
+            try:
+                with Client(node.port, timeout=300, greeting=None) as client:
+                    self.assertTrue(client.command("GROUP " + GROUP).startswith(b"211 2 "))
+                    at = len(owner.stderr.since(0))
+                    client.send(("OVER 1-34\r\nSTAT %s\r\n" % msgid("f0")).encode())
+                    status = client.line()
+                    self.assertTrue(status.startswith(b"224 "), status)
+                    rows = []
+                    while True:
+                        line = client.line()
+                        if line == b".\r\n":
+                            break
+                        rows.append(line)
+                    self.assertEqual([int(row.split(b"\t", 1)[0]) for row in rows], [1, 34])
+                    self.assertTrue(client.line().startswith(b"223 "))
+                    replies.append((status, rows))
+                if window == "1":
+                    log = owner.stderr.since(0)[at:]
+                    yielded = re.search(rb"OVER empty-yield cid=(\d+)", log)
+                    self.assertIsNotNone(yielded, log[-3000:])
+                    settled = rb"OVER response-settled cid=" + yielded.group(1) + rb" status=released"
+                    self.assertRegex(log[yielded.end():], settled)
+            finally:
+                node.stop(expect=None, grace=300)
+        self.assertEqual(replies[0], replies[1])
+
     def test_service_stop_settles_a_paused_response(self):
         node = self.copy_of(self.recorded_base(), "stop-over")
         stall = self.root / "over-stop-stall"

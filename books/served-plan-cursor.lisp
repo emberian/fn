@@ -123,6 +123,13 @@
   (posp (fn-splan-cursor-window override))
   :rule-classes (:rewrite :type-prescription))
 
+; An empty quantum still advanced the cursor.  The host retains its plan
+; and response ownership, then resumes after this positive scheduling delay
+; instead of scanning the rest of a sparse range in the same event.
+(defun fn-splan-cursor-resume-ms ()
+  (declare (xargs :guard t))
+  1)
+
 ; -----------------------------------------------------------------------------
 ; The step: the first cursor of REST, stepped once
 

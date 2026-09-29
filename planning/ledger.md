@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1668 |
-| Certification roots in the Makefile | 1606 |
-| Books inside the root closure | 1667 |
-| `defthm` and `defthmd` events | 27496 |
-| `defun` events | 17941 |
+| Books read | 1672 |
+| Certification roots in the Makefile | 1610 |
+| Books inside the root closure | 1671 |
+| `defthm` and `defthmd` events | 27534 |
+| `defun` events | 17954 |
 | Functions with verified guards | 3357 |
-| Functions declared `:verify-guards nil` and never verified | 2075 |
-| Functions left at the default with an explicit guard | 9828 |
-| Functions left at the default with no guard | 2681 |
-| `assert-event` checks | 22783 |
+| Functions declared `:verify-guards nil` and never verified | 2078 |
+| Functions left at the default with an explicit guard | 9836 |
+| Functions left at the default with no guard | 2683 |
+| `assert-event` checks | 22787 |
 | `must-fail` checks | 2469 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 317 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2373 |
-| Host-names warnings | 1985 |
+| Include-hygiene warnings | 2377 |
+| Host-names warnings | 1986 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -597,6 +597,8 @@ that `make certify` requests.
 | `books/node-secret.lisp` | root | 21 | 30 | 0/0/30/0 | 0 | 0 | 0 |
 | `books/node-traces.lisp` | root | 12 | 24 | 0/0/24/0 | 0 | 0 | 0 |
 | `books/node.lisp` | root | 55 | 40 | 30/0/10/0 | 0 | 0 | 2 |
+| `books/nov-byte-window.lisp` | root | 18 | 5 | 0/0/3/2 | 0 | 0 | 0 |
+| `books/nov-column-window.lisp` | root | 5 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/nov-fields.lisp` | root | 3 | 5 | 5/0/0/0 | 0 | 0 | 0 |
 | `books/number-durability-handles.lisp` | root | 85 | 10 | 0/0/10/0 | 0 | 0 | 5 |
 | `books/number-durability.lisp` | root | 58 | 8 | 0/4/2/2 | 0 | 0 | 0 |
@@ -855,7 +857,7 @@ that `make certify` requests.
 | `books/served-chunk-live-free.lisp` | root | 17 | 3 | 1/0/2/0 | 0 | 0 | 5 |
 | `books/served-columns.lisp` | root | 50 | 19 | 2/2/14/1 | 0 | 0 | 0 |
 | `books/served-implicit-tls.lisp` | root | 5 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/served-plan-cursor.lisp` | root | 29 | 10 | 1/3/6/0 | 0 | 0 | 1 |
+| `books/served-plan-cursor.lisp` | root | 29 | 11 | 1/3/7/0 | 0 | 0 | 1 |
 | `books/served-plan.lisp` | root | 33 | 27 | 0/1/26/0 | 0 | 0 | 2 |
 | `books/served-reply-buffer.lisp` | root | 8 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/served-scan.lisp` | root | 12 | 2 | 1/1/0/0 | 0 | 0 | 3 |
@@ -1428,6 +1430,8 @@ that `make certify` requests.
 | `tests/acl2/nntp-zarticle-tests.lisp` | root | 0 | 10 | 0/6/4/0 | 7 | 1 | 0 |
 | `tests/acl2/node-secret-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 17 | 1 | 0 |
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 98 | 0 | 0 |
+| `tests/acl2/nov-byte-window-tests.lisp` | root | 11 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/nov-column-window-tests.lisp` | root | 4 | 6 | 0/3/3/0 | 4 | 0 | 0 |
 | `tests/acl2/number-durability-tests.lisp` | root | 2 | 12 | 0/0/0/12 | 0 | 11 | 0 |
 | `tests/acl2/octet-text-tests.lisp` | root | 0 | 13 | 0/1/5/7 | 30 | 1 | 0 |
 | `tests/acl2/octets-bulk-tests.lisp` | root | 18 | 4 | 0/0/0/4 | 3 | 11 | 0 |

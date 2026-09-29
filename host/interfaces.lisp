@@ -1859,6 +1859,9 @@
 (definterface fn-splan-cursor-window
   :class ::common-lisp-compliant)
 
+(definterface fn-splan-cursor-resume-ms
+  :class ::common-lisp-compliant)
+
 (definterface fn-splan-window-size
   :class ::common-lisp-compliant
   :keystones (fn-splan-window-size-is-positive-until-done))
