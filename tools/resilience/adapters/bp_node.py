@@ -60,7 +60,26 @@ RELEASED_LINE = b"BP APP RECEIPT-OBSERVED RELEASED"
 QUEUED_LINE = b"BP node receipt queued"
 DELIVERED_LINE = b"BP node delivery receipt-accepted"
 DISPOSITION = re.compile(rb"BP application handoff durable disposition=([a-z-]+)")
+# Lines the receipt path prints only past the hold point (bp-node.lisp's
+# outbox `receipt queued', bp-service.lisp's durable disposition): seen
+# before the hold's own line they are the evidence the image lacks the hold.
+PROCEEDED = (QUEUED_LINE, b"BP application handoff durable disposition=")
 BOUNDARY = "receipt-observed"
+
+
+def _first_line_of(markers):
+    """A `wait_for' predicate: the end of the earliest whole line holding any
+    of MARKERS (bytes), else None."""
+    def find(text):
+        ends = []
+        for marker in markers:
+            at = text.find(marker)
+            if at >= 0:
+                newline = text.find(b"\n", at)
+                if newline >= 0:
+                    ends.append(newline + 1)
+        return min(ends) if ends else None
+    return find
 GROUP = "fn.test"
 MSGID = b"<schedule-receipt@example.invalid>"
 IDENTITY = "bundle-1"
@@ -279,12 +298,23 @@ class BpRun:
             self.reply("receipt-1", first)
             receiver.stop(grace=10)
             return sender_node
-        try:
-            held = receiver.output_until(HOLD_LINE, timeout=120)
-        except Exception as e:
+        held, end = receiver.stdout.wait_for(_first_line_of((HOLD_LINE,) + PROCEEDED),
+                                             receiver.cursor, time.monotonic() + 120)
+        if end is None:
             first.kill()
-            raise HarnessFailure("hold-not-reached:{}".format(str(e)[:120]))
+            raise HarnessFailure("hold-not-reached:neither {!r} nor a receipt-path line "
+                                 "after the hold point within 120 s".format(HOLD_LINE))
+        receiver.cursor = end
         evidence = held.strip().splitlines()[-1].decode("ascii", "replace")
+        if HOLD_LINE.decode("ascii") not in evidence:
+            # The receipt path went past the decision without holding: this
+            # image does not carry fnn-bpapp-pause-after-decision (dev
+            # f2e929ced), so the point is PENDING BY NAME on it, not a
+            # verdict (the mode: a hold that is not in the image = pending).
+            first.kill()
+            raise HarnessFailure("hold-unavailable:{}=decided set and the receipt path "
+                                 "proceeded past the hold point on image {}: {}".format(
+                                     HOLD, self.image.name, evidence[:120]))
         dup = None
         for step in fault.interleave:
             o = self.s.operation(step)

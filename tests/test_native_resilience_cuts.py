@@ -28,6 +28,10 @@ from tools.resilience.scenario import boundary_registry, validate
 IMAGE = Path(os.environ.get("FN_NATIVE_CRASH_HOST", ""))
 IMAGE_AVAILABLE = IMAGE.is_file() and os.access(IMAGE, os.X_OK)
 SELECTED = os.environ.get("FN_NATIVE_RESILIENCE_CUT")
+# Harness-failure causes that mean "the held form is not on this image":
+# the adapters raise them from the image's own evidence (the receipt path
+# past its hold point; `store inspect --group` refused), never from a timeout.
+PENDING_BY_NAME = ("hold-unavailable:", "inspect-group-unavailable:")
 
 
 class CutScenarioTableTests(unittest.TestCase):
@@ -82,6 +86,12 @@ if IMAGE_AVAILABLE:
             the store and is what the verdict was made over."""
             with tempfile.TemporaryDirectory(prefix=prefix) as tmp:
                 journal, verdict = adapter.run(s, IMAGE, Path(tmp))
+                if (verdict.kind == "harness-failure"
+                        and (verdict.cause or "").startswith(PENDING_BY_NAME)):
+                    # The adapter found, from the image's own lines, that the
+                    # held form is not on this image: no verdict, pending by
+                    # name (the mode, 2026-09-29), never a skipped campaign.
+                    self.skipTest("pending by name ({}): {}".format(s.id, verdict.cause))
                 self.assertEqual(verdict.kind, s.expected, (s.id, verdict.to_json()))
                 self.assertTrue(verdict.green, (s.id, verdict.to_json()))
                 self.assertEqual(verdict.surviving, 1, s.id)
