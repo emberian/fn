@@ -45,6 +45,7 @@
 (include-book "records-concrete")
 (include-book "store-reclaim-buffer")
 (include-book "store-intern")
+(include-book "open-frontier-wire")
 (include-book "store-recover-stream")
 (include-book "payload-commit-extent")
 (include-book "payload-extent-read")
