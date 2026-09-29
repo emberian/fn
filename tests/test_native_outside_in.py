@@ -1053,21 +1053,46 @@ class StrangerTests(NodeCase):
         self.saw("the same article again -> %s; another article under the same id -> %s; "
                  "the group count stayed %s" % (same, other, after))
 
-    @unittest.expectedFailure
     def test_b17_sasl_authentication(self):
-        """PKT-890 (finding): specs/nntp.md NNT-056 says "fn offers
-        three mechanisms" and "CAPABILITIES lists AUTHINFO USER SASL ... and
-        SASL with the offered mechanisms", but books/nntp-auth.lisp on dev
-        still answers AUTHINFO SASL as deferred and advertises no SASL line.
-        Expected to fail until the sasl lane lands; an unexpected success
-        here is the signal to drop the mark."""
+        """specs/nntp.md NNT-056: "fn offers three mechanisms" and
+        "CAPABILITIES lists AUTHINFO USER SASL ... and SASL with the offered
+        mechanisms"; docs/implementation.md: "AUTHINFO SASL offers
+        SCRAM-SHA-256 (and -PLUS over TLS 1.3) and PLAIN over TLS".  PLAIN
+        (RFC 4616) is what a stranger can drive with `openssl base64`: with
+        an initial response, and as RFC 4643 section 2.4's empty challenge
+        `383 =` answered on the next line.  SCRAM's proof needs a client
+        that computes HMACs, so here it is checked as offered;
+        tests/test_native_sasl.py runs its exchange."""
+        def plain(user, password):
+            out = subprocess.run(["openssl", "base64", "-A"], check=True,
+                                 input=b"\0" + user.encode() + b"\0" + password.encode(),
+                                 capture_output=True).stdout
+            return out.decode("ascii").strip()
+
         talk = self.tls()
         talk.expect("200", "201")
         _, caps = talk.multiline("CAPABILITIES", "101")
         self.saw("CAPABILITIES over TLS: %s" % caps)
-        self.assertTrue(any(c.startswith("SASL ") for c in caps), "no SASL line: %s" % caps)
-        reply = talk.command("AUTHINFO SASL PLAIN", "383")
-        self.saw(reply)
+        self.assertIn("USER", next(c for c in caps if c.startswith("AUTHINFO ")).split())
+        self.assertIn("SASL", next(c for c in caps if c.startswith("AUTHINFO ")).split())
+        sasl = [c.split()[1:] for c in caps if c.startswith("SASL ")]
+        self.assertEqual(len(sasl), 1, "one SASL line: %s" % caps)
+        self.assertTrue({"SCRAM-SHA-256", "PLAIN"} <= set(sasl[0]), sasl)
+        wrong = talk.command("AUTHINFO SASL PLAIN " + plain("wren", "not-" + PASSWORD), "481")
+        self.saw("AUTHINFO SASL PLAIN <wrong password> -> " + wrong)
+        right = talk.command("AUTHINFO SASL PLAIN " + plain("wren", PASSWORD), "281")
+        self.saw("AUTHINFO SASL PLAIN <initial response> -> " + right)
+        talk.quit()
+        talk.record()
+
+        talk = self.tls()
+        talk.expect("200", "201")
+        challenge = talk.command("AUTHINFO SASL PLAIN", "383")
+        self.assertEqual(challenge, "383 =")
+        done = talk.command(plain("wren", PASSWORD), "281")
+        self.saw("AUTHINFO SASL PLAIN -> %s; <response> -> %s" % (challenge, done))
+        talk.quit()
+        talk.record()
 
     def test_b18_compression_is_a_later_capability(self):
         """docs/references.md: "RFC 8054: Compression, a later capability".
