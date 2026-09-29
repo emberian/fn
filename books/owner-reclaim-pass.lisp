@@ -348,12 +348,26 @@
 ; configuration, as fn-ocfg-advance moves the pin of the one connection it
 ; re-pins (books/owner-config.lisp): the connection now reads the rebuilt
 ; view, which is that configuration's.
-(defun fn-orcp-pins-at (conns cfg)
-  (declare (xargs :guard t))
+(defun fn-orcp-pins-at-loop (conns cfg rev)
+  ; the loop twin (depth_check: the live connections, operator data)
+  (declare (xargs :guard (true-listp rev)))
   (if (consp conns)
-      (cons (cons (fn-own-conn-id (car conns)) cfg)
-            (fn-orcp-pins-at (cdr conns) cfg))
-    nil))
+      (fn-orcp-pins-at-loop (cdr conns) cfg (cons (cons (fn-own-conn-id (car conns)) cfg) rev))
+    (revappend rev nil)))
+
+(defun fn-orcp-pins-at (conns cfg)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp conns)
+                  (cons (cons (fn-own-conn-id (car conns)) cfg)
+                        (fn-orcp-pins-at (cdr conns) cfg))
+                nil)
+       :exec (fn-orcp-pins-at-loop conns cfg nil)))
+
+(defthm fn-orcp-pins-at-loop-is-pins-at
+  (equal (fn-orcp-pins-at-loop conns cfg rev)
+         (revappend rev (fn-orcp-pins-at conns cfg))))
+
+(verify-guards fn-orcp-pins-at)
 
 ; What the swap installs (host/owner-host.lisp fn-owner-orcp-swap): the
 ; swapped owner under the rebuilt configuration, every connection pinned
