@@ -52,18 +52,23 @@ full recapture that the store-representation rows own. (4) *An upgrade is
 operator to export the store before removing the release. Measured gap for
 an empty store, stop to LISTENING: 7.1 s (stop 1.0, rm 3.4, install 0.8,
 start 1.9); at scale the gap is the open (13.6 s from a checkpoint at 40k,
-55 s to 1,000 s for a full replay). There is no rollback. (5) *A full tiny
-store died after a clean stop.* On a store made with `--profile development
---max-transactions 12`, eleven posts filled it; the owner's automatic
-checkpoint (`CHECKPOINT auto sequence=8 ... segment=2 dropped=1`) ran, the
-owner was stopped with SIGTERM (exit 0), and afterwards `status`, `recover`,
-`run` and `store export` all refuse with `open refused
-reason=checkpoint-damaged: the checkpoint that covers the dropped log
-segments does not open`. The node has no path at all, and the export ritual
-cannot even begin (the reproduction is at the end; the store is kept on hbox).
-Whether it is the tiny profile or any store that checkpoints is being
-characterised as this is written (walk F); either way an operator following
-the FAQ's own advice meets it. (6) *The docs contradict the software*, in
+55 s to 1,000 s for a full replay). There is no rollback. (5) *A configuration record on a full store makes the store unopenable.*
+On a store made with `--profile development --max-transactions 12`, eleven
+posts filled it (12 and 13 refused), the owner's automatic checkpoint had
+run (`CHECKPOINT auto sequence=6 ... segment=2 dropped=1`), one live `group
+create` was accepted while the store was full, and the owner was stopped
+with SIGTERM (exit 0). Afterwards `status`, `recover`, `run` and `store
+export` all refuse with `open refused reason=checkpoint-damaged: the
+checkpoint that covers the dropped log segments does not open`. The node has
+no path at all, and the export ritual cannot even begin. Isolated in walks
+F, F2 and F3 (eight stores): a full store with refusals and no configuration
+record reopens; a configuration record after a checkpoint on a store that is
+not full reopens; T = 40 and T = 2,000 with checkpoints reopen; exactly "full,
+then a configuration record accepted" breaks, with or without offline
+records before the run (the reproduction is at the end; the stores are kept
+on hbox). A group created, an invitation made, an exposure row set or a
+password bound on a full node is an ordinary operator action, and the FAQ
+sends the operator to exactly that node to "raise the limit". (6) *The docs contradict the software*, in
 both directions: `peer add`, `peer remove` and `peer feed pause` are live
 (accepted on the running owner, measured) while three documents say "stop
 the node"; `principal set-password` applies live (`applied`, measured) while
@@ -303,18 +308,26 @@ policy change.
 
 ## Bugs found while walking (not advice)
 
-- **A full tiny store cannot be reopened after a clean stop.** Developer
-  image of `f286c0204`; `init --profile development --max-transactions 12
-  local.general` (`max-open-suffix` 12); eleven `operator post`s over the
-  control socket; the owner logged `CHECKPOINT auto sequence=8 suffix=8
-  octets=16637 steps=6 ms=382 segment=2 dropped=1`; SIGTERM, `run stopped
-  exit=00`; then `status`, `recover`, `run` and `store export` all answer
-  `open refused reason=checkpoint-damaged: the checkpoint that covers the
-  dropped log segments does not open`. The store is kept at
-  `hbox:/tank/fn/scratch/operability-review/walkE/node/store` (with its
-  `owner1.log` and `fn.log` beside it). Walk F (T = 40 default suffix, T =
-  40 with `--max-open-suffix 200`, T = 2,000) says whether it is the tiny
-  suffix or any automatic checkpoint; its log is `walkF.log` there.
+- **A configuration record accepted on a full store makes it unopenable.**
+  Developer image of `f286c0204`; `init --profile development
+  --max-transactions 12 local.general`; `run`; thirteen `operator post`s over
+  the control socket (11 accepted, the store full at `transactions=11/12`,
+  2 refused); the owner had checkpointed (`CHECKPOINT auto sequence=6
+  suffix=6 ... segment=2 dropped=1`); `group create fn.live` answered
+  `ACCEPTED`; SIGTERM, `run stopped exit=00`; then `status`, `recover`, `run`
+  and `store export` all answer `open refused reason=checkpoint-damaged: the
+  checkpoint that covers the dropped log segments does not open`. Controls
+  (walks F, F2, F3, `hbox:/tank/fn/scratch/operability-review/walkF*`): the
+  same store without the `group create` reopens (`open=checkpoint:20
+  suffix=19` at T = 40 full with two refusals); the `group create` after a
+  checkpoint on a store that is not full reopens (`open=checkpoint:6
+  suffix=1`); T = 40 and T = 2,000 with automatic checkpoints reopen. Two
+  stores in the broken state are kept: `walkE/node/store` and
+  `walkF3-live-full/node/store` (each with `owner.log` and `log/fn.log`
+  beside it). Suspect: a configuration record admitted past the transaction
+  budget (generations are counted apart from T) that the checkpoint open then
+  refuses, or the record log's sequence passing T. Whoever takes it: a
+  `space-pressure` node is where an operator creates a group or sets a limit.
 - The operator's `post` refusal prints `refused operator post REFUSED` and
   logs `refused post path=control message-id=…` with no reason word, while
   the NNTP poster gets the full `441` sentence.
