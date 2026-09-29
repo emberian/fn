@@ -118,6 +118,29 @@ class RemoteCheckTests(unittest.TestCase):
         failed = self.run_check("--cmd", "exit 7")
         self.assertEqual(failed.returncode, 7, failed.stdout + failed.stderr)
 
+    def test_attach_recovers_a_run_whose_local_side_died(self):
+        # obstructions-5 item 41: the box run kept going after the local side
+        # died; attach re-reads its log to the end without re-running.
+        done = self.run_check("--cmd", "echo first-run")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        log = self.box / "my-lane-check.log"
+        self.assertEqual((self.box / "my-lane-check.log.head").read_text().split()[1], "cmd")
+        # The box's log as a run left it that exited 5, and nothing reruns it.
+        log.write_text("== remote_check x\nstep output\n== make exit 5\n")
+        (self.box / "my-lane-check.log.run.sh").write_text("echo SHOULD-NOT-RUN\n")
+        attached = subprocess.run(["sh", str(SCRIPT), "attach", "hbox"], cwd=self.lane,
+                                  env=self.env, capture_output=True, text=True, timeout=60)
+        self.assertEqual(attached.returncode, 5, attached.stdout + attached.stderr)
+        self.assertIn("attach: the run of", attached.stdout)
+        self.assertIn("step output", (self.lane / "build/remote-check/hbox-cmd.log").read_text())
+        self.assertNotIn("SHOULD-NOT-RUN", log.read_text())
+
+    def test_attach_without_a_run_says_so(self):
+        attached = subprocess.run(["sh", str(SCRIPT), "attach", "hbox"], cwd=self.lane,
+                                  env=self.env, capture_output=True, text=True, timeout=60)
+        self.assertEqual(attached.returncode, 3)
+        self.assertIn("no run of lane my-lane", attached.stderr)
+
     def test_certificates_install_by_default_and_regen_fetches_the_generated_files(self):
         (self.lane / "tools").mkdir()
         (self.lane / "tools/certs.py").write_text("print('  installed 3')\n")
