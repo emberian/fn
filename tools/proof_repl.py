@@ -63,8 +63,9 @@ first publishes any pair this tree's own manifests vouch for (a lane's own
 uncertified, the books that miss only because they include one, and the
 fixes: `--certify-missing` certifies them (certify_books.py --incremental,
 under swarm-build where it exists) and starts; `--source-deps` (or
-`--ld-missing`) loads them from source in the session; `--ld BOOK` /
-`--source-deps A,B` loads named ones.  A from-source book's proofs run in the
+`--ld-missing`) loads them from source in the session; `--ld DEPENDENCY`
+(a book the session's book includes, never the book itself) / `--source-deps
+A,B` loads named ones.  A from-source book's proofs run in the
 session and `status` marks it "from source (not certified)"; the books of the
 closure that include it are loaded from source too, since their
 certificates name its other bytes.
@@ -76,8 +77,11 @@ the session.  `probe` checks its session's checkpoint (label fn-probe-base
 and the world's command number) before and after each attempt, undoes what
 is above it with `ubu!`, and reloads when it cannot; `--form` takes several
 forms.  `stop NAME` also ends a start still loading with no socket (the
-lock file names its holder).  `start --ld-local` loads from-source books
-inside one encapsulate so their local events stay local.  `--host BOX`
+lock file names its holder).  `start` loads from-source books (`--ld`,
+`--source-deps`, `--ld-missing`) inside one encapsulate so their local
+events stay local -- the default since obstructions-5 item 32
+(store-log-extend's local lemmas turned global form by form); `--ld-leak`
+loads form by form, which names the refused event.  `--host BOX`
 (hbox, persvati) runs a command in the lane's tree on that box with the
 box's own ACL2 and cache after syncing tools/ and the book's closure; on a
 box itself FN_ACL2 and FN_CERT_CACHE default to that box's.
@@ -127,7 +131,8 @@ for a lease ending within `--lease-wait` minutes (default 2), else refuses;
 `--host auto` passes over the laptop when its cache lacks any of the book's
 dependencies; a remote start records its box before it runs
 (build/proof-repl/NAME/remote.json), and send/send-range/resync/status/
-stop/probe without --host go there (`--host laptop` runs here).
+stop/probe without --host go there (`--host laptop` runs here), into the
+lane tree the record names -- no FN_LANE needed after `start`.
 
 A session holds one slot of the machine's ACL2 pool for its whole life, so
 it belongs to its lane and ends with it (PKT-346: fifteen finished lanes'
@@ -1067,7 +1072,8 @@ def load_book(acl2: Acl2, book: str, state: dict, load_timeout: float,
                 return False
         output, timed_out = acl2.send(body, hard * 4)
         if timed_out or errored(output):
-            state["stopped_at"] = where + "(encapsulate of the book)"
+            state["stopped_at"] = (where + "(encapsulate of the book; start with --ld-leak "
+                                   "to stop at the refused event itself)")
             if timed_out:
                 state["error"] = "load timed out"
             else:
@@ -1312,9 +1318,38 @@ def unusable_reason(entries: Path, toolchain: str | None) -> str:
                 f"{', '.join(one[:8] for one in identities)}, and this ACL2 is "
                 f"{toolchain[:8]} (another box's build: certify here, or run where "
                 "that toolchain is)")
+    mine = [meta for meta in metas
+            if not toolchain or meta.get("toolchain_identity") == toolchain]
+    if mine and not any(meta.get("fasl_sha256") for meta in mine):
+        return ("the cache holds these bytes only without their compiled file (.fasl); "
+                "installed bare the book would load uncompiled, so no set takes it "
+                "(--certify-missing certifies and compiles it)")
     return ("the cache holds certificates for these bytes, but none usable here "
             "(their ACL2 certificate alists disagree with the other books' chosen "
             "certificates, or a live worktree's pair)")
+
+
+def root_causes(graph: dict[str, list[str]], missing) -> list[str]:
+    """The missing books none of whose dependencies is missing (their own bytes)."""
+    lost = set(missing)
+    return [name for name in sorted(lost) if not set(graph.get(name, ())) & lost]
+
+
+def refusal_headline(graph: dict[str, list[str]], missing) -> str:
+    """The refusal's first line: the command that gets past it.
+
+    A lane that edited books/X and started a session on a test book that
+    includes it read a page of diagnosis before finding `--ld books/X` in the
+    last line (assurance-hygiene, 2026-09-29).
+    """
+    roots = root_causes(graph, missing)
+    ld = " ".join(f"--ld {name}" for name in roots)
+    follow = len(set(missing)) - len(roots)
+    return (f"proof-repl: REFUSED -- no certificate at these bytes for "
+            f"{', '.join(name + '.lisp' for name in roots)}"
+            + (f" (and {follow} book(s) that include it)" if follow else "")
+            + f"; start again with `{ld}` (load from source in the session) "
+            "or --certify-missing (certify, then include)")
 
 
 def diagnose(graph: dict[str, list[str]], missing: list[str], cache: Path,
@@ -1327,7 +1362,7 @@ def diagnose(graph: dict[str, list[str]], missing: list[str], cache: Path,
     (a closure key hashes every included book's bytes).
     """
     lost = set(missing)
-    roots = [name for name in sorted(lost) if not set(graph.get(name, ())) & lost]
+    roots = root_causes(graph, lost)
     follow = sorted(lost - set(roots))
     lines = [f"proof-repl: no cached certificate for {len(lost)} of this book's "
              f"dependencies at this tree's bytes (cache {cache}):"]
@@ -1374,13 +1409,33 @@ def fixes(missing: list[str], jobs: int) -> list[str]:
             str(shutil.which("swarm-build")), "swarm-build"),
         "  start ... --source-deps       load them from source in the session (their proofs",
         "                                run in it; that is not a certificate)",
-        f"  start ... --ld BOOK           load one named dependency from source (the books of "
+        f"  start ... --ld DEPENDENCY     load one book it includes from source (the books of "
         f"the closure that include it follow); missing: {roots}",
     ]
 
 
+def runner_closure(book: str, graph: dict[str, list[str]], include_self: bool,
+                   cache: Path, identity: str, acl2: Path):
+    """The certify runner's own install of BOOK's dependencies, or None if short.
+
+    `start --certify-missing` ran `certify_books.py --incremental`, whose
+    install-partial chooses per book; it said "nothing left" while install-set
+    (one compatible set) still found none and `start` refused "no cached
+    certificate" (bp-remainder, persvati, twice).  The closure the runner
+    installed is the one it certifies against, so when install-partial covers
+    every dependency, compiled, the session takes it.
+    """
+    roots = [book] if include_self else sorted(graph.get(book, ()))
+    if not roots:
+        return None
+    with acl2_slots.slot(f"proof-repl cache {book}"):
+        report = certs.install_partial(ROOT, cache, roots, identity, acl2=acl2)
+    return None if report.uncached or report.uncompiled else report
+
+
 def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
-                    log: Path | None = None) -> tuple[bool, str, list[str]]:
+                    log: Path | None = None,
+                    include_self: bool = False) -> tuple[bool, str, list[str]]:
     """Acquire the dependencies under the same ACL2 used by the REPL child.
 
     Answers (acquired, what to print, the books to load from source in
@@ -1391,17 +1446,26 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
     first (so a lane's own `certify_books.py` run counts); then AUTO says what
     to do with what is still missing: "ld" loads it from source, "certify"
     certifies it with `certify_books.py --incremental` and tries again, and
-    None refuses with the diagnosis.
+    None refuses with the diagnosis.  INCLUDE_SELF acquires BOOK's own
+    certificate too (a book a live session is about to include).
     """
     try:
         graph = include_graph(ROOT, book)
     except (OSError, certs.UnreadableBook, ValueError) as error:
         return False, f"proof-repl: cannot read {book}'s closure: {error}", []
     wanted = [normalize_book(name) for name in ld]
-    outside = [name for name in wanted if name not in graph or name == book]
+    if book in wanted:
+        # bp-remainder-2 read the old "outside this book's dependencies" as
+        # "--ld takes the test book" (obstructions-5 item 42).
+        return False, (f"proof-repl: --ld takes a DEPENDENCY of the session's book, not the book "
+                       f"itself: {book} already loads form by form from source; name the book "
+                       f"it includes that you changed (`start NAME {book} --ld books/X`)"), []
+    outside = [name for name in wanted if name not in graph]
     if outside:
-        return False, ("proof-repl: --ld names books outside this book's dependencies: "
-                       + ", ".join(outside)), []
+        return False, (f"proof-repl: --ld takes a DEPENDENCY of {book} (a book it includes, "
+                       f"directly or not) to load from source; {book} does not include "
+                       + ", ".join(outside)
+                       + f" (start the session on a book that does, or drop the --ld)"), []
     printed: list[str] = []
     configured = os.environ.get("FN_ACL2", "acl2")
     found = (configured if "/" in configured else shutil.which(configured))
@@ -1413,7 +1477,7 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
 
     def attempt(from_source: set[str], purge: bool):
         nonlocal fingerprint
-        required = set(graph) - from_source - {book}
+        required = set(graph) - from_source - (set() if include_self else {book})
         if not required:
             return None, required
         if fingerprint is None:
@@ -1431,7 +1495,8 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
                     purge_on_miss=purge, acl2=acl2), required
             return certs.install_artifact_set(
                 ROOT, cache, [book], toolchain_identity=fingerprint.identity,
-                dependencies_only=True, purge_on_miss=purge, acl2=acl2), required
+                dependencies_only=not include_self, purge_on_miss=purge,
+                acl2=acl2), required
 
     from_source = dependents_of(graph, wanted) - {book}
     try:
@@ -1452,17 +1517,30 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
             printed.append(f"  certify_books.py exit {done.returncode}"
                            + (f"; log {log}" if log else ""))
             report, required = attempt(from_source, purge=False)
-        if report is not None and report.artifact_set is None and auto == "ld":
+            if (report is not None and report.artifact_set is None
+                    and done.returncode == 0 and not from_source):
+                per_book = runner_closure(book, graph, include_self, cache,
+                                          fingerprint.identity, acl2)
+                if per_book is not None:
+                    printed.append(
+                        "proof-repl: install-set found no one compatible set after the "
+                        f"certify run (missing {', '.join(report.uncached)}); the runner's "
+                        "own per-book install (install-partial) covers the closure -- "
+                        "taking that")
+                    report = per_book
+        if (report is not None and report.artifact_set is None
+                and report.action != "install-partial" and auto == "ld"):
             from_source |= dependents_of(graph, report.uncached) - {book}
             printed.append("proof-repl: loading from source (proofs run in the session): "
                            + ", ".join(dependency_order(graph, from_source)))
             report, required = attempt(from_source, purge=False)
-        if report is not None and report.artifact_set is None:
+        if (report is not None and report.artifact_set is None
+                and report.action != "install-partial"):
             missing = sorted(report.uncached)
             # The refusal keeps the old contract: no local pair of the closure
             # survives a miss to stand in for a certificate later.
             attempt(from_source, purge=True)
-            return False, "\n".join(printed + diagnose(
+            return False, "\n".join([refusal_headline(graph, missing)] + printed + diagnose(
                 graph, missing, cache, fingerprint.identity if fingerprint else None)
                 + fixes(missing, jobs)), []
     except ValueError as error:
@@ -1585,9 +1663,46 @@ def _start(args) -> int:
         else:
             print("proof-repl: the session did not become ready; see", directory / "log")
             return 1
-        return status(args)
+        code = status(args)
+        line, partial = load_verdict(read_state(args.name) or {})
+        print(line)
+        return PARTIAL_LOAD if partial else code
     finally:
         os.close(lock_fd)
+
+
+# `start`'s answer when the book's load stopped at a refused form: the session
+# may be live, just before it, but it is not the book (join-f2-5 lost a farm
+# round to a start whose output looked like a full load).
+PARTIAL_LOAD = 3
+
+
+def load_verdict(state: dict) -> tuple[str, bool]:
+    """`start`'s last line: where the load stopped, or that it is complete.
+
+    Answers (the line, whether the load is partial).  A stop the caller
+    asked for (--upto/--through) is a complete load of what was asked.
+    """
+    name, book = state.get("name", "?"), state.get("book", "?")
+    loaded = len(state.get("loaded") or [])
+    stopped = state.get("stopped_at")
+    if not stopped:
+        asked = state.get("upto") or state.get("through")
+        return (f"proof-repl {name}: LOADED {book}: {loaded} forms"
+                + (f" (as asked, {'up to' if state.get('upto') else 'through'} {asked})"
+                   if asked else ""), False)
+    within, _, event = stopped.rpartition(": ")
+    try:
+        total = len(forms((ROOT / f"{book}.lisp").read_text(encoding="utf-8")))
+    except OSError:
+        total = None
+    return (f"proof-repl {name}: PARTIAL LOAD -- stopped at {event} in "
+            f"{within or book} (a from-source dependency) " if within else
+            f"proof-repl {name}: PARTIAL LOAD -- stopped at {event} in {book} "
+            ) + (f"after {loaded}" + (f" of {total}" if total else "") + " forms; "
+                 ) + ("the session is live just before it (fix it, then `send` or "
+                      "`send-range --from`); exit 3" if state.get("ready") else
+                      "the session is not live; exit 3"), True
 
 
 REFUSAL_MARKS = ("******** FAILED ********", "ACL2 Error")
@@ -1666,9 +1781,9 @@ def status(args) -> int:
               "LOCAL lemmas and theory are rules in this session that a certified include "
               "would not give: a proof here may pass, fail or cost differently than under "
               "certification (feed-queue, 2026-09-27: 6.9M steps here, 1.76M over the "
-              "certified dependency). Start with --ld-local to load each inside one "
-              "encapsulate (its non-local include-book and defpkg forms first), or "
-              "--certify-missing to include certificates.")
+              "certified dependency). This session was started with --ld-leak; without it "
+              "each loads inside one encapsulate (its non-local include-book and defpkg "
+              "forms first), or --certify-missing includes certificates.")
     if state["stopped_at"]:
         print(f"  stopped at {state['stopped_at']}:")
         print("  " + (state["error"] or "").replace("\n", "\n  "))
@@ -1782,11 +1897,74 @@ def send(args) -> int:
               "is meant, or `resync NAME BOOK --from EVENT` to undo and resend a book.",
               file=sys.stderr)
         return 2
+    several, ready = prepare_includes(args.name, several)
+    if not ready:
+        return 1
     if len(several) <= 1:
-        return send_one(args.name, form, args.limit, args.full)
+        return send_one(args.name, several[0] if several else form, args.limit, args.full)
     items = [(form_label(index, one), one) for index, one in enumerate(several, 1)]
     return send_many(args.name, items, args.limit, args.full,
                      getattr(args, "keep_going", False))
+
+
+def session_directory(name: str) -> Path | None:
+    """The connected book directory of session NAME: its book's directory."""
+    book = (read_state(name) or {}).get("book")
+    return (ROOT / f"{book}.lisp").parent if book else None
+
+
+def rooted_include(form: str, directory: Path) -> tuple[str, str | None]:
+    """FORM with a repository-root-relative include path made relative to
+    DIRECTORY (the session's connected book directory), and the book it names.
+
+    A session on books/X has books/ as its directory, so `(include-book
+    "tests/acl2/y-tests")` named books/tests/acl2/y-tests and failed
+    (paged-history, 2026-09-29).  A path that names a book from DIRECTORY
+    is left alone; one that names a book only from the root is rewritten.
+    """
+    match = INCLUDE.match(form.strip())
+    if not match or ":dir" in match.group(2).lower():
+        return form, None
+    written = match.group(1)
+    if (directory / f"{written}.lisp").is_file() or not (ROOT / f"{written}.lisp").is_file():
+        return form, include_target(form, directory)
+    relative = os.path.relpath(ROOT / written, directory)
+    rewritten = form.replace(f'"{written}"', f'"{relative}"', 1)
+    return rewritten, include_target(rewritten, directory)
+
+
+def prepare_includes(name: str, several: list[str], acquire=None) -> tuple[list[str], bool]:
+    """The forms to send, each repository include made relative to the
+    session's directory, and whether every included book is certified.
+
+    A sent include of a book with no certificate here (a tests/acl2 book is
+    rarely in a books/ session's closure) is acquired first -- installed
+    from the cache, or certified -- as `start --certify-missing` acquires a
+    dependency; an include of an uncertified book would process its events
+    in the session, which is not what the certified book provides.
+    """
+    directory = session_directory(name)
+    if directory is None:
+        return several, True
+    acquire = acquire or (lambda book: install_closure(
+        book, (), "certify", 4, SESSIONS / f"{name}.include.log", include_self=True))
+    prepared = []
+    for one in several:
+        rewritten, target = rooted_include(one, directory)
+        if rewritten != one:
+            print(f"proof-repl: include path made relative to the session's directory "
+                  f"{directory.relative_to(ROOT).as_posix() if directory.is_relative_to(ROOT) else directory}/: "
+                  f"{rewritten.strip()}")
+        if (target is not None and (ROOT / f"{target}.lisp").is_file()
+                and not certs.valid_looking(ROOT / f"{target}.cert")):
+            acquired, detail, _ = acquire(target)
+            print(detail)
+            if not acquired:
+                print(f"proof-repl: not sending the include of {target}: no certificate "
+                      "could be acquired for it")
+                return several, False
+        prepared.append(rewritten)
+    return prepared, True
 
 
 def read_state(name: str) -> dict | None:
@@ -2719,7 +2897,7 @@ def remote_tree(host: str, lane: str | None, override: str | None = None) -> str
 
 
 def sync_files(books: list[str], extra: list[str] = ()) -> list[str]:
-    """The files a remote session needs: tools/ and the named books' include closures.
+    """The files a remote session needs: tools/, host/ and the named books' include closures.
 
     Never planning/ (hundreds of MB): the closure is what `start` reads,
     certifies and loads.  Certificates are not copied; the box installs
@@ -2732,6 +2910,11 @@ def sync_files(books: list[str], extra: list[str] = ()) -> list[str]:
         for name in names:
             if not name.endswith(SYNC_EXCLUDES):
                 wanted.add(str(Path(directory, name).relative_to(ROOT)))
+    # The host files too (2.6 MB): a session that `ld`s them (the coverage
+    # dump over image-world + tools/extract/world-host.lisp) found none on
+    # the box's tree (obstructions-3 item 14).
+    for path in sorted((ROOT / "host").rglob("*.lisp")):
+        wanted.add(str(path.relative_to(ROOT)))
     for book in books:
         try:
             graph = include_graph(ROOT, normalize_book(book))
@@ -2911,11 +3094,40 @@ def recorded_host(name: str | None) -> str | None:
     return None
 
 
+def recorded_session(name: str | None) -> dict:
+    """The record `start` wrote for session NAME (host, tree, book, lane), or {}."""
+    if not name:
+        return {}
+    with contextlib.suppress(OSError, ValueError, TypeError):
+        record = json.loads((session_dir(name) / "remote.json").read_text())
+        if isinstance(record, dict):
+            return record
+    return {}
+
+
+def remote_lane_and_tree(args, host: str) -> tuple[str | None, str]:
+    """The lane and box tree a --host command runs in.
+
+    `start` takes them from --lane/--remote-tree, else $FN_LANE or the
+    worktree's name.  Every later command about that session (send,
+    send-range, resync, status, stop, probe, diff, checkpoints) takes them
+    from the record `start` wrote when it is for the same box, so a shell
+    without FN_LANE -- the main checkout, a sub-agent's -- reaches the same
+    tree (obstructions-5 item 31); an explicit --lane/--remote-tree still wins.
+    """
+    record = {} if args.command == "start" else recorded_session(getattr(args, "name", None))
+    if record.get("host") != host:
+        record = {}
+    lane = getattr(args, "lane", None) or record.get("lane") or default_lane()
+    override = getattr(args, "remote_tree", None) or (
+        record.get("tree") if not getattr(args, "lane", None) else None)
+    return lane, remote_tree(host, lane, override)
+
+
 def run_remote(args, argv: list[str]) -> int:
     """This command, on args.host, in the lane's tree there, after syncing what it reads."""
     host = args.host
-    lane = getattr(args, "lane", None) or default_lane()
-    tree = remote_tree(host, lane, getattr(args, "remote_tree", None))
+    lane, tree = remote_lane_and_tree(args, host)
     forwarded = strip_remote_options(argv)
     books: list[str] = []
     extra: list[str] = []
@@ -2937,6 +3149,15 @@ def run_remote(args, argv: list[str]) -> int:
             raise SystemExit(f"proof-repl: --host probe: no record of session {args.name!r}'s "
                              "book here (start it with --host from this tree, or pass --book)")
         books += list(args.ld or [])
+    elif command == "send" and args.form != "-":
+        # A sent include of a repository book: its closure goes to the box.
+        record = session_dir(args.name) / "remote.json"
+        with contextlib.suppress(OSError, KeyError, json.JSONDecodeError, ValueError):
+            directory = (ROOT / f"{json.loads(record.read_text())['book']}.lisp").parent
+            for one in commands(args.form):
+                _, target = rooted_include(one, directory)
+                if target is not None and (ROOT / f"{target}.lisp").is_file():
+                    books.append(target)
     elif command in ("list", "reap", "gc") and not getattr(args, "no_sync", False):
         extra.append("tools/proof_repl.py")  # sync_files adds the rest of tools/
     elif command in ("send-range", "resync", "diff"):
@@ -3084,9 +3305,10 @@ def main(argv: list[str] | None = None) -> int:
                    help="stop the session after MIN minutes with no send (default "
                         f"$FN_REPL_IDLE_MIN, else {DEFAULT_IDLE_MINUTES:g}; 0: never)")
     p.add_argument("--idle-seconds", type=float, default=None, help=argparse.SUPPRESS)
-    p.add_argument("--ld", action="append", default=[], metavar="BOOK",
-                   help="load this dependency from source, not from a certificate "
-                        "(repeatable); the closure's books that include it follow")
+    p.add_argument("--ld", action="append", default=[], metavar="DEPENDENCY",
+                   help="a book the session's book INCLUDES (not the book itself): load it "
+                        "from source, not from a certificate (repeatable); the closure's "
+                        "books that include it follow")
     p.add_argument("--ld-missing", action="store_true",
                    help="load every dependency the cache lacks from source")
     p.add_argument("--source-deps", nargs="?", const="*", default=None, metavar="A,B",
@@ -3097,10 +3319,13 @@ def main(argv: list[str] | None = None) -> int:
                         "(certify_books.py --incremental, under swarm-build when present)")
     p.add_argument("--certify-jobs", type=int, default=4,
                    help="--jobs for --certify-missing (default 4)")
-    p.add_argument("--ld-local", action="store_true",
-                   help="load each from-source dependency inside one (encapsulate () ...), "
-                        "so its local lemmas stay local as a certified include keeps them "
-                        "(default: form by form, locals leak into the session)")
+    p.add_argument("--ld-local", dest="ld_local", action="store_true", default=True,
+                   help="(the default) load each from-source dependency inside one "
+                        "(encapsulate () ...), so its local lemmas stay local as a certified "
+                        "include keeps them")
+    p.add_argument("--ld-leak", dest="ld_local", action="store_false",
+                   help="load from-source dependencies form by form instead: their LOCAL "
+                        "lemmas become session rules, but a refusal names its event")
     add_remote_options(p, sync=True, lease=True)
     p.set_defaults(run=start)
     p = sub.add_parser("serve")
@@ -3182,8 +3407,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--form", default=None,
                    help="prove this form, or several (helper lemmas, then the target), "
                         "at the event's place instead; `-` reads them from stdin")
-    p.add_argument("--ld", action="append", default=[], metavar="BOOK",
-                   help="also load this dependency from source")
+    p.add_argument("--ld", action="append", default=[], metavar="DEPENDENCY",
+                   help="also load this dependency (a book the session's book includes) "
+                        "from source")
     p.add_argument("--limit", type=float, default=None)
     p.add_argument("--load-timeout", type=float, default=600.0)
     p.add_argument("--idle-timeout", type=float, default=None, metavar="MIN",

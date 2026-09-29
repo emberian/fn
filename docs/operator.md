@@ -144,7 +144,8 @@ that, every `restart` is quietly refused while looking like success. Run
 If you move the store or log folder, add the new place to `ReadWritePaths`
 in the service file. Otherwise the service cannot write there.
 
-On a Mac, install `share/fn/launchd/net.fn.plist` as
+No release targets macOS. From a checkout on a Mac, render
+`packaging/net.fn.native.plist.in` (replace `@PREFIX@`) into
 `/Library/LaunchDaemons/net.fn.plist`, then run
 `sudo launchctl bootstrap system /Library/LaunchDaemons/net.fn.plist`.
 
@@ -163,6 +164,23 @@ fn operator CONFIG status
 This shows how many articles the store holds and how much room is left
 (`headroom`). It works while the node runs, and while it is stopped.
 `status --watch 60` repeats every 60 seconds.
+
+While the node runs, the node itself answers. While it is stopped, `status`
+reads only the newest checkpoint's header and the sizes of the journal's
+files, so it is quick at any size and it does not replay the log:
+
+```text
+stopped checkpoint=1200 journal-octets=51840 transactions-at-most=2434
+profile format=10 max-transactions=100000 ...
+```
+
+`checkpoint=` is the number of records the checkpoint covers (`none` before
+the first one); `transactions-at-most=` is a bound (the covered count plus
+the most records the journal's octets could hold), never below the real
+count. The exact counts of a stopped store are `status --replay` (which
+replays the log, as `recover` does) or the running node's `status`. If an
+owner holds the store but answers nothing on its socket (it is starting or
+stopping), `status` refuses by name: `owner-holds-the-store`.
 
 ### Health
 
@@ -201,7 +219,11 @@ connections, refusals and limits in force.
 ### The log
 
 The log is `log/fn.log` in the node folder (on OpenBSD, syslog). fn only
-adds to it; it never empties or rotates it. Each post and each connection
+adds to it; it never empties or rotates it by itself. To rotate it, move
+the file and send the node `SIGHUP` (`kill -HUP PID`, or
+`systemctl kill -s HUP fn`): the node reopens `log/fn.log` at its next
+accept and keeps writing there, so a logrotate rule with `postrotate` and
+that signal works (no `copytruncate` needed). Each post and each connection
 gets one line, starting with the outcome:
 
 ```
@@ -374,8 +396,9 @@ Every post by a login carries a line like this:
 Injection-Info: news.example.org; posting-account="8c59...f172"; mail-complaints-to="abuse@example.org"
 ```
 
-The `posting-account` value is the same for every post by one login. So
-anyone can tell that two posts came from the same login. Nobody can work
+The `posting-account` value is the same for every post by one account
+(the principal a login signs in as; usually one login is one account). So
+anyone can tell that two posts came from the same account. Nobody can work
 out the login name from it without your node's secret key. Tell the
 people you give logins to.
 
@@ -641,7 +664,9 @@ no clear answer. It may be saved; it may not. fn will not guess.
 
 1. **Do not retry blindly.** Retrying a post with the same Message-ID is
    safe. Posting it again under a new one may make a copy.
-2. **Stop the node and run `recover`:**
+2. **Run `recover`.** On a running node it answers `recover accepted
+   owner=serving` (the node's own open already recovered the store) and
+   prints the node's status; there is nothing to stop. On a stopped node:
 
    ```
    fn operator CONFIG recover
@@ -755,7 +780,9 @@ wrong folder (for example, the disk is not mounted).
 ### A post whose answer was lost
 
 Someone's newsreader lost the answer to a post, and trying again was
-refused. With the node stopped, look the post up by its Message-ID:
+refused. Look the post up by its Message-ID, while the node runs (the node
+answers from its own table) or while it is stopped (the store is opened
+read-only):
 
 ```text
 fn operator /path/to/fn.toml store inspect '<fn-client.20260922T034404Z.3fd1ce9e@yue.invalid>'

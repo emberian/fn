@@ -199,3 +199,65 @@
  (defthm nsct-client-step-without-the-length
    (equal (fn-nsc-client-view (fn-nsc-client-step chunks n total digest reply))
           (fn-nls-client-step (fn-nsc-join chunks) total digest reply))))
+
+; -----------------------------------------------------------------------------
+; PKT-885, fn-nsc-answer-report-counts-are-the-reader-view.  REACHABLE: the
+; owner of tests/acl2/native-live-status-tests.lisp after its first commit
+; (one record, one article), with the view it had before that commit held as
+; the captured reader view -- what the committer's :start capture holds
+; while that commit's batch is in flight.  The status report the host asks
+; for opens with the reader view's counts, 0 and 0, not the Store's 1 and 1.
+(include-book "native-live-status-tests")
+
+(defconst *nsct-reader-views* (list (fn-own-view (fn-ocfg-owner *nlst-0*))))
+
+(defun nsct-reader-report (fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (let* ((fn-arena (fn-arena-clear fn-arena))
+         (fn-cat (fn-cat-clear fn-cat)))
+    (mv (fn-nsc-answer-report :status *nlst-profile*
+                              (fn-ocfg-at-reader-view *nlst-oc* *nsct-reader-views*)
+                              (nlst-cache) *nlst-obs* 10 '(:clear) fn-arena fn-cat)
+        fn-arena fn-cat)))
+
+(assert-event
+ (mv-let (report fn-arena fn-cat)
+   (nsct-reader-report fn-arena fn-cat)
+   (let ((words (fn-nls-counts-words (fn-nls-view-seen (car *nsct-reader-views*)))))
+     (mv (and (consp *nsct-reader-views*)                        ; a capture is held
+              (not (member-equal :status '(:health :peers :control :accounts
+                                           :pins :obligations)))
+              (equal (take (len words) report) words)               ; the conclusion
+              (equal words (fn-record-string-octets "transactions=0 articles=0"))
+              ; not degenerate: the Store holds the in-flight record
+              (equal (fn-nls-store-seen (fn-own-store (fn-ocfg-owner *nlst-oc*)))
+                     '(1 . 1))
+              (not (equal (take (len words) report)
+                          (fn-nls-counts-words
+                           (fn-nls-store-seen (fn-own-store (fn-ocfg-owner *nlst-oc*)))))))
+         fn-arena fn-cat)))
+ :stobjs-out '(nil fn-arena fn-cat))
+
+; Without the capture the owner's own (current) view is read: 1 and 1.
+(assert-event
+ (mv-let (report fn-arena fn-cat)
+   (let* ((fn-arena (fn-arena-clear fn-arena))
+          (fn-cat (fn-cat-clear fn-cat)))
+     (mv (fn-nsc-answer-report :status *nlst-profile*
+                               (fn-ocfg-at-reader-view *nlst-oc* nil)
+                               (nlst-cache) *nlst-obs* 10 '(:clear) fn-arena fn-cat)
+         fn-arena fn-cat))
+   (mv (equal (take 26 report) (fn-record-string-octets "transactions=1 articles=1 "))
+       fn-arena fn-cat))
+ :stobjs-out '(nil fn-arena fn-cat))
+
+; The kind hypothesis is needed: `pins' opens with no count.
+(must-fail-checked
+ (defthm nsct-counts-for-every-kind
+   (let ((report (fn-nsc-answer-report kind profile (fn-ocfg-at-reader-view oc views)
+                                       cache obs min disk fn-arena fn-cat))
+         (words (fn-nls-counts-words
+                 (fn-nls-view-seen (if (consp views)
+                                       (car views)
+                                     (fn-own-view (fn-ocfg-owner oc)))))))
+     (equal (take (len words) report) words))))

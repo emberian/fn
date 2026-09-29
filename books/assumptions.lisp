@@ -306,7 +306,7 @@
     (natp (fn-assume-fairness-contact-index route schedule))))
 
 ; -----------------------------------------------------------------------------
-; A-CRASH-IMAGE and A-CRYPTO-TRAILER (design §3.6), moved here from
+; A-CRASH-IMAGE and A-CRYPTO-TRAILER (design section 3.6), moved here from
 ; books/byte-store-invariants.lisp on 2026-09-20.
 ;
 ; These two are the first assumptions in the book that constrain a real model

@@ -6,7 +6,7 @@
 ; They are constrained functions: no book can open them, so a goal that only
 ; dispatches on a record kind cannot carry the codec, which is the growth
 ; that stopped proofs returning on 2026-09-21 (review 2026-09-22, F3; plan
-; 2026-09-22 §4.1, step T1).
+; 2026-09-22 section 4.1, step T1).
 ;
 ; The local witnesses are the real definitions, `fn-record-encode-impl' and
 ; `fn-record-decode-exact-impl' (books/records.lisp), so the constraints are
@@ -41,7 +41,7 @@
 ;                                            generation and stamp at any u64
 ; Every other exported theorem in this book is derived from those nine
 ; below the `encapsulate'.  The header is two constraints, not one six-octet
-; constraint, so that the acceptance stamp (specs/acceptance-stamp.md §2.1)
+; constraint, so that the acceptance stamp (specs/acceptance-stamp.md section 2.1)
 ; widens the grammar behind the seam -- schema 1, whose version octet is 1
 ; -- by changing `fn-record-schema-octet' and the implementation, and no
 ; statement above the seam moves.

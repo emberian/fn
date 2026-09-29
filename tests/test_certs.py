@@ -99,6 +99,8 @@ def worktree(directory: str, books: dict[str, str] | None = None,
     for name in certified or []:
         (root / f"{name}.cert").write_bytes(SERIALIZED + name.encode())
         (root / f"{name}.port").write_text(f'(in-package "ACL2") ; {name}\n')
+        # Certification compiles: the cache files a pair only with its fasl.
+        (root / f"{name}.fasl").write_bytes(b"FASL " + name.encode())
     return root
 
 
@@ -115,6 +117,9 @@ def manifest_for(root: Path, certified: list[str], status: str = "passed",
         "certificate_digests_sha256": {
             name: certs.content_hash(root / f"{name}.cert") for name in certified},
         "acl2_exit_codes": {name: 0 for name in certified},
+        "compiled_digests_sha256": {
+            name: certs.content_hash(root / f"{name}.fasl") for name in certified
+            if (root / f"{name}.fasl").is_file()},
         "acl2_version": "ACL2 Version 8.7 test",
         "acl2_executable_sha256": "a" * 64,
         "acl2_compatibility": TEST_COMPATIBILITY,
@@ -616,6 +621,143 @@ class InstallTests(unittest.TestCase):
             self.assertFalse((target / "books/mid.port").exists())
 
 
+class ConcurrentWriterTests(unittest.TestCase):
+    """Item 28: an installer racing a publisher that relabels the same pairs
+    (a farm harvest) installs them; a real change retries with backoff."""
+
+    TOOLCHAIN = certs.stable_identity(TEST_COMPATIBILITY)
+    FARM = "/farm/run-race"
+
+    def published(self, one: str, two: str):
+        root = worktree(one, certified=["books/base", "books/mid"])
+        manifest = manifest_for(root, ["books/base", "books/mid"], write=False)
+        manifest["compiled_digests_sha256"] = {
+            name: certs.content_hash(root / f"{name}.fasl") for name in ("books/base", "books/mid")}
+        cache = Path(two) / "cache"
+        certs.publish(root, cache, [dict(manifest, evidence="run-0")], origin=self.FARM,
+                      origin_kind="run")
+        return root, manifest, cache
+
+    @staticmethod
+    def install(target, cache, toolchain):
+        return certs.install_partial(
+            target, cache, ["books/mid"], toolchain, acl2=Path("/fixture/acl2"),
+            pair_checker=lambda paths, pairs, acl2, root: {p: (True, True) for p in pairs})
+
+    def test_a_relabel_between_choice_and_copy_is_not_a_change(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            root, manifest, cache = self.published(one, two)
+            directory = entry(cache, root, "books/base", Path(self.FARM))
+            selected = certs.read_meta(directory)
+            certs.publish(root, cache, [dict(manifest, evidence="run-1")], origin=self.FARM,
+                          origin_kind="run")
+            self.assertNotEqual(certs.read_meta(directory), selected)  # relabelled
+            target = worktree(two + "/target")
+            self.assertTrue(certs.install_entry(directory, selected, target / "books/base.cert",
+                                                target / "books/base.port"))
+            # A new certificate under the entry is a change.
+            (directory / "book.cert").write_bytes(b"other certificate")
+            changed = dict(certs.read_meta(directory),
+                           cert_sha256=certs.content_hash(directory / "book.cert"))
+            (directory / "meta.json").write_text(json.dumps(changed))
+            (target / "books/base.cert").unlink()
+            with self.assertRaises(certs.EntryChanged):
+                certs.install_entry(directory, selected, target / "books/base.cert",
+                                    target / "books/base.port")
+
+    def test_a_real_change_retries_with_a_doubling_backoff(self):
+        pauses = []
+        real = certs.install_entry
+        calls = {"n": 0}
+
+        def flaky(*args, **kwargs):
+            calls["n"] += 1
+            if calls["n"] <= 3:
+                raise certs.EntryChanged("racing writer")
+            return real(*args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            _, _, cache = self.published(one, two)
+            target = worktree(two + "/target")
+            with mock.patch.object(certs, "install_entry", flaky), \
+                 mock.patch.object(certs.time, "sleep", pauses.append):
+                report = self.install(target, cache, self.TOOLCHAIN)
+        self.assertEqual(report.installed, 2)
+        self.assertEqual(len(pauses), 3)
+        self.assertLess(pauses[0], pauses[2])
+        self.assertLessEqual(certs.ENTRY_BACKOFF, pauses[0])
+
+    def test_two_writers_race_without_entry_changed(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            root, manifest, cache = self.published(one, two)
+            target = worktree(two + "/target")
+            stop = threading.Event()
+            relabels = []
+
+            def publisher():
+                i = 0
+                while not stop.is_set():
+                    i += 1
+                    certs.publish(root, cache, [dict(manifest, evidence=f"run-{i}")],
+                                  origin=self.FARM, origin_kind="run")
+                    relabels.append(i)
+
+            thread = threading.Thread(target=publisher)
+            thread.start()
+            try:
+                for _ in range(25):
+                    for name in ("books/base", "books/mid"):
+                        (target / f"{name}.cert").unlink(missing_ok=True)
+                    report = self.install(target, cache, self.TOOLCHAIN)
+                    self.assertEqual(report.installed, 2)
+            finally:
+                stop.set()
+                thread.join()
+            self.assertGreater(len(relabels), 1)
+
+
+class InstallSetCompiledTests(unittest.TestCase):
+    """install-set (proof_repl's, the native builds') never takes a pair the
+    cache filed without its `.fasl`: the book is missing and `uncompiled`."""
+
+    TOOLCHAIN = certs.stable_identity(TEST_COMPATIBILITY)
+    FARM = "/farm/run-bare"
+
+    def test_a_fasl_less_entry_is_held_out_of_every_set(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            root = worktree(one, certified=["books/base", "books/mid"])
+            manifest = manifest_for(root, ["books/base", "books/mid"], write=False)
+            manifest["compiled_digests_sha256"] = {
+                n: certs.content_hash(root / f"{n}.fasl") for n in ("books/base", "books/mid")}
+            cache = Path(two) / "cache"
+            certs.publish(root, cache, [manifest], origin=self.FARM, origin_kind="run")
+            # An entry an older publisher filed bare.
+            bare = entry(cache, root, "books/base", Path(self.FARM))
+            (bare / "book.fasl").unlink()
+            meta = json.loads((bare / "meta.json").read_text())
+            (bare / "meta.json").write_text(json.dumps(dict(meta, fasl_sha256=None)))
+
+            def install(target):
+                return certs.install_artifact_set(
+                    target, cache, ["books/mid"], self.TOOLCHAIN, acl2=Path("/fixture/acl2"),
+                    pair_checker=lambda paths, pairs, acl2, root: {p: (True, True) for p in pairs})
+
+            target = worktree(two + "/target")
+            refused = install(target)
+            self.assertIsNone(refused.artifact_set)
+            self.assertEqual(refused.uncached, ["books/base"])
+            self.assertEqual(refused.uncompiled, ["books/base"])
+            self.assertFalse((target / "books/mid.cert").exists())
+            # A loadable local .fasl beside the same certificate bytes counts.
+            shutil.copy(bare / "book.cert", target / "books/base.cert")
+            (target / "books/base.fasl").write_bytes(b"FASL books/base")
+            later = time.time() + 5
+            os.utime(target / "books/base.fasl", (later, later))
+            taken = install(target)
+            self.assertIsNotNone(taken.artifact_set)
+            self.assertEqual((target / "books/base.fasl").read_bytes(), b"FASL books/base")
+
+
 class CompiledFileTests(unittest.TestCase):
     """The `.fasl` travels with its pair, keyed identically, and only with it."""
 
@@ -635,8 +777,9 @@ class CompiledFileTests(unittest.TestCase):
         manifest records the digest of the `recorded` ones (default: all)."""
         books = ["books/base", "books/mid"]
         root = worktree(directory, certified=books)
-        for name in fasl:
-            (root / f"{name}.fasl").write_bytes(b"FASL " + name.encode())
+        for name in books:
+            if name not in fasl:
+                (root / f"{name}.fasl").unlink()
         manifest = manifest_for(root, books, write=False)
         manifest["compiled_digests_sha256"] = {
             name: certs.content_hash(root / f"{name}.fasl")
@@ -694,40 +837,62 @@ class CompiledFileTests(unittest.TestCase):
             self.assertEqual(again.kept, 2)
             self.assertGreaterEqual((target / "books/mid.cert").stat().st_mtime, even_later)
 
-    def test_an_entry_without_a_compiled_file_installs_the_pair_alone(self):
+    @staticmethod
+    def uncompiled_entry(stored: Path) -> None:
+        """Make STORED what an earlier publisher filed: a pair without its fasl."""
+        (stored / "book.fasl").unlink()
+        meta = json.loads((stored / "meta.json").read_text())
+        meta["fasl_sha256"] = None
+        (stored / "meta.json").write_text(json.dumps(meta))
+
+    def test_an_entry_without_a_compiled_file_is_not_installed_but_named(self):
+        """install-partial leaves such a book to be certified (which compiles
+        it): installed bare, the image build refused it (payload-arena-attach,
+        2026-09-29, "fasl 659 missing 8")."""
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
-            root, manifest = self.source(one, ["books/mid"])
+            root, manifest = self.source(one, ["books/base", "books/mid"])
             cache = Path(two) / "cache"
             certs.publish(root, cache, [manifest], origin=self.FARM, origin_kind="run")
-            self.assertFalse(
-                (entry(cache, root, "books/base", Path(self.FARM)) / "book.fasl").exists())
+            self.uncompiled_entry(entry(cache, root, "books/base", Path(self.FARM)))
             target = worktree(two + "/target")
             (target / "books/base.fasl").write_bytes(b"left from another run")
             report = self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
-            self.assertEqual((report.installed, report.fasl_installed,
-                              report.fasl_missing), (2, 1, 1))
-            self.assertTrue((target / "books/base.cert").is_file())
-            self.assertFalse((target / "books/base.fasl").exists())
+            self.assertEqual(report.uncompiled, ["books/base"])
+            self.assertIn("books/base", report.uncached)
+            self.assertNotIn("books/base", report.installed_from)
+            self.assertIn("  uncompiled: books/base", report.lines())
+            for suffix in (".cert", ".fasl"):
+                self.assertFalse((target / f"books/base{suffix}").exists())
+            # A book named for recertification is not also named uncompiled.
+            again = certs.install_partial(
+                target, cache, ["books/mid"], self.TOOLCHAIN,
+                acl2=Path("/fixture/acl2"), recertify=["books/base"],
+                pair_checker=lambda paths, pairs, acl2, root:
+                    {pair: (True, True) for pair in pairs})
+            self.assertEqual(again.uncompiled, [])
 
     def test_a_local_compiled_file_beside_the_same_certificate_stays(self):
         """An entry without a compiled file does not delete the tree's own
         `.fasl` beside the same certificate bytes: that deletion made the
         tree's next publish clear the cache's (image-growth, 2026-09-28)."""
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
-            root, manifest = self.source(one, ["books/mid"])
+            root, manifest = self.source(one, ["books/base", "books/mid"])
             cache = Path(two) / "cache"
             certs.publish(root, cache, [manifest], origin=self.FARM, origin_kind="run")
-            (root / "books/base.fasl").write_bytes(b"FASL books/base")
+            self.uncompiled_entry(entry(cache, root, "books/base", Path(self.FARM)))
             report = self.install(root, cache, ["books/mid"], self.TOOLCHAIN)
             self.assertEqual((report.fasl_installed, report.fasl_missing), (2, 0))
+            self.assertEqual(report.uncompiled, [])
             fasl, cert = root / "books/base.fasl", root / "books/base.cert"
             self.assertEqual(fasl.read_bytes(), b"FASL books/base")
             self.assertGreaterEqual(fasl.stat().st_mtime, cert.stat().st_mtime)
-            # Older than its certificate, ACL2 would refuse it: removed.
+            # Older than its certificate, ACL2 would refuse it: the book is
+            # left to be certified, its pair and compiled file removed.
             os.utime(fasl, (cert.stat().st_mtime - 60,) * 2)
             report = self.install(root, cache, ["books/mid"], self.TOOLCHAIN)
-            self.assertEqual(report.fasl_missing, 1)
+            self.assertEqual(report.uncompiled, ["books/base"])
             self.assertFalse(fasl.exists())
+            self.assertFalse(cert.exists())
 
     def test_a_republish_without_the_compiled_file_keeps_the_cached_one(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
@@ -752,7 +917,18 @@ class CompiledFileTests(unittest.TestCase):
             cache = Path(two) / "cache"
             certs.publish(root, cache, [manifest], origin=self.FARM, origin_kind="run")
             bare = dict(manifest, compiled_digests_sha256={})
-            certs.publish(root, cache, [bare], origin="/farm/run-later", origin_kind="run")
+            refused = certs.publish(root, cache, [bare], origin="/farm/run-later",
+                                    origin_kind="run")
+            self.assertEqual((refused.published, sorted(refused.uncompiled)),
+                             (0, ["books/base", "books/mid"]))
+            # An entry an earlier publisher filed without one, newer.
+            certs.publish(root, cache, [manifest], origin="/farm/run-later",
+                          origin_kind="run")
+            later = entry(cache, root, "books/mid", Path("/farm/run-later"))
+            self.uncompiled_entry(later)
+            meta = json.loads((later / "meta.json").read_text())
+            meta["published_at"] = "2999-01-01T00:00:00+00:00"
+            (later / "meta.json").write_text(json.dumps(meta))
             key, _ = certs.closure_key(root, "books/mid")
             entries = certs.cached_entries(cache, key)
             self.assertEqual(len(entries), 2)
@@ -768,25 +944,28 @@ class CompiledFileTests(unittest.TestCase):
             cache = Path(two) / "cache"
             report = certs.publish(root, cache, [manifest], origin=self.FARM,
                                    origin_kind="run")
-            # Both pairs publish; neither compiled file is vouched for.
-            self.assertEqual(report.published, 2)
+            # Neither compiled file is vouched for, so neither pair is filed.
+            self.assertEqual(report.published, 0)
+            self.assertEqual(sorted(report.uncompiled), ["books/base", "books/mid"])
+            self.assertIn("no compiled file 2", report.lines()[1])
             for name in ("books/base", "books/mid"):
                 self.assertFalse(
-                    (entry(cache, root, name, Path(self.FARM)) / "book.fasl").exists())
+                    (entry(cache, root, name, Path(self.FARM)) / "book.cert").exists())
 
-    def test_a_republish_adds_the_compiled_file_to_an_existing_entry(self):
+    def test_a_pair_is_filed_once_its_compiled_file_is_recorded(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
             root, manifest = self.source(one, ["books/mid"], recorded=[])
             cache = Path(two) / "cache"
-            certs.publish(root, cache, [manifest], ["books/mid"], origin=self.FARM,
-                          origin_kind="run")
+            report = certs.publish(root, cache, [manifest], ["books/mid"],
+                                   origin=self.FARM, origin_kind="run")
+            self.assertEqual(report.uncompiled, ["books/mid"])
             stored = entry(cache, root, "books/mid", Path(self.FARM))
-            self.assertFalse((stored / "book.fasl").exists())
+            self.assertFalse((stored / "book.cert").exists())
             manifest["compiled_digests_sha256"] = {
                 "books/mid": certs.content_hash(root / "books/mid.fasl")}
             report = certs.publish(root, cache, [manifest], ["books/mid"],
                                    origin=self.FARM, origin_kind="run")
-            self.assertEqual(report.relabelled, 1)
+            self.assertEqual(report.published, 1)
             self.assertTrue((stored / "book.fasl").is_file())
 
     def test_an_uncached_book_loses_its_compiled_file_with_its_pair(self):
@@ -1274,7 +1453,7 @@ class ArtifactSetTests(unittest.TestCase):
                 target, target / "empty-cache", ["books/mid"], self.TOOLCHAIN,
                 require_origin=str(target), purge_on_miss=True)
             self.assertIsNone(report.artifact_set)
-            self.assertEqual(report.removed_foreign, 4)
+            self.assertEqual(report.removed_foreign, 6)
             for name in ("books/base", "books/mid"):
                 self.assertFalse((target / f"{name}.cert").exists())
                 self.assertFalse((target / f"{name}.port").exists())
@@ -1318,7 +1497,7 @@ class PartialInstallTests(unittest.TestCase):
             line = report.lines()[1]
             self.assertIn("installed 2, kept 0, missing 1, removed 2; "
                           "roots installed 0 of 1; origins /farm/run-a=2; "
-                          "fasl 0 missing 2", line)
+                          "fasl 2 missing 0", line)
 
     def test_a_fully_cached_closure_installs_its_roots_too(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as destination:

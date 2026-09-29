@@ -53,10 +53,10 @@
                  (booleanp tlsp) (booleanp handshaking))
             (equal (fn-auth-sessionp
                     (fn-auth-make-session base config pending subject tlsp
-                                          handshaking))
+                                          handshaking compress))
                    (fn-auth-sessionp
                     (fn-auth-make-session base config pending subject nil
-                                          nil))))
+                                          nil compress))))
    :hints (("Goal" :in-theory (enable fn-auth-sessionp)))))
 
 ; A reader's fresh session is well formed, in the shape the open leaves it.
@@ -66,7 +66,7 @@
             (fn-auth-sessionp
              (fn-auth-make-session
               (fn-peer-make-session (fn-post-open-session archive) nil nil 0 nil nil nil)
-              acfg nil nil nil nil)))
+              acfg nil nil nil nil nil)))
    :hints (("Goal" :use ((:instance fn-auth-open-session-is-consistent
                                     (peer nil) (node nil) (cfg nil) (tlsp nil)))
             :in-theory (e/d (fn-auth-open-session fn-peer-open-session
@@ -78,7 +78,7 @@
    (fn-auth-sessionp
     (fn-auth-make-session
      (fn-peer-make-session (fn-post-open-session archive) nil nil 0 nil nil nil)
-     (fn-auth-open-config) nil nil nil nil))
+     (fn-auth-open-config) nil nil nil nil nil))
    :hints (("Goal" :use ((:instance fn-sit-fresh-session-is-a-session
                                     (acfg (fn-auth-open-config))))
             :in-theory (disable fn-sit-fresh-session-is-a-session
