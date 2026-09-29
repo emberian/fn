@@ -2405,7 +2405,7 @@
   :hints (("Goal"
            :in-theory (e/d (fn-auth-sasl-refuse fn-auth-session-consistentp)
                            (fn-peer-sessionp fn-peer-session-consistentp
-                            fn-auth-configp fn-auth-single fn-auth-ctxp fn-auth-sessionp fn-auth-pendingp))))))
+                            fn-auth-configp fn-auth-single fn-auth-ctxp fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
 
 (local (defthm fn-auth-find-cred-name-is-a-token
   (implies (and (fn-auth-cred-listp creds)
@@ -2438,7 +2438,7 @@
                             fn-auth-sasl-effects fn-auth-sasl-line-okp
                             fn-auth-sasl-refuse
                             fn-nntp-printable-tokenp fn-prin-idp
-                            fn-auth-principal-match fn-auth-sessionp fn-auth-pendingp))))))
+                            fn-auth-principal-match fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
 
 (local (defthm fn-auth-sasl-command-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
@@ -2451,7 +2451,7 @@
                             fn-sasl-initial-state fn-sasl-mech
                             fn-sasl-offeredp fn-auth-sasl-decode
                             fn-auth-sasl-finish fn-auth-sasl-refuse
-                            fn-auth-sasl-effects fn-auth-sessionp fn-auth-pendingp))))))
+                            fn-auth-sasl-effects fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
 
 (local (defthm fn-auth-sasl-continue-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
@@ -2470,7 +2470,7 @@
   :hints (("Goal"
            :in-theory (e/d (fn-auth-install-context fn-auth-session-consistentp fn-auth-ctxp)
                            (fn-peer-sessionp fn-peer-session-consistentp
-                            fn-auth-configp fn-sasl-seedp fn-sasl-bindingp fn-auth-sessionp fn-auth-pendingp))))))
+                            fn-auth-configp fn-sasl-seedp fn-sasl-bindingp fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
 
 (local (defthm fn-auth-authinfo-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
@@ -2492,7 +2492,7 @@
                             fn-auth-token-argp fn-nntp-keywordp
                             fn-nntp-printable-tokenp fn-prin-idp
                             fn-auth-sasl-command fn-auth-ctxp
-                            fn-auth-principal-match fn-auth-sessionp fn-auth-pendingp))))))
+                            fn-auth-principal-match fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
 
 (local (defthm fn-auth-starttls-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
@@ -2508,7 +2508,7 @@
                             fn-post-sessionp fn-post-session-consistentp
                             fn-nntp-sessionp fn-nntp-session-consistentp
                             fn-auth-configp fn-auth-single fn-nntp-single
-                            fn-nntp-printable-tokenp fn-prin-idp fn-auth-sessionp fn-auth-pendingp))))))
+                            fn-nntp-printable-tokenp fn-prin-idp fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
 
 (local (defthm fn-auth-compress-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
@@ -2529,10 +2529,10 @@
             (fn-post-result-session (fn-auth-tls-established as)) archive))
   :hints (("Goal"
            :in-theory (e/d (fn-auth-tls-established
-                            fn-auth-session-consistentp)
+                            fn-auth-session-consistentp fn-auth-sessionp)
                            (fn-peer-sessionp fn-peer-session-consistentp
                             fn-auth-configp fn-nntp-printable-tokenp
-                            fn-prin-idp fn-auth-sessionp fn-auth-pendingp))))))
+                            fn-prin-idp fn-auth-pendingp fn-auth-ctxp))))))
 
 (local (defthm fn-auth-xredeem-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
@@ -2545,7 +2545,7 @@
                             fn-nntp-sessionp fn-nntp-session-consistentp
                             fn-auth-configp fn-auth-single fn-nntp-single
                             fn-auth-token-argp fn-nntp-keywordp
-                            fn-nntp-printable-tokenp fn-prin-idp fn-auth-sessionp fn-auth-pendingp))))))
+                            fn-nntp-printable-tokenp fn-prin-idp fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
 
 (local (defthm fn-auth-redeem-outcome-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
@@ -2556,7 +2556,7 @@
            :in-theory (e/d (fn-auth-redeem-outcome fn-auth-session-consistentp)
                            (fn-peer-sessionp fn-peer-session-consistentp
                             fn-auth-configp fn-auth-single fn-nntp-single
-                            fn-nntp-printable-tokenp fn-prin-idp fn-auth-sessionp fn-auth-pendingp))))))
+                            fn-nntp-printable-tokenp fn-prin-idp fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
 
 (local (defthm fn-auth-command-preserves-consistentp
   (implies (and (fn-auth-session-consistentp as archive)
