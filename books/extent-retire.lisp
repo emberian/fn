@@ -47,6 +47,7 @@
 (include-book "payload-arena-extent")
 (include-book "payload-extent-read")
 (include-book "store-checkpoint-reader")
+(include-book "arena-reader-pins")
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -59,12 +60,29 @@
 ; The handles the writer's next step appends, in order (step 0 is the head:
 ; none).  A source that is not a handle (an octet list the writer copies) is
 ; NIL: its payload is in the chunk but no handle reseats to it.
-(defun fn-xrt-srcs-handles (srcs k)
-  (declare (xargs :guard (natp k)))
+; Loop twins here and in fn-xrt-quiet-files (depth_check: a step's sources and
+; the retired files are store data): (mbe :logic <the recursion> :exec <a
+; tail-recursive loop>), with the lemma equating them.
+(defun fn-xrt-srcs-handles-loop (srcs k rev)
+  (declare (xargs :guard (and (natp k) (true-listp rev))))
   (if (or (atom srcs) (zp k))
-      nil
-    (cons (and (natp (car srcs)) (car srcs))
-          (fn-xrt-srcs-handles (cdr srcs) (1- k)))))
+      (revappend rev nil)
+    (fn-xrt-srcs-handles-loop (cdr srcs) (1- k)
+                              (cons (and (natp (car srcs)) (car srcs)) rev))))
+
+(defun fn-xrt-srcs-handles (srcs k)
+  (declare (xargs :guard (natp k) :verify-guards nil))
+  (mbe :logic (if (or (atom srcs) (zp k))
+                  nil
+                (cons (and (natp (car srcs)) (car srcs))
+                      (fn-xrt-srcs-handles (cdr srcs) (1- k))))
+       :exec (fn-xrt-srcs-handles-loop srcs k nil)))
+
+(defthm fn-xrt-srcs-handles-loop-is-srcs-handles
+  (equal (fn-xrt-srcs-handles-loop srcs k rev)
+         (revappend rev (fn-xrt-srcs-handles srcs k))))
+
+(verify-guards fn-xrt-srcs-handles)
 
 (defun fn-xrt-step-handles (pst)
   (declare (xargs :guard (true-listp pst)))
@@ -246,14 +264,33 @@
 
 ; The retired files no log member in flight or fenced names (their COMPLETE
 ; reseats them there) and no entry of the extent column names (count 0).
-(defun fn-xrt-quiet-files (retired named fn-arena$x)
+(defun fn-xrt-quiet-files-loop (retired named fn-arena$x rev)
   (declare (xargs :stobjs fn-arena$x
-                  :guard (and (nat-listp retired) (true-listp named))))
-  (cond ((atom retired) nil)
+                  :guard (and (nat-listp retired) (true-listp named) (true-listp rev))))
+  (cond ((atom retired) (revappend rev nil))
         ((and (not (member (car retired) named))
               (equal (fn-arx-file-count (car retired) fn-arena$x) 0))
-         (cons (car retired) (fn-xrt-quiet-files (cdr retired) named fn-arena$x)))
-        (t (fn-xrt-quiet-files (cdr retired) named fn-arena$x))))
+         (fn-xrt-quiet-files-loop (cdr retired) named fn-arena$x (cons (car retired) rev)))
+        (t (fn-xrt-quiet-files-loop (cdr retired) named fn-arena$x rev))))
+
+(defun fn-xrt-quiet-files (retired named fn-arena$x)
+  (declare (xargs :stobjs fn-arena$x
+                  :guard (and (nat-listp retired) (true-listp named))
+                  :verify-guards nil))
+  (mbe :logic
+       (cond ((atom retired) nil)
+             ((and (not (member (car retired) named))
+                   (equal (fn-arx-file-count (car retired) fn-arena$x) 0))
+              (cons (car retired) (fn-xrt-quiet-files (cdr retired) named fn-arena$x)))
+             (t (fn-xrt-quiet-files (cdr retired) named fn-arena$x)))
+       :exec (fn-xrt-quiet-files-loop retired named fn-arena$x nil)))
+
+(defthm fn-xrt-quiet-files-loop-is-quiet-files
+  (equal (fn-xrt-quiet-files-loop retired named fn-arena$x rev)
+         (revappend rev (fn-xrt-quiet-files retired named fn-arena$x)))
+  :hints (("Goal" :in-theory (disable fn-arx-file-count))))
+
+(verify-guards fn-xrt-quiet-files)
 
 (local
  (defthm fn-xrt-quiet-files-member
@@ -292,3 +329,38 @@
                  (:instance fn-arx-files-unnamed-names-none (fs (list f)))
                  (:instance fn-arx-files-unnamed-p (fs (list f)))
                  (:instance fn-arx-files-unnamed-p (fs nil))))))
+
+; -----------------------------------------------------------------------------
+; 3. The release: a file a publication dropped comes back.
+;
+; The retirement check keeps out only a file some log member or some extent
+; entry names; the pending group it goes into closes once no reader other
+; than the asking publication is pinned at or below its stamp
+; (host/native/owner.lisp fnn-owner-release-extents: fn-xrt-quiet-files, then
+; fnn-arena-clear-p S PIN = fn-arpn-step's (:clear-except S PIN)).
+
+(defthm fn-xrt-quiet-files-keeps-every-unnamed-retired-file
+  (implies (and (member f retired)
+                (not (member f named))
+                (equal (fn-arx-file-count f fn-arena$x) 0))
+           (member f (fn-xrt-quiet-files retired named fn-arena$x)))
+  :hints (("Goal" :in-theory (disable fn-arx-file-count))))
+
+; KEYSTONE (PRF-930, the release).  A retired file no log member in flight
+; or fenced names and no entry of the extent column counts is quiet, and
+; with no live reader pinned but the publication's own pin OWN, the pending
+; group at any stamp S is clear: the host closes the file's descriptor in
+; the same release (its blocks come back while the owner serves).
+(defthm fn-xrt-dropped-file-is-released
+  (implies (and (member f retired)
+                (not (member f named))
+                (equal (fn-arx-file-count f fn-arena$x) 0)
+                (natp s)
+                (natp own)
+                (fn-arpn-held-p own (second st))
+                (atom (fn-arpn-unpin-at own (second st))))
+           (and (member f (fn-xrt-quiet-files retired named fn-arena$x))
+                (equal (mv-nth 1 (fn-arpn-step st (list :clear-except s own))) t)))
+  :hints (("Goal" :in-theory (disable fn-xrt-quiet-files fn-arx-file-count
+                                      fn-arpn-unpin-at fn-arpn-held-p)
+           :use ((:instance fn-xrt-quiet-files-keeps-every-unnamed-retired-file)))))

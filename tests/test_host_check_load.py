@@ -332,6 +332,16 @@ class DeclaredInterfaceTests(unittest.TestCase):
         # Never ran (the prefix failed first): not "no finding".
         self.assertIsNone(host_check.interface_world_undefined("ACL2 Error\n"))
 
+    def test_extraction_only_entries_are_checked_in_their_own_prefix(self):
+        from ledger import Sym
+        decls = self.DECLS + [{"name": "fn-xo-open-store",
+                              "source": "host/interfaces-extract.lisp", "line": 11}]
+        native = [[Sym("ld"), "host/interfaces.lisp"]]
+        self.assertEqual(host_check.interface_names(decls, native), ["fn-a", "fn-gone"])
+        extraction = native + [[Sym("ld"), "host/interfaces-extract.lisp"]]
+        self.assertEqual(host_check.interface_names(decls, extraction),
+                         ["fn-a", "fn-gone", "fn-xo-open-store"])
+
     def test_report_counts_per_touched_file_and_fails_stale_and_undeclared(self):
         lines, findings = host_check.interface_report(
             self.DECLS, self.READING, ["the raw host dispatches fn-b (host/x.lisp) and no "
@@ -351,7 +361,7 @@ class DeclaredInterfaceTests(unittest.TestCase):
     def test_load_check_puts_the_world_half_in_the_session_and_its_answer_in_findings(self):
         import inspect
         source = inspect.getsource(host_check.load_check)
-        self.assertIn("interface_world_forms(interface_names(declared))", source)
+        self.assertIn("interface_world_forms(interface_names(declared, world))", source)
         self.assertIn("interface_step(interface_world_undefined(output)", source)
         self.assertIn("static_always=False", source)
 

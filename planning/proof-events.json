@@ -1722,6 +1722,11 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-bs-sweep-round-unlinks-each-removal-by-its-name",
+          "note": "The byte run of fn-sn-sweep-round's removals unlinks each in :staging by its byte-model name (fn-bs-octets-name), which gives the octet name back (fn-bs-octets-name-inverts): the model removes the file the sweep chose (row B29, online-reclaim-10)."
+        },
+        {
+          "kind": "theorem",
           "name": "fn-sn-sweep-round-removes-only-unheld-staging-names"
         },
         {
@@ -13884,6 +13889,10 @@
         {
           "kind": "theorem",
           "name": "fn-xrt-quiet-files-are-unnamed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-dropped-file-is-released"
         }
       ]
     },
@@ -17128,6 +17137,31 @@
         {
           "kind": "theorem",
           "name": "fn-owner-orcp-rebuild-establishes-retain-carry"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1044",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pak-post-admission-ok-is-indexed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pak-post-admission-saturated-is-not-indexed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pak-post-admission-is-a-named-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pak-boundary-never-says-mpx-saturated"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-load-held-rows-keyed-is-load-held-rows"
         }
       ]
     }

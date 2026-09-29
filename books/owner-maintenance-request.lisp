@@ -63,6 +63,16 @@
   (let ((args (fn-native-operator-result-arguments result)))
     (and (true-listp args) (member-equal :replay args) t)))
 
+; `store ROOT status [--replay]' (host/native/io.lisp fnn-dispatch): the same
+; decision as the operator verb's `status' (books/native-operator.lisp; above):
+; the checkpoint header alone, the report over the replayed log with
+; `--replay', usage otherwise.  REST is the verb's remaining words.
+(defun fn-omr-store-status-word (rest)
+  (declare (xargs :guard t))
+  (cond ((null rest) :header)
+        ((and (consp rest) (equal (car rest) "--replay") (null (cdr rest))) :replay)
+        (t :usage)))
+
 ; The control socket an accepted operator plan's configuration names, as
 ; octets (what the client sends the owner's request to); nil otherwise.
 (defun fn-omr-control-path-octets (result)
@@ -234,9 +244,18 @@
 ; `fn-nh-last-run-words' takes (nil when the image keeps none).
 (defun fn-omr-stopped-health-report (last config-octets header journal-octets obs)
   (declare (xargs :guard t :verify-guards nil))
-  (append (fn-nh-not-running-header)
-          (fn-nh-last-run-words last)
-          (cadr (fn-omr-stopped-report config-octets header journal-octets obs))))
+  (let ((report (fn-omr-stopped-report config-octets header journal-octets obs)))
+    (append (fn-nh-not-running-header)
+            (fn-nh-last-run-words last)
+            (cadr report)
+            ; The ten states (books/native-health.lisp *fn-nh-states*) over a
+            ; store this process has not opened (no replay, row S3): each
+            ; `unobserved', by name, never a guess; `status --replay' observes
+            ; them.  Only when the config opened (the refusal stands alone).
+            (if (equal (car report) 0)
+                (fn-nh-lines (fn-nh-verdict nil nil 0 :unobserved :unobserved :unobserved)
+                             *fn-nh-states*)
+              nil))))
 
 ; The stopped report never replays: its count line is a function of the
 ; header's sequence and the journal's octets alone.
