@@ -17526,6 +17526,30 @@
         "fn-bpnf-family-next-selects-exactly-the-first-ready-family",
         "fn-bpnf-family-next-aux-answers-the-first-ready-row"
       ]
+    },
+    {
+      "id": "PRF-1058",
+      "title": "relay-v1 projection invariant and protected-byte preservation",
+      "statement": "The subject computed by host/owner-host.lisp fn-owner-transit-decide calls fn-asj-project (the existing fn-pu-strip). Complete Path/Xref removal followed by any finite list of trace-block insertions at valid header boundaries preserves its exact byte string. Its body equals the original body; for true-listp input its bytes are a subsequence of the original. Native signed-source subjects and fn-id-subject-of-payload retain their existing meanings. fn-asj-subject-of-equal-projections-by-definition connects the host-called subject to projection equality; no converse digest-injectivity claim.",
+      "milestone": "M4",
+      "requirements": [
+        "OBJ-008"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/article-subject.lisp",
+        "tests/acl2/article-subject-tests.lisp",
+        "tests/test_native_article_subject.py",
+        "specs/substrate-transport.md"
+      ],
+      "progress_note": "Clean asjclean REPL 55 forms admitted, guards verified; assertions test-only clean rerun pending; tree certification and new image-native coordinate owned by runner. Durable binding retention remains separate.",
+      "events": [
+        "fn-asj-permitted-relay-transform-preserves-projection",
+        "fn-asj-body-of-strip",
+        "fn-asj-strip-preserves-byte-order"
+      ]
     }
   ]
 }

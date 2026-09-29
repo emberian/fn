@@ -44,6 +44,7 @@
 ; W5b: the transit AUTHORITY verdict beside the byte decision (fn-pta-decide),
 ; from the store's carried index and keyring.
 (include-book "../books/peer-transit-authority")
+(include-book "../books/article-subject")
 ; Q16: content reclamation on a running owner (fn-orc-).
 (include-book "../books/owner-reclaim")
 (include-book "../books/owner-reclaim-conns")
@@ -2681,6 +2682,11 @@
                  (state (f-put-global 'fn-owner-transit-reason
                                       (fn-peer-decision-reason d) state))
                  (state (f-put-global 'fn-owner-transit-authority authority state))
+                 ; Versioned route-independent LEGACY article subject. The
+                 ; bytes commitment argument keeps its original meaning.
+                 (state (f-put-global 'fn-owner-transit-article-subject
+                                      (fn-id-text (fn-asj-subject octets)) state))
+                 (state (f-put-global 'fn-owner-transit-bytes-subject subject-octets state))
                  ; (nth 3 args) is fn-peer-scope-groups' answer: the list
                  ; fn-peer-injection-arguments hands fn-node-prepare as the
                  ; memberships (generation, msgid, octets, GROUPS, id,
@@ -2945,7 +2951,15 @@
                                       ; unbound until a transit's authority
                                       ; decision sets it: the empty authority
                                       (and (boundp-global 'fn-owner-transit-authority state)
-                                           (f-get-global 'fn-owner-transit-authority state))))))
+                                           (f-get-global 'fn-owner-transit-authority state))))
+                                    (fn-olog-field
+                                     "article-subject"
+                                     (and (boundp-global 'fn-owner-transit-article-subject state)
+                                          (f-get-global 'fn-owner-transit-article-subject state)))
+                                    (fn-olog-field
+                                     "bytes-subject"
+                                     (and (boundp-global 'fn-owner-transit-bytes-subject state)
+                                          (f-get-global 'fn-owner-transit-bytes-subject state)))))
                              state)))
     (value :ok)))
 

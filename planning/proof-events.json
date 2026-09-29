@@ -17125,6 +17125,23 @@
           "name": "fn-bpnf-family-next-aux-answers-the-first-ready-row"
         }
       ]
+    },
+    {
+      "id": "PRF-1058",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-asj-permitted-relay-transform-preserves-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-asj-body-of-strip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-asj-strip-preserves-byte-order"
+        }
+      ]
     }
   ]
 }
