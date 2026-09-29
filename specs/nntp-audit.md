@@ -147,8 +147,8 @@ articles inside the range the command's own argument names.
 What was removed: the per-command `fn-nntp-projectionp` call, which re-ran
 `fn-statep` (whose `fn-article-listp` conjunct is quadratic in `A` through
 Message-ID non-membership) and re-scanned every committed payload; and the
-insertion sort in the former `fn-nntp-group-numbers`, which every group-scoped
-command paid in full. What remains quadratic is the ordering of a LISTGROUP
+insertion sort of a group's article numbers, which every group-scoped command
+paid in full. What remains quadratic is the ordering of a LISTGROUP
 range, `O(k²)` in the size of that range's own output.
 
 ## Effect typing
@@ -182,10 +182,11 @@ by definition a nonempty run of at most ten decimal digits.
 `fn-nntp-retrieval-initial-fits` give the 512-octet bound unconditionally
 because of that guard, and none of them needs an arithmetic side condition.
 **Open**: that the guard never actually fires for a number in RFC 3977 §6's
-range is *not* proved. The event that said so,
-`fn-nntp-decimal-field-is-exact-in-range`, needed `arithmetic-5/top`, which
+range is *not* proved. The event that said so needed `arithmetic-5/top`, which
 this ACL2 build refuses to include, so it was removed rather than left
-uncertified. The boundary values 0, 1 and 2147483647 are pinned by
+uncertified; what is proved of the field is its shape
+(`fn-nntp-decimal-field-is-a-digit-run`, `fn-nntp-decimal-field-is-nonempty`,
+`fn-nntp-decimal-field-is-bounded`, `books/nntp-effects.lisp`). The boundary values 0, 1 and 2147483647 are pinned by
 `assert-event` only.
 
 ## Session invariant

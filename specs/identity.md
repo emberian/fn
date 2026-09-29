@@ -420,7 +420,7 @@ The parts:
   redeemed account (`fn-lb-account-bind-plan`, PRF-388); a login that is
   neither the file's nor an account's is refused `unknown-login`. The start
   publication leaves such a binding in place. The credential record
-  (`fn-auth-cred`) is unchanged; the table is
+  (`fn-auth-credp`, `books/nntp-auth.lisp`) is unchanged; the table is
   `fn-native-auth-load-bindings` (books/native-auth-profile.lisp), read at
   start-up like the credentials.
 - **The policy** is the durable configuration record `posting-policy`,
