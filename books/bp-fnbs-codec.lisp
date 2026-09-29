@@ -112,14 +112,31 @@
                                   *fn-bpnf-stored-code* payload)
             :bad))))))
 
+(defthm fn-bpnf-stored-record-protected-shape
+  (or (equal (fn-bpnf-stored-record-protected record) :bad)
+      (true-listp (fn-bpnf-stored-record-protected record)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-bpnf-stored-recordp fn-frame-fields-octets
+                                      fn-frame-values-okp fn-bpnf-stored-record-values
+                                      fn-cbor-at-mostp))))
+
+; PROTECTED is the whole record frame (the bundle's wire in it), and ACL2's
+; append recursed once per octet of it: the kind-5 persist of a 49,152-octet
+; bundle died in BINARY-APPEND (40,721 frames) under
+; fn-bpnf-publication-authorize.  This book verifies no guards (eagerness 0),
+; and the host's *1* call of an unverified function runs its :logic, so the
+; frame is guard-verified here (the protected prefix through ec-call) and its
+; :exec appends in constant stack (fn-ag-append; lane depth-debt, PRF-919).
 (defun fn-bpnf-stored-record-frame (record)
   (declare (xargs :guard t))
-  (let ((protected (fn-bpnf-stored-record-protected record)))
+  (let ((protected (ec-call (fn-bpnf-stored-record-protected record))))
     (if (equal protected :bad) :bad
-      ; PROTECTED is the whole record frame (the bundle's wire in it): the
-      ; :exec appends in constant stack (fn-ag-append; lane depth-debt).
       (mbe :logic (append protected (fn-frame-trailer protected))
            :exec (fn-ag-append protected (fn-frame-trailer protected))))))
+
+(verify-guards fn-bpnf-stored-record-frame
+  :hints (("Goal" :use ((:instance fn-bpnf-stored-record-protected-shape))
+                  :in-theory (disable fn-bpnf-stored-record-protected fn-frame-trailer))))
 
 (defun fn-bpnf-stored-from-values (values)
   (declare (xargs :guard t))
