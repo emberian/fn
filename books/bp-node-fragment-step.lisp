@@ -982,3 +982,86 @@
                                fn-bpnf-heldp
                                fn-bpnf-ingress-principal)))
   :rule-classes nil)
+
+; ---------------------------------------------------------------------------
+; KEYSTONE for fn-bpnf-family-next (PRF-1051), the family the host asks for
+; (host/native/bp-service.lisp fnn-bps-fragment-effects): a held row is READY
+; when it is an active fragment, its arrival is unique among the held rows
+; and its family's plan under the observation is :ready.  The selector
+; answers nil exactly when a family is issued, the machine waits, the next
+; arrival is out of frame, or no held row is ready; else (:ready arrival),
+; the arrival of a ready row before which no held row is ready.
+(defun fn-bpnf-family-ready-rowp (st h observation)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-bpnf-active-fragmentp h)
+       (equal (fn-bpnf-arrival-count (fn-bpn-nth 3 h) (fn-bpnf-held-list st)) 1)
+       (equal (fn-cbor-ag-car (fn-bpnf-family-plan-at st h observation))
+              :ready)))
+
+(defun fn-bpnf-any-family-ready-row (st held observation)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp held)
+      (or (fn-bpnf-family-ready-rowp st (car held) observation)
+          (fn-bpnf-any-family-ready-row st (cdr held) observation))
+    nil))
+
+(defun fn-bpnf-family-ready-row-with-arrival (st held observation arrival)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp held)
+      (or (and (fn-bpnf-family-ready-rowp st (car held) observation)
+               (equal (fn-bpn-nth 3 (car held)) arrival))
+          (fn-bpnf-family-ready-row-with-arrival
+           st (cdr held) observation arrival))
+    nil))
+
+; The held rows before the first with ARRIVAL.
+(defun fn-bpnf-rows-before-arrival (held arrival)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp held)
+      (if (equal (fn-bpn-nth 3 (car held)) arrival)
+          nil
+        (cons (car held) (fn-bpnf-rows-before-arrival (cdr held) arrival)))
+    nil))
+
+(defthm fn-bpnf-family-next-aux-answers-the-first-ready-row
+  (let ((r (fn-bpnf-family-next-aux st held observation)))
+    (and (iff r (fn-bpnf-any-family-ready-row st held observation))
+         (implies r
+                  (and (equal (car r) :ready)
+                       (fn-bpnf-family-ready-row-with-arrival
+                        st held observation (fn-bpn-nth 1 r))
+                       (not (fn-bpnf-any-family-ready-row
+                             st (fn-bpnf-rows-before-arrival held (fn-bpn-nth 1 r))
+                             observation))))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-bpnf-family-next-aux st held observation)
+           :in-theory (e/d (fn-bpnf-family-next-aux)
+                           (fn-bpnf-active-fragmentp fn-bpnf-arrival-count
+                            fn-bpnf-family-plan-at
+                            fn-bpnf-held-list)))))
+
+(defthm fn-bpnf-family-next-selects-exactly-the-first-ready-family
+  (let ((r (fn-bpnf-family-next st observation))
+        (rows (fn-bpnf-held-list st)))
+    (and (iff r (and (not (fn-bpnf-issued st))
+                     (not (fn-bpnf-waits st))
+                     (fn-frame-natp (fn-bpnf-next-arrival st))
+                     (fn-bpnf-any-family-ready-row st rows observation)))
+         (implies r
+                  (and (equal (car r) :ready)
+                       (fn-bpnf-family-ready-row-with-arrival
+                        st rows observation (fn-bpn-nth 1 r))
+                       (not (fn-bpnf-any-family-ready-row
+                             st (fn-bpnf-rows-before-arrival rows (fn-bpn-nth 1 r))
+                             observation))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnf-family-next-aux-answers-the-first-ready-row
+                            (held (fn-bpnf-held-list st))))
+           :in-theory (e/d (fn-bpnf-family-next)
+                           (fn-bpnf-family-next-aux
+                            fn-bpnf-any-family-ready-row
+                            fn-bpnf-family-ready-row-with-arrival
+                            fn-bpnf-rows-before-arrival
+                            fn-bpnf-issued fn-bpnf-waits fn-bpnf-next-arrival
+                            fn-frame-natp fn-bpnf-held-list fn-bpn-nth)))))

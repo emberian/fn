@@ -83,3 +83,13 @@
 (assert-event (equal (car (fn-omr-stopped-report
                            (fn-record-string-octets "not a store") *omr-header* 0 nil))
                      1))
+
+; KEYSTONE fn-omr-inspect-status-is-the-offline-exit (an iff, no
+; hypothesis): both sides true for a found article, both false for an
+; absent one.
+(assert-event
+ (and (equal (fn-omr-inspect-status (fn-omr-inspect-word t)) :accepted)
+      (equal (car (fn-native-operator-inspect-report *omr-msgid* t)) 0)))
+(assert-event
+ (and (not (equal (fn-omr-inspect-status (fn-omr-inspect-word nil)) :accepted))
+      (not (equal (car (fn-native-operator-inspect-report *omr-msgid* nil)) 0))))

@@ -244,8 +244,7 @@
   ; (tools/extract/served-main.scm store-report; lane extract-writable)
   :root :extract)
 
-; =============================================================================
-; Every other entry the raw host dispatches through fnn-call, by subsystem
+; ======================================================================; Every other entry the raw host dispatches through fnn-call, by subsystem
 ; (tools/interface_emit.py SUBSYSTEMS).  Class and kinds are the image
 ; world's; a keystone is a cited theorem (planning/proofs.json) whose
 ; conclusion is about the entry or whose name carries it.  No :keystones is
@@ -2506,10 +2505,12 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpn-report-observe-next
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-report-observe-next-selects-exactly-the-least-yielding-row))
 
 (definterface fn-bpn-report-outbox-next
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-report-outbox-next-selects-exactly-the-least-yielding-row))
 
 (definterface fn-bpn-report-outbox-peer-matchp
   :class ::common-lisp-compliant)
@@ -2529,7 +2530,7 @@
               fn-bpnp-receipt-reoffer-after-uncertain
               fn-bpnp-receipt-contact-offers-the-queued-job
               fn-bpnp-receipt-contact-event-needs-a-queued-job
-              fn-bpnp-contact-closes-only-when-nothing-owed-remains
+              fn-bpnj-contact-offers-while-a-ready-job-remains
               fn-bpnj-step-forwarded-needs-a-durable-finished-record
               fn-bpnj-new-arms-preserve-the-lifecycle-invariant
               fn-bpnj-named-result-is-the-transport-outcome
@@ -2616,6 +2617,9 @@
 
 (definterface fn-bpnpf-bundle-octets
   :class ::common-lisp-compliant)
+(definterface fn-bpnf-family-next
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnf-family-next-selects-exactly-the-first-ready-family))
 
 (definterface fn-bpnf-family-publication-authorize
   :class ::common-lisp-compliant
