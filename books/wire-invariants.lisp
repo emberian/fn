@@ -181,10 +181,24 @@
 
 ; A line's content fed from an article state with no pending CR: the line
 ; grows by the octets, and the store by all of them but a leading dot.
+; One ordinary octet mid-article, with room on the line and in the body.
+(local
+ (defthm fn-wire-feed-byte-of-article-octet-with-room
+   (implies (and (fn-bch-octetp x) (not (equal x 13)) (not (equal x 10))
+                 (natp l) (natp bs) (natp bl) (natp ll)
+                 (< l ll) (<= (+ 1 bs l) (+ 1 bl)))
+            (equal (fn-wire-feed-byte (list :article nil l body nil bs ll bl) x)
+                   (fn-wire-make-result
+                    (fn-wire-take-octet (fn-wire-make-state :article nil l body nil bs ll bl) x)
+                    nil)))
+   :hints (("Goal" :in-theory (enable fn-wire-feed-byte fn-wire-line-room fn-wire-make-state)))))
+
 (defthm fn-wire-feed-proper-of-article-line-content
   (implies (and (fn-wire-line-contentp xs)
                 (natp l)
-                (<= (+ l (len xs)) line-limit))
+                (<= (+ l (len xs)) line-limit)
+                (natp body-size) (natp body-limit) (natp line-limit)
+                (<= (+ body-size l (len xs)) (+ 1 body-limit)))
            (equal (fn-wire-feed-proper
                    (fn-wire-make-state :article nil l body nil body-size
                                        line-limit body-limit)
@@ -199,14 +213,16 @@
                                        nil body-size line-limit body-limit)
                    nil)))
   :hints (("Goal" :induct (fn-wire-clean-article-induction xs l body)
-                  :in-theory (e/d (fn-wire-feed-proper fn-wire-feed-byte fn-wire-take-octet
+                  :in-theory (e/d (fn-wire-feed-proper fn-wire-take-octet
                                    fn-wire-line-contentp-is-plain-octetsp)
-                                  (fn-wire-line-contentp)))))
+                                  (fn-wire-line-contentp fn-wire-feed-byte)))))
 
 ; The same from a line start: the store takes the line unstuffed.
 (defthm fn-wire-feed-proper-of-article-line-start
   (implies (and (fn-wire-line-contentp xs)
-                (<= (len xs) line-limit))
+                (<= (len xs) line-limit)
+                (natp body-size) (natp body-limit) (natp line-limit)
+                (<= (+ body-size (len xs)) (+ 1 body-limit)))
            (equal (fn-wire-feed-proper
                    (fn-wire-make-state :article nil 0 body nil body-size
                                        line-limit body-limit)
