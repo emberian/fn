@@ -61,11 +61,12 @@ PENDING_BOUNDARIES = {
     "page-read-outstanding": {
         "note": "reader cancel, generation retire, then the read delivered",
         "operations": ("read", "reader-snapshot"),
-        "owner": "extent-identity",
+        "owner": "online-reclaim-8",
         "kill_form": None,
-        "coordinate": "none: the reader seam (host/native/owner.lisp fn-owner-chunk-span, "
-                      "tests/test_native_extent_identity.py's in-place substitutions) has no "
-                      "held point between the snapshot and the page's delivery"},
+        "coordinate": "none yet: the hold sits in fn-owner-chunk-span (host/native/owner.lisp) "
+                      "after the reader's snapshot and before the page's delivery; reader "
+                      "generations are reclaim's since the pin port (extent-identity finished "
+                      "at ef75e8f4e), so online-reclaim-8 adds the held form"},
     "reclaim-candidate-selected": {
         "note": "a new independent hold before the destructive action",
         "operations": ("reclaim",),
@@ -78,11 +79,13 @@ PENDING_BOUNDARIES = {
     "receipt-observed": {
         "note": "duplicate, reorder with a policy change, lose its durable completion",
         "operations": ("receipt",),
-        "owner": "unassigned (BP row)",
+        "owner": "bp-remainder-3",
         "kill_form": None,
-        "coordinate": "none: host/native/bp-app.lisp fnn-bpapp-receipt runs prepare, decide "
-                      "and the ADU without a held point; FN_APP_JOURNAL_TEST_FAIL_RECEIPT_"
-                      "DECISION_NAMESPACE fails the decision, it does not hold it"},
+        "coordinate": "none yet: host/native/bp-app.lisp fnn-bpapp-receipt runs prepare, decide "
+                      "and the ADU without a held point (FN_APP_JOURNAL_TEST_FAIL_RECEIPT_"
+                      "DECISION_NAMESPACE fails the decision, it does not hold it); "
+                      "bp-remainder-3 adds a hold after the decision is recorded and before "
+                      "the ADU/completion"},
 }
 
 # Which operations reach each cut table, and the developer selector that

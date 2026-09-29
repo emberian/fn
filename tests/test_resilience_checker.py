@@ -443,9 +443,10 @@ class SchedulePointTests(unittest.TestCase):
                                         "schedule-receipt-observed-duplicate",
                                         "schedule-receipt-observed-reorder",
                                         "schedule-receipt-observed-lose-completion"})
-        self.assertEqual(pending["schedule-page-read-outstanding"]["owner"], "extent-identity")
+        self.assertEqual(pending["schedule-page-read-outstanding"]["owner"], "online-reclaim-8")
         self.assertEqual(pending["schedule-reclaim-candidate-selected"]["owner"],
                          "online-reclaim-8")
+        self.assertEqual(pending["schedule-receipt-observed-duplicate"]["owner"], "bp-remainder-3")
         for r in pending.values():
             self.assertTrue(r["reasons"] and r["expected"] == "consistent", r)
         self.assertTrue(all(r["expected"] == "consistent" for r in rows))

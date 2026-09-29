@@ -603,7 +603,8 @@ class Run:
         except (OSError, EOFError):
             first, final = b"", b""
         if final is None:
-            outcome, status = "refused", first
+            # No 340: the owner refused the POST, or died before answering.
+            outcome, status = ("lost" if first == b"" else "refused"), first
         elif final.startswith(b"240"):
             outcome, status = "accepted", final
         elif final == b"":
