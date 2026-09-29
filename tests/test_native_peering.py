@@ -957,6 +957,51 @@ class NativePeeringTests(unittest.TestCase):
         }, sort_keys=True))
         gate.set()
 
+    def test_productive_reader_answers_number_and_message_id(self):
+        """Recovered native ARTICLE reads preserve a selected reader's view.
+
+        The persisted article is written before the owner starts, so the
+        first retrieval traverses recovery's extent-backed representation.
+        This is successful native I/O evidence, not a disk honesty proof.
+        """
+        source = self.initialize("productive-reader")
+        message_id = "<productive-read@example.invalid>"
+        self.post(source, message_id, ".productive-read")
+        self.start(source)
+        with Client(source.port, timeout=60, greeting=(b"200",)) as client:
+            selected = client.command("GROUP fn.test")
+            self.assertTrue(selected.startswith(b"211 1 1 1 fn.test"), selected)
+            number_status, numbered = client.multiline("ARTICLE 1")
+            self.assertTrue(number_status.startswith(b"220 1 " + message_id.encode()),
+                            number_status)
+            id_status, identified = client.multiline("ARTICLE " + message_id)
+            self.assertTrue(id_status.startswith(b"220 1 " + message_id.encode()), id_status)
+            self.assertEqual(numbered, identified)
+            self.assertIn(b"Message-ID: " + message_id.encode() + b"\r\n", numbered)
+            self.assertIn(b"\r\n.productive-read\r\n", numbered)
+            self.assertTrue(client.command("ARTICLE 2").startswith(b"423"))
+            self.assertTrue(client.command("ARTICLE <missing-productive@example.invalid>").startswith(b"430"))
+            stat = client.command("STAT")
+            self.assertTrue(stat.startswith(b"223 1 " + message_id.encode()), stat)
+            # A second locally accepted article does not change this pin;
+            # selecting the group again is the explicit view advance.
+            self.post(source, "<productive-later@example.invalid>", "later")
+            self.assertTrue(client.command("ARTICLE 2").startswith(b"423"))
+            advanced = client.command("GROUP fn.test")
+            self.assertTrue(advanced.startswith(b"211 2 1 2 fn.test"), advanced)
+            self.assertTrue(client.command("STAT 2").startswith(
+                b"223 2 <productive-later@example.invalid>"))
+        self.assertIsNone(source.process.poll())
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "productive-reader-number-message-id-and-pinned-view",
+            "number_status": number_status.decode("ascii").rstrip(),
+            "message_id_status": id_status.decode("ascii").rstrip(),
+            "identical": numbered == identified,
+            "article_sha256": hashlib.sha256(numbered).hexdigest(),
+            "old_pin_absent_423": True, "explicit_group_advance": True,
+            "identity": self.verify_process_identity(source),
+        }, sort_keys=True))
+
     def test_feed_to_a_peer_without_streaming_falls_back_to_ihave(self):
         """PRF-207: a peer that answers MODE STREAM with 501 (RFC 3977
         section 3.2.1) is fed with IHAVE on the SAME connection; no CHECK or
