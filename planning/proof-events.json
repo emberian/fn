@@ -169,6 +169,22 @@
         {
           "kind": "theorem",
           "name": "fn-own-other-post-keeps-a-non-selecting-read-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scl-step-counted-fast-of-with-live-selecting-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scl-own-read-tls-prefix-selecting-nothing-ignores-the-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scl-other-post-keeps-a-chunk-selecting-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scl-host-chunk-selecting-nothing-survives-other-post"
         }
       ]
     },
