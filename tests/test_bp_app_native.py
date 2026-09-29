@@ -223,9 +223,11 @@ class NativeBpApplicationTests(unittest.TestCase):
         :header-fields-limit)' (books/article-header-census.lisp
         fn-article-census-refusal, the default profile's 64 fields), the
         receiver's line carries that name, and the refusal precedes every
-        durable effect: no FNRJ record (host/native/bp-app.lisp
-        fnn-bpapp-accept-locked returns on the plan answer before
-        :persist-intent), no Store transaction, no retention pin.
+        durable effect: the FNRJ holds the refusal's own record and no
+        other (host/native/bp-app.lisp fnn-bpapp-accept-locked returns on
+        the plan answer before :persist-intent; fnn-bpapp-deliver's :refused
+        arm publishes the refusal; an accepted transfer leaves five
+        records), no Store transaction, no article, no retention pin.
         """
         msgid = b"<native-bp-past-limit@example.invalid>"
         lines = [b"From: sender@example.invalid", b"Newsgroups: fn.test",
@@ -245,11 +247,13 @@ class NativeBpApplicationTests(unittest.TestCase):
             b"reason=header-fields-limit\n", receiver_err)
         self.assertIn(b"BP summary accepted=0", sender_out)
         self.assertNotIn(b"BP application accepted", receiver_out)
-        # Before any durable intent: the journal holds no record and the
-        # Store no transaction, article or pin.
-        self.assertEqual(
-            sorted((self.receipts / "records").glob("*.rj")), [],
-            "a refused plan must journal nothing")
+        # Before any durable intent: the journal holds the refusal's record
+        # alone (an accepted transfer leaves five: the intent, its context,
+        # the receipt's prepare and decide, the publication) and the Store
+        # no transaction, article or pin.
+        records = sorted((self.receipts / "records").glob("*.rj"))
+        self.assertEqual(len(records), 1,
+                         "a refused plan journals its refusal and no intent")
         self.assertEqual(self.recovered_counts(), (0, 0, 0))
         inspected = self.invoke("store", self.store, "inspect",
                                 msgid.decode("ascii"))
