@@ -1561,6 +1561,26 @@ class OwnershipTests(unittest.TestCase):
 
 
 
+class UntilIsExclusiveTests(unittest.TestCase):
+    """obstructions-6 item 53: --until's exclusion is said, in the help and the run."""
+
+    def test_the_head_line_says_until_excludes_its_event(self):
+        words = proof_repl.range_words("s", "books/b", range(0, 3), [("a", "(x)")], [], 0,
+                                       False, until="fn-target")
+        self.assertIn("--until fn-target is EXCLUSIVE: fn-target itself is NOT sent "
+                      "(--through fn-target sends it)", words)
+        self.assertNotIn("EXCLUSIVE", proof_repl.range_words(
+            "s", "books/b", range(0, 3), [], [], 0, False))
+
+    def test_the_help_and_usage_say_it(self):
+        self.assertIn("--until EXCLUDES its event", proof_repl.__doc__)
+        parser_help = subprocess.run([sys.executable, str(ROOT / "tools" / "proof_repl.py"),
+                                      "send-range", "--help"], capture_output=True,
+                                     text=True).stdout
+        self.assertIn("EXCLUSIVE", parser_help)
+        self.assertIn("INCLUSIVE", parser_help)
+
+
 class LeaveLoopTests(unittest.TestCase):
     """obstructions-6 item 49: forms that leave the ACL2 loop are refused by name."""
 
