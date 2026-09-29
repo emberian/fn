@@ -17582,6 +17582,27 @@
         "fn-pak-boundary-never-says-mpx-saturated",
         "fn-sca-load-held-rows-keyed-is-load-held-rows"
       ]
+    },
+    {
+      "id": "PRF-1067",
+      "title": "The owner retention carry state boundary writes exactly and frames unrelated globals",
+      "statement": "Subject: books/owner-retain-state.lisp fn-owner-retain-carry and fn-owner-retain-carry-put, called by host/owner-host.lisp fn-owner-prepare-buffer and the other carry writers. fn-owner-retain-carry-of-put: unconditionally, reading the state returned by the carry setter returns the supplied value. fn-owner-retain-carry-of-other-global-put: under key unequal to fn-owner-retain-carry, putting another global leaves the carry read unchanged. This is an exact state effects boundary, not a proof that a supplied carry satisfies fn-prc-carryp, that initialization supplies the proved value, or that a complete owner transition preserves its guard; raw owner entries stay disabled. Local policy; no RFC requirement.",
+      "depends_on": [],
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-retain-state.lisp",
+        "tests/acl2/owner-retain-state-tests.lisp"
+      ],
+      "progress_note": "Clean fresh REPL admits the exact getter/setter and frame theorems (583 prover steps for seven source forms). Live ACL2 state witness asserts both literal conclusions and the full frame antecedent; equal-key changed-value witness refutes removal of its only hypothesis. Matching union host load, certificate manifest and native remain pending.",
+      "events": [
+        "fn-owner-retain-carry-of-put",
+        "fn-owner-retain-carry-of-other-global-put"
+      ]
     }
   ]
 }
