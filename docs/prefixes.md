@@ -109,7 +109,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-jpub-` | `journal-publish` | Immutable no-replace journal publication: stage/write, file barrier, link ambiguity window, namespace barrier, and the durable/refused/uncertain classification used by the native FNWF/FNRJ host |
 | `fn-aj-` | `app-journal` | ACL2-owned native FNWF/FNRJ namespace, recovered frontier, aggregate accounting, initialization order, headroom, and authorized immutable publication operation |
 | `fn-id-`, `fn-charge-` | `identity`, `identity-invariants` | Content-identity derivation (subject and archive obligation), the hexadecimal projection, and the per-payload charge policy |
-| `fn-store-` | `store-config` | The configured group table and the name/code mapping shared by every adapter |
+| `fn-store-` | `store-config`, `store-host-boundary` | The configured group table and the name/code mapping shared by every adapter |
 | `fn-cp-` | `consumer-position` | Experimental E2 v1 bounded cursor codec and finite register/ack/rebase/unregister decision kernel; its `:write` result is a proposal consumed by the Store and local-owner seam, not durable acceptance itself |
 | `fn-cpe-` | `consumer-store-events` | Versioned, bounded E2 Store-journal event grammar and exact codec for bootstrap, register, ack, rebase, unregister and incarnation rollover; durability requires the Store finish/recovery join |
 | `fn-csi-` | `consumer-store-invariants` | Completed Store prefix versus carried consumer projection, with explicit completing-window and recovery obligations |

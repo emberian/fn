@@ -102,6 +102,53 @@ def tree() -> Path:
     return root
 
 
+class DelegationTests(unittest.TestCase):
+    """`:delegates CALLEE` (host/interfaces.lisp): plumbing whose decision is the
+    callee's when the world bears it out, a refused problem otherwise."""
+
+    def build(self):
+        world = json.loads(json.dumps(WORLD))
+        world["functions"] += [
+            fn("fn-wrap-serve", ["fn-serve"]),         # exactly a call of fn-serve (direct theorem)
+            fn("fn-wrap-scan", ["fn-scan"]),           # exactly a call of fn-scan (no theorem)
+            fn("fn-wrap-branch", [IF, "fn-serve-refusal"]),  # branches itself, over a helper
+        ]
+        interfaces = json.loads(json.dumps(INTERFACES))
+        interfaces["entries"] += [
+            {"name": "fn-wrap-serve", "subsystem": "store", "class": "ideal",
+             "keystones": [], "dispatched_from": [], "delegates": "fn-serve"},
+            {"name": "fn-wrap-scan", "subsystem": "store", "class": "ideal",
+             "keystones": [], "dispatched_from": [], "delegates": "fn-scan"},
+            {"name": "fn-wrap-branch", "subsystem": "store", "class": "ideal",
+             "keystones": [], "dispatched_from": [], "delegates": "fn-serve"},
+        ]
+        root = Path(tempfile.mkdtemp())
+        (root / "planning").mkdir()
+        (root / "build" / "coverage").mkdir(parents=True)
+        for name, doc in (("interfaces", interfaces), ("proofs", PROOFS),
+                          ("requirements", REQUIREMENTS), ("families", FAMILIES)):
+            (root / "planning" / (name + ".json")).write_text(json.dumps(doc))
+        (root / "build" / "coverage" / "world.json").write_text(json.dumps(world))
+        return root, coverage.build(root / "build" / "coverage" / "world.json", root=root)
+
+    def test_delegation_files_the_wrapper_as_plumbing_and_refuses_the_rest(self):
+        root, cov = self.build()
+        rows = {r["name"]: r for r in cov["entries"]}
+        self.assertEqual(rows["fn-wrap-serve"]["kind"], "delegates")
+        self.assertEqual(rows["fn-wrap-serve"]["delegated_direct"], ["fn-serve-answers"])
+        self.assertNotIn("delegates_problem", rows["fn-wrap-serve"])
+        self.assertNotIn("fn-wrap-serve", coverage.uncovered_decisions(cov))
+        self.assertIn("no theorem's conclusion names", rows["fn-wrap-scan"]["delegates_problem"])
+        self.assertIn("but calls", rows["fn-wrap-branch"]["delegates_problem"])
+        self.assertEqual(rows["fn-wrap-branch"]["kind"], "decision")
+        coverage.write_baseline(cov, root / "planning" / "coverage-baseline.json")
+        (root / "planning" / "interfaces-gaps.md").write_text(coverage.render_gaps(cov))
+        problems, _notes = coverage.check(cov, root)
+        self.assertEqual(sum("fn-wrap-scan" in p for p in problems), 1, problems)
+        self.assertEqual(sum("fn-wrap-branch" in p for p in problems), 1, problems)
+        self.assertFalse(any("fn-wrap-serve" in p for p in problems), problems)
+
+
 class WorldTests(unittest.TestCase):
     def setUp(self):
         self.world = coverage.World(WORLD)
