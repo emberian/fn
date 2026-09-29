@@ -7790,10 +7790,6 @@
         {
           "kind": "theorem",
           "name": "fn-post-body-octets-iter-is-body-octets"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wire-list-length-onto-is-list-length"
         }
       ]
     },
