@@ -260,8 +260,20 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         lines = [l for l in self.status_lines() if l.startswith("checkpoint-file")]
         self.assertEqual(lines, ["checkpoint-file=absent deferred=exceeds-budget estimate={} budget={}"
                                  .format(estimate, budget)])
+        # PKT-542 (PRF-963): health's tenth state is held with the same
+        # figures, so the node never reads healthy while every restart would
+        # be a full replay (the development profile's unqualified-profile is
+        # an earlier held state, so the exit is that state's, never 0 or 19).
+        health = self.op("health")
+        text = health.stdout.decode("ascii")
+        self.assertIn("\ncheckpoint-deferred held reason=exceeds-budget estimate={} budget={}\n"
+                      .format(estimate, budget), text)
+        self.assertTrue(20 <= health.returncode <= 29, (health.returncode, text))
         self.assertEqual(self.headroom()["transactions-used"], 66)
         self.node.stop(process=owner)
+        # Offline the publisher is unobserved, never clear.
+        offline = self.op("health").stdout.decode("ascii")
+        self.assertIn("\ncheckpoint-deferred unobserved", offline)
         self.assertFalse(self.path().exists())
         # Offline: no owner, no publisher, no deferral; the store opens by
         # full replay with every article.
