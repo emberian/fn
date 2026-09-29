@@ -217,9 +217,16 @@
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
               (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))))))
 
+; A connection with a control pin is pinned with it even when its group
+; index is nil (PKT-443): a view whose visible list is empty but whose
+; withdrawn list is not (two signed cancels naming each other) has no buckets
+; (fn-gidx-build of no articles), and without the pin the dispatcher could not
+; answer `430 withdrawn'.  The nil buckets are then the empty view's own
+; (fn-gidx-listgroup-command-of-build), so GROUP and LISTGROUP answer as the
+; trie does.
 (defun fn-served-conn-pinned-index (conn)
   (declare (xargs :guard t))
-  (if (fn-served-conn-group-index conn)
+  (if (or (fn-served-conn-group-index conn) (fn-served-conn-control conn))
       (fn-gidx-pin-with-control (fn-served-conn-index conn)
                                 (fn-served-conn-group-index conn)
                                 (fn-served-conn-control conn))
@@ -721,7 +728,8 @@
            (fn-midx-correspondencep
             (fn-served-live-index live)
             (fn-state-articles (fn-served-live-archive live)))
-           (implies (fn-served-live-buckets live)
+           (implies (or (fn-served-live-buckets live)
+                        (fn-served-live-control live))
                     (equal (fn-served-live-buckets live)
                            (fn-gidx-build
                             (fn-state-articles (fn-served-live-archive live))))))))
@@ -735,7 +743,11 @@
        (fn-midx-correspondencep
         (fn-served-conn-index c)
         (fn-state-articles (fn-served-conn-archive c)))
-       (implies (fn-served-conn-group-index c)
+       ;; A connection pinned by its buckets or by its control pin
+       ;; (fn-served-conn-pinned-index) carries the archive's own buckets:
+       ;; nil exactly when the view has no articles (PKT-443).
+       (implies (or (fn-served-conn-group-index c)
+                    (fn-served-conn-control c))
                 (equal (fn-served-conn-group-index c)
                        (fn-gidx-build
                         (fn-state-articles (fn-served-conn-archive c)))))
