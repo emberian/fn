@@ -4520,3 +4520,23 @@
 ; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
 (definterface fn-store-sco-want-checkpoint-digest
   :class ::program)
+
+; Serialized BP node local control (route-only first increment).
+(definterface fn-bpnc-config-bound
+  :class ::common-lisp-compliant)
+(definterface fn-bpnc-startup
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnc-ready-startup-binds-the-parsed-store))
+(definterface fn-bpnc-turn-plan
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnc-grant-is-the-authorized-route-plan))
+(definterface fn-bpnc-socket-initial
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnc-open-run-live-iff-both-completions-succeed))
+(definterface fn-bpnc-socket-action
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnc-retirement-stops-the-control-listener))
+(definterface fn-bpnc-socket-step
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnc-open-run-live-iff-both-completions-succeed
+              fn-bpnc-retirement-stops-the-control-listener))

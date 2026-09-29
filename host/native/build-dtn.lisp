@@ -129,6 +129,7 @@
 (include-book "books/bp-node-progress")
 (include-book "books/bp-node-progress-guards")
 (include-book "books/bp-node-job-offer-guards")
+(include-book "books/bp-node-control")
 ;; PKT-261: per-destination dispatch and the forward plan
 ;; (fnn-bpnode-dispatch-one, fnn-bpnode-forward-contact).
 (include-book "books/bp-node-forward-plan")
@@ -245,6 +246,7 @@
 ; octet-list helpers store-host defines above it, as run_store.py's bridge does.
 (ld "host/config-host.lisp" :ld-error-action :error)
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
+(ld "host/native-control-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
 ; host/native/operator.lisp (loaded below) asks fn-native-auth-host-max-octets
 ; for `operator account-hash's credential file bound.
@@ -354,7 +356,10 @@
         (load "host/native/owner.lisp")
         ; Its connections on a fixed set of I/O loops (PKT-605).
         (load "host/native/mux.lisp")
+        (load "host/native/control-transport.lisp")
         (load "host/native/operator.lisp")
+        (load "host/native/operator-control-client.lisp")
+        (load "host/native/bp-control-client.lisp")
         ; The heap figure (PKT-016): the launcher's probe verb `heap', and the
         ; line `status' and `health' print; after operator.lisp, whose plan it reads.
         (load "host/native/heap.lisp")
@@ -371,6 +376,7 @@
         ; The node: FNBS, the owner Store and FNRJ/FNWF under one
         ; `bp-node serve' (specs/bp-node-machine.md).  `bp send' and `bp
         ; receive' above stay as the lab's transport tools.
+        (load "host/native/bp-control.lisp")
         (load "host/native/bp-node.lisp")
         ; `acl2 session': developer images only (the test fixtures' ACL2).
         (load "host/native/acl2-session.lisp")
