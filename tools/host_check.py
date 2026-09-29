@@ -8,6 +8,15 @@
     python3 tools/host_check.py --world         # static: counterparts in the image world
     python3 tools/host_check.py --alone FILE... # one file alone (a diagnosis, not a gate)
     python3 tools/host_check.py --read [FILE...] # static: every host/ file reads (half a second)
+    python3 tools/host_check.py --books         # static: each book a host file calls into is in the world
+
+`--books` (obstructions-9 item 83; `make check-fast` and `--forward`, hence
+hbox_native's pre-image host-forward step, run it): for each image build,
+every name an `ld` host file calls that the image's world does not define
+but a repository book (books/**) defines non-locally is refused, naming the
+book to include.  host/store-node-host.lisp called fn-sckd-tables-digest
+(books/store-checkpoint-digest) and fn-store-s... (books/store-finalize-
+incremental) with neither in the world; each hole cost an image build.
 
 `--read` (obstructions-9 item 80; `make check-fast` runs it) reads every
 host/**/*.lisp with tools/ledger.py's Reader, which never interns or
@@ -1421,6 +1430,60 @@ def world_check(builds=WORLD_BUILDS, root: Path = ROOT) -> tuple[list[str], list
     return refused, notes
 
 
+def repository_definitions(root: Path = ROOT) -> dict[str, list[str]]:
+    """name -> the repository books (books/**, root-relative, no .lisp) that
+    define it non-locally."""
+    import ledger
+    found: dict[str, list[str]] = {}
+    for path in sorted((root / "books").rglob("*.lisp")):
+        relative = path.relative_to(root).with_suffix("").as_posix()
+        book = ledger.analyze_book(path, relative + ".lisp")
+        if book.read_error:
+            continue
+        local = {f.name for f in book.functions if f.local}
+        for name in (book.definitions - local) | stobj_names(path):
+            found.setdefault(name, []).append(relative)
+    return found
+
+
+def book_holes(builds=WORLD_BUILDS, root: Path = ROOT,
+               index: dict[str, list[str]] | None = None) -> list[str]:
+    """`BUILD: FILE:LINE: NAME ...` for each call in an ld host file of BUILD
+    to a name BUILD's world lacks and a repository book defines."""
+    import build_lists_check
+    index = repository_definitions(root) if index is None else index
+    dtn_excused = {name for _, (_, names) in build_lists_check.DTN_OMITTED.items()
+                   for name in names}
+    found: list[str] = []
+    for build in builds:
+        defined, _, _ = world_of(build, root)
+        defined = {name.lower() for name in defined}
+        excused = dtn_excused if build == build_lists_check.DTN_BUILD else set()
+        for relative in ld_sequence(build, root):
+            path = root / relative
+            if not path.is_file():
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for _, calls, _ in top_level_facts(text):
+                for name, line in calls:
+                    if name in defined or name in excused or name not in index:
+                        continue
+                    books = index[name]
+                    found.append(f"{build}: {relative}:{line}: {name} is defined in "
+                                 f"{', '.join(books)}, which this image's world does not "
+                                 f"include: include-book it in {relative} (and regenerate "
+                                 "the umbrellas: tools/extract/world.py)")
+    return found
+
+
+def books_main(builds: list[str]) -> int:
+    found = book_holes(tuple(builds) or WORLD_BUILDS)
+    for line in found:
+        print(f"FAIL {line}")
+    print(f"host_check --books: {len(found)} call(s) into a book outside the image world")
+    return 1 if found else 0
+
+
 def world_main(builds: list[str]) -> int:
     refused, notes = world_check(tuple(builds) or WORLD_BUILDS)
     for note in notes:
@@ -1571,11 +1634,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--require-world", action="store_true",
                         help="with --load: exit 2 NOT RUN when the certified umbrella is "
                              "not available, rather than falling back to a bare ACL2")
+    parser.add_argument("--books", action="store_true",
+                        help="static: every name an ld host file calls that a repository "
+                             "book defines is in the image world (BUILD... default both)")
     parser.add_argument("--read", action="store_true",
                         help="static: every host/ file (or FILE) reads as s-expressions "
                              "(no ACL2; half a second)")
     args = parser.parse_args(argv)
 
+    if args.books:
+        return books_main(args.files)
     if args.read:
         findings = read_check(args.files)
         for one in findings:
@@ -1596,6 +1664,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"FAIL {one}")
         print(f"host_check --forward: {len(forward)} forward reference(s) in the ld host "
               "files, in build order")
+        holes = book_holes((args.build,) if args.build else WORLD_BUILDS)
+        for one in holes:
+            print(f"FAIL {one}")
+        print(f"host_check --forward: {len(holes)} call(s) into a book outside the image "
+              "world (--books)")
+        forward += holes
         if args.forward:
             return 1 if forward else 0
     stale = world_stale() if args.load else []
