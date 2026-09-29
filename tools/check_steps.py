@@ -82,6 +82,11 @@ GIT_READS = frozenset({"rev-parse", "ls-files", "log", "show", "status", "diff",
                        "for-each-ref", "grep", "hash-object", "config", "symbolic-ref",
                        "blame", "var"})
 GIT_REPLAY_LIMIT = 200
+# Content-addressed caches several steps share: an entry's name is the digest
+# of the bytes it was computed from, which the step reads (and the trace
+# records) to name it, and it is written by an atomic rename.  Neither an
+# input nor a hazard (tools/ledger.py's ledger-tree, tools/callgraph.py's).
+SHARED_CACHES = (str(ROOT / "build" / "cache") + os.sep,)
 # Environment that does not change what a step decides.
 ENV_IGNORED = frozenset({"FN_LANE_CHECK_DIR", "FN_CHECK_TRACE"})
 
@@ -193,7 +198,8 @@ TEMP_ROOTS = tuple(sorted({os.path.realpath(p) + os.sep for p in
 
 
 def _is_temp(path: str) -> bool:
-    return (os.path.realpath(path) + os.sep).startswith(TEMP_ROOTS)
+    return ((os.path.realpath(path) + os.sep).startswith(TEMP_ROOTS)
+            or (path + os.sep).startswith(SHARED_CACHES))
 
 
 def file_digest(path: str) -> str:
@@ -474,31 +480,41 @@ class Executor:
                      "seconds": seconds,
                      "finding": first_finding(output.splitlines()) if code else ""})
 
-    def hazards(self, parallel: list[dict]) -> list[str]:
-        """Parallel steps where one wrote a repository file another touched."""
+    def hazards(self, steps: list[dict], alone: list[dict]) -> list[str]:
+        """Steps that wrote a repository file another step touched.
+
+        A parallel one is learned as a writer (it runs first and alone from
+        the next run); a learned writer whose traced run conflicts with
+        nothing any more is forgotten.  Only steps that ran (not cached)
+        have a trace; a learned writer that was cached stays learned."""
         found = []
         root = str(ROOT) + os.sep
         mine = str(self.directory.resolve()) + os.sep
         ours = str(self.cache.resolve()) + os.sep
-        for step in parallel:
+        for step in steps:
             trace = self.traces.get(step["index"])
-            if not trace:
+            if trace is None:
                 continue
+            command = shlex.join(step["command"])
             writes = {p for p in trace["w"] if p.startswith(root)
                       and not p.startswith((mine, ours)) and not _is_temp(p)}
-            if not writes:
-                continue
-            for other in parallel:
-                if other is step or other["index"] not in self.traces:
+            conflict = ""
+            for other in steps:
+                o = self.traces.get(other["index"])
+                if other is step or o is None or not writes:
                     continue
-                o = self.traces[other["index"]]
                 touched = (writes & (o["r"] | o["w"] | o["s"])) | \
                     {p for p in writes if os.path.dirname(p) in o["l"]}
                 if touched:
-                    found.append(f"{step['name']} wrote {sorted(touched)[0]} "
-                                 f"which {other['name']} touched")
-                    self.learned.add(shlex.join(step["command"]))
+                    conflict = f"{step['name']} wrote {sorted(touched)[0]} which {other['name']} touched"
                     break
+            if conflict and step not in alone:
+                found.append(conflict)
+                self.learned.add(command)
+            elif not conflict and command in self.learned:
+                self.learned.discard(command)
+                print(f"check_steps: {step['name']} no longer writes what another step reads; "
+                      f"it fans out again")
         return found
 
     def execute(self, steps: list[dict]) -> int:
@@ -525,7 +541,7 @@ class Executor:
                     except OSError:
                         pass
             raise
-        hazards = self.hazards(rest)
+        hazards = self.hazards(steps, first)
         save_json(self.cache / "digests.json", self.memo.known)
         save_json(self.cache / "durations.json", self.durations)
         save_json(self.cache / "writers.json", sorted(self.learned))

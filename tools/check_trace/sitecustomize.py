@@ -98,16 +98,17 @@ def _install(directory: str) -> None:
         elif event == "os.chdir":
             state["cwd"] = os.path.normpath(os.path.join(state["cwd"], os.fsdecode(args[0])))
         elif event in ("os.remove", "os.rmdir", "os.mkdir", "os.truncate", "os.symlink",
-                       "os.link", "shutil.rmtree", "shutil.copyfile", "shutil.move",
-                       "os.utime", "os.chmod"):
+                       "os.link", "shutil.rmtree", "os.utime", "os.chmod"):
             path = norm(args[0])
             if path is not None:
                 emit(["w", path])
-            if event == "shutil.copyfile" and len(args) > 1:
-                dst = norm(args[1])
-                if dst is not None:
-                    emit(["w", dst])
-        elif event in ("os.rename", "os.replace"):
+        elif event in ("shutil.copyfile", "shutil.copytree"):
+            source, target = norm(args[0]), norm(args[1])
+            if source is not None:
+                emit(["r" if event == "shutil.copyfile" else "l", source])
+            if target is not None:
+                emit(["w", target])
+        elif event in ("os.rename", "os.replace", "shutil.move"):
             for p in args[:2]:
                 path = norm(p)
                 if path is not None:

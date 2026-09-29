@@ -181,6 +181,16 @@ class ExecuteTests(unittest.TestCase):
         self.assertNotIn("WARNING", text)
         self.assertLess(text.index("== " + check_steps.step_name(writer)),
                         text.index("-- started"))  # alone, before the fan-out
+        target.unlink()
+        plan(self.steps, reader, [PY, "-c", "pass"])  # the writer is gone
+        execute(self.steps, self.cache, use_cache=False)
+        plan(self.steps, reader, writer)
+        execute(self.steps, self.cache, use_cache=False)  # conflicts again: stays learned
+        self.assertEqual(json.loads((self.cache / "writers.json").read_text()), [shlex.join(writer)])
+        plan(self.steps, writer)  # alone in the plan: nothing to conflict with
+        verdict, text, rows = execute(self.steps, self.cache, use_cache=False)
+        self.assertIn("fans out again", text)
+        self.assertEqual(json.loads((self.cache / "writers.json").read_text()), [])
 
     def test_a_git_read_is_replayed_to_key_the_step(self):
         probe = [PY, "-c", f"import subprocess; print(subprocess.run(['git', '-C', {str(ROOT)!r}, "
@@ -190,6 +200,19 @@ class ExecuteTests(unittest.TestCase):
         self.assertTrue(execute(self.steps, self.cache)[2][0].get("cached"))
         entry = json.loads(next((self.cache / "steps").iterdir()).read_text())
         self.assertEqual(entry["inputs"]["g"][0][:2], [str(ROOT), ["rev-parse", "HEAD"]])
+
+    def test_a_copied_tree_is_read_not_written(self):
+        (self.data / "src").mkdir()
+        (self.data / "src" / "f").write_text("f")
+        copier = [PY, "-c", "import shutil, tempfile; "
+                            f"shutil.copytree({str(self.data / 'src')!r}, tempfile.mkdtemp() + '/c')"]
+        reader = [PY, "-c", f"print(open({str(self.data / 'src' / 'f')!r}).read())"]
+        plan(self.steps, copier, reader)
+        verdict, text, rows = execute(self.steps, self.cache)
+        self.assertNotIn("WARNING", text)
+        self.assertTrue(execute(self.steps, self.cache)[2][0].get("cached"))
+        (self.data / "src" / "f").write_text("g")
+        self.assertFalse(execute(self.steps, self.cache)[2][0].get("cached"))
 
     def test_git_replay_is_for_reads_only(self):
         self.assertTrue(check_steps.git_replayable(["rev-parse", "HEAD"]))
