@@ -1405,6 +1405,20 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-carry-control-tests \
 	books/bp-carry-waiver \
 	tests/acl2/bp-carry-waiver-tests \
+	tests/acl2/store-checkpoint-digest-tests \
+	tests/acl2/owner-maintenance-request-tests \
+	tests/acl2/owner-reclaim-conns-tests \
+	tests/acl2/owner-reclaim-pass-tests \
+	tests/acl2/owner-reclaim-ready-tests \
+	tests/acl2/control-request-word-tests \
+	tests/acl2/packed-submission-tests \
+	tests/acl2/body-chunks-tests \
+	tests/acl2/bp-node-fragment-job-tests \
+	tests/acl2/deflate-pool-tests \
+	tests/acl2/native-operator-stage-tests \
+	tests/acl2/nntp-compress-dict-tests \
+	tests/acl2/owner-control-post-reason-tests \
+	tests/acl2/owner-export-request-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/reader-open-carried \
