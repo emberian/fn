@@ -463,6 +463,167 @@ def findings() -> tuple[list[dict], int, int]:
     return rows, len(sites), len(roots)
 
 
+# --- *1* EXECUTION (obstructions-7 item 61) ------------------------------
+#
+# A host-reached function that is not guard-verified (symbol-class :ideal)
+# runs INTERPRETED: its *1* function evaluates the :logic body, so it loses
+# every loop twin (an mbe's :exec never runs), and the *1* versions of
+# append, take, nthcdr, revappend ... it calls are the recursive logic
+# definitions, a frame per element.  bp-remainder-3's receiver died so on a
+# 1 MiB thread stack.  That is a finding of its own class, listed per host
+# file, served and receive paths first; warn-only until its baseline exists.
+# The symbol class comes from the certified world's dump (tools/coverage.py
+# dump -> build/coverage/world.json, the `class' of each function); without
+# one, from the source (an ESTIMATE: a logic-mode defun with :verify-guards
+# nil, or with no guard, type declaration or :stobjs under the default
+# eagerness and no later (verify-guards NAME)).
+FRAME_PER_ELEMENT = ("append", "binary-append", "take", "first-n-ac", "nthcdr",
+                     "revappend", "reverse", "len", "nth", "update-nth", "remove-duplicates-equal",
+                     "strip-cars", "strip-cdrs", "member-equal", "assoc-equal")
+SERVED_FIRST = ("serve", "served", "nntp", "reader", "owner", "io", "receive", "bp-node",
+                "bp-contact", "bp-service", "mux", "feed-service", "pull-service")
+WORLD_JSON = ROOT / "build" / "coverage" / "world.json"
+
+
+def world_classes(path: Path) -> dict[str, str]:
+    """name -> symbol class (program, ideal, common-lisp-compliant) from a
+    coverage dump."""
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    out: dict[str, str] = {}
+    for record in doc.get("functions", ()):
+        name = str(record.get("name", "")).lower().split("::")[-1].strip("|")
+        out.setdefault(name, str(record.get("class", "")).lower().lstrip(":"))
+    return out
+
+
+def _xargs(form) -> dict[str, object]:
+    found: dict[str, object] = {}
+    for item in form[3:] if isinstance(form, list) else ():
+        if isinstance(item, list) and item and _name(item[0]) == "declare":
+            for decl in item[1:]:
+                if isinstance(decl, list) and decl and _name(decl[0]) == "xargs":
+                    rest = decl[1:]
+                    for key, value in zip(rest[::2], rest[1::2]):
+                        found[str(key).lower().lstrip(":")] = value
+                elif isinstance(decl, list) and decl and _name(decl[0]) == "type":
+                    found["type"] = True
+    return found
+
+
+VERIFY_GUARDS = re.compile(r"\(\s*verify-guards\s+([^\s()]+)", re.I)
+EAGER_TWO = re.compile(r"\(\s*set-verify-guards-eagerness\s+2\s*\)", re.I)
+
+
+def static_class(d: callgraph.Definition, verified_later: set[str],
+                 eager_books: set[str]) -> str:
+    """The symbol class the source gives D (an estimate; see above)."""
+    head = callgraph.head(d.form)
+    xargs = _xargs(d.form)
+    mode = str(xargs.get("mode", "")).lower().lstrip(":")
+    if mode == "program":
+        return "program"
+    guards = str(xargs.get("verify-guards", "")).lower()
+    if guards == "nil":
+        return "common-lisp-compliant" if d.name in verified_later else "ideal"
+    if guards == "t" or head == "define" or d.path in eager_books:
+        return "common-lisp-compliant"
+    if any(key in xargs for key in ("guard", "type", "stobjs", "guard-hints")):
+        return "common-lisp-compliant"
+    return "common-lisp-compliant" if d.name in verified_later else "ideal"
+
+
+def interpreted(world: Path | None = None) -> tuple[list[dict], str]:
+    """(one row per host-reached :ideal function, the class source)."""
+    defs, roots = closure()
+    graph = callgraph.build(callgraph.tree_files())
+    if world is not None and world.is_file():
+        classes = world_classes(world)
+        source = f"world {world}"
+        cls = lambda name, d: classes.get(name, "")  # noqa: E731
+    else:
+        verified_later: set[str] = set()
+        eager: set[str] = set()
+        for relative in callgraph.tree_files():
+            try:
+                text = (ROOT / relative).read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            verified_later |= {n.lower() for n in VERIFY_GUARDS.findall(text)}
+            if EAGER_TWO.search(text):
+                eager.add(str(relative))
+        source = "source ESTIMATE (no world dump; tools/coverage.py dump writes one)"
+        cls = lambda name, d: static_class(d, verified_later, eager)  # noqa: E731
+    ideal = {n for n, d in defs.items() if cls(n, d) == "ideal"}
+    # A *1* body runs its :logic side: every function it mentions that is
+    # itself :ideal runs interpreted too.
+    frontier = sorted(ideal)
+    while frontier:
+        following = []
+        for name in frontier:
+            for callee in graph.edges.get(name, ()):
+                d = defs.get(callee)
+                if d is None:
+                    found = graph.definitions.get(callee)
+                    d = next((x for x in found or () if x.kind == "function"), None)
+                if d is not None and callee not in ideal and cls(callee, d) == "ideal":
+                    ideal.add(callee)
+                    defs.setdefault(callee, d)
+                    following.append(callee)
+        frontier = following
+    tree = ledger.load_tree()
+    by_host: dict[str, set[str]] = {}
+    for relative in sorted(ledger.raw_host_paths(tree)):
+        named: set[str] = set()
+        for form, _line in tree.hosts[relative].forms:
+            callgraph.symbols(form, named)
+        seen = set(n for n in named if n in defs)
+        frontier = sorted(seen)
+        while frontier:
+            following = []
+            for name in frontier:
+                for callee in graph.edges.get(name, ()):
+                    if callee in defs and callee not in seen:
+                        seen.add(callee)
+                        following.append(callee)
+            frontier = following
+        for name in seen & ideal:
+            by_host.setdefault(name, set()).add(relative)
+    rows = []
+    for name in sorted(ideal):
+        d = defs[name]
+        text = str(d.form).lower()
+        loses = []
+        if "mbe" in {str(x).lower() for x in graph.edges.get(name, ())} or "(mbe " in text:
+            loses.append("its mbe loop twin")
+        costly = sorted(c for c in graph.edges.get(name, ()) if c in FRAME_PER_ELEMENT)
+        if costly:
+            loses.append("a frame per element in " + ", ".join(costly))
+        rows.append({"function": name, "where": f"{d.path}:{d.line}",
+                     "hosts": sorted(by_host.get(name, ())), "loses": loses})
+    return rows, source
+
+
+def served_first(host: str) -> tuple[int, str]:
+    stem = Path(host).stem
+    return (0 if any(word in stem for word in SERVED_FIRST) else 1, host)
+
+
+def interpreted_report(rows: list[dict], source: str) -> list[str]:
+    lines = [f"depth_check --interpreted: {len(rows)} host-reached function(s) are not "
+             f"guard-verified and run *1* (interpreted: no loop twin, a frame per element "
+             f"on append/take/nthcdr); classes from the {source}"]
+    per: dict[str, list[dict]] = {}
+    for row in rows:
+        for host in row["hosts"] or ["(no raw host file names it directly)"]:
+            per.setdefault(host, []).append(row)
+    for host in sorted(per, key=served_first):
+        lines.append(f"{host}: {len(per[host])}")
+        for row in per[host]:
+            lines.append(f"  interpreted {row['function']}  {row['where']}"
+                         + (f"  loses {'; '.join(row['loses'])}" if row["loses"] else ""))
+    return lines
+
+
 def load_baseline(path: Path = BASELINE) -> dict:
     data = json.loads(path.read_text(encoding="utf-8"))
     return {"bounded": dict(data.get("bounded", {})), "debt": dict(data.get("debt", {}))}
@@ -551,7 +712,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--compare", metavar="ROWS", help="the extractor's rows to compare with")
     parser.add_argument("--driver", metavar="OUT", help="write the extractor's session script")
+    parser.add_argument("--interpreted", action="store_true",
+                        help="host-reached functions that are not guard-verified (*1* execution), "
+                             "per host file, served/receive paths first (warn-only)")
+    parser.add_argument("--world", metavar="JSON", default=None,
+                        help="the coverage dump whose symbol classes --interpreted reads "
+                             "(default build/coverage/world.json when present)")
     arguments = parser.parse_args(argv)
+    if arguments.interpreted:
+        world = Path(arguments.world) if arguments.world else WORLD_JSON
+        rows, source = interpreted(world)
+        if arguments.json:
+            print(json.dumps({"source": source, "rows": rows}, indent=1))
+        else:
+            print("\n".join(interpreted_report(rows, source)))
+        return 0
     if arguments.driver:
         _defs, roots = closure()
         text = (ROOT / "host" / "native" / "build.lisp").read_text(encoding="utf-8")
