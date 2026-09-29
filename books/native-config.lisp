@@ -13,11 +13,11 @@
 (include-book "profile-limits") ; its figures are rows there
 
 ; Work bounds, not data bounds (D27 classification, PRF-102).  fn.toml has a
-; fixed schema: twelve tables and thirty-nine keys, each admitted at most once
+; fixed schema: twelve tables and forty keys, each admitted at most once
 ; (`fn-ncfg-pair-seenp', `fn-ncfg-table-seenp'), with no repeated table, so it
 ; names no collection the store holds -- groups, peers, credentials and
 ; policy live in the store and its profile.  These two bound the work of one
-; read of that fixed-size file (its values are at most 39 x 512 octets).  The
+; read of that fixed-size file (its values are at most 40 x 512 octets).  The
 ; store profile cannot bound it in any case: fn.toml is read before the store
 ; is opened, and names the store (`[store] path').
 (defconst *fn-ncfg-max-octets* 16384)
@@ -264,7 +264,7 @@
                              "idle_seconds" "max_sessions")))
         ((equal table "resources")
          (member-equal key '("cold_heap_octets" "cold_workers"
-                             "cold_descriptors" "cold_read_ids")))
+                             "cold_descriptors" "cold_read_ids" "cold_file_ids")))
         ((equal table "ops")
          (member-equal key '("mission" "unit" "scope" "keep_releases"
                              "log_max_bytes" "log_keep" "memory_max")))
@@ -789,11 +789,12 @@ raw owner binds exactly these octets and never resolves a name."
 (defun fn-native-config-cold-resources-wfp (x)
   (declare (xargs :guard t))
   (or (null x)
-      (and (true-listp x) (equal (len x) 4)
+      (and (true-listp x) (equal (len x) 5)
            (posp (fn-ncfg-nth 0 x)) (<= (fn-ncfg-nth 0 x) *fn-ncfg-max-u64*)
            (posp (fn-ncfg-nth 1 x)) (<= (fn-ncfg-nth 1 x) *fn-ncfg-max-u64*)
            (posp (fn-ncfg-nth 2 x)) (<= (fn-ncfg-nth 2 x) *fn-ncfg-max-u64*)
-           (posp (fn-ncfg-nth 3 x)) (<= (fn-ncfg-nth 3 x) *fn-ncfg-max-u64*))))
+           (posp (fn-ncfg-nth 3 x)) (<= (fn-ncfg-nth 3 x) *fn-ncfg-max-u64*)
+           (posp (fn-ncfg-nth 4 x)) (<= (fn-ncfg-nth 4 x) *fn-ncfg-max-u64*))))
 
  ; The operational cold-read pool is explicit. No storage layout changes.
 ; Absence is a temporary fail-closed frontier, not a productive mission
@@ -804,22 +805,33 @@ raw owner binds exactly these octets and never resolves a name."
          (workers0 (fn-ncfg-value pairs "resources" "cold_workers"))
          (fds0 (fn-ncfg-value pairs "resources" "cold_descriptors"))
          (ids0 (fn-ncfg-value pairs "resources" "cold_read_ids"))
+         (files0 (fn-ncfg-value pairs "resources" "cold_file_ids"))
          (heap (fn-ncfg-nat-value heap0 :bad *fn-ncfg-max-u64*))
          (workers (fn-ncfg-nat-value workers0 :bad *fn-ncfg-max-u64*))
          (fds (fn-ncfg-nat-value fds0 :bad *fn-ncfg-max-u64*))
-         (ids (fn-ncfg-nat-value ids0 :bad *fn-ncfg-max-u64*)))
-    (cond ((not (or heap0 workers0 fds0 ids0)) nil)
-          ((and (posp heap) (posp workers) (posp fds) (posp ids))
-           (list heap workers fds ids))
+         (ids (fn-ncfg-nat-value ids0 :bad *fn-ncfg-max-u64*))
+         (files (fn-ncfg-nat-value files0 :bad *fn-ncfg-max-u64*)))
+    (cond ((not (or heap0 workers0 fds0 ids0 files0)) nil)
+          ((and (posp heap) (posp workers) (posp fds) (posp ids) (posp files))
+           (list heap workers fds ids files))
           (t :bad))))
 
 (defun fn-native-config-cold-resources (config)
   (declare (xargs :guard t))
   (fn-ncfg-nth 29 config))
 
+(local
+ (defthm fn-ncfg-cold-nat-value-range
+   (implies (not (equal (fn-ncfg-nat-value value :bad *fn-ncfg-max-u64*) :bad))
+            (and (natp (fn-ncfg-nat-value value :bad *fn-ncfg-max-u64*))
+                 (<= (fn-ncfg-nat-value value :bad *fn-ncfg-max-u64*) *fn-ncfg-max-u64*)))
+   :hints (("Goal" :in-theory (enable fn-ncfg-nat-value)))))
+
 (defthm fn-ncfg-cold-resources-is-supported-or-refused
   (implies (not (equal (fn-ncfg-cold-resources pairs) :bad))
-           (fn-native-config-cold-resources-wfp (fn-ncfg-cold-resources pairs))))
+           (fn-native-config-cold-resources-wfp (fn-ncfg-cold-resources pairs)))
+  :hints (("Goal" :in-theory (e/d (fn-ncfg-cold-resources fn-native-config-cold-resources-wfp)
+                                   (fn-ncfg-nat-value)))))
 
 (defun fn-ncfg-normalize (pairs)
   (declare (xargs :guard t))

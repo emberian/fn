@@ -154,6 +154,24 @@ after removing entries and must be baseline-funded at installation. The
 current adapter accepts supplied accounting inputs; it establishes no
 measured allocator bound or productive supported profile by itself.
 
+The operational grammar now names five explicit, positive u64 quantities:
+`cold_heap_octets`, `cold_workers`, `cold_descriptors`, `cold_read_ids` and
+`cold_file_ids`. Read and file identities have independent finite namespaces;
+neither wraps or refunds names. The file wrapper calls
+`fn-pio-file-issue-with-limit` before opening. Registration passes the actual
+path string to ACL2's `fn-prs-incarnation-path-demand`; the selected 64-bit
+SBCL string-layout model charges `32 + 4 * length(path)`, in addition to the
+supplied incarnation bookkeeping and collector copy allowance. The saved
+SBCL 2.6.8 hbox layout probe supports this target choice, not an arbitrary
+Common Lisp allocator guarantee. The native supported-profile consumer and
+physical baseline remain open, so explicit policy is still refused by run.
+
+The agreed follow-on uses persistent startup executors: their stack/runtime
+storage is baseline-funded until service shutdown, and each running or
+returned job holds a worker lease until exact owner settlement. It does not
+infer RSS release from joined thread death. Hash bucket capacity, cache
+buffers and decoder highwater have separate lifetimes and funding duties.
+
 Remaining complete increments, in order:
 
 1. Supported operator resource policy, representability and initial funding;

@@ -578,6 +578,8 @@
     "tests/acl2/post-admission-keyed-tests",
     "tests/acl2/page-read-resources-tests",
     "books/page-read-ledger",
+    "books/page-read-ownership",
+    "tests/acl2/page-read-ownership-tests",
     "host/page-read-host",
     "tests/acl2/page-read-ledger-tests",
     "tests/acl2/page-read-host-tests",
@@ -1611,20 +1613,20 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1669,
-    "books_in_root_closure": 1668,
-    "roots": 1607,
-    "theorems": 27392,
-    "functions": 17930,
-    "assert_events": 22789,
+    "books": 1671,
+    "books_in_root_closure": 1670,
+    "roots": 1609,
+    "theorems": 27405,
+    "functions": 17953,
+    "assert_events": 22813,
     "must_fails": 2463,
     "prover_refusals": 0,
     "encapsulates": 157,
     "guards": {
       "verified": 3355,
       "declared-off": 2063,
-      "default-guarded": 9834,
-      "default-unguarded": 2678
+      "default-guarded": 9850,
+      "default-unguarded": 2685
     },
     "suspect_theorems": 1209,
     "export_hygiene_warnings": 317,
@@ -13628,7 +13630,7 @@
         "owner-time-journal-writer",
         "owner-time-model",
         "owner-tls-prefix",
-        "page-read-ledger",
+        "page-read-ownership",
         "payload-arena-attach",
         "payload-commit-extent",
         "payload-extent-read",
@@ -14195,7 +14197,7 @@
         "owner-time-journal-writer",
         "owner-time-model",
         "owner-tls-prefix",
-        "page-read-ledger",
+        "page-read-ownership",
         "payload-arena-attach",
         "payload-commit-extent",
         "payload-extent-read",
@@ -15374,7 +15376,7 @@
       "book": "books/native-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 30,
+      "theorems": 31,
       "functions": 109,
       "guards": {
         "verified": 1,
@@ -20257,15 +20259,41 @@
       "read_error": null
     },
     {
+      "book": "books/page-read-ownership.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
+      "functions": 11,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 11,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "page-read-ledger"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/page-read-resources.lisp",
       "in_root_closure": true,
       "is_root": false,
       "theorems": 7,
-      "functions": 10,
+      "functions": 11,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 10,
+        "default-guarded": 11,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -43725,24 +43753,28 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 6,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 6
       },
       "verify_guards_events": 0,
-      "assert_events": 0,
+      "assert_events": 3,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
-      "includes": [],
-      "system_includes": [],
+      "includes": [
+        "../../host/page-read-host"
+      ],
+      "system_includes": [
+        "std/testing/assert-bang"
+      ],
       "suspects": [],
-      "read_error": "unbalanced close parenthesis at line 73"
+      "read_error": null
     },
     {
       "book": "tests/acl2/page-read-ledger-tests.lisp",
@@ -43769,6 +43801,32 @@
       "system_includes": [
         "std/testing/assert-bang"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/page-read-ownership-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 21,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/page-read-ownership"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -53481,7 +53539,7 @@
     {
       "theorem": "fn-ncfg-opt-pair-of-nil",
       "book": "books/native-config-show.lisp",
-      "line": 800,
+      "line": 804,
       "reasons": [
         "arm-of-definition: constant arguments select one IF/COND arm of fn-ncfg-opt-pair and the conclusion is that arm's value"
       ]
@@ -53489,7 +53547,7 @@
     {
       "theorem": "fn-ncfg-trim-left-noop",
       "book": "books/native-config-show.lisp",
-      "line": 378,
+      "line": 379,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-ncfg-trim-left and the conclusion is that arm's value"
       ]
@@ -53497,7 +53555,7 @@
     {
       "theorem": "fn-ncfg-trim-right-rev-noop",
       "book": "books/native-config-show.lisp",
-      "line": 378,
+      "line": 379,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-ncfg-trim-right-rev and the conclusion is that arm's value"
       ]
@@ -55823,7 +55881,7 @@
     {
       "theorem": "fn-prs-release-never-refunds-identities",
       "book": "books/page-read-resources.lisp",
-      "line": 144,
+      "line": 154,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]

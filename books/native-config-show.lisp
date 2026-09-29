@@ -139,7 +139,8 @@
                (fn-ncfg-show-entry "cold_heap_octets" (list :nat (fn-ncfg-nth 0 (fn-native-config-cold-resources c))))
                (fn-ncfg-show-entry "cold_workers" (list :nat (fn-ncfg-nth 1 (fn-native-config-cold-resources c))))
                (fn-ncfg-show-entry "cold_descriptors" (list :nat (fn-ncfg-nth 2 (fn-native-config-cold-resources c))))
-               (fn-ncfg-show-entry "cold_read_ids" (list :nat (fn-ncfg-nth 3 (fn-native-config-cold-resources c))))) nil)))
+               (fn-ncfg-show-entry "cold_read_ids" (list :nat (fn-ncfg-nth 3 (fn-native-config-cold-resources c))))
+               (fn-ncfg-show-entry "cold_file_ids" (list :nat (fn-ncfg-nth 4 (fn-native-config-cold-resources c))))) nil)))
 
 (defun fn-ncfg-list-fix (x)
   (declare (xargs :guard t))
@@ -620,7 +621,10 @@
 (defun fn-ncfg-show-pairs (c)
   "The pairs `fn-ncfg-parse-lines' collects from the lines of C, newest first."
   (declare (xargs :guard t))
-  (fn-ncfg-opt-pair "resources" "cold_read_ids"
+  (fn-ncfg-opt-pair "resources" "cold_file_ids"
+    (if (fn-native-config-cold-resources c)
+        (list :nat (fn-ncfg-nth 4 (fn-native-config-cold-resources c))) nil)
+   (fn-ncfg-opt-pair "resources" "cold_read_ids"
     (if (fn-native-config-cold-resources c)
         (list :nat (fn-ncfg-nth 3 (fn-native-config-cold-resources c))) nil)
   (fn-ncfg-opt-pair "resources" "cold_descriptors"
@@ -659,7 +663,7 @@
     (fn-ncfg-opt-pair "listener" "port" (list :nat (fn-native-config-listener-port c))
     (fn-ncfg-opt-pair "listener" "host" (list :string (fn-native-config-listener-host c))
     (fn-ncfg-opt-pair "store" "path" (list :string (fn-native-config-store c))
-    nil))))))))))))))))))))))))))))))))
+    nil)))))))))))))))))))))))))))))))))
 
 ; -----------------------------------------------------------------------------
 ; Normalization gives the fields back.
@@ -821,7 +825,8 @@
             (and (fn-ncfg-show-natp (fn-ncfg-nth 0 x) *fn-ncfg-max-u64*)
                  (fn-ncfg-show-natp (fn-ncfg-nth 1 x) *fn-ncfg-max-u64*)
                  (fn-ncfg-show-natp (fn-ncfg-nth 2 x) *fn-ncfg-max-u64*)
-                 (fn-ncfg-show-natp (fn-ncfg-nth 3 x) *fn-ncfg-max-u64*)))
+                 (fn-ncfg-show-natp (fn-ncfg-nth 3 x) *fn-ncfg-max-u64*)
+                 (fn-ncfg-show-natp (fn-ncfg-nth 4 x) *fn-ncfg-max-u64*)))
    :hints (("Goal" :in-theory (enable fn-ncfg-show-natp)))))
 
 (local
@@ -870,11 +875,11 @@
    (defthm fn-ncfg-cold-resource-rebuild
      (implies (and (fn-native-config-cold-resources-wfp x) x)
               (equal (list (fn-ncfg-nth 0 x) (fn-ncfg-nth 1 x)
-                           (fn-ncfg-nth 2 x) (fn-ncfg-nth 3 x)) x))
+                           (fn-ncfg-nth 2 x) (fn-ncfg-nth 3 x) (fn-ncfg-nth 4 x)) x))
      :hints (("Goal" :in-theory (enable fn-native-config-cold-resources-wfp fn-ncfg-nth)
-              :expand ((len x) (len (cdr x)) (len (cddr x)) (len (cdddr x))
+              :expand ((len x) (len (cdr x)) (len (cddr x)) (len (cdddr x)) (len (cddddr x))
                        (true-listp x) (true-listp (cdr x)) (true-listp (cddr x))
-                       (true-listp (cdddr x))))))))
+                       (true-listp (cdddr x)) (true-listp (cddddr x))))))))
 
 (local
  (defthm fn-ncfg-cold-value-nat
