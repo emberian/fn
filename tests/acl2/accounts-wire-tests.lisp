@@ -1,7 +1,7 @@
 ; Teeth for the XREDEEM wire keystones (PRF-164, PKT-439; books/nntp-auth.lisp).
 ; The subject is fn-auth-step-pinned, the dispatcher books/served.lisp
 ; fn-served-dispatch calls for every framed event, reached by
-; host/owner-host.lisp fn-owner-chunk through fn-own-read, and by the owner's
+; host/owner-host.lisp fn-owner-chunk-span-at through fn-own-read, and by the owner's
 ; re-entry fn-owner-account-outcome (host/native-admin-host.lisp) through
 ; fn-ocfg-read-step.  Per keystone: a reachable witness asserting the
 ; antecedent and the conclusion, and per hypothesis a removal witness whose

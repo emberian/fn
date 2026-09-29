@@ -334,7 +334,7 @@
 ; subject is the function the host calls)
 ;
 ; The host line is books/owner.lisp `fn-own-read', which the host calls once
-; per socket read at host/owner-host.lisp `fn-owner-chunk'; it runs
+; per socket read at host/owner-host.lisp `fn-owner-chunk-span-at'; it runs
 ; `fn-served-step' -> `fn-served-dispatch' -> `fn-auth-step' -> `fn-peer-step'
 ; -> `fn-peer-command', and the IHAVE and CHECK arms of `fn-peer-command' are
 ; the only two callers of `fn-peer-decide-offer' on this tree.  K3

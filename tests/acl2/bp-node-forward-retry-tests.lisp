@@ -400,3 +400,13 @@
         (null (fn-bpn-nth 13 h)))))
 (must-fail-checked
  (assert-event (not (fn-bpnp-forward-terminalp (fn-bpnp-tcpcl-outcome :refused 1)))))
+
+;; Teeth for fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-
+;; distinct (PRF-956, books/bp-node-progress.lisp): the four readings above
+;; are its positive witnesses; hypothesis removal: a refusal whose reason is
+;; not a code is :uncertain (neither a refusal result nor :failed), and a
+;; lost connection is :uncertain whatever the reason.
+(assert-event (equal (fn-bpnp-tcpcl-outcome :refused :garbage) :uncertain))
+(assert-event (equal (fn-bpnp-tcpcl-outcome :connection-failed nil) :uncertain))
+(assert-event (equal (fn-bpnp-tcpcl-outcome :connection-failed 3) :uncertain))
+(assert-event (not (fn-frame-natp :garbage)))

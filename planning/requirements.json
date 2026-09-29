@@ -167,7 +167,8 @@
         "PRF-048",
         "PRF-050",
         "PRF-063",
-        "PRF-069"
+        "PRF-069",
+        "PRF-943"
       ],
       "verification": [
         "proof",
@@ -392,7 +393,8 @@
         "PRF-282",
         "PRF-328",
         "PRF-331",
-        "PRF-333"
+        "PRF-333",
+        "PRF-936"
       ],
       "verification": [
         "proof",
@@ -498,7 +500,8 @@
         "PRF-255",
         "PRF-280",
         "PRF-316",
-        "PRF-903"
+        "PRF-903",
+        "PRF-953"
       ],
       "verification": [
         "proof",
@@ -1145,7 +1148,9 @@
         "PRF-114",
         "PRF-190",
         "PRF-214",
-        "PRF-906"
+        "PRF-906",
+        "PRF-944",
+        "PRF-956"
       ],
       "verification": [
         "proof",
@@ -1282,7 +1287,7 @@
         "fn-served-reply-stream-is-partition-independent",
         "fn-served-step-preserves-connp"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The framing keystones are chunk-independent: the consumed prefix reconstructs the input and feeding is a proper append. The subject rule is met here for the first time: the host no longer owns a :program-mode chunk loop, it calls fn-served-step once per socket read, and books/served states chunk independence of that very function: fn-served-step-partition-independence and fn-served-reply-stream-is-partition-independent. Open: the concurrent server (books/owner) does not certify, so this is exercised through the single-connection reader only. The current native owner uses fn-served-step-counted-fast via fn-owner-chunk and fn-ocfg-read-tls-prefix. Its fixed-spine guard and full-wire-invariant correspondence have focused certification; current outer owner correspondence and runtime integration remain open."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The framing keystones are chunk-independent: the consumed prefix reconstructs the input and feeding is a proper append. The subject rule is met here for the first time: the host no longer owns a :program-mode chunk loop, it calls fn-served-step once per socket read, and books/served states chunk independence of that very function: fn-served-step-partition-independence and fn-served-reply-stream-is-partition-independent. Open: the concurrent server (books/owner) does not certify, so this is exercised through the single-connection reader only. The current native owner uses fn-served-step-counted-fast via fn-owner-chunk-span-at (fn-ocfg-read-tls-prefix over the span: fn-scr-ocfg-read-span-is-reference-under-ocl-relation). Its fixed-spine guard and full-wire-invariant correspondence have focused certification; current outer owner correspondence and runtime integration remain open."
     },
     {
       "id": "NNT-004",
@@ -1301,7 +1306,8 @@
         "PRF-057",
         "PRF-063",
         "PRF-091",
-        "PRF-206"
+        "PRF-206",
+        "PRF-943"
       ],
       "verification": [
         "proof",
@@ -1906,7 +1912,8 @@
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-066"
+        "PRF-066",
+        "PRF-955"
       ],
       "verification": [
         "proof",
@@ -2331,8 +2338,6 @@
         "books/cbor-invariants.lisp",
         "books/records-shape.lisp",
         "books/records.lisp",
-        "books/records-schema-v1.lisp",
-        "tests/acl2/records-schema-v1-teeth-tests.lisp",
         "planning/evidence/bounds-p6-2026-09-25.md",
         "books/record-width-producers.lisp",
         "tests/acl2/record-width-producers-tests.lisp"
@@ -2691,7 +2696,10 @@
         "PRF-279",
         "PRF-271",
         "PRF-327",
-        "PRF-918"
+        "PRF-918",
+        "PRF-927",
+        "PRF-930",
+        "PRF-934"
       ],
       "verification": [
         "proof",
@@ -2805,7 +2813,8 @@
         "PRF-321",
         "PRF-330",
         "PRF-326",
-        "PRF-341"
+        "PRF-341",
+        "PRF-952"
       ],
       "verification": [
         "proof",
@@ -3535,7 +3544,10 @@
         "PRF-181",
         "PRF-348",
         "PRF-346",
-        "PRF-363"
+        "PRF-363",
+        "PRF-922",
+        "PRF-928",
+        "PRF-929"
       ],
       "verification": [
         "proof",
@@ -3552,9 +3564,13 @@
         "tests/acl2/served-scan-tests.lisp",
         "host/owner-host.lisp",
         "host/native/owner.lisp",
-        "planning/evidence/ingress-span-2026-09-26.md"
+        "planning/evidence/ingress-span-2026-09-26.md",
+        "books/packed-octets.lisp",
+        "books/body-chunks.lisp",
+        "books/body-chunks-span.lisp",
+        "tests/acl2/body-chunks-tests.lisp"
       ],
-      "implementation_note": "Lane ingress-span (2026-09-26, PKT-302 (iv)). The host (host/native/owner.lisp fnn-owner-handle-chunk) fills fn-octets once from the socket byte vector (fnn-octets-fill) and calls fn-owner-chunk-span, which reads the range via fn-scar-ocfg-read-span; no fnn-octet-list (a 512-element cons list per socket read) on the read path. KEYSTONE fn-scar-feed-span-is-feed-counted (no hypothesis): the buffer fold IS the list counted fold over fn-oct-slice-list i end, byte for byte; KEYSTONE fn-scar-ocfg-read-span-is-reference-under-ocl-relation: under the configured owner's relation the span read is fn-ocfg-read-tls-prefix over the range's octets. The wire read fn-wire-feed-span (books/wire-span.lisp, fn-wire-feed-span-is-feed-proper) is the foundation the per-framed-event served fold will call. PKT-479 (lane input-loop, 2026-09-27): the executable dispatches once per framed event (books/served-scan.lisp fn-scar-scan-span, fn-scar-scan-span-is-feed-counted) over a line-at-a-time wire scan (books/wire-scan.lisp fn-wire-scan, fn-wire-scan-is-span-fold), both keystones hypothesis-free; the served parser's allocation fell from 481 to 39 bytes per article octet (hbox REPL, 1 MiB and 10 MiB in 468-octet reads), linear with no article-size term. Owner POST before/after: build/lanes/input-loop LANEDUMP (planning evidence at merge).",
+      "implementation_note": "Lane ingress-span (2026-09-26, PKT-302 (iv)). The host (host/native/owner.lisp fnn-owner-handle-chunk) fills fn-octets once from the socket byte vector (fnn-octets-fill) and calls fn-owner-chunk-span, which reads the range via fn-scar-ocfg-read-span; no fnn-octet-list (a 512-element cons list per socket read) on the read path. KEYSTONE fn-scar-feed-span-is-feed-counted (no hypothesis): the buffer fold IS the list counted fold over fn-oct-slice-list i end, byte for byte; KEYSTONE fn-scar-ocfg-read-span-is-reference-under-ocl-relation: under the configured owner's relation the span read is fn-ocfg-read-tls-prefix over the range's octets. The wire read fn-wire-feed-span (books/wire-span.lisp, fn-wire-feed-span-is-feed-proper) is the foundation the per-framed-event served fold will call. PKT-479 (lane input-loop, 2026-09-27): the executable dispatches once per framed event (books/served-scan.lisp fn-scar-scan-span, fn-scar-scan-span-is-feed-counted) over a line-at-a-time wire scan (books/wire-scan.lisp fn-wire-scan, fn-wire-scan-is-span-fold), both keystones hypothesis-free; the served parser's allocation fell from 481 to 39 bytes per article octet (hbox REPL, 1 MiB and 10 MiB in 468-octet reads), linear with no article-size term. Owner POST before/after: build/lanes/input-loop LANEDUMP (planning evidence at merge). Lane chunked-body (2026-09-28/29, B6, PRF-922): the article in flight is held in the wire's own record as a canonical store of packed 512-octet blocks (books/body-chunks.lisp), about one octet of heap an octet; an article-mode run goes into it straight from the buffer (books/body-chunks-span.lisp fn-bchs-push-span, fn-bchs-push-span-is-push-list), so the scan keystone stays hypothesis-free; the article event is the store's lines (fn-wire-article-event-is-the-held-body).",
       "note": "Lane ingress-span (2026-09-26), PKT-302 (iv); rep-wave-d's program."
     },
     {
@@ -4098,7 +4114,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-232"
+        "PRF-232",
+        "PRF-954"
       ],
       "verification": [
         "proof",
@@ -4436,7 +4453,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-217"
+        "PRF-217",
+        "PRF-942"
       ],
       "verification": [
         "proof",
@@ -4636,7 +4654,10 @@
         "PRF-303",
         "PRF-310",
         "PRF-354",
-        "PRF-901"
+        "PRF-901",
+        "PRF-924",
+        "PRF-925",
+        "PRF-926"
       ],
       "verification": [
         "proof",
@@ -5105,7 +5126,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-384",
-        "PRF-385"
+        "PRF-385",
+        "PRF-951"
       ],
       "verification": [
         "proof",
@@ -5155,7 +5177,9 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-918"
+        "PRF-918",
+        "PRF-927",
+        "PRF-930"
       ],
       "verification": [
         "proof",
@@ -5163,10 +5187,11 @@
       ],
       "evidence": [
         "tests/acl2/expiry-tests.lisp",
-        "tests/test_native_expiry.py"
+        "tests/test_native_expiry.py",
+        "tests/acl2/owner-reclaim-tests.lisp"
       ],
       "implementation_note": "`retention expire {GROUP|*} {clear | [keep D] [default D] [purge D] [octets N]}` stages five configuration quota rows (books/expiry-policy.lisp); `store reclaim` builds its context with the set the policy expires at its recorded instant (books/expiry.lisp fn-xpy-ctx, host/checkpoint-host.lisp fn-store-reclaim-context) and releases an expired article exactly as a released one (books/expiry-verdict.lisp): the tombstone, the checkpoint and the drop. An article leaves only when every group it is filed in expires it. Served: `423/430 article reclaimed`, distinct from `withdrawn` and from no article; the Message-ID and the numbers stay.",
-      "note": "OPEN: expiry runs offline (`store reclaim` refuses while an owner runs); expiry while serving needs the owner's checkpoint publication to carry the rewrite. GROUP's count and low water and LISTGROUP still include a reclaimed article (pre-existing, reclaim). Reclaim frees bytes, never transactions: a count-full store stays count-full (Q11, D13)."
+      "note": "OPEN: expiry runs offline. A running owner answers `store reclaim --dry-run` (the fold over its rows, PRF-927) and refuses `store reclaim` by name (offline-only) until the installing pass lands (lane online-reclaim NEXT: checkpoint of the rewritten capture, live swap, drop; online disk release also needs the extent descriptors of dropped segments closed). GROUP's count and low water and LISTGROUP still include a reclaimed article (pre-existing, reclaim). Reclaim frees bytes, never transactions: a count-full store stays count-full (Q11, D13)."
     },
     {
       "id": "HST-032",
@@ -5283,7 +5308,8 @@
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-921"
+        "PRF-921",
+        "PRF-958"
       ],
       "verification": [
         "proof"

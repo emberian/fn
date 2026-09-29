@@ -1,6 +1,8 @@
 {
   "note": "Paths removed from the tree on purpose, with where their role went.  tools/cite_check.py reads this as the disclosure for a citation of one of them (class `retired`): the citing prose predates the removal.  Every path is recoverable as `git show 940bc3104:PATH`.",
   "paths": {
+    "books/records-schema-v1.lisp": "retired by lane small-rows (D3; no migrations: fresh deploys at 6.6.0): the pre-P6 record decoder and its identity theorems (PRF-086's migration half); no store written by an older image is read",
+    "tests/acl2/records-schema-v1-teeth-tests.lisp": "retired by lane small-rows (D3; no migrations: fresh deploys at 6.6.0): the pre-P6 record decoder and its identity theorems (PRF-086's migration half); no store written by an older image is read",
     "bin/fn": "retired with the Python host by python-diet T5: the native image is the host (tests/native_harness.py, the native modules); what this file established about the Python host is not evidence about the image",
     "tests/bench/__init__.py": "retired with the Python host by python-diet T5: the native image is the host (tests/native_harness.py, the native modules); what this file established about the Python host is not evidence about the image",
     "tests/bench/current_path.py": "retired with the Python host by python-diet T5: the native image is the host (tests/native_harness.py, the native modules); what this file established about the Python host is not evidence about the image",

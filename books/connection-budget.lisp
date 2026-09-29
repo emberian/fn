@@ -106,7 +106,7 @@
 
 ; -----------------------------------------------------------------------------
 ; The host read: the work one served step may do (D27; lane input-loop-2).
-; A served step is one fn-owner-chunk over at most one host read, and the
+; A served step is one fn-owner-chunk-span-at over at most one host read, and the
 ; read's size is decided here, from the exposure limits in force.  Under a
 ; step rate (exposure-steps-per-second; the public default is 64), a step is
 ; the rate's unit of work and reads at most *fn-cbud-step-octets* (512, RFC

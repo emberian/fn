@@ -6,7 +6,7 @@
 ; on every archive command; books/owner-list-counts-read.lisp carries the
 ; statements below up to fn-served-step, which fn-own-read runs
 ; (fn-own-read-is-served-step-on-pinned-prefix) and which the host reaches
-; through fn-owner-chunk (host/owner-host.lisp).
+; through fn-owner-chunk-span-at (host/owner-host.lisp).
 ;
 ; LIST COUNTS reads each group's pinned membership bucket, never the
 ; archive.  The keystones: the pinned reply is the archive fold's

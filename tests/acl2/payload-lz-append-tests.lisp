@@ -293,3 +293,30 @@
  (defthm pla-config-min-any-row
    (equal (fn-lzr-config-min v) 0)
    :hints (("Goal" :do-not-induct t))))
+
+; Teeth for the two refusal-line keystones (PRF-952).  Append: a block that
+; does not decode to the span is refused with the line (positive witness);
+; the encoder's :none and the real frame have no line (hypothesis removal:
+; the candidate, the decode).  Read: no dictionary held for the real frame is
+; refused with a line (positive witness); the frame with its dictionary, and
+; the plain record, expand and have none (hypothesis removal: the
+; dictionary; the magic).
+(assert-event
+ (let ((d (fn-lzr-append-decide nil 0 64 *plr-r* *plr-k* 750 '(1 2 3))))
+   (and (equal d (list :refused :lz-candidate))
+        (stringp (fn-lzr-append-refusal-text d))
+        (not (equal (fn-lz-decode nil '(1 2 3) 750)
+                    (list :ok (take 750 (nthcdr *plr-k* *plr-r*))))))))
+(assert-event
+ (and (null (fn-lzr-append-refusal-text
+             (fn-lzr-append-decide nil 0 64 *plr-r* *plr-k* 750 :none)))
+      (null (fn-lzr-append-refusal-text *pla-framed*))))
+(assert-event
+ (let ((x (fn-lzr-expand nil *plr-z0*)))
+   (and (fn-lzr-magicp *plr-z0*)
+        (equal x (list :refused :lz-dictionary))
+        (stringp (fn-lzr-read-refusal-text x)))))
+(assert-event
+ (and (null (fn-lzr-read-refusal-text (fn-lzr-expand *pla-dicts* *plr-z0*)))
+      (not (fn-lzr-magicp *plr-r*))
+      (null (fn-lzr-read-refusal-text (fn-lzr-expand *pla-dicts* *plr-r*)))))

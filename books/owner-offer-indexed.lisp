@@ -296,7 +296,7 @@
   :hints (("Goal" :in-theory (e/d (fn-ocfg-observe fn-scar-view-indexedp)
                                   (fn-midx-correspondencep fn-own-refresh)))))
 
-; host/owner-host.lisp fn-owner-chunk installs the carried read's owner.
+; host/owner-host.lisp fn-owner-chunk-span-at installs the carried read's owner.
 (defthm fn-oix-scar-read-keeps-view
   (equal (fn-own-view
           (fn-ocfg-owner
