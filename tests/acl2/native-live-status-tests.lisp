@@ -6,6 +6,7 @@
 (include-book "../../books/native-live-status")
 (include-book "../../books/owner-store-budget")
 (include-book "../../books/codec-attach")
+(include-book "../../books/owner-reader-view")
 (include-book "must-fail-checked")
 (include-book "held-rows-tests")
 
@@ -48,7 +49,7 @@
 (defconst *sr-arena* nil)
 (bpr-lift fn-ocfg-step 2)
 (bpr-lift nlst-run 2)
-(bpr-lift fn-nls-report 7)
+(bpr-lift fn-nls-report 8)
 (bpr-lift fn-nls-live-report 5)
 (bpr-lift fn-nls-offline-report 5)
 (defconst *nlst-oc*
@@ -76,6 +77,10 @@
 (assert-event (fn-sbud-octets-cache-validp (nlst-cache)
                                            (fn-sf-records (fn-sn-files *nlst-s*))))
 (assert-event (null (fn-ocfg-pins *nlst-oc*)))
+; PKT-885: the view is current (every committed record, its one article).
+(assert-event (fn-nls-view-currentp *nlst-oc*))
+(assert-event (equal (fn-nls-view-seen (fn-own-view (fn-ocfg-owner *nlst-oc*)))
+                     '(1 . 1)))
 
 ; The keystone's instance: every kind, live equals offline.
 (assert-event
@@ -120,6 +125,39 @@ obli")))
    :hints (("Goal" :do-not-induct t
             :use ((:instance fn-sbud-bytes-used-is-kernel-sum
                              (s *nlst-s*) (cache (nlst-cache))))
+            :in-theory '(fn-nls-live-report fn-nls-offline-report)))))
+
+; PKT-885: with the view behind the Store -- the owner's view before its
+; first commit put in place, as the host puts the reader view in place while
+; a batch is in flight -- the counts are the view's (0 and 0), not the
+; Store's (1 and 1), so the live report is not the offline one.
+(defconst *nlst-behind*
+  (fn-ocfg-with-view *nlst-oc* (fn-own-view (fn-ocfg-owner *nlst-0*))))
+(assert-event (not (fn-nls-view-currentp *nlst-behind*)))
+(assert-event (fn-sbud-octets-cache-validp
+               (nlst-cache) (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner *nlst-behind*))))))
+(assert-event (null (fn-ocfg-pins *nlst-behind*)))
+(assert-event
+ (equal (take 28 (in-arena-fn-nls-live-report *sr-arena* :status *nlst-profile* *nlst-behind*
+                                             (nlst-cache) *nlst-obs*))
+        (fn-record-string-octets "transactions=0 articles=0 st")))
+(assert-event
+ (not (equal (in-arena-fn-nls-live-report *sr-arena* :status *nlst-profile* *nlst-behind* (nlst-cache) *nlst-obs*)
+             (in-arena-fn-nls-offline-report *sr-arena* :status *nlst-profile* *nlst-s*
+                                    (fn-ocfg-config *nlst-oc*) *nlst-obs*))))
+(must-fail-checked
+ (defthm nlst-live-is-offline-with-the-view-behind
+   (implies (and (fn-sbud-octets-cache-validp
+                  cache (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
+                 (not (consp (fn-ocfg-pins oc))))
+            (equal (fn-nls-live-report kind profile oc cache obs fn-arena)
+                   (fn-nls-offline-report kind profile
+                                          (fn-own-store (fn-ocfg-owner oc))
+                                          (fn-ocfg-config oc) obs fn-arena)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-sbud-bytes-used-is-kernel-sum
+                             (s (fn-own-store (fn-ocfg-owner oc)))))
             :in-theory '(fn-nls-live-report fn-nls-offline-report)))))
 
 ; With a connection open the owner's pins report names it; offline has none.
@@ -446,12 +484,12 @@ open-cost replay-records=")
 (assert-event (consp (fn-cfg-authorities (fn-cfg-value *nlst-granted-config*))))
 (assert-event
  (equal (in-arena-fn-nls-report *sr-arena* (fn-native-admin-result-report-kind *nlst-control-list*)
-                       *nlst-profile* *nlst-s* 0 *nlst-granted-config* nil *nlst-obs*)
+                       *nlst-profile* *nlst-s* 0 (fn-nls-store-seen *nlst-s*) *nlst-granted-config* nil *nlst-obs*)
         (fn-record-string-octets
          (concatenate 'string "grant " *nlst-p-hex* " cancel fn.mod.*"
                       (coerce (list (code-char 10)) 'string)))))
 (assert-event
- (equal (in-arena-fn-nls-report *sr-arena* :peers *nlst-profile* *nlst-s* 0 *nlst-granted-config*
+ (equal (in-arena-fn-nls-report *sr-arena* :peers *nlst-profile* *nlst-s* 0 (fn-nls-store-seen *nlst-s*) *nlst-granted-config*
                        nil *nlst-obs*)
         nil))
 ; `peer list' still names the peers.
@@ -464,7 +502,7 @@ open-cost replay-records=")
 ; Without the plan's own kind the equality fails: the host's old :peers.
 (must-fail-checked
  (defthm nlst-peers-kind-is-query-report
-   (equal (fn-nls-report :peers profile s bytes cfg pins obs fn-arena)
+   (equal (fn-nls-report :peers profile s bytes seen cfg pins obs fn-arena)
           (fn-native-admin-query-report plan (fn-cfg-value cfg)))
    :hints (("Goal" :in-theory (disable fn-native-admin-control-report
                                        fn-native-admin-peer-budget-report)))))
@@ -477,7 +515,7 @@ open-cost replay-records=")
 (assert-event (equal (fn-native-admin-result-report-kind *nlst-account-list*) :accounts))
 (assert-event (equal (fn-nls-code-kind (fn-nls-kind-code :accounts)) :accounts))
 (assert-event
- (equal (in-arena-fn-nls-report *sr-arena* :accounts *nlst-profile* *nlst-s* 0 *nlst-granted-config*
+ (equal (in-arena-fn-nls-report *sr-arena* :accounts *nlst-profile* *nlst-s* 0 (fn-nls-store-seen *nlst-s*) *nlst-granted-config*
                        nil *nlst-obs*)
         (fn-nls-query-report *nlst-account-list*
                              (fn-cfg-value *nlst-granted-config*))))

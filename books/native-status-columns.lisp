@@ -33,6 +33,7 @@
 (in-package "ACL2")
 (include-book "native-health")
 (include-book "served-columns")
+(include-book "owner-reader-view")
 
 ; -----------------------------------------------------------------------------
 ; One article's verdict, its tombstone flag from the column.
@@ -218,13 +219,11 @@
 
 ; The status branch of fn-nls-report, its reclaim line from the one walk.
 ; Every other kind is fn-nls-report's.
-(defun fn-nsc-report (kind profile s bytes cfg pins obs fn-arena fn-cat)
+(defun fn-nsc-report (kind profile s bytes seen cfg pins obs fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :guard t :verify-guards nil))
   (if (member-equal kind '(:peers :control :accounts :pins :obligations))
-      (fn-nls-report kind profile s bytes cfg pins obs fn-arena)
-    (append (fn-nls-text "transactions=") (fn-nls-nat (fn-sbud-used s))
-            (fn-nls-field "articles"
-                          (len (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
+      (fn-nls-report kind profile s bytes seen cfg pins obs fn-arena)
+    (append (fn-nls-counts-words seen)
             (fn-nls-text " ") (fn-nls-orphan-words obs)
             (fn-nls-text " unsigned-legacy-experiment") *fn-nls-lf*
             (fn-nls-text "profile")
@@ -243,8 +242,8 @@
 
 (defthm fn-nsc-report-is-report
   (implies (fn-scol-okp fn-arena fn-cat)
-           (equal (fn-nsc-report kind profile s bytes cfg pins obs fn-arena fn-cat)
-                  (fn-nls-report kind profile s bytes cfg pins obs fn-arena)))
+           (equal (fn-nsc-report kind profile s bytes seen cfg pins obs fn-arena fn-cat)
+                  (fn-nls-report kind profile s bytes seen cfg pins obs fn-arena)))
   :hints (("Goal" :in-theory '(fn-nsc-report fn-nls-report member-equal
                                fn-nsc-reclaim-words-is-reclaim-words))))
 
@@ -253,6 +252,7 @@
   (let ((s (fn-own-store (fn-ocfg-owner oc))))
     (fn-nsc-report kind profile s
                    (fn-sbud-bytes-extend cache (fn-sf-records (fn-sn-files s)))
+                   (fn-nls-view-seen (fn-own-view (fn-ocfg-owner oc)))
                    (fn-ocfg-config oc) (fn-ocfg-pins oc) obs fn-arena fn-cat)))
 
 (defun fn-nsc-answer-report (kind profile oc cache obs min disk fn-arena fn-cat)
@@ -275,6 +275,81 @@
   :hints (("Goal" :in-theory '(fn-nsc-answer-report fn-nh-answer-report
                                fn-nsc-live-report fn-nls-live-report
                                fn-nsc-report-is-report))))
+
+(local
+ (defthm fn-nsc-take-of-counts
+   (implies (true-listp w)
+            (equal (take (len w) (append w r)) w))))
+
+(local
+ (defthm fn-nsc-at-reader-view-without-capture
+   (implies (not (consp views))
+            (equal (fn-ocfg-at-reader-view oc views) oc))
+   :hints (("Goal" :in-theory '(fn-ocfg-at-reader-view)))))
+
+(local
+ (defthm fn-nsc-view-at-reader-view
+   (equal (fn-own-view (fn-ocfg-owner (fn-ocfg-at-reader-view oc views)))
+          (if (consp views) (car views) (fn-own-view (fn-ocfg-owner oc))))
+   :hints (("Goal" :use (fn-ocfg-at-reader-view-reads-the-reader-view
+                         fn-nsc-at-reader-view-without-capture)
+            :in-theory nil))))
+
+(local
+ (defthm fn-nls-counts-words-true-listp
+   (true-listp (fn-nls-counts-words seen))
+   :hints (("Goal" :in-theory (enable fn-nls-counts-words)))))
+
+;; KEYSTONE (PKT-885: no count before durability).  The subject is
+;; fn-nsc-answer-report, which host/native-live-status-host.lisp
+;; fn-native-live-status-host-answer calls over (fn-ocfg-at-reader-view OC
+;; VIEWS), VIEWS the reader views the committer captured
+;; (host/owner-host.lisp fn-owner-reader-views).  For every status kind the
+;; report opens with the `transactions=' and `articles=' counts of the READER
+;; view while a capture is held, and of the owner's view otherwise (the
+;; working view is then the durable one).  books/owner-reader-view.lisp
+;; KEYSTONE fn-ocvm-reader-view-is-the-completed-prefix: that reader view is
+;; the view at the records whose batch completed, so no count includes a
+;; record of the batch in flight; fn-nsc-view-seen-is-its-history says what
+;; the two counts are of a view related to its Store.
+(defthm fn-nsc-answer-report-counts-are-the-reader-view
+  (let ((report (fn-nsc-answer-report kind profile (fn-ocfg-at-reader-view oc views)
+                                      cache obs min disk fn-arena fn-cat))
+        (words (fn-nls-counts-words
+                (fn-nls-view-seen (if (consp views)
+                                      (car views)
+                                    (fn-own-view (fn-ocfg-owner oc)))))))
+    (implies (not (member-equal kind '(:health :peers :control :accounts
+                                       :pins :obligations)))
+             (equal (take (len words) report) words)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory '(fn-nsc-answer-report fn-nsc-live-report fn-nsc-report
+                        fn-nsc-take-of-counts fn-nls-counts-words-true-listp
+                        fn-nsc-view-at-reader-view
+                        member-equal (:e member-equal) (:e equal)))))
+
+;; The two counts of a view related to its Store (books/config-owner-live-
+;; complete.lisp fn-ocl-view-historyp, which fn-ocl-relation carries and a
+;; captured reader view keeps, fn-ocl-relation-of-a-view-captured-before-
+;; appends): the records it is the view of, and the articles their replay
+;; holds.
+(defthm fn-nsc-view-seen-is-its-history
+  (implies (fn-ocl-view-historyp o)
+           (equal (fn-nls-view-seen (fn-own-view o))
+                  (let* ((st (fn-own-store o))
+                         (view (fn-own-view o)))
+                    (cons (fn-own-view-version view)
+                          (len (fn-state-articles
+                                (fn-node-acceptance
+                                 (fn-cst-replay-node
+                                  (fn-sn-config-history st)
+                                  (fn-own-take (fn-own-view-version view)
+                                               (fn-sf-records (fn-sn-files st)))
+                                  (fn-own-view-frontier view)))))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ocl-view-historyp fn-nls-view-seen)
+                                  (fn-cst-replay-node fn-own-take
+                                   fn-ctl-visible-state)))))
 
 ; -----------------------------------------------------------------------------
 ; The client's join of the pages, linear (lane scale-reads).
