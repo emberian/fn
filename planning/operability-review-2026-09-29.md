@@ -343,6 +343,12 @@ policy change.
   mission's or the development preset's.
 - `policy set exposure-connections abc` and `policy set bogus-key 1` answer
   the two-key usage line, not "unknown key" or "not a number".
+- `install.sh --reader` writes `[web] domain` from `uname -n` (the machine's
+  host name, `hbox`), and the face's default is `localhost`, so a friend's
+  posts from the web page carry `From: carol <carol@hbox>` until the
+  operator edits the file and restarts. The honest default is the node's
+  `path-identity`, which the owner already holds as policy (web-config's
+  plan would take it from the owner at `run`).
 - `status`/`health` on a stopped store open it in full (2.0 s at 20k, 5.3 s
   after an import) on every call, so `status --watch` on a stopped node would replay the
   store every N seconds.
