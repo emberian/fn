@@ -344,9 +344,13 @@ def signed_posts(pt):
     eds.write_bytes(bytes.fromhex("9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
                                   "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
     mlpriv, mlpub = keys / "ml-private.pem", keys / "ml-public.pem"
+    ossl_env = dict(pt.env)
+    lib = str(Path(OPENSSL).parent.parent / "lib")
+    ossl_env["LD_LIBRARY_PATH"] = lib + (":" + ossl_env["LD_LIBRARY_PATH"]
+                                         if ossl_env.get("LD_LIBRARY_PATH") else "")
     for argv in ([OPENSSL, "genpkey", "-algorithm", "ML-DSA-65", "-out", str(mlpriv)],
                  [OPENSSL, "pkey", "-in", str(mlpriv), "-pubout", "-out", str(mlpub)]):
-        r = subprocess.run(argv, env=pt.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        r = subprocess.run(argv, env=ossl_env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if r.returncode:
             raise ProbeError("openssl: " + r.stderr.decode("utf-8", "replace")[-300:])
 
