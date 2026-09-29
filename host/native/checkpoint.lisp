@@ -81,16 +81,18 @@ state (D27)."
 ;; fnn-reclaim-counts-line is host/native/owner.lisp's (the live dry run
 ;; prints the same words).
 
-(defun fnn-reclaim-record-instant (store clock)
+(defun fnn-reclaim-record-instant (store clock count decision)
   "The reclaim's instant, recorded before anything is rewritten
 (books/reclaim-instant.lisp, PKT-857): ACL2 builds the configuration record
 carrying CLOCK's stamp as the `retention-reclaim-at' row
 (fn-store-reclaim-instant-record) and the administrative path authorizes,
-publishes and reads it back (fnn-admin-publish-record).  A refusal or a
-record that does not read back refuses the reclaim before any rewrite.
-Answers the report line's field."
+publishes and reads it back (fnn-admin-publish-record).  The same record
+carries the note of DECISION over the history's COUNT records (books/reclaim-
+note.lisp, PKT-855): what a holder of the pre-reclaim history checks.  A
+refusal or a record that does not read back refuses the reclaim before any
+rewrite.  Answers the report line's field."
   (let* ((stamp (fnn-admin-clock-plan))
-         (status (fnn-core-state 'fn-store-reclaim-instant-record clock stamp)))
+         (status (fnn-core-state 'fn-store-reclaim-instant-record clock stamp count decision)))
     (unless (eq status :ok)
       (fnn-refuse "reclaim refused: its instant's configuration record: ~(~a~)"
                   (fnn-core-state 'fn-store-cfg-last-reason)))
@@ -176,9 +178,19 @@ the report line."
                (fnn-fault "the rewritten history is not the history's length"))
              (setq rewritten nil)
              (fnn-checkpoint-require-mutation-ready store)
-             (let ((instant (if recorded
-                                "instant=recorded"
-                              (fnn-reclaim-record-instant store clock))))
+             (let ((instant
+                     (if recorded
+                         ;; the note the record carries is this decision's
+                         ;; (fn-rcn-check), else the rerun refuses by name
+                         ;; before it rewrites anything
+                         (let ((check (fnn-core-state 'fn-store-reclaim-note-check count decision)))
+                           (case check
+                             ((:checked :unchecked)
+                              (format nil "instant=recorded note=~(~a~)" check))
+                             (:reclaim-note-mismatch
+                              (fnn-refuse "reclaim refused: reclaim-note-mismatch"))
+                             (otherwise (fnn-fault "ACL2 returned no reclaim note check"))))
+                       (fnn-reclaim-record-instant store clock count decision))))
                ;; The store node becomes the rewritten history's (the chunked
                ;; replay every open runs), and the checkpoint the open will
                ;; read is its capture.

@@ -180,6 +180,7 @@
 (include-book "store-reclaim-stream")
 (include-book "store-log-reclaim")
 (include-book "reclaim-instant")
+(include-book "reclaim-note")
 (include-book "expiry-instant")
 (include-book "accounts")
 (include-book "owner-config")

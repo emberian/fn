@@ -454,6 +454,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-reclaim-tests \
 	books/reclaim-instant \
 	tests/acl2/reclaim-instant-tests \
+	books/reclaim-note \
+	tests/acl2/reclaim-note-tests \
 	books/expiry-policy \
 	books/expiry-verdict \
 	books/expiry \
