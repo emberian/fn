@@ -2088,6 +2088,77 @@ class SentEventsTests(unittest.TestCase):
             self.assertEqual(proof_repl.sent_events("s"), expected)
 
 
+class HostLoadTests(unittest.TestCase):
+    """obstructions-9 item 84: one host load per session (a session with
+    several behind it died in a fasl load); a --host send of one syncs it."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dir = pathlib.Path(self.tmp.name)
+        self.state = {"started_at": 100.0}
+        patches = [mock.patch.object(proof_repl, "session_dir", return_value=self.dir),
+                   mock.patch.object(proof_repl, "read_state", side_effect=lambda n: self.state)]
+        for patch in patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def send(self, form):
+        args = SimpleNamespace(name="s", form=form, limit=None, full=False)
+        err = io.StringIO()
+        with mock.patch.object(proof_repl, "prepare_includes", side_effect=lambda n, f: (f, True)), \
+                mock.patch.object(proof_repl, "send_one", return_value=0), \
+                mock.patch.object(proof_repl, "send_many", return_value=0), \
+                contextlib.redirect_stderr(err):
+            return proof_repl.send(args), err.getvalue()
+
+    def test_the_target_is_a_repository_host_file_only(self):
+        self.assertEqual(proof_repl.host_load_target('(ld "host/owner-host.lisp")', None),
+                         "host/owner-host.lisp")
+        self.assertEqual(proof_repl.host_load_target('(load "host/native/mux.lisp")', None),
+                         "host/native/mux.lisp")
+        self.assertIsNone(proof_repl.host_load_target('(ld "books/base.lisp")', None))
+        self.assertIsNone(proof_repl.host_load_target('(ld "host/no-such.lisp")', None))
+        self.assertIsNone(proof_repl.host_load_target("(defun f (x) x)", None))
+
+    def test_a_second_host_load_is_refused_by_name_and_a_restart_clears_it(self):
+        code, _ = self.send('(ld "host/owner-host.lisp" :ld-error-action :error)')
+        self.assertEqual(code, 0)
+        self.assertEqual(proof_repl.session_host_loads("s"), ["host/owner-host.lisp"])
+        self.assertEqual(self.send("(defthm t1 (equal x x))")[0], 0)  # not a host load
+        code, err = self.send('(ld "host/store-host.lisp")')
+        self.assertEqual(code, 2)
+        self.assertIn("session 's' already loaded host file host/owner-host.lisp; a second "
+                      "host load (host/store-host.lisp)", err)
+        self.state = {"started_at": 200.0}
+        self.assertEqual(self.send('(ld "host/store-host.lisp")')[0], 0)
+
+    def test_two_host_loads_in_one_send_are_refused(self):
+        code, err = self.send('(ld "host/owner-host.lisp") (ld "host/store-host.lisp")')
+        self.assertEqual(code, 2)
+        self.assertIn("a second host load (host/store-host.lisp)", err)
+        self.assertEqual(proof_repl.session_host_loads("s"), [])
+
+    def test_a_host_send_syncs_the_loaded_host_file_first(self):
+        record = self.dir / "remote.json"
+        record.write_text(json.dumps({"host": "hbox", "tree": "/t", "book": "books/base",
+                                      "lane": "l"}))
+        synced, seen = [], []
+        with mock.patch.object(proof_repl, "box_settings",
+                               lambda host: {"acl2": "acl2", "cache": "/c"}), \
+                mock.patch.object(proof_repl, "sync_to",
+                                  lambda host, tree, files: synced.extend(files) or 0.0), \
+                mock.patch.object(proof_repl.subprocess, "run",
+                                  lambda command, **kw: seen.append(command)
+                                  or SimpleNamespace(returncode=0)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            proof_repl.run_remote(SimpleNamespace(command="send", name="s", lane=None,
+                                                  remote_tree=None, host="hbox",
+                                                  form='(ld "host/owner-host.lisp")'),
+                                  ["send", "s", '(ld "host/owner-host.lisp")', "--host", "hbox"])
+        self.assertIn("host/owner-host.lisp", synced)
+
+
 class SendFileTests(unittest.TestCase):
     """obstructions-8 item 75: send-file sends every form of a test file in
     order, its includes rewritten for the session's directory."""
