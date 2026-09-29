@@ -14016,6 +14016,31 @@
           "name": "fn-onb-boundp-at-owner-prepare-buffer"
         }
       ]
+    },
+    {
+      "id": "PRF-994",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arx-trailer-nat-injective"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-entry-verdict-buffer-ok-is-the-commitment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-entry-verdict-buffer-ok-digest-is-the-recorded-trailer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-entry-verdict-buffer-of-durable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-attach-trailers-buffer-is-attach-trailers"
+        }
+      ]
     }
   ]
 }

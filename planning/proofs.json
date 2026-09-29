@@ -14687,6 +14687,47 @@
         "fn-onb-boundp-of-psrv-prepare",
         "fn-onb-boundp-at-owner-prepare-buffer"
       ]
+    },
+    {
+      "id": "PRF-994",
+      "title": "The extent reader decides IDENTITY, not self-consistency: the descriptor carries the entry's commitment and every read is decided against it",
+      "statement": "GPT-6's second review (warranty-quality-proof-engineering.md section 2): host/native/extent.lisp fnn-extent-entry ignored the descriptor's trailer, checked a read against the trailer it had just read, and keyed its cache by file and offset only, so a different well-formed same-sized entry (E1, T1) at the extent's offset was accepted; and the descriptor's trailer field was 0 at every construction site (fn-arx-extent-of, fn-arx-commit-extent, fn-lzr-extent-of). books/payload-extent.lisp: fn-arx-trailer-nat OCTETS (fn-bch-pack, books/packed-octets.lisp) is the commitment of the entry's 32 trailer octets, injective on octet lists (fn-arx-trailer-nat-injective); fn-arx-attach-trailers attaches each record's place its entry's commitment (START N ROFF RLEN TRAILER), and fn-arx-extent-of, fn-arx-commit-extent (books/payload-commit-extent.lisp) and fn-lzr-extent-of (books/payload-lz-record.lisp) carry it into the descriptor; books/extent-retire.lisp fn-xrt-reseat-one reads the frame's commitment from the buffer after the prefix (fn-arx-trailer-nat-at-buffer). books/payload-extent-read.lisp: fn-arx-entry-verdict-buffer EXPECTED READ BUF answers :ok, :trailer (the trailer recorded after the prefix is not the descriptor's: another entry at this offset, a wrong offset, an entry of another store or generation) or :digest (the prefix's frame digest is not its trailer); KEYSTONE fn-arx-entry-verdict-buffer-ok-is-the-commitment: :ok exactly when READ is 32 octets whose commitment is EXPECTED and the buffer's frame digest is READ; KEYSTONE fn-arx-entry-verdict-buffer-ok-digest-is-the-recorded-trailer, the boundary composed with the descriptor: when EXPECTED is the commitment of the entry's durable recorded trailer, an :ok verdict means the frame digest of the buffer the host serves from IS that recorded trailer (the octets handed to the model are the octets whose digest the accepted extent committed to; the pessimistic gap is a BLAKE3 collision, 2^128 work); fn-arx-entry-verdict-buffer-of-durable: a faithful read of an intact entry is :ok; fn-arx-attach-trailers-buffer-is-attach-trailers: the by-index attachment over the open's entry buffer is the list one. The payload slice lies inside the verified prefix by the descriptor's guard (fn-arn-extent-guardp, carried by fn-arena$x-wfp). Host subject: host/native/extent.lisp fnn-extent-entry (called by fn-durable-realize-octet and fn-durable-realize-octets, the realizer) calls fn-arx-entry-verdict-buffer with the descriptor's trailer over fn-octets-rd and refuses every verdict but :ok by name (arena-extent-trailer, arena-extent-digest; arena-extent-verdict for anything else: refused, never uncertain, never absent); its cache is keyed by (file eoff elen trailer); fnn-extent-register records the file's durable incarnation (device . inode) under the never-reused id; the publication's reseat reads a frame without a descriptor through fnn-extent-entry-fresh (self-consistency, never cached). host/native/io.lisp attaches the commitments at the open (fn-arx-attach-trailers-buffer over fn-lgb-entry-places) and at the commit (fn-arx-attach-trailers over fn-arx-list-places). Teeth: tests/acl2/frame-digest-buffer-tests.lisp executes the defect ((E1, T1) passes fn-arx-entry-ok-buffer and is :trailer against T0's commitment) and the whole substitution family at the verdict; tests/test_native_extent_identity.py substitutes well-formed entries in place under a running node, each refused by name, and the cached entry still serves under its identity.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "REP-014"
+      ],
+      "depends_on": [
+        "PRF-295",
+        "PRF-294",
+        "PRF-309",
+        "PRF-930"
+      ],
+      "assumptions": [
+        "A-CRYPTO",
+        "A-HOST",
+        "A-DURABLE-EXTENT"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/payload-extent.lisp",
+        "books/payload-extent-read.lisp",
+        "books/payload-commit-extent.lisp",
+        "books/payload-lz-record.lisp",
+        "books/extent-retire.lisp",
+        "host/native/extent.lisp",
+        "tests/acl2/frame-digest-buffer-tests.lisp",
+        "tests/test_native_extent_identity.py",
+        "warranty-quality-proof-engineering.md"
+      ],
+      "progress_note": "Lane extent-identity (2026-09-29, Fable): row A11 of build/coordinator/COMPLETE-BEFORE-6.6.0.md.",
+      "events": [
+        "fn-arx-trailer-nat-injective",
+        "fn-arx-entry-verdict-buffer-ok-is-the-commitment",
+        "fn-arx-entry-verdict-buffer-ok-digest-is-the-recorded-trailer",
+        "fn-arx-entry-verdict-buffer-of-durable",
+        "fn-arx-attach-trailers-buffer-is-attach-trailers"
+      ]
     }
   ]
 }
