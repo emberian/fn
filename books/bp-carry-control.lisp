@@ -15,12 +15,29 @@
 ;   (:carry "pause" WORK "-")     no request is formed for WORK ("*": every work)
 ;   (:carry "resume" WORK "-")    the pause ends ("*": every pause)
 ;   (:carry "drop" WORK REASON)   WORK is carried no more, for REASON, final.
+;   (:waive "abandon" WORK REASON PRINCIPAL)
+;                                 the operator waives WORK's obligation
+;                                 (`carry drop WORK --abandon', lane
+;                                 carry-abandon, PRF-950): a drop that also
+;                                 releases the Store's pin.
 ;
 ; A drop stops the carrying; it does not release the Store's pin.  The pin
 ; is the obligation's, and books/retention.lisp releases it only with the
-; evidence it was undertaken against (fn-retain-matching-releasep): the
-; receipt's.  An operator's abandonment of the pin itself is a different
-; evidence kind, a decision the register does not hold (the lane's record).
+; evidence it was undertaken against (fn-retain-matching-releasep).  Two
+; things release it, both through the one Store retention event
+; (host/native/owner.lisp fnn-owner-retention-commit): a committed authorized
+; receipt (books/bp-release.lisp fn-bprl-release-decision, authored by
+; host/bp-release-owner-host.lisp fn-owner-workflow-store-release) and an
+; operator's waiver, durable in this journal first (principal, reason), whose
+; Store event fn-bpcc-waiver-release-event authors
+; (host/bp-release-owner-host.lisp fn-owner-workflow-store-waive).  The Store
+; event is the receipt's own shape: the obligation's id, subject and the
+; evidence the pin demands, so retention has no second path; the waiver
+; record is the provenance.  A waiver is decided only while the pin stands
+; (fn-bpcc-waiver-refusal, :not-held otherwise); it replays after its own
+; release (fn-bpcc-refusal does not read the pin), and a waiver durable here
+; whose Store event did not land is completed at the next writable open
+; (fn-bpcc-pending-waivers).  Keystones: books/bp-carry-waiver.lisp.
 ;
 ; KEYSTONE fn-bpcc-gate-refuses-a-held-work: the request gate (host/
 ; workflow-host.lisp fn-workflow-request-plan, the `bp-obligation request'
@@ -31,9 +48,11 @@
 (in-package "ACL2")
 (include-book "bp-release")
 
-; The overlay: (ALL PAUSED DROPPED): ALL t while "*" is paused, PAUSED the
-; work ids paused one by one, DROPPED ((WORK . REASON) ...), newest first.
-(defun fn-bpcc-initial () (declare (xargs :guard t)) (list nil nil nil))
+; The overlay: (ALL PAUSED DROPPED WAIVED): ALL t while "*" is paused, PAUSED
+; the work ids paused one by one, DROPPED ((WORK . REASON) ...), WAIVED
+; ((WORK PRINCIPAL . REASON) ...), newest first.  A three-element overlay (the
+; journal before waivers) reads WAIVED as nil.
+(defun fn-bpcc-initial () (declare (xargs :guard t)) (list nil nil nil nil))
 (defun fn-bpcc-all (c) (declare (xargs :guard t)) (and (consp c) (car c) t))
 (defun fn-bpcc-paused (c)
   (declare (xargs :guard t))
@@ -41,6 +60,12 @@
 (defun fn-bpcc-dropped (c)
   (declare (xargs :guard t))
   (if (and (consp c) (consp (cdr c)) (consp (cddr c))) (caddr c) nil))
+
+(defun fn-bpcc-waived (c)
+  (declare (xargs :guard t))
+  (if (and (consp c) (consp (cdr c)) (consp (cddr c)) (consp (cdddr c)))
+      (car (cdddr c))
+    nil))
 
 (defun fn-bpcc-kindp (kind)
   (declare (xargs :guard t))
@@ -61,6 +86,50 @@
        (fn-bp-journal-textp (fn-bpcc-record-work record))
        (fn-bp-journal-textp (fn-bpcc-record-reason record))
        t))
+
+; The waiver record (:waive "abandon" WORK REASON PRINCIPAL): the control
+; record's positions (verb, work, reason) and the principal after them.
+(defun fn-bpcc-waiver-principal (record)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr record))))))
+(defun fn-bpcc-waiver-recordp (record)
+  (declare (xargs :guard t))
+  (and (true-listp record)
+       (equal (len record) 5)
+       (equal (car record) :waive)
+       (equal (fn-bpcc-verb record) "abandon")
+       (fn-bp-journal-textp (fn-bpcc-record-work record))
+       (fn-bp-journal-textp (fn-bpcc-record-reason record))
+       (fn-bp-journal-textp (fn-bpcc-waiver-principal record))
+       t))
+
+; The operator's principal for an offline carry verb: the effective uid that
+; holds the Store's lock (host/native/bp-obligation.lisp reads it).
+; The decimal is books/accounts.lisp fn-acct-decimal-text's renderer, with its
+; guard fact (not included here: accounts is not in this book's chain).
+(local
+ (encapsulate ()
+   (local (include-book "arithmetic/top" :dir :system))
+   (defthm fn-bpcc-explode-characters
+     (implies (and (natp number) (character-listp accumulator))
+              (character-listp (explode-nonnegative-integer number 10 accumulator))))))
+(defun fn-bpcc-operator-principal (uid)
+  (declare (xargs :guard t))
+  (if (natp uid)
+      (concatenate 'string "uid:"
+                   (coerce (explode-nonnegative-integer uid 10 nil) 'string))
+    "uid:unknown"))
+
+(defun fn-bpcc-waiver-entry (c work-id)
+  (declare (xargs :guard t))
+  (assoc-equal work-id (if (alistp (fn-bpcc-waived c)) (fn-bpcc-waived c) nil)))
+
+(defun fn-bpcc-waived-by (c work-id)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-bpcc-waiver-entry c work-id))))
+(defun fn-bpcc-waiver-reason (c work-id)
+  (declare (xargs :guard t))
+  (fn-ag-cdr (fn-ag-cdr (fn-bpcc-waiver-entry c work-id))))
 
 (defun fn-bpcc-drop-entry (c work-id)
   (declare (xargs :guard t))
@@ -88,8 +157,16 @@
 ; workflow image the record would join.
 (defun fn-bpcc-refusal (bp c record)
   (declare (xargs :guard t))
-  (if (not (fn-bpcc-recordp record))
-      :malformed
+  (cond
+   ((fn-bpcc-waiver-recordp record)
+    (let ((w (fn-bpcc-record-work record)))
+      (cond ((equal w "*") :unknown-work)
+            ((not (fn-bpcc-workp bp w)) :unknown-work)
+            ((consp (fn-bpcc-waiver-entry c w)) :already-waived)
+            (t nil))))
+   ((not (fn-bpcc-recordp record))
+      :malformed)
+   (t
     (let ((kind (fn-bpcc-verb record)) (w (fn-bpcc-record-work record)))
       (cond ((equal kind "pause")
              (cond ((equal w "*") (if (fn-bpcc-all c) :already-paused nil))
@@ -108,7 +185,7 @@
              (cond ((equal w "*") :unknown-work)
                    ((not (fn-bpcc-workp bp w)) :unknown-work)
                    ((equal (fn-bpcc-work-state c w) :dropped) :already-dropped)
-                   (t nil)))))))
+                   (t nil))))))))
 
 (defun fn-bpcc-admissiblep (bp c record)
   (declare (xargs :guard t))
@@ -122,17 +199,28 @@
   (declare (xargs :guard t))
   (let ((kind (fn-bpcc-verb record)) (w (fn-bpcc-record-work record))
         (all (fn-bpcc-all c)) (paused (true-list-fix (fn-bpcc-paused c)))
-        (dropped (if (alistp (fn-bpcc-dropped c)) (fn-bpcc-dropped c) nil)))
-    (cond ((equal kind "pause")
-           (if (equal w "*") (list t paused dropped)
-             (list all (cons w paused) dropped)))
+        (dropped (if (alistp (fn-bpcc-dropped c)) (fn-bpcc-dropped c) nil))
+        (waived (if (alistp (fn-bpcc-waived c)) (fn-bpcc-waived c) nil)))
+    (cond ((fn-bpcc-waiver-recordp record)
+           ; A waiver drops the work (its first drop keeps its reason) and
+           ; records the waiver with its principal.
+           (list all (fn-bpcc-remove w paused)
+                 (if (consp (assoc-equal w dropped)) dropped
+                   (cons (cons w (fn-bpcc-record-reason record)) dropped))
+                 (cons (cons w (cons (fn-bpcc-waiver-principal record)
+                                     (fn-bpcc-record-reason record)))
+                       waived)))
+          ((equal kind "pause")
+           (if (equal w "*") (list t paused dropped waived)
+             (list all (cons w paused) dropped waived)))
           ((equal kind "resume")
-           (if (equal w "*") (list nil nil dropped)
-             (list all (fn-bpcc-remove w paused) dropped)))
+           (if (equal w "*") (list nil nil dropped waived)
+             (list all (fn-bpcc-remove w paused) dropped waived)))
           ((equal kind "drop")
            (list all (fn-bpcc-remove w paused)
-                 (cons (cons w (fn-bpcc-record-reason record)) dropped)))
-          (t (list all paused dropped)))))
+                 (cons (cons w (fn-bpcc-record-reason record)) dropped)
+                 waived))
+          (t (list all paused dropped waived)))))
 
 ; The request gate: PLAN is books/bp-request-plan.lisp fn-bprq-plan's answer
 ; for WORK-ID; a held work's request is refused by name instead.
@@ -175,6 +263,68 @@
         ((fn-bpcc-configp (car records))
          (fn-bpcc-replay-records bp (fn-bpcc-initial) (cdr records)))
         (t (cons nil (fn-bpcc-initial)))))
+
+; ---------------------------------------------------------------------------
+; The operator's waiver (`carry drop WORK --abandon', PRF-950).
+
+; WORK's obligation is held: the work is in the workflow image and its
+; :forward pin stands with the evidence it was undertaken against.
+(defun fn-bpcc-heldp (bp work-id)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((work (fn-bp-find-work work-id (fn-bp-state-works bp))))
+    (and (consp work) (fn-bprl-work-pinnedp bp work) t)))
+
+; The append decision (host/workflow-host.lisp fn-workflow-carry-record): the
+; journal's admissibility, and the pin must stand.  Replay admits the record
+; by fn-bpcc-refusal alone, since the waiver's own release removes the pin.
+(defun fn-bpcc-waiver-refusal (bp c record)
+  (declare (xargs :guard t :verify-guards nil))
+  (or (fn-bpcc-refusal bp c record)
+      (if (fn-bpcc-heldp bp (fn-bpcc-record-work record)) nil :not-held)))
+
+; The Store retention event a waiver of WORK-ID authors, or nil: C holds the
+; waiver and the pin still stands.  Its shape and fields are the receipt's
+; (host/bp-release-owner-host.lisp fn-owner-workflow-store-release): the
+; obligation id, subject, and the evidence the pin demands, charge 0.
+(defun fn-bpcc-waiver-release-event (bp c work-id)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((work (fn-bp-find-work work-id (fn-bp-state-works bp))))
+    (if (and (consp (fn-bpcc-waiver-entry c work-id))
+             (consp work)
+             (fn-bprl-work-pinnedp bp work))
+        (list :release (fn-bp-work-obligation-id work) (fn-bp-work-subject work)
+              (fn-bprl-required-evidence (fn-bp-state-config bp) work) 0)
+      nil)))
+
+; The waivers durable in the journal whose Store event has not landed (a
+; crash between the waiver's append and its Store publication): the writable
+; owner open completes each (host/native/bp-obligation.lisp).
+(defun fn-bpcc-pending-waivers-loop (bp c waived acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp waived)
+      (fn-bpcc-pending-waivers-loop
+       bp c (cdr waived)
+       (if (and (consp (car waived))
+                (fn-bpcc-waiver-release-event bp c (caar waived))
+                (not (member-equal (caar waived) acc)))
+           (cons (caar waived) acc)
+         acc))
+    (reverse acc)))
+
+(defun fn-bpcc-pending-waivers (bp c)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-bpcc-pending-waivers-loop bp c (fn-bpcc-waived c) nil))
+
+; A receipt for a waived work is refused by name: its obligation was
+; released by the waiver, and nothing releases it twice.  RECORD is
+; books/bp-workflow-constructors.lisp fn-bprl-receipt-intent-record's answer
+; (its fifth field the work id).
+(defun fn-bpcc-receipt-gate (c record)
+  (declare (xargs :guard t))
+  (if (and (true-listp record) (equal (fn-ag-car record) :receipt-intent)
+           (consp (fn-bpcc-waiver-entry c (nth 4 record))))
+      (list :refused :carry-waived)
+    record))
 
 ; KEYSTONE.
 (defthm fn-bpcc-gate-refuses-a-held-work
@@ -236,7 +386,8 @@
             (fn-record-string-octets " pinned=")
             (fn-record-string-octets (if (member-equal id (true-list-fix pinned)) "yes" "no"))
             (fn-record-string-octets " hold=")
-            (fn-record-string-octets (cond ((equal hold :dropped) "dropped")
+            (fn-record-string-octets (cond ((consp (fn-bpcc-waiver-entry c id)) "waived")
+                                           ((equal hold :dropped) "dropped")
                                            ((equal hold :paused) "paused")
                                            (t "none")))
             (if (consp attempt)
@@ -247,6 +398,12 @@
             (if (equal hold :dropped)
                 (append (fn-record-string-octets " reason=")
                         (fn-bpcc-text (fn-bpcc-dropped-reason c id)))
+              nil)
+            (if (consp (fn-bpcc-waiver-entry c id))
+                (append (fn-record-string-octets " waived-by=")
+                        (fn-bpcc-text (fn-bpcc-waived-by c id))
+                        (fn-record-string-octets " waiver=")
+                        (fn-bpcc-text (fn-bpcc-waiver-reason c id)))
               nil)
             (list 10))))
 

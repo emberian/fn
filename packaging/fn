@@ -8,7 +8,7 @@
 # native image owns its positional protocol, every outcome and every exit
 # code (ACL2: books/native-operator.lisp and the verbs' own books).  The
 # spike's bash `packaging/fn' (spike/mega f6d947d0) made operator decisions
-# on the host; each is now ACL2's or gone (docs/operator.md, "Install"):
+# on the host; each is now ACL2's or gone (docs/operator-internals.md, "Install"):
 #   mission table and init        -> `operator CONFIG mission NAME', `init'
 #   doctor, thresholds, alerts    -> `operator CONFIG health' ([alerts])
 #   [alerts]/[ops] stripping      -> the ACL2 configuration grammar admits them
