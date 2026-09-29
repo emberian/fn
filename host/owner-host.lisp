@@ -2640,7 +2640,8 @@
           ; decision is fn-peer-decide-transfer-under's, unchanged; the
           ; verdict is read from the store's carried index and keyring
           ; before any durable intent, and named beside the decision
-          ; (fn-owner-transit-authority; the transit log line carries it).
+          ; (the global fn-owner-transit-authority; the transit log line
+          ; fn-owner-transit-log-line carries it as authority=NAME).
           (mv-let (d authority)
             (fn-pta-decide (fn-sn-index (fn-own-store owner))
                            (fn-sn-keyring (fn-own-store owner))
@@ -2926,12 +2927,6 @@
 (defun fn-owner-transit-reason (state)
   (declare (xargs :stobjs state :mode :program))
   (value (f-get-global 'fn-owner-transit-reason state)))
-
-; W5b: the authority verdict fn-owner-transit-decide computed for the transit
-; take in flight (*fn-pta-verdicts*, or :none when the bytes were not wanted).
-(defun fn-owner-transit-authority (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (f-get-global 'fn-owner-transit-authority state)))
 
 (defun fn-owner-transit-evidence (state)
   (declare (xargs :stobjs state :mode :program))
