@@ -187,10 +187,15 @@
              (generation (fn-cfg-generation cfg))
              (txid (fn-state-next-txid
                     (fn-node-acceptance (fn-owner-node state))))
+             ; Under the owner's header limits (PKT-771,
+             ; fn-bpaj-transit-plan-under-refuses-past-the-limits-before-any-intent):
+             ; a past-limit article is refused by name here, before any intent.
              (plan (and request
-                        (fn-bpaj-transit-plan
+                        (fn-bpaj-transit-plan-under
                          (fn-owner-node state) cfg ingress source-eid
-                         request-octets (fn-own-clock (fn-owner-core state)))))
+                         request-octets (fn-own-clock (fn-owner-core state))
+                         (fn-own-config-header-limits
+                          (fn-own-config (fn-owner-core state))))))
              (planned (if (equal (car plan) :have) :duplicate :accepted))
              (new-intent
                (and (member-equal (car plan) '(:submit :have))
@@ -249,8 +254,9 @@
                                   (and plan (fn-bpaj-nth 8 plan)) state))
              (state (f-put-global 'fn-owner-app-stored-subject
                                   (and plan (fn-bpaj-nth 9 plan)) state)))
-        ; The planner's own answer comes first: fn-bpaj-transit-plan's
-        ; (:refused :no-principal) or (:refused :request) is a refusal; a
+        ; The planner's own answer comes first: fn-bpaj-transit-plan-under's
+        ; (:refused :no-principal), (:refused :request) or (:refused LIMIT)
+        ; is a refusal; a
         ; (:busy reason) plan is the deferral :busy, with its reason.
         (if (and request (equal (car plan) :busy))
             (fn-owner-app-plan-deferred (or (fn-bpaj-nth 1 plan) :busy) state)

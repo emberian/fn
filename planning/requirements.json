@@ -4461,7 +4461,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-230",
-        "PRF-905"
+        "PRF-905",
+        "PRF-978"
       ],
       "verification": [
         "proof",
@@ -4473,7 +4474,10 @@
         "books/injection.lisp",
         "planning/evidence/header-limits-profile-2026-09-27.md",
         "books/article-line-bound.lisp",
-        "tests/test_native_header_lines.py"
+        "tests/test_native_header_lines.py",
+        "books/bp-transit-join.lisp",
+        "tests/acl2/bp-transit-join-tests.lisp",
+        "host/bp-native-app-host.lisp"
       ],
       "implementation_note": "Fields 13 to 15 (format 10) (defaults 64, 256, 16,384); the served POST refuses by them (PRF-230, SCN-156). Open: peer and BP ingress (PKT-660). A header LINE over RFC 5322 section 2.1.1's 998 octets is refused by its own name, :line-length (PRF-905, PKT-506): the line bound is the RFC's, not a limit on a field, which is admitted folded."
     },

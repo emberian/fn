@@ -14135,6 +14135,30 @@
         "tests/test_bp_service_native.py"
       ],
       "progress_note": "Lane bp-remainder (2026-09-29): REPL-admitted on persvati; the native case in tests/test_bp_service_native.py."
+    },
+    {
+      "id": "PRF-978",
+      "title": "BP transit refuses a past-limit article by the limit's name before any request-transit intent",
+      "statement": "books/bp-transit-join.lisp (PKT-771; PRF-230 and PKT-660: every admission receives the limits a POST does; D27). The host's plan is fn-bpaj-transit-plan-under (host/bp-native-app-host.lisp fn-owner-app-plan-install, with fn-own-config-header-limits of the owner's configuration): the transit plan, except that a plan that would submit or defer whose stored projection's header census exceeds a limit (fn-peer-header-limit-refusal, the census fn-peer-decide-transfer-under uses for IHAVE/TAKETHIS) is (:refused LIMIT). KEYSTONE fn-bpaj-transit-plan-under-refuses-past-the-limits-before-any-intent: for such a plan the host's plan is (:refused LIMIT) and fn-bpaj-transit-intent-from-plan builds no intent from it, so the refusal precedes any durable FNRJ intent (before, the article was refused only at the Store submission after the intent was durable). fn-bpaj-transit-plan-under-is-the-plan-within-the-limits: within the limits, and for every plan that neither submits nor defers, it is fn-bpaj-transit-plan, the subject of the theorems below it. Witnesses tests/acl2/bp-transit-join-tests.lisp *btj-under-tight* (positive: :header-fields-limit, no intent) and *btj-under-roomy* (limit removed: the plan and its intent). What it does not say: a retried intent recorded before a live reconfiguration lowered the limits is refused by the same plan (as the Store would have); no native case yet.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-030"
+      ],
+      "depends_on": [
+        "PRF-230"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bpaj-transit-plan-under-refuses-past-the-limits-before-any-intent",
+        "fn-bpaj-transit-plan-under-is-the-plan-within-the-limits"
+      ],
+      "evidence": [
+        "books/bp-transit-join.lisp",
+        "tests/acl2/bp-transit-join-tests.lisp",
+        "host/bp-native-app-host.lisp"
+      ],
+      "progress_note": "Lane bp-remainder (2026-09-29): REPL-admitted on persvati (book and witnesses)."
     }
   ]
 }
