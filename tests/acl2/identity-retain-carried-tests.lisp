@@ -10,6 +10,7 @@
 (include-book "must-fail-checked")
 (include-book "../../books/identity-retain-carried")
 (include-book "owner-identity-served-tests")
+(include-book "post-retain-carried-tests")
 
 (defun irct-retention (oc)
   (fn-node-retention (fn-sn-node (fn-own-store (fn-ocfg-owner oc)))))
@@ -127,3 +128,46 @@
 (assert-event
  (with-guard-checking :none
   (equal (irct-phase (irct-complete-h *ois-ordered* *irct-bad*)) :completing)))
+
+; -----------------------------------------------------------------------------
+; fn-irc-apply-retention-event-is-reference.  REACHABLE POSITIVE WITNESS:
+; post-retain-carried-tests' node NODE1 and its forwarding undertaking of
+; "fwd-pin:pit" (then its release), carry the refresh of nil to NODE1's
+; ledger: the twin undertakes (a node, the pin admitted) exactly as the
+; Store's retention transition, and releases exactly as it.
+(defconst *irct-u-ev*
+  (fn-store-retention-event-make :undertake 9 *prct-tx1* *prct-tx1*
+                                 "fwd-pin:pit" "fwd-content:pit"
+                                 "fwd-receipt:pit" 2))
+(defconst *irct-r-ev*
+  (fn-store-retention-event-make :release 10 *prct-tx2* *prct-tx2*
+                                 "fwd-pin:pit" "fwd-content:pit"
+                                 "fwd-receipt:pit" 0))
+(defconst *irct-rcarry* (fn-prc-refresh nil (fn-node-retention *prct-node1*)))
+(assert-event (fn-prc-carryp *irct-rcarry*))
+(assert-event (equal (car *irct-rcarry*) (fn-node-retention *prct-node1*)))
+(assert-event (consp (fn-irc-apply-retention-event *prct-node1* *irct-u-ev* *irct-rcarry*)))
+(assert-event (equal (fn-irc-apply-retention-event *prct-node1* *irct-u-ev* *irct-rcarry*)
+                     *prct-nu*))
+(assert-event (equal (fn-irc-apply-retention-event
+                      *prct-nu* *irct-r-ev* (fn-prc-refresh *irct-rcarry* *prct-ru*))
+                     *prct-nr*))
+(assert-event (consp *prct-nr*))
+; ... and through the record application the completion runs.
+(assert-event (equal (fn-irc-apply-record *prct-node1* *irct-u-ev* *irct-rcarry*)
+                     *prct-nu*))
+
+; HYPOTHESIS-REMOVAL WITNESS (fn-prc-carryp): the carry names NODE1's ledger
+; but its trie also answers "fwd-pin:pit", which no pin or release of that
+; ledger holds; the undertaking the reference admits is refused.
+(defconst *irct-rbad*
+  (cons (fn-node-retention *prct-node1*) (fn-prc-add "fwd-pin:pit" (cdr *irct-rcarry*))))
+(assert-event (not (fn-rii-knownp "fwd-pin:pit" (fn-node-retention *prct-node1*))))
+(assert-event (not (fn-prc-carryp *irct-rbad*)))
+(assert-event
+ (with-guard-checking :none
+  (null (fn-irc-apply-retention-event *prct-node1* *irct-u-ev* *irct-rbad*))))
+(assert-event
+ (with-guard-checking :none
+  (not (equal (fn-irc-apply-retention-event *prct-node1* *irct-u-ev* *irct-rbad*)
+              (fn-replay-apply-retention-event *prct-node1* *irct-u-ev*)))))

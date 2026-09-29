@@ -14454,6 +14454,10 @@
         {
           "kind": "theorem",
           "name": "fn-irc-completion-core-enabledp-is-ccar"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-apply-retention-event-is-reference"
         }
       ]
     }

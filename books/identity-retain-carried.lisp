@@ -69,12 +69,69 @@
                                    fn-accept-prepare fn-retain-make-state
                                    fn-retain-make-obligation)))))
 
+;; The retention record's application (books/replay.lisp
+;; fn-replay-apply-retention-event) with the undertaking's admission through
+;; the carry: a retention completion (and the retention branch of every
+;; record application below) no longer scans the ledger's ids.
+(defun fn-irc-apply-retention-event (node event carry)
+  (declare (xargs :guard (and (fn-node-statep node)
+                              (fn-store-retention-event-p event)
+                              (fn-prc-carryp carry))
+                  :verify-guards nil))
+  (let* ((advanced (fn-replay-advance-txid node (fn-store-event-txid event)))
+         (retention (fn-node-retention advanced))
+         (id (fn-store-event-obligation-id event))
+         (subject (fn-store-event-subject event))
+         (evidence (fn-store-event-evidence event)))
+    (if (or (not (mbt (fn-node-statep advanced)))
+            (not (equal (fn-state-next-txid (fn-node-acceptance advanced))
+                        (fn-store-event-txid event)))
+            (not (null (fn-node-stage advanced)))
+            (member-equal id (fn-node-binding-ids (fn-node-bindings advanced))))
+        nil
+      (if (equal (fn-store-event-kind event) :undertake)
+          (if (not (fn-prc-admissiblep retention id subject :forward evidence
+                                       (fn-store-event-charge event) carry))
+              nil
+            (fn-replay-complete-retention
+             advanced (fn-retain-admit retention id subject :forward evidence
+                                       (fn-store-event-charge event)) event))
+        (let ((pin (fn-retain-find-id id (fn-retain-pins retention))))
+          (if (not (fn-retain-matching-releasep pin id subject :forward evidence))
+              nil
+            (fn-replay-complete-retention
+             advanced (fn-retain-release retention id subject :forward evidence)
+             event)))))))
+
+(defthm fn-irc-apply-retention-event-is-reference
+  (implies (fn-prc-carryp carry)
+           (equal (fn-irc-apply-retention-event node event carry)
+                  (fn-replay-apply-retention-event node event)))
+  :hints (("Goal" :in-theory (e/d (fn-irc-apply-retention-event
+                                   fn-replay-apply-retention-event
+                                   fn-prc-admissiblep-is-admissiblep)
+                                  (fn-retain-admissiblep fn-retain-admit
+                                   fn-replay-advance-txid fn-node-statep
+                                   fn-replay-complete-retention fn-retain-release
+                                   fn-retain-find-id fn-retain-matching-releasep)))))
+
+(verify-guards fn-irc-apply-retention-event
+  :hints (("Goal" :use ((:guard-theorem fn-replay-apply-retention-event))
+                  :in-theory (e/d (fn-prc-admissiblep-is-admissiblep)
+                                  (fn-retain-admissiblep fn-retain-admit
+                                   fn-replay-advance-txid fn-node-statep
+                                   fn-prc-carryp fn-prc-admissiblep
+                                   fn-replay-complete-retention fn-retain-release
+                                   fn-retain-find-id fn-retain-matching-releasep)))))
+
+(in-theory (disable fn-irc-apply-retention-event))
+
 (defun fn-irc-apply-record (node record carry)
   (declare (xargs :guard (and (fn-node-statep node) (true-listp record)
                               (fn-prc-carryp carry))
                   :verify-guards nil))
   (if (fn-store-retention-event-p record)
-      (fn-replay-apply-retention-event node record)
+      (fn-irc-apply-retention-event node record carry)
     (if (or (fn-stxe-p record) (fn-stxk-p record) (fn-cpe-eventp record)
             (fn-th-topic-eventp record))
         (if (and (or (fn-cpe-eventp record) (fn-th-topic-eventp record))
@@ -120,8 +177,10 @@
   (implies (fn-prc-carryp carry)
            (equal (fn-irc-apply-record node record carry)
                   (fn-replay-apply-record node record)))
-  :hints (("Goal" :in-theory (e/d (fn-irc-apply-record fn-replay-apply-record)
+  :hints (("Goal" :in-theory (e/d (fn-irc-apply-record fn-replay-apply-record
+                                   fn-irc-apply-retention-event-is-reference)
                                   (fn-irc-node-prepare fn-node-prepare
+                                   fn-irc-apply-retention-event
                                    fn-store-event-p fn-record-p fn-stxe-p
                                    fn-stxk-p fn-stxa-p fn-store-retention-event-p
                                    fn-cpe-eventp fn-th-topic-eventp
@@ -153,7 +212,7 @@
        (let ((record (fn-ccar-completion-record s)))
          (and record
               (cond ((fn-evc-retentionp record)
-                     (consp (fn-replay-apply-retention-event (fn-sn-node s) record)))
+                     (consp (fn-irc-apply-retention-event (fn-sn-node s) record carry)))
                     ((or (fn-evc-stxep record) (fn-evc-stxkp record)
                          (fn-evc-stxap record))
                      (and (consp (fn-irc-apply-record (fn-sn-node s) record carry))
@@ -174,7 +233,8 @@
                   (fn-ccar-completion-core-enabledp s)))
   :hints (("Goal" :in-theory '(fn-irc-completion-core-enabledp
                                fn-ccar-completion-core-enabledp
-                               fn-irc-apply-record-is-replay-apply-record))))
+                               fn-irc-apply-record-is-replay-apply-record
+                               fn-irc-apply-retention-event-is-reference))))
 
 (verify-guards fn-irc-completion-core-enabledp
   :hints (("Goal" :use ((:guard-theorem fn-ccar-completion-core-enabledp))
@@ -225,7 +285,7 @@
                       (fn-sn-consumer s) record (fn-sn-identity-next s)))
          (topic-projection (fn-ccar-th-prefix-step (fn-sn-topic s) record))
          (node (cond (retentionp
-                      (fn-replay-apply-retention-event (fn-sn-node s) record))
+                      (fn-irc-apply-retention-event (fn-sn-node s) record carry))
                      ((or identityp consumerp topicp)
                       (fn-irc-apply-record (fn-sn-node s) record carry))
                      (t
@@ -259,7 +319,8 @@
                   (fn-ccar-sn-finish-enabled s)))
   :hints (("Goal" :in-theory '(fn-irc-sn-finish-enabled
                                fn-ccar-sn-finish-enabled
-                               fn-irc-apply-record-is-replay-apply-record))))
+                               fn-irc-apply-record-is-replay-apply-record
+                               fn-irc-apply-retention-event-is-reference))))
 
 (verify-guards fn-irc-sn-finish-enabled
   :hints (("Goal" :use ((:guard-theorem fn-ccar-sn-finish-enabled))
