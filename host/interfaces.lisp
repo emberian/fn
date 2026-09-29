@@ -2546,13 +2546,13 @@
   :class ::ideal)
 
 (definterface fn-bpnf-mixed-legacy-observed
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-mixed-received-names
   :class ::ideal)
 
 (definterface fn-bpnf-mixed-recovery-plan
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-mixed-recovery-planp
   :class ::common-lisp-compliant)
@@ -2707,7 +2707,7 @@
   :keystones (fn-bpnp-rotate-step-proposes-only-own-projection))
 
 (definterface fn-bpnr-generation-directory
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnr-next-generation
   :class ::common-lisp-compliant)
@@ -2734,11 +2734,11 @@
   :class ::ideal)
 
 (definterface fn-bpnr-retired-names
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnr-retired-names-never-the-selected-directory))
 
 (definterface fn-bpnr-selection-name
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnrb-selection-plan
   :class ::common-lisp-compliant

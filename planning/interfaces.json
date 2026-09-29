@@ -4,7 +4,7 @@
   "coverage": {
     "declared": 1117,
     "declared_and_dispatched": 1100,
-    "guard_verified": 391,
+    "guard_verified": 397,
     "with_keystone": 126
   },
   "entries": [
@@ -671,7 +671,7 @@
       "name": "fn-bpnf-inspect-adu",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {
         "frame": "total unframe (fn-bpnf-stored-recordp gates it)"
@@ -12250,7 +12250,7 @@
       "name": "fn-bpnf-mixed-legacy-observed",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -12280,7 +12280,7 @@
       "name": "fn-bpnf-mixed-recovery-plan",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -13034,7 +13034,7 @@
       "name": "fn-bpnr-generation-directory",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -13169,7 +13169,7 @@
       "name": "fn-bpnr-retired-names",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
@@ -13188,7 +13188,7 @@
       "name": "fn-bpnr-selection-name",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
