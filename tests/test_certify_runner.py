@@ -660,6 +660,13 @@ class AffectedByTests(unittest.TestCase):
                              ["books/leaf-b", "books/mid", "books/leaf-a",
                               "books/leaf-c"])
         self.assertEqual(runner.affected_selection([], [], []), [])
+        # decision-keystones' shape, options first: `--affected-by X ROOT`.
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            repository.write_makefile(ParallelScheduleTests.ORDER)
+            self.assertEqual(repository.dry_run(["books/leaf-c"], ["books/base"])[1],
+                             ["books/leaf-c", "books/base", "books/mid",
+                              "books/leaf-a", "books/leaf-b"])
 
     def test_a_deep_change_selects_every_root_above_it(self):
         with tempfile.TemporaryDirectory() as directory:

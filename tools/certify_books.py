@@ -1094,6 +1094,11 @@ def main() -> int:
             print("certify_books: in no Makefile root's closure (add it to ACL2_BOOKS "
                   "in the Makefile, or include it from a root): " + ", ".join(orphans),
                   file=sys.stderr)
+            hosts = [book for book in orphans if book.startswith("host/")]
+            if hosts:
+                print("certify_books: no book includes " + ", ".join(hosts) + ": no "
+                      "certification exercises it; `python3 tools/host_check.py --load` "
+                      "checks host files", file=sys.stderr)
             return 2
     if args.dry_run:
         for book in args.books:

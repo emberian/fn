@@ -453,11 +453,14 @@ def book_name_problem(root: Path, word: str, kind: str) -> str | None:
     if word.startswith("-"):
         return f"{kind} {word!r} is an option, not a book name"
     name = word[:-len(".lisp")] if word.endswith(".lisp") else word
-    if kind == "--recertify":
+    if kind in ("--recertify", "--affected-by"):
         # A book to recertify is any book of the closure, and the closure
         # reaches host/ (host/native-operator-host): the box's runner takes
         # it (certify_books.normalize_book) and refuses one outside the
         # closure itself.  Only roots are held to books/ or tests/acl2/.
+        # `--affected-by host/bp-node-host` selects what includes that host
+        # file (tests/acl2/bp-node-host-tests; decision-keystones had to
+        # name the test book by hand, 2026-09-29).
         if not DEPENDENCY_NAME.fullmatch(name):
             return (f"{kind} {word!r} is not a repository-relative book "
                     "(e.g. books/wire or host/native-operator-host)")

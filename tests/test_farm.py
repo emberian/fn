@@ -1327,6 +1327,18 @@ class FrictionTests(unittest.TestCase):
             with self.assertRaises(farm.FarmError):
                 farm.refuse_bad_book_names(root, ["books/alpha"], [], ["host/none"])
 
+    def test_affected_by_takes_a_host_file(self):
+        # decision-keystones: `--affected-by host/bp-node-host` was refused
+        # although a test book includes that host file.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            seed_books(root)
+            (root / "host").mkdir()
+            (root / "host" / "op-host.lisp").write_text("(in-package \"ACL2\")\n")
+            farm.refuse_bad_book_names(root, [], ["host/op-host.lisp"])
+            with self.assertRaises(farm.FarmError):
+                farm.refuse_bad_book_names(root, [], ["host/none"])
+
     def test_uncached_list_is_a_count_unless_verbose(self):
         lines = ["publish: 3 books, cache c", "  uncached: books/a",
                  "  uncached: books/b", "  unverified: books/c",
