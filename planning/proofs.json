@@ -16216,7 +16216,7 @@
         "tests/acl2/catalog-tests.lisp",
         "tests/test_native_reader_index.py"
       ],
-      "progress_note": "2026-09-29 lane paged-history-6: books/post-admission-keyed.lisp (14 forms) and books/served-catalog-owner-keyed.lisp (5 forms) REPL-admitted on persvati (ph6pak, ph6sca); the host's open keyed (fn-owner-install-extended, fn-owner-recover-from-store-open takes the ring's current entry; fn-owner-orcp-load-columns the reclaim's key), the boundary fn-owner-post-boundary over fn-cat, the health line; landed under the LAND-AND-FIX-FORWARD mode.",
+      "progress_note": "2026-09-29 lane paged-history-6: books/post-admission-keyed.lisp (14 forms) and books/served-catalog-owner-keyed.lisp (5 forms) REPL-admitted on persvati (ph6pak, ph6sca); the host's open keyed (fn-owner-install-extended, fn-owner-recover-from-store-open takes the ring's current entry; fn-owner-orcp-load-columns the reclaim's key), the boundary fn-owner-post-boundary over fn-cat, the health line; landed under the LAND-AND-FIX-FORWARD mode 2026-09-29 GPT-6.1 continuation: saturation previously raised a generic host condition and became :refused on the served wire; both native attempt boundary sites now return the exact ACL2 :mpx-saturated word before buffer fill/identity allocation/prepare. nntp-post accepts and names that refusal, with its existing distinctness and uncertainty-separation theorems REPL-admitted at the broadened enum; nntp-post-tests has exact-line and complete positive witnesses. Native crafted-collision/saturation activation and refusal-finder composition remain open; no native verdict transferred.",
       "events": [
         "fn-pak-post-admission-ok-is-indexed",
         "fn-pak-post-admission-saturated-is-not-indexed",

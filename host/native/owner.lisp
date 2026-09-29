@@ -1505,9 +1505,14 @@ follows is justified only by this line."
           (when (or (keywordp codes) (not (listp codes))
                     (/= (length codes) (length groups)))
             (fnn-refuse "unknown or duplicate configured group"))
-          (fnn-validate-post-boundary
-           (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
-                           (length payload) (length codes) charge))
+          (let ((boundary (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
+                                          (length payload) (length codes) charge)))
+            ;; Preserve ACL2's named placement refusal before buffer fill,
+            ;; identity allocation or prepare.  The generic condition
+            ;; handler would otherwise erase it into :refused.
+            (when (eq boundary :mpx-saturated)
+              (return-from fnn-owner-attempt boundary))
+            (fnn-validate-post-boundary boundary))
           ;; The payload goes to the core in the octet buffer
           ;; (books/octets-stobj.lisp): filled once here from the byte
           ;; vector, read in place by the existing-article test and the
@@ -1657,9 +1662,11 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                        (/= (length codes) (length groups)))
                (return-from fnn-owner-attempt-transit
                  (fnn-owner-transit-refused :groups)))
-             (fnn-validate-post-boundary
-              (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
-                              (length payload) (length codes) charge))
+             (let ((boundary (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
+                                             (length payload) (length codes) charge)))
+               (when (eq boundary :mpx-saturated)
+                 (return-from fnn-owner-attempt-transit boundary))
+               (fnn-validate-post-boundary boundary))
              (case (fnn-owner-arena-action 'fn-owner-existing-action
                                      (fnn-octet-list msgid)
                                      (fnn-owner-payload-octets payload) codes)
