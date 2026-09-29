@@ -83,3 +83,24 @@
 (assert-event (equal (car (fn-omr-stopped-report
                            (fn-record-string-octets "not a store") *omr-header* 0 nil))
                      1))
+
+; `store ROOT status [--replay]' (host/native/io.lisp fnn-dispatch) is the
+; operator verb's decision: the header alone, the replayed report by name,
+; usage otherwise (fn-omr-store-status-word).
+(assert-event (equal (fn-omr-store-status-word nil) :header))
+(assert-event (equal (fn-omr-store-status-word '("--replay")) :replay))
+(assert-event (equal (fn-omr-store-status-word '("--watch" "5")) :usage))
+(assert-event (equal (fn-omr-store-status-word '("--replay" "x")) :usage))
+
+; `health' on a stopped store (fn-omr-stopped-health-report): under the
+; not-running header and the last run, the stopped report, then the ten
+; states each `unobserved' (no replay) when the config opened; a refused
+; config stands alone (no states after a refusal).
+(assert-event
+ (natp (search (fn-record-string-octets "exhausted unobserved")
+               (fn-omr-stopped-health-report
+                nil (fn-bs-config-frame-for-profile :development) *omr-header* 0 nil))))
+(assert-event
+ (null (search (fn-record-string-octets "exhausted")
+               (fn-omr-stopped-health-report
+                nil (fn-record-string-octets "not a store") *omr-header* 0 nil))))

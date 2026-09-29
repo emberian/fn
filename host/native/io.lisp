@@ -7989,7 +7989,15 @@ segment' (tests/test_native_topic_local.py)."
            (cond ((string= command "init") (fnn-command-developer-init root rest))
                  ((string= command "recover") (fnn-command-recover root rest))
                  ((string= command "node-secret") (need 4) (fnn-command-node-secret root rest))
-                 ((string= command "status") (fnn-command-status root))
+                 ((string= command "status")
+                  ;; Row S3: the operator verb's decision, for the store verb
+                  ;; (books/owner-maintenance-request.lisp
+                  ;; fn-omr-store-status-word): the checkpoint header, or the
+                  ;; report over the replayed log with `--replay'.
+                  (case (fnn-core 'fn-omr-store-status-word rest)
+                    (:replay (fnn-command-status root t))
+                    (:header (fnn-command-status root))
+                    (t (error 'fnn-usage-error :message "store ROOT status [--replay]"))))
                  ((string= command "checkpoint") (fnn-command-state-checkpoint root))
                  ((string= command "digest") (fnn-command-store-digest root))
                  ((string= command "journal") (fnn-command-store-journal root))

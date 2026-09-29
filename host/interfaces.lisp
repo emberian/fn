@@ -4073,7 +4073,8 @@
   :class :common-lisp-compliant)
 
 (definterface fn-oex-request-line
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :kinds ((dir stringp)))
 
 (definterface fn-oex-status-word
   :class :common-lisp-compliant)
@@ -4082,7 +4083,8 @@
   :class :common-lisp-compliant)
 
 (definterface fn-oex-outcome-line
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :kinds ((dir stringp)))
 
 (definterface fn-oex-word-of-octets
   :class :common-lisp-compliant
@@ -4167,6 +4169,11 @@
 
 ; host/native/operator.lisp dispatches it (lane operability-2/-5).
 (definterface fn-omr-status-replayp
+  :class :common-lisp-compliant)
+
+; host/native/io.lisp dispatches it (`store ROOT status [--replay]', lane
+; operability-9): the operator verb's decision for the store verb.
+(definterface fn-omr-store-status-word
   :class :common-lisp-compliant)
 
 ; host/native/io.lisp dispatches it (lane operability-2/-5).
