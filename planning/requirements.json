@@ -2693,7 +2693,9 @@
         "PRF-327",
         "PRF-918",
         "PRF-927",
-        "PRF-930"
+        "PRF-930",
+        "PRF-938",
+        "PRF-934"
       ],
       "verification": [
         "proof",
@@ -5052,7 +5054,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-384",
-        "PRF-385"
+        "PRF-385",
+        "PRF-933"
       ],
       "verification": [
         "proof",
@@ -5104,7 +5107,8 @@
       "proof_targets": [
         "PRF-918",
         "PRF-927",
-        "PRF-930"
+        "PRF-930",
+        "PRF-938"
       ],
       "verification": [
         "proof",

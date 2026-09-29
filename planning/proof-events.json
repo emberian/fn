@@ -13667,7 +13667,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-orc-one-pass-in-flight"
+          "name": "fn-orc-one-pass-in-flight-by-definition"
         },
         {
           "kind": "theorem",
@@ -13793,7 +13793,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ocln-unavailable-span-outside-command-mode"
+          "name": "fn-ocln-unavailable-span-outside-command-mode-by-definition"
         }
       ]
     },
