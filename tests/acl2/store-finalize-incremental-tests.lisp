@@ -121,15 +121,20 @@
 ; -----------------------------------------------------------------------------
 ; Hypothesis removal, per literal theorem (two hypotheses).
 
-; (1) The carried verdict omitted.  A base whose second record is out of
-; sequence never finalizes :ok at any frontier; with NEXT exactly as the
-; theorem says and a suffix that continues the base's count and bound, the
-; carried open proceeds where the twin's whole-history walk refuses.
+; (1) The carried verdict omitted.  A base whose article carries generation 8
+; on transaction 7 never finalizes :ok at any frontier (only the history
+; recognizer compares the two; every fold accepts it and stays paused); with
+; NEXT exactly as the theorem says and the same suffix, the carried open
+; proceeds where the twin's whole-history walk refuses.
 (defconst *sfi-t-bad-base*
-  (fn-sco-capture *sfi-t-configs* (list *sfi-t-undertake* *sfi-t-article*)))
+  (fn-sco-capture *sfi-t-configs*
+                  (list *sfi-t-undertake* *sfi-t-release*
+                        (fn-held-plain (fn-record-make 2 7 8 "<sfi@example.invalid>"
+                                                       '(65) '("fn.test") "archive-sfi"
+                                                       "subject" "evidence" 2 841000000)
+                                       2))))
 (defconst *sfi-t-bad-next* (fn-sf-next-lower (fn-sco-records *sfi-t-bad-base*) 0))
-(defconst *sfi-t-bad-q*
-  (list (sfi-t-article 2 8 "<sfi-2@example.invalid>" "archive-sfi-2")))
+(defconst *sfi-t-bad-q* *sfi-t-q*)
 (assert-event
  (and ; the omitted hypothesis fails
       (not (equal (fn-sn-open-kind (fn-sco-finalize *sfi-t-bad-base* *sfi-t-configs* *sfi-t-f0*))
@@ -137,10 +142,15 @@
       ; the retained hypothesis holds
       (equal *sfi-t-bad-next* (fn-sf-next-lower (fn-sco-records *sfi-t-bad-base*) 0))
       ; the conclusion fails: the twin refuses the history, the carried open
-      ; does not see the base's fault
+      ; opens (the base's fault is in the prefix it does not walk)
+      (fn-sco-pausedp (fn-sco-cpr *sfi-t-bad-base*))
       (equal (cadr (cadr (fn-rii-sco-extend-open *sfi-t-bad-base* *sfi-t-configs*
                                                  *sfi-t-bad-q* *sfi-t-f1*)))
              (fn-sn-open-error :history))
+      (equal (fn-sn-open-kind
+              (cadr (cadr (fn-sfi-extend-open *sfi-t-bad-base* *sfi-t-configs* *sfi-t-bad-q*
+                                              *sfi-t-f1* *sfi-t-bad-next*))))
+             :ok)
       (not (equal (fn-sfi-extend-open *sfi-t-bad-base* *sfi-t-configs* *sfi-t-bad-q*
                                       *sfi-t-f1* *sfi-t-bad-next*)
                   (fn-rii-sco-extend-open *sfi-t-bad-base* *sfi-t-configs*
@@ -152,28 +162,29 @@
           (fn-rii-sco-extend-open *sfi-t-bad-base* *sfi-t-configs*
                                   *sfi-t-bad-q* *sfi-t-f1*))))
 
-; (2) The bound omitted (NEXT = 0 where the prefix left 8).  With the
-; repeated transaction 7 in the suffix, the carried walk admits what the
-; whole-history walk refuses.
+; (2) The bound omitted (NEXT = 0 where the prefix left 8).  A suffix record
+; below the bound is refused by the folds themselves (the node's next
+; transaction is the bound), so the bound is observable only where nothing
+; else looks: the frontier compare.  At frontier 7 with no suffix, the twin
+; walks the prefix and refuses the history; the carried open with NEXT = 0
+; passes the compare and reaches the node's frontier check instead.
 (assert-event
  (and ; the retained hypothesis holds
       (equal (fn-sn-open-kind (fn-sco-finalize *sfi-t-base* *sfi-t-configs* *sfi-t-f0*))
              :ok)
       ; the omitted hypothesis fails
       (not (equal 0 (fn-sf-next-lower (fn-sco-records *sfi-t-base*) 0)))
-      ; the conclusion fails
-      (equal (cadr (cadr (fn-rii-sco-extend-open *sfi-t-base* *sfi-t-configs*
-                                                 *sfi-t-dup-txid* *sfi-t-f1*)))
+      ; the conclusion fails: different refusals
+      (equal (cadr (cadr (fn-rii-sco-extend-open *sfi-t-base* *sfi-t-configs* nil 7)))
              (fn-sn-open-error :history))
-      (not (equal (fn-sfi-extend-open *sfi-t-base* *sfi-t-configs* *sfi-t-dup-txid*
-                                      *sfi-t-f1* 0)
-                  (fn-rii-sco-extend-open *sfi-t-base* *sfi-t-configs*
-                                          *sfi-t-dup-txid* *sfi-t-f1*)))))
+      (equal (cadr (cadr (fn-sfi-extend-open *sfi-t-base* *sfi-t-configs* nil 7 0)))
+             (fn-sn-open-error :frontier))
+      (not (equal (fn-sfi-extend-open *sfi-t-base* *sfi-t-configs* nil 7 0)
+                  (fn-rii-sco-extend-open *sfi-t-base* *sfi-t-configs* nil 7)))))
 (must-fail-checked
  (defthm sfi-t-without-the-bound
-   (equal (fn-sfi-extend-open *sfi-t-base* *sfi-t-configs* *sfi-t-dup-txid* *sfi-t-f1* 0)
-          (fn-rii-sco-extend-open *sfi-t-base* *sfi-t-configs* *sfi-t-dup-txid*
-                                  *sfi-t-f1*))))
+   (equal (fn-sfi-extend-open *sfi-t-base* *sfi-t-configs* nil 7 0)
+          (fn-rii-sco-extend-open *sfi-t-base* *sfi-t-configs* nil 7))))
 
 ; -----------------------------------------------------------------------------
 ; CORRUPTED CARRIED BOUND (a mutation witness, not a hypothesis removal): a
