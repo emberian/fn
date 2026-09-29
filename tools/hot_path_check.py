@@ -750,6 +750,7 @@ class Find:
     path: list = field(default_factory=list)
     klass: str = "unexpected"
     bound: str | None = None
+    starts: set = field(default_factory=set)      # backward nodes at its sites
 
     @property
     def key(self) -> str:
@@ -767,6 +768,7 @@ class Analysis:
     entries: list
     uncalled: set = field(default_factory=set)
     cuts: dict = field(default_factory=dict)
+    carried: dict = field(default_factory=dict)
 
 
 def propagate(tree: Tree, summarizer: Summarizer) -> tuple[dict, dict, dict]:
@@ -866,6 +868,25 @@ def uncalled_hosts(root: Path, definitions: dict) -> set[str]:
             if d.host and counts[name] <= 1 and not python[name]}
 
 
+def backward(node: tuple, reached: dict, carried: dict) -> list:
+    """The callers of a backward node: (next node, caller, line, kind) each.
+
+    ("dim", f, index, D) is f's formal INDEX carrying dimension D: its callers
+    are the edges that passed D there.  ("reach", f) is f reached at all.
+    """
+    if node[0] == "dim":
+        _, f, index, dimension = node
+        nexts = []
+        for caller, line, kind, source in carried.get((f, index), {}).get(dimension, []):
+            if source[0] == "seed":
+                nexts.append((("reach", caller), caller, line, kind))
+            else:
+                nexts.append((("dim", caller, source[1], dimension), caller, line, kind))
+        return nexts
+    return [(("reach", caller), caller, line, kind)
+            for caller, line, kind in reached.get(node[1], [])]
+
+
 def boundary(tree_defs: dict, reached: dict, carried: dict, function: str,
              start: list, via: set | None = None) -> tuple[dict, list]:
     """Host functions whose calls carry the dimension to `function`'s site.
@@ -886,19 +907,7 @@ def boundary(tree_defs: dict, reached: dict, carried: dict, function: str,
         definition = tree_defs.get(name)
         if definition is not None and definition.host:
             continue
-        if node[0] == "dim":
-            _, f, index, dimension = node
-            edges = carried.get((f, index), {}).get(dimension, [])
-            nexts = []
-            for caller, line, kind, source in edges:
-                if source[0] == "seed":
-                    nexts.append((("reach", caller), caller, line, kind))
-                else:
-                    nexts.append((("dim", caller, source[1], dimension), caller, line, kind))
-        else:
-            nexts = [(("reach", caller), caller, line, kind)
-                     for caller, line, kind in reached.get(name, [])]
-        for nxt, caller, line, kind in nexts:
+        for nxt, caller, line, kind in backward(node, reached, carried):
             caller_def = tree_defs.get(caller)
             if caller_def is not None and caller_def.host:
                 if caller not in entries:
@@ -952,6 +961,7 @@ def analyze(root: Path = ROOT, dimensions_path: Path | None = None) -> Analysis:
                 find.lines.add(line)
                 node = (("dim", name, source[1], dimension) if source[0] == "formal"
                         else ("reach", name))
+                find.starts.add(node)
                 if definition.host:
                     find.entries.setdefault(name, (definition.file, line))
                     if not find.path:
@@ -982,7 +992,7 @@ def analyze(root: Path = ROOT, dimensions_path: Path | None = None) -> Analysis:
             find.klass = "unexpected"
     entries = sorted({host for find in finds.values() for host in find.entries})
     return Analysis(tree, summaries, reached, finds, unresolved, cold, entries, uncalled,
-                    dict(summarizer.cuts))
+                    dict(summarizer.cuts), carried)
 
 
 # ---------------------------------------------------------------------------
@@ -1084,6 +1094,81 @@ def why(analysis: Analysis, function: str, out) -> None:
         print(f"  {definitions[host].where} [{state}] " + " -> ".join(chain), file=out)
 
 
+CHAIN_CAP = 200
+
+
+def served_chains(analysis: Analysis, find: Find, cap: int = CHAIN_CAP
+                  ) -> tuple[dict[str, list[list]], bool]:
+    """{served host entry: every call chain carrying the find's dimension from
+    it to the find's site}, and whether CAP stopped the enumeration.
+
+    A chain is a simple path of the backward graph `boundary` walks (no
+    function twice), host first: [(function, line of its call), ..., (site
+    function, None)].  A find leaves the served list only when every one of
+    these is cut, so all are listed, not one shortest (served-costs-3
+    reconstructed five chains to fn-node-statep by hand).  item 51.
+    """
+    definitions = analysis.tree.definitions
+    chains: dict[str, list[list]] = collections.defaultdict(list)
+    total = 0
+    capped = False
+
+    def walk(node, trail: list, on_path: set) -> None:
+        nonlocal total, capped
+        if capped:
+            return
+        for nxt, caller, line, _kind in backward(node, analysis.reached, analysis.carried):
+            if caller in on_path:
+                continue
+            definition = definitions.get(caller)
+            if definition is not None and definition.host:
+                if entry_state(analysis, caller) == "served":
+                    chain = [(caller, line)] + trail
+                    if chain not in chains[caller]:
+                        chains[caller].append(chain)
+                        total += 1
+                        if total >= cap:
+                            capped = True
+                            return
+                continue
+            walk(nxt, [(caller, line)] + trail, on_path | {caller})
+
+    for start in sorted(find.starts):
+        definition = definitions.get(base_name(start[1]))
+        if definition is not None and definition.host:
+            if entry_state(analysis, start[1]) == "served":
+                chains[start[1]].append([(start[1], None)])
+            continue
+        walk(start, [(start[1], None)], {start[1]})
+    return dict(chains), capped
+
+
+def why_served(analysis: Analysis, text: str, listed: dict, out) -> int:
+    """`--why-served FIND`: per find whose key contains TEXT, every served chain."""
+    matches = [find for key, find in sorted(analysis.finds.items()) if text in key]
+    if not matches:
+        print(f"--why-served {text}: no find's key contains it", file=out)
+        return 1
+    definitions = analysis.tree.definitions
+    for find in matches:
+        chains, capped = served_chains(analysis, find)
+        others = sorted(host for host in find.entries
+                        if entry_state(analysis, host) != "served")
+        count = sum(len(v) for v in chains.values())
+        owner = listed.get(find.key, {}).get("packet", "NEW")
+        print(f"{find.key} [{find.klass}, {owner}] at {where_text(find, definitions)}: "
+              f"{count}{'+ (capped)' if capped else ''} served chain(s) from "
+              f"{len(chains)} served entr{'y' if len(chains) == 1 else 'ies'}"
+              + (f"; {len(others)} cold/uncalled entries not listed" if others else ""),
+              file=out)
+        for host in sorted(chains):
+            print(f"  {definitions[host].where} {host}: {len(chains[host])} chain(s)", file=out)
+            for chain in chains[host]:
+                steps = [f"{name}{'' if line is None else f':{line}'}" for name, line in chain]
+                print("    " + " -> ".join(steps) + f" [{find.primitive}]", file=out)
+    return 0
+
+
 def as_json(analysis: Analysis, listed: dict) -> dict:
     definitions = analysis.tree.definitions
     return {
@@ -1117,6 +1202,11 @@ def main(argv=None) -> int:
                         help="the host entries that reach FUNCTION, each with one shortest path")
     parser.add_argument("--find", default=None,
                         help="print the finds whose function contains this text")
+    parser.add_argument("--why-served", "--chains", default=None, metavar="FIND",
+                        dest="why_served",
+                        help="per find whose key contains FIND, EVERY served host-entry "
+                             "call chain that carries its dimension to it (a find leaves "
+                             "the list only when all are cut)")
     arguments = parser.parse_args(argv)
 
     analysis = analyze()
@@ -1127,6 +1217,9 @@ def main(argv=None) -> int:
         report(analysis, listed, sys.stdout)
     if arguments.why:
         why(analysis, arguments.why, sys.stdout)
+    if arguments.why_served:
+        if why_served(analysis, arguments.why_served, listed, sys.stdout):
+            return 1
     if arguments.find:
         for key, find in sorted(analysis.finds.items()):
             if arguments.find in find.function:

@@ -1796,6 +1796,11 @@ check:
 # `python3 tools/teeth_check.py --evaluate` produces in about twenty minutes
 # of one ACL2.
 	@$(CHECK_STEP) $(PYTHON) tools/teeth_check.py --summary
+# An empty-result assertion (nil / null / endp / len 0) over a produced value
+# with no non-empty witness of the same function in the book pins a defect
+# as the expected value (stx-model: stx-policy's empty laces).  Warn-only;
+# tools/null_witness_allow.json names the accepted ones.
+	@$(CHECK_STEP) $(PYTHON) tools/null_witness_lint.py
 # Two static lints over the harness, both from the 2026-09-19 incident: a
 # host entry point gained a required keyword-only argument, two callers in
 # tests/ were never updated, and both integration labs were dead for a day
@@ -1892,7 +1897,7 @@ check:
 # The raw files loaded in build.lisp's order into one bare ACL2 with SBCL's
 # warnings on (seconds, no image build): errors, arity, macro order and names
 # nothing defines (lane tooling-leftovers).  No ACL2: NOT RUN, exit 2.
-	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --load
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --load --bare
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_load.ClassifyTests
 # Every tests/*.py ends with its `if __name__ == "__main__":` block and calls
 # unittest.main() nowhere else (obstructions-5 item 36: test_farm and
