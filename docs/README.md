@@ -15,6 +15,10 @@ kept in [articles/](articles/). The website renders them as a newsreader.
   [9: the proofs](articles/fn-faq-9.txt) · [10: contributing](articles/fn-faq-10.txt) ·
   [11: the web page](articles/fn-faq-11.txt)
 
+The same guides as pages: [installing](install.md), [running your node](operator.md),
+[peering with a friend](peering-with-a-friend.md), [the friends' reader](reader.md)
+and [agents](agents.md).
+
 For engineers: [architecture](architecture.md), [terminology](glossary.md),
 [proof strategy](proofs.md), the references for [the operator](operator-internals.md)
 and [the clients](client-internals.md), [engineering](engineering.md),

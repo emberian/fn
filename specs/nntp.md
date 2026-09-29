@@ -1387,7 +1387,7 @@ read a stored password to re-derive it. The live evidence is
 `planning/evidence/auth-w10-2026-09-20.md`.
 
 **Native startup slice 2026-09-21**: `books/native-auth-profile.lisp` parses
-the bounded credential file and constructs the same `fn-auth-config` the
+the bounded credential file and constructs (`fn-auth-make-config`) the same `fn-auth-configp` record the
 served owner already pins at connection open. `host/native/auth.lisp` only
 reads the ACL2-selected path and transports octets; it neither parses a
 credential nor hashes or compares a secret. The native operator admits

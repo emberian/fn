@@ -452,6 +452,29 @@ the certificate in use:
 tls names=fn.fg-goose.online not-after=2026-12-25T22:23:43Z
 ```
 
+### A certificate from a public authority
+
+A certificate from an authority such as Let's Encrypt works as it comes,
+with two rules:
+
+- `tls_cert` names the **full chain** file: your certificate first, then
+  the authority's intermediate certificates (Let's Encrypt's
+  `fullchain.pem`, not `cert.pem`). fn sends the whole file, so readers
+  can check it against the public roots they already have. With only your
+  certificate, a reader that does not already hold the intermediate cannot
+  check it and refuses the connection.
+- `tls_key` is the key without a password. fn refuses a key that asks for
+  one, and a key that does not match the certificate.
+
+These certificates last about 90 days. Let your renewal tool's hook
+install the new pair and then run `tls reload` (above), so the node
+never needs a restart. If the reload is refused, the old certificate stays in use and the command
+says why; fix it before the old one expires. Each
+renewal brings a new key, so friends' nodes should trust the authority,
+not your certificate itself: they add you by host name with `- -` in
+place of a certificate file (see
+[peering with a friend](peering-with-a-friend.md#3-turn-on-the-encrypted-feed-both-ways)).
+
 ## 7. Opening your node to the internet
 
 Before you open the port:
@@ -531,6 +554,7 @@ fn operator CONFIG carry /srv/fn/workflow inspect WORK
 fn operator CONFIG carry /srv/fn/workflow pause WORK      # or * for all
 fn operator CONFIG carry /srv/fn/workflow resume WORK     # or *
 fn operator CONFIG carry /srv/fn/workflow drop WORK the reason
+fn operator CONFIG carry /srv/fn/workflow drop WORK --abandon the reason
 ```
 
 `list` prints one line per work: its Message-ID, peer, status, whether the
@@ -540,6 +564,17 @@ dropped, `bp-obligation request` for it is refused (`reason=carry-paused`,
 `reason=carry-dropped`) and nothing is written. A drop is final. It stops the
 carrying but does not free the article: only the peer's receipt releases the
 store's pin.
+
+`drop WORK --abandon REASON` also gives up the obligation itself: a waiver.
+It is written first to the carry journal with who waived it (your uid,
+`uid:1000`) and the reason, then the store's pin is released now, through
+the same release the peer's receipt would make. `list` shows the work as
+`hold=waived waived-by=uid:1000 waiver=REASON`. It is refused
+(`reason=not-held`) when the store holds no pin for the work, so a waiver
+can never release an article twice, and a receipt that arrives for a waived
+work later is refused (`reason=carry-waived`). If the machine stops between
+the two steps, the next writable `carry` or `bp-obligation` command finishes
+the release first (`BP carry recovered waiver release work=WORK`).
 
 ## 9. Backups and new releases
 
@@ -552,6 +587,16 @@ store's pin.
 
 Copying while the node runs may miss the newest article. Keep the `keys`
 folder private: it holds the node's secret.
+
+**Restoring an older copy reissues article numbers.** Articles posted or
+fed after the backup are gone from the restored store, and the next ones
+take their numbers again. A reader who saw number 42 as one article now
+sees a different article as 42, and a newsreader that marked 42 read
+skips it. NNTP forbids this: one number is one article in a group, and
+later arrivals get higher numbers (RFC 3977 section 6). fn does not yet
+detect or repair it. Restore only the newest backup of a node whose
+readers have seen its numbers, or tell its readers to reset their
+newsreader's record of what they have read for the node.
 
 An **export** (`store export`) is different. It carries the store's history
 for moving to a new store, not the node's secrets or settings. Keep backups
@@ -684,8 +729,10 @@ The memory refusals, and what to do:
 
 - `fn: refused machine-cannot-hold-profile heap=H MB machine=M MB`: the
   store's limits need more memory than this machine (or the service's
-  `MemoryMax`) gives. Raise the limit, or move the store to settings that
-  fit (`store export`, then `store import` with smaller `--max-...`).
+  `MemoryMax`) gives. Raise the limit, or lower the store's limits to fit
+  (`policy set max-transactions N`, `max-history-octets N` or
+  `max-article-octets N`; a limit below what the store already holds is
+  refused, `below-current-use`).
 - `fn: refused machine-cannot-hold-threads reservation=R MB machine=M MB`:
   the same, for the whole node with its threads. Raise the limit.
 - `refused connections-exceed-memory capacity=C holds=B ...`: the node
@@ -771,11 +818,10 @@ groups would not, it is refused with
 `441 posting failed; the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)`.
 A feeding node is told "try later" (`436`) for this too.
 
-The store's size limits are fixed when it is made. To raise them, move to a
-new store with bigger limits: `store export`, a fresh install, then
-`store import DIR --max-transactions N --max-history-octets N` (see
-[reinstalling](install.md#4-reinstalling) and
-[store settings](#store-settings)).
+To raise the store's size limits, set them in place:
+`fn operator CONFIG policy set max-transactions N` (or `max-history-octets`,
+`max-article-octets`), against the running node or offline. No data moves
+(see [store settings](#store-settings)).
 
 The store is a log that grows with each post. Now and then the running
 node saves a summary (a checkpoint) and deletes the parts of the log it
@@ -841,15 +887,35 @@ Restart after editing the file.
 
 ### Store settings
 
-A store's size limits are set by `init` and never change. Under a `mission`,
-`init` takes group names only and picks the limits for the machine. To
-choose them yourself, or to raise them later through an export:
+A store's size limits are set by `init`. A store admits
+one transaction fewer than `--max-transactions`: the last one is kept so
+the store can always record a maintenance release, even when full. A
+store made with `--max-transactions 128` takes 127 posts and other
+changes; `status`'s `maintenance-reserve ... held` line shows the kept one.
+Under a `mission`, `init` takes group names only and picks the limits for
+the machine. To choose them yourself, and to raise or lower three of them
+later in place:
 
 ```text
 fn operator /path/to/fn.toml init --max-transactions 100000 --max-history-octets 268435456 --max-article-octets 20000 fn.letters
-fn operator /path/to/fn.toml store export /srv/fn-archive
-fn operator /path/to/fn.toml store import /srv/fn-archive --max-transactions 1000000
+fn operator /path/to/fn.toml policy set max-transactions 1000000
+fn operator /path/to/fn.toml policy set max-history-octets 1073741824
+fn operator /path/to/fn.toml policy set max-article-octets 65536
 ```
+
+`policy set` works against the running node or offline, and moves no data.
+The change is applied now when the running process's heap holds the new
+limits (`accepted applied:max-transactions=...:served-now:no-data-moved`);
+otherwise it is recorded and takes effect at the next start, and the reply
+says how long that start takes and how much heap it reserves
+(`recorded limit max-transactions=N effective-at-next-start: takes effect at the next restart (about S s), no data moved; the next start reserves heap=H MB`).
+It is refused (exit 1), with nothing changed, when the number is below what
+the store already holds (`below-current-use: the store holds U`), when the
+limits would not be a valid profile (`profile-invalid: REASON`), or when
+this machine cannot hold them
+(`machine-cannot-hold-profile: heap=H MB machine=M MB`). The other limits
+below are fixed when the store is made; lowering `--max-transactions`
+lowers `--max-open-suffix` with it.
 
 Limits: `--max-transactions`, `--max-history-octets`,
 `--max-record-octets`, `--max-article-octets`, `--max-groups-per-article`,
@@ -876,17 +942,21 @@ warns on stderr with both numbers, exit code 0:
 `init` with no `--profile` and no limit (and every `init` under a
 `mission`) picks the largest of four sizes this machine's memory holds:
 64, 32 or 16 MiB of articles, else 8 MiB. A short post to one group
-takes about 1,180 bytes (860 for the post, 320 for its group), so that is
-about 56,000 posts at the top and about 7,000 at the bottom. `status`
+takes about 4,900 bytes (860 for the post, 320 for its group, and about
+3,700 for its header of about 400 bytes; see below), so that is about
+13,800 posts at the top and about 1,700 at the bottom. `status`
 shows the limits on its `profile` line and about how many posts still fit
-on its `capacity articles-left=N` line. A friend's feed uses the same room. The smallest size
-needs about 1.9 GB for its first run (`reservation=1906 MB` with a 190 MB
-image): fn reserves room for every article to carry the longest header
-the store admits, so a machine that gives `init` less, such as a 2 GB
-machine after the system's share, is refused by name; name smaller limits
-(`--max-transactions`, `--max-history-octets`). For more, remove the `mission`
+on its `capacity articles-left=N` line. A friend's feed uses the same room. A
+header costs the node's memory far more than its size on disk, so each
+article's header is charged to its history budget at 8 bytes a byte (12
+more for each byte of its Message-ID): articles with long headers fill the
+store sooner, and past its budget a POST is refused by name
+(`unaffordable`). The smallest size's first run needs about 1 GB, so a
+2 GB machine (1,536 MB after the system's share) gets the 16 MiB size.
+For more, remove the `mission`
 line from `fn.toml` and `init` with the limits above, or raise them later
-with `store export` and `store import --max-... N`.
+with `policy set max-transactions N` (and `max-history-octets`,
+`max-article-octets`).
 
 ### Other commands
 

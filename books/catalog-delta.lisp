@@ -32,8 +32,8 @@
 ;
 ; Every step is bounded by its quantum (fn-cat-apply-delta-step-bounded);
 ; the one-shot application is the reference.  That the resumable run under
-; any quanta equals the one-shot application is stated below as OPEN (not
-; proved in this lane's budget; a ground check passes).
+; any quanta equals the one-shot application is PRF-241's keystone
+; fn-cfgp-apply-in-quanta-is-apply-delta (books/config-policy-delta.lisp).
 ;
 ; PRF-202 as registered (fn-view-apply-is-refresh against fn-own-refresh's
 ; view) needs the maintained relation R of step 6 between the catalog and
@@ -274,16 +274,12 @@
    (implies (>= (nfix i) (nfix to))
             (equal (fn-cat-recontext-range i to keyring generation fn-arena fn-cat) fn-cat))))
 
-; OPEN (catalog-slice-2, 2026-09-26): the theorem that the resumable
-; application from the range's start, under any schedule of quanta, is the
-; one-shot application (fn-cat-apply-in-quanta = fn-cat-apply-delta under
-; fn-delta-p, natp cursor, cursor <= from).  Its inductive form (a run from a
-; cursor inside the range is the remaining range) did not close within the
-; lane's budget: the arithmetic over the nested min of the range end, the
-; count and the quantum split into cases the split lemma above did not
-; reach.  The ground check in tests/acl2/catalog-delta-tests.lisp (the
-; :policy case one shot and in quanta (1) and (2) over a two-row catalog)
-; passes by computation and is a check, not a proof.  PKT-585 names it.
+; The resumable application from the range's start, under any schedule of
+; quanta, is the one-shot application (fn-cat-apply-in-quanta =
+; fn-cat-apply-delta under fn-delta-p, natp cursor, cursor <= from): PRF-241's
+; keystone fn-cfgp-apply-in-quanta-is-apply-delta, proved in
+; books/config-policy-delta.lisp over this book's definitions.  The ground
+; check in tests/acl2/catalog-delta-tests.lisp stays as a witness.
 
 ; -----------------------------------------------------------------------------
 ; The served view as a version.

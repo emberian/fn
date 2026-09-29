@@ -4118,6 +4118,246 @@ under it).  Answers the reply word: :dry-run, or ACL2's refusal."
         (fnn-owner-gated (service :control)
           (fnn-owner-core 'fn-owner-orc-finish))))))
 
+;;; Q16 (a) (lane online-reclaim-3): `store reclaim --recorded' on the
+;;; running owner INSTALLS (books/owner-reclaim-pass.lisp; host/owner-host.lisp
+;;; fn-owner-orcp-*).  Every step is a named cut (FN_NATIVE_RECLAIM_FAULT=
+;;; CUT:kill on a developer image, *fn-orcp-cuts*): before :installed a death
+;;; leaves the old publication, from it the new one.
+
+(defparameter +fnn-reclaim-cuts+
+  '("captured" "rewritten" "staged" "interned" "rebuilt" "installed" "swapped" "released"))
+
+(defparameter +fnn-reclaim-swap-rounds+ 8
+  "Swap quanta a pass tries while the commit pipeline is busy or another
+off-mutex reader holds the arena, before it defers by name.")
+
+(defun fnn-reclaim-cut (cut)
+  "The pass reached CUT (a keyword of *fn-orcp-cuts*): SIGKILL here when
+FN_NATIVE_RECLAIM_FAULT names it."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_RECLAIM_FAULT")))
+    (when raw
+      (let ((colon (position #\: raw :from-end t)))
+        (unless (and colon (string= (subseq raw (1+ colon)) "kill")
+                     (member (subseq raw 0 colon) +fnn-reclaim-cuts+ :test #'string=))
+          (fnn-fault "invalid FN_NATIVE_RECLAIM_FAULT (expected CUT:kill)"))
+        (when (string-equal (subseq raw 0 colon) (symbol-name cut))
+          (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
+          (fnn-fault "test SIGKILL did not terminate the process"))))))
+
+(defun fnn-fresh-stobj (name)
+  "A fresh, empty instance of the live stobj NAME (fn-cat, fn-hist) for the
+rebuild off the mutex: its creator's value, of the live instance's type.
+The creator may be a macro (a defstobj's raw creator is), so it is called
+by evaluating the form (CREATOR), once per pass."
+  (let* ((creator (find-if #'fboundp
+                           (list (intern (format nil "CREATE-~a" (symbol-name name)) "ACL2")
+                                 (intern (format nil "CREATE-~a$C" (symbol-name name)) "ACL2"))))
+         (fresh (and creator (eval (list creator))))
+         (live (fnn-live-stobj name)))
+    (unless (and fresh (equal (type-of fresh) (type-of live)))
+      (fnn-fault "no fresh instance of the ~(~a~) stobj" name))
+    fresh))
+
+(defun fnn-install-stobj (name value)
+  "Under the owner mutex: VALUE becomes the live stobj NAME (the host's
+pointer and the live state's binding)."
+  (let ((cell (assoc name (user-stobj-alist *the-live-state*))))
+    (unless cell (fnn-fault "the ~(~a~) stobj is not in this image" name))
+    (setf (cdr cell) value)
+    (ecase name
+      (fn-cat (setq *fnn-cat* value))
+      (fn-hist (setq *fnn-hist* value)))))
+
+(defun fnn-owner-reclaim-intern (service rows keyring generation)
+  "The rewritten ROWS with their tombstoned records interned into the live
+arena, +fnn-reclaim-chunk-rows+ rows per owner quantum (fn-owner-orcp-
+intern-chunk).  NIL when ACL2 refused a record."
+  (let ((out nil) (rest rows))
+    (loop while rest do
+      (let* ((chunk (loop repeat +fnn-reclaim-chunk-rows+ while rest collect (pop rest)))
+             (done (fnn-owner-gated (service :control)
+                     (first (fnn-call 'fn-owner-orcp-intern-chunk chunk keyring generation
+                                      (fnn-live-arena))))))
+        (when (eq done :bad) (return-from fnn-owner-reclaim-intern nil))
+        (unless (and (listp done) (= (length done) (length chunk)))
+          (fnn-fault "owner returned a malformed interned chunk"))
+        (push done out)))
+    (let ((all nil)) (dolist (c out all) (setq all (nconc c all))))))
+
+;;; Q16 (a) (lane online-reclaim-5): the swapped owner is the owner the full
+;;; open of the rewritten history installs, BEFORE the open's recovery
+;;; barriers (its Store :recovering; books/owner-reclaim-ready.lisp).  The
+;;; open's three (fnn-store-recovery-barriers), delivered as fnn-owner-install
+;;; delivers them; without them the writer's take never takes and every POST
+;;; after the swap waits forever (fn-orrd-the-swap-without-the-barriers-never-
+;;; takes).  The publication is already installed: a barrier that fails, or
+;;; an owner that is not :ready after them, is a recovery event.
+(defun fnn-owner-reclaim-barriers (store)
+  (let ((phase nil))
+    (dolist (barrier (fnn-store-recovery-barriers store))
+      (handler-case (funcall barrier)
+        (fnn-os-error (e)
+          (fnn-owner-observe :recovery-barrier :uncertain)
+          (fnn-indeterminate "reclaim swap: recovery barrier failed after the install (~a): recovery required" e)))
+      (setq phase (fnn-owner-observe :recovery-barrier :ok)))
+    (unless (eq phase :ready)
+      (fnn-indeterminate "reclaim swap: the swapped owner is ~(~a~) after the recovery barriers: recovery required"
+                         phase))))
+
+(defun fnn-owner-reclaim-pass (service free)
+  "`store reclaim --recorded' on the running owner: the capture under the
+mutex (the pass's credit reserved, refused by name; the log rotated as a
+publication's capture rotates it; the pass the publication in flight), then
+off it the walk with the rewrite, the decision, the reclaimed checkpoint
+staged (the rewritten rows' tombstoned records are the writer's sources),
+the tombstones interned in owner quanta, the rebuild (the open's recovery
+over the rewritten rows) and the fresh catalog and history columns; then ONE
+owner quantum takes the swap when fn-orcp-swap-word answers :swap (nothing
+committed since the capture, the pipeline idle, no other off-mutex reader),
+installs the staged checkpoint (the commit point) and swaps the owner, the
+catalog and the history columns; then off it the covered segments dropped
+and their blocks given back (fnn-owner-release-extents).  A failure after
+the install is a recovery event (the service stops; the open reads the new
+publication).  Answers the reply word."
+  (let* ((store (fnn-owner-service-store service))
+         (clock (fnn-store-prepare-observation))
+         (answer nil) (captured nil) (counted nil) (position nil) (stage nil)
+         (installed nil) (swapped nil) (word :failed) (*fnn-checkpoint-frames* nil)
+         (started (get-internal-real-time)))
+    (flet ((ms () (round (* 1000 (- (get-internal-real-time) started))
+                         internal-time-units-per-second))
+           (deferred (reason &rest more)
+             (fnn-err "RECLAIM deferred reason=~(~a~)~{ ~a~}" reason more)
+             (setq word (intern (format nil "DEFERRED-~a" (symbol-name reason)) :keyword))))
+      (unwind-protect
+           (block pass
+             (unless (fnn-log-rotation-ready-p store) (fnn-log-prepare-spare store))
+             (fnn-owner-gated (service :control)
+               (setq answer (fnn-owner-core 'fn-owner-orcp-capture :recorded clock
+                                            (fnn-checkpoint-budget-test-override nil)
+                                            free (fnn-checkpoint-revision)))
+               (when (eq (first answer) :captured)
+                 (setq captured (second answer))
+                 (setq position (fnn-log-rotate store))
+                 (sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))
+                 (setq counted t)))
+             (unless captured
+               (unless (and (eq (first answer) :deferred) (integerp (third answer)))
+                 (fnn-fault "owner returned a malformed reclaim capture"))
+               (deferred :credit (format nil "estimate=~d" (third answer)))
+               (return-from pass))
+             (unless (and (true-listp captured) (= (length captured) 12))
+               (fnn-fault "owner returned a malformed reclaim capture"))
+             (fnn-reclaim-cut :captured)
+             (destructuring-bind (records count v s profile configs frontier budget free* revision
+                                  now record-octets)
+                 captured
+               (declare (ignore now))
+               (let* ((ctx (fnn-core 'fn-owner-orc-ctx :recorded v s nil (fnn-live-arena)))
+                      (acc nil) (rows nil) (decision nil))
+                 (multiple-value-setq (acc rows) (fnn-owner-reclaim-walk records ctx t))
+                 (setq decision (fnn-core 'fn-owner-orc-decide :recorded profile v s nil acc
+                                          (fnn-live-arena)))
+                 (fnn-reclaim-cut :rewritten)
+                 (case (and (consp decision) (first decision))
+                   (:refused (fnn-err "RECLAIM refused: ~(~a~)" (second decision))
+                    (setq word (second decision)) (return-from pass))
+                   (:none (fnn-err "RECLAIM records=~d reclaimed=0 ~a" count
+                                   (fnn-reclaim-counts-line (second decision)))
+                    (setq word :none) (return-from pass))
+                   (:reclaim nil)
+                   (t (fnn-fault "ACL2 returned no reclaim decision")))
+                 ;; the reclaimed checkpoint, staged off the mutex
+                 (let ((segment (fnn-core 'fn-ockp-segment-octets record-octets
+                                          +fnn-checkpoint-batch-octets+)))
+                   (destructuring-bind (setup next n arun)
+                       (fnn-core 'fn-owner-sco-prepare nil nil configs rows frontier revision
+                                 position segment budget free* (fnn-checkpoint-walk rows)
+                                 (fnn-live-arena))
+                     (declare (ignore next n))
+                     (let ((verdict (first setup)))
+                       (cond ((and (consp verdict) (eq (first verdict) :plan)))
+                             ((and (consp verdict) (eq (first verdict) :deferred))
+                              (deferred (second verdict)) (return-from pass))
+                             (t (deferred :unencodable) (return-from pass))))
+                     (fnn-log-make-durable (fnn-store-log store))
+                     (unwind-protect
+                          (setq stage (fnn-state-checkpoint-stage
+                                       store
+                                       (lambda (fd)
+                                         (fnn-checkpoint-write-steps
+                                          fd setup segment (length rows) (fnn-store-config store)
+                                          (fnn-live-octets-pub) arun))))
+                       (fnn-octets-pub-release))))
+                 (fnn-reclaim-cut :staged)
+                 (destructuring-bind (keyring generation)
+                     (fnn-core 'fn-owner-orcp-keyring s)
+                   (setq rows (fnn-owner-reclaim-intern service rows keyring generation)))
+                 (unless rows (deferred :unencodable) (return-from pass))
+                 (fnn-reclaim-cut :interned)
+                 (let* ((rebuilt (fnn-core 'fn-owner-orcp-rebuild rows configs frontier
+                                           (third answer)))
+                        (cat (fnn-fresh-stobj 'fn-cat))
+                        (hist (fnn-fresh-stobj 'fn-hist)))
+                   (when (eq (second rebuilt) :fault)
+                     (deferred :rebuild) (return-from pass))
+                   (fnn-call 'fn-owner-orcp-load-columns rows
+                             (fnn-core 'fn-owner-orcp-view-index (second rebuilt))
+                             (fnn-owner-core 'fn-owner-orcp-salt)
+                             (fnn-live-arena) cat hist)
+                   (fnn-reclaim-cut :rebuilt)
+                   (dotimes (round +fnn-reclaim-swap-rounds+)
+                     (let ((sw (fnn-owner-gated (service :control)
+                                 (let ((w (fnn-owner-core 'fn-owner-orcp-swap-word count frontier s
+                                                          (max 0 (1- (car *fnn-arena-off-mutex-readers*)))
+                                                          rebuilt)))
+                                   (when (eq w :swap)
+                                     ;; the commit point, then the swap, in one quantum
+                                     (fnn-state-checkpoint-install store stage)
+                                     (setq installed t)
+                                     (fnn-reclaim-cut :installed)
+                                     (fnn-owner-core 'fn-owner-orcp-swap rebuilt)
+                                     (fnn-install-stobj 'fn-cat cat)
+                                     (fnn-install-stobj 'fn-hist hist)
+                                     (setq swapped t)
+                                     ;; The swapped owner is the open's owner
+                                     ;; before its recovery barriers: :ready
+                                     ;; only after them, in this quantum
+                                     ;; (fn-orrd-a-post-after-the-swap-is-
+                                     ;; taken-as-before).
+                                     (fnn-owner-reclaim-barriers store))
+                                   w))))
+                       (case sw
+                         (:swap (return))
+                         (:delta (deferred :delta) (return-from pass))
+                         (:unbound (deferred :unbound) (return-from pass))
+                         ((:busy :readers)
+                          (when (= round (1- +fnn-reclaim-swap-rounds+))
+                            (deferred sw) (return-from pass))
+                          (sb-thread:thread-yield))
+                         (t (fnn-fault "owner returned a malformed swap word")))))
+                   (fnn-reclaim-cut :swapped)
+                   (setq word :installed)
+                   (let* ((covered (fnn-log-covered-indices store (first position)))
+                          (paths (mapcar (lambda (k) (fnn-segment-path-at store k)) covered))
+                          (dropped (fnn-log-drop store covered)))
+                     (fnn-err "RECLAIM installed records=~d reclaimed=~d dropped=~d ms=~d"
+                              count (length (second decision)) dropped (ms))
+                     (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths))
+                   (fnn-reclaim-cut :released)))))
+        (when counted (sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*)))
+        ;; Installed and not swapped: the durable publication is the new one
+        ;; and the served state the old one -- never served on: a recovery
+        ;; event (the service stops, the open reads the new publication).
+        (when (and installed (not swapped))
+          (fnn-indeterminate "reclaim swap failed after the install: recovery required"))
+        (when (and stage (not installed))
+          (ignore-errors (fnn-unlink stage)))
+        (when (and captured (not swapped))
+          (fnn-owner-gated (service :control)
+            (fnn-owner-core 'fn-owner-orcp-finish)))))
+    word))
+
 ;;; PKT-101: reopen `[log] path' when ACL2 says a SIGHUP is due
 ;;; (books/owner-log-reopen.lisp fn-olr-decide, through fn-owner-log-reopen).
 ;;; Append-only, created 0640, never through a symlink, as at run.  The

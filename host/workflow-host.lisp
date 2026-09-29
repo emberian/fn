@@ -83,13 +83,26 @@
  (value (fn-bprl-undertake-record
          (f-get-global 'fn-workflow-state state) work-id charge)))
 
+; PKT-869: the carry overlay the carry journal replayed (fn-workflow-carry-
+; install below), or the empty overlay when no carry journal is installed.
+(defun fn-workflow-carry-state-of (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-workflow-carry-state state)
+      (f-get-global 'fn-workflow-carry-state state)
+    (fn-bpcc-initial)))
+
+;; PRF-950: a receipt for a work the operator waived is refused by name
+;; (books/bp-carry-control.lisp fn-bpcc-receipt-gate): the waiver released
+;; its obligation.  With no carry journal installed the overlay is empty.
 (defun fn-workflow-receipt-record
   (octets txid generation authorizedp state)
  (declare (xargs :stobjs state :mode :program
                   :guard (fn-cbor-octet-listp octets)))
- (value (fn-bprl-receipt-intent-record
-         (f-get-global 'fn-workflow-state state)
-         octets txid generation authorizedp)))
+ (value (fn-bpcc-receipt-gate
+         (fn-workflow-carry-state-of state)
+         (fn-bprl-receipt-intent-record
+          (f-get-global 'fn-workflow-state state)
+          octets txid generation authorizedp))))
 
 (defun fn-workflow-release-record (receipt-id state)
  (declare (xargs :stobjs state :mode :program))
@@ -155,15 +168,10 @@
       (let ((state (f-put-global 'fn-workflow-effects nil state))) (value t))
     (value nil))))
 
+
 ; PKT-869: the carry control journal (domain :carry, JOURNAL/carry): its
 ; replay, preflight and apply over the workflow image installed first, and
 ; its frame (books/bp-carry-frame.lisp) with text fields as ACL2 strings.
-(defun fn-workflow-carry-state-of (state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (boundp-global 'fn-workflow-carry-state state)
-      (f-get-global 'fn-workflow-carry-state state)
-    (fn-bpcc-initial)))
-
 (defun fn-workflow-carry-install (records state)
   (declare (xargs :stobjs state :mode :program))
   (let ((answer (fn-bpcc-replay (f-get-global 'fn-workflow-state state) records)))
@@ -216,20 +224,29 @@
           (fn-bprq-plan (f-get-global 'fn-workflow-state state)
                         work-id attempt-id fn-arena))))
 
-; PKT-869: the operator's carry control.  VERB is :pause, :resume or :drop;
-; the answer is the exact record to publish, or (:refused REASON), ACL2's
-; (books/bp-carry-control.lisp fn-bpcc-refusal over the installed image).
-(defun fn-workflow-carry-record (verb work-id reason state)
+; PKT-869: the operator's carry control.  VERB is :pause, :resume, :drop or
+; :abandon (`drop WORK --abandon', PRF-950: the waiver, whose principal is
+; ACL2's rendering of the effective UID the host read); the answer is the
+; exact record to publish, or (:refused REASON), ACL2's
+; (books/bp-carry-control.lisp fn-bpcc-refusal, and for a waiver
+; fn-bpcc-waiver-refusal, which needs the pin held, over the installed image).
+(defun fn-workflow-carry-record (verb work-id reason uid state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((record (cond ((eq verb :pause) (list :carry "pause" work-id "-"))
                        ((eq verb :resume) (list :carry "resume" work-id "-"))
                        ((eq verb :drop) (list :carry "drop" work-id reason))
+                       ((eq verb :abandon)
+                        (list :waive "abandon" work-id reason
+                              (fn-bpcc-operator-principal uid)))
                        (t nil)))
-         (refusal (if record
-                      (fn-bpcc-refusal (f-get-global 'fn-workflow-state state)
-                                       (fn-workflow-carry-state-of state)
-                                       record)
-                    :malformed)))
+         (refusal (cond ((null record) :malformed)
+                        ((eq verb :abandon)
+                         (fn-bpcc-waiver-refusal (f-get-global 'fn-workflow-state state)
+                                                 (fn-workflow-carry-state-of state)
+                                                 record))
+                        (t (fn-bpcc-refusal (f-get-global 'fn-workflow-state state)
+                                            (fn-workflow-carry-state-of state)
+                                            record)))))
     (value (if refusal (list :refused refusal) (list :record record)))))
 
 ; PKT-869: `carry list' (WORK-ID nil) or `carry inspect WORK-ID': ACL2's

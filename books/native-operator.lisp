@@ -689,9 +689,9 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "tls")
          "usage: fn operator CONFIG tls reload (the running owner re-reads its tls_cert and tls_key and serves them to new connections; sessions already open keep theirs; refused by name, the old certificate still served, when the files do not load, the key does not match, the certificate is not valid now, or it drops a name the served one has)")
         ((equal subject "carry")
-         "usage: fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK REASON...} (the BP carry obligations in the FNWF workflow journal at the absolute path JOURNAL: list and inspect print each work's message, peer, status, Store pin, hold and last attempt; pause stops the requests for WORK (* every work) until resume; drop stops carrying WORK for REASON, final; the Store pin stays until the receipt releases it; the store must not be served)")
+         "usage: fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK [--abandon] REASON...} (the BP carry obligations in the FNWF workflow journal at the absolute path JOURNAL: list and inspect print each work's message, peer, status, Store pin, hold and last attempt; pause stops the requests for WORK (* every work) until resume; drop stops carrying WORK for REASON, final; the Store pin stays until the receipt releases it, or, with --abandon, the operator waives the obligation: the waiver (your uid, REASON) is durable and the Store pin is released now, refused unless the pin is held; the store must not be served)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd|consumer|carry} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd|consumer|carry} (fn operator CONFIG help COMMAND for one command's words; fn --version for the release and its source revision)")))
 
 ;; PRF-097: the peering verbs (specs/peering.md section 9).  Their words are
 ;; values and absolute paths; what the documents say, and whether they are
@@ -766,7 +766,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ; | drop WORK REASON...}' over the FNWF workflow journal at the absolute path
 ; JOURNAL, beside the configured store (books/bp-carry-control.lisp decides
 ; each record; host/native/bp-obligation.lisp executes).  A drop's REASON is
-; its words joined by one space.
+; its words joined by one space.  `drop WORK --abandon REASON...' plans the
+; verb :abandon, the operator's waiver (books/bp-carry-waiver.lisp, PRF-950).
 (defun fn-nop-chars-onto (cs acc)
   (declare (xargs :guard (and (character-listp cs) (character-listp acc))))
   (if (consp cs) (fn-nop-chars-onto (cdr cs) (cons (car cs) acc)) acc))
@@ -805,8 +806,16 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
            (fn-nop-result :accepted :plan "carry" config
                           (list :carry journal (if (equal verb "pause") :pause :resume)
                                 (car more) nil)))
+          ; PRF-950: `drop WORK --abandon REASON...', the operator's waiver.
           ((and (equal verb "drop") (consp more) (stringp (car more))
-                (consp (cdr more)) (true-listp more))
+                (consp (cdr more)) (equal (cadr more) "--abandon")
+                (consp (cddr more)) (true-listp more))
+           (fn-nop-result :accepted :plan "carry" config
+                          (list :carry journal :abandon (car more)
+                                (fn-nop-join-words-loop (cddr more) nil))))
+          ((and (equal verb "drop") (consp more) (stringp (car more))
+                (consp (cdr more)) (true-listp more)
+                (not (equal (cadr more) "--abandon")))
            (fn-nop-result :accepted :plan "carry" config
                           (list :carry journal :drop (car more)
                                 (fn-nop-join-words-loop (cdr more) nil))))

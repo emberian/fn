@@ -153,7 +153,7 @@ A profile flag or `--profile` there is a usage error (5) whose first line
 says so:
 
 ```
-under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. To raise a bound later: fn operator CONFIG store export DIR, reinstall, then fn operator CONFIG store import DIR --FIELD N; or delete the mission line from fn.toml to choose a profile at init
+under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. To raise a bound later: fn operator CONFIG policy set max-transactions|max-history-octets|max-article-octets N; or delete the mission line from fn.toml to choose a profile at init
 usage operator init MISSION-FIXES-PROFILE
 ```
 
@@ -165,8 +165,19 @@ bound on the data a store holds is a field `init` writes into `config.json`
 (format `fn-store-10`, `books/byte-store-frame.lisp`, the one store format:
 D34; a `fn-store-9` profile, the release before, is refused at the open by
 name with the way out, STO-028) and nothing
-rewrites in place; a different profile is a reinstall and an
-import. ACL2 fixes the relations between the fields
+rewrites it in place. The profile's digest is locked into the log: the
+genesis record in `journal/000000.log` carries the digest of config.json's
+frame, and every open refuses a config.json whose digest differs
+(`profile-digest`). `config.json` keeps the profile the store was born with.
+Three fields change live instead (STO-038, PRF-940, `books/limits-live.lisp`):
+`policy set max-transactions|max-history-octets|max-article-octets N`
+appends a `:set-limit` configuration event, durable like any other, and
+every open folds those events over the sealed profile identically
+(`fn-lim-effective`). The rest (`max-record-octets`, `max-open-suffix`,
+`max-config-generations` and the other fields) bound reading the
+configuration history or scanning the log, so they are fixed at `init`; a
+store that needs other values there is a new store. A lowered T lowers
+`max-open-suffix` with it. ACL2 fixes the relations between the fields
 (`fn-bs-profile-validp`) and the codec ceilings no field may pass, not the
 values.
 
@@ -282,10 +293,10 @@ small preset has no `--profile` word (PKT-581); name its fields:
 --max-history-octets 67108864` (reservation 8,579 MB at ea2cc5121); naming
 T alone keeps the default H and R, whose full store asks 11,542,339 MB and
 is refused (planning/evidence/init-reservation-2026-09-28.md has the table,
-and the synthesized fixtures' profiles). A store's bounds rise only through `store export`
-and `store import --FIELD N`; each command's launcher re-sizes the heap from
-the store it opens, and refuses by name one whose replay the machine cannot
-hold.
+and the synthesized fixtures' profiles). T, H and A change in place with
+`policy set` (below); each command's launcher sizes the heap from the
+effective profile of the store it opens, and refuses by name one whose
+replay the machine cannot hold.
 
 Every committed transaction (an article, a retention, keyring, consumer or
 topic event) takes one of T, and its record octets count against H. The owner
@@ -297,20 +308,28 @@ as a duplicate. The decision is ACL2's (`fn-sbud-verdict-at`,
 from the profile the owner read at open, the count of the store it carries and
 the record octets it carries (each record encoded once per owner process,
 `fn-sbud-bytes-used-is-kernel-sum`). A POST whose payload is longer than A is
-refused by name (`payload exceeds the modelled bound`). The profile cannot be
-raised by a configuration record: it bounds the work of opening the store
-(the log's replay is bounded by T and H)
-before any configuration record is read. Raising it is a reinstall (D34, fresh
-deploys): export the store, remove it, and import the archive with the raised
-field:
+refused by name (`payload exceeds the modelled bound`). T, H and A change in
+place, against a running node over the control socket or offline, with no
+data moved:
 
 ```text
-fn operator /path/to/fn.toml store export /srv/fn-archive
-exported records=7 configuration=1
-# stop the unit, remove the store directory, install the release
-fn operator /path/to/fn.toml store import /srv/fn-archive --max-transactions 1000000
-imported records=7 configuration=1
+fn operator /path/to/fn.toml policy set max-transactions 129
+accepted applied:max-transactions=129:heap=2649mb:served-now:no-data-moved
 ```
+
+ACL2 decides each change (`books/limits-live.lisp`). It is applied now when
+the new profile's heap figure fits the reservation the running process
+started with (reply word `applied:`); otherwise it is recorded and effective
+at the next start
+(`recorded:...:effective-at-next-start:takes-effect-at-the-next-restart:about-Ns:no-data-moved:next-start-heap=MBmb`;
+offline: `recorded limit max-transactions=N effective-at-next-start: takes effect at the next restart (about N s), no data moved; the next start reserves heap=MB MB`).
+It is refused by name, exit 1, for a number below the store's current use
+(`below-current-use: the store holds USE`), a profile the resolution refuses
+(`profile-invalid: REASON`), or a heap figure the machine cannot hold
+(`machine-cannot-hold-profile: heap=MB MB machine=MB MB`). Exit 0 is
+accepted. The checkpoint generation capacity is T + 1, so a live raise of T
+raises it too. The fields that bound the open itself (R, the open suffix,
+the configuration generations) are fixed at `init`.
 
 `store export` is a Store-history export, not a node backup. It carries the
 profile, the frontier (on format 9 the txid frontier the log derives), the
@@ -480,8 +499,8 @@ An expired article is served `430`/`423 article reclaimed`, its Message-ID is
 still refused as a duplicate and its numbers are never reused. Reclamation
 frees bytes, never transactions: `transactions-used` counts the records the
 tombstones keep, so a store whose transaction count is exhausted is not
-brought back by expiry (Q11; the way back today is `store export`, a fresh
-`init` with a larger `--max-transactions`, `store import`). `store checkpoint` publishes the checkpoint alone (the same
+brought back by expiry (Q11; the way back is
+`policy set max-transactions N` with a larger N). `store checkpoint` publishes the checkpoint alone (the same
 rotate and drop). `store ROOT digest` opens the store read-only (refused while an
 owner runs) and prints ACL2's BLAKE3 digests of the state the open folded
 (`fn-store-sn-replay-digest-report`, host/store-node-host.lisp, over
@@ -693,8 +712,8 @@ accepted operator health
 |---|---|---|---|
 | 20 | `fenced` | a clone fence awaits its incarnation rollover (`reason=clone-fence`); a process holds the store's writer lock and nothing answers on the configured control socket yet (`reason=starting`: an owner recovering its store before it listens, or an offline command); a process holds the lock and no control socket is configured, or the lock could not be probed (`reason=store-held`); or the socket accepted and did not answer (`reason=owner-unanswering`) | `starting`: wait and ask again, `status` answers once the owner listens; otherwise find the process (`fuser store/writer.lock`); a clone finishes its rollover; never delete the lock |
 | 21 | `exhausted` | transactions used reached the transaction-id codec ceiling (2^32 - 1), or the retention ledger's reserved charge its uint32 count | terminal for this store format: no profile raises it |
-| 22 | `unqualified-profile` | the persisted profile is not valid (`fn-bs-profile-validp`), or it is the development profile. The line prints the store's format (`format=9` for the record log) | reinstall: `store export`, then `store import --FIELD N` (or `init --profile scale`) |
-| 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default <!--limit:headroom-min-percent-->10<!--/limit-->) on transactions, history octets or retention charge | a reinstall with a larger field (`store export`, `store import --FIELD N`), `capacity`, or release obligations |
+| 22 | `unqualified-profile` | the persisted profile is not valid (`fn-bs-profile-validp`), or it is the development profile. The line prints the store's format (`format=9` for the record log) | the development profile: `policy set max-transactions\|max-history-octets\|max-article-octets N`, or `init --profile scale` for a new store; a profile of another format or release: export with the release that made it and import here |
+| 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default <!--limit:headroom-min-percent-->10<!--/limit-->) on transactions, history octets or retention charge | `policy set max-transactions\|max-history-octets N`, `capacity`, or release obligations |
 | 24 | `no-route` | forwarding obligations are held and the configuration has no `bp-route` | `bp-route add PATTERN BOUNDARY` |
 | 25 | `stranded-transfer` | an outbound feed entry was dropped at its retry bound; nothing re-offers it | fix the peer, then re-feed the article |
 | 26 | `unavailable-peer` | an outbound peer has pending articles and no open connection, or it keeps deferring them (`deferred=N`: a full peer answers IHAVE/TAKETHIS `436` with `reason=unaffordable` in its log; planning/evidence/friend-blockers-2026-09-27.md, PKT-711), or its outbound feed queue is saturated (`saturated=N`: the queue holds only undelivered articles, and while one of the post's target peers has no room every POST is refused `441 ... (feed-queue-full)` and a relayed article is answered `436`; PRF-335) | check the peer's host and port (`peer list`), its reachability, and ask its operator whether its store is full |
