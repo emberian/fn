@@ -90,11 +90,11 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
 1. Open a shell as the service account, in the node folder:
 
    ```sh
-   sudo -u fn sh -c 'cd /var/lib/fn && PATH=/opt/fn/bin:$PATH exec sh'
+   sudo -u fn sh -c 'cd /var/lib/fn && PATH=/opt/fn/current/bin:$PATH exec sh'
    ```
 
    On OpenBSD (no `doas` is set up on a fresh system):
-   `su -s /bin/sh _fn -c 'cd /var/fn && PATH=/usr/local/fn/bin:$PATH exec sh'`.
+   `su -s /bin/sh _fn -c 'cd /var/fn && PATH=/usr/local/fn/current/bin:$PATH exec sh'`.
 
 2. Write the settings file. Put your server's own address after `--host`
    (`0.0.0.0` is refused: name the address you mean) and the port after
