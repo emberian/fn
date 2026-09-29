@@ -304,5 +304,56 @@ class RealLoadTests(unittest.TestCase):
         self.assertEqual(code, 0, out.getvalue())
 
 
+class DeclaredInterfaceTests(unittest.TestCase):
+    """The declared-interface step (obstructions-7 item 59): every declared
+    entry a function of the world, every dispatched entry declared, counts per
+    touched host file."""
+
+    DECLS = [{"name": "fn-a", "source": "host/interfaces.lisp", "line": 3},
+             {"name": "fn-gone", "source": "host/interfaces.lisp", "line": 4},
+             {"name": "create-st", "source": "host/interfaces.lisp", "line": 5}]
+    READING = {"dispatched": {"fn-a": {"host/x.lisp"}, "fn-b": {"host/x.lisp", "host/y.lisp"}},
+               "direct": {}, "defined": {"fn-a"}, "entries": 2}
+
+    def test_world_forms_ask_acl2_about_the_declared_functions(self):
+        names = host_check.interface_names(self.DECLS)
+        self.assertEqual(names, ["fn-a", "fn-gone"])
+        forms = host_check.interface_world_forms(names)
+        self.assertIn("function-symbolp", forms)
+        self.assertIn("'(fn-a fn-gone)", forms)
+        self.assertIn(host_check.IFACE_TAG, forms)
+        self.assertEqual(host_check.interface_world_forms([]), "")
+
+    def test_the_world_answer_is_read_back(self):
+        tag = host_check.IFACE_TAG
+        self.assertEqual(host_check.interface_world_undefined(f"x\n{tag} (FN-GONE |fn-q|)\n"),
+                         ["fn-gone", "fn-q"])
+        self.assertEqual(host_check.interface_world_undefined(f"{tag} NIL\n"), [])
+        # Never ran (the prefix failed first): not "no finding".
+        self.assertIsNone(host_check.interface_world_undefined("ACL2 Error\n"))
+
+    def test_report_counts_per_touched_file_and_fails_stale_and_undeclared(self):
+        lines, findings = host_check.interface_report(
+            self.DECLS, self.READING, ["the raw host dispatches fn-b (host/x.lisp) and no "
+                                       "definterface declares it"], ["host/x.lisp"], ["fn-gone"])
+        self.assertIn("host/x.lisp: 2 dispatched, 1 declared, 1 undeclared (fn-b)", "\n".join(lines))
+        self.assertIn("world: 1 declared name(s) not a function", lines[0])
+        self.assertEqual(len(findings), 2)
+        self.assertTrue(any("fn-gone is declared" in f and "not a function" in f
+                            for f in findings))
+        quiet, none = host_check.interface_report(self.DECLS, self.READING, [], [], [])
+        self.assertEqual(none, [])
+        self.assertIn("touches no host file", "\n".join(quiet))
+        unevaluated, _ = host_check.interface_report(self.DECLS, self.READING, [], None, None)
+        self.assertIn("world: not evaluated", unevaluated[0])
+        self.assertIn("host/y.lisp: 1 dispatched, 0 declared", "\n".join(unevaluated))
+
+    def test_load_check_puts_the_world_half_in_the_session_and_its_answer_in_findings(self):
+        import inspect
+        source = inspect.getsource(host_check.load_check)
+        self.assertIn("interface_world_forms(interface_names(declared))", source)
+        self.assertIn("interface_step(interface_world_undefined(output)", source)
+
+
 if __name__ == "__main__":
     unittest.main()

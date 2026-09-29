@@ -4,6 +4,7 @@
     python3 tools/host_check.py                 # both images' ld prefixes, build order
     python3 tools/host_check.py --load          # the raw files, build order, bare ACL2
     python3 tools/host_check.py --tables        # static: global hash tables
+    python3 tools/host_check.py --interfaces    # static: declared vs dispatched entries
     python3 tools/host_check.py --world         # static: counterparts in the image world
     python3 tools/host_check.py --alone FILE... # one file alone (a diagnosis, not a gate)
 
@@ -632,12 +633,22 @@ def certificate_trouble(output: str) -> str:
 def load_check(acl2: Path, files: list[str], timeout: int,
                log_dir: Path | None = None, world: list[object] | None = None,
                world_note: str = "BARE ACL2", require_world: bool = False,
-               bare_acl2: Path | None = None, reinstall: bool = True) -> int:
+               bare_acl2: Path | None = None, reinstall: bool = True,
+               declared: list[dict] | None = None) -> int:
     import tempfile
+    if declared is None:
+        declared = []
+        if world is not None:
+            try:
+                import interface_emit
+                declared = interface_emit.declarations(ROOT)
+            except Exception as error:  # the step below reports it
+                print(f"host_check --load: interfaces unread ({error})", flush=True)
     with tempfile.TemporaryDirectory(prefix="fn-host-load-") as scratch:
         driver = Path(scratch) / "driver.lsp"
         driver.write_text(load_driver(files), encoding="utf-8")
-        session = ((world_session(world) if world is not None else "")
+        session = ((world_session(world) + interface_world_forms(interface_names(declared))
+                    if world is not None else "")
                    + "(defttag :fn-host-load-check)\n"
                    f'(progn! (set-raw-mode t) (load "{driver}"))\n(good-bye)\n')
         started = time.monotonic()
@@ -666,7 +677,8 @@ def load_check(acl2: Path, files: list[str], timeout: int,
                   + (f" -- {why}" if why else "") + "; retrying", flush=True)
             if not why:
                 return load_check(acl2, files, timeout, log_dir, world, world_note,
-                                  require_world, bare_acl2, reinstall=False)
+                                  require_world, bare_acl2, reinstall=False,
+                                  declared=declared)
         if trouble:
             if log_dir is not None:
                 (log_dir / "load-world.log").write_text(output)
@@ -687,6 +699,8 @@ def load_check(acl2: Path, files: list[str], timeout: int,
             findings.insert(0, "world: the build's ACL2-mode prefix did not reach its end "
                                "marker (see the transcript's tail)")
     print(f"host_check --load: WORLD {world_note}")
+    findings += interface_step(interface_world_undefined(output) if world is not None else None,
+                               echo=False)
     for finding in findings:
         print(f"FAIL {finding}")
     if not completed:
@@ -702,6 +716,115 @@ def load_check(acl2: Path, files: list[str], timeout: int,
           f"{' (not loaded here)' if world is None else ''}; {counts['warnings']} other "
           "compiler warnings")
     return 1 if findings or not completed else 0
+
+
+# --- the DECLARED-INTERFACE step (obstructions-7 item 59) ----------------
+#
+# Every entry host/interfaces.lisp declares must be a function of the world,
+# and every entry the raw host dispatches must be declared.  A stale
+# declaration (fn-store-log-next-txid-of-events, deleted by PRF-976) surfaced
+# only at the image build and cost limits-live-6 a run.  The static half is
+# tools/interface_emit.py --check's findings; the world half asks ACL2, in
+# the --load session over the certified umbrella, which declared names are
+# not function symbols there.  Counts are printed per host file this branch
+# touched (against origin/dev), so a lane sees its own files first.
+
+IFACE_TAG = "HOSTCHECK-IFACE-UNDEFINED"
+
+
+def interface_names(decls: list[dict]) -> list[str]:
+    """The declared names a world check asks about (stobj creators aside)."""
+    return sorted({d["name"] for d in decls if not d["name"].startswith("create-")})
+
+
+def interface_world_forms(names: list[str]) -> str:
+    """ACL2 forms printing the declared names that are not functions here."""
+    if not names:
+        return ""
+    quoted = " ".join(names)
+    return ("(defun fn-hostcheck-undefined (names w)\n"
+            "  (declare (xargs :mode :program))\n"
+            "  (cond ((endp names) nil)\n"
+            "        ((function-symbolp (car names) w) (fn-hostcheck-undefined (cdr names) w))\n"
+            "        (t (cons (car names) (fn-hostcheck-undefined (cdr names) w)))))\n"
+            f'(value-triple (cw "{IFACE_TAG} ~x0~%" (fn-hostcheck-undefined \'({quoted}) (w state))))\n')
+
+
+def interface_world_undefined(output: str) -> list[str] | None:
+    """The names the world session reported undefined; None if it never ran."""
+    for line in output.splitlines():
+        if IFACE_TAG + " " in line:
+            text = line.split(IFACE_TAG + " ", 1)[1].strip()
+            if text.upper() == "NIL":
+                return []
+            return [name.lower().strip("|") for name in text.strip("()").split()]
+    return None
+
+
+def touched_host_files(root: Path = ROOT, base: str = "origin/dev") -> list[str] | None:
+    """Host files this branch changed against BASE (None without git)."""
+    try:
+        merge = subprocess.run(["git", "merge-base", "HEAD", base], cwd=root,
+                               capture_output=True, text=True, timeout=30)
+        if merge.returncode:
+            return None
+        changed = subprocess.run(["git", "diff", "--name-only", merge.stdout.strip(), "--",
+                                  "host/"], cwd=root, capture_output=True, text=True,
+                                 timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if changed.returncode:
+        return None
+    return sorted(line for line in changed.stdout.splitlines() if line.endswith(".lisp"))
+
+
+def interface_report(decls: list[dict], reading: dict, static: list[str],
+                     touched: list[str] | None,
+                     undefined: list[str] | None) -> tuple[list[str], list[str]]:
+    """(summary lines, findings) of the declared-interface step."""
+    declared = {d["name"] for d in decls}
+    findings = [f"interfaces: {one}" for one in static]
+    if undefined:
+        findings += [f"interfaces: {name} is declared in host/interfaces.lisp and is not a "
+                     "function of the certified world" for name in sorted(undefined)]
+    lines = [f"host_check interfaces: {len(decls)} declared; "
+             f"{sum(1 for n in reading['dispatched'] if n in declared)} of the raw host's "
+             f"{len(reading['dispatched'])} dispatched entries declared; "
+             + ("world: not evaluated (no certified umbrella)" if undefined is None
+                else f"world: {len(undefined)} declared name(s) not a function")
+             + f"; {len(findings)} finding(s)"]
+    if touched is None:
+        lines.append("host_check interfaces: no git base here; per-file counts over every "
+                     "dispatching file")
+        files = sorted({f for fs in reading["dispatched"].values() for f in fs})
+    else:
+        files = touched
+        if not touched:
+            lines.append("host_check interfaces: this branch touches no host file")
+    for relative in files:
+        names = sorted(n for n, fs in reading["dispatched"].items() if relative in fs)
+        missing = [n for n in names if n not in declared]
+        lines.append(f"  {relative}: {len(names)} dispatched, {len(names) - len(missing)} "
+                     f"declared, {len(missing)} undeclared"
+                     + (f" ({', '.join(missing[:8])}{' ...' if len(missing) > 8 else ''})"
+                        if missing else ""))
+    return lines, findings
+
+
+def interface_step(undefined: list[str] | None = None, root: Path = ROOT,
+                   echo: bool = True) -> list[str]:
+    """Print the step's report; return its findings."""
+    import interface_emit
+    decls = interface_emit.declarations(root)
+    reading = interface_emit.host_reading(root)
+    static = interface_emit.findings(decls, reading, root)
+    lines, findings = interface_report(decls, reading, static, touched_host_files(root),
+                                       undefined)
+    for line in lines:
+        print(line)
+    for finding in findings if echo else ():
+        print(f"FAIL {finding}")
+    return findings
 
 
 # --- --tables: unsynchronised global mutable tables ----------------------
@@ -1318,6 +1441,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="static: every name a raw host/native file passes to fnn-core* "
                              "or fnn-call is defined in the world of the image that loads it "
                              "(build.lisp, build-dtn.lisp; FILEs name other build scripts)")
+    parser.add_argument("--interfaces", action="store_true",
+                        help="static: the declared-interface step (interface_emit --check's "
+                             "findings, counts per touched host file); --load adds the world half")
     parser.add_argument("--forward", action="store_true",
                         help="static: a call in an ld host file of a name only a later "
                              "form of the ld files defines (no ACL2; --load runs it too)")
@@ -1333,6 +1459,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.tables:
         return tables_main(args.files)
+    if args.interfaces:
+        return 1 if interface_step() else 0
     if args.world:
         return world_main(args.files)
     if args.forward or args.load:
