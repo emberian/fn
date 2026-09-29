@@ -17272,6 +17272,23 @@
           "name": "fn-owner-orcp-rebuild-establishes-retain-carry"
         }
       ]
+    },
+    {
+      "id": "PRF-1057",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pio-completion-publishes-only-the-issued-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-cancellation-retains-worker-ownership"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-close-waits-for-every-worker"
+        }
+      ]
     }
   ]
 }

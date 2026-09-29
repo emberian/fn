@@ -17735,6 +17735,36 @@
       "events": [
         "fn-owner-orcp-rebuild-establishes-retain-carry"
       ]
+    },
+    {
+      "id": "PRF-1057",
+      "title": "Issued cold page reads retain identity and worker ownership through cancellation and late completion",
+      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed I/O completion is required before settlement. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-941",
+        "PRF-994"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/page-read-ownership.lisp",
+        "tests/acl2/page-read-ownership-tests.lisp",
+        "host/native/extent.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_page_io.py"
+      ],
+      "events": [
+        "fn-pio-completion-publishes-only-the-issued-identity",
+        "fn-pio-cancellation-retains-worker-ownership",
+        "fn-pio-close-waits-for-every-worker"
+      ],
+      "progress_note": "Folded definitions guard-verified and all 16 forms admitted in clean REPL pio-clean on hbox; teeth evaluated there. Certification and matching native image pending runner union; no pass claimed."
     }
   ]
 }

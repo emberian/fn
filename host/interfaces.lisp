@@ -4300,6 +4300,22 @@
 
 ;; books/payload-extent-read.lisp
 
+;; books/page-read-ownership.lisp (PRF-1057).
+(definterface fn-pio-issue
+  :class :common-lisp-compliant
+  :kinds ((next natp) (cid natp) (file natp) (eoff natp) (elen natp) (trailer natp)))
+(definterface fn-pio-token
+  :class :common-lisp-compliant
+  :kinds ((r true-listp)))
+(definterface fn-pio-cancel
+  :class :common-lisp-compliant)
+(definterface fn-pio-complete
+  :class :common-lisp-compliant
+  :keystones ((fn-pio-completion-publishes-only-the-issued-identity :via fn-pio-complete)))
+(definterface fn-pio-file-clear-p
+  :class :common-lisp-compliant
+  :keystones ((fn-pio-close-waits-for-every-worker :via fn-pio-file-clear-p)))
+
 ; host/native/io.lisp dispatches it (lane extent-identity).
 (definterface fn-arx-attach-trailers-buffer
   :class :common-lisp-compliant

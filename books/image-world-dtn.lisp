@@ -116,6 +116,7 @@
 (include-book "store-recover-stream")
 (include-book "payload-commit-extent")
 (include-book "payload-extent-read")
+(include-book "page-read-ownership")
 (include-book "payload-lz-append")
 (include-book "payload-lz-replay")
 (include-book "deflate-pool")

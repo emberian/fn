@@ -172,6 +172,7 @@
 (include-book "../../books/store-recover-stream")
 (include-book "../../books/payload-commit-extent")
 (include-book "../../books/payload-extent-read")
+(include-book "../../books/page-read-ownership")
 (include-book "../../books/payload-lz-append")
 (include-book "../../books/payload-lz-replay")
 (include-book "../../books/deflate-pool")

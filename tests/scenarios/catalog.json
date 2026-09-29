@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6229,6 +6229,41 @@
         "tests/test_native_snapshot_bless.py"
       ],
       "scope_note": "Stopped-copy fixtures explicitly supply SNAPSHOT. No running snapshot producer or atomic-capture claim."
+    },
+    {
+      "id": "SCN-216",
+      "title": "Cold pread cancellation, retired file ownership and late completion",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017"
+      ],
+      "steps": [
+        "Issue and hold an actual cold pread off both locks; release within deadline and read original article.",
+        "Issue another cold pread, observe 403 deadline, disconnect the client, open a replacement request and install a reclaim that retires the old file.",
+        "Observe close-held for that issued file before release; deliver success, injected stale and duplicate completion variants; assert no publish after cancellation and eventual descriptor close.",
+        "Deliver short/error after timeout and assert named store fault and fault exit rather than an unobserved detached exception."
+      ],
+      "expected": [
+        "Matching verified success advances the original request with exact article bytes.",
+        "Cancellation retains buffer/fd ownership; retirement cannot close the fd while worker still runs.",
+        "Late completion never delivers into the replacement request; duplicate/stale has no second publication or settlement.",
+        "Late error/short faults the store, with no fabricated article and no uncertain/absent classification."
+      ],
+      "implementation": {
+        "test": "tests.test_native_page_io",
+        "cases": [
+          "PageIOTests.test_matching_success_publishes_and_advances_the_original_request",
+          "PageIOTests.test_cancel_retire_and_reuse_keep_the_old_fd_until_actual_completion",
+          "PageIOTests.test_a_late_short_or_error_is_settled_and_fences_the_store"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_page_io.py",
+        "tests/acl2/page-read-ownership-tests.lisp"
+      ],
+      "execution_scope": "Pending matching union image; ownership only, no funded worker/buffer admission claim."
     }
   ]
 }
