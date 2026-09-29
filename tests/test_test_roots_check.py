@@ -21,6 +21,15 @@ class TestRootsCheck(unittest.TestCase):
             self.assertEqual(test_roots_check.orphans(
                 root, ["tests/acl2/a-tests", "tests/acl2/b-tests"]), [])
 
+    def test_a_known_red_book_is_not_an_orphan_and_carries_its_reason(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "tests/acl2").mkdir(parents=True)
+            (root / "tests/acl2/accounts-wire-tests.lisp").write_text("")
+            self.assertEqual(test_roots_check.orphans(root, []), [])
+        for reason in test_roots_check.KNOWN_RED.values():
+            self.assertIn("certify-", reason)
+
     def test_this_tree_has_no_orphan(self):
         self.assertEqual(test_roots_check.orphans(), [])
 
