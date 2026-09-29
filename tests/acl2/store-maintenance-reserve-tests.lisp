@@ -90,14 +90,16 @@
 ; 400 groups, figure 266 251 since lane membership-budget: its record's
 ; 138 251 and 400 memberships at 320).  Under packet 1's H of 250 000 the
 ; crosspost never fits; these witnesses take the same profile with
-; H = 500 000.
-(defconst *smt-p* (fn-bs-profile-set-fields *pmt-old* '((2 . 500000))))
-(defconst *smt-h2* 500000)
+; H = 1 000 000 (500 000 before lane heap-pool: the gate now charges the
+; header at its worst beside the record figure, 8 x 32 768 + 3 000).
+(defconst *smt-p* (fn-bs-profile-set-fields *pmt-old* '((2 . 1000000))))
+(defconst *smt-h2* 1000000)
 (assert-event (fn-bs-profile-admittedp *smt-p*))
 (defconst *smt-fig* (fn-sbud-article-figure 32768 400))
 (assert-event (equal *smt-fig* 266251))
 (assert-event (equal (fn-smr-article-verdict-at *pmt-old* 1 0 32768 400) :unaffordable))
-(defconst *smt-safe* (- (- *smt-h2* *smt-fig*) 4096))
+(defconst *smt-gate* (fn-sbud-article-gate-figure 32768 400))
+(defconst *smt-safe* (- (- *smt-h2* *smt-gate*) 4096))
 ; Reachable witness: at H - figure - 4 096 the article is admitted by both
 ; gates, the served budget is the profile's, and after the record the
 ; reservation holds.
@@ -116,45 +118,52 @@
       (equal (fn-smr-article-budget-for *smt-p* 1 (1+ *smt-safe*) *pmt-record*) 0)
       (equal (fn-smr-article-verdict-at *smt-p* 1 (1+ *smt-safe*) 32768 400)
              :unaffordable)))
-; Tooth, the verdict / the staged prepare: a 32 768-octet article in one
-; group (*sbat-one*) at H - figure: the old gates admit it and after it no
-; release fits.  (The 400-group article's memberships now leave the
-; release's room: 128 000 octets charged, none stored.)
-(defconst *smt-one-fig* (fn-sbud-article-figure 32768 1))
-(defconst *smt-one-len* (len (fn-record-encode-impl *sbat-one*)))
+; Tooth, the verdict / the staged prepare: a 2-octet article in one group
+; at H - its gate figure: the old gates admit it and after it no release
+; fits.  (Lane heap-pool: a larger article's header figure leaves the
+; release's room past its record, as the 400-group article's memberships
+; do: 128 000 octets charged, none stored.)
+(defconst *smt-small*
+  (fn-record-make 1 1 1 "<smt-small@example.invalid>" (list 65 65) (list "fn.test")
+                  "archive-a" "content-a" "release-a" 9 841000000))
+(defconst *smt-one-fig* (fn-sbud-article-gate-figure 2 1))
+(defconst *smt-one-len* (len (fn-record-encode-impl *smt-small*)))
 (assert-event
- (and (equal (fn-sbud-article-verdict-at *pmt-old* 1 (- *smt-h* *smt-one-fig*) 32768 1)
+ (and (equal (fn-sbud-article-verdict-at *pmt-old* 1 (- *smt-h* *smt-one-fig*) 2 1)
              :admissible)
       (not (fn-smr-roomp *pmt-old* 2 (+ (- *smt-h* *smt-one-fig*) *smt-one-len*)))))
 (must-fail-checked
  (defthm smt-prepare-without-the-staging
    (fn-smr-roomp *pmt-old* 2 (+ (- *smt-h* *smt-one-fig*) *smt-one-len*))
    :rule-classes nil))
-; Tooth, narrowness: the record in no group with every integer field at
-; 2^32 (*sbat-tight-charge*, 66 622 octets against its figure 66 619;
-; a one-group record's membership charge now covers its widening): admitted
-; by the reserving verdict at H - 66 619 - 4 096, and the reservation is
-; lost.
+; Narrowness at the reserving gate (lane heap-pool): the record in no group
+; with every integer field at 2^32 (*sbat-tight-charge*, 66 622 octets, 3
+; past its record figure 66 619) is within its gate figure, and the
+; reservation holds after it (books/store-budget-article.lisp
+; fn-sbud-article-gate-figure-bounds-every-record: from two payload octets on
+; the gate needs no narrowness).  Its tooth stands against the record figure
+; (store-budget-article-tests).
 (assert-event
- (let ((r *sbat-tight-charge*) (b (- (- *smt-h* 66619) 4096)))
-   (and (equal (fn-smr-article-verdict-at *pmt-old* 1 b 65536 0) :admissible)
+ (let ((r *sbat-tight-charge*)
+       (b (- (- *smt-h2* (fn-sbud-article-gate-figure 65536 0)) 4096)))
+   (and (equal (fn-smr-article-verdict-at *smt-p* 1 b 65536 0) :admissible)
         (fn-record-widep r)
         (<= (len (fn-record-payload r)) 65536)
         (<= (len (fn-record-groups r)) 0)
-        (not (fn-smr-roomp *pmt-old* 2 (+ b (len (fn-record-encode r))))))))
+        (fn-smr-roomp *smt-p* 2 (+ b (len (fn-record-encode r)))))))
 ; Tooth, the payload count: asked for (0, 1) the one-group article overflows.
 (assert-event
  (let ((b (- (- *smt-h* (fn-sbud-article-figure 0 1)) 4096)))
    (and (equal (fn-smr-article-verdict-at *pmt-old* 1 b 0 1) :admissible)
         (<= (len (fn-record-groups *sbat-one*)) 1)
-        (not (fn-smr-roomp *pmt-old* 2 (+ b *smt-one-len*))))))
-; Tooth, the group count: asked for (32 768, 1) the 400-group article
-; overflows (H = 500 000).
+        (not (fn-smr-roomp *pmt-old* 2 (+ b (len (fn-record-encode-impl *sbat-one*))))))))
+; Tooth, the group count: asked for (2, 1) the 2-octet article in 400 groups
+; (*sbat-many*) overflows (H = 1 000 000).
 (assert-event
- (let ((b (- (- *smt-h2* (fn-sbud-article-figure 32768 1)) 4096)))
-   (and (equal (fn-smr-article-verdict-at *smt-p* 1 b 32768 1) :admissible)
-        (<= (len (fn-record-payload *pmt-record*)) 32768)
-        (not (fn-smr-roomp *smt-p* 2 (+ b *pmt-len*))))))
+ (let ((b (- (- *smt-h2* (fn-sbud-article-gate-figure 2 1)) 4096)))
+   (and (equal (fn-smr-article-verdict-at *smt-p* 1 b 2 1) :admissible)
+        (<= (len (fn-record-payload *sbat-many*)) 2)
+        (not (fn-smr-roomp *smt-p* 2 (+ b (len (fn-record-encode *sbat-many*))))))))
 ; A non-natural BYTES-USED is refused by the budget itself (the history gate
 ; reads a natural committed sum), so the prepare keystone needs no such
 ; hypothesis: at -1 000 000 the budget is 0.

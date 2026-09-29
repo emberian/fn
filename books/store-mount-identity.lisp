@@ -1129,7 +1129,7 @@
                  (fn-smid-describe (nth 3 verdict))
                  (fn-smid-text " ")
                  (fn-smid-unsafe-text (nth 2 verdict))
-                 (fn-smid-text "; this store requires durable storage (storage-require-durable): move it to a durable mount, or run `store rebind-filesystem --storage-require-durable off` to accept the risk (docs/operator.md, Storage requirements)")))
+                 (fn-smid-text "; this store requires durable storage (storage-require-durable): move it to a durable mount, or run `store rebind-filesystem --storage-require-durable off` to accept the risk (docs/operator.md, Choose the disk for the store)")))
         ((equal (nth 1 verdict) :filesystem-record-invalid)
          (append (fn-smid-text "store filesystem record invalid: filesystem-identity.fnmi does not decode (found ")
                  (fn-smid-describe (nth 2 verdict))
@@ -1207,7 +1207,7 @@
               (fn-smid-describe (fn-smid-observed-identity observation))
               (fn-smid-text " ")
               (fn-smid-unsafe-text reason)
-              (fn-smid-text " (docs/operator.md, Storage requirements)")))))
+              (fn-smid-text " (docs/operator.md, Choose the disk for the store)")))))
 
 ; KEYSTONE (PRF-954).  The durability warning the host prints (host/native/
 ; io.lisp fnn-filesystem-durability-warn, at the owner's start and by status

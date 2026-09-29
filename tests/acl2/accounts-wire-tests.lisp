@@ -179,12 +179,21 @@
                      (not (fn-auth-session-handshakingp s))
                      (null (fn-auth-session-subject s))
                      (fn-auth-sessionp s))))
-; The waiting hypothesis removed: a session that is not holding answers the
-; event with nothing (the owner cannot make a 281 out of thin air).
-(assert-event (and (fn-auth-sessionp *awt-381*)
-                   (not (fn-auth-redeem-waitp *awt-381*))
-                   (null (fn-post-result-effects
-                          (in-arena-awt-step *sr-arena* *awt-381* '(:account-outcome :bound))))))
+; The waiting hypothesis removed: a session that is not holding gets no 281
+; for a :bound word (the owner cannot make a 281 out of thin air).  The step
+; routes the outcome event only to a waiting session
+; (fn-auth-redeem-outcome-is-inert-unless-it-answers is the outcome's own
+; inertness); any other session hands it to the peer step, which answers an
+; event it does not know with 501 and leaves the session as it was.
+(assert-event
+ (let ((r (in-arena-awt-step *sr-arena* *awt-381* '(:account-outcome :bound))))
+   (and (fn-auth-sessionp *awt-381*)
+        (not (fn-auth-redeem-waitp *awt-381*))
+        (not (equal (fn-post-result-effects r)
+                    (awt-single "281 account bound; authenticate with AUTHINFO on a new connection")))
+        (equal (fn-post-result-effects r) (awt-single "501 syntax error"))
+        (equal (fn-auth-session-pending (fn-post-result-session r))
+               (fn-auth-session-pending *awt-381*)))))
 ; A STARTTLS handshake is not a redemption hold: the outcome event does not
 ; answer it (fn-auth-handshaking-session-serves-nothing).
 (assert-event (and (fn-auth-session-handshakingp *awt-held*)

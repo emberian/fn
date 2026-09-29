@@ -363,6 +363,25 @@
 (defconst *st-si4* (wsst-step *cfg* nil *flow-si3* '(:reply) (wsst-crlf (list "381 more" "481 no"))))
 (assert-event (and (equal (nth 1 *st-si4*) nil) (equal (car (car *st-si4*)) :close)))
 
+; fn-web-step-admits-no-session-but-by-281 (KEYSTONE, PRF-339, the step as
+; the host calls it).  Reached positive witness: carol's sign-in answered
+; 481 -- the session the 281 would have made has a new token, no 281 made
+; it, and it is not in the step's table.
+(assert-event (and (not (member-equal (fn-wss-s-token *new-s*) (fn-wss-tokens nil)))
+                   (not (wsst-bound *new-s* *flow-si3* '(:reply)
+                                    (wsst-crlf (list "381 more" "481 no"))))
+                   (not (member-equal *new-s* (nth 1 *st-si4*)))))
+; Removal witness (the token is new): after a GET carol's held session
+; carries no 281 and is in the table.
+(assert-event (and (not (wsst-bound (car (nth 1 *st-g*)) nil *ev-g* (wsst-get "/g?name=local.general")))
+                   (member-equal (fn-wss-s-token (car (nth 1 *st-g*))) (fn-wss-tokens *ss*))
+                   (member-equal (car (nth 1 *st-g*)) (nth 1 *st-g*))))
+; Removal witness (no 281 made it): the 281 step's new session has a new
+; token and is in the table.
+(assert-event (and (not (member-equal (fn-wss-s-token *new-s*) (fn-wss-tokens nil)))
+                   (wsst-bound *new-s* *flow-si3* '(:reply) *reply-281*)
+                   (member-equal *new-s* (nth 1 *st-si3*))))
+
 ; --- KEYSTONE fn-wss-body-cannot-end-the-article (no hypotheses): the
 ; witness is the posted body above; MUTATION witness (labelled): the
 ; decoded text un-stuffed has the line "." that would end the article.

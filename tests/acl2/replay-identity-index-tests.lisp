@@ -462,3 +462,36 @@
 (assert-event (equal (fn-rii-kbuild-releases nil) nil))
 (assert-event (equal (fn-rii-kbuild-pins (make-list 50000 :initial-element (car *rii-t-od-pins*)) nil)
                      (fn-rii-id-put "forward-1" nil)))
+
+; -----------------------------------------------------------------------------
+; The open parses no retained payload (lane incremental-finalize, 2026-09-29).
+; fn-rii-sco-finalize-configured built the opened Store's index with
+; fn-stx-index-of-store over the whole store: its :exec loop parsed every
+; retained article's payload against the empty keyring, for the index
+; fn-stx-index-of-store-without-a-keyring proves empty.  The theorem
+; fn-rii-opened-index-is-empty gives the value; this checks the executed
+; path: the callee closure of the host's open entry, over every definition's
+; body (both branches of every mbe), reaches none of the walk's functions.
+(defun rii-t-callee-closure (fns seen wrld)
+  (declare (xargs :mode :program))
+  (cond ((endp fns) seen)
+        ((member-eq (car fns) seen) (rii-t-callee-closure (cdr fns) seen wrld))
+        (t (let ((body (getpropc (car fns) 'unnormalized-body nil wrld)))
+             (rii-t-callee-closure (append (all-fnnames body) (cdr fns))
+                                   (cons (car fns) seen) wrld)))))
+
+(assert-event
+ (let ((cl (rii-t-callee-closure '(fn-rii-sco-extend-open) nil (w state))))
+   (and (member-eq 'fn-rii-sco-finalize-configured cl)
+        (not (member-eq 'fn-stx-index-of-store cl))
+        (not (member-eq 'fn-stx-index-of-store-loop cl))
+        (not (member-eq 'fn-stx-parse cl))
+        (not (member-eq 'fn-stx-delta cl)))))
+
+; The value, on the test history: the opened Store's index is the empty one.
+(assert-event
+ (let ((opened (cadr (cadr (fn-rii-sco-extend-open *rii-t-capture* *rii-t-configs*
+                                                    (list *rii-t-article-2*)
+                                                    *rii-t-frontier*)))))
+   (and (equal (fn-sn-open-kind opened) :ok)
+        (equal (fn-sn-index (fn-sn-open-state opened)) (fn-stx-index-empty)))))
