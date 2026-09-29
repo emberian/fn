@@ -10618,6 +10618,71 @@
           "kind": "theorem",
           "name": "fn-scj-invp-at-identity-finish",
           "note": "KEYSTONE. The same at the identity finish (fn-rix-ocfg-complete); the composite's equations named."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-finish-submission",
+          "note": "KEYSTONE (join-f2). The host's article finish (host/owner-host.lisp fn-owner-finish-submission-synced: fn-apc-own-finish then fn-sca-finish with the token read off the completion) carries fn-sjh-okp (the catalog invariant, the carried side facts, the rows' facts and LINK) from the owner relation and :durable alone; the pending row exists and is cleared. Over fn-ccar-own-finish: fn-sjh-okp-at-host-article-finish. Teeth: pending (the T2 owner fixture of served-catalog-join-pinned-tests evaluates the carried hypotheses; an executable twin of fn-sjh-okp is the open item)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-host-article-finish",
+          "note": "KEYSTONE (join-f2). The finish over fn-ccar-own-finish; every hypothesis of fn-scj-invp-at-host-article-finish-carried derived (fn-sjh-finish-premises-of-okp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-of-ocfg-io",
+          "note": "KEYSTONE (join-f2). The store's io steps (fn-owner-io: fn-rcon-ocfg-io = fn-ocfg-step (:store (:io op result))) keep fn-sjh-okp with the same pending row; the record-directory append moves the staged row into the history as the completing last record. Hypothesis: the view's archive after is a state (the owner relation after carries it)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-prepare-buffer",
+          "note": "KEYSTONE (join-f2). The host's article POST under the service mutex (fn-pout-prepare-article over the row at the arena's count, the buffer's seal, fn-cat-prepare-sealed) from fn-sjh-okp at the reserved store gives fn-sjh-okp with the new pending row."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-known-abort",
+          "note": "KEYSTONE (join-f2). fn-owner-known-abort on :aborted clears the pending row (host fix): fn-sjh-okp with none."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-refuse-reservation",
+          "note": "KEYSTONE (join-f2). fn-owner-refuse-reservation on :refused clears the pending row: fn-sjh-okp with none."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-install",
+          "note": "KEYSTONE (join-f2). fn-owner-install-extended's owner and loaded catalog satisfy fn-sjh-okp with no pending row, given the join and the rows' facts."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-recover",
+          "note": "KEYSTONE (join-f2). The checkpoint open and recovery: fn-sjh-okp; the rows' handles/composites/clearness are the checkpoint image's named facts."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-full-open",
+          "note": "KEYSTONE (join-f2). The full open: fn-sjh-okp from the intern alone."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-prepare-identity-sealed",
+          "note": "KEYSTONE (join-f2). A signed composite's prepare (fn-pout-prepare-identity at the arena's count, the seal of its article payload, fn-cat-prepare-sealed of the composite's held row): fn-sjh-okp with that pending row."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-prepare-identity-unsealed",
+          "note": "KEYSTONE (join-f2). A keyring snapshot's prepare loads no row: fn-sjh-okp with no pending row."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-finish-no-row",
+          "note": "KEYSTONE (join-f2). fn-owner-finish over fn-rix-ocfg-complete with no pending row: the completing record loads no catalog row; fn-sjh-okp after."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-of-other-prepare",
+          "note": "KEYSTONE (join-f2). The retention, consumer and topic prepares stage events that load no row: fn-sjh-okp with no pending row."
         }
       ]
     },
@@ -12961,6 +13026,212 @@
         {
           "kind": "theorem",
           "name": "fn-wire-article-event-is-the-held-body"
+        }
+      ]
+    },
+    {
+      "id": "PRF-906",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-acknowledged-custody-is-progressed-in-its-turn"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-unaccepted-delivery-names-no-progress"
+        }
+      ]
+    },
+    {
+      "id": "PRF-384",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otb-a-member-is-answered-once"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otb-a-late-completion-is-consumed-once"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otb-a-deadline-keeps-the-io-owned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otb-a-late-page-is-unavailable-never-absent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otb-a-restart-forgets-the-previous-clock-domain"
+        }
+      ]
+    },
+    {
+      "id": "PRF-373",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hrs-disk-history-is-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrc-get-is-hrecs-get"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrs-disk-history-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfr-list-of-fn-sfr-based-is-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfr-list-of-fn-sfr-based"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfr-list-of-fn-sl-of"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfr-list-of-fn-sfr-snoc"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfr-count-is-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfr-last-is-last"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfr-nth-is-nth"
+        }
+      ]
+    },
+    {
+      "id": "PRF-903",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-replay-extension-keeps-every-number"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-recovery-keeps-every-visible-number"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-prepare-never-allocates-below-the-watermark"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-crash-trace-never-reissues-a-number"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-host-open-node-is-the-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-decode-of-a-scanned-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-cpr-loop-prefix-grows"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-recovery-never-reissues-a-logged-txid"
+        }
+      ]
+    },
+    {
+      "id": "PRF-385",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-feed-restart-forgets-the-previous-clock-domain"
+        }
+      ]
+    },
+    {
+      "id": "PRF-918",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-rows-policy-after-expire-set"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-rows-policy-of-other-target-after-expire-set"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-group-policy-without-rows-keeps-forever"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-deltas-are-deltas"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-words-policy-is-an-admitted-policy"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-age-instant-is-within-the-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-age-instant-honours-expires-within-the-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-age-instant-without-expires"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-no-age-rule-never-expires-by-age"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-a-group-that-keeps-it-keeps-it"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-expired-set-is-the-spec"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-classes-partition-the-articles"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-releasablep-without-expiry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-releasablep-is-rule-or-expired-and-unheld"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-expired-verdict-is-the-policys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-held-article-is-not-expired"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-rci-recorded-config-keeps-the-policy"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-rci-recorded-context-is-the-decided-context"
         }
       ]
     }

@@ -34,7 +34,11 @@ leaves a number open, the reading named here and in the record):
       --f1-reopen-mb 128, --f1-reopen hwm|rss (the 1,000-post reopen's peak,
       VmHWM, by default; VmRSS after it is the lenient reading)
   F2  --f2-r-evidence PATH (the committed record discharging R at every host
-      entry); the lookup count needs a `lookups' figure in sr_measure's JSON
+      entry); the lookups per served command are counted by
+      tools/fundamentals/f2_lookups.py (FN_NATIVE_COUNT_LOOKUPS on the
+      developer image) at N = 1,000 and 10,000 and judged per command: no
+      archive walk, the per-command counts constant in N beyond the pinned
+      view's O(log N) bisection, a range command at most its reply's lines
   F3  --f3-fsync-max 1.0 (fsyncs per POST at 8 posters: "well under 7");
       the edge disk's POST/s needs --edge-ssh
   F4  planning/design-time-model-2026-09-27.md section 4: F4-R, every served
@@ -201,13 +205,98 @@ def f1(out: Path, a) -> Row:
     return r
 
 
+# F2's lookup kinds: each counter host/native/io.lisp's +fnn-lookup-functions+
+# prints, by what it costs.  A walk counter (NAME/len, or the entry of a
+# list or catalog walk) never belongs on the served path.
+F2_PROBE = ("fn-cat$c-group-number",)
+F2_INDEX = ("fn-midx-lookup", "fn-cat$c-msgid-seqs")
+F2_LIVE = ("fn-cat$c-group-live-count", "fn-cat$c-group-live-low", "fn-cat$c-group-live-high", "fn-cat$c-horizon")
+F2_WALK_ENTRIES = ("fn-cat-view-below", "fn-cat-view-articles", "fn-cat-view-find", "fn-cat-view-number-find",
+                   "fn-cat-number-seq", "fn-cat-seqs-for", "fn-cnx-walk-range", "fn-nntp-archive-command",
+                   "fn-nntp-over-range", "fn-nntp-group-result")
+F2_RANGE = ("LISTGROUP whole", "LISTGROUP 40", "OVER 40", "OVER 1-2000")
+F2_NS = (1000, 10000)
+
+
+def f2_kinds(counts: dict) -> dict:
+    """One command's counts by kind: number-table probes, row reads beyond the
+    bisection, index lookups (trie or the catalog's Message-ID table),
+    live-table reads, archive/catalog walk (entries plus lengths walked),
+    bisection probes."""
+    mid = counts.get("fn-scr-mid", 0)
+    return {"probes": sum(counts.get(k, 0) for k in F2_PROBE),
+            "rows": max(0, counts.get("fn-cat$c-at", 0) - mid),
+            "index": sum(counts.get(k, 0) for k in F2_INDEX),
+            "live": sum(counts.get(k, 0) for k in F2_LIVE),
+            "walk": sum(v for k, v in counts.items() if k.endswith("/len") or k in F2_WALK_ENTRIES),
+            "bisect": mid}
+
+
+def f2_lookups(out: Path, prefix: str = "f2-lookups-"):
+    """Judge the lookup counts; (met, what, table) or None when not run."""
+    runs = {n: load(out, f"{prefix}{n}.json") for n in F2_NS}
+    if not any(runs.values()):
+        return None
+    missing = [n for n, d in runs.items() if not d]
+    labels = []
+    for d in runs.values():
+        for k in (d or {}).get("commands", {}):
+            if k not in labels:
+                labels.append(k)
+    table = ["| command | " + " | ".join(f"N = {n:,}" for n in F2_NS) + " |",
+             "| --- |" + " --- |" * len(F2_NS)]
+    fails = []
+    kinds = {}
+    for label in labels:
+        cells = []
+        for n in F2_NS:
+            cmd = ((runs[n] or {}).get("commands") or {}).get(label)
+            if not cmd:
+                cells.append("-")
+                continue
+            if not cmd.get("stable", False):
+                fails.append(f"{label} at {n}: the two runs counted differently")
+            k = f2_kinds(cmd["runs"][0]["counts"])
+            kinds[(label, n)] = k
+            lines = cmd["runs"][0].get("reply_lines", 0) or 0
+            cells.append("/".join(str(k[x]) for x in ("probes", "rows", "index", "live", "walk", "bisect")))
+            if k["walk"]:
+                fails.append(f"{label} at {n}: walks {k['walk']}")
+            if k["bisect"] > 2 * (math.ceil(math.log2(n)) + 2):
+                fails.append(f"{label} at {n}: {k['bisect']} bisection probes")
+            if label in F2_RANGE:
+                over = [x for x in ("probes", "rows", "index", "live") if k[x] > lines + 4]
+                if over:
+                    fails.append(f"{label} at {n}: {', '.join(over)} beyond its {lines} reply lines")
+        table.append(f"| {label} | " + " | ".join(cells) + " |")
+    for label in labels:
+        if label in F2_RANGE:
+            continue
+        a, b = kinds.get((label, F2_NS[0])), kinds.get((label, F2_NS[1]))
+        if a and b:
+            grew = [x for x in ("probes", "rows", "index", "live", "walk") if b[x] != a[x]]
+            if grew:
+                fails.append(f"{label}: {', '.join(grew)} change from {F2_NS[0]:,} to {F2_NS[1]:,}")
+    table.append("")
+    table.append("Cells: number-table probes / row reads beyond the bisection / index lookups (trie or "
+                 "Message-ID table) / live-table reads / walk (entries + lengths) / bisection probes.")
+    if missing:
+        return False, f"not counted at N = {', '.join(str(n) for n in missing)}", table
+    if fails:
+        return False, "; ".join(fails), table
+    return True, (f"{len(labels)} commands at N = {F2_NS[0]:,} and {F2_NS[1]:,}: no walk, each command's counts "
+                  "constant in N beyond the O(log N) bisection, each range command within its reply"), table
+
+
 def f2(out: Path, a) -> Row:
     r = Row("F2")
     runs = {n: load(out, f"f2-{n}.json") for n in ("load", "after-1", "after-2", "before-1", "before-2")}
-    if not any(runs.values()):
+    lk = f2_lookups(out)
+    if not any(runs.values()) and lk is None:
         return r
     r.measured = True
     r.commands.append("taskset -c ROW_CORES python3 tools/fundamentals/sr_measure.py --image build/fn-host-developer --fixture FX --articles 10000 --client bulk (MemoryMax=40G)")
+    r.commands.append("taskset -c ROW_CORES python3 tools/fundamentals/f2_lookups.py --image build/fn-host-developer --articles 1000 | --store-from FX/store --articles 10000 (FN_NATIVE_COUNT_LOOKUPS=1, MemoryMax=40G)")
     table = ["| run | GROUP reply | ARTICLE by number | OVER 40 | OVER 1-2000 | owner CPU per OVER 1-2000 |",
              "| --- | --- | --- | --- | --- | --- |"]
     for n, d in runs.items():
@@ -219,12 +308,25 @@ def f2(out: Path, a) -> Row:
     r.clause("R established at every host entry (fn-sca-join discharged)",
              bool(ev) and (ROOT / ev).is_file(),
              f"cited: {ev}" if ev else "no record given (--f2-r-evidence); lane sca-join owns the discharge")
-    has_lookups = any(d and "lookups" in d for d in runs.values())
-    r.clause("index lookups per served command measured on the served path", has_lookups,
-             "counted by sr_measure" if has_lookups else "nothing counts them on the served path (sr_measure reports no `lookups')")
-    before = runs["before-1"] or runs["before-2"]
-    r.clause("before/after at N = 10,000", bool(before and (runs["after-1"] or runs["after-2"])),
-             "measured against F2_BEFORE" if before else "no before image opens this store (F2_BEFORE not given or refused)")
+    if lk is None:
+        r.clause("index lookups per served command measured on the served path", False,
+                 "f2_lookups.py did not run (no f2-lookups-N.json)")
+    else:
+        met, what, lt = lk
+        r.clause("index lookups per served command measured on the served path", met, what)
+        r.raw += ["", "Lookups per served command (f2_lookups.py):", ""] + lt
+    before = load(out, "f2-lookups-before-10000.json")
+    after = load(out, "f2-lookups-10000.json")
+    if before and after:
+        lines = ["", "Before/after at N = 10,000 (F2_BEFORE against this image), kinds as above:", "",
+                 "| command | before | after |", "| --- | --- | --- |"]
+        for label, cmd in after.get("commands", {}).items():
+            b = before.get("commands", {}).get(label)
+            fmt = lambda c: "/".join(str(f2_kinds(c["runs"][0]["counts"])[x]) for x in ("probes", "rows", "index", "live", "walk", "bisect")) if c else "-"
+            lines.append(f"| {label} | {fmt(b)} | {fmt(cmd)} |")
+        r.raw += lines
+    r.clause("before/after at N = 10,000", bool(before and after),
+             "the lookups at 10,000 against F2_BEFORE" if before else "no before image opens this store (F2_BEFORE not given or refused)")
     r.clause("GROUP/LISTGROUP/ARTICLE/OVER read v/fn-cat", None,
              "a source property (tests/test_native_served_cost.py), not measured here")
     r.notes.append(f"load {load_of(out, 'f2-')}")

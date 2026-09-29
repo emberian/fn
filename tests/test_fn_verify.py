@@ -605,10 +605,6 @@ class SpecBookTieTests(unittest.TestCase):
 
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host-developer"))
 OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
-# `fn principal set-password` derives the verifier in ACL2 over
-# books/auth-secret, so it runs from a tree whose certificates exist (a
-# gate tree, read-only); by default this one.
-AUTH_TREE = Path(os.environ.get("FN_VERIFY_AUTH_TREE", ROOT))
 OLD_IMAGE = os.environ.get("FN_VERIFY_OLD_HOST")
 LARGE = os.environ.get("FN_VERIFY_LARGE") == "1"
 
@@ -707,13 +703,13 @@ class NativeVerifyTests(unittest.TestCase):
         # the owner holds the store lock.
         status = cls.invoke("operator", cls.config, "status").stdout.decode()
         cls.article_bound = int(re.search(r"max-article-octets=(\d+)", status).group(1))
-        env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
-        env.pop("FN_HOST", None)
+        # The image's own operator derives the verifier (books/auth-secret);
+        # the password and its confirmation come on standard input.
         enrolled = subprocess.run(
-            [sys.executable, str(AUTH_TREE / "bin" / "fn"), "--config", str(cls.config), "principal",
-             "set-password", cls.USER, "--password", cls.PASSWORD, "--posting"],
-            cwd=AUTH_TREE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env,
-            timeout=900, check=False)
+            [str(IMAGE), "--fn", "operator", str(cls.config), "principal", "set-password",
+             cls.USER, "--posting"],
+            input="{0}\n{0}\n".format(cls.PASSWORD).encode(), cwd=ROOT,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=900, check=False)
         assert enrolled.returncode == 0, enrolled.stderr.decode()
         cls.creds = root / "creds"
         cls.creds.write_text("{} {}\n".format(cls.USER, cls.PASSWORD))

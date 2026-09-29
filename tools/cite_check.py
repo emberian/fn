@@ -171,6 +171,17 @@ DISCLOSURE = re.compile(
     r"was deleted|deleted on)", re.IGNORECASE)
 DISCLOSURE_WINDOW = (2, 8)      # lines before, lines after
 
+# Paths removed on purpose (planning/retired-paths.json): a citation of one is
+# disclosed there, with where the file's role went, so it is counted as
+# `retired`, not raised.  The file is the whole list; a path is added to it
+# in the commit that removes the file.
+try:
+    RETIRED = frozenset(json.loads(
+        (Path(__file__).resolve().parents[1] / "planning" / "retired-paths.json")
+        .read_text())["paths"])
+except (OSError, ValueError, KeyError):
+    RETIRED = frozenset()
+
 # One regex, one hint.  See WHAT IT CANNOT SEE.
 FORWARD = re.compile(
     r"\b(proposed|propose|new book|will (?:add|exist|be)|would|planned|"
@@ -322,7 +333,11 @@ def scan(present: set[str], history: set[str],
                     continue
                 klass = benign(token, citer, line, match.start(1))
                 if klass is None:
-                    if catalogue:
+                    if token.split("#")[0] in RETIRED:
+                        # Disclosed centrally: planning/retired-paths.json says
+                        # it was removed on purpose and where its role went.
+                        klass = "retired"
+                    elif catalogue:
                         klass = "catalogue"
                     elif fixture and not comment:
                         klass = "fixture"
@@ -349,7 +364,7 @@ def scan(present: set[str], history: set[str],
 
 
 RAISED = ("phantom", "drift")
-BENIGN = ("annotated", "catalogue", "placeholder", "wrapped", "prose",
+BENIGN = ("annotated", "retired", "catalogue", "placeholder", "wrapped", "prose",
           "system", "fixture", "record")
 
 

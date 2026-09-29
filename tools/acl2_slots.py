@@ -180,6 +180,39 @@ def configured_acl2(environ=None) -> str:
     return os.path.expanduser(text) if text else "acl2"
 
 
+def farm_hosts() -> dict:
+    """tools/farm.py's HOSTS, read as a literal: importing farm pulls in the
+    native-campaign modules under tests/, which a synced REPL tree lacks."""
+    import ast  # noqa: E402
+    tree = ast.parse((Path(__file__).resolve().parent / "farm.py").read_text(encoding="utf-8"))
+    for node in tree.body:
+        if (isinstance(node, ast.Assign) and len(node.targets) == 1
+                and getattr(node.targets[0], "id", None) == "HOSTS"):
+            return ast.literal_eval(node.value)
+    raise SystemExit("fn: tools/farm.py has no HOSTS table")
+
+
+def apply_box_defaults(environ=None, hostname: str | None = None) -> str | None:
+    """On a farm box, default FN_ACL2 and FN_CERT_CACHE to that box's own.
+
+    A lane that ssh'd to persvati otherwise meets 'no ACL2 executable at
+    acl2' and then an empty ~/.cache/fn-certs (openbsd-release-fixes), and
+    `certify_books.py` there planned all 339 books against that empty cache
+    (tooling-obstructions, 2026-09-28).  proof_repl and certify_books both
+    call this.  An explicit setting always wins.  Answers the box's name, or
+    None.
+    """
+    import socket  # noqa: E402
+    environ = os.environ if environ is None else environ
+    host = (hostname or socket.gethostname()).split(".")[0]
+    hosts = farm_hosts()
+    if host not in hosts or ("FN_ACL2" in environ and "FN_CERT_CACHE" in environ):
+        return None
+    environ.setdefault("FN_ACL2", os.path.expanduser(hosts[host]["acl2"]))
+    environ.setdefault("FN_CERT_CACHE", os.path.expanduser(hosts[host]["cache"]))
+    return host
+
+
 def slot_directory() -> Path:
     return Path(os.environ.get("FN_ACL2_SLOT_DIR", DEFAULT_SLOT_DIR)).expanduser()
 

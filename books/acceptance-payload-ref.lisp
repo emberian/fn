@@ -34,6 +34,7 @@
 (include-book "history-columns-relation")
 (include-book "store-node-traces-prepare")
 (include-book "owner")
+(include-book "byte-store-scan")
 
 ; -----------------------------------------------------------------------------
 ; The reference.

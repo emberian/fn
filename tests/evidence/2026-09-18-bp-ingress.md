@@ -1,6 +1,6 @@
 # Real BPv7 to fn acceptance — 2026-09-18
 
-The integrated [fn ingress harness](../bp-dtn7/run_fn_ingress_lab.sh) passed
+The integrated fn ingress harness passed
 with pinned dtn7-rs `4daf02d7ea927e9293753b2a5c4497457f6e5a40`. Two actual
 loopback BPAs carried an exact legacy article to **one fn receiver**. The
 [record](2026-09-18-bp-ingress.json) retains versions, commands, bundle identities,

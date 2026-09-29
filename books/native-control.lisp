@@ -13,6 +13,7 @@
 (include-book "native-config")
 (include-book "native-admin-shape")
 (include-book "outcome-class")
+(include-book "consumer-position")
 
 (defconst *fn-nctrl-magic* '(70 78 67 84)) ; FNCT
 (defconst *fn-nctrl-version* 1)

@@ -225,9 +225,8 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         credentials = node.root / "login"
         credentials.write_text("%s %s\n" % (user, secret))
         credentials.chmod(0o600)
-        fn = [sys.executable, "bin/fn", "--config", str(node.config), "principal",
-              "set-password", user, "--password", secret]
-        self.command(fn + ["--posting"])
+        self.command([IMAGE, "--fn", "operator", node.config, "principal", "set-password",
+                      user, "--posting"], stdin="{0}\n{0}\n".format(secret).encode())
         draft = node.root / "draft.json"
         self.start(node, fault=True)
         rc, posted = self.client(node, "post", "fn.test", "--subject", "then revoked",
@@ -237,7 +236,8 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         self.assertEqual(self.killed(node), -9)
         target = json.loads(draft.read_text())["message_id"]
         # The authorization change: the login may no longer post.
-        self.command(fn + ["--no-posting"])
+        self.command([IMAGE, "--fn", "operator", node.config, "principal", "set-password",
+                      user, "--no-posting"], stdin="{0}\n{0}\n".format(secret).encode())
         self.start(node)
         before = self.transactions(node)
         rc_rec, reconciled = self.client(node, "reconcile", str(draft),
@@ -280,8 +280,8 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         credentials = node.root / "login"
         credentials.write_text("%s %s\n" % (user, secret))
         credentials.chmod(0o600)
-        self.command([sys.executable, "bin/fn", "--config", str(node.config), "principal",
-                      "set-password", user, "--password", secret, "--posting"])
+        self.command([IMAGE, "--fn", "operator", node.config, "principal", "set-password",
+                      user, "--posting"], stdin="{0}\n{0}\n".format(secret).encode())
         other = bytes([86]) * 32
         operator = [IMAGE, "--fn", "operator", node.config]
         self.command(operator + ["principal", "bind", user, PRINCIPAL.hex()])

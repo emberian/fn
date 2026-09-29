@@ -22,13 +22,14 @@ print DYNAMIC; --solve-figure MB finds the least DYNAMIC whose :run figure
 over --observed is the heap MB the launcher printed (a bisection, each step
 ACL2's figure).
 
-MEASURED (optional): --curve is tools/fundamentals/f8_curve.py's JSON (live
-heap after a full collection at 0 and N posts, the garbage before it, the
+MEASURED (optional): --curve is tools/scale_curve.py's curve.json with the `heap` probe (live
+heap after a full collection on the owner that opened each N, the garbage
+before it, the
 process's resident set and threads), --floor is tools/fundamentals/floor.py's
 (the F8 row's run on the production image), --image-dynamic the production
 image's own dynamic content (ROOM at start).  Terms are measured in groups,
 since the process does not separate them: the state's four terms together
-(live(N) - live(0)), the collector's (garbage before the collection), the
+(live(N) less live at the smallest N), the collector's (garbage before the collection), the
 image outside the heap (resident less anonymous at start), the threads
 (their count).  The curve's fit (live heap and resident set against N, least
 squares over the points >= 1,000) extrapolates to --at N with the model
@@ -53,10 +54,12 @@ PROFILES = {
                 "(cons *fn-bs-pf-max-history-octets* 2800000000) (cons *fn-bs-pf-max-record-octets* 196608) "
                 "(cons *fn-bs-pf-max-article-octets* 32768) (cons *fn-bs-pf-max-groups-per-article* 16) "
                 "(cons *fn-bs-pf-max-open-suffix* 65536))) nil)",
-    # f8_curve.py's store: T 131,072, H 512 MiB, the small preset's R, G and suffix
+    # scale_curve's `curve' fixture (tools/fixtures.py SYNTH_100K): T 131,072, H 512 MiB,
+    # R 196,608, A 32,768, G 16, K 65,536
     "curve": "(fn-bs-profile-resolve (list :development (list (cons *fn-bs-pf-max-transactions* 131072) "
              "(cons *fn-bs-pf-max-history-octets* 536870912) (cons *fn-bs-pf-max-record-octets* 196608) "
-             "(cons *fn-bs-pf-max-groups-per-article* 16) (cons *fn-bs-pf-max-open-suffix* 128))) nil)",
+             "(cons *fn-bs-pf-max-article-octets* 32768) (cons *fn-bs-pf-max-groups-per-article* 16) "
+             "(cons *fn-bs-pf-max-open-suffix* 65536))) nil)",
 }
 GROUPS = [("image-dynamic", ["IMAGE-DYNAMIC"]),
           ("state", ["STATE-HISTORY", "STATE-HANDLES", "STATE-RECORDS"]),
@@ -141,28 +144,32 @@ def measured(args):
             m["image-outside"] = (st["rss_kib"] - st["anonymous_kib"]) * 1024
         m["floor"] = {k: f.get(k) for k in ("figure_line", "figure_line_after", "init", "after_1000", "reopen_post_floor")}
     if args.curve:
+        # tools/scale_curve.py's curve.json with the `heap` probe (--probes heap):
+        # per N, the live heap after a full collection on the owner that opened
+        # N (the fold of the retired tools/fundamentals/f8_curve.py).
         c = json.loads(Path(args.curve).read_text())
-        pts = {int(k): v for k, v in c["points"].items()}
-        live0 = pts[0]["heap"]["dynamic-usage-after-gc"]
+        pts = {int(k): v.get("values", {}) for k, v in c["points"].items()}
+        pts = {n: v for n, v in pts.items() if v.get("heap.live_bytes") is not None}
+        live0 = pts[min(pts)]["heap.live_bytes"]
         rows = []
         for n in sorted(pts):
-            h, pr = pts[n]["heap"], pts[n]["proc"]
-            rows.append({"n": n, "live": h["dynamic-usage-after-gc"], "state": h["dynamic-usage-after-gc"] - live0,
-                         "garbage": h["dynamic-usage"] - h["dynamic-usage-after-gc"],
-                         "rss": pr.get("rss_kib", 0) * 1024, "anon": pr.get("anonymous_kib", 0) * 1024,
-                         "hwm": pr.get("hwm_kib", 0) * 1024, "threads": pr.get("threads")})
+            v = pts[n]
+            rows.append({"n": n, "live": v["heap.live_bytes"], "state": v["heap.live_bytes"] - live0,
+                         "garbage": v.get("heap.garbage_bytes") or 0,
+                         "rss": (v.get("heap.rss_kib") or 0) * 1024, "anon": (v.get("heap.anon_kib") or 0) * 1024,
+                         "hwm": (v.get("heap.hwm_kib") or 0) * 1024, "threads": v.get("heap.threads")})
         big = [r for r in rows if r["n"] >= 1000]
         a_live, b_live = fit([(r["n"], r["live"]) for r in big])
         a_rss, b_rss = fit([(r["n"], r["rss"]) for r in big])
         a_st, b_st = fit([(r["n"], r["state"]) for r in big])
-        m["curve"] = {"rows": rows, "flags": c.get("flags"), "octets": c.get("octets"),
+        m["curve"] = {"rows": rows, "flags": c.get("meta", {}).get("fixtures"), "octets": 2048,
                       "fit_live": [a_live, b_live], "fit_rss": [a_rss, b_rss], "fit_state": [a_st, b_st],
                       "at": args.at, "live_at": a_live + b_live * args.at, "rss_at": a_rss + b_rss * args.at,
                       "state_at": a_st + b_st * args.at, "status": c.get("status"), "figure_after": c.get("figure_after"),
                       "reopen": c.get("reopen")}
-        at = min(pts, key=lambda n: abs(n - 1000)) if 1000 not in pts else 1000
-        m["state"] = pts[at]["heap"]["dynamic-usage-after-gc"] - live0
-        m["collector"] = pts[at]["heap"]["dynamic-usage"] - pts[at]["heap"]["dynamic-usage-after-gc"]
+        at = min(pts, key=lambda n: abs(n - 1000))
+        m["state"] = pts[at]["heap.live_bytes"] - live0
+        m["collector"] = pts[at].get("heap.garbage_bytes") or 0
         m["threads-count"] = pts[at]["proc"].get("threads")
     return m
 
