@@ -404,6 +404,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/feed-link-backoff-tests \
 	books/feed-pause \
 	tests/acl2/feed-pause-tests \
+	books/peer-set \
+	tests/acl2/peer-set-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
 	books/history-knowledge \

@@ -599,8 +599,9 @@ fn operator /etc/fn/fn.toml peer distributions far fn,local
 ```
 
 If a peer's log line says `reason=mode-stream-refused`, that peer's server
-cannot stream. Stop the node, run `peer remove NAME`, add the peer again
-with `false` as the streaming word, and start the node.
+cannot stream. Run `peer set NAME --streaming false`; like `peer add`,
+`peer remove`, `peer pull` and `peer feed`, it applies to the running node
+(review item 8).
 
 Every node needs its own name, set once. Without it, fn cannot spot
 articles that loop back to it:
@@ -801,7 +802,9 @@ The memory refusals, and what to do:
   `MemoryMax`) gives. Raise the limit, or lower the store's limits to fit
   (`policy set max-transactions N`, `max-history-octets N` or
   `max-article-octets N`; a limit below what the store already holds is
-  refused, `below-current-use`).
+  refused, `below-current-use`). `store export`
+  takes the same check, so a store that fits nowhere here is not exported
+  here either (review item 4).
 - `fn: refused machine-cannot-hold-threads reservation=R MB machine=M MB`:
   the same, for the whole node with its threads. Raise the limit.
 - `refused connections-exceed-memory capacity=C holds=B ...`: the node
@@ -1061,6 +1064,9 @@ with `policy set max-transactions N` (and `max-history-octets`,
   in batches (XFNCATCHUP), each batch checked against the peer's digest before
   any article is offered to this node's own verdict; the round resumes after a
   restart ([catching up](peering-with-a-friend.md#catching-up); spec peering 1.2.9).
-- `capacity N`: the room reserved for held articles.
+- `capacity N`: the retention ledger's size, in its units (one per record
+  plus one per 4,096 octets of article), shown by `status` as
+  `charge-capacity` next to `charge-reserved`, the part held articles use
+  (review item 15; [the ledger](operator-internals.md)).
 - `pins`, `obligations`: what the store is holding, and why.
 - `run`: what the service runs.

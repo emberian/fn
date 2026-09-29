@@ -15475,6 +15475,39 @@
           "name": "fn-oig-report-exit-is-the-membership"
         }
       ]
+    },
+    {
+      "id": "PRF-973",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pset-plan-sets-the-record-and-keeps-the-extensions"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pset-edit-is-a-peer-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pset-edit-keeps-the-peer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pset-edit-keeps-unnamed-fields"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pset-edit-sets-the-named-send-and-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pset-login-octets-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pset-login-file-reads-back"
+        }
+      ]
     }
   ]
 }

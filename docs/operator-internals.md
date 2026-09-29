@@ -1374,8 +1374,9 @@ with no group or other permission bits.
 
 ACL2 parses the port and streaming word, supplies the inbound body/inflight
 limits and outbound queue/backoff limits, builds the typed peer record and
-selects the configuration delta. Run these while the owner is stopped; the
-exclusive store lock refuses offline administration against a live owner.
+selects the configuration delta. A running owner takes the request over its
+control socket and applies it at once; with no owner running, the command
+publishes the record into the stopped store under its exclusive lock.
 
 The last word is the streaming flag. `true` opens each connection with
 `MODE STREAM` and offers with `CHECK`/`TAKETHIS` (RFC 4644); `false` offers
@@ -1391,8 +1392,7 @@ refused feed peer=hub stopped reason=mode-stream-refused (RFC 4644 2.3: the peer
 It does not re-dial it with `MODE STREAM` (before 2026-09-26 it did, at
 every backoff, indefinitely). `health` shows the peer under
 `unavailable-peer` while articles wait for it. Re-add the peer with the flag
-`false` (stop the node, `peer remove NAME`, `peer add ... false`) and start
-it again. The stop is ACL2's (`fn-fc-mode-stream-refusal-stops-the-dial`,
+`false` (`peer set NAME --streaming false`, applied by the running owner). The stop is ACL2's (`fn-fc-mode-stream-refusal-stops-the-dial`,
 books/feed-connection.lisp) and lasts one owner process: a restart spends
 one `MODE STREAM` exchange again.
 
@@ -2783,17 +2783,17 @@ of band.
 # ME: a login for the friend's node, bound to its principal
 printf 'PW-FOR-FRIEND\nPW-FOR-FRIEND\n' | $F operator $C principal set-password persvati-node \
     --principal 607792851af81f99899a21cb728087edcb137e42883e11d83e9fc458d4d33033 --posting
-# ME: how I log in at the friend's node (the login the friend made for me)
-umask 077; printf 'FNAUTH1\nhbox-node\nPW-FOR-ME\n' > $N/exchange/persvati.fnauth
-$F operator $C peer add persvati persvati.friends.fn.invalid 192.168.50.120 11990 \
-    'local.*' 'local.*' \
-    principal 607792851af81f99899a21cb728087edcb137e42883e11d83e9fc458d4d33033 \
-    $N/exchange/persvati.fnauth false true starttls 192.168.50.120 $N/exchange/persvati-cert.pem
+$F operator $C peer set persvati --send 'local.*' --tls starttls \
+    --server-name 192.168.50.120 --anchor $N/exchange/persvati-cert.pem
+# ME: how I log in at the friend's node (the login the friend made for me);
+# the password is read twice from the terminal or stdin
+printf 'PW-FOR-ME\nPW-FOR-ME\n' | $F operator $C peer login persvati hbox-node $N/exchange/persvati.fnauth
 $F operator $C peer pull persvati 20
 ```
 
-`peer add` reaches the running node through its control socket and
-replaces the record `accept` or `confirm` wrote without a restart (the
+`peer set` and `peer login` reach the running node through its control
+socket and change only the named fields of the record `accept` or `confirm`
+wrote, keeping its pull and carries rows, without a restart (the
 live reconfiguration path; observed in tests/test_native_friends_feed.py).
 The friend does the mirror image (a login `hbox-node` bound to your
 principal, a profile naming `persvati-node` and the password you gave, `peer
