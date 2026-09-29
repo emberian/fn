@@ -111,16 +111,16 @@
 (assert-event (fn-nh-unqualifiedp *nht-profile*))
 (assert-event (not (fn-nh-unqualifiedp *nht-scale*)))
 (assert-event
- (equal (nht-states (fn-nh-verdict nil (nht-store *nht-profile*) 10 :unobserved :unobserved))
-        '(:clear :clear :held :clear :clear :unobserved :unobserved :clear :unobserved)))
+ (equal (nht-states (fn-nh-verdict nil (nht-store *nht-profile*) 10 :unobserved :unobserved :unobserved))
+        '(:clear :clear :held :clear :clear :unobserved :unobserved :clear :unobserved :unobserved)))
 ; At min 100 every figure with a positive bound is under pressure.
 (assert-event
- (equal (nht-states (fn-nh-verdict nil (nht-store *nht-scale*) 100 *nht-idle-feeds* '(:clear)))
-        '(:clear :clear :clear :held :clear :clear :clear :clear :clear)))
+ (equal (nht-states (fn-nh-verdict nil (nht-store *nht-scale*) 100 *nht-idle-feeds* '(:clear) nil))
+        '(:clear :clear :clear :held :clear :clear :clear :clear :clear :clear)))
 ; The owner's feed table: stranded and unavailable held, each its own line.
 (assert-event
- (equal (nht-states (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-feeds* '(:clear)))
-        '(:clear :clear :clear :clear :clear :held :held :clear :clear)))
+ (equal (nht-states (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-feeds* '(:clear) nil))
+        '(:clear :clear :clear :clear :clear :held :held :clear :clear :clear)))
 (assert-event (equal (fn-nh-stranded-peers *nht-feeds*) '("gave-up")))
 (assert-event (equal (fn-nh-unavailable-peers *nht-feeds*) '("down")))
 (assert-event (null (fn-nh-unavailable-peers *nht-idle-feeds*)))
@@ -133,26 +133,26 @@
                                          nil 0 7 0))))
 (assert-event (fn-nh-feed-deferredp (fn-own-feed-entry-feed (car *nht-full-feeds*))))
 (assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0
-                                                      *nht-full-feeds* '(:clear))))
+                                                      *nht-full-feeds* '(:clear) nil)))
                      :held))
 (assert-event (equal (fn-nh-unavailable-peers *nht-full-feeds*) '("full")))
 ;; Without deferredp: the idle feed's article was delivered, and it is clear.
 (assert-event (not (fn-nh-feed-deferredp (fn-own-feed-entry-feed (car *nht-idle-feeds*)))))
 (assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0
-                                                      *nht-idle-feeds* '(:clear))))
+                                                      *nht-idle-feeds* '(:clear) nil)))
                      :clear))
 (must-fail-checked
  (defthm nht-deferring-without-deferred
    (implies (member-equal e feeds)
-            (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds disk))) :held))
+            (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds disk ckpt))) :held))
    :hints (("Goal" :do-not-induct t :in-theory (disable fn-nh-verdict)))))
 ;; Without the member: a deferring feed outside the table holds nothing.
-(assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0 nil '(:clear))))
+(assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0 nil '(:clear) nil)))
                      :clear))
 (must-fail-checked
  (defthm nht-deferring-without-member
    (implies (fn-nh-feed-deferredp (fn-own-feed-entry-feed e))
-            (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds disk))) :held))
+            (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds disk ckpt))) :held))
    :hints (("Goal" :do-not-induct t :in-theory (disable fn-nh-verdict)))))
 ;; PRF-335: fn-nh-saturated-peer-is-held and fn-nh-feed-queue-refusal-is-held.
 ;; Peer "sat" has room for one entry, holds one undelivered article and a
@@ -170,7 +170,7 @@
 (assert-event (natp (fn-feed-conn *nht-sat-feed*)))
 (assert-event (member-equal (car *nht-sat-feeds*) *nht-sat-feeds*))
 (assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0
-                                                      *nht-sat-feeds* '(:clear))))
+                                                      *nht-sat-feeds* '(:clear) nil)))
                      :held))
 (assert-event (equal (fn-nh-saturated-total *nht-sat-feeds*) 1))
 ;; The table-level refusal: a new Message-ID has no room at "sat".
@@ -180,7 +180,7 @@
 (assert-event (not (fn-nh-feed-saturatedp (fn-own-feed-entry-feed (car *nht-idle-feeds*)))))
 (assert-event (member-equal (car *nht-idle-feeds*) *nht-idle-feeds*))
 ;; Without the member: the saturated feed outside the (empty) table holds nothing.
-(assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0 nil '(:clear))))
+(assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0 nil '(:clear) nil)))
                      :clear))
 ;; Without fn-nh-names-have-entriesp: a target the table does not hold has no
 ;; room either, and the idle table is clear.
@@ -190,7 +190,7 @@
 (assert-event (fn-nh-names-have-entriesp '("up") *nht-idle-feeds*))
 (assert-event (fn-own-feed-target-capacityp '("up") *nht-idle-feeds* '(60 110 62)))
 (assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0
-                                                      *nht-idle-feeds* '(:clear))))
+                                                      *nht-idle-feeds* '(:clear) nil)))
                      :clear))
 
 ; Forwarding obligations: two :forward pins are debt; with no BP route in the
@@ -223,15 +223,15 @@
 (assert-event (equal (fn-nh-code-state 20) :fenced))
 (assert-event
  (equal (fn-nh-report-exit
-         (fn-nh-render (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-feeds* '(:clear))))
+         (fn-nh-render (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-feeds* '(:clear) nil)))
         25))
 (assert-event
  (equal (fn-nh-report-exit
-         (fn-nh-render (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-idle-feeds* '(:clear))))
+         (fn-nh-render (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-idle-feeds* '(:clear) nil)))
         0))
 (assert-event
  (equal (fn-nh-report-exit
-         (fn-nh-render (fn-nh-verdict nil (nht-store *nht-scale*) 0 :unobserved :unobserved)))
+         (fn-nh-render (fn-nh-verdict nil (nht-store *nht-scale*) 0 :unobserved :unobserved :unobserved)))
         19))
 
 ; fn-nh-report-exit-of-render without (<= (len v) 9): 81 outcomes, the last
@@ -295,22 +295,22 @@
 (assert-event (fn-sbud-octets-cache-validp (nht-cache)
                                            (fn-sf-records (fn-sn-files *nht-s*))))
 (assert-event
- (equal (fn-nh-live-report *nht-profile* *nht-oc* (nht-cache) 10 '(:clear))
+ (equal (fn-nh-live-report *nht-profile* *nht-oc* (nht-cache) 10 '(:clear) nil)
         (fn-nh-render (fn-nh-verdict nil (nht-store *nht-profile*) 10
-                                     (fn-own-feeds (fn-ocfg-owner *nht-oc*)) '(:clear)))))
+                                     (fn-own-feeds (fn-ocfg-owner *nht-oc*)) '(:clear) nil))))
 ; A stale sum of 5 octets too many changes the history-octets figure the
 ; held pressure line prints (min 100: every figure with a bound is pressed).
 (assert-event (not (fn-sbud-octets-cache-validp
                     (nht-stale) (fn-sf-records (fn-sn-files *nht-s*)))))
 (assert-event
- (not (equal (fn-nh-live-report *nht-profile* *nht-oc* (nht-stale) 100 '(:clear))
+ (not (equal (fn-nh-live-report *nht-profile* *nht-oc* (nht-stale) 100 '(:clear) nil)
              (fn-nh-render (fn-nh-verdict nil (nht-store *nht-profile*) 100
-                                          (fn-own-feeds (fn-ocfg-owner *nht-oc*)) '(:clear))))))
+                                          (fn-own-feeds (fn-ocfg-owner *nht-oc*)) '(:clear) nil)))))
 (must-fail-checked
  (defthm nht-live-is-store-report-without-a-valid-sum
-   (equal (fn-nh-live-report *nht-profile* *nht-oc* (nht-stale) 100 '(:clear))
+   (equal (fn-nh-live-report *nht-profile* *nht-oc* (nht-stale) 100 '(:clear) nil)
           (fn-nh-render (fn-nh-verdict nil (nht-store *nht-profile*) 100
-                                       (fn-own-feeds (fn-ocfg-owner *nht-oc*)) '(:clear))))
+                                       (fn-own-feeds (fn-ocfg-owner *nht-oc*)) '(:clear) nil)))
    :rule-classes nil
    ;; The keystone's own hints; the assertion above evaluates both sides.
    :hints (("Goal" :do-not-induct t
@@ -565,7 +565,7 @@
 (assert-event (equal (fn-post-store-refusal-line (fn-own-intent-refusal-word :capacity))
                      "441 posting failed; a peer's outbound feed queue is full, nothing was stored (feed-queue-full); the peer is behind, and the node's operator sees which one in health"))
 (assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0
-                                                      (fn-own-feeds *nht-own-full*) '(:clear))))
+                                                      (fn-own-feeds *nht-own-full*) '(:clear) nil)))
                      :held))
 ;; Without the :capacity intent: the same owner before the other article,
 ;; intent :ready, and its feed table is clear.
@@ -574,7 +574,7 @@
                       *own-control-fed-taken* *own-control-evidence* 1 3)
                      :ready))
 (assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0
-                                                      (fn-own-feeds *own-control-fed-taken*) '(:clear))))
+                                                      (fn-own-feeds *own-control-fed-taken*) '(:clear) nil)))
                      :clear))
 ;; Any other non-ready intent keeps the bare refusal.
 (assert-event (equal (fn-own-intent-refusal-word :refused) :refused))
@@ -589,33 +589,89 @@
 (defconst *nht-disk-held*
   (cons :held (fn-record-string-octets " mode=stalled pending-ms=61557 stall-ms=30000 members=uncertain posts=try-later")))
 (assert-event
- (equal (nht-states (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-idle-feeds* *nht-disk-held*))
-        '(:clear :clear :clear :clear :clear :clear :clear :clear :held)))
+ (equal (nht-states (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-idle-feeds* *nht-disk-held* nil))
+        '(:clear :clear :clear :clear :clear :clear :clear :clear :held :clear)))
 (assert-event
  (equal (fn-nh-report-exit
-         (fn-nh-render (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-idle-feeds* *nht-disk-held*)))
+         (fn-nh-render (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-idle-feeds* *nht-disk-held* nil)))
         28))
 (assert-event (equal (fn-nh-code-state 28) :disk))
 (assert-event
  (equal (take 25 (fn-nh-render (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-idle-feeds*
-                                              *nht-disk-held*)))
+                                              *nht-disk-held* nil)))
         (fn-record-string-octets "health exit=28 state=disk")))
 ; With an earlier state held (unavailable-peer), the code is that state's,
 ; still never 0: the ninth state does not mask the others.
 (assert-event
- (equal (fn-nh-exit-code (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-full-feeds* *nht-disk-held*))
+ (equal (fn-nh-exit-code (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-full-feeds* *nht-disk-held* nil))
         26))
 ; Tooth (the held hypothesis): the same node with the disk clear is healthy.
 (assert-event
- (equal (fn-nh-exit-code (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-idle-feeds* '(:clear)))
+ (equal (fn-nh-exit-code (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-idle-feeds* '(:clear) nil))
         0))
 (must-fail-checked
  (defthm nht-disk-never-healthy-without-held
    (implies (consp disk)
-            (<= 20 (fn-nh-exit-code (fn-nh-verdict fence store min feeds disk))))
+            (<= 20 (fn-nh-exit-code (fn-nh-verdict fence store min feeds disk ckpt))))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t :in-theory (disable fn-nh-verdict fn-nh-exit-code)))))
 ; Offline the disk is unobserved (19 with nothing held), never clear.
 (assert-event
- (equal (car (fn-nh-nth 8 (fn-nh-verdict nil (nht-store *nht-scale*) 0 :unobserved :unobserved)))
+ (equal (car (fn-nh-nth 8 (fn-nh-verdict nil (nht-store *nht-scale*) 0 :unobserved :unobserved :unobserved)))
+        :unobserved))
+
+; fn-nh-deferred-checkpoint-is-never-healthy (PKT-542).  Reached: the scale
+; store with idle feeds and a clear disk (the first nine states clear) and
+; the owner's deferred publication as books/owner-checkpoint-pipeline.lisp
+; fn-ockp-decide answers it: the antecedent holds, the tenth state is held,
+; exit 29, and the line names the reason and the two figures.
+(defconst *nht-ckpt-deferred* '(:deferred :exceeds-budget 70000 65536))
+(assert-event (fn-nh-checkpoint-deferredp *nht-ckpt-deferred*))
+(assert-event
+ (equal (nht-states (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-idle-feeds* '(:clear)
+                                   *nht-ckpt-deferred*))
+        '(:clear :clear :clear :clear :clear :clear :clear :clear :clear :held)))
+(assert-event
+ (let ((v (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-idle-feeds* '(:clear) *nht-ckpt-deferred*)))
+   (and (equal (fn-nh-exit-code v) 29)
+        (<= 20 (fn-nh-exit-code v))
+        (not (fn-nh-first-held-index (take 9 v) 0))
+        (equal (fn-nh-report-exit (fn-nh-render v)) 29)
+        (equal (cdr (fn-nh-nth 9 v))
+               (fn-record-string-octets " reason=exceeds-budget estimate=70000 budget=65536")))))
+(assert-event (equal (fn-nh-code-state 29) :checkpoint-deferred))
+; The host-called path: the owner's observation carries the deferral as its
+; sixth element (host/native-live-status-host.lisp appends
+; fn-owner-sco-deferred to fnn-store-observation's five), which
+; fn-nh-answer-report and its column twin hand to fn-nh-live-report.
+(assert-event
+ (equal (fn-nls-obs-checkpoint-deferred (list nil nil nil nil nil *nht-ckpt-deferred*))
+        *nht-ckpt-deferred*))
+(assert-event
+ (equal (fn-nh-report-exit
+         (fn-nh-live-report *nht-profile* *nht-oc* (nht-cache) 0 '(:clear) *nht-ckpt-deferred*))
+        (fn-nh-exit-code (fn-nh-verdict nil (nht-store *nht-profile*) 0
+                                        (fn-own-feeds (fn-ocfg-owner *nht-oc*)) '(:clear)
+                                        *nht-ckpt-deferred*))))
+; With an earlier state held (the disk), the code is that state's: the
+; tenth state does not mask the others, and the conclusion's iff is false.
+(assert-event
+ (let ((v (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-idle-feeds* *nht-disk-held* *nht-ckpt-deferred*)))
+   (and (equal (fn-nh-exit-code v) 28)
+        (fn-nh-first-held-index (take 9 v) 0))))
+; Tooth (the deferred hypothesis): nothing deferred (nil, as the observation
+; carries it) is healthy, and the conclusion fails.
+(assert-event (not (fn-nh-checkpoint-deferredp nil)))
+(assert-event
+ (equal (fn-nh-exit-code (fn-nh-verdict nil (nht-store *nht-scale*) 0 *nht-idle-feeds* '(:clear) nil))
+        0))
+(must-fail-checked
+ (defthm nht-checkpoint-never-healthy-without-deferred
+   (implies (consp ckpt)
+            (<= 20 (fn-nh-exit-code (fn-nh-verdict fence store min feeds disk ckpt))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t :in-theory (disable fn-nh-verdict fn-nh-exit-code)))))
+; Offline the publisher is unobserved, never clear.
+(assert-event
+ (equal (car (fn-nh-nth 9 (fn-nh-verdict nil (nht-store *nht-scale*) 0 :unobserved :unobserved :unobserved)))
         :unobserved))

@@ -7,6 +7,7 @@
 (include-book "consumer-poll-index")
 (include-book "consumer-local-control")
 (include-book "records-codec-concrete")
+(local (in-theory (enable fn-rcon-record-twin-rules)))  ; Q3f: the concrete twins' equalities
 
 (defconst *fn-col-principal* '(108 111 99 97 108)) ; local
 (defconst *fn-col-query-version* 1)

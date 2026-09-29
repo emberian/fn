@@ -154,21 +154,51 @@
 ; A connection's view of the entries: LOGIN's octets (nil when the
 ; connection has not authenticated) turn each :moderated entry naming LOGIN
 ; among its moderators into (:approver G Q); every other entry is kept.
-(defun fn-mod-session-entries (closed login)
+; Executes by a loop (lane depth-debt, PRF-919): it walks the moderated-groups configuration, operator
+; data with no fixed cap (D27), and the recursion took one control-stack frame
+; per element.  (mbe :logic <the recursion, unchanged> :exec <a loop>), equal
+; by the lemma after it (books/rev-onto.lisp fn-ag-rev-onto).
+(defun fn-mod-session-entries-loop (closed login acc)
   (declare (xargs :guard t
                   :guard-hints (("Goal" :in-theory
                                  (enable fn-nntp-moderated-entryp)))))
   (if (consp closed)
-      (let ((e (car closed)))
-        (cons (if (and login
-                       (fn-nntp-moderated-entryp e)
-                       (equal (car e) :moderated)
-                       (member-equal login (true-list-fix
-                                            (fn-mod-entry-moderators e))))
-                  (list :approver (fn-mod-entry-group e) (fn-mod-entry-queue e))
-                e)
-              (fn-mod-session-entries (cdr closed) login)))
-    nil))
+      (fn-mod-session-entries-loop (cdr closed) login
+       (cons (let ((e (car closed)))
+         (if (and login
+                  (fn-nntp-moderated-entryp e)
+                  (equal (car e) :moderated)
+                  (member-equal login (true-list-fix
+                                       (fn-mod-entry-moderators e))))
+             (list :approver (fn-mod-entry-group e) (fn-mod-entry-queue e))
+           e)) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-mod-session-entries (closed login)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp closed)
+           (let ((e (car closed)))
+             (cons (if (and login
+                            (fn-nntp-moderated-entryp e)
+                            (equal (car e) :moderated)
+                            (member-equal login (true-list-fix
+                                                 (fn-mod-entry-moderators e))))
+                       (list :approver (fn-mod-entry-group e) (fn-mod-entry-queue e))
+                     e)
+                   (fn-mod-session-entries (cdr closed) login)))
+         nil)
+       :exec (fn-mod-session-entries-loop closed login nil)))
+
+(defthm fn-mod-session-entries-loop-is-rev-onto
+  (equal (fn-mod-session-entries-loop closed login acc)
+         (fn-ag-rev-onto acc (fn-mod-session-entries closed login)))
+  :hints (("Goal" :induct (fn-mod-session-entries-loop closed login acc)
+                  :in-theory (disable fn-nntp-moderated-entryp fn-mod-entry-moderators
+                                      fn-mod-entry-group fn-mod-entry-queue))))
+
+(verify-guards fn-mod-session-entries
+  :hints (("Goal" :in-theory (enable fn-nntp-moderated-entryp))))
 
 ; No entry of CLOSED is an :approver entry: what the owner installs.
 (defun fn-mod-no-approversp (closed)
@@ -632,21 +662,49 @@
 ; The queues hidden from LOGIN, in entry order: `fn-mod-queue-hiddenp' as a
 ; list, which the reader's view appends to its READ rule
 ; (books/nntp-auth.lisp `fn-auth-access-text').
-(defun fn-mod-hidden-queues (closed login)
+; Executes by a loop (lane depth-debt, PRF-919): it walks the moderated-groups configuration, operator
+; data with no fixed cap (D27), and the recursion took one control-stack frame
+; per element.  (mbe :logic <the recursion, unchanged> :exec <a loop>), equal
+; by the lemma after it (books/rev-onto.lisp fn-ag-rev-onto).
+(defun fn-mod-hidden-queues-loop (closed login acc)
   (declare (xargs :guard t
                   :guard-hints (("Goal" :in-theory
                                  (enable fn-nntp-moderated-entryp)))))
   (if (consp closed)
-      (if (and (fn-nntp-moderated-entryp (car closed))
-               (equal (car (car closed)) :moderated)
-               (not (and login
-                         (member-equal login (true-list-fix
-                                              (fn-mod-entry-moderators
-                                               (car closed)))))))
-          (cons (fn-mod-entry-queue (car closed))
-                (fn-mod-hidden-queues (cdr closed) login))
-        (fn-mod-hidden-queues (cdr closed) login))
-    nil))
+      (fn-mod-hidden-queues-loop (cdr closed) login
+       (if (and (fn-nntp-moderated-entryp (car closed))
+            (equal (car (car closed)) :moderated)
+            (not (and login
+                      (member-equal login (true-list-fix
+                                           (fn-mod-entry-moderators
+                                            (car closed))))))) (cons (fn-mod-entry-queue (car closed)) acc) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-mod-hidden-queues (closed login)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp closed)
+           (if (and (fn-nntp-moderated-entryp (car closed))
+                    (equal (car (car closed)) :moderated)
+                    (not (and login
+                              (member-equal login (true-list-fix
+                                                   (fn-mod-entry-moderators
+                                                    (car closed)))))))
+               (cons (fn-mod-entry-queue (car closed))
+                     (fn-mod-hidden-queues (cdr closed) login))
+             (fn-mod-hidden-queues (cdr closed) login))
+         nil)
+       :exec (fn-mod-hidden-queues-loop closed login nil)))
+
+(defthm fn-mod-hidden-queues-loop-is-rev-onto
+  (equal (fn-mod-hidden-queues-loop closed login acc)
+         (fn-ag-rev-onto acc (fn-mod-hidden-queues closed login)))
+  :hints (("Goal" :induct (fn-mod-hidden-queues-loop closed login acc)
+                  :in-theory (disable fn-nntp-moderated-entryp fn-mod-entry-moderators
+                                      fn-mod-entry-group fn-mod-entry-queue))))
+
+(verify-guards fn-mod-hidden-queues
+  :hints (("Goal" :in-theory (enable fn-nntp-moderated-entryp))))
 
 (defthm fn-mod-hidden-queues-is-hiddenp
   (iff (member-equal g (fn-mod-hidden-queues closed login))

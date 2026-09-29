@@ -1,4 +1,4 @@
-; fn: the byte-level storage model under the file kernel (crash model v2, §1).
+; fn: the byte-level storage model under the file kernel (crash model v2, section 1).
 ;
 ; A store is a table of inodes (octet lists), a table of directories (name
 ; maps), and an ordered list of PENDING operations the process has issued and
@@ -13,7 +13,7 @@
 ; EIO/ENOSPC with partial progress are explicit transitions, and a failed
 ; fsync lands a torn selection and discards the rest (fsyncgate).
 ;
-; The definitions are specs/crash-model-v2.md §1.2-1.6 with three changes
+; The definitions are specs/crash-model-v2.md section 1.2-1.6 with three changes
 ; the well-formedness keystones of byte-store-invariants required, each
 ; recorded in that document's status section:
 ;   * fn-bs-statep carries three more conjuncts: every inode id in the table is
@@ -232,16 +232,45 @@
 ; -----------------------------------------------------------------------------
 ; Applying operations; the view.
 
+; fn-bs-zeros and fn-bs-take execute by loops (lane depth-debt, PRF-919):
+; their depth was an octet count (a write's gap, a file's content), one
+; control-stack frame per octet.  The :logic is the recursion, unchanged; the
+; guards are verified so the :exec is what runs.
+(defun fn-bs-zeros-loop (n acc)
+  (declare (xargs :guard t))
+  (if (posp n) (fn-bs-zeros-loop (1- n) (cons 0 acc)) (fn-ag-rev-onto acc nil)))
+
 (defun fn-bs-zeros (n)
   (declare (xargs :guard t :verify-guards nil))
-  (if (zp n) nil (cons 0 (fn-bs-zeros (1- n)))))
+  (mbe :logic (if (zp n) nil (cons 0 (fn-bs-zeros (1- n))))
+       :exec (fn-bs-zeros-loop n nil)))
+
+(defthm fn-bs-zeros-loop-is-rev-onto
+  (equal (fn-bs-zeros-loop n acc) (fn-ag-rev-onto acc (fn-bs-zeros n))))
+
+(verify-guards fn-bs-zeros)
 
 ; Take n octets, zero-padding past the end: a write beyond the current end
 ; of a file reads back as zeros in the gap (POSIX lseek/write semantics).
+(defun fn-bs-take-loop (n xs acc)
+  (declare (xargs :guard t))
+  (if (posp n)
+      (if (consp xs)
+          (fn-bs-take-loop (1- n) (cdr xs) (cons (car xs) acc))
+        (fn-bs-take-loop (1- n) nil (cons 0 acc)))
+    (fn-ag-rev-onto acc nil)))
+
 (defun fn-bs-take (n xs)
   (declare (xargs :guard t :verify-guards nil))
-  (if (zp n) nil
-    (cons (if (consp xs) (car xs) 0) (fn-bs-take (1- n) (cdr xs)))))
+  (mbe :logic (if (zp n) nil
+                (cons (if (consp xs) (car xs) 0) (fn-bs-take (1- n) (cdr xs))))
+       :exec (fn-bs-take-loop n xs nil)))
+
+(defthm fn-bs-take-loop-is-rev-onto
+  (equal (fn-bs-take-loop n xs acc)
+         (fn-ag-rev-onto acc (fn-bs-take n xs))))
+
+(verify-guards fn-bs-take)
 
 (defun fn-bs-splice (old offset octets)
   (declare (xargs :guard t :verify-guards nil))

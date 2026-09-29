@@ -510,6 +510,7 @@
          (fn-ocfg-pins oc) nil)
       (fn-ocfg-make (fn-own-complete (fn-ocfg-owner oc))
                     (fn-ocfg-config oc) (fn-ocfg-pins oc) nil))))
+(verify-guards fn-ocfg-complete)
 
 ; -----------------------------------------------------------------------------
 ; The connection events that write a pin: open, advance, close.
@@ -638,13 +639,28 @@
           (fn-ocfg-with-read-owner oc id (car (cdr result))
                                    (car (cdr (cdr result)))))))
 
+; A transit connection is opened over the live configuration (the peer
+; record is read from it and the session carries it) and, like a reader's
+; (fn-ocfg-open), it pins that configuration: the pin table's domain is the
+; open connections (fn-ocfg-conns-pinnedp), and before this pin the table
+; lacked every peer connection, so the configured owner's relation was
+; false from the first peer open on (PKT-888, lane owner-relation-2;
+; books/owner-host-relation.lisp fn-ohr-open-peer-preserves-ocl-relation).
 (defun fn-ocfg-open-peer (oc peer acfg)
   (declare (xargs :guard t))
-  (let ((result (fn-own-open-peer (fn-ocfg-owner oc) peer
-                                  (fn-ocfg-config oc)
-                                  (fn-auth-config-with-accounts
-                                   acfg (fn-cfg-value (fn-ocfg-config oc))))))
-    (cons (car result) (fn-ocfg-with-owner oc (cdr result)))))
+  (let* ((id (fn-own-next-id (fn-ocfg-owner oc)))
+         (result (fn-own-open-peer (fn-ocfg-owner oc) peer
+                                   (fn-ocfg-config oc)
+                                   (fn-auth-config-with-accounts
+                                    acfg (fn-cfg-value (fn-ocfg-config oc))))))
+    (cons (car result)
+          (fn-ocfg-make (cdr result) (fn-ocfg-config oc)
+                        (if (fn-own-find-conn id (fn-own-conns (cdr result)))
+                            ; a new connection pins the LATEST configuration
+                            (fn-ocfg-pin-add id (fn-ocfg-config oc)
+                                             (fn-ocfg-pins oc))
+                          (fn-ocfg-pins oc))
+                        (fn-ocfg-staged oc)))))
 
 (defun fn-ocfg-fault (oc id)
   (declare (xargs :guard t))
@@ -654,15 +670,37 @@
                         (fn-ocfg-pin-remove id (fn-ocfg-pins oc))
                         (fn-ocfg-staged oc)))))
 
+; The configured owner's event recognizer (lane depth-debt-6, row K2): an
+; owner event (books/owner.lisp fn-own-eventp) whose one arm with a guard of
+; its own, (:reconfigure id deltas), is sent only to a well-formed live
+; configuration -- fn-ocfg-reconfigure's guard, restated on the arm that
+; needs it so the served arms (the pout events, :begin, :take, the store
+; events) owe nothing about the configuration.  Every other arm's callee is
+; guarded on t or on the store state.  A guard, never a served-path check:
+; the host's one :reconfigure sender (host/owner-host.lisp
+; fn-owner-reconfigure-deltas-admitted) establishes it on the live
+; configuration; every other host and book event is a `list' form or a
+; literal.
+(defun fn-ocfg-eventp (oc event)
+  (declare (xargs :guard t))
+  (and (fn-own-eventp event)
+       (or (not (eq (car event) :reconfigure))
+           (fn-cfgp (fn-ocfg-config oc)))))
+
 (defun fn-ocfg-pass (oc event fn-arena)
   ; Every owner event that touches no pin: the served port, the writer step,
   ; the store events, the clock.  The table goes through untouched.
-  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+                              (fn-own-eventp event))
                   :verify-guards nil))
   (fn-ocfg-with-owner oc (fn-own-step (fn-ocfg-owner oc) event fn-arena)))
+(verify-guards fn-ocfg-pass)
 
 (defun fn-ocfg-step (oc event fn-arena)
-  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+                              (fn-ocfg-eventp oc event))
                   :verify-guards nil))
   (case (car event)
     (:open (cdr (fn-ocfg-open oc (cadr event))))
@@ -678,6 +716,7 @@
     (:begin (if (fn-ocfg-staged oc) oc (fn-ocfg-pass oc event fn-arena)))
     (:take (if (fn-ocfg-staged oc) oc (fn-ocfg-pass oc event fn-arena)))
     (otherwise (fn-ocfg-pass oc event fn-arena))))
+(verify-guards fn-ocfg-step)
 
 (defun fn-ocfg-run (oc events fn-arena)
   (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))

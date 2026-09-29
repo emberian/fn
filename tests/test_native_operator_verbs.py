@@ -211,7 +211,7 @@ class NativeOperatorInitTests(NativeOperatorVerbFixture):
         for entry in ("config.json", "writer.lock", "journal/000001.log", "config"):
             self.assertTrue((self.store / entry).exists(), entry)
 
-        status = self.operator("status")
+        status = self.operator("status", "--replay")
         self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
         self.assertIn(b"transactions=0", status.stdout)
 
@@ -470,7 +470,9 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
     listener = True
 
     def headroom(self):
-        status = self.operator("status")
+        # Row S3: `--replay' asks a stopped store for the replayed counts (a
+        # running owner answers its own either way).
+        status = self.operator("status", "--replay")
         self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
         fields = {}
         count = None
@@ -745,7 +747,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertIn(line.group(1), (b"custom", b"small"), created.stdout.decode())
         self.assertEqual(fields["format"], 10)  # the record log with its genesis (fn-store-10)
         self.assertIn(fields["max-transactions"], (131072, 65536, 32768, 16384))
-        status = self.operator("status")
+        status = self.operator("status", "--replay")
         self.assertIn(b"capacity articles-left=", status.stdout, status.stdout.decode())
 
     def test_init_refuses_a_profile_by_the_relation_it_breaks(self):

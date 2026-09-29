@@ -1103,12 +1103,38 @@
     (null facts)))
 
 ; Replay of the fact log: the created group names in creation order.
-(defun fn-own-replay-facts (facts)
+; Executes by a loop (lane depth-debt, PRF-919): it walks the per-group creation facts (the operator's group table), operator
+; data with no fixed cap (D27), so the recursion took one control-stack
+; frame per element.  The :logic is the recursion, unchanged.
+(defun fn-own-replay-facts-loop (facts acc)
   (declare (xargs :guard t))
   (if (consp facts)
-      (cons (fn-own-group-fact-name (car facts))
-            (fn-own-replay-facts (cdr facts)))
-    nil))
+      (fn-own-replay-facts-loop (cdr facts)
+       (cons (fn-own-group-fact-name (car facts)) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-own-replay-facts (facts)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp facts)
+           (cons (fn-own-group-fact-name (car facts))
+                 (fn-own-replay-facts (cdr facts)))
+         nil)
+       :exec (fn-own-replay-facts-loop facts nil)))
+
+(defthm fn-own-replay-facts-loop-is-rev-onto
+  (equal (fn-own-replay-facts-loop facts acc)
+         (fn-ag-rev-onto acc (fn-own-replay-facts facts)))
+  :hints (("Goal" :induct (fn-own-replay-facts-loop facts acc)
+                  :in-theory (union-theories
+                              '(fn-own-replay-facts-loop fn-own-replay-facts fn-ag-rev-onto not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-own-replay-facts
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-own-replay-facts fn-ag-rev-onto fn-own-replay-facts-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; -----------------------------------------------------------------------------
 ; The durable prefix a version names, and the archive it projects to.
@@ -1164,11 +1190,37 @@
 ;; list (or no index), the refreshed index IS the build of the new list, so
 ;; every served read over it answers as before.
 
-(defun fn-gidx-put-all (entries buckets)
+; Executes by a loop (lane depth-debt, PRF-919): it walks one article's index entries, operator
+; data with no fixed cap (D27), so the recursion took one control-stack
+; frame per element.  The :logic is the recursion, unchanged.
+(defun fn-gidx-put-all-loop (rev acc)
   (declare (xargs :guard t))
-  (if (consp entries)
-      (fn-gidx-put (car entries) (fn-gidx-put-all (cdr entries) buckets))
-    buckets))
+  (if (consp rev)
+      (fn-gidx-put-all-loop (cdr rev) (fn-gidx-put (car rev) acc))
+    acc))
+
+(defun fn-gidx-put-all (entries buckets)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp entries)
+                  (fn-gidx-put (car entries) (fn-gidx-put-all (cdr entries) buckets))
+                buckets)
+       :exec (fn-gidx-put-all-loop (fn-ag-rev-onto entries nil) buckets)))
+
+(defthm fn-gidx-put-all-loop-of-rev-onto
+  (equal (fn-gidx-put-all-loop (fn-ag-rev-onto entries zs) buckets)
+         (fn-gidx-put-all-loop zs (fn-gidx-put-all entries buckets)))
+  :hints (("Goal" :induct (fn-ag-rev-onto entries zs)
+                  :in-theory (union-theories
+                              '(fn-gidx-put-all-loop fn-gidx-put-all fn-ag-rev-onto
+                                car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-gidx-put-all
+  :hints (("Goal" :use ((:instance fn-gidx-put-all-loop-of-rev-onto (zs nil)))
+                  :in-theory (union-theories
+                              '(fn-gidx-put-all-loop fn-gidx-put-all)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defthm fn-gidx-build-entries-of-append
   (equal (fn-gidx-build-entries (append a b))
@@ -1715,7 +1767,9 @@
 ; (fn-peer-decide-transfer-under), not the control/posting policy.
 (defun fn-own-bp-transit-submit-result
     (o cfg peer msgid octets id subject)
-  (declare (xargs :guard t :verify-guards nil))
+  ; The store's node decides the transfer: the owner's store is a store-node
+  ; state (fn-own-step's guard, carried by the host).
+  (declare (xargs :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))
   (let ((decision (fn-peer-decide-transfer-under
                    (fn-sn-node (fn-own-store o)) cfg peer msgid octets
                    (fn-own-clock o) id subject
@@ -1727,9 +1781,11 @@
                            :ready)))
            :busy)
           (t :submitted))))
+(verify-guards fn-own-bp-transit-submit-result
+  :hints (("Goal" :in-theory (enable fn-sn-statep))))
 
 (defun fn-own-bp-transit-submit (o cfg peer msgid octets id subject)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))
   (if (equal (fn-own-bp-transit-submit-result
               o cfg peer msgid octets id subject) :submitted)
       (fn-own-enqueue
@@ -1738,6 +1794,7 @@
                           (fn-peer-make-submission peer :takethis
                                                    msgid octets)))
     o))
+(verify-guards fn-own-bp-transit-submit)
 
 (defun fn-own-bp-transit-submissionp (sub)
   (declare (xargs :guard t))
@@ -2156,6 +2213,7 @@
                 (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                 (fn-own-pending o) (fn-own-ledger-field o) (fn-own-clock o)
                 (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
+(verify-guards fn-own-store-step)
 
 ; Completion is the actual fn-sn-finish.  It is consumed exactly when the
 ; kernel is at :completing with a bound record; the consumed pair is the
@@ -3142,9 +3200,26 @@
 ; event) is its per-event law; (:take) is the writer step; (:outcome id word)
 ; feeds the durable outcome of the submission in flight back through the
 ; book, which renders the reply (fn-own-outcome).
+;
+; The owner event recognizer (lane depth-debt-6, row K2).  fn-own-step reads
+; an event's components through car/cdr chains and hands them to callees whose
+; guards are t on every component: the store events go whole to
+; fn-own-store-step (guarded on the store state alone, like fn-own-complete
+; and fn-own-bp-transit-submit), and every other arm's callee validates its
+; own arguments.  So the guard an event owes is only its spine, a proper
+; list, which makes each component read the car of a cons or of nil.  It is a
+; guard, never a served-path check: every host event is a `list' form
+; (host/owner-host.lisp, fn-owner-step's callers) and every book event a
+; literal (books/owner-prepare-outcome.lisp), so the recognizer holds by
+; construction wherever the step is called.
+(defun fn-own-eventp (event)
+  (declare (xargs :guard t))
+  (true-listp event))
 
 (defun fn-own-step (o event fn-arena)
-  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-sn-statep (fn-own-store o)) (fn-own-eventp event))
+                  :verify-guards nil))
   (case (car event)
     (:open (cdr (fn-own-open o (cadr event))))
     (:open-peer (cdr (fn-own-open-peer o (cadr event) (caddr event)
@@ -3185,6 +3260,7 @@
     (:feed-octets (cdr (fn-own-feed-reply o (cadr event) (caddr event)
                                           (cadddr event) fn-arena)))
     (otherwise o)))
+(verify-guards fn-own-step)
 
 (defun fn-own-run (o events fn-arena)
   (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))

@@ -112,7 +112,10 @@
 ; -----------------------------------------------------------------------------
 ; The cut: consecutive extents of CHUNK octets (the last shorter).
 
-(defun fn-bpfs-cut (bundle payload offset chunk)
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of the bundle's payload (one fragment per CHUNK octets) (data, not a bound).  The :logic is
+; the recursion, unchanged; the :exec is a loop, equal by fn-bpfs-cut-loop-is-rev-onto.
+(defun fn-bpfs-cut-loop (bundle payload offset chunk acc)
   (declare (xargs :guard (and (fn-bpb-bundlep bundle) (fn-bpfs-cuttablep bundle)
                               (fn-cbor-octet-listp payload) (natp offset)
                               (equal (+ offset (len payload))
@@ -121,10 +124,34 @@
                   :verify-guards nil
                   :measure (len payload)))
   (if (or (atom payload) (zp chunk))
-      nil
+      (fn-ag-rev-onto acc nil)
     (let ((n (min chunk (len payload))))
-      (cons (fn-bpb-encode (fn-bpfs-fragment bundle offset (take n payload)))
-            (fn-bpfs-cut bundle (nthcdr n payload) (+ offset n) chunk)))))
+      (fn-bpfs-cut-loop bundle (nthcdr n payload) (+ offset n) chunk
+                        (cons (fn-bpb-encode (fn-bpfs-fragment bundle offset (take n payload)))
+                              acc)))))
+
+(defun fn-bpfs-cut (bundle payload offset chunk)
+  (declare (xargs :guard (and (fn-bpb-bundlep bundle) (fn-bpfs-cuttablep bundle)
+                              (fn-cbor-octet-listp payload) (natp offset)
+                              (equal (+ offset (len payload))
+                                     (len (fn-bpb-payload bundle)))
+                              (natp chunk))
+                  :verify-guards nil
+                  :measure (len payload)))
+  (mbe :logic (if (or (atom payload) (zp chunk))
+                  nil
+                (let ((n (min chunk (len payload))))
+                  (cons (fn-bpb-encode (fn-bpfs-fragment bundle offset (take n payload)))
+                        (fn-bpfs-cut bundle (nthcdr n payload) (+ offset n) chunk))))
+       :exec (fn-bpfs-cut-loop bundle payload offset chunk nil)))
+
+(defthm fn-bpfs-cut-loop-is-rev-onto
+  (equal (fn-bpfs-cut-loop bundle payload offset chunk acc)
+         (fn-ag-rev-onto acc (fn-bpfs-cut bundle payload offset chunk)))
+  :hints (("Goal" :induct (fn-bpfs-cut-loop bundle payload offset chunk acc)
+                  :in-theory (union-theories
+                              '(fn-bpfs-cut-loop fn-bpfs-cut fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
 
 (defun fn-bpfs-plan (wire mru)
   (declare (xargs :guard t :verify-guards nil))
@@ -1228,7 +1255,7 @@
                                    (b bundle) (o (len (fn-bpb-payload bundle))) (d nil)))
            :in-theory (union-theories (theory 'ground-zero)
                                       '(fn-bpfs-nil-is-data)))))
-(verify-guards fn-bpfs-cut
+(verify-guards fn-bpfs-cut-loop
   :hints (("Goal" :use ((:instance fn-bpfs-fragment-is-a-bundle
                                    (b bundle) (o offset)
                                    (d (take (min chunk (len payload)) payload)))
@@ -1240,6 +1267,20 @@
                                       '(fn-bpfs-octets-are-a-true-list
                                         fn-bpfs-len-of-nthcdr fn-bpfs-nthcdr-of-octets
                                         fn-bpfs-len-positive)))))
+(verify-guards fn-bpfs-cut
+  :hints (("Goal" :use ((:instance fn-bpfs-fragment-is-a-bundle
+                                   (b bundle) (o offset)
+                                   (d (take (min chunk (len payload)) payload)))
+                        (:instance fn-bpfs-take-is-data
+                                   (xs payload) (n (min chunk (len payload))))
+                        (:instance fn-bpfs-bundle-parts (b bundle))
+                        (:instance fn-bpfs-datap-bound (d (fn-bpb-payload bundle))))
+           :expand ((fn-bpfs-cut bundle payload offset chunk))
+           :in-theory (union-theories (theory 'ground-zero)
+                                      '(fn-bpfs-octets-are-a-true-list
+                                        fn-bpfs-len-of-nthcdr fn-bpfs-nthcdr-of-octets
+                                        fn-bpfs-len-positive
+                                        fn-bpfs-cut-loop-is-rev-onto fn-ag-rev-onto)))))
 
 (verify-guards fn-bpfs-plan
   :hints (("Goal" :use ((:instance fn-bpb-decode-yields-bundle (octets wire) (limit (len wire)))

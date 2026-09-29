@@ -65,6 +65,44 @@
        *btj-cfg* "bundle-btj" *btj-request-octets* 1 0
        :accepted *btj-plan*)))
 (assert-event (fn-bpaj-transit-intentp *btj-intent*))
+
+;; Teeth for fn-bpaj-transit-plan-under-refuses-past-the-limits-before-any-intent
+;; (PKT-771).  Positive: the plan submits, the one-field limit refuses the
+;; stored projection's census, the host's plan is that refusal by name and
+;; no intent is built from it (the unlimited plan builds one: above).
+(defconst *btj-tight* (fn-article-limits 1 100000 10000000))
+(defconst *btj-roomy* (fn-article-limits 100000 100000 10000000))
+(make-event
+ `(defconst *btj-under-tight*
+    ',(fn-bpaj-transit-plan-under *pt-node0* *btj-cfg* *btj-ingress* "dtn://b/"
+                                  *btj-request-octets* *pt-obs* *btj-tight*)))
+(assert-event
+ (and (member-equal (car *btj-plan*) '(:submit :busy))
+      (equal (fn-peer-header-limit-refusal
+              *btj-cfg* (fn-bpaj-ingress-peer *btj-cfg* *btj-ingress* "dtn://b/")
+              (fn-bpa-request-article (fn-bpaj-request *btj-request-octets*))
+              *btj-tight*)
+             :header-fields-limit)
+      (equal *btj-under-tight* '(:refused :header-fields-limit))
+      (not (fn-bpaj-transit-intent-from-plan
+            *btj-cfg* "bundle-btj" *btj-request-octets* 1 0
+            :accepted *btj-under-tight*))))
+;; Hypothesis removal, the limit: within roomy limits the plan is unchanged
+;; and builds its intent -- the conclusion fails.
+(make-event
+ `(defconst *btj-under-roomy*
+    ',(fn-bpaj-transit-plan-under *pt-node0* *btj-cfg* *btj-ingress* "dtn://b/"
+                                  *btj-request-octets* *pt-obs* *btj-roomy*)))
+(assert-event
+ (and (member-equal (car *btj-plan*) '(:submit :busy))
+      (not (fn-peer-header-limit-refusal
+            *btj-cfg* (fn-bpaj-ingress-peer *btj-cfg* *btj-ingress* "dtn://b/")
+            (fn-bpa-request-article (fn-bpaj-request *btj-request-octets*))
+            *btj-roomy*))
+      (equal *btj-under-roomy* *btj-plan*)
+      (fn-bpaj-transit-intent-from-plan
+       *btj-cfg* "bundle-btj" *btj-request-octets* 1 0
+       :accepted *btj-under-roomy*)))
 ; PKT-646: the intent pins the request by reference and the projection by
 ; length and digest; it holds neither's bytes.
 (assert-event (equal (fn-bpaj-intent-ref *btj-intent*)

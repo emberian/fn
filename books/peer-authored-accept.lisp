@@ -66,15 +66,46 @@
 ; compared as rendered octets, so no hex is parsed here.
 (defconst *fn-pa-carries-slot* "carries-principal")
 
-(defun fn-pa-carried-sources (rows)
+; Executes by a loop (lane depth-debt, PRF-919): a peer's config rows, operator data with no
+; fixed cap (D27).  (mbe :logic <the recursion, unchanged> :exec <a loop>),
+; equal by fn-pa-carried-sources-loop-is-rev-onto (books/rev-onto.lisp).
+(defun fn-pa-carried-sources-loop (rows acc)
   (declare (xargs :guard t))
   (if (consp rows)
-      (let ((rest (fn-pa-carried-sources (cdr rows))))
-        (if (and (equal (fn-cfg-row-b (car rows)) *fn-pa-carries-slot*)
-                 (stringp (fn-cfg-row-c (car rows))))
-            (cons (fn-record-string-octets (fn-cfg-row-c (car rows))) rest)
-          rest))
-    nil))
+      (fn-pa-carried-sources-loop
+       (cdr rows)
+       (if (and (equal (fn-cfg-row-b (car rows)) *fn-pa-carries-slot*)
+                (stringp (fn-cfg-row-c (car rows))))
+           (cons (fn-record-string-octets (fn-cfg-row-c (car rows))) acc)
+         acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-pa-carried-sources (rows)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp rows)
+                  (let ((rest (fn-pa-carried-sources (cdr rows))))
+                    (if (and (equal (fn-cfg-row-b (car rows)) *fn-pa-carries-slot*)
+                             (stringp (fn-cfg-row-c (car rows))))
+                        (cons (fn-record-string-octets (fn-cfg-row-c (car rows))) rest)
+                      rest))
+                nil)
+       :exec (fn-pa-carried-sources-loop rows nil)))
+
+(defthm fn-pa-carried-sources-loop-is-rev-onto
+  (equal (fn-pa-carried-sources-loop rows acc)
+         (fn-ag-rev-onto acc (fn-pa-carried-sources rows)))
+  :hints (("Goal" :induct (fn-pa-carried-sources-loop rows acc)
+                  :in-theory (union-theories
+                              '(fn-pa-carried-sources-loop fn-pa-carried-sources
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-pa-carried-sources
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-pa-carried-sources fn-ag-rev-onto
+                                fn-pa-carried-sources-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; The list for the peer that delivered: its rows in the configured table.
 (defun fn-pa-peer-carried-sources (peer peers)

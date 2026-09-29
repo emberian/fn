@@ -111,8 +111,8 @@
 ; "The host's realizer for a COMPRESSED extent answers the value its C
 ; decodes to."
 ;
-; A compressed extent (books/payload-lz-record.lisp) is an LZ4 block C at
-; [POFF, POFF+PLEN) inside a log entry (protected prefix [EOFF, EOFF+ELEN),
+; A compressed extent (books/payload-lz-record.lisp) is a DEFLATE stream C
+; (books/payload-deflate.lisp) at [POFF, POFF+PLEN) inside a log entry (protected prefix [EOFF, EOFF+ELEN),
 ; trailer TRAILER), decoding against the dictionary DICT to N octets.
 ; `(fn-durable-realize-lz file eoff elen poff plen trailer n dict)' is the
 ; host's realizer (host/native/extent.lisp): it reads C through the extent

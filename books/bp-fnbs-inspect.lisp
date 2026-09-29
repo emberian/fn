@@ -23,5 +23,15 @@
   (declare (xargs :guard t))
   (fn-bpn-nth 1 result))
 
+; The host calls fn-bpnf-inspect-adu on octets it read: under the
+; recognizer the held record's bundle is a bundle
+; (fn-bpnf-stored-recordp-held-bundle-is-a-bundle), which is what
+; fn-bpb-payload asks.
+(verify-guards fn-bpnf-inspect-adu
+  :hints (("Goal" :in-theory (e/d (fn-bpnf-stored-recordp-held-bundle-is-a-bundle)
+                                  (fn-bpnf-stored-recordp
+                                   fn-bpnf-stored-record-unframe
+                                   fn-bpb-payload fn-bpnf-held-bundle
+                                   fn-bpb-bundlep)))))
 (verify-guards fn-bpnf-inspect-readyp)
 (verify-guards fn-bpnf-inspect-value)

@@ -367,5 +367,98 @@ class BinderStatementTests(unittest.TestCase):
         self.assertFalse(reach_check.Subject(graph, "t2", self.FORM).hosted(graph))
 
 
+class AbbreviationTests(unittest.TestCase):
+    """PKT-376: an event stated over a proof-only abbreviation is about what
+    the abbreviation names; a real (branching) model stays a model."""
+
+    DEFS = {
+        "fn-live": ("(defun fn-live (x) (declare (xargs :guard t :verify-guards nil))"
+                    " (fn-store (fn-owner (fn-run x))))"),
+        "fn-exec": "(defun fn-exec (x) (fn-store (fn-owner (fn-run x))))",
+        "fn-seq": ("(defun-nx fn-seq (x) (let ((y (fn-owner x))) (fn-store y)))"),
+        "fn-model": "(defun fn-model (x) (if (consp x) (fn-store x) nil))",
+        "fn-livem": "(defmacro fn-livem (x) `(fn-store (fn-run ,x)))",
+        "fn-store": "(defun fn-store (o) (car o))",
+        "fn-owner": "(defun fn-owner (o) (cdr o))",
+        "fn-check": "(defun fn-check (s) (consp s))",
+        "fn-run": "(defun fn-run (x) (if (consp x) (fn-run (cdr x)) x))",
+        "fn-indexedp": "(defun fn-indexedp (s) (if (consp s) (fn-indexedp (cdr s)) t))",
+    }
+
+    def graph(self):
+        graph = reach_check.Graph.__new__(reach_check.Graph)
+        graph.book_defs = {n: ("books/x.lisp", f) for n, f in self.DEFS.items()}
+        graph.stobj_names, graph.export_of = {"state"}, {}
+        graph.reachable = {"fn-store", "fn-owner", "fn-check"}
+        return graph
+
+    def hosted(self, form):
+        graph = self.graph()
+        return reach_check.Subject(graph, "t", form).hosted(graph)
+
+    def test_an_event_over_an_abbreviation_is_about_what_it_names(self):
+        self.assertTrue(self.hosted("(defthm t (fn-indexedp (fn-live x)))"))
+        self.assertTrue(self.hosted("(defthm t (fn-indexedp (fn-livem x)))"))
+
+    def test_a_branching_definition_is_not_an_abbreviation(self):
+        graph = self.graph()
+        self.assertIsNone(graph.abbreviation("fn-model"))
+        self.assertIsNone(graph.abbreviation("fn-run"), "recursive")
+        self.assertIsNone(graph.abbreviation("fn-store"), "reached: a function, not a proof abbreviation")
+        self.assertIsNone(graph.abbreviation("fn-exec"), "executable: the host could call it")
+        self.assertIsNone(graph.abbreviation("fn-seq"), "a binder sequences work (fn-sca-load-history)")
+        self.assertIsNotNone(graph.abbreviation("fn-live"))
+        self.assertFalse(self.hosted("(defthm t (fn-indexedp (fn-model x)))"))
+
+    def test_a_bound_abbreviation_is_a_model_only_when_what_it_names_is(self):
+        self.assertTrue(self.hosted("(defthm t (let ((o (fn-live x))) (fn-check o)))"))
+        self.assertFalse(self.hosted("(defthm t (let ((o (fn-model x))) (fn-check o)))"))
+
+
+class LoadedHostTests(unittest.TestCase):
+    """PKT-412: a host file no image build loads is not a host line."""
+
+    def test_only_what_a_build_loads_is_a_host_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host/native/build.lisp").write_text(
+                '(ld "host/a-host.lisp" :ld-error-action :error)\n'
+                '; (ld "host/commented-host.lisp")\n'
+                '(progn! (set-raw-mode t) (load "host/native/io.lisp"))\n')
+            (root / "host/a-host.lisp").write_text('(ld "b-host.lisp")\n(defun a () 1)\n')
+            (root / "host/b-host.lisp").write_text("(defun b () 2)\n")
+            (root / "host/commented-host.lisp").write_text("(defun c () 3)\n")
+            (root / "host/unloaded-host.lisp").write_text("(defun u () 4)\n")
+            (root / "host/native/io.lisp").write_text(
+                '(load (merge-pathnames "digest.lisp" *load-truename*))\n')
+            (root / "host/native/digest.lisp").write_text("(defun d () 5)\n")
+            self.assertEqual(reach_check.loaded_host_files(("host/native/build.lisp",), root),
+                             {"host/native/build.lisp", "host/a-host.lisp", "host/b-host.lisp",
+                              "host/native/io.lisp", "host/native/digest.lisp"})
+
+    def test_a_build_run_from_its_own_directory_resolves_there(self):
+        # The extraction world (tools/extract/world-host.lisp) runs from
+        # tools/extract and names `../../host/...' (Q7k).
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host").mkdir()
+            (root / "tools/extract").mkdir(parents=True)
+            (root / "tools/extract/world-host.lisp").write_text(
+                '(ld "../../host/port-host.lisp" :ld-error-action :error)\n')
+            (root / "host/port-host.lisp").write_text("(defun p () 1)\n")
+            self.assertEqual(
+                reach_check.loaded_host_files({"tools/extract/world-host.lisp": "tools/extract"}, root),
+                {"tools/extract/world-host.lisp", "host/port-host.lisp"})
+            self.assertEqual(
+                reach_check.loaded_host_files(("tools/extract/world-host.lisp",), root),
+                {"tools/extract/world-host.lisp"})
+
+    def test_the_extraction_worlds_ports_are_host_lines(self):
+        graph = reach_check.Graph()
+        self.assertIn("host/store-open-host.lisp", graph.loaded_hosts)
+        self.assertIn("host/owner-host.lisp", graph.loaded_hosts)
+        self.assertNotIn("host/native/build-store-test.lisp", graph.loaded_hosts)
+
 if __name__ == "__main__":
     unittest.main()

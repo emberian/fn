@@ -3,6 +3,7 @@
 (include-book "../../books/owner-parse-carried")
 (include-book "must-fail-checked")
 (include-book "owner-commit-carried-tests")
+(include-book "peer-authored-accept-tests")
 
 ; lane history-columns-3: the readers take the history stobj fn-hist.
 (defun fn-apc-own-finish-h (o cfg fn-arena carry)
@@ -16,8 +17,8 @@
 
 ; The host runs compiled code: every function it calls here is
 ; guard-verified, as its reference is.  The resolution publication's
-; reference (fn-ores-submission-resolution-publication) is :ideal, and so is
-; its twin.
+; reference (fn-ores-submission-resolution-publication) and its twin were
+; :ideal until lane depth-debt-5 verified both (row K2).
 (assert-event
  (equal (list (symbol-class 'fn-apc-take (w state))
               (symbol-class 'fn-apc-icar-carry-of (w state))
@@ -34,7 +35,7 @@
         '(:common-lisp-compliant :common-lisp-compliant :common-lisp-compliant
           :common-lisp-compliant :common-lisp-compliant :common-lisp-compliant
           :common-lisp-compliant :common-lisp-compliant :common-lisp-compliant
-          :common-lisp-compliant :common-lisp-compliant :ideal)))
+          :common-lisp-compliant :common-lisp-compliant :common-lisp-compliant)))
 
 ; -----------------------------------------------------------------------------
 ; Reachable witness 1: owner-served-invariants-tests' *osi-completing*,
@@ -78,18 +79,55 @@
 ; Each ingress reader over the stored octets is its reference, and the
 ; values are the unsigned ordinary article's.
 (defconst *apc-t-groups* (list (fn-nntp-string-octets "fn.letters")))
-(assert-event (equal (fn-apc-carrier-form *apc-t-stored* *apc-t-carry*) :absent))
+(assert-event (equal (fn-apc-carrier-form *apc-t-stored* nil *apc-t-carry*) :absent))
 (assert-event (equal (fn-pa-carrier-form *apc-t-stored*) :absent))
-(assert-event (equal (fn-apc-current-plan *apc-t-stored* nil nil t *apc-t-carry*)
+(assert-event (equal (fn-apc-current-plan *apc-t-stored* nil nil t nil *apc-t-carry*)
                      (fn-pa-current-plan *apc-t-stored* nil nil t)))
-(assert-event (equal (fn-apc-current-plan *apc-t-stored* nil nil t *apc-t-carry*) :absent))
-(assert-event (equal (fn-apc-transit-verdict *apc-t-stored* nil nil t nil nil *apc-t-carry*)
+(assert-event (equal (fn-apc-current-plan *apc-t-stored* nil nil t nil *apc-t-carry*) :absent))
+(assert-event (equal (fn-apc-transit-verdict *apc-t-stored* nil nil t nil nil nil *apc-t-carry*)
                      (fn-pcb-transit-verdict *apc-t-stored* nil nil t nil nil)))
-(assert-event (equal (fn-apc-transit-verdict *apc-t-stored* nil nil t nil nil *apc-t-carry*)
+(assert-event (equal (fn-apc-transit-verdict *apc-t-stored* nil nil t nil nil nil *apc-t-carry*)
                      :unsigned))
-(assert-event (equal (fn-apc-transit-refusal-detail *apc-t-stored* nil nil nil nil *apc-t-carry*)
+(assert-event (equal (fn-apc-transit-refusal-detail *apc-t-stored* nil nil nil nil nil *apc-t-carry*)
                      (fn-pcb-transit-refusal-detail *apc-t-stored* nil nil nil nil)))
-(assert-event (null (fn-apc-transit-refusal-detail *apc-t-stored* nil nil nil nil *apc-t-carry*)))
+(assert-event (null (fn-apc-transit-refusal-detail *apc-t-stored* nil nil nil nil nil *apc-t-carry*)))
+; PKT-541: the twin names a revoked principal's refusal as the reference
+; does (fn-apc-admission-verdict-of-plan-is-reference), with an empty and
+; with a filled parse carry.
+(defconst *apc-t-pat-carry*
+  (list (cons *pat-relayed* (fn-article-parse *pat-relayed*))))
+(assert-event (fn-apc-p *apc-t-pat-carry*))
+(assert-event (equal (fn-apc-transit-refusal-detail *pat-relayed* *pat-after-revocation*
+                                                    nil :verified :verified nil nil)
+                     '(:no-local-binding :revoked-principal)))
+(assert-event (equal (fn-apc-transit-refusal-detail *pat-relayed* *pat-after-revocation*
+                                                    nil :verified :verified
+                                                    nil *apc-t-pat-carry*)
+                     '(:no-local-binding :revoked-principal)))
+(assert-event (equal (fn-apc-transit-verdict *pat-relayed* *pat-after-revocation* nil nil
+                                             :verified :verified nil *apc-t-pat-carry*)
+                     :revoked-principal))
+(assert-event (equal (fn-apc-transit-verdict *pat-relayed* *pat-after-revocation* nil t
+                                             :verified :verified nil *apc-t-pat-carry*)
+                     :revoked))
+(assert-event (equal (fn-apc-transit-refusal-detail *pat-relayed* nil nil nil nil
+                                                    nil *apc-t-pat-carry*)
+                     '(:no-local-binding :unenrolled)))
+; ... and with the carrier-plan memo filled for the same octets (PRF-982).
+; (The statement decoder is an attachment, which a defconst may not evaluate.)
+(defun apct-pat-plans ()
+  (declare (xargs :verify-guards nil))
+  (fn-apc-plans-extend *pat-relayed* nil *apc-t-pat-carry*))
+(assert-event (fn-apc-plansp (apct-pat-plans)))
+(assert-event (consp (apct-pat-plans)))
+(assert-event (equal (fn-apc-transit-refusal-detail *pat-relayed* *pat-after-revocation*
+                                                    nil :verified :verified
+                                                    (apct-pat-plans) *apc-t-pat-carry*)
+                     '(:no-local-binding :revoked-principal)))
+(assert-event (equal (fn-apc-transit-verdict *pat-relayed* *pat-after-revocation* nil nil
+                                             :verified :verified (apct-pat-plans)
+                                             *apc-t-pat-carry*)
+                     :revoked-principal))
 (assert-event (equal (fn-apc-filing-plan *apc-t-stored* *apc-t-groups* nil *apc-t-carry*)
                      (fn-pa-filing-plan *apc-t-stored* *apc-t-groups* nil)))
 (assert-event (equal (fn-apc-filing-plan *apc-t-stored* *apc-t-groups* nil *apc-t-carry*)
@@ -199,10 +237,10 @@
 ; host starts with: every reader parses and gives the reference.
 
 (assert-event (not (fn-apc-find *apc-t-stored* *apc-t-c-carry*)))
-(assert-event (equal (fn-apc-carrier-form *apc-t-stored* *apc-t-c-carry*) :absent))
+(assert-event (equal (fn-apc-carrier-form *apc-t-stored* nil *apc-t-c-carry*) :absent))
 (assert-event (equal (fn-apc-filing-plan *apc-t-stored* *apc-t-groups* nil *apc-t-c-carry*)
                      (list :file *apc-t-groups*)))
-(assert-event (equal (fn-apc-transit-verdict *apc-t-stored* nil nil t nil nil nil)
+(assert-event (equal (fn-apc-transit-verdict *apc-t-stored* nil nil t nil nil nil nil)
                      :unsigned))
 (assert-event (equal (apc-t-eval *apc-t-o* *apc-t-cfg* *osi-completing-prior* *apc-t-c-carry*)
                      *apc-t-finish*))
@@ -238,10 +276,10 @@
 (assert-event (not (fn-apc-p *apc-t-bad-error*)))
 (assert-event (true-listp (fn-article-parse '(1 2 3))))
 (assert-event (not (fn-article-result-okp (fn-article-parse '(1 2 3)))))
-(assert-event (equal (fn-apc-carrier-form *apc-t-stored* *apc-t-bad-error*)
+(assert-event (equal (fn-apc-carrier-form *apc-t-stored* nil *apc-t-bad-error*)
                      '(:refused :article)))
 (assert-event (not (equal (fn-apc-transit-verdict *apc-t-stored* nil nil t nil nil
-                                                  *apc-t-bad-error*)
+                                                  nil *apc-t-bad-error*)
                           (fn-pcb-transit-verdict *apc-t-stored* nil nil t nil nil))))
 (assert-event (not (equal (fn-apc-held-context-of *apc-t-stored* nil 0 *apc-t-bad-error*)
                           (fn-held-context-of *apc-t-stored* nil 0))))
@@ -271,7 +309,7 @@
           (fn-pa-filing-plan received groups domain))))
 (must-fail-checked
  (defthm apc-t-transit-verdict-without-apc-p
-   (equal (fn-apc-transit-verdict received snapshots carried transitp ed ml carry)
+   (equal (fn-apc-transit-verdict received snapshots carried transitp ed ml nil carry)
           (fn-pcb-transit-verdict received snapshots carried transitp ed ml))))
 (must-fail-checked
  (defthm apc-t-row-without-apc-p
@@ -301,9 +339,9 @@
 ; fn-apc-current-plan-is-reference: the CORRUPTED carry (b) reads a refused
 ; carrier where the reference reads no carrier.
 (assert-event (not (fn-apc-p *apc-t-bad-error*)))
-(assert-event (equal (fn-apc-current-plan *apc-t-stored* nil nil t *apc-t-bad-error*)
+(assert-event (equal (fn-apc-current-plan *apc-t-stored* nil nil t nil *apc-t-bad-error*)
                      '(:refused :article)))
-(assert-event (not (equal (fn-apc-current-plan *apc-t-stored* nil nil t *apc-t-bad-error*)
+(assert-event (not (equal (fn-apc-current-plan *apc-t-stored* nil nil t nil *apc-t-bad-error*)
                           (fn-pa-current-plan *apc-t-stored* nil nil t))))
 
 ; fn-apc-own-outcome-is-acar-own-outcome: reachable positive over the owner
@@ -386,3 +424,54 @@
 ; Not done here: fn-apc-own-outcome-is-acar-own-outcome's fn-apc-p (the carry
 ; is read only for peer targets, and no owner here posts with a peer) and
 ; fn-apc-submission-intent-is-reference's fn-icar-carryp.
+
+; -----------------------------------------------------------------------------
+; The carrier plan decided once per POST (PKT-552; fn-apc-plans-extend, the
+; host's fn-owner-plans-for).  A present fn-authorship field whose value does
+; not decode: the reference refuses :carrier, and so does every reader of the
+; memo, which holds one entry after the first reader and is unchanged by the
+; others.
+(defconst *apc-t-sgn*
+  (append (fn-nntp-string-octets "From: a@example.org") '(13 10)
+          (fn-nntp-string-octets "Newsgroups: fn.letters") '(13 10)
+          (fn-nntp-string-octets "fn-authorship: zz") '(13 10 13 10)
+          (fn-nntp-string-octets "x") '(13 10)))
+(defconst *apc-t-sgn-carry*
+  (list (cons *apc-t-sgn* (fn-article-parse *apc-t-sgn*))))
+(defconst *apc-t-sgn-plans* (fn-apc-plans-extend *apc-t-sgn* nil *apc-t-sgn-carry*))
+(assert-event (fn-apc-p *apc-t-sgn-carry*))
+(assert-event (equal (fn-pa-carrier-kind *apc-t-sgn*) :present))
+(assert-event (equal (fn-pa-carrier-form *apc-t-sgn*) '(:refused :carrier)))
+; The first reader decides the plan: one entry, keyed by the received octets.
+(assert-event (equal (len *apc-t-sgn-plans*) 1))
+(assert-event (equal (caar *apc-t-sgn-plans*) *apc-t-sgn*))
+(assert-event (equal (cdar *apc-t-sgn-plans*) (fn-hc-received-plan *apc-t-sgn*)))
+(assert-event (fn-apc-plansp *apc-t-sgn-plans*))
+; Every later reader computes nothing: the memo comes back unchanged.
+(assert-event (equal (fn-apc-plans-extend *apc-t-sgn* *apc-t-sgn-plans* *apc-t-sgn-carry*)
+                     *apc-t-sgn-plans*))
+; Each reader over the memo is its reference (fn-apc-plan-is-received-plan).
+(assert-event (equal (fn-apc-carrier-form *apc-t-sgn* *apc-t-sgn-plans* *apc-t-sgn-carry*)
+                     (fn-pa-carrier-form *apc-t-sgn*)))
+(assert-event (equal (fn-apc-current-plan *apc-t-sgn* nil nil nil *apc-t-sgn-plans* *apc-t-sgn-carry*)
+                     (fn-pa-current-plan *apc-t-sgn* nil nil nil)))
+(assert-event (equal (fn-apc-transit-verdict *apc-t-sgn* nil nil t nil nil *apc-t-sgn-plans* *apc-t-sgn-carry*)
+                     (fn-pcb-transit-verdict *apc-t-sgn* nil nil t nil nil)))
+(assert-event (equal (fn-apc-transit-verdict *apc-t-sgn* nil nil t nil nil *apc-t-sgn-plans* *apc-t-sgn-carry*)
+                     :malformed))
+(assert-event (equal (fn-apc-transit-refusal-detail *apc-t-sgn* nil nil nil nil *apc-t-sgn-plans* *apc-t-sgn-carry*)
+                     (fn-pcb-transit-refusal-detail *apc-t-sgn* nil nil nil nil)))
+; MUTATION witness (a corrupted memo, not fn-apc-plansp): the readers answer
+; from the memo, not by deciding the plan again -- the memo is what they read.
+(defconst *apc-t-sgn-bad-plans*
+  (list (cons *apc-t-sgn* (fn-hc-ok (list '(1 2) (list '(3) '(4) nil))))))
+(assert-event (not (fn-apc-plansp *apc-t-sgn-bad-plans*)))
+(assert-event (equal (fn-apc-carrier-form *apc-t-sgn* *apc-t-sgn-bad-plans* *apc-t-sgn-carry*)
+                     '(:ok (1 2) (3) (4) nil)))
+(assert-event (not (equal (fn-apc-carrier-form *apc-t-sgn* *apc-t-sgn-bad-plans* *apc-t-sgn-carry*)
+                          (fn-pa-carrier-form *apc-t-sgn*))))
+; HYPOTHESIS-REMOVAL (fn-apc-plansp): the corrupted memo satisfies the other
+; hypothesis (fn-apc-p of the carry) and falsifies the conclusion.
+(assert-event (fn-apc-p *apc-t-sgn-carry*))
+; An unsigned POST decides no plan: the memo stays empty.
+(assert-event (null (fn-apc-plans-extend *apc-t-stored* nil *apc-t-carry*)))

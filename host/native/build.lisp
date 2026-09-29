@@ -69,6 +69,11 @@
 ;; Lane time-model (PRF-311): the gate's value with the disk's deadline
 ;; (fn-otm-*), over fn-ocp-*.
 (include-book "books/owner-time-model")
+;; PRF-305 (assurance-hygiene-5): the served clock readings' keystones
+;; (fn-clkr-wall-reading-is-the-ns-decision,
+;; fn-clkr-monotonic-readings-are-the-ns-decision), named by
+;; host/interfaces.lisp's fn-otm-wall-reading / -monotonic-ms / -boottime-ms.
+(include-book "books/clock-reading")
 ;; Lane time-model-2: the decision journal (fn-otm-disk-step, fn-otm-note-step,
 ;; fn-otm-start-line) and the 440 at the POST command (fn-otm-read-span).
 (include-book "books/owner-time-journal")
@@ -388,9 +393,11 @@
         (load "host/native/io.lisp")
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
-        ; The LZ4 block encoder of the compressed append (lib/libfn-lz4;
-        ; untrusted: ACL2's proved decoder checks every candidate).
-        (load "host/native/lz4.lisp")
+        ; DEFLATE (lib/libfn-deflate, vendored zlib; untrusted: ACL2's
+        ; inflater checks every stream it reads): the COMPRESS layer's
+        ; outbound compressor (RFC 8054), the stored payloads' SBCL encoder, and
+        ; the host side of ACL2's inflater (books/deflate-inflate.lisp).
+        (load "host/native/deflate.lisp")
         ; Build-time entry profile.  tools/build_native_host.sh always supplies
         ; one of these two values.  It is serialized into the image: the
         ; restarted process cannot expose diagnostics by changing its
@@ -423,7 +430,7 @@
         ; start re-loads and re-checks all three for that process.
         (load "host/native/signatures.lisp")
         (fnn-hsig-initialize)
-        (fnn-lz4-initialize)
+        (fnn-deflate-initialize)
         (defun fn-native-entry (st)
           (declare (ignore st))
           ; A refused start exits 5 with its reason (io.lisp).
@@ -434,8 +441,8 @@
                                 (fnn-digest-startup)
                                 (fnn-hsig-reset)
                                 (fnn-hsig-initialize)
-                                (fnn-lz4-reset)
-                                (fnn-lz4-initialize)))
+                                (fnn-deflate-reset)
+                                (fnn-deflate-initialize)))
           (fnn-main)
           (values nil :exited *the-live-state*))
         ; Bounded raw file read only; parsing, defaults and availability are

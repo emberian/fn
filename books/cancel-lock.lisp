@@ -87,12 +87,37 @@
   (fn-ctl-lock-of-key (fn-cl-key entry account msgid)))
 
 ; One key per retained epoch of RING, current first.
-(defun fn-cl-ring-keys (ring account msgid)
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of data with no fixed cap (D27).
+(defun fn-cl-ring-keys-loop (ring account msgid acc)
   (declare (xargs :guard t))
   (if (consp ring)
-      (cons (fn-cl-key (car ring) account msgid)
-            (fn-cl-ring-keys (cdr ring) account msgid))
-    nil))
+      (fn-cl-ring-keys-loop (cdr ring) account msgid
+       (cons (fn-cl-key (car ring) account msgid) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-cl-ring-keys (ring account msgid)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp ring)
+           (cons (fn-cl-key (car ring) account msgid)
+                 (fn-cl-ring-keys (cdr ring) account msgid))
+         nil)
+       :exec (fn-cl-ring-keys-loop ring account msgid nil)))
+
+(defthm fn-cl-ring-keys-loop-is-rev-onto
+  (equal (fn-cl-ring-keys-loop ring account msgid acc)
+         (fn-ag-rev-onto acc (fn-cl-ring-keys ring account msgid)))
+  :hints (("Goal" :induct (fn-cl-ring-keys-loop ring account msgid acc)
+                  :in-theory (union-theories
+                              '(fn-cl-ring-keys-loop fn-cl-ring-keys fn-ag-rev-onto not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-cl-ring-keys
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-cl-ring-keys fn-ag-rev-onto fn-cl-ring-keys-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; -----------------------------------------------------------------------------
 ; The served payload: the served arm of books/owner-served-invariants.lisp

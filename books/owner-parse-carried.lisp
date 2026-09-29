@@ -228,7 +228,7 @@
                                 (fn-peer-submission-octets d))
       (fn-apc-cl-served-payload secret (fn-own-sub-account sub)
                                 (fn-inj-decision-msgid d)
-                                (fn-ipp-injected-octets d secret (fn-own-sub-login sub)
+                                (fn-ipp-injected-octets d secret (fn-own-sub-account sub)
                                                         cfg)
                                 carry))))
 
@@ -254,7 +254,7 @@
         (let ((stored (fn-peer-relayed-octets cfg (fn-peer-submission-peer d)
                                               (fn-peer-submission-octets d))))
           (cons stored (fn-apc-extend stored carry)))
-      (let* ((injected (fn-ipp-injected-octets d secret (fn-own-sub-login sub)
+      (let* ((injected (fn-ipp-injected-octets d secret (fn-own-sub-account sub)
                                                cfg))
              (carry (fn-apc-extend injected carry))
              (stored (fn-apc-cl-served-payload secret (fn-own-sub-account sub)
@@ -273,7 +273,7 @@
                             (carry (fn-apc-extend
                                     (fn-ipp-injected-octets
                                      (fn-own-sub-decision sub) secret
-                                     (fn-own-sub-login sub) cfg)
+                                     (fn-own-sub-account sub) cfg)
                                     (fn-apc-extend (fn-own-sub-octets sub)
                                                    nil))))))))
 
@@ -576,6 +576,7 @@
                   o icar carry word evidence generation txid)))
     (fn-ores-feed-port-publication (fn-ores-resolution-word o word records)
                                    records nil (fn-ores-inflight-token o) nil)))
+(verify-guards fn-apc-submission-resolution-publication)
 
 ; KEYSTONE for the host line.
 (defthm fn-apc-submission-resolution-publication-is-reference
@@ -619,18 +620,133 @@
                                   (fn-ctl-classify-octets fn-ctl-filing-group
                                    fn-ctl-memberp fn-record-string-octets)))))
 
+; -----------------------------------------------------------------------------
+; The carrier plan, decided once per POST (PKT-552).  A signed POST's
+; fn-hc-received-plan (the article parse, the carrier field's decode and the
+; authored source's parse) was decided by the carrier form, again by each
+; current plan (two per transit verdict) and by the refusal detail.  PLANS is
+; a one-entry alist ((RECEIVED . PLAN)) whose PLAN is fn-hc-received-plan of
+; RECEIVED (fn-apc-plansp); the host extends it (fn-apc-plans-extend) before
+; each reader, so the plan is computed on the first and read on the others.
+; A missing or stale entry costs a computation, never a wrong answer
+; (fn-apc-plan-is-received-plan).
+
+; fn-hc-received-plan with the article's parse read from the parse carry.
+(defun fn-apc-hc-received-plan (original carry)
+  (declare (xargs :guard t))
+  (let ((parsed (fn-apc-parse original carry)))
+    (if (not (and (fn-article-result-okp parsed)
+                  (true-listp parsed)))
+        (fn-hc-error :article original)
+      (let* ((article (fn-article-result-article parsed))
+             (fields (if (true-listp article)
+                         (fn-article-fields article) nil))
+             (source (fn-hc-authored-source article)))
+        (if (not (and (true-listp article)
+                      (equal (fn-hc-count-name *fn-hc-name* fields) 1)
+                      (fn-hc-no-other-reservedp fields)))
+            (fn-hc-error :carrier-count original)
+          (let ((field (fn-hc-find-name *fn-hc-name* fields)))
+            (if (not (true-listp field))
+                (fn-hc-error :carrier original)
+              (let ((carrier (fn-hc-field-decode-at
+                              (fn-hsig-source-version source)
+                              (fn-article-field-unfolded-value field))))
+                (if (not (fn-hc-okp carrier))
+                    (fn-hc-error :carrier original)
+                  (let* ((source-parsed (fn-article-parse source)))
+                    (if (not (and (fn-article-result-okp source-parsed)
+                                  (true-listp source-parsed)
+                                  (true-listp
+                                   (fn-article-result-article source-parsed))
+                                  (fn-hc-required-sourcep
+                                   (fn-article-result-article source-parsed))
+                                  (fn-hc-fields-nativep
+                                   (fn-article-fields
+                                    (fn-article-result-article source-parsed)))))
+                        (fn-hc-error :source-profile original)
+                      (fn-hc-ok (list source (fn-hc-value carrier))))))))))))))
+
+(defthm fn-apc-hc-received-plan-is-received-plan
+  (implies (fn-apc-p carry)
+           (equal (fn-apc-hc-received-plan original carry)
+                  (fn-hc-received-plan original)))
+  :hints (("Goal" :in-theory (e/d (fn-hc-received-plan)
+                                  (fn-apc-parse fn-hc-authored-source
+                                   fn-hc-count-name fn-hc-no-other-reservedp
+                                   fn-hc-find-name fn-hc-field-decode-at
+                                   fn-hsig-source-version fn-hc-required-sourcep
+                                   fn-hc-fields-nativep fn-hc-okp fn-hc-value
+                                   fn-hc-error fn-hc-ok)))))
+
+(defun fn-apc-plansp (plans)
+  (declare (xargs :guard t))
+  (if (atom plans)
+      t
+    (and (consp (car plans))
+         (equal (cdar plans) (fn-hc-received-plan (caar plans)))
+         (fn-apc-plansp (cdr plans)))))
+
+(defun fn-apc-plan (received plans carry)
+  (declare (xargs :guard t))
+  (let ((hit (fn-apc-find received plans)))
+    (if hit (cdr hit) (fn-apc-hc-received-plan received carry))))
+
+(local
+ (defthm fn-apc-find-in-plans
+   (implies (and (fn-apc-plansp plans) (fn-apc-find received plans))
+            (equal (cdr (fn-apc-find received plans))
+                   (fn-hc-received-plan received)))
+   :hints (("Goal" :induct (fn-apc-plansp plans)
+            :in-theory (e/d (fn-apc-find) (fn-hc-received-plan))))))
+
+; KEYSTONE: every reader of the carried plan reads fn-hc-received-plan.
+(defthm fn-apc-plan-is-received-plan
+  (implies (and (fn-apc-p carry) (fn-apc-plansp plans))
+           (equal (fn-apc-plan received plans carry)
+                  (fn-hc-received-plan received)))
+  :hints (("Goal" :in-theory (e/d (fn-apc-plan)
+                                  (fn-hc-received-plan
+                                   fn-apc-hc-received-plan fn-apc-find)))))
+
+; The host's only writer of 'fn-owner-plan-carry.  A present carrier's plan
+; is decided here once; anything else leaves PLANS as it is.  One entry: the
+; memo never grows past the POST it serves.
+(defun fn-apc-plans-extend (received plans carry)
+  (declare (xargs :guard t))
+  (if (or (fn-apc-find received plans)
+          (member-eq (fn-apc-carrier-kind received carry) '(:absent :invalid)))
+      plans
+    (list (cons received (fn-apc-hc-received-plan received carry)))))
+
+(defthm fn-apc-plansp-of-extend
+  (implies (and (fn-apc-p carry) (fn-apc-plansp plans))
+           (fn-apc-plansp (fn-apc-plans-extend received plans carry)))
+  :hints (("Goal" :in-theory (disable fn-hc-received-plan fn-apc-find
+                                      fn-apc-hc-received-plan
+                                      fn-apc-carrier-kind))))
+
+(defthm fn-apc-plans-extend-bounded
+  (<= (len (fn-apc-plans-extend received plans carry))
+      (max 1 (len plans)))
+  :hints (("Goal" :in-theory (disable fn-apc-find fn-apc-hc-received-plan
+                                      fn-apc-carrier-kind)))
+  :rule-classes :linear)
+
+(in-theory (disable fn-apc-hc-received-plan fn-apc-plan fn-apc-plans-extend))
+
 ; books/peer-authored-accept.lisp fn-pa-carrier-form
 ; (fn-owner-peer-carrier-form).  A present carrier's field is still decoded
 ; by fn-hc-received-plan over the octets (a second parse on that arm only).
-(defun fn-apc-carrier-form (received carry)
+(defun fn-apc-carrier-form (received plans carry)
   (declare (xargs :guard t
                   :guard-hints (("Goal" :in-theory
                                  (disable fn-apc-carrier-kind
-                                          fn-hc-received-plan)))))
+                                          fn-apc-plan)))))
   (let ((kind (fn-apc-carrier-kind received carry)))
     (if (eq kind :absent) :absent
       (if (eq kind :invalid) (list :refused :article)
-        (let ((parsed (fn-hc-received-plan received)))
+        (let ((parsed (fn-apc-plan received plans carry)))
           (if (not (fn-hc-okp parsed))
               (list :refused :carrier)
             (let ((value (fn-hc-value parsed)))
@@ -645,18 +761,18 @@
 
 ; KEYSTONE for the host line.
 (defthm fn-apc-carrier-form-is-reference
-  (implies (fn-apc-p carry)
-           (equal (fn-apc-carrier-form received carry)
+  (implies (and (fn-apc-p carry) (fn-apc-plansp plans))
+           (equal (fn-apc-carrier-form received plans carry)
                   (fn-pa-carrier-form received)))
-  :hints (("Goal" :in-theory (e/d (fn-pa-carrier-form)
+  :hints (("Goal" :in-theory (e/d (fn-pa-carrier-form fn-apc-carrier-form)
                                   (fn-pa-carrier-kind fn-hc-received-plan
                                    fn-hc-okp fn-hc-value)))))
 
 ; books/peer-authored-accept.lisp fn-pa-current-plan
 ; (fn-owner-peer-carrier-plan).
-(defun fn-apc-current-plan (received snapshots carried transitp carry)
+(defun fn-apc-current-plan (received snapshots carried transitp plans carry)
   (declare (xargs :guard t))
-  (let ((form (fn-apc-carrier-form received carry)))
+  (let ((form (fn-apc-carrier-form received plans carry)))
     (if (not (and (consp form) (eq (car form) :ok))) form
             (let* ((source (nth 1 form))
                    (principal (nth 2 form))
@@ -687,10 +803,10 @@
 
 ; KEYSTONE for the host line.
 (defthm fn-apc-current-plan-is-reference
-  (implies (fn-apc-p carry)
-           (equal (fn-apc-current-plan received snapshots carried transitp carry)
+  (implies (and (fn-apc-p carry) (fn-apc-plansp plans))
+           (equal (fn-apc-current-plan received snapshots carried transitp plans carry)
                   (fn-pa-current-plan received snapshots carried transitp)))
-  :hints (("Goal" :in-theory (e/d (fn-pa-current-plan)
+  :hints (("Goal" :in-theory (e/d (fn-pa-current-plan fn-apc-current-plan)
                                   (fn-apc-carrier-form fn-pa-carrier-form
                                    fn-hl-current-for-principal
                                    fn-hl-current-enrollment fn-stxk-p
@@ -728,25 +844,36 @@
                                   (fn-pa-current-plan
                                    fn-pcb-unsupported-profilep)))))
 
-(defun fn-apc-admission-verdict-of-plan (plan received ed ml)
+; PKT-541: the enrollment refusal of a principal whose enrollment was
+; revoked is :revoked-principal; the transit plan (its :revoked arm) is
+; decided only on that refusal arm.
+(defun fn-apc-admission-verdict-of-plan (plan received snapshots carried
+                                              ed ml plans carry)
   (declare (xargs :guard t))
   (let ((class (fn-apc-refusal-class-of-plan plan received ed ml)))
     (cond ((not (consp plan)) :unsigned)
           ((eq (car plan) :carried) :carried)
           ((equal class :malformed) :malformed)
           ((equal class :signature-failed) :cryptographically-invalid)
+          ((and (equal class :no-local-binding)
+                (let ((tplan (fn-apc-current-plan received snapshots carried
+                                                  t plans carry)))
+                  (and (consp tplan) (eq (car tplan) :revoked))))
+           :revoked-principal)
           ((equal class :no-local-binding) :unenrolled)
           ((equal class :unsupported-profile) :unsupported-profile)
           ((eq (car plan) :ok) :verified)
           (t :malformed))))
 
 (defthm fn-apc-admission-verdict-of-plan-is-reference
-  (equal (fn-apc-admission-verdict-of-plan
-          (fn-pa-current-plan received snapshots carried nil)
-          received ed ml)
-         (fn-pcb-admission-verdict received snapshots carried ed ml))
-  :hints (("Goal" :in-theory (e/d (fn-pcb-admission-verdict)
-                                  (fn-pa-current-plan
+  (implies (and (fn-apc-p carry) (fn-apc-plansp plans))
+           (equal (fn-apc-admission-verdict-of-plan
+                   (fn-pa-current-plan received snapshots carried nil)
+                   received snapshots carried ed ml plans carry)
+                  (fn-pcb-admission-verdict received snapshots carried ed ml)))
+  :hints (("Goal" :in-theory (e/d (fn-pcb-admission-verdict
+                                   fn-pcb-revoked-principalp)
+                                  (fn-pa-current-plan fn-apc-current-plan
                                    fn-apc-refusal-class-of-plan
                                    fn-pcb-refusal-class)))))
 
@@ -755,47 +882,48 @@
 ; fn-owner-transit-verdict.  Off transit the plan is decided once; on
 ; transit the transit plan's :revoked arm is read first, as the reference
 ; does, and the admission verdict is decided under the off-transit plan.
-(defun fn-apc-transit-verdict (received snapshots carried transitp ed ml carry)
+(defun fn-apc-transit-verdict (received snapshots carried transitp ed ml plans carry)
   (declare (xargs :guard t))
-  (let* ((plan0 (fn-apc-current-plan received snapshots carried nil carry))
+  (let* ((plan0 (fn-apc-current-plan received snapshots carried nil plans carry))
          (plan (if transitp
-                   (fn-apc-current-plan received snapshots carried transitp carry)
+                   (fn-apc-current-plan received snapshots carried transitp plans carry)
                  plan0)))
     (if (and (consp plan) (eq (car plan) :revoked))
         (if (and (eq ed :verified) (eq ml :verified))
             :revoked
           :cryptographically-invalid)
-      (fn-apc-admission-verdict-of-plan plan0 received ed ml))))
+      (fn-apc-admission-verdict-of-plan plan0 received snapshots carried
+                                        ed ml plans carry))))
 
 ; KEYSTONE for the host line.
 (defthm fn-apc-transit-verdict-is-reference
-  (implies (fn-apc-p carry)
+  (implies (and (fn-apc-p carry) (fn-apc-plansp plans))
            (equal (fn-apc-transit-verdict received snapshots carried transitp
-                                          ed ml carry)
+                                          ed ml plans carry)
                   (fn-pcb-transit-verdict received snapshots carried transitp
                                           ed ml)))
-  :hints (("Goal" :in-theory (e/d (fn-pcb-transit-verdict)
+  :hints (("Goal" :in-theory (e/d (fn-pcb-transit-verdict fn-apc-transit-verdict)
                                   (fn-apc-current-plan fn-pa-current-plan
                                    fn-apc-admission-verdict-of-plan
                                    fn-pcb-admission-verdict)))))
 
 ; fn-owner-transit-refusal-class.
-(defun fn-apc-transit-refusal-detail (received snapshots carried ed ml carry)
+(defun fn-apc-transit-refusal-detail (received snapshots carried ed ml plans carry)
   (declare (xargs :guard t))
   (let* ((verdict (fn-apc-admission-verdict-of-plan
-                   (fn-apc-current-plan received snapshots carried nil carry)
-                   received ed ml))
+                   (fn-apc-current-plan received snapshots carried nil plans carry)
+                   received snapshots carried ed ml plans carry))
          (class (fn-pcb-verdict-refusal-class verdict)))
     (if class (list class verdict) nil)))
 
 ; KEYSTONE for the host line.
 (defthm fn-apc-transit-refusal-detail-is-reference
-  (implies (fn-apc-p carry)
+  (implies (and (fn-apc-p carry) (fn-apc-plansp plans))
            (equal (fn-apc-transit-refusal-detail received snapshots carried
-                                                 ed ml carry)
+                                                 ed ml plans carry)
                   (fn-pcb-transit-refusal-detail received snapshots carried
                                                  ed ml)))
-  :hints (("Goal" :in-theory (e/d (fn-pcb-transit-refusal-detail)
+  :hints (("Goal" :in-theory (e/d (fn-pcb-transit-refusal-detail fn-apc-transit-refusal-detail)
                                   (fn-apc-current-plan
                                    fn-apc-admission-verdict-of-plan
                                    fn-pcb-admission-verdict

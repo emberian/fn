@@ -80,7 +80,7 @@
    (equal (append (append a b) c) (append a (append b c)))))
 
 (defthm fn-nlp-report-is-the-obligations-report
-  (equal (fn-nls-report :obligations profile s bytes cfg pins obs fn-arena)
+  (equal (fn-nls-report :obligations profile s bytes seen cfg pins obs fn-arena)
          (fn-nlp-report (fn-nls-retention s)))
   :hints (("Goal" :in-theory '(fn-nls-report fn-nlp-report fn-nlp-header
                                fn-nlp-append-assoc))))
@@ -297,10 +297,12 @@
                          (fn-cbor-encode (cons :uint version))
                          (fn-cbor-encode (cons :uint page))))))
 
-(defun fn-nlp-request-decode (octets)
+; The payload grammar over an opened frame; the decode below is the open
+; (fn-nls-open) followed by it, and books/native-live-buffer.lisp opens the
+; frame in place and calls the grammar.
+(defun fn-nlp-request-payload-decode (opened)
   "(:page KIND VERSION PAGE), or (:refused REASON)."
   (declare (xargs :guard t :verify-guards nil))
-  (let ((opened (fn-nls-open octets *fn-nlp-request-kind*)))
     (if (not (fn-frame-result-okp opened))
         (list :refused :frame)
       (let* ((r1 (fn-record-read-uint (fn-frame-result-payload opened)))
@@ -314,7 +316,12 @@
                       (null (fn-record-parse-rest r3))))
             (list :refused :fields)
           (list :page (fn-nls-code-kind (fn-record-parse-value r1))
-                (fn-record-parse-value r2) (fn-record-parse-value r3)))))))
+                (fn-record-parse-value r2) (fn-record-parse-value r3))))))
+
+(defun fn-nlp-request-decode (octets)
+  "(:page KIND VERSION PAGE), or (:refused REASON)."
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-nlp-request-payload-decode (fn-nls-open octets *fn-nlp-request-kind*)))
 
 (defun fn-nlp-status-code (status)
   (declare (xargs :guard t))

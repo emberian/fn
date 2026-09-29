@@ -335,6 +335,25 @@ class NativeReplayDeterminismTests(unittest.TestCase):
             self.assertEqual(joined.hexdigest(), other_box, "checkpoint bytes across boxes")
         from_checkpoint, opens = self.digest(one)
         self.assertTrue(opens and opens[0].startswith("open=checkpoint"), opens)
+        # PKT-854 (books/store-checkpoint-digest.lisp): the checkpoint's
+        # verifiable digest (tables and payloads, never the F row's revision
+        # or log) is printed beside the state digests; the two copies' agree,
+        # and so does another box's.
+        cps = []
+        for store in (one, two):
+            out = self.run_native("store", store, "digest").stdout.decode("ascii")
+            lines = [ln for ln in out.splitlines() if ln.startswith("checkpoint-digest ")]
+            self.assertEqual(len(lines), 1, out)
+            self.assertTrue(lines[0].startswith("checkpoint-digest sequence="), lines)
+            cps.append(lines[0])
+        self.assertEqual(cps[0], cps[1], "checkpoint digest between the copies")
+        other_cp = cross_box("checkpoint-digest.txt", cps[0])
+        if other_cp is not None:
+            self.assertEqual(cps[0], other_cp, "checkpoint digest across boxes")
+        # A full replay loaded no checkpoint.
+        out = self.run_native("store", self.copy(self.store, "cp-none"),
+                              "digest").stdout.decode("ascii")
+        self.assertIn("checkpoint-digest none", out.splitlines(), out)
         # The checkpoint open is the full replay (fn-sco-store-open-of-extended-
         # capture): the same logical state, field by field.
         self.assert_same(from_checkpoint, full, "checkpoint open against full replay")

@@ -51,12 +51,12 @@
 ; HELP's lines are this table's rows.
 (defconst *fn-nntp-served-command-table*
   '(("CAPABILITIES" "HELP" "QUIT" "MODE" "DATE" "POST")
-    ("AUTHINFO" "STARTTLS" "XREDEEM")
+    ("AUTHINFO" "STARTTLS" "XREDEEM" "COMPRESS")
     ("GROUP" "LISTGROUP" "LIST" "NEXT" "LAST" "NEWGROUPS" "NEWNEWS")
     ("ARTICLE" "HEAD" "BODY" "STAT")
     ("OVER" "XOVER" "HDR" "XHDR" "XPAT")
     ("IHAVE" "CHECK" "TAKETHIS")
-    ("XFNCATCHUP")))
+    ("XFNCATCHUP" "XFN-ZARTICLE")))
 
 (defun fn-nntp-keyword-in-rowp (keyword row)
   (declare (xargs :guard t))
@@ -109,7 +109,7 @@
              (fn-nntp-keywordp k "QUIT") (fn-nntp-keywordp k "MODE")
              (fn-nntp-keywordp k "DATE") (fn-nntp-keywordp k "POST")
              (fn-nntp-keywordp k "AUTHINFO") (fn-nntp-keywordp k "STARTTLS")
-             (fn-nntp-keywordp k "XREDEEM")
+             (fn-nntp-keywordp k "XREDEEM") (fn-nntp-keywordp k "COMPRESS")
              (fn-nntp-keywordp k "GROUP") (fn-nntp-keywordp k "LISTGROUP")
              (fn-nntp-keywordp k "LIST") (fn-nntp-keywordp k "NEXT")
              (fn-nntp-keywordp k "LAST") (fn-nntp-keywordp k "NEWGROUPS")
@@ -121,7 +121,8 @@
              (fn-nntp-keywordp k "XPAT")
              (fn-nntp-keywordp k "IHAVE") (fn-nntp-keywordp k "CHECK")
              (fn-nntp-keywordp k "TAKETHIS")
-             (fn-nntp-keywordp k "XFNCATCHUP")))
+             (fn-nntp-keywordp k "XFNCATCHUP")
+             (fn-nntp-keywordp k "XFN-ZARTICLE")))
   :hints (("Goal" :in-theory (e/d (fn-nntp-served-keywordp
                                    fn-nntp-keyword-in-tablep
                                    fn-nntp-keyword-in-rowp)
@@ -150,6 +151,17 @@
                            (len (cdddr x)) (len (cddddr x))
                            (len (cdr (cddddr x))) (len (cddr (cddddr x)))
                            (true-listp (cddr (cddddr x)))))))
+
+(defthm fn-help-seven-list-rebuild
+  (implies (and (true-listp x) (equal (len x) 7))
+           (equal (list (car x) (cadr x) (caddr x) (cadddr x)
+                        (car (cddddr x)) (cadr (cddddr x)) (caddr (cddddr x)))
+                  x))
+  :hints (("Goal" :expand ((len x) (len (cdr x)) (len (cddr x))
+                           (len (cdddr x)) (len (cddddr x))
+                           (len (cdr (cddddr x))) (len (cddr (cddddr x)))
+                           (len (cdddr (cddddr x)))
+                           (true-listp (cdddr (cddddr x)))))))
 
 (defthm fn-help-nth-of-a-constant
   (implies (and (syntaxp (quotep n)) (posp n))
@@ -186,10 +198,11 @@
   :hints (("Goal" :in-theory (enable fn-auth-session-shapep fn-auth-session-base
                                      fn-auth-session-config fn-auth-session-pending
                                      fn-auth-session-subject fn-auth-session-tlsp
-                                     fn-auth-session-handshakingp fn-auth-with-base
-                                     fn-auth-make-session
+                                     fn-auth-session-handshakingp fn-auth-session-compress fn-auth-session-ctx
+                                     fn-auth-with-base fn-auth-make-session
                                      fn-inj-nth fn-inj-car fn-inj-cdr)
-           :expand ((len (cdr (cddddr as))) (len (cddr (cddddr as)))))))
+           :expand ((len (cdr (cddddr as))) (len (cddr (cddddr as)))
+                    (len (cdddr (cddddr as)))))))
 
 ; KEYSTONE (PRF-194).  A keyword HELP does not list is not served: the
 ; served step answers it exactly RFC 3977 section 3.2.1's "500 command not
@@ -203,6 +216,8 @@
 (defthm fn-auth-step-pinned-answers-500-to-a-keyword-help-does-not-list
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                ; A line while a SASL exchange is kept is its response.
+                (not (fn-auth-sasl-waitingp as))
                 (not (fn-peer-session-transfer (fn-auth-session-base as)))
                 (not (fn-post-session-awaiting (fn-auth-post-session as)))
                 (equal (fn-nntp-session-openp (fn-auth-reader-session as)) t)
@@ -228,6 +243,7 @@
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-auth-step-pinned fn-auth-command fn-auth-gatedp
+                            fn-auth-compressed-refusedp
                             fn-auth-restricted-keywordp fn-auth-tls-eventp
                             fn-auth-redeem-eventp
                             fn-auth-delegate-pinned fn-peer-step-pinned
@@ -248,4 +264,4 @@
                  (:instance fn-post-sessionp (x (fn-auth-post-session as)))))))
 
 ; The reconstruction facts are general rewrites; they leave the theory here.
-(in-theory (disable fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth))
+(in-theory (disable fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-seven-list-rebuild fn-help-nth-of-a-constant fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth))
