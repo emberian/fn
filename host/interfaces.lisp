@@ -4595,9 +4595,6 @@
 (definterface fn-bpnc-startup
   :class ::common-lisp-compliant
   :keystones (fn-bpnc-ready-startup-binds-the-parsed-store))
-(definterface fn-bpnc-turn-plan
-  :class ::common-lisp-compliant
-  :keystones (fn-bpnc-grant-is-the-authorized-route-plan))
 (definterface fn-bpnc-socket-initial
   :class ::common-lisp-compliant
   :keystones (fn-bpnc-open-run-live-iff-both-completions-succeed))
