@@ -131,11 +131,18 @@
   :hints (("Goal" :in-theory (e/d (fn-sn-io fn-onb-store-boundp)
                                   (fn-onb-node-boundp fn-sn-file-step fn-sn-statep)))))
 
-(defthm fn-onb-store-boundp-of-finish
-  (implies (and (fn-onb-store-boundp s)
-                (fn-snb-record-fitp (fn-sn-node s) (fn-sn-completion-record s)))
-           (fn-onb-store-boundp (fn-sn-finish s)))
-  :hints (("Goal" :in-theory (e/d (fn-sn-finish fn-onb-store-boundp)
+(defthm fn-onb-sn-node-of-finish
+  (implies (fn-sn-completion-enabledp s)
+           (equal (fn-sn-node (fn-sn-finish s))
+                  (let ((record (fn-sn-completion-record s)))
+                    (cond ((fn-store-retention-event-p record)
+                           (fn-replay-apply-retention-event (fn-sn-node s) record))
+                          ((or (fn-stxe-p record) (fn-stxk-p record) (fn-hstxa-p record)
+                               (fn-cpe-eventp record) (fn-th-topic-eventp record))
+                           (fn-replay-apply-record (fn-sn-node s) record))
+                          (t (fn-node-complete (fn-sn-node s) (fn-record-txid record)
+                                               (fn-record-generation record) :durable))))))
+  :hints (("Goal" :in-theory (e/d (fn-sn-finish)
                                   (fn-onb-node-boundp fn-node-complete fn-replay-apply-record
                                    fn-replay-apply-retention-event fn-sf-core-completion fn-sf-emit-success
                                    fn-cpe-projection-step fn-th-prefix-step fn-sn-statep fn-node-statep
@@ -143,21 +150,18 @@
                                    fn-store-retention-event-p fn-cpe-eventp fn-th-topic-eventp fn-stxe-p
                                    fn-stxk-p fn-hstxa-p)))))
 
-(defthm fn-onb-store-boundp-of-spc-prepare
+(defthm fn-onb-store-boundp-of-finish
   (implies (and (fn-onb-store-boundp s)
-                (fn-snb-record-fitp (fn-sn-node s) record))
-           (fn-onb-store-boundp (fn-spc-prepare s record)))
-  :hints (("Goal" :in-theory (e/d (fn-spc-prepare fn-onb-store-boundp fn-snb-record-fitp fn-snb-record-article)
-                                  (fn-onb-node-boundp fn-sn-prepare-node fn-spc-stage-record
-                                   fn-cpe-projection-step fn-sn-statep fn-node-statep fn-sn-record-bindsp
-                                   fn-snb-groups-fitp)))))
-(defthm fn-onb-store-boundp-of-prc-spc-prepare
-  (implies (and (fn-onb-store-boundp s)
-                (fn-snb-record-fitp (fn-sn-node s) record)
-                (fn-prc-carryp carry)
-                (fn-pidx-view-okp view))
-           (fn-onb-store-boundp (fn-prc-spc-prepare s record view carry)))
-  :hints (("Goal" :in-theory (disable fn-onb-store-boundp fn-prc-spc-prepare fn-spc-prepare))))
+                (fn-snb-record-fitp (fn-sn-node s) (fn-sn-completion-record s)))
+           (fn-onb-store-boundp (fn-sn-finish s)))
+  :hints (("Goal" :in-theory (e/d (fn-onb-store-boundp)
+                                  (fn-sn-finish fn-onb-node-boundp fn-node-complete fn-replay-apply-record
+                                   fn-replay-apply-retention-event fn-sn-statep fn-node-statep
+                                   fn-sn-completion-enabledp fn-sn-completion-record fn-snb-record-fitp
+                                   fn-store-retention-event-p fn-cpe-eventp fn-th-topic-eventp fn-stxe-p
+                                   fn-stxk-p fn-hstxa-p))
+           :cases ((fn-sn-completion-enabledp s)))
+          ("Subgoal 2" :in-theory (enable fn-sn-finish))))
 
 ;; ---------------------------------------------------------------------------
 ;; The owner: its Store and its view.  The refresh reads the view's archive

@@ -13980,6 +13980,32 @@
       ]
     },
     {
+      "id": "PRF-958",
+      "title": "The owner carries RFC 3977 section 6's article-number bound: the Store node's watermarks and in-flight allocation, and the view's watermarks",
+      "statement": "books/owner-number-bound.lisp (fn-onb-). fn-onb-node-boundp node: every watermark of the node's acceptance is within RFC 3977 section 6's bound (fn-nntp-nexts-boundedp) and a pending allocation's groups fit at them (fn-snb-groups-fitp). fn-onb-store-boundp s is it of fn-sn-node s; fn-onb-boundp o is the store's and fn-nntp-nexts-boundedp of the view archive's watermarks. KEYSTONE fn-onb-node-boundp-of-replay-apply-record: a record that fits at the node (fn-snb-record-fitp) keeps the node bound; with it the retention, identity-neutral, completion, txid-advance and prepare steps (fn-onb-node-boundp-of-*). The Store: fn-onb-store-boundp-of-prepare / -of-spc-prepare / -of-prc-spc-prepare (a fitting record staged), -of-io (the node is untouched), -of-finish (given the completion record fits at the node). The owner: fn-onb-boundp-of-refresh (the refreshed view's archive carries the node's watermarks, fn-ctl-visible-state-of-fields), fn-onb-boundp-of-same-store-and-view (the frame), and KEYSTONE fn-onb-boundp-at-owner-prepare-buffer: host/owner-host.lisp fn-owner-prepare-buffer calls fn-pout-prepare-article, whose owner is fn-psrv-prepare's (fn-onb-boundp-of-psrv-prepare): the admission stages only a record fn-psrv-event-numberedp admits (PRF-921), so from fn-onb-boundp before, the carried parse recognizer and the view's index recognizer, fn-onb-boundp after. Scope: not yet carried through the identity prepare, the finishes (the completion record's fit through the io steps), the opens (the recovered node's watermarks are external data: an open-time test or a history fact), or the remaining host entries; with it the projection premise of fn-served-live-okp at every re-pin (PKT-615's owner carrying fn-served-connp) is the next step.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-057"
+      ],
+      "depends_on": [
+        "PRF-921"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/owner-number-bound.lisp",
+        "tests/acl2/owner-number-bound-tests.lisp"
+      ],
+      "progress_note": "Lane join-f2-5 (Claude Opus 5.5, 2026-09-29; PKT-615's follow-up). REPL-admitted on persvati (w28 tls64k); teeth tests/acl2/owner-number-bound-tests.lisp: a reachable witness over acceptance-stamp-tests' journal (the initial node, its first article), the boundary, hypothesis removal of the fit (the watermark at the bound) and of the bound before (a corrupted watermark), and the in-flight allocation at the initial node and at the bound.",
+      "events": [
+        "fn-onb-node-boundp-of-replay-apply-record",
+        "fn-onb-store-boundp-of-finish",
+        "fn-onb-boundp-of-refresh",
+        "fn-onb-boundp-of-psrv-prepare",
+        "fn-onb-boundp-at-owner-prepare-buffer"
+      ]
+    },
+    {
       "id": "PRF-902",
       "title": "An administrative argv of any length round-trips through the control frame",
       "statement": "books/native-control-reason.lisp KEYSTONE fn-native-control-admin-decode-of-encode and fn-native-control-reasoned-admin-decode-of-encode: (implies (not (equal (fn-native-control-admin-encode argv) :bad)) (equal (fn-native-control-admin-decode (fn-native-control-admin-encode argv)) (list :admin argv))), and the same for the reasoned kind. The encoder refuses only a malformed word (empty, non-ASCII), a word past the record codec's byte-string width, a count past the u32 codec field, or a frame past the FNCT payload width; no word count or length bound. Subjects: fn-native-control-host-admin-encode / -reasoned-admin-encode (host/native/control.lisp fnn-control-admin) and fn-native-control-host-admin-decode / -reasoned-admin-decode (the owner's control read). Built on fn-nctrl-admin-words-decode-of-encode and fn-nctrl-admin-argv-decode-of-encode (books/native-control.lisp).",
