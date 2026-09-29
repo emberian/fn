@@ -1604,15 +1604,15 @@
     "books": 1659,
     "books_in_root_closure": 1658,
     "roots": 1597,
-    "theorems": 27330,
-    "functions": 17863,
-    "assert_events": 22729,
-    "must_fails": 2460,
+    "theorems": 27336,
+    "functions": 17867,
+    "assert_events": 22732,
+    "must_fails": 2461,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
       "verified": 3338,
-      "declared-off": 2066,
+      "declared-off": 2070,
       "default-guarded": 9789,
       "default-unguarded": 2670
     },
@@ -4961,11 +4961,11 @@
       "book": "books/bp-node-fragment-step.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 29,
-      "functions": 18,
+      "theorems": 31,
+      "functions": 22,
       "guards": {
         "verified": 0,
-        "declared-off": 15,
+        "declared-off": 19,
         "default-guarded": 3,
         "default-unguarded": 0
       },
@@ -6637,7 +6637,7 @@
       "book": "books/bp-report-guards.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 3,
+      "theorems": 7,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -6645,7 +6645,7 @@
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 18,
+      "verify_guards_events": 20,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -33012,10 +33012,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 28,
-      "must_fails": 2,
+      "assert_events": 31,
+      "must_fails": 3,
       "prover_refusals": 0,
-      "defconsts": 20,
+      "defconsts": 21,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -50831,7 +50831,7 @@
     {
       "theorem": "fn-bpn-report-outbox-view-requires-tombstone",
       "book": "books/bp-report-outbox.lisp",
-      "line": 56,
+      "line": 63,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
