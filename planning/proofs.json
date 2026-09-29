@@ -1884,7 +1884,6 @@
         "fn-bs-record-dir-error-preserves-relation",
         "fn-bs-crash-image-relates-to-recovery-entry-kernel",
         "fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel",
-        "fn-bs-recover-program-run-from-a-quiet-image",
         "fn-bs-recover-program-keeps-relation-at-every-cut",
         "fn-bs-host-reopened-kernel-is-the-recovered-kernel",
         "fn-bs-k0-record-link-error-arm-relation"
@@ -3732,8 +3731,7 @@
         "fn-nntp-hdr-fn-control-status-is-the-model-status",
         "fn-own-read-archive-command-is-the-pinned-dispatcher",
         "fn-own-related-conn-control",
-        "fn-ctl-served-status-is-control-status",
-        "fn-own-read-of-a-withdrawn-article-answers-430-withdrawn"
+        "fn-ctl-served-status-is-control-status"
       ]
     },
     {
@@ -4325,8 +4323,6 @@
       ],
       "progress_note": "Certified with teeth; the theorem is over the implementation the seam attaches, not over the constrained seam function; the open corollary over fn-store-sn-recover is by congruence of the program-mode host map and is not an ACL2 event. Format 10 (lane format-bump-10, 2026-09-28): books/byte-store-profile-v1.lisp and its tests were deleted with format 9 (D34: every format-10 profile is written by a format-10 init or import under the current relation; the frozen pre-P6 relation and the PKT-467 window describe profiles no format-10 store holds); the events and paths that named them are removed from this row.",
       "events": [
-        "fn-record-v1-bytes-decode-identically",
-        "fn-record-v1-bytes-are-their-translation",
         "fn-cbor-decode-prechecked-wide-extends-narrow",
         "fn-cbor-encode-uint-wide-is-narrow",
         "fn-cbor-decode-prechecked-wide-of-uint",
@@ -5247,7 +5243,6 @@
         "fn-smr-reserve-admits-the-release",
         "fn-smr-admission-is-within-the-profile",
         "fn-smr-roomp-antitone-in-octets",
-        "fn-smr-roomp-is-within-the-bound",
         "fn-smr-admitted-profile-starts-reserved",
         "fn-scka-publication-setup-plans-within-the-disk"
       ]
@@ -6339,8 +6334,7 @@
         "fn-nh-starting-clears-on-listening",
         "fn-native-control-printed-reason-is-the-decisions",
         "fn-nctrl-reasoned-read-of-encode",
-        "fn-nctrl-reason-word-of-a-reason-is-not-none",
-        "fn-native-control-host-refusal-names-its-class"
+        "fn-nctrl-reason-word-of-a-reason-is-not-none"
       ]
     },
     {
@@ -14311,57 +14305,6 @@
       ]
     },
     {
-      "id": "PRF-933",
-      "milestone": "M5",
-      "requirements": [
-        "HST-031"
-      ],
-      "depends_on": [
-        "PRF-384"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "title": "A served read's cold line past the dependency deadline is answered 403 with the session unchanged; pipelined lines are answered in order (row A4, option (c))",
-      "statement": "Subject (books/owner-cold-line.lisp): fn-ocln-unavailable-span, which host/owner-host.lisp fn-owner-unavailable-line-at calls from host/native/owner.lisp fnn-owner-unavailable-line once fn-otb-dependency-step answers :unavailable for the cold first line of a span aborted in the realizer's no-I/O mode (fnn-owner-chunk-span-no-io, fnn-owner-cold-line). KEYSTONE fn-ocln-a-cold-line-is-answered-unavailable: for a connection in command mode and I within the buffer, the result consumes exactly the octets up to and including the line's LF (fn-oct-line-end; at least one when any remain), carries one reply, fn-otb-unavailable-line (code 403), and its owner is OC with only that connection's wire reset to the start of a line in command mode with its limits kept. fn-ocln-unavailable-span-outside-command-mode-by-definition: otherwise nil (the host faults).",
-      "evidence": [
-        "books/owner-cold-line.lisp",
-        "tests/acl2/owner-cold-line-tests.lisp",
-        "host/owner-host.lisp",
-        "host/native/owner.lisp",
-        "host/native/extent.lisp",
-        "tests/test_native_slow_disk.py"
-      ],
-      "events": [
-        "fn-ocln-a-cold-line-is-answered-unavailable"
-      ],
-      "progress_note": "Lane composed-owner-3 (Opus 5.5, 2026-09-29). REPL-admitted on persvati. Teeth tests/acl2/owner-cold-line-tests.lisp (oclnt-): pipelined positive witness (GROUP warm, ARTICLE cold 403 consuming its 11 octets only, STAT answered exactly as without the cold line, owner unchanged), a line split across reads (wire reset, session kept, next command as from the owner that never saw the line), hypothesis removal (article mode: nil), a whole-buffer mutation must-fail. Native: tests/test_native_slow_disk.py test_a_cold_read_on_a_stalled_disk_answers_403_while_cached_reads_stay_flat."
-    },
-    {
-      "id": "PRF-938",
-      "milestone": "M5",
-      "requirements": [
-        "RET-008",
-        "STO-017"
-      ],
-      "depends_on": [
-        "PRF-294"
-      ],
-      "assumptions": [],
-      "status": "certified",
-      "title": "The payload arena counts, per durable file, the extent entries naming it; a file whose count is 0 is named by no handle (row A6, the file count for online disk release)",
-      "statement": "Subject (books/payload-arena-extent.lisp): fn-arx-files-unnamed-p over the live arena's concrete fn-arena$x, which the owner's checkpoint release (host/native/owner.lisp, lane online-reclaim-3, replacing the bounded fn-xrt-scan walk) calls under the owner mutex before closing a retired file's descriptor. The count column fn-arena$x-files is kept by fn-arx-mark (every seal, reseat and lz variant: the replaced entry's file loses one, the written entry's file gains one) and emptied by fn-arena$x-clear; fn-arena$xcorr carries fn-arx-files-agree (the column equals the tally of the extent column for every file id), so every export of the abstract stobj preserves it and the live arena satisfies it. KEYSTONE fn-arx-files-unnamed-names-none: under the correspondence, for FS a list of file ids the check passes, no entry at any handle H names a file of FS (fn-arx-entry-file, which is the file the realizer reads: fn-arx-entry-file-of-extent-by-definition). fn-arx-file-count-zero-names-none: the same for one file whose count is 0.",
-      "evidence": [
-        "books/payload-arena-extent.lisp",
-        "tests/acl2/payload-arena-extent-tests.lisp"
-      ],
-      "events": [
-        "fn-arx-files-unnamed-names-none",
-        "fn-arx-file-count-zero-names-none",
-        "fn-arx-files-agree-of-mark"
-      ],
-      "progress_note": "Lane composed-owner-4 (Opus 5.5, 2026-09-29). REPL-admitted on persvati (the whole book and the teeth). Teeth tests/acl2/payload-arena-extent-tests.lisp section 4 (paxt-files-): the run (file 7's count 1 then 0 after the reseat onto 9), a reachable positive witness (paxt-files-unnamed-positive, the state reached through the exports: paxt-x3-corresponds), a witness and a must-fail per hypothesis; the correspondence one is a CORRUPTED-STATE witness. natp H was proved redundant and removed. Host caller: online-reclaim-3's checkpoint release (not on this branch)."
-    },
-    {
       "id": "PRF-934",
       "title": "`store reclaim`'s per-record step and rewrite read an article index, never the Store's article list",
       "statement": "Subject: fn-rcls-step (host/checkpoint-host.lisp fn-store-reclaim-step) and fn-rclp-event (fn-store-log-reclaim-event), called once per record by host/native/checkpoint.lisp fnn-log-reclaim-steps, under the context fn-rclp-ctx-expiring builds (fn-store-reclaim-context via books/expiry.lisp fn-xpy-ctx). fn-rclp-article-index-finds-the-article: the index (the context's seventh element, a fast alist) binds each Message-ID to the article fn-find-article's walk finds, for every article list, no hypothesis. fn-rcls-step-reads-no-article-list and fn-rclp-event-reads-no-article-list: replacing the context's article list (its fifth element) with anything changes neither the step nor the rewrite, for every accumulator, record and context. Scope: a record's step is its decode, one hashed article lookup, one hashed expiry lookup and, when the rule permits a release, the holders and verdict tables (linear in those tables, not in the Store's article count); before (row A8) each step walked the article list, 485 s at 100k for `store reclaim --dry-run`. A hashed lookup's cost is the ACL2 image's fast alist; an extracted core that runs hons-get as hons-assoc-equal walks the index instead.",
@@ -14399,12 +14342,19 @@
         "PRF-274"
       ],
       "assumptions": [],
-      "status": "proposed",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-host-relation.lisp",
         "tests/acl2/owner-host-relation-tests.lisp"
       ],
-      "progress_note": "Lane owner-relation (Fable 5.1, 2026-09-29; row Q3c). REPL-admitted on persvati; certification pending."
+      "progress_note": "Lane owner-relation (Fable 5.1, 2026-09-29; row Q3c). REPL-admitted on persvati; certification pending.",
+      "events": [
+        "fn-ohr-fault-preserves-ocl-relation",
+        "fn-ohr-reconfigure-preserves-ocl-relation",
+        "fn-ohr-ocl-relation-with-staged",
+        "fn-ohr-fault-preserves-carried-relation",
+        "fn-ohr-step-reconfigure-preserves-carried-relation"
+      ]
     },
     {
       "id": "PRF-925",
@@ -14418,12 +14368,32 @@
         "PRF-286"
       ],
       "assumptions": [],
-      "status": "proposed",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-host-relation.lisp",
         "tests/acl2/owner-host-relation-tests.lisp"
       ],
-      "progress_note": "Lane owner-relation (Fable 5.1, 2026-09-29; row Q3c). REPL-admitted on persvati; certification pending."
+      "progress_note": "Lane owner-relation (Fable 5.1, 2026-09-29; row Q3c). REPL-admitted on persvati; certification pending.",
+      "events": [
+        "fn-ohr-ocl-relation-with-owner-of-same-control",
+        "fn-ohr-step-take-preserves-carried-relation",
+        "fn-ohr-step-control-submit-preserves-carried-relation",
+        "fn-ohr-step-operator-submit-preserves-carried-relation",
+        "fn-ohr-step-feed-replay-preserves-carried-relation",
+        "fn-ohr-step-control-outcome-preserves-carried-relation",
+        "fn-ohr-step-bp-transit-outcome-preserves-carried-relation",
+        "fn-ohr-step-feeds-preserves-carried-relation",
+        "fn-ohr-step-feed-conn-preserves-carried-relation",
+        "fn-ohr-configure-preserves-carried-relation",
+        "fn-ohr-osb-install-preserves-carried-relation",
+        "fn-ohr-with-feeds-preserves-carried-relation",
+        "fn-ohr-with-node-secret-preserves-carried-relation",
+        "fn-ohr-step-begin-preserves-ocl-relation",
+        "fn-ohr-step-declare-group-preserves-ocl-relation",
+        "fn-ohr-chunk-preserves-ocl-relation",
+        "fn-ohr-exposure-open-preserves-ocl-relation",
+        "fn-ohr-finish-synced-preserves-ocl-relation"
+      ]
     },
     {
       "id": "PRF-926",
@@ -14437,11 +14407,14 @@
         "PRF-286"
       ],
       "assumptions": [],
-      "status": "proposed",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-host-relation.lisp"
       ],
-      "progress_note": "Lane owner-relation (Fable 5.1, 2026-09-29; row Q3c). REPL-admitted on persvati; certification pending."
+      "progress_note": "Lane owner-relation (Fable 5.1, 2026-09-29; row Q3c). REPL-admitted on persvati; certification pending.",
+      "events": [
+        "fn-ohr-store-open-installs-the-carried-relation"
+      ]
     },
     {
       "id": "PRF-936",
@@ -14463,7 +14436,7 @@
         "A-HOST-EXCLUSIVE-READ (the range read only)",
         "fn-assume-log-sole-pending-writer (the recovery half only; an fn obligation)"
       ],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log-durable.lisp",
         "books/byte-store-range-read.lisp",
@@ -14504,12 +14477,15 @@
         "PRF-217"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-init-publication.lisp",
         "tests/acl2/store-init-publication-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4 of COMPLETE-BEFORE-6.6.0). REPL-admitted on persvati (451 steps); certification pending in the lane's READY manifest."
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4 of COMPLETE-BEFORE-6.6.0). REPL-admitted on persvati (451 steps); certification pending in the lane's READY manifest.",
+      "events": [
+        "fn-bs-init-pub-admission-decides-by-what-is-present"
+      ]
     },
     {
       "id": "PRF-943",
@@ -14524,12 +14500,15 @@
         "PRF-063"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/hybrid-store-injected.lisp",
         "tests/acl2/hybrid-store-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (1,687 steps); certification pending in the lane's READY manifest."
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (1,687 steps); certification pending in the lane's READY manifest.",
+      "events": [
+        "fn-hsig-authorized-injected-carried-submission-event-decides"
+      ]
     },
     {
       "id": "PRF-944",
@@ -14543,13 +14522,17 @@
         "PRF-038"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "evidence": [
         "books/bp-node-host-transfer.lisp",
         "host/bp-node-host.lisp",
         "tests/acl2/bp-node-host-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). Both keystones REPL-admitted on persvati over the host file (4,620 and 1,436 steps); the guard verification and certification of the new book are pending in the lane's READY manifest."
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). Both keystones REPL-admitted on persvati over the host file (4,620 and 1,436 steps); the guard verification and certification of the new book are pending in the lane's READY manifest.",
+      "events": [
+        "fn-bpn-host-receive-keeps-the-three-outcomes-distinct",
+        "fn-bpn-host-receive-of-host-send-hands-over-the-adu"
+      ]
     },
     {
       "id": "PRF-951",
@@ -14563,12 +14546,15 @@
         "PRF-384"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "evidence": [
         "books/owner-time-bars.lisp",
         "tests/acl2/owner-time-bars-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati with eleven local membership and subset lemmas (496 steps for the keystone); certification pending in the lane's READY manifest."
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati with eleven local membership and subset lemmas (496 steps for the keystone); certification pending in the lane's READY manifest.",
+      "events": [
+        "fn-otb-answer-early-answers-each-untold-member-once"
+      ]
     },
     {
       "id": "PRF-952",
@@ -14582,12 +14568,16 @@
         "PRF-341"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/payload-lz-append.lisp",
         "tests/acl2/payload-lz-append-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). Both REPL-admitted on persvati (2,277 and 22,797 steps); certification pending in the lane's READY manifest."
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). Both REPL-admitted on persvati (2,277 and 22,797 steps); certification pending in the lane's READY manifest.",
+      "events": [
+        "fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder",
+        "fn-lzr-read-refusal-text-refuses-exactly-what-does-not-expand"
+      ]
     },
     {
       "id": "PRF-953",
@@ -14601,12 +14591,15 @@
         "PRF-316"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log-damage.lisp",
         "tests/acl2/store-log-damage-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (28,750 steps with string-append, coerce and nth disabled; 12.3M steps without); certification pending in the lane's READY manifest."
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (28,750 steps with string-append, coerce and nth disabled; 12.3M steps without); certification pending in the lane's READY manifest.",
+      "events": [
+        "fn-lgdm-refusal-text-refuses-exactly-a-break-or-damage"
+      ]
     },
     {
       "id": "PRF-954",
@@ -14620,12 +14613,15 @@
         "PRF-232"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "evidence": [
         "books/store-mount-identity.lisp",
         "tests/acl2/store-mount-identity-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (4,825 steps); certification pending in the lane's READY manifest."
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (4,825 steps); certification pending in the lane's READY manifest.",
+      "events": [
+        "fn-smid-durability-warning-warns-exactly-when-the-mount-is-unsafe"
+      ]
     },
     {
       "id": "PRF-955",
@@ -14637,12 +14633,15 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "evidence": [
         "books/anchor-replace.lisp",
         "tests/acl2/anchor-replace-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (14,415 steps); certification pending (the successor's farm round)."
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (14,415 steps); certification pending (the successor's farm round).",
+      "events": [
+        "fn-anchor-rp-outcome-is-terminal-only-after-the-directory-barrier"
+      ]
     },
     {
       "id": "PRF-956",
@@ -14654,12 +14653,15 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-progress.lisp",
         "tests/acl2/bp-node-forward-retry-tests.lisp"
       ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (937 steps); certification pending (the successor's farm round)."
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (937 steps); certification pending (the successor's farm round).",
+      "events": [
+        "fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct"
+      ]
     },
     {
       "id": "PRF-958",

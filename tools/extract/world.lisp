@@ -244,7 +244,6 @@
 (include-book "../../books/owner-results")
 (include-book "../../books/owner-served-bound")
 (include-book "../../books/topic-history-local-proposals")
-(include-book "../../books/article-buffer")
 (include-book "../../books/feed-journal")
 (include-book "../../books/peer-pull")
 (include-book "../../books/peer-pull-session")

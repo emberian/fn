@@ -2702,7 +2702,6 @@
         "PRF-918",
         "PRF-927",
         "PRF-930",
-        "PRF-938",
         "PRF-934"
       ],
       "verification": [
@@ -5067,7 +5066,6 @@
       "proof_targets": [
         "PRF-384",
         "PRF-385",
-        "PRF-933",
         "PRF-951"
       ],
       "verification": [
@@ -5120,8 +5118,7 @@
       "proof_targets": [
         "PRF-918",
         "PRF-927",
-        "PRF-930",
-        "PRF-938"
+        "PRF-930"
       ],
       "verification": [
         "proof",

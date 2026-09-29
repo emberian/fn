@@ -13683,15 +13683,6 @@
       ]
     },
     {
-      "id": "PRF-933",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-ocln-a-cold-line-is-answered-unavailable"
-        }
-      ]
-    },
-    {
       "id": "PRF-934",
       "events": [
         {
@@ -13861,10 +13852,6 @@
         {
           "kind": "theorem",
           "name": "fn-lgu-scan-of-a-complete-prefix-reads-its-records"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgu-recovered-kernel-holds-the-scan"
         },
         {
           "kind": "theorem",
