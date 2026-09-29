@@ -1405,6 +1405,14 @@
 
 ; EXPORTED: a command line is never the context event, so a theorem about a
 ; (:command LINE) step reads that branch off without opening the recognizer.
+; EXPORTED: whether a session keeps a SASL exchange is its pending slot's
+; business alone, so a session built with no exchange keeps none.
+(defthm fn-auth-sasl-waitingp-of-make-session
+  (equal (fn-auth-sasl-waitingp
+          (fn-auth-make-session base config pending subject tlsp handshaking
+                                compress ctx))
+         (fn-sasl-statep pending)))
+
 (defthm fn-auth-context-eventp-of-a-command
   (not (fn-auth-context-eventp (cons :command rest))))
 

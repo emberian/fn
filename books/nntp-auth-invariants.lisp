@@ -173,6 +173,8 @@
   (implies (and (fn-served-connp conn)
                 (not (fn-auth-session-handshakingp
                       (fn-served-conn-session conn)))
+                ; A line while a SASL exchange is kept is its response.
+                (not (fn-auth-sasl-waitingp (fn-served-conn-session conn)))
                 (not (fn-auth-postingp (fn-served-conn-session conn)))
                 (fn-served-post-command-eventp event))
            (and (equal (fn-served-conn-wire
@@ -533,6 +535,7 @@
   (implies (and (fn-served-connp conn)
                 (not (fn-auth-session-handshakingp
                       (fn-served-conn-session conn)))
+                (not (fn-auth-sasl-waitingp (fn-served-conn-session conn)))
                 (fn-auth-config-requiredp
                  (fn-auth-session-config (fn-served-conn-session conn)))
                 (not (fn-auth-session-subject (fn-served-conn-session conn)))
@@ -581,6 +584,12 @@
   :hints (("Goal" :in-theory (enable fn-served-selectedp fn-nntp-reply-effect
                                      fn-nntp-crlf fn-nntp-string-octets)))))
 
+(local (defthm fn-served-repin-session-keeps-the-exchange
+  (equal (fn-auth-sasl-waitingp (fn-served-repin-session as archive))
+         (fn-auth-sasl-waitingp as))
+  :hints (("Goal" :in-theory (enable fn-served-repin-session fn-auth-sasl-waitingp
+                                     fn-auth-with-base)))))
+
 (local (defthm fn-served-repin-keeps-the-gate
   (implies (fn-served-conn-live conn)
            (and (equal (fn-auth-session-handshakingp
@@ -591,13 +600,18 @@
                        (fn-auth-session-config (fn-served-conn-session conn)))
                 (equal (fn-auth-session-subject
                         (fn-served-conn-session (fn-served-repin conn)))
-                       (fn-auth-session-subject (fn-served-conn-session conn)))))
-  :hints (("Goal" :in-theory (disable fn-served-repin-session)))))
+                       (fn-auth-session-subject (fn-served-conn-session conn)))
+                (equal (fn-auth-sasl-waitingp
+                        (fn-served-conn-session (fn-served-repin conn)))
+                       (fn-auth-sasl-waitingp (fn-served-conn-session conn)))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-waitingp)
+                                  (fn-served-repin-session))))))
 
 (defthm fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing
   (implies (and (fn-served-connp conn)
                 (not (fn-auth-session-handshakingp
                       (fn-served-conn-session conn)))
+                (not (fn-auth-sasl-waitingp (fn-served-conn-session conn)))
                 (fn-auth-config-requiredp
                  (fn-auth-session-config (fn-served-conn-session conn)))
                 (not (fn-auth-session-subject (fn-served-conn-session conn)))
@@ -649,6 +663,7 @@
   (implies (and (fn-served-connp conn)
                 (not (fn-auth-session-handshakingp
                       (fn-served-conn-session conn)))
+                (not (fn-auth-sasl-waitingp (fn-served-conn-session conn)))
                 (not (fn-zc-activep (fn-auth-session-compress
                                      (fn-served-conn-session conn))))
                 (not (fn-auth-session-subject (fn-served-conn-session conn)))
@@ -710,6 +725,41 @@
                                    fn-auth-with-base)
                                   (fn-auth-principal-match))))))
 
+; AUTHINFO SASL's login (NNT-056): the credential is found under the login
+; the exchange named, which is the login the session now keeps.
+(local (defthm fn-auth-served-find-cred-finds-its-name
+  (implies (fn-auth-find-cred name creds)
+           (equal (fn-auth-cred-name (fn-auth-find-cred name creds)) name))
+  :hints (("Goal" :in-theory (enable fn-auth-find-cred)))))
+
+(local (defthm fn-auth-served-find-cred-of-a-found-name
+  (implies (fn-auth-find-cred name creds)
+           (equal (fn-auth-find-cred (fn-auth-cred-name (fn-auth-find-cred name creds))
+                                     creds)
+                  (fn-auth-find-cred name creds)))
+  :hints (("Goal" :in-theory (disable fn-auth-find-cred)))))
+
+(local (defthm fn-auth-served-sasl-login-installs-the-flag
+  (implies (fn-auth-session-subject
+            (fn-post-result-session (fn-auth-sasl-finish as st response)))
+           (and (equal (fn-auth-session-config
+                        (fn-post-result-session (fn-auth-sasl-finish as st response)))
+                       (fn-auth-session-config as))
+                (iff (fn-auth-postingp
+                      (fn-post-result-session (fn-auth-sasl-finish as st response)))
+                     (fn-auth-cred-postingp
+                      (fn-auth-find-cred
+                       (fn-auth-session-pending
+                        (fn-post-result-session (fn-auth-sasl-finish as st response)))
+                       (fn-auth-config-creds (fn-auth-session-config as)))))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sasl-finish fn-auth-sasl-refuse
+                                   fn-auth-bind-principal-peer fn-auth-with-base
+                                   fn-auth-postingp)
+                                  (fn-auth-single fn-sasl-step fn-sasl-response-login
+                                   fn-auth-sasl-effects fn-auth-sasl-line-okp
+                                   fn-auth-cred-postingp fn-auth-principal-match
+                                   fn-node-statep))))))
+
 (local (defthm fn-auth-served-command-login-installs-the-flag
   (implies (and (not (fn-auth-session-subject as))
                 (fn-auth-session-subject
@@ -717,12 +767,14 @@
            (iff (fn-auth-postingp
                  (fn-post-result-session (fn-auth-command as config keyword args)))
                 (fn-auth-cred-postingp
-                 (fn-auth-find-cred (fn-auth-session-pending as)
+                 (fn-auth-find-cred (fn-auth-session-pending
+                                     (fn-post-result-session
+                                      (fn-auth-command as config keyword args)))
                                     (fn-auth-config-creds
                                      (fn-auth-session-config as))))))
   :hints (("Goal"
            :do-not-induct t
-           :in-theory (e/d (fn-auth-command fn-auth-authinfo fn-auth-starttls
+           :in-theory (e/d (fn-auth-command fn-auth-authinfo fn-auth-starttls fn-auth-sasl-command fn-auth-sasl-refuse
                             fn-auth-postingp fn-auth-checkp)
                            (fn-auth-single fn-auth-bind-principal-peer
                             fn-auth-clear-principal-peer
@@ -748,7 +800,9 @@
 
 ; KEYSTONE (c1).  Whatever the wire event, a step that takes a connection
 ; with no subject to one with a subject installs the posting allowance of the
-; credential enrolled under the cached name, and nothing else.
+; credential enrolled under the login the connection now keeps (the cached
+; name for AUTHINFO PASS, the login an AUTHINFO SASL exchange named), and
+; nothing else.
 (defthm fn-auth-step-pinned-login-installs-the-credential-posting-flag
   (implies (and (not (fn-auth-session-subject as))
                 (fn-auth-session-subject
@@ -760,12 +814,18 @@
                   (fn-auth-step-pinned as archive index verdicts config
                                        observation injection wire-event fn-arena)))
                 (fn-auth-cred-postingp
-                 (fn-auth-find-cred (fn-auth-session-pending as)
+                 (fn-auth-find-cred (fn-auth-session-pending
+                                     (fn-post-result-session
+                                      (fn-auth-step-pinned as archive index verdicts
+                                                           config observation
+                                                           injection wire-event
+                                                           fn-arena)))
                                     (fn-auth-config-creds
                                      (fn-auth-session-config as))))))
   :hints (("Goal"
            :do-not-induct t
-           :in-theory (e/d (fn-auth-step-pinned fn-auth-tls-established)
+           :in-theory (e/d (fn-auth-step-pinned fn-auth-tls-established fn-auth-sasl-continue fn-auth-sasl-refuse
+                            fn-auth-install-context)
                            (fn-auth-command fn-auth-delegate-pinned
                             fn-auth-postingp fn-auth-cred-postingp
                             fn-auth-find-cred fn-auth-sessionp
