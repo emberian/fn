@@ -208,7 +208,6 @@
 (include-book "store-capacity-vector")
 (include-book "store-carried-folds")
 (include-book "retention-figures")
-(include-book "store-checkpoint-digest")
 (include-book "store-capacity-config")
 (include-book "config-carried-open")
 (include-book "store-checkpoint-open")

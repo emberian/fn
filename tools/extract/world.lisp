@@ -207,7 +207,6 @@
 (include-book "../../books/store-capacity-vector")
 (include-book "../../books/store-carried-folds")
 (include-book "../../books/retention-figures")
-(include-book "../../books/store-checkpoint-digest")
 (include-book "../../books/store-capacity-config")
 (include-book "../../books/config-carried-open")
 (include-book "../../books/store-checkpoint-open")
