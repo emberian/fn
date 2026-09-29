@@ -104,3 +104,20 @@
 (assert-event (not (onbt-inflight-fitp *onbt-completing-at*)))
 (assert-event (with-guard-checking :none (fn-sn-completion-enabledp *onbt-completing-at*)))
 (assert-event (not (onbt-node-boundp (fn-sn-node *onbt-completing-at-finished*))))
+
+; THE OPEN: KEYSTONE fn-onb-boundp-when-open-okp, reachable positive witness:
+; the Store after the composite's finish (:ready), as an owner, passes the
+; open's test.  Refused by name: the same Store with its watermark past the
+; bound (a damaged store no 6.6.0 history writes) fails it, and so does
+; fn-onb-boundp (fn-onb-open-okp-is-boundp-outside-a-transaction).
+(snbt-defconst *onbt-ready* (fn-sn-finish *ast-composite-completing*))
+(snbt-defconst *onbt-open-owner*
+  (fn-own-make *onbt-ready* nil nil 0 0 nil nil 0 nil nil nil nil nil nil nil))
+(snbt-defconst *onbt-open-owner-over*
+  (fn-own-make (fn-sn-update *onbt-ready* (fn-sn-files *onbt-ready*)
+                             (snbt-with-nexts (fn-sn-node *onbt-ready*)
+                                              (list (cons "example" (+ 1 *fn-nntp-max-article-number*)))))
+               nil nil 0 0 nil nil 0 nil nil nil nil nil nil nil))
+(assert-event (equal (fn-sf-phase (fn-sn-files *onbt-ready*)) :ready))
+(assert-event (fn-onb-open-okp *onbt-open-owner*))
+(assert-event (not (fn-onb-open-okp *onbt-open-owner-over*)))

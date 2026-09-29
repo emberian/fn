@@ -408,3 +408,41 @@
   :hints (("Goal" :in-theory (e/d (fn-pout-prepare-identity fn-oiis-prepare-identity)
                                   (fn-psrv-prepare-identity fn-onb-boundp fn-pout-stagedp
                                    fn-pout-identity-refusal-kind fn-oiis-prepare-identity-unfolds fn-oii-identity-row)))))
+
+;; ---------------------------------------------------------------------------
+;; THE OPEN (coordinator decision, 2026-09-29).  A reopened Store's numbers
+;; come from disk, so the open establishes the bound once: host/owner-host.lisp
+;; fn-owner-install-extended calls fn-onb-open-okp on the recovered owner
+;; before it installs it, and refuses the Store BY NAME
+;; (:article-numbers-damaged; a damaged store, never absence) when a
+;; watermark is past RFC 3977 section 6's bound or the owner opens inside a
+;; transaction.  The test reads the node's per-group watermarks, the pending
+;; allocation's groups and the view's watermarks: O(groups), never the
+;; history.  A store 6.6.0 wrote never fails it (every admitted article is
+;; fn-psrv-event-numberedp).  Once open, the bound is carried
+;; (fn-onb-boundp's preservation above), never revalidated.
+
+(defun fn-onb-open-okp (o)
+  (declare (xargs :guard t))
+  (let* ((s (fn-own-store o))
+         (phase (fn-sf-phase (fn-sn-files s)))
+         (a (fn-node-acceptance (fn-sn-node s))))
+    (and (not (fn-sf-record-phasep phase))
+         (not (equal phase :completing))
+         (fn-nntp-nexts-boundedp (fn-state-nexts a))
+         (or (not (fn-state-pending a))
+             (fn-snb-groups-fitp (fn-pending-groups (fn-state-pending a))
+                                 (fn-state-nexts a)))
+         (fn-nntp-nexts-boundedp
+          (fn-state-nexts (fn-own-view-archive (fn-own-view o)))))))
+(defthm fn-onb-boundp-when-open-okp
+  (implies (fn-onb-open-okp o)
+           (fn-onb-boundp o))
+  :hints (("Goal" :in-theory (e/d (fn-onb-boundp fn-onb-store-boundp fn-onb-node-boundp fn-onb-inflight-fitp)
+                                  (fn-nntp-nexts-boundedp fn-snb-groups-fitp fn-sf-record-phasep)))))
+(defthm fn-onb-open-okp-is-boundp-outside-a-transaction
+  (implies (and (not (fn-sf-record-phasep (fn-sf-phase (fn-sn-files (fn-own-store o)))))
+                (not (equal (fn-sf-phase (fn-sn-files (fn-own-store o))) :completing)))
+           (equal (fn-onb-open-okp o) (fn-onb-boundp o)))
+  :hints (("Goal" :in-theory (e/d (fn-onb-boundp fn-onb-store-boundp fn-onb-node-boundp fn-onb-inflight-fitp)
+                                  (fn-nntp-nexts-boundedp fn-snb-groups-fitp fn-sf-record-phasep)))))

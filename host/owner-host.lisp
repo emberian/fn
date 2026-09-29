@@ -357,8 +357,17 @@
 ;; next publication (`fn-owner-sco-base').
 (defun fn-owner-install-extended (oc extended fn-arena fn-cat fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
-  (if (equal oc :fault)
-        (mv nil :fault fn-arena fn-cat fn-hist state)
+  (cond
+   ((equal oc :fault)
+    (mv nil :fault fn-arena fn-cat fn-hist state))
+   ; THE OPEN's number bound (books/owner-number-bound.lisp fn-onb-open-okp,
+   ; KEYSTONE fn-onb-boundp-when-open-okp): a recovered owner whose
+   ; watermarks pass RFC 3977 section 6's bound is a damaged Store, refused
+   ; by name before anything is installed.  O(groups); the served path then
+   ; carries the bound (fn-onb-boundp), never revalidating it.
+   ((not (fn-onb-open-okp (fn-ocfg-owner oc)))
+    (mv nil :article-numbers-damaged fn-arena fn-cat fn-hist state))
+   (t
       (let* ((state (fn-owner-install-ocfg oc state))
              ; PRF-289: the carried obligation-id trie for the ledger the
              ; owner opens with (books/post-retain-carried.lisp
@@ -432,7 +441,7 @@
                                         (and (boundp-global 'fn-store-genesis state)
                                              (f-get-global 'fn-store-genesis state)))
                                        fn-hist)))
-            (mv nil :recovering fn-arena fn-cat fn-hist state))))))
+            (mv nil :recovering fn-arena fn-cat fn-hist state)))))))
 
 (defun fn-owner-recover-extended (extended config-records frontier max-conns fn-arena fn-cat fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
