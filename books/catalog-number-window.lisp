@@ -22,6 +22,7 @@
            (equal (fn-cnx-range-aux group k top v fn-cat)
                   (append (fn-cnx-range-aux group k (+ -1 b) v fn-cat)
                           (fn-cnx-range-aux group b top v fn-cat))))
+  :rule-classes nil
   :hints (("Goal" :induct (fn-cnx-range-aux group k top v fn-cat)
            :in-theory (e/d (fn-cnx-range-aux) (fn-cnx-view-seq)))))
 
@@ -46,7 +47,7 @@
            (equal (fn-cnxw-windows group k top w v fn-cat)
                   (fn-cnx-range-aux group k top v fn-cat)))
   :hints (("Goal" :induct (fn-cnxw-windows group k top w v fn-cat)
-           :in-theory (e/d (fn-cnxw-windows) (fn-cnx-range-aux fn-cnxw-range-is-windows)))
+           :in-theory (e/d (fn-cnxw-windows) (fn-cnx-range-aux)))
           ("Subgoal *1/1" :cases ((<= (+ k w) (+ 1 top)))
                           :use ((:instance fn-cnxw-range-is-windows (b (+ k w)))
                                 (:instance fn-cnxw-range-empty-above (k (+ k w)))))
