@@ -79,8 +79,10 @@
                             (fn-bpnf-active-set fn-bpnf-fragment-cells
                              fn-bpfw-spec fn-bpf-canvas))))))
 
+(verify-guards fn-bpnf-arrival-count-loop)
 (verify-guards fn-bpnf-arrival-count)
 (verify-guards fn-bpnf-find-arrival)
+(verify-guards fn-bpnf-family-retain-other-rows-loop)
 (verify-guards fn-bpnf-family-retain-other-rows)
 (verify-guards fn-bpnf-family-member)
 (verify-guards fn-bpnf-fragment-coherence-key)
@@ -90,8 +92,23 @@
            :in-theory (disable fn-bpnf-heldp fn-bpb-bundlep
                                fn-bpnfg-held-primary-guard-fields))))
 (verify-guards fn-bpnf-same-fragment-family-p)
-(verify-guards fn-bpnf-active-set-rows)
+(verify-guards fn-bpnf-active-set-rows-loop)
+(verify-guards fn-bpnf-active-set-rows
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnf-active-set-rows fn-ag-rev-onto
+                                fn-bpnf-active-set-rows-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 (verify-guards fn-bpnf-active-set)
+(verify-guards fn-bpnf-fragment-cell-exec)
+(verify-guards fn-bpnf-fragment-cells-loop)
+(defthm fn-bpnf-fragment-cells-loop-is-rev-onto
+  (equal (fn-bpnf-fragment-cells-loop held acc)
+         (fn-ag-rev-onto acc (fn-bpnf-fragment-cells held)))
+  :hints (("Goal" :induct (fn-bpnf-fragment-cells-loop held acc)
+                  :in-theory (enable fn-bpn-nth fn-bpb-bundle-primary
+                                     fn-bpb-bundle-payload fn-bpb-block-data
+                                     fn-bpb-payload))))
 (verify-guards fn-bpnf-fragment-cells
   :hints (("Goal" :do-not-induct t
            :in-theory (enable fn-bpn-nth fn-bpb-bundle-primary
@@ -230,10 +247,17 @@
                                (theory 'minimal-theory))))))
 (verify-guards fn-bpnf-fragment-family-key
   :hints (("Goal" :in-theory (disable fn-bpp-blockp))))
-(verify-guards fn-bpnf-zero-family-keys
+(verify-guards fn-bpnf-zero-family-keys-loop
   :hints (("Goal" :in-theory (union-theories
                               '(fn-bpnfg-candidate-primary)
                               (theory 'minimal-theory)))))
+(verify-guards fn-bpnf-zero-family-keys
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnfg-candidate-primary fn-ag-rev-onto
+                                fn-bpnf-zero-family-keys
+                                fn-bpnf-zero-family-keys-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 (verify-guards fn-bpnf-family-select
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories

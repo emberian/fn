@@ -1,5 +1,5 @@
 ; fn: the host's syscall sequences as programs over the byte model (crash
-; model v2, §2).
+; model v2, section 2).
 ;
 ; A program is a list of steps; a step is one syscall on a path, one kernel
 ; observation (an fn-sf event dispatched exactly as fn-sf-dispatch does), or
@@ -12,7 +12,7 @@
 ; The five transcriptions are P-FRONTIER (Store.advance_frontier), P-RECORD
 ; (Store.publish), P-FINISH (Store.finish), P-RECOVER (Store.recover) and
 ; P-INIT (Store.initialize), tools/run_store.py at 9321344.  Two changes
-; from the design's listing, both required by its own rule §2.3 ("every
+; from the design's listing, both required by its own rule section 2.3 ("every
 ; durable syscall ... with a :cut after it") and by this lane's brief:
 ;   * a :cut follows every durable syscall, not only the host's present
 ;     faults.at sites; the new names (frontier-created, frontier-written,
@@ -22,7 +22,7 @@
 ;     :frontier-dir and :record-dir (store-files-traces.lisp), not the
 ;     design's :frontier-directory / :record-directory.
 ;
-; Discipline D1-D3 (§2.4) are executable checks over the constant programs,
+; Discipline D1-D3 (section 2.4) are executable checks over the constant programs,
 ; asserted here; D4 (no use after a failed fence) is a property of the
 ; runner by definition, stated as such; D5 (the pending list is disjoint at
 ; every cut) is asserted on the ground runs of every program.
@@ -323,7 +323,7 @@
                 (list :cut "init-barrier"))))
 
 ; -----------------------------------------------------------------------------
-; Program discipline (§2.4) as executable checks over the constants.
+; Program discipline (section 2.4) as executable checks over the constants.
 
 ; D1: every :link and :rename names a source whose last :write-all was
 ; followed by a :fsync-file before the link ("safe link").
@@ -431,9 +431,9 @@
 
 ; -----------------------------------------------------------------------------
 ; -----------------------------------------------------------------------------
-; The journals, the inbox and the checkpoint machine (design §2.2, packets
+; The journals, the inbox and the checkpoint machine (design section 2.2, packets
 ; P5 and P8).  These three have no fn-sf kernel: their logical image is a
-; record list (§3.4), so every step is a syscall and no step is an
+; record list (section 3.4), so every step is a syscall and no step is an
 ; :observe.  Transcribed so that every cut the campaign kills at
 ; (tests/campaign/cuts.py) is a :cut of a program here; tools/transcribe_check.py
 ; is the check in both directions and names the remainder as fidelity
@@ -583,7 +583,7 @@
                    (fn-bs-fences-authority-dirsp *fn-bs-p-recover*)
                    (fn-bs-fences-authority-dirsp *fn-bs-p-init*)))
 
-; Teeth for the checkers: the unsafe host of design §5.5 (link before
+; Teeth for the checkers: the unsafe host of design section 5.5 (link before
 ; fsync) fails D1; an in-place frontier write fails D2; a link with no
 ; directory fence before the durable observation fails D3.
 (assert-event

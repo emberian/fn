@@ -20,7 +20,7 @@
 (ld "../reader-host.lisp" :ld-error-action :error)
 
 (defun fn-reader-model-octets (chunks fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :guard t))
   (let* ((archive (if (boundp-global 'fn-reader-archive state)
                       (f-get-global 'fn-reader-archive state)
                     nil))
@@ -34,6 +34,8 @@
          (opened (fn-served-open archive 510 8192 config clock clock
                                   (fn-auth-open-config)))
          (ran (fn-served-run (fn-served-result-conn opened) chunks fn-arena)))
+    ;; fn-ag-append: append's total twin (mbe :logic append), so the
+    ;; wrapper's guard is t like the served path's own concatenation.
     (value (fn-served-reply-octets
-            (append (fn-served-result-effects opened)
-                    (fn-served-result-effects ran))))))
+            (fn-ag-append (fn-served-result-effects opened)
+                          (fn-served-result-effects ran))))))

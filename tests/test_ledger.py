@@ -368,6 +368,41 @@ class SuspectTests(unittest.TestCase):
         self.assertEqual(flagged, {})
 
 
+class CitedSuspectAdviceTests(unittest.TestCase):
+    """obstructions-6 item 52: the refusal says a `-by-definition` lemma is not cited."""
+
+    SOURCE = """(in-package "ACL2")
+        (defun step (s) (cons s s))
+        (defun inv (s) (consp s))
+        (defthm step-preserves-state (inv (step s)))
+        (defthm state-has-consp (implies (inv s) (consp s)))
+        (defthm NAME (consp (step s))
+          :hints (("Goal" :in-theory '(step-preserves-state state-has-consp))))
+    """
+
+    def refusal(self, name: str) -> str:
+        tree = tree_from({"books/a.lisp": self.SOURCE.replace("NAME", name)})
+        problems = ledger.check_theorem_event(tree, "PRF-1", name)
+        self.assertEqual(len(problems), 1, problems)
+        return problems[0]
+
+    def test_a_cited_by_definition_lemma_is_told_not_to_be_cited(self):
+        said = self.refusal("step-consp-by-definition")
+        self.assertIn("is SUSPECT", said)
+        self.assertIn("is never cited as an event", said)
+        self.assertIn("drop it from planning/proof-events.json", said)
+        self.assertIn("never cited", self.refusal("step-consp-unfolds"))
+
+    def test_another_cited_restatement_is_told_to_rename_and_not_cite(self):
+        said = self.refusal("step-consp")
+        self.assertIn("AND do not cite it as an event", said)
+
+    def test_agents_md_says_the_same(self):
+        text = " ".join((Path(__file__).resolve().parents[1] / "AGENTS.md").read_text().split())
+        self.assertIn("name those lemmas `-unfolds` or `-by-definition` and do not "
+                      "cite them as events", text)
+
+
 class RegistryTests(unittest.TestCase):
     SOURCES = {
         "books/a.lisp": '''(in-package "ACL2")
@@ -559,6 +594,65 @@ class LaneCheckTests(unittest.TestCase):
             said = "".join(call.args[0] for call in stderr.write.call_args_list)
         self.assertEqual(written, "regenerated\n")
         self.assertIn("differs from the committed file", said)
+
+
+class SuspectCacheTests(unittest.TestCase):
+    """C8: suspect reasons persist per theorem; a one-book edit re-judges only
+    the theorems whose key (own forms, named theorems, definitional closure)
+    moved, and the cached answer equals the uncached one."""
+
+    SOURCES = {
+        "books/defs.lisp": (
+            "(defun leaf (x) (car x))\n"
+            "(defun mid (x) (leaf x))\n"
+            "(defun top (x) (mid x))\n"
+            "(defun other (x) (cdr x))\n"),
+        "books/thms.lisp": (
+            "(include-book \"defs\")\n"
+            "(defthm top-is-car (equal (top x) (car x)))\n"
+            "(defthm other-refl (equal (other x) (other x)))\n"
+            "(defthm plain (equal (len (cons a b)) (+ 1 (len b))))\n"),
+    }
+
+    def tree(self, sources, cache):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            books = {}
+            for relative, text in sources.items():
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(text)
+                books[relative] = ledger.analyze_book(path, relative)
+        return ledger.Tree(books, [r[:-5] for r in sources], {}, suspect_cache=cache)
+
+    def test_cached_reasons_equal_uncached_and_only_moved_keys_recompute(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory) / "suspects.json"
+            first = self.tree(self.SOURCES, cache)
+            uncached = tree_from(self.SOURCES)
+            self.assertEqual(first.suspects, uncached.suspects)
+            self.assertIn("top-is-car", first.suspects)   # unfolds through mid, leaf
+            self.assertEqual(first.suspect_recomputed, 3)
+            again = self.tree(self.SOURCES, cache)
+            self.assertEqual(again.suspect_recomputed, 0)
+            self.assertEqual(again.suspects, first.suspects)
+            # An edit two calls below top-is-car moves its key, and only its.
+            edited = dict(self.SOURCES)
+            edited["books/defs.lisp"] = edited["books/defs.lisp"].replace(
+                "(defun leaf (x) (car x))", "(defun leaf (x) (cdr x))")
+            moved = self.tree(edited, cache)
+            self.assertEqual(moved.suspect_recomputed, 1)
+            self.assertEqual(moved.suspects, tree_from(edited).suspects)
+            self.assertNotIn("top-is-car", moved.suspects)
+
+    def test_the_closure_digest_follows_cycles_and_callees(self):
+        own = {"a": "1", "b": "2", "c": "3", "d": "4"}
+        edges = {"a": ["b"], "b": ["a", "c"], "c": [], "d": []}
+        base = ledger._closure_digests(own, edges)
+        self.assertEqual(base["a"], base["b"])           # one cycle, one digest
+        changed = ledger._closure_digests(dict(own, c="9"), edges)
+        self.assertNotEqual(changed["a"], base["a"])     # a reaches c through b
+        self.assertEqual(changed["d"], base["d"])        # d reaches nothing that moved
 
 
 if __name__ == "__main__":
@@ -765,6 +859,26 @@ class TeethFormLintTests(unittest.TestCase):
            :with-output-off nil)
 ''')
         self.assertEqual([entry["check"] for entry in found], ["general"])
+
+    def test_a_constant_inside_a_macro_is_a_witness(self):
+        """PKT-364: `cvt-disk-without-decision' named its constant through a
+        macro and read as a bare claim."""
+        found = self.findings('''(in-package "ACL2")
+(defmacro cvt-disk (x) `(fn-disk-of ,x *fn-cvt-sample-disk*))
+(defmacro cvt-general (x) `(fn-disk-of ,x (fn-any)))
+(defmacro cvt-via (x) `(cvt-disk ,x))
+(must-fail (thm (fn-decidedp (cvt-disk s))))
+(must-fail (thm (fn-decidedp (cvt-via s))))
+(must-fail (defthm cvt-bare (fn-decidedp (cvt-general s))))
+''')
+        self.assertEqual([entry["check"] for entry in found], ["cvt-bare"])
+
+    def test_a_macro_whose_constant_is_its_argument_names_nothing(self):
+        found = self.findings('''(in-package "ACL2")
+(defmacro wrap (x &key (hints ':none)) (declare (ignore hints)) `(fn-p ,x))
+(must-fail (thm (wrap y)))
+''')
+        self.assertEqual(len(found), 1)
 
     def test_a_must_fail_around_something_other_than_a_theorem_is_not_judged(self):
         self.assertEqual(self.findings('''(in-package "ACL2")

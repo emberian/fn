@@ -71,7 +71,7 @@
 (defconst *bpiwr-ion-cut*
   (append *bpiw-prefix*
           (list *bpiwr-retry*
-                (fn-bpiw-attempt-record
+                (fn-bprq-attempt-record
                  (nth 1 (in-arena-fn-bpiw-replay-journal *bpo-payloads*
                          *bpo-node*
                          (append *bpiw-prefix* (list *bpiwr-retry*))))
@@ -118,7 +118,7 @@
 (defconst *bpiwr-open-4*
   (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node* *bpiwr-delivered-cut*))
 (defconst *bpiwr-reattempt*
-  (fn-bpiw-attempt-record (nth 1 *bpiwr-open-4*) 12 0 "work:out" "attempt:out2"))
+  (fn-bprq-attempt-record (nth 1 *bpiwr-open-4*) 12 0 "work:out" "attempt:out2"))
 (assert-event (car *bpiwr-open-4*))
 (assert-event (not (fn-bpiw-recovery-outcomep *bpiwr-reattempt*)))
 (assert-event (car (in-arena-fn-bpiw-apply *bpo-payloads* (nth 1 *bpiwr-open-4*) (nth 3 *bpiwr-open-4*)

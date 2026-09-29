@@ -4,12 +4,14 @@
 ;; host-decisions-2 packet B: the control launch decision (fn-ncla-).
 (include-book "../books/native-control-launch")
 (include-book "../books/native-control-reason")
+(include-book "../books/native-control-line")
 ;; online-reclaim-5: the word an operator request prints (fn-crqw-).
 (include-book "../books/control-request-word")
 (include-book "../books/consumer-local-control")
 (include-book "../books/consumer-wait-codec")
 (include-book "../books/consumer-reason")
 (include-book "../books/topic-history-local-control")
+(include-book "../books/native-live-buffer")
 
 (defun fn-native-control-host-topic-request-encode (operation sequence quota)
   (declare (xargs :mode :program))
@@ -239,6 +241,25 @@
   (fn-native-control-reasoned-client-step
    (fn-native-control-reasoned-reply-read octets)))
 
+;; Row S1 (books/native-control-line.lisp, kind 23): a reasoned reply that
+;; carries the owner's printed line; a nil LINE seals the reasoned reply.
+(defun fn-native-control-host-lined-reply-encode (status reason line)
+  (declare (xargs :mode :program))
+  (fn-native-control-lined-reply-encode status reason line))
+
+(defun fn-native-control-host-lined-client-step (octets)
+  ; (:status STATUS WORD LINE) for a lined reply, else the reasoned step.
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
+  (fn-native-control-lined-client-step
+   (fn-native-control-lined-reply-read octets)))
+
+(defun fn-native-control-host-lined-detail (step)
+  ; What the operator's line carries after the status: the owner's line,
+  ; else the refusal's word.
+  (declare (xargs :mode :program))
+  (fn-native-control-lined-detail step))
+
 (defun fn-native-control-host-reply-detail (status word)
   ; The reason word the operator's line carries after the status, or nil.
   (declare (xargs :mode :program))
@@ -283,3 +304,15 @@
 (defun fn-native-control-host-consumer-article-json (summary)
   (declare (xargs :mode :program))
   (fn-ncr-article-json summary))
+
+;; D27 (PRF-960): the frame decoded in place from the control buffer, the
+;; whole dispatch of host/native/control.lisp fnn-control-handle-client in
+;; one entry from one digest (fn-frb-site-decode-is-reference: the tuple is
+;; fn-frb-site-reference of the octet list: the FNCT decoders, then the FNLS
+;; requests as fn-native-live-status-host-requestp and
+;; fn-native-live-pages-host-requestp decide them).  Called through fnn-core
+;; with the live control buffer (io.lisp fnn-octets-ctl-fill of the frame),
+;; under the control buffer lock.
+(defun fn-native-control-host-decode-frame (fn-octets-ctl)
+  (declare (xargs :stobjs fn-octets-ctl :mode :program))
+  (fn-frb-site-decode fn-octets-ctl))

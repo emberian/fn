@@ -104,6 +104,16 @@ HOSTS = {
         # The same launcher at --tls-limit 65536: make check's host_check
         # loads the production world, which exhausts the 16384 default.
         "image_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+        # The toolchain SBCL by absolute path, ahead of any system sbcl on
+        # PATH (tools/native_env.py sbcl; hbox's /usr/bin/sbcl is 2.2.9).
+        # LOAD-ONLY (obstructions-6 item 46): the same ACL2 at --tls-limit
+        # 262144, for sessions that LOAD the certified umbrella plus every
+        # host file (coverage.py dump --here): tls64k dies "Thread local
+        # storage exhausted" at the 14th host ld (decision-keystones-3).  A
+        # different launcher is a different toolchain identity: it never
+        # certifies, publishes or acquires (tests/test_farm LoadOnlyTests).
+        "load_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls256k",
+        "sbcl": "/tank/fn/sbcl/bin/sbcl",
         "cache": "~/fn-certcache",
         "wrap": "",
     },
@@ -113,6 +123,8 @@ HOSTS = {
         # SBCL's default thread-local storage (tools/hbox_native.sh IMAGE_ACL2;
         # packaging/release-tarball.sh FN_IMAGE_ACL2).
         "image_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+        "load_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls256k",  # LOAD-ONLY; see persvati's
+        "sbcl": "/tank/fn/sbcl/bin/sbcl",  # not /usr/bin/sbcl (2.2.9); see persvati's
         "cache": "/tank/fn/certcache",
         # hbox is shared with another project's build; swarm-build is the
         # cgroup with the enforced memory cap.
@@ -607,6 +619,54 @@ def refuse_a_running_run_in_the_same_tree(host: str, root: Path, remote: Path,
                         f"(wait for it, or submit to the other box)")
 
 
+CERTIFY_ID = re.compile(r"Certification (?:run|evidence): (?:\S*/)?build/acl2/"
+                        r"(certify-[0-9]{8}T[0-9]{6}Z-[0-9]+)")
+# `submit` asks the box this many times, CERTIFY_ID_PAUSE apart, for the
+# certify id the runner prints once it starts; `status` and `wait` name it
+# later when the runner was slower than that.
+CERTIFY_ID_ATTEMPTS = 5
+CERTIFY_ID_PAUSE = 3
+
+
+def note_certify_id(root: Path, identifier: str, certify_id: str) -> None:
+    """Record the run's certify-... id in its local run record (when there is one).
+
+    `evidence_manifests.py add RUN` maps a farm run to its certify id from
+    this record, so a lane need not `wait` (the fetched log) to file it.
+    """
+    path = record_path(root, identifier)
+    record = run_record(root, identifier)
+    if not record or record.get("certify_id") == certify_id:
+        return
+    record["certify_id"] = certify_id
+    try:
+        path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    except OSError:
+        pass
+
+
+def note_box_manifest(root: Path, identifier: str, verdict: str) -> None:
+    """Record the final manifest's status the box reported (passed/failed)."""
+    path = record_path(root, identifier)
+    record = run_record(root, identifier)
+    if not record or record.get("box_manifest") == verdict:
+        return
+    record["box_manifest"] = verdict
+    try:
+        path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    except OSError:
+        pass
+
+
+def remote_certify_id(host: str, remote: Path, identifier: str) -> str | None:
+    """The certify id the run's log on the box names, or None yet."""
+    done = ssh(host, f"cd {remote_quote(remote)} 2>/dev/null && "
+               f"grep -m1 -E 'Certification (run|evidence): ' build/farm/{identifier}.log "
+               "2>/dev/null", check=False)
+    found = CERTIFY_ID.search(done.stdout or "")
+    return found.group(1) if found else None
+
+
 def run_record(root: Path, identifier: str) -> dict:
     """What `submit` recorded for this run, or an empty mapping."""
     try:
@@ -614,6 +674,63 @@ def run_record(root: Path, identifier: str) -> dict:
     except (OSError, ValueError):
         return {}
     return record if isinstance(record, dict) else {}
+
+
+def checkpoint_excerpt(log: Path, limit: int = 40) -> list[str]:
+    """The prover's own account of one failed book: from the last `*** Key
+    checkpoint` before its first failure line through that line, at most
+    LIMIT lines (the head of the region kept); without a checkpoint, the
+    dozen lines before the failure.  Empty when the log has no failure."""
+    try:
+        text = log.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return []
+    fail = next((i for i, line in enumerate(text) if FAILURE_LINE.search(line)), None)
+    if fail is None:
+        return []
+    start = next((i for i in range(fail, -1, -1) if "*** Key checkpoint" in text[i]), None)
+    if start is None:
+        start = max(0, fail - 12)
+    region = text[start:fail + 1]
+    if len(region) > limit:
+        region = region[:limit - 2] + [f"... ({len(region) - limit + 1} lines)", region[-1]]
+    return region
+
+
+def failed_summary(host: str, identifier: str, root: Path, remote: Path | None = None,
+                   fetcher=None, limit: int = 40) -> list[str]:
+    """`farm.py status --failed-summary RUN`: each failed book's checkpoint.
+
+    Brings home only the run's manifest and per-book logs (`fetch_logs`: no
+    cache, no evidence archive), then prints, per failed book, its first
+    failure line and the key checkpoint above it -- what depth-debt-4 spent
+    two ssh rounds per book assembling (obstructions-5 item 35).
+    """
+    remote = remote or remote_root(root, identifier)
+    into = root / "build" / "farm" / f"{identifier}-logs"
+    directories = (fetcher or fetch_logs)(host, identifier, root, remote, into)
+    lines = [f"== failed summary {identifier} ({host}:{remote}; logs {into})"]
+    failed = 0
+    for directory in directories:
+        try:
+            manifest = json.loads((directory / "manifest.json").read_text())
+        except (OSError, ValueError):
+            lines.append(f"  {directory.name}: no manifest (still running, or died before it)")
+            continue
+        results = manifest.get("book_results") or {}
+        reasons = manifest.get("book_failures") or {}
+        for book in sorted(set(reasons) | {b for b, v in results.items() if v != "passed"}):
+            failed += 1
+            where = book_log(directory, book)
+            stated = "; ".join(reasons.get(book) or []) or str(results.get(book, "failed"))
+            lines.append(f"-- FAILED {book}: {stated}")
+            lines.append(f"   log: {where or directory}")
+            excerpt = checkpoint_excerpt(where, limit) if where else []
+            lines += ["   | " + line for line in excerpt] or ["   (no failure line in its log)"]
+    if not directories:
+        lines.append("  no evidence directory named in the run log yet")
+    lines.append(f"== {failed} failed book(s)")
+    return lines
 
 
 def remote_root(root: Path, identifier: str, override: str | None = None) -> Path:
@@ -712,6 +829,9 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
         f"FN_ACL2={acl2_shell_word(host, acl2)} "
         f"FN_ACL2_TIMEOUT_SECONDS={timeout_seconds} "
         f"FN_CERT_CACHE={settings['cache']} "
+        + (f"FN_SBCL={settings['sbcl']} PATH={os.path.dirname(settings['sbcl'])}:$PATH "
+           if settings.get("sbcl") else "")
+        +
         # The runner publishes into the box's cache after each root.  This
         # run's tree is a snapshot: the pairs are shareable with the next
         # lane on the box, and saying so at publish time is what lets its
@@ -807,6 +927,13 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
         "pid": int(launched.group(1)) if launched else None,
         "path": str(root),
         "remote_path": str(remote),
+        # Named for what each is (depth-debt-4 read `remote_path` as the
+        # local path: by default the box mirror uses the SAME absolute path,
+        # so the two are equal; obstructions-5 item 35).
+        "local_path": str(root),
+        "box": host,
+        "box_path": str(remote),
+        "box_log": f"{remote}/build/farm/{identifier}.log",
         "books": books,
         "affected_by": affected_by,
         "closure": closure,
@@ -829,6 +956,19 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n",
                     encoding="utf-8")
+    # The certify id, as soon as the runner names it (evidence_manifests add
+    # wanted it before `wait`; decision-keystones-2, 2026-09-29).
+    for attempt in range(CERTIFY_ID_ATTEMPTS):
+        certify_id = remote_certify_id(host, remote, identifier)
+        if certify_id:
+            note_certify_id(root, identifier, certify_id)
+            print(f"{identifier}: certify id {certify_id}", file=sys.stderr)
+            break
+        if attempt + 1 < CERTIFY_ID_ATTEMPTS:
+            SLEEP(CERTIFY_ID_PAUSE)
+    else:
+        print(f"{identifier}: the runner has not named its certify id yet; "
+              f"`farm.py status {host}` or `wait` will", file=sys.stderr)
     return identifier
 
 
@@ -846,7 +986,15 @@ def progress_script(root: Path, identifier: str) -> str:
     checked, all 0).  The running run's directory is the newest one.
     """
     log = f"build/farm/{identifier}.log"
-    newest = "$(ls -td build/acl2/certify-*/ 2>/dev/null | head -1)"
+    # The run's OWN directory, as `status` finds it (item 60): the one its
+    # log names ("Certification run|evidence: .../build/acl2/certify-..."),
+    # else the newest.  The newest alone is another run's once a later run
+    # starts in the same tree, and a wait on it hung or answered "unknown"
+    # while `status` already showed this run's manifest passed.
+    named = (f"$(grep -m1 -oE 'build/acl2/certify-[0-9]{{8}}T[0-9]{{6}}Z-[0-9]+' {log} "
+             "2>/dev/null)")
+    newest = (f"$(n={named}; if [ -n \"$n\" ] && [ -d \"$n\" ]; then echo \"$n/\"; "
+              "else ls -td build/acl2/certify-*/ 2>/dev/null | head -1; fi)")
     return (
         f"cd {remote_quote(root)} 2>/dev/null || {{ echo 'NOROOT'; exit 9; }}; "
         f"printf 'STATUS %s\\n' \"$(cat build/farm/{identifier}.status "
@@ -975,6 +1123,9 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
     # (correctness-remainder: 25), and a wait that printed nothing through
     # them read as a wait that never returned.
     final = progress.get("MANIFEST", "").split()
+    if len(final) > 1:
+        note_certify_id(root, identifier, final[1])
+        note_box_manifest(root, identifier, final[0])
     print(f"{identifier} on {host}: finished with exit code {code}"
           + (f" -- {killed_words(signalled)}" if signalled is not None else "")
           + (f"; manifest {final[1]} {final[0]}" if len(final) > 1 else "")
@@ -1196,6 +1347,15 @@ def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
         if isinstance(manifest, dict):
             manifests.append((root / directory, manifest))
     if not manifests:
+        # The box already decided (wait read its final manifest, as `status`
+        # does, and recorded its certify id): say that verdict, never
+        # "unknown", and say the evidence is not here yet (item 60).
+        certify_id = run_record(root, identifier).get("certify_id")
+        decided = run_record(root, identifier).get("box_manifest")
+        if certify_id and decided:
+            return [head, f"  manifest {certify_id} {decided} on the box (read as "
+                          "`farm.py status` reads it); its evidence did not come back "
+                          f"under {root}/build/acl2 -- `farm.py fetch` it before citing"]
         return [head, "  no manifest came back under "
                 f"{root}/build/acl2; the verdict is unknown (not green); "
                 f"read {log}"]
@@ -1319,6 +1479,19 @@ def time_of(path):
     return (dt.datetime.strptime(found.group(1), "%Y%m%dT%H%M%SZ")
             .replace(tzinfo=dt.timezone.utc) if found else None)
 
+named = re.compile(r"Certification (?:run|evidence): (?:\S*/)?build/acl2/(certify-[0-9]{8}T[0-9]{6}Z-[0-9]+)")
+
+def certify_id_of(log):
+    try:
+        with log.open(encoding="utf-8", errors="replace") as text:
+            for line in text:
+                found = named.search(line)
+                if found:
+                    return found.group(1)
+    except OSError:
+        pass
+    return None
+
 logs = sorted(farm.glob("run-*.log"))
 dirs = sorted((path for path in (root / "build/acl2").glob("certify-*")
                if path.is_dir()), key=lambda path: path.name)
@@ -1337,9 +1510,14 @@ for log in logs:
     matching = [path for path in dirs if (when := time_of(path)) is not None
                 and started <= when < cutoff]
     directory = matching[0] if len(matching) == 1 else None
+    certify_id = certify_id_of(log)
+    if certify_id and (root / "build/acl2" / certify_id).is_dir():
+        # The run's log names its directory: no guessing by time window.
+        directory = root / "build/acl2" / certify_id
     status_file = log.with_suffix(".status")
     state = status_file.read_text().strip() if status_file.exists() else "unfinalized"
-    row = {"run_id": log.stem, "state": state, "data": "missing"}
+    row = {"run_id": log.stem, "state": state, "data": "missing",
+           "certify_id": certify_id or (directory.name if directory is not None else None)}
     if directory is not None and state != "unfinalized":
         manifest = read_json(directory / "manifest.json")
         if manifest is not None:
@@ -1439,9 +1617,11 @@ def status(host: str, remote: Path, local_root: Path | None = None) -> int:
         raise FarmError(f"{host}: invalid status snapshot under {remote}: {error}") from error
     print(f"{host}:{remote}")
     print("run-id state data manifest-passed manifest-failed observed-exited "
-          "observed-active oldest-observed-active cache-installed+kept/origins")
+          "observed-active oldest-observed-active cache-installed+kept/origins certify-id")
     for row in rows:
         identifier = row["run_id"]
+        if row.get("certify_id"):
+            note_certify_id(local_root or remote, identifier, row["certify_id"])
         cache = cache_summary(run_record(local_root or remote, identifier)) or "-"
         age = (f"{row['age_seconds']}s" if row.get("age_seconds") is not None
                else "-")
@@ -1450,7 +1630,8 @@ def status(host: str, remote: Path, local_root: Path | None = None) -> int:
         label = row["data"]
         if label == "manifest":
             label += f"({row['manifest']})"
-        print(" ".join([identifier, row["state"], label, *counts, age, cache]))
+        print(" ".join([identifier, row["state"], label, *counts, age, cache,
+                        row.get("certify_id") or "-"]))
     return 0
 
 
@@ -1675,6 +1856,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="submit: certify from certification images or not "
                              "(the runner's --images; default: the runner's own, on; "
                              "FN_CERT_IMAGES here is forwarded when set)")
+    parser.add_argument("--failed-summary", metavar="RUN", default=None,
+                        help="status: print each failed book of RUN with its first failure "
+                             "line and key checkpoint (fetches only its logs)")
     parser.add_argument("--no-publish", action="store_true",
                         help="submit: a measurement run: the runner publishes no pair "
                              "to the box's cache, and `wait` neither sweeps nor "
@@ -1769,6 +1953,12 @@ def main(argv: list[str] | None = None) -> int:
             return cancel(arguments.host, arguments.rest[0], root,
                           (str(expand_remote(arguments.host, arguments.remote_root))
                            if arguments.remote_root else None))
+        if arguments.failed_summary:
+            lines = failed_summary(arguments.host, arguments.failed_summary, root,
+                                   (expand_remote(arguments.host, arguments.remote_root)
+                                    if arguments.remote_root else None))
+            print("\n".join(lines))
+            return 1 if not lines[-1].startswith("== 0 ") else 0
         remote = (expand_remote(arguments.host, arguments.remote_root)
                   if arguments.remote_root else root)
         return status(arguments.host, remote, root)

@@ -609,7 +609,7 @@
                    (not (fn-psrv-event-servedp (fn-ocfg-config oc) record)))
            :use (fn-lgoc-pidx-sbud-prepare-preserves-invariant
                  fn-prc-sbud-prepare-is-pidx-sbud-prepare
-                 fn-psrv-prepare-refuses-unserved fn-psrv-prepare-refuses-exhausted
+                 fn-psrv-prepare-refuses-unserved fn-psrv-prepare-refuses-exhausted-by-definition
                  fn-psrv-prepare-when-served)
            :in-theory '(fn-psrv-event-servedp))))
 
@@ -643,7 +643,7 @@
                         (fn-psrv-event-numberedp oc e))
                    (not (fn-psrv-event-servedp (fn-ocfg-config oc) e)))
            :use ((:instance fn-psrv-prepare-refuses-unserved (record e))
-                 (:instance fn-psrv-prepare-refuses-exhausted (record e))
+                 (:instance fn-psrv-prepare-refuses-exhausted-by-definition (record e))
                  (:instance fn-psrv-prepare-when-served (record e))
                  fn-psrv-invariant-served-is-fold-served
                  (:instance fn-psrv-ccar-sn-prepare-identity-preserves

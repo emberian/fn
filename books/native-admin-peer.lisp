@@ -24,6 +24,8 @@
 ; PKT-613 (PRF-231): the host's syntax and the TLS check the words select.
 (include-book "peer-host")
 (include-book "consumer-position")
+; Row S5: `peer set NAME --FLAG VALUE ...' (books/peer-set.lisp).
+(include-book "peer-set")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -180,7 +182,9 @@ decoded as source-address for durable command compatibility."
               (revappend acc (fn-native-admin-carries-rows name hexes))
             :bad))))
 
-(verify-guards fn-native-admin-carries-rows)
+(verify-guards fn-native-admin-carries-rows
+  ; The hex test stays closed: the guard needs only its truth value.
+  :hints (("Goal" :in-theory (disable fn-native-admin-carries-hexp))))
 
 (defun fn-native-admin-before-carries-loop (words acc)
   (declare (xargs :guard (true-listp acc)))
@@ -348,6 +352,18 @@ decoded as source-address for durable command compatibility."
            (fn-record-string-octets (nth 2 words)) 0 nil
            (list (fn-fps-row (nth 2 words) (equal (nth 3 words) "pause"))))
         (fn-native-admin-result :refused :feed nil nil 0 nil nil)))
+     ; Row S5: `peer set NAME --FLAG VALUE ...', a delta over the live
+     ; record (books/peer-set.lisp fn-pset-plan, reached through
+     ; books/native-admin.lisp fn-native-admin-plan-deltas-over).  The
+     ; words are decided here; the record, over the table, there.
+     ((equal (nth 1 words) "set")
+      (let ((opts (fn-pset-options (nthcdr 3 words) nil)))
+        (if (equal (car opts) :ok)
+            (fn-native-admin-result
+             :accepted nil :extend-peer
+             (fn-record-string-octets (nth 2 words)) 0 nil
+             (list :peer-set (cadr opts)))
+          (fn-native-admin-result :refused (cadr opts) nil nil 0 nil nil))))
      ((equal (nth 1 words) "carries")
       (let ((rows (fn-native-admin-carries-rows (nth 2 words)
                                                 (nthcdr 3 words))))

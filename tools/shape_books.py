@@ -48,6 +48,7 @@ from __future__ import annotations
 import argparse
 import collections
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -146,6 +147,39 @@ def dependents_set(closure: dict[str, list[str]], targets: list[str]) -> set[str
     return seen
 
 
+SEARCH_DIRS = ("books", "tests/acl2", "host")
+
+
+def resolve_book(word: str, root: Path = ROOT) -> str:
+    """A book word as a repository-relative book name, the way farm takes it.
+
+    `books/wire`, `books/wire.lisp` and an absolute path name themselves (as
+    farm and certify_books take them); a bare `wire` is looked up under
+    books/, tests/acl2/ and host/ and must name exactly one.  Two lanes lost
+    time to `--book bp-fnbs-codec` dying in a ValueError traceback
+    (2026-09-29); the refusal now names what was tried.
+    """
+    path = Path(word)
+    if path.is_absolute():
+        resolved = path.resolve()
+        if not resolved.is_relative_to(root.resolve()):
+            raise SystemExit(f"shape_books: {word}: outside the repository {root}")
+        path = resolved.relative_to(root.resolve())
+    text = path.as_posix()
+    name = text[:-len(".lisp")] if text.endswith(".lisp") else text
+    if (root / f"{name}.lisp").is_file():
+        return name
+    if "/" not in name:
+        found = [f"{d}/{name}" for d in SEARCH_DIRS if (root / d / f"{name}.lisp").is_file()]
+        if len(found) == 1:
+            return found[0]
+        if found:
+            raise SystemExit(f"shape_books: {word}: ambiguous, name one of "
+                             + ", ".join(f + ".lisp" for f in found))
+    tried = [f"{name}.lisp"] + ([f"{d}/{name}.lisp" for d in SEARCH_DIRS] if "/" not in name else [])
+    raise SystemExit(f"shape_books: {word}: no such book (tried {', '.join(tried)})")
+
+
 def chain_report(affected_by: list[str] = (), through: str | None = None,
                  closure: dict[str, list[str]] | None = None,
                  boxes: tuple[str, ...] = ("persvati", "hbox"),
@@ -157,7 +191,7 @@ def chain_report(affected_by: list[str] = (), through: str | None = None,
     certifies when the cache holds the rest)."""
     if closure is None:
         closure = certify_books.local_closure(certify_books.default_books())
-    targets = [certify_books.normalize_book(book) for book in affected_by]
+    targets = [resolve_book(book) for book in affected_by]
     for book in targets + ([through] if through else []):
         if book not in closure:
             raise SystemExit(f"shape_books: {book}: not in the Makefile roots' closure")
@@ -191,7 +225,55 @@ def chain_report(affected_by: list[str] = (), through: str | None = None,
     return lines
 
 
+REEXEC_MARK = "FN_SHAPE_BOOKS_TREE"
+
+
+def fn_tree(start: Path) -> Path | None:
+    """The fn tree (a directory with tools/shape_books.py and a Makefile)
+    containing START, walking up; None outside every one."""
+    start = start.resolve()
+    for candidate in (start, *start.parents):
+        if (candidate / "tools" / "shape_books.py").is_file() and (candidate / "Makefile").is_file():
+            return candidate
+    return None
+
+
+def own_tree(argv: list[str], cwd: Path, root: Path = ROOT) -> Path | None:
+    """The tree whose own graph answers ARGV, when it is not ROOT's.
+
+    `python3 ~/dev/fn/tools/shape_books.py --book X` run from a lane worktree
+    read the MAIN checkout's Makefile and sources: a book new on the branch
+    was "not in the closure", an absolute path into the worktree "outside
+    the repository", and a moved include gave main's count (composed-owner-6
+    and store-lineage, 2026-09-29).  The answer belongs to the branch: an
+    absolute book path inside another fn tree names that tree, else the
+    tree the shell stands in.  None when that is ROOT itself.
+    """
+    words = iter(argv)
+    for word in words:
+        value = None
+        if word in ("--book", "--affected-by", "--chain"):
+            value = next(words, None)
+        elif word.startswith(("--book=", "--affected-by=", "--chain=")):
+            value = word.split("=", 1)[1]
+        if value and Path(value).is_absolute():
+            tree = fn_tree(Path(value).parent)
+            if tree is not None:
+                return None if tree == root.resolve() else tree
+    tree = fn_tree(cwd)
+    return None if tree is None or tree == root.resolve() else tree
+
+
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if not os.environ.get(REEXEC_MARK):
+        tree = own_tree(argv, Path.cwd())
+        if tree is not None:
+            print(f"shape_books: answering from {tree} (the tree this names), "
+                  f"not {ROOT}", file=sys.stderr, flush=True)
+            os.environ[REEXEC_MARK] = str(tree)
+            os.execv(sys.executable, [sys.executable, str(tree / "tools" / "shape_books.py"),
+                                      *argv])
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--top", type=int, default=40)
     parser.add_argument("--book", action="append", default=[],
@@ -207,12 +289,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--chain", metavar="BOOK",
                         help="print the longest include chain through BOOK")
     parser.add_argument("--affected-by", action="append", default=[], metavar="BOOK",
-                        help="with --critical/--chain: restrict to the books this "
-                             "change recertifies (repeatable)")
+                        help="the critical-chain view restricted to the books this "
+                             "change recertifies (repeatable; implies --critical "
+                             "unless --chain is given)")
     arguments = parser.parse_args(argv)
 
-    if arguments.critical or arguments.chain:
-        through = certify_books.normalize_book(arguments.chain) if arguments.chain else None
+    if arguments.affected_by and (arguments.book or arguments.write_doc or arguments.check):
+        parser.error("--affected-by is the critical-chain view; it does not combine with "
+                     "--book, --write-doc or --check")
+    if arguments.critical or arguments.chain or arguments.affected_by:
+        # --affected-by alone used to fall through to the top table, the
+        # restriction silently dropped (assurance-hygiene, 2026-09-29).
+        through = resolve_book(arguments.chain) if arguments.chain else None
         print("\n".join(chain_report(arguments.affected_by, through)))
         return 0
     counts, roots = tree_counts()
@@ -232,7 +320,7 @@ def main(argv: list[str] | None = None) -> int:
     if arguments.book:
         rows = []
         for name in arguments.book:
-            book = certify_books.normalize_book(name)
+            book = resolve_book(name)
             if book not in counts:
                 print(f"shape_books: {name}: not in the Makefile roots' closure", file=sys.stderr)
                 return 2

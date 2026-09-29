@@ -21,11 +21,12 @@
 ; `fn-bs-profile-max-credentials'), which the host reads from the store and
 ; passes as MAX-CREDENTIALS (pre-D27: 128).  The file's octet and line
 ; bounds follow it.  The two constants below bound work per credential, not
-; data: one canonical table (`fn-native-auth-admin-serialize-cred') is six
-; lines and under 320 octets, and the per-credential figure leaves room for
-; the operator's comments; one extra unit covers the writer's header.
-(defconst *fn-native-auth-octets-per-credential* 512)
-(defconst *fn-native-auth-lines-per-credential* 8)
+; data: one canonical table (`fn-native-auth-admin-serialize-cred') is at
+; most nine lines and under 560 octets (verifier v2 carries SCRAM's two keys,
+; books/auth-secret.lisp), and the per-credential figure leaves room for the
+; operator's comments; one extra unit covers the writer's header.
+(defconst *fn-native-auth-octets-per-credential* 768)
+(defconst *fn-native-auth-lines-per-credential* 12)
 
 (defun fn-native-auth-max-octets (max-credentials)
   (declare (xargs :guard t))
@@ -35,18 +36,41 @@
   (declare (xargs :guard t))
   (* *fn-native-auth-lines-per-credential* (+ 1 (nfix max-credentials))))
 
+; The credential file's walks execute by loops (lane depth-debt, PRF-919):
+; the file is operator data with no fixed cap (D27), and a recursion one
+; control-stack frame per octet could exhaust the 1,024 KiB stack.  Each is
+; (mbe :logic <the recursion, unchanged> :exec <a loop>), equal by its
+; <f>-loop lemma.
+(defun fn-native-auth-line-count-loop (xs acc)
+  (declare (xargs :guard (acl2-numberp acc)))
+  (if (consp xs)
+      (if (consp (cdr xs))
+          (fn-native-auth-line-count-loop
+           (cdr xs) (+ acc (if (equal (car xs) 10) 1 0)))
+        (+ acc 1))
+    acc))
+
 (defun fn-native-auth-line-count (xs)
   ; Count conventional text lines: every LF ends one line, and nonempty bytes
   ; after the final LF form one more.  fn-ncfg-lines deliberately retains a
   ; terminal empty segment for parsing; that segment is not a 1,025th line in
   ; a file containing exactly 1,024 newline-terminated lines.
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (if (consp (cdr xs))
-          (+ (if (equal (car xs) 10) 1 0)
-             (fn-native-auth-line-count (cdr xs)))
-        1)
-    0))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp xs)
+                  (if (consp (cdr xs))
+                      (+ (if (equal (car xs) 10) 1 0)
+                         (fn-native-auth-line-count (cdr xs)))
+                    1)
+                0)
+       :exec (fn-native-auth-line-count-loop xs 0)))
+
+(defthm fn-native-auth-line-count-loop-is-plus
+  (implies (acl2-numberp acc)
+           (equal (fn-native-auth-line-count-loop xs acc)
+                  (+ acc (fn-native-auth-line-count xs))))
+  :hints (("Goal" :induct (fn-native-auth-line-count-loop xs acc))))
+
+(verify-guards fn-native-auth-line-count)
 
 (defun fn-native-auth-prefixp (prefix xs)
   (declare (xargs :guard t))
@@ -67,11 +91,35 @@
        (equal (nth (- (len xs) 2) xs) a)
        (equal (nth (1- (len xs)) xs) b)))
 
-(defun fn-native-auth-butlast-two (xs)
+(defun fn-native-auth-butlast-two-loop (xs acc)
   (declare (xargs :guard t))
   (if (and (consp xs) (consp (cdr xs)) (consp (cdr (cdr xs))))
-      (cons (car xs) (fn-native-auth-butlast-two (cdr xs)))
-    nil))
+      (fn-native-auth-butlast-two-loop (cdr xs) (cons (car xs) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-native-auth-butlast-two (xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (and (consp xs) (consp (cdr xs)) (consp (cdr (cdr xs))))
+                  (cons (car xs) (fn-native-auth-butlast-two (cdr xs)))
+                nil)
+       :exec (fn-native-auth-butlast-two-loop xs nil)))
+
+(defthm fn-native-auth-butlast-two-loop-is-rev-onto
+  (equal (fn-native-auth-butlast-two-loop xs acc)
+         (fn-ag-rev-onto acc (fn-native-auth-butlast-two xs)))
+  :hints (("Goal" :induct (fn-native-auth-butlast-two-loop xs acc)
+                  :in-theory (union-theories
+                              '(fn-native-auth-butlast-two-loop
+                                fn-native-auth-butlast-two
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-native-auth-butlast-two
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-native-auth-butlast-two fn-ag-rev-onto
+                                fn-native-auth-butlast-two-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-native-auth-login-namep (name)
   ; The canonical writer emits NAME through bin/fn's toml_quote: an NNTP
@@ -119,7 +167,8 @@
                      (fn-ncfg-trim (fn-ncfg-second split)))))
         (if (and (fn-ncfg-identp key-octets)
                  (member-equal key '("principal" "salt" "digest" "posting"
-                                     "signing" "secret"))
+                                     "signing" "secret" "scram_stored_key"
+                                     "scram_server_key"))
                  (not (equal value :bad)))
             (list key value)
           :bad)))))
@@ -157,11 +206,16 @@
       (let* ((principal-text (fn-native-auth-string-field "principal" fields))
              (salt-text (fn-native-auth-string-field "salt" fields))
              (digest-text (fn-native-auth-string-field "digest" fields))
+             (stored-text (fn-native-auth-string-field "scram_stored_key" fields))
+             (server-text (fn-native-auth-string-field "scram_server_key" fields))
              (posting (fn-native-auth-bool-field "posting" fields))
              (principal (fn-native-auth-hex principal-text 32))
              (salt (fn-native-auth-hex salt-text 16))
-             (digest (fn-native-auth-hex digest-text 32)))
+             (digest (fn-native-auth-hex digest-text 32))
+             (stored-key (fn-native-auth-hex stored-text 32))
+             (server-key (fn-native-auth-hex server-text 32)))
         (if (or (equal principal :bad) (equal salt :bad) (equal digest :bad)
+                (equal stored-key :bad) (equal server-key :bad)
                 (equal posting :bad)
                 ; The optional login binding (`fn principal bind'): when the
                 ; table carries one it is a 32-octet principal in lowercase
@@ -172,7 +226,9 @@
                             :bad)))
             (list :refused :credential-shape)
           (let ((cred (fn-auth-make-cred
-                       name principal (fn-authsec-verifier salt digest) posting)))
+                       name principal
+                       (fn-authsec-verifier salt digest stored-key server-key)
+                       posting)))
             (if (fn-auth-credp cred) (list :credential cred)
               (list :refused :credential-shape))))))))
 

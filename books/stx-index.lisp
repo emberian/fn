@@ -436,11 +436,12 @@
   (fn-stx-index-equivocatorp index p i))
 
 ; -----------------------------------------------------------------------------
-; The invariant, and the agreement
-
-(defun fn-stx-index-invariantp (index node keyring)
-  (declare (xargs :guard (fn-prin-keyringp keyring)))
-  (equal index (fn-stx-index-of-store (fn-stx-store node) keyring)))
+; The agreement, over an article list.  The invariant over the NODE
+; (fn-stx-index-invariantp) and the agreement and preservation stated over it
+; are books/stx-node-lace.lisp's, which reads the node's handles through the
+; arena (PKT-892, 2026-09-29); until then the invariant here compared the
+; index with the octet model's fold over the node's HANDLES, which is the
+; empty index for every node the machine produces.
 
 (local (defthm fn-stx-lookup-of-append
          (equal (fn-lace-lookup (append a b) id)
@@ -772,42 +773,9 @@
                                     (fn-article-payload (car articles))
                                     keyring)))))))
 
-; S3-3, in the vocabulary of the served path.
-(defthm fn-stx-index-agrees-with-lace
-  (implies (fn-stx-index-invariantp index node keyring)
-           (and (equal (fn-stx-index-lookup index id)
-                       (fn-lace-lookup (fn-stx-lace node keyring) id))
-                (iff (fn-stx-index-equivocatorp index p i)
-                     (fn-lace-equivocatorp (fn-stx-lace node keyring) p i))))
-  :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-stx-index-bindings-agree
-                                   (articles (fn-stx-store node)))
-                        (:instance fn-stx-index-equivocators-agree
-                                   (articles (fn-stx-store node))))
-           :in-theory (disable fn-stx-index-bindings-agree
-                               fn-stx-index-equivocators-agree
-                               fn-stx-index-of-store fn-stx-lace-of-store
-                               fn-stx-index-lookup fn-stx-index-equivocatorp))))
-
-; The durable record is a proved twin of the lace, not a second authority.
-(defthm fn-stx-recorded-equivocation-agrees-with-lace
-  (implies (fn-stx-index-invariantp index node keyring)
-           (iff (fn-stx-recorded-equivocationp index p i)
-                (fn-lace-equivocatorp (fn-stx-lace node keyring) p i)))
-  :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-stx-index-agrees-with-lace))
-           :in-theory (disable fn-stx-index-invariantp fn-stx-lace
-                               fn-stx-index-equivocatorp))))
-
-; The invariant is carried, not recomputed: one cons per accepted article.
-(defthm fn-stx-index-invariant-preserved-by-accept
-  (implies (and (fn-stx-index-invariantp index node keyring)
-                (fn-stx-acceptedp node next article))
-           (fn-stx-index-invariantp
-            (fn-stx-index-add index
-                              (fn-stx-delta (fn-article-payload article) keyring))
-            next keyring))
-  :hints (("Goal" :in-theory (enable (:d fn-stx-acceptedp)))))
+; S3-3 over the node -- fn-stx-index-agrees-with-lace,
+; fn-stx-recorded-equivocation-agrees-with-lace and
+; fn-stx-index-invariant-preserved-by-accept -- is books/stx-node-lace.lisp's.
 
 ; -----------------------------------------------------------------------------
 ; The cost shadow (D3): the served query walks the index, never the store.
@@ -858,5 +826,4 @@
                     (:d fn-stx-index-slot-first) (:d fn-stx-records-scan)
                     (:d fn-stx-index-equivocatorp)
                     (:d fn-stx-recorded-equivocationp)
-                    (:d fn-stx-index-invariantp)
                     (:d fn-stx-lace-slot-first) (:d fn-stx-slot-partner)))

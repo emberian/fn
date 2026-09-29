@@ -185,7 +185,23 @@ The caller holds SERVICE's mutex for this whole function."
   (when (string= (or (fnn-developer-selector "FN_BP_APP_TEST_PAUSE_AFTER_DECISION") "") "1")
     (fnn-out "BP APP DECISION DURABLE")
     (finish-output)
-    (loop (sleep 1))))
+    (loop (sleep 1)))
+  ;; The same point as a HOLD (cut receipt-observed; resilience-framework-2's
+  ;; generated scenarios: a duplicate receipt, a reorder with a policy change
+  ;; in between, a lost completion, against a real node).  With
+  ;; FN_APP_JOURNAL_TEST_HOLD_RECEIPT=decided the receipt path blocks here,
+  ;; after the decision is recorded and before the ADU/completion, until the
+  ;; file FN_APP_JOURNAL_TEST_HOLD_RECEIPT_RELEASE names appears (or a
+  ;; signal ends the process: the process-death cut above, released).
+  (when (string= (or (fnn-developer-selector "FN_APP_JOURNAL_TEST_HOLD_RECEIPT") "")
+                 "decided")
+    (let ((release (fnn-developer-selector "FN_APP_JOURNAL_TEST_HOLD_RECEIPT_RELEASE")))
+      (fnn-out "BP APP RECEIPT-OBSERVED HOLD release=~a" (or release "-"))
+      (finish-output)
+      (loop until (and release (probe-file release))
+            do (sleep 0.1))
+      (fnn-out "BP APP RECEIPT-OBSERVED RELEASED")
+      (finish-output))))
 
 (defun fnn-bpapp-deliver (service journal tally node-id conn xfer-id wire
                           ingress-state session-counter channel)
@@ -219,6 +235,8 @@ finds the transit principal in that ingress."
            (fnn-owner-transit-serialized
             service nil
             (lambda ()
+              ;; Per transfer: a Store-side reason names only its own line.
+              (setq *fnn-owner-transit-detail* nil)
               (multiple-value-bind (result adu)
                   (fnn-bpapp-accept-locked
                    service journal inbound-id (fnn-octets adu) node-id
@@ -228,7 +246,8 @@ finds the transit principal in that ingress."
                   ;; ACL2 renders the line, with the planner's reason, and
                   ;; classifies the answer; the host writes and follows it.
                   (let ((class (fnn-owner-action 'fn-owner-app-refusal-log
-                                                 result xfer-id)))
+                                                 result xfer-id
+                                                 *fnn-owner-transit-detail*)))
                     (fnn-owner-log)
                     (values result nil class)))))))
          (case class

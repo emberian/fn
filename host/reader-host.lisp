@@ -3,6 +3,7 @@
 (include-book "../books/store-node")
 (include-book "../books/served")
 (include-book "../books/reader-open-carried")
+(include-book "../books/state-globals")
 
 (defconst *fn-reader-groups* '("fn.letters"))
 (defconst *fn-reader-id* "<reader@example.invalid>")
@@ -22,18 +23,24 @@
                       0 *fn-reader-groups* :legacy)
    0 1 :durable))
 
-(defun fn-reader-group-octets (names)
-  (declare (xargs :mode :program))
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+(defun fn-reader-group-octets-loop (names acc)
+  (declare (xargs :guard t))
   (if (consp names)
-      (cons (fn-nntp-string-octets (car names))
-            (fn-reader-group-octets (cdr names)))
-    nil))
+      (fn-reader-group-octets-loop (cdr names)
+                                   (cons (fn-nntp-string-octets (car names)) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-reader-group-octets (names)
+  (declare (xargs :guard t))
+  (fn-reader-group-octets-loop names nil))
 
 ; The posting configuration is derived from the selected archive by ACL2, so
 ; the groups fn will accept a local post into are exactly the groups the store
 ; carries.  `allow` is the only part the operator supplies.
 (defun fn-reader-post-config (archive allow)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (fn-inj-make-config (if allow t nil) *fn-reader-agent*
                       (fn-reader-group-octets (fn-state-groups archive))
                       *fn-article-max-octets*))
@@ -48,7 +55,7 @@
 ; Article-mode framing is inside it: the :begin-article effect is acted on by
 ; fn-served-dispatch, not here.
 (defun fn-reader-install-result (result state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (let* ((effects (fn-served-result-effects result))
          (submission (fn-served-submission effects))
          (state (f-put-global 'fn-reader-conn (fn-served-result-conn result) state))
@@ -79,7 +86,7 @@
 ;; once.  The reader's archive is immutable under its shared lock, so every
 ;; connection opens over this one value (fn-rdc-reset-is-served-open).
 (defun fn-reader-install-selection (sel state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (if (fn-rdc-readyp sel)
       (let* ((state (f-put-global 'fn-reader-selection sel state))
              (state (f-put-global 'fn-reader-archive (fn-rdc-archive sel) state))
@@ -90,7 +97,7 @@
       (value :refused))))
 
 (defun fn-reader-use-seed (fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :guard t))
   (let* ((fn-arena (fn-arena-clear fn-arena))
          (fn-arena (fn-arena-seal-list *fn-reader-payload* fn-arena)))
     (mv-let (erp val state)
@@ -102,12 +109,12 @@
 ; the host is asserting, and books/injection.lisp is the only thing that
 ; interprets it.
 (defun fn-reader-set-posting (allow state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (let ((state (f-put-global 'fn-reader-allow-post (if allow t nil) state)))
     (value :ok)))
 
 (defun fn-reader-observe-clock (monotonic wall error state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (let ((state (f-put-global 'fn-reader-clock
                              (fn-clock-observation monotonic wall error t)
                              state)))
@@ -121,7 +128,7 @@
 ; fails and for a configuration whose group names cannot be rendered inside RFC
 ; 3977 section 3.1's 512-octet initial line.
 (defun fn-reader-use-store (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-store-sn state)))
   (fn-reader-install-selection
    (fn-rdc-store-selection (f-get-global 'fn-store-sn state)) state))
 
@@ -132,7 +139,7 @@
 ; configuration and the clock observation are pinned into the connection here;
 ; a served step reads them from the connection and never from a global.
 (defun fn-reader-reset (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (let* ((archive (if (boundp-global 'fn-reader-archive state)
                       (f-get-global 'fn-reader-archive state)
                     nil))
@@ -162,8 +169,9 @@
 ; next byte, with the reply concatenation, proved partition independent in
 ; books/served.lisp.  There is no suffix to hand back and no loop in Python.
 (defun fn-reader-chunk (octets fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
+  (declare (xargs :stobjs (state fn-arena)
+                  :guard (and (fn-cbor-octet-listp octets)
+                              (boundp-global 'fn-reader-conn state))))
   (let ((state (fn-reader-install-result
                 (fn-served-step (f-get-global 'fn-reader-conn state) octets fn-arena)
                 state)))
@@ -174,7 +182,7 @@
 ; uses.  It is one more served input: ACL2 turns it into the reply, and the
 ; host never writes 240 itself.
 (defun fn-reader-outcome (completion state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-reader-conn state)))
   (let ((state (fn-reader-install-result
                 (fn-served-post-outcome (f-get-global 'fn-reader-conn state)
                                         completion)

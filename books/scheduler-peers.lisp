@@ -339,13 +339,42 @@
         (fn-sched-pull-find peer (cdr tbl)))
     nil))
 
-(defun fn-sched-pull-put (peer e tbl)
+; Executes by a loop (lane depth-debt, PRF-919): the pull table holds one
+; entry per configured peer, operator data with no fixed cap (D27).  The
+; :exec carries the reversed prefix; equal by
+; fn-sched-pull-put-loop-is-rev-onto (books/rev-onto.lisp).
+(defun fn-sched-pull-put-loop (peer e tbl acc)
   (declare (xargs :guard t))
   (if (consp tbl)
       (if (and (consp (car tbl)) (equal (car (car tbl)) peer))
-          (cons (cons peer e) (cdr tbl))
-        (cons (car tbl) (fn-sched-pull-put peer e (cdr tbl))))
-    (list (cons peer e))))
+          (fn-ag-rev-onto acc (cons (cons peer e) (cdr tbl)))
+        (fn-sched-pull-put-loop peer e (cdr tbl) (cons (car tbl) acc)))
+    (fn-ag-rev-onto acc (list (cons peer e)))))
+
+(defun fn-sched-pull-put (peer e tbl)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp tbl)
+                  (if (and (consp (car tbl)) (equal (car (car tbl)) peer))
+                      (cons (cons peer e) (cdr tbl))
+                    (cons (car tbl) (fn-sched-pull-put peer e (cdr tbl))))
+                (list (cons peer e)))
+       :exec (fn-sched-pull-put-loop peer e tbl nil)))
+
+(defthm fn-sched-pull-put-loop-is-rev-onto
+  (equal (fn-sched-pull-put-loop peer e tbl acc)
+         (fn-ag-rev-onto acc (fn-sched-pull-put peer e tbl)))
+  :hints (("Goal" :induct (fn-sched-pull-put-loop peer e tbl acc)
+                  :in-theory (union-theories
+                              '(fn-sched-pull-put-loop fn-sched-pull-put
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-sched-pull-put
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-sched-pull-put fn-ag-rev-onto
+                                fn-sched-pull-put-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; The operator's interval for PEER, in milliseconds.  A new peer is due at
 ; once; a known peer keeps its NEXT and its BUSY flag, so a reconfiguration

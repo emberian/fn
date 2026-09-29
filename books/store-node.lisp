@@ -198,28 +198,8 @@
         snapshots identity-next nil nil
         (fn-th-prefix-state :ok 0 nil nil nil nil nil) nil))
 
-(defun fn-sn-make-v3 (groups capacity files node keyring index
-                      keyring-generation verdicts snapshots identity-next
-                      config-history)
-  (declare (xargs :guard t))
-  (list groups capacity files node keyring index keyring-generation verdicts
-        snapshots identity-next config-history nil
-        (fn-th-prefix-state :ok 0 nil nil nil nil nil) nil))
 
-(defun fn-sn-make-v4 (groups capacity files node keyring index
-                      keyring-generation verdicts snapshots identity-next
-                      config-history consumer)
-  (declare (xargs :guard t))
-  (list groups capacity files node keyring index keyring-generation verdicts
-        snapshots identity-next config-history consumer
-        (fn-th-prefix-state :ok 0 nil nil nil nil nil) nil))
 
-(defun fn-sn-make-v5 (groups capacity files node keyring index
-                      keyring-generation verdicts snapshots identity-next
-                      config-history consumer topic)
-  (declare (xargs :guard t))
-  (list groups capacity files node keyring index keyring-generation verdicts
-        snapshots identity-next config-history consumer topic nil))
 
 (defun fn-sn-make-v6 (groups capacity files node keyring index
                       keyring-generation verdicts snapshots identity-next
@@ -334,86 +314,6 @@
           (fn-sn-make-v2 groups capacity files node keyring index
                          keyring-generation verdicts snapshots identity-next))
          nil))
-(defthm fn-sn-consumer-of-fn-sn-make-v3
-  (equal (fn-sn-consumer
-          (fn-sn-make-v3 groups capacity files node keyring index
-                         keyring-generation verdicts snapshots identity-next
-                         config-history))
-         nil))
-(defthm fn-sn-consumer-of-fn-sn-make-v4
-  (equal (fn-sn-consumer
-          (fn-sn-make-v4 groups capacity files node keyring index
-                         keyring-generation verdicts snapshots identity-next
-                         config-history consumer))
-         consumer))
-(defthm fn-sn-topic-of-fn-sn-make-v4
-  (equal (fn-sn-topic
-          (fn-sn-make-v4 groups capacity files node keyring index
-                         keyring-generation verdicts snapshots identity-next
-                         config-history consumer))
-         (fn-th-prefix-state :ok 0 nil nil nil nil nil)))
-(defthm fn-sn-topic-of-fn-sn-make-v5
-  (equal (fn-sn-topic
-          (fn-sn-make-v5 groups capacity files node keyring index
-                         keyring-generation verdicts snapshots identity-next
-                         config-history consumer topic))
-         topic))
-(defthm fn-sn-consumer-of-fn-sn-make-v5
-  (equal (fn-sn-consumer
-          (fn-sn-make-v5 groups capacity files node keyring index
-                         keyring-generation verdicts snapshots identity-next
-                         config-history consumer topic))
-         consumer))
-(defthm fn-sn-shapep-of-fn-sn-make-v5
-  (fn-sn-shapep
-   (fn-sn-make-v5 groups capacity files node keyring index
-                  keyring-generation verdicts snapshots identity-next
-                  config-history consumer topic))
-  :hints (("Goal" :in-theory (enable fn-sn-shapep))))
-(defthm fn-sn-groups-of-fn-sn-make-v5
-  (equal (fn-sn-groups
-          (fn-sn-make-v5 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic))
-         groups))
-(defthm fn-sn-capacity-of-fn-sn-make-v5
-  (equal (fn-sn-capacity
-          (fn-sn-make-v5 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic))
-         capacity))
-(defthm fn-sn-files-of-fn-sn-make-v5
-  (equal (fn-sn-files
-          (fn-sn-make-v5 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic))
-         files))
-(defthm fn-sn-node-of-fn-sn-make-v5
-  (equal (fn-sn-node
-          (fn-sn-make-v5 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic))
-         node))
-(defthm fn-sn-keyring-of-fn-sn-make-v5
-  (equal (fn-sn-keyring
-          (fn-sn-make-v5 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic))
-         keyring))
-(defthm fn-sn-index-of-fn-sn-make-v5
-  (equal (fn-sn-index
-          (fn-sn-make-v5 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic))
-         index))
-(defthm fn-sn-keyring-generation-of-fn-sn-make-v5
-  (equal (fn-sn-keyring-generation
-          (fn-sn-make-v5 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic))
-         keyring-generation))
-(defthm fn-sn-verdicts-of-fn-sn-make-v5
-  (equal (fn-sn-verdicts
-          (fn-sn-make-v5 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic))
-         verdicts))
-(defthm fn-sn-keyring-snapshots-of-fn-sn-make-v5
-  (equal (fn-sn-keyring-snapshots
-          (fn-sn-make-v5 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic))
-         snapshots))
-(defthm fn-sn-identity-next-of-fn-sn-make-v5
-  (equal (fn-sn-identity-next
-          (fn-sn-make-v5 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic))
-         identity-next))
-(defthm fn-sn-config-history-of-fn-sn-make-v5
-  (equal (fn-sn-config-history
-          (fn-sn-make-v5 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic))
-         config-history))
 (defthm fn-sn-fields-of-fn-sn-make-v6
   (and (fn-sn-shapep
         (fn-sn-make-v6 groups capacity files node keyring index
@@ -434,60 +334,6 @@
        (equal (fn-sn-topic (fn-sn-make-v6 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic event-index)) topic)
        (equal (fn-sn-event-index (fn-sn-make-v6 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic event-index)) event-index))
   :hints (("Goal" :in-theory (enable fn-sn-shapep))))
-(defthm fn-sn-shapep-of-fn-sn-make-v4
-  (fn-sn-shapep
-   (fn-sn-make-v4 groups capacity files node keyring index
-                  keyring-generation verdicts snapshots identity-next
-                  config-history consumer))
-  :hints (("Goal" :in-theory (enable fn-sn-shapep))))
-(defthm fn-sn-groups-of-fn-sn-make-v4
-  (equal (fn-sn-groups (fn-sn-make-v4 groups capacity files node keyring index
-                                     keyring-generation verdicts snapshots
-                                     identity-next config-history consumer)) groups))
-(defthm fn-sn-capacity-of-fn-sn-make-v4
-  (equal (fn-sn-capacity (fn-sn-make-v4 groups capacity files node keyring index
-                                       keyring-generation verdicts snapshots
-                                       identity-next config-history consumer)) capacity))
-(defthm fn-sn-files-of-fn-sn-make-v4
-  (equal (fn-sn-files (fn-sn-make-v4 groups capacity files node keyring index
-                                    keyring-generation verdicts snapshots
-                                    identity-next config-history consumer)) files))
-(defthm fn-sn-node-of-fn-sn-make-v4
-  (equal (fn-sn-node (fn-sn-make-v4 groups capacity files node keyring index
-                                   keyring-generation verdicts snapshots
-                                   identity-next config-history consumer)) node))
-(defthm fn-sn-keyring-of-fn-sn-make-v4
-  (equal (fn-sn-keyring (fn-sn-make-v4 groups capacity files node keyring index
-                                      keyring-generation verdicts snapshots
-                                      identity-next config-history consumer)) keyring))
-(defthm fn-sn-index-of-fn-sn-make-v4
-  (equal (fn-sn-index (fn-sn-make-v4 groups capacity files node keyring index
-                                    keyring-generation verdicts snapshots
-                                    identity-next config-history consumer)) index))
-(defthm fn-sn-keyring-generation-of-fn-sn-make-v4
-  (equal (fn-sn-keyring-generation
-          (fn-sn-make-v4 groups capacity files node keyring index
-                         keyring-generation verdicts snapshots identity-next
-                         config-history consumer)) keyring-generation))
-(defthm fn-sn-verdicts-of-fn-sn-make-v4
-  (equal (fn-sn-verdicts (fn-sn-make-v4 groups capacity files node keyring index
-                                       keyring-generation verdicts snapshots
-                                       identity-next config-history consumer)) verdicts))
-(defthm fn-sn-keyring-snapshots-of-fn-sn-make-v4
-  (equal (fn-sn-keyring-snapshots
-          (fn-sn-make-v4 groups capacity files node keyring index
-                         keyring-generation verdicts snapshots identity-next
-                         config-history consumer)) snapshots))
-(defthm fn-sn-identity-next-of-fn-sn-make-v4
-  (equal (fn-sn-identity-next
-          (fn-sn-make-v4 groups capacity files node keyring index
-                         keyring-generation verdicts snapshots identity-next
-                         config-history consumer)) identity-next))
-(defthm fn-sn-config-history-of-fn-sn-make-v4
-  (equal (fn-sn-config-history
-          (fn-sn-make-v4 groups capacity files node keyring index
-                         keyring-generation verdicts snapshots identity-next
-                         config-history consumer)) config-history))
 
 (defun fn-sn-make (groups capacity files node keyring index)
   (declare (xargs :guard t))
@@ -535,58 +381,6 @@
           (fn-sn-make-v2 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next))
          nil))
 
-(defthm fn-sn-shapep-of-fn-sn-make-v3
-  (fn-sn-shapep (fn-sn-make-v3 groups capacity files node keyring index
-                                keyring-generation verdicts snapshots identity-next
-                                config-history)))
-(defthm fn-sn-groups-of-fn-sn-make-v3
-  (equal (fn-sn-groups (fn-sn-make-v3 groups capacity files node keyring index
-                                       keyring-generation verdicts snapshots identity-next
-                                       config-history)) groups))
-(defthm fn-sn-capacity-of-fn-sn-make-v3
-  (equal (fn-sn-capacity (fn-sn-make-v3 groups capacity files node keyring index
-                                         keyring-generation verdicts snapshots identity-next
-                                         config-history)) capacity))
-(defthm fn-sn-files-of-fn-sn-make-v3
-  (equal (fn-sn-files (fn-sn-make-v3 groups capacity files node keyring index
-                                      keyring-generation verdicts snapshots identity-next
-                                      config-history)) files))
-(defthm fn-sn-node-of-fn-sn-make-v3
-  (equal (fn-sn-node (fn-sn-make-v3 groups capacity files node keyring index
-                                     keyring-generation verdicts snapshots identity-next
-                                     config-history)) node))
-(defthm fn-sn-keyring-of-fn-sn-make-v3
-  (equal (fn-sn-keyring (fn-sn-make-v3 groups capacity files node keyring index
-                                        keyring-generation verdicts snapshots identity-next
-                                        config-history)) keyring))
-(defthm fn-sn-index-of-fn-sn-make-v3
-  (equal (fn-sn-index (fn-sn-make-v3 groups capacity files node keyring index
-                                      keyring-generation verdicts snapshots identity-next
-                                      config-history)) index))
-(defthm fn-sn-keyring-generation-of-fn-sn-make-v3
-  (equal (fn-sn-keyring-generation
-          (fn-sn-make-v3 groups capacity files node keyring index
-                         keyring-generation verdicts snapshots identity-next
-                         config-history)) keyring-generation))
-(defthm fn-sn-verdicts-of-fn-sn-make-v3
-  (equal (fn-sn-verdicts (fn-sn-make-v3 groups capacity files node keyring index
-                                         keyring-generation verdicts snapshots identity-next
-                                         config-history)) verdicts))
-(defthm fn-sn-keyring-snapshots-of-fn-sn-make-v3
-  (equal (fn-sn-keyring-snapshots
-          (fn-sn-make-v3 groups capacity files node keyring index
-                         keyring-generation verdicts snapshots identity-next
-                         config-history)) snapshots))
-(defthm fn-sn-identity-next-of-fn-sn-make-v3
-  (equal (fn-sn-identity-next
-          (fn-sn-make-v3 groups capacity files node keyring index
-                         keyring-generation verdicts snapshots identity-next
-                         config-history)) identity-next))
-(defthm fn-sn-config-history-of-fn-sn-make-v3
-  (equal (fn-sn-config-history
-          (fn-sn-make-v3 groups capacity files node keyring index
-                         keyring-generation verdicts snapshots identity-next
-                         config-history)) config-history))
 
 (defthm fn-sn-shapep-of-fn-sn-make
   (fn-sn-shapep (fn-sn-make groups capacity files node keyring index)))
@@ -636,8 +430,7 @@
                     (:d fn-sn-identity-next) (:d fn-sn-config-history)
                     (:d fn-sn-consumer)
                     (:d fn-sn-topic)
-                    (:d fn-sn-make-v2) (:d fn-sn-make-v3)
-                    (:d fn-sn-make-v4) (:d fn-sn-make-v5)
+                    (:d fn-sn-make-v2)
                     (:d fn-sn-make)))
 
 ; Shape facts type reasoning used to supply while the record opened

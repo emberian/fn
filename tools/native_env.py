@@ -63,12 +63,30 @@ target.  The fixtures, the power-loss and service-envelope harnesses and the
 pack-chain module make stores for hbox and run them directly; they take the
 target from `harness_store_env` here, HARNESS_INIT_BUDGET_MB (hbox's 96
 GiB), so it is written once.
+
+The toolchain SBCL (obstructions-5 item 41; tooling-truth-2 found a whole
+KNOWN_RED list caused by it): hbox's system sbcl 2.2.9 (/usr/bin/sbcl) sits
+on PATH ahead of the toolchain's /tank/fn/sbcl/bin/sbcl 2.6.8, so a tool or
+test running `sbcl` by name got the wrong runtime.  tools/farm.py HOSTS names
+each box's `sbcl`; on a box (that file exists here)
+
+    python3 tools/native_env.py sbcl            # its absolute path ('' off a box)
+    python3 tools/native_env.py sbcl --export   # export FN_SBCL=... PATH=<its dir>:$PATH
+    python3 tools/native_env.py sbcl-check      # exit 2 when `sbcl` or FN_SBCL is another
+
+hbox_native.sh, remote_check.sh and the Makefile put it first on PATH and
+set FN_SBCL; farm.py's box command does the same; hbox_native and
+remote_check run `sbcl-check` before any step, so a bare `sbcl` that is not
+the toolchain's is refused by name instead of silently running.
 """
 
 from __future__ import annotations
 
 import argparse
+import ast
+import os
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -158,6 +176,7 @@ MANUAL = {
     "FN_NATIVE_READER_HOST": "falls back to FN_NATIVE_DEVELOPER_HOST",
     "FN_NATIVE_SOURCE_ROOT": "defaults to the tree the module runs from",
     "FN_SPAN_REFERENCE_HOST": "the base image of the ingress-span differential (SCN-110; built from the lane base, by --env)",
+    "FN_RUN_SLOW": "opt-in for tests marked slow (tests/native_harness.py `slow'): batches and qualification",
     "FN_INN_SRC": "an installed INN 2.7 tree",
     "FN_DTN7_REPO": "a dtn7-rs checkout",
 }
@@ -286,10 +305,47 @@ def join_images(built: list[str], *extra: str) -> str:
     return ",".join(image for image in ORDER if image in wanted)
 
 
-def plan(images: list[str], given: dict[str, str], modules: list[str]
-         ) -> tuple[list[str], list[str], list[str]]:
-    """(lines, refusals, notes) for these modules and this run's images."""
+def needed_images(images: list[str], given: dict[str, str], modules: list[str]
+                  ) -> tuple[str, list[str]]:
+    """The images these modules read, over IMAGES: (the list, why each was added).
+
+    `hbox_native` without --images builds this list instead of refusing a
+    module that reads an unbuilt image (FN_NATIVE_HOST -> production): three
+    lanes lost a launch each to that refusal (2026-09-29).
+    """
+    built, why = list(images), []
+    while True:
+        missing = plan_missing(built, given, modules)
+        new = [(module, name, image) for module, name, image in missing if image not in built]
+        if not new:
+            return join_images(built), why
+        for module, name, image in new:
+            if image not in built:
+                built.append(image)
+            why.append(f"{image} ({module} reads {name})")
+
+
+def plan_missing(images, given, modules) -> list[tuple[str, str, str]]:
+    return _plan(images, given, modules)[3]
+
+
+def plan(images: list[str], given: dict[str, str], modules: list[str],
+         allow_skips: bool = False) -> tuple[list[str], list[str], list[str]]:
+    """(lines, refusals, notes) for these modules and this run's images.
+
+    A module whose own source reads a MANUAL gate (FN_RUN_*_E2E, FN_INN_SRC,
+    ...) that this run leaves unset is REFUSED, naming the variable, unless
+    ALLOW_SKIPS (hbox_native --allow-skips): operability-4 built 25 minutes
+    of images twice for a module that then skipped (obstructions-5 item 45).
+    """
+    lines, refusals, notes, _ = _plan(images, given, modules, allow_skips)
+    return lines, refusals, notes
+
+
+def _plan(images: list[str], given: dict[str, str], modules: list[str],
+          allow_skips: bool = True):
     lines, notes = [], []
+    gated: list[str] = []
     missing: list[tuple[str, str, str]] = []
     for module in modules:
         stem = module_file(module).stem
@@ -328,13 +384,18 @@ def plan(images: list[str], given: dict[str, str], modules: list[str]
             elif name in FIXED:
                 assignments.append(f"{name}={FIXED[name][0]}")
             elif name in MANUAL and not MANUAL[name].startswith(("falls back", "defaults")):
-                notes.append(f"{module} reads {name} (not set: {MANUAL[name]}; "
-                             f"pass --env {name}=... to run what it gates)")
+                if allow_skips or name not in own:
+                    notes.append(f"{module} reads {name} (not set: {MANUAL[name]}; "
+                                 f"pass --env {name}=... to run what it gates)")
+                else:
+                    gated.append(f"{module} is gated by {name}, which this run leaves unset "
+                                 f"({MANUAL[name]}): its gated tests would build the images "
+                                 f"and then skip. Pass --env {name}=..., or --allow-skips")
         lines.append(" ".join([module, *assignments]))
     wanted = join_images(images, *(image for _, _, image in missing))
     refusals = [f"{module} reads {name}: build the {image} image with --images {wanted}"
-                for module, name, image in missing]
-    return lines, refusals, notes
+                for module, name, image in missing] + gated
+    return lines, refusals, notes, missing
 
 
 def readers() -> dict[str, list[str]]:
@@ -376,10 +437,53 @@ def table() -> str:
     return "\n".join(rows)
 
 
+def host_sbcls(farm: Path | None = None) -> list[str]:
+    """Every box's toolchain SBCL, from tools/farm.py HOSTS (read, not imported)."""
+    tree = ast.parse((farm or ROOT / "tools" / "farm.py").read_text(encoding="utf-8"))
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", None) == "HOSTS":
+            hosts = ast.literal_eval(node.value)
+            return sorted({h["sbcl"] for h in hosts.values() if h.get("sbcl")})
+    return []
+
+
+def toolchain_sbcl(candidates: list[str] | None = None, exists=os.path.isfile) -> str | None:
+    """The toolchain SBCL when this machine is a box (its HOSTS path is here), else None."""
+    for path in host_sbcls() if candidates is None else candidates:
+        if exists(path):
+            return path
+    return None
+
+
+def sbcl_refusal(toolchain: str | None, on_path: str | None, fn_sbcl: str | None,
+                 real=os.path.realpath) -> str | None:
+    """Why a box's `sbcl` is not the toolchain's, or None.  Off a box: None."""
+    if toolchain is None:
+        return None
+    want = real(toolchain)
+    if fn_sbcl and real(fn_sbcl) != want:
+        return (f"FN_SBCL is {fn_sbcl}, not the toolchain's {toolchain} (tools/farm.py HOSTS)")
+    if on_path is None:
+        return (f"no `sbcl` on PATH; put {os.path.dirname(toolchain)} first "
+                "(eval \"$(python3 tools/native_env.py sbcl --export)\")")
+    if real(on_path) != want:
+        return (f"`sbcl` on PATH is {on_path}, not the toolchain's {toolchain} "
+                "(hbox's system sbcl is 2.2.9, the toolchain's 2.6.8): put "
+                f"{os.path.dirname(toolchain)} first on PATH "
+                "(eval \"$(python3 tools/native_env.py sbcl --export)\")")
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("plan", help="per-module assignments, or a refusal by name")
+    p.add_argument("--images", default="developer")
+    p.add_argument("--env", action="append", default=[], help="NAME=VALUE the caller set")
+    p.add_argument("--allow-skips", action="store_true",
+                   help="note, do not refuse, a module whose opt-in gate is unset")
+    p.add_argument("modules", nargs="+")
+    p = sub.add_parser("images", help="the image list these modules read, over --images")
     p.add_argument("--images", default="developer")
     p.add_argument("--env", action="append", default=[], help="NAME=VALUE the caller set")
     p.add_argument("modules", nargs="+")
@@ -392,7 +496,27 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--prefix", default=None,
                    help="FN_NATIVE_DEVELOPER_: print the launcher and core digests "
                         "under that prefix (DEVELOPER_IDENTITY) and nothing else")
+    p = sub.add_parser("sbcl", help="this box's toolchain SBCL (nothing off a box)")
+    p.add_argument("--export", action="store_true",
+                   help="as `export FN_SBCL=... PATH=<its dir>:$PATH`")
+    sub.add_parser("sbcl-check", help="exit 2 when `sbcl`/FN_SBCL here is not the toolchain's")
     arguments = parser.parse_args(argv)
+    if arguments.command == "sbcl":
+        found = toolchain_sbcl()
+        if found and arguments.export:
+            print(f"export FN_SBCL={found} PATH={os.path.dirname(found)}:$PATH")
+        elif found:
+            print(found)
+        return 0
+    if arguments.command == "sbcl-check":
+        found = toolchain_sbcl()
+        why = sbcl_refusal(found, shutil.which("sbcl"), os.environ.get("FN_SBCL"))
+        if why:
+            print(f"native_env: REFUSED: {why}", file=sys.stderr)
+            return 2
+        print(f"native_env: sbcl is the toolchain's {found}" if found
+              else "native_env: not a box (no HOSTS sbcl here); sbcl not checked")
+        return 0
     if arguments.command == "table":
         print(table())
         return 0
@@ -417,7 +541,15 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if found else 1
     images = [image for image in arguments.images.split(",") if image]
     given = dict(item.split("=", 1) for item in arguments.env)
-    lines, refusals, notes = plan(images, given, arguments.modules)
+    if arguments.command == "images":
+        wanted, why = needed_images(images, given, arguments.modules)
+        if why:
+            print("hbox_native: images derived from what the modules read: "
+                  f"--images {wanted}; added " + "; ".join(why), file=sys.stderr)
+        print(wanted)
+        return 0
+    lines, refusals, notes = plan(images, given, arguments.modules,
+                                  allow_skips=getattr(arguments, "allow_skips", False))
     for note in notes:
         print(f"hbox_native: note: {note}", file=sys.stderr)
     if refusals:

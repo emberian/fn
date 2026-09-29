@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (include-book "bp-release")
 (include-book "bp-adu")
+(include-book "rev-onto")
 
 (defun fn-bprl-undertake-record (s work-id charge)
   (declare (xargs :guard t :verify-guards nil))
@@ -52,12 +53,45 @@
 ; A native inbound receipt has no operator-supplied transaction pair.  The
 ; recovered FNWF image owns the entire used-pair history, including aborted
 ; preparations, so choose above every previously used transaction id.
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of the used-transaction history (data, not a bound).  The :logic is
+; the recursion, unchanged; the :exec is a loop, equal by fn-bprl-max-used-txid-loop-of-rev-onto (a right fold, run from the left over the reversed list).
+(defun fn-bprl-max-used-txid-step (x rest)
+  (declare (xargs :guard (natp rest)))
+  (max (nfix (fn-bp-nth 0 x)) rest))
+
+(defun fn-bprl-max-used-txid-loop (rev acc)
+  (declare (xargs :guard (natp acc)))
+  (if (consp rev)
+      (fn-bprl-max-used-txid-loop (cdr rev) (fn-bprl-max-used-txid-step (car rev) acc))
+    acc))
+
 (defun fn-bprl-max-used-txid (used maximum)
-  (declare (xargs :guard t))
-  (if (atom used)
-      (nfix maximum)
-    (max (nfix (fn-bp-nth 0 (car used)))
-         (fn-bprl-max-used-txid (cdr used) maximum))))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (atom used)
+                  (nfix maximum)
+                (max (nfix (fn-bp-nth 0 (car used)))
+                     (fn-bprl-max-used-txid (cdr used) maximum)))
+       :exec (fn-bprl-max-used-txid-loop (fn-ag-rev-onto used nil) (nfix maximum))))
+
+(defthm fn-bprl-max-used-txid-loop-of-rev-onto
+  (equal (fn-bprl-max-used-txid-loop (fn-ag-rev-onto used zs) (nfix maximum))
+         (fn-bprl-max-used-txid-loop zs (fn-bprl-max-used-txid used maximum)))
+  :hints (("Goal" :induct (fn-ag-rev-onto used zs)
+                  :in-theory (union-theories
+                              '(fn-bprl-max-used-txid-loop fn-bprl-max-used-txid fn-bprl-max-used-txid-step fn-ag-rev-onto atom car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(defthm fn-bprl-max-used-txid-natp
+  (natp (fn-bprl-max-used-txid used maximum))
+  :rule-classes :type-prescription)
+
+(defthm fn-bprl-max-used-txid-loop-natp
+  (implies (natp acc) (natp (fn-bprl-max-used-txid-loop rev acc)))
+  :rule-classes :type-prescription)
+
+(verify-guards fn-bprl-max-used-txid
+  :hints (("Goal" :use ((:instance fn-bprl-max-used-txid-loop-of-rev-onto (zs nil))))))
 
 (defun fn-bprl-receipt-auto-record (s octets authorizedp)
   (declare (xargs :guard t :verify-guards nil))

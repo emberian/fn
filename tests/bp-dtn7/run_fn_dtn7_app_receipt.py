@@ -168,19 +168,18 @@ class HoldRelay:
 
 
 def crc32c(data):
-    crc = 0xFFFFFFFF
-    for byte in data:
-        crc ^= byte
-        for _ in range(8):
-            crc = (crc >> 1) ^ (0x82F63B78 if crc & 1 else 0)
-    return crc ^ 0xFFFFFFFF
+    """RFC 9171 4.2.1's CRC-32C of DATA, from ACL2 (books/bp-primary.lisp
+    fn-bpp-crc32c) in the developer image's session."""
+    from tests.native_harness import Acl2Session, acl2_nat
+    with Acl2Session() as acl2:
+        return acl2_nat(acl2.call("(fn-bpp-crc32c '" + Acl2Session.literal(data) + ")"))
 
 
 class FlipProxy:
     """Signed receipts, the tamper case: forward B's TCPCL stream to the
     relay, but flip the last octet of a signed receipt's ML-DSA-65 signature
     (the last item of the FN-BP-SRCPT frame) and recompute the payload
-    block's CRC32C (RFC 9171 4.2.1), so the bundle stays well-formed and only
+    block's CRC32C (RFC 9171 4.2.1; ACL2 computes it), so the bundle stays well-formed and only
     the signature bytes differ.  Replies pass unchanged."""
 
     MAGIC = b"\x4bFN-BP-SRCPT"

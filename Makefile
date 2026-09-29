@@ -1,4 +1,12 @@
 PYTHON ?= python3
+# On a box, the toolchain SBCL (tools/farm.py HOSTS) first on PATH and as
+# FN_SBCL for every recipe: hbox's system /usr/bin/sbcl is 2.2.9 and a check
+# running `sbcl` by name got it (obstructions-5 item 41).  Off a box: nothing.
+TOOLCHAIN_SBCL := $(shell $(PYTHON) tools/native_env.py sbcl 2>/dev/null)
+ifneq ($(TOOLCHAIN_SBCL),)
+export FN_SBCL := $(TOOLCHAIN_SBCL)
+export PATH := $(patsubst %/,%,$(dir $(TOOLCHAIN_SBCL))):$(PATH)
+endif
 # Maximum concurrent ACL2 processes. Books still certify in local
 # include-book dependency order; 1 reproduces the sequential run.
 FN_CERTIFY_JOBS ?= 1
@@ -172,11 +180,15 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-control-tests \
 	books/native-control-reason \
 	tests/acl2/native-control-reason-tests \
+	books/native-control-line \
+	tests/acl2/native-control-line-tests \
 	tests/acl2/native-control-host-tests \
 	books/native-live-status \
 	tests/acl2/native-live-status-tests \
 	books/retention-figures \
 	books/control-evidence-grammar \
+	books/owner-inspect-group \
+	tests/acl2/owner-inspect-group-tests \
 	books/control-evidence \
 	tests/acl2/control-evidence-tests \
 	books/moderation-verbs \
@@ -281,6 +293,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/memory-credits-tests \
 	tests/acl2/heap-figure-tests \
 	tests/acl2/open-frontier-tests \
+	books/open-frontier-wire \
+	tests/acl2/open-frontier-wire-tests \
 	tests/acl2/limits-live-tests \
 	books/connection-budget \
 	tests/acl2/connection-budget-tests \
@@ -394,8 +408,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/feed-link-backoff-tests \
 	books/feed-pause \
 	tests/acl2/feed-pause-tests \
+	books/peer-set \
+	tests/acl2/peer-set-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
+	books/history-knowledge \
+	tests/acl2/history-knowledge-tests \
 	books/store-reclaim-stream \
 	tests/acl2/store-reclaim-stream-tests \
 	books/reclaim-admission \
@@ -428,6 +446,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-walk-once-tests \
 	books/store-log-segments \
 	tests/acl2/store-log-segments-tests \
+	books/store-log-lineage \
+	tests/acl2/store-log-lineage-tests \
 	books/store-log-reclaim \
 	tests/acl2/store-log-reclaim-tests \
 	books/reclaim-instant \
@@ -441,6 +461,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reclaim-tests \
 	books/extent-retire \
 	tests/acl2/extent-retire-tests \
+	books/owner-reclaim-instant \
+	tests/acl2/owner-reclaim-instant-tests \
 	books/store-log-route-phases \
 	books/store-log-extend \
 	tests/acl2/store-log-extend-tests \
@@ -454,14 +476,22 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-log-initializer-tests \
 	books/owner-log-route \
 	tests/acl2/owner-log-route-tests \
-	books/payload-lz \
-	tests/acl2/payload-lz-tests \
+	books/deflate-inflate \
+	books/payload-deflate \
+	books/payload-lz-dict-1 \
+	books/payload-lz-dicts \
 	books/payload-lz-value \
 	books/payload-lz-record \
 	books/payload-lz-replay \
 	tests/acl2/payload-lz-record-tests \
 	books/payload-lz-append \
 	tests/acl2/payload-lz-append-tests \
+	tests/acl2/deflate-inflate-tests \
+	books/deflate-pool-check \
+	tests/acl2/deflate-pool-tests \
+	books/nntp-compress-dict \
+	tests/acl2/nntp-compress-dict-tests \
+	tests/acl2/nntp-zarticle-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
@@ -548,12 +578,19 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-prepare-catalog-tests \
 	books/post-retain-carried \
 	tests/acl2/post-retain-carried-tests \
+	books/identity-retain-carried \
+	tests/acl2/identity-retain-carried-tests \
 	books/store-profile-carried \
 	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
 	books/store-finalize-incremental \
 	tests/acl2/store-finalize-incremental-tests \
+	books/store-finalize-published \
+	tests/acl2/store-finalize-published-tests \
+	books/store-finalize-carried-check \
+	tests/acl2/store-finalize-carried-check-tests \
+	books/assumptions-publication \
 	books/bp-fnbs-delivery-codec \
 	tests/acl2/bp-fnbs-delivery-codec-tests \
 	books/bp-fnbs-delivery-replay \
@@ -679,6 +716,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fnbs-inspect-tests \
 	books/bp-fnbs-codec-invariants \
 	tests/acl2/bp-fnbs-codec-tests \
+	books/bp-fnbs-codec-equivalence \
+	tests/acl2/bp-fnbs-codec-equivalence-tests \
 	books/bp-fnbs-byte-publisher \
 	books/bp-fnbs-byte-invariants \
 	books/bp-fnbs-replay \
@@ -869,8 +908,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/refused-offers \
 	books/peer-refused-offers \
 	tests/acl2/transit-hygiene-tests \
+	books/sasl \
 	books/nntp-auth \
 	tests/acl2/nntp-auth-tests \
+	books/nntp-auth-roles \
+	tests/acl2/nntp-auth-sasl-tests \
 	books/served \
 	books/served-tls-prefix \
 	books/served-implicit-tls \
@@ -1010,6 +1052,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/octet-window \
 	books/subject-id-buffer \
 	tests/acl2/subject-id-buffer-tests \
+	books/article-buffer \
+	tests/acl2/article-buffer-tests \
+	books/frame-buffer \
+	books/native-control-buffer \
+	books/native-live-buffer \
+	tests/acl2/frame-buffer-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
@@ -1064,8 +1112,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-store-steps \
 	books/owner-log-ocl \
 	tests/acl2/owner-log-ocl-tests \
+	books/owner-outcome-pinned \
 	books/owner-host-relation \
 	tests/acl2/owner-host-relation-tests \
+	books/owner-host-relation-span \
 	books/config-owner-live-authorize \
 	tests/acl2/config-owner-live-authorize-tests \
 	books/store-number-bound \
@@ -1079,6 +1129,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-prepare-served-events-tests \
 	books/owner-number-bound \
 	tests/acl2/owner-number-bound-tests \
+	books/msgid-pages \
+	tests/acl2/msgid-pages-tests \
+	books/msgid-pages-exec \
+	books/msgid-pages-catalog \
+	tests/acl2/msgid-pages-exec-tests \
+	books/owner-number-bound-join \
+	tests/acl2/owner-number-bound-join-tests \
 	tests/acl2/owner-identity-served-tests \
 	tests/acl2/owner-prepare-served-abort-tests \
 	books/owner-prepare-outcome \
@@ -1157,11 +1214,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-event-index \
 	tests/acl2/consumer-event-index-tests \
 	books/history-columns \
-	books/msgid-pages \
-	tests/acl2/msgid-pages-tests \
-	books/msgid-pages-exec \
-	books/msgid-pages-catalog \
-	tests/acl2/msgid-pages-exec-tests \
 	books/history-columns-relation \
 	tests/acl2/history-columns-relation-tests \
 	tests/acl2/history-columns-tests \
@@ -1206,8 +1258,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/relay-source \
 	tests/acl2/relay-source-routes-tests \
 	tests/acl2/owner-served-invariants-tests \
+	books/productive-contract \
+	books/productive-observer \
+	tests/acl2/productive-contract-tests \
 	tests/acl2/owner-numbering-tests \
 	books/number-durability \
+	books/number-durability-handles \
 	tests/acl2/number-durability-tests \
 	tests/acl2/owner-fault-tests \
 	tests/acl2/owner-verdict-tests \
@@ -1295,6 +1351,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/control-served-tests \
 	books/nntp-control \
 	tests/acl2/nntp-control-tests \
+	tests/acl2/served-empty-view-tests \
 	books/owner-control-read \
 	books/nntp-enrollment \
 	books/owner-enrollment-read \
@@ -1358,6 +1415,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-stop-drain-tests \
 	books/owner-time-bars \
 	tests/acl2/owner-time-bars-tests \
+	tests/acl2/tls-handshake-budget-tests \
+	tests/acl2/owner-cold-line-tests \
+	books/arena-reader-pins \
+	tests/acl2/arena-reader-pins-tests \
 	books/feed-restart-domain \
 	tests/acl2/feed-restart-domain-tests \
 	books/web-request \
@@ -1385,8 +1446,21 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-carry-control-tests \
 	books/bp-carry-waiver \
 	tests/acl2/bp-carry-waiver-tests \
+	tests/acl2/store-checkpoint-digest-tests \
+	tests/acl2/owner-maintenance-request-tests \
+	tests/acl2/owner-reclaim-conns-tests \
+	tests/acl2/owner-reclaim-pass-tests \
+	tests/acl2/owner-reclaim-ready-tests \
+	tests/acl2/control-request-word-tests \
+	tests/acl2/packed-submission-tests \
+	tests/acl2/body-chunks-tests \
+	tests/acl2/bp-node-fragment-job-tests \
+	tests/acl2/native-operator-stage-tests \
+	tests/acl2/owner-control-post-reason-tests \
+	tests/acl2/owner-export-request-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
+	books/state-globals \
 	books/reader-open-carried \
 	tests/acl2/reader-open-carried-tests \
 	tests/acl2/group-number-index-tests \
@@ -1448,6 +1522,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/stx-invariants \
 	books/stx-lace \
 	books/stx-index \
+	books/stx-node-lace \
 	books/stx-policy \
 	books/stx-epochs \
 	books/stx-authority \
@@ -1516,11 +1591,16 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-records-disk \
 	books/store-records-field \
 	tests/acl2/history-records-disk-tests \
+	books/history-image-binding \
+	books/history-image-fold \
+	books/history-image-snapshot \
+	tests/acl2/history-image-binding-tests \
+	tests/acl2/history-image-campaign-tests \
 	books/image-world \
 	books/image-world-dtn \
 	books/image-world-store-test
 
-.PHONY: extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
+.PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -1555,6 +1635,13 @@ site:
 # (printed, never failing) instead of against the committed files, which a
 # lane must not commit.  Their generation still has to succeed, and every
 # other check is the same.
+# Every pre-image gate for a host-code conversion, as one target (item 34):
+# world.py --check, interface_emit --check, host_check --forward/--world/
+# --load FILE, and the certified-world class check (host_check's default).
+# On a box: tools/remote_check.sh auto --cmd 'make host-convert-check FILE=host/native/x.lisp'
+host-convert-check:
+	@$(PYTHON) tools/host_convert_check.py $(FILE)
+
 check-lane:
 	FN_LANE_CHECK=1 FN_LANE_CHECK_DIR=$$(mktemp -d "$${TMPDIR:-/tmp}/fn-lane-check.XXXXXX") $(MAKE) check
 
@@ -1574,6 +1661,8 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/main_last_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_main_last_check
 	@$(CHECK_EXECUTE)
 
 check-fast-lane:
@@ -1673,6 +1762,16 @@ check:
 # on build order with it).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_modes
+# Every host file is loaded by a build (Q7k): an image, the extraction world
+# or the store-test image; a prototype, a retired host or a test harness in
+# host/ is refused (KNOWN, shrink-only, names an exception with why).
+	@$(CHECK_STEP) $(PYTHON) tools/host_loaded_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_loaded_check
+# Every tests/*.sh witness says its class (raw: tests.test_native_raw_scripts
+# runs it; needs-image/needs-acl2: the convergence checklist names it;
+# helper) and a scenario-catalog row cites it (KNOWN shrink-only).
+	@$(CHECK_STEP) $(PYTHON) tools/witness_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_witness_check
 # specs/crash-model-v2.md section 2.3's transcription check for the native
 # host (the Python host and its transcribe_check retired, python-diet T5):
 # for each program tests/campaign/native_cuts.py names, the
@@ -1681,6 +1780,17 @@ check:
 # every error-arm observation is one of the program's error constants.  A
 # source check; it states what it cannot decide.  Mechanical, no ACL2.
 	@$(CHECK_STEP) $(PYTHON) tools/native_program_check.py
+# Every native module's image-free checks (PKT-540/569, Q7c): the source-text
+# assertions of 29 modules went red only on the next image.  Run in a scratch
+# root with no build/ and no FN_* variable, so image tests skip by their own
+# reason and a module that fails, imports nothing or collects nothing is red.
+	@$(CHECK_STEP) $(PYTHON) tools/native_source_check.py
+# The toolchain's system books (Q7h): every `:dir :system' include of the tree
+# and the std/lists extras are certified in this box's ACL2 (FN_ACL2), or the
+# step names the missing ones (tools/system_books.py certify); NOT RUN is red.
+	@$(CHECK_STEP) $(PYTHON) tools/system_books.py check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_system_books
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_source_check_native
 # No Python on the path a deployed node executes (D35): the process sites in
 # host/, the libraries the image loads, the shipped launcher and service files.
 	@$(CHECK_STEP) $(PYTHON) tools/runpath_check.py --quiet
@@ -1714,6 +1824,11 @@ check:
 # `python3 tools/teeth_check.py --evaluate` produces in about twenty minutes
 # of one ACL2.
 	@$(CHECK_STEP) $(PYTHON) tools/teeth_check.py --summary
+# An empty-result assertion (nil / null / endp / len 0) over a produced value
+# with no non-empty witness of the same function in the book pins a defect
+# as the expected value (stx-model: stx-policy's empty laces).  Warn-only;
+# tools/null_witness_allow.json names the accepted ones.
+	@$(CHECK_STEP) $(PYTHON) tools/null_witness_lint.py
 # Two static lints over the harness, both from the 2026-09-19 incident: a
 # host entry point gained a required keyword-only argument, two callers in
 # tests/ were never updated, and both integration labs were dead for a day
@@ -1752,12 +1867,35 @@ check:
 # lane serve-depth's head.
 	@$(CHECK_STEP) $(PYTHON) tools/depth_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_depth_check
+# The raw host code (host/native/*.lisp) runs on the same 1,024 KiB stack and
+# depth_check reads only ACL2 functions: every non-tail recursion there is in
+# tools/raw_depth_baseline.json with its bound named (lane depth-debt; the
+# mux's per-step re-entry and the BP effect chain were loops made here).
+	@$(CHECK_STEP) $(PYTHON) tools/raw_depth_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_raw_depth_check
 # Clock arithmetic goes through books/clock-unit.lisp (PRF-374, PRF-378):
 # arithmetic on an observation's fields at a call site assumed a unit twice
 # (bug M1; the vacuous record-level expiry).  tools/clock_unit_baseline.json
 # counts the sites left per file and only shrinks.
 	@$(CHECK_STEP) $(PYTHON) tools/clock_unit_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_clock_unit_check
+# The owner's ACL2 state globals (row Q3c, lane owner-relation-2): the host
+# keeps one canonical owner in `fn-owner' and every other `fn-owner-*' state
+# global is a side channel the adapter-retirement record
+# (planning/evidence/adapter-retirement-2026-09-26.md) wants folded into the
+# owner value or a wrapper's result.  tools/owner_globals_baseline.json holds
+# the distinct names per host file (95 across 8 files at the baseline) and
+# only shrinks.  Source-level, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/owner_globals_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_owner_globals_check
+
+# Host-called octet-list codecs (D27, row Q2 of COMPLETE-BEFORE-6.6.0): a host
+# dispatch that hands a codec an octet list consed from a byte vector
+# (fnn-octet-list).  tools/list_codec_baseline.json counts the sites per host
+# file and only shrinks; the target is zero (books/article-buffer.lisp is the
+# pattern: a buffer twin and its boundary theorem).
+	@$(CHECK_STEP) $(PYTHON) tools/list_codec_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_list_codec_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make
@@ -1793,8 +1931,13 @@ check:
 # The raw files loaded in build.lisp's order into one bare ACL2 with SBCL's
 # warnings on (seconds, no image build): errors, arity, macro order and names
 # nothing defines (lane tooling-leftovers).  No ACL2: NOT RUN, exit 2.
-	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --load
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --load --bare
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_load.ClassifyTests
+# Every tests/*.py ends with its `if __name__ == "__main__":` block and calls
+# unittest.main() nowhere else (obstructions-5 item 36: test_farm and
+# test_native_bounds_blob ran nothing after a mid-file block).
+	@$(CHECK_STEP) $(PYTHON) tools/main_last_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_main_last_check
 # Every global hash table in host/ is :synchronized t, or declared
 # thread-confined or guarded-by a lock the file takes (static, no ACL2; lane
 # host-lints, after entry-guards-2's owner stop on an unsynchronized table).
@@ -1805,6 +1948,7 @@ check:
 # no ACL2 (lane lane-tools-2, after payload-lz-record was outside the world).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --world
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_world
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_forward
 # Every host/ definition some file reaches (a raw file, a book, a bridge, a
 # launcher, a registry row): a new one nothing calls is WARNED, not refused,
 # unless tools/host_callers_baseline.json names why it stays (lane
@@ -1878,6 +2022,9 @@ check:
 # list (shrink-only), an unfiled requirement in planning/families.json, and
 # a gaps file that is not what the coverage renders.
 	@$(CHECK_STEP) $(PYTHON) tools/coverage.py check
+# A diff that changes one side of a reference <-> executable twin pair only
+# (planning/twins.json: mbe, defattach, naming; Q7i): flagged, not refused.
+	@$(CHECK_STEP) $(PYTHON) tools/coverage.py twins --diff auto
 	@$(CHECK_STEP) $(PYTHON) tools/event_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/alphabet_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/premise_audit.py --summary --strict

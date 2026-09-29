@@ -482,7 +482,7 @@
                                    fn-ct-unknowns-okp)))))
 
 ; -----------------------------------------------------------------------------
-; Export theory (docs/proof-style.md §2).  The ten keystones leave this book
+; Export theory (docs/proof-style.md section 2).  The ten keystones leave this book
 ; enabled, together with `fn-ct-all-in-store`, the list-recursive glue
 ; predicate the independence keystone is stated in.  The two composition
 ; lemmas are proof vocabulary and are withdrawn under one name.

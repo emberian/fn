@@ -169,7 +169,9 @@
           (not (fn-auth-access-restrictedp as (fn-own-conn-config conn)))
           (consp (fn-find-article (fn-nntp-token-string (caddr tokens))
                                   (fn-state-articles
-                                   (fn-own-conn-archive conn)))))))
+                                   (fn-own-conn-archive conn))))
+          ;; Premise 28 (NNT-056): no SASL exchange is kept.
+          (not (fn-auth-sasl-waitingp as)))))
 
 (defun fn-ovrt-rhs (o id prefix byte)
   (let* ((conn (fn-own-find-conn id (fn-own-conns o)))
@@ -204,7 +206,7 @@
 ; publication, one socket read of the HDR line.  Every premise holds and the
 ; reply is the verified item, which is not the "absent no-record" item.
 (assert-event (equal (fn-ovrt-hyps *ov-reader-b* 2 *ovr-prefix* *ovr-lf*)
-                     (fn-ovrt-all-but 27)))
+                     (fn-ovrt-all-but 28)))
 (assert-event (equal (car (in-arena-fn-own-read *sr-arena* *ov-reader-b* 2 (append *ovr-prefix* (list *ovr-lf*))))
                      (fn-ovrt-rhs *ov-reader-b* 2 *ovr-prefix* *ovr-lf*)))
 (assert-event (equal (fn-served-reply-octets
@@ -220,10 +222,14 @@
 ; Premise 26 (PRF-222: the session has no access rule) has its teeth in
 ; tests/acl2/group-access-tests.lisp: bob's HDR/STAT of fn.private.x's
 ; Message-ID answers 430 over the store that holds it.
+; Premise 28 (no SASL exchange kept, NNT-056) has its teeth where the
+; exchange is: tests/acl2/nntp-auth-teeth-tests.lisp (keystones 11 and 13,
+; H8 and C8: a kept exchange takes the next line as its response, 504) and
+; tests/acl2/nntp-auth-sasl-tests.lisp ("GROUP fn.letters" while kept).
 ; Without the article in the pinned archive (premise 27): reader A pinned
 ; before the publication answers 430, not a verdict line.
 (assert-event (equal (fn-ovrt-hyps *ov-reader-b* 0 *ovr-prefix* *ovr-lf*)
-                     (fn-ovrt-only-false 26 27)))
+                     (fn-ovrt-only-false 26 28)))
 (assert-event (not (equal (car (in-arena-fn-own-read *sr-arena* *ov-reader-b* 0 *ov-hdr*))
                           (fn-ovrt-rhs *ov-reader-b* 0 *ovr-prefix* *ovr-lf*))))
 (must-fail-checked
@@ -251,7 +257,7 @@
           '(13 10)))
 (defconst *ovr-subject-prefix* (butlast *ovr-subject* 1))
 (assert-event (equal (fn-ovrt-hyps *ov-reader-b* 2 *ovr-subject-prefix* *ovr-lf*)
-                     (fn-ovrt-only-false 22 27)))
+                     (fn-ovrt-only-false 22 28)))
 (assert-event (not (equal (car (in-arena-fn-own-read *sr-arena* *ov-reader-b* 2 *ovr-subject*))
                           (fn-ovrt-rhs *ov-reader-b* 2 *ovr-subject-prefix*
                                        *ovr-lf*))))

@@ -538,19 +538,62 @@
   (and (member-equal phase '(:greeting :date :newnews :list :article)) t))
 
 ; Frame and handle every complete line the buffer holds, at most FUEL of them.
-(defun fn-pull-drain (r fuel)
-  (declare (xargs :guard (natp fuel) :measure (nfix fuel)))
+; Executes by a loop (lane depth-debt, PRF-919): FUEL is one more than the
+; peer's buffered input octets, and the recursion took a frame per reply line
+; of it.  The loop threads R the same way and carries the effects reversed.
+(defun fn-pull-drain-loop (r fuel acc)
+  (declare (xargs :guard (natp fuel) :measure (nfix fuel) :verify-guards nil))
   (if (or (zp fuel) (not (fn-pull-line-phasep (fn-pull-r-phase r))))
-      (mv r nil)
+      (mv r (fn-ag-rev-onto acc nil))
     (mv-let (status line rest) (fn-pull-split (fn-pull-r-buf r))
-      (cond ((equal status :need) (mv r nil))
-            ((equal status :long) (fn-pull-fail r))
+      (cond ((equal status :need) (mv r (fn-ag-rev-onto acc nil)))
+            ((equal status :long)
+             (mv-let (r2 effects) (fn-pull-fail r)
+               (mv r2 (fn-ag-rev-onto acc effects))))
             (t (mv-let (r2 effects continuep)
                  (fn-pull-on-line (fn-pull-with r :buf rest) line)
                  (if continuep
-                     (mv-let (r3 more) (fn-pull-drain r2 (1- fuel))
-                       (mv r3 (append effects more)))
-                   (mv r2 effects))))))))
+                     (fn-pull-drain-loop r2 (1- fuel) (fn-ag-rev-onto effects acc))
+                   (mv r2 (fn-ag-rev-onto acc effects)))))))))
+
+(defun fn-pull-drain (r fuel)
+  (declare (xargs :guard (natp fuel) :measure (nfix fuel) :verify-guards nil))
+  (mbe :logic
+       (if (or (zp fuel) (not (fn-pull-line-phasep (fn-pull-r-phase r))))
+           (mv r nil)
+         (mv-let (status line rest) (fn-pull-split (fn-pull-r-buf r))
+           (cond ((equal status :need) (mv r nil))
+                 ((equal status :long) (fn-pull-fail r))
+                 (t (mv-let (r2 effects continuep)
+                      (fn-pull-on-line (fn-pull-with r :buf rest) line)
+                      (if continuep
+                          (mv-let (r3 more) (fn-pull-drain r2 (1- fuel))
+                            (mv r3 (append effects more)))
+                        (mv r2 effects)))))))
+       :exec (mv-let (r2 effects) (fn-pull-drain-loop r fuel nil) (mv r2 effects))))
+
+(encapsulate ()
+  (local (defthm fn-pull-rev-onto-of-rev-onto
+    (equal (fn-ag-rev-onto (fn-ag-rev-onto a acc) b)
+           (fn-ag-rev-onto acc (append a b)))))
+  (defthm fn-pull-drain-loop-is-rev-onto
+    (equal (fn-pull-drain-loop r fuel acc)
+           (list (mv-nth 0 (fn-pull-drain r fuel))
+                 (fn-ag-rev-onto acc (mv-nth 1 (fn-pull-drain r fuel)))))
+    :hints (("Goal" :induct (fn-pull-drain-loop r fuel acc)
+                    :in-theory (disable fn-pull-on-line fn-pull-split)))))
+
+(verify-guards fn-pull-drain-loop)
+(defthm fn-pull-drain-shape
+  (equal (list (mv-nth 0 (fn-pull-drain r fuel)) (mv-nth 1 (fn-pull-drain r fuel)))
+         (fn-pull-drain r fuel))
+  :hints (("Goal" :induct (fn-pull-drain r fuel)
+                  :in-theory (disable fn-pull-on-line fn-pull-split))))
+
+(verify-guards fn-pull-drain
+  :hints (("Goal" :in-theory (disable fn-pull-on-line fn-pull-split fn-pull-drain-loop
+                                      fn-pull-drain-loop-is-rev-onto)
+                  :use ((:instance fn-pull-drain-loop-is-rev-onto (acc nil))))))
 
 ; The code of the local node's reply: the first line's.
 (defun fn-pull-local-code (octets)
@@ -1951,15 +1994,47 @@
               (if (posp rounds) rounds *fn-pull-default-unavailable-rounds*))
       nil)))
 
-(defun fn-pull-plans-of (names peers)
+; Executes by a loop (lane depth-debt, PRF-919): NAMES are the configured
+; peers, operator data with no fixed cap (D27).  (mbe :logic <the recursion,
+; unchanged> :exec <a loop>), equal by fn-pull-plans-of-loop-is-rev-onto
+; (books/rev-onto.lisp).
+(defun fn-pull-plans-of-loop (names peers acc)
   (declare (xargs :guard t))
   (if (consp names)
-      (let ((plan (fn-pull-plan-of-rows (car names)
-                                        (fn-cfg-rows-with-key peers (car names)))))
-        (if plan
-            (cons plan (fn-pull-plans-of (cdr names) peers))
-          (fn-pull-plans-of (cdr names) peers)))
-    nil))
+      (fn-pull-plans-of-loop
+       (cdr names) peers
+       (let ((plan (fn-pull-plan-of-rows (car names)
+                    (fn-cfg-rows-with-key peers (car names)))))
+         (if plan (cons plan acc) acc)))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-pull-plans-of (names peers)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp names)
+           (let ((plan (fn-pull-plan-of-rows (car names)
+                        (fn-cfg-rows-with-key peers (car names)))))
+             (if plan
+                 (cons plan (fn-pull-plans-of (cdr names) peers))
+               (fn-pull-plans-of (cdr names) peers)))
+         nil)
+       :exec (fn-pull-plans-of-loop names peers nil)))
+
+(defthm fn-pull-plans-of-loop-is-rev-onto
+  (equal (fn-pull-plans-of-loop names peers acc)
+         (fn-ag-rev-onto acc (fn-pull-plans-of names peers)))
+  :hints (("Goal" :induct (fn-pull-plans-of-loop names peers acc)
+                  :in-theory (union-theories
+                              '(fn-pull-plans-of-loop fn-pull-plans-of
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-pull-plans-of
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-pull-plans-of fn-ag-rev-onto
+                                fn-pull-plans-of-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; KEYSTONE SUBJECT.  The pulled peers of a configuration's peer rows
 ; (host/owner-host.lisp `fn-owner-pull-plans').
@@ -2018,22 +2093,56 @@
 
 (verify-guards fn-pull-journal-wrap)
 
+; Executes by a loop (lane depth-debt, PRF-919): one frame per pending
+; Message-ID of the cursor (a queue, data).  The right fold runs from the left
+; over the reversed ids.
+(defun fn-pull-pending-envelope-step (peer x rest)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((w (fn-pull-journal-wrap (fn-pull-unavailable-frame peer x))))
+    (if (or (equal w :bad) (equal rest :bad))
+        :bad
+      (append w rest))))
+
+(defun fn-pull-pending-envelope-loop (rev peer acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-pull-pending-envelope-loop
+       (cdr rev) peer (fn-pull-pending-envelope-step peer (car rev) acc))
+    acc))
+
 (defun fn-pull-pending-envelope (peer pending)
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp pending)
-      (let ((w (fn-pull-journal-wrap (fn-pull-unavailable-frame peer (car pending))))
-            (rest (fn-pull-pending-envelope peer (cdr pending))))
-        (if (or (equal w :bad) (equal rest :bad))
-            :bad
-          (append w rest)))
-    nil))
+  (mbe :logic
+       (if (consp pending)
+           (let ((w (fn-pull-journal-wrap (fn-pull-unavailable-frame peer (car pending))))
+                 (rest (fn-pull-pending-envelope peer (cdr pending))))
+             (if (or (equal w :bad) (equal rest :bad))
+                 :bad
+               (append w rest)))
+         nil)
+       :exec (fn-pull-pending-envelope-loop (fn-ag-rev-onto pending nil) peer nil)))
+
+(defthm fn-pull-pending-envelope-loop-of-rev-onto
+  (equal (fn-pull-pending-envelope-loop (fn-ag-rev-onto pending zs) peer nil)
+         (fn-pull-pending-envelope-loop zs peer (fn-pull-pending-envelope peer pending)))
+  :hints (("Goal" :induct (fn-ag-rev-onto pending zs)
+                  :in-theory (union-theories
+                              '(fn-pull-pending-envelope-loop fn-pull-pending-envelope
+                                fn-pull-pending-envelope-step fn-ag-rev-onto
+                                car-cons cdr-cons)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defthm fn-pull-journal-wrap-true-listp
   (implies (not (equal (fn-pull-journal-wrap frame) :bad))
            (true-listp (fn-pull-journal-wrap frame))))
 
-(verify-guards fn-pull-pending-envelope
+(verify-guards fn-pull-pending-envelope-step
   :hints (("Goal" :in-theory (disable fn-pull-journal-wrap fn-pull-unavailable-frame))))
+(verify-guards fn-pull-pending-envelope-loop)
+(verify-guards fn-pull-pending-envelope
+  :hints (("Goal" :in-theory (disable fn-pull-journal-wrap fn-pull-unavailable-frame)
+                  :use ((:instance fn-pull-pending-envelope-loop-of-rev-onto (zs nil))))))
 
 (defthm fn-pull-pending-envelope-true-listp
   (implies (not (equal (fn-pull-pending-envelope peer pending) :bad))

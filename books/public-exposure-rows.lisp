@@ -102,13 +102,45 @@
         (list family (if (equal family :inet) v4 v6) bits)
       :bad)))
 
-(defun fn-exp-cidrs-of (fields)
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+(defun fn-exp-cidrs-of-step (x rest)
   (declare (xargs :guard t))
-  (if (consp fields)
-      (let ((c (fn-exp-cidr-of (fn-ncfg-trim (car fields))))
-            (rest (fn-exp-cidrs-of (cdr fields))))
-        (if (or (equal c :bad) (equal rest :bad)) :bad (cons c rest)))
-    nil))
+  (let ((c (fn-exp-cidr-of (fn-ncfg-trim x))))
+    (if (or (equal c :bad) (equal rest :bad)) :bad (cons c rest))))
+
+(defun fn-exp-cidrs-of-loop (rev acc)
+  (declare (xargs :guard t))
+  (if (consp rev)
+      (fn-exp-cidrs-of-loop (cdr rev) (fn-exp-cidrs-of-step (car rev) acc))
+    acc))
+
+(defun fn-exp-cidrs-of (fields)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp fields)
+           (let ((c (fn-exp-cidr-of (fn-ncfg-trim (car fields))))
+                 (rest (fn-exp-cidrs-of (cdr fields))))
+             (if (or (equal c :bad) (equal rest :bad)) :bad (cons c rest)))
+         nil)
+       :exec (fn-exp-cidrs-of-loop (fn-ag-rev-onto fields nil) nil)))
+
+(defthm fn-exp-cidrs-of-loop-of-rev-onto
+  (equal (fn-exp-cidrs-of-loop (fn-ag-rev-onto fields zs) nil)
+         (fn-exp-cidrs-of-loop zs (fn-exp-cidrs-of fields)))
+  :hints (("Goal" :induct (fn-ag-rev-onto fields zs)
+                  :in-theory (union-theories
+                              '(fn-exp-cidrs-of-loop fn-exp-cidrs-of fn-exp-cidrs-of-step fn-ag-rev-onto
+                                car-cons cdr-cons)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
+
+(verify-guards fn-exp-cidrs-of
+  :hints (("Goal" :use ((:instance fn-exp-cidrs-of-loop-of-rev-onto (zs nil)))
+                  :in-theory (union-theories
+                              '(fn-exp-cidrs-of-loop fn-exp-cidrs-of)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; The operator's word, as the row holds it: `none' is no range; otherwise a
 ; comma-separated list of one or more ranges, every one well formed.

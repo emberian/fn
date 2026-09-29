@@ -360,7 +360,24 @@
  (equal (fn-native-admin-result-reason
          (fn-native-admin-plan
           (fn-na-test-argv '("policy" "set" "other-slot" "a.gate.example.invalid"))))
-        :policy))
+        ; Row S10 (lane operability-2): a key the node does not have is
+        ; refused by name, not by the usage line.
+        :unknown-policy-key))
+; Row S10: a counted key with a value that is no decimal count is refused by
+; name; a known worded key with a malformed value keeps its arm's :policy.
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "exposure-connections" "abc"))))
+        :policy-value-not-a-number))
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "bogus-key" "1"))))
+        :unknown-policy-key))
+(assert-event (fn-native-admin-known-policy-keyp "path-identity"))
+(assert-event (fn-native-admin-known-policy-keyp *fn-exp-trusted-slot*))
+(assert-event (not (fn-native-admin-known-policy-keyp "bogus-key")))
 (assert-event
  (equal (fn-native-admin-result-reason
          (fn-native-admin-plan

@@ -56,21 +56,6 @@ enabled = true
 # `UNSUPPORTED-PROFILE agent` rather than keep a second value that could
 # disagree with Path (books/native-config.lisp).
 
-[anchor]
-# A name from tools/roughtime_servers.json, used by `fn anchor` and by the
-# freshness check inside `fn recover`.  Omit the table to skip live queries.
-# The native image has no consumer for it yet: `fn operator CONFIG run`
-# refuses a configuration that sets it (`UNSUPPORTED-PROFILE anchor`).
-server = "int08h"
-
-[acl2]
-# The ACL2 executable (exported as FN_ACL2) and the machine-wide cap on
-# concurrent ACL2 processes (FN_ACL2_SLOTS, tools/acl2_slots.py).  A saved
-# native image consumes neither: its `run` refuses the table
-# (`UNSUPPORTED-PROFILE acl2`).
-path = "acl2"
-slots = 4
-
 [log]
 # The service log: one line per post (served or control) and per accepted
 # connection, outcome word first and the same word the reply carries; the

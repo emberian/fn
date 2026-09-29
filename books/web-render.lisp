@@ -748,21 +748,62 @@
                 (fn-wm "' autocomplete='username' autocapitalize='none' spellcheck='false' required><p class='dim'>Letters, digits, dots, dashes and underscores.</p><label for='password'>Password</label><input type='password' id='password' name='password' autocomplete='new-password' required><label for='again'>The same password again</label><input type='password' id='again' name='again' autocomplete='new-password' required><p><button type='submit'>Make my account</button></p></form><p class='dim'>Already have one? <a href='/signin'>Sign in</a>.</p>"))))
 
 ; A group row: (NAME COUNT READ-ONLY-P), NAME and COUNT octets.
-(defun fn-wr-group-rows (rows)
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+(defun fn-wr-group-rows-step (x rest)
   (declare (xargs :guard t))
-  (if (consp rows)
-      (let ((row (car rows)))
-        (append (list (fn-wm "<tr><td class='num'>")
-                      (fn-wr-txt (fn-wrq-nth 1 row))
-                      (fn-wm "</td><td><a class='title' href='/g?name=")
-                      (fn-wr-url (fn-wrq-nth 0 row))
-                      (fn-wm "'>")
-                      (fn-wr-txt (fn-wrq-nth 0 row))
-                      (fn-wm "</a>"))
-                (if (fn-wrq-nth 2 row) (list (fn-wm " <span class='dim'>(read only)</span>")) nil)
-                (list (fn-wm "</td></tr>"))
-                (fn-wr-group-rows (cdr rows))))
-    nil))
+  (let ((row x))
+    (append (list (fn-wm "<tr><td class='num'>")
+                  (fn-wr-txt (fn-wrq-nth 1 row))
+                  (fn-wm "</td><td><a class='title' href='/g?name=")
+                  (fn-wr-url (fn-wrq-nth 0 row))
+                  (fn-wm "'>")
+                  (fn-wr-txt (fn-wrq-nth 0 row))
+                  (fn-wm "</a>"))
+            (if (fn-wrq-nth 2 row) (list (fn-wm " <span class='dim'>(read only)</span>")) nil)
+            (list (fn-wm "</td></tr>"))
+            rest)))
+
+(defun fn-wr-group-rows-loop (rev acc)
+  (declare (xargs :guard t))
+  (if (consp rev)
+      (fn-wr-group-rows-loop (cdr rev) (fn-wr-group-rows-step (car rev) acc))
+    acc))
+
+(defun fn-wr-group-rows (rows)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp rows)
+           (let ((row (car rows)))
+             (append (list (fn-wm "<tr><td class='num'>")
+                           (fn-wr-txt (fn-wrq-nth 1 row))
+                           (fn-wm "</td><td><a class='title' href='/g?name=")
+                           (fn-wr-url (fn-wrq-nth 0 row))
+                           (fn-wm "'>")
+                           (fn-wr-txt (fn-wrq-nth 0 row))
+                           (fn-wm "</a>"))
+                     (if (fn-wrq-nth 2 row) (list (fn-wm " <span class='dim'>(read only)</span>")) nil)
+                     (list (fn-wm "</td></tr>"))
+                     (fn-wr-group-rows (cdr rows))))
+         nil)
+       :exec (fn-wr-group-rows-loop (fn-ag-rev-onto rows nil) nil)))
+
+(defthm fn-wr-group-rows-loop-of-rev-onto
+  (equal (fn-wr-group-rows-loop (fn-ag-rev-onto rows zs) nil)
+         (fn-wr-group-rows-loop zs (fn-wr-group-rows rows)))
+  :hints (("Goal" :induct (fn-ag-rev-onto rows zs)
+                  :in-theory (union-theories
+                              '(fn-wr-group-rows-loop fn-wr-group-rows fn-wr-group-rows-step fn-ag-rev-onto
+                                car-cons cdr-cons)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
+
+(verify-guards fn-wr-group-rows
+  :hints (("Goal" :use ((:instance fn-wr-group-rows-loop-of-rev-onto (zs nil)))
+                  :in-theory (union-theories
+                              '(fn-wr-group-rows-loop fn-wr-group-rows)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-wr-groups-main (rows)
   (declare (xargs :guard t))

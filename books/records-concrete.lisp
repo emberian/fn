@@ -47,6 +47,7 @@
 
 (in-package "ACL2")
 (include-book "records-codec-concrete")
+(local (in-theory (enable fn-rcon-record-twin-rules)))
 (include-book "store-node")
 (include-book "consumer-store-projection")
 (include-book "topic-history-prefix")
@@ -420,3 +421,20 @@
                                   (fn-sn-statep fn-sf-statep fn-node-statep)))))
 
 (in-theory (disable fn-rcon-sf-record-dir-result fn-rcon-sn-file-step fn-rcon-sn-io))
+
+; The event and store twins' equalities, closed as the codec twins are
+; (records-codec-concrete, fn-rcon-record-twin-rules; Q3f).
+(deftheory fn-rcon-event-twin-rules
+  '(fn-rcon-wire-event-p-is-wire-event-p
+    fn-rcon-wire-event-sequence-is-wire-event-sequence
+    fn-rcon-wire-event-txid-is-wire-event-txid
+    fn-rcon-wire-event-generation-is-wire-event-generation
+    fn-rcon-store-event-p-is-store-event-p
+    fn-rcon-store-event-sequence-is-store-event-sequence
+    fn-rcon-store-event-txid-is-store-event-txid
+    fn-rcon-store-event-generation-is-store-event-generation
+    fn-rcon-sf-record-pair-is-sf-record-pair
+    fn-rcon-store-event-encode-is-store-event-encode
+    fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence))
+
+(in-theory (disable fn-rcon-event-twin-rules))

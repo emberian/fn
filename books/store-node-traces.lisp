@@ -602,14 +602,31 @@
 ; This dispatcher simply selects the actual wrapper operations.  It does not
 ; inspect the relation of the result, roll back failed proof checks, or assume
 ; that a trace preserves any invariant.
+; Total in EVENT: the executable accessors read an atom where a list is
+; expected as nil, exactly as the logical car/cadr/caddr do (the logical body
+; is unchanged); the store is a store-node state.
 (defun fn-snt-step (s event)
-  (case (car event)
-    (:prepare (fn-sn-prepare s (cadr event)))
-    (:io (fn-sn-io s (cadr event) (caddr event)))
+  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
+  (case (mbe :logic (car event) :exec (if (consp event) (car event) nil))
+    (:prepare (fn-sn-prepare s (mbe :logic (cadr event)
+                                    :exec (if (and (consp event) (consp (cdr event)))
+                                              (cadr event) nil))))
+    (:io (fn-sn-io s (mbe :logic (cadr event)
+                          :exec (if (and (consp event) (consp (cdr event)))
+                                    (cadr event) nil))
+                   (mbe :logic (caddr event)
+                        :exec (if (and (consp event) (consp (cdr event)) (consp (cddr event)))
+                                  (caddr event) nil))))
     (:finish (fn-sn-finish s))
-    (:crash (fn-sn-crash s (cadr event) (caddr event)))
+    (:crash (fn-sn-crash s (mbe :logic (cadr event)
+                                :exec (if (and (consp event) (consp (cdr event)))
+                                          (cadr event) nil))
+                         (mbe :logic (caddr event)
+                              :exec (if (and (consp event) (consp (cdr event)) (consp (cddr event)))
+                                        (caddr event) nil))))
     (:recover (fn-sn-recover s))
     (otherwise s)))
+(verify-guards fn-snt-step)
 (defun fn-snt-run (s events)
   (if (consp events)
       (fn-snt-run (fn-snt-step s (car events)) (cdr events))
