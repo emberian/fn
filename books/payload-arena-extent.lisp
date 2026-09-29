@@ -53,6 +53,7 @@
   (fn-arena$x-inner :type fn-arena-paged)
   (fn-arena$x-ext :type (array t (0)) :initially 0 :resizable t)
   (fn-arena$x-stage :type (array fn-arena-page (0)) :resizable t)
+  (fn-arena$x-files :type (array t (0)) :initially 0 :resizable t)
   :inline t)
 
 ; -----------------------------------------------------------------------------
@@ -445,12 +446,131 @@
                         (fn-arena-paged-payload h fn-arena-paged)
                         v)))))
 
-; Handle H's entry E, the array grown (doubled) when H is past it.
+; The FILE COUNT (lane composed-owner-4, row A6).  FILES holds, per durable
+; file id F, how many EXT entries name F: kept by the mark (the entry it
+; replaces loses one, the entry it writes gains one) and emptied by the
+; clear, never recomputed.  The relation `fn-arena$xcorr' carries its
+; agreement with EXT (`fn-arx-files-agree'), so every export preserves it,
+; and a count of 0 means no handle names the file
+; (`fn-arx-file-count-zero-names-none').
+(defun fn-arx-entry-file (e)
+  (declare (xargs :guard t))
+  (if (or (fn-arn-extentp e) (fn-arn-lz-extentp e)) (nth 0 e) nil))
+
+(defthm fn-arx-entry-file-type
+  (or (null (fn-arx-entry-file e)) (natp (fn-arx-entry-file e)))
+  :rule-classes :type-prescription)
+
+(defthm fn-arx-entry-file-of-non-cons
+  (implies (not (consp e)) (equal (fn-arx-entry-file e) nil)))
+
+(in-theory (disable fn-arx-entry-file))
+
+(defun fn-arx-tally (f ext)
+  (declare (xargs :guard (true-listp ext)))
+  (if (atom ext)
+      0
+    (+ (if (equal (fn-arx-entry-file (car ext)) f) 1 0)
+       (fn-arx-tally f (cdr ext)))))
+
+(defun fn-arx-files-get (f files)
+  (declare (xargs :guard (and (natp f) (true-listp files))))
+  (nfix (nth f files)))
+
+(defthm fn-arx-files-get-of-nil
+  (equal (fn-arx-files-get f nil) 0))
+
+(in-theory (disable fn-arx-files-get))
+
+(defun-sk fn-arx-files-agree (ext files)
+  (forall f (implies (natp f)
+                     (equal (fn-arx-files-get f files) (fn-arx-tally f ext)))))
+
+(in-theory (disable fn-arx-files-agree))
+
+(defun fn-arx-files-inc (f fn-arena$x)
+  (declare (xargs :stobjs fn-arena$x :guard (natp f)))
+  (let ((fn-arena$x (if (< f (fn-arena$x-files-length fn-arena$x))
+                        fn-arena$x
+                      (resize-fn-arena$x-files (max 64 (* 2 f)) fn-arena$x))))
+    (update-fn-arena$x-filesi f (1+ (nfix (fn-arena$x-filesi f fn-arena$x))) fn-arena$x)))
+
+(defun fn-arx-files-dec (f fn-arena$x)
+  (declare (xargs :stobjs fn-arena$x :guard (natp f)))
+  (if (< f (fn-arena$x-files-length fn-arena$x))
+      (update-fn-arena$x-filesi f (nfix (1- (nfix (fn-arena$x-filesi f fn-arena$x)))) fn-arena$x)
+    fn-arena$x))
+
+(local
+ (defthm fn-arx-car-update-nth
+   (implies (not (zp k))
+            (equal (car (update-nth k v x)) (car x)))
+   :hints (("Goal" :in-theory (enable update-nth)))))
+
+;; The count column's move, as a list.
+(defun fn-arx-move-list (old new fs)
+  (declare (xargs :guard (true-listp fs)))
+  (let ((fs (if (and (natp old) (< old (len fs)))
+                (update-nth old (nfix (1- (nfix (nth old fs)))) fs)
+              fs)))
+    (if (natp new)
+        (update-nth new (1+ (nfix (nth new fs)))
+                    (if (< new (len fs)) fs (resize-list fs (max 64 (* 2 new)) 0)))
+      fs)))
+
+; An entry naming OLD replaced by one naming NEW (either nil: no file).
+(defun fn-arx-files-move (old new fn-arena$x)
+  (declare (xargs :stobjs fn-arena$x))
+  (let ((fn-arena$x (if (natp old) (fn-arx-files-dec old fn-arena$x) fn-arena$x)))
+    (if (natp new) (fn-arx-files-inc new fn-arena$x) fn-arena$x)))
+
+(defthm fn-arx-files-move-other-fields
+  (implies (not (equal i *fn-arena$x-filesi*))
+           (equal (nth i (fn-arx-files-move old new fn-arena$x))
+                  (nth i fn-arena$x))))
+
+(defthm fn-arx-files-move-inner
+  (equal (car (fn-arx-files-move old new fn-arena$x))
+         (car fn-arena$x)))
+
+(defthm fn-arx-files-move-len
+  (implies (fn-arena$xp fn-arena$x)
+           (equal (len (fn-arx-files-move old new fn-arena$x)) (len fn-arena$x))))
+
+(defthm fn-arx-files-move-true-listp
+  (implies (true-listp fn-arena$x)
+           (true-listp (fn-arx-files-move old new fn-arena$x))))
+
+(defthm fn-arx-files-move-files
+  (equal (nth *fn-arena$x-filesi* (fn-arx-files-move old new fn-arena$x))
+         (fn-arx-move-list old new (nth *fn-arena$x-filesi* fn-arena$x))))
+
+(defthm fn-arx-filesp-is-true-listp
+  (equal (fn-arena$x-filesp x) (true-listp x))
+  :hints (("Goal" :in-theory (enable fn-arena$x-filesp))))
+
+(local
+ (defthm fn-arx-files-true-listp-resize-list
+   (implies (true-listp l) (true-listp (resize-list l m d)))
+   :hints (("Goal" :in-theory (enable resize-list)))))
+
+(defthm fn-arx-files-move-recognizer
+  (implies (fn-arena$xp fn-arena$x)
+           (fn-arena$xp (fn-arx-files-move old new fn-arena$x)))
+  :hints (("Goal" :in-theory (enable fn-arena$xp))))
+
+(in-theory (disable fn-arx-files-move))
+
+; Handle H's entry E, the array grown (doubled) when H is past it; the file
+; count follows the entry.
 (defun fn-arx-mark (h e fn-arena$x)
   (declare (xargs :stobjs fn-arena$x :guard (natp h)))
-  (let ((fn-arena$x (if (< h (fn-arena$x-ext-length fn-arena$x))
-                        fn-arena$x
-                      (resize-fn-arena$x-ext (max 64 (* 2 h)) fn-arena$x))))
+  (let* ((fn-arena$x (if (< h (fn-arena$x-ext-length fn-arena$x))
+                         fn-arena$x
+                       (resize-fn-arena$x-ext (max 64 (* 2 h)) fn-arena$x)))
+         (fn-arena$x (fn-arx-files-move (fn-arx-entry-file (fn-arena$x-exti h fn-arena$x))
+                                        (fn-arx-entry-file e)
+                                        fn-arena$x)))
     (update-fn-arena$x-exti h e fn-arena$x)))
 
 ; The stage covers slot H (grown, doubled, when H is past it: new slots are
@@ -517,7 +637,8 @@
                                 (fn-arena-paged)
                                 (fn-arena-paged-clear fn-arena-paged)
                                 fn-arena$x))
-         (fn-arena$x (resize-fn-arena$x-stage 0 fn-arena$x)))
+         (fn-arena$x (resize-fn-arena$x-stage 0 fn-arena$x))
+         (fn-arena$x (resize-fn-arena$x-files 0 fn-arena$x)))
     (resize-fn-arena$x-ext 0 fn-arena$x)))
 
 ; The extent seal: the empty payload into the child, the extent into EXT.
@@ -581,6 +702,8 @@
 (defun fn-arena$xcorr (fn-arena$x fn-arena$a)
   (declare (xargs :verify-guards nil))
   (and (fn-arena$xp fn-arena$x)
+       (fn-arx-files-agree (nth *fn-arena$x-exti* fn-arena$x)
+                           (nth *fn-arena$x-filesi* fn-arena$x))
        (fn-arn-payload-listp fn-arena$a)
        (<= (len (nth *fn-arena$x-inner* fn-arena$x)) (len (nth *fn-arena$x-exti* fn-arena$x)))
        (equal (fn-arx-view 0 (len (nth *fn-arena$x-inner* fn-arena$x))
@@ -632,6 +755,120 @@
                   (nth *fn-arena$x-stagei* fn-arena$x)))
   :hints (("Goal" :do-not-induct t)))
 
+;; The file count's agreement, kept by the mark.
+(defthm fn-arx-tally-of-update-nth
+  (implies (and (natp h) (< h (len ext)))
+           (equal (fn-arx-tally f (update-nth h e ext))
+                  (+ (- (fn-arx-tally f ext)
+                        (if (equal (fn-arx-entry-file (nth h ext)) f) 1 0))
+                     (if (equal (fn-arx-entry-file e) f) 1 0))))
+  :hints (("Goal" :in-theory (enable update-nth nth))))
+
+(defthm fn-arx-tally-of-resize-list-zero
+  (implies (and (natp f) (<= (len l) (nfix n)))
+           (equal (fn-arx-tally f (resize-list l n 0))
+                  (fn-arx-tally f l)))
+  :hints (("Goal" :in-theory (enable resize-list))))
+
+(defthm fn-arx-tally-of-empty
+  (implies (equal (len ext) 0) (equal (fn-arx-tally f ext) 0)))
+
+(defthm fn-arx-tally-positive-when-named
+  (implies (and (natp h) (< h (len ext))
+                (equal (fn-arx-entry-file (nth h ext)) f))
+           (< 0 (fn-arx-tally f ext)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable nth))))
+
+(defthm fn-arx-files-agree-of-nil
+  (fn-arx-files-agree nil nil)
+  :hints (("Goal" :in-theory (enable fn-arx-files-agree fn-arx-files-get))))
+
+(local
+ (defun fn-arx-zerosp (l)
+   (if (atom l) t (and (equal (car l) 0) (fn-arx-zerosp (cdr l))))))
+
+(local
+ (defthm fn-arx-nth-of-zeros
+   (implies (and (fn-arx-zerosp l) (natp f))
+            (equal (nth f l) (if (< f (len l)) 0 nil)))
+   :hints (("Goal" :in-theory (enable nth)))))
+
+;; The mark's count column (the entry array grown first when H is past it).
+(defthm fn-arx-mark-files
+  (implies (natp h)
+           (equal (nth *fn-arena$x-filesi* (fn-arx-mark h e fn-arena$x))
+                  (fn-arx-move-list
+                   (fn-arx-entry-file
+                    (nth h (if (< h (len (nth *fn-arena$x-exti* fn-arena$x)))
+                               (nth *fn-arena$x-exti* fn-arena$x)
+                             (resize-list (nth *fn-arena$x-exti* fn-arena$x)
+                                          (max 64 (* 2 h)) 0))))
+                   (fn-arx-entry-file e)
+                   (nth *fn-arena$x-filesi* fn-arena$x))))
+  :hints (("Goal" :do-not-induct t)))
+
+(defthm fn-arx-files-get-of-move-list
+  (implies (and (natp f) (true-listp fs))
+           (equal (fn-arx-files-get f (fn-arx-move-list old new fs))
+                  (+ (- (fn-arx-files-get f fs)
+                        (if (and (equal old f) (< 0 (fn-arx-files-get f fs))) 1 0))
+                     (if (equal new f) 1 0))))
+  :hints (("Goal" :in-theory (enable fn-arx-files-get))))
+
+(defthm fn-arx-files-agree-of-resize
+  (implies (and (fn-arx-files-agree ext fs) (<= (len ext) (nfix n)))
+           (fn-arx-files-agree (resize-list ext n 0) fs))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-arx-files-agree) (fn-arx-files-agree-necc))
+           :use ((:instance fn-arx-files-agree-necc (ext ext) (files fs)
+                            (f (fn-arx-files-agree-witness (resize-list ext n 0) fs)))))))
+
+(defthm fn-arx-xp-files-field
+  (implies (fn-arena$xp fn-arena$x)
+           (true-listp (nth *fn-arena$x-filesi* fn-arena$x)))
+  :hints (("Goal" :in-theory (enable fn-arena$xp))))
+
+(defthm fn-arx-files-agree-of-move
+  (implies (and (fn-arx-files-agree ext fs) (true-listp fs)
+                (natp h) (< h (len ext))
+                (equal g (fn-arx-entry-file e)))
+           (fn-arx-files-agree (update-nth h e ext)
+                               (fn-arx-move-list (fn-arx-entry-file (nth h ext)) g fs)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-arx-files-agree) (fn-arx-move-list fn-arx-files-agree-necc))
+           :use ((:instance fn-arx-files-agree-necc (ext ext) (files fs)
+                            (f (fn-arx-entry-file (nth h ext))))
+                 (:instance fn-arx-files-agree-necc (ext ext) (files fs)
+                            (f (fn-arx-files-agree-witness
+                                (update-nth h e ext)
+                                (fn-arx-move-list (fn-arx-entry-file (nth h ext))
+                                                  (fn-arx-entry-file e) fs))))))))
+
+(defthm fn-arx-files-agree-of-move-fresh
+  (implies (and (fn-arx-files-agree ext fs) (true-listp fs)
+                (natp h) (<= (len ext) h) (< h (nfix n))
+                (equal g (fn-arx-entry-file e)))
+           (fn-arx-files-agree (update-nth h e (resize-list ext n 0))
+                               (fn-arx-move-list nil g fs)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-arx-files-agree-of-move fn-arx-move-list)
+           :use ((:instance fn-arx-files-agree-of-move (ext (resize-list ext n 0)))))))
+
+(in-theory (disable fn-arx-move-list))
+
+(defthm fn-arx-files-agree-of-mark
+  (implies (and (fn-arena$xp fn-arena$x) (natp h)
+                (fn-arx-files-agree (nth *fn-arena$x-exti* fn-arena$x)
+                                    (nth *fn-arena$x-filesi* fn-arena$x)))
+           (fn-arx-files-agree (nth *fn-arena$x-exti* (fn-arx-mark h e fn-arena$x))
+                               (nth *fn-arena$x-filesi* (fn-arx-mark h e fn-arena$x))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-arena$xp) (fn-arx-mark)))))
+
+; The mark is known by its fields from here on.
+(in-theory (disable fn-arx-mark))
+
 (defthm fn-arx-view-after-mark
   (implies (and (natp n) (equal n (len a0)) (<= n (len ext)))
            (equal (fn-arx-view 0 (1+ n)
@@ -643,11 +880,6 @@
                   (append (fn-arx-view 0 n ext a0 st) (list (fn-arx-entry e x (nth n st))))))
   :hints (("Goal" :do-not-induct t :in-theory (disable fn-arx-view))))
 
-(local
- (defthm fn-arx-car-update-nth
-   (implies (not (zp k))
-            (equal (car (update-nth k v x)) (car x)))
-   :hints (("Goal" :in-theory (enable update-nth)))))
 
 ;; The stage's growth: the other fields untouched, the view unchanged (new
 ;; slots are empty pages), slot H covered.
@@ -659,7 +891,9 @@
   (and (equal (nth *fn-arena$x-inner* (fn-arx-stage-grow h fn-arena$x))
               (nth *fn-arena$x-inner* fn-arena$x))
        (equal (nth *fn-arena$x-exti* (fn-arx-stage-grow h fn-arena$x))
-              (nth *fn-arena$x-exti* fn-arena$x)))
+              (nth *fn-arena$x-exti* fn-arena$x))
+       (equal (nth *fn-arena$x-filesi* (fn-arx-stage-grow h fn-arena$x))
+              (nth *fn-arena$x-filesi* fn-arena$x)))
   :hints (("Goal" :in-theory (disable resize-list))))
 
 (defthm fn-arx-view-of-stage-grow
@@ -733,7 +967,9 @@
   (and (equal (nth *fn-arena$x-inner* (fn-arx-stage-write h fn-octets fn-arena$x))
               (nth *fn-arena$x-inner* fn-arena$x))
        (equal (nth *fn-arena$x-exti* (fn-arx-stage-write h fn-octets fn-arena$x))
-              (nth *fn-arena$x-exti* fn-arena$x)))
+              (nth *fn-arena$x-exti* fn-arena$x))
+       (equal (nth *fn-arena$x-filesi* (fn-arx-stage-write h fn-octets fn-arena$x))
+              (nth *fn-arena$x-filesi* fn-arena$x)))
   :hints (("Goal" :in-theory (disable resize-list fn-arx-page-copy))))
 
 (defthm fn-arx-view-of-stage-write-above
@@ -972,7 +1208,8 @@
 (defthm fn-arena-extent-clear{correspondence}
   (implies (fn-arena$xcorr fn-arena$x fn-arena-extent)
            (fn-arena$xcorr (fn-arena$x-clear fn-arena$x) (fn-arena$a-clear fn-arena-extent)))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-arena$xp fn-arena$x-extp fn-arena$x-stagep))))
 
 (defthm fn-arena-extent-clear{preserved}
   (implies (fn-arena$ap fn-arena-extent)
@@ -1145,3 +1382,81 @@
                                             :exec fn-arena$x-seal-lz-extent :protect t)
             (fn-arena-extent-reseat-lz-extent :logic fn-arena$a-reseat-lz-extent
                                               :exec fn-arena$x-reseat-lz-extent :protect t)))
+
+; -----------------------------------------------------------------------------
+; The file count, read (lane composed-owner-4, row A6).  The host reads the
+; live arena's count column under the owner mutex (host/native/owner.lisp,
+; the checkpoint release) to decide which retired files' descriptors may
+; close: one read per file, never a walk of the extent column.
+
+(defun fn-arx-file-count (f fn-arena$x)
+  (declare (xargs :stobjs fn-arena$x :guard (natp f)))
+  (if (< f (fn-arena$x-files-length fn-arena$x))
+      (nfix (fn-arena$x-filesi f fn-arena$x))
+    0))
+
+(defun fn-arx-files-unnamed-p (fs fn-arena$x)
+  (declare (xargs :stobjs fn-arena$x :guard (nat-listp fs)))
+  (if (atom fs)
+      t
+    (and (equal (fn-arx-file-count (car fs) fn-arena$x) 0)
+         (fn-arx-files-unnamed-p (cdr fs) fn-arena$x))))
+
+(defthm fn-arx-file-count-is-files-get
+  (implies (natp f)
+           (equal (fn-arx-file-count f fn-arena$x)
+                  (fn-arx-files-get f (nth *fn-arena$x-filesi* fn-arena$x))))
+  :hints (("Goal" :in-theory (enable fn-arx-files-get nth))))
+
+(local
+ (defthm fn-arx-nth-past-end-nil
+   (implies (and (natp h) (<= (len l) h)) (equal (nth h l) nil))
+   :hints (("Goal" :in-theory (enable nth)))))
+
+; KEYSTONE: under the arena's correspondence (which every export keeps, so
+; the live arena satisfies it), a file whose count is 0 is named by no entry
+; of the extent column, at any handle: no realizer call reads it again.
+(defthm fn-arx-file-count-zero-names-none
+  (implies (and (fn-arena$xcorr fn-arena$x fn-arena$a)
+                (natp f) (natp h)
+                (equal (fn-arx-file-count f fn-arena$x) 0))
+           (not (equal (fn-arx-entry-file (nth h (nth *fn-arena$x-exti* fn-arena$x))) f)))
+  :hints (("Goal" :do-not-induct t
+           :cases ((< h (len (nth *fn-arena$x-exti* fn-arena$x))))
+           :in-theory (disable fn-arx-files-agree-necc fn-arx-tally-positive-when-named)
+           :use ((:instance fn-arx-files-agree-necc
+                            (ext (nth *fn-arena$x-exti* fn-arena$x))
+                            (files (nth *fn-arena$x-filesi* fn-arena$x)))
+                 (:instance fn-arx-tally-positive-when-named
+                            (ext (nth *fn-arena$x-exti* fn-arena$x)))))))
+
+(defthm fn-arx-files-unnamed-p-member
+  (implies (and (fn-arx-files-unnamed-p fs fn-arena$x) (member-equal f fs) (natp f))
+           (equal (fn-arx-file-count f fn-arena$x) 0))
+  :hints (("Goal" :in-theory (disable fn-arx-file-count-is-files-get))))
+
+(local
+ (defthm fn-arx-member-of-nat-listp
+   (implies (and (nat-listp fs) (member-equal f fs)) (natp f))
+   :rule-classes :forward-chaining))
+
+; KEYSTONE (the host-called subject): every file of FS the check passes is
+; named by no entry at any handle.
+(defthm fn-arx-files-unnamed-names-none
+  (implies (and (fn-arena$xcorr fn-arena$x fn-arena$a)
+                (nat-listp fs)
+                (fn-arx-files-unnamed-p fs fn-arena$x)
+                (member-equal f fs) (natp h))
+           (not (equal (fn-arx-entry-file (nth h (nth *fn-arena$x-exti* fn-arena$x))) f)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-arena$xcorr fn-arx-file-count-is-files-get
+                               fn-arx-file-count fn-arx-files-unnamed-p)
+           :use ((:instance fn-arx-file-count-zero-names-none)
+                 (:instance fn-arx-files-unnamed-p-member)))))
+
+; What an entry names is the file its realizer reads (fn-arena$x-get passes
+; (nth 0 E) to fn-durable-realize-octets / fn-durable-realize-lz).
+(defthm fn-arx-entry-file-of-extent-by-definition
+  (implies (or (fn-arn-extentp e) (fn-arn-lz-extentp e))
+           (equal (fn-arx-entry-file e) (nth 0 e)))
+  :hints (("Goal" :in-theory (enable fn-arx-entry-file))))
