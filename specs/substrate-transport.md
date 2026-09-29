@@ -360,6 +360,28 @@ node's** lace and **this node's** keyring:
                         (fn-stx-statement-of article keyring)))))
 ```
 
+**The served form (W5b, 2026-09-29).** On the host's transit path the gate is
+not evaluated by walking the lace. The store's carried index
+(`books/stx-index.lisp`) holds a policy column keyed by (group, authority): the
+authority's greatest-slot policy statement and whether a distinct policy
+statement shares that slot; `fn-stx-index-policy-current` reads it, and
+`fn-stx-index-policy-agrees` equates it with `fn-pol-current` over the lace of
+the store. `books/peer-transit-authority.lisp` decides the AUTHORITY verdict
+from that index, the store's keyring and the statement the relayed octets carry
+— the closed enumeration `*fn-pta-verdicts*`: `:admitted`, `:ungoverned` (the
+group has no authority), `:no-statement`, `:unverified`, `:not-a-post`,
+`:equivocation`, `:authority-equivocation`, `:no-policy`, `:unauthorized` —
+and `fn-pta-decide` carries it beside the unchanged byte decision
+`fn-peer-decide-transfer-under`, which `fn-owner-transit-decide`
+(host/owner-host.lisp) calls before the durable intent; the transit log line
+carries `authority=NAME`. `fn-pta-admitted-is-the-gate-over-the-rows` (PRF-1023)
+equates `:admitted` with `fn-pol-admitp` over the retained rows' lace minus the
+poster's fork, under the carried index invariant; the node-lace form reaches it
+through `fn-stx-lace-of-node-is-the-rows-lace` (PRF-995). The group's authority
+is the live group entry's policy-id when it is a principal id
+([reconfiguration](reconfiguration.md) `(:create-group name policy-id)`); until
+D11's portable group authority lands, every other group is ungoverned by name.
+
 Three consequences, each a §6 theorem.
 
 **A peer cannot widen a group's policy.** `fn-pol-current-unchanged-by-foreign-delta`
