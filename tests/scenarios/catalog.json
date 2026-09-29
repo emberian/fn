@@ -2188,32 +2188,47 @@
       "id": "SCN-076",
       "title": "The operator walk: one installed fn from nothing to a recovered node on two scratch nodes",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "HST-008",
         "HST-009"
       ],
       "steps": [
         "Install the production image with packaging/install-native.sh into a scratch prefix; every later command is PREFIX/bin/fn.",
-        "Write a small-community fn.toml with `mission`; ask status, health and run before init; init with a profile word, then init.",
-        "Enrol a login; peer two nodes; start both; status and health live; post; post over the article bound.",
-        "Add a peer that answers 501 to MODE STREAM; post; watch the dial.",
-        "Stop, back up, post two more; on a copy with rewritten paths upgrade the profile, rollback-check the kept config and the snapshot, restore the snapshot and recover.",
-        "SIGKILL the owner; status, recover, run, health.",
-        "rollback-check --snapshot between two stores whose first transaction holds different articles of equal encoded length, the store one transaction longer; between a store and its own earlier copy after it was compacted; with the store's writer lock held exclusively."
+        "Write a small-community fn.toml with `mission`; ask status, health and run before init; init with a profile word, then init; init again; show the port; set the path identity; status and health offline.",
+        "Enrol a login; peer two nodes; start both; status live; post; the peer's log names the fed article; health live; post over the article bound.",
+        "Give a node a streaming peer that answers MODE STREAM with 501, and one that answers another refusal; post to each.",
+        "Stop, back up the node folder (docs/operator.md section 9), start, post two more, stop; restore the backup on a copy with rewritten paths; recover, status, run; post the backup's article and a later one.",
+        "SIGKILL the owner; status, recover, run, health, status."
       ],
       "expected": [
-        "Before init: refused NO-STORE exit 1 (specs/host.md \"CLI exit codes\", HST-009: the refused class; exit 6 before outcome-algebra) with the init line, never a fault; init with a profile word under a mission is usage 5 naming what init accepts; the non-streaming peer receives MODE STREAM once and the owner logs its stop; rollback-check --snapshot prints the count of transactions the snapshot loses; after the crash recover exits 0 and run serves the store.",
-        "The equal-counter, different-content snapshot is refused snapshot-not-a-prefix (exit 1: not an earlier state of this history), never counted as one lost transaction; the compacted store's earlier copy is counted through its pack (loses 1 of 4); a held store is refused (already locked), never read unlocked."
+        "Before init: refused NO-STORE exit 1 with the init line, never a fault (specs/host.md \"CLI exit codes\", HST-009); init with a profile word under a mission is usage 5 (MISSION-FIXES-PROFILE) and writes no store; init again is refused STORE-EXISTS; health of a node not running is exit 18 (not-running).",
+        "The 501 peer receives MODE STREAM once and is fed with IHAVE on the same connection, the owner logging mode-stream-unsupported once and health exit 0 (fn-fc-mode-stream-unsupported-falls-back-to-ihave); the peer answering any other refusal receives MODE STREAM once, is stopped by name (reason=mode-stream-refused) and not dialled again for new work, health exit 26 unavailable-peer (fn-fc-mode-stream-refusal-stops-the-dial).",
+        "The restored copy recovers and serves the backup's state: the backup's article is a DUPLICATE, a later one is ACCEPTED; after the SIGKILL the control socket file stays, status and recover exit 0 and the restarted owner's health is 0."
       ],
       "evidence": [
         "planning/evidence/operator-walk-2026-09-26/walk.sh",
         "planning/evidence/operator-walk-2026-09-26.md",
         "tests/acl2/native-operator-tests.lisp",
-        "planning/evidence/rollback-history-2026-09-26.md",
-        "planning/evidence/outcome-algebra-2026-09-26.md"
+        "planning/evidence/outcome-algebra-2026-09-26.md",
+        "planning/evidence/operator-walk-2026-09-29/native-ow5.log"
       ],
-      "retirement_note": "D34 removed rollback-check --snapshot, the walk item its implementation evidenced (tests.test_native_rollback_history, deleted); the walk is re-evidenced by the batch."
+      "execution_scope": "Native, through the installed launcher on scratch loopback nodes (stores on durable local storage, FN_TEST_DURABLE_TMP), one host; D34 retired the walk's upgrade rehearsal and rollback-check (one store format, a new release is a fresh install): the backup step is the operator guide's copy of the stopped node folder. The walk script planning/evidence/operator-walk-2026-09-26/walk.sh is the 2026-09-26 record, superseded by the module.",
+      "implementation": {
+        "test": "tests.test_native_operator_walk",
+        "cases": [
+          "test_the_installed_image_is_the_production_image",
+          "test_before_init_every_verb_is_refused_no_store_and_init_takes_no_profile_word",
+          "test_two_peered_nodes_carry_a_post_and_refuse_one_over_the_article_bound",
+          "test_a_peer_answering_501_to_mode_stream_is_fed_with_ihave",
+          "test_a_peer_refusing_mode_stream_otherwise_is_stopped_by_name_and_not_redialled",
+          "test_backup_of_the_stopped_node_restored_on_a_copy_and_recovered",
+          "test_sigkill_of_the_owner_then_status_recover_run_and_health"
+        ],
+        "native": true,
+        "log": "planning/evidence/operator-walk-2026-09-29/native-ow5.log",
+        "record": "planning/evidence/operator-walk-2026-09-26.md"
+      }
     },
     {
       "id": "SCN-075",
