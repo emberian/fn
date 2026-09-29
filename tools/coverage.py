@@ -876,6 +876,23 @@ def dump_here(out: Path, with_host: bool, timeout: int, run=subprocess.run) -> i
               "launcher; farm HOSTS load_acl2; `coverage.py dump --host BOX` sets it)",
               file=sys.stderr)
         return 2
+    # One coherent set for the umbrella, under the CERTIFYING launcher (the
+    # cache's identity): remote_check's per-book `certs.py install` left
+    # pairs that do not compose on hbox (include-book owner failed on its
+    # certificate), and every host ld after it failed with it.
+    certifying = os.environ.get("FN_ACL2")
+    if certifying:
+        installed = run([sys.executable, str(ROOT / "tools" / "certs.py"), "--root", str(ROOT),
+                         "--acl2", certifying, "install-set", "books/image-world"],
+                        cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+        said = (installed.stdout or b"")
+        said = said.decode("utf-8", "replace") if isinstance(said, bytes) else said
+        print("coverage dump --here: certs.py install-set books/image-world: "
+              + " ".join(said.split()[-24:]), file=sys.stderr)
+        if installed.returncode != 0:
+            print("coverage dump --here: NOT RUN -- the umbrella's certificate set did not "
+                  "install from the cache (see above)", file=sys.stderr)
+            return 2
     if not (ROOT / "books" / "image-world.cert").is_file():
         print("coverage dump --here: NOT RUN -- books/image-world has no certificate in "
               "this tree (python3 tools/certs.py install-set books/image-world, with the "
@@ -900,6 +917,9 @@ def dump_here(out: Path, with_host: bool, timeout: int, run=subprocess.run) -> i
     for finding in findings:
         print(f"coverage dump --here: FAIL {finding}", file=sys.stderr)
     ok = not findings and world and finished and out.is_file()
+    if not ok and out.is_file():
+        # A partial world is not the world: never leave it where `build` reads.
+        out.rename(out.with_suffix(".partial.json"))
     print(f"coverage dump --here: {'ok' if ok else 'FAILED'} in "
           f"{time.monotonic() - started:.0f} s on {launcher} "
           f"({'with' if with_host else 'WITHOUT'} the host files); "

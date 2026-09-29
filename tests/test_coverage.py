@@ -372,6 +372,33 @@ class DumpTests(unittest.TestCase):
                 self.assertEqual(coverage.dump_here(Path("/tmp/x.json"), True, 5), 2)
             self.assertIn("FN_LOAD_ACL2 is unset", err.getvalue())
 
+    def test_here_installs_the_umbrella_set_first_and_moves_a_partial_dump_aside(self):
+        import io, contextlib, subprocess
+        calls = []
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / "world.json"
+
+            def run(argv, **kwargs):
+                calls.append(argv)
+                if "install-set" in argv:
+                    return subprocess.CompletedProcess(argv, 0, b"installed 700 missing 0")
+                out.write_text("{}")
+                return subprocess.CompletedProcess(
+                    argv, 0, f"{coverage.DUMP_WORLD_OK}\nACL2 Error in X\n".encode())
+            env = {"FN_LOAD_ACL2": "/l/tls256k", "FN_ACL2": "/l/tls64k"}
+            with mock.patch.dict(os.environ, env), \
+                    mock.patch.object(Path, "is_file", lambda self: True
+                                      if self.name == "image-world.cert"
+                                      else os.path.isfile(self)), \
+                    contextlib.redirect_stderr(io.StringIO()) as err:
+                code = coverage.dump_here(out, True, 5, run=run)
+            self.assertEqual(code, 1)
+            self.assertEqual(calls[0][-4:], ["--acl2", "/l/tls64k", "install-set",
+                                             "books/image-world"])
+            self.assertFalse(out.exists())
+            self.assertTrue((Path(directory) / "world.partial.json").exists())
+            self.assertIn("FAIL in tools/coverage_dump.lisp", err.getvalue())
+
     def test_host_drives_remote_check_with_the_load_only_launcher(self):
         import io, contextlib, subprocess
         from types import SimpleNamespace
