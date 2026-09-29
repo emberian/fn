@@ -1433,6 +1433,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-time-bars-tests \
 	tests/acl2/tls-handshake-budget-tests \
 	tests/acl2/owner-cold-line-tests \
+	books/owner-resource-line \
+	tests/acl2/owner-resource-line-tests \
 	books/arena-reader-pins \
 	tests/acl2/arena-reader-pins-tests \
 	books/feed-restart-domain \

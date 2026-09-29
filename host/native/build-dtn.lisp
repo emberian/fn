@@ -244,6 +244,7 @@
 ; octet-list helpers store-host defines above it, as run_store.py's bridge does.
 (ld "host/config-host.lisp" :ld-error-action :error)
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
+(ld "host/page-read-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
 ; host/native/operator.lisp (loaded below) asks fn-native-auth-host-max-octets
 ; for `operator account-hash's credential file bound.

@@ -56,3 +56,28 @@
           (0 7 11 200 64 999) :read-resources-unavailable nil t :settled
           (216 0 1 0 1) :stale :read-file-held :evicted :closed :already-installed
           (0 0 0 0 1) 1)))
+
+(defun prh-preview-run (fn-page-read-pool)
+  (declare (xargs :mode :program :stobjs fn-page-read-pool))
+  (let ((offline (fn-owner-page-read-registration-mode fn-page-read-pool))
+        (offline-close (fn-owner-page-read-close-preview 11 fn-page-read-pool)))
+    (mv-let (installed fn-page-read-pool)
+      (fn-owner-page-read-install '(10000 0 2 1 10) 8 3000 4 fn-page-read-pool)
+      (let ((funded (fn-owner-page-read-registration-mode fn-page-read-pool)))
+        (mv-let (registered fn-page-read-pool)
+          (fn-owner-page-read-register 11 fn-page-read-pool)
+          (let ((before (fn-owner-page-read-ledger fn-page-read-pool))
+                (preview (fn-owner-page-read-close-preview 11 fn-page-read-pool)))
+            (mv (list offline offline-close installed funded registered preview
+                      (equal before (fn-owner-page-read-ledger fn-page-read-pool)))
+                fn-page-read-pool))))))))
+(defun prh-preview-exec ()
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-page-read-pool
+    (mv-let (result fn-page-read-pool) (prh-preview-run fn-page-read-pool) result)))
+(assert!
+ (equal (prh-preview-exec)
+        '(:unfunded-offline :unfunded-offline :installed :funded-pool :registered :closable t)))
+(assert-event
+ (and (eq (symbol-class 'fn-owner-page-read-registration-mode (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-owner-page-read-close-preview (w state)) :common-lisp-compliant)))

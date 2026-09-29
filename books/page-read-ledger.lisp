@@ -74,6 +74,20 @@
 
 ; Retirement also owes the independently carried extent/read-pin verdict.
 ; This boundary rejects outstanding charged reads and cached buffers itself.
+; Preview allocates no changed ledger and authorizes no refund. The host
+; physically closes only :closable; ambiguous close fences before fn-prl-close.
+(defun fn-prl-close-preview (ledger file)
+  (declare (xargs :guard t))
+  (let* ((key (list :incarnation file))
+         (bindings (fn-prl-nth 3 ledger))
+         (entry (fn-prl-binding key bindings))
+         (row (if (consp entry) (cdr entry) nil)))
+    (cond ((fn-prl-file-heldp file bindings) :read-file-held)
+          ((not (and (equal (fn-prl-nth 1 row) :incarnation)
+                     (true-listp (fn-prl-nth 1 ledger))
+                     (true-listp (fn-prl-nth 0 row)))) :stale)
+          (t :closable))))
+
 (defun fn-prl-close (ledger file)
   (declare (xargs :guard t))
   (let* ((key (list :incarnation file))
@@ -209,4 +223,4 @@
 
 (in-theory (disable fn-prl-make fn-prl-nth fn-prl-token fn-prl-admit fn-prl-settle
                     fn-prl-binding fn-prl-remove fn-prl-remove-aux fn-prl-evict fn-prl-register
-                    fn-prl-file-heldp fn-prl-close))
+                    fn-prl-file-heldp fn-prl-close-preview fn-prl-close))

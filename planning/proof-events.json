@@ -17155,6 +17155,34 @@
           "name": "fn-bpnf-family-next-aux-answers-the-first-ready-row"
         }
       ]
+    },
+    {
+      "id": "PRF-1065",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prl-admit-preserves-pool-funding"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-completion-refunds-at-most-once"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-settle-never-reuses-identity"
+        }
+      ],
+      "pending_subject": "Guard-verified stobj adapter calls these subjects; native caller integration, matching proof manifest/image and allocator/profile refinement pending."
+    },
+    {
+      "id": "PRF-1073",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orln-a-refused-cold-line-is-answered-unavailable"
+        }
+      ],
+      "pending_subject": "Owner program adapter calls core subject; native served admission/refusal routing pending."
     }
   ]
 }
