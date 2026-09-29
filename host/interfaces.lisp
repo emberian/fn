@@ -159,6 +159,9 @@
   :exempt ((argv-octets "a list of argument octet lists, preflighted (fn-native-operator-host-preflight)")
            (config-octets "read by fnn-operator-read-config, bounded; NIL when absent")))
 
+(definterface fn-owner-apply-limit-profile
+  :class ::program)
+
 (definterface fn-owner-control-submit
   :class :program
   :kinds ((msgid-octets fn-cbor-octet-listp) (group-octets fn-octet-list-listp))
@@ -1568,6 +1571,9 @@
   :class ::program)
 
 (definterface fn-owner-limit-decided
+  :class ::program)
+
+(definterface fn-owner-limit-use
   :class ::program)
 
 (definterface fn-owner-live-post-config
