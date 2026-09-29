@@ -4657,7 +4657,9 @@
         "PRF-901",
         "PRF-924",
         "PRF-925",
-        "PRF-926"
+        "PRF-926",
+        "PRF-931",
+        "PRF-932"
       ],
       "verification": [
         "proof",
