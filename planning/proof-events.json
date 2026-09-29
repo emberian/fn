@@ -16803,10 +16803,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-irc-rix-ocfg-complete-is-rix"
         },
         {
