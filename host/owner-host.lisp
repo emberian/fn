@@ -41,6 +41,7 @@
 ; S3b: the native export request/status decisions belong to the full image.
 (include-book "../books/owner-export-request")
 (include-book "../books/snapshot-capture-lease")
+(include-book "../books/snapshot-prepare")
 ; Row S10 (lane operability-2): a refused control post completion names the
 ; Store's word on the reply and the line.
 (include-book "../books/owner-control-post-reason")

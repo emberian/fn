@@ -1659,3 +1659,14 @@ its deferred verdict. A stale callback cannot clear a newer capture at the
 same frontier. Source file versions and maintenance resource reservations
 still need their own actual lifetime/refinement, so the adapter is not yet
 wired to a running request.
+
+The first resumable preparer component is
+`fnn-snapshot-prepare-configured-fold`, driven by guard-verified ACL2
+`fn-osp-cpr-tick`. The continuation carries the unconsumed config and event
+lists by pointer and yields after each input transition. It preserves the
+original paused checkpoint fold, including the configuration records after
+the last event staying unconsumed, every refusal, and its position.
+One-input progress is not a byte-cost bound of the inner configuration or
+event operation. The remaining summary folds, canonical-row preparation,
+history-image build/commit and write-map construction must have their own
+resumable funded phases before the producer uses this component.

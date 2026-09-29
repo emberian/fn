@@ -4395,6 +4395,22 @@ reads run as a :control quantum; the thread's registration is the roster's."
                 (setf (fnn-owner-service-publisher service) thread)
                 (push thread (fnn-owner-service-workers service)))))))))))
 
+(defun fnn-snapshot-prepare-configured-fold (configs records)
+  "Resume the captured prefix's paused configuration fold one tick at a time.
+Each continuation owns its unconsumed lists by pointer.  This is a preparer
+component; the other checkpoint summary and history-image phases must also
+be resumable and funded before the producer controller uses the result."
+  (let ((cursor (fnn-core 'fn-osp-cpr-begin configs records)))
+    (loop
+      (fnn-checkpoint-yield "snapshot-prepare-configured" nil)
+      (let ((tick (fnn-core 'fn-osp-cpr-tick
+                            (first cursor) (second cursor) (third cursor)
+                            (fourth cursor) (fifth cursor))))
+        (case (first tick)
+          (:done (return (second tick)))
+          (:continue (setq cursor (rest tick)))
+          (otherwise (fnn-fault "invalid configured snapshot preparation tick")))))))
+
 (defun fnn-snapshot-write-captured-checkpoint (target captured position profile)
   "Write the captured whole Store into TARGET's complete checkpoint.
 Caller owns the shared publication scratch, pins the captured arena/version

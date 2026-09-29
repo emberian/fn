@@ -4604,3 +4604,6 @@
 ; S7 O(1) owner capture/release; caller remains pending funded producer.
 (definterface fn-owner-osn-capture :class :program)
 (definterface fn-owner-osn-release :class :program)
+
+(definterface fn-osp-cpr-begin :class :common-lisp-compliant)
+(definterface fn-osp-cpr-tick :class :common-lisp-compliant)

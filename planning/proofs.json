@@ -17833,6 +17833,29 @@
         "host/owner-host.lisp"
       ],
       "progress_note": "Clean persvati osll61 REPL: 10 forms zero refusal, 0.01s/2198 steps, source book encapsulated; owner adapter admission/full image matching native pending."
+    },
+    {
+      "id": "PRF-1077",
+      "title": "Resumable snapshot configured-prefix preparation retains exact paused-fold value and consumes one input per accepted tick",
+      "statement": "Subject fn-osp-cpr-tick called by fnn-snapshot-prepare-configured-fold. fn-osp-cpr-tick-refines-the-paused-fold equates its completed or retained continuation value to fn-sco-cpr-prefix, including refusal position and leaving configurations after the last event paused. Each continue consumes exactly one config or event; configured-state preservation is established without revalidation of the carried state on the executable path. This counts input transitions, not a proven byte/work bound of the inner config/event operation. Full checkpoint summary/canonical-row preparation and page commit remain unfunded/nonresumable dependencies, so this component is not full producer completion.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-040"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-osp-cpr-tick-refines-the-paused-fold",
+        "fn-osp-cpr-continue-consumes-exactly-one-input",
+        "fn-osp-cpr-continue-preserves-configured-state"
+      ],
+      "evidence": [
+        "books/snapshot-prepare.lisp",
+        "tests/acl2/snapshot-prepare-tests.lisp",
+        "host/native/owner.lisp"
+      ],
+      "progress_note": "Found via REPL ospp61; source refinement and progress admitted, guard corrected with maintained config carry lemmas. Clean full source+literal nonempty/later-config teeth recheck ospt63 pending; no native or certificate claim."
     }
   ]
 }

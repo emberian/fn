@@ -244,6 +244,7 @@
 (include-book "deflate-inflate")
 (include-book "owner-checkpoint-open")
 (include-book "owner-export-request")
+(include-book "snapshot-capture-lease")
 (include-book "owner-control-post-reason")
 (include-book "peer-transit-authority")
 (include-book "owner-reclaim-conns")

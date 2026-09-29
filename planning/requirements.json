@@ -5652,7 +5652,8 @@
         "PRF-1068",
         "PRF-1069",
         "PRF-1071",
-        "PRF-1074"
+        "PRF-1074",
+        "PRF-1077"
       ],
       "verification": [
         "proof",
@@ -5665,7 +5666,9 @@
         "books/snapshot-publication.lisp",
         "tests/acl2/snapshot-publication-tests.lisp",
         "books/snapshot-capture-lease.lisp",
-        "tests/acl2/snapshot-capture-lease-tests.lisp"
+        "tests/acl2/snapshot-capture-lease-tests.lisp",
+        "books/snapshot-prepare.lisp",
+        "tests/acl2/snapshot-prepare-tests.lisp"
       ],
       "implementation_note": "S7 producer in development on codex/operability-producer; grammar and bounded copy cursor only. Full maintained-projection recovery and resource lifetime funding remain required, no producer completion claim."
     }

@@ -362,3 +362,5 @@ anything a book does not already decide.
 - `fn-osd-`: staged snapshot completion publication (`snapshot-publication.lisp`).
 
 - `fn-osl-`: snapshot capture lease (`snapshot-capture-lease.lisp`).
+
+- `fn-osp-`: resumable snapshot preparation (`snapshot-prepare.lisp`).
