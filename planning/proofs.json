@@ -12142,7 +12142,7 @@
         "A-DURABLE-EXTENT",
         "A-DURABLE-LZ"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/payload-lz-append.lisp",
         "tests/acl2/payload-lz-append-tests.lisp",
@@ -14277,7 +14277,7 @@
         "PRF-341"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/payload-lz-append.lisp",
         "tests/acl2/payload-lz-append-tests.lisp"
@@ -17209,7 +17209,7 @@
         "PRF-023"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-node-correspondence.lisp",
         "books/stx-lace-rows.lisp",
@@ -17423,7 +17423,16 @@
         "tests/acl2/store-node-correspondence-tests.lisp"
       ],
       "planning_note": "Lane stx-model-3 (Fable), 2026-09-29, row W5b half (a): the remaining transitions of PRF-1027's note. The two arm facts of books/acceptance-payload-ref.lisp (fn-apr-other-arms-keep-articles, fn-apr-article-arm-installs-the-record-payload) are reproved locally because that book includes the owner.",
-      "note": "Teeth (tests/acl2/store-node-correspondence-tests.lisp): a positive witness per transition on a NON-EMPTY store (the second article of tests/acl2/store-node-index-tests' run: reservation, prepare, publication, finish to *sni-forked* with two articles; crash and recovery of the two-article node; the keyring installation over two rows; the refused reservation and the known abort on the one-article node; the sweep), each asserting fn-snc-correspondp and the keys themselves; a hypothesis-removal (corrupted-state) witness for the finish: a state that is fn-sn-statep with fn-sn-completion-is-last-p but whose node holds an article the rows do not is not corresponding before the finish and not after it."
+      "note": "Teeth (tests/acl2/store-node-correspondence-tests.lisp): a positive witness per transition on a NON-EMPTY store (the second article of tests/acl2/store-node-index-tests' run: reservation, prepare, publication, finish to *sni-forked* with two articles; crash and recovery of the two-article node; the keyring installation over two rows; the refused reservation and the known abort on the one-article node; the sweep), each asserting fn-snc-correspondp and the keys themselves; a hypothesis-removal (corrupted-state) witness for the finish: a state that is fn-sn-statep with fn-sn-completion-is-last-p but whose node holds an article the rows do not is not corresponding before the finish and not after it.",
+      "events": [
+        "fn-snc-finish-preserves-correspondp",
+        "fn-snc-recover-preserves-correspondp-by-recomputation",
+        "fn-snc-prepare-preserves-correspondp",
+        "fn-snc-io-preserves-correspondp",
+        "fn-snc-set-keyring-preserves-correspondp",
+        "fn-snc-refuse-reservation-preserves-correspondp",
+        "fn-snc-known-abort-preserves-correspondp"
+      ]
     }
   ]
 }

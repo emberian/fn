@@ -1534,6 +1534,7 @@
     "tests/acl2/stx-keyring-records-tests",
     "tests/acl2/stx-accept-records-tests",
     "tests/acl2/store-node-index-tests",
+    "tests/acl2/store-node-correspondence-tests",
     "tests/acl2/store-node-composite-index-tests",
     "books/scheduler-peers",
     "tests/acl2/scheduler-peers-tests",
@@ -1600,26 +1601,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1658,
-    "books_in_root_closure": 1657,
-    "roots": 1596,
-    "theorems": 27260,
-    "functions": 17850,
-    "assert_events": 22528,
+    "books": 1659,
+    "books_in_root_closure": 1658,
+    "roots": 1597,
+    "theorems": 27323,
+    "functions": 17853,
+    "assert_events": 22599,
     "must_fails": 2415,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
       "verified": 3335,
-      "declared-off": 2064,
+      "declared-off": 2066,
       "default-guarded": 9785,
-      "default-unguarded": 2666
+      "default-unguarded": 2667
     },
-    "suspect_theorems": 1204,
+    "suspect_theorems": 1206,
     "export_hygiene_warnings": 317,
     "enabled_projection_warnings": 52,
     "teeth_form_warnings": 265,
-    "include_hygiene_warnings": 2364,
+    "include_hygiene_warnings": 2367,
     "host_names_warnings": 1977,
     "hand_written_record_warnings": 18
   },
@@ -13549,6 +13550,7 @@
         "login-binding-live",
         "moderation-verbs",
         "native-admin",
+        "native-auth-profile",
         "native-config",
         "native-config-observation",
         "native-health",
@@ -20833,7 +20835,7 @@
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 2,
+      "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -27220,13 +27222,13 @@
       "book": "books/store-node-correspondence.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 11,
-      "functions": 7,
+      "theorems": 74,
+      "functions": 8,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 7,
-        "default-unguarded": 0
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -27237,10 +27239,14 @@
       "encapsulates": 0,
       "includes": [
         "store-node-invariants",
+        "store-node-resolution",
+        "store-sweep",
         "stx-lace-rows"
       ],
       "system_includes": [],
       "suspects": [
+        "fn-snc-key-of-the-pending",
+        "fn-snc-replaying-has-no-indexed-rows",
         "fn-snc-row-bytes-is-handle-bytes"
       ],
       "read_error": null
@@ -47885,6 +47891,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-node-correspondence-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 59,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-node-correspondence",
+        "store-node-index-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-node-existing-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -48939,10 +48972,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 142,
+      "assert_events": 154,
       "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 10,
+      "defconsts": 12,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -48952,7 +48985,8 @@
         "../../books/stx-epochs",
         "../../books/stx-lace-rows",
         "crypto-seam-tests",
-        "must-fail-checked"
+        "must-fail-checked",
+        "store-node-index-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -58095,9 +58129,25 @@
       ]
     },
     {
+      "theorem": "fn-snc-key-of-the-pending",
+      "book": "books/store-node-correspondence.lisp",
+      "line": 467,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-snc-replaying-has-no-indexed-rows",
+      "book": "books/store-node-correspondence.lisp",
+      "line": 840,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-indexed-rows-of and the conclusion is that arm's value"
+      ]
+    },
+    {
       "theorem": "fn-snc-row-bytes-is-handle-bytes",
       "book": "books/store-node-correspondence.lisp",
-      "line": 109,
+      "line": 118,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -63796,31 +63846,31 @@
       {
         "check": "stxt-lace-of-a-handle-node-is-nil",
         "book": "tests/acl2/stx-transit-tests.lisp",
-        "line": 776,
+        "line": 779,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "stxt-gate-never-opens-over-a-handle-node",
         "book": "tests/acl2/stx-transit-tests.lisp",
-        "line": 780,
+        "line": 783,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "stxt-index-invariant-forces-the-empty-index",
         "book": "tests/acl2/stx-transit-tests.lisp",
-        "line": 785,
+        "line": 788,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "stxt-merge-holds-without-acceptance",
         "book": "tests/acl2/stx-transit-tests.lisp",
-        "line": 790,
+        "line": 793,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "stxt-propagates-antecedent-unsatisfiable",
         "book": "tests/acl2/stx-transit-tests.lisp",
-        "line": 798,
+        "line": 801,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -66616,111 +66666,118 @@
       {
         "book": "books/image-world-dtn.lisp",
         "line": 268,
+        "include": "native-auth-profile",
+        "included": "books/native-auth-profile.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/image-world-dtn.lisp",
+        "line": 269,
         "include": "feed-filename",
         "included": "books/feed-filename.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 270,
+        "line": 271,
         "include": "owner-maintenance-request",
         "included": "books/owner-maintenance-request.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 275,
+        "line": 276,
         "include": "native-live-pages",
         "included": "books/native-live-pages.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 280,
+        "line": 281,
         "include": "bp-workflow-constructors",
         "included": "books/bp-workflow-constructors.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 281,
+        "line": 282,
         "include": "bp-channel-ingress",
         "included": "books/bp-channel-ingress.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 282,
+        "line": 283,
         "include": "bp-listener-set",
         "included": "books/bp-listener-set.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 285,
+        "line": 286,
         "include": "bp-release-authority",
         "included": "books/bp-release-authority.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 286,
+        "line": 287,
         "include": "tcpcl-host-drive",
         "included": "books/tcpcl-host-drive.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 287,
+        "line": 288,
         "include": "tcpcl-delivery",
         "included": "books/tcpcl-delivery.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 288,
+        "line": 289,
         "include": "bp-run-class",
         "included": "books/bp-run-class.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 289,
+        "line": 290,
         "include": "bp-node-profile",
         "included": "books/bp-node-profile.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 290,
+        "line": 291,
         "include": "bp-node-profile-admission",
         "included": "books/bp-node-profile-admission.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 291,
+        "line": 292,
         "include": "bp-node-host-transfer",
         "included": "books/bp-node-host-transfer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 292,
+        "line": 293,
         "include": "bp-node-host-sequence",
         "included": "books/bp-node-host-sequence.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 293,
+        "line": 294,
         "include": "bp-node-host-machine",
         "included": "books/bp-node-host-machine.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 294,
+        "line": 295,
         "include": "bp-evidence-host-names",
         "included": "books/bp-evidence-host-names.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -79410,6 +79467,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/store-node-correspondence-tests.lisp",
+        "line": 11,
+        "include": "store-node-index-tests",
+        "included": "tests/acl2/store-node-index-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/store-node-existing-tests.lisp",
         "line": 11,
         "include": "../../books/store-node-existing-invariants",
@@ -79988,6 +80052,13 @@
         "line": 20,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/stx-transit-tests.lisp",
+        "line": 26,
+        "include": "store-node-index-tests",
+        "included": "tests/acl2/store-node-index-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -84663,7 +84734,7 @@
       },
       {
         "host": "host/native/build-dtn.lisp",
-        "line": 284,
+        "line": 287,
         "name": "assert-event",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -91887,14 +91958,14 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2774,
+        "line": 2775,
         "name": "assoc-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4204,
+        "line": 4199,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
