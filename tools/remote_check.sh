@@ -3,7 +3,7 @@
 #
 #   tools/remote_check.sh BOX [--target T | --cmd 'COMMAND' | --regen]
 #                             [--fetch PATH]... [--no-dirty] [--no-install-certs]
-#                             [--tree BOXPATH] [--log BOXPATH]
+#                             [--tree BOXPATH] [--log BOXPATH] [--ship PATH]...
 #   tools/remote_check.sh attach BOX [--log BOXPATH] [--fetch PATH]...
 #
 # `attach` recovers a run whose local side died (a session limit, an ssh
@@ -26,7 +26,10 @@
 #      kept), so a regeneration left over from the last run can never keep
 #      make on an old head (batch AX, 2026-09-28);
 #   4. applies this worktree's uncommitted tracked changes (git diff HEAD) on
-#      top, unless --no-dirty; untracked files are named, never shipped;
+#      top, unless --no-dirty; untracked files are named, never shipped,
+#      except each --ship PATH (a file or directory of this worktree, e.g.
+#      an uncommitted helper script the --cmd runs), copied in as it is here
+#      (obstructions-5 item 38);
 #   5. first installs the box cache's certificates for the tree's bytes
 #      (tools/certs.py install; its summary heads the log; --no-install-certs
 #      skips it): without them make check's host_check prints NOT RUN for both
@@ -88,6 +91,7 @@ TREE=
 LOG=
 CMD=
 REGEN=0
+SHIP=
 while [ $# -gt 0 ]; do
     case $1 in
         --target) [ $# -ge 2 ] || usage; TARGET=$2; shift 2 ;;
@@ -99,6 +103,10 @@ while [ $# -gt 0 ]; do
         --regen) REGEN=1; TARGET=regen; shift ;;
         --tree) [ $# -ge 2 ] || usage; TREE=$2; shift 2 ;;
         --log) [ $# -ge 2 ] || usage; LOG=$2; shift 2 ;;
+        --ship)
+            [ $# -ge 2 ] || usage
+            case $2 in /*|*..*|'') echo "remote_check: --ship $2: a path inside this worktree" >&2; exit 2 ;; esac
+            SHIP="$SHIP $2"; shift 2 ;;
         -h|--help) usage ;;
         *) echo "remote_check: unknown option $1" >&2; usage ;;
     esac
@@ -213,7 +221,26 @@ if [ "$DIRTY" = 1 ]; then
             echo "remote_check: the uncommitted changes did not apply on $BOX" >&2; exit 3; }
     fi
 fi
-UNTRACKED=$(git -C "$ROOT" ls-files --others --exclude-standard | grep -v '^LANEDUMP.md$' | head -20)
+# --ship PATH: named untracked (or changed) files ride along as they are here.
+if [ -n "$SHIP" ]; then
+    for path in $SHIP; do
+        [ -e "$ROOT/$path" ] || { echo "remote_check: --ship $path: not in this worktree" >&2; exit 2; }
+    done
+    # shellcheck disable=SC2086
+    (cd "$ROOT" && tar cf - $SHIP) | remote "cd $TREE && tar xf -" || {
+        echo "remote_check: --ship could not copy $SHIP to $BOX" >&2; exit 3; }
+    echo "remote_check: shipped$SHIP"
+fi
+not_shipped() {
+    while IFS= read -r f; do
+        keep=1
+        for path in $SHIP; do
+            case $f in "$path"|"$path"/*) keep=0 ;; esac
+        done
+        [ $keep = 0 ] || echo "$f"
+    done
+}
+UNTRACKED=$(git -C "$ROOT" ls-files --others --exclude-standard | grep -v '^LANEDUMP.md$' | not_shipped | head -20)
 [ -z "$UNTRACKED" ] || { echo "remote_check: untracked here, NOT shipped:"; echo "$UNTRACKED" | sed 's/^/  /'; }
 
 # 5. make there, with the box's own toolchain.

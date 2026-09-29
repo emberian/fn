@@ -118,6 +118,22 @@ class RemoteCheckTests(unittest.TestCase):
         failed = self.run_check("--cmd", "exit 7")
         self.assertEqual(failed.returncode, 7, failed.stdout + failed.stderr)
 
+    def test_ship_carries_an_untracked_helper_with_the_run(self):
+        # obstructions-5 item 38.
+        (self.lane / "tools").mkdir()
+        (self.lane / "tools" / "helper.sh").write_text("echo helper-ran\n")
+        without = self.run_check("--cmd", "sh tools/helper.sh")
+        self.assertNotEqual(without.returncode, 0, without.stdout)
+        self.assertIn("NOT shipped", without.stdout)
+        self.assertIn("  tools/helper.sh", without.stdout)
+        done = self.run_check("--ship", "tools/helper.sh", "--cmd", "sh tools/helper.sh")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("helper-ran", done.stdout)
+        self.assertIn("shipped tools/helper.sh", done.stdout)
+        self.assertNotIn("  tools/helper.sh", done.stdout)  # not in the NOT-shipped list
+        refused = self.run_check("--ship", "../outside", "--cmd", "true")
+        self.assertEqual(refused.returncode, 2)
+
     def test_attach_recovers_a_run_whose_local_side_died(self):
         # obstructions-5 item 41: the box run kept going after the local side
         # died; attach re-reads its log to the end without re-running.
