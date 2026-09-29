@@ -67,18 +67,9 @@ case $(uname -s) in
   *) FN_MLDSA_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-mldsa65.so ;;
 esac
 export FN_MLDSA_LIBRARY
-# The LZ4 block encoder (vendored LZ4 1.10.0, third_party/lz4/UPSTREAM.txt),
-# built into the same lib/: the append's candidate blocks (host/native/lz4.lisp);
-# ACL2's proved decoder checks every candidate and does every read.
-sh tools/build_lz4.sh "$LIBDIR" >&2
-case $(uname -s) in
-  Darwin) FN_LZ4_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-lz4.dylib ;;
-  *) FN_LZ4_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-lz4.so ;;
-esac
-export FN_LZ4_LIBRARY
-# The COMPRESS DEFLATE outbound compressor (vendored zlib 1.3.2,
-# third_party/zlib/UPSTREAM.txt), built into the same lib/
-# (host/native/deflate.lisp); ACL2 decodes every inbound stream.
+# DEFLATE (vendored zlib 1.3.2, third_party/zlib/UPSTREAM.txt), built into
+# the same lib/ (host/native/deflate.lisp): the COMPRESS layer's outbound
+# compressor and the stored payloads' encoder; ACL2 decodes every stream.
 sh tools/build_deflate.sh "$LIBDIR" >&2
 case $(uname -s) in
   Darwin) FN_DEFLATE_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-deflate.dylib ;;

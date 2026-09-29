@@ -360,7 +360,7 @@ def recipe_synth_lz(ctx: Context, n: int, threshold: int = 64) -> None:
     compression-extents-2): the synthesized store (built in WORK/plain) is
     exported and imported by the developer image with
     FN_NATIVE_IMPORT_COMPRESS_MIN_TEST=THRESHOLD, so every article record goes
-    through the compressed append (ACL2's plan, the LZ4 candidate, the proved
+    through the compressed append (ACL2's plan, the DEFLATE candidate, the proved
     decoder's check) exactly as a POST under `policy set compress-min-octets'
     would; then that configuration row is set, so an owner started on a copy
     keeps compressing.  A function of recipe_synth: rebuilt after any format
@@ -463,8 +463,8 @@ REGISTRY = [
                    "(OWNER-OPEN open=full-replay). Copy store/ and touch writer.lock (mode 600) "
                    "before use; seed-load.json is the seed's init line."),
     Fixture("syn100k-2k-lz", lambda c: recipe_synth_lz(c, 100000), mem="40G",
-            readme="syn100k-2k with every article record COMPRESSED (LZ4-HC block frames, "
-                   "dictionary 0, threshold 64; tools/fixtures.py recipe_synth_lz: the "
+            readme="syn100k-2k with every article record COMPRESSED (DEFLATE frames over "
+                   "the shipped dictionary, threshold 64; tools/fixtures.py recipe_synth_lz: the "
                    "synthesized store exported and imported through the compressed append), "
                    "and the `compress-min-octets 64' configuration row. `store ROOT compression' "
                    "reports it. Copy store/ and touch writer.lock (mode 600) before use."),

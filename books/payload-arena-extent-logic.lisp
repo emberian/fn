@@ -69,7 +69,7 @@
 
 ; -----------------------------------------------------------------------------
 ; COMPRESSED extents (lane compression-extents, PRF-326).  E = (FILE EOFF ELEN
-; POFF PLEN TRAILER N DICT): an LZ4 block C at [POFF, POFF+PLEN) inside the
+; POFF PLEN TRAILER N DICT): a DEFLATE stream C at [POFF, POFF+PLEN) inside the
 ; entry, decoding against the dictionary octets DICT to N octets
 ; (books/payload-lz-record.lisp).  The handle's payload is
 ; `fn-lzr-lz-value DICT C N' of C's durable octets, read through the host's

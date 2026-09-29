@@ -1865,9 +1865,12 @@ answered.
 
 RFC 8054 adds `COMPRESS DEFLATE`: after `206`, every octet in both
 directions is a raw DEFLATE stream (RFC 1951), flushed after each response
-(section 2.2.2). fn serves it and an fn extension, `COMPRESS LZ4`
-(docs/extensions/nntp-compress-lz4.md, NNT-055; the codec is held until the
-compression survey's recommendation lands).
+(section 2.2.2). fn serves it. The fn extension NNT-055
+(docs/extensions/nntp-compress-dict.md) presets a shipped dictionary, named
+by its BLAKE3 digest, in both streams and carries stored payloads as they
+are stored. It is specified but not yet served. It replaces the `COMPRESS
+LZ4` extension that was planned before the compression survey: fn uses one
+DEFLATE inflater for the wire and the store (the 2026-09-28 decision).
 
 What the RFC requires, and where fn stands:
 

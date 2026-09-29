@@ -632,3 +632,19 @@
            (equal (cadr (fn-lzr-lz-read dict c n)) (fn-lzr-lz-value dict c n)))
   :hints (("Goal" :in-theory (enable fn-lzr-lz-value))))
 
+; KEYSTONE (the served read's boundary).  The host's realizer runs the
+; payload decoder over its pooled buffers (host/native/deflate.lisp
+; fnn-pzd-decode: fn-pzd-decode-bufs): an :ok answer leaves in its output
+; buffer exactly the value A-DURABLE-LZ names.
+(defthm fn-lzr-decode-bufs-is-the-lz-value
+  (implies (and (fn-cbor-octet-listp c) (fn-cbor-octet-listp dict) (natp n)
+                (equal (car (car (fn-pzd-decode-bufs dict (len c) n c fn-zin-win fn-zin-tab
+                                                     fn-zin-out)))
+                       :ok))
+           (equal (mv-nth 3 (fn-pzd-decode-bufs dict (len c) n c fn-zin-win fn-zin-tab
+                                                fn-zin-out))
+                  (fn-lzr-lz-value dict c n)))
+  :hints (("Goal" :use ((:instance fn-pzd-decode-bufs-is-decode))
+           :in-theory (e/d (fn-lzr-lz-value)
+                           (fn-pzd-decode-bufs fn-pzd-decode-bufs-is-decode)))))
+

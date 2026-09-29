@@ -55,6 +55,10 @@
   (h sb-sys:system-area-pointer)
   (src (* sb-alien:unsigned-char)) (src-len sb-alien:long)
   (dst (* sb-alien:unsigned-char)) (dst-cap sb-alien:long))
+(sb-alien:define-alien-routine ("fn_deflate_payload" fnn-%deflate-payload) sb-alien:long
+  (dict (* sb-alien:unsigned-char)) (dict-len sb-alien:long)
+  (src (* sb-alien:unsigned-char)) (src-len sb-alien:long)
+  (dst (* sb-alien:unsigned-char)) (dst-cap sb-alien:long))
 (sb-alien:define-alien-routine ("fn_deflate_free" fnn-%deflate-free) sb-alien:void
   (h sb-sys:system-area-pointer))
 (sb-alien:define-alien-routine ("fn_deflate_version" fnn-%deflate-version) sb-alien:int)
@@ -140,6 +144,73 @@ unusable after it)."
           (subseq dst 0 got)
         (error 'fnn-owner-connection-fault :operation :compress
                :cause (format nil "zlib failed (code ~a)" got))))))
+
+;;; ---------------------------------------------------------------------------
+;;; A stored payload's candidate (books/payload-deflate.lisp; the append,
+;;; host/native/io.lisp fnn-log-compress).  UNTRUSTED: ACL2's decision
+;;; (fn-lzr-append-decide) runs the proved decoder over it before anything
+;;; is taken.
+
+(defun fnn-deflate-candidate (dict src start n cap)
+  "zlib's stream for SRC's octets [START, START+N) over the preset DICT (an
+octet vector), in at most CAP octets: an octet vector, :NONE when no stream
+fits CAP (ACL2's policy reads it as no gain), or a store fault naming
+zlib's failure (ACL2 planned the span, so that is a defect)."
+  (fnn-deflate-initialize)
+  (unless (and (integerp start) (integerp n) (<= 0 start) (<= 0 n) (<= (+ start n) (length src)))
+    (fnn-fault "deflate-encoder: the span is not inside the record"))
+  (when (<= cap 0) (return-from fnn-deflate-candidate :none))
+  (let* ((dst (make-array cap :element-type '(unsigned-byte 8)))
+         (src (coerce src '(simple-array (unsigned-byte 8) (*))))
+         (dict (coerce dict '(simple-array (unsigned-byte 8) (*))))
+         (got (sb-sys:with-pinned-objects (dict src dst)
+                (fnn-%deflate-payload
+                 (sb-alien:sap-alien (sb-sys:vector-sap dict) (* sb-alien:unsigned-char))
+                 (length dict)
+                 (sb-alien:sap-alien (sb-sys:sap+ (sb-sys:vector-sap src) start)
+                                     (* sb-alien:unsigned-char))
+                 n
+                 (sb-alien:sap-alien (sb-sys:vector-sap dst) (* sb-alien:unsigned-char))
+                 cap))))
+    (cond ((plusp got) (subseq dst 0 got))
+          ((eql got -2) :none)
+          (t (fnn-fault "deflate-encoder: zlib refused a planned span (code ~a)" got)))))
+
+;;; The served read of a stored payload (host/native/extent.lisp
+;;; fn-durable-realize-lz): ACL2's payload decoder over buffers the host
+;;; keeps in a pool (fn-pzd-decode-bufs, books/payload-deflate.lisp; KEYSTONE
+;;; fn-pzd-decode-bufs-is-decode, and books/payload-lz-record.lisp
+;;; fn-lzr-decode-bufs-is-the-lz-value: an :ok answer is the value
+;;; A-DURABLE-LZ names).  The decoder makes every buffer it reads, so a
+;;; pooled set carries nothing from one payload to the next.
+
+(defvar *fnn-pzd-pool* nil)
+(defvar *fnn-pzd-lock* (sb-thread:make-mutex :name "fn payload decoder buffers"))
+
+(defun fnn-pzd-buffers ()
+  (or (sb-thread:with-mutex (*fnn-pzd-lock*) (pop *fnn-pzd-pool*))
+      (let ((sizes (fnn-core 'fn-zin-buffer-sizes)))
+        (list (fnn-zin-private-octets 4096)
+              (fnn-zin-private-octets (getf sizes :window))
+              (fnn-zin-private-octets (getf sizes :table))
+              (fnn-zin-private-octets 4096)))))
+
+(defun fnn-pzd-decode (dict c n)
+  "ACL2's decode of the stored stream C (octets, a list) over the dictionary
+DICT (a list) to N octets: (:ok . OCTET-LIST) or ACL2's (:error WHY)."
+  (let* ((bufs (fnn-pzd-buffers))
+         (in (first bufs))
+         (m (length c)))
+    (fn-octets$c-reserve m in)
+    (replace (the fnn-octets (svref in 0)) c)
+    (setf (svref in 1) m)
+    (destructuring-bind (answer win tab out)
+        (fnn-call 'fn-pzd-decode-bufs dict m n in (second bufs) (third bufs) (fourth bufs))
+      (prog1 (if (and (consp answer) (eq (first answer) :ok))
+                 (cons :ok (coerce (subseq (svref out 0) 0 (svref out 1)) 'list))
+               answer)
+        (sb-thread:with-mutex (*fnn-pzd-lock*)
+          (push (list in win tab out) *fnn-pzd-pool*))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The inbound stream of one connection: ACL2's inflater over private

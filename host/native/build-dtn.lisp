@@ -268,9 +268,6 @@
         (load "host/native/io.lisp")
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
-        ; The LZ4 block encoder of the compressed append (lib/libfn-lz4;
-        ; untrusted: ACL2's proved decoder checks every candidate).
-        (load "host/native/lz4.lisp")
         ; The COMPRESS DEFLATE layer (RFC 8054): mux.lisp serves it here too.
         (load "host/native/deflate.lisp")
         ; Select once during construction, before any diagnostic module loads.
@@ -294,7 +291,6 @@
         (fnn-digest-reset)
         (load "host/native/signatures.lisp")
         (fnn-hsig-initialize)
-        (fnn-lz4-initialize)
         (fnn-deflate-initialize)
         (defun fn-native-entry (st)
           (declare (ignore st))
@@ -304,8 +300,6 @@
           (fnn-digest-startup)
           (fnn-hsig-reset)
           (fnn-hsig-initialize)
-          (fnn-lz4-reset)
-          (fnn-lz4-initialize)
           (fnn-deflate-reset)
           (fnn-deflate-initialize)
           (fnn-main)

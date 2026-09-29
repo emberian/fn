@@ -27,7 +27,7 @@
 ; it compressed, and NIL otherwise.  The span is ACL2's: R decodes as a record
 ; (the codec, books/records-seam.lisp) and its payload opens at K
 ; (books/payload-extent.lisp fn-arx-record-suffix-len; checked, never
-; assumed).  A span above zlib's one-call input (a uInt) is not planned (the host
+; assumed).  A span above the host encoder's one-call input (2^30 - 1) is not planned (the host
 ; primitive's domain; the policy keeps R).  With MIN = 0 the plan is NIL for
 ; every record (`fn-lzr-append-plan-off'): the host takes R, byte for byte
 ; what it took before this book.
@@ -51,9 +51,9 @@
 ; -----------------------------------------------------------------------------
 ; 1. The plan.
 
-; zlib's avail_in is a uInt (third_party/zlib/zconf.h, 1.3.2): the largest
-; source the host's one-call encoder takes.  The decoder has no such bound.
-(defconst *fn-lzr-encoder-max-input* 4294967295)
+; The largest source the host's one-call encoder takes (host/native/
+; fn-deflate.c fn_deflate_payload: 2^30 - 1).  The decoder has no such bound.
+(defconst *fn-lzr-encoder-max-input* 1073741823)
 
 (defthm fn-lzr-decoded-record-p
   (implies (fn-record-result-okp (fn-record-decode-exact r))
