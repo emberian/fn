@@ -17287,6 +17287,10 @@
         {
           "kind": "theorem",
           "name": "fn-pio-close-waits-for-every-worker"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-successive-file-issues-have-distinct-identities"
         }
       ]
     },
