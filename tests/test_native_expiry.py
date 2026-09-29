@@ -303,7 +303,7 @@ class DeveloperExpiryTests(ExpiryMixin, unittest.TestCase):
             auto = re.compile(rb"CHECKPOINT auto sequence=(\d+) ")
             before = len(self.owner_lines(owner, auto, 0))
             asked = node.operator("store", "checkpoint", timeout=600, expect=EXIT.OK)
-            self.assertIn(b"requested", asked.stdout + asked.stderr)
+            self.assertIn(b"accepted operator checkpoint", asked.stdout + asked.stderr)
             published = self.owner_lines(owner, auto, before + 1)
             self.assertEqual(len(published), before + 1, owner.stderr.since(0)[-3000:])
             sequence = int(auto.search(published[-1]).group(1))
