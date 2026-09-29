@@ -13595,6 +13595,14 @@
         {
           "kind": "theorem",
           "name": "fn-zpl-pool-okp-of-nil"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zpl-pool-check-is-pool-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zpl-ready-window-is-list"
         }
       ]
     }

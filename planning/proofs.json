@@ -13733,14 +13733,17 @@
       "status": "uncertified-at-current-digest",
       "evidence": [
         "books/deflate-pool.lisp",
+        "books/deflate-pool-check.lisp",
         "tests/acl2/deflate-pool-tests.lisp",
         "host/native/deflate.lisp"
       ],
-      "progress_note": "Lane compress-3 (Opus 5.5, 2026-09-29): REPL-green on hbox; certification in persvati run-20260929T042101Z-6c3f. Open: a witness that evaluates fn-zpl-pool-okp of a returned pool (non-executable; needs an executable twin).",
+      "progress_note": "Lane compress-3 (Opus 5.5, 2026-09-29): certified persvati certify-20260929T044758Z-3044112. Lane compress-4: books/deflate-pool-check.lisp's fn-zpl-pool-check is the invariant's executable twin (KEYSTONE fn-zpl-pool-check-is-pool-okp, on fn-zpl-ready-window-is-list: the ready window is 32 KiB of zeros, the preset, zeros); tests/acl2/deflate-pool-tests.lisp evaluates it on the pool and window each pooled read returned (t, t) and, labelled corrupted-state, on a window with one cell above DIRTY flipped and on a forged pool (nil, nil).",
       "events": [
         "fn-zpl-decode-bufs-is-decode",
         "fn-zpl-decode-bufs-is-the-lz-value",
-        "fn-zpl-pool-okp-of-nil"
+        "fn-zpl-pool-okp-of-nil",
+        "fn-zpl-pool-check-is-pool-okp",
+        "fn-zpl-ready-window-is-list"
       ]
     },
     {
