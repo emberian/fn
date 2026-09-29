@@ -335,6 +335,18 @@
     (and work-id
          (fn-bpaj-find-intent work-id (fn-bpaj-intents joined)))))
 
+; One more record at the end of the journal's intents or facts, in constant
+; stack (lane depth-debt-2, PRF-919): this book verifies no guards, so the
+; host's *1* call of fn-bpaj-apply-record ran binary-append's recursion, one
+; frame per intent or fact already joined; this function is guard-verified,
+; so its :exec runs.
+(defun fn-bpaj-snoc (xs x)
+  (declare (xargs :guard t))
+  (mbe :logic (append xs (list x))
+       :exec (fn-ag-append xs (list x))))
+
+(verify-guards fn-bpaj-snoc)
+
 ; Result is (okp joined-state).  Legacy context-first records are accepted only
 ; before this journal has observed its first request intent.
 (defun fn-bpaj-apply-record (joined store r fn-arena)
@@ -352,7 +364,7 @@
             (if (or prior context) (list nil joined)
               (list t (fn-bpaj-make-state
                        (fn-bpaj-receiver joined)
-                       (append (fn-bpaj-intents joined) (list r))
+                       (fn-bpaj-snoc (fn-bpaj-intents joined) r)
                        (fn-bpaj-facts joined) t))))))
        ((equal kind :request-transit-context)
         (let ((intent (fn-bpaj-context-intent joined r)))
@@ -373,7 +385,7 @@
                 (list t (fn-bpaj-make-state
                          (fn-bprr-nth 1 answer)
                          (fn-bpaj-intents joined)
-                         (append (fn-bpaj-facts joined) (list r)) t)))))))
+                         (fn-bpaj-snoc (fn-bpaj-facts joined) r) t)))))))
        ((equal kind :request-context)
         (if (fn-bpaj-strictp joined) (list nil joined)
           (let ((answer (fn-bprr-apply-record

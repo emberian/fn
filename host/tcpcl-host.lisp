@@ -142,16 +142,35 @@
 ; loop's whole event stream in one call, with no socket and no host in the way;
 ; tools/tcpcl_lab.py compares the two digests.
 
+; Guard-verified (lane depth-debt-2, PRF-919): the carry and the events are
+; octets and events of the whole trace, and an unverified function's *1*
+; appended them one control-stack frame per element.  The :exec is the fold
+; with the session's functions called through ec-call and the appends in
+; constant stack (fn-ag-append).
 (defun fn-tcl-host-fold (s carry steps acc)
-  (declare (xargs :measure (len steps)))
-  (if (not (consp steps))
-      (list s acc carry)
-    (let ((r (fn-tcl-drive s (append carry (car (cdr (car steps))))
-                           (car (car steps)))))
-      (fn-tcl-host-fold (fn-tcl-result-session r)
-                        (fn-tcl-result-unconsumed r)
-                        (cdr steps)
-                        (append acc (fn-tcl-result-events r))))))
+  (declare (xargs :measure (len steps) :guard t :verify-guards nil))
+  (mbe
+   :logic
+   (if (not (consp steps))
+       (list s acc carry)
+     (let ((r (fn-tcl-drive s (append carry (car (cdr (car steps))))
+                            (car (car steps)))))
+       (fn-tcl-host-fold (fn-tcl-result-session r)
+                         (fn-tcl-result-unconsumed r)
+                         (cdr steps)
+                         (append acc (fn-tcl-result-events r)))))
+   :exec
+   (if (not (consp steps))
+       (list s acc carry)
+     (let ((r (ec-call (fn-tcl-drive s (fn-ag-append carry (fn-ag-car (fn-ag-cdr (fn-ag-car steps))))
+                                     (fn-ag-car (fn-ag-car steps))))))
+       (fn-tcl-host-fold (ec-call (fn-tcl-result-session r))
+                         (ec-call (fn-tcl-result-unconsumed r))
+                         (cdr steps)
+                         (fn-ag-append acc (ec-call (fn-tcl-result-events r))))))))
+
+(verify-guards fn-tcl-host-fold
+  :hints (("Goal" :in-theory (disable fn-tcl-drive))))
 
 (defun fn-tcl-host-replay (role local now steps)
   (let ((s (fn-tcl-host-initial role local now)))
