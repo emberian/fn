@@ -70,7 +70,7 @@
 
 ; fn-bpn-nth agrees with nth inside a true list (the deletion record
 ; recognizer is stated with nth, the authorization with fn-bpn-nth).
-(defthm fn-bpn-nth-is-nth-on-true-lists
+(defthm fn-bpnf-nth-is-nth-within-len
   (implies (and (natp n) (true-listp x) (< n (len x)))
            (equal (fn-bpn-nth n x) (nth n x)))
   :hints (("Goal" :in-theory (enable fn-bpn-nth fn-cbor-ag-car fn-cbor-ag-cdr))))
