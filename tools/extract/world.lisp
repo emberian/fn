@@ -291,4 +291,5 @@
 (include-book "../../books/bp-run-class")
 (include-book "../../books/bp-node-profile")
 (include-book "../../books/bp-node-profile-admission")
+(include-book "../../books/bp-node-host-transfer")
 (include-book "../../books/definterface")

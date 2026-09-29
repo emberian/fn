@@ -14121,6 +14121,95 @@
           "name": "fn-lgs-open-plan-scan-ignores-covered"
         }
       ]
+    },
+    {
+      "id": "PRF-942",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-pub-admission-decides-by-what-is-present"
+        }
+      ]
+    },
+    {
+      "id": "PRF-943",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-authorized-injected-carried-submission-event-decides"
+        }
+      ]
+    },
+    {
+      "id": "PRF-944",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-receive-keeps-the-three-outcomes-distinct"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-receive-of-host-send-hands-over-the-adu"
+        }
+      ]
+    },
+    {
+      "id": "PRF-951",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otb-answer-early-answers-each-untold-member-once"
+        }
+      ]
+    },
+    {
+      "id": "PRF-952",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-read-refusal-text-refuses-exactly-what-does-not-expand"
+        }
+      ]
+    },
+    {
+      "id": "PRF-953",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgdm-refusal-text-refuses-exactly-a-break-or-damage"
+        }
+      ]
+    },
+    {
+      "id": "PRF-954",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-smid-durability-warning-warns-exactly-when-the-mount-is-unsafe"
+        }
+      ]
+    },
+    {
+      "id": "PRF-955",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-anchor-rp-outcome-is-terminal-only-after-the-directory-barrier"
+        }
+      ]
+    },
+    {
+      "id": "PRF-956",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct"
+        }
+      ]
     }
   ]
 }

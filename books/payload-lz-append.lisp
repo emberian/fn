@@ -363,3 +363,47 @@
                         (:instance fn-lzr-record-is-not-a-frame))
            :in-theory (disable fn-lzr-append-decide fn-lzr-expand fn-lzr-append-decide-framed-expands
                                fn-lzr-record-is-not-a-frame fn-record-result-okp))))
+
+; KEYSTONE (PRF-952).  The refusal line the host prints for an append
+; (host/native/io.lisp, fnn-fault on a refused decision) exists exactly when
+; the encoder's block does not decode to the record's span -- a lying
+; encoder -- over the decision as decided: never for a span the policy
+; rejects, never when the encoder answered :none, never for a frame; a
+; decision without a refusal line is :kept (the log takes R) or :framed.
+(defthm fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder
+  (let ((d (fn-lzr-append-decide dict dict-id min r k n candidate)))
+    (and (iff (fn-lzr-append-refusal-text d)
+              (and (fn-lzr-span-okp r k n) (fn-lzr-u32p dict-id)
+                   (not (eq candidate :none))
+                   (not (equal (fn-lz-decode dict candidate n)
+                               (list :ok (take n (nthcdr k r)))))))
+         (implies (fn-lzr-append-refusal-text d)
+                  (and (stringp (fn-lzr-append-refusal-text d))
+                       (equal d (list :refused :lz-candidate))))
+         (implies (not (fn-lzr-append-refusal-text d))
+                  (and (or (eq (car d) :kept) (eq (car d) :framed))
+                       (implies (eq (car d) :kept)
+                                (equal (fn-lzr-append-octets d r) r))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lzr-append-refusal-text fn-lzr-append-decide
+                            fn-lzr-append-octets)
+                           (fn-lz-decode fn-lzr-seal fn-lzr-compress-p
+                            fn-lzr-span-okp fn-lzr-u32p take nthcdr)))))
+
+; KEYSTONE (PRF-952).  The refusal line the host prints for a read
+; (host/native/io.lisp, the open's refusal) exists exactly when the record
+; does not expand: a frame that does not parse, a dictionary this store does
+; not hold, or a block that does not decode; a record that is not a frame
+; expands to itself and has no refusal line.
+(defthm fn-lzr-read-refusal-text-refuses-exactly-what-does-not-expand
+  (let ((x (fn-lzr-expand dicts z)))
+    (and (iff (fn-lzr-read-refusal-text x) (not (eq (car x) :ok)))
+         (implies (fn-lzr-read-refusal-text x)
+                  (stringp (fn-lzr-read-refusal-text x)))
+         (implies (not (fn-lzr-magicp z)) (not (fn-lzr-read-refusal-text x)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lzr-read-refusal-text fn-lzr-expand)
+                           (fn-lz-decode fn-lzr-parse fn-lzr-magicp take nthcdr
+                            assoc-equal)))))
