@@ -191,6 +191,39 @@ class ClosureKeyTests(unittest.TestCase):
                              certs.content_hash(second / "tests/acl2/mid-tests.lisp"))
             self.assertEqual(len(after[1]), 3)
 
+    def test_a_comment_or_layout_edit_keeps_the_key_and_a_form_edit_does_not(self):
+        # ACL2's book-hash (ACL2_BOOK_HASH_ALISTP=NIL) is a checksum of the
+        # forms it reads, so a comment edit keeps every certificate valid
+        # (planning/evidence/cert-images-2026-09-28.md); the key agrees.
+        with tempfile.TemporaryDirectory() as directory:
+            root = worktree(directory)
+            before = certs.closure_key(root, "tests/acl2/mid-tests")[0]
+            (root / "books/base.lisp").write_text(
+                '; a new header comment\n(in-package   "ACL2")\n#| a block\n'
+                'comment |#\n(defun fn-b (x)\n  x) ; trailing\n')
+            self.assertEqual(certs.closure_key(root, "tests/acl2/mid-tests")[0], before)
+            for edited in ('(in-package "ACL2")\n(defun fn-b (x) "doc" x)\n',
+                           '(in-package "ACL2")\n(defun fn-b (y) y)\n',
+                           '(in-package "ACL2")\n(defun |fn-B| (x) x)\n'):
+                (root / "books/base.lisp").write_text(edited)
+                self.assertNotEqual(
+                    certs.closure_key(root, "tests/acl2/mid-tests")[0], before, edited)
+
+    def test_canonical_text_keeps_every_token_and_drops_only_delimiters(self):
+        canonical = certs.ledger.canonical_text
+        same = [('(a  b)\n', '(a b)'), ('(a ; c\n b)', '(a b)'),
+                ('#| x #| y |# z |#(a)', '(a)'), ('(a)\r\n\f', '(a)')]
+        for left, right in same:
+            self.assertEqual(canonical(left), canonical(right), left)
+        # Each pair reads differently to ACL2 and must scan differently.
+        different = [('|Foo|', 'foo'), ('"a  b"', '"a b"'), ('"a;b"', '"a"'),
+                     ('|a b|', '|a  b|'), ('a\\ b', 'a b'), ('#\\;', '#\\'),
+                     ('ab', 'a b'), ('a#|b|#c', 'ac'), ('a\xa0b', 'a b')]
+        for left, right in different:
+            self.assertNotEqual(canonical(left), canonical(right), (left, right))
+        with self.assertRaises(certs.ledger.ReadError):
+            canonical('(a "unterminated)')
+
     def test_a_system_include_is_not_part_of_the_closure(self):
         with tempfile.TemporaryDirectory() as directory:
             books = dict(BOOKS)
@@ -330,6 +363,37 @@ class PublishTests(unittest.TestCase):
             self.assertEqual(len(meta["closure"]), 2)
             self.assertEqual(certs.publish(root, cache).already, 1)
 
+    def test_a_run_keeps_vouching_for_a_book_after_a_comment_edit(self):
+        # The manifest records forms beside bytes; read against today's tree
+        # a comment-edited book is still the book that run certified, so the
+        # verdict readers (green_check, certified_claims) keep citing it.
+        with tempfile.TemporaryDirectory() as directory:
+            root = worktree(directory, certified=["books/mid"])
+            manifest = manifest_for(root, ["books/mid"], write=False)
+            manifest["source_form_digests_sha256"] = {
+                path: certs.form_hash(root / path)
+                for path in manifest["source_digests_sha256"]}
+            recorded = dict(manifest["source_digests_sha256"])
+            (root / "books/base.lisp").write_text(
+                '(in-package "ACL2")\n;; why fn-b is the identity\n(defun fn-b (x) x)\n')
+            legacy = json.loads(json.dumps(manifest))
+            del legacy["source_form_digests_sha256"]
+            listing = certs.closure_listing(certs.closure(root, "books/mid"))
+            self.assertEqual(certs.closure_drift(listing, certs.read_as_current(legacy, root)
+                                                 ["source_digests_sha256"]),
+                             ["books/base.lisp"])
+            current = certs.read_as_current(manifest, root)
+            self.assertEqual(certs.closure_drift(listing, current["source_digests_sha256"]), [])
+            self.assertEqual(current["source_digests_sha256_as_recorded"], recorded)
+            self.assertIn("books/mid", certs.certified_books([current]))
+            # A form edit is drift again.
+            (root / "books/base.lisp").write_text(
+                '(in-package "ACL2")\n(defun fn-b (x) (+ 1 x))\n')
+            again = certs.read_as_current(manifest, root)
+            self.assertEqual(certs.closure_drift(
+                certs.closure_listing(certs.closure(root, "books/mid")),
+                again["source_digests_sha256"]), ["books/base.lisp"])
+
     def test_a_certificate_with_no_manifest_is_never_published(self):
         # The poisoning case: a stale pair from another checkout, sitting
         # beside a book nothing in this evidence tree certified.
@@ -462,6 +526,38 @@ class InstallTests(unittest.TestCase):
             self.assertEqual(report.installed, 0)
             self.assertIn("books/mid", report.uncached)
             self.assertFalse((target / "books/mid.cert").exists())
+
+    def test_a_comment_edited_dependency_is_still_a_cache_hit(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            _, cache = self.published(one, ["books/mid"])
+            target = worktree(two)
+            (target / "books/base.lisp").write_text(
+                '(in-package "ACL2")\n; explained at last\n(defun fn-b (x) x)\n')
+            report = certs.install(target, cache)
+            self.assertEqual(report.installed, 1)
+            self.assertTrue(certs.valid_looking(target / "books/mid.cert"))
+
+    def test_rekey_files_a_byte_keyed_entry_under_its_form_key(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            root, cache = self.published(one, ["books/mid"])
+            # Make the entry what a publish before the form key wrote.
+            new = entry(cache, root, "books/mid", Path(self.FARM))
+            old = cache / certs.legacy_byte_key(root, "books/mid") / new.name
+            old.parent.mkdir(parents=True)
+            new.rename(old)
+            meta = json.loads((old / "meta.json").read_text())
+            meta["closure"] = certs.closure_listing(certs.closure(root, "books/mid"))
+            (old / "meta.json").write_text(json.dumps(meta))
+            target = worktree(two)
+            self.assertEqual(certs.install(target, cache).installed, 0)
+            report = certs.rekey(target, cache)
+            self.assertEqual((report.rekeyed, report.already), (1, 0))
+            self.assertEqual(certs.rekey(target, cache).already, 1)
+            self.assertEqual(certs.install(target, cache).installed, 1)
+            # A tree whose bytes differ from the old key's is not rekeyed.
+            (target / "books/base.lisp").write_text(
+                '(in-package "ACL2")\n(defun fn-b (x) (+ 1 x))\n')
+            self.assertEqual(certs.rekey(target, cache).rekeyed, 0)
 
     def test_a_differing_local_certificate_is_replaced_by_the_verified_one(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
