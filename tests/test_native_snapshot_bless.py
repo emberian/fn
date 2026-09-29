@@ -55,6 +55,17 @@ class SnapshotBlessTests(scp.StateCheckpointFixture):
         blessed = self.bless(copied.store_path)
         self.assertEqual(blessed.returncode, EXIT_OK, blessed.stdout + blessed.stderr)
         self.assertIn(b"transactions=3:", blessed.stdout)
+        # Blessing opens only the named copy, even when the configured source
+        # has gone away.  Restore the source for fixture cleanup afterward.
+        hidden_source = self.store.with_name(self.store.name + "-offline")
+        self.store.rename(hidden_source)
+        try:
+            independent = self.bless(copied.store_path)
+            self.assertEqual(independent.returncode, EXIT_OK,
+                             independent.stdout + independent.stderr)
+            self.assertIn(b"transactions=3:", independent.stdout)
+        finally:
+            hidden_source.rename(self.store)
         # A real subsequent open/served retrieval verifies the copied store
         # can run with its copied keys.  The producer is still a stopped copy.
         copied.start()
