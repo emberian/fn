@@ -118,9 +118,21 @@ class LimitsLiveTests(AutoCheckpointFixture):
         # Offline, `status' names the three values, funded=none.
         self.assertIn("limit max-history-octets requested=805306368 funded=none "
                       "ceiling=4294967295", self.op("status").stdout.decode())
-        # The next open serves the recorded profile.
-        lines = self.status_lines()
-        self.assertTrue(any("history-bound=805306368" in line for line in lines), lines)
+        # The inexpensive stopped report describes the sealed header, not
+        # the replayed effective profile.  Explicit replay opens the history.
+        replayed = self.op("status", "--replay")
+        self.assertEqual(replayed.returncode, EXIT_OK, replayed.stderr.decode())
+        self.assertIn("history-bound=805306368", replayed.stdout.decode())
+        # A restarted owner funds the recorded value.  Its default launcher
+        # reserves the new profile; the first owner deliberately used 4 GiB.
+        again = self.node.start()
+        funded = "limit max-history-octets requested=805306368 funded=805306368 ceiling=4294967295"
+        self.assertIn(funded, self.op("status").stdout.decode())
+        with self.node.session() as client:
+            reply, payload = client.multiline("ARTICLE <beyond-0@example.invalid>")
+            self.assertTrue(reply.startswith(b"220 "), reply)
+            self.assertIn(b"Subject: beyond 0\r\n", payload)
+        self.node.stop(process=again)
 
     def test_a_lowering_below_use_is_refused_by_name_and_records_nothing(self):
         self.init_small()
