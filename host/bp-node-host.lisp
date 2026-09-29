@@ -19,6 +19,7 @@
 (include-book "../books/bp-run-class")
 (include-book "../books/bp-node-profile")
 (include-book "../books/bp-node-profile-admission")
+(include-book "../books/bp-node-host-transfer")
 
 ; -----------------------------------------------------------------------------
 ; Endpoint IDs from the command line.
@@ -55,11 +56,8 @@
 ; Sending.  NIL when the ADU or the peer is not one this node can address;
 ; otherwise the octets of one complete BPv7 bundle.
 
-(defun fn-bpn-host-send (config peer adu sequence obs)
-  (if (and (fn-bpn-configp config) (fn-bpp-eidp peer) (fn-bpb-datap adu)
-           (fn-bpp-timep sequence) (fn-clock-observationp obs))
-      (fn-bpn-send config peer adu sequence obs)
-    nil))
+; fn-bpn-host-send is books/bp-node-host-transfer.lisp's (guard-verified,
+; with the receive boundary's keystones).
 
 ; What the host prints about what it just authored, without opening a record:
 ; (creation-time sequence lifetime payload-length).
@@ -172,29 +170,10 @@
             nil))))))
 
 ; -----------------------------------------------------------------------------
-; Receiving.  The flat result is
-;
-;   (outcome reason adu payload-length)
-;
-; with OUTCOME one of :accepted, :refused or :uncertain -- the three kept
-; distinct all the way out to the host's exit code -- REASON the book's
-; keyword, and ADU the payload octets when there are any.
-
-(defun fn-bpn-host-receive (config octets obs)
-  (if (not (and (fn-bpn-configp config) (fn-cbor-octet-listp octets)
-                (fn-clock-observationp obs)))
-      (list :refused :host-arguments nil 0)
-    (let ((r (fn-bpn-receive config octets obs)))
-      (cond ((fn-bpn-acceptedp r)
-             (list :accepted nil (fn-bpn-received-adu r)
-                   (len (fn-bpn-received-adu r))))
-            ((fn-bpn-uncertainp r)
-             (list :uncertain (fn-bpn-outcome-reason r) nil 0))
-            (t (list :refused (fn-bpn-outcome-reason r) nil 0))))))
-
-(defun fn-bpn-host-receive-outcome (r) (nth 0 r))
-(defun fn-bpn-host-receive-reason (r) (nth 1 r))
-(defun fn-bpn-host-receive-adu (r) (nth 2 r))
+; Receiving: fn-bpn-host-receive and its three flat-result readers are
+; books/bp-node-host-transfer.lisp's (guard-verified, with the keystones
+; fn-bpn-host-receive-keeps-the-three-outcomes-distinct and
+; fn-bpn-host-receive-of-host-send-hands-over-the-adu, PRF-944).
 
 ; -----------------------------------------------------------------------------
 ; One process result.  The class of a BP verb's run and its exit code are

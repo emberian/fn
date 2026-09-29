@@ -2457,6 +2457,38 @@ when that store already exists is `fn-native-operator-init-outcome'."
        (fn-native-config-control-path (fn-native-operator-result-config result)))
     nil))
 
+;; Q16 (lane online-reclaim): `store reclaim' on a running owner is a
+;; request for the owner's reclaim pass (books/owner-reclaim.lisp), sent as
+;; the administrative vector below over the same route as the compaction
+;; request; with no owner it runs offline as before.  The second word names
+;; the mode: "request" (record the instant, then reclaim), "recorded" (the
+;; configuration's recorded instant), "dry-run" (decide, write nothing).
+(defun fn-native-operator-result-reclaim-planp (result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-operator-result-status result) :accepted)
+       (equal (fn-native-operator-result-command result) "store")
+       (member-equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                     '(:reclaim :reclaim-dry-run :reclaim-recorded))
+       t))
+
+(defun fn-native-operator-result-reclaim-argv (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-reclaim-planp result)
+      (list (fn-record-string-octets "reclaim")
+            (fn-record-string-octets
+             (let ((action (fn-ncfg-first (fn-native-operator-result-arguments result))))
+               (cond ((equal action :reclaim-dry-run) "dry-run")
+                     ((equal action :reclaim-recorded) "recorded")
+                     (t "request")))))
+    nil))
+
+(defun fn-native-operator-result-reclaim-control-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-reclaim-planp result)
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
+
 (defun fn-native-operator-result-status-control-path-octets (result)
   (declare (xargs :guard t))
   (if (or (fn-native-operator-result-status-planp result)

@@ -62,9 +62,77 @@
                   (fn-record-content-subject r) (fn-record-release-evidence r)
                   *fn-rclp-history-unit* (fn-record-stamp r)))
 
-; CTX is (RULE NOW HOLDERS VERDICTS ARTICLES EXPIRED) of the opened store:
-; EXPIRED the Message-IDs the operator's expiry policy expires at NOW
-; (books/expiry `fn-xpy-expired-set'; nil, or absent, when there is none).
+; The articles indexed by Message-ID (row A8): the first article naming a
+; Message-ID is the one bound, as `fn-find-article's walk finds it
+; (`fn-rclp-article-index-finds-the-article').  The context carries it as a
+; fast alist, so one record's step is one hashed lookup where the walk was
+; linear in the Store's articles (485 s at 100k for `store reclaim
+; --dry-run', every record walking the list).  The lookup asks `make-fast-alist'
+; of the slot: the context's own index is already fast, so that is a table
+; probe; a context built another way (a witness's literal list) is made fast
+; there rather than breaking on ACL2's slow-alist discipline.
+(defun fn-rclp-article-index (articles)
+  (declare (xargs :guard t))
+  (if (consp articles)
+      (cons (cons (fn-article-msgid (car articles)) (car articles))
+            (fn-rclp-article-index (cdr articles)))
+    nil))
+
+(defthm fn-rclp-article-index-finds-the-article
+  (equal (cdr (hons-assoc-equal msgid (fn-rclp-article-index articles)))
+         (fn-find-article msgid articles)))
+
+; The index as the host builds it: in a loop (a 25,000-article Store
+; exhausted the control stack through the recursion above), each article
+; hons-acons'd onto the front in reverse history order, so the first
+; article naming a Message-ID is the binding `hons-get' finds.  It IS the
+; index (`fn-rclp-index-built-is-the-index').
+(defun fn-rclp-index-into (xs acc)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (fn-rclp-index-into (cdr xs)
+                          (hons-acons (fn-article-msgid (car xs)) (car xs) acc))
+    acc))
+
+(defun fn-rclp-reversed (xs acc)
+  (declare (xargs :guard t))
+  (if (consp xs) (fn-rclp-reversed (cdr xs) (cons (car xs) acc)) acc))
+
+(defun fn-rclp-index-built (articles)
+  (declare (xargs :guard t))
+  (fn-rclp-index-into (fn-rclp-reversed articles nil) nil))
+
+(local
+ (defthm fn-rclp-reversed-is-revappend
+   (equal (fn-rclp-reversed xs acc) (revappend xs acc))))
+
+(local
+ (defthm fn-rclp-index-into-is-revappend
+   (equal (fn-rclp-index-into xs acc)
+          (revappend (fn-rclp-article-index xs) acc))))
+
+(local
+ (defthm fn-rclp-article-index-of-append
+   (equal (fn-rclp-article-index (append a b))
+          (append (fn-rclp-article-index a) (fn-rclp-article-index b)))))
+
+(local
+ (defthm fn-rclp-article-index-of-rev
+   (equal (fn-rclp-article-index (rev xs)) (rev (fn-rclp-article-index xs)))))
+
+(local
+ (defthm fn-rclp-article-index-true-listp
+   (true-listp (fn-rclp-article-index xs))
+   :rule-classes :type-prescription))
+
+(defthm fn-rclp-index-built-is-the-index
+  (equal (fn-rclp-index-built articles)
+         (fn-rclp-article-index articles)))
+
+; CTX is (RULE NOW HOLDERS VERDICTS ARTICLES EXPIRED INDEX) of the opened
+; store: EXPIRED the Message-IDs the operator's expiry policy expires at NOW
+; (books/expiry `fn-xpy-expired-set'; nil when there is none); INDEX
+; `fn-rclp-article-index' of ARTICLES (`fn-rclp-ctx-expiring' builds it).
 ; An article is released by the rule or by the policy, and kept by every
 ; holder either way (books/expiry-verdict
 ; `fn-xpy-releasablep-is-rule-or-expired-and-unheld').
@@ -72,7 +140,7 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-xpy-releasablep (fn-rcl-nth 0 ctx) (fn-rcl-nth 1 ctx) (fn-rcl-nth 2 ctx)
                       (fn-rcl-nth 3 ctx) (fn-rcl-nth 5 ctx)
-                      (fn-find-article msgid (fn-rcl-nth 4 ctx))))
+                      (cdr (hons-get msgid (make-fast-alist (fn-rcl-nth 6 ctx))))))
 
 ; Whether the event OCTETS is rewritten: a legacy article record, not already
 ; a tombstone, whose article the context finds reclaimable, and whose
@@ -337,7 +405,8 @@
 
 (local
  (defthm rewrites-p-means-reclaimable
-   (implies (fn-rclp-rewrites-p octets (list rule now h verdicts articles expired))
+   (implies (fn-rclp-rewrites-p octets (list rule now h verdicts articles expired
+                                             (fn-rclp-article-index articles)))
             (fn-xpy-releasablep rule now h verdicts expired
                                 (fn-find-article
                                  (fn-record-msgid (fn-record-result-record
@@ -372,7 +441,8 @@
                  (and (equal rule '(:keep-forever))
                       (not (fn-xpy-expiredp (fn-article-msgid article) expired))))
              (equal (nth i (fn-rclp-events events
-                                           (list rule now h verdicts articles expired)))
+                                           (list rule now h verdicts articles expired
+                                                 (fn-rclp-article-index articles))))
                     (nth i events))))
   :hints (("Goal" :in-theory (disable fn-rclp-event fn-rclp-rewrites-p
                                       fn-rcl-some-names-p fn-rcl-obligations
@@ -412,7 +482,8 @@
                  (fn-rcl-verdict-heldp (fn-article-msgid article) verdicts)
                  (and (equal rule '(:keep-forever))
                       (not (fn-xpy-expiredp (fn-article-msgid article) expired))))
-             (equal (fn-rclp-event o (list rule now h verdicts articles expired))
+             (equal (fn-rclp-event o (list rule now h verdicts articles expired
+                                           (fn-rclp-article-index articles)))
                     o)))
   :hints (("Goal" :in-theory (disable fn-rclp-rewrites-p
                                       fn-rcl-some-names-p fn-rcl-obligations
@@ -549,9 +620,9 @@
 ; without one.
 (defun fn-rclp-ctx-expiring (rule now s expired)
   (declare (xargs :guard t :verify-guards nil))
-  (list rule now (fn-rcl-store-holders s) (fn-sn-verdicts s)
-        (fn-state-articles (fn-node-acceptance (fn-sn-node s)))
-        expired))
+  (let ((articles (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
+    (list rule now (fn-rcl-store-holders s) (fn-sn-verdicts s) articles expired
+          (fn-rclp-index-built articles))))
 
 (defun fn-rclp-ctx (rule now s)
   (declare (xargs :guard t :verify-guards nil))

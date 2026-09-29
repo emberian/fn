@@ -152,3 +152,20 @@
                    (not (equal (otbt-replay (fn-otm-init)
                                             (append *otbt-e1-bad* (cons (fn-otm-start-entry 99 nil) *otbt-e2*)))
                                (otbt-replay (fn-otm-init) *otbt-e2*)))))
+
+; Teeth for fn-otb-answer-early-answers-each-untold-member-once (PRF-951).
+; Reachable positive witness: the stall's release above, every conjunct by
+; name.  Hypothesis removal: a member already told (the second release, with
+; a newcomer) is not told again and the newcomer is; a duplicated member is
+; told once.
+(assert-event
+ (let* ((r (fn-otb-answer-early *otbt-l2* '(3 4 5))) (now (car r)) (l2 (cadr r)))
+   (and (no-duplicatesp-equal now) (subsetp-equal now '(3 4 5))
+        (not (intersectp-equal now (fn-otb-told *otbt-l2*)))
+        (subsetp-equal '(3 4 5) (fn-otb-told l2))
+        (equal (fn-otb-told l2) (append (fn-otb-told *otbt-l2*) now))
+        (equal (fn-otb-gen l2) (fn-otb-gen *otbt-l2*))
+        (equal (fn-otb-open l2) (fn-otb-open *otbt-l2*)))))
+(assert-event (equal (fn-otb-answer-early *otbt-l2s* '(3 4 5 6))
+                     (list '(6) '(2 t (3 4 5 6)))))
+(assert-event (equal (car (fn-otb-answer-early *otbt-l2* '(3 3 4))) '(3 4)))

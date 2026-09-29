@@ -91,8 +91,9 @@
 ; fn-rclp-events-never-touch-a-held-article: witness per disjunct, and the
 ; conclusion fails with none of them (the releasing rule, no holder).
 ; (1) a BP obligation names the article.
+(defconst *rpt-articles* (fn-state-articles (fn-node-acceptance (fn-sn-node *rpt-s*))))
 (defconst *rpt-bp* (list *rpt-rule* 0 (list nil nil nil (list *rpt-msgid*))
-                         nil (fn-state-articles (fn-node-acceptance (fn-sn-node *rpt-s*)))))
+                         nil *rpt-articles* nil (fn-rclp-article-index *rpt-articles*)))
 (assert-event (fn-rcl-some-names-p (fn-rcl-obligations (nth 2 *rpt-bp*)) *rpt-msgid*
                                    (fn-article-memberships *rpt-art*)))
 (assert-event (equal (nth (rpt-i) (fn-rclp-events (rpt-events) *rpt-bp*))
@@ -100,7 +101,7 @@
 ; (2) the verdict list needs its payload.
 (defconst *rpt-vd* (list *rpt-rule* 0 (list nil nil nil nil)
                          (list (cons *rpt-msgid* '(:unverified :signature 0)))
-                         (fn-state-articles (fn-node-acceptance (fn-sn-node *rpt-s*)))))
+                         *rpt-articles* nil (fn-rclp-article-index *rpt-articles*)))
 (assert-event (equal (nth (rpt-i) (fn-rclp-events (rpt-events) *rpt-vd*))
                      (nth (rpt-i) (rpt-events))))
 ; (3) keep-forever.
@@ -110,6 +111,15 @@
 ; conclusion fails.
 (must-fail-checked (assert-event (equal (nth (rpt-i) (rpt-new)) (nth (rpt-i) (rpt-events)))))
 
+; fn-rclp-article-index-finds-the-article (row A8): the index finds the
+; fixture's article; over the articles twice (every Message-ID bound twice)
+; the index agrees with the walk; an absent Message-ID finds nothing.
+(assert-event (equal (cdr (hons-get *rpt-msgid* (fn-rcl-nth 6 *rpt-ctx*))) *rpt-art*))
+(assert-event (equal (cdr (hons-assoc-equal *rpt-msgid*
+                                            (fn-rclp-article-index
+                                             (append *rpt-articles* *rpt-articles*))))
+                     (fn-find-article *rpt-msgid* (append *rpt-articles* *rpt-articles*))))
+(assert-event (equal (cdr (hons-get "<absent@rpt.invalid>" (fn-rcl-nth 6 *rpt-ctx*))) nil))
 ; fn-rclp-event-never-touches-a-held-article (KEYSTONE, PRF-119/PRF-088, the
 ; per-record rewrite the host calls): the article's record O under the
 ; theorem's own context (RULE NOW H VERDICTS ARTICLES EXPIRED), one witness
@@ -126,15 +136,15 @@
 ; (1) a BP obligation names the article.
 (assert-event (and (fn-rcl-some-names-p (fn-rcl-obligations *rpt-hbp*) *rpt-msgid*
                                         (fn-article-memberships *rpt-art*))
-                   (equal (fn-rclp-event (rpt-o) (list *rpt-rule* 0 *rpt-hbp* nil *rpt-arts* nil))
+                   (equal (fn-rclp-event (rpt-o) (list *rpt-rule* 0 *rpt-hbp* nil *rpt-arts* nil (fn-rclp-article-index *rpt-arts*)))
                           (rpt-o))))
 ; (2) the verdict list needs its payload.
 (assert-event (and (fn-rcl-verdict-heldp *rpt-msgid* *rpt-vds*)
-                   (equal (fn-rclp-event (rpt-o) (list *rpt-rule* 0 *rpt-h0* *rpt-vds* *rpt-arts* nil))
+                   (equal (fn-rclp-event (rpt-o) (list *rpt-rule* 0 *rpt-h0* *rpt-vds* *rpt-arts* nil (fn-rclp-article-index *rpt-arts*)))
                           (rpt-o))))
 ; (3) keep-forever, and the expiry policy expires nothing.
 (assert-event (and (not (fn-xpy-expiredp *rpt-msgid* nil))
-                   (equal (fn-rclp-event (rpt-o) (list '(:keep-forever) 0 *rpt-h0* nil *rpt-arts* nil))
+                   (equal (fn-rclp-event (rpt-o) (list '(:keep-forever) 0 *rpt-h0* nil *rpt-arts* nil (fn-rclp-article-index *rpt-arts*)))
                           (rpt-o))))
 ; Removal witness: no holder names it, no verdict needs it, the rule
 ; releases it -- and the rewrite changes the octets.
@@ -142,7 +152,7 @@
                                              (fn-article-memberships *rpt-art*)))
                    (not (fn-rcl-verdict-heldp *rpt-msgid* nil))
                    (not (equal *rpt-rule* '(:keep-forever)))
-                   (not (equal (fn-rclp-event (rpt-o) (list *rpt-rule* 0 *rpt-h0* nil *rpt-arts* nil))
+                   (not (equal (fn-rclp-event (rpt-o) (list *rpt-rule* 0 *rpt-h0* nil *rpt-arts* nil (fn-rclp-article-index *rpt-arts*)))
                                (rpt-o)))))
 ; The third disjunct's expiry conjunct separates: a Message-ID the policy's
 ; set names is expired (fn-xpy-releasablep-is-rule-or-expired-and-unheld

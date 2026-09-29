@@ -1,8 +1,9 @@
 ;; P8 / PRF-026: the served HDR :fn-verified reply is the Store's recorded
 ;; verdict, stated over the functions the host calls.
 ;;
-;; Host path (reader): host/native/owner.lisp calls fn-owner-chunk
-;; (host/owner-host.lisp), which runs fn-ocfg-read-tls-prefix; the theorem
+;; Host path (reader): host/native/owner.lisp calls fn-owner-chunk-span-at
+;; (host/owner-host.lisp), which runs fn-ocfg-read-tls-prefix over the span
+;; (fn-scr-ocfg-read-span-is-reference-under-ocl-relation); the theorem
 ;; fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix (books/owner-tls-prefix) equates that
 ;; with fn-ocfg-read over the octets it consumed, which is fn-own-read on the connection.  fn-own-read runs
 ;; the byte fold fn-served-step (books/served) over the connection's pinned
@@ -400,8 +401,8 @@
                             fn-find-article fn-nntp-hdr-line)))))
 
 ;; PRF-026 keystone over the host-called reader port.  host/native/owner.lisp
-;; (fnn-owner-action 'fn-owner-chunk ...) runs host/owner-host.lisp
-;; fn-owner-chunk, that is fn-ocfg-read-tls-prefix, equal to fn-ocfg-read over
+;; fnn-owner-handle-chunk runs host/owner-host.lisp fn-owner-chunk-span-at,
+;; that is fn-ocfg-read-tls-prefix over the span (fn-scr-ocfg-read-span-is-reference-under-ocl-relation), equal to fn-ocfg-read over
 ;; the octets it consumed (all of them unless a submission made it yield) by
 ;; fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix, whose reply is (car (fn-own-read ...)).
 ;; The reply's verdict field is the connection's pinned verdict for the

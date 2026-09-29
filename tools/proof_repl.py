@@ -141,6 +141,10 @@ other lanes' idle sessions under the old 2-hour default):
     proof_repl.py start NAME BOOK --idle-timeout 90    # minutes; 0 = never
     FN_REPL_IDLE_MIN=90 proof_repl.py start NAME BOOK  # the same, as a default
     proof_repl.py reap --idle 60 [--dry-run] [--host hbox]
+    proof_repl.py gc [--each-box] [--dry-run]           # reap --idle 30 in every tree;
+                                                         # the batch runner runs it each cycle
+    proof_repl.py diff NAME BOOK [--all]   # events whose session form is not the book's
+    proof_repl.py send NAME '(a) (b)' --keep-going   # send the rest after a refusal
 
 A session with no form sent for 20 minutes (the default) stops itself: ACL2
 exits (its pool slot with it), the socket goes, and the session directory
@@ -2495,6 +2499,99 @@ def reap(args) -> int:
     return 0
 
 
+# --- gc: the reaper the batch runner runs each cycle (Q7g) -------------------------
+
+# cert-images (2026-09-29): idle sessions of finished lanes held all 22 of
+# persvati's ACL2 slots.  `gc` stops every session on the machine idle at least
+# GC_IDLE_MINUTES (in every session tree, as `reap --idle` does); `--each-box`
+# runs it on every farm box in turn.
+GC_IDLE_MINUTES = 30.0
+
+
+def gc(args) -> int:
+    if getattr(args, "each_box", False):
+        worst = 0
+        for host in sorted(REMOTE_TREES):
+            print(f"== proof_repl gc on {host}", flush=True)
+            argv = ["gc", "--idle", f"{args.idle:g}", "--host", host]
+            if args.dry_run:
+                argv.append("--dry-run")
+            try:
+                worst = max(worst, main(argv))
+            except SystemExit as stop:  # one unreachable box never hides the other
+                print(f"proof_repl gc on {host}: {stop}", flush=True)
+                worst = max(worst, 1)
+        return worst
+    return reap(argparse.Namespace(lane=None, older_than=None, idle=args.idle, all=True,
+                                   dry_run=args.dry_run, root=args.root))
+
+
+# --- diff: the session's events against the book's text (Q7g) ----------------------
+
+# owner-relation (2026-09-28): a theorem admitted in the session as a rewrite
+# rule and written to the book as :rule-classes nil gave a false green.  `diff
+# NAME BOOK` asks the session, for each named event of BOOK, whether the world's
+# event form is EQUAL to the book's form as ACL2 reads it (so whitespace and
+# comments never count).  A defund/defthmd is compared as the defun/defthm it
+# expands to; an event some other macro generates is reported "macro", not
+# compared.
+DIFF_ALIASES = {"defund": "defun", "defthmd": "defthm"}
+DIFF_VERDICT = re.compile(r"\(\s*([^\s()]+)\s+\.\s+:(SAME|DIFFERS|ABSENT|MACRO)\s*\)", re.IGNORECASE)
+
+
+def diff_items(text: str) -> list[tuple[str, str]]:
+    """(name, form) for each named event of TEXT, `local` unwrapped, aliases applied."""
+    items = []
+    for form in forms(text):
+        body = form.strip()
+        inner = re.match(r"^\(\s*local\s+(\(.*\))\s*\)$", body, re.IGNORECASE | re.DOTALL)
+        if inner:
+            body = inner.group(1)
+        head, name = head_and_name(body)
+        if not name or head in ("include-book", "in-package", "in-theory"):
+            continue
+        alias = DIFF_ALIASES.get(head)
+        if alias:
+            body = re.sub(r"^\(\s*" + re.escape(head), "(" + alias, body, count=1, flags=re.IGNORECASE)
+        items.append((name, body))
+    return items
+
+
+def diff_form(items: list[tuple[str, str]]) -> str:
+    """One ACL2 form printing (NAME . :SAME|:DIFFERS|:ABSENT|:MACRO) for each item."""
+    rows = []
+    for name, body in items:
+        rows.append(f"(cons '{name} (let ((ev (get-event '{name} (w state))) (bk '{body}))"
+                    " (cond ((null ev) :absent) ((equal ev bk) :same)"
+                    " ((not (eq (car ev) (car bk))) :macro) (t :differs))))")
+    return "(cw \"~x0~%\" (list " + " ".join(rows) + "))"
+
+
+def diff_verdicts(output: str) -> dict[str, str]:
+    return {m.group(1).lower(): m.group(2).lower() for m in DIFF_VERDICT.finditer(output)}
+
+
+def diff(args) -> int:
+    items = diff_items(book_path(args.book).read_text(encoding="utf-8"))
+    if not items:
+        print(f"proof-repl diff: no named events in {args.book}")
+        return 0
+    answer = ask(args.name, {"op": "send", "form": diff_form(items), "limit": args.limit})
+    if answer.get("error"):
+        print(brief(answer.get("output", "")))
+        return 2
+    verdicts = diff_verdicts(answer.get("output", ""))
+    counts: dict[str, int] = {}
+    for name, _ in items:
+        verdict = verdicts.get(name, "unanswered")
+        counts[verdict] = counts.get(verdict, 0) + 1
+        if verdict == "differs" or (verdict in ("absent", "macro", "unanswered") and args.all):
+            print(f"{verdict.upper():10} {name}")
+    print("proof-repl diff: " + ", ".join(f"{n} {v}" for v, n in sorted(counts.items()))
+          + f" of {len(items)} named events in {args.book}")
+    return 1 if counts.get("differs") else 0
+
+
 # --- running a session on another box ------------------------------------------
 
 # Where a lane's REPL tree lives on each box (relative paths are under the
@@ -2736,7 +2833,7 @@ def refuse_stale_remote(host: str, tree: str, relative: str,
 
 # The commands about one existing session: without --host they go to the
 # machine its start recorded.
-SESSION_COMMANDS = ("send", "send-range", "resync", "status", "stop", "probe",
+SESSION_COMMANDS = ("send", "send-range", "resync", "status", "stop", "probe", "diff",
                     "checkpoints")
 
 # Minutes `start --host BOX` waits for another lane's reservation of BOX.
@@ -2840,9 +2937,9 @@ def run_remote(args, argv: list[str]) -> int:
             raise SystemExit(f"proof-repl: --host probe: no record of session {args.name!r}'s "
                              "book here (start it with --host from this tree, or pass --book)")
         books += list(args.ld or [])
-    elif command in ("list", "reap") and not getattr(args, "no_sync", False):
+    elif command in ("list", "reap", "gc") and not getattr(args, "no_sync", False):
         extra.append("tools/proof_repl.py")  # sync_files adds the rest of tools/
-    elif command in ("send-range", "resync"):
+    elif command in ("send-range", "resync", "diff"):
         path = book_path(args.book)
         try:
             relative = path.relative_to(ROOT.resolve()).as_posix()
@@ -3133,6 +3230,22 @@ def main(argv: list[str] | None = None) -> int:
                    help="reap in TREE/build/proof-repl instead of this tree's (repeatable)")
     add_remote_options(p, sync=True)
     p.set_defaults(run=reap)
+    p = sub.add_parser("gc", help=f"stop every session idle at least {GC_IDLE_MINUTES:g} min "
+                                  "on this machine (--each-box: on every farm box)")
+    p.add_argument("--idle", type=float, default=GC_IDLE_MINUTES, metavar="MIN")
+    p.add_argument("--each-box", action="store_true", help="run it on hbox and persvati in turn")
+    p.add_argument("--dry-run", action="store_true", help="say what would be stopped")
+    p.add_argument("--root", action="append", default=None, metavar="TREE", help=argparse.SUPPRESS)
+    add_remote_options(p, sync=True)
+    p.set_defaults(run=gc)
+    p = sub.add_parser("diff", help="the session's events whose form differs from the book's "
+                                    "(a lemma edited in the book but not re-sent, or vice versa)")
+    p.add_argument("name")
+    p.add_argument("book", help="books/NAME (.lisp optional) or any file of forms")
+    p.add_argument("--all", action="store_true", help="also list absent, macro and unanswered events")
+    p.add_argument("--limit", type=float, default=None)
+    add_remote_options(p, sync=True)
+    p.set_defaults(run=diff)
     argv = list(sys.argv[1:] if argv is None else argv)
     # The remote options belong to the subcommand, but closeout-common writes
     # `proof_repl.py --host auto start ...` (the farm's and remote_check's

@@ -2562,9 +2562,9 @@
 ;
 ; The theorem above is about fn-auth-authinfo, which no host line calls.
 ; books/served.lisp fn-served-dispatch calls fn-auth-step, and
-; host/owner-host.lisp fn-owner-chunk reaches it through fn-own-read and
-; fn-served-step (the native host's socket read is host/native/owner.lisp
-; fnn-owner-read-chunk over the same entry).  This lift says it of that
+; host/owner-host.lisp fn-owner-chunk-span-at reaches it through fn-own-read
+; and fn-served-step (its read is fn-ocfg-read-tls-prefix over the span,
+; fn-scr-ocfg-read-span-is-reference-under-ocl-relation).  This lift says it of that
 ; subject: while the operator's policy is protected-only and the connection
 ; carries no TLS layer, an AUTHINFO command line -- USER or PASS, with any
 ; arguments, known name or not -- is answered with RFC 4643 section 2.3.2's
@@ -2628,7 +2628,7 @@
 ; peer role is AUTHINFO PASS, and only for a principal the pinned
 ; configuration binds to exactly one peer record (fn-auth-principal-match).
 ; Three keystones over fn-auth-step, the function books/served.lisp
-; fn-served-dispatch calls and host/owner-host.lisp fn-owner-chunk reaches
+; fn-served-dispatch calls and host/owner-host.lisp fn-owner-chunk-span-at reaches
 ; through fn-own-read and fn-served-step:
 ;
 ;   fn-auth-step-binds-a-peer-role-only-by-a-principal-login   (only way in)
@@ -3737,7 +3737,7 @@
 ;
 ; The subject is fn-auth-step-pinned, which books/served.lisp
 ; fn-served-dispatch calls for every framed event, and which
-; host/owner-host.lisp fn-owner-chunk reaches through fn-own-read (the
+; host/owner-host.lisp fn-owner-chunk-span-at reaches through fn-own-read (the
 ; carried copy books/served-carried.lisp fn-scar-auth-step-pinned is proved
 ; equal to it).  The owner's re-entry, host/owner-host.lisp
 ; fn-owner-account-outcome, feeds the (:account-outcome WORD) event through
