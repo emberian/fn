@@ -755,6 +755,10 @@
   :class ::common-lisp-compliant
   :keystones (fn-otm-wall-reading-shape fn-clkr-wall-reading-is-the-ns-decision))
 
+(definterface fn-otm-wall-seconds
+  :class ::common-lisp-compliant
+  :keystones (fn-otm-wall-seconds-is-natural fn-clkr-wall-seconds-is-the-ns-decision))
+
 (definterface fn-otm-monotonic-ms
   :class ::common-lisp-compliant
   :keystones (fn-clkr-monotonic-readings-are-the-ns-decision))
