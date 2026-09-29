@@ -113,11 +113,30 @@
                                   *fn-bpnf-stored-code* payload)
             :bad))))))
 
+; The protected prefix followed by its trailer, entered raw.  The host reaches
+; the frame through fn-bpnf-publication-authorize, which is not guard-verified
+; and so executes as its *1* counterpart: there `append' is the logic's
+; binary-append, whose raw definition takes one control-stack frame per
+; element of its first argument -- 40,721 frames of a 49,248-octet kind-5
+; image exhausted the deployed 1,024 KiB thread stack (books/heap-reservation
+; fn-heap-stack-kib; test_older_mru_wait_allows_younger_forward_and_replays,
+; the receiving node, 2026-09-29).  A guard-verified function is entered raw
+; once its guard holds, and raw `append' walks its first argument in a loop;
+; the guard itself is a raw, tail-recursive walk.  The logic is unchanged:
+; this function is enabled, so every proof over the frame still sees the
+; append.  tools/depth_check.py does not model *1* execution (the
+; obstructions record names the gap).
+(defun fn-frame-with-trailer (protected)
+  (declare (xargs :guard (fn-cbor-octet-listp protected) :verify-guards t
+                  :guard-hints (("Goal" :in-theory
+                                 (enable fn-cbor-octet-listp-implies-true-listp)))))
+  (append protected (fn-frame-trailer protected)))
+
 (defun fn-bpnf-stored-record-frame (record)
   (declare (xargs :guard t))
   (let ((protected (fn-bpnf-stored-record-protected record)))
     (if (equal protected :bad) :bad
-      (append protected (fn-frame-trailer protected)))))
+      (fn-frame-with-trailer protected))))
 
 (defun fn-bpnf-stored-from-values (values)
   (declare (xargs :guard t))
