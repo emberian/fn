@@ -310,7 +310,8 @@
 
 (definterface fn-bs-init-pub-admission
   :class ::common-lisp-compliant
-  :keystones (fn-bs-init-pub-admission-proceeds-only-on-nothing
+  :keystones (fn-bs-init-log-crash-retry-is-old-or-new
+              fn-bs-init-pub-admission-proceeds-only-on-nothing
               fn-bs-init-pub-admission-decides-by-what-is-present))
 
 (definterface fn-clock-observation

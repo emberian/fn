@@ -14176,8 +14176,8 @@
     },
     {
       "id": "PRF-942",
-      "title": "Operator init's admission decides by what is present: it proceeds exactly when neither a leftover stage nor the root exists, and each other combination is the refusal that names it",
-      "statement": "books/store-init-publication.lisp. KEYSTONE fn-bs-init-pub-admission-decides-by-what-is-present: over the antecedent as host/native/io.lisp fnn-command-init-published composes it (STAGE-VERDICT = (and stage-present (fn-bs-imp-classify stage-present root-present)), ROOT-PRESENT), the host-called fn-bs-init-pub-admission is :proceed iff neither name is present; a stage alone is (:refused :interrupted-init); a stage beside the root is (:refused :publication-uncertain); the root alone is (:refused :store-path-exists). The earlier fn-bs-init-pub-admission-proceeds-only-on-nothing took the admission as a hypothesis (coverage: hyps-only); this theorem concludes it. Teeth: tests/acl2/store-init-publication-tests.lisp (positive witness :proceed on nothing; hypothesis-removal witnesses for each present name, each checked never :proceed).",
+      "title": "Operator init's admission decides by what is present: it proceeds exactly when neither a leftover stage nor the root exists, discards exactly an unheld stage beside an absent root, and each other combination is the refusal that names it",
+      "statement": "books/store-init-publication.lisp. KEYSTONE fn-bs-init-pub-admission-decides-by-what-is-present: over the antecedent as host/native/io.lisp fnn-init-admit (called by fnn-command-init-published) composes it (STAGE-VERDICT = (and stage-present (fn-bs-imp-classify stage-present root-present)), ROOT-PRESENT, STAGE-HELD = a live init holds the stage's flock), the host-called fn-bs-init-pub-admission is :proceed iff neither name is present; :discard-stage iff a stage alone is present and unheld (PKT-894: the host removes it and asks again); a held stage alone is (:refused :init-in-progress); a stage beside the root is (:refused :publication-uncertain); the root alone is (:refused :store-path-exists). fn-bs-init-pub-admission-proceeds-only-on-nothing takes the admission as a hypothesis. Teeth: tests/acl2/store-init-publication-tests.lisp (positive witnesses :proceed on nothing and :discard-stage on an unheld stage; hypothesis-removal witnesses for the held stage and each present name, each checked neither :proceed nor :discard-stage).",
       "milestone": "M5",
       "requirements": [
         "STO-029"
@@ -15351,8 +15351,8 @@
     },
     {
       "id": "PRF-971",
-      "title": "A store action over an absent store beside an interrupted init or import names the stage (:interrupted-init / :interrupted-import, exit 1), not NO-STORE's \"run init\", which init refuses while the stage remains (PKT-781 (1))",
-      "statement": "Subject: fn-nsst-store-outcome (books/native-operator-stage.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan, with the lstat observation of the store's entries and, only when none is there, the stage init and import look up beside ROOT (host/native/io.lisp fnn-import-leftover-stage, kinds init and import); the hint the host prints is fn-nsst-result-hint (fn-native-operator-host-result-hint). KEYSTONE fn-nsst-absent-store-beside-an-init-stage-names-it: a plan that needs a store, no store entry observed, an init stage path S: status :refused, reason :interrupted-init, arguments (S), exit the refusal code, native action :none, and the hint names S and says to remove it and run init. fn-nsst-absent-store-beside-an-import-stage-names-it: the same for an import stage when no init stage is there. fn-nsst-store-outcome-without-a-stage-is-the-store-outcome: with no stage, any store entry, or a plan needing no store, the outcome is fn-native-operator-store-outcome's (PRF-130 part 1 unchanged). Scope: the stage lookup is the host's first matching directory entry; a stage beside a root holding store entries is never this refusal (the open decides).",
+      "title": "A store action over an absent store beside an interrupted init or import names the stage (:interrupted-init / :interrupted-import, exit 1), not NO-STORE's \"run init\" (PKT-781 (1))",
+      "statement": "Subject: fn-nsst-store-outcome (books/native-operator-stage.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan, with the lstat observation of the store's entries and, only when none is there, the stage init and import look up beside ROOT (host/native/io.lisp fnn-import-leftover-stage, kinds init and import); the hint the host prints is fn-nsst-result-hint (fn-native-operator-host-result-hint). KEYSTONE fn-nsst-absent-store-beside-an-init-stage-names-it: a plan that needs a store, no store entry observed, an init stage path S: status :refused, reason :interrupted-init, arguments (S), exit the refusal code, native action :none, and the hint names S and says to run init, which removes the unpublished stage (PKT-894). fn-nsst-absent-store-beside-an-import-stage-names-it: the same for an import stage when no init stage is there. fn-nsst-store-outcome-without-a-stage-is-the-store-outcome: with no stage, any store entry, or a plan needing no store, the outcome is fn-native-operator-store-outcome's (PRF-130 part 1 unchanged). Scope: the stage lookup is the host's first matching directory entry; a stage beside a root holding store entries is never this refusal (the open decides).",
       "milestone": "M5",
       "requirements": [
         "HST-008",
@@ -17378,6 +17378,31 @@
         "fn-cat-msgid-saturatedp-is-the-outcome",
         "fn-cat-index-health-is-the-build",
         "fn-cat-clear-keyed-is-nil"
+      ]
+    },
+    {
+      "id": "PRF-1040",
+      "title": "Init is old-or-new at every cut: after a crash anywhere in the init program, init's retry proceeds (discarding the unpublished stage) while no store is at ROOT, or ROOT is the complete store with its node secret",
+      "statement": "books/store-init-log-publication.lisp KEYSTONE fn-bs-init-log-crash-retry-is-old-or-new: for an input satisfying fn-bs-imp-inputp (ROOT absent before the run) over the plan fn-bs-init-log-files (profile, generation-1 configuration record, genesis, EXTENT zeros, and keys/node-secret.key last: PKT-894 moved the SEC-006 secret into the staged plan), any outcomes, any state P of the run of fn-bs-init-log-program and any crash CHOICES: with SP and RP the durable presence of the stage and ROOT in (fn-bs-crash (car P) CHOICES), the retry's admission fn-bs-init-pub-admission ((and SP (fn-bs-imp-classify SP RP)), RP, nil: no live init holds the stage) is :proceed or :discard-stage when RP is absent, and when RP is present the image is fn-bs-imp-completep for the plan. fn-bs-init-log-complete-store-carries-the-node-secret: in the complete store keys/node-secret.key is inode INO+4 with exactly the secret's octets. Host: host/native/io.lisp fnn-command-init-published (called by host/native/operator.lisp fnn-operator-execute-init) calls fnn-init-admit (fn-bs-init-pub-admission; the discard removes the stage tree, depth 1, window 64) and fnn-staged-publication with the plan and HOLD-STAGE (the stage's flock from its mkdir to the end). Scope: `operator init`; the developer `store ROOT init` (fnn-initialize, in place) resumes by rerunning and is PRF-268's; the filesystem record (STO-031) is written into the sealed stage outside the modelled plan; the byte model's crash, not a device's.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-029"
+      ],
+      "depends_on": [
+        "PRF-268",
+        "PRF-942"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-init-log-publication.lisp",
+        "tests/acl2/store-init-log-publication-tests.lisp (positive: every state of the run under the crash that keeps nothing pending and the one that keeps everything, :proceed at the first state, :discard-stage reached, the complete store with the secret at inode 4; hypothesis removal: ROOT present before the run fails the conclusion; the fixed nil: the same images with the stage held refuse :init-in-progress)",
+        "tests/test_native_init_publication.py (every INIT_PUB_CUTS cut, SIGKILL and EIO: the retry succeeds with no stage left, or the store is complete with keys/node-secret.key)",
+        "tools/power_loss.py check_init (block-level cuts in the init window)"
+      ],
+      "events": [
+        "fn-bs-init-log-crash-retry-is-old-or-new",
+        "fn-bs-init-log-complete-store-carries-the-node-secret"
       ]
     }
   ]

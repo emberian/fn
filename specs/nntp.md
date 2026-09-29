@@ -1186,7 +1186,8 @@ A file is versioned: `fn-node-secret v1` LF, the epoch (4 octets, big-endian),
 the node identity's length (2 octets) and octets, the root
 (`fn-ns-file-render`, read back by `fn-ns-file-parse`;
 `fn-ns-file-parse-of-render`). `store ROOT node-secret create [IDENTITY]` (and
-`init`) writes epoch 1 once and refuses by name when a secret exists; `store
+the developer `store ROOT init`; `operator init` stages it with the store it
+publishes, PKT-894) writes epoch 1 once and refuses by name when a secret exists; `store
 ROOT node-secret rotate [IDENTITY]` keeps the current file as
 `node-secret-E.key` and writes epoch E+1. A start reads the current file and
 every kept older epoch and hands ACL2 the ring (current first, epochs

@@ -17013,6 +17013,19 @@
           "name": "fn-cat-clear-keyed-is-nil"
         }
       ]
+    },
+    {
+      "id": "PRF-1040",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-crash-retry-is-old-or-new"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-complete-store-carries-the-node-secret"
+        }
+      ]
     }
   ]
 }
