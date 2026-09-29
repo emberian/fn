@@ -121,7 +121,7 @@ held; the buffer lets go of OCTETS afterwards."
   (plusp (fnn-extent-cache-limit)))
 
 (defun fnn-extent-entry (file eoff elen trailer)
-  (declare (ignore trailer))
+  (declare (ignorable trailer))
   "The verified protected prefix of the entry at [EOFF, EOFF+ELEN) of FILE,
 from the cache or read once (one pread of the prefix and its trailer) and
 checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
