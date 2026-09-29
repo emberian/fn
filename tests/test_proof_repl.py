@@ -843,6 +843,22 @@ class GraphTests(unittest.TestCase):
         self.assertIn("only for ACL2 toolchain(s) d5f2b9f0, and this ACL2 is 1b4169e9", text)
 
 
+class UncompiledDiagnosisTests(unittest.TestCase):
+    def test_diagnosis_names_a_cache_entry_without_its_fasl(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = worktree(temporary + "/tree")
+            cache = pathlib.Path(temporary) / "cache"
+            with mock.patch.object(proof_repl, "ROOT", root):
+                key = proof_repl.certs.closure_key(root, "books/base")[0]
+                entry = cache / key / "0123456789abcdef"
+                entry.mkdir(parents=True)
+                (entry / "meta.json").write_text(json.dumps(
+                    {"toolchain_identity": "1b4169e9" * 8, "fasl_sha256": None}))
+                graph = proof_repl.include_graph(root, "books/mid")
+                text = "\n".join(proof_repl.diagnose(graph, ["books/base"], cache, "1b4169e9" * 8))
+        self.assertIn("only without their compiled file (.fasl)", text)
+
+
 class CacheStartupTests(unittest.TestCase):
     def test_incompatible_cached_parent_and_child_refuse_without_session(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -1308,6 +1308,12 @@ def unusable_reason(entries: Path, toolchain: str | None) -> str:
                 f"{', '.join(one[:8] for one in identities)}, and this ACL2 is "
                 f"{toolchain[:8]} (another box's build: certify here, or run where "
                 "that toolchain is)")
+    mine = [meta for meta in metas
+            if not toolchain or meta.get("toolchain_identity") == toolchain]
+    if mine and not any(meta.get("fasl_sha256") for meta in mine):
+        return ("the cache holds these bytes only without their compiled file (.fasl); "
+                "installed bare the book would load uncompiled, so no set takes it "
+                "(--certify-missing certifies and compiles it)")
     return ("the cache holds certificates for these bytes, but none usable here "
             "(their ACL2 certificate alists disagree with the other books' chosen "
             "certificates, or a live worktree's pair)")

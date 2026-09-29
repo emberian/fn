@@ -111,8 +111,10 @@ names.  An install places it only with its pair and dates it no earlier than
 the certificate.  ``install-partial`` (the runner's) never installs an
 entry an earlier publisher filed without one, unless the tree already holds
 a loadable ``.fasl`` beside the same certificate: the book is named
-``uncompiled`` and certified afresh, which compiles it.  The legacy
-installers still place such a pair alone and remove any local ``.fasl``;
+``uncompiled`` and certified afresh, which compiles it; ``install-set``
+(proof_repl's and the native builds' installer) holds such an entry out of
+every set the same way, so the book is missing and named ``uncompiled``.  The
+legacy ``install`` still places such a pair alone and removes any local ``.fasl``;
 every uninstall removes it with the pair.  Reports count ``fasl_installed``
 and ``fasl_missing``.  The legacy ``install``
 command does not filter by toolchain, for fasls as for pairs.
@@ -894,6 +896,13 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
         for directory, meta in book_entries(root, cache, name):
             if not usable_origin(meta, target):
                 continue
+            if not compiled_here(directory, meta, root / f"{name}.lisp"):
+                # A pair filed without its `.fasl` (before publish refused
+                # them) would load uncompiled: the image build compiles it in
+                # core or refuses it, and a REPL session reported "fasl 660
+                # missing 7" (obstructions-3, persvati, 2026-09-29).  Such a
+                # book is `uncompiled` and missing from every set.
+                continue
             toolchain = meta.get("toolchain") or {}
             found_identity = meta.get("toolchain_identity")
             if toolchain_identity and found_identity != toolchain_identity:
@@ -1014,6 +1023,12 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
         report.books = len(required)
         best = candidates[0] if candidates else None
         report.uncached = list(best.missing if best else sorted(required))
+        target = str(root.resolve())
+        report.uncompiled = [
+            name for name in report.uncached
+            if any(usable_origin(meta, target)
+                   and not compiled_here(directory, meta, root / f"{name}.lisp")
+                   for directory, meta in book_entries(root, cache, name))]
         if purge_on_miss:
             # A closure recertification is safe only when it cannot consume a
             # leftover per-book mixture before it has rebuilt the dependency.

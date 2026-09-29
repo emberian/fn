@@ -716,6 +716,48 @@ class ConcurrentWriterTests(unittest.TestCase):
             self.assertGreater(len(relabels), 1)
 
 
+class InstallSetCompiledTests(unittest.TestCase):
+    """install-set (proof_repl's, the native builds') never takes a pair the
+    cache filed without its `.fasl`: the book is missing and `uncompiled`."""
+
+    TOOLCHAIN = certs.stable_identity(TEST_COMPATIBILITY)
+    FARM = "/farm/run-bare"
+
+    def test_a_fasl_less_entry_is_held_out_of_every_set(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            root = worktree(one, certified=["books/base", "books/mid"])
+            manifest = manifest_for(root, ["books/base", "books/mid"], write=False)
+            manifest["compiled_digests_sha256"] = {
+                n: certs.content_hash(root / f"{n}.fasl") for n in ("books/base", "books/mid")}
+            cache = Path(two) / "cache"
+            certs.publish(root, cache, [manifest], origin=self.FARM, origin_kind="run")
+            # An entry an older publisher filed bare.
+            bare = entry(cache, root, "books/base", Path(self.FARM))
+            (bare / "book.fasl").unlink()
+            meta = json.loads((bare / "meta.json").read_text())
+            (bare / "meta.json").write_text(json.dumps(dict(meta, fasl_sha256=None)))
+
+            def install(target):
+                return certs.install_artifact_set(
+                    target, cache, ["books/mid"], self.TOOLCHAIN, acl2=Path("/fixture/acl2"),
+                    pair_checker=lambda paths, pairs, acl2, root: {p: (True, True) for p in pairs})
+
+            target = worktree(two + "/target")
+            refused = install(target)
+            self.assertIsNone(refused.artifact_set)
+            self.assertEqual(refused.uncached, ["books/base"])
+            self.assertEqual(refused.uncompiled, ["books/base"])
+            self.assertFalse((target / "books/mid.cert").exists())
+            # A loadable local .fasl beside the same certificate bytes counts.
+            shutil.copy(bare / "book.cert", target / "books/base.cert")
+            (target / "books/base.fasl").write_bytes(b"FASL books/base")
+            later = time.time() + 5
+            os.utime(target / "books/base.fasl", (later, later))
+            taken = install(target)
+            self.assertIsNotNone(taken.artifact_set)
+            self.assertEqual((target / "books/base.fasl").read_bytes(), b"FASL books/base")
+
+
 class CompiledFileTests(unittest.TestCase):
     """The `.fasl` travels with its pair, keyed identically, and only with it."""
 
