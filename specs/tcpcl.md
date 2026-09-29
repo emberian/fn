@@ -255,7 +255,7 @@ that was never accepted.
 | --- | --- | --- |
 | §4.1 active sends CH first, passive waits, CH timeout | implemented (timeouts are the host's) | `fn-tcl-open`, `fn-tcl-recv-contact`; the host applies the ≤60 s contact timeout and calls `fn-tcl-tcp-closed` |
 | §4.2 Contact Header, CAN_TLS, reserved flags ignored | implemented | `fn-tcl-decode-contact`, `fn-tcl-flag-can-tls`; CAN_TLS = 0 sent (`fn-tcl-own-contact`) |
-| §4.3 magic check closes silently; version mismatch (passive: CH then SESS_TERM; active: close); Enable TLS = AND, unacceptable → Contact Failure | implemented | `fn-tcl-input-error` before contact; `fn-tcl-recv-contact` |
+| §4.3 magic check closes silently; version mismatch (passive: CH then SESS_TERM, then close in the same step -- "immediately terminate"; the rest of the peer's stream is never parsed as v4 messages and draws no MSG_REJECT, PKT-650; active: close); Enable TLS = AND, unacceptable → Contact Failure | implemented | `fn-tcl-input-error` before contact; `fn-tcl-recv-contact`; `fn-tcl-passive-version-mismatch-closes-without-reject` (PRF-977, REP-016); native: tests/test_bp_service_native.py `test_v3_contact_is_refused_without_msg_reject` |
 | §4.3 version fallback to TCPCLv3 | deferred | fn implements version 4 only; a peer's lower version is Version mismatch |
 | §4.4 TLS handshake, certificates, node ID authentication | deferred (profile slot) | wave 4 sends CAN_TLS = 0 and refuses a negotiated Enable TLS of true; the session record keeps the conjunction so a host TLS primitive can be added without a state change |
 | §4.5 message header; unknown type → MSG_REJECT Message Type Unknown and close | implemented | `fn-tcl-decode-message`, `fn-tcl-input-error` |

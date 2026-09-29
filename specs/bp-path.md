@@ -213,7 +213,7 @@ under `bundles/`; the manifest names each bundle's transport identity, its
 octet count and a copy digest, and the exporter writes the manifest last so an
 interrupted copy is not a media that silently under-reports what it carries.
 `tools/media.py` exports by asking ACL2 for the exact request ADU of each
-durable outbound work (`fn-bpo-host-request-adu`) and imports by handing a
+durable outbound work (the retired host/bp-outbound-host.lisp request-ADU call; `tools/media.py` and that host went with the Python host, python-diet T5b, and Q7k 2026-09-29) and imports by handing a
 read-only view of that directory to the *same* callbacks the network receiver
 takes: `WorkflowJournal.stage_inbound` bounds and durably stages the bundle,
 and `run_bp_receive.receive_bpa_request` decides acceptance, receipt, charge

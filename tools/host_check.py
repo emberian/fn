@@ -69,6 +69,11 @@ the files build.lisp `load`s, in build.lisp's order.  It then reports:
         counted, never failed, and a load-time call of one is skipped
         (`return-value' restart) so the rest of the file still loads.
 
+It first runs tools/extract/world.py --check (the umbrellas against the
+build scripts; a stale umbrella is a FAIL: limits-live-5's host include-book
+passed --load and died in the image build's acquire).  `make
+host-convert-check FILE=...` (tools/host_convert_check.py) runs this with
+every other pre-image gate, including the certified-world class check.
 What it cannot see: the arity of a call into a book function (the bare image
 does not know it), anything the FFI initializers do (`fnn-crypto-initialize'
 and its siblings are build.lisp's calls, not the files'), and translate
@@ -674,7 +679,170 @@ def world_resolve(root: Path, base: Path, reference: str) -> Path:
     return Path(os.path.normpath(target))
 
 
-def world_of(build: str, root: Path = ROOT) -> tuple[set[str], list[str], list[str]]:
+# --- the ld host files' forward references (item 14, obstructions-3) --------
+#
+# ACL2 translates each `ld` host file's definitions in the order the image
+# `ld`s them, and refuses a call of a function no earlier event defined.
+# `--load` loads only the raw files, so twice on 2026-09-29 (online-reclaim-4,
+# limits-live-4) a forward reference in host/owner-host.lisp passed it and
+# the image build refused it ten minutes later.  This is the static half,
+# seconds and no ACL2: every call in an ld host file, in build order, of a
+# name that only a LATER top-level form of the ld files defines and no book
+# of the image's world defines.  A mutual-recursion (one top-level form) may
+# call its own members.  The dynamic half is the default mode (the ld prefix
+# through ACL2 in the certified world), which hbox_native runs before it
+# builds an image.
+
+def _callers():
+    try:
+        from tools import callers
+    except ImportError:
+        import callers
+    return callers
+
+
+def ld_sequence(build: str = BUILD_SCRIPT, root: Path = ROOT,
+                cbd: str = ".") -> list[str]:
+    """The ld host files BUILD loads, in its order (an ld inside one in place).
+    CBD is the root-relative directory ACL2's connected book directory is at
+    when BUILD runs: the tree's root for the image builds, tools/extract for
+    the extraction world (tools/extract/world-host.lisp, `../../host/...')."""
+    import ledger
+    order: list[str] = []
+
+    def walk(form, base: Path) -> None:
+        if not isinstance(form, list) or not form or form[0] in ("quote", "quasiquote"):
+            return
+        if form[0] == "ld" and len(form) >= 2 and isinstance(form[1], str) \
+                and not isinstance(form[1], ledger.Sym):
+            path = world_resolve(root, base, form[1])
+            relative = path.relative_to(root).as_posix() if path.is_relative_to(root) \
+                else path.as_posix()
+            if relative in order or not path.is_file():
+                return
+            order.append(relative)
+            for inner, _ in ledger.Reader(path.read_text(encoding="utf-8")).top_level():
+                walk(inner, path.parent)
+            return
+        if form[0] in ("defun", "defmacro", "defund", "include-book", "load"):
+            return
+        for item in form[1:]:
+            walk(item, base)
+
+    script = root / build
+    for form, _ in ledger.Reader(script.read_text(encoding="utf-8")).top_level():
+        walk(form, Path(os.path.normpath(root / cbd)))
+    return order
+
+
+def top_level_facts(text: str) -> list[tuple[set[str], list[tuple[str, int]], list[str]]]:
+    """Per top-level form of TEXT: the names it defines (at any depth), the
+    (name, line) of every call in it (an atom in a list's first position,
+    not quoted), and the files it `ld`s, in order."""
+    callers = _callers()
+    facts: list[tuple[set[str], list[tuple[str, int]], list[str]]] = []
+    line, index, depth = 1, 0, 0
+    after_open = False
+    stack: list[list] = []   # [head, name, position]
+    while index < len(text):
+        match = callers.TOKEN.match(text, index)
+        kind, value, index = match.lastgroup, match.group(), match.end()
+        if kind == "nl":
+            line += 1
+            continue
+        if kind in ("comment", "space", "other", "quote", "function"):
+            continue
+        if kind == "block":
+            end = callers.skip_block(text, index)
+            line += text.count("\n", index, end)
+            index = end
+            continue
+        if kind in ("string", "char"):
+            line += value.count("\n")
+            after_open = False
+            if stack:
+                if (kind == "string" and stack[-1][0] == "ld" and stack[-1][2] == 1
+                        and not stack[-1][3]):
+                    facts[-1][2].append(value[1:-1])
+                stack[-1][2] += 1
+            continue
+        if kind == "open":
+            if not stack:
+                facts.append((set(), [], []))
+            quoted = text[match.start() - 1:match.start()] in ("'", "`")
+            stack.append([None, None, 0, quoted or (bool(stack) and stack[-1][3])])
+            after_open = True
+            continue
+        if kind == "close":
+            if stack:
+                head, name, _, _ = stack.pop()
+                if head in callers.DEFINERS and name and facts:
+                    facts[-1][0].add(name)
+                if stack:
+                    stack[-1][2] += 1
+            after_open = False
+            continue
+        name = callers.bare(value)
+        if stack:
+            frame = stack[-1]
+            if frame[2] == 0:
+                frame[0] = name
+                if after_open and not frame[3]:
+                    facts[-1][1].append((name, line))
+            elif frame[2] == 1 and frame[1] is None:
+                frame[1] = name
+            frame[2] += 1
+        after_open = False
+    return facts
+
+
+def forward_references(build: str = BUILD_SCRIPT, root: Path = ROOT) -> list[str]:
+    """`FILE:LINE: NAME is called before its definition (FILE:LINE of it)`."""
+    callers = _callers()
+    book_defined, _, _ = world_of(build, root, ld_definitions=False)
+    book_defined = {name.lower() for name in book_defined}
+    first: dict[str, tuple[int, str]] = {}      # name -> (form ordinal, file:line)
+    per_file = []
+    seen: set[str] = set()
+
+    def visit(relative: str) -> None:
+        # An `ld` inside a file runs where it stands: its forms come before
+        # the rest of the file's (host/native-admin-host.lisp lds owner-host).
+        seen.add(relative)
+        path = root / relative
+        text = path.read_text(encoding="utf-8", errors="replace")
+        spans = {}
+        for defined, first_line, _ in callers.definitions(text):
+            spans.setdefault(defined, first_line)
+        for defined, calls, loads in top_level_facts(text):
+            ordinal = len(per_file)
+            for name in defined:
+                first.setdefault(name, (ordinal, f"{relative}:{spans.get(name, '?')}"))
+            per_file.append((ordinal, relative, defined, calls))
+            for target in loads:
+                inner = world_resolve(root, path.parent, target)
+                inner_relative = (inner.relative_to(root).as_posix()
+                                  if inner.is_relative_to(root) else inner.as_posix())
+                if inner.is_file() and inner_relative not in seen:
+                    visit(inner_relative)
+
+    for relative in ld_sequence(build, root):
+        if relative not in seen:
+            visit(relative)
+    found = []
+    for ordinal, relative, defined, calls in per_file:
+        for name, line in calls:
+            if name in defined or name in book_defined or name not in first:
+                continue
+            later, where = first[name]
+            if later > ordinal:
+                found.append(f"{relative}:{line}: {name} is called before its definition "
+                             f"({where}); ACL2 refuses the call when it translates this form")
+    return found
+
+
+def world_of(build: str, root: Path = ROOT,
+             ld_definitions: bool = True) -> tuple[set[str], list[str], list[str]]:
     """(defined names, raw files loaded, problems) of BUILD's image.
 
     The world is every book BUILD includes and everything those books include
@@ -720,7 +888,8 @@ def world_of(build: str, root: Path = ROOT) -> tuple[set[str], list[str], list[s
             host = ledger.analyze_host(path, rel(path))
             if host.read_error:
                 problems.append(f"{rel(path)}: unreadable: {host.read_error}")
-            defined.update(host.defines)
+            if ld_definitions:
+                defined.update(host.defines)
             for inner, _ in host.forms:
                 walk(inner, path.parent, rel(path))
             return
@@ -931,6 +1100,28 @@ def build_order_main(timeout: int) -> int:
     return 0 if all(code == 0 for code in codes) else 2
 
 
+def world_stale(runner=None) -> list[str]:
+    """tools/extract/world.py --check's findings (the umbrellas books/image-world*
+    against what the build scripts include), printed as FAIL lines.
+
+    `--load` runs it (obstructions-5 item 34): limits-live-5's host
+    include-book passed --load and died in the image build's acquire step
+    (FN_IMAGE_WORLD_OPEN) because the umbrellas were not regenerated.
+    """
+    if runner is None:
+        def runner():
+            done = subprocess.run([sys.executable, str(ROOT / "tools/extract/world.py"),
+                                   "--check"], cwd=ROOT, capture_output=True, text=True)
+            return done.returncode, done.stdout + done.stderr
+    code, output = runner()
+    found = [line.strip() for line in output.splitlines() if line.strip()] if code else []
+    for line in found:
+        print(f"FAIL {line}")
+    print(f"host_check --load: world.py --check "
+          + ("current" if not found else f"STALE ({len(found)}): run python3 tools/extract/world.py"))
+    return found
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -955,7 +1146,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="static: every name a raw host/native file passes to fnn-core* "
                              "or fnn-call is defined in the world of the image that loads it "
                              "(build.lisp, build-dtn.lisp; FILEs name other build scripts)")
-    parser.add_argument("--build", default=BUILD_SCRIPT,
+    parser.add_argument("--forward", action="store_true",
+                        help="static: a call in an ld host file of a name only a later "
+                             "form of the ld files defines (no ACL2; --load runs it too)")
+    parser.add_argument("--build", default=None,
                         help="with --load: the build script whose raw load order to use")
     args = parser.parse_args(argv)
 
@@ -963,6 +1157,17 @@ def main(argv: list[str] | None = None) -> int:
         return tables_main(args.files)
     if args.world:
         return world_main(args.files)
+    if args.forward or args.load:
+        forward = []
+        for build in ([args.build] if args.build else WORLD_BUILDS):
+            forward += [one for one in forward_references(build) if one not in forward]
+        for one in forward:
+            print(f"FAIL {one}")
+        print(f"host_check --forward: {len(forward)} forward reference(s) in the ld host "
+              "files, in build order")
+        if args.forward:
+            return 1 if forward else 0
+    stale = world_stale() if args.load else []
     acl2 = executable()
     if args.load:
         if acl2 is None:
@@ -974,10 +1179,10 @@ def main(argv: list[str] | None = None) -> int:
                   "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k); make check "
                   "counts this as a failed step", file=sys.stderr)
             return 2
-        order = raw_load_order(args.build)
+        order = raw_load_order(args.build or BUILD_SCRIPT)
         unknown = [name for name in args.files if name not in order]
         if unknown:
-            print("host_check --load: not loaded by " + args.build + ": " + ", ".join(unknown),
+            print("host_check --load: not loaded by " + (args.build or BUILD_SCRIPT) + ": " + ", ".join(unknown),
                   file=sys.stderr)
             return 2
         # A raw file needs the ones before it: FILEs load the order through
@@ -987,7 +1192,8 @@ def main(argv: list[str] | None = None) -> int:
         log_dir = Path(args.log_dir).resolve() if args.log_dir else None
         if log_dir is not None:
             log_dir.mkdir(parents=True, exist_ok=True)
-        return load_check(acl2, files, args.timeout_seconds, log_dir)
+        loaded = load_check(acl2, files, args.timeout_seconds, log_dir)
+        return 1 if (forward or stale) and loaded == 0 else loaded
     if not args.alone:
         if args.files:
             print("host_check: FILEs without a mode: use --alone FILE... (a diagnosis) "

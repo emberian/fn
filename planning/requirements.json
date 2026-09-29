@@ -316,7 +316,8 @@
         "PRF-067",
         "PRF-089",
         "PRF-189",
-        "PRF-301"
+        "PRF-301",
+        "PRF-980"
       ],
       "verification": [
         "proof",
@@ -1150,7 +1151,9 @@
         "PRF-214",
         "PRF-906",
         "PRF-944",
-        "PRF-956"
+        "PRF-956",
+        "PRF-983",
+        "PRF-984"
       ],
       "verification": [
         "proof",
@@ -1498,7 +1501,9 @@
         "PRF-289",
         "PRF-266",
         "PRF-935",
-        "PRF-946"
+        "PRF-946",
+        "PRF-960",
+        "PRF-968"
       ],
       "verification": [
         "proof",
@@ -1602,7 +1607,9 @@
         "PRF-278",
         "PRF-283",
         "PRF-293",
-        "PRF-347"
+        "PRF-347",
+        "PRF-935",
+        "PRF-960"
       ],
       "verification": [
         "proof",
@@ -2107,7 +2114,9 @@
         "PRF-102",
         "PRF-131",
         "PRF-134",
-        "PRF-249"
+        "PRF-249",
+        "PRF-961",
+        "PRF-962"
       ],
       "verification": [
         "proof",
@@ -2140,7 +2149,8 @@
         "PRF-368",
         "PRF-362",
         "PRF-371",
-        "PRF-383"
+        "PRF-383",
+        "PRF-980"
       ],
       "verification": [
         "proof",
@@ -2169,7 +2179,8 @@
         "PRF-172",
         "PRF-317",
         "PRF-335",
-        "PRF-358"
+        "PRF-358",
+        "PRF-963"
       ],
       "verification": [
         "proof",
@@ -2483,7 +2494,8 @@
         "PRF-134",
         "PRF-136",
         "PRF-225",
-        "PRF-250"
+        "PRF-250",
+        "PRF-989"
       ],
       "verification": [
         "proof",
@@ -2733,7 +2745,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-126"
+        "PRF-126",
+        "PRF-961"
       ],
       "verification": [
         "proof",
@@ -2761,7 +2774,8 @@
       "proof_targets": [
         "PRF-130",
         "PRF-141",
-        "PRF-143"
+        "PRF-143",
+        "PRF-971"
       ],
       "verification": [
         "proof",
@@ -3148,7 +3162,8 @@
         "PRF-143",
         "PRF-172",
         "PRF-308",
-        "PRF-317"
+        "PRF-317",
+        "PRF-971"
       ],
       "verification": [
         "proof",
@@ -3595,7 +3610,8 @@
         "PRF-266",
         "PRF-937",
         "PRF-945",
-        "PRF-946"
+        "PRF-946",
+        "PRF-968"
       ],
       "verification": [
         "proof",
@@ -3660,7 +3676,8 @@
         "PRF-367",
         "PRF-957",
         "PRF-969",
-        "PRF-970"
+        "PRF-970",
+        "PRF-991"
       ],
       "verification": [
         "proof",
@@ -3759,7 +3776,8 @@
         "PRF-366",
         "PRF-369",
         "PRF-370",
-        "PRF-382"
+        "PRF-382",
+        "PRF-959"
       ],
       "verification": [
         "proof",
@@ -4493,7 +4511,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-230",
-        "PRF-905"
+        "PRF-905",
+        "PRF-978"
       ],
       "verification": [
         "proof",
@@ -4505,7 +4524,10 @@
         "books/injection.lisp",
         "planning/evidence/header-limits-profile-2026-09-27.md",
         "books/article-line-bound.lisp",
-        "tests/test_native_header_lines.py"
+        "tests/test_native_header_lines.py",
+        "books/bp-transit-join.lisp",
+        "tests/acl2/bp-transit-join-tests.lisp",
+        "host/bp-native-app-host.lisp"
       ],
       "implementation_note": "Fields 13 to 15 (format 10) (defaults 64, 256, 16,384); the served POST refuses by them (PRF-230, SCN-156). Open: peer and BP ingress (PKT-660). A header LINE over RFC 5322 section 2.1.1's 998 octets is refused by its own name, :line-length (PRF-905, PKT-506): the line bound is the RFC's, not a limit on a field, which is admitted folded."
     },
@@ -4671,7 +4693,9 @@
         "PRF-901",
         "PRF-924",
         "PRF-925",
-        "PRF-926"
+        "PRF-926",
+        "PRF-931",
+        "PRF-932"
       ],
       "verification": [
         "proof",
@@ -4980,7 +5004,7 @@
         "books/store-records-field.lisp",
         "tests/acl2/history-records-disk-tests.lisp"
       ],
-      "implementation_note": "Lane arena-store (2026-09-27): the model, keystones, reclamation and the executable layer are proved; the host driver host/native/proto-pagestore.lisp runs them on hbox (process death and power loss, 0 violations); page 0 (the owner's root slots) is the model's reserved page, kept by pgs-disk-keeps and marked by pgs-g-start; the scenario is SCN-186. Limitation L-PGS-LAZY-SHAPE (record section 5): the host's lazy open shape-checks only the table pages its own commit wrote, the model's lazy open every table page. The owner does not use it yet (fn-hist on pages is the next step, lane arena-store-2)."
+      "implementation_note": "Lane arena-store (2026-09-27): the model, keystones, reclamation and the executable layer are proved; the prototype host driver host/native/proto-pagestore.lisp (retired 2026-09-29, Q7k: planning/retired-paths.json) ran them on hbox (process death and power loss, 0 violations); page 0 (the owner's root slots) is the model's reserved page, kept by pgs-disk-keeps and marked by pgs-g-start; the scenario is SCN-186. Limitation L-PGS-LAZY-SHAPE (record section 5): the host's lazy open shape-checks only the table pages its own commit wrote, the model's lazy open every table page. The owner does not use it yet (fn-hist on pages is the next step, lane arena-store-2)."
     },
     {
       "id": "WEB-005",
@@ -5025,7 +5049,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-349"
+        "PRF-349",
+        "PRF-962"
       ],
       "verification": [
         "proof",
@@ -5383,6 +5408,83 @@
         "tests/acl2/limits-live-tests.lisp"
       ],
       "implementation_note": "Row S1. The sealed profile's digest is in the genesis record, so config.json is never rewritten: a limit is a :set-limit row folded over it (fn-lim-effective). Verb and native scenario land with lane limits-live-3."
+    },
+    {
+      "id": "HST-036",
+      "title": "Maintenance while serving: `recover' and `store inspect' on a running owner are answered by that owner (recover accepted by name, its status following; inspect as the owner's own lookup rendering the offline report), refused by name with what it would take when an owner holds the lock and answers nothing; `status' and `health' on a stopped store read the checkpoint header and the journal's sizes (a bound on the transactions), never a replay; `status --replay' is the replayed report",
+      "specification": "specs/host.md#operator-commands-and-owner-critical-sections",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-964",
+        "PRF-965",
+        "PRF-988"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-maintenance-request.lisp",
+        "tests/acl2/owner-maintenance-request-tests.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "host/native/admin.lisp",
+        "host/native/operator.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_maintenance_live.py"
+      ],
+      "implementation_note": "Lane operability-2 (row S3, 2026-09-29): PKT-868's owner-request route (the administrative vector over the control socket, ACL2's liveness decision) carries `inspect request ID'; `recover' with a live owner is a status read; the stopped report is fn-omr-stopped-report over config.json, the checkpoint's 37-octet header and lstat sizes. `store export' on the running owner is the row's remaining item (S3b)."
+    },
+    {
+      "id": "HST-037",
+      "title": "Operator refusals name their reason: a `post' the Store refuses at completion answers the Store's word (never a bare REFUSED) and logs ` reason=WORD'; `policy set KEY VALUE' with a key the node does not have, or a counted key with a value that is no decimal count, is refused by name (unknown-policy-key, policy-value-not-a-number) with what it would take, never the usage line; SIGHUP's log reopen is documented",
+      "specification": "specs/host.md#operator-commands-and-owner-critical-sections",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-972"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-control-post-reason.lisp",
+        "tests/acl2/owner-control-post-reason-tests.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "docs/operator.md",
+        "tests/test_native_operator_refusals.py"
+      ],
+      "implementation_note": "Lane operability-2 (row S10, 2026-09-29): items (a) the post reason, (c) policy set, (e) SIGHUP. Open: (b) init refusals with numbers and the development preset for unnamed init fields; (d) the unread [ops]/[alerts] keys (implement a size-rotation decision or delete them; both edit books/native-config)."
+    },
+    {
+      "id": "REP-016",
+      "title": "A TCPCL passive entity that receives a Contact Header of a version it does not implement sends its own header and SESS_TERM Version mismatch and closes at once: nothing after the peer's header is parsed as a TCPCLv4 message and no MSG_REJECT is sent (RFC 9174 section 4.3)",
+      "specification": "specs/tcpcl.md#5-rfc-9174-clause-matrix",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-977"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "rfc9174.txt",
+        "books/tcpcl-session.lisp",
+        "books/tcpcl-invariants.lisp",
+        "tests/acl2/tcpcl-tests.lisp",
+        "host/native/tcpcl.lisp",
+        "tests/test_bp_service_native.py",
+        "planning/evidence/bp-cursors-2026-09-27.md"
+      ]
     }
   ]
 }

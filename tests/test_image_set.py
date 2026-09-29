@@ -70,5 +70,46 @@ class ImageSetTests(unittest.TestCase):
         self.assertEqual(self.quiet(image_set.publish, self.tree, "short", self.base)[0], 2)
 
 
+
+class LinkRunTests(unittest.TestCase):
+    """hbox_native --reuse-image: an earlier run's images, with their source."""
+
+    def run_dir(self, directory: str, log: str = "== source commit abc123\n") -> Path:
+        run = Path(directory) / "native-old"
+        build = run / "tree" / "build"
+        build.mkdir(parents=True)
+        (run / "run.log").write_text("#!/bin/sh\n" + log + "== load at start: x\n")
+        for name in ("fn-host-developer", "fn-host-developer.core", "fn-host-developer.world-deps"):
+            (build / name).write_text(name)
+        (build / "lib").mkdir()
+        return run
+
+    def test_link_run_links_the_images_and_records_their_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = self.run_dir(directory)
+            tree = Path(directory) / "new"
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(image_set.main(["link-run", str(run), str(tree), "developer"]), 0)
+            build = tree / "build"
+            for name in ("fn-host-developer", "fn-host-developer.core",
+                         "fn-host-developer.world-deps", "lib"):
+                self.assertTrue((build / name).is_symlink(), name)
+                self.assertEqual((build / name).resolve(), (run / "tree/build" / name).resolve())
+            self.assertEqual((build / "REUSED_SOURCE").read_text(), "abc123\n")
+
+    def test_link_run_refuses_a_missing_image_or_an_unknown_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = self.run_dir(directory)
+            tree = Path(directory) / "new"
+            with contextlib.redirect_stderr(io.StringIO()) as said:
+                self.assertEqual(image_set.link_run(run, tree, ["production"]), 1)
+            self.assertIn("no production image", said.getvalue())
+            (run / "run.log").write_text("#!/bin/sh\n")
+            with contextlib.redirect_stderr(io.StringIO()) as said:
+                self.assertEqual(image_set.link_run(run, tree, ["developer"]), 1)
+            self.assertIn("names no `== source` line", said.getvalue())
+            self.assertFalse((tree / "build" / "fn-host-developer").exists())
+
+
 if __name__ == "__main__":
     unittest.main()

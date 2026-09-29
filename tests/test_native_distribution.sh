@@ -1,4 +1,5 @@
 #!/bin/sh
+# witness: needs-image
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/fn-native-dist.XXXXXX")

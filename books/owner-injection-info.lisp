@@ -49,8 +49,8 @@
            :use ((:instance fn-own-stored-octets-keep-the-injected-octets
                             (secret ring))
                  (:instance fn-ipp-an-injection-does-not-open-with-c
-                            (secret ring) (login (fn-own-sub-login sub)))
+                            (secret ring) (login (fn-own-sub-account sub)))
                  (:instance fn-ipp-injected-octets-keep-the-d25-subject
-                            (secret ring) (login (fn-own-sub-login sub)))
+                            (secret ring) (login (fn-own-sub-account sub)))
                  (:instance fn-oii-an-injection-is-not-transit
                             (d (fn-inj-decide source config obs)))))))

@@ -1,90 +1,70 @@
-# Try the local storage and NNTP reader experiment
+# Try a node from a checkout
 
-This exercises the current development implementation: local CLI submission,
-immutable transaction files, ACL2 replay, and a loopback NNTP reader. It has no
-network POST, authentication, or native author signatures. The CLI stores the
-given octets; it is not yet an RFC article injector. Use a disposable store with
-this provisional format. See [implementation status](implementation.md) and the
-[storage experiment](../specs/store-experiment.md) for the exact boundaries.
+This walks one node on your own machine from a checkout: build the image,
+initialize a store, post an article, reopen it, and read it over NNTP. It is
+the same image a release carries (the SBCL core, no ACL2 at run time) and the
+same verbs [Running your node](operator.md) documents; nothing here is a
+separate development host. (The Python development host this page used to
+describe, `tools/run_store.py` and `tools/run_reader.py`, was retired on
+2026-09-28.) Use a disposable directory.
 
-Install the documented ACL2/SBCL toolchain, then run from the repository root:
-
-```sh
-make test
-fn_demo_root=$(mktemp -d)
-python3 tools/run_store.py --store "$fn_demo_root/store" init
-```
-
-Create an example article with explicit CRLF octets:
+Build the production image (it certifies the books with ACL2 first, so this
+needs the documented ACL2/SBCL toolchain; it writes `build/fn-host`), then
+write a configuration that keeps everything under one directory:
 
 ```sh
-python3 - "$fn_demo_root/article.eml" <<'PY'
-from pathlib import Path
-import sys
-Path(sys.argv[1]).write_bytes(
-    b"From: Example <human@example.invalid>\r\n"
-    b"Date: Fri, 18 Sep 2026 12:00:00 +0000\r\n"
-    b"Message-ID: <first-letter@example.invalid>\r\n"
-    b"Newsgroups: fn.letters,fn.test\r\n"
-    b"Subject: A letter that survives reopening\r\n"
-    b"\r\n"
-    b"Hello from the local fn experiment.\r\n")
-PY
-python3 tools/run_store.py --store "$fn_demo_root/store" post \
-  --message-id '<first-letter@example.invalid>' \
-  --group fn.letters --group fn.test --payload "$fn_demo_root/article.eml"
-python3 tools/run_store.py --store "$fn_demo_root/store" recover
-python3 tools/run_store.py --store "$fn_demo_root/store" inspect \
-  --message-id '<first-letter@example.invalid>'
+tools/build_native_host.sh
+demo=$(mktemp -d)
+cat > "$demo/fn.toml" <<EOF
+[store]
+path = "$demo/store"
+[listener]
+host = "127.0.0.1"
+port = 8119
+[log]
+path = "$demo/fn.log"
+[control]
+path = "$demo/store/control.sock"
+EOF
 ```
 
-Each CLI invocation starts a fresh ACL2 process and recovers the store. Repeating
-the exact post reports a duplicate and preserves the original memberships and
-archive obligation. Reusing its Message-ID with a different payload or group list
-is refused by this experimental profile. The CLI's Message-ID and group
-arguments are not yet checked against article headers by a complete injector;
-keep them consistent in examples.
-
-This is the Python development host. Its store keeps one file per
-transaction under `transactions/`. The native node
-([Running your node](operator.md)) keeps its store as a record log instead;
-a release serves only that.
-
-To read the stored article over NNTP:
+Initialize the store with its groups, and write an article with explicit CRLF
+octets:
 
 ```sh
-python3 tools/run_reader.py --store "$fn_demo_root/store" --port 8119
+packaging/fn operator "$demo/fn.toml" init fn.letters fn.test
+printf 'From: Example <human@example.invalid>\r\nDate: Fri, 18 Sep 2026 12:00:00 +0000\r\nMessage-ID: <first-letter@example.invalid>\r\nNewsgroups: fn.letters,fn.test\r\nSubject: A letter that survives reopening\r\n\r\nHello from a local fn node.\r\n' > "$demo/article.eml"
 ```
 
-Connect a client to `127.0.0.1:8119`. The supported subset includes `CAPABILITIES`,
-`GROUP fn.letters`, `LISTGROUP fn.letters 1-`, `ARTICLE 1`, `HEAD`, `BODY`, `STAT`, `NEXT`, `LAST`, `LIST`,
-`HELP`, and `QUIT`; it does not advertise a complete READER bundle. Port `0`
-chooses an available port and prints it. Omit `--store` to run the separate seeded
-reader experiment used by `tests/interop_nntplib.py`.
+Post it, reopen the store, and look it up:
 
-`LIST ACTIVE fn.*,!fn.test` and `LIST NEWSGROUPS fn.letters` filter through the
-ACL2 wildmat matcher. Matching is anchored, and the rightmost matching pattern
-decides inclusion. These listings preserve the selected group and cursor.
+```sh
+packaging/fn operator "$demo/fn.toml" post \
+   --message-id '<first-letter@example.invalid>' \
+   --payload "$demo/article.eml" --group fn.letters
+packaging/fn operator "$demo/fn.toml" recover
+packaging/fn operator "$demo/fn.toml" store inspect '<first-letter@example.invalid>'
+```
 
-The stored reader holds a shared lock for its lifetime and serves the recovered
-snapshot. Posting through the CLI is refused while that reader is running;
-stop it, post, and restart to see additional articles. This deliberately simple
-ownership model precedes a shared live state owner. Startup refuses payloads that
-the ACL2 reader cannot safely project as NNTP. That projection check is not full
-RFC article validation.
+Repeating the exact post reports a duplicate. Reusing the Message-ID with a
+different article is refused (`CONFLICT`). Every command writes one outcome
+line and exits with its code: `0` accepted, `1` refused, `3` uncertain and
+needing recovery, `4` fault, `5` usage ([the table](operator-internals.md#post-and-read)).
 
-Each command's exit code names its outcome: `0` accepted, `1` refused, `3`
-uncertain and needing recovery, `4` fault, `5` usage. The
-[host boundary](../specs/host.md#cli-exit-codes) holds the table. `recover` and
-`status` also report `staging-orphans=`, naming any staged file an interrupted
-publication left behind; recovery reports them and never deletes them.
+To read it over NNTP, run the node in the foreground:
 
-For injected storage outcomes, `post --inject-fault prepublish` reports a known
-abort and exits `1`. `post --inject-fault postpublish` reports an indeterminate
-result and exits `3`; recovery is required, and the complete article may then be
-present. `--inject-fault` is a documented test-only hook that selects one
-scripted fault point; the durable publication path itself holds no injection
-branch. Neither operation reports a successful post before the required commit
-barriers. These are process/I/O experiments, not power-loss qualification. On
-darwin those barriers are `F_FULLFSYNC`, which asks the drive to flush its own
-cache and is roughly a hundred times more expensive per call than `fsync(2)`.
+```sh
+packaging/fn operator "$demo/fn.toml" run
+```
+
+and connect a client to `127.0.0.1:8119` (`GROUP fn.letters`, `ARTICLE 1`,
+`LIST ACTIVE fn.*`; `CAPABILITIES` names what is served). While it runs,
+`post` goes to the running owner through the control socket. Stop it with
+`SIGTERM` (Ctrl-C): the clean shutdown releases the writer lock and removes
+the socket.
+
+Crash and fault experiments use the developer image
+(`FN_NATIVE_PROFILE=developer tools/build_native_host.sh`, `build/fn-host-developer`)
+and its selectors, listed in
+[Developer selectors](operator-internals.md#developer-selectors); a
+production image refuses to start with any of them set.

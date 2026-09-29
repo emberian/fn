@@ -11,7 +11,10 @@ socket:
 * 131 073 and 290 000 octets: accepted (exit 0), each re-read over NNTP with
   the posted body as the stored article's suffix (290 000 is above the
   command frame, so only a read bound taken from A admits it);
-* 300 001 octets: refused by name, ARTICLE-EXCEEDS-PROFILE-BOUND (exit 1).
+* 300 001 octets: refused by name, ARTICLE-EXCEEDS-PROFILE-BOUND (exit 1);
+* PKT-182: 64 MiB past A (far past the owner's read bound, so the owner
+  answers refused and stops reading while the client is still writing):
+  refused (exit 1), never uncertain (exit 3), and nothing stored.
 
 A bounds the injected article: the owner adds Path, Injection-Date and
 Injection-Info, so a submission of exactly A octets is refused by name too.
@@ -56,6 +59,26 @@ class OperatorPostAboveTheOldBlobTests(JoinFixture):
                          served[A + 1].stderr.decode())
         self.assertIn(b"ARTICLE-EXCEEDS-PROFILE-BOUND", served[A + 1].stderr)
         self.assertEqual(self.headroom()["transactions-used"], 2)
+
+    def test_a_frame_far_past_the_read_bound_is_refused_not_uncertain(self):
+        created = self.op("init", "--max-article-octets", str(A), "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        self.node.start(image=self.image)
+        n = A + 64 * 1024 * 1024
+        msgid = "<overbound-{}@example.invalid>".format(n)
+        path = self.root / "overbound"
+        try:
+            path.write_bytes(article(msgid, n))
+            posted = self.op("post", "--message-id", msgid, "--payload",
+                             str(path), "--group", "fn.test")
+            print("operator post", n, posted.returncode,
+                  posted.stdout.decode().strip(), posted.stderr.decode().strip(),
+                  flush=True)
+        finally:
+            path.unlink()
+            self.node.stop()
+        self.assertEqual(posted.returncode, EXIT_REFUSED, posted.stderr.decode())
+        self.assertEqual(self.headroom()["transactions-used"], 0)
 
 
 if __name__ == "__main__":

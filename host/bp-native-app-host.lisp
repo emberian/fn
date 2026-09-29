@@ -187,10 +187,15 @@
              (generation (fn-cfg-generation cfg))
              (txid (fn-state-next-txid
                     (fn-node-acceptance (fn-owner-node state))))
+             ; Under the owner's header limits (PKT-771,
+             ; fn-bpaj-transit-plan-under-refuses-past-the-limits-before-any-intent):
+             ; a past-limit article is refused by name here, before any intent.
              (plan (and request
-                        (fn-bpaj-transit-plan
+                        (fn-bpaj-transit-plan-under
                          (fn-owner-node state) cfg ingress source-eid
-                         request-octets (fn-own-clock (fn-owner-core state)))))
+                         request-octets (fn-own-clock (fn-owner-core state))
+                         (fn-own-config-header-limits
+                          (fn-own-config (fn-owner-core state))))))
              (planned (if (equal (car plan) :have) :duplicate :accepted))
              (new-intent
                (and (member-equal (car plan) '(:submit :have))
@@ -249,8 +254,9 @@
                                   (and plan (fn-bpaj-nth 8 plan)) state))
              (state (f-put-global 'fn-owner-app-stored-subject
                                   (and plan (fn-bpaj-nth 9 plan)) state)))
-        ; The planner's own answer comes first: fn-bpaj-transit-plan's
-        ; (:refused :no-principal) or (:refused :request) is a refusal; a
+        ; The planner's own answer comes first: fn-bpaj-transit-plan-under's
+        ; (:refused :no-principal), (:refused :request) or (:refused LIMIT)
+        ; is a refusal; a
         ; (:busy reason) plan is the deferral :busy, with its reason.
         (if (and request (equal (car plan) :busy))
             (fn-owner-app-plan-deferred (or (fn-bpaj-nth 1 plan) :busy) state)
@@ -300,13 +306,19 @@
 ; for host/native/owner.lisp fnn-owner-log and answers the line's class
 ; (:refused, :deferred or :uncertain; :accepted or :duplicate never reach
 ; here), which the host returns to the convergence layer.
-(defun fn-owner-app-refusal-log (result xfer-id state)
+;; DETAIL is the reason a Store-side step named after the plan was ready
+;; (host/native/owner.lisp fnn-owner-transit-refused keeps it: the control
+;; filing's refusal, C1, among them), or nil; it names the line when the
+;; planner and the dispatcher named none (PKT-443 (2)), exactly as
+;; fn-owner-bp-request-refusal-line takes it for bp-node.
+(defun fn-owner-app-refusal-log (result xfer-id detail state)
   (declare (xargs :stobjs state :mode :program))
   (let ((state (f-put-global
                 'fn-owner-log-line
                 (fn-olog-bp-app-refusal-line
                  result
-                 (f-get-global 'fn-owner-app-refusal-reason state)
+                 (or (f-get-global 'fn-owner-app-refusal-reason state)
+                     (and detail (symbolp detail) detail))
                  xfer-id)
                 state)))
     (value (fn-olog-bp-app-class result))))

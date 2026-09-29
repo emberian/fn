@@ -50,6 +50,14 @@ entries has no storage-consistency theorem mentioned in a conclusion":
     python3 tools/coverage.py query --subsystem store --unmentioned --md
     python3 tools/coverage.py query --family durability --level any --json
 
+TWINS (Q7i): a reference function and its executable twin, from the world
+(mbe :logic/:exec calls, defattach, and the tree's -host/-exec/-fast/-impl/
+$a-$c names among world functions); `query --entry` prints the entry's:
+
+    python3 tools/coverage.py twins fn-record-decode-exact [--world W]
+    python3 tools/coverage.py twins --write --world W   # planning/twins.json
+    python3 tools/coverage.py twins --diff auto         # make check: one-sided diffs
+
 `--unmentioned` means no DIRECT theorem cited under a proof of that family;
 `--level hyps|caller|any` widens what counts as mentioned.
 
@@ -69,13 +77,35 @@ community function is a leaf) -- both
       allocation, budget, capacity or fence).  Each word must name at least
       one function of the world, or the rule is stale and `--check` says so.
 
+A DECLARED DELEGATION (`:delegates CALLEE` in host/interfaces.lisp): the
+entry is plumbing whose decision is CALLEE's only when the DUMPED WORLD
+bears out, from the translated body, that the entry is a true alias: its
+body is one application of exactly CALLEE to the entry's own formals, in
+order (the dump's `alias` against its `formals`: the identity argument
+mapping, so nothing is hardwired, reordered, projected away, inverted or
+evaluated for effect on the way -- the 2026-09-29 review's cases), and
+CALLEE has a direct theorem that a proof target CITES (a shape lemma about
+CALLEE is not the claimed property).  definterface generates the wrapper
+equation NAME-is-CALLEE-by-definition for such an entry; it is filed as a
+`restatement`, never as the entry's direct theorem.  `--check` refuses a
+declared delegation the world does not bear out.  A one-call wrapper that
+is NOT such an alias is classified by its own closure like any other entry:
+there is no delegation by shape, only by declaration checked in the world.
+
 Everything else is PLUMBING, filed by what the world shows: `straight-line`
 (no branch anywhere in the private closure), `codec` (branches only over
-encode/decode/render/parse helpers), `delegates` (its decision is another
-entry's: a callee that is a decision entry, named), `branches` (branches,
-names no outcome; a scan, a fold, a projection with a case split).  An
-entry the dumped world lacks is `absent` (declared after the dump, or
-defined in a host file the session did not load) and decides nothing here.
+encode/decode/render/parse helpers), `branches` (branches, names no
+outcome; a scan, a fold, a projection with a case split).  An entry the
+dumped world lacks is `absent` (declared after the dump, or defined in a
+host file the session did not load) and decides nothing here.
+
+THREE DIMENSIONS, kept apart in every row and never folded into one bit:
+`direct` -- a theorem's conclusion names the entry (`status`);
+`keystone_cited` -- among those, the theorems a proof target cites, i.e. a
+registered claim states the property (for a delegation: the callee's, in
+`delegated_cited`); the third, whether the premises of those theorems are
+established at the entry by the raw host, is K6's premise audit and is not
+computed here (`rule.dimensions` says so in the output).
 
 `--check` (make check) refuses: a families file that leaves a requirement
 unfiled or names an unknown id; a vocabulary word no function of the world
@@ -94,6 +124,7 @@ import collections
 import datetime as _dt
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -108,6 +139,7 @@ FAMILIES = ROOT / "planning" / "families.json"
 COVERAGE = ROOT / "planning" / "coverage.json"
 BASELINE = ROOT / "planning" / "coverage-baseline.json"
 GAPS = ROOT / "planning" / "interfaces-gaps.md"
+TWINS = ROOT / "planning" / "twins.json"
 DEFAULT_WORLD = ROOT / "build" / "coverage" / "world.json"
 
 SUBSYSTEMS = ("store", "owner", "nntp/served", "peer/feed", "bp", "web",
@@ -179,6 +211,14 @@ class World:
                 "attachment": attachment,
                 "constrained": bool(record.get("constrained")),
                 "body": bool(record.get("body")),
+                # [LOGIC, EXEC] per mbe of the body (a dump before
+                # obstructions-3 has none: its twins are defattach + names).
+                "mbe": [[sym(one) for one in pair] for pair in record.get("mbe", ())],
+
+                # the alias shape (formals, and the body when it is one
+                # application to variables), for a declared :delegates
+                "formals": record.get("formals"),
+                "alias": record.get("alias"),
             }
         for record in doc["theorems"]:
             name = sym(record["name"])
@@ -303,6 +343,16 @@ def theorem_row(world: World, registry: Registry, name: str) -> dict:
             "proofs": proofs, "families": families}
 
 
+RESTATEMENT_SUFFIXES = ("-by-definition", "-unfolds")
+
+
+def is_restatement(theorem: str) -> bool:
+    """AGENTS.md names a corollary or restatement `-by-definition` or `-unfolds`;
+    definterface's generated wrapper equation is one.  It names the entry in
+    its conclusion and says nothing about it."""
+    return theorem.endswith(RESTATEMENT_SUFFIXES)
+
+
 def classify(world: World, entry: str, entries: frozenset) -> dict:
     """Decision or plumbing, by the rule in the module docstring."""
     record = world.functions[entry]
@@ -331,17 +381,80 @@ def classify(world: World, entry: str, entries: frozenset) -> dict:
             "vocabulary": vocabulary, "mode": record["class"], "book": record["book"]}
 
 
-def delegate(rows: list[dict]) -> None:
-    """A `branches` entry whose callee entries include a decision entry DELEGATES
-    to it: its decision is that entry's (a second pass, once every entry is classified)."""
+def delegation(world: World, registry: Registry, row: dict, callee: str) -> None:
+    """A declared `:delegates CALLEE`: file the entry as plumbing whose decision
+    is CALLEE's when the dumped world bears it out -- the entry's translated
+    body is CALLEE applied to the entry's formals in order (the identity
+    argument mapping), and CALLEE has a direct theorem a proof target cites;
+    else keep the entry's kind and carry the problem, which `check` refuses.
+    (2026-09-29 review: a one-call wrapper can invert a result, hardwire a
+    principal, reorder arguments, discard an updated state or evaluate an
+    argument for effect while the callee's theorem stays true; the world's
+    alias shape refuses each, and a merely shape-related theorem is refused
+    by the citation.)"""
+    name = row["name"]
+    if name not in world.functions:
+        return
+    record = world.functions[name]
+    formals = record.get("formals")
+    formals = None if formals is None else [sym(f) for f in formals]
+    alias = record.get("alias")
+    alias = alias and {"callee": sym(alias["callee"]), "args": [sym(a) for a in alias["args"]]}
+    direct = [t for t in sorted(world.concl_index.get(callee, set())) if not is_restatement(t)]
+    cited = [t for t in direct if registry.families_of_theorem(t)[0]]
+    if formals is None:
+        row["delegates_problem"] = ("{} is declared to delegate to {} but the dump carries no "
+                                    "formals/alias shape for it (re-dump with the current "
+                                    "tools/coverage_dump.lisp)".format(name, callee))
+    elif not alias or alias.get("callee") != callee:
+        edges = sorted(set(world.graph.get(name, ())))
+        row["delegates_problem"] = (
+            "{} is declared to delegate to {} but its body is not one application of it "
+            "to variables (it calls {})".format(name, callee, ", ".join(edges) or "nothing"))
+    elif list(alias.get("args", ())) != list(formals):
+        row["delegates_problem"] = (
+            "{} is declared to delegate to {} but applies it to ({}), not to its formals "
+            "({}) in order: the argument mapping is not the identity".format(
+                name, callee, " ".join(alias.get("args", ())), " ".join(formals)))
+    elif not direct:
+        row["delegates_problem"] = "{} delegates to {}, which no theorem's conclusion names".format(
+            name, callee)
+    elif not cited:
+        row["delegates_problem"] = (
+            "{} delegates to {}, whose direct theorems ({}) no proof target cites: a shape "
+            "lemma is not the claimed property".format(name, callee, ", ".join(direct[:3])))
+    else:
+        row["kind"] = "delegates"
+        row["why"] = ("its decision is {0}'s: the entry is exactly {0} applied to its formals "
+                      "(declared :delegates, the world's alias shape); {0}'s cited direct "
+                      "theorems: {1}".format(callee, ", ".join(cited[:3])))
+        row["delegated_direct"] = direct
+        row["delegated_cited"] = cited
+
+
+def wrap_decisions(rows: list[dict]) -> None:
+    """A plumbing entry that CALLS a decision entry without a verified
+    delegation is a decision entry itself: whatever it does around that call
+    (an inversion, a hardwired principal, a reordering, a projection that
+    discards an updated state, an effect in an argument -- the 2026-09-29
+    review's cases) is its own transformation of a decision, and gets a
+    keystone or a declared, world-checked :delegates.  A second pass, once
+    every entry is classified; a wrapper of a wrapper follows."""
     decisions = {r["name"] for r in rows if r.get("kind") == "decision"}
-    for row in rows:
-        if row.get("kind") != "branches":
-            continue
-        delegates = sorted(c for c in row.get("callee_entries", ()) if c in decisions)
-        if delegates:
-            row["kind"] = "delegates"
-            row["why"] = "its decision is another entry's: " + ", ".join(delegates)
+    changed = True
+    while changed:
+        changed = False
+        for row in rows:
+            if row.get("kind") not in ("straight-line", "branches", "codec"):
+                continue
+            wrapped = sorted(c for c in row.get("callee_entries", ()) if c in decisions)
+            if wrapped:
+                row["kind"] = "decision"
+                row["why"] = ("wraps the decision entry {} without a verified :delegates: "
+                              "its own transformation of that decision".format(", ".join(wrapped)))
+                row["wraps"] = wrapped
+                decisions.add(row["name"])
+                changed = True
 
 
 def cover(world: World, registry: Registry, entry: str, entries: frozenset) -> dict:
@@ -351,7 +464,9 @@ def cover(world: World, registry: Registry, entry: str, entries: frozenset) -> d
                 "direct": [], "hyps_only": [], "via_caller": {"count": 0, "opened": 0, "examples": []},
                 "callee_only": {"count": 0, "examples": []}}
     shape = classify(world, entry, entries)
-    direct = sorted(world.concl_index.get(entry, set()))
+    named = sorted(world.concl_index.get(entry, set()))
+    restatements = [t for t in named if is_restatement(t)]
+    direct = [t for t in named if not is_restatement(t)]
     hyps_only = sorted(world.hyps_index.get(entry, set()) - set(direct))
     mentioned = set(direct) | set(hyps_only)
     toward = world.ancestors(entry)
@@ -410,6 +525,8 @@ def cover(world: World, registry: Registry, entry: str, entries: frozenset) -> d
     return {
         "status": status, **shape,
         "direct": [theorem_row(world, registry, t) for t in direct],
+        "keystone_cited": [t for t in direct if registry.families_of_theorem(t)[0]],
+        "restatements": restatements,
         "hyps_only": [theorem_row(world, registry, t) for t in hyps_only],
         "via_caller": {"count": len(via), "opened": len(opened), "examples": via_rows[:EXAMPLES]},
         "callee_only": {"count": len(callee_only), "examples": callee_rows[:EXAMPLES]},
@@ -435,10 +552,13 @@ def build(world_path: Path, box: str | None = None, root: Path = ROOT) -> dict:
     rows = []
     for d in declared:
         row = {"name": d["name"], "subsystem": d["subsystem"], "declared_class": d["class"],
-               "keystones": d["keystones"], "dispatched_from": d["dispatched_from"]}
+               "keystones": d["keystones"], "dispatched_from": d["dispatched_from"],
+               "delegates": d.get("delegates")}
         row.update(cover(world, registry, d["name"], entries))
+        if d.get("delegates"):
+            delegation(world, registry, row, d["delegates"])
         rows.append(row)
-    delegate(rows)
+    wrap_decisions(rows)
     stale = sorted(word for word in DECISION_VOCABULARY
                    if not any(word in name for name in world.functions if world.in_tree(name)))
     return {
@@ -452,7 +572,17 @@ def build(world_path: Path, box: str | None = None, root: Path = ROOT) -> dict:
                        "functions": sum(1 for n in world.functions if world.in_tree(n))},
         "rule": {"decision": "branches (if in its private closure) and constructs an outcome "
                              "(DECISION_VOCABULARY word in a closure function's name)",
-                 "vocabulary": DECISION_VOCABULARY, "vocabulary_unmatched": stale},
+                 "vocabulary": DECISION_VOCABULARY, "vocabulary_unmatched": stale,
+                 "delegation": "declared :delegates only; the world's alias shape must be the "
+                               "callee applied to the formals in order, and the callee needs a "
+                               "cited direct theorem (delegates_problem otherwise)",
+                 "dimensions": {
+                     "direct": "a theorem's conclusion names the entry (restatements, "
+                               "-by-definition/-unfolds, are listed apart)",
+                     "keystone_cited": "of those, the theorems a proof target cites",
+                     "premises_established": "NOT computed here: whether the raw host "
+                                             "establishes those theorems' premises at the entry "
+                                             "is K6's premise audit; never folded into the others"}},
         "entries": rows,
     }
 
@@ -646,6 +776,9 @@ def check(cov: dict | None, root: Path = ROOT) -> tuple[list[str], list[str]]:
     for name in grown:
         problems.append("decision entry {} has no direct theorem and planning/coverage-baseline.json "
                         "does not list it".format(name))
+    for row in cov["entries"]:
+        if row.get("delegates_problem"):
+            problems.append("declared :delegates the world does not bear out: " + row["delegates_problem"])
     gaps = root / "planning" / "interfaces-gaps.md"
     if not gaps.is_file() or gaps.read_text(encoding="utf-8") != render_gaps(cov):
         problems.append("planning/interfaces-gaps.md is not what planning/coverage.json renders; "
@@ -659,6 +792,173 @@ def check(cov: dict | None, root: Path = ROOT) -> tuple[list[str], list[str]]:
     return problems, notes
 
 
+def twins_command(args) -> int:
+    world = None
+    if args.write or args.world:
+        world_path = args.world or DEFAULT_WORLD
+        world = World(load_json(world_path))
+        pairs = twin_pairs(world)
+        if args.write:
+            vias = collections.Counter(via.split()[0] for pair in pairs for via in pair["via"])
+            TWINS.write_text(json.dumps({
+                "description": "reference <-> executable twins read from a world dump "
+                               "(tools/coverage.py twins; regenerate with --write)",
+                "coordinate": coordinate(world_path, args.box),
+                "counts": dict(sorted(vias.items())),
+                "pairs": pairs}, indent=1) + "\n")
+            print(f"coverage twins: {len(pairs)} pairs -> {TWINS.relative_to(ROOT)} "
+                  + " ".join(f"{k}={v}" for k, v in sorted(vias.items())))
+    else:
+        pairs = load_twins()["pairs"]
+    if args.diff:
+        base = args.diff
+        if base == "auto":
+            # make check: the lane's diff from where it left dev.
+            found = subprocess.run(["git", "merge-base", "HEAD", "origin/dev"], cwd=ROOT,
+                                   capture_output=True, text=True)
+            if found.returncode:
+                print("coverage twins --diff auto: no origin/dev here; nothing compared")
+                return 0
+            base = found.stdout.strip()
+        flags = one_sided(pairs, changed_definitions(base))
+        print(f"coverage twins --diff {args.diff}: {len(flags)} one-sided change(s) "
+              f"among {len(pairs)} pairs")
+        for flag in flags:
+            print("  " + flag)
+        return 1 if flags and args.strict else 0
+    if args.entry:
+        found = twins_of(pairs, args.entry.lower(), world)
+        print(json.dumps(found, indent=1) if args.json else render_twins(found))
+        return 0 if found["own"] or found["closure"] else 1
+    if not args.write:
+        print(json.dumps(pairs, indent=1) if args.json else
+              "\n".join(f"{p['reference']} <-> {p['executable']} [{', '.join(p['via'])}]"
+                        for p in pairs))
+    return 0
+
+
+WORLD_HOST = ROOT / "tools" / "extract" / "world-host.lisp"
+
+
+def top_level_forms(text: str) -> list[str]:
+    """The top-level forms of a generated Lisp file (comments dropped)."""
+    forms, depth, start, i, in_string = [], 0, None, 0, False
+    while i < len(text):
+        c = text[i]
+        if in_string:
+            if c == "\\":
+                i += 1
+            elif c == '"':
+                in_string = False
+        elif c == ";":
+            while i < len(text) and text[i] != "\n":
+                i += 1
+            continue
+        elif c == '"':
+            in_string = True
+        elif c == "(":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0 and start is not None:
+                forms.append(text[start:i + 1])
+                start = None
+        i += 1
+    return forms
+
+
+def host_forms() -> list[str]:
+    """world-host.lisp's forms as a session over books/ sends them: its own
+    prologue, each host `ld' (path from books/, the session's cbd), and the
+    closure check; never `in-package'."""
+    out = []
+    for form in top_level_forms(WORLD_HOST.read_text(encoding="utf-8")):
+        if form.startswith("(in-package"):
+            continue
+        out.append(form.replace('(ld "../../host/', '(ld "../host/'))
+    return out
+
+
+def dump_steps(host: str, name: str, remote_json: str,
+               with_host: bool = True) -> list[tuple[str, list[str]]]:
+    """(what, proof_repl argv) for one dump, in order."""
+    repl = [sys.executable, str(ROOT / "tools" / "proof_repl.py")]
+    steps = [("start the session over books/image-world",
+              repl + ["start", name, "books/image-world", "--host", host])]
+    if with_host:
+        for form in host_forms():
+            what = (form.split('"')[1] if form.startswith("(ld ") else
+                    "the prologue" if form.startswith("(if ") else
+                    "restore the compiler" if form.startswith("(set-compiler") else
+                    "the closure check")
+            steps.append((what, repl + ["send", name, form, "--host", host,
+                                        "--limit", "1200"]))
+    steps.append(("load tools/coverage_dump.lisp",
+                  repl + ["send", name, '(ld "../tools/coverage_dump.lisp")', "--host", host]))
+    steps.append(("dump the world",
+                  repl + ["send", name, f'(cov-dump "{remote_json}" state)', "--host", host,
+                          "--limit", "1800"]))
+    return steps
+
+
+def dump_command(args, run=subprocess.run) -> int:
+    """`coverage.py dump --host BOX`: the recipe nobody should re-derive.
+
+    A session over books/image-world alone lists every host entry ABSENT
+    (661 of them; decision-keystones-2 reverted a baseline built that way),
+    and ld-ing world-host.lisp whole from a session ended it on an inner
+    error.  So: start, send world-host.lisp's forms one at a time (a failure
+    names its host file and stops), load the dumper, dump on the box, copy
+    the JSON home, stop the session.
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    import proof_repl  # noqa: E402
+    lane = args.lane or proof_repl.default_lane()
+    if not lane:
+        raise SystemExit("coverage: dump needs --lane (or run from build/lanes/NAME)")
+    host, name = args.host, args.name or f"cov-{lane}"
+    tree = proof_repl.remote_tree(host, lane)
+    # cov-dump writes an absolute path; a relative gates root is under $HOME.
+    remote_json = f"{tree}/build/coverage/world.json"
+    absolute = remote_json if remote_json.startswith("/") else None
+    if absolute is None:
+        home = run(["ssh", host, "echo $HOME"], capture_output=True, text=True)
+        absolute = f"{(home.stdout or '').strip()}/{remote_json}"
+    env = dict(os.environ, FN_LANE=lane)
+    out = Path(args.out)
+    code, started = 0, False
+    try:
+        run(["ssh", host, f"mkdir -p {absolute.rsplit('/', 1)[0]}"])
+        for what, argv in dump_steps(host, name, absolute, not args.no_host_files):
+            print(f"coverage dump: {what}", file=sys.stderr, flush=True)
+            done = run(argv, cwd=ROOT, env=env)
+            if argv[2] == "start":
+                started = done.returncode == 0
+            if done.returncode != 0:
+                print(f"coverage dump: FAILED at {what} (exit {done.returncode}); "
+                      "nothing was dumped", file=sys.stderr)
+                code = 1
+                break
+        if code == 0:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            if run(["scp", "-q", f"{host}:{absolute}", str(out)]).returncode != 0:
+                print(f"coverage dump: the dump is on {host}:{absolute} and did not copy",
+                      file=sys.stderr)
+                code = 1
+            else:
+                print(f"coverage dump: {out} ({host}, "
+                      f"{'WITHOUT' if args.no_host_files else 'with'} the host files); next: "
+                      f"python3 tools/coverage.py build --world {out} --box {host} --write",
+                      file=sys.stderr)
+    finally:
+        if started and not args.keep:
+            run([sys.executable, str(ROOT / "tools" / "proof_repl.py"), "stop", name,
+                 "--host", host], cwd=ROOT, env=env)
+    return code
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command")
@@ -667,6 +967,14 @@ def main(argv=None) -> int:
     b.add_argument("--box", default=None, help="where the session ran (the coordinate)")
     b.add_argument("--write", action="store_true", help="write coverage.json and the gaps file")
     b.add_argument("--baseline", action="store_true", help="also rewrite coverage-baseline.json")
+    d = sub.add_parser("dump", help="dump the world (image-world + the host files) on a box")
+    d.add_argument("--host", required=True, metavar="BOX")
+    d.add_argument("--lane", default=None)
+    d.add_argument("--name", default=None, help="the proof_repl session (default cov-LANE)")
+    d.add_argument("--out", default=str(DEFAULT_WORLD))
+    d.add_argument("--no-host-files", action="store_true",
+                   help="the umbrella alone (every host entry then reads ABSENT)")
+    d.add_argument("--keep", action="store_true", help="leave the session running")
     q = sub.add_parser("query", help="ask the coverage")
     q.add_argument("--family", default=None)
     q.add_argument("--subsystem", default=None, choices=SUBSYSTEMS)
@@ -680,6 +988,17 @@ def main(argv=None) -> int:
     r = sub.add_parser("render", help="rewrite the gaps file from coverage.json")
     r.add_argument("--write", action="store_true")
     c = sub.add_parser("check", help="the make-check step")
+    t = sub.add_parser("twins", help="reference <-> executable twins (mbe, defattach, names)")
+    t.add_argument("entry", nargs="?", default=None)
+    t.add_argument("--world", type=Path, default=None,
+                   help="read the pairs from this dump (default: planning/twins.json)")
+    t.add_argument("--write", action="store_true",
+                   help="write planning/twins.json from --world (default build/coverage/world.json)")
+    t.add_argument("--diff", metavar="BASE", default=None,
+                   help="flag a diff from BASE that changes one side of a pair only")
+    t.add_argument("--strict", action="store_true", help="--diff exits 1 on a flag")
+    t.add_argument("--box", default=None, help="where the dump's session ran (the coordinate)")
+    t.add_argument("--json", action="store_true")
     parser.add_argument("--check", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--baseline", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
@@ -709,10 +1028,18 @@ def main(argv=None) -> int:
             print(json.dumps(rows, indent=1))
         elif args.entry and rows and not args.md:
             print(render_entry(rows[0]))
+            pairs = load_twins()["pairs"]
+            print("## Twins")
+            print(render_twins(twins_of(pairs, args.entry)) if pairs else
+                  "(no planning/twins.json: `coverage.py twins --write --world W`)")
         else:
             print(render_table(rows))
             print("\n{} entries".format(len(rows)))
         return 0
+    if args.command == "twins":
+        return twins_command(args)
+    if args.command == "dump":
+        return dump_command(args)
     if args.command == "summary":
         cov = load_coverage()
         counts = summary(cov["entries"])
@@ -745,6 +1072,143 @@ def main(argv=None) -> int:
         return 1 if problems else 0
     parser.print_help()
     return 2
+
+
+# ---------------------------------------------------------------------------
+# Twins: a reference function and its executable twin (Q7i, obstructions-3).
+#
+# The served path runs concrete twins of the logical model (D27), and a
+# change to one side of a pair that leaves the other alone is how a
+# correspondence silently goes stale.  The pairs come from the world:
+#
+#   mbe        a body's (mbe :logic (R ...) :exec (X ...)): R is the reference,
+#              X the executable (R is the defined function itself when the
+#              :logic is not a call);
+#   defattach  F attached to G: F is the reference, G what runs;
+#   name       a world function N and N-host / N-exec / N-fast / N-impl, or an
+#              abstract stobj's N$a and N$c / N: the tree's naming conventions
+#              for a twin, read only among functions the world defines.
+#
+# Both sides must be defined by the tree (a book or a host file).
+
+TWIN_NAMES = (("", "-host"), ("", "-exec"), ("", "-fast"), ("", "-impl"),
+              ("$a", "$c"), ("$a", ""))
+
+
+def twin_pairs(world: World) -> list[dict]:
+    found: dict[tuple[str, str], set[str]] = collections.defaultdict(set)
+    tree = {name for name in world.functions if world.in_tree(name)}
+
+    def add(reference: str, executable: str, via: str) -> None:
+        if reference != executable and reference in tree and executable in tree:
+            found[(reference, executable)].add(via)
+
+    for name in sorted(tree):
+        record = world.functions[name]
+        for logic, executable in record.get("mbe", ()):
+            add(logic, executable, "mbe in " + name)
+        if record["attachment"]:
+            add(name, record["attachment"], "defattach")
+        for reference_suffix, executable_suffix in TWIN_NAMES:
+            if name.endswith(executable_suffix):
+                stem = name[:len(name) - len(executable_suffix)]
+                add(stem + reference_suffix, name, "name")
+    return [{"reference": reference, "executable": executable, "via": sorted(vias),
+             "reference_book": world.functions[reference]["book"],
+             "executable_book": world.functions[executable]["book"]}
+            for (reference, executable), vias in sorted(found.items())]
+
+
+def twins_of(pairs: list[dict], entry: str, world: World | None = None) -> dict:
+    """The pairs ENTRY is a side of, and (given the world) those inside its
+    private closure, which the host reaches through ENTRY."""
+    own = [pair for pair in pairs if entry in (pair["reference"], pair["executable"])]
+    inside: list[dict] = []
+    if world is not None and entry in world.functions:
+        reached = world.descendants(entry, tree_only=True)
+        inside = [pair for pair in pairs if pair not in own
+                  and (pair["reference"] in reached or pair["executable"] in reached)]
+    return {"entry": entry, "own": own, "closure": inside}
+
+
+def render_twins(found: dict) -> str:
+    lines = [f"twins of {found['entry']}: {len(found['own'])} own, "
+             f"{len(found['closure'])} in its closure"]
+    for label, key in (("own", "own"), ("closure", "closure")):
+        for pair in found[key]:
+            lines.append(f"  {label:8}{pair['reference']} ({pair['reference_book']}) "
+                         f"<-> {pair['executable']} ({pair['executable_book']}) "
+                         f"[{', '.join(pair['via'])}]")
+    return "\n".join(lines)
+
+
+def load_twins(path: Path | None = None) -> dict:
+    path = path or TWINS
+    return load_json(path) if path.is_file() else {"pairs": []}
+
+
+def changed_definitions(base: str, root: Path = ROOT) -> dict[str, str]:
+    """Functions whose defining form a diff from BASE touches: name -> file:line.
+
+    Both sides of each hunk are read (a deleted line changed the old form).
+    """
+    from tools import callers  # the same lexical reader
+    done = subprocess.run(["git", "diff", "-U0", "--no-color", base, "--", "books", "host"],
+                          cwd=root, capture_output=True, text=True)
+    if done.returncode:
+        raise SystemExit(f"coverage twins --diff: git diff {base} failed: "
+                         + done.stderr.strip()[-300:])
+    touched: dict[str, dict[str, set[int]]] = {}
+    current = touched_old = None
+    header = False
+    for line in done.stdout.splitlines():
+        if line.startswith("diff --git "):
+            header, current, touched_old = True, None, None
+        elif header and line.startswith("+++ "):
+            current = line[6:] if line.startswith("+++ b/") else None
+        elif header and line.startswith("--- "):
+            touched_old = line[6:] if line.startswith("--- a/") else None
+        elif line.startswith("@@") and (current or touched_old):
+            header = False
+            head = line.split("@@")[1].split()
+            for side, spec in (("old", head[0][1:]), ("new", head[1][1:])):
+                start, _, count = spec.partition(",")
+                count_value = 1 if count == "" else int(count)
+                lines = set(range(int(start), int(start) + max(count_value, 1)))
+                name = current if side == "new" else touched_old
+                if name and name.endswith(".lisp"):
+                    touched.setdefault(name, {"old": set(), "new": set()})[side] |= lines
+    changed: dict[str, str] = {}
+    for name, sides in sorted(touched.items()):
+        for side, numbers in sides.items():
+            if not numbers:
+                continue
+            if side == "new":
+                path = root / name
+                text = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
+            else:
+                shown = subprocess.run(["git", "show", f"{base}:{name}"], cwd=root,
+                                       capture_output=True, text=True)
+                text = shown.stdout if shown.returncode == 0 else ""
+            for defined, first, last in callers.definitions(text):
+                if any(first <= number <= last for number in numbers):
+                    changed.setdefault(defined, f"{name}:{first}")
+    return changed
+
+
+def one_sided(pairs: list[dict], changed: dict[str, str]) -> list[str]:
+    out = []
+    for pair in pairs:
+        reference, executable = pair["reference"], pair["executable"]
+        if (reference in changed) == (executable in changed):
+            continue
+        moved, still = ((reference, executable) if reference in changed
+                        else (executable, reference))
+        out.append(f"{moved} changed ({changed[moved]}); its twin {still} "
+                   f"({pair['executable_book'] if still == executable else pair['reference_book']}) "
+                   f"did not [{', '.join(pair['via'])}]: say why the correspondence still "
+                   "holds, or change both")
+    return out
 
 
 def family_summary(cov: dict) -> dict:

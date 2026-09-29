@@ -184,9 +184,13 @@ class NativeTopicLocalTest(unittest.TestCase):
 
         def state(result):
             # The open's route (open=checkpoint:S after a compaction) is not
-            # the state; every other line is.
+            # the state, nor is the stopped report's header line (row S3:
+            # `stopped checkpoint=N journal-octets=B transactions-at-most=M`
+            # reads the checkpoint header, which the compaction wrote; the
+            # exact count is `status --replay`'s); every other line is.
             return [line for line in result.stdout.splitlines()
-                    if not line.startswith(b"open=")]
+                    if not (line.startswith(b"open=")
+                            or line.startswith(b"stopped "))]
         self.assertEqual(state(self.invoke("store", self.store, "status")),
                          state(before_status))
         self.assertEqual(self.invoke("store", self.store, "retention").stdout,

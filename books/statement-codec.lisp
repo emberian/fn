@@ -9,7 +9,7 @@
 ; `fn-stmt-encode-items', `fn-stmt-decode-items-bounded' and
 ; `fn-stmt-decode-prefix-items-bounded' by the properties proved of these
 ; below, and `books/statement-attach.lisp' attaches them for evaluation
-; (plan 2026-09-22 §4.1, step T1).  The proofs below are the item-sequence
+; (plan 2026-09-22 section 4.1, step T1).  The proofs below are the item-sequence
 ; half of what `statement-invariants' proved before the seam, moved here
 ; unchanged apart from the names.
 

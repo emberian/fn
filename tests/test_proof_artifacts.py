@@ -138,6 +138,54 @@ class AcquisitionTests(unittest.TestCase):
             self.assertIn("ACL2 load printed", result.attempts[0])
             self.assertIn("loaded", result.attempts[1])
 
+    def test_a_failed_acquire_names_each_candidate_and_why(self):
+        # obstructions-5 item 44: the refusal was one line, rejected=0.
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            cache = base / "cache"
+            target = worktree(str(base / "target"))
+            acl2 = self.acl2(target)
+            fingerprint = proof_artifacts.acl2_toolchain.fingerprint(acl2)
+            source = worktree(str(base / "source-1"), certified=["books/base", "books/mid"])
+            self.publish_set(source, cache, "/farm/run-1", fingerprint)
+
+            def fake_run(*args, **kwargs):
+                return subprocess.CompletedProcess(
+                    args[0], 0, b"ACL2 Error in include-book: bad\n", b"")
+            with mock.patch.object(proof_artifacts, "profile_roots",
+                                   return_value=["books/mid"]), \
+                 mock.patch.object(certs.cert_alists, "acl2_certificate_pairs",
+                                   side_effect=lambda paths, pairs, acl2, root:
+                                       {pair: (True, True) for pair in pairs}):
+                result = proof_artifacts.acquire(target, cache, acl2, "default", run=fake_run)
+                empty = proof_artifacts.acquire(target, base / "empty-cache", acl2, "default",
+                                                run=fake_run)
+        self.assertFalse(result.ok)
+        self.assertEqual(result.reason, "no complete current artifact set passed an ACL2 load")
+        self.assertTrue(any(line.startswith("candidate ") and "/farm/run-1" in line
+                            and "REJECTED by the ACL2 load" in line
+                            for line in result.considered), result.considered)
+        self.assertFalse(empty.ok)
+        self.assertIn("no candidate set at all", "\n".join(empty.considered))
+
+    def test_books_in_no_set_are_named_with_their_cache_story(self):
+        from types import SimpleNamespace
+        partial = SimpleNamespace(identity="a" * 64, origin_root="/farm/run-9",
+                                  origin_kind="run", entries={"books/base": None},
+                                  required=("books/base", "books/mid"),
+                                  missing=("books/mid",), complete=False)
+        lines = proof_artifacts.describe_candidates(
+            Path("/t"), Path("/c"), [partial], "tc", {},
+            why=lambda root, cache, name, tc: f"why-{name}")
+        self.assertIn("1 of 2 books: incomplete: missing books/mid", lines[0])
+        self.assertEqual(lines[1], "  in no set: books/mid: why-books/mid")
+
+    def test_why_no_entry_without_a_cache_entry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = worktree(directory + "/t")
+            self.assertEqual(certs.why_no_entry(root, Path(directory) / "c", "books/base"),
+                             "no certificate in the cache for these bytes")
+
     def test_an_uncertified_warning_is_a_load_failure(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

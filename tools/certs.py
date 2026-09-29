@@ -100,15 +100,23 @@ digest of each compiled file that is not older than its certificate
 (``compiled_digests_sha256``), and ``publish`` caches ``book.fasl`` in the
 same entry, under the same closure key and toolchain identity, only when that
 manifest recorded it and the bytes still match; ``fasl_sha256`` in the
-metadata binds it.  A ``.fasl`` is relocatable exactly as the pair is: the
+metadata binds it.  A pair without its compiled file is never filed (the
+report names it ``uncompiled``): installed bare, it made the image build
+compile the book in core or refuse it.  A ``.fasl`` is relocatable exactly as the pair is: the
 source path it embeds is a debugging name, ACL2 never opens it, and a fasl
 certified in a deleted directory loads under ``:load-compiled-file t``
 elsewhere (``planning/evidence/fasl-cache-2026-09-25.md``).  It is specific
 to the SBCL runtime and ACL2 core, which the toolchain identity already
 names.  An install places it only with its pair and dates it no earlier than
-the certificate; an entry without one installs the pair alone and removes
-any local ``.fasl``, and every uninstall removes it with the pair.  Reports
-count ``fasl_installed`` and ``fasl_missing``.  The legacy ``install``
+the certificate.  ``install-partial`` (the runner's) never installs an
+entry an earlier publisher filed without one, unless the tree already holds
+a loadable ``.fasl`` beside the same certificate: the book is named
+``uncompiled`` and certified afresh, which compiles it; ``install-set``
+(proof_repl's and the native builds' installer) holds such an entry out of
+every set the same way, so the book is missing and named ``uncompiled``.  The
+legacy ``install`` still places such a pair alone and removes any local ``.fasl``;
+every uninstall removes it with the pair.  Reports count ``fasl_installed``
+and ``fasl_missing``.  The legacy ``install``
 command does not filter by toolchain, for fasls as for pairs.
 
 What this still does not establish: nothing here proves a book certifies.
@@ -135,10 +143,12 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import random
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from typing import Iterable
 
 
@@ -237,6 +247,12 @@ class Report:
     # whose entry had none (ACL2 then processes that book's events uncompiled).
     fasl_installed: int = 0
     fasl_missing: int = 0
+    # Books refused for want of a compiled file: `publish` never files a pair
+    # without its `.fasl`, and `install-partial` never installs one (the run
+    # certifies it afresh, which compiles it).  A pair without one made the
+    # image build compile the book in core, and `build_native_host` refuses
+    # that (payload-arena-attach, 2026-09-29: "fasl 659 missing 8").
+    uncompiled: list[str] = field(default_factory=list)
 
     def origin_words(self) -> str:
         """``/a=3,/b=5``: one token, so the identity line stays parseable."""
@@ -253,7 +269,8 @@ class Report:
             out.append(f"  {self.manifests} manifests; published {self.published}, "
                        f"already cached {self.already}, "
                        f"relabelled {self.relabelled}, "
-                       f"no manifest-verified pair {len(self.unverified)}")
+                       f"no manifest-verified pair {len(self.unverified)}, "
+                       f"no compiled file {len(self.uncompiled)}")
         elif self.action == "install":
             out.append(f"  installed {self.installed}, kept identical local "
                        f"{self.kept}, no cached pair {len(self.uncached)}, "
@@ -297,6 +314,8 @@ class Report:
             out.append(f"  unreadable closure: {book}")
         for book in self.uncached:
             out.append(f"  uncached: {book}")
+        for book in self.uncompiled:
+            out.append(f"  uncompiled: {book}")
         if self.mirrored:
             out.append(f"  mirrored to {self.mirrored}")
         return out
@@ -566,6 +585,35 @@ class EntryChanged(RuntimeError):
     """The selected cache generation changed before it could be copied."""
 
 
+# A republish of the same pair (another run's harvest relabels it) rewrites
+# only these: who vouched, from where, when.  An installer that selected the
+# entry before the relabel still installs the same bytes under the same
+# closure key, so the relabel is not a change to it.  Under a farm harvest
+# publishing ~900 entries, every relabel raised EntryChanged in a concurrent
+# installer and three immediate retries lost the race (limits-live-4,
+# incremental-finalize, online-reclaim: `farm submit` died, 2026-09-29).
+PROVENANCE_ONLY = frozenset({
+    "evidence", "origin_host", "certification_provenance", "published_at",
+    "published_from", "host", "fasl_kept_from",
+})
+
+# Attempts, and the first backoff, for an entry that did change (a new
+# certificate under the key): each retry re-chooses, after a jittered,
+# doubling pause so two writers do not retry in lockstep.
+ENTRY_ATTEMPTS = 6
+ENTRY_BACKOFF = 0.05
+
+
+def same_installable(current: dict, selected: dict) -> bool:
+    """Whether CURRENT describes the pair SELECTED chose, up to provenance."""
+    keys = (set(current) | set(selected)) - PROVENANCE_ONLY
+    return bool(current) and all(current.get(k) == selected.get(k) for k in keys)
+
+
+def entry_backoff(attempt: int, sleep=None) -> None:
+    (sleep or time.sleep)(ENTRY_BACKOFF * (2 ** attempt) * (1 + random.random()))
+
+
 def entry_matches_meta(directory: Path, meta: dict) -> bool:
     cert = directory / "book.cert"
     if not cert.is_file():
@@ -602,8 +650,9 @@ def install_entry(directory: Path, selected: dict, cert: Path, port: Path,
     cache entry's, and the image build compiled those books in core, keeping
     every source form (image-growth, 2026-09-28: 114 books, +8.9 MB of core).  ACL2 loads a
     ``.fasl`` only when its write date is not older than the ``.cert``'s, so
-    the installed one is dated no earlier than the certificate.  A pair
-    without a compiled file still installs; ACL2 then processes its events.
+    the installed one is dated no earlier than the certificate.  Here a pair
+    without a compiled file still installs (ACL2 then processes its events);
+    `install_partial` refuses one first (`compiled_here`).
 
     The certificate itself is dated no earlier than its book's source.  A
     copied pair keeps the cache's write date, which is older than the source
@@ -616,7 +665,8 @@ def install_entry(directory: Path, selected: dict, cert: Path, port: Path,
     cache's.
     """
     with entry_lock(directory, exclusive=False):
-        if read_meta(directory) != selected or not entry_matches_meta(directory, selected):
+        current = read_meta(directory)
+        if not same_installable(current, selected) or not entry_matches_meta(directory, current):
             raise EntryChanged(str(directory))
         cached = directory / "book.cert"
         cert_same = cert.is_file() and content_hash(cert) == content_hash(cached)
@@ -658,6 +708,22 @@ def install_entry(directory: Path, selected: dict, cert: Path, port: Path,
             if report is not None:
                 report.fasl_missing += 1
         return not (cert_same and port_same)
+
+
+def compiled_here(directory: Path, meta: dict, source: Path) -> bool:
+    """Whether installing this entry leaves SOURCE's book with its `.fasl`.
+
+    The entry's own compiled file, or a loadable local one made with the
+    same certificate bytes (the case `install_entry` keeps).  An entry that
+    would leave the book uncompiled is not installed by `install_partial`:
+    the run certifies the book afresh, which compiles it.
+    """
+    if meta.get("fasl_sha256"):
+        return True
+    cert, fasl = source.with_suffix(".cert"), source.with_suffix(".fasl")
+    return (cert.is_file() and fasl.is_file()
+            and content_hash(cert) == meta.get("cert_sha256")
+            and fasl.stat().st_mtime >= cert.stat().st_mtime)
 
 
 def date_after_source(cert: Path) -> None:
@@ -830,6 +896,13 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
         for directory, meta in book_entries(root, cache, name):
             if not usable_origin(meta, target):
                 continue
+            if not compiled_here(directory, meta, root / f"{name}.lisp"):
+                # A pair filed without its `.fasl` (before publish refused
+                # them) would load uncompiled: the image build compiles it in
+                # core or refuses it, and a REPL session reported "fasl 660
+                # missing 7" (obstructions-3, persvati, 2026-09-29).  Such a
+                # book is `uncompiled` and missing from every set.
+                continue
             toolchain = meta.get("toolchain") or {}
             found_identity = meta.get("toolchain_identity")
             if toolchain_identity and found_identity != toolchain_identity:
@@ -909,6 +982,31 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
     return sorted(candidates, key=order, reverse=True)
 
 
+def why_no_entry(root: Path, cache: Path, name: str,
+                 toolchain_identity: str | None = None) -> str:
+    """Why no artifact set holds NAME: what its cache entries at these bytes
+    are, by the filters `artifact_sets` applies (obstructions-5 item 44: an
+    acquire refusal named no book and no reason)."""
+    entries = book_entries(root, cache, name)
+    if not entries:
+        return "no certificate in the cache for these bytes"
+    target = str(root.resolve())
+    counts = {"unusable origin": 0, "no .fasl (uncompiled)": 0, "another toolchain": 0}
+    for directory, meta in entries:
+        if not usable_origin(meta, target):
+            counts["unusable origin"] += 1
+        elif not compiled_here(directory, meta, root / f"{name}.lisp"):
+            counts["no .fasl (uncompiled)"] += 1
+        elif toolchain_identity and meta.get("toolchain_identity") != toolchain_identity:
+            counts["another toolchain"] += 1
+    parts = [f"{count} {why}" for why, count in counts.items() if count]
+    usable = len(entries) - sum(counts.values())
+    if usable:
+        parts.append(f"{usable} usable but incompatible with the rest of the set "
+                     "(certificate post-alists)")
+    return f"{len(entries)} cache entr{'y' if len(entries) == 1 else 'ies'}: " + ", ".join(parts)
+
+
 def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
                          toolchain_identity: str | None = None,
                          reject: Iterable[str] = (),
@@ -950,6 +1048,12 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
         report.books = len(required)
         best = candidates[0] if candidates else None
         report.uncached = list(best.missing if best else sorted(required))
+        target = str(root.resolve())
+        report.uncompiled = [
+            name for name in report.uncached
+            if any(usable_origin(meta, target)
+                   and not compiled_here(directory, meta, root / f"{name}.lisp")
+                   for directory, meta in book_entries(root, cache, name))]
         if purge_on_miss:
             # A closure recertification is safe only when it cannot consume a
             # leftover per-book mixture before it has rebuilt the dependency.
@@ -986,8 +1090,9 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
             else:
                 report.kept += 1
     except EntryChanged:
-        if _attempt >= 2:
+        if _attempt >= ENTRY_ATTEMPTS - 1:
             raise
+        entry_backoff(_attempt)
         return install_artifact_set(root, cache, roots, toolchain_identity,
                                     reject, require_origin, purge_on_miss,
                                     dependencies_only, acl2, pair_checker,
@@ -1164,6 +1269,11 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
         usable = [(directory, meta) for directory, meta in book_entries(root, cache, name)
                   if usable_origin(meta, target)
                   and meta.get("toolchain_identity") == toolchain_identity]
+        compiled = [entry for entry in usable
+                    if compiled_here(entry[0], entry[1], root / f"{name}.lisp")]
+        if usable and not compiled and name not in recertify:
+            report.uncompiled.append(name)
+        usable = compiled
         own = [entry for entry in usable if entry[1].get("origin_root") == target]
         if name in recertify:
             options[name] = []
@@ -1198,8 +1308,9 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
         try:
             moved = install_entry(directory, meta, cert, port, report)
         except EntryChanged:
-            if _attempt >= 2:
+            if _attempt >= ENTRY_ATTEMPTS - 1:
                 raise
+            entry_backoff(_attempt)
             return install_partial(root, cache, roots, toolchain_identity, acl2,
                                    pair_checker, _attempt + 1, recertify)
         if moved:
@@ -1487,7 +1598,9 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
                 and content_hash(fasl) == record.fasl else None)
         outcome = write_entry(directory, name, key, listing, cert, port, record,
                               where, origin_host, kind, fasl)
-        if outcome == "already":
+        if outcome == "uncompiled":
+            report.uncompiled.append(name)
+        elif outcome == "already":
             report.already += 1
         elif outcome == "relabelled":
             report.already += 1
@@ -1555,6 +1668,12 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
             meta["fasl_sha256"] = old_meta["fasl_sha256"]
             meta["fasl_kept_from"] = old_meta.get("fasl_kept_from") or old_meta.get("evidence")
             same_fasl = True
+        if not meta["fasl_sha256"]:
+            # Never file a pair without its compiled file: an installer that
+            # took it made include-book compile the book in core (image
+            # growth) or refused the image build outright.  The entry already
+            # here, if any, stays as its own metadata describes it.
+            return "uncompiled"
         same_provenance = (
             old_meta.get("book") == name
             and old_meta.get("closure") == listing
@@ -1580,9 +1699,7 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
             target_port.unlink(missing_ok=True)
         elif not same_port:
             place(port, target_port)
-        if fasl is None and not meta["fasl_sha256"]:
-            target_fasl.unlink(missing_ok=True)
-        elif fasl is not None and not same_fasl:
+        if fasl is not None and not same_fasl:
             place(fasl, target_fasl)
         if not entry_matches_meta(directory, meta):
             raise EntryChanged(f"source pair changed while publishing {directory}")
@@ -1651,15 +1768,17 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
                 report.uncached.append(name)
             continue
         port = source.with_suffix(".port")
-        for attempt in range(3):
+        for attempt in range(ENTRY_ATTEMPTS):
             directory, meta = chosen
             try:
                 moved = install_entry(directory, meta, cert, port, report)
                 break
             except EntryChanged:
-                if attempt == 2:
+                if attempt == ENTRY_ATTEMPTS - 1:
                     raise
-                chosen = choose_entry(cached_entries(cache, key), str(root.resolve()))
+                entry_backoff(attempt)
+                chosen = choose_entry(book_entries(root, cache, name),
+                                      str(root.resolve()))
                 if chosen is None:
                     raise EntryChanged(f"cache entry vanished for {name}")
         if moved:

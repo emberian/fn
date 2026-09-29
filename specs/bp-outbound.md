@@ -49,24 +49,10 @@ this composition does not make preflight durable.
 
 ## Host boundary
 
-`host/bp-outbound-host.lisp` provides these program-mode calls:
-
-The sender loads it with `ld` after `host/workflow-host.lisp`; it reads the live
-workflow global installed by `Acl2WorkflowReplay` and is not a certified book.
-
-- `fn-bpo-host-request-adu(work-id, state)` derives the current durable attempt
-  and returns raw ADU octets without mutating workflow effects. The workflow
-  journal must call it only inside its successful `take_submit` callback.
-  Refusal returns `nil`.
-- `fn-bpo-host-receipt-validp` returns a primitive boolean: whether the
-  receipt octets pass canonical decode, local policy authorization and
-  workflow preflight.
-  `fn-bpo-host-receipt-field-octets` returns one of the nine ACL2-derived text
-  fields as octets, allowing Python to construct its fixed FNWF dictionary
-  without parsing printed Lisp strings or selecting receipt fields itself.
-
-BP delivery and status reports remain transport evidence only. Application
-success still requires the matching receipt intent and durable outcome.
+`host/bp-outbound-host.lisp` (the request ADU of a durable outbound work, and
+the receipt's validity and fields, for the Python sender) went with the Python host (python-diet T5b) and was removed as a file no build loads (Q7k, 2026-09-29; `planning/retired-paths.json`). The native
+sender calls the outbound books through `host/native/bp-obligation.lisp` and
+`host/workflow-host.lisp`.
 
 ## Pinned ION/LTP transport binding
 

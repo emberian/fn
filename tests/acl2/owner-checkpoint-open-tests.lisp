@@ -218,14 +218,14 @@
       (equal (fn-ock-next-checkpoint (fn-sco-capture *ock-t-configs* *ock-t-prefix*)
                                      *ock-t-configs* *ock-t-events*)
              (fn-sco-capture *ock-t-configs* *ock-t-events*))))
-; The history hypothesis has NO removal witness (PKT-192): on every
-; non-history record list tried here the conclusion still holds, so these
-; are slack witnesses, labelled apart, not teeth.  The proof reads the
-; history only as the prefix's fn-sco-store-eventsp and the records'
-; true-listp; a record that is not fn-store-event-p is absorbed alike by the
-; prefix's capture and the whole capture.  A weakened statement without the
-; hypothesis did not prove in 48 s (2026-09-29); failed search is not a
-; counterexample, so the hypothesis stays and is reported untoothed.
+; The theorem has no hypothesis (PKT-192: the history hypothesis was proved
+; redundant -- a record that is not a Store event faults the identity fold
+; stickily, so extension over a prefix holding one is still the capture).
+; Positive witnesses over record lists that are not admitted histories, each
+; checking that the input is outside the old hypothesis: an improper list
+; (the definition captures afresh), a repeated history (sequence numbers
+; out of order), and a base whose prefix holds a record that is not a Store
+; event, extended over a true-list history it prefixes.
 (defmacro ock-t-next-is-capture (prefix records)
   `(equal (fn-ock-next-checkpoint (fn-sco-capture *ock-t-configs* ,prefix)
                                   *ock-t-configs* ,records)

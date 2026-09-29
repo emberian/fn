@@ -5,8 +5,11 @@ bob); A receives over IHAVE from a configured peer and takes local POST
 without a login.  The decision is ACL2's: books/injection-info-params.lisp
 fn-ipp-injected-octets (called by books/owner-served-invariants.lisp
 fn-own-sub-stored-octets for every local submission the owner stages),
-keystone fn-ipp-injected-octets-carry-the-parameters; the login is the one
-the :submit effect carries (books/served.lisp fn-served-login).
+keystone fn-ipp-injected-octets-carry-the-parameters; the account is the one
+the :submit effect carries (books/served.lisp fn-served-account: the
+principal the login authenticated as, PKT-786), and `account hash LOGIN'
+resolves LOGIN to that account (books/native-operator.lisp
+fn-nop-account-hash, keystone fn-nop-account-hash-is-the-served-account-value).
 
 - `policy set complaints-to abuse@example.org' on the running H (a live
   :set-policy row); a non-address is refused.
@@ -14,7 +17,8 @@ the :submit effect carries (books/served.lisp fn-served-login).
   `H-AGENT; posting-account="HEX"; mail-complaints-to="abuse@example.org"',
   HEX 64 lowercase hex digits and no octet of the login; `account hash
   alice' prints HEX, `account hash bob' another value.
-- bob's post carries bob's value; a post on A without a login carries no
+- bob (an explicit --principal) posts an article carrying the value
+  `account hash bob' prints; a post on A without a login carries no
   posting-account.
 - An article relayed to A over IHAVE keeps the peer's Injection-Info line
   octet for octet (no rewriting on the transit arm).
@@ -62,8 +66,12 @@ class NativeInjectionInfoTests(unittest.TestCase):
         if auth:
             node.write_config(extra='[auth]\nrequired = true\nprotected_only = false\n'
                                     'path = "{}"\n'.format(node.root / "credentials.toml"))
-            for login in ("alice", "bob"):
-                node.operator("principal", "set-password", login, "--posting",
+            # PKT-786: the pseudonym is keyed by the account.  alice's
+            # principal is her login's local principal; bob's is named
+            # explicitly, so a value keyed by the login's spelling would
+            # not match his articles.
+            for login, extra in (("alice", ()), ("bob", ("--principal", "ab" * 32))):
+                node.operator("principal", "set-password", login, *extra, "--posting",
                               input=((login + "-correct-horse-battery\n") * 2).encode(),
                               timeout=600, expect=EXIT_OK)
         else:
