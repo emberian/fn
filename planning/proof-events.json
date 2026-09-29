@@ -14038,6 +14038,56 @@
           "name": "fn-onb-boundp-at-owner-prepare-buffer"
         }
       ]
+    },
+    {
+      "id": "PRF-989",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-start-is-wf",
+          "note": "Subject fn-bpfj-start. The invariant established. Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-step-preserves-wf",
+          "note": "Subject fn-bpfj-step. The invariant preserved across a bounded step (fn-bpfr-step-resumes). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-step-is-bounded",
+          "note": "Subject fn-bpfj-step. The per-step work bound: exactly min(QUANTUM, left) positions (a cost measure of the hosted step). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-query-is-the-query",
+          "note": "KEYSTONE. Subject fn-bpfj-query. Host: none yet (the dispatcher and bp-service's stepping loop are the next increment; until then the subject is reached by the test book). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-plan-refuses-past-the-limit-by-name",
+          "note": "KEYSTONE. Subject fn-bpfj-plan. Host: none yet (the dispatcher and bp-service's stepping loop are the next increment; until then the subject is reached by the test book). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-plan-is-the-plan-within-the-limit",
+          "note": "KEYSTONE. Subject fn-bpfj-plan. Host: none yet (the dispatcher and bp-service's stepping loop are the next increment; until then the subject is reached by the test book). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-plan-at-is-the-plan-at",
+          "note": "Subject fn-bpfj-plan-at. Equals fn-bpnf-family-plan-at under the invariant; a step of the keystones' composition."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-apply-is-the-apply",
+          "note": "Subject fn-bpfj-apply. Equals fn-bpnf-family-apply under the invariant."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-apply-at-is-the-apply-at",
+          "note": "Subject fn-bpfj-apply-at. Equals fn-bpnf-family-apply-at under the invariant."
+        }
+      ]
     }
   ]
 }

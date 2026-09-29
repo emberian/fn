@@ -14735,6 +14735,36 @@
         "fn-onb-boundp-of-psrv-prepare",
         "fn-onb-boundp-at-owner-prepare-buffer"
       ]
+    },
+    {
+      "id": "PRF-989",
+      "title": "BP fragment reassembly as a job carried across scheduling steps reads as the whole reassembly; the reassembled image is refused past the profile's limit by name",
+      "statement": "books/bp-node-fragment-job.lisp (Q4a; PRF-250 hosted; PKT-646; D27). A job is (CELLS TOTAL SWEEP) over bp-fragment-resume's sweep state: fn-bpfj-start makes it from the machine state's family (fn-bpnf-fragment-cells of fn-bpnf-active-set, the anchor's total ADU length); fn-bpfj-step runs at most QUANTUM positions of the sweep (fn-bpfj-step-is-bounded: exactly min(QUANTUM, left) positions consumed); fn-bpfj-finishedp reads the positions left. The invariant fn-bpfj-wf is the executable fn-bpfj-currentp (the job's cells and total are the family's now) and the sweep's resumption equal to the sweep from the start; fn-bpfj-start-is-wf establishes it, fn-bpfj-step-preserves-wf preserves it (through fn-bpfr-step-resumes). KEYSTONE fn-bpfj-query-is-the-query: under the invariant a finished job's reading, fn-bpfj-query (fn-bpfr-finish over the job; (:stale :job) for a job that outlived its family, (:pending :job) for an unfinished one), is fn-bpnf-fragment-query, the foundation's whole reassembly inside one step. fn-bpfj-plan is fn-bpnf-family-plan over the job under a LIMIT (the profile's bundle octets, fn-bpnpf-bundle-octets) in place of the *fn-bpnf-max-held-image* cap: KEYSTONE fn-bpfj-plan-refuses-past-the-limit-by-name (an image past the limit answers (:refused :bundle-beyond-profile), before any record, whatever the capacity checks would say) and KEYSTONE fn-bpfj-plan-is-the-plan-within-the-limit (within the limit, the limit within the codec's width as fn-bpnpf-profile-within-codec-widths gives, the plan is fn-bpnf-family-plan). fn-bpfj-plan-at, fn-bpfj-apply and fn-bpfj-apply-at equal fn-bpnf-family-plan-at, -apply and -apply-at under the same hypotheses. The job lives in host memory only: a process death loses bounded work, never a decision (every reading is a function of the durable rows the job was started from). NOT bounded here: the whole-bundle encode (fn-bpb-encode of the reassembled bundle) is one step's work, once per plan, until PKT-585.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008"
+      ],
+      "depends_on": [
+        "PRF-250"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bpfj-start-is-wf",
+        "fn-bpfj-step-preserves-wf",
+        "fn-bpfj-step-is-bounded",
+        "fn-bpfj-query-is-the-query",
+        "fn-bpfj-plan-refuses-past-the-limit-by-name",
+        "fn-bpfj-plan-is-the-plan-within-the-limit",
+        "fn-bpfj-plan-at-is-the-plan-at",
+        "fn-bpfj-apply-is-the-apply",
+        "fn-bpfj-apply-at-is-the-apply-at"
+      ],
+      "evidence": [
+        "books/bp-node-fragment-job.lisp",
+        "tests/acl2/bp-node-fragment-job-tests.lisp"
+      ],
+      "progress_note": "Lane bp-remainder-2 (Fable, 2026-09-29): REPL-admitted on hbox (13 defthms; the reading keystones 200 to 850 prover steps); teeth loaded on persvati. Host: none yet -- the next increment routes a job-bearing (:family anchor observation job) / (:persist-result epoch op result job) event through fn-bpnf-fragment-step to fn-bpfj-propose/-persist twins, adds the debt-delta twin in bp-node-progress, and has bp-service's fnn-bps-fragment-progress step the job per scheduling step with the profile's bundle octets as the limit; SCN-067 and the 10 MiB transfer then run natively."
     }
   ]
 }
