@@ -44,7 +44,7 @@ ROWS = (
     Row("recovery-repair-write", ("log-truncated", "log-recovered", "recovery-stage-unlinked"),
         "crash again before recovery completes", "recovery"),
     Row("receipt-observed", ("receipt-observed",),
-        "duplicate it, reorder with a policy change, lose its durable completion", "pending"),
+        "duplicate it, reorder with a policy change, lose its durable completion", "bp-node"),
 )
 
 PRIOR = {"id": "post-prior", "groups": [GROUP]}
@@ -90,31 +90,49 @@ def _pending_reclaim() -> Scenario:
         healing_bound=adapter.healing_bound())
 
 
-def _pending_receipt(variant: str) -> Scenario:
-    ops = [Operation("receipt-1", "client", "receipt", {"bundle": "bundle-1"}),
-           Operation("probe", "client", "probe")]
+def _receipt(variant: str) -> Scenario:
+    """The receipt-observed point on a real BP node (adapters/bp_node.py,
+    recipe `bp-node`): the sender's carrier of one request is held at the
+    receiver after its decision is recorded; the nemesis interleaves; the
+    healing is a dispatch pass (the replay, or the forwarding), the receipt
+    observed at the sender's node and the receiver Store probed."""
+    receipt = Operation("receipt-1", "client", "receipt", {"bundle": "bundle-1"})
+    deliver = Operation("deliver", "client", "status", {"identity": "bundle-1"})
+    probe = Operation("probe", "client", "probe", {"identity": "bundle-1"})
     if variant == "duplicate":
-        ops.insert(1, Operation("receipt-dup", "nemesis", "receipt",
-                                {"bundle": "bundle-1", "duplicate_of": "receipt-1"}))
+        ops = [receipt,
+               Operation("receipt-dup", "nemesis", "receipt",
+                         {"bundle": "bundle-1", "duplicate_of": "receipt-1"}),
+               Operation("dispatch", "client", "restart"), deliver, probe]
         fault = Fault("receipt-1", "receipt-observed", "interleave", "contract-admissible",
-                      "observed", "store-post", ("receipt-dup",))
+                      "observed", "bp-transit", ("receipt-dup",))
+        healing = ["dispatch", "deliver", "probe"]
     elif variant == "reorder":
-        ops.insert(1, Operation("policy", "nemesis", "policy-change", {"what": "receipt-policy"}))
+        ops = [receipt,
+               Operation("policy", "nemesis", "policy-change",
+                         {"what": "receipt-policy", "change": "route-removed"}),
+               Operation("dispatch-held", "client", "restart"),
+               Operation("restore", "client", "policy-change",
+                         {"what": "receipt-policy", "change": "route-restored"}),
+               Operation("dispatch", "client", "restart"), deliver, probe]
         fault = Fault("receipt-1", "receipt-observed", "interleave", "contract-admissible",
-                      "observed", "store-post", ("policy",))
+                      "observed", "bp-transit", ("policy",))
+        healing = ["dispatch-held", "restore", "dispatch", "deliver", "probe"]
     else:
+        ops = [receipt, Operation("replay", "client", "restart"), deliver, probe]
         fault = Fault("receipt-1", "receipt-observed", "withhold-completion",
-                      "contract-admissible", "persisted")
+                      "contract-admissible", "persisted", "bp-transit")
+        healing = ["replay", "deliver", "probe"]
     return Scenario(
         id="schedule-receipt-observed-" + variant,
         title="a receipt observed, then {}: the receipt's effect happens once, in policy "
               "order, and survives the loss of its completion".format(
                   {"duplicate": "duplicated", "reorder": "reordered with a policy change",
                    "lose-completion": "its durable completion lost"}[variant]),
-        requirements=["BP-001"], contract="local-commit-log",
-        initial={"recipe": "served-node", "groups": [GROUP], "prior": []},
+        requirements=["RET-001", "RET-003"], contract="local-commit-log",
+        initial={"recipe": "bp-node", "groups": ["fn.test"], "prior": []},
         actors=adapter.ACTORS, operations=ops, faults=[fault],
-        healing=["probe"], witnesses=["post-accepted"],
+        healing=healing, witnesses=["receipt-delivered", "receipt-effect-once"],
         healing_bound=adapter.healing_bound())
 
 
@@ -139,7 +157,7 @@ def scenarios_for(row: Row) -> list:
     if row.point == "reclaim-candidate-selected":
         return [_pending_reclaim()]
     if row.point == "receipt-observed":
-        return [_pending_receipt(v) for v in ("duplicate", "reorder", "lose-completion")]
+        return [_receipt(v) for v in ("duplicate", "reorder", "lose-completion")]
     raise KeyError(row.point)
 
 

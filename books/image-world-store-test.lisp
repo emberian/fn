@@ -204,3 +204,6 @@
 (include-book "arena-reader-pins")
 (include-book "owner-reader-read")
 (include-book "peer-carriage")
+(include-book "tls-handshake-budget")
+(include-book "owner-number-bound")
+(include-book "owner-outcome-pinned")
