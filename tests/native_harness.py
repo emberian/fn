@@ -1439,3 +1439,26 @@ def article(message_id, *, groups="fn.test", subject="native test",
     lines.extend(headers)
     head = "".join(line + "\r\n" for line in lines).encode("utf-8")
     return head + b"\r\n" + _octets(body)
+
+
+def openssl_with_ml_dsa():
+    """The test tool OpenSSL that makes ML-DSA-65 keys independently of the
+    node: FN_TEST_OPENSSL, else $FN_OPENSSL_PREFIX/bin/openssl, else openssl
+    on PATH; None when none lists ML-DSA-65."""
+    candidates = [os.environ.get("FN_TEST_OPENSSL")]
+    prefix = os.environ.get("FN_OPENSSL_PREFIX")
+    if prefix:
+        candidates.append(str(Path(prefix) / "bin" / "openssl"))
+    candidates.append("openssl")
+    for candidate in candidates:
+        if not candidate:
+            continue
+        try:
+            probe = subprocess.run([candidate, "list", "-signature-algorithms"],
+                                   stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                   timeout=30, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if probe.returncode == 0 and b"ML-DSA-65" in probe.stdout:
+            return candidate
+    return None

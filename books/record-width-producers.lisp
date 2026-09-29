@@ -155,6 +155,37 @@
                                   (fn-sbud-payload-bound fn-sbud-group-bound
                                    fn-af-message-idp)))))
 
+; KEYSTONE (PRF-990; STO-013, SCN-047): the u32 charge is a representable-
+; profile fact, not a data cap.  An article within the persisted profile's
+; payload bound -- every profile's bound is at most the record codec's
+; payload ceiling (fn-sbud-payload-bound-within-record-codec) -- is charged
+; within u32 by the one charge policy (books/identity.lisp
+; fn-charge-for-payload, which host/store-host.lisp fn-store-charge applies to
+; a natural length and host/native/io.lisp fnn-charge passes to the boundary),
+; so the POST boundary never refuses such an article :charge-bound.  The host
+; calls fn-owner-post-boundary (host/native/owner.lisp
+; fnn-owner-attempt-transit and the POST path), equal to fn-sbud-post-boundary
+; by fn-pvc-post-boundary-carried-is-sbud-post-boundary (PRF-284).  The
+; :charge-bound refusal stays, by name, for a charge no admitted article
+; produces.
+(defthm fn-sbud-post-boundary-never-refuses-an-admitted-payloads-charge
+  (implies (and (natp payload-length)
+                (<= payload-length (fn-sbud-payload-bound profile)))
+           (and (<= (fn-charge-for-payload payload-length) *fn-cbor-max-uint*)
+                (not (equal (fn-sbud-post-boundary profile msgid-octets
+                                                   payload-length group-count
+                                                   (fn-charge-for-payload
+                                                    payload-length))
+                            :charge-bound))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-charge-for-payload-monotone
+                                   (m payload-length)
+                                   (n *fn-record-max-payload*))
+                        (:instance fn-sbud-payload-bound-within-record-codec))
+           :in-theory (e/d (fn-sbud-post-boundary)
+                           (fn-charge-for-payload fn-sbud-payload-bound
+                            fn-sbud-group-bound fn-af-message-idp)))))
+
 ; KEYSTONE (PRF-123: the producers satisfy the runtime-width premise).  The
 ; article record the host builds (`fn-sn-article-record') and the prepare
 ; stages (`fn-sn-prepare') is not `fn-record-widep' when its charge is within

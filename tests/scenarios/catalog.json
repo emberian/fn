@@ -921,24 +921,24 @@
       ],
       "steps": [
         "Enroll one exact hybrid key snapshot, sign an exact source with Ed25519 and ML-DSA-65, commit one schema-1 atomically bound received-carrier article plus historical verdict, and reopen the Store.",
-        "Reserve and refuse another transaction so the allocator transaction ID advances without advancing the Store journal sequence.",
+        "Stage another transaction and refuse it before publication (a known prepublication refusal); then commit the next one.",
         "Commit later Store events, reopen again, and query the historical verdicts.",
         "At the shared native publication helper, inject an expected prepublication refusal and then a valid operation; separately inject indeterminate and structural-fault outcomes.",
         "Open a structurally bound kind-4 history whose embedded article replays but whose historical enrollment is missing."
       ],
       "expected": [
         "The kind-4 received article and historical verdict appear together after both reopens; its separately retained exact authored source and identity agree with the carrier projection and the enrolled ordered key set.",
-        "The burned allocator ID creates no journal-sequence gap and does not prevent later recovery.",
+        "The refusal appends nothing and burns no sequence: the owner's known abort consumes the reservation and the next commit names the same staged record sequence (fn-sbud-pending-sequence), so the record log has no gap and later recovery replays it (the model: books/store-identity-sequence-invariants.lisp fn-sn-known-abort-preserves-identity-sequence).",
         "A legacy article has no reconstructed historical verdict because its record contains no immutable verdict evidence.",
         "Expected refusal consumes the reservation and permits the following valid commit; indeterminate and structural faults remain fenced and are never reported as refusal.",
         "Identity recovery failure leaves the retained history intact, returns the composed replay error, and cannot reach ready through recovery barriers."
       ],
       "evidence": [
         "tests/acl2/store-identity-traces-tests.lisp",
-        "tests/native_owner_publication.lisp"
+        "tests/native_owner_publication_raw.lisp"
       ],
       "execution_scope": "The existing ACL2 source trace executes fn-sn transitions and reopen, and the raw SBCL witness executes the shared publication helper with controlled observations. The new schema-1 codec, constructor and substitution witnesses certify separately; the modified native hybrid-author/restart witness still needs a combined saved image. These results do not establish filesystem durability, cryptographic primitive correctness or arbitrary-trace preservation; PRF-050 remains in progress. The negative missing-enrollment composed trace evaluates from ACL2 sources, with no native corrupted-store startup claim.",
-      "note": "assurance-triage 2026-09-26: returned to specified: no recorded run of the SBCL witness (tests/native_owner_publication.lisp) or any native run; only the ACL2 book tests/acl2/store-identity-traces-tests is certified."
+      "note": "assurance-triage 2026-09-26: returned to specified: no recorded run of the SBCL witness (tests/native_owner_publication_raw.lisp) or any native run; only the ACL2 book tests/acl2/store-identity-traces-tests is certified. correctness-remainder-8 (2026-09-29): the witness had rotted (it loaded io.lisp whole, whose load calls ACL2); it now loads the deployed fnn-owner-publish-prepared and its conditions and structs by name (the extraction pattern of tests/native_owner_bound_commit_raw.lisp) and step 2 is re-specified to the record log (the per-file allocator is retired); run recorded in planning/evidence/correctness-remainder-8-2026-09-29.md. Steps 1, 3 and 5 stay as the ACL2 source trace executes them; no native restart run."
     },
     {
       "id": "SCN-028",
@@ -1670,47 +1670,51 @@
       "id": "SCN-055",
       "title": "XPAT is listed, joins its pattern arguments, ORs comma alternatives and matches case-sensitively on the served node",
       "milestone": "M6",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "NNT-016"
       ],
       "steps": [
         "CAPABILITIES on a served connection.",
-        "In a group holding an article with Subject `probe root`: XPAT Subject 1-9 *root*, *Root*, *zzz*,*root*, *zzz* *root*, probe root.",
-        "Search the group from the web reader with the wildmat *root*."
+        "In a group holding an article with Subject `probe root`: XPAT Subject 1-9 *root*, *Root*, *zzz*,*root*, *zzz* *root*, probe root."
       ],
       "expected": [
         "The capability block lists XPAT.",
-        "221 with the article's line for *root*, *zzz*,*root* and probe root; 221 with an empty list for *Root* and *zzz* *root*.",
-        "The web page names the XPAT command it sent, carrying the wildmat as typed, and lists the article."
+        "221 with the article's line for *root*, *zzz*,*root* and probe root; 221 with an empty list for *Root* and *zzz* *root*."
       ],
       "evidence": [
         "tests/acl2/nntp-xpat-tests.lisp",
-        "planning/evidence/reader-surface-2026-09-25.md"
+        "tests/test_native_conformance.py",
+        "planning/evidence/correctness-remainder-7-2026-09-29.md"
       ],
-      "note": "assurance-triage 2026-09-26: returned to specified: the served-node steps were not run (planning/evidence/reader-surface-2026-09-25.md \"Native: NOT RUN (blocked)\"); only the fake-node tests.test_fn_web ReaderSearchTests and the ACL2 book ran."
+      "note": "2026-09-29 correctness-remainder-7: the served-node steps ran natively (tests.test_native_conformance.ServedSurfaceRows.test_xpat_joins_ors_and_matches_case_sensitively, hbox developer image, planning/evidence/correctness-remainder-7-2026-09-29.md). The web-reader step is withdrawn: the Python readers were deleted (9ca2529fd, web-native-2) and the native web face has no search. Earlier: assurance-triage 2026-09-26: returned to specified: the served-node steps were not run (planning/evidence/reader-surface-2026-09-25.md \"Native: NOT RUN (blocked)\"); only the fake-node tests.test_fn_web ReaderSearchTests and the ACL2 book ran."
     },
     {
       "id": "SCN-047",
-      "title": "A store written by an image before the u64 record codec opens under the new image with the same records and bytes; a u64 charge commits as schema 2",
+      "title": "A charge above 2^32 - 1 is refused at the POST boundary by name (STO-013): the u32 charge covers every admissible article, a representable-profile fact and not a data cap",
       "milestone": "M5",
       "status": "specified",
       "requirements": [
         "STO-013"
       ],
       "steps": [
-        "With the previous image, init a store and post two articles; hash every file.",
-        "Open it with the new image (recover, status) and hash every file again.",
-        "With the new image post an article with charge 2^40 and recover."
+        "Evaluate the POST boundary the host calls (fn-owner-post-boundary, equal to fn-sbud-post-boundary by PRF-284) under the scale profile at its largest admitted length with that length's charge.",
+        "Evaluate the POST boundary the host calls (fn-owner-post-boundary, equal to fn-sbud-post-boundary by PRF-284) at an admitted length with a charge of 2^40.",
+        "Evaluate it at a length past the profile's payload bound whose charge is past 2^32 - 1."
       ],
       "expected": [
-        "The new image recovers the same transaction and article counts; every file hash is unchanged by the open.",
-        "The u64 charge commits (schema-2 record) and recovers; the previous image refuses the store's new record fail-closed by its version octet."
+        "The boundary admits it (:ok) and its charge (fn-charge-for-payload of its length) is within u32; no admitted article's charge can exceed u32 under any profile (fn-sbud-post-boundary-never-refuses-an-admitted-payloads-charge, PRF-990: every profile's payload bound is at most the record codec's payload ceiling, whose charge is within u32), so the node writes schema-1 records.",
+        "The boundary refuses by name, :charge-bound (\"charge must be a positive uint32\"; books/store-budget-naming.lisp fn-sbud-post-boundary, fn-sbud-post-boundary-admits-a-u32-charge): the writers are 32-bit by design (STO-013's implementation note), so no image writes a schema-2 record for a charge.",
+        "The boundary refuses by the payload bound (:payload-bound), before the charge: the profile's article limit is the operator's admission limit (D27), and the u32 charge covers every article any supported profile admits."
       ],
       "evidence": [
+        "books/record-width-producers.lisp",
+        "tests/acl2/record-width-producers-tests.lisp",
+        "books/store-budget-naming.lisp",
         "planning/evidence/bounds-p6-2026-09-25.md"
       ],
-      "note": "assurance-triage 2026-09-26: returned to specified: the only recorded native run (planning/evidence/bounds-p6-2026-09-25.md, the u64 charge) refused the 2^40 charge (\"charge must be a positive uint32\") and wrote no schema-2 record, the opposite of the expected result; no test or script is committed."
+      "note": "2026-09-29 correctness-remainder-7: re-specified under the coordinator's decision (a) (PKT-367): the POST boundary refuses a charge above 2^32 - 1 by design (STO-013), so the earlier expectation (a u64 charge commits as schema 2) cannot hold and is withdrawn; the earlier note: assurance-triage 2026-09-26: returned to specified: the only recorded native run (planning/evidence/bounds-p6-2026-09-25.md, the u64 charge) refused the 2^40 charge (\"charge must be a positive uint32\") and wrote no schema-2 record, the opposite of the expected result; no test or script is committed.",
+      "execution_scope": "Every step is a ground evaluation of the boundary function in tests/acl2/record-width-producers-tests.lisp, and PRF-990's theorem covers every profile; no native POST of 2^40 octets is claimed, since no supported profile admits one. The schema-2 decode of a u64 record stays PRF-086's (the codec's width), not a producible record. The previous-image half of this scenario is retired: no migrations (all nodes redeploy fresh at 6.6.0; one format)."
     },
     {
       "id": "SCN-056",
@@ -1732,7 +1736,7 @@
         "planning/evidence/checkpoint-cost-2026-09-25.md",
         "tests/acl2/owner-checkpoint-open-tests.lisp"
       ],
-      "note": "assurance-triage 2026-09-26: returned to specified: no committed harness or log, and the recorded measurements (planning/evidence/checkpoint-cost-2026-09-25.md) show owner start from a checkpoint slower than full replay (1.36 vs 1.10 s; 8.94 vs 7.28 s) and status at N=4096 about equal (7.72 vs 7.77 s), not the expected result."
+      "note": "assurance-triage 2026-09-26: returned to specified: no committed harness or log, and the recorded measurements (planning/evidence/checkpoint-cost-2026-09-25.md) show owner start from a checkpoint slower than full replay (1.36 vs 1.10 s; 8.94 vs 7.28 s) and status at N=4096 about equal (7.72 vs 7.77 s), not the expected result. correctness-remainder-8 (2026-09-29): a timing scenario, measured ONCE at prerelease convergence (planning/release-v6.6.0.md section 2b row 10), not during development; its functional half (the automatic publication defers while serving continues) is tests.test_native_checkpoint_auto."
     },
     {
       "id": "SCN-053",
