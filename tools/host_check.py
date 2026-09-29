@@ -570,8 +570,11 @@ def install_world(forms: list[object], acl2: Path, runner=None) -> str:
         runner = lambda argv: subprocess.run(argv, cwd=ROOT, capture_output=True, text=True)
     done = runner(argv)
     missing = world_missing(forms)
+    tail = " ".join(((done.stdout or "") + (done.stderr or "")).split()[-30:])
+    if getattr(done, "returncode", 0):
+        return (f"certs.py install-set {' '.join(roots)} from {cache} exited "
+                f"{done.returncode}: {tail}")
     if missing:
-        tail = " ".join((done.stdout + done.stderr).split()[-30:])
         return (f"{len(missing)} of its books have no certificate here or in {cache} "
                 f"(e.g. {missing[0]}; certs.py install-set said: {tail})")
     return ""
@@ -620,7 +623,7 @@ def certificate_trouble(output: str) -> str:
 def load_check(acl2: Path, files: list[str], timeout: int,
                log_dir: Path | None = None, world: list[object] | None = None,
                world_note: str = "BARE ACL2", require_world: bool = False,
-               bare_acl2: Path | None = None) -> int:
+               bare_acl2: Path | None = None, reinstall: bool = True) -> int:
     import tempfile
     with tempfile.TemporaryDirectory(prefix="fn-host-load-") as scratch:
         driver = Path(scratch) / "driver.lsp"
@@ -643,6 +646,18 @@ def load_check(acl2: Path, files: list[str], timeout: int,
         (log_dir / "load.log").write_text(output)
     if world is not None:
         trouble = certificate_trouble(output)
+        if trouble and reinstall:
+            # Per-book installs (remote_check's `certs.py install`) can leave
+            # pairs from different origins that do not compose (hbox and
+            # persvati at 1f0503c1d); one coherent set for the prefix's roots
+            # usually does.  Once.
+            why = install_world(world, bare_acl2 or acl2)
+            print("host_check --load: the umbrella's certificates did not compose ("
+                  f"{trouble}); reinstalled the prefix's roots as one set"
+                  + (f" -- {why}" if why else "") + "; retrying", flush=True)
+            if not why:
+                return load_check(acl2, files, timeout, log_dir, world, world_note,
+                                  require_world, bare_acl2, reinstall=False)
         if trouble:
             if log_dir is not None:
                 (log_dir / "load-world.log").write_text(output)

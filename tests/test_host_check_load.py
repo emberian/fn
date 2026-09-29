@@ -144,7 +144,7 @@ class WorldTests(unittest.TestCase):
         calls = []
 
         class Done:
-            stdout, stderr = "install-set: missing 1", ""
+            stdout, stderr, returncode = "install-set: missing 1", "", 0
 
         def runner(argv):
             calls.append(argv)
@@ -191,6 +191,36 @@ class WorldTests(unittest.TestCase):
                          "include-book post-identity-catalog failed on its certificate")
         self.assertEqual(host_check.certificate_trouble(
             f"{host_check.WORLD_OK}\n[Uncertified] later\n"), "")
+
+    def test_certificate_trouble_reinstalls_one_set_then_falls_back(self):
+        calls = []
+        original = host_check.install_world
+        host_check.install_world = lambda forms, acl2, runner=None: (
+            calls.append(forms) or "missing 3 (test)")
+        self.addCleanup(setattr, host_check, "install_world", original)
+        trouble = ('ACL2 Error [Failure] in ( INCLUDE-BOOK "books/image-world" ...):\n'
+                   "There is a problem with the certificate\n")
+        sessions = []
+
+        def fake_run(argv, label, **kwargs):
+            sessions.append(kwargs["input"].decode())
+            import subprocess as sp
+            out = trouble if "INCLUDE-BOOK" in kwargs["input"].decode().upper() else \
+                f"{host_check.LOAD_TAG}-DONE\n"
+            return sp.CompletedProcess(argv, 0, out.encode())
+        original_run = host_check.acl2_slots.run
+        host_check.acl2_slots.run = fake_run
+        self.addCleanup(setattr, host_check.acl2_slots, "run", original_run)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = host_check.load_check(pathlib.Path("acl2"), [], 5, None,
+                                         [["include-book", "books/image-world"]], "U")
+        text = out.getvalue()
+        self.assertEqual(len(calls), 1)
+        self.assertIn("reinstalled the prefix's roots as one set -- missing 3 (test)", text)
+        self.assertIn("WORLD BARE ACL2 -- the certified umbrella did not load here", text)
+        self.assertEqual(code, 0)
+        self.assertEqual(len(sessions), 2)
 
     def test_a_prefix_error_names_its_host_file(self):
         tag = host_check.WORLD_LD
