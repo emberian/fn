@@ -1144,6 +1144,12 @@
 (local
  (defthm fn-mpxt-len-append
    (equal (len (append a b)) (+ (len a) (len b)))))
+(local
+ (defthm fn-mpxt-nth-append
+   (implies (natp i)
+            (equal (nth i (append a b))
+                   (if (< i (len a)) (nth i a) (nth (- i (len a)) b))))))
+
 (defthm fn-mpxt-faithful-from-append
   (implies (and (true-listp rows) (natp i)
                 (fn-mpxt-faithful-from i rows fn-mpxt)
