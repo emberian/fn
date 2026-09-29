@@ -15103,6 +15103,27 @@
         "fn-mpxt-seqs-is-cat-msgid-seqs",
         "fn-mpxt-spec-from-is-cat-seqs-for"
       ]
+    },
+    {
+      "id": "PRF-1019",
+      "title": "`account delete LOGIN` removes exactly a login the credential file holds, keeps every binding, refuses a bound login by name, and hands a login the file does not hold to the configuration's `account delete` record; `account list` prints a code's expiry as an RFC 3339 UTC instant",
+      "statement": "books/native-auth-admin.lisp (row S6, operability review drag 8: one account system). Subject: fn-native-auth-admin-delete, called through host/native-auth-admin-host.lisp fn-native-auth-admin-host-delete by host/native/auth-admin.lisp fnn-native-auth-admin-execute-held (:delete), reached from books/native-operator.lisp fn-nop-parse-account (`account delete|set-password LOGIN` are the credential file's plans, `principal delete|set-password` the same). (1) fn-native-auth-admin-delete-decides-by-the-file (KEYSTONE): over a file the loader admits and a login name, the answer is :account (nothing written; the operator sends public-node-2's `account delete` administration record, books/config.lisp fn-cfg-account-delete-reason) exactly when the file holds no credential for the login; a held login bound to a signing principal is refused :login-bound; an accepted answer writes the serialization of the file's credentials without the login's, every binding kept. (2) fn-native-auth-admin-remove-takes-exactly-the-login: after the removal no credential answers the login and every other login's is the one it was. books/account-list.lisp fn-acct-expiry-text (called by fn-acct-list-fields in fn-acct-kinds-list-report, which books/native-live-status.lisp serves for `account list`) renders an admitted expiry through books/nntp-responses.lisp fn-nntp-dtn-civil as YYYY-MM-DDTHH:MM:SSZ (RFC 3339 section 5.6, Z offset), a non-expiry text or a year past 9999 as kept. Not covered: that the reloaded file's credential table is the one the owner serves (the reload is fnn-native-auth-reload-config's, PKT-221); a redeemed account's own verifier cannot be changed (set-password writes an auth.toml credential, which fn-auth-config-with-accounts-keeps-the-operators-credential makes win).",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-034"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/native-auth-admin.lisp",
+        "books/account-list.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-auth-admin-tests.lisp",
+        "tests/acl2/account-list-tests.lisp",
+        "tests/acl2/native-operator-tests.lisp"
+      ],
+      "progress_note": "Lane operability-6 (Claude Opus 5.5, 2026-09-29). REPL-admitted (persvati) in clean sessions over native-auth-admin-tests, account-list-tests and native-operator-tests; teeth in tests/acl2/native-auth-admin-tests.lisp: a positive witness asserting every hypothesis and the accepted conclusion on a two-login file (the reloaded file lacks the login, keeps the other), the bound refusal, the :account hand-off for a file without the login, two must-fail teeth for the removal, and a hypothesis failure (an unadmitted file refuses rather than hands off)."
     }
   ]
 }

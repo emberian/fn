@@ -1487,11 +1487,22 @@
    :rule-classes nil
    :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
 
-; public-node-2: `account delete LOGIN' is an administration plan, and a
+; Row S6 (one account system): `account delete LOGIN' is the credential
+; file's :delete plan, whose second argument is public-node-2's `account
+; delete' administration plan for a login the file does not hold; a
 ; malformed login is a usage error (exit 2) rather than a refusal.
-(defconst *fn-nop-account-delete*
+(defconst *fn-nop-account-delete-principal*
   (fn-native-operator-run *fn-nop-minimal-config*
                           (fn-nop-test-argv '("account" "delete" "probe"))))
+(defconst *fn-nop-account-delete*
+  (fn-native-operator-result-principal-account-result
+   *fn-nop-account-delete-principal*))
+(assert-event
+ (and (equal (fn-native-operator-result-native-action *fn-nop-account-delete-principal*)
+             :principal)
+      (equal (fn-native-auth-admin-plan-action
+              (fn-native-operator-result-principal-plan *fn-nop-account-delete-principal*))
+             (list :delete (fn-record-string-octets "probe")))))
 (assert-event (equal (fn-native-operator-result-status *fn-nop-account-delete*) :accepted))
 (assert-event (equal (fn-native-operator-result-command *fn-nop-account-delete*) "account"))
 (assert-event (equal (fn-native-admin-result-kind
@@ -1501,6 +1512,20 @@
                            (fn-native-operator-run *fn-nop-minimal-config*
                                                    (fn-nop-test-argv '("account" "delete"))))
                           :accepted)))
+; `account set-password LOGIN' is `principal set-password LOGIN''s plan.
+(assert-event
+ (equal (fn-native-operator-result-principal-plan
+         (fn-native-operator-run *fn-nop-minimal-config*
+                                 (fn-nop-test-argv '("account" "set-password" "alice" "--no-posting"))))
+        (fn-native-operator-result-principal-plan
+         (fn-native-operator-run *fn-nop-minimal-config*
+                                 (fn-nop-test-argv '("principal" "set-password" "alice" "--no-posting"))))))
+(assert-event
+ (equal (fn-native-auth-admin-action-kind
+         (fn-native-operator-result-principal-plan
+          (fn-native-operator-run *fn-nop-minimal-config*
+                                  (fn-nop-test-argv '("account" "set-password" "alice")))))
+        :set-password))
 
 ; PKT-868: `store compact' and `store checkpoint' carry the request vector
 ; and the control path; other store plans carry neither.

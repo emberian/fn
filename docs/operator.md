@@ -308,11 +308,19 @@ fn operator /etc/fn/fn.toml group moderate fn.announce --off
 Add a login, or change its password. It is asked twice:
 
 ```
-fn operator CONFIG principal set-password alice --posting
+fn operator CONFIG account set-password alice --posting
 ```
 
-`--no-posting` makes a login that can read but not post. Restart the node
-after you add a login or change a password this way.
+`--no-posting` makes a login that can read but not post. The login is
+written to `auth.toml` and a running node takes it at once: the last word
+of the answer says when it applies (see "Signed posts" below).
+`principal set-password` is the same command.
+
+It works for a friend's account too. A friend who made their account from a
+code and forgot the password gets a new one this way: the login is then
+written to `auth.toml`, whose password comes first. `account delete` then
+removes the `auth.toml` login, and the old password works again; run it a
+second time to end the account itself.
 
 ### Accounts and invitation codes
 
@@ -343,6 +351,8 @@ fn operator CONFIG account list
 4. From then on they log in normally. No restart is needed.
 
 `account list` shows accounts and unused codes, never passwords or codes.
+An unused code's line gives the time it stops working, in UTC:
+`pending expires 2026-10-06T12:00:00Z`.
 
 To end an account, for example a test login:
 
@@ -361,8 +371,10 @@ fn operator CONFIG account delete probe
   without it) or a consumer bound to it (`consumer unbind NAME`). Remove
   those first. Its group access rule does not block it.
 - It works on a running node, and on a stopped one.
-- It removes accounts made with invitation codes. A login in `auth.toml`
-  is removed by editing that file.
+- A login in `auth.toml` (one made with `account set-password`) is removed
+  from that file instead, at once on a running node. It is refused while
+  `principal bind` ties it to a key (`principal unbind` first). It is not
+  kept as deleted: `account set-password` can add it again.
 
 ### Private groups
 

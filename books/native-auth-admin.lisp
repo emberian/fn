@@ -130,6 +130,19 @@
             (fn-native-auth-admin-plan-result
              :accepted :plan (list :bind (car (cdr argv)) nil))
           (fn-native-auth-admin-plan-result :usage :name nil)))
+       ; Row S6 (one account system): `account delete LOGIN' (and
+       ; `principal delete LOGIN') removes a login the credential file
+       ; holds through the same replacement machine; a login the file does
+       ; not hold is the configuration's (fn-native-auth-admin-delete).
+       ((and (equal (len argv) 2)
+             (equal (car argv) (fn-record-string-octets "delete")))
+        (if (fn-native-auth-login-namep (car (cdr argv)))
+            (fn-native-auth-admin-plan-result
+             :accepted :plan (list :delete (car (cdr argv))))
+          (fn-native-auth-admin-plan-result :usage :name nil)))
+       ((and (consp argv)
+             (equal (car argv) (fn-record-string-octets "delete")))
+        (fn-native-auth-admin-plan-result :usage :delete-arguments nil))
        ((and (consp argv)
              (or (equal (car argv) (fn-record-string-octets "bind"))
                  (equal (car argv) (fn-record-string-octets "unbind"))))
@@ -147,7 +160,7 @@
 (defun fn-native-auth-admin-action-name (plan-result)
   (declare (xargs :guard t))
   (if (member-equal (fn-native-auth-admin-action-kind plan-result)
-                    '(:set-password :bind))
+                    '(:set-password :bind :delete))
       (fn-ncfg-second (fn-native-auth-admin-plan-action plan-result))
     nil))
 
@@ -445,6 +458,110 @@
                     (fn-native-auth-admin-public-row
                      credential bindings))))))))))
 
+; CREDENTIALS without NAME's credential.
+(defun fn-native-auth-admin-remove (name credentials)
+  (declare (xargs :guard t))
+  (if (consp credentials)
+      (if (equal (fn-auth-cred-name (car credentials)) name)
+          (fn-native-auth-admin-remove name (cdr credentials))
+        (cons (car credentials)
+              (fn-native-auth-admin-remove name (cdr credentials))))
+    nil))
+
+(defun fn-native-auth-admin-delete (octets presentp name max-credentials)
+  ; Host-called mutation subject for `account delete LOGIN' (row S6).  A
+  ; login the file enrolls is removed: its credential row and nothing else,
+  ; every other login's credential and binding as read under the writer
+  ; lock.  It is refused :login-bound while the file ties the login to a
+  ; signing principal (`principal unbind LOGIN' first), as the
+  ; configuration refuses deleting a bound redeemed account.  A login the
+  ; file does not hold is answered (:account :account-login), nothing
+  ; written: the operator then sends the administrative `account delete
+  ; LOGIN' record, which the configuration admits only for a redeemed
+  ; account (books/config.lisp fn-cfg-account-delete-reason) and otherwise
+  ; refuses account-unknown.  Removing a file login leaves no tombstone: the
+  ; file is the operator's, and `account set-password LOGIN' enrolls it
+  ; again.
+  (declare (xargs :guard t))
+  (let ((loaded (fn-native-auth-load octets presentp nil nil nil
+                                     max-credentials)))
+    (cond
+     ((not (fn-native-auth-login-namep name)) (list :refused :name))
+     ((not (equal (fn-native-auth-result-status loaded) :accepted))
+      (list :refused (fn-native-auth-result-reason loaded)))
+     (t
+      (let* ((creds (fn-auth-config-creds (fn-native-auth-result-config loaded)))
+             (bindings (fn-native-auth-load-bindings octets presentp
+                                                     max-credentials)))
+        (cond
+         ((not (consp (fn-auth-find-cred name creds)))
+          (list :account :account-login))
+         ((fn-native-auth-admin-binding name bindings)
+          (list :refused :login-bound))
+         (t
+          (let ((serialized (fn-native-auth-admin-serialize
+                             (fn-native-auth-admin-sort-credentials
+                              (fn-native-auth-admin-remove name creds))
+                             bindings)))
+            (if (or (not (fn-ncfg-ascii-octetsp serialized))
+                    (< (fn-native-auth-max-octets max-credentials)
+                       (len serialized)))
+                (list :fault :serialized-profile)
+              (list :accepted serialized nil))))))))))
+
+; PRF-1019 (row S6).  The removal takes exactly NAME's credential: after it
+; no credential answers NAME, and every other login's is the one it was.
+(defthm fn-native-auth-admin-remove-takes-exactly-the-login
+  (equal (fn-auth-find-cred login (fn-native-auth-admin-remove name creds))
+         (if (equal login name) nil (fn-auth-find-cred login creds)))
+  :hints (("Goal" :in-theory (enable fn-auth-find-cred))))
+
+; PRF-1019 KEYSTONE (the host-called subject).  `account delete LOGIN' over
+; a credential file the loader admits writes nothing and hands the login to
+; the configuration's record exactly when the file does not hold it; when it
+; is accepted, the file it writes is the file's credentials without LOGIN's,
+; every binding kept, and it is refused while LOGIN holds a binding.
+(defthm fn-native-auth-admin-delete-decides-by-the-file
+  (implies (and (fn-native-auth-login-namep name)
+                (equal (fn-native-auth-result-status
+                        (fn-native-auth-load octets presentp nil nil nil
+                                             max-credentials))
+                       :accepted))
+           (let ((creds (fn-auth-config-creds
+                         (fn-native-auth-result-config
+                          (fn-native-auth-load octets presentp nil nil nil
+                                               max-credentials))))
+                 (bindings (fn-native-auth-load-bindings octets presentp
+                                                         max-credentials))
+                 (result (fn-native-auth-admin-delete octets presentp name
+                                                      max-credentials)))
+             (and (iff (equal (car result) :account)
+                       (not (consp (fn-auth-find-cred name creds))))
+                  (implies (and (consp (fn-auth-find-cred name creds))
+                                (fn-native-auth-admin-binding name bindings))
+                           (equal result (list :refused :login-bound)))
+                  (implies (equal (car result) :accepted)
+                           (and (consp (fn-auth-find-cred name creds))
+                                (not (fn-native-auth-admin-binding name bindings))
+                                (equal (cadr result)
+                                       (fn-native-auth-admin-serialize
+                                        (fn-native-auth-admin-sort-credentials
+                                         (fn-native-auth-admin-remove name creds))
+                                        bindings)))))))
+  ; The size check's (len serialized) is left closed: opened, linear
+  ; arithmetic spends the 60 s budget in add-poly (328 steps).
+  :hints (("Goal" :in-theory (e/d (fn-native-auth-admin-delete)
+                                  (fn-native-auth-admin-serialize
+                                   fn-native-auth-admin-sort-credentials
+                                   fn-native-auth-admin-remove
+                                   fn-native-auth-load
+                                   fn-native-auth-load-bindings
+                                   fn-auth-find-cred
+                                   fn-native-auth-admin-binding
+                                   fn-native-auth-max-octets
+                                   fn-ncfg-ascii-octetsp
+                                   fn-native-auth-login-namep len)))))
+
 (defun fn-native-auth-admin-result-status (result)
   (declare (xargs :guard t))
   (if (consp result) (car result) :fault))
@@ -732,6 +849,8 @@
           (:d fn-native-auth-admin-signing-field)
           (:d fn-native-auth-admin-rebind)
           (:d fn-native-auth-admin-bind)
+          (:d fn-native-auth-admin-remove)
+          (:d fn-native-auth-admin-delete)
           (:d fn-native-auth-admin-action-principal-text)
           (:d fn-native-auth-admin-action-principal-presentp)
           (:d fn-native-auth-admin-action-postingp)

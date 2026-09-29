@@ -122,7 +122,7 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
    ```sh
    fn operator /var/lib/fn/fn.toml init   # docs-check: skip (init under the mission fn.toml above; the grammar book configuration names no mission)
    fn operator /var/lib/fn/fn.toml policy set path-identity news.example.org
-   fn operator /var/lib/fn/fn.toml principal set-password alice --posting
+   fn operator /var/lib/fn/fn.toml account set-password alice --posting
    ```
 
    `init` also makes the node's secret key file, and sizes the store for

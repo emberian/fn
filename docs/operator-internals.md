@@ -1795,7 +1795,12 @@ redeemed account the file does not name as the configuration holds it
 (`fn-lb-sync-binds-file-logins-as-the-file-does-and-keeps-account-bindings`),
 so it survives restarts (`fn-lb-an-account-binding-survives-the-next-start`);
 a file login's binding stays the file's.
-`principal set-password` asks the same (control request 14): the owner
+`principal set-password` (= `account set-password`) and, for a login the
+file holds, `account delete` (row S6, PRF-1019,
+`books/native-auth-admin.lisp` `fn-native-auth-admin-delete`, whose
+keystone `fn-native-auth-admin-delete-decides-by-the-file` sends a login the
+file does not hold to the configuration's `account delete` record) ask the
+same (control request 14): the owner
 rebuilds its credential table from the file with the load it ran at start
 (`host/native/auth.lisp` `fnn-native-auth-reload-config`, ACL2's
 `fn-native-auth-host-load`) before republishing the bindings, so a new

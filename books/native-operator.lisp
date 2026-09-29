@@ -679,11 +679,11 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "policy")
          "usage: fn operator CONFIG policy set KEY VALUE, KEY one of: path-identity IDENTITY | posting-policy bound-logins|open | complaints-to ADDR | anonymous none|open | exposure-connections N | exposure-per-address N | exposure-steps-per-second N | exposure-idle-seconds N | exposure-first-seconds N | exposure-auth-failures N | exposure-posts-per-minute N | exposure-trusted CIDR[,CIDR...]|none | relay-date-skew SECONDS | refused-offer-capacity N | relay-require-path 0|1 | log-batch-records N | log-batch-octets N | barrier-deadline-ms N | barrier-stall-ms N | clock-event-ms N | compress-min-octets N | disk-reserve-octets N | max-transactions N | max-history-octets N | max-article-octets N (each applies to a running node at once, the three store limits as their answer says: now, at the next start, or refused by name)")
         ((equal subject "principal")
-         "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin; its last word says when it applies: applied (the running node took it), effective-at-next-start (no node running) or restart-required (fn.toml names no [control] path); bind and unbind apply to a running node at once)")
+         "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | delete NAME | bind NAME HEX | unbind NAME} (the same logins as account set-password and account delete; set-password reads the password twice from the terminal or two lines of stdin; its last word says when it applies: applied (the running node took it), effective-at-next-start (no node running) or restart-required (fn.toml names no [control] path); bind and unbind apply to a running node at once)")
         ((equal subject "consumer")
          "usage: fn operator CONFIG consumer {bind NAME --account LOGIN | unbind NAME | show} (bind confines local consumer NAME to the groups LOGIN may read: its poll and ack then need LOGIN's password and serve only the events of a group LOGIN's access rule admits; unbind returns it to the operator's unrestricted consumer; show is the account list report; apply to a running node at once; spec consumer-progress Bound consumers)")
         ((equal subject "account")
-         "usage: fn operator CONFIG account {invite [--expires SECONDS] | list | access {LOGIN|--anonymous} --read WILDMAT --post WILDMAT | access show | delete LOGIN} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers, and each access rule; access sets the groups a login sees and may post to; delete ends LOGIN's account: new logins as LOGIN are refused, its posts stay, and the login is never given out again; refused while a signing binding, a moderator role or a consumer binding names LOGIN; spec nntp Invitation-code accounts, Group access)")
+         "usage: fn operator CONFIG account {invite [--expires SECONDS] | list | set-password LOGIN [--principal HEX] [--posting|--no-posting] | access {LOGIN|--anonymous} --read WILDMAT --post WILDMAT | access show | delete LOGIN} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers, each access rule, and a code's expiry as a UTC time; set-password asks the password twice and writes LOGIN into auth.toml, which a redeemed account's own password then yields to; access sets the groups a login sees and may post to; delete removes a login auth.toml holds, else ends LOGIN's redeemed account: new logins as LOGIN are refused, its posts stay, and a redeemed login is never given out again; refused while a signing binding, a moderator role or a consumer binding names LOGIN; set-password and delete apply to a running node at once; spec nntp Invitation-code accounts, Group access)")
         ((equal subject "keys")
          "usage: fn operator CONFIG keys redecide MSGID (re-decide a stored key statement under the grants in force now; the running owner decides it over the control socket; refused when MSGID is no stored key statement or its change is already made; spec peering 7.4)")
         ((equal subject "tls")
@@ -861,7 +861,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                              ; PRF-388 (PKT-560): for `bind|unbind', the
                              ; `account bind|unbind' plan the host runs when
                              ; the credential file does not hold the login.
-                             (if (equal (fn-native-auth-admin-action-kind plan) :bind)
+                             ; Row S6: for `delete', the `account delete'
+                             ; plan, the same way.
+                             (if (member-equal (fn-native-auth-admin-action-kind plan)
+                                               '(:bind :delete))
                                  (fn-nop-parse-administration
                                   "account"
                                   (cons (fn-record-string-octets "account")
@@ -896,9 +899,14 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ;; --read WILDMAT --post WILDMAT' (books/native-admin.lisp).
         ((equal (fn-ncfg-first words) "access")
          (fn-nop-parse-administration "account" argv config))
-        ;; public-node-2: `account delete LOGIN' (books/native-admin.lisp).
-        ((equal (fn-ncfg-first words) "delete")
-         (fn-nop-parse-administration "account" argv config))
+        ;; Row S6 (one account system): `account set-password LOGIN' and
+        ;; `account delete LOGIN' are the credential file's plans
+        ;; (books/native-auth-admin.lisp); a login the file does not hold
+        ;; is deleted by public-node-2's `account delete' record
+        ;; (books/native-admin.lisp), the plan's second argument.
+        ((or (equal (fn-ncfg-first words) "set-password")
+             (equal (fn-ncfg-first words) "delete"))
+         (fn-nop-parse-principal argv config))
         ;; PKT-597: `account hash LOGIN' prints the posting-account value an
         ;; article posted under LOGIN carries (books/injection-info-policy.lisp
         ;; fn-ipp-account-hash): the host reads the node secret, ACL2
@@ -1838,8 +1846,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
 (local
  (defthm fn-nop-parse-principal-command
    (equal (fn-native-operator-result-command (fn-nop-parse-principal a c)) "principal")
+   ; The account plan is an argument, never opened: 2.8M steps opened, 740 closed.
    :hints (("Goal" :in-theory (e/d (fn-nop-parse-principal fn-nop-usage fn-nop-refused)
-                                   (fn-nop-result fn-native-operator-result-command fn-native-auth-admin-parse-argv fn-native-auth-admin-plan-status fn-native-auth-admin-plan-reason))))))
+                                   (fn-nop-result fn-native-operator-result-command fn-native-auth-admin-parse-argv fn-native-auth-admin-plan-status fn-native-auth-admin-plan-reason fn-nop-parse-administration fn-native-auth-admin-action-kind))))))
 
 (local
  (defthm fn-nop-parse-administration-command
