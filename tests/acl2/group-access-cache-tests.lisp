@@ -190,7 +190,7 @@
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (with-local-stobj fn-cat
     (mv-let (r fn-cat)
-      (mv (fn-scr-auth-delegate *gacct-bob* nil nil nil cache *gacct-state* *gacct-pin* nil
+      (mv (fn-scr-auth-delegate *gacct-bob* nil nil nil nil cache *gacct-state* *gacct-pin* nil
                                 *gacct-config* *gacct-obs* *gacct-obs*
                                 (list :command (fn-nntp-string-octets text)) 0 fn-arena fn-cat)
           fn-cat)

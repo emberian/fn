@@ -3,8 +3,9 @@
 ; books/nntp-auth.lisp proves things about fn-auth-step; this book proves
 ; the same things about the function the host calls.  The chain is
 ;
-;   tools/run_owner.py Owner.serve  -- one call per recv
-;     -> fn-owner-chunk        (host/owner-host.lisp)
+;   host/native/owner.lisp fnn-owner-handle-chunk  -- one call per recv
+;     -> fn-owner-chunk-span-at (host/owner-host.lisp): fn-scr-ocfg-read-span,
+;        fn-ocfg-read-tls-prefix over the span (fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
 ;       -> fn-own-read         (books/owner.lisp)
 ;         -> fn-served-step    (books/served.lisp)   THE SUBJECT
 ;           -> fn-served-feed -> fn-served-dispatch -> fn-auth-step-pinned
@@ -271,7 +272,8 @@
 ; -----------------------------------------------------------------------------
 ; P1 at the host-called step: 483, 480 and the posting allowance.
 ;
-; host/owner-host.lisp:1240 (fn-owner-chunk) calls fn-ocfg-read-tls-prefix,
+; host/owner-host.lisp fn-owner-chunk-span-at runs fn-ocfg-read-tls-prefix
+; over the span (fn-scr-ocfg-read-span-is-reference-under-ocl-relation),
 ; which reaches fn-served-dispatch (books/served.lisp:616); the one call that
 ; dispatcher makes into the authentication layer is fn-auth-step-pinned
 ; (books/served.lisp:617).  The 480 and 483 keystones of books/nntp-auth are

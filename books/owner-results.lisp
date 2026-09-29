@@ -446,7 +446,7 @@
 
 ; ---------------------------------------------------------------------------
 ; ServedStep: the served step's reply and flags (fn-owner-install-effects,
-; fn-owner-chunk).
+; fn-owner-chunk-span-at).
 
 (defun fn-ores-served-step-p (x)
   (declare (xargs :guard t))
