@@ -17059,7 +17059,7 @@
     {
       "id": "PRF-1012",
       "title": "The identity, consumer and topic completion applies its record through the carried obligation-id trie",
-      "statement": "books/identity-retain-carried.lisp (Q5b). KEYSTONE fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete: under fn-prc-carryp of the carry and fn-hist-of-storep of the owner's Store, fn-irc-rix-ocfg-complete over (fn-prc-refresh carry ledger) is fn-ocfg-step of (:complete) (through fn-irc-rix-ocfg-complete-is-rix and fn-rix-ocfg-complete-is-ccar-ocfg-complete). The retention record through the carry (fn-irc-apply-retention-event-is-reference: the undertaking admission by fn-prc-admissiblep), also inside fn-irc-apply-record. The gate and finish twins fn-irc-completion-core-enabledp-is-ccar, fn-irc-completion-enabledp-is-ccar, fn-irc-sn-finish-enabled-is-ccar, fn-irc-rix-own-complete-enabled-is-rix, fn-irc-rix-own-complete-is-rix. Subject: host/owner-host.lisp fn-owner-finish-synced calls fn-irc-rix-ocfg-complete. Local policy (cost); no RFC requirement.",
+      "statement": "books/identity-retain-carried.lisp (Q5b). KEYSTONE fn-irc-rix-ocfg-complete-is-rix: under fn-prc-carryp of the carry, fn-irc-rix-ocfg-complete is fn-rix-ocfg-complete (whose (:complete) equivalence is fn-rix-ocfg-complete-is-ccar-ocfg-complete and fn-ccar-ocfg-complete-is-ocfg-step-complete); the host's refreshed carry satisfies fn-prc-carryp (fn-prc-carryp-of-refresh; the composition is fn-irc-rix-ocfg-complete-of-refresh-unfolds, not cited). The retention record through the carry (fn-irc-apply-retention-event-is-reference: the undertaking admission by fn-prc-admissiblep), also inside fn-irc-apply-record. The gate and finish twins fn-irc-completion-core-enabledp-is-ccar, fn-irc-completion-enabledp-is-ccar, fn-irc-sn-finish-enabled-is-ccar, fn-irc-rix-own-complete-enabled-is-rix, fn-irc-rix-own-complete-is-rix. Subject: host/owner-host.lisp fn-owner-finish-synced calls fn-irc-rix-ocfg-complete. Local policy (cost); no RFC requirement.",
       "depends_on": [
         "PRF-289",
         "PRF-1011"
@@ -17076,7 +17076,6 @@
       ],
       "progress_note": "Lane served-costs-4 (2026-09-29): REPL-admitted; certification owed with the affected roots.",
       "events": [
-        "fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete",
         "fn-irc-rix-ocfg-complete-is-rix",
         "fn-irc-rix-own-complete-is-rix",
         "fn-irc-rix-own-complete-enabled-is-rix",
@@ -17084,6 +17083,29 @@
         "fn-irc-completion-enabledp-is-ccar",
         "fn-irc-completion-core-enabledp-is-ccar",
         "fn-irc-apply-retention-event-is-reference"
+      ]
+    },
+    {
+      "id": "PRF-1028",
+      "title": "A peer's transfer decision answers its capacity arm from the carried obligation-id trie",
+      "statement": "books/identity-retain-carried.lisp (Q5a-2). KEYSTONE fn-irc-peer-decide-transfer-under-of-refresh-is-reference: for every carry satisfying fn-prc-carryp (PRF-289) and every ledger, fn-irc-peer-decide-transfer-under over (fn-prc-refresh carry ledger) is fn-peer-decide-transfer-under (the decision, header limits included); through fn-irc-peer-decide-transfer-is-reference (the capacity arm's admission by fn-prc-admissiblep, every other arm the reference's). Subject: host/owner-host.lisp fn-owner-transit-decide (and fn-owner-bp-transit-submit's refusal reason) calls fn-irc-peer-decide-transfer-under with the carry refreshed to the Store node's ledger and stores it back. Local policy (cost); no RFC requirement.",
+      "depends_on": [
+        "PRF-289"
+      ],
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/identity-retain-carried.lisp",
+        "tests/acl2/identity-retain-carried-tests.lisp"
+      ],
+      "progress_note": "Lane served-costs-5 (2026-09-29): REPL-admitted on persvati (book 54/54, tests 74/74); certification with the runner's background cite.",
+      "events": [
+        "fn-irc-peer-decide-transfer-under-of-refresh-is-reference",
+        "fn-irc-peer-decide-transfer-is-reference"
       ]
     },
     {

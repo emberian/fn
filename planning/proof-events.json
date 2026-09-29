@@ -16797,10 +16797,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-irc-rix-ocfg-complete-is-rix"
         },
         {
@@ -16826,6 +16822,19 @@
         {
           "kind": "theorem",
           "name": "fn-irc-apply-retention-event-is-reference"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1028",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-irc-peer-decide-transfer-under-of-refresh-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-irc-peer-decide-transfer-is-reference"
         }
       ]
     },

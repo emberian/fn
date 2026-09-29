@@ -419,7 +419,7 @@
 ; event index (fn-rix-ocfg-complete-is-ccar-ocfg-complete,
 ; fn-ccar-ocfg-complete-is-ocfg-step-complete), for every carry the host
 ; holds (fn-prc-carryp-of-refresh).
-(defthm fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete
+(defthm fn-irc-rix-ocfg-complete-of-refresh-unfolds
   (implies (and (fn-prc-carryp carry)
                 (fn-hist-of-storep fn-hist (fn-own-store (fn-ocfg-owner oc))))
            (equal (fn-irc-rix-ocfg-complete oc fn-hist (fn-prc-refresh carry ledger))

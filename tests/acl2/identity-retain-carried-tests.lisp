@@ -73,7 +73,7 @@
 (assert-event (consp (fn-irc-apply-record (fn-sn-node (lgt-store *pse-k2-reserved*)) *ois-row* *irct-carry*)))
 
 ; -----------------------------------------------------------------------------
-; KEYSTONE fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete.
+; KEYSTONE fn-irc-rix-ocfg-complete-of-refresh-unfolds.
 ; REACHABLE POSITIVE WITNESS: the ordered owner (the prepare left the node,
 ; hence the carry's ledger, unchanged), at :completing, its history loaded
 ; (fn-hist-of-storep by construction), carry the refresh of nil: the gate

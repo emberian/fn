@@ -2085,7 +2085,7 @@
          ;; its gate and finish applying an identity, consumer or topic
          ;; record through the carried obligation-id trie brought to the
          ;; Store node's ledger (KEYSTONE
-         ;; fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete).
+         ;; fn-irc-rix-ocfg-complete-of-refresh-unfolds).
          (carry (fn-prc-refresh (fn-owner-retain-carry state)
                                 (fn-node-retention
                                  (fn-sn-node (fn-own-store before)))))
