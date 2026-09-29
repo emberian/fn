@@ -83,7 +83,11 @@
 # published for dev commit SHA from hbox:/tank/fn/images/SHA, verified by its
 # SHA256SUMS; layout and publishing in tools/image_set.py; --images names
 # which of its production, developer, dtn, dtn-developer to link; the
-# images' identity source is SHA, the tree is REV), --env NAME=VALUE (repeatable; paths may use $T, the tree),
+# images' identity source is SHA, the tree is REV), --reuse-image RUN (no
+# certify and no build: link the images an earlier run built, RUN =
+# NAME/native-LABEL or a /tank/fn/scratch path, from RUN/tree/build; their
+# identity source is the one RUN's log names; `tools/image_set.py link-run`),
+# --env NAME=VALUE (repeatable; paths may use $T, the tree),
 # --deadline S (default 5400), --dry-run (print the box script; the refusal
 # and the per-module environment show there).  Options may come before or
 # after REV and the modules.
@@ -126,6 +130,7 @@ DEADLINE=5400
 ENVS=
 POSITIONAL=
 IMAGE_SET=
+REUSE=
 usage() { sed -n '2,95p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 while [ $# -gt 0 ]; do
     case $1 in
@@ -141,6 +146,13 @@ while [ $# -gt 0 ]; do
         --image-set)
             case $2 in *[!0-9a-f]*|'') echo "hbox_native: --image-set takes a commit sha" >&2; exit 2 ;; esac
             IMAGE_SET=$2; BUILD=0; shift 2 ;;
+        --reuse-image)
+            case $2 in /tank/fn/scratch/*) REUSE=$2 ;; */native-*) REUSE=/tank/fn/scratch/$2 ;;
+                native-*) REUSE=__NAME__/$2 ;;
+                *) echo "hbox_native: --reuse-image takes NAME/native-LABEL or a /tank/fn/scratch path" >&2; exit 2 ;;
+            esac
+            case $REUSE in *..*|*[!A-Za-z0-9._/-]*) echo "hbox_native: bad --reuse-image $2" >&2; exit 2 ;; esac
+            BUILD=0; shift 2 ;;
         --detach) DETACH=1; shift ;;
         --dry-run) DRY=1; shift ;;
         --deadline) DEADLINE=$2; shift 2 ;;
@@ -193,12 +205,17 @@ for image in $(echo "$IMAGES" | tr ',' ' '); do
         *) echo "hbox_native: --images takes developer,production,dtn,dtn-developer,reference,developer-stripped,prof" >&2; exit 2 ;;
     esac
 done
-if [ -n "$IMAGE_SET" ]; then
+if [ -n "$IMAGE_SET" ] && [ -n "$REUSE" ]; then
+    echo "hbox_native: --image-set and --reuse-image both name the images; give one" >&2; exit 2
+fi
+if [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ]; then
     for image in $(echo "$IMAGES" | tr ',' ' '); do
         case $image in production|developer|dtn|dtn-developer) ;;
             *) echo "hbox_native: an image set holds production, developer, dtn and dtn-developer, not $image" >&2; exit 2 ;;
         esac
     done
+fi
+if [ -n "$IMAGE_SET" ]; then
     IMAGE_SET=$(git -C "$HERE" rev-parse --verify --quiet "$IMAGE_SET^{commit}" || echo "$IMAGE_SET")
     case $IMAGE_SET in *[!0-9a-f]*) exit 2 ;; esac
     [ ${#IMAGE_SET} -eq 40 ] || { echo "hbox_native: --image-set $IMAGE_SET: not a commit here; give the full sha" >&2; exit 2; }
@@ -226,6 +243,13 @@ case $LABEL in ''|*[!A-Za-z0-9._-]*) echo "hbox_native: bad --label $LABEL" >&2;
 # The images' own source is the set's commit, whatever tree runs the tests.
 [ -z "$IMAGE_SET" ] || SOURCE_ID=$IMAGE_SET
 S=/tank/fn/scratch/$NAME/native-$LABEL
+case $REUSE in __NAME__/*) REUSE=/tank/fn/scratch/$NAME/${REUSE#__NAME__/} ;; esac
+if [ -n "$REUSE" ]; then
+    [ "$REUSE" != "$S" ] || { echo "hbox_native: --reuse-image $REUSE is this run's own tree (use --no-build)" >&2; exit 2; }
+    # The images' identity source is the reused run's, read on the box from
+    # the file link-run writes (its run.log's `== source` line).
+    SOURCE_ID='$(cat build/REUSED_SOURCE)'
+fi
 case $S in /tank/fn/node*) echo "hbox_native: refusing the live node path" >&2; exit 2 ;; esac
 
 # The box half.  Every step logs to $S/logs and a failure stops the run with
@@ -322,6 +346,12 @@ BOX
 step image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log swarm-build sh tools/build_native_host.sh
 BOX
         done
+    fi
+    if [ -n "$REUSE" ]; then
+        cat <<BOX
+echo "== images: reused from the earlier run $REUSE"
+step image-reuse python3 \$S/bin/image_set.py link-run $REUSE \$T $(echo "$IMAGES" | tr ',' ' ')
+BOX
     fi
     if [ -n "$IMAGE_SET" ]; then
         cat <<BOX
@@ -452,7 +482,7 @@ else
         || { echo "hbox_native: shipping $FULL failed" >&2; exit 3; }
 fi
 box_script "$@" | ssh "$HOST" "cat > $S/run.sh" || exit 3
-if [ -n "$IMAGE_SET" ]; then
+if [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ]; then
     ssh "$HOST" "mkdir -p $S/bin && cat > $S/bin/image_set.py" < "$FN_HBOX_NATIVE_COPY/image_set.py" || exit 3
 fi
 ssh -n "$HOST" "rm -f $S/status; nohup sh $S/run.sh > $S/run.log 2>&1 < /dev/null &" || exit 3

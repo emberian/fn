@@ -35,6 +35,29 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertEqual(dry("--image-set", "nope", "HEAD", "tests.test_native_owner")
                          .returncode, 2)
 
+    def test_reuse_image_links_an_earlier_runs_images_instead_of_building(self):
+        answer = dry("--reuse-image", "crem/native-crem3-786b", "--images",
+                     "developer,production", "HEAD", "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        self.assertEqual(image_lines(answer.stdout),
+                         ["step image-reuse python3 $S/bin/image_set.py link-run "
+                          "/tank/fn/scratch/crem/native-crem3-786b $T developer production"])
+        self.assertNotIn("certify_books", answer.stdout)
+        # The identity source is the reused run's, read on the box.
+        self.assertIn("--source $(cat build/REUSED_SOURCE)", answer.stdout)
+        # A bare native-LABEL is under this run's --name.
+        bare = dry("--reuse-image", "native-x", "HEAD", "tests.test_native_owner")
+        self.assertIn("link-run /tank/fn/scratch/t/native-x $T", bare.stdout)
+        for bad, why in ((["--reuse-image", "t/native-l"], "this run's own tree"),
+                         (["--reuse-image", "../etc"], "--reuse-image takes"),
+                         (["--reuse-image", "x/native-y", "--image-set", "a" * 40],
+                          "give one"),
+                         (["--reuse-image", "x/native-y", "--images", "prof"],
+                          "an image set holds")):
+            refused = dry(*bad, "HEAD", "tests.test_native_owner")
+            self.assertEqual(refused.returncode, 2, bad)
+            self.assertIn(why, refused.stderr)
+
     def test_no_build_reships_the_tree_but_keeps_its_certificates(self):
         # A --no-build re-ship deleted the tree's .cert files; REPL sessions
         # there then refused include-book (2026-09-28).
