@@ -1413,7 +1413,7 @@
       }
     },
     {
-      "id": "SCN-207",
+      "id": "SCN-211",
       "title": "A restored backup that diverged is a new lineage: its checkpoint is refused by name against this log, and this store's against its, with or without a suffix; an ordinary restart is not a new lineage",
       "milestone": "M5",
       "status": "implemented",
