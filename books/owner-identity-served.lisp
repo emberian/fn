@@ -21,6 +21,11 @@
     (fn-psrv-prepare-identity
      oc (fn-oii-identity-row w (fn-sn-keyring s) (fn-sn-keyring-generation s) h))))
 
+; Guard-verified (lane depth-debt-7, row K2): the store state opens to its
+; keyring's shape and generation, which is fn-oii-identity-row's guard.
+(verify-guards fn-oiis-prepare-identity
+  :hints (("Goal" :in-theory (enable fn-sn-statep))))
+
 ; The entry is signed-post's prepare when the row's groups are served and
 ; their numbers within RFC 3977 section 6's bound, and the owner unchanged
 ; otherwise.
