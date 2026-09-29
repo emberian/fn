@@ -8,7 +8,7 @@
 (defconst *cppt-reg* (fn-cpe-make 1 1 1 '(:register (3) (4) (5) 1 1 1)))
 (defconst *cppt-article-wire*
   (fn-record-make 2 2 2 "<cppt@example.invalid>" '(9) '("g")
-                  "archive-cppt" "subject-cppt" "post-cppt" 1 :legacy))
+                  "archive-cppt" "subject-cppt" "post-cppt" 1 0))
 (defconst *cppt-cursor* (fn-cp-cursor '(1) '(2) '(3) '(4) '(5) 1 1 1 2))
 (defconst *cppt-ack* (fn-cpe-make 3 3 3 (list :ack *cppt-cursor*)))
 (defconst *cppt-history-wire*

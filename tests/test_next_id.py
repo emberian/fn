@@ -180,6 +180,38 @@ class ScanTests(unittest.TestCase):
         self.assertIn("UNCLAIMED PKT-020", text)
         self.assertNotIn("PKT-010", text)
 
+    def test_check_counts_a_predecessors_claims_as_this_lanes(self):
+        # item 70: obstructions-8 works in the worktree obstructions-2 on
+        # lane/obstructions-2 and claims under its own name; obstructions-7
+        # claimed before it.  Neither is a collision; another lane's is.
+        mine = self.repo.lane("line-2")
+        with mock.patch.object(next_id, "ROOT", mine), \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            next_id.main(["claim", "PRF", "--lane", "line-7", "--note", "predecessor"])  # 003
+            next_id.main(["claim", "PRF", "--lane", "line-8", "--note", "successor"])  # 004
+            next_id.main(["claim", "PRF", "--lane", "other-8", "--note", "theirs"])  # 005
+        write_registries(mine, ["PRF-001", "PRF-002", "PRF-003", "PRF-004", "PRF-005"], ["SCN-001"],
+                         ["STO-001"])
+        env = {k: v for k, v in os.environ.items() if k != "FN_LANE"}
+        with mock.patch.object(next_id, "ROOT", mine), mock.patch.dict(os.environ, env,
+                                                                       clear=True):
+            self.assertEqual(next_id.our_lanes(None, mine), {"line-2"})
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = next_id.main(["check", "--base", "dev"])
+            text = out.getvalue()
+            self.assertEqual(code, 1, text)
+            self.assertIn("ok        PRF-003: claimed by line-7 (predecessor) -- this lane's line",
+                          text)
+            self.assertIn("ok        PRF-004: claimed by line-8", text)
+            self.assertIn("COLLISION PRF-005: claimed by other-8", text)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                next_id.main(["check", "--base", "dev", "--exact-lane", "--lane", "line-8"])
+            self.assertIn("COLLISION PRF-003: claimed by line-7", out.getvalue())
+            self.assertIn("ok        PRF-004: claimed by line-8", out.getvalue())
+
     def test_the_merge_driver_names_an_unclaimed_row_and_a_collisions_claimant(self):
         mine = self.repo.lane("mine")
         with mock.patch.object(next_id, "ROOT", mine), \

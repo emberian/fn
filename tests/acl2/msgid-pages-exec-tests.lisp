@@ -1,4 +1,4 @@
-; fn: teeth for books/msgid-pages-exec and books/msgid-pages-catalog (lane
+; fn: teeth for books/msgid-pages-exec and the catalog's paged reader (lane
 ; paged-history-2, 2026-09-29; PRF-969, PRF-970).  Prefix mpxe-.
 ;
 ; The tables are built by the writer (`fn-mpxt-add': the tag of each row's
@@ -28,7 +28,7 @@
 ;      refused with the table unchanged (never a dropped insert).
 
 (in-package "ACL2")
-(include-book "../../books/msgid-pages-catalog")
+(include-book "../../books/catalog")
 
 ; --- the rows: held rows as the catalog holds them (the -1 lane's fixture) ---
 

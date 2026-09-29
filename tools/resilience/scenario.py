@@ -40,14 +40,16 @@ FAULT_CLASSES = ("contract-admissible", "assumption-challenging")
 STAGES = ("issued", "performed", "persisted", "observed")
 WITNESSES = ("post-accepted", "retry-reconciled", "read-completed",
              "read-during-competing-work", "reclaim-freed", "recovery-completed",
-             "memberships-listed", "checkpoint-installed")
+             "memberships-listed", "checkpoint-installed",
+             "receipt-delivered", "receipt-effect-once", "cross-route-retry-refused",
+             "init-old-or-new")
 REPLAY = ("exact", "timed", "image")
 CONTRACTS = ("local-commit-log",)
 CANDIDATE_RULES = ("absent", "present", "either")
 # The routes a post's cut is reached by; the registry carries each route's
 # column where they differ (design §5: `operator post' and `store post' are
 # a batch of one, the served POST a member of the owner's quantum).
-ROUTES = ("store-post", "operator-post", "served-post")
+ROUTES = ("store-post", "operator-post", "served-post", "bp-transit")
 HEALING_BOUND_KINDS = ("seconds", "experimental")
 EXPECTED = ("consistent", "violation", "inconclusive", "no-witness", "harness-failure",
             "healing-overran")
@@ -72,10 +74,17 @@ PENDING_BOUNDARIES = {
         "operations": ("reclaim",),
         "owner": "online-reclaim-8",
         "kill_form": "reclaim-captured",
-        "coordinate": "kill form only: FN_NATIVE_RECLAIM_FAULT=captured:kill "
-                      "(host/native/owner.lisp +fnn-reclaim-cuts+); the interleaving needs a "
-                      "held (pause/resume) form of the same cut so a hold can be acquired "
-                      "between the capture and the install"},
+        "held_form": {"selector": "FN_NATIVE_RECLAIM_HOLD", "value": "captured:RELEASE-FILE",
+                      "release": "the file named after the colon",
+                      "where": "the reclaim pass (host/native/owner.lisp) prints 'RECLAIM held "
+                               "at=CUT' and waits until RELEASE-FILE exists; CUT is one of "
+                               "+fnn-reclaim-cuts+; the held point is reclaim-CUT",
+                      "source": "lane/online-reclaim a8b5e0f72 (its developer image does not "
+                                "build yet: a definterface :kinds refusal on fn-arx-file-count)"},
+        "coordinate": "kill form FN_NATIVE_RECLAIM_FAULT=captured:kill on dev; held form "
+                      "FN_NATIVE_RECLAIM_HOLD=captured:RELEASE-FILE on lane/online-reclaim "
+                      "a8b5e0f72: the runner that acquires a hold at it is the next increment; "
+                      "until the selector is in this tree and that runner exists, pending"},
     "receipt-observed": {
         "note": "duplicate, reorder with a policy change, lose its durable completion",
         "operations": ("receipt",),
@@ -88,11 +97,17 @@ PENDING_BOUNDARIES = {
                                "is recorded and before the ADU/completion; prints 'BP APP "
                                "RECEIPT-OBSERVED HOLD release=PATH', released when the named "
                                "file appears; a signal there is the process-death form",
-                      "source": "lane/bp-remainder-codec 4247abc97 (READY f2e929ced)"},
-        "coordinate": "held form FN_APP_JOURNAL_TEST_HOLD_RECEIPT=decided (lane/bp-remainder-"
-                      "codec 4247abc97): the BP node runner that takes it is the next "
-                      "increment; until the selector is in this tree and that runner "
-                      "exists, pending"},
+                      "source": "lane/bp-remainder-codec 4247abc97 (READY f2e929ced; on dev "
+                                "since 96b3eb2e4)"},
+        # The runner that takes the held form (W7c-2a): with the selector in
+        # this tree and the runner present the point is executable, its
+        # actions the interleave at the hold and the death there.
+        "runner": "tools/resilience/adapters/bp_node.py",
+        "actions": ["interleave", "withhold-completion"],
+        "coordinate": "held form FN_APP_JOURNAL_TEST_HOLD_RECEIPT=decided (host/native/"
+                      "bp-app.lisp fnn-bpapp-pause-after-decision) driven by "
+                      "tools/resilience/adapters/bp_node.py (recipe bp-node): executable "
+                      "when both are in the tree, else pending"},
 }
 
 # Which operations reach each cut table, and the developer selector that
@@ -111,6 +126,8 @@ TABLE_SELECTORS = {
     "STATEMENT_CUTS": "FN_NATIVE_KEY_STATEMENT_FAULT",
 }
 RECLAIM_CUTS_SOURCE = "host/native/owner.lisp:+fnn-reclaim-cuts+"
+BLOCK_BOUNDARY = "power-loss"                   # adapters/power_loss.py (W7d)
+BLOCK_RECOVERY_BOUNDARY = "recovery-power-loss"
 
 
 class ScenarioError(ValueError):
@@ -268,17 +285,36 @@ def boundary_registry() -> dict:
             "rule": rule, "rules": {r: rule for r in ROUTES},
             "operations": ["reclaim"], "actions": ["kill"],
             "selector": "FN_NATIVE_RECLAIM_FAULT", "selector_name": name, "executable": True}
+    # The block replay backend's boundaries (W7d, adapters/power_loss.py):
+    # a power cut at a recorded write boundary of the device under the
+    # committing node (tools/power_loss.py, dm-log-writes), and one during
+    # the recovery that follows.  The crash rule is the composition the
+    # checker applies (power-loss-prefix), not a cut table's column.
+    for name, ops in ((BLOCK_BOUNDARY, ["post", "checkpoint", "reclaim", "probe"]),
+                      (BLOCK_RECOVERY_BOUNDARY, ["recover"])):
+        registry[name] = {"source": "tools/power_loss.py (dm-log-writes)", "tables": [],
+                          "program": None, "book": "books/store-log-crash.lisp",
+                          "rule": None, "rules": {}, "operations": ops,
+                          "actions": ["drop-writes"], "selector": None,
+                          "executable": True, "backend": "block-replay"}
     io = ROOT / "host" / "native" / "io.lisp"
     selectors = io.read_text() if io.is_file() else ""
     for name, row in PENDING_BOUNDARIES.items():
         held = row.get("held_form")
-        registry[name] = {"source": "design §5 (pending)", "tables": [], "program": None,
+        held_in_tree = bool(held and held["selector"] in selectors)
+        runner = row.get("runner")
+        runner_in_tree = bool(runner and (ROOT / runner).is_file())
+        executable = held_in_tree and runner_in_tree
+        registry[name] = {"source": ("design §5 (held form + runner)" if executable
+                                     else "design §5 (pending)"),
+                          "tables": [], "program": None,
                           "book": None, "rule": None, "rules": {},
-                          "operations": list(row["operations"]), "actions": [],
+                          "operations": list(row["operations"]),
+                          "actions": list(row.get("actions", ())) if executable else [],
                           "selector": held["selector"] if held else None,
-                          "held_form": held,
-                          "held_in_tree": bool(held and held["selector"] in selectors),
-                          "executable": False, "note": row["note"],
+                          "held_form": held, "held_in_tree": held_in_tree,
+                          "runner": runner, "runner_in_tree": runner_in_tree,
+                          "executable": executable, "note": row["note"],
                           "owner": row["owner"], "kill_form": row["kill_form"],
                           "coordinate": row["coordinate"]}
     return registry

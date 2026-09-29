@@ -386,7 +386,6 @@
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (null (fn-node-stage (fn-sn-node s)))
            (fn-held-p record)
-           (not (equal (fn-record-stamp record) :legacy))
            (equal (fn-hc-generation (fn-held-context record))
                   (fn-sn-keyring-generation s))
            (eq (car (fn-rcon-cpe-projection-step

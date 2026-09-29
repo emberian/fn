@@ -29,6 +29,17 @@
          (booleanp (cadr w))
          (implies (not (cadr w)) (equal (car w) 0)))))
 
+;; The genesis's creation time (host/native/io.lisp fnn-genesis-octets): the
+;; wall reading's whole seconds past the DTN epoch, 0 when the wall is not
+;; usable.  The host hands gettimeofday's reading and divides nothing.
+(defun fn-otm-wall-seconds (seconds microseconds)
+  (declare (xargs :guard t))
+  (floor (car (fn-otm-wall-reading seconds microseconds)) 1000))
+
+(defthm fn-otm-wall-seconds-is-natural
+  (natp (fn-otm-wall-seconds seconds microseconds))
+  :rule-classes :type-prescription)
+
 ;; PRF-305 (assurance-hygiene-5): the monotonic milliseconds are ACL2's too.
 ;; The host hands its raw counter and ACL2 converts it.
 ;;

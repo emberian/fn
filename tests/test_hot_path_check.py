@@ -238,5 +238,27 @@ class RealTree(unittest.TestCase):
             self.assertTrue(row.get("packet"), key)
 
 
+class RefreshStaleTests(unittest.TestCase):
+    """obstructions-8 item 76: STALE entries leave the list by tool; NEW ones
+    name their owning book."""
+
+    def test_only_the_stale_keys_are_removed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "findings.json"
+            data = {"findings": {"fn-a recursion N": {"packet": "PKT-1"},
+                                 "fn-b recursion N": {"packet": "PKT-2"}},
+                    "note": "kept", "accepted": {"x": 1}}
+            path.write_text(json.dumps(data, indent=2) + "\n")
+            hot_path_check.refresh_stale(["fn-b recursion N", "fn-gone recursion F"], path)
+            after = json.loads(path.read_text())
+            self.assertEqual(list(after["findings"]), ["fn-a recursion N"])
+            self.assertEqual(after["note"], "kept")
+            self.assertEqual(after["accepted"], {"x": 1})
+
+    def test_the_owning_book_names_its_last_change(self):
+        text = hot_path_check.owning_book("books/wire.lisp")
+        self.assertTrue(text.startswith("books/wire.lisp (last changed "), text)
+
+
 if __name__ == "__main__":
     unittest.main()
