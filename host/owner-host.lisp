@@ -1138,25 +1138,33 @@
 ;; :connections-exceed-memory, before the owner stages anything
 ;; (books/connection-budget.lisp fn-cbud-deltas-refusal-keeps-the-capacity-held).
 ;; Every live path reaches this function (native-admin, peer-invite, auth).
-(defun fn-owner-connection-bound (state)
+;; PRF-986's term (lane tls-handshake-budget-2): the run holds its
+;; observations and the handshake slots it charged (fn-cbud-run-held), and a
+;; live reconfiguration is the run's decision re-made on them, the handshake
+;; slots the larger of the held and the new `tls-handshakes-in-flight'
+;; (fn-cbud-deltas-refusal-keeps-the-machine-held).
+(defun fn-owner-connection-held (state)
   (declare (xargs :stobjs state :mode :program))
-  (and (boundp-global 'fn-owner-connection-bound state)
-       (f-get-global 'fn-owner-connection-bound state)))
+  (and (boundp-global 'fn-owner-connection-held state)
+       (f-get-global 'fn-owner-connection-held state)))
 
 (defun fn-owner-reconfigure-deltas (id deltas fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((oc (fn-owner-ocfg state))
-         (memory (fn-cbud-deltas-refusal
-                  (fn-cfg-value (fn-ocfg-config oc))
-                  (+ 1 (fn-cfg-generation (fn-ocfg-config oc)))
-                  (fn-own-clock (fn-ocfg-owner oc))
-                  deltas (fn-owner-connection-bound state))))
+         (v (fn-cfg-value (fn-ocfg-config oc)))
+         (gen (+ 1 (fn-cfg-generation (fn-ocfg-config oc))))
+         (stamp (fn-own-clock (fn-ocfg-owner oc)))
+         (held (fn-owner-connection-held state))
+         (memory (fn-cbud-deltas-refusal v gen stamp deltas held)))
     ;; The refusal is the staging step's result value (PRF-208,
     ;; adapter-retirement: books/owner-results.lisp fn-ores-config-refused),
     ;; which every live caller's recognizer accepts.
     (if memory
         (value (fn-ores-config-refused memory))
-      (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state))))
+      (let ((state (f-put-global 'fn-owner-connection-held
+                                 (fn-cbud-deltas-held v gen stamp deltas held)
+                                 state)))
+        (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state)))))
 
 ; PKT-643: the restricted views prepared for read-restricted sessions
 ; (books/group-access-cache.lisp), nil before the first read.
@@ -1225,13 +1233,20 @@
   ; PROFILE the store's; TLSP whether a TLS context is loaded.  The capacity
   ; is the live configuration's.
   (declare (xargs :stobjs state :mode :program))
-  (let* ((capacity (fn-exp-connections-capacity (fn-cfg-value (fn-owner-config state))))
+  (let* ((v (fn-cfg-value (fn-owner-config state)))
+         (capacity (fn-exp-connections-capacity v))
          (article (fn-bs-profile-max-article-octets profile))
          (hneed (fn-heap-figure-octets profile core nursery))
-         (d (fn-cbud-run-decide capacity machine dynamic hneed core threads stack
+         ;; PRF-986: the handshakes' native scratch, L x the scratch with a
+         ;; TLS context, is part of the base (books/connection-budget.lisp).
+         (slots (fn-cbud-config-handshake-slots v tlsp))
+         (hs (fn-cbud-slots-octets slots))
+         (d (fn-cbud-run-decide capacity machine dynamic hneed core threads stack hs
                                  article tlsp))
-         (state (f-put-global 'fn-owner-connection-bound
-                              (and (equal (car d) :hold) (fn-cbud-held-bound d))
+         (state (f-put-global 'fn-owner-connection-held
+                              (and (equal (car d) :hold)
+                                   (fn-cbud-run-held machine dynamic hneed core threads
+                                                     stack article tlsp slots))
                               state))
          ;; The COUNT of articles in flight every served read admits within
          ;; (fn-owner-chunk-span-at): the default configuration's connections
@@ -1256,7 +1271,7 @@
                                (if (equal (car d) :hold)
                                    (fn-cbud-hold-line d article tlsp)
                                  (fn-cbud-run-refusal-line d article tlsp machine dynamic
-                                                           hneed core threads stack)))
+                                                           hneed core threads stack hs)))
                               state)))
     (value (car d))))
 

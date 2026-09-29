@@ -124,3 +124,31 @@
 ; (d) (natp n): no events, N = -1: timed holds, the bound is negative.
 (assert-event (and (fn-hsb-events-timed nil 0 1000 -1) (not (natp -1))))
 (assert-event (< (+ (* -1 60000) (* -1 (- 1000 0))) 0))
+
+; --- fn-hsb-scratch-within-the-machine-term (PRF-986's term of PRF-223's
+; machine).  Witness (reached): two in flight under L = 2 hold 256 KiB of
+; scratch, exactly the term the run charges for L = 2, and within the
+; scratch of 16 held slots.
+(defconst *hsbt-two* (hsbt-s (hsbt-admit (hsbt-s *hsbt-r1*) *hsbt-b* 1000 nil)))
+(assert-event (and (fn-hsb-okp *hsbt-two* (fn-hsb-limits 3 2 5000))
+                   (equal (len (fn-hsb-flight *hsbt-two*)) 2)))
+(assert-event (equal (fn-hsb-lim-in-flight (fn-hsb-limits 3 2 5000))
+                     (fn-cbud-handshake-slots t 2)))
+(assert-event (and (<= (* 2 *fn-cbud-handshake-scratch-octets*) (fn-cbud-handshake-octets t 2))
+                   (equal (fn-cbud-handshake-octets t 2) 262144)
+                   (<= (fn-cbud-handshake-slots t 2) 16)
+                   (<= (* 2 *fn-cbud-handshake-scratch-octets*) (fn-cbud-slots-octets 16))))
+; An absent row (nil) is the profile's L, 16: 2 MiB charged.
+(assert-event (equal (fn-cbud-handshake-octets t nil) 2097152))
+; No TLS context: nothing charged.
+(assert-event (equal (fn-cbud-handshake-octets nil 2) 0))
+; Hypothesis removal (CORRUPTED STATE): three in flight under L = 2 -- not
+; within the bound, and 384 KiB exceed the 256 KiB term.
+(assert-event (and (not (fn-hsb-okp *hsbt-bad* (fn-hsb-limits 3 2 5000)))
+                   (< (fn-cbud-handshake-octets t 2)
+                      (* (len (fn-hsb-flight *hsbt-bad*)) *fn-cbud-handshake-scratch-octets*))))
+; The inner hypothesis removed: one held slot, below L = 2 (the flight within
+; the bound): two in flight exceed one slot's scratch.
+(assert-event (and (not (<= (fn-cbud-handshake-slots t 2) 1))
+                   (< (fn-cbud-slots-octets 1)
+                      (* (len (fn-hsb-flight *hsbt-two*)) *fn-cbud-handshake-scratch-octets*))))

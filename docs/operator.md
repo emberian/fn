@@ -518,7 +518,7 @@ In order, these set:
 
 A TLS handshake costs the node work and memory before anyone has logged in.
 fn decides every handshake, on 563 and after STARTTLS alike, before it
-starts one (books/tls-handshake-budget.lisp):
+starts one (books/tls-handshake-decision.lisp):
 
 ```
 fn operator /etc/fn/fn.toml policy set tls-handshakes-per-source-per-minute 30
@@ -545,6 +545,15 @@ fn operator /etc/fn/fn.toml policy set tls-handshake-ms 5000
 What this proves (PRF-986): whatever is offered, the node starts at most 16
 handshakes in any second and holds at most 16, and one source is admitted at
 most 30 + 30 x (seconds / 60) handshakes over any interval.
+
+Each handshake in progress holds up to 128 KiB of the TLS library's memory,
+so with TLS configured the node's memory check at start counts 16 x 128 KiB
+(2 MiB) beside its threads (the `fixed=` part of a
+`connections-exceed-memory` refusal). Raising `tls-handshakes-in-flight`
+live is checked against the same machine: a raise the machine cannot hold
+beside the connection capacity is refused `handshakes-exceed-memory`, and a
+lowered value keeps the higher charge until the next restart (handshakes
+admitted before may still be running).
 
 What it cannot do: from one shared address the node cannot tell many
 people from one attacker. Everyone behind one carrier-grade NAT, one office

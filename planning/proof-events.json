@@ -8032,7 +8032,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cbud-deltas-refusal-keeps-the-capacity-held"
+          "name": "fn-cbud-deltas-refusal-keeps-the-machine-held"
         },
         {
           "kind": "theorem",
@@ -14055,7 +14055,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-hsb-scratch-within-the-reservation"
+          "name": "fn-hsb-scratch-within-the-machine-term"
         }
       ]
     },
