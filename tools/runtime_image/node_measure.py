@@ -78,7 +78,8 @@ def fresh(image, work, env, profile=DEVELOPMENT):
 
 def rss(pid):
     if os.path.exists("/proc/%d/status" % pid):
-        doc = {"rss_kib": r.status_kib(pid, "VmRSS"), "hwm_kib": r.status_kib(pid, "VmHWM")}
+        doc = {"rss_kib": r.status_kib(pid, "VmRSS"), "hwm_kib": r.status_kib(pid, "VmHWM"),
+               "vmsize_kib": r.status_kib(pid, "VmSize")}
         # The resident set counts the core file's clean pages, and how many of
         # those a first touch maps depends on the page cache (fault-around);
         # the anonymous figure is the process's own memory, the same whatever

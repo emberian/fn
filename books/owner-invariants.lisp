@@ -2,7 +2,7 @@
 ;
 ; The subject of every theorem here is a function tools/run_owner.py calls
 ; through host/owner-host.lisp: fn-own-start (fn-owner-recover), fn-own-read
-; (fn-owner-chunk: the served port, one fn-served-step per socket read over
+; (fn-owner-chunk-span-at: the served port, one fn-served-step per socket read over
 ; the pinned archive), fn-own-step through fn-own-open / fn-own-advance /
 ; fn-own-close / fn-own-begin / fn-own-store-step / fn-own-complete /
 ; fn-own-observe / fn-own-declare-group, and fn-own-run as the arbitrary

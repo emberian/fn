@@ -97,20 +97,28 @@ class CertifiedClaimsTests(unittest.TestCase):
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({
+            "status": result, "requested_books": ["books/top"],
             "book_results": {"books/top": result},
             "source_digests_sha256": {"books/top.lisp": digest(body)},
+            "certificate_digests_sha256": {"books/top": "c" * 64},
         }), encoding="utf-8")
         return relative
 
-    def test_row_without_manifest_citation_fails(self):
+    def test_citing_is_provenance_green_at_these_bytes_is_the_rule(self):
+        # R2: one meaning.  No archived run at all: not green at these bytes.
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
-            book(root, "books/top", '(in-package "ACL2")\n')
+            body = '(in-package "ACL2")\n'
+            book(root, "books/top", body)
             self.proofs[0]["evidence"] = ["books/top.lisp"]
             failures = certified_claims.manifest_failures(
                 self.proofs, {"PRF-TEST": {"books/top"}}, root)
-            self.assertEqual(failures, ["PRF-TEST: cites no manifest under "
-                                        "planning/evidence/manifests/"])
+            self.assertEqual(len(failures), 1)
+            self.assertIn("PRF-TEST: books/top is not green at these bytes", failures[0])
+            # An archived run the row does not cite certifies it all the same.
+            self.write_manifest(root, "certify-20260901T010000Z-1", body)
+            self.assertEqual(certified_claims.manifest_failures(
+                self.proofs, {"PRF-TEST": {"books/top"}}, root), [])
 
     def test_absent_cited_manifest_fails(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -136,7 +144,7 @@ class CertifiedClaimsTests(unittest.TestCase):
                                 result="failed")
             failures = certified_claims.manifest_failures(
                 self.proofs, {"PRF-TEST": {"books/top"}}, root)
-            self.assertTrue(any("does not record it passed" in failure
+            self.assertTrue(any("not green at these bytes" in failure
                                 for failure in failures))
 
     def test_row_with_stale_digest_fails(self):
@@ -149,8 +157,7 @@ class CertifiedClaimsTests(unittest.TestCase):
             failures = certified_claims.manifest_failures(
                 self.proofs, {"PRF-TEST": {"books/top"}}, root)
             self.assertEqual(len(failures), 1)
-            self.assertIn("no cited manifest certified books/top", failures[0])
-            self.assertIn("(stale digest)", failures[0])
+            self.assertIn("books/top is not green at these bytes", failures[0])
 
     def test_explain_names_book_digest_and_newest_certifier(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -10,6 +10,8 @@ what is COMMITTED rather than what is on this disk.
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -183,6 +185,36 @@ class CheckTests(unittest.TestCase):
             self.assertEqual(archive.cmd_add(absent, root), 1)
             self.assertEqual(archive.cmd_add(argparse.Namespace(run_ids=["x"], source=[]),
                                              root), 2)
+        self.assertEqual(archive.add_command(RUN),
+                         f"python3 tools/evidence_manifests.py add {RUN}")
+
+    def test_add_accepts_the_farm_run_id_and_says_which_certify_id_it_took(self):
+        import argparse
+        with tempfile.TemporaryDirectory() as directory:
+            root = repository(directory)
+            run_dir(root, RUN, {"status": "passed"})
+            farm_run = "run-20260929T010203Z-ab12"
+            args = argparse.Namespace(run_ids=[farm_run], source=[])
+            said = io.StringIO()
+            with contextlib.redirect_stderr(said):
+                self.assertEqual(archive.cmd_add(args, root), 2)
+            self.assertIn("farm.py wait", said.getvalue())
+            (root / "build/farm").mkdir(parents=True)
+            (root / f"build/farm/{farm_run}.log").write_text(
+                f"x\nCertification evidence: build/acl2/{RUN}\n")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(archive.cmd_add(args, root), 0)
+            self.assertIn(f"farm run {farm_run} -> {RUN}", out.getvalue())
+            staged = subprocess.run(["git", "-C", str(root), "diff", "--cached",
+                                     "--name-only"], capture_output=True, text=True,
+                                    check=True).stdout.split()
+            self.assertEqual(staged, [f"planning/evidence/manifests/{RUN}.json"])
+            said = io.StringIO()
+            with contextlib.redirect_stderr(said):
+                self.assertEqual(archive.cmd_add(
+                    argparse.Namespace(run_ids=["nothing"], source=[]), root), 2)
+            self.assertIn("run-<UTC>-<hex>", said.getvalue())
         self.assertEqual(archive.add_command(RUN),
                          f"python3 tools/evidence_manifests.py add {RUN}")
 

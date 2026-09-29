@@ -266,14 +266,28 @@
         split
       (let ((name (fn-article-line-value split))
             (value (fn-article-line-rest split)))
+        ;; RFC 5322 section 2.2.3: a field body may begin on a continuation
+        ;; line (`References:' CRLF ` <id>'), so an EMPTY first-line value is
+        ;; a field still open; `fn-article-field-closedp' refuses it if no
+        ;; fold line follows (RFC 5536 section 2.2: no empty header field).
         (if (and (fn-article-namep name)
-                 (consp value)
-                 (fn-article-wspp (car value))
-                 (fn-article-header-bytes-p value)
-                 (fn-article-has-vcharp value))
+                 (or (null value)
+                     (and (consp value)
+                          (fn-article-wspp (car value))
+                          (fn-article-header-bytes-p value)
+                          (fn-article-has-vcharp value))))
             (list :ok (fn-article-make-field
                        (list line) (fn-article-ascii-downcase name) value))
           (fn-article-error :invalid-header))))))
+
+; A field may be closed (by the next field or the header's end) once its
+; unfolded value is non-empty: a first line's value either has a visible
+; character or is empty, and every fold line has one (fn-article-fold-linep),
+; so a non-empty value has one.  One test, no walk.
+(defun fn-article-field-closedp (current)
+  (declare (xargs :guard (or (null current) (fn-article-fieldp current))))
+  (or (null current)
+      (consp (fn-article-field-unfolded-value current))))
 
 (defun fn-article-fold-linep (line)
   (declare (xargs :guard t))
@@ -346,7 +360,8 @@
         (let ((line (fn-article-line-value next))
               (rest (fn-article-line-rest next)))
           (if (null line)
-              (if (not (fn-article-body-crlfp rest))
+              (if (or (not (fn-article-body-crlfp rest))
+                      (not (fn-article-field-closedp current)))
                   (fn-article-error :invalid-header)
                 (fn-article-ok
                  (fn-article-make
@@ -367,6 +382,8 @@
                 (let ((field-result (fn-article-new-field line)))
                   (if (not (fn-article-line-okp field-result))
                       field-result
+                   (if (not (fn-article-field-closedp current))
+                       (fn-article-error :invalid-header)
                     (if (<= (fn-article-limit-fields limits)
                             (+ (if current 1 0) (nfix nfields)))
                         (fn-article-error :header-fields-limit)
@@ -375,7 +392,7 @@
                        (if current (+ 1 (nfix nfields)) nfields)
                        (if current (cons current fields-rev) fields-rev)
                        (fn-article-line-value field-result)
-                       (fn-article-header-rev-add-line header-rev line)))))))))))))
+                       (fn-article-header-rev-add-line header-rev line))))))))))))))
 
 ; The field under construction, carried reversed: (raw-lines-rev lower-name
 ; unfolded-value-rev).  A continuation line then costs its own length, not the
@@ -405,6 +422,13 @@
         (car (cdr cur))
         (revappend line (car (cdr (cdr cur))))))
 
+; fn-article-field-closedp on the carried field: the reversed value is a cons
+; exactly when the value is.  One test, no walk.
+(defun fn-article-open-field-closedp (cur)
+  (declare (xargs :guard (or (null cur) (fn-article-open-fieldp cur))))
+  (or (null cur)
+      (consp (car (cdr (cdr cur))))))
+
 (defun fn-article-parse-lines-acc (octets limits lines-left header-bytes nfields
                                           fields-rev cur header-rev)
   (declare (xargs :measure (nfix lines-left)
@@ -425,7 +449,8 @@
         (let ((line (fn-article-line-value next))
               (rest (fn-article-line-rest next)))
           (if (null line)
-              (if (not (fn-article-body-crlfp rest))
+              (if (or (not (fn-article-body-crlfp rest))
+                      (not (fn-article-open-field-closedp cur)))
                   (fn-article-error :invalid-header)
                 (fn-article-ok
                  (fn-article-make
@@ -447,6 +472,8 @@
                 (let ((field-result (fn-article-new-field line)))
                   (if (not (fn-article-line-okp field-result))
                       field-result
+                   (if (not (fn-article-open-field-closedp cur))
+                       (fn-article-error :invalid-header)
                     (if (<= (fn-article-limit-fields limits)
                             (+ (if cur 1 0) (nfix nfields)))
                         (fn-article-error :header-fields-limit)
@@ -456,7 +483,7 @@
                        (if cur (cons (fn-article-close-field cur) fields-rev)
                          fields-rev)
                        (fn-article-open-field (fn-article-line-value field-result))
-                       (fn-article-header-rev-add-line header-rev line)))))))))))))
+                       (fn-article-header-rev-add-line header-rev line))))))))))))))
 
 ; The admission parser: OCTETS under the header LIMITS of the profile the
 ; store runs under.  The article-octet preflight is the codec ceiling; the
@@ -721,6 +748,8 @@
 (verify-guards fn-article-line-rest)
 (verify-guards fn-article-split-colon-aux)
 (verify-guards fn-article-new-field)
+(verify-guards fn-article-field-closedp)
+(verify-guards fn-article-open-field-closedp)
 (verify-guards fn-article-fold-linep)
 (verify-guards fn-article-add-fold)
 (verify-guards fn-article-header-rev-add-line)
@@ -733,7 +762,8 @@
                     fn-article-new-field fn-article-split-colon-aux
                     fn-article-line-value fn-article-line-rest
                     fn-article-add-fold fn-article-header-rev-add-line
-                    fn-article-finish-fields fn-article-body-crlfp))))
+                    fn-article-finish-fields fn-article-body-crlfp
+                    fn-article-field-closedp))))
 ; The executed parse is the accumulator loop; the logical one is unchanged.
 (local
  (defthm fn-article-three-list-recomposes
@@ -767,6 +797,12 @@
   (fn-article-close-field cur)
   :rule-classes :type-prescription)
 
+(defthm fn-article-field-closedp-of-close-field
+  (implies (fn-article-open-fieldp cur)
+           (equal (fn-article-field-closedp (fn-article-close-field cur))
+                  (consp (car (cdr (cdr cur))))))
+  :hints (("Goal" :in-theory (enable fn-article-field-closedp))))
+
 ; PKT-552/770: the host-called parse (fn-article-parse-under, through mbe)
 ; runs this loop, in which a continuation line costs its own length; it
 ; returns exactly what the reference loop returns on every input.
@@ -792,7 +828,8 @@
                                fn-article-line-rest fn-article-fold-linep
                                fn-article-make fn-article-ok fn-article-error
                                fn-article-wspp fn-article-limit-octets
-                               fn-article-limit-fields))))
+                               fn-article-limit-fields
+                               fn-article-field-closedp))))
 
 (verify-guards fn-article-parse-lines-acc
   :hints (("Goal"
@@ -802,6 +839,7 @@
                     fn-article-line-value fn-article-line-rest
                     fn-article-add-fold-open fn-article-close-field
                     fn-article-open-field fn-article-open-fieldp
+                    fn-article-open-field-closedp
                     fn-article-header-rev-add-line
                     fn-article-finish-fields fn-article-body-crlfp))))
 (verify-guards fn-article-parse-under)

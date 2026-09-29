@@ -1,0 +1,336 @@
+; fn: releasing a dropped file's disk blocks while the owner serves (lane
+; online-reclaim-2, 2026-09-29; row Q16; PRF-930).
+;
+; A running owner holds a read-only descriptor for every durable file an
+; arena extent names (host/native/extent.lisp).  A checkpoint publication
+; drops the log segments it covers (T8, fnn-log-drop) and replaces the
+; previous checkpoint file, but an unlinked file's blocks come back only
+; when its last descriptor closes -- so until this book, an online
+; compaction (PKT-868) freed no disk until the process exited.  Freeing them
+; while serving takes two steps, both decided here:
+;
+;   1. RESEAT.  Once the new checkpoint is durably installed, every live
+;      handle whose payload the checkpoint's arena run holds is re-pointed at
+;      the frame that holds it (`fn-xrt-reseat-frame', one frame per call:
+;      the host preads the frame's protected prefix, the realizer's own
+;      verified read, into a buffer and calls this under the owner mutex).
+;      Each payload is the commit's reseat (books/payload-commit-extent.lisp
+;      fn-arx-commit-reseat) with the record R the payload's own octets, so
+;      nothing trusts the host's pairing of a handle with a frame position: a
+;      wrong pairing finds no place and reseats nothing.  KEYSTONE
+;      `fn-xrt-reseat-frame-keeps-the-arena': when the file durably holds, at
+;      the frame's offset, the octets the buffer holds, the arena -- every
+;      handle's payload -- is unchanged.
+;
+;   2. RETIRE.  A dropped file's descriptor closes only when no handle names
+;      it: `fn-xrt-scan' walks the concrete extent column a bounded number of
+;      handles per call (never the whole arena under the mutex), answering
+;      the first handle that still names a retired file.  KEYSTONE
+;      `fn-xrt-first-naming-none': a scan that answers none over [LO, END)
+;      means no entry there names a retired file, and scans compose
+;      (`fn-xrt-first-naming-compose').  The close itself
+;      (`fn-xrt-close-set') further excludes every file an in-flight or
+;      fenced log member names and waits for no off-mutex arena reader
+;      (the pin discipline of the staged-page release,
+;      host/native/io.lisp *fnn-arena-off-mutex-readers*).
+;
+; The checkpoint frame as an extent: frame k >= 1 of the arena run is
+; HEADER (37 octets), CHUNK, TRAILER with TRAILER = the frame digest of
+; PREV ++ HEADER ++ CHUNK (books/store-checkpoint-codec.lisp fn-scc-seal),
+; PREV the previous frame's trailer -- the 32 octets right before HEADER in
+; the file.  So [frame start - 32, end of chunk) is a protected prefix whose
+; trailer follows it: exactly the entry shape the extent realizer checks
+; (books/payload-extent-read.lisp fn-arx-entry-ok-buffer).  The chunk is the
+; batch's payloads, each its length (fn-sccr-read-nat) and its octets
+; (books/store-checkpoint-arena-writer.lisp fn-scka-append-batch), in the
+; order of the step's sources (`fn-xrt-step-handles').
+
+(in-package "ACL2")
+(include-book "payload-commit-extent")
+(include-book "payload-arena-extent")
+(include-book "store-checkpoint-reader")
+(local (include-book "arithmetic/top" :dir :system))
+
+; -----------------------------------------------------------------------------
+; 1. The reseat of one checkpoint frame.
+
+; Where the chunk opens in the buffer: the previous trailer, then the header.
+(defconst *fn-xrt-chunk-at*
+  (+ *fn-frame-trailer-octets* *fn-scc-segment-header-octets*))
+
+; The handles the writer's next step appends, in order (step 0 is the head:
+; none).  A source that is not a handle (an octet list the writer copies) is
+; NIL: its payload is in the chunk but no handle reseats to it.
+(defun fn-xrt-srcs-handles (srcs k)
+  (declare (xargs :guard (natp k)))
+  (if (or (atom srcs) (zp k))
+      nil
+    (cons (and (natp (car srcs)) (car srcs))
+          (fn-xrt-srcs-handles (cdr srcs) (1- k)))))
+
+(defun fn-xrt-step-handles (pst)
+  (declare (xargs :guard (true-listp pst)))
+  (let ((index (nth 0 pst)) (srcs (nth 1 pst)) (ks (nth 2 pst)))
+    (if (or (not (posp index)) (atom ks))
+        nil
+      (fn-xrt-srcs-handles srcs (nfix (car ks))))))
+
+; One payload: the commit's reseat with R the payload's octets at [J, J+L)
+; of the buffer, the file's copy at START + J.
+(defun fn-xrt-reseat-one (h file start end j l fn-octets fn-arena)
+  (declare (xargs :stobjs (fn-octets fn-arena)
+                  :guard (and (natp file) (natp start) (natp end) (natp j) (natp l)
+                              (<= (+ j l) end) (<= end (fn-octets-len fn-octets)))
+                  :verify-guards nil))
+  (fn-arx-commit-reseat h file
+                        (list start (+ end *fn-frame-trailer-octets*) (+ start j) l)
+                        (fn-oct-slice-list j (+ j l) fn-octets)
+                        fn-arena))
+
+(verify-guards fn-xrt-reseat-one)
+
+; One frame: HANDLES the step's handles, FILE the realizer's id of the
+; installed checkpoint, START the file offset of buffer cell 0 (the frame
+; start less 32), the buffer's [0, END) the frame's protected prefix, I the
+; cursor (the chunk start at the first call).  Answers (mv DONE fn-arena):
+; DONE when every handle's length field and octets were read inside the
+; prefix.
+(defun fn-xrt-reseat-frame (handles file start i end fn-octets fn-arena)
+  (declare (xargs :stobjs (fn-octets fn-arena)
+                  :guard (and (natp file) (natp start) (natp i) (natp end)
+                              (<= i end) (<= end (fn-octets-len fn-octets)))
+                  :measure (len handles)
+                  :verify-guards nil))
+  (if (atom handles)
+      (mv t fn-arena)
+    (let ((r (fn-sccr-read-nat i end fn-octets)))
+      (if (not r)
+          (mv nil fn-arena)
+        (let ((l (car r)) (j (cdr r)))
+          (if (not (and (natp l) (natp j) (<= (+ j l) end)))
+              (mv nil fn-arena)
+            (let ((fn-arena (if (natp (car handles))
+                                (fn-xrt-reseat-one (car handles) file start end j l
+                                                   fn-octets fn-arena)
+                              fn-arena)))
+              (fn-xrt-reseat-frame (cdr handles) file start (+ j l) end
+                                   fn-octets fn-arena))))))))
+
+(verify-guards fn-xrt-reseat-frame
+  :hints (("Goal" :use ((:instance fn-sccr-read-nat-facts))
+           :in-theory (disable fn-sccr-read-nat-facts fn-xrt-reseat-one))))
+
+; The entry the host calls: the chunk opens at *fn-xrt-chunk-at*.
+(defun fn-xrt-reseat-checkpoint-frame (handles file start end fn-octets fn-arena)
+  (declare (xargs :stobjs (fn-octets fn-arena)
+                  :guard (and (natp file) (natp start) (natp end)
+                              (<= end (fn-octets-len fn-octets)))))
+  (if (<= *fn-xrt-chunk-at* end)
+      (fn-xrt-reseat-frame handles file start *fn-xrt-chunk-at* end fn-octets fn-arena)
+    (mv nil fn-arena)))
+
+(local
+ (defthm fn-xrt-len-slice
+   (equal (len (fn-oct-slice-list i n fn-octets))
+          (if (and (natp i) (natp n) (< i n)) (- n i) 0))
+   :hints (("Goal" :induct (fn-oct-slice-list i n fn-octets)
+            :in-theory (enable fn-oct-slice-list)))))
+
+(local
+ (defthm fn-xrt-slice-true-listp
+   (true-listp (fn-oct-slice-list i n fn-octets))
+   :hints (("Goal" :induct (fn-oct-slice-list i n fn-octets)
+            :in-theory (enable fn-oct-slice-list)))))
+
+(local
+ (defun fn-xrt-ind (i j)
+   (if (zp j) i (fn-xrt-ind (+ 1 (nfix i)) (1- j)))))
+
+(local
+ (defthm fn-xrt-nthcdr-slice
+   (implies (and (natp i) (natp j) (natp end) (<= (+ i j) end))
+            (equal (nthcdr j (fn-oct-slice-list i end fn-octets))
+                   (fn-oct-slice-list (+ i j) end fn-octets)))
+   :hints (("Goal" :induct (fn-xrt-ind i j)
+            :in-theory (enable fn-oct-slice-list)))))
+
+(local
+ (defthm fn-xrt-take-slice
+   (implies (and (natp a) (natp l) (natp end) (<= (+ a l) end))
+            (equal (take l (fn-oct-slice-list a end fn-octets))
+                   (fn-oct-slice-list a (+ a l) fn-octets)))
+   :hints (("Goal" :induct (fn-xrt-ind a l)
+            :in-theory (enable fn-oct-slice-list)))))
+
+(local
+ (defthm fn-xrt-slice-of-slice
+   (implies (and (natp j) (natp l) (natp end) (<= (+ j l) end))
+            (equal (take l (nthcdr j (fn-oct-slice-list 0 end fn-octets)))
+                   (fn-oct-slice-list j (+ j l) fn-octets)))))
+
+; The payload a member reads is the durable slice of the frame.
+(local
+ (defthm fn-xrt-member-durable
+   (implies (and (natp start) (natp j) (natp l) (natp end) (<= (+ j l) end)
+                 (equal (fn-durable-octets file start end)
+                        (fn-oct-slice-list 0 end fn-octets)))
+            (equal (fn-durable-octets file (+ start j) l)
+                   (fn-oct-slice-list j (+ j l) fn-octets)))
+   :hints (("Goal" :use ((:instance fn-arx-durable-slice (k j) (m l) (off start) (len end)))
+            :in-theory (disable fn-arx-durable-slice)))))
+
+; One payload's reseat keeps the arena (the commit's keystone, R the slice).
+(local
+ (defthm fn-xrt-one-reseat-keeps
+   (implies (and (fn-arena-p fn-arena) (natp file) (natp start) (natp j) (natp l)
+                 (natp end) (<= (+ j l) end)
+                 (equal (fn-durable-octets file start end)
+                        (fn-oct-slice-list 0 end fn-octets)))
+            (equal (fn-xrt-reseat-one h file start end j l fn-octets fn-arena)
+                   fn-arena))
+   :hints (("Goal" :use ((:instance fn-arx-commit-reseat-keeps-the-arena
+                                    (position (list start (+ end *fn-frame-trailer-octets*)
+                                                    (+ start j) l))
+                                    (r (fn-oct-slice-list j (+ j l) fn-octets)))
+                  (:instance fn-xrt-member-durable))
+            :in-theory (e/d (fn-xrt-reseat-one)
+                            (fn-arx-commit-reseat-keeps-the-arena fn-arx-commit-reseat
+                             fn-xrt-member-durable))))))
+
+(local
+ (defun fn-xrt-frame-ind (handles i end fn-octets)
+   (declare (xargs :stobjs fn-octets :verify-guards nil :measure (len handles)))
+   (if (atom handles)
+       t
+     (let ((r (fn-sccr-read-nat i end fn-octets)))
+       (if (not r)
+           t
+         (fn-xrt-frame-ind (cdr handles) (+ (car r) (cdr r)) end fn-octets))))))
+
+; KEYSTONE (PRF-930).  The reseat of a frame the file durably holds keeps
+; the arena: every handle's payload after it is what it was.  Host subject:
+; host/native/io.lisp fnn-extent-reseat-checkpoint calls
+; fn-xrt-reseat-checkpoint-frame under the owner mutex.
+(defthm fn-xrt-reseat-frame-keeps-the-arena
+  (implies (and (fn-arena-p fn-arena) (natp file) (natp start) (natp i) (natp end)
+                (equal (fn-durable-octets file start end)
+                       (fn-oct-slice-list 0 end fn-octets)))
+           (equal (mv-nth 1 (fn-xrt-reseat-frame handles file start i end fn-octets fn-arena))
+                  fn-arena))
+  :hints (("Goal" :induct (fn-xrt-frame-ind handles i end fn-octets)
+           :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (disable fn-xrt-reseat-one fn-sccr-read-nat fn-arena-p fn-oct-slice-list fn-durable-octets-unfold
+                               fn-oct-slice-list-is-take-nthcdr))))
+
+(defthm fn-xrt-reseat-checkpoint-frame-keeps-the-arena
+  (implies (and (fn-arena-p fn-arena) (natp file) (natp start) (natp end)
+                (equal (fn-durable-octets file start end)
+                       (fn-oct-slice-list 0 end fn-octets)))
+           (equal (mv-nth 1 (fn-xrt-reseat-checkpoint-frame handles file start end
+                                                             fn-octets fn-arena))
+                  fn-arena))
+  :hints (("Goal" :in-theory (disable fn-xrt-reseat-frame))))
+
+; -----------------------------------------------------------------------------
+; 2. The retirement scan over the concrete extent column.
+
+; Whether the extent entry E names one of FILES.
+(defun fn-xrt-entry-names (e files)
+  (declare (xargs :guard (nat-listp files)))
+  (and (or (fn-arn-extentp e) (fn-arn-lz-extentp e))
+       (consp e)
+       (member (car e) files)
+       t))
+
+(defun fn-xrt-first-naming (files h end fn-arena$x)
+  (declare (xargs :stobjs fn-arena$x
+                  :guard (and (nat-listp files) (natp h) (natp end)
+                              (<= end (fn-arena$x-ext-length fn-arena$x)))
+                  :measure (nfix (- (nfix end) (nfix h)))))
+  (if (or (not (natp h)) (not (natp end)) (<= end h))
+      nil
+    (if (fn-xrt-entry-names (fn-arena$x-exti h fn-arena$x) files)
+        h
+      (fn-xrt-first-naming files (+ 1 h) end fn-arena$x))))
+
+; KEYSTONE (PRF-930).  A scan that finds none over [LO, END) means no entry
+; there names a retired file.
+(defthm fn-xrt-first-naming-none
+  (implies (and (not (fn-xrt-first-naming files lo end fn-arena$x))
+                (natp lo) (natp end) (natp k) (<= lo k) (< k end))
+           (not (fn-xrt-entry-names (fn-arena$x-exti k fn-arena$x) files)))
+  :hints (("Goal" :induct (fn-xrt-first-naming files lo end fn-arena$x)
+           :in-theory (disable fn-xrt-entry-names))))
+
+; A found handle names a retired file.
+(defthm fn-xrt-first-naming-found
+  (implies (fn-xrt-first-naming files lo end fn-arena$x)
+           (fn-xrt-entry-names
+            (fn-arena$x-exti (fn-xrt-first-naming files lo end fn-arena$x) fn-arena$x)
+            files))
+  :hints (("Goal" :induct (fn-xrt-first-naming files lo end fn-arena$x)
+           :in-theory (disable fn-xrt-entry-names))))
+
+; Scans compose: the host's bounded calls are one scan.
+(defthm fn-xrt-first-naming-compose
+  (implies (and (natp a) (natp b) (natp c) (<= a b) (<= b c)
+                (not (fn-xrt-first-naming files a b fn-arena$x))
+                (not (fn-xrt-first-naming files b c fn-arena$x)))
+           (not (fn-xrt-first-naming files a c fn-arena$x)))
+  :hints (("Goal" :induct (fn-xrt-first-naming files a c fn-arena$x)
+           :in-theory (disable fn-xrt-entry-names))))
+
+; One bounded call: at most K entries from H.  (:found H'), (:next H'') or
+; :done at the column's end.
+(defun fn-xrt-scan (files h k fn-arena$x)
+  (declare (xargs :stobjs fn-arena$x
+                  :guard (and (nat-listp files) (natp h) (natp k))))
+  (let* ((n (fn-arena$x-ext-length fn-arena$x))
+         (end (min n (+ (nfix h) (nfix k)))))
+    (if (<= end (nfix h))
+        :done
+      (let ((found (fn-xrt-first-naming files (nfix h) end fn-arena$x)))
+        (if found
+            (list :found found)
+          (if (<= n end) :done (list :next end)))))))
+
+; -----------------------------------------------------------------------------
+; 3. The close decision.
+
+(defun fn-xrt-remove-named (retired named)
+  (declare (xargs :guard (and (nat-listp retired) (true-listp named))))
+  (cond ((atom retired) nil)
+        ((member (car retired) named) (fn-xrt-remove-named (cdr retired) named))
+        (t (cons (car retired) (fn-xrt-remove-named (cdr retired) named)))))
+
+; A scan starts only when no log member in flight or fenced names a retired
+; file: a COMPLETE after it then reseats only into files the scan does not
+; retire (the active segment is never retired), so the handles it passed
+; stay clean.
+(defun fn-xrt-scan-may-start (retired named)
+  (declare (xargs :guard (and (nat-listp retired) (true-listp named))))
+  (not (intersectp-equal retired named)))
+
+; RETIRED the dropped files' ids; SCANNED whether a scan of the whole column,
+; started when fn-xrt-scan-may-start said so, found none of them; NAMED the files the log
+; members in flight or fenced name (their COMPLETE reseats them there);
+; READERS the off-mutex arena readers.  The files to close.
+(defun fn-xrt-close-set (retired scanned named readers)
+  (declare (xargs :guard (and (nat-listp retired) (true-listp named))))
+  (if (and scanned (equal readers 0))
+      (fn-xrt-remove-named retired named)
+    nil))
+
+(defthm fn-xrt-remove-named-member
+  (iff (member f (fn-xrt-remove-named retired named))
+       (and (member f retired) (not (member f named)))))
+
+; KEYSTONE (PRF-930).  A closed file is retired, named by no member in
+; flight, and closes only after a clean scan with no off-mutex reader.
+(defthm fn-xrt-close-set-is-safe
+  (implies (member f (fn-xrt-close-set retired scanned named readers))
+           (and (member f retired)
+                (not (member f named))
+                scanned
+                (equal readers 0)))
+  :rule-classes nil)

@@ -81,6 +81,12 @@
       (let* ((name (fn-article-line-value sv))
              (value (fn-article-line-rest sv))
              (name-check (fn-aw-name name)))
+        (if (and (fn-aw-v name-check) (null value))
+            ; An empty first-line value: the field's body begins on a
+            ; continuation line (fn-article-new-field, RFC 5322 2.2.3).
+            (let ((lower (fn-aw-downcase name)))
+              (fn-aw-r (list :ok (fn-article-make-field (list line) (fn-aw-v lower) value))
+                       (+ 1 (fn-aw-c split) (fn-aw-c name-check) (fn-aw-c lower))))
         (if (not (and (fn-aw-v name-check) (consp value)
                        (fn-article-wspp (car value))))
             (fn-aw-r (fn-article-error :invalid-header)
@@ -100,7 +106,7 @@
                      (list :ok (fn-article-make-field (list line) (fn-aw-v lower) value))
                      (+ 1 (fn-aw-c split) (fn-aw-c name-check)
                         (fn-aw-c header-check) (fn-aw-c visible-check)
-                        (fn-aw-c lower)))))))))))))
+                        (fn-aw-c lower))))))))))))))
 
 (defthm fn-aw-new-field-value
   (equal (fn-aw-v (fn-aw-new-field line)) (fn-article-new-field line))

@@ -213,6 +213,20 @@ def apply_box_defaults(environ=None, hostname: str | None = None) -> str | None:
     return host
 
 
+def refuse_on_laptop(what: str, environ=None, hostname: str | None = None) -> None:
+    """Refuse a repo-wide step anywhere but a farm box (closeout-common: the
+    laptop is not a build box; decision-keystones: `interface_emit --write`
+    took minutes there).  FN_LAPTOP_OK=1 is the deliberate override."""
+    import socket  # noqa: E402
+    environ = os.environ if environ is None else environ
+    host = (hostname or socket.gethostname()).split(".")[0]
+    if host in farm_hosts() or environ.get("FN_LAPTOP_OK") == "1":
+        return
+    raise SystemExit(
+        f"fn: {what} reads the whole tree and belongs on a build box, not {host}: "
+        f"tools/remote_check.sh auto --cmd 'python3 {what}' (FN_LAPTOP_OK=1 overrides)")
+
+
 def slot_directory() -> Path:
     return Path(os.environ.get("FN_ACL2_SLOT_DIR", DEFAULT_SLOT_DIR)).expanduser()
 
