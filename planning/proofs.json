@@ -14481,6 +14481,63 @@
         "tests/acl2/article-buffer-tests.lisp"
       ],
       "progress_note": "Lane d27-representation (D27 boundary 9, row Q2 of COMPLETE-BEFORE-6.6.0, 2026-09-29). Teeth in tests/acl2/article-buffer-tests.lisp: the positive witness in the live buffer, every error arm, the hypothesis-removal witness on the logical definitions (a cell of 300: the reference refuses, the twin parses on), the consumers' witnesses. Not here: the signed arm's source as a buffer range (PKT-743); a header-parse cache across the transit's four calls."
+    },
+    {
+      "id": "PRF-924",
+      "title": "The owner relation is preserved by HOST-FAULT and by staging as the host calls them",
+      "statement": "books/owner-host-relation.lisp. fn-ohr-fault-preserves-ocl-relation: fn-ocl-relation OC implies fn-ocl-relation of (cdr (fn-ocfg-fault OC id)) (host/owner-host.lisp fn-owner-fault). fn-ohr-reconfigure-preserves-ocl-relation: fn-ocl-relation OC implies fn-ocl-relation of (fn-ocfg-reconfigure OC id deltas), the :reconfigure arm of fn-ocfg-step that fn-owner-reconfigure reaches through fn-owner-step; the staged record's acceptability is the relation's last conjunct. Both by fn-ohr-ocl-relation-with-staged (only the last conjunct reads the staged slot) and the close theorem fn-ocl-close-preserves-historical-relation. Lifted to the carried relation fn-lgoc-invariantp (fn-ohr-fault-preserves-carried-relation, fn-ohr-reconfigure-preserves-carried-relation, fn-ohr-step-close/-reconfigure/-advance-preserves-carried-relation). Teeth: tests/acl2/owner-host-relation-tests.lisp (positive and stale-pin removal witnesses).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-286",
+        "PRF-274"
+      ],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/owner-host-relation.lisp",
+        "tests/acl2/owner-host-relation-tests.lisp"
+      ],
+      "progress_note": "Lane owner-relation (Fable 5.1, 2026-09-29; row Q3c). REPL-admitted on persvati; certification pending."
+    },
+    {
+      "id": "PRF-925",
+      "title": "The owner relation is preserved by every owner step the host reaches through fn-owner-step and fn-owner-replace-core that keeps the store, view and connections",
+      "statement": "books/owner-host-relation.lisp. fn-ohr-ocl-relation-with-owner-of-same-control(-field): fn-ocl-relation OC and an owner O2 with the store, view, connections, next-id, max-conns, ledger field, clock and facts of OC's owner give fn-ocl-relation of (fn-ocfg-with-owner OC O2). Instances over the functions the host calls: fn-ocfg-pass of (:take), (:control-submit ...), (:operator-submit ...), (:feed-replay ...), (:control-outcome ...), (:bp-transit-outcome ...), (:feeds ...), (:feed-conn ...) (fn-owner-step) and the host-shaped fn-ocfg-step of each (fn-ohr-step-*); fn-own-configure (fn-owner-posting-configure), fn-osb-install (fn-owner-install-profile), fn-own-with-feeds (fn-owner-feed-install-port-result), fn-own-with-node-secret (fn-owner-install-node-secret) under fn-owner-replace-core; each with its fn-lgoc-invariantp lift. NOT covered, stated as findings: fn-own-outcome and fn-own-transit-outcome (a durable completion advances the connection at the owner level without re-pinning it, PKT-889) and fn-ocfg-open-peer (no pin, PKT-888). Teeth: tests/acl2/owner-host-relation-tests.lisp.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-286"
+      ],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/owner-host-relation.lisp",
+        "tests/acl2/owner-host-relation-tests.lisp"
+      ],
+      "progress_note": "Lane owner-relation (Fable 5.1, 2026-09-29; row Q3c). REPL-admitted on persvati; certification pending."
+    },
+    {
+      "id": "PRF-926",
+      "title": "The host's Store open establishes the carried owner relation",
+      "statement": "books/owner-host-relation.lisp. fn-ohr-store-open-installs-the-carried-relation: for E = (fn-sco-extend (fn-sco-capture configs prefix) configs suffix) and (REPLAYED OPENED) = (fn-sco-store-open E configs frontier), (fn-ock-install REPLAYED OPENED max-conns) is :fault or satisfies fn-lgoc-invariantp. This is the value host/owner-host.lisp fn-owner-recover-from-store-open installs from the fn-store-sco-open global that host/store-node-host.lisp set; by fn-ock-install-of-store-open-by-definition and fn-lgoc-recover-installs-invariant (PRF-286). Teeth: PRF-286's, tests/acl2/owner-log-ocl-tests.lisp (the same install).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-286"
+      ],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/owner-host-relation.lisp"
+      ],
+      "progress_note": "Lane owner-relation (Fable 5.1, 2026-09-29; row Q3c). REPL-admitted on persvati; certification pending."
     }
   ]
 }
