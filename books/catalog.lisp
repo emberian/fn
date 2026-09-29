@@ -4,8 +4,12 @@
 ; The LOGICAL value is the committed history as the theorems already know
 ; it: a true list of held records (books/catalog-record.lisp), oldest first,
 ; the sequence being the position.  The EXECUTABLE is the indexed tables:
-; an array of rows by sequence, a hash table from Message-ID to the
-; sequences bound to it, a hash table from (group . number) to the sequence
+; an array of rows by sequence, a PAGED Message-ID table (books/msgid-pages-
+; exec: a nested `fn-mpxt' of keyed tags in page-store pages, the next
+; generation beside it and the count of rows it could not place -- lane
+; paged-history, row P2 of planning/design-paged-history-2026-09-29.md; the
+; heap holds 16 octets an entry, never the Message-ID strings), a hash table
+; from (group . number) to the sequence
 ; that number names, a hash table from group to its row count and its next
 ; number, and the scalar total of retained octets.  The abstraction
 ; relation `fn-cat$corr' states every cross-field invariant the tables must
@@ -16,7 +20,7 @@
 ; Exports (logic over the list C / exec over the tables):
 ;   fn-cat-count               (len C)                             the count cell
 ;   fn-cat-at seq              (nth seq C)                         rows[seq]
-;   fn-cat-msgid-seqs msgid    (fn-cat-seqs-for msgid C 0)         msgids[msgid]
+;   fn-cat-msgid-seqs msgid    (fn-cat-seqs-for msgid C 0)         the table's candidates, confirmed
 ;                              the sequences of the rows carrying that Message-ID,
 ;                              ascending (fn-cei-article-records-for over sequences)
 ;   fn-cat-group-number g n    (fn-cat-number-seq g n C 0)         numbers[(g . n)]
@@ -34,6 +38,13 @@
 ;                              the first cancel wins; its version is the count
 ;   fn-cat-redecide seq ctx    (update-nth seq (row with context ctx) C)     :protect t
 ;   fn-cat-clear               nil                                  :protect t
+;   fn-cat-clear-keyed key     nil                                  :protect t
+;                              the table emptied under KEY (the open's step; the
+;                              tags of the entries a table holds are its key's)
+;   fn-cat-msgid-saturatedp key msgid   (fn-mpxt-build-saturatedp key msgid C)
+;                              the fold over C could not place one more row carrying
+;                              msgid: the served POST's refusal before durable acceptance
+;   fn-cat-index-health key    (fn-mpxt-build-health key C)        (pages count unplaced stuck)
 ;
 ; The numbers are assigned at commit and never reassigned: a group's next
 ; number is one past the highest it has bound, so the number table is
@@ -48,6 +59,7 @@
 
 (in-package "ACL2")
 (include-book "catalog-record")
+(include-book "msgid-pages-exec")
 
 ; The tau system is off in this book: it is time no prover step counts, and
 ; on these goals it was half the proof time (ACL2 time over the book's own
@@ -434,6 +446,24 @@
   (declare (xargs :guard t) (ignore fn-cat$a))
   nil)
 
+; The keyed clear: the same logical value; the key is the executable's.
+(defun fn-cat$a-clear-keyed (key fn-cat$a)
+  (declare (xargs :guard (and (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*)))
+           (ignore key fn-cat$a))
+  nil)
+
+; The served refusal: the fold of the rows under KEY could not place one
+; more row carrying MSGID (books/msgid-pages-exec 7j).
+(defun fn-cat$a-msgid-saturatedp (key msgid fn-cat$a)
+  (declare (xargs :guard (and (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*)
+                              (fn-cat$ap fn-cat$a))))
+  (fn-mpxt-build-saturatedp key msgid fn-cat$a))
+
+(defun fn-cat$a-index-health (key fn-cat$a)
+  (declare (xargs :guard (and (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*)
+                              (fn-cat$ap fn-cat$a))))
+  (fn-mpxt-build-health key fn-cat$a))
+
 (defun fn-cat$a-group-live-count (group fn-cat$a)
   (declare (xargs :guard (fn-cat$ap fn-cat$a)))
   (fn-cat-live-count-from group 1 (fn-cat-group-high group fn-cat$a) fn-cat$a))
@@ -459,7 +489,11 @@
 (defstobj fn-cat$c
   (fn-cat$c-rows :type (array t (0)) :resizable t)
   (fn-cat$c-count :type (integer 0 *) :initially 0)
-  (fn-cat$c-msgids :type (hash-table equal))
+  ;; THE PAGED MESSAGE-ID TABLE (books/msgid-pages-exec): a nested table of
+  ;; keyed tags; its next generation is built beside it (fn-cat$c-mpx2) and
+  ;; the rows it could not place are counted (fn-cat$c-unplaced): 0 on the
+  ;; served path, where the refusal fn-cat-msgid-saturatedp keeps it so.
+  (fn-cat$c-mpx :type fn-mpxt)
   (fn-cat$c-numbers :type (hash-table equal))
   (fn-cat$c-groups :type (hash-table equal))
   (fn-cat$c-octets :type (integer 0 *) :initially 0)
@@ -470,6 +504,8 @@
   ;; The withdrawals by version (lane scale-latency): version -> the rows
   ;; withdrawn at it, ascending.
   (fn-cat$c-wbv :type (hash-table equal))
+  (fn-cat$c-mpx2 :type fn-mpxt2)
+  (fn-cat$c-unplaced :type (integer 0 *) :initially 0)
   :inline t)
 
 (local
@@ -540,15 +576,21 @@
 (local
  (defthm fn-ctg-cp-of-table-writes
    (implies (fn-cat$cp fn-cat$c)
-            (and (fn-cat$cp (fn-cat$c-msgids-put k v fn-cat$c))
-                 (fn-cat$cp (fn-cat$c-numbers-put k v fn-cat$c))
+            (and (fn-cat$cp (fn-cat$c-numbers-put k v fn-cat$c))
                  (fn-cat$cp (fn-cat$c-groups-put k v fn-cat$c))
                  (fn-cat$cp (fn-cat$c-lives-put k v fn-cat$c))
-                 (fn-cat$cp (fn-cat$c-msgids-clear fn-cat$c))
                  (fn-cat$cp (fn-cat$c-numbers-clear fn-cat$c))
                  (fn-cat$cp (fn-cat$c-groups-clear fn-cat$c))
                  (fn-cat$cp (fn-cat$c-lives-clear fn-cat$c))))
    :hints (("Goal" :in-theory (enable fn-cat$cp)))))
+
+(local
+ (defthm fn-ctg-cp-of-index-writes
+   (implies (fn-cat$cp fn-cat$c)
+            (and (implies (fn-mpxtp x) (fn-cat$cp (update-fn-cat$c-mpx x fn-cat$c)))
+                 (implies (fn-mpxtp x) (fn-cat$cp (update-fn-cat$c-mpx2 x fn-cat$c)))
+                 (implies (natp n) (fn-cat$cp (update-fn-cat$c-unplaced n fn-cat$c)))))
+   :hints (("Goal" :in-theory (enable fn-cat$cp fn-cat$c-unplacedp)))))
 
 (local
  (defthm fn-ctg-cp-of-update-hz
@@ -563,7 +605,11 @@
                (if (and (natp i) (< i (fn-cat$c-rows-length fn-cat$c)))
                    (fn-cat$c-rows-length fn-cat$c)
                  (max (1+ (nfix i)) (fn-cat$c-rows-length fn-cat$c))))
-        (equal (fn-cat$c-rows-length (fn-cat$c-msgids-put k v fn-cat$c))
+        (equal (fn-cat$c-rows-length (update-fn-cat$c-mpx x fn-cat$c))
+               (fn-cat$c-rows-length fn-cat$c))
+        (equal (fn-cat$c-rows-length (update-fn-cat$c-mpx2 x fn-cat$c))
+               (fn-cat$c-rows-length fn-cat$c))
+        (equal (fn-cat$c-rows-length (update-fn-cat$c-unplaced n fn-cat$c))
                (fn-cat$c-rows-length fn-cat$c))
         (equal (fn-cat$c-rows-length (fn-cat$c-numbers-put k v fn-cat$c))
                (fn-cat$c-rows-length fn-cat$c))
@@ -585,9 +631,48 @@
                               (< seq (fn-cat$c-count fn-cat$c)))))
   (fn-cat$c-rowsi seq fn-cat$c))
 
+; THE PAGED READER (design B.6, the 5u method): the candidates for MSGID's
+; tag from the nested table, confirmed against the rows array (the twin of
+; fn-mpxt-confirm: a candidate at or past the count, or whose row carries
+; another Message-ID, is dropped).  When a row could not be placed
+; (unplaced > 0: a saturated table the operator has not rebuilt), the
+; DEGRADED scan over the rows array answers, correct and O(count); the
+; served path never reaches it (fn-cat-msgid-saturatedp refuses first).
+(defun fn-cat$c-confirm (msgid seqs fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c :guard (nat-listp seqs)))
+  (if (consp seqs)
+      (let ((rest (fn-cat$c-confirm msgid (cdr seqs) fn-cat$c)))
+        (if (and (< (car seqs) (fn-cat$c-count fn-cat$c))
+                 (< (car seqs) (fn-cat$c-rows-length fn-cat$c))
+                 (equal msgid (fn-record-msgid (fn-cat$c-rowsi (car seqs) fn-cat$c))))
+            (cons (car seqs) rest)
+          rest))
+    nil))
+
+(defun fn-cat$c-scan-msgid (msgid i acc fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c :guard (and (natp i) (true-listp acc))
+                  :measure (nfix (- (fn-cat$c-count fn-cat$c) (nfix i)))))
+  (if (or (>= (nfix i) (fn-cat$c-count fn-cat$c))
+          (>= (nfix i) (fn-cat$c-rows-length fn-cat$c)))
+      (revappend acc nil)
+    (fn-cat$c-scan-msgid msgid (1+ (nfix i))
+                         (if (equal msgid (fn-record-msgid (fn-cat$c-rowsi (nfix i) fn-cat$c)))
+                             (cons (nfix i) acc)
+                           acc)
+                         fn-cat$c)))
+
 (defun fn-cat$c-msgid-seqs (msgid fn-cat$c)
-  (declare (xargs :stobjs fn-cat$c))
-  (fn-cat$c-msgids-get msgid fn-cat$c))
+  (declare (xargs :stobjs fn-cat$c
+                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-candidates)))))
+  (if (eql 0 (fn-cat$c-unplaced fn-cat$c))
+      (let ((seqs (stobj-let ((fn-mpxt (fn-cat$c-mpx fn-cat$c)))
+                             (seqs)
+                             (if (fn-mpxt-wfp fn-mpxt)
+                                 (fn-mpxt-candidates (fn-mpxt-tag msgid (fn-mpxt-key-octets fn-mpxt)) fn-mpxt)
+                               nil)
+                             seqs)))
+        (fn-cat$c-confirm msgid seqs fn-cat$c))
+    (fn-cat$c-scan-msgid msgid 0 nil fn-cat$c)))
 
 (defun fn-cat$c-group-number (group n fn-cat$c)
   (declare (xargs :stobjs fn-cat$c))
@@ -723,19 +808,24 @@
  (defthm fn-ctg-cells-over-writes
    (and (equal (fn-cat$c-octets (update-fn-cat$c-rowsi i v fn-cat$c)) (fn-cat$c-octets fn-cat$c))
         (equal (fn-cat$c-octets (resize-fn-cat$c-rows n fn-cat$c)) (fn-cat$c-octets fn-cat$c))
-        (equal (fn-cat$c-octets (fn-cat$c-msgids-put k v fn-cat$c)) (fn-cat$c-octets fn-cat$c))
+        (equal (fn-cat$c-octets (update-fn-cat$c-mpx x fn-cat$c)) (fn-cat$c-octets fn-cat$c))
+        (equal (fn-cat$c-octets (update-fn-cat$c-mpx2 x fn-cat$c)) (fn-cat$c-octets fn-cat$c))
+        (equal (fn-cat$c-octets (update-fn-cat$c-unplaced n fn-cat$c)) (fn-cat$c-octets fn-cat$c))
         (equal (fn-cat$c-octets (fn-cat$c-numbers-put k v fn-cat$c)) (fn-cat$c-octets fn-cat$c))
         (equal (fn-cat$c-octets (fn-cat$c-groups-put k v fn-cat$c)) (fn-cat$c-octets fn-cat$c))
         (equal (fn-cat$c-octets (update-fn-cat$c-count n fn-cat$c)) (fn-cat$c-octets fn-cat$c))
         (equal (fn-cat$c-count (update-fn-cat$c-rowsi i v fn-cat$c)) (fn-cat$c-count fn-cat$c))
         (equal (fn-cat$c-count (resize-fn-cat$c-rows n fn-cat$c)) (fn-cat$c-count fn-cat$c))
-        (equal (fn-cat$c-count (fn-cat$c-msgids-put k v fn-cat$c)) (fn-cat$c-count fn-cat$c))
+        (equal (fn-cat$c-count (update-fn-cat$c-mpx x fn-cat$c)) (fn-cat$c-count fn-cat$c))
+        (equal (fn-cat$c-count (update-fn-cat$c-mpx2 x fn-cat$c)) (fn-cat$c-count fn-cat$c))
+        (equal (fn-cat$c-count (update-fn-cat$c-unplaced n fn-cat$c)) (fn-cat$c-count fn-cat$c))
         (equal (fn-cat$c-count (fn-cat$c-numbers-put k v fn-cat$c)) (fn-cat$c-count fn-cat$c))
         (equal (fn-cat$c-count (fn-cat$c-groups-put k v fn-cat$c)) (fn-cat$c-count fn-cat$c))
         (equal (fn-cat$c-count (update-fn-cat$c-octets n fn-cat$c)) (fn-cat$c-count fn-cat$c)))
    :hints (("Goal" :in-theory (enable update-nth-array fn-cat$c-octets fn-cat$c-count
                                       update-fn-cat$c-rowsi resize-fn-cat$c-rows
-                                      fn-cat$c-msgids-put fn-cat$c-numbers-put
+                                      update-fn-cat$c-mpx update-fn-cat$c-mpx2 update-fn-cat$c-unplaced
+                                      fn-cat$c-numbers-put
                                       fn-cat$c-groups-put update-fn-cat$c-count
                                       update-fn-cat$c-octets)))))
 
@@ -758,7 +848,8 @@
  (in-theory (disable fn-cat$cp fn-cat$c-count update-fn-cat$c-count
                      fn-cat$c-rowsi update-fn-cat$c-rowsi resize-fn-cat$c-rows
                      fn-cat$c-rows-length fn-cat$c-octets update-fn-cat$c-octets
-                     fn-cat$c-msgids-get fn-cat$c-msgids-put fn-cat$c-msgids-clear
+                     fn-cat$c-mpx update-fn-cat$c-mpx fn-cat$c-mpx2 update-fn-cat$c-mpx2
+                     fn-cat$c-unplaced update-fn-cat$c-unplaced
                      fn-cat$c-numbers-get fn-cat$c-numbers-put fn-cat$c-numbers-clear
                      fn-cat$c-groups-get fn-cat$c-groups-put fn-cat$c-groups-clear
                      fn-cat$c-lives-get fn-cat$c-lives-put fn-cat$c-lives-clear
@@ -800,19 +891,59 @@
            ((:instance fn-cat-snoc-loop-is-revappend (acc nil))))))
 
 
+;; THE INDEX'S WRITES.  The add is the fold's step (fn-mpxt-build-from,
+;; books/msgid-pages-exec 7f) made on the live tables: below the word limit
+;; the entry is placed (and the table grown at half the slots), or the row
+;; is counted unplaced; at the limit it is counted unplaced without a write.
+(defun fn-cat$c-index-add (msgid seq fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c :guard (natp seq)))
+  (if (< (+ 2 seq) *fn-mpxt-word-limit*)
+      (stobj-let ((fn-mpxt (fn-cat$c-mpx fn-cat$c))
+                  (fn-mpxt2 (fn-cat$c-mpx2 fn-cat$c)))
+                 (r fn-mpxt fn-mpxt2)
+                 (if (fn-mpxt-wfp fn-mpxt)
+                     (fn-mpxt-add (fn-mpxt-tag msgid (fn-mpxt-key-octets fn-mpxt)) seq fn-mpxt fn-mpxt2)
+                   (mv :mpx-unplaced fn-mpxt fn-mpxt2))
+                 (if (eq r :placed)
+                     fn-cat$c
+                   (update-fn-cat$c-unplaced (+ 1 (fn-cat$c-unplaced fn-cat$c)) fn-cat$c)))
+    (update-fn-cat$c-unplaced (+ 1 (fn-cat$c-unplaced fn-cat$c)) fn-cat$c)))
+
+;; The clear keeps the key (fn-mpxt-clear); the generation buffer is reset to
+;; the creator's value; nothing is unplaced.
+(defun fn-cat$c-index-clear (fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c))
+  (let ((fn-cat$c (update-fn-cat$c-unplaced 0 fn-cat$c)))
+    (stobj-let ((fn-mpxt (fn-cat$c-mpx fn-cat$c))
+                (fn-mpxt2 (fn-cat$c-mpx2 fn-cat$c)))
+               (fn-mpxt fn-mpxt2)
+               (let* ((fn-mpxt (fn-mpxt-clear fn-mpxt))
+                      (fn-mpxt2 (fn-mpxt-set-key nil fn-mpxt2)))
+                 (mv fn-mpxt fn-mpxt2))
+               fn-cat$c)))
+
+;; The keyed clear: the open installs the ring's key into an emptied table.
+(defun fn-cat$c-index-set-key (key fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c))
+  (let ((fn-cat$c (update-fn-cat$c-unplaced 0 fn-cat$c)))
+    (stobj-let ((fn-mpxt (fn-cat$c-mpx fn-cat$c))
+                (fn-mpxt2 (fn-cat$c-mpx2 fn-cat$c)))
+               (fn-mpxt fn-mpxt2)
+               (let* ((fn-mpxt (fn-mpxt-set-key key fn-mpxt))
+                      (fn-mpxt2 (fn-mpxt-set-key nil fn-mpxt2)))
+                 (mv fn-mpxt fn-mpxt2))
+               fn-cat$c)))
+
 (defun fn-cat$c-commit-base (h fn-cat$c)
   (declare (xargs :stobjs fn-cat$c :guard (fn-cat$c-wfp fn-cat$c)))
   (let* ((seq (fn-cat$c-count fn-cat$c))
          (plan (fn-cat$c-plan (fn-record-groups h) fn-cat$c))
          (row (fn-held-with-numbers h (fn-cat-plan-numbers plan)))
+         (fn-cat$c (fn-cat$c-index-add (fn-record-msgid h) seq fn-cat$c))
          (fn-cat$c (if (< seq (fn-cat$c-rows-length fn-cat$c))
                        fn-cat$c
                      (resize-fn-cat$c-rows (+ 1 (* 2 seq)) fn-cat$c)))
          (fn-cat$c (update-fn-cat$c-rowsi seq row fn-cat$c))
-         (fn-cat$c (fn-cat$c-msgids-put
-                    (fn-record-msgid h)
-                    (fn-cat-snoc (fn-cat$c-msgids-get (fn-record-msgid h) fn-cat$c) seq)
-                    fn-cat$c))
          (fn-cat$c (fn-cat$c-apply-plan plan seq fn-cat$c))
          (fn-cat$c (update-fn-cat$c-octets
                     (+ (fn-cat$c-octets fn-cat$c)
@@ -842,7 +973,7 @@
   (declare (xargs :stobjs fn-cat$c))
   (let* ((fn-cat$c (update-fn-cat$c-count 0 fn-cat$c))
          (fn-cat$c (update-fn-cat$c-octets 0 fn-cat$c))
-         (fn-cat$c (fn-cat$c-msgids-clear fn-cat$c))
+         (fn-cat$c (fn-cat$c-index-clear fn-cat$c))
          (fn-cat$c (fn-cat$c-numbers-clear fn-cat$c)))
     (fn-cat$c-groups-clear fn-cat$c)))
 
@@ -1088,23 +1219,13 @@
          (equal (nth (- n 1) rows) (nth (- n 1) c))
          (fn-cat-rows-corr (- n 1) c rows))))
 
-; Every key of KEYS (an alist walked for its keys) looks up in TAB to the
-; Message-ID column's value.
-(defun fn-cat-msgids-okp (keys tab c)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp keys)
-      (and (equal (cdr (hons-assoc-equal (car (car keys)) tab))
-                  (fn-cat-seqs-for (car (car keys)) c 0))
-           (fn-cat-msgids-okp (cdr keys) tab c))
-    t))
-
-; Every row's Message-ID is bound in TAB.
-(defun fn-cat-msgids-coverp (c tab)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp c)
-      (and (consp (hons-assoc-equal (fn-record-msgid (car c)) tab))
-           (fn-cat-msgids-coverp (cdr c) tab))
-    t))
+; THE TABLE IS THE FOLD (books/msgid-pages-exec 7f): the nested table is
+; `fn-mpxt-build' of the rows under its own key, the generation buffer the
+; fold's buffer and the unplaced cell the fold's count.  Equality, not a
+; weaker relation: the served refusal's logic function is a function of the
+; rows alone only because the table is determined by them.
+(defun-nx fn-cat-key-of (fn-cat$c)
+  (fn-mpxt-key-octets (nth *fn-cat$c-mpx* fn-cat$c)))
 
 ; A bound (group . number) names a row, and the row it looks up to.
 (defun fn-cat-numbers-okp (keys tab c)
@@ -1165,8 +1286,9 @@
        (equal (nth 1 fn-cat$c) (len fn-cat$a))
        (<= (nth 1 fn-cat$c) (len (nth 0 fn-cat$c)))
        (fn-cat-rows-corr (len fn-cat$a) fn-cat$a (nth 0 fn-cat$c))
-       (fn-cat-msgids-okp (nth 2 fn-cat$c) (nth 2 fn-cat$c) fn-cat$a)
-       (fn-cat-msgids-coverp fn-cat$a (nth 2 fn-cat$c))
+       (equal (nth *fn-cat$c-mpx* fn-cat$c) (fn-mpxt-build (fn-cat-key-of fn-cat$c) fn-cat$a))
+       (equal (nth *fn-cat$c-mpx2* fn-cat$c) (fn-mpxt-build-buffer (fn-cat-key-of fn-cat$c) fn-cat$a))
+       (equal (nth *fn-cat$c-unplaced* fn-cat$c) (fn-mpxt-build-unplaced (fn-cat-key-of fn-cat$c) fn-cat$a))
        (fn-cat-numbers-okp (nth 3 fn-cat$c) (nth 3 fn-cat$c) fn-cat$a)
        (fn-cat-numbers-coverp fn-cat$a (nth 3 fn-cat$c))
        (fn-cat-groups-okp (nth 4 fn-cat$c) (nth 4 fn-cat$c) fn-cat$a)
@@ -1629,26 +1751,6 @@
 ; The tables after the commit's writes.  A put conses the pair in front
 ; (the hash-table field's logical model), so a lookup finds the newest.
 
-; The Message-ID column of an unbound Message-ID is empty.
-(local
- (defthm fn-ctg-seqs-for-unbound
-   (implies (and (fn-cat-msgids-coverp c tab)
-                 (not (consp (hons-assoc-equal m tab))))
-            (equal (fn-cat-seqs-for m c i) nil))))
-
-(local
- (defthm fn-ctg-msgids-okp-of-commit
-   (implies (and (fn-cat-msgids-okp keys tab c)
-                 (fn-cat-msgids-coverp c tab)
-                 (equal m0 (fn-record-msgid h))
-                 (equal v (append (fn-cat-seqs-for m0 c 0) (list (len c)))))
-            (fn-cat-msgids-okp keys (cons (cons m0 v) tab) (append c (list h))))))
-
-(local
- (defthm fn-ctg-msgids-coverp-of-commit
-   (implies (and (fn-cat-msgids-coverp c tab) (equal m0 (fn-record-msgid h)))
-            (fn-cat-msgids-coverp (append c (list h)) (cons (cons m0 v) tab)))))
-
 (local
  (defthm fn-ctg-snoc-is-append
    (implies (true-listp xs)
@@ -1657,20 +1759,6 @@
 (local
  (defthm fn-ctg-seqs-for-true-listp
    (true-listp (fn-cat-seqs-for m c i))))
-
-; A key bound in the table is one of the walked pairs, so its conjunct holds.
-(local
- (defthm fn-ctg-msgids-okp-bound
-   (implies (and (fn-cat-msgids-okp keys tab c) (consp (hons-assoc-equal m keys)))
-            (equal (cdr (hons-assoc-equal m tab)) (fn-cat-seqs-for m c 0)))))
-
-; The bound lookup of a Message-ID is its column (or nil when unbound).
-(local
- (defthm fn-ctg-msgids-lookup
-   (implies (and (fn-cat-msgids-okp tab tab c) (fn-cat-msgids-coverp c tab))
-            (equal (cdr (hons-assoc-equal m tab)) (fn-cat-seqs-for m c 0)))
-   :hints (("Goal" :do-not-induct t
-            :cases ((consp (hons-assoc-equal m tab)))))))
 
 ; An unbound group binds no number in a covered row; an unbound
 ; (group . number) is not a covered row's binding.
@@ -1987,10 +2075,11 @@
  (deftheory fn-ctg-open
    '(fn-cat$c-count update-fn-cat$c-count fn-cat$c-rowsi update-fn-cat$c-rowsi
      resize-fn-cat$c-rows fn-cat$c-rows-length fn-cat$c-octets update-fn-cat$c-octets
-     fn-cat$c-msgids-get fn-cat$c-msgids-put fn-cat$c-msgids-clear
+     fn-cat$c-mpx update-fn-cat$c-mpx fn-cat$c-mpx2 update-fn-cat$c-mpx2
+     fn-cat$c-unplaced update-fn-cat$c-unplaced
      fn-cat$c-numbers-get fn-cat$c-numbers-put fn-cat$c-numbers-clear
      fn-cat$c-groups-get fn-cat$c-groups-put fn-cat$c-groups-clear
-     update-nth-array fn-cat$c-wfp fn-cat$c-at fn-cat$c-msgid-seqs
+     update-nth-array fn-cat$c-wfp fn-cat$c-at
      fn-cat$c-group-number fn-cat$c-group-next fn-cat$c-group-count
      fn-cat$c-total-octets fn-cat$c-visible-at
      fn-cat$c-lives-get fn-cat$c-lives-put fn-cat$c-lives-clear
@@ -2026,11 +2115,91 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-ctg-open))))
 
+; THE READER'S CORRESPONDENCE.  The nth-walk from I is the catalog's
+; cdr-walk over the rows from I (PRF-970, folded in from the retired bridge
+; book msgid-pages-catalog), so the paged reader is the column under the
+; faithful relation; the fold with no unplaced row is faithful (PRF-1018);
+; the confirmation over the rows array is the confirmation over the list;
+; the degraded scan is the walk.
+(local
+ (defthm fn-ctg-nthcdr-cdr
+   (implies (natp i) (equal (nthcdr (+ 1 i) l) (cdr (nthcdr i l))))))
+(local
+ (defthm fn-ctg-car-nthcdr
+   (implies (natp i) (equal (car (nthcdr i l)) (nth i l)))))
+(local
+ (defthm fn-ctg-consp-nthcdr
+   (implies (natp i) (iff (consp (nthcdr i l)) (< i (len l))))
+   :hints (("Goal" :induct (nthcdr i l)))))
+
+(defthm fn-mpxt-spec-from-is-cat-seqs-for
+  (implies (natp i)
+           (equal (fn-mpxt-spec-from i msgid rows)
+                  (fn-cat-seqs-for msgid (nthcdr i rows) i)))
+  :hints (("Goal" :induct (fn-mpxt-spec-from i msgid rows)
+           :in-theory (enable fn-mpxt-spec-from fn-mpxt-hitp fn-cat-seqs-for))))
+
+; KEYSTONE (PRF-970): the paged reader is the catalog's Message-ID column
+; under the faithful relation.
+(defthm fn-mpxt-seqs-is-cat-msgid-seqs
+  (implies (fn-mpxt-faithful fn-cat$a fn-mpxt)
+           (equal (fn-mpxt-seqs msgid fn-cat$a fn-mpxt)
+                  (fn-cat$a-msgid-seqs msgid fn-cat$a)))
+  :hints (("Goal" :in-theory (e/d (fn-cat$a-msgid-seqs nthcdr)
+                                  (fn-mpxt-seqs fn-mpxt-faithful fn-cat-seqs-for
+                                   fn-mpxt-spec-from fn-mpxt-spec-from-is-cat-seqs-for
+                                   fn-mpxt-seqs-is-spec-from))
+           :use ((:instance fn-mpxt-seqs-is-spec-from (rows fn-cat$a))
+                 (:instance fn-mpxt-spec-from-is-cat-seqs-for (i 0) (rows fn-cat$a))))))
+
+; The confirmation over the rows array is the confirmation over the list,
+; for candidates below the count.
+(local
+ (defthm fn-ctg-confirm-is-confirm
+   (implies (and (fn-cat-rows-corr n c (nth 0 fn-cat$c)) (equal (nth 1 fn-cat$c) n)
+                 (natp n) (<= n (len (nth 0 fn-cat$c)))
+                 (nat-listp seqs) (fn-mpx-below-p seqs n))
+            (equal (fn-cat$c-confirm msgid seqs fn-cat$c)
+                   (fn-mpxt-confirm msgid seqs c)))
+   :hints (("Goal" :induct (fn-cat$c-confirm msgid seqs fn-cat$c)
+            :in-theory (enable fn-cat$c-confirm fn-mpxt-confirm fn-mpxt-hitp fn-mpx-below-p
+                               fn-cat$c-count fn-cat$c-rows-length fn-cat$c-rowsi)))))
+
+; The degraded scan from I with ACC is the walk from I, reversed onto ACC.
+(local
+ (defthm fn-ctg-scan-is-seqs-for
+   (implies (and (fn-cat-rows-corr n c (nth 0 fn-cat$c)) (equal (nth 1 fn-cat$c) n)
+                 (natp n) (equal n (len c)) (true-listp c) (<= n (len (nth 0 fn-cat$c)))
+                 (natp i) (true-listp acc))
+            (equal (fn-cat$c-scan-msgid msgid i acc fn-cat$c)
+                   (revappend acc (fn-cat-seqs-for msgid (nthcdr i c) i))))
+   :hints (("Goal" :induct (fn-cat$c-scan-msgid msgid i acc fn-cat$c)
+            :in-theory (e/d (fn-cat$c-scan-msgid fn-cat-seqs-for fn-cat$c-count fn-cat$c-rows-length
+                             fn-cat$c-rowsi)
+                            (nthcdr))
+            :expand ((fn-cat-seqs-for msgid (nthcdr i c) i))))))
+
 (defthm fn-cat-msgid-seqs{correspondence-bl}
   (implies (fn-cat$corr fn-cat$c fn-cat)
            (equal (fn-cat$c-msgid-seqs msgid fn-cat$c) (fn-cat$a-msgid-seqs msgid fn-cat)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-ctg-open))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cat$c-msgid-seqs fn-cat$c-unplaced fn-cat$c-mpx fn-cat$corr fn-cat$corr-base
+                            fn-mpxt-seqs fn-mpxt-faithful)
+                           (fn-cat$corr-live fn-mpxt-candidates fn-mpxt-confirm fn-cat-rows-corr
+                            fn-mpxt-okp fn-mpxt-faithful-from fn-cat$a-msgid-seqs fn-cat-seqs-for
+                            fn-mpxt-build-nil fn-mpxt-set-key-is-a-list))
+           :use ((:instance fn-mpxt-build-faithful (key (fn-cat-key-of fn-cat$c)) (rows fn-cat))
+                 (:instance fn-mpxt-seqs-is-cat-msgid-seqs (fn-cat$a fn-cat)
+                            (fn-mpxt (fn-mpxt-build (fn-cat-key-of fn-cat$c) fn-cat)))
+                 (:instance fn-mpxt-candidates-below (n (len fn-cat))
+                            (tag (fn-mpxt-tag msgid (fn-mpxt-key-octets (fn-mpxt-build (fn-cat-key-of fn-cat$c) fn-cat))))
+                            (fn-mpxt (fn-mpxt-build (fn-cat-key-of fn-cat$c) fn-cat)))
+                 (:instance fn-ctg-confirm-is-confirm (n (len fn-cat)) (c fn-cat)
+                            (seqs (fn-mpxt-candidates
+                                   (fn-mpxt-tag msgid (fn-mpxt-key-octets (fn-mpxt-build (fn-cat-key-of fn-cat$c) fn-cat)))
+                                   (fn-mpxt-build (fn-cat-key-of fn-cat$c) fn-cat))))
+                 (:instance fn-ctg-scan-is-seqs-for (n (len fn-cat)) (c fn-cat) (i 0) (acc nil))))))
 
 (defthm fn-cat-group-number{correspondence-bl}
   (implies (fn-cat$corr fn-cat$c fn-cat)
@@ -2078,13 +2247,6 @@
 ; The commit: the rows array gains the assigned row at the count, the
 ; Message-ID table its sequence, the numbers and groups tables the plan,
 ; the octets cell the row's octets, the count one.
-(local
- (defthm fn-ctg-commit-msgids-head
-   (implies (and (fn-cat-msgids-okp tab tab c) (fn-cat-msgids-coverp c tab)
-                 (equal m0 (fn-record-msgid h)))
-            (equal (fn-cat-snoc (cdr (hons-assoc-equal m0 tab)) (len c))
-                   (append (fn-cat-seqs-for m0 c 0) (list (len c)))))))
-
 ; The groups walked with the numbers table extended at each step.
 (local
  (defun fn-ctg-nputs-ind (groups seq tab fn-cat$c)
@@ -2262,24 +2424,100 @@
                                         (resize-list (nth 0 fn-cat$c) (+ 1 (* 2 count)) nil))))
                    (equal (nth 1 (fn-cat$c-commit-base h fn-cat$c)) (+ 1 count))
                    (equal (nth 2 (fn-cat$c-commit-base h fn-cat$c))
-                          (cons (cons (fn-record-msgid h)
-                                      (fn-cat-snoc (cdr (hons-assoc-equal (fn-record-msgid h)
-                                                                          (nth 2 fn-cat$c)))
-                                                   count))
-                                (nth 2 fn-cat$c)))
+                          (nth 2 (fn-cat$c-index-add (fn-record-msgid h) count fn-cat$c)))
+                   (equal (nth 9 (fn-cat$c-commit-base h fn-cat$c))
+                          (nth 9 (fn-cat$c-index-add (fn-record-msgid h) count fn-cat$c)))
+                   (equal (nth 10 (fn-cat$c-commit-base h fn-cat$c))
+                          (nth 10 (fn-cat$c-index-add (fn-record-msgid h) count fn-cat$c)))
                    (equal (nth 3 (fn-cat$c-commit-base h fn-cat$c))
                           (fn-cat-nputs plan count (nth 3 fn-cat$c)))
                    (equal (nth 4 (fn-cat$c-commit-base h fn-cat$c))
                           (fn-cat-gputs plan (nth 4 fn-cat$c)))
                    (equal (nth 5 (fn-cat$c-commit-base h fn-cat$c))
                           (+ (nth 5 fn-cat$c) (nfix (fn-hf-octets (fn-held-facts h))))))))
-   :hints (("Goal" :in-theory (e/d (fn-ctg-open fn-cat$c-commit-base) (nth update-nth))))))
+   :hints (("Goal" :in-theory (e/d (fn-ctg-open fn-cat$c-commit-base)
+                                   (nth update-nth fn-cat$c-index-add))))))
+
+; The index's add: its three fields, the fold's step; every other field kept.
+(local
+ (defthm fn-ctg-index-add-fields
+   (implies (fn-cat$cp fn-cat$c)
+            (and (equal (nth 2 (fn-cat$c-index-add m seq fn-cat$c))
+                        (if (and (< (+ 2 seq) *fn-mpxt-word-limit*) (fn-mpxt-wfp (nth 2 fn-cat$c)))
+                            (mv-nth 1 (fn-mpxt-add (fn-mpxt-tag m (fn-mpxt-key-octets (nth 2 fn-cat$c)))
+                                                   seq (nth 2 fn-cat$c) (nth 9 fn-cat$c)))
+                          (nth 2 fn-cat$c)))
+                 (equal (nth 9 (fn-cat$c-index-add m seq fn-cat$c))
+                        (if (and (< (+ 2 seq) *fn-mpxt-word-limit*) (fn-mpxt-wfp (nth 2 fn-cat$c)))
+                            (mv-nth 2 (fn-mpxt-add (fn-mpxt-tag m (fn-mpxt-key-octets (nth 2 fn-cat$c)))
+                                                   seq (nth 2 fn-cat$c) (nth 9 fn-cat$c)))
+                          (nth 9 fn-cat$c)))
+                 (equal (nth 10 (fn-cat$c-index-add m seq fn-cat$c))
+                        (if (and (< (+ 2 seq) *fn-mpxt-word-limit*) (fn-mpxt-wfp (nth 2 fn-cat$c))
+                                 (equal (mv-nth 0 (fn-mpxt-add (fn-mpxt-tag m (fn-mpxt-key-octets (nth 2 fn-cat$c)))
+                                                               seq (nth 2 fn-cat$c) (nth 9 fn-cat$c)))
+                                        :placed))
+                            (nth 10 fn-cat$c)
+                          (+ 1 (nth 10 fn-cat$c))))
+                 (implies (and (natp k) (not (equal k 2)) (not (equal k 9)) (not (equal k 10)))
+                          (equal (nth k (fn-cat$c-index-add m seq fn-cat$c)) (nth k fn-cat$c)))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-index-add fn-cat$c-mpx update-fn-cat$c-mpx
+                                    fn-cat$c-mpx2 update-fn-cat$c-mpx2
+                                    fn-cat$c-unplaced update-fn-cat$c-unplaced)
+                                   (fn-mpxt-add))))))
+
+(local
+ (defthm fn-ctg-cp-of-index-add
+   (implies (and (fn-cat$cp fn-cat$c) (natp seq))
+            (fn-cat$cp (fn-cat$c-index-add m seq fn-cat$c)))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-index-add fn-cat$c-mpx update-fn-cat$c-mpx
+                                    fn-cat$c-mpx2 update-fn-cat$c-mpx2
+                                    fn-cat$c-unplaced update-fn-cat$c-unplaced fn-cat$cp
+                                    fn-cat$c-unplacedp)
+                                   (fn-mpxt-add))))))
+
+(local
+ (defthm fn-ctg-rows-length-of-index-add
+   (equal (fn-cat$c-rows-length (fn-cat$c-index-add m seq fn-cat$c))
+          (fn-cat$c-rows-length fn-cat$c))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-index-add fn-cat$c-mpx update-fn-cat$c-mpx
+                                    fn-cat$c-mpx2 update-fn-cat$c-mpx2
+                                    fn-cat$c-unplaced update-fn-cat$c-unplaced fn-cat$c-rows-length)
+                                   (fn-mpxt-add))))))
 
 (local
  (defthm fn-ctg-cp-of-commit
    (implies (and (fn-cat$cp fn-cat$c) (fn-cat$c-wfp fn-cat$c))
             (fn-cat$cp (fn-cat$c-commit-base h fn-cat$c)))
-   :hints (("Goal" :in-theory (enable fn-cat$c-commit-base fn-cat$c-wfp)))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-commit-base fn-cat$c-wfp) (fn-cat$c-index-add))))))
+
+; THE TABLE AFTER THE COMMIT IS THE FOLD OVER ONE MORE ROW: the index's add
+; on tables that are the fold of the rows is the fold's step
+; (fn-mpxt-build-append), for a row carrying the added Message-ID.
+(local
+ (defthm fn-ctg-index-add-is-the-fold
+   (implies (and (fn-cat$cp fn-cat$c)
+                 (equal (nth 2 fn-cat$c) (fn-mpxt-build key c))
+                 (equal (nth 9 fn-cat$c) (fn-mpxt-build-buffer key c))
+                 (equal (nth 10 fn-cat$c) (fn-mpxt-build-unplaced key c))
+                 (equal m (fn-record-msgid h)))
+            (and (equal (nth 2 (fn-cat$c-index-add m (len c) fn-cat$c))
+                        (fn-mpxt-build key (append c (list h))))
+                 (equal (nth 9 (fn-cat$c-index-add m (len c) fn-cat$c))
+                        (fn-mpxt-build-buffer key (append c (list h))))
+                 (equal (nth 10 (fn-cat$c-index-add m (len c) fn-cat$c))
+                        (fn-mpxt-build-unplaced key (append c (list h))))))
+   :hints (("Goal" :in-theory (e/d () (fn-mpxt-add fn-cat$c-index-add fn-mpxt-build-append
+                                       fn-mpxt-build-nil fn-mpxt-set-key-is-a-list))
+            :use ((:instance fn-mpxt-build-append (rows c)))))))
+
+; The key of the fold is the fold's key: the fixed point the corr states.
+(local
+ (defthm fn-ctg-key-of-index-add
+   (implies (and (fn-cat$cp fn-cat$c) (natp seq))
+            (equal (fn-cat-key-of (fn-cat$c-index-add m seq fn-cat$c))
+                   (fn-cat-key-of fn-cat$c)))
+   :hints (("Goal" :in-theory (e/d (fn-cat-key-of) (fn-mpxt-add fn-cat$c-index-add))))))
 
 (local
  (defthm fn-ctg-len-of-append
@@ -2333,11 +2571,9 @@
                              (keys (nth 4 fn-cat$c)) (c fn-cat))
                   (:instance fn-ctg-commit-numbers-coverp (tab (nth 3 fn-cat$c)) (c fn-cat))
                   (:instance fn-ctg-commit-groups-coverp (c fn-cat))
-                  (:instance fn-ctg-msgids-okp-of-commit
-                             (keys (nth 2 fn-cat$c)) (tab (nth 2 fn-cat$c)) (c fn-cat)
-                             (m0 (fn-record-msgid h))
-                             (v (append (fn-cat-seqs-for (fn-record-msgid h) fn-cat 0)
-                                        (list (len fn-cat)))))
+                  (:instance fn-ctg-index-add-is-the-fold
+                             (key (fn-cat-key-of fn-cat$c)) (c fn-cat)
+                             (m (fn-record-msgid h)) (h (fn-cat-assign h fn-cat)))
                   (:instance fn-ctg-rows-corr-extend
                              (n (len fn-cat)) (c fn-cat)
                              (rows (if (< (len fn-cat) (len (nth 0 fn-cat$c)))
@@ -2358,10 +2594,12 @@
 
 ; The table predicates under a same-key row replacement.
 (local
- (defthm fn-ctg-msgids-okp-update-nth
+ (defthm fn-ctg-build-update-nth
    (implies (and (natp k) (< k (len c)) (fn-cat-same-keysp h (nth k c)))
-            (equal (fn-cat-msgids-okp keys tab (update-nth k h c))
-                   (fn-cat-msgids-okp keys tab c)))))
+            (and (equal (fn-mpxt-build key (update-nth k h c)) (fn-mpxt-build key c))
+                 (equal (fn-mpxt-build-buffer key (update-nth k h c)) (fn-mpxt-build-buffer key c))
+                 (equal (fn-mpxt-build-unplaced key (update-nth k h c)) (fn-mpxt-build-unplaced key c))))
+   :hints (("Goal" :in-theory (enable fn-cat-same-keysp)))))
 
 (local
  (defthm fn-ctg-numbers-okp-update-nth
@@ -2374,12 +2612,6 @@
    (implies (and (natp k) (< k (len c)) (fn-cat-same-keysp h (nth k c)))
             (equal (fn-cat-groups-okp keys tab (update-nth k h c))
                    (fn-cat-groups-okp keys tab c)))))
-
-(local
- (defthm fn-ctg-msgids-coverp-update-nth
-   (implies (and (natp k) (< k (len c)) (fn-cat-same-keysp h (nth k c)))
-            (equal (fn-cat-msgids-coverp (update-nth k h c) tab)
-                   (fn-cat-msgids-coverp c tab)))))
 
 (local
  (defthm fn-ctg-numbers-coverp-update-nth
@@ -2484,26 +2716,56 @@
   :hints (("Goal" :in-theory (disable fn-held-with-context) :do-not-induct t)))
 
 (local
+ (defthm fn-ctg-index-clear-fields
+   (implies (fn-cat$cp fn-cat$c)
+            (and (equal (nth 2 (fn-cat$c-index-clear fn-cat$c)) (fn-mpxt-clear (nth 2 fn-cat$c)))
+                 (equal (nth 9 (fn-cat$c-index-clear fn-cat$c)) (fn-mpxt-set-key nil (nth 9 fn-cat$c)))
+                 (equal (nth 10 (fn-cat$c-index-clear fn-cat$c)) 0)
+                 (implies (and (natp k) (not (equal k 2)) (not (equal k 9)) (not (equal k 10)))
+                          (equal (nth k (fn-cat$c-index-clear fn-cat$c)) (nth k fn-cat$c)))
+                 (fn-cat$cp (fn-cat$c-index-clear fn-cat$c))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-index-clear fn-cat$c-mpx update-fn-cat$c-mpx
+                                    fn-cat$c-mpx2 update-fn-cat$c-mpx2
+                                    fn-cat$c-unplaced update-fn-cat$c-unplaced fn-cat$cp fn-cat$c-unplacedp)
+                                   (fn-mpxt-clear fn-mpxt-set-key fn-mpxt-set-key-is-a-list
+                                    fn-mpxt-clear-is-build-nil))))))
+
+(local
  (defthm fn-ctg-cp-of-clear
    (implies (fn-cat$cp fn-cat$c)
             (fn-cat$cp (fn-cat$c-clear-base fn-cat$c)))
-   :hints (("Goal" :in-theory (enable fn-cat$c-clear-base)))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-clear-base) (fn-cat$c-index-clear))))))
 
 (local
  (defthm fn-ctg-clear-fields
    (implies (fn-cat$cp fn-cat$c)
             (and (equal (nth 1 (fn-cat$c-clear-base fn-cat$c)) 0)
-                 (equal (nth 2 (fn-cat$c-clear-base fn-cat$c)) nil)
+                 (equal (nth 2 (fn-cat$c-clear-base fn-cat$c)) (fn-mpxt-clear (nth 2 fn-cat$c)))
+                 (equal (nth 9 (fn-cat$c-clear-base fn-cat$c)) (fn-mpxt-set-key nil (nth 9 fn-cat$c)))
+                 (equal (nth 10 (fn-cat$c-clear-base fn-cat$c)) 0)
                  (equal (nth 3 (fn-cat$c-clear-base fn-cat$c)) nil)
                  (equal (nth 4 (fn-cat$c-clear-base fn-cat$c)) nil)
                  (equal (nth 5 (fn-cat$c-clear-base fn-cat$c)) 0)))
-   :hints (("Goal" :in-theory (e/d (fn-ctg-open fn-cat$c-clear-base) (nth update-nth))))))
+   :hints (("Goal" :in-theory (e/d (fn-ctg-open fn-cat$c-clear-base)
+                                   (nth update-nth fn-cat$c-index-clear fn-mpxt-clear fn-mpxt-set-key
+                                    fn-mpxt-set-key-is-a-list fn-mpxt-clear-is-build-nil))))))
+
+; The cleared tables are the fold of nothing under the table's own key
+; (fn-mpxt-clear-is-build-nil; the buffer reset is the creator's).
+(local
+ (defthm fn-ctg-set-key-nil-is-create
+   (implies (fn-mpxtp x)
+            (equal (fn-mpxt-set-key nil x) (create-fn-mpxt2)))
+   :hints (("Goal" :in-theory (e/d (create-fn-mpxt2 fn-mpxt-keytail) (fn-mpxt-set-key))))))
 
 (local
  (defthm fn-ctg-clear-base-corr
    (implies (fn-cat$corr-base fn-cat$c fn-cat)
             (fn-cat$corr-base (fn-cat$c-clear-base fn-cat$c) (fn-cat$a-clear fn-cat)))
-   :hints (("Goal" :in-theory (disable fn-cat$c-clear-base) :do-not-induct t))))
+   :hints (("Goal" :in-theory (e/d (fn-cat-key-of)
+                                   (fn-cat$c-clear-base fn-mpxt-clear fn-mpxt-set-key
+                                    fn-mpxt-set-key-is-a-list))
+            :do-not-induct t))))
 
 (defthm fn-cat-clear{preserved}
   (implies (fn-cat$ap fn-cat)
@@ -2590,10 +2852,35 @@
    (implies (and (fn-cat$cp x) (fn-cat$cp y)
                  (equal (nth 0 y) (nth 0 x)) (equal (nth 1 y) (nth 1 x))
                  (equal (nth 2 y) (nth 2 x)) (equal (nth 3 y) (nth 3 x))
-                 (equal (nth 4 y) (nth 4 x)) (equal (nth 5 y) (nth 5 x)))
+                 (equal (nth 4 y) (nth 4 x)) (equal (nth 5 y) (nth 5 x))
+                 (equal (nth 9 y) (nth 9 x)) (equal (nth 10 y) (nth 10 x)))
             (iff (fn-cat$corr-base y a) (fn-cat$corr-base x a)))
    :rule-classes nil
-   :hints (("Goal" :in-theory (union-theories '(fn-cat$corr-base) (theory 'minimal-theory))))))
+   :hints (("Goal" :in-theory (union-theories '(fn-cat$corr-base fn-cat-key-of) (theory 'minimal-theory))))))
+
+; The live layer and the rows array touch no index field.
+(local
+ (defthm fn-ctg-index-fields-of-writes
+   (implies (or (equal k 9) (equal k 10))
+            (and (equal (nth k (update-fn-cat$c-rowsi i v x)) (nth k x))
+                 (equal (nth k (resize-fn-cat$c-rows n x)) (nth k x))
+                 (equal (nth k (update-fn-cat$c-count n x)) (nth k x))
+                 (equal (nth k (update-fn-cat$c-octets n x)) (nth k x))
+                 (equal (nth k (update-fn-cat$c-hz n x)) (nth k x))
+                 (equal (nth k (fn-cat$c-numbers-put key v x)) (nth k x))
+                 (equal (nth k (fn-cat$c-groups-put key v x)) (nth k x))
+                 (equal (nth k (fn-cat$c-lives-put key v x)) (nth k x))
+                 (equal (nth k (fn-cat$c-numbers-clear x)) (nth k x))
+                 (equal (nth k (fn-cat$c-groups-clear x)) (nth k x))
+                 (equal (nth k (fn-cat$c-lives-clear x)) (nth k x))
+                 (equal (nth k (fn-cat$c-apply-plan plan seq x)) (nth k x))
+                 (equal (nth k (fn-cat$c-live-apply plan x)) (nth k x))))
+   :hints (("Goal" :in-theory (enable update-fn-cat$c-rowsi resize-fn-cat$c-rows
+                                      update-fn-cat$c-count update-fn-cat$c-octets
+                                      update-fn-cat$c-hz fn-cat$c-numbers-put fn-cat$c-groups-put
+                                      fn-cat$c-lives-put fn-cat$c-numbers-clear fn-cat$c-groups-clear
+                                      fn-cat$c-lives-clear update-nth-array
+                                      fn-cat$c-apply-plan fn-cat$c-live-apply)))))
 
 (local
  (defthm fn-ctg-live-okp-bound
@@ -2854,7 +3141,7 @@
             :in-theory (e/d ()
                             (fn-cat-assign fn-cat$c-commit fn-cat$c-live-plan fn-cat-live-okp
                              fn-cat-groups-okp fn-cat-groups-coverp fn-scat-msgid-idp
-                             fn-cat-rows-corr fn-cat-msgids-okp fn-cat-msgids-coverp
+                             fn-cat-rows-corr
                              fn-cat-numbers-okp fn-cat-numbers-coverp fn-held-with-numbers))
             :use ((:instance fn-ctg-commit-live-okp-new
                              (c fn-cat)
@@ -2955,7 +3242,7 @@
                                     fn-cat$c-group-live-count fn-cat$c-group-live-low
                                     fn-cat$c-group-live-high fn-cat-live-okp
                                     fn-cat-groups-coverp fn-cat-groups-okp
-                                    fn-cat-rows-corr fn-cat-msgids-okp fn-cat-msgids-coverp
+                                    fn-cat-rows-corr
                                     fn-cat-numbers-okp fn-cat-numbers-coverp))))))
 
 (defun fn-ctg-dhit (g pairs r row c)
@@ -3452,6 +3739,60 @@
   (let ((fn-cat$c (fn-cat$c-clear fn-cat$c)))
     (fn-cat$c-wbv-clear fn-cat$c)))
 
+; THE KEYED CLEAR: the clear, then the ring's key installed into the
+; emptied table (the open's step before the load).
+(defun fn-cat$c-clear-keyed (key fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c
+                  :guard (and (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))))
+  (let ((fn-cat$c (fn-cat$c-clear-w fn-cat$c)))
+    (fn-cat$c-index-set-key key fn-cat$c)))
+
+; The rows below the count as a list, ascending (a tail-recursive loop):
+; the logic function's argument when the executable must not trust its own
+; table -- a key that is not the table's, UNREACHABLE IN COMPOSITION (the
+; host passes the ring's key the open installed) and O(count) when reached.
+(defun fn-cat$c-rows-list (i acc fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c
+                  :guard (and (natp i) (<= i (fn-cat$c-rows-length fn-cat$c)) (true-listp acc))))
+  (if (zp i)
+      acc
+    (fn-cat$c-rows-list (1- i) (cons (fn-cat$c-rowsi (1- i) fn-cat$c) acc) fn-cat$c)))
+
+(defun fn-cat$c-rows-below-count (fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c))
+  (fn-cat$c-rows-list (min (fn-cat$c-count fn-cat$c) (fn-cat$c-rows-length fn-cat$c)) nil fn-cat$c))
+
+; THE SERVED REFUSAL, executable: the table's own answer when KEY is its key
+; (two page reads, no conses beyond the tag), else the fold over the rows.
+(defun fn-cat$c-msgid-saturatedp (key msgid fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c
+                  :guard (and (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))
+                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-saturatedp fn-mpxt-key-samep)))))
+  (let ((own (stobj-let ((fn-mpxt (fn-cat$c-mpx fn-cat$c)))
+                        (own)
+                        (if (and (fn-mpxt-wfp fn-mpxt) (fn-mpxt-key-samep key fn-mpxt))
+                            (if (fn-mpxt-saturatedp (fn-mpxt-tag msgid key) fn-mpxt) :saturated :open)
+                          :other-key)
+                        own)))
+    (if (eq own :other-key)
+        (fn-mpxt-build-saturatedp key msgid (fn-cat$c-rows-below-count fn-cat$c))
+      (or (>= (+ 2 (fn-cat$c-count fn-cat$c)) *fn-mpxt-word-limit*)
+          (eq own :saturated)))))
+
+(defun fn-cat$c-index-health (key fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c
+                  :guard (and (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))
+                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-key-samep)))))
+  (let ((own (stobj-let ((fn-mpxt (fn-cat$c-mpx fn-cat$c)))
+                        (own)
+                        (if (and (fn-mpxt-wfp fn-mpxt) (fn-mpxt-key-samep key fn-mpxt))
+                            (list (fn-mpxt-pages fn-mpxt) (fn-mpxt-count fn-mpxt) (fn-mpxt-stuck fn-mpxt))
+                          nil)
+                        own)))
+    (if (consp own)
+        (list (car own) (cadr own) (fn-cat$c-unplaced fn-cat$c) (caddr own))
+      (fn-mpxt-build-health key (fn-cat$c-rows-below-count fn-cat$c)))))
+
 ; The table's conjunct: every bound version's entry is its rows; every
 ; withdrawn row's version is bound.
 (defun fn-cat-wbv-okp (keys tab c)
@@ -3697,19 +4038,21 @@
         (equal (nth 8 (update-fn-cat$c-count n x)) (nth 8 x))
         (equal (nth 8 (update-fn-cat$c-octets n x)) (nth 8 x))
         (equal (nth 8 (update-fn-cat$c-hz n x)) (nth 8 x))
-        (equal (nth 8 (fn-cat$c-msgids-put k v x)) (nth 8 x))
+        (equal (nth 8 (update-fn-cat$c-mpx t2 x)) (nth 8 x))
+        (equal (nth 8 (update-fn-cat$c-mpx2 t2 x)) (nth 8 x))
+        (equal (nth 8 (update-fn-cat$c-unplaced n x)) (nth 8 x))
         (equal (nth 8 (fn-cat$c-numbers-put k v x)) (nth 8 x))
         (equal (nth 8 (fn-cat$c-groups-put k v x)) (nth 8 x))
         (equal (nth 8 (fn-cat$c-lives-put k v x)) (nth 8 x))
-        (equal (nth 8 (fn-cat$c-msgids-clear x)) (nth 8 x))
         (equal (nth 8 (fn-cat$c-numbers-clear x)) (nth 8 x))
         (equal (nth 8 (fn-cat$c-groups-clear x)) (nth 8 x))
         (equal (nth 8 (fn-cat$c-lives-clear x)) (nth 8 x)))
    :hints (("Goal" :in-theory (enable update-fn-cat$c-rowsi resize-fn-cat$c-rows
                                       update-fn-cat$c-count update-fn-cat$c-octets
-                                      update-fn-cat$c-hz fn-cat$c-msgids-put
+                                      update-fn-cat$c-hz update-fn-cat$c-mpx
+                                      update-fn-cat$c-mpx2 update-fn-cat$c-unplaced
                                       fn-cat$c-numbers-put fn-cat$c-groups-put
-                                      fn-cat$c-lives-put fn-cat$c-msgids-clear
+                                      fn-cat$c-lives-put
                                       fn-cat$c-numbers-clear fn-cat$c-groups-clear
                                       fn-cat$c-lives-clear update-nth-array)))))
 
@@ -3845,6 +4188,140 @@
                             fn-cat-wbv-okp fn-cat-wbv-coverp)
                            (fn-cat$corr fn-cat$c-clear fn-cat$c-wbv-clear))
            :use ((:instance fn-cat-clear{correspondence-bl})))))
+
+; The index's fields, off the full relation (the base clauses lifted).
+(local
+ (defthm fn-ctw-index-of-corr-w
+   (implies (fn-cat$corr-w fn-cat$c fn-cat)
+            (and (fn-cat$cp fn-cat$c)
+                 (fn-cat-rowsp fn-cat)
+                 (equal (nth 1 fn-cat$c) (len fn-cat))
+                 (<= (nth 1 fn-cat$c) (len (nth 0 fn-cat$c)))
+                 (fn-cat-rows-corr (len fn-cat) fn-cat (nth 0 fn-cat$c))
+                 (equal (nth 2 fn-cat$c) (fn-mpxt-build (fn-cat-key-of fn-cat$c) fn-cat))
+                 (equal (nth 9 fn-cat$c) (fn-mpxt-build-buffer (fn-cat-key-of fn-cat$c) fn-cat))
+                 (equal (nth 10 fn-cat$c) (fn-mpxt-build-unplaced (fn-cat-key-of fn-cat$c) fn-cat))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (union-theories '(fn-cat$corr-w fn-cat$corr fn-cat$corr-base)
+                                              (theory 'minimal-theory))))))
+
+; The rows below the count, as a list, are the rows.
+(local
+ (defthm fn-ctw-rows-list-is-prefix
+   (implies (and (fn-cat-rows-corr n c (nth 0 fn-cat$c)) (natp i) (<= i (nfix n)) (true-listp c)
+                 (<= (nfix n) (len c)))
+            (equal (fn-cat$c-rows-list i acc fn-cat$c)
+                   (append (fn-mpxt-prefix i c) acc)))
+   :hints (("Goal" :induct (fn-cat$c-rows-list i acc fn-cat$c)
+            :in-theory (e/d (fn-cat$c-rows-list fn-cat$c-rowsi) (fn-cat-rows-corr fn-ctg-rows-corr-nth)))
+           ("Subgoal *1/2" :use ((:instance fn-ctg-rows-corr-nth (i (+ -1 i)) (rows (nth 0 fn-cat$c)))
+                                 (:instance fn-mpxt-prefix-next (i (+ -1 i)) (rows c)))))))
+
+(local
+ (defthm fn-ctw-rows-below-count-is-the-rows
+   (implies (fn-cat$corr-w fn-cat$c fn-cat)
+            (equal (fn-cat$c-rows-below-count fn-cat$c) fn-cat))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-rows-below-count fn-cat$c-count fn-cat$c-rows-length)
+                                   (fn-cat$c-rows-list fn-cat-rows-corr))
+            :use ((:instance fn-ctw-index-of-corr-w)
+                  (:instance fn-ctw-rows-list-is-prefix (n (len fn-cat)) (c fn-cat) (i (len fn-cat)) (acc nil)))))))
+
+; A 32-octet key that is the table's is the fold's key.
+(local
+ (defthm fn-ctw-same-key-is-the-fold-key
+   (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (true-listp key)
+                 (equal key (fn-mpxt-key-octets (nth 2 fn-cat$c))))
+            (equal (fn-cat-key-of fn-cat$c) key))
+   :hints (("Goal" :in-theory (enable fn-cat-key-of)))))
+
+(defthm fn-cat-msgid-saturatedp{correspondence}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat)
+                (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*) (fn-cat$ap fn-cat))
+           (equal (fn-cat$c-msgid-saturatedp key msgid fn-cat$c)
+                  (fn-cat$a-msgid-saturatedp key msgid fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cat$c-msgid-saturatedp fn-cat$a-msgid-saturatedp fn-cat$c-mpx
+                            fn-cat$c-count fn-cat-key-of)
+                           (fn-mpxt-saturatedp fn-mpxt-build-nil fn-mpxt-set-key-is-a-list
+                            fn-cat$c-rows-below-count fn-cat-rows-corr))
+           :use ((:instance fn-ctw-index-of-corr-w)))))
+
+(defthm fn-cat-msgid-saturatedp{guard-thm}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat)
+                (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*) (fn-cat$ap fn-cat))
+           (and (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*)))
+  :rule-classes nil)
+
+(defthm fn-cat-index-health{correspondence}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat)
+                (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*) (fn-cat$ap fn-cat))
+           (equal (fn-cat$c-index-health key fn-cat$c)
+                  (fn-cat$a-index-health key fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cat$c-index-health fn-cat$a-index-health fn-cat$c-mpx
+                            fn-cat$c-unplaced fn-cat-key-of)
+                           (fn-mpxt-build-nil fn-mpxt-set-key-is-a-list
+                            fn-cat$c-rows-below-count fn-cat-rows-corr))
+           :use ((:instance fn-ctw-index-of-corr-w)))))
+
+(defthm fn-cat-index-health{guard-thm}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat)
+                (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*) (fn-cat$ap fn-cat))
+           (and (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*)))
+  :rule-classes nil)
+
+; The keyed clear: the clear's relation with the rows nil, then the key
+; installed into the emptied tables (fn-mpxt-key-octets-of-set-key,
+; fn-mpxt-build-nil, fn-mpxt-set-key-is-a-list).
+(local
+ (defthm fn-ctw-index-set-key-fields
+   (implies (fn-cat$cp fn-cat$c)
+            (and (equal (nth 2 (fn-cat$c-index-set-key key fn-cat$c)) (fn-mpxt-set-key key (nth 2 fn-cat$c)))
+                 (equal (nth 9 (fn-cat$c-index-set-key key fn-cat$c)) (fn-mpxt-set-key nil (nth 9 fn-cat$c)))
+                 (equal (nth 10 (fn-cat$c-index-set-key key fn-cat$c)) 0)
+                 (implies (and (natp k) (not (equal k 2)) (not (equal k 9)) (not (equal k 10)))
+                          (equal (nth k (fn-cat$c-index-set-key key fn-cat$c)) (nth k fn-cat$c)))
+                 (fn-cat$cp (fn-cat$c-index-set-key key fn-cat$c))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-index-set-key fn-cat$c-mpx update-fn-cat$c-mpx
+                                    fn-cat$c-mpx2 update-fn-cat$c-mpx2
+                                    fn-cat$c-unplaced update-fn-cat$c-unplaced fn-cat$cp fn-cat$c-unplacedp)
+                                   (fn-mpxt-set-key fn-mpxt-set-key-is-a-list))))))
+
+(local
+ (defthm fn-ctw-corr-w-of-index-set-key
+   (implies (and (fn-cat$corr-w fn-cat$c nil) (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))
+            (fn-cat$corr-w (fn-cat$c-index-set-key key fn-cat$c) nil))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-cat$corr-w fn-cat$corr fn-cat$corr-base fn-cat$corr-live fn-cat$corr-wbv
+                             fn-cat-key-of fn-cat-live-okp fn-cat-groups-coverp fn-cat-wbv-okp fn-cat-wbv-coverp
+                             fn-cat-numbers-okp fn-cat-numbers-coverp fn-cat-groups-okp fn-cat-rows-corr)
+                            (fn-cat$c-index-set-key fn-mpxt-set-key fn-mpxt-set-key-is-a-list
+                             fn-mpxt-build-nil))
+            :use ((:instance fn-mpxt-key-octets-of-set-key (fn-mpxt (nth 2 fn-cat$c)))
+                  (:instance fn-mpxt-build-nil))))))
+
+(defthm fn-cat-clear-keyed{correspondence}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat)
+                (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))
+           (fn-cat$corr-w (fn-cat$c-clear-keyed key fn-cat$c) (fn-cat$a-clear-keyed key fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cat$c-clear-keyed fn-cat$a-clear-keyed)
+                           (fn-cat$c-clear-w fn-cat$c-index-set-key fn-cat$corr-w))
+           :use ((:instance fn-cat-clear{correspondence})))))
+
+(defthm fn-cat-clear-keyed{guard-thm}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat)
+                (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))
+           (and (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*)))
+  :rule-classes nil)
+
+(defthm fn-cat-clear-keyed{preserved}
+  (implies (and (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))
+           (fn-cat$ap (fn-cat$a-clear-keyed key fn-cat)))
+  :rule-classes nil)
 
 (defthm fn-cat-count{correspondence}
   (implies (fn-cat$corr-w fn-cat$c fn-cat)
@@ -4005,7 +4482,10 @@
             (fn-cat-withdraw :logic fn-cat$a-withdraw :exec fn-cat$c-withdraw-w :protect t)
             (fn-cat-redecide :logic fn-cat$a-redecide :exec fn-cat$c-redecide :protect t)
             (fn-cat-clear :logic fn-cat$a-clear :exec fn-cat$c-clear-w :protect t)
-            (fn-cat-withdrawn-at :logic fn-cat$a-withdrawn-at :exec fn-cat$c-withdrawn-at))
+            (fn-cat-withdrawn-at :logic fn-cat$a-withdrawn-at :exec fn-cat$c-withdrawn-at)
+            (fn-cat-clear-keyed :logic fn-cat$a-clear-keyed :exec fn-cat$c-clear-keyed :protect t)
+            (fn-cat-msgid-saturatedp :logic fn-cat$a-msgid-saturatedp :exec fn-cat$c-msgid-saturatedp)
+            (fn-cat-index-health :logic fn-cat$a-index-health :exec fn-cat$c-index-health))
   :corr-fn-exists t
   :attachable t)
 
@@ -4057,6 +4537,24 @@
 (defthm fn-cat-clear-is-nil
   (equal (fn-cat-clear fn-cat) nil))
 
+(defthm fn-cat-clear-keyed-is-nil
+  (equal (fn-cat-clear-keyed key fn-cat) nil))
+
+; THE SERVED REFUSAL over the opened view (books/msgid-pages-exec 7j): the
+; fold over the rows and one more row carrying MSGID places it exactly when
+; the refusal does not fire -- the POST that is accepted is indexed.
+(defthm fn-cat-msgid-saturatedp-is-the-outcome
+  (implies (equal msgid (fn-record-msgid h))
+           (iff (equal (fn-mpxt-build-unplaced key (append fn-cat (list h)))
+                       (fn-mpxt-build-unplaced key fn-cat))
+                (not (fn-cat-msgid-saturatedp key msgid fn-cat))))
+  :hints (("Goal" :in-theory (enable fn-cat-msgid-saturatedp))))
+
+(defthm fn-cat-index-health-is-the-build
+  (equal (fn-cat-index-health key fn-cat)
+         (list (fn-mpxt-pages (fn-mpxt-build key fn-cat)) (fn-mpxt-count (fn-mpxt-build key fn-cat))
+               (fn-mpxt-build-unplaced key fn-cat) (fn-mpxt-stuck (fn-mpxt-build key fn-cat)))))
+
 (defthm fn-cat-group-live-count-is-count-from
   (equal (fn-cat-group-live-count g fn-cat)
          (fn-cat-live-count-from g 1 (fn-cat-group-high g fn-cat) fn-cat)))
@@ -4080,6 +4578,7 @@
                     fn-cat-group-number fn-cat-group-next fn-cat-group-count
                     fn-cat-total-octets fn-cat-visible-at fn-cat-commit
                     fn-cat-withdraw fn-cat-redecide fn-cat-clear
+                    fn-cat-clear-keyed fn-cat-msgid-saturatedp fn-cat-index-health
                     fn-cat-group-live-count fn-cat-group-live-low fn-cat-group-live-high
                     fn-cat-horizon fn-cat-withdrawn-at
                     fn-cat-p-is-rowsp fn-cat-assign fn-cat-visiblep

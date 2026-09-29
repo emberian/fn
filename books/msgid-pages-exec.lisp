@@ -71,7 +71,7 @@
 ; slot's SEQ below the row count; every row's own sequence among its tag's
 ; candidates), the confirmed candidates for MSGID are the sequences of the
 ; rows whose Message-ID is MSGID, ascending -- the walk `fn-mpxt-spec-from',
-; which books/msgid-pages-catalog equates to the catalog's logic function
+; which books/catalog (THE SWITCH, lane paged-history-5) equates to the catalog's logic function
 ; `fn-cat$a-msgid-seqs' (the 5u method: the concrete stobj's reader becomes
 ; this one, the {correspondence} theorem cites that book).
 
@@ -2374,6 +2374,7 @@
 ; therefore within the limit (`fn-mpxt-build-unplaced-zero-bound').
 (defun fn-mpxt-build-from (i u rows fn-mpxt fn-mpxt2)
   (declare (xargs :stobjs (fn-mpxt fn-mpxt2) :verify-guards nil
+                  :guard (and (natp i) (natp u) (true-listp rows) (fn-mpxt-wfp fn-mpxt))
                   :measure (nfix (- (len rows) (nfix i)))))
   (if (>= (nfix i) (len rows))
       (mv u fn-mpxt fn-mpxt2)
@@ -2770,3 +2771,110 @@
                                    fn-mpxt-set-key-is-a-list fn-mpxt-create2-is-create create-fn-mpxt create-fn-mpxt2))
            :use ((:instance fn-mpxt-build-from-of-update-nth-same-msgid (i 0) (u 0)
                             (fn-mpxt (fn-mpxt-set-key key (create-fn-mpxt))) (fn-mpxt2 (create-fn-mpxt2)))))))
+
+; -----------------------------------------------------------------------------
+; 7j. THE FOLD, EXECUTABLE.  The catalog's logic side (books/catalog:
+; `fn-cat$a-msgid-saturatedp', `fn-cat$a-index-health') must be
+; guard-verified and executable; the fold over a LOCAL table gives the
+; build's projections without the (non-executable) table value.  The key
+; comparison the executable side makes before trusting its own table.
+
+(verify-guards fn-mpxt-build-from
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-wfp) (fn-mpxt-add)) :do-not-induct t)))
+
+; KEY is the table's key from octet I: one compare an octet, no conses.
+(defun fn-mpxt-key-same-from (i key fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt :guard (natp i)
+                  :measure (nfix (- *fn-mpxt-key-octets* (nfix i)))))
+  (if (>= (nfix i) *fn-mpxt-key-octets*)
+      (atom key)
+    (and (consp key)
+         (equal (car key) (fn-mpxt-keyi (nfix i) fn-mpxt))
+         (fn-mpxt-key-same-from (1+ (nfix i)) (cdr key) fn-mpxt))))
+
+(defthm fn-mpxt-key-same-from-is-equal
+  (implies (and (true-listp key) (natp i))
+           (equal (fn-mpxt-key-same-from i key fn-mpxt)
+                  (equal key (fn-mpxt-key-from i fn-mpxt))))
+  :hints (("Goal" :induct (fn-mpxt-key-same-from i key fn-mpxt)
+           :expand ((fn-mpxt-key-from i fn-mpxt)))))
+
+(defun fn-mpxt-key-samep (key fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt))
+  (fn-mpxt-key-same-from 0 key fn-mpxt))
+
+(defthm fn-mpxt-key-samep-is-equal
+  (implies (true-listp key)
+           (equal (fn-mpxt-key-samep key fn-mpxt)
+                  (equal key (fn-mpxt-key-octets fn-mpxt))))
+  :hints (("Goal" :in-theory (enable fn-mpxt-key-octets))))
+
+(in-theory (disable fn-mpxt-key-samep))
+
+; The fold's outcome for one more row carrying MSGID, computed over a local
+; table: saturated for the tag, or no room in the sequence space.
+(defun fn-mpxt-build-saturatedp (key msgid rows)
+  (declare (xargs :guard (true-listp rows)
+                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-build-from fn-mpxt-saturatedp fn-mpxt-set-key
+                                                            fn-mpxt-set-key-is-a-list fn-mpxt-create2-is-create
+                                                            create-fn-mpxt create-fn-mpxt2)))))
+  (with-local-stobj fn-mpxt
+    (mv-let (r fn-mpxt)
+      (with-local-stobj fn-mpxt2
+        (mv-let (r fn-mpxt fn-mpxt2)
+          (let ((fn-mpxt (fn-mpxt-set-key key fn-mpxt)))
+            (mv-let (u fn-mpxt fn-mpxt2)
+              (fn-mpxt-build-from 0 0 rows fn-mpxt fn-mpxt2)
+              (declare (ignore u))
+              (mv (or (>= (+ 2 (len rows)) *fn-mpxt-word-limit*)
+                      (fn-mpxt-saturatedp (fn-mpxt-tag msgid (fn-mpxt-key-octets fn-mpxt)) fn-mpxt))
+                  fn-mpxt fn-mpxt2)))
+          (mv r fn-mpxt)))
+      r)))
+
+; The table's health over a local table: (pages count unplaced stuck).
+(defun fn-mpxt-build-health (key rows)
+  (declare (xargs :guard (true-listp rows)
+                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-build-from fn-mpxt-set-key
+                                                            fn-mpxt-set-key-is-a-list fn-mpxt-create2-is-create
+                                                            create-fn-mpxt create-fn-mpxt2)))))
+  (with-local-stobj fn-mpxt
+    (mv-let (r fn-mpxt)
+      (with-local-stobj fn-mpxt2
+        (mv-let (r fn-mpxt fn-mpxt2)
+          (let ((fn-mpxt (fn-mpxt-set-key key fn-mpxt)))
+            (mv-let (u fn-mpxt fn-mpxt2)
+              (fn-mpxt-build-from 0 0 rows fn-mpxt fn-mpxt2)
+              (mv (list (fn-mpxt-pages fn-mpxt) (fn-mpxt-count fn-mpxt) u (fn-mpxt-stuck fn-mpxt))
+                  fn-mpxt fn-mpxt2)))
+          (mv r fn-mpxt)))
+      r)))
+
+(defthm fn-mpxt-build-saturatedp-is-the-build
+  (equal (fn-mpxt-build-saturatedp key msgid rows)
+         (or (>= (+ 2 (len rows)) *fn-mpxt-word-limit*)
+             (fn-mpxt-saturatedp (fn-mpxt-tag msgid (fn-mpxt-key-octets (fn-mpxt-build key rows)))
+                                 (fn-mpxt-build key rows))))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-build) (fn-mpxt-build-from fn-mpxt-saturatedp fn-mpxt-set-key
+                                                    fn-mpxt-set-key-is-a-list fn-mpxt-create2-is-create
+                                                    create-fn-mpxt create-fn-mpxt2)))))
+
+(defthm fn-mpxt-build-health-is-the-build
+  (equal (fn-mpxt-build-health key rows)
+         (list (fn-mpxt-pages (fn-mpxt-build key rows)) (fn-mpxt-count (fn-mpxt-build key rows))
+               (fn-mpxt-build-unplaced key rows) (fn-mpxt-stuck (fn-mpxt-build key rows))))
+  :hints (("Goal" :in-theory (e/d (fn-mpxt-build fn-mpxt-build-unplaced)
+                                  (fn-mpxt-build-from fn-mpxt-set-key fn-mpxt-set-key-is-a-list
+                                   fn-mpxt-create2-is-create create-fn-mpxt create-fn-mpxt2)))))
+
+; THE OUTCOME AT THE COMMIT, over the executable projection: the fold over
+; one more row places it exactly when the projection says not saturated.
+(defthm fn-mpxt-build-saturatedp-is-the-outcome
+  (implies (equal msgid (fn-record-msgid h))
+           (iff (equal (fn-mpxt-build-unplaced key (append rows (list h)))
+                       (fn-mpxt-build-unplaced key rows))
+                (not (fn-mpxt-build-saturatedp key msgid rows))))
+  :hints (("Goal" :in-theory (disable fn-mpxt-build-from fn-mpxt-saturatedp fn-mpxt-set-key
+                                      fn-mpxt-build-saturatedp fn-mpxt-build-append))))
+
+(in-theory (disable fn-mpxt-build-saturatedp fn-mpxt-build-health))

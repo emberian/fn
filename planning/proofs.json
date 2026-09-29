@@ -15055,7 +15055,7 @@
     {
       "id": "PRF-970",
       "title": "The paged Message-ID reader is the catalog's Message-ID column: fn-mpxt-seqs equals fn-cat$a-msgid-seqs, the logic of the host-served fn-cat-msgid-seqs, under fn-mpxt-faithful (lane paged-history-2, row P2)",
-      "statement": "Subjects: books/msgid-pages-catalog.lisp fn-mpxt-seqs (books/msgid-pages-exec) against fn-cat$a-msgid-seqs (books/catalog: the logic function of the abstract stobj export fn-cat-msgid-seqs that every served Message-ID finder calls: served-columns fn-scol-find-row, served-catalog fn-scat-msgid-article, served-catalog-owner). KEYSTONE fn-mpxt-seqs-is-cat-msgid-seqs: under fn-mpxt-faithful over the catalog's rows, the paged reader's answer is the column's (fn-cat-seqs-for from 0), by fn-mpxt-spec-from-is-cat-seqs-for (the nth-walk from I is the catalog's cdr-walk over the rows from I) composed with PRF-969's keystone. The theorem the catalog's {correspondence} obligation for fn-cat-msgid-seqs cites once fn-cat$c-msgid-seqs reads a nested fn-mpxt instead of the hash fn-cat$c-msgids (design B.6, the 5u method: the export's logic is unchanged, so no served book changes). Teeth: tests/acl2/msgid-pages-exec-tests.lisp mpxe-catalog-witness (fn-cat$a-msgid-seqs on the positive fixture equals the reader's answers).",
+      "statement": "Subjects: books/catalog.lisp (THE SWITCH folded the bridge book msgid-pages-catalog in) fn-mpxt-seqs (books/msgid-pages-exec) against fn-cat$a-msgid-seqs (books/catalog: the logic function of the abstract stobj export fn-cat-msgid-seqs that every served Message-ID finder calls: served-columns fn-scol-find-row, served-catalog fn-scat-msgid-article, served-catalog-owner). KEYSTONE fn-mpxt-seqs-is-cat-msgid-seqs: under fn-mpxt-faithful over the catalog's rows, the paged reader's answer is the column's (fn-cat-seqs-for from 0), by fn-mpxt-spec-from-is-cat-seqs-for (the nth-walk from I is the catalog's cdr-walk over the rows from I) composed with PRF-969's keystone. The theorem the catalog's {correspondence} obligation for fn-cat-msgid-seqs cites once fn-cat$c-msgid-seqs reads a nested fn-mpxt instead of the hash fn-cat$c-msgids (design B.6, the 5u method: the export's logic is unchanged, so no served book changes). Teeth: tests/acl2/msgid-pages-exec-tests.lisp mpxe-catalog-witness (fn-cat$a-msgid-seqs on the positive fixture equals the reader's answers).",
       "milestone": "M5",
       "requirements": [
         "STO-027"
@@ -15066,7 +15066,7 @@
       "assumptions": [],
       "status": "uncertified-at-current-digest",
       "evidence": [
-        "books/msgid-pages-catalog.lisp",
+        "books/catalog.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
         "planning/design-paged-history-2026-09-29.md"
       ],

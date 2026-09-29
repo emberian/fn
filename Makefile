@@ -1132,7 +1132,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/msgid-pages \
 	tests/acl2/msgid-pages-tests \
 	books/msgid-pages-exec \
-	books/msgid-pages-catalog \
 	tests/acl2/msgid-pages-exec-tests \
 	books/owner-number-bound-join \
 	tests/acl2/owner-number-bound-join-tests \
