@@ -212,10 +212,15 @@ import protocol_emit  # noqa: E402  (the table, read without evaluating a book)
 
 PROTOCOL = {row["name"]: row for row in protocol_emit.load()["rows"]}
 # Table rows with a :fuzz production that no step sends (named, not silent).
-UNFUZZED_ROWS = ["XFNCATCHUP"]
+# XFN-ZARTICLE (NNT-055, lanes compress-5/-6): its answer is a DEFLATE block
+# in a length-counted body, which this transcript reader does not parse; its
+# :fuzz production is exercised by tests/test_native_compress.py instead.
+UNFUZZED_ROWS = ["XFNCATCHUP", "XFN-ZARTICLE"]
 # Rows the fuzzer sends in its own spellings (QUIT_SPELLINGS: lower case, an
-# argument, no mutation), not through the row's grammar.
-RAW_ROWS = ["QUIT"]
+# argument, no mutation; COMPRESS as UNKNOWN_VERBS' "COMPRESS DEFLATE", whose
+# 206 would switch the stream to DEFLATE, RFC 8054 section 2.2.2), not
+# through the row's grammar.
+RAW_ROWS = ["QUIT", "COMPRESS"]
 
 
 class Gen:

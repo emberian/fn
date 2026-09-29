@@ -10,8 +10,10 @@ draws in the same order.  A later change to the grammar edits the table and
 this file's expectation together, and names the difference here.
 
 Named differences (the table has them, the grammar does not send them):
-fuzz_nntp.UNFUZZED_ROWS -- XFNCATCHUP; and QUIT is sent in the fuzzer's own
-spellings (fuzz_nntp.RAW_ROWS), not through its row.
+fuzz_nntp.UNFUZZED_ROWS -- XFNCATCHUP and XFN-ZARTICLE; QUIT and COMPRESS are
+sent in the fuzzer's own spellings (fuzz_nntp.RAW_ROWS), not through their
+rows.  The AUTHINFO SASL mechanism choice follows the table (sasl-4's SCRAM
+additions).
 
     python3 -m unittest tests.test_protocol_fuzz_grammar
 """
@@ -115,7 +117,13 @@ class LegacyGen(fuzz_nntp.Gen):
             if kind == 1:
                 return [c([b"AUTHINFO", b"PASS", b"fuzz-password"])]
             if kind == 2:
-                return [c([b"AUTHINFO", b"SASL", self.choice([b"PLAIN", b"PLAIN AGZ1enoAZnV6ei1wYXNzd29yZA==", b"X"])])]
+                # lane sasl-4 (NNT-056): the table's SASL mechanisms grew
+                # SCRAM-SHA-256 (with and without an initial response), the
+                # -PLUS mechanism fn does not offer, and two malformed PLAIN
+                # responses (named difference, compress-9).
+                return [c([b"AUTHINFO", b"SASL", self.choice([b"PLAIN", b"PLAIN AGZ1enoAZnV6ei1wYXNzd29yZA==", b"X",
+                                                              b"SCRAM-SHA-256", b"SCRAM-SHA-256 biwsbj1mdXp6LHI9ZnV6eg==",
+                                                              b"SCRAM-SHA-256-PLUS", b"PLAIN =", b"PLAIN !!!!"])])]
             if kind == 3:
                 return [c([b"AUTHINFO", self.choice([b"GENERIC", b"SIMPLE", b"", b"user"])])]
             if kind == 4:
