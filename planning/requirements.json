@@ -1498,7 +1498,8 @@
         "PRF-289",
         "PRF-266",
         "PRF-935",
-        "PRF-946"
+        "PRF-946",
+        "PRF-960"
       ],
       "verification": [
         "proof",
@@ -1602,7 +1603,9 @@
         "PRF-278",
         "PRF-283",
         "PRF-293",
-        "PRF-347"
+        "PRF-347",
+        "PRF-935",
+        "PRF-960"
       ],
       "verification": [
         "proof",
@@ -2169,7 +2172,8 @@
         "PRF-172",
         "PRF-317",
         "PRF-335",
-        "PRF-358"
+        "PRF-358",
+        "PRF-963"
       ],
       "verification": [
         "proof",
@@ -2761,7 +2765,8 @@
       "proof_targets": [
         "PRF-130",
         "PRF-141",
-        "PRF-143"
+        "PRF-143",
+        "PRF-971"
       ],
       "verification": [
         "proof",
@@ -3148,7 +3153,8 @@
         "PRF-143",
         "PRF-172",
         "PRF-308",
-        "PRF-317"
+        "PRF-317",
+        "PRF-971"
       ],
       "verification": [
         "proof",
@@ -3759,7 +3765,8 @@
         "PRF-366",
         "PRF-369",
         "PRF-370",
-        "PRF-382"
+        "PRF-382",
+        "PRF-959"
       ],
       "verification": [
         "proof",
@@ -4671,7 +4678,9 @@
         "PRF-901",
         "PRF-924",
         "PRF-925",
-        "PRF-926"
+        "PRF-926",
+        "PRF-931",
+        "PRF-932"
       ],
       "verification": [
         "proof",

@@ -269,6 +269,7 @@
 (include-book "../../books/owner-reader-read")
 (include-book "../../books/peer-carriage")
 (include-book "../../books/accounts")
+(include-book "../../books/native-operator-stage")
 (include-book "../../books/native-health")
 (include-book "../../books/native-status-columns")
 (include-book "../../books/native-live-pages")
