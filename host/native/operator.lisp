@@ -575,6 +575,11 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
                                 +fnn-exit-refused+)
                          (t (fnn-out "~a" (fnn-core 'fn-oex-status-no-owner-line))
                             +fnn-exit-refused+)))
+                      (:bless-snapshot
+                       (fnn-command-store-bless-snapshot
+                        (fnn-octets-string
+                         (fnn-core 'fn-native-operator-host-result-archive-path-octets
+                                   result))))
                       (:import
                        (fnn-command-store-import
                         root
@@ -645,8 +650,8 @@ nothing answers and nothing holds the lock."
                                        (fnn-operator-last-run result))))
          ;; Row S3: a stopped store's status is its checkpoint header's
          ;; (fnn-command-stopped-status); `--replay' asks for the replay.
-         ;; Row S1 (limits-live): an answered status also prints the
-         ;; store's limit values (fnn-lim-print-values).
+         ;; PRF-996: an offline `status' then names each live limit's three
+         ;; values, funded=none (fnn-lim-print-values).
          (let ((code (if (and (eq kind :status)
                               (not (and result (fnn-core 'fn-omr-status-replayp result))))
                          (fnn-command-stopped-status root)
@@ -1021,7 +1026,7 @@ answer that is neither the report nor a refusal (the transport) is uncertain."
           (:init (fnn-operator-execute-init result))
           (:status (fnn-operator-execute-status result))
           (:health (fnn-operator-execute-health result))
-          ((:recover :compact :checkpoint :export :export-status :import
+          ((:recover :compact :checkpoint :export :export-status :import :bless-snapshot
             :reclaim :reclaim-dry-run :reclaim-recorded :rebind-filesystem)
            (fnn-operator-execute-store-action result action))
           (:inspect (fnn-operator-execute-inspect result))

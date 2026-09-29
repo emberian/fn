@@ -193,3 +193,32 @@
                     (fn-splan-step-make *spt-382* nil t nil 10 nil *spt-400*))))
 (assert-event (not (fn-splan-step-handshake-owed
                     (fn-splan-step-make *spt-382* nil nil nil 10 nil nil))))
+
+;; Lane join-f2-13 (PRF-1020): a plan at a CURSOR effect, (:over-cursor CUR),
+;; the served OVER/XOVER range arm's.  A window writes the octets in front
+;; of it and STOPS (status :cursor); the continuation is at the cursor
+;; (fn-splan-at-cursorp): neither done nor sized, and a window of it writes
+;; nothing.  The cursor's quantum is books/served-plan-cursor.lisp's.
+(defconst *spt-cursor*
+  (fn-splan-of-effects (list (list :reply '(50 50)) (list :over-cursor '("g" 1 3 3 nil t))
+                             (list :reply '(46 13 10)))))
+(assert-event (not (fn-splan-at-cursorp *spt-cursor*)))
+(assert-event (equal (fn-splan-window-size *spt-cursor*) 2))
+(assert-event (equal (fn-splan-remaining *spt-cursor*) '(50 50 46 13 10)))
+(assert-event (let ((r (spt-window *spt-stale* *spt-cursor* 5)))
+                (and (equal (first r) :cursor)
+                     (equal (second r) '(50 50))
+                     (equal (third r) 2)
+                     (fn-splan-at-cursorp (fourth r))
+                     (equal (fn-splan-window-size (fourth r)) 0)
+                     (not (fn-splan-donep (fourth r))))))
+(defconst *spt-at-cursor* (fourth (spt-window *spt-stale* *spt-cursor* 5)))
+(assert-event (let ((r (spt-window *spt-stale* *spt-at-cursor* 5)))
+                (and (equal (first r) :cursor) (equal (third r) 0)
+                     (equal (fourth r) *spt-at-cursor*))))
+(must-fail-checked (assert-event (posp (fn-splan-window-size *spt-at-cursor*))))
+(must-fail-checked (assert-event (fn-splan-donep *spt-at-cursor*)))
+(must-fail-checked (assert-event (equal (first (spt-window *spt-stale* *spt-at-cursor* 5)) :ok)))
+;; A window of no size at a cursor moves nothing and is :ok (the host asks
+;; fn-splan-at-cursorp before it sizes a window).
+(assert-event (equal (first (spt-window *spt-stale* *spt-at-cursor* 0)) :ok))

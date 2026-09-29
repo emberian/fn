@@ -32,6 +32,13 @@ MULTI_COMMAND = b"GROUP fn.letters\r\nSTAT\r\nQUIT\r\n"
 UTF8_WILDMAT = b"LIST ACTIVE fn.\xc3\xb1*\r\nQUIT\r\n"
 QUIT_WITH_TRAILER = b"QUIT\r\nSTAT\r\n"
 BARE_LF = b"STAT\n"
+# Lane join-f2-13 (PRF-1020): OVER/XOVER ranges.  The socket side answers a
+# range with a CURSOR the host's continuation renders one bounded quantum at
+# a time (FN_NATIVE_OVER_WINDOW=1 below: one number per hold of the owner
+# mutex; books/served-plan-cursor.lisp); the model side is the pinned
+# reference, which has no cursor.  The seeded group holds article 1, so the
+# first two ranges are a 224 with one line, the third a 423.
+OVER_RANGE = b"GROUP fn.letters\r\nOVER 1-100000\r\nXOVER 1-100000\r\nOVER 5-100000\r\nQUIT\r\n"
 
 
 class NativeServedDifferentialTests(unittest.TestCase):
@@ -65,10 +72,10 @@ class NativeServedDifferentialTests(unittest.TestCase):
         finally:
             os.unlink(path)
 
-    def socket_bytes(self, chunks):
+    def socket_bytes(self, chunks, extra=None):
         """Serve one connection through the production native listener."""
         process = start([self.image, "--fn", "reader", "0", "1", "-"], cwd=ROOT,
-                        env=environment())
+                        env=environment(extra))
         try:
             port = int(process.announcement(b"LISTENING ").split()[1])
             received = []
@@ -88,9 +95,9 @@ class NativeServedDifferentialTests(unittest.TestCase):
         finally:
             process.stop(grace=10)
 
-    def assertAgree(self, chunks):
+    def assertAgree(self, chunks, extra=None):
         model = self.model_bytes(chunks)
-        served = self.socket_bytes(chunks)
+        served = self.socket_bytes(chunks, extra)
         self.assertEqual(served, model)
         return served
 
@@ -123,6 +130,15 @@ class NativeServedDifferentialTests(unittest.TestCase):
 
     def test_framing_rejection_agrees(self):
         self.assertAgree([BARE_LF])
+
+    def test_over_range_agrees_under_a_one_number_quantum(self):
+        served = self.assertAgree([OVER_RANGE], extra={"FN_NATIVE_OVER_WINDOW": "1"})
+        self.assertEqual(served.count(b"224 "), 2)
+        self.assertIn(b"423 no articles in that range\r\n", served)
+        self.assertEqual(served.count(b"\r\n.\r\n"), 2)
+
+    def test_over_range_cut_inside_the_range_agrees(self):
+        self.assertAgree([OVER_RANGE[:24], OVER_RANGE[24:]], extra={"FN_NATIVE_OVER_WINDOW": "1"})
 
 
 if __name__ == "__main__":

@@ -134,10 +134,6 @@ class PlanTests(unittest.TestCase):
             self.assertEqual(chosen[0]["users"], 2)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TreeTests(unittest.TestCase):
     """The committed image set on this tree: the batch BB defect, pinned."""
 
@@ -161,3 +157,7 @@ class TreeTests(unittest.TestCase):
                     cert_images.image_closure(cert_images.image_for(book, images, graph),
                                               graph)), book)
                 self.assertIsNotNone(cert_images.image_for(book, images, graph), book)
+
+
+if __name__ == "__main__":
+    unittest.main()

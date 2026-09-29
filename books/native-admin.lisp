@@ -599,6 +599,24 @@
                                    *fn-rck-require-path-slot*)))
        t))
 
+;; PRF-996: the N of `policy set LIVE-FIELD N': any decimal natural, no
+;; leading zero.  The parser caps no value: the representation ceiling is
+;; fn-lim-decide's decision (:above-representation-ceiling, refused by name
+;; with the ceiling), never a usage line.  The work is linear in the word,
+;; which the argv's own bound already bounds (books/native-control.lisp
+;; fn-nctrl-admin-argv-decode: each word within *fn-record-max-octets*).
+(defun fn-native-admin-naturalp (text)
+  (declare (xargs :guard t))
+  (if (not (stringp text)) nil
+    (let ((chars (coerce text 'list)))
+      (and (consp chars)
+           (not (and (consp (cdr chars)) (equal (car chars) #\0)))
+           (<= 0 (fn-native-admin-decimal-value chars))))))
+
+(local (defthm fn-native-admin-naturalp-is-a-string
+  (implies (fn-native-admin-naturalp text) (stringp text))
+  :rule-classes :forward-chaining))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t
@@ -607,6 +625,7 @@
                   ;; types, not their bodies (5.0 -> 2.6 s, 1.34M -> 460k
                   ;; steps, persvati REPL 2026-09-28).
                   (("Goal" :in-theory (disable fn-native-admin-decimalp
+                                               fn-native-admin-naturalp
                                                fn-native-admin-decimal-value
                                                fn-native-admin-words
                                                fn-record-octets-string
@@ -792,7 +811,7 @@
              (equal (cadr words) "set")
              (member-equal (caddr words) '("max-transactions" "max-history-octets"
                                            "max-article-octets"))
-             (fn-native-admin-decimalp (cadddr words)))
+             (fn-native-admin-naturalp (cadddr words)))
         (fn-native-admin-result :accepted nil :set-store-limit (caddr argv)
                                 (fn-native-admin-decimal-value
                                  (coerce (cadddr words) 'list))

@@ -4823,3 +4823,23 @@ dispatch, durable receipt handoff, or returned receipt release. Those are A3
 composition obligations; a TCPCL transfer ACK proves none of them. The
 namespace planner's current ACL2 behavior is certified, while its guard
 verification remains open through the inherited lifecycle helper chain.
+
+
+### Native job-offer guard boundary (2026-09-29)
+
+`host/native/bp-service.lisp`'s `fnn-bps-foundation-step` calls
+`fn-bpnj-step`. `books/bp-node-job-offer-guards.lisp` verifies that entry
+and its start/contact/result chain under the existing machine-shape,
+session-list, held-list and host-event guards. The host-event recognizer is
+verified after the progress guard closure, rather than before that closure
+is available. The contact proof carries the opened contact list's shape;
+the result proof derives a typed key from a found job and matching attempt
+token. Neither strengthens the existing executable entry's guard nor adds a
+whole-state check to its body. The existing job-offer keystones and their
+reachable/mutation witnesses remain in `bp-node-job-offer-tests`.
+
+The kind-10 and kind-18 codecs' constructors, and the forwarding record
+constructors, are guard-verified in the books where those constructors are
+defined. A verification available only in a later umbrella cannot discharge
+a codec book's independent certification. This is an execution-domain
+boundary, not a claim about physical persistence or transport success.

@@ -128,6 +128,7 @@
 (include-book "books/bp-report-author")
 (include-book "books/bp-node-progress")
 (include-book "books/bp-node-progress-guards")
+(include-book "books/bp-node-job-offer-guards")
 ;; PKT-261: per-destination dispatch and the forward plan
 ;; (fnn-bpnode-dispatch-one, fnn-bpnode-forward-contact).
 (include-book "books/bp-node-forward-plan")

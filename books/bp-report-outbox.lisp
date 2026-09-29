@@ -68,6 +68,8 @@
                                       fn-bpn-report-decode)))
   :rule-classes nil)
 
+;; The *1* class (Q4a item 2, bp-remainder-5): host-called entries and their callees.
+(verify-guards fn-bpn-report-outbox-peer-matchp)
 ; ---------------------------------------------------------------------------
 ; KEYSTONE for fn-bpn-report-outbox-next (PRF-1048), the selection
 ; host/native/bp-node.lisp's report drive makes: the next outbox view after

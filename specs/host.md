@@ -1570,3 +1570,30 @@ HST-036: Maintenance while serving (row S3, PRF-964, PRF-965). `recover` and `st
 HST-034: Compaction needs no stop (PKT-868, PRF-908). `store compact` and `store checkpoint` on a running owner are a request it answers by name (requested, coalesced, nothing-to-compact, refused while a deferral blocks) and serves with its own publication in bounded batches off its mutex; KEYSTONE `fn-ock-requested-next-is-due-with-a-suffix`.
 
 HST-035: The operator lists, inspects, pauses, resumes and drops the BP carry obligations (PKT-869, PRF-914) with `operator CONFIG carry JOURNAL ...`; each control is a durable record of the carry journal (domain `:carry`, frame FNCC) ACL2 decides, and a paused or dropped work's request is refused by name before anything is written (KEYSTONE `fn-bpcc-gate-refuses-a-held-work`). A drop keeps the Store pin: only the receipt's evidence releases it, or the operator's waiver, `carry JOURNAL drop WORK --abandon REASON` (PRF-950): a `:waive` record of the carry journal (the principal, ACL2's rendering of the effective uid, and the reason) decided only while the pin stands (`reason=not-held` otherwise), made durable before the Store retention event it authors, which is the receipt's own event (the pin's id, subject and evidence; `fnn-owner-retention-commit`), so retention has one release path. A waiver durable without its Store event (a process death between the two) is completed at the next writable owner open; once the pin is gone ACL2 authors no second event, and a later receipt for the work is refused (`carry-waived`) (KEYSTONE `fn-bpcw-waiver-releases-exactly-once`; `fn-bpcw-only-a-waiver-waives`).
+
+
+### Offline snapshot blessing
+
+HST-039 (S7a, local fn policy): `operator CONFIG store bless-snapshot DIR`
+(or `store ROOT bless-snapshot DIR`) validates the named copy read-only.
+It requires a regular `DIR/SNAPSHOT` completion marker before opening the
+copy. ACL2 `fn-osn-bless-open-needed` omits the open when the marker is
+absent; `fn-osn-bless-word` selects the first failing observation:
+`snapshot-incomplete`, `open-refused` with the open's own refusal sentence,
+or `no-node-secret`. The copy's open checks its own checkpoint/log lineage,
+and the existing node-secret reader checks the key file's regularity,
+permissions and ACL2-decoded format. The configured source store is never
+opened by this action. Accepted output is `blessed snapshot=DIR
+transactions=N`; the exit code follows ACL2's status. PRF-1050 states the
+three-observation blessing predicate, with teeth in
+`tests/acl2/owner-snapshot-request-tests.lisp`; SCN-217 exercises the host.
+
+The marker is the producer's completion observation, not authentication of
+a snapshot producer or proof of atomic capture. Its fields are provenance.
+A complete older copy may open; blessing does not determine freshness or
+prevent local number reuse on restoration. S7's running snapshot producer
+remains unfinished: bounded file-set ownership across replacement/unlink,
+its committed frontier and concurrent key/configuration changes, and its
+marker-last durability program need their own implementation and evidence.
+SCN-217 uses stopped copies with explicitly supplied completion-observation
+fixtures; it establishes no running-capture guarantee.
