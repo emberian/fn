@@ -91,6 +91,13 @@ refusal exactly when the reservation cannot hold the requested profile
 cannot fund its store refuses with. `policy set` replies with the decision
 and `limit FIELD requested=R funded=U ceiling=C`; an offline `status` prints
 that line for each field with `funded=none`.
+Replay admits a record under the history at its position, never under a
+limit value (PRF-1026, `fn-rhl-extend-open-is-limit-free`): the open's
+configuration fold is the same, up to the configuration's limits, for two
+histories that differ only in their `:set-limit` values, so an article
+accepted before A is lowered below its size is replayed after the lowering.
+What replay decides historically is the retention capacity (`:set-capacity`),
+carried in the node.
 
 STO-015: a namespace the store holds is bounded by the operator's profile,
 never by a constant (D27). Configuration generations and AUTHINFO
