@@ -149,7 +149,7 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   budget, instead of the worst-case sum that puts the small preset at
   1,872 MB. Lane heap-pool's working pins (not a claim) put the small preset
   at 924 MB on a 2,048 MB machine.
-- Mechanism: `fn-heap-record-charge` as the per-record charge; the pool of
+- Mechanism: fn-heap-record-charge (pending) as the per-record charge; the pool of
   **M5** and **M6** funded from the budget.
 - Evidence: PENDING, lane heap-pool (heap-bounds-2 resumed): the theorems
   are named in the generated block and are checked once they land.
@@ -204,7 +204,7 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
 - Bounded: nothing new; the ordering of two refusals. Under a stalled disk a
   POST is refused with the disk's reason (`440 ... the disk is stalled|slow
   (a write has waited N ms, deadline D ms)`), never with the memory reason.
-- Mechanism: `fn-oas-refusal-line` follows `fn-otm-admit-post`.
+- Mechanism: fn-oas-refusal-line (pending) follows `fn-otm-admit-post`.
 - Evidence: PENDING, lane credits-stall `9a2e0b85e`. The cited event is an
   `-unfolds` lemma (a definition restated), not a keystone; the keystone
   that the stall is classified first is the time model's (**C1**).
@@ -297,7 +297,8 @@ under "Not bounded".
 - Bounded: the body an IHAVE/TAKETHIS retains is at most the profile's body
   limit; the connection is refused 437/439 and closed past it (fuzz F2,
   PKT-846).
-- Mechanism: `fn-tb-served-run`. Host subject: the served transit step.
+- Mechanism: `fn-served-run` under `fn-tb-limit`. Host subject: the served
+  transit step.
 - Evidence: THEOREM (PRF-313). The book says it does not bound the
   per-octet representation cost.
 - Exceeded: 437/439 and close.
@@ -345,7 +346,7 @@ under "Not bounded".
   `:yield` with a state that, resumed, equals the unsplit call; total output
   is at most 256 times the input plus 64 KiB, past which the stream is
   refused `(:refused :bomb)` and the connection closes (RFC 8054 §2.2.2).
-- Mechanism: `fn-zin-feed`.
+- Mechanism: fn-zin-feed (pending).
 - Evidence: PENDING, lane compress `d90102b90` (PRF-909, PRF-910). The
   per-iteration bound is the definition's measure; a Huffman table build is
   one action whose cost no theorem states (it is bounded by the 320 code
@@ -382,7 +383,7 @@ under "Not bounded".
   (`*fn-olr-batch-octets-default*`, 16 MiB), both live config rows; a take
   beyond either leaves the state unchanged.
 - Mechanism: `fn-olr-take` is the host's twin (`books/store-log-route.lisp`);
-  `fn-owb-batch` is the model's. The book says no host line calls
+  `fn-owb-boundedp` over `fn-owb-members` is the model's. The book says no host line calls
   `owner-batch`; START loops `fnn-log-bmax` times (`host/native/owner.lisp`)
   and leaves the rest queued, which is host code with no theorem.
 - Evidence: THEOREM (PRF-254) for the model; the host-twin event is named;
@@ -564,8 +565,8 @@ class and quotes what has been measured with its scope.
   timed out); a page that is late past `read-dependency-ms` (5,000 ms) is
   `403 article temporarily unavailable`, never `430`/`423`; a restart forgets
   the previous clock domain.
-- Mechanism: `fn-otb-issue`, `fn-otb-answer-early`, `fn-otb-complete` in the
-  commit pipeline; the late-page bar has no host call site until A4.
+- Mechanism: fn-otb-issue, fn-otb-answer-early and fn-otb-complete (pending)
+  in the commit pipeline; the late-page bar has no host call site until A4.
 - Evidence: PENDING, lane time-bars `914726cb5` (PRF-384). Its natives are
   classification, not timings: the held poster was told uncertain at
   30.002 s.
@@ -607,7 +608,7 @@ class and quotes what has been measured with its scope.
   `disk mode=full`, exit 28 (provisional). A journal append that meets
   ENOSPC is truncated or the journal closed, and the file agrees with the
   replay or shows the gap.
-- Mechanism: `fn-otm-admit`; the journal writer. Host subject:
+- Mechanism: `fn-otm-admit-post`; the journal writer. Host subject:
   `fnn-owner-disk-admit`.
 - Evidence: THEOREM (PRF-359, PRF-360). An unobserved figure is never
   `full`.
@@ -765,11 +766,11 @@ not on this tree yet; its citations are checked once they land.
 | --- | --- | --- | --- | --- |
 | M1 | `books/heap-figure`: `fn-heap-decide-refuses-exactly-past-the-machine`, `fn-heap-decision-exit-code-of-a-refusal`, `fn-heap-operation-decide-holds-the-store`; `books/heap-reservation`: `fn-heap-init-decide-fits-the-budget-and-the-machine`, `fn-heap-init-decide-refuses-the-operators-request-past-the-budget`, `fn-heap-reserve-decide-holds-every-thread-the-node-runs`, `fn-heap-reserve-thread-refusal-exits-1` | PRF-198 | `planning/evidence/heap-from-profile-2026-09-26.md`, `planning/evidence/heap-bounds-2026-09-28.md` |  |
 | M2 | `books/heap-store-figure`: `fn-heap-store-figure-holds-every-store`, `fn-heap-store-history-holds-payload-and-memberships`, `fn-heap-records-retained-within-the-terms` | PRF-198, PRF-314 | `planning/evidence/heap-bounds-2026-09-28.md` |  |
-| M2b | `books/heap-store-figure`: `fn-heap-record-charge-is-the-budgets-charge`, `fn-heap-record-charge-covers-the-state` | none | none | lane/heap-pool (heap-bounds-2 resumed; uncommitted WIP on 2026-09-28, sha at merge) |
+| M2b | `books/heap-store-figure`: fn-heap-record-charge-is-the-budgets-charge (pending), fn-heap-record-charge-covers-the-state (pending) | none | none | lane/heap-pool (heap-bounds-2 resumed; uncommitted WIP on 2026-09-28, sha at merge) |
 | M3 | `books/heap-breakdown`: `fn-heap-breakdown-sums-to-the-reservation`, `fn-heap-breakdown-is-inits-reservation` | PRF-375 | `planning/evidence/f8-reservation-2026-09-28.md` |  |
 | M4 | `books/heap-open-nursery`: `fn-heap-open-nursery-trigger-bounds`, `fn-heap-store-figure-holds-every-store-at-the-open-trigger` | PRF-364 | none |  |
 | M5 | `books/owner-article-slots`: `fn-oas-read-span-admits-within-the-slots`; `books/owner-article-held`: `fn-oah-read-span-leaves-the-others-article-mode`; `books/heap-store-figure`: `fn-heap-article-slots-are-held`, `fn-heap-article-slots-bounds` | PRF-377 | `planning/evidence/zero-copy-commit-2026-09-28.md` |  |
-| M5b | `books/owner-article-slots`: `fn-oas-refusal-line-follows-the-disk-unfolds` | none | `planning/evidence/credits-stall-2026-09-28.md` | lane/credits-stall 9a2e0b85e |
+| M5b | `books/owner-article-slots`: fn-oas-refusal-line-follows-the-disk-unfolds (pending) | none | `planning/evidence/credits-stall-2026-09-28.md` | lane/credits-stall 9a2e0b85e |
 | M6 | `books/memory-credits`: `fn-mcr-transitions-keep-funded`, `fn-mcr-acquire-refuses-exactly-past-the-budget`, `fn-mcr-grow-within-the-reserve-is-admitted`, `fn-mcr-overdraw-is-within-the-completion-reserve`; `books/owner-credits`: `fn-mca-read-span-keeps-funded`, `fn-mca-commit-steps-keep-funded`, `fn-mca-initial-funds-exactly-the-articles` | PRF-380 | `planning/evidence/f8-reservation-2026-09-28.md`, `planning/evidence/credits-2026-09-28.md` |  |
 | M7 | `books/connection-budget`: `fn-cbud-run-decide-refuses-exactly-past-the-limit`, `fn-cbud-step-read-octets-is-bounded`, `fn-cbud-deltas-refusal-keeps-the-capacity-held` | PRF-223 | `planning/evidence/connection-multiplexing-2026-09-26.md` |  |
 | M8 | none (measured or open) | none | `planning/evidence/f8-reservation-2026-09-28.md` |  |
@@ -778,7 +779,7 @@ not on this tree yet; its citations are checked once they land.
 | W3 | `books/store-budget-naming`: `fn-sbud-post-boundary-refuses-exactly-past-the-profile-bound`; `books/owner-served-bound`: `fn-osb-install-serves-the-profile-bound` | PRF-110, PRF-095 | none |  |
 | W4 | `books/served-tls-prefix`: `fn-served-step-counted-consumed-is-bounded`, `fn-served-step-counted-carries-at-most-one-submission`, `fn-served-drain-run-is-boundary-independent` | PRF-213 | none |  |
 | W5 | `books/payload-lz`: `fn-lz-run-out-len-bound`, `fn-lz-decode-buf-out-len-bound`, `fn-lz-seq-budget`, `fn-lz-advance-budget` | PRF-257 | none |  |
-| W6 | `books/deflate-inflate`: `fn-zin-feed-out-bound`, `fn-zin-loop-stops`, `fn-zin-loop-split-budget`, `fn-zin-feed-bomb-bound` | PRF-909, PRF-910 | none | lane/compress d90102b90 |
+| W6 | `books/deflate-inflate`: fn-zin-feed-out-bound (pending), fn-zin-loop-stops (pending), fn-zin-loop-split-budget (pending), fn-zin-feed-bomb-bound (pending) | PRF-909, PRF-910 | none | lane/compress d90102b90 |
 | W7 | `books/owner-scheduler`: `fn-osch-control-waits-at-most-the-bound` | PRF-248 | none |  |
 | W8 | `books/owner-commit-fairness`: `fn-ocf-control-waits-at-most-the-bound`, `fn-ocf-potential-at-most-twenty-two`, `fn-ocf-seal-potential-at-most-six` | PRF-901 | none |  |
 | W9 | `books/owner-batch`: `fn-owb-batch-within-bounds`; `books/store-log-route`: `fn-olr-take-keeps-the-bounds` | PRF-254 | none |  |
@@ -790,7 +791,7 @@ not on this tree yet; its citations are checked once they land.
 | T1 | `books/owner-tls-prefix`: `fn-own-read-tls-prefix-consumed-is-bounded`; `books/served-tls-prefix`: `fn-served-step-counted-consumed-is-bounded` | PRF-213, PRF-223 | `planning/evidence/connection-multiplexing-2026-09-26.md`, `planning/evidence/tls-reload-2026-09-26.md` |  |
 | C1 | `books/owner-time-model`: `fn-otm-stall-tells-no-member-its-outcome`, `fn-otm-shed-iff-slow`, `fn-otm-wait-stays-within-the-stall`, `fn-otm-f4w-stall-within-h`, `fn-otm-barrier-reader-bound`; `books/owner-batch`: `fn-owb-fence-failed-answers-uncertain` | PRF-311, PRF-255 | `planning/evidence/time-model-2026-09-27.md`, `planning/evidence/time-model-2-2026-09-27.md` |  |
 | C2 | `books/owner-time-model`: `fn-otm-health-disk-held-iff-stalled-or-full`; `books/native-health`: `fn-nh-exit-code-is-zero-or-past-the-outcome-codes` | PRF-358, PRF-172 | none |  |
-| C3 | `books/owner-time-bars`: `fn-otb-a-member-is-answered-once`, `fn-otb-a-late-completion-is-consumed-once`, `fn-otb-a-deadline-keeps-the-io-owned`, `fn-otb-a-late-page-is-unavailable-never-absent` | PRF-384 | none | lane/time-bars 914726cb5 |
+| C3 | `books/owner-time-bars`: fn-otb-a-member-is-answered-once (pending), fn-otb-a-late-completion-is-consumed-once (pending), fn-otb-a-deadline-keeps-the-io-owned (pending), fn-otb-a-late-page-is-unavailable-never-absent (pending) | PRF-384 | none | lane/time-bars 914726cb5 |
 | C4 | `books/outcome-class`: `fn-outcome-code-separates-the-classes`, `fn-outcome-code-is-fenced-iff-fenced` | PRF-143 | none |  |
 | D1 | `books/store-capacity-vector`: `fn-cvec-roomp-is-within-the-profile`, `fn-cvec-held-row-within-its-figure`; `books/store-reclaim-pack`: `fn-rclp-events-keep-the-length` | PRF-138, PRF-119 | none |  |
 | D2 | `books/owner-time-model`: `fn-otm-admit-keeps-the-space-need`; `books/owner-time-journal-writer`: `fn-otm-jw-file-reads-agrees-or-gap` | PRF-359, PRF-360 | none |  |

@@ -392,7 +392,12 @@ def render_block(root: Path = ROOT) -> str:
         by_book: dict[str, list[str]] = {}
         for book, name in row.theorems:
             by_book.setdefault(book, []).append(name)
-        theorems = "; ".join(f"`{book}`: " + ", ".join(f"`{n}`" for n in names)
+        # A name is backquoted only once the tree defines it: a backquoted
+        # `fn-...` span in docs/ is a citation tools/spec_cite_check.py
+        # resolves, and a landing row's names are not resolvable yet.
+        def cite(book: str, name: str) -> str:
+            return f"`{name}`" if theorem_defined(root, book, name) else f"{name} (pending)"
+        theorems = "; ".join(f"`{book}`: " + ", ".join(cite(book, n) for n in names)
                              for book, names in by_book.items()) or "none (measured or open)"
         proofs = ", ".join(row.proofs) or "none"
         records = ", ".join(f"`{r}`" for r in row.records) or "none"
