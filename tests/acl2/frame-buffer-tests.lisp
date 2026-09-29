@@ -24,9 +24,12 @@
 ;    fn-frb-control-decode-is-reference over REAL sealed frames (the window
 ;    digest through frame-digest-buffer's attachment): a request, a reasoned
 ;    request (the dispatch's reasoned flag), and a frame of no kind.
+; 6. fn-frb-site-decode-is-reference (books/native-live-buffer.lisp): the
+;    site's tuple over a live status request (LIVE), a paged report's request
+;    (PAGES), and the FNCT request (neither), each equal to the reference's.
 
 (in-package "ACL2")
-(include-book "../../books/native-control-buffer")
+(include-book "../../books/native-live-buffer")
 (include-book "../../books/codec-attach")
 
 (assert-event
@@ -36,7 +39,10 @@
       (eq (symbol-class 'fn-frb-open (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-frb-open-payload (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-frb-control-decode (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-frb-control-reference (w state)) :common-lisp-compliant)))
+      (eq (symbol-class 'fn-frb-control-reference (w state)) :common-lisp-compliant)
+      ; fn-frb-site-decode / -reference: not verifiable while the FNLS
+      ; grammars they call are not (books/native-live-buffer.lisp, GUARD DEBT).
+      (eq (symbol-class 'fn-frb-nls-open-payload-with (w state)) :common-lisp-compliant)))
 
 ; FNCT, version 1, kind 1, length 3 (big-endian u32), then the payload, then
 ; an explicit 32-octet trailer.
@@ -172,5 +178,33 @@
                   ; a frame whose trailer is not its digest: refused throughout
                   c (equal (first c) nil)
                   (equal (second c) '(:refused :frame)))
+             fn-octets)))))
+ :stobjs-out '(nil fn-octets))
+
+; 6. The site: FNCT and FNLS from one digest, in the live buffer.
+(defun frbt-site-as-reference (frame fn-octets)
+  (declare (xargs :stobjs fn-octets :verify-guards nil))
+  (let* ((fn-octets (fn-octets-clear fn-octets))
+         (fn-octets (fn-octets-append-list frame fn-octets)))
+    (mv (and (equal (fn-frb-site-decode fn-octets) (fn-frb-site-reference frame))
+             (fn-frb-site-reference frame))
+        fn-octets)))
+
+(assert-event
+ (let ((status (fn-nls-request-encode :status 0))
+       (paged (fn-nlp-request-encode :obligations 0 0))
+       (request (fn-native-control-request-encode *frbt-msgid* *frbt-groups* *frbt-article*)))
+   (mv-let (a fn-octets) (frbt-site-as-reference status fn-octets)
+     (mv-let (b fn-octets) (frbt-site-as-reference paged fn-octets)
+       (mv-let (c fn-octets) (frbt-site-as-reference request fn-octets)
+         (mv (and (fn-cbor-octet-listp status) (fn-cbor-octet-listp paged)
+                  ; a live status request: LIVE, not PAGES, no FNCT decode
+                  a (equal (len a) 8) (equal (seventh a) t) (equal (eighth a) nil)
+                  (equal (second a) '(:refused :frame))
+                  ; a paged report's request: PAGES, not LIVE
+                  b (equal (seventh b) nil) (equal (eighth b) t)
+                  ; the FNCT request: neither, decoded
+                  c (equal (seventh c) nil) (equal (eighth c) nil)
+                  (equal (second c) (list :request *frbt-msgid* *frbt-groups* *frbt-article*)))
              fn-octets)))))
  :stobjs-out '(nil fn-octets))

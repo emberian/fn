@@ -981,6 +981,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/article-buffer-tests \
 	books/frame-buffer \
 	books/native-control-buffer \
+	books/native-live-buffer \
 	tests/acl2/frame-buffer-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \

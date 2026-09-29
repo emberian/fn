@@ -390,13 +390,13 @@ ACL2 returns."
            (handler-case
                (let* ((frame (prog1 (fnn-control-read-frame socket maximum)
                                (fnn-control-answering control socket)))
-                      ;; D27 (books/native-control-buffer.lisp, PRF-960): the
+                      ;; D27 (books/native-live-buffer.lisp, PRF-960): the
                       ;; frame is decoded in place from the control buffer,
-                      ;; once, under the control buffer lock; ACL2 owns the
-                      ;; dispatch (fn-frb-control-decode-is-reference) and the
-                      ;; host destructures (REASONED REQUEST ADMIN MODERATION
-                      ;; TOPIC CONSUMER).  No list of the frame is built for
-                      ;; the FNCT decoders.
+                      ;; once, from one digest, under the control buffer lock;
+                      ;; ACL2 owns the dispatch (fn-frb-site-decode-is-reference)
+                      ;; and the host destructures (REASONED REQUEST ADMIN
+                      ;; MODERATION TOPIC CONSUMER LIVE PAGES).  No list of
+                      ;; the frame is built.
                       (decoded
                         (and (typep frame 'fnn-octets)
                              (let ((d (fnn-with-control-buffer ()
@@ -412,20 +412,11 @@ ACL2 returns."
                       ;; PKT-709: the plain request (kind 4) or the reasoned
                       ;; one (kind 22, the same payload), decided alike.
                       (consumer (and decoded (sixth decoded)))
-                      ;; The FNLS requests (the status class of D27 row Q2):
-                      ;; still over the octet list, built once.
-                      (frame-list (and (typep frame 'fnn-octets)
-                                       (fnn-octet-list frame)))
-                      (live
-                        (and frame-list
-                             (fnn-core 'fn-native-live-status-host-requestp
-                                       frame-list)))
-                      ;; lane obligations-paged: a paged report's request
+                      ;; The FNLS requests: a live status request, else
+                      ;; (lane obligations-paged) a paged report's request
                       ;; (FNLS frame kind 4, books/native-live-pages.lisp).
-                      (pages
-                        (and (not live) frame-list
-                             (fnn-core 'fn-native-live-pages-host-requestp
-                                       frame-list))))
+                      (live (and decoded (seventh decoded)))
+                      (pages (and decoded (eighth decoded))))
                  (cond
                    (live
                     (list :live-status-reply

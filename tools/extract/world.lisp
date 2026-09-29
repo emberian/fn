@@ -269,7 +269,7 @@
 (include-book "../../books/consumer-wait-codec")
 (include-book "../../books/consumer-reason")
 (include-book "../../books/topic-history-local-control")
-(include-book "../../books/native-control-buffer")
+(include-book "../../books/native-live-buffer")
 (include-book "../../books/hybrid-store")
 (include-book "../../books/hybrid-carrier")
 (include-book "../../books/tls-reload")

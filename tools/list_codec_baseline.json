@@ -78,7 +78,7 @@
   "host/native/bp.lisp": 15,
   "host/native/checkpoint.lisp": 2,
   "host/native/consumer-local.lisp": 3,
-  "host/native/control.lisp": 11,
+  "host/native/control.lisp": 9,
   "host/native/hybrid-control.lisp": 12,
   "host/native/io.lisp": 17,
   "host/native/owner.lisp": 9,
@@ -86,5 +86,5 @@
   "host/native/tcpcl.lisp": 4,
   "host/native/tls-reload.lisp": 2
  },
- "total": 94
+ "total": 92
 }

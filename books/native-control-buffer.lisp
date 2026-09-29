@@ -85,48 +85,72 @@
   :hints (("Goal" :in-theory (e/d (fn-frb-of) (fn-frb-frame-record-fns)))))
 
 ; -----------------------------------------------------------------------------
-; The reference with its digest as an argument: fn-nctrl-open is this with
-; the trailer of the protected prefix.
+; The reference with its digest as an argument, over the frame FAMILY (the
+; magic, the version, the payload bound, the refusal): fn-nctrl-open is this
+; with FNCT's constants and the trailer of its protected prefix
+; (fn-nctrl-open-by-definition), fn-nls-open with FNLS's
+; (books/native-live-buffer.lisp).
 
-(defun fn-frb-nctrl-open-with (octets digest expected-kind)
+(defun fn-frb-ref-open-as (octets magic version max-payload refusal digest expected-kind)
   (declare (xargs :guard t))
   (if (not (fn-cbor-octet-listp octets))
       (fn-frame-error :malformed)
-    (let ((opened (fn-frame-decode octets digest *fn-nctrl-max-payload*)))
+    (let ((opened (fn-frame-decode octets digest max-payload)))
       (if (and (fn-frame-result-okp opened)
-               (equal (fn-frame-result-magic opened) *fn-nctrl-magic*)
-               (equal (fn-frame-result-version opened) *fn-nctrl-version*)
+               (equal (fn-frame-result-magic opened) magic)
+               (equal (fn-frame-result-version opened) version)
                (equal (fn-frame-result-kind opened) expected-kind))
           opened
-        (fn-frame-error :control-frame)))))
+        (fn-frame-error refusal)))))
+
+(defun fn-frb-nctrl-open-with (octets digest expected-kind)
+  (declare (xargs :guard t))
+  (fn-frb-ref-open-as octets *fn-nctrl-magic* *fn-nctrl-version* *fn-nctrl-max-payload*
+                      :control-frame digest expected-kind))
 
 (defthm fn-nctrl-open-by-definition
   (equal (fn-nctrl-open octets expected-kind)
          (fn-frb-nctrl-open-with octets
                                  (fn-frame-trailer (fn-frame-protected-prefix octets))
                                  expected-kind))
-  :hints (("Goal" :in-theory (e/d (fn-nctrl-open) (fn-frame-decode fn-frb-frame-record-fns)))))
+  :hints (("Goal" :in-theory (e/d (fn-nctrl-open fn-frb-nctrl-open-with fn-frb-ref-open-as)
+                                  (fn-frame-decode fn-frb-frame-record-fns)))))
 
 ; -----------------------------------------------------------------------------
-; THE OPEN OVER THE BUFFER, the digest given.
+; THE OPEN OVER THE BUFFER, the digest given, over the family.
 
-(defun fn-frb-open-with (digest expected-kind fn-octets)
+(defun fn-frb-open-as (magic version max-payload refusal digest expected-kind fn-octets)
   (declare (xargs :stobjs fn-octets :guard t))
-  (let ((opened (fn-frb-decode digest *fn-nctrl-max-payload* fn-octets)))
+  (let ((opened (fn-frb-decode digest max-payload fn-octets)))
     (if (and (fn-frame-result-okp opened)
-             (equal (fn-frame-result-magic opened) *fn-nctrl-magic*)
-             (equal (fn-frame-result-version opened) *fn-nctrl-version*)
+             (equal (fn-frame-result-magic opened) magic)
+             (equal (fn-frame-result-version opened) version)
              (equal (fn-frame-result-kind opened) expected-kind))
         opened
-      (fn-frame-error :control-frame))))
+      (fn-frame-error refusal))))
 
 ; KEYSTONE.
+(defthm fn-frb-open-as-is-ref-open-as
+  (implies (fn-octets-p fn-octets)
+           (equal (fn-frb-open-as magic version max-payload refusal digest expected-kind fn-octets)
+                  (fn-frb-of (fn-frb-ref-open-as fn-octets magic version max-payload refusal
+                                                 digest expected-kind))))
+  :hints (("Goal" :in-theory (e/d (fn-frb-of fn-oct-octets-p-is-octet-listp)
+                                  (fn-frame-decode fn-frb-decode fn-frb-frame-record-fns)))))
+
+; FNCT's instance.
+(defun fn-frb-open-with (digest expected-kind fn-octets)
+  (declare (xargs :stobjs fn-octets :guard t))
+  (fn-frb-open-as *fn-nctrl-magic* *fn-nctrl-version* *fn-nctrl-max-payload* :control-frame
+                  digest expected-kind fn-octets))
+
 (defthm fn-frb-open-with-is-nctrl-open-with
   (implies (fn-octets-p fn-octets)
            (equal (fn-frb-open-with digest expected-kind fn-octets)
                   (fn-frb-of (fn-frb-nctrl-open-with fn-octets digest expected-kind))))
-  :hints (("Goal" :in-theory (e/d (fn-frb-of fn-oct-octets-p-is-octet-listp)
-                                  (fn-frame-decode fn-frb-decode fn-frb-frame-record-fns)))))
+  :hints (("Goal" :in-theory (e/d (fn-frb-open-with fn-frb-nctrl-open-with)
+                                  (fn-frb-open-as fn-frb-ref-open-as fn-frb-of
+                                   fn-frb-frame-record-fns)))))
 
 ; The ok result's payload is a length that fits after the header (the guard
 ; of the lift below).
@@ -139,25 +163,28 @@
    :rule-classes ((:rewrite) (:type-prescription))))
 
 (local
- (defthm fn-frb-open-with-ok-bound
+ (defthm fn-frb-open-as-ok-bound
    (implies (and (fn-octets-p fn-octets)
-                 (fn-frame-result-okp (fn-frb-open-with digest expected-kind fn-octets)))
+                 (fn-frame-result-okp
+                  (fn-frb-open-as magic version max-payload refusal digest expected-kind fn-octets)))
             (and (natp (fn-frame-result-payload
-                        (fn-frb-open-with digest expected-kind fn-octets)))
+                        (fn-frb-open-as magic version max-payload refusal digest expected-kind
+                                        fn-octets)))
                  (<= (+ *fn-frame-header-octets*
                         (fn-frame-result-payload
-                         (fn-frb-open-with digest expected-kind fn-octets)))
+                         (fn-frb-open-as magic version max-payload refusal digest expected-kind
+                                         fn-octets)))
                      (len fn-octets))))
-   :hints (("Goal" :in-theory (e/d (fn-frb-open-with fn-frb-decode)
+   :hints (("Goal" :in-theory (e/d (fn-frb-open-as fn-frb-decode)
                                    (fn-frb-decode-is-frame-decode fn-frb-u32-at
                                     fn-frb-magic fn-frb-suffix-equalp
                                     fn-frb-frame-record-fns))))))
 
 ; The lift: the reference's exact result, the payload copied out of its
 ; window (one cons of the payload).
-(defun fn-frb-open-payload-with (digest expected-kind fn-octets)
+(defun fn-frb-open-payload-as (magic version max-payload refusal digest expected-kind fn-octets)
   (declare (xargs :stobjs fn-octets :guard t :verify-guards nil))
-  (let ((opened (fn-frb-open-with digest expected-kind fn-octets)))
+  (let ((opened (fn-frb-open-as magic version max-payload refusal digest expected-kind fn-octets)))
     (if (fn-frame-result-okp opened)
         (fn-frame-ok (fn-frame-result-magic opened)
                      (fn-frame-result-version opened)
@@ -168,9 +195,9 @@
                                         fn-octets))
       opened)))
 
-(verify-guards fn-frb-open-payload-with
-  :hints (("Goal" :use fn-frb-open-with-ok-bound
-                  :in-theory (disable fn-frb-open-with fn-frb-open-with-is-nctrl-open-with
+(verify-guards fn-frb-open-payload-as
+  :hints (("Goal" :use fn-frb-open-as-ok-bound
+                  :in-theory (disable fn-frb-open-as fn-frb-open-as-is-ref-open-as
                                       fn-frb-frame-record-fns))))
 
 ; The empty window (an error's payload is nil, fn-frb-payload-of-error).
@@ -182,16 +209,18 @@
 ; The reference's payload is the window of its own length after the header
 ; (fn-frb-payload-is-window, through the open's tests).
 (local
- (defthm fn-frb-nctrl-open-with-payload-is-window
+ (defthm fn-frb-ref-open-as-payload-is-window
    (implies (fn-octets-p fn-octets)
-            (equal (fn-frame-result-payload (fn-frb-nctrl-open-with fn-octets digest expected-kind))
+            (equal (fn-frame-result-payload
+                    (fn-frb-ref-open-as fn-octets magic version max-payload refusal digest
+                                        expected-kind))
                    (fn-shr-win *fn-frame-header-octets*
                                (len (fn-frame-result-payload
-                                     (fn-frb-nctrl-open-with fn-octets digest expected-kind)))
+                                     (fn-frb-ref-open-as fn-octets magic version max-payload
+                                                         refusal digest expected-kind)))
                                fn-octets)))
-   :hints (("Goal" :use ((:instance fn-frb-payload-is-window
-                                    (max-payload *fn-nctrl-max-payload*)))
-                   :in-theory (e/d (fn-frb-nctrl-open-with fn-frb-of fn-oct-octets-p-is-octet-listp)
+   :hints (("Goal" :use fn-frb-payload-is-window
+                   :in-theory (e/d (fn-frb-ref-open-as fn-frb-of fn-oct-octets-p-is-octet-listp)
                                    (fn-frame-decode fn-frb-decode fn-frb-frame-record-fns
                                     fn-frb-payload-is-window))))))
 
@@ -211,29 +240,53 @@
    :rule-classes nil))
 
 (local
- (defthm fn-frb-nctrl-open-with-ok-is-frame-ok
-   (implies (fn-frame-result-okp (fn-frb-nctrl-open-with octets digest expected-kind))
-            (equal (fn-frb-nctrl-open-with octets digest expected-kind)
-                   (fn-frame-ok (fn-frame-result-magic (fn-frb-nctrl-open-with octets digest expected-kind))
-                                (fn-frame-result-version (fn-frb-nctrl-open-with octets digest expected-kind))
-                                (fn-frame-result-kind (fn-frb-nctrl-open-with octets digest expected-kind))
-                                (fn-frame-result-payload (fn-frb-nctrl-open-with octets digest expected-kind)))))
-   :hints (("Goal" :use ((:instance fn-frb-decode-ok-is-frame-ok
-                                    (max-payload *fn-nctrl-max-payload*)))
-                   :in-theory (e/d (fn-frb-nctrl-open-with)
+ (defthm fn-frb-ref-open-as-ok-is-frame-ok
+   (implies (fn-frame-result-okp
+             (fn-frb-ref-open-as octets magic version max-payload refusal digest expected-kind))
+            (equal (fn-frb-ref-open-as octets magic version max-payload refusal digest expected-kind)
+                   (fn-frame-ok (fn-frame-result-magic
+                                 (fn-frb-ref-open-as octets magic version max-payload refusal digest
+                                                     expected-kind))
+                                (fn-frame-result-version
+                                 (fn-frb-ref-open-as octets magic version max-payload refusal digest
+                                                     expected-kind))
+                                (fn-frame-result-kind
+                                 (fn-frb-ref-open-as octets magic version max-payload refusal digest
+                                                     expected-kind))
+                                (fn-frame-result-payload
+                                 (fn-frb-ref-open-as octets magic version max-payload refusal digest
+                                                     expected-kind)))))
+   :hints (("Goal" :use fn-frb-decode-ok-is-frame-ok
+                   :in-theory (e/d (fn-frb-ref-open-as)
                                    (fn-frame-decode fn-frb-frame-record-fns))))
    :rule-classes nil))
+
+(defthm fn-frb-open-payload-as-is-ref-open-as
+  (implies (fn-octets-p fn-octets)
+           (equal (fn-frb-open-payload-as magic version max-payload refusal digest expected-kind
+                                          fn-octets)
+                  (fn-frb-ref-open-as fn-octets magic version max-payload refusal digest
+                                      expected-kind)))
+  :hints (("Goal" :use (fn-frb-open-as-ok-bound fn-frb-ref-open-as-payload-is-window
+                        (:instance fn-frb-ref-open-as-ok-is-frame-ok (octets fn-octets)))
+                  :in-theory (e/d (fn-frb-open-payload-as fn-frb-of fn-oct-octets-p-is-octet-listp
+                                   fn-shr-win-is-slice)
+                                  (fn-frb-open-as fn-frb-ref-open-as fn-frb-frame-record-fns
+                                   fn-frb-ref-open-as-payload-is-window)))))
+
+; FNCT's instance of the lift.
+(defun fn-frb-open-payload-with (digest expected-kind fn-octets)
+  (declare (xargs :stobjs fn-octets :guard t))
+  (fn-frb-open-payload-as *fn-nctrl-magic* *fn-nctrl-version* *fn-nctrl-max-payload*
+                          :control-frame digest expected-kind fn-octets))
 
 (defthm fn-frb-open-payload-with-is-nctrl-open-with
   (implies (fn-octets-p fn-octets)
            (equal (fn-frb-open-payload-with digest expected-kind fn-octets)
                   (fn-frb-nctrl-open-with fn-octets digest expected-kind)))
-  :hints (("Goal" :use (fn-frb-open-with-ok-bound fn-frb-nctrl-open-with-payload-is-window
-                        (:instance fn-frb-nctrl-open-with-ok-is-frame-ok (octets fn-octets)))
-                  :in-theory (e/d (fn-frb-open-payload-with fn-frb-of fn-oct-octets-p-is-octet-listp
-                                   fn-shr-win-is-slice)
-                                  (fn-frb-open-with fn-frb-nctrl-open-with fn-frb-frame-record-fns
-                                   fn-frb-nctrl-open-with-payload-is-window)))))
+  :hints (("Goal" :in-theory (e/d (fn-frb-open-payload-with fn-frb-nctrl-open-with)
+                                  (fn-frb-open-payload-as fn-frb-ref-open-as
+                                   fn-frb-frame-record-fns)))))
 
 ; -----------------------------------------------------------------------------
 ; The digest: the window digest of the protected prefix is the reference's
@@ -289,6 +342,14 @@
                          (nfix (- (fn-octets-len fn-octets) *fn-frame-trailer-octets*))
                          fn-octets))
 
+; The buffer's digest is the reference's trailer of the protected prefix:
+; the one rule the composed opens and the site's dispatch need.
+(defthm fn-frb-digest-is-reference-digest
+  (implies (fn-cbor-octet-listp fn-octets)
+           (equal (fn-frb-digest fn-octets)
+                  (fn-frame-trailer (fn-frame-protected-prefix fn-octets))))
+  :hints (("Goal" :in-theory (enable fn-frb-digest))))
+
 (defun fn-frb-open (expected-kind fn-octets)
   (declare (xargs :stobjs fn-octets :guard t))
   (fn-frb-open-with (fn-frb-digest fn-octets) expected-kind fn-octets))
@@ -302,16 +363,18 @@
   (implies (fn-octets-p fn-octets)
            (equal (fn-frb-open expected-kind fn-octets)
                   (fn-frb-of (fn-nctrl-open fn-octets expected-kind))))
-  :hints (("Goal" :in-theory (e/d (fn-frb-open fn-frb-digest fn-oct-octets-p-is-octet-listp)
-                                  (fn-frb-nctrl-open-with fn-frb-of fn-frb-frame-record-fns)))))
+  :hints (("Goal" :in-theory (e/d (fn-frb-open fn-oct-octets-p-is-octet-listp)
+                                  (fn-frb-digest fn-frb-nctrl-open-with fn-frb-ref-open-as fn-frb-open-with
+                                   fn-frb-open-as fn-frb-of fn-frb-frame-record-fns)))))
 
 ; fn-nctrl-open's twin, exactly.
 (defthm fn-frb-open-payload-is-nctrl-open
   (implies (fn-octets-p fn-octets)
            (equal (fn-frb-open-payload expected-kind fn-octets)
                   (fn-nctrl-open fn-octets expected-kind)))
-  :hints (("Goal" :in-theory (e/d (fn-frb-open-payload fn-frb-digest fn-oct-octets-p-is-octet-listp)
-                                  (fn-frb-nctrl-open-with fn-frb-of fn-frb-frame-record-fns)))))
+  :hints (("Goal" :in-theory (e/d (fn-frb-open-payload fn-oct-octets-p-is-octet-listp)
+                                  (fn-frb-digest fn-frb-nctrl-open-with fn-frb-ref-open-as fn-frb-open-payload-with
+                                   fn-frb-open-payload-as fn-frb-of fn-frb-frame-record-fns)))))
 
 ; -----------------------------------------------------------------------------
 ; THE HOST SITE'S DISPATCH (host/native/control.lisp fnn-control-handle-client):
@@ -341,10 +404,11 @@
                      (fn-ncr-request-decode octets))))
     (list reasoned request admin moderation topic consumer)))
 
-(defun fn-frb-control-decode (fn-octets)
+(defun fn-frb-control-decode-with (digest fn-octets)
+  ; The dispatch with the frame's digest given (books/native-live-buffer.lisp
+  ; computes it once for this and the FNLS requests).
   (declare (xargs :stobjs fn-octets :guard t))
-  (let* ((digest (fn-frb-digest fn-octets))
-         (reasoned (or (fn-frame-result-okp
+  (let* ((reasoned (or (fn-frame-result-okp
                         (fn-frb-open-with digest *fn-nctrl-reasoned-request-kind* fn-octets))
                        (fn-frame-result-okp
                         (fn-frb-open-with digest *fn-nctrl-reasoned-admin-kind* fn-octets))
@@ -377,11 +441,16 @@
                       (fn-frb-open-payload-with digest *fn-ncr-request-kind* fn-octets)))))
     (list reasoned request admin moderation topic consumer)))
 
+(defun fn-frb-control-decode (fn-octets)
+  (declare (xargs :stobjs fn-octets :guard t))
+  (fn-frb-control-decode-with (fn-frb-digest fn-octets) fn-octets))
+
 (defthm fn-frb-control-decode-is-reference
   (implies (fn-octets-p fn-octets)
            (equal (fn-frb-control-decode fn-octets)
                   (fn-frb-control-reference fn-octets)))
-  :hints (("Goal" :in-theory (e/d (fn-frb-control-decode fn-frb-control-reference fn-frb-digest
+  :hints (("Goal" :in-theory (e/d (fn-frb-control-decode fn-frb-control-decode-with
+                                   fn-frb-control-reference
                                    fn-oct-octets-p-is-octet-listp
                                    fn-native-control-reasoned-framep fn-ncr-framep
                                    fn-native-control-reasoned-request-decode
@@ -391,8 +460,10 @@
                                    fn-native-control-moderation-decode
                                    fn-thlc-request-decode fn-cwait-request-decode
                                    fn-ncr-request-decode)
-                                  (fn-frb-nctrl-open-with fn-frb-of fn-frb-frame-record-fns
-                                   fn-frb-open-with fn-frb-open-payload-with fn-frb-decode
+                                  (fn-frb-digest fn-frb-nctrl-open-with fn-frb-ref-open-as fn-frb-of
+                                   fn-frb-frame-record-fns
+                                   fn-frb-open-with fn-frb-open-payload-with
+                                   fn-frb-open-as fn-frb-open-payload-as fn-frb-decode
                                    fn-frb-decode-is-frame-decode
                                    fn-nctrl-request-payload-decode fn-nctrl-admin-payload-decode
                                    fn-nctrl-moderation-payload-decode

@@ -13381,6 +13381,22 @@
       "events": [
         {
           "kind": "theorem",
+          "name": "fn-frb-open-as-is-ref-open-as"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-open-payload-as-is-ref-open-as"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-nls-open-payload-with-is-nls-open-with"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-site-decode-is-reference"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-frb-open-with-is-nctrl-open-with"
         },
         {
