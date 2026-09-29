@@ -36,8 +36,9 @@ fn-oah-read-span-keeps-held-within-the-slots).  A TAKETHIS (RFC 4644 section
 socket read: the connection enters article mode and leaves it within the
 read with one more submission queued.  The admission before this lane
 checked only a read that left the connection newly mid-article, so such a
-read was accepted (239) with every slot already held (by six posters and
-one peer's IHAVE upload here): one article more than the slots.  Now the whole read is
+read was accepted (239) with every slot already held (by seven posters and
+one peer's IHAVE upload here, under a profile whose pool holds exactly
+eight): one article more than the pool.  Now the whole read is
 refused: 400 with the memory reason and the connection closed (RFC 4644
 offers TAKETHIS no "later"; RFC 3977 section 3.2.1's 400 is it), nothing it
 carried is taken; the admitted IHAVE completes (235), and the TAKETHIS
@@ -63,6 +64,17 @@ INIT_PROFILE = ("--profile", "development", "--max-transactions", "1024",
 SLOTS_4MIB = 7
 MIB1 = 1024 * 1024
 SLOTS_1MIB = 30
+# A reserve of exactly 8 MiB (ceil((A + 1) / 512) = 7,710 blocks of the wire's
+# store): the pool holds exactly eight articles and not one octet more, so a
+# ninth article's charge, however small, is past it (tests/acl2/
+# owner-article-slots-tests.lisp pins the figure).
+A8 = 3947519
+SLOTS_A8 = 8
+A8_PROFILE = ("--profile", "development", "--max-transactions", "1024",
+              "--max-history-octets", str(64 << 20),
+              "--max-record-octets", "4199563",
+              "--max-article-octets", str(A8),
+              "--max-groups-per-article", "16")
 MIB1_PROFILE = ("--profile", "default", "--max-transactions", "1024",
                 "--max-history-octets", str(64 << 20),
                 "--max-record-octets", "4199563",
@@ -164,7 +176,7 @@ class ArticleSlotsTests(JoinFixture):
                              reversed(range(SLOTS_4MIB)))
 
     def test_a_takethis_within_one_read_past_the_slot_is_refused_whole(self):
-        created = self.op("init", *INIT_PROFILE, "fn.test")
+        created = self.op("init", *A8_PROFILE, "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         # Loopback is this peer (outbound "-": the node never dials it).
         added = self.op("peer", "add", "slots-peer", "slots-peer.example.invalid",
@@ -172,11 +184,11 @@ class ArticleSlotsTests(JoinFixture):
         self.assertEqual(added.returncode, EXIT_OK, added.stderr.decode())
         owner = self.node.start(image=self.image)
         uploader = Poster(self.port)
-        posters = [Poster(self.port) for _ in range(SLOTS_4MIB - 1)]
+        posters = [Poster(self.port) for _ in range(SLOTS_A8 - 1)]
         try:
             # All slots but one held by posters mid-article.
-            wire = [dot_stuff(article("<slots-{}@example.invalid>".format(n), MIB4 - 4096))
-                    + b".\r\n" for n in range(SLOTS_4MIB - 1)]
+            wire = [dot_stuff(article("<slots-{}@example.invalid>".format(n), A8 - 4096))
+                    + b".\r\n" for n in range(SLOTS_A8 - 1)]
             for n, p in enumerate(posters):
                 offered = p.ask()
                 self.assertTrue(offered.startswith("340"), (n, offered))
@@ -230,7 +242,7 @@ class ArticleSlotsTests(JoinFixture):
             for p in posters:
                 p.close()
         self.node.stop(process=owner)
-        self.assertEqual(self.headroom()["transactions-used"], 2 + SLOTS_4MIB - 1)
+        self.assertEqual(self.headroom()["transactions-used"], 2 + SLOTS_A8 - 1)
 
 
 if __name__ == "__main__":

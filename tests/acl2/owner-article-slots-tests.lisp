@@ -430,3 +430,19 @@
 (assert-event (equal (fn-heap-article-slots (oast-default-at 65536)) 32))
 (assert-event (equal (fn-heap-article-reserve-octets (oast-default-at 1048576)) 2229440))
 (assert-event (equal (fn-heap-article-slots (oast-default-at 1048576)) 30))
+
+; The native one-read case's profile (tests/test_native_article_slots.py A8):
+; a reserve of exactly 8 MiB, eight slots, and nothing of the pool left over
+; (lane chunked-body-2).
+(defconst *oast-a8*
+  (fn-bs-profile-resolve (list :development
+                               (list (cons *fn-bs-pf-max-transactions* 1024)
+                                     (cons *fn-bs-pf-max-history-octets* (* 64 1048576))
+                                     (cons *fn-bs-pf-max-record-octets* 4199563)
+                                     (cons *fn-bs-pf-max-article-octets* 3947519)
+                                     (cons *fn-bs-pf-max-groups-per-article* 16)))
+                         nil))
+(assert-event (fn-bs-profile-admittedp *oast-a8*))
+(assert-event (equal (fn-heap-article-reserve-octets *oast-a8*) 8388608))
+(assert-event (equal (fn-heap-article-slots *oast-a8*) 8))
+(assert-event (equal (fn-heap-articles-octets *oast-a8*) (* 8 8388608)))
