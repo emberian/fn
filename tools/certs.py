@@ -147,6 +147,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # evaluates or macro-expands, so computing a closure cannot run a book.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ledger  # noqa: E402
+import cert_images  # noqa: E402
 
 BOOK_DIRECTORIES = ("books", "tests/acl2")
 DEFAULT_CACHE = "~/.cache/fn-certs"
@@ -190,6 +191,8 @@ class Certified:
     # The digest of the compiled file (`.fasl`) this certification wrote, when
     # the manifest recorded one; None publishes the pair alone.
     fasl: str | None = None
+    # The world the certificate was made in (`cert_images.world_id`).
+    world: str = "plain"
 
 
 @dataclass
@@ -435,9 +438,13 @@ def closure_listing(books: dict[str, str]) -> list[str]:
     return sorted(f"{book}.lisp:{digest}" for book, digest in books.items())
 
 
-# What the key hashes changed from each closure book's bytes to its read
-# forms (`form_hash`); the tag keeps the two key spaces apart.
-KEY_VERSION = "fn-cert-key-v2 forms"
+# What the key hashes: each closure book's read forms (`form_hash`) and the
+# world the certificate was made in (`cert_images.world_id`: plain, or a
+# certification image, whose include-books are the portcullis).  v2 had no
+# world and filed image-made pairs with plain ones; a plain world that
+# installed one replayed its portcullis ahead of an attach-stobj (batch BB,
+# 2026-09-29).  The tag keeps the key spaces apart.
+KEY_VERSION = "fn-cert-key-v3 forms+world"
 
 
 def form_hash(source: Path) -> str:
@@ -477,7 +484,8 @@ def key_listing(root: Path, books: dict[str, str]) -> list[str]:
     return sorted(f"{book}.lisp:{form_hash(base / f'{book}.lisp')}" for book in books)
 
 
-def closure_key(root: Path, name: str) -> tuple[str, list[str]]:
+def closure_key(root: Path, name: str,
+                world: str = "plain") -> tuple[str, list[str]]:
     """The cache key for one book, and the listing the key hashes.
 
     The listing names each closure book's read forms (`form_hash`), not its
@@ -485,8 +493,20 @@ def closure_key(root: Path, name: str) -> tuple[str, list[str]]:
     separate question, answered with bytes by `publish` (`closure_drift`).
     """
     listing = key_listing(root, closure(root, name))
-    text = KEY_VERSION + "\n" + "\n".join(listing)
+    text = KEY_VERSION + "\nworld " + world + "\n" + "\n".join(listing)
     return hashlib.sha256(text.encode("utf-8")).hexdigest(), listing
+
+
+def book_entries(root: Path, cache: Path, name: str) -> list[tuple[Path, dict]]:
+    """Every usable entry for NAME at ROOT's sources, in every world a
+    certificate of it may have been made in (`cert_images.worlds`): plain
+    first, then each certification image the image rule allows for it now.
+    An entry made in a world the rule no longer allows is never found."""
+    found: list[tuple[Path, dict]] = []
+    for world in cert_images.worlds(root.resolve(), name):
+        key, _ = closure_key(root, name, world)
+        found.extend(cached_entries(cache, key))
+    return found
 
 
 def origin_token(origin: str) -> str:
@@ -807,8 +827,7 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
     # toolchain identity -> book -> every usable entry, for the composed set.
     pooled: dict[str, tuple[dict, dict[str, list[tuple[Path, dict]]]]] = {}
     for name in required:
-        key, _ = closure_key(root, name)
-        for directory, meta in cached_entries(cache, key):
+        for directory, meta in book_entries(root, cache, name):
             if not usable_origin(meta, target):
                 continue
             toolchain = meta.get("toolchain") or {}
@@ -979,6 +998,7 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
 def compatible_partial_choices(
     root: Path, options: dict[str, list[tuple[Path, dict]]], acl2: Path,
     pair_checker=cert_alists.acl2_certificate_pairs,
+    prefer: Iterable[str] = (),
 ) -> dict[str, tuple[Path, dict]]:
     """Choose a partial set whose ACL2 certificate alists actually agree.
 
@@ -988,6 +1008,16 @@ def compatible_partial_choices(
     cached pair when possible, and otherwise recertify the conflicting parent
     and its cached ancestors.  The last step is conservative: a new child's
     book-hash cannot be promised before it is certified.
+
+    That greedy search can drop a book for good although a later move made a
+    cached pair of it fit (sasl-3, 2026-09-29: two cached versions of
+    books/consumer-reason, the three image-world roots dropped while the set
+    finally chosen fit them).  So every result is completed (`complete`: any
+    dropped book one of whose pairs fits the chosen set comes back), and a
+    PREFERred book (the caller's roots; by default the books nothing else
+    here includes) that is still missing gets another search started from each
+    of its pairs with every dependency on a version that pair agrees with.
+    The answer keeps the most preferred books, then the most books.
     """
     indexed: list[tuple[str, Path, dict]] = []
     ids: dict[str, list[int]] = {}
@@ -1004,8 +1034,6 @@ def compatible_partial_choices(
                          pairs, acl2, root)
     if set(facts) != set(pairs):
         raise ValueError("ACL2 certificate-alist probe omitted a candidate pair")
-    selected = {name: candidates[0] for name, candidates in ids.items() if candidates}
-
     def conflicts(chosen: dict[str, int]) -> list[tuple[str, str]]:
         bad = []
         for parent in sorted(chosen):
@@ -1018,40 +1046,80 @@ def compatible_partial_choices(
                     raise ValueError("ACL2 could not read a cached certificate alist")
         return bad
 
-    seen: set[tuple[tuple[str, int], ...]] = set()
-    steps = 0
-    while True:
-        bad = conflicts(selected)
-        if not bad:
-            break
-        seen.add(tuple(sorted(selected.items())))
-        parent, child = bad[0]
-        best: dict[str, int] | None = None
-        best_count = len(bad) + 1
-        if steps < 8 * len(indexed) + 32:
-            for name in (child, parent):
-                for candidate in ids.get(name, []):
-                    if selected.get(name) == candidate:
-                        continue
+    def search(selected: dict[str, int]) -> dict[str, int]:
+        seen: set[tuple[tuple[str, int], ...]] = set()
+        steps = 0
+        while True:
+            bad = conflicts(selected)
+            if not bad:
+                break
+            seen.add(tuple(sorted(selected.items())))
+            parent, child = bad[0]
+            best: dict[str, int] | None = None
+            best_count = len(bad) + 1
+            if steps < 8 * len(indexed) + 32:
+                for name in (child, parent):
+                    for candidate in ids.get(name, []):
+                        if selected.get(name) == candidate:
+                            continue
+                        trial = dict(selected)
+                        trial[name] = candidate
+                        if tuple(sorted(trial.items())) in seen:
+                            continue
+                        count = len(conflicts(trial))
+                        if count < best_count:
+                            best, best_count = trial, count
+            if best is not None:
+                selected = best
+                steps += 1
+                continue
+            # No cached pair can satisfy this parent.  Its cached ancestors must
+            # also be authored afresh; their stored hash for it may differ.
+            selected = {name: candidate for name, candidate in selected.items()
+                        if name != parent and parent not in dependencies[name]}
+            steps += 1
+        return selected
+
+    def complete(selected: dict[str, int]) -> dict[str, int]:
+        changed = True
+        while changed:
+            changed = False
+            for name in sorted(ids, key=lambda n: (len(dependencies[n]), n)):
+                if name in selected:
+                    continue
+                for candidate in ids[name]:
                     trial = dict(selected)
                     trial[name] = candidate
-                    if tuple(sorted(trial.items())) in seen:
-                        continue
-                    count = len(conflicts(trial))
-                    if count < best_count:
-                        best, best_count = trial, count
-        if best is not None:
-            selected = best
-            steps += 1
-            continue
-        # No cached pair can satisfy this parent.  Its cached ancestors must
-        # also be authored afresh; their stored hash for it may differ.
-        selected = {name: candidate for name, candidate in selected.items()
-                    if name != parent and parent not in dependencies[name]}
-        steps += 1
+                    if not conflicts(trial):
+                        selected, changed = trial, True
+                        break
+        return selected
 
+    wanted = [name for name in (prefer or [n for n in options
+                                           if not any(n in dependencies[o] for o in options)])
+              if ids.get(name)]
+
+    def score(chosen: dict[str, int]) -> tuple[int, int]:
+        return (sum(1 for name in wanted if name in chosen), len(chosen))
+
+    best = complete(search({name: candidates[0] for name, candidates in ids.items()
+                            if candidates}))
+    for name in wanted:
+        if name in best:
+            continue
+        for candidate in ids[name]:
+            start = {n: c[0] for n, c in ids.items() if c}
+            start[name] = candidate
+            for child in dependencies[name]:
+                agreeing = [c for c in ids.get(child, [])
+                            if facts[(candidate, c)] != (True, False)]
+                if agreeing:
+                    start[child] = agreeing[0]
+            trial = complete(search(start))
+            if score(trial) > score(best):
+                best = trial
     return {name: (indexed[candidate][1], indexed[candidate][2])
-            for name, candidate in selected.items()}
+            for name, candidate in best.items()}
 
 
 def install_partial(root: Path, cache: Path, roots: Iterable[str],
@@ -1093,8 +1161,7 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
     report.toolchain_identity = toolchain_identity
     options: dict[str, list[tuple[Path, dict]]] = {}
     for name in sorted(required):
-        key, _ = closure_key(root, name)
-        usable = [(directory, meta) for directory, meta in cached_entries(cache, key)
+        usable = [(directory, meta) for directory, meta in book_entries(root, cache, name)
                   if usable_origin(meta, target)
                   and meta.get("toolchain_identity") == toolchain_identity]
         own = [entry for entry in usable if entry[1].get("origin_root") == target]
@@ -1112,7 +1179,8 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
                          "certificate-alist compatibility")
     if pair_checker is None:
         pair_checker = cert_alists.acl2_certificate_pairs
-    selected = compatible_partial_choices(root, options, acl2, pair_checker)
+    selected = compatible_partial_choices(root, options, acl2, pair_checker,
+                                          prefer=roots)
     for name in sorted(required):
         source = root / f"{name}.lisp"
         chosen = selected.get(name)
@@ -1232,7 +1300,9 @@ def certified_books(manifests: list[dict],
                 cert=certificate, evidence=evidence, origin=origin,
                 compatibility=manifest_compatibility(manifest),
                 certification_provenance=manifest_provenance(manifest),
-                fasl=compiled.get(book)))
+                fasl=compiled.get(book),
+                world=str(((manifest.get("cert_images") or {}).get("book_images")
+                           or {}).get(book, "plain"))))
     return found
 
 
@@ -1383,8 +1453,15 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
             report.unverified.append(
                 f"{name}: no qualified ACL2 launcher/core/runtime fingerprint")
             continue
+        if record.world != "plain" and record.world not in cert_images.worlds(
+                root.resolve(), name):
+            # Made in an image this tree's rule does not allow for the book
+            # (or a v2 label without the image's roots): never filed.
+            report.unverified.append(f"{name}: made in world {record.world}, "
+                                     "which the image rule does not allow")
+            continue
         try:
-            key, listing = closure_key(root, name)
+            key, listing = closure_key(root, name, record.world)
             sources = closure_listing(closure(root, name))
         except UnreadableBook as error:
             report.unreadable.append(f"{name}: {error}")
@@ -1431,6 +1508,7 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
         "book": name,
         "closure_key": key,
         "key_version": KEY_VERSION,
+        "world": record.world,
         "closure": listing,
         "cert_sha256": record.cert,
         "port_sha256": content_hash(port) if port is not None else None,
@@ -1549,11 +1627,10 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
         report.books += 1
         name = book_name(root, source)
         try:
-            key, _ = closure_key(root, name)
+            entries = book_entries(root, cache, name)
         except UnreadableBook as error:
             report.unreadable.append(f"{name}: {error}")
             continue
-        entries = cached_entries(cache, key)
         cert = source.with_suffix(".cert")
         chosen = choose_entry(entries, str(root.resolve()))
         if chosen is None:
@@ -1600,12 +1677,11 @@ def status(root: Path, cache: Path) -> Report:
         if valid_looking(source.with_suffix(".cert")):
             report.certified_locally += 1
         try:
-            key, _ = closure_key(root, name)
+            entries = book_entries(root, cache, name)
         except UnreadableBook as error:
             report.unreadable.append(f"{name}: {error}")
             report.uncached.append(name)
             continue
-        entries = cached_entries(cache, key)
         chosen = choose_entry(entries, str(root.resolve())) if entries else None
         if not entries:
             report.uncached.append(name)
@@ -1752,7 +1828,9 @@ def legacy_byte_key(root: Path, name: str) -> str:
 def rekey(root: Path, cache: Path, names: list[str] | None = None) -> RekeyReport:
     """File every entry made for this tree's exact bytes under its form key too.
 
-    Run once per cache when the key moved to forms (2026-09-28), against a
+    Byte-keyed (v1) entries were all made in a plain world; each is filed
+    under its plain v3 key.  Run once per cache when the key moved (forms
+    2026-09-28, worlds 2026-09-29), against a
     checkout of the commit that moved it, so the next run does not recertify
     what the cache already holds.  An entry is linked (hard links, the bytes
     are immutable) only under the key of a book whose whole closure has the
@@ -1793,7 +1871,7 @@ def rekey(root: Path, cache: Path, names: list[str] | None = None) -> RekeyRepor
                 for path in directory.iterdir():
                     if path.name not in ("meta.json", ".entry.lock") and path.is_file():
                         os.link(path, staging / path.name)
-            meta.update({"closure_key": key, "closure": listing,
+            meta.update({"closure_key": key, "closure": listing, "world": "plain",
                          "closure_sources": sources, "key_version": KEY_VERSION,
                          "rekeyed_from": old.name})
             write_text_atomic(staging / "meta.json", json.dumps(meta, indent=2, sort_keys=True) + "\n")
