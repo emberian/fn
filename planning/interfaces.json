@@ -4,7 +4,7 @@
   "coverage": {
     "declared": 41,
     "declared_and_dispatched": 26,
-    "guard_verified": 23
+    "guard_verified": 31
   },
   "entries": [
     {
@@ -22,7 +22,7 @@
     {
       "name": "fn-reader-use-seed",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
@@ -39,7 +39,7 @@
     {
       "name": "fn-reader-set-posting",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -53,7 +53,7 @@
     {
       "name": "fn-reader-model-octets",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -67,7 +67,7 @@
     {
       "name": "fn-reader-reset",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
@@ -86,7 +86,7 @@
     {
       "name": "fn-reader-chunk",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [
         [
           "octets",
@@ -110,7 +110,7 @@
     {
       "name": "fn-reader-outcome",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
@@ -129,7 +129,7 @@
     {
       "name": "fn-reader-observe-clock",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
@@ -238,7 +238,7 @@
     {
       "name": "fn-reader-use-store",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
