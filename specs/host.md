@@ -1644,3 +1644,18 @@ and the new tree simultaneously. The existing checkpoint disk estimate
 does not bound Lisp summary conses, history-image scratch or its host hash
 index. None of marker presence, an ARTICLE-positive reopen or the generic
 crash theorem closes those pending obligations.
+
+The pending running capture adapter `fn-owner-osn-capture` returns the actual
+immutable Store pointer, profile, genesis and installed owner node secret
+under the owner mutex, alongside a fresh process-local ticket and the
+Store's carried committed record count. It acquires the existing shared
+publication slot only when no snapshot, checkpoint or reclaim occupies
+it. The caller must pin the arena before leaving that mutex. Configuration
+history and Store statement keyring/generation belong to the captured Store,
+not later globals. The owner node secret is a separate captured field.
+`fn-owner-osn-release` clears exactly that snapshot ticket and shared count;
+it never updates the source checkpoint base, attempted/durable counts or
+its deferred verdict. A stale callback cannot clear a newer capture at the
+same frontier. Source file versions and maintenance resource reservations
+still need their own actual lifetime/refinement, so the adapter is not yet
+wired to a running request.

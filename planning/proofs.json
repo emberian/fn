@@ -17811,6 +17811,28 @@
         "fn-pio-close-waits-for-every-worker"
       ],
       "progress_note": "Folded definitions guard-verified and all 16 forms admitted in clean REPL pio-clean on hbox; teeth evaluated there. Certification and matching native image pending runner union; no pass claimed."
+    },
+    {
+      "id": "PRF-1074",
+      "title": "Snapshot capture lease shares checkpoint/reclaim exclusion and stale completions cannot release another capture",
+      "statement": "Subjects fn-osl-acquire and fn-osl-release, used by owner adapters fn-owner-osn-capture/release. With natural next ticket and captured count, admission accepts exactly if active snapshot, publication and reclaim observations are all absent. Release requires a well-shaped lease, the exact natural ticket and the matching shared publication count; every refusal returns the prior lease unchanged. Monotone per-owner tickets separate stale callbacks at equal record counts. Host mutex/pin/thread composition, resource admission and snapshot producer dispatch remain pending; this is lease decision evidence, not full snapshot consistency or recovery.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-040"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-osl-acquisition-is-exclusive",
+        "fn-osl-release-requires-the-matching-ticket-and-slot"
+      ],
+      "evidence": [
+        "books/snapshot-capture-lease.lisp",
+        "tests/acl2/snapshot-capture-lease-tests.lisp",
+        "host/owner-host.lisp"
+      ],
+      "progress_note": "Clean persvati osll61 REPL: 10 forms zero refusal, 0.01s/2198 steps, source book encapsulated; owner adapter admission/full image matching native pending."
     }
   ]
 }

@@ -360,3 +360,5 @@ it and `host/store-host.lisp` marshals under it. A host wrapper never decides
 anything a book does not already decide.
 
 - `fn-osd-`: staged snapshot completion publication (`snapshot-publication.lisp`).
+
+- `fn-osl-`: snapshot capture lease (`snapshot-capture-lease.lisp`).

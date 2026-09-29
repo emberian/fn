@@ -1,0 +1,31 @@
+; PRF-1074/HST-040: one snapshot lease shares the checkpoint/reclaim slot.
+; This controls capture ownership only; it does not admit resource demand,
+; establish the target recovery projection, or own host source file names.
+(in-package "ACL2")
+(defun fn-osl-leasep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 2) (natp (car x)) (natp (cadr x))))
+(defun fn-osl-acquire (next count active publication reclaim)
+  (declare (xargs :guard t))
+  (cond ((or (not (natp next)) (not (natp count)))
+         (list :refused :capture-state active next))
+        ((or active publication reclaim)
+         (list :refused :maintenance-busy active next))
+        (t (list :accepted :captured (list next count) (+ 1 next)))))
+(defun fn-osl-release (active ticket shared-count)
+  (declare (xargs :guard t))
+  (if (and (fn-osl-leasep active) (natp ticket)
+           (equal ticket (car active)) (equal shared-count (cadr active)))
+      (list :released nil)
+    (list :refused active)))
+(defthm fn-osl-acquisition-is-exclusive
+  (implies (and (natp next) (natp count))
+           (iff (equal (car (fn-osl-acquire next count active publication reclaim))
+                       :accepted)
+                (and (not active) (not publication) (not reclaim)))))
+(defthm fn-osl-release-requires-the-matching-ticket-and-slot
+  (and (iff (equal (car (fn-osl-release active ticket shared-count)) :released)
+            (and (fn-osl-leasep active) (natp ticket)
+                 (equal ticket (car active)) (equal shared-count (cadr active))))
+       (implies (not (equal (car (fn-osl-release active ticket shared-count)) :released))
+                (equal (cadr (fn-osl-release active ticket shared-count)) active))))

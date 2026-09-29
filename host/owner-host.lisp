@@ -40,6 +40,7 @@
 (include-book "../books/owner-compact-request")
 ; S3b: the native export request/status decisions belong to the full image.
 (include-book "../books/owner-export-request")
+(include-book "../books/snapshot-capture-lease")
 ; Row S10 (lane operability-2): a refused control post completion names the
 ; Store's word on the reply and the line.
 (include-book "../books/owner-control-post-reason")
@@ -897,6 +898,45 @@
                              (fn-gen-node (cadr v))
                            nil)
                          (fn-gen-verdict-salt v)))))))
+
+ ; S7: capture by pointer while sharing the checkpoint/reclaim scratch gate.
+; Caller enters only after resource admission and with the owner mutex held;
+; then pins the arena before launching any off-mutex preparation.  This API
+; does no enumeration, replay, canon-row walk, or file opening.  Offline key
+; writers remain excluded by the running owner's existing store writer lock.
+(defun fn-owner-osn-capture (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (fn-owner-core state))
+         (st (fn-own-store owner))
+         (count (fn-sf-records-count (fn-sn-files st)))
+         (next (nfix (fn-owner-sco-global 'fn-owner-osn-next-ticket state)))
+         (admit (fn-osl-acquire next count
+                               (fn-owner-sco-global 'fn-owner-osn-lease state)
+                               (fn-owner-sco-global 'fn-owner-sco-inflight state)
+                               (fn-owner-sco-global 'fn-owner-orc-pass state))))
+    (if (not (equal (car admit) :accepted))
+        (value admit)
+      (let* ((state (f-put-global 'fn-owner-osn-next-ticket (nth 3 admit) state))
+             (state (f-put-global 'fn-owner-osn-lease (nth 2 admit) state))
+             (state (f-put-global 'fn-owner-sco-inflight count state)))
+        (value (list :captured (nth 2 admit) st
+                     (fn-owner-store-profile state)
+                     (fn-owner-sco-global 'fn-store-genesis state)
+                     (fn-own-node-secret owner)))))))
+
+(defun fn-owner-osn-release (ticket state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((release (fn-osl-release
+                  (fn-owner-sco-global 'fn-owner-osn-lease state) ticket
+                  (fn-owner-sco-global 'fn-owner-sco-inflight state))))
+    (if (not (equal (car release) :released))
+        (value release)
+      (let* ((state (f-put-global 'fn-owner-osn-lease nil state))
+             (state (f-put-global 'fn-owner-sco-inflight nil state)))
+        ; Snapshot publication never advances the SOURCE checkpoint's base,
+        ; attempted/durable counts or deferred verdict.  Even cancellation
+        ; releases precisely its lease rather than a new publication's.
+        (value release)))))
 
 ; Row S3b (lane operability-7): `store export DIR' on the running owner
 ; (host/native/owner.lisp fnn-owner-export-request).  fn-owner-oex-capture,
