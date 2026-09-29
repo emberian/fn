@@ -32,6 +32,8 @@
 (include-book "bp-carry-frame")
 (include-book "bp-carry-control")
 (include-book "owner-compact-request")
+(include-book "owner-maintenance-request")
+(include-book "owner-control-post-reason")
 (include-book "bp-request-plan")
 (include-book "journal-publish")
 (include-book "app-journal")

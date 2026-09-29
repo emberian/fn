@@ -4654,9 +4654,64 @@ an owner holds the Store: `operator CONFIG status' asks that owner instead."
            +fnn-exit-ok+)
       (fnn-store-close store))))
 
-(defun fnn-command-status (root)
+(defun fnn-read-regular-prefix (path maximum)
+  "The first MAXIMUM octets of one regular, non-symlink file (all of it when
+it is shorter), or NIL when there is none."
+  (let ((st (fnn-check-regular path)))
+    (and st
+         (let ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
+           (unwind-protect
+                (fnn-read-bounded-fd fd maximum (min maximum (sb-posix:stat-size st)))
+             (fnn-close fd))))))
+
+(defun fnn-stopped-observation (root)
+  "Row S3: what a stopped store's status is rendered from, nothing replayed:
+config.json's octets, the newest checkpoint's segment header (ACL2's
+fn-omr-header-octets of the file, no more), the journal's octets (every
+segment's lstat size) and the checkpoint file's lstat."
+  (let* ((store (make-fnn-store root))
+         (config (fnn-octet-list (fnn-read-regular-bounded (fnn-config-path store) 16384)))
+         (prefix (fnn-read-regular-prefix (fnn-state-checkpoint-path store)
+                                          (fnn-nat (fnn-core 'fn-omr-header-octets))))
+         (header (and prefix (fnn-octet-list prefix)))
+         (dir (fnn-journal-dir store))
+         (journal (loop for name in (fnn-log-segment-names store)
+                        for st = (fnn-lstat (fnn-join dir name))
+                        sum (if st (sb-posix:stat-size st) 0))))
+    (list config header journal (fnn-state-checkpoint-file-observation store))))
+
+(defun fnn-stopped-report (root kind &optional last)
+  "Row S3: `status' or `health' on a stopped store, from its checkpoint header
+and its journal's sizes (books/owner-maintenance-request.lisp
+fn-omr-stopped-report, fn-omr-stopped-health-report): (EXIT OCTETS) for
+:status, the health octets (their exit is the header's) for :health.  A
+writer lock an owner holds refuses by name first (fn-omr-route :held): the
+report is never rendered behind an owner."
+  (let ((liveness (fnn-core 'fn-native-control-host-liveness nil
+                            (fnn-store-owner-observation root))))
+    (when (eq (fnn-core 'fn-omr-route liveness) :held)
+      (fnn-refuse "~a" (fnn-core 'fn-omr-held-line
+                                 (if (eq kind :health) "health" "status")))))
+  (destructuring-bind (config header journal obs) (fnn-stopped-observation root)
+    (if (eq kind :health)
+        (fnn-core 'fn-omr-stopped-health-report last config header journal obs)
+      (fnn-core 'fn-omr-stopped-report config header journal obs))))
+
+(defun fnn-command-stopped-status (root)
+  (let ((report (fnn-stopped-report root :status)))
+    (unless (and (consp report) (member (first report) '(0 1))
+                 (fnn-octet-list-p (second report)))
+      (fnn-fault "ACL2 returned a malformed stopped report"))
+    (fnn-write-report (second report))
+    (if (eql (first report) 0) +fnn-exit-ok+ +fnn-exit-refused+)))
+
+(defun fnn-command-status (root &optional replayp)
+  "Row S3: a stopped store's status is its checkpoint header's (no replay);
+`--replay' (REPLAYP) asks for the report over the replayed log."
   (fnn-filesystem-durability-warn root)
-  (fnn-command-live-report root :status))
+  (if replayp
+      (fnn-command-live-report root :status)
+    (fnn-command-stopped-status root)))
 
 (defun fnn-command-retention (root)
   "Report the replayed ACL2 ledger's pin count and reserved charge."

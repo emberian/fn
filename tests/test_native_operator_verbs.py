@@ -211,7 +211,7 @@ class NativeOperatorInitTests(NativeOperatorVerbFixture):
         for entry in ("config.json", "writer.lock", "journal/000001.log", "config"):
             self.assertTrue((self.store / entry).exists(), entry)
 
-        status = self.operator("status")
+        status = self.operator("status", "--replay")
         self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
         self.assertIn(b"transactions=0", status.stdout)
 
@@ -470,7 +470,9 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
     listener = True
 
     def headroom(self):
-        status = self.operator("status")
+        # Row S3: `--replay' asks a stopped store for the replayed counts (a
+        # running owner answers its own either way).
+        status = self.operator("status", "--replay")
         self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
         fields = {}
         count = None

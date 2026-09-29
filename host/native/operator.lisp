@@ -499,13 +499,20 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
     (handler-case
         (let ((code (case action
-                      (:status (fnn-command-status root))
+                      (:status (fnn-command-status
+                                root (fnn-core 'fn-omr-status-replayp result)))
                       (:recover
-                       ;; ACL2's parse: (:recover) or (:recover AT), the
-                       ;; operator's confirmed repair (books/native-operator.lisp).
-                       (let ((at (second (fnn-core 'fn-native-operator-result-arguments result))))
-                         (fnn-command-recover root (and (stringp at)
-                                                        (list "--repair" "truncate" at)))))
+                       ;; Row S3: with an owner, ACL2's route answers
+                       ;; (fn-omr-route); the offline recover runs only when
+                       ;; no owner holds the store.
+                       (let ((route (fnn-operator-maintenance-route result root)))
+                         (if (eq route :offline)
+                             ;; ACL2's parse: (:recover) or (:recover AT), the
+                             ;; operator's confirmed repair (books/native-operator.lisp).
+                             (let ((at (second (fnn-core 'fn-native-operator-result-arguments result))))
+                               (fnn-command-recover root (and (stringp at)
+                                                              (list "--repair" "truncate" at))))
+                           (fnn-operator-execute-recover-live route root result))))
                       (:compact (fnn-operator-execute-compaction
                                  result root (lambda () (funcall *fnn-compact-callback* root))))
                       (:reclaim (funcall *fnn-reclaim-callback* root :reclaim))
@@ -591,7 +598,12 @@ nothing answers and nothing holds the lock."
                         :not-running))
            (fnn-write-report (fnn-core 'fn-native-health-host-not-running-lines
                                        (fnn-operator-last-run result))))
-         (fnn-command-live-report root kind))
+         ;; Row S3: a stopped store's status is its checkpoint header's
+         ;; (fnn-command-stopped-status); `--replay' asks for the replay.
+         (if (and (eq kind :status)
+                  (not (and result (fnn-core 'fn-omr-status-replayp result))))
+             (fnn-command-stopped-status root)
+           (fnn-command-live-report root kind)))
         (:refused +fnn-exit-refused+)
         (t +fnn-exit-uncertain+)))))
 
@@ -655,20 +667,12 @@ nothing answers and nothing holds the lock."
         ((:answered :fenced) (second step))
         (:refused :refused)
         ;; friend-path-2: nothing runs where an owner would listen.
+        ;; Row S3: a stopped store's health is its checkpoint header's
+        ;; (fnn-stopped-report), nothing replayed; MIN has no headroom to
+        ;; judge without an owner.
         (:not-running
-         (let ((last (and result (fnn-operator-last-run result))))
-           (multiple-value-bind (store records) (fnn-open-live-store root nil)
-             (declare (ignore records))
-             (unwind-protect
-                  (fnn-core 'fn-native-health-host-not-running
-                            (fnn-store-config store) min last *the-live-state*)
-               (fnn-store-close store)))))
-        (t (multiple-value-bind (store records) (fnn-open-live-store root nil)
-             (declare (ignore records))
-             (unwind-protect
-                  (fnn-core 'fn-native-health-host-offline
-                            (fnn-store-config store) min *the-live-state*)
-               (fnn-store-close store))))))))
+         (fnn-stopped-report root :health (and result (fnn-operator-last-run result))))
+        (t (fnn-stopped-report root :health nil))))))
 
 (defun fnn-operator-execute-health (result)
   (let* ((root (fnn-core 'fn-native-operator-host-result-store-root result))
@@ -733,6 +737,53 @@ path no platform binds whole becomes ACL2's :control-path-too-long refusal
 ;;; owner's lock refuses it), asks the store node whether it binds the
 ;;; Message-ID, and prints ACL2's report line: accepted (exit 0) or absent
 ;;; (exit 1).  The host decides nothing.
+(defun fnn-operator-maintenance-route (result root)
+  "Row S3: ACL2's route for a maintenance verb (books/owner-maintenance-
+request.lisp fn-omr-route over the liveness decision of the socket and the
+writer lock): :owner, :held or :offline."
+  (let* ((live *fnn-operator-live-owner*)
+         (path-list (fnn-core 'fn-omr-control-path-octets result))
+         (liveness (if (and live (fnn-octet-list-p path-list) (consp path-list))
+                       (funcall (fnn-olo-admin-observe live) root path-list nil)
+                     :offline)))
+    (fnn-core 'fn-omr-route liveness)))
+
+(defun fnn-operator-execute-recover-live (route root result)
+  "`recover' with an owner: accepted on a live owner (ACL2's line, then that
+owner's status), refused by name on a held lock (fn-omr-recover-line)."
+  (let ((line (fnn-core 'fn-omr-recover-line route)))
+    (unless (stringp line)
+      (fnn-fault "ACL2 returned no recover line for ~a" route))
+    (fnn-out "~a" line)
+    (if (eq (fnn-core 'fn-omr-recover-status route) :accepted)
+        (fnn-operator-status-once
+         root (fnn-octets (fnn-core 'fn-omr-control-path-octets result)) :status result)
+      +fnn-exit-refused+)))
+
+(defun fnn-operator-execute-inspect-live (result msgid-list)
+  "Row S3: `store inspect ID' on a running owner is the owner's own lookup,
+asked as the administrative vector `inspect request ID' (host/native/admin.lisp
+fnn-owner-inspect-request); the client renders the offline verb's report from
+the word (KEYSTONE fn-omr-inspect-live-is-the-offline-report).  An answer
+that is neither accepted nor refused (the transport) is uncertain."
+  (let ((control-path (fnn-octets (fnn-core 'fn-omr-control-path-octets result))))
+    (multiple-value-bind (status word)
+        (fnn-control-admin control-path
+                           (list (fnn-core 'fn-record-string-octets "inspect")
+                                 (fnn-core 'fn-record-string-octets "request")
+                                 msgid-list))
+      (cond ((not (member status '(:accepted :refused)))
+             (fnn-out "inspect uncertain reason=~a"
+                      (if (fnn-octet-list-p word) (fnn-octets-string (fnn-octets word)) status))
+             +fnn-exit-uncertain+)
+            (t
+             (let ((report (fnn-core 'fn-omr-inspect-live-report msgid-list word)))
+               (unless (and (consp report) (member (first report) '(0 1))
+                            (stringp (third report)))
+                 (fnn-fault "ACL2 returned a malformed inspect report"))
+               (fnn-out "~a" (third report))
+               (if (eql (first report) 0) +fnn-exit-ok+ +fnn-exit-refused+)))))))
+
 (defun fnn-operator-execute-inspect (result)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result))
         (msgid-list (fnn-core 'fn-native-operator-host-result-inspect-msgid-octets
@@ -740,6 +791,20 @@ path no platform binds whole becomes ACL2's :control-path-too-long refusal
     (unless (and (fnn-octet-list-p msgid-list) (consp msgid-list))
       (fnn-fault "ACL2 accepted an inspect plan with no Message-ID"))
     (handler-case
+        (case (fnn-operator-maintenance-route result root)
+          (:owner (fnn-operator-execute-inspect-live result msgid-list))
+          (:held (fnn-out "~a" (fnn-core 'fn-omr-held-line "inspect"))
+                 +fnn-exit-refused+)
+          (t (fnn-operator-execute-inspect-offline root msgid-list)))
+      (error (condition)
+        (let ((code (fnn-exit-code-for condition)))
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
+                                    "inspect" condition)
+          code)))))
+
+(defun fnn-operator-execute-inspect-offline (root msgid-list)
+  "The offline inspect: the store opened read-only, the lookup, the report."
+  (progn
         (multiple-value-bind (store records) (fnn-open-live-store root nil)
           (declare (ignore records))
           (unwind-protect
@@ -752,12 +817,7 @@ path no platform binds whole becomes ACL2's :control-path-too-long refusal
                    (fnn-fault "ACL2 returned a malformed inspect report"))
                  (fnn-out "~a" (third report))
                  (if (eql (first report) 0) +fnn-exit-ok+ +fnn-exit-refused+))
-            (fnn-store-close store)))
-      (error (condition)
-        (let ((code (fnn-exit-code-for condition)))
-          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
-                                    "inspect" condition)
-          code)))))
+            (fnn-store-close store)))))
 
 (defun fnn-operator-dispatch-plan (result0)
   (let* ((result (fnn-operator-store-outcome result0))

@@ -64,7 +64,9 @@ class NodeOperatorRows(unittest.TestCase):
         V0-NODE-REINIT-SAFE, V0-NODE-START, V0-NODE-STOP."""
         created = self.node.init(GROUP)
         self.assertIn(str(self.node.store_path).encode(), created.stdout)   # CONFIG
-        status = self.node.operator("status", expect=EXIT.OK)
+        # Row S3: a stopped store's bare `status' is its checkpoint header's;
+        # the replayed counts are `--replay'.
+        status = self.node.operator("status", "--replay", expect=EXIT.OK)
         self.assertRegex(status.stdout, rb"transactions=0 articles=0 ")
         self.node.start()                                                    # START
         self.node.post("<reinit@example.invalid>", article("<reinit@example.invalid>",
