@@ -13888,9 +13888,9 @@
         "books/byte-store-range-read.lisp",
         "tests/acl2/store-log-durable-tests.lisp",
         "planning/evidence/byte-model-2026-09-29.md",
-        "planning/evidence/manifests/certify-20260929T010219Z-819660.json"
+        "planning/evidence/manifests/certify-20260929T031304Z-2122246.json"
       ],
-      "progress_note": "Lane byte-model (Fable 5.1, 2026-09-29): REPL-admitted on persvati (store-log-durable 62 forms, the keystone 800 steps; byte-store-range-read's chain); certified on persvati, farm run-20260929T031004Z-7de9 (4/0), manifest planning/evidence/manifests/certify-20260929T010219Z-819660.json. The administrative publication's byte program is the row's one undelivered item (successor).",
+      "progress_note": "Lane byte-model (Fable 5.1, 2026-09-29): REPL-admitted on persvati (store-log-durable 62 forms, the keystone 800 steps; byte-store-range-read's chain); certified on persvati, farm run-20260929T031004Z-7de9 (4/0), manifest planning/evidence/manifests/certify-20260929T031304Z-2122246.json. The administrative publication's byte program is the row's one undelivered item (successor).",
       "events": [
         "fn-lgu-acknowledged-article-is-recoverable-at-every-crash-point",
         "fn-lgu-acknowledged-article-is-recoverable-at-every-cut-of-recovery",
