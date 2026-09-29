@@ -13808,6 +13808,7 @@
       "evidence": [
         "books/number-durability.lisp",
         "books/number-durability-handles.lisp",
+        "planning/evidence/manifests/certify-20260929T094650Z-3809015.json",
         "tests/acl2/number-durability-tests.lisp",
         "tools/power_loss.py",
         "planning/evidence/manifests/certify-20260928T214017Z-2864778.json",
