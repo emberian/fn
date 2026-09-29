@@ -135,7 +135,8 @@ class ExtentIdentityFixture(verbs.NativeOperatorVerbFixture):
     def read(self, client, message_id):
         try:
             return client.article(message_id)
-        except (OSError, AssertionError, ValueError):
+        except (OSError, EOFError, AssertionError, ValueError):
+            # A refused read stops the owner: the connection closes.
             return None
 
     def substitute(self, edit):
