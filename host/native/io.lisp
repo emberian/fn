@@ -4689,6 +4689,25 @@ an owner holds the Store: `operator CONFIG status' asks that owner instead."
            +fnn-exit-ok+)
       (fnn-store-close store))))
 
+(defun fnn-command-inspect-group-offline (root kind)
+  "Row S3d: `store inspect --group GROUP' with no owner running: ACL2's report
+of KIND, (:inspect-group . GROUP), over the archive this process replayed from
+the checkpoint and its suffix (books/control-evidence.lisp
+fn-cev-offline-report -> books/owner-inspect-group.lisp fn-oig-report),
+through the offline renderer every status kind takes; the exit is ACL2's
+reading of the octets printed (fn-oig-report-exit)."
+  (multiple-value-bind (store records) (fnn-open-live-store root nil)
+    (declare (ignore records))
+    (unwind-protect
+         (let ((octets (fnn-core 'fn-native-live-status-host-offline kind
+                                 (fnn-store-config store) (fnn-store-observation store)
+                                 (fnn-live-arena) *the-live-state*)))
+           (unless (fnn-octet-list-p octets)
+             (fnn-fault "ACL2 returned a malformed inspect group report"))
+           (fnn-write-report octets)
+           (fnn-core 'fn-native-live-status-host-inspect-group-exit octets))
+      (fnn-store-close store))))
+
 (defun fnn-read-regular-prefix (path maximum)
   "The first MAXIMUM octets of one regular, non-symlink file (all of it when
 it is shorter), or NIL when there is none."

@@ -5315,6 +5315,32 @@
         "tests/test_native_operator_refusals.py"
       ],
       "implementation_note": "Lane operability-2 (row S10, 2026-09-29): items (a) the post reason, (c) policy set, (e) SIGHUP. Open: (b) init refusals with numbers and the development preset for unnamed init fields; (d) the unread [ops]/[alerts] keys (implement a size-rotation decision or delete them; both edit books/native-config)."
+    },
+    {
+      "id": "HST-038",
+      "title": "Maintenance while serving, the group listing: `store inspect --group GROUP' prints the group's memberships (article numbers to Message-IDs, in number order, after `inspect group=GROUP members=N') from the archive the running owner serves, read through the status exchange (FNLS frame kind 3, as `moderation list GROUP' is), and the same report from the archive a stopped store's open replays from the checkpoint and its suffix; a group the node does not carry is refused by name with what it would take, exit 1; refused by name when an owner holds the lock and answers nothing",
+      "specification": "specs/host.md#operator-commands-and-owner-critical-sections",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-1004"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-maintenance-request.lisp",
+        "tests/acl2/owner-maintenance-request-tests.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "host/native/admin.lisp",
+        "host/native/operator.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_maintenance_live.py"
+      ],
+      "implementation_note": "Lane operability-2 (row S3, 2026-09-29): PKT-868's owner-request route (the administrative vector over the control socket, ACL2's liveness decision) carries `inspect request ID'; `recover' with a live owner is a status read; the stopped report is fn-omr-stopped-report over config.json, the checkpoint's 37-octet header and lstat sizes. `store export' on the running owner is the row's remaining item (S3b)."
     }
   ]
 }

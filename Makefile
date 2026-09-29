@@ -177,6 +177,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-live-status-tests \
 	books/retention-figures \
 	books/control-evidence-grammar \
+	books/owner-inspect-group \
+	tests/acl2/owner-inspect-group-tests \
 	books/control-evidence \
 	tests/acl2/control-evidence-tests \
 	books/moderation-verbs \

@@ -593,6 +593,17 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
               (fn-nop-msgid-wordp (cadr words)))
          (fn-nop-result :accepted :plan "store" config
                         (list :inspect (cadr words))))
+        ; Row S3d (lane operability-5): `store inspect --group GROUP', the
+        ; group's memberships, article numbers to Message-IDs
+        ; (books/owner-inspect-group.lisp fn-oig-report), over the stopped
+        ; store or the running owner's archive.  GROUP as typed
+        ; (fn-cevg-groupp): the report looks it up.
+        ((and (consp words) (equal (car words) "inspect")
+              (consp (cdr words)) (equal (cadr words) "--group")
+              (consp (cddr words)) (null (cdddr words))
+              (fn-cevg-groupp (caddr words)))
+         (fn-nop-result :accepted :plan "store" config
+                        (list :inspect-group (caddr words))))
         ((and (consp words) (equal (car words) "checkpoint") (null (cdr words)))
          (fn-nop-result :accepted :plan "store" config (list :checkpoint)))
         ((and (consp words) (equal (car words) "reclaim") (null (cdr words)))
@@ -657,7 +668,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
         ((equal subject "recover") "usage: fn operator CONFIG recover [--repair truncate SEGMENT:OFFSET] (the repair only as a log-damaged refusal names it: the damaged segment is kept under quarantine/, then the log is truncated before the damage)")
         ((equal subject "store")
-         "usage: fn operator CONFIG store {export ARCHIVE-DIR | import ARCHIVE-DIR [--FIELD N ...] | compact | checkpoint | reclaim [--dry-run | --recorded] | inspect MESSAGE-ID | rebind-filesystem [--storage-require-durable on|off]} (offline; refused while an owner runs; rebind-filesystem records the filesystem the store is on now, after a deliberate move or a restore; import makes a new store: the configured store must not exist, and the archive's profile, with any field raised, is the new store's)")
+         "usage: fn operator CONFIG store {export ARCHIVE-DIR | import ARCHIVE-DIR [--FIELD N ...] | compact | checkpoint | reclaim [--dry-run | --recorded] | inspect MESSAGE-ID | inspect --group GROUP | rebind-filesystem [--storage-require-durable on|off]} (offline; refused while an owner runs; rebind-filesystem records the filesystem the store is on now, after a deliberate move or a restore; import makes a new store: the configured store must not exist, and the archive's profile, with any field raised, is the new store's)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME | group describe NAME [TEXT ...] (LIST NEWSGROUPS shows TEXT; no TEXT clears it) | group policy NAME y|n | group moderate NAME --moderators LOGIN[,LOGIN...] [--queue QUEUE] [--submission ADDRESS] | group moderate NAME --off | group subscribe-default [NAME ...] (LIST SUBSCRIPTIONS recommends the NAMEs in order; none clears it)")
         ((equal subject "motd")
          "usage: fn operator CONFIG motd {set LINE [LINE ...] | clear} (LIST MOTD shows one LINE per argument, each at most 256 octets)")
@@ -1699,6 +1710,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
                          :inspect)
                   :inspect)
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :inspect-group)
+                  :inspect-group)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                          :rebind-filesystem)
                   :rebind-filesystem)
                  (t :none)))
@@ -2566,7 +2580,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
 
 (defconst *fn-nop-store-actions*
   '(:run :post :status :health :recover :compact :checkpoint :reclaim
-    :reclaim-dry-run :reclaim-recorded :export :admin :inspect
+    :reclaim-dry-run :reclaim-recorded :export :admin :inspect :inspect-group
     :peering :principal :keys :tls :carry))
 
 (defun fn-native-operator-result-needs-storep (result)
@@ -2743,6 +2757,17 @@ control path no supported platform binds whole."
            (stringp (fn-ncfg-second (fn-native-operator-result-arguments result))))
       (fn-record-string-octets
        (fn-ncfg-second (fn-native-operator-result-arguments result)))
+    nil))
+
+; Row S3d: the group `store inspect --group GROUP' names, or nil.
+(defun fn-native-operator-result-inspect-group (result)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "store")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :inspect-group)
+           (stringp (fn-ncfg-second (fn-native-operator-result-arguments result))))
+      (fn-ncfg-second (fn-native-operator-result-arguments result))
     nil))
 
 (defun fn-nop-octets-text (octets)

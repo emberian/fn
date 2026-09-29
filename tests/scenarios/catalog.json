@@ -5986,6 +5986,30 @@
         "books/owner-export-request.lisp",
         "tests/acl2/owner-export-request-tests.lisp"
       ]
+    },
+    {
+      "id": "SCN-213",
+      "title": "`store inspect --group GROUP' lists the memberships on the running owner and offline: the same numbered lines, a checkpoint and a suffix between; an unknown group refused by name",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-038"
+      ],
+      "steps": [
+        "A development-profile store; `run`; 3 POSTs to fn.test; `operator store inspect --group fn.test` while the owner serves; `operator store inspect --group fn.nosuch`; `operator store checkpoint`; 2 more POSTs; stop; both verbs again offline; `run`; the listing again."
+      ],
+      "expected": [
+        "Live: `inspect group=fn.test members=3` then `1 <id0>`, `2 <id1>`, `3 <id2>`, exit 0, never `store is already locked`; the unknown group answers `refused unknown-group group=fn.nosuch ...` exit 1; offline after the checkpoint and the suffix: `members=5` and the five lines (the checkpoint and its suffix both read); the unknown group refused offline too; serving again, the owner's listing is the same five lines."
+      ],
+      "implementation": {
+        "test": "tests.test_native_maintenance_live",
+        "cases": [],
+        "native": true
+      },
+      "evidence": [
+        "books/owner-export-request.lisp",
+        "tests/acl2/owner-export-request-tests.lisp"
+      ]
     }
   ]
 }

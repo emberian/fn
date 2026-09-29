@@ -14047,6 +14047,19 @@
           "name": "fn-onb-boundp-at-owner-prepare-buffer"
         }
       ]
+    },
+    {
+      "id": "PRF-1004",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-oig-rows-number-the-listgroup-numbers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oig-report-exit-is-the-membership"
+        }
+      ]
     }
   ]
 }
