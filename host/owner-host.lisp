@@ -47,6 +47,7 @@
 ; W5b: the transit AUTHORITY verdict beside the byte decision (fn-pta-decide),
 ; from the store's carried index and keyring.
 (include-book "../books/peer-transit-authority")
+(include-book "../books/article-subject")
 ; Q16: content reclamation on a running owner (fn-orc-).
 (include-book "../books/owner-reclaim")
 (include-book "../books/owner-reclaim-conns")
@@ -2749,6 +2750,9 @@
       (let* ((decision (fn-own-sub-decision sub))
              (node (fn-sn-node (fn-own-store owner)))
              (cfg (fn-owner-config state))
+             ; Authority uses THIS connection's pinned configuration. A
+             ; replacement governs later connections, not a queued old one.
+             (authority-cfg (fn-ocfg-conn-config (fn-owner-ocfg state) (fn-own-sub-id sub)))
              (peer (fn-peer-submission-peer decision))
              (msgid (fn-peer-submission-msgid decision))
              (octets (fn-peer-submission-octets decision))
@@ -2768,7 +2772,7 @@
           (mv-let (d authority)
             (fn-pta-decide (fn-sn-index (fn-own-store owner))
                            (fn-sn-keyring (fn-own-store owner))
-                           (fn-cfg-value cfg) (fn-cfg-generation cfg)
+                           (fn-cfg-value authority-cfg) (fn-cfg-generation authority-cfg)
                            node cfg peer msgid octets (fn-own-clock owner) id subject
                            (fn-own-config-header-limits (fn-own-config owner)))
           (let* ((args (fn-peer-injection-arguments node cfg peer msgid octets
@@ -2779,6 +2783,11 @@
                  (state (f-put-global 'fn-owner-transit-reason
                                       (fn-peer-decision-reason d) state))
                  (state (f-put-global 'fn-owner-transit-authority authority state))
+                 ; Versioned route-independent LEGACY article subject. The
+                 ; bytes commitment argument keeps its original meaning.
+                 (state (f-put-global 'fn-owner-transit-article-subject
+                                      (fn-id-text (fn-asj-subject octets)) state))
+                 (state (f-put-global 'fn-owner-transit-bytes-subject subject-octets state))
                  ; (nth 3 args) is fn-peer-scope-groups' answer: the list
                  ; fn-peer-injection-arguments hands fn-node-prepare as the
                  ; memberships (generation, msgid, octets, GROUPS, id,
@@ -3043,7 +3052,15 @@
                                       ; unbound until a transit's authority
                                       ; decision sets it: the empty authority
                                       (and (boundp-global 'fn-owner-transit-authority state)
-                                           (f-get-global 'fn-owner-transit-authority state))))))
+                                           (f-get-global 'fn-owner-transit-authority state))))
+                                    (fn-olog-field
+                                     "article-subject"
+                                     (and (boundp-global 'fn-owner-transit-article-subject state)
+                                          (f-get-global 'fn-owner-transit-article-subject state)))
+                                    (fn-olog-field
+                                     "bytes-subject"
+                                     (and (boundp-global 'fn-owner-transit-bytes-subject state)
+                                          (f-get-global 'fn-owner-transit-bytes-subject state)))))
                              state)))
     (value :ok)))
 

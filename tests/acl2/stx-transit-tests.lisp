@@ -913,14 +913,13 @@
 ; *sni-finished* (one statement by *sni-creator*) and *sni-forked* (a second
 ; statement by the same creator at the same slot: the equivocation the merge
 ; recorded, fn-sn-equivocatorp anchored there on both runs).  The group is
-; governed by a configuration value whose group entry names a principal as
-; its policy-id (stx-model-2's reconciliation: the policy-id IS the group's
-; authority when it is a principal id; the default policy-id of `store init'
-; governs nothing).
+; governed by an explicit authority field. Posting policy-id remains a
+; distinct string, and the default authority of `store init' is ungoverned.
 
 (defconst *stxt-governed-v*
-  (fn-cfg-value-make (list (fn-cfg-group-make "fn.test" 1 *fn-cfg-default-stamp* nil
-                                              *sni-creator* 0))
+  (fn-cfg-value-make (list (fn-cfg-group-make-with-authority "fn.test" 1 *fn-cfg-default-stamp* nil
+                                              *fn-cfg-default-policy-id* 0
+                                              (fn-record-octets-string (fn-id-text *sni-creator*)) 1))
                      nil nil nil nil nil nil nil nil nil))
 (defconst *stxt-default-v*
   (fn-cfg-value-make (list (fn-cfg-group-make "fn.test" 1 *fn-cfg-default-stamp* nil

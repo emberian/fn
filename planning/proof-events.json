@@ -17329,6 +17329,32 @@
           "name": "fn-pct-requested-article-is-handed-to-the-local-transport"
         }
       ]
+    },
+    {
+      "id": "PRF-1058",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-asj-permitted-relay-transform-preserves-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-asj-body-of-strip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-asj-strip-preserves-byte-order"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1061",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-set-group-authority-installs-binding"
+        }
+      ]
     }
   ]
 }

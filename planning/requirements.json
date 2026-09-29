@@ -5642,6 +5642,48 @@
         "tests/test_native_snapshot_bless.py"
       ],
       "implementation_note": "S7a checker implemented; native evidence pending matching union image. S7 running producer remains separate, unfinished."
+    },
+    {
+      "id": "OBJ-008",
+      "title": "Versioned route-independent legacy article subject",
+      "specification": "specs/substrate-transport.md#24-versioned-legacy-article-subjects-relay-v1-obj-008--prf-1058",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1058"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/article-subject.lisp",
+        "tests/acl2/article-subject-tests.lisp",
+        "tests/test_native_article_subject.py"
+      ],
+      "note": "Projection and byte-preservation forms admitted in clean REPL; native coordinate pending runner image. Original bytes commitments and signatures unchanged. Durable Message-ID binding/retained tombstone article subject remains open."
+    },
+    {
+      "id": "SUB-007",
+      "title": "Explicit durable group authority binding",
+      "specification": "specs/reconfiguration.md#explicit-group-authority-sub-007-prf-1061",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1061"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/config-invariants.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/group-authority-tests.lisp",
+        "tests/test_native_group_authority.py"
+      ],
+      "note": "Configuration implementation and clean REPL complete; running pin/replacement native pending new image. Productive verified authority through hybrid-snapshot/legacy-statement index bridge remains active finite work."
     }
   ]
 }

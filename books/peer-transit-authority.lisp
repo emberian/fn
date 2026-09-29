@@ -20,12 +20,11 @@
 ; an authority refusal is logged "accepted ... authority=NAME", distinct from
 ; a :refuse and from the persistence outcome.
 ;
-; The group's authority is local configuration (section 3): the live group
-; entry's policy-id (books/config.lisp fn-cfg-group-policy-id;
-; specs/reconfiguration.md `(:create-group name policy-id)`) when it is a
-; principal id (D11: "an explicit group authority/configuration identity");
-; every other group is UNGOVERNED, by name.  D11's portable group authority
-; is M4 work; this is its local reading.
+; The group's authority is the explicit local configuration field
+; fn-cfg-group-authority, a canonical principal hexadecimal string or empty.
+; Posting policy-id is distinct and cannot install an authority. Code29
+; set-group-authority is durably journalled; the host uses the connection's
+; pinned configuration. Portable multi-node authority remains separate M4.
 ;
 ; Keystones: fn-pta-admitted-is-the-gate-over-the-rows (PRF-1023) equates
 ; :admitted with fn-pol-admitp over the retained rows' lace (the served lace
@@ -52,12 +51,18 @@
 ; -----------------------------------------------------------------------------
 ; The group's authority, from the configuration in force at GEN
 
+(local (defthm fn-pta-config-hex-is-id-hex
+  (implies (fn-cfg-hex-digit-octetsp xs) (fn-id-hex-listp xs))
+  :hints (("Goal" :induct (fn-cfg-hex-digit-octetsp xs)
+                  :in-theory (enable fn-cfg-hex-digit-octetsp fn-cfg-hex-digit-octetp
+                                     fn-id-hex-listp fn-id-hex-digitp)))))
 (defun fn-pta-group-authority (v gen name)
-  (declare (xargs :guard t))
-  (let ((e (fn-cfg-group-find (fn-cfg-groups v) name)))
-    (if (and e (fn-cfg-entry-livep e gen)
-             (fn-prin-idp (fn-cfg-group-policy-id e)))
-        (fn-cfg-group-policy-id e)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (enable fn-cfg-principal-hexp)))))
+  (let* ((e (fn-cfg-group-find (fn-cfg-groups v) name))
+         (authority (fn-cfg-group-authority e)))
+    (if (and e (fn-cfg-entry-livep e gen) (fn-cfg-principal-hexp authority))
+        (fn-id-unhex (fn-record-string-octets authority))
       nil)))
 
 ; -----------------------------------------------------------------------------

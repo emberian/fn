@@ -107,6 +107,25 @@
   (implies (and (fn-cfg-group-listp es) (fn-cfg-labelp policy))
            (fn-cfg-group-listp (fn-cfg-groups-set-policy es name policy))))
 
+(defthm fn-cfg-groups-set-authority-keeps-the-names
+  (equal (fn-cfg-group-all-names (fn-cfg-groups-set-authority es name authority gen))
+         (fn-cfg-group-all-names es)))
+(defthm fn-cfg-groups-set-authority-preserves-group-listp
+  (implies (and (fn-cfg-group-listp es)
+                (or (equal authority "") (fn-cfg-principal-hexp authority))
+                (fn-record-uint32p gen))
+           (fn-cfg-group-listp (fn-cfg-groups-set-authority es name authority gen))))
+(defthm fn-cfg-group-find-of-groups-set-authority
+  (implies (fn-cfg-group-listp es)
+           (equal (fn-cfg-group-find (fn-cfg-groups-set-authority es name authority gen) x)
+                  (let ((e (fn-cfg-group-find es x)))
+                    (if (and (equal x name) (consp e))
+                        (fn-cfg-group-make-with-authority name
+                          (fn-cfg-group-created-gen e) (fn-cfg-group-created-stamp e)
+                          (fn-cfg-group-retired-gen e) (fn-cfg-group-policy-id e)
+                          (fn-cfg-group-next e) authority gen)
+                      e)))))
+
 (defthm fn-cfg-labelp-of-status-policy-id
   (fn-cfg-labelp (fn-cfg-status-policy-id status))
   :hints (("Goal" :in-theory (enable fn-cfg-status-policy-id))))
@@ -116,11 +135,43 @@
   (equal (fn-cfg-group-find (fn-cfg-groups-set-policy es name policy) x)
          (let ((e (fn-cfg-group-find es x)))
            (if (and (equal x name) (consp e))
-               (fn-cfg-group-make name (fn-cfg-group-created-gen e)
+               (fn-cfg-group-make-with-authority name (fn-cfg-group-created-gen e)
                                   (fn-cfg-group-created-stamp e)
                                   (fn-cfg-group-retired-gen e)
-                                  policy (fn-cfg-group-next e))
+                                  policy (fn-cfg-group-next e)
+                                  (fn-cfg-group-authority e) (fn-cfg-group-authority-gen e))
              e)))))
+
+(defthm fn-cfg-group-find-of-groups-set-authority-live
+  (implies (consp (fn-cfg-group-find es name))
+           (equal (fn-cfg-group-find (fn-cfg-groups-set-authority es name authority gen) name)
+                  (let ((e (fn-cfg-group-find es name)))
+                    (fn-cfg-group-make-with-authority name
+                      (fn-cfg-group-created-gen e) (fn-cfg-group-created-stamp e)
+                      (fn-cfg-group-retired-gen e) (fn-cfg-group-policy-id e)
+                      (fn-cfg-group-next e) authority gen))))
+  :hints (("Goal" :induct (fn-cfg-groups-set-authority es name authority gen)
+                  :in-theory (enable fn-cfg-groups-set-authority fn-cfg-group-find))))
+(local (defthm fn-cfg-group-name-of-found-group
+  (implies (consp (fn-cfg-group-find es name))
+           (equal (fn-cfg-group-name (fn-cfg-group-find es name)) name))
+  :hints (("Goal" :induct (fn-cfg-group-find es name)
+                  :in-theory (enable fn-cfg-group-find)))))
+(defthm fn-cfg-set-group-authority-installs-binding
+  (implies (consp (fn-cfg-group-find (fn-cfg-groups v) name))
+           (let* ((old (fn-cfg-group-find (fn-cfg-groups v) name))
+                  (new (fn-cfg-group-find
+                         (fn-cfg-groups (fn-cfg-apply-delta v gen stamp
+                                          (fn-cfg-set-group-authority name authority))) name)))
+             (and (equal (fn-cfg-group-authority new) authority)
+                  (equal (fn-cfg-group-authority-gen new) gen)
+                  (equal (fn-cfg-group-name new) (fn-cfg-group-name old))
+                  (equal (fn-cfg-group-created-gen new) (fn-cfg-group-created-gen old))
+                  (equal (fn-cfg-group-created-stamp new) (fn-cfg-group-created-stamp old))
+                  (equal (fn-cfg-group-retired-gen new) (fn-cfg-group-retired-gen old))
+                  (equal (fn-cfg-group-policy-id new) (fn-cfg-group-policy-id old))
+                  (equal (fn-cfg-group-next new) (fn-cfg-group-next old)))))
+  :hints (("Goal" :in-theory (enable fn-cfg-apply-delta fn-cfg-set-group-authority fn-cfg-set-groups))))
 
 ; KEYSTONE (O2, PRF-196).  An admitted `group policy NAME STATUS'
 ; (:set-group-status, code 21) sets NAME's LIST ACTIVE status to STATUS, and

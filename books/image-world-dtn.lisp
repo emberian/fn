@@ -194,6 +194,7 @@
 (include-book "owner-export-request")
 (include-book "owner-control-post-reason")
 (include-book "peer-transit-authority")
+(include-book "article-subject")
 (include-book "owner-reclaim-conns")
 (include-book "owner-reclaim-ready")
 (include-book "owner-reclaim-carry")
