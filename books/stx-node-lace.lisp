@@ -32,9 +32,27 @@
 (include-book "stx-index")
 (include-book "payload-arena")
 
+; The same local vocabulary books/stx-lace.lisp gives its own proofs (its
+; locals are not visible here under certification).
 (local (defthm fn-stx-node-member-of-append
          (iff (member-equal x (append a b))
               (or (member-equal x a) (member-equal x b)))))
+
+(local (defthm fn-stx-node-ids-of-append
+         (equal (fn-lace-ids (append a b))
+                (append (fn-lace-ids a) (fn-lace-ids b)))))
+
+(local (defthm fn-stx-node-stmt-is-consp
+         (implies (fn-stmt-p s) (consp s))
+         :hints (("Goal" :in-theory (enable fn-stmt-p)))))
+
+(local (defthm fn-stx-node-verified-is-a-statement
+         (implies (fn-prin-verifiedp s keyring) (fn-stmt-p s))
+         :hints (("Goal" :in-theory (enable fn-prin-verifiedp)))))
+
+(local (defthm fn-stx-node-nil-is-not-verified
+         (not (fn-prin-verifiedp nil keyring))
+         :hints (("Goal" :in-theory (enable fn-prin-verifiedp fn-stmt-p)))))
 
 ; -----------------------------------------------------------------------------
 ; ALPHA of the acceptance articles: each article's handle replaced by its
