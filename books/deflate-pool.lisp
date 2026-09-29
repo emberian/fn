@@ -328,6 +328,15 @@
                             fn-zpl-payload-bufs-is-payload-bufs fn-zin-payload-bufs-is-payload-with
                             fn-zin-payload-with-octets fn-zpl-pool-okp))))))
 
+(local (defthm fn-zpl-decode-bufs-pool-okp
+  (implies (and (fn-zpl-pool-okp pool fn-zin-win) (fn-cbor-octet-listp dict))
+           (let ((r (fn-zpl-decode-bufs pool dict end n fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
+             (fn-zpl-pool-okp (mv-nth 1 r) (mv-nth 2 r))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-zpl-payload-bufs-pool-okp (b (fn-pzd-budget end n)) (start 0)
+                            (lim (+ 1 (nfix n)))))
+           :in-theory (e/d (fn-zpl-decode-bufs)
+                           (fn-zpl-payload-bufs-pool-okp fn-zpl-payload-bufs fn-zpl-pool-okp))))))
 (defthm fn-zpl-decode-bufs-is-decode
   (implies (and (fn-cbor-octet-listp c) (natp n) (fn-cbor-octet-listp dict)
                 (fn-zpl-pool-okp pool fn-zin-win))
@@ -339,13 +348,9 @@
                   (fn-zpl-pool-okp (mv-nth 1 r) (mv-nth 2 r)))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-zpl-decode-bufs-is-pzd)
-                 (:instance fn-pzd-decode-bufs-is-decode)
-                 (:instance fn-zpl-payload-bufs-pool-okp (b (fn-pzd-budget (len c) n)) (start 0)
-                            (end (len c)) (lim (+ 1 (nfix n))) (fn-octets c)))
-           :in-theory (e/d (fn-zpl-decode-bufs)
-                           (fn-zpl-decode-bufs-is-pzd fn-pzd-decode-bufs-is-decode
-                            fn-zpl-payload-bufs-pool-okp fn-zpl-payload-bufs fn-pzd-decode-bufs
-                            fn-pzd-decode fn-zpl-pool-okp)))))
+                 (:instance fn-pzd-decode-bufs-is-decode))
+           :in-theory (disable fn-zpl-decode-bufs-is-pzd fn-pzd-decode-bufs-is-decode
+                               fn-zpl-decode-bufs fn-pzd-decode-bufs fn-pzd-decode fn-zpl-pool-okp))))
 
 ; KEYSTONE (the served read's boundary, over a pool): an :ok answer leaves
 ; in the output buffer exactly the value A-DURABLE-LZ names.
@@ -363,3 +368,16 @@
            :in-theory (disable fn-zpl-decode-bufs-is-pzd fn-lzr-decode-bufs-is-the-lz-value
                                fn-zpl-decode-bufs fn-pzd-decode-bufs fn-zpl-pool-okp
                                fn-zpl-decode-bufs-is-decode))))
+
+; The preset's length a pool records (what a witness checks the invariant's
+; H against).
+(defthm fn-zpl-ready-h-is
+  (implies (fn-cbor-octet-listp dict)
+           (equal (fn-zpl-ready-h dict) (min (len dict) *fn-zin-window*)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (set-difference-theories (enable fn-zin-payload-ready fn-zpl-ready-h)
+                                               (executable-counterpart-theory :here)))))
+
+; The host's starting pool satisfies the invariant.
+(defthm fn-zpl-pool-okp-of-nil
+  (fn-zpl-pool-okp nil fn-zin-win))

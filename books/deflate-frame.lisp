@@ -1,4 +1,4 @@
-; fn: the payload decoder's window frame (lane compress-3, PRF-to-be-assigned).
+; fn: the payload decoder's window frame (lane compress-3, PRF-948).
 ; Prefix `fn-zfr-'.
 ;
 ; From a state whose ring position is its output count (below 32 KiB) or
