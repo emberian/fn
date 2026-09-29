@@ -715,7 +715,16 @@
                  (fn-sf-frontier (fn-sn-files st))
                  free
                  revision
-                 (fn-owner-sco-global 'fn-owner-sco-base-payloads state)))))
+                 (fn-owner-sco-global 'fn-owner-sco-base-payloads state)
+                 ; the store's identity for the history image's binding
+                 ; (books/history-image-binding.lisp): the genesis record's
+                 ; node identity and the history salt
+                 (let ((v (and (boundp-global 'fn-store-genesis state)
+                               (f-get-global 'fn-store-genesis state))))
+                   (list (if (and (consp v) (equal (car v) :genesis) (consp (cdr v)))
+                             (fn-gen-node (cadr v))
+                           nil)
+                         (fn-gen-verdict-salt v)))))))
 
 ; Off the mutex, over the values captured above and the live arena, READ
 ; only (host/native/owner.lisp fnn-owner-publish-captured): NEXT, the capture
@@ -735,8 +744,11 @@
 ; The arena is read at handles below the count the capture saw: the owner
 ; thread only appends to it (a seal never moves a sealed payload's bytes),
 ; so what is read is what was sealed before the capture.
-(defun fn-owner-sco-prepare (base h0 configs records frontier revision log seg budget free
-                                  walked fn-arena)
+(defun fn-owner-sco-next (base h0 configs records walked seg fn-arena)
+  ; The first half of fn-owner-sco-prepare: (NEXT WS WALKED), or NIL when the
+  ; history is not encodable (READS the arena only).  The host builds the
+  ; history image of NEXT's records between the halves and passes the
+  ; binding in LOG to the second.
   (declare (xargs :stobjs fn-arena :mode :program))
   (let* ((next0 (and base (natp h0) (<= (len (fn-sco-records base)) (len records))
                      (fn-scka-next-checkpoint (fn-scka-restore-base base) h0 configs records
@@ -746,13 +758,26 @@
                      (if (equal canon :bad) :bad (fn-sco-capture configs canon)))
                  next0)))
     (if (or (equal next :bad) (not (and (consp walked) (atom (nth 0 walked)))))
-        (list (list :unencodable nil nil nil nil 0 0) nil 0 nil)
-      (let* ((ws (fn-scka-lens-setup (reverse (nth 1 walked)) seg))
-             (setup (fn-scka-publication-setup next frontier revision log seg budget free
-                                               (nth 3 ws))))
-        (list setup next (nth 0 ws)
-              (list (nth 0 ws) (nth 2 ws)
-                    (fn-scka-initial-state (reverse (nth 2 walked)) (nth 1 ws) 0)))))))
+        nil
+      (list next (fn-scka-lens-setup (reverse (nth 1 walked)) seg) walked))))
+
+(defun fn-owner-sco-setup-of (prepared frontier revision log seg budget free)
+  ; The second half: (list SETUP NEXT N ARUN) as fn-owner-sco-prepare answers.
+  (declare (xargs :mode :program))
+  (if (not (consp prepared))
+      (list (list :unencodable nil nil nil nil 0 0) nil 0 nil)
+    (let* ((next (nth 0 prepared)) (ws (nth 1 prepared)) (walked (nth 2 prepared))
+           (setup (fn-scka-publication-setup next frontier revision log seg budget free
+                                             (nth 3 ws))))
+      (list setup next (nth 0 ws)
+            (list (nth 0 ws) (nth 2 ws)
+                  (fn-scka-initial-state (reverse (nth 2 walked)) (nth 1 ws) 0))))))
+
+(defun fn-owner-sco-prepare (base h0 configs records frontier revision log seg budget free
+                                  walked fn-arena)
+  (declare (xargs :stobjs fn-arena :mode :program))
+  (fn-owner-sco-setup-of (fn-owner-sco-next base h0 configs records walked seg fn-arena)
+                         frontier revision log seg budget free))
 
 ; Outside the mutex, the host calls `fn-ock-next-checkpoint' (NEXT, the
 ; capture of the captured history: fn-ock-next-checkpoint-is-the-capture),

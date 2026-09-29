@@ -26,6 +26,7 @@
 (defvar *fnn-extent-lock* (sb-thread:make-mutex :name "fn extent realizer"))
 (defvar *fnn-extent-fds* (make-hash-table))   ; guarded-by: *fnn-extent-lock* (file id -> fd)
 (defvar *fnn-extent-paths* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> path)
+(defvar *fnn-extent-bases* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> page 0's offset)
 (defvar *fnn-extent-next-id* 1)
 (defvar *fnn-extent-cache* nil)               ; ((file eoff . octets) ...), most recent first
 (defvar *fnn-extent-stats* (list 0 0 0))      ; hits, misses (preads), refusals
@@ -39,6 +40,16 @@
         (setf (gethash id *fnn-extent-fds*) fd
               (gethash id *fnn-extent-paths*) path)
         id))))
+
+(defun fnn-extent-register-at (path base)
+  "A new file id for PATH whose page A the page fill reads at BASE + 16 KiB * A
+(the history image region of the state checkpoint's file: books/history-image-
+snapshot.lisp); a read-only descriptor held for the process's life, so the
+file stays readable after a later checkpoint replaces its name."
+  (let ((id (fnn-extent-register path)))
+    (sb-thread:with-mutex (*fnn-extent-lock*)
+      (setf (gethash id *fnn-extent-bases*) base))
+    id))
 
 (defun fnn-extent-pread (fd octets offset)
   "Fill OCTETS from OFFSET of FD; the count read (short at end of file)."
@@ -199,13 +210,14 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
 ;;; (books/history-records-disk.lisp: the lazy decode of the committed
 ;;; history image `fn-hrs-disk-history', and fn-hrecs's retry loop).
 (defun fn-pgs-fill-realize (file addr)
-  (let ((fd (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-              (gethash file *fnn-extent-fds*)))
-        (octets (make-array 16384 :element-type '(unsigned-byte 8))))
+  (multiple-value-bind (fd base)
+      (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+        (values (gethash file *fnn-extent-fds*) (gethash file *fnn-extent-bases* 0)))
+   (let ((octets (make-array 16384 :element-type '(unsigned-byte 8))))
     (unless (and fd (integerp addr) (<= 0 addr))
       (error 'fnn-extent-fault
              :message (format nil "history-page-read: no page file ~a (page ~a)" file addr)))
-    (let ((got (fnn-extent-pread fd octets (* addr 16384))))
+    (let ((got (fnn-extent-pread fd octets (+ base (* addr 16384)))))
       (unless (= got 16384)
         (let ((path (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
                       (gethash file *fnn-extent-paths*))))
@@ -219,7 +231,7 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
           (loop for b of-type fixnum from 7 downto 0 do
             (setq w (logior (ash w 8) (aref octets (+ base b)))))
           (push w acc)))
-      acc)))
+      acc))))
 
 (defun acl2_*1*_acl2::fn-pgs-fill-realize (file addr)
   (fn-pgs-fill-realize file addr))
