@@ -1604,23 +1604,23 @@
     "books": 1659,
     "books_in_root_closure": 1658,
     "roots": 1597,
-    "theorems": 27330,
-    "functions": 17854,
-    "assert_events": 22603,
-    "must_fails": 2418,
+    "theorems": 27326,
+    "functions": 17855,
+    "assert_events": 22725,
+    "must_fails": 2458,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
       "verified": 3338,
       "declared-off": 2066,
-      "default-guarded": 9783,
-      "default-unguarded": 2667
+      "default-guarded": 9781,
+      "default-unguarded": 2670
     },
     "suspect_theorems": 1206,
     "export_hygiene_warnings": 317,
     "enabled_projection_warnings": 52,
-    "teeth_form_warnings": 265,
-    "include_hygiene_warnings": 2368,
+    "teeth_form_warnings": 271,
+    "include_hygiene_warnings": 2369,
     "host_names_warnings": 1964,
     "hand_written_record_warnings": 18
   },
@@ -4520,12 +4520,12 @@
       "book": "books/bp-node-contact-driver.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
-      "functions": 3,
+      "theorems": 7,
+      "functions": 0,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 3,
+        "default-guarded": 0,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -5123,7 +5123,7 @@
       "book": "books/bp-node-job-offer.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 61,
+      "theorems": 66,
       "functions": 26,
       "guards": {
         "verified": 0,
@@ -30479,11 +30479,11 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 14,
-      "must_fails": 2,
+      "assert_events": 26,
+      "must_fails": 7,
       "prover_refusals": 0,
       "defconsts": 5,
-      "defmacros": 7,
+      "defmacros": 16,
       "encapsulates": 0,
       "includes": [
         "../../books/crypto-attach",
@@ -32577,14 +32577,14 @@
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 23,
-      "must_fails": 12,
+      "assert_events": 26,
+      "must_fails": 8,
       "prover_refusals": 0,
-      "defconsts": 32,
+      "defconsts": 34,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/bp-node-contact-driver",
+        "../../books/bp-node-job-offer",
         "../../books/bp-node-receive-boundary",
         "must-fail-checked"
       ],
@@ -39144,7 +39144,7 @@
         "default-unguarded": 11
       },
       "verify_guards_events": 0,
-      "assert_events": 154,
+      "assert_events": 156,
       "must_fails": 10,
       "prover_refusals": 0,
       "defconsts": 42,
@@ -39948,11 +39948,11 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 12,
+      "assert_events": 16,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 1,
-      "defmacros": 0,
+      "defmacros": 1,
       "encapsulates": 0,
       "includes": [
         "../../books/native-control-launch"
@@ -40368,24 +40368,25 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 17,
+      "functions": 21,
       "guards": {
         "verified": 0,
         "declared-off": 4,
-        "default-guarded": 0,
-        "default-unguarded": 13
+        "default-guarded": 1,
+        "default-unguarded": 16
       },
       "verify_guards_events": 0,
-      "assert_events": 80,
-      "must_fails": 0,
+      "assert_events": 139,
+      "must_fails": 26,
       "prover_refusals": 0,
-      "defconsts": 59,
-      "defmacros": 3,
+      "defconsts": 82,
+      "defmacros": 13,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
         "../../books/nntp-auth-roles",
-        "arena-lift"
+        "arena-lift",
+        "must-fail-checked"
       ],
       "system_includes": [],
       "suspects": [],
@@ -40404,11 +40405,11 @@
         "default-unguarded": 13
       },
       "verify_guards_events": 0,
-      "assert_events": 394,
-      "must_fails": 106,
+      "assert_events": 406,
+      "must_fails": 112,
       "prover_refusals": 0,
-      "defconsts": 139,
-      "defmacros": 32,
+      "defconsts": 145,
+      "defmacros": 35,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
@@ -40462,10 +40463,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 1,
+      "assert_events": 3,
+      "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 6,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -41807,10 +41808,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 10,
+      "assert_events": 13,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 0,
+      "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -42025,7 +42026,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 133,
+      "assert_events": 136,
       "must_fails": 6,
       "prover_refusals": 0,
       "defconsts": 32,
@@ -42350,7 +42351,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 30,
+      "assert_events": 32,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 2,
@@ -43866,7 +43867,7 @@
       "book": "tests/acl2/peer-catchup-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 1,
       "functions": 8,
       "guards": {
         "verified": 0,
@@ -43875,10 +43876,10 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 42,
+      "assert_events": 44,
       "must_fails": 9,
       "prover_refusals": 0,
-      "defconsts": 34,
+      "defconsts": 36,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -45988,10 +45989,10 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 116,
+      "assert_events": 118,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 55,
+      "defconsts": 56,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -49087,14 +49088,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 156,
-      "must_fails": 0,
+      "assert_events": 168,
+      "must_fails": 6,
       "prover_refusals": 0,
-      "defconsts": 66,
-      "defmacros": 0,
+      "defconsts": 70,
+      "defmacros": 2,
       "encapsulates": 0,
       "includes": [
-        "../../books/tcpcl-invariants"
+        "../../books/tcpcl-invariants",
+        "must-fail-checked"
       ],
       "system_includes": [],
       "suspects": [],
@@ -49140,7 +49142,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 39,
+      "assert_events": 41,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 10,
@@ -49697,7 +49699,7 @@
         "default-unguarded": 8
       },
       "verify_guards_events": 0,
-      "assert_events": 86,
+      "assert_events": 87,
       "must_fails": 3,
       "prover_refusals": 0,
       "defconsts": 25,
@@ -50043,7 +50045,7 @@
     {
       "theorem": "bpcd-job-key-of-with-status",
       "book": "books/bp-node-contact-driver.lisp",
-      "line": 334,
+      "line": 61,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -63175,37 +63177,37 @@
       {
         "check": "aut-authinfo-never-advertised",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 877,
+        "line": 878,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-authinfo-not-advertised-under-protected-only-alone",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 912,
+        "line": 913,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-authinfo-not-advertised-before-tls-alone",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 933,
+        "line": 934,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-peer-open-pins-the-open-config",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1294,
+        "line": 1295,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-not-posting",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1395,
+        "line": 1396,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-the-post-command-event",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1435,
+        "line": 1436,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -63887,6 +63889,42 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
+        "check": "t-tcl-contact-of-encode-without-version",
+        "book": "tests/acl2/tcpcl-tests.lisp",
+        "line": 583,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "t-tcl-contact-of-encode-without-flags",
+        "book": "tests/acl2/tcpcl-tests.lisp",
+        "line": 597,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "t-tcl-accepted-contact-without-octets",
+        "book": "tests/acl2/tcpcl-tests.lisp",
+        "line": 624,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "t-tcl-accepted-contact-without-accepted",
+        "book": "tests/acl2/tcpcl-tests.lisp",
+        "line": 641,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "t-tcl-accepted-message-without-octets",
+        "book": "tests/acl2/tcpcl-tests.lisp",
+        "line": 745,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "t-tcl-accepted-message-without-accepted",
+        "book": "tests/acl2/tcpcl-tests.lisp",
+        "line": 760,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
         "check": "thid-all-events-are-identity-neutral",
         "book": "tests/acl2/topic-history-identity-disjoint-tests.lisp",
         "line": 15,
@@ -64468,14 +64506,14 @@
       },
       {
         "book": "books/bp-node-contact-driver.lisp",
-        "line": 33,
+        "line": 30,
         "include": "bp-node-receipt-send",
         "included": "books/bp-node-receipt-send.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/bp-node-contact-driver.lisp",
-        "line": 34,
+        "line": 31,
         "include": "bp-route-jobs",
         "included": "books/bp-route-jobs.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -71594,21 +71632,14 @@
       },
       {
         "book": "tests/acl2/bp-node-contact-driver-tests.lisp",
-        "line": 7,
-        "include": "../../books/bp-node-contact-driver",
-        "included": "books/bp-node-contact-driver.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/bp-node-contact-driver-tests.lisp",
-        "line": 8,
+        "line": 13,
         "include": "../../books/bp-node-receive-boundary",
         "included": "books/bp-node-receive-boundary.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/bp-node-contact-driver-tests.lisp",
-        "line": 9,
+        "line": 14,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -75828,29 +75859,36 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 48,
-        "include": "../../books/nntp-auth-roles",
-        "included": "books/nntp-auth-roles.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 49,
+        "book": "tests/acl2/nntp-auth-sasl-tests.lisp",
+        "line": 17,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
+        "line": 49,
+        "include": "../../books/nntp-auth-roles",
+        "included": "books/nntp-auth-roles.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
         "line": 50,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
+        "line": 51,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 147,
+        "line": 148,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -80100,6 +80138,13 @@
       {
         "book": "tests/acl2/tcpcl-spool-tests.lisp",
         "line": 3,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/tcpcl-tests.lisp",
+        "line": 567,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -91875,7 +91920,7 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2775,
+        "line": 2773,
         "name": "assoc-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
