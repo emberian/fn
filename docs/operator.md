@@ -706,8 +706,10 @@ The memory refusals, and what to do:
 
 - `fn: refused machine-cannot-hold-profile heap=H MB machine=M MB`: the
   store's limits need more memory than this machine (or the service's
-  `MemoryMax`) gives. Raise the limit, or move the store to settings that
-  fit (`store export`, then `store import` with smaller `--max-...`).
+  `MemoryMax`) gives. Raise the limit (the unit's `MemoryMax`, or a machine
+  with more memory). Every verb takes the same check, `store export`
+  included, so a store that does not fit is moved to a machine where it
+  fits, not exported here (review item 4).
 - `fn: refused machine-cannot-hold-threads reservation=R MB machine=M MB`:
   the same, for the whole node with its threads. Raise the limit.
 - `refused connections-exceed-memory capacity=C holds=B ...`: the node
@@ -927,6 +929,9 @@ with `store export` and `store import --max-... N`.
   in batches (XFNCATCHUP), each batch checked against the peer's digest before
   any article is offered to this node's own verdict; the round resumes after a
   restart ([catching up](peering-with-a-friend.md#catching-up); spec peering 1.2.9).
-- `capacity N`: the room reserved for held articles.
+- `capacity N`: the retention ledger's size, in its units (one per record
+  plus one per 4,096 octets of article), shown by `status` as
+  `charge-capacity` next to `charge-reserved`, the part held articles use
+  (review item 15; [the ledger](operator-internals.md)).
 - `pins`, `obligations`: what the store is holding, and why.
 - `run`: what the service runs.
