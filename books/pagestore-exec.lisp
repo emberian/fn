@@ -1259,14 +1259,32 @@
 
 ; -- The words in the stobj are the encodings.
 
+; A loop twin (depth_check: K is a page's or a table's words, store data).
+(defun pgs-x-words-loop (sel a k pgs-mem rev)
+  (declare (xargs :stobjs pgs-mem
+                  :guard (and (natp a) (natp k) (<= (+ a k) (pgs-x-len sel pgs-mem))
+                              (true-listp rev))
+                  :measure (nfix k)))
+  (if (zp k)
+      (revappend rev nil)
+    (pgs-x-words-loop sel (+ 1 a) (1- k) pgs-mem (cons (pgs-x-word sel a pgs-mem) rev))))
+
 (defun pgs-x-words (sel a k pgs-mem)
   ; Words A..A+K-1 of SEL, as a list (logical; the host digests in place).
   (declare (xargs :stobjs pgs-mem
                   :guard (and (natp a) (natp k) (<= (+ a k) (pgs-x-len sel pgs-mem)))
-                  :measure (nfix k)))
-  (if (zp k)
-      nil
-    (cons (pgs-x-word sel a pgs-mem) (pgs-x-words sel (+ 1 a) (1- k) pgs-mem))))
+                  :measure (nfix k)
+                  :verify-guards nil))
+  (mbe :logic (if (zp k)
+                  nil
+                (cons (pgs-x-word sel a pgs-mem) (pgs-x-words sel (+ 1 a) (1- k) pgs-mem)))
+       :exec (pgs-x-words-loop sel a k pgs-mem nil)))
+
+(defthm pgs-x-words-loop-is-words
+  (equal (pgs-x-words-loop sel a k pgs-mem rev)
+         (revappend rev (pgs-x-words sel a k pgs-mem))))
+
+(verify-guards pgs-x-words)
 
 (defthm pgs-x-words-split
   (implies (and (natp a) (natp k1) (natp k2))
@@ -1935,18 +1953,38 @@
          (< (car lpages) (pgs-d-length pgs-mem))
          (pgs-x-lpages-resident (cdr lpages) pgs-mem))))
 
-(defun pgs-x-dirty-digests (lpages pgs-mem fn-octets-pg)
-  ; (mv DIGESTS fn-octets-pg): the BLAKE3 of each dirty page's words.
-  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (nat-listp lpages)))
+(defun pgs-x-dirty-digests-loop (lpages pgs-mem fn-octets-pg rev)
+  ; the loop twin (depth_check: the dirty pages are store data)
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (and (nat-listp lpages) (true-listp rev))))
   (if (atom lpages)
-      (mv nil fn-octets-pg)
+      (mv (revappend rev nil) fn-octets-pg)
     (mv-let (d fn-octets-pg)
       (if (<= (* 2048 (+ 1 (car lpages))) (pgs-w-length pgs-mem))
           (pgs-x-page-digest (car lpages) pgs-mem fn-octets-pg)
         (mv 0 fn-octets-pg))
-      (mv-let (ds fn-octets-pg)
-        (pgs-x-dirty-digests (cdr lpages) pgs-mem fn-octets-pg)
-        (mv (cons d ds) fn-octets-pg)))))
+      (pgs-x-dirty-digests-loop (cdr lpages) pgs-mem fn-octets-pg (cons d rev)))))
+
+(defun pgs-x-dirty-digests (lpages pgs-mem fn-octets-pg)
+  ; (mv DIGESTS fn-octets-pg): the BLAKE3 of each dirty page's words.
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (nat-listp lpages) :verify-guards nil))
+  (mbe :logic
+       (if (atom lpages)
+           (mv nil fn-octets-pg)
+         (mv-let (d fn-octets-pg)
+           (if (<= (* 2048 (+ 1 (car lpages))) (pgs-w-length pgs-mem))
+               (pgs-x-page-digest (car lpages) pgs-mem fn-octets-pg)
+             (mv 0 fn-octets-pg))
+           (mv-let (ds fn-octets-pg)
+             (pgs-x-dirty-digests (cdr lpages) pgs-mem fn-octets-pg)
+             (mv (cons d ds) fn-octets-pg))))
+       :exec (pgs-x-dirty-digests-loop lpages pgs-mem fn-octets-pg nil)))
+
+(defthm pgs-x-dirty-digests-loop-is-dirty-digests
+  (equal (pgs-x-dirty-digests-loop lpages pgs-mem fn-octets-pg rev)
+         (list (revappend rev (mv-nth 0 (pgs-x-dirty-digests lpages pgs-mem fn-octets-pg)))
+               (mv-nth 1 (pgs-x-dirty-digests lpages pgs-mem fn-octets-pg)))))
+
+(verify-guards pgs-x-dirty-digests)
 
 (defthm pgs-x-dirty-digests-facts
   (and (true-listp (mv-nth 0 (pgs-x-dirty-digests lpages pgs-mem fn-octets-pg)))
@@ -1963,20 +2001,41 @@
          (list :need-table (car tl) (first (pgs-x-get-entry 1 *pgs-x-dir-base* (car tl) pgs-mem))))
         (t (pgs-x-tables-ready (cdr tl) nt pgs-mem))))
 
-(defun pgs-x-table-digests (tl pgs-mem fn-octets-pg)
-  ; (mv DIGESTS fn-octets-pg): the BLAKE3 of each table page in TL, over its
-  ; 2048 words in pgs-t (taken mod 2^256, the identity on a BLAKE3 value).
-  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (nat-listp tl)))
+(defun pgs-x-table-digests-loop (tl pgs-mem fn-octets-pg rev)
+  ; the loop twin (depth_check: the table pages are store data)
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (and (nat-listp tl) (true-listp rev))))
   (if (atom tl)
-      (mv nil fn-octets-pg)
+      (mv (revappend rev nil) fn-octets-pg)
     (mv-let (d fn-octets-pg)
       (if (<= (* 2048 (+ 1 (car tl))) (pgs-t-length pgs-mem))
           (pgs-x-words-digest 2 (* 2048 (car tl)) 256 pgs-mem fn-octets-pg)
         (mv 0 fn-octets-pg))
-      (mv-let (ds fn-octets-pg)
-        (pgs-x-table-digests (cdr tl) pgs-mem fn-octets-pg)
-        (mv (cons (mod (nfix d) 115792089237316195423570985008687907853269984665640564039457584007913129639936) ds)
-            fn-octets-pg)))))
+      (pgs-x-table-digests-loop (cdr tl) pgs-mem fn-octets-pg
+                                (cons (mod (nfix d) 115792089237316195423570985008687907853269984665640564039457584007913129639936) rev)))))
+
+(defun pgs-x-table-digests (tl pgs-mem fn-octets-pg)
+  ; (mv DIGESTS fn-octets-pg): the BLAKE3 of each table page in TL, over its
+  ; 2048 words in pgs-t (taken mod 2^256, the identity on a BLAKE3 value).
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (nat-listp tl) :verify-guards nil))
+  (mbe :logic
+       (if (atom tl)
+           (mv nil fn-octets-pg)
+         (mv-let (d fn-octets-pg)
+           (if (<= (* 2048 (+ 1 (car tl))) (pgs-t-length pgs-mem))
+               (pgs-x-words-digest 2 (* 2048 (car tl)) 256 pgs-mem fn-octets-pg)
+             (mv 0 fn-octets-pg))
+           (mv-let (ds fn-octets-pg)
+             (pgs-x-table-digests (cdr tl) pgs-mem fn-octets-pg)
+             (mv (cons (mod (nfix d) 115792089237316195423570985008687907853269984665640564039457584007913129639936) ds)
+                 fn-octets-pg))))
+       :exec (pgs-x-table-digests-loop tl pgs-mem fn-octets-pg nil)))
+
+(defthm pgs-x-table-digests-loop-is-table-digests
+  (equal (pgs-x-table-digests-loop tl pgs-mem fn-octets-pg rev)
+         (list (revappend rev (mv-nth 0 (pgs-x-table-digests tl pgs-mem fn-octets-pg)))
+               (mv-nth 1 (pgs-x-table-digests tl pgs-mem fn-octets-pg)))))
+
+(verify-guards pgs-x-table-digests)
 
 (defun pgs-x-u64-bounded (xs)
   (declare (xargs :guard t))

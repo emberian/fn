@@ -266,3 +266,57 @@
                   (member f (fn-xrt-quiet-files retired named fn-arena$x)))
              (not (equal (fn-arx-entry-file (nth h (nth *fn-arena$x-exti* fn-arena$x)))
                          f)))))))
+
+; Teeth: KEYSTONE fn-xrt-dropped-file-is-released (section 3).  The
+; publication's own pin at 2, nobody else pinned, the pending stamp 3.
+(defconst *xrt-st-own* (list 3 '((2 . 1)) nil))
+(defconst *xrt-st-other* (list 3 '((1 . 1) (2 . 1)) nil))
+(defconst *xrt-st-none* (list 3 nil nil))
+
+; Reachable positive witness: the complete antecedent and the conclusion.
+(defthm xrt-released-positive
+  (and (member 7 '(5 7 9))
+       (not (member 7 '(5)))
+       (equal (fn-arx-file-count 7 (xrt-x3)) 0)
+       (natp 3) (natp 2)
+       (fn-arpn-held-p 2 (second *xrt-st-own*))
+       (atom (fn-arpn-unpin-at 2 (second *xrt-st-own*)))
+       (member 7 (fn-xrt-quiet-files '(5 7 9) '(5) (xrt-x3)))
+       (equal (mv-nth 1 (fn-arpn-step *xrt-st-own* (list :clear-except 3 2))) t))
+  :rule-classes nil)
+
+; Hypothesis removal: another reader pinned at 1 (at or below the stamp).
+; Every retained hypothesis holds, the omitted one fails, the conclusion
+; fails (the group waits).
+(defthm xrt-released-without-no-other-pin
+  (and (member 7 '(5 7 9))
+       (not (member 7 '(5)))
+       (equal (fn-arx-file-count 7 (xrt-x3)) 0)
+       (natp 3) (natp 2)
+       (fn-arpn-held-p 2 (second *xrt-st-other*))
+       (not (atom (fn-arpn-unpin-at 2 (second *xrt-st-other*))))
+       (not (equal (mv-nth 1 (fn-arpn-step *xrt-st-other* (list :clear-except 3 2))) t)))
+  :rule-classes nil)
+
+; Hypothesis removal: the asking reader holds no pin (the step refuses).
+(defthm xrt-released-without-own-pin
+  (and (member 7 '(5 7 9))
+       (not (member 7 '(5)))
+       (equal (fn-arx-file-count 7 (xrt-x3)) 0)
+       (natp 3) (natp 2)
+       (not (fn-arpn-held-p 2 (second *xrt-st-none*)))
+       (atom (fn-arpn-unpin-at 2 (second *xrt-st-none*)))
+       (equal (mv-nth 1 (fn-arpn-step *xrt-st-none* (list :clear-except 3 2))) :refused))
+  :rule-classes nil)
+
+; Hypothesis removal: a file a log member names (5), and a file an extent
+; entry still counts (9): each is kept out of the quiet set.
+(defthm xrt-released-without-unnamed
+  (and (member 5 '(5 7 9))
+       (member 5 '(5))
+       (not (member 5 (fn-xrt-quiet-files '(5 7 9) '(5) (xrt-x3))))
+       (member 9 '(5 7 9))
+       (not (member 9 '(5)))
+       (not (equal (fn-arx-file-count 9 (xrt-x3)) 0))
+       (not (member 9 (fn-xrt-quiet-files '(5 7 9) '(5) (xrt-x3)))))
+  :rule-classes nil)

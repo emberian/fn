@@ -6069,7 +6069,7 @@
       "id": "SCN-210",
       "title": "`store export DIR' answers on the running owner: requested and written while serving, refused by name when an export is in flight or DIR exists; the archive imports with the captured count",
       "milestone": "M5",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "HST-036"
       ],
@@ -6081,7 +6081,9 @@
       ],
       "implementation": {
         "test": "tests.test_native_maintenance_live",
-        "cases": [],
+        "cases": [
+          "test_store_export_answers_on_the_running_owner_and_the_archive_imports"
+        ],
         "native": true
       },
       "evidence": [
@@ -6172,6 +6174,34 @@
         ],
         "native": true
       }
+    },
+    {
+      "id": "SCN-214",
+      "title": "A node moves to the next release beside the one it runs and back: `install.sh` keeps releases under PREFIX/releases with PREFIX/current the running one; `--upgrade` prints the gap from the log's `run opened ms=N`, asks the next release (its own verdict), switches, and `--rollback` switches back; a store of another format is refused by name with nothing switched",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-036"
+      ],
+      "steps": [
+        "The production image staged twice as releases A and B (two source revisions); `sh A/install.sh --prefix P --node N --no-service`; `mission`, `init`, `run` through P/current/bin/fn; N POSTs; stop; `sh B/install.sh --upgrade --prefix P --node N --no-service`; `run` through P/current/bin/fn; `health`; one POST; stop; `sh P/current/install.sh --rollback --node N --no-service`; `run`; `status`; the refusals: `--upgrade` of an installed release, `--rollback` with no previous release, `--upgrade` over a store of another format (a fresh prefix), `--rollback` when the previous release refuses the store."
+      ],
+      "expected": [
+        "The install makes P/releases/A and P/current -> releases/A, and the rendered unit starts P/current/bin/fn; the upgrade prints `the node will be away for about S s: its last start took M ms` with M the log's last `run opened ms=` and S = ceil(M/1000), installs P/releases/B, prints B's own stopped-store verdict (`stopped checkpoint=...`), `current -> releases/B (previous -> releases/A)`, exit 0; P/current/bin/fn --version names B; the node starts through current, `health` answers, the interval from the stop to it is within the printed gap plus the named slack (the installer's ask, the heap probes and the start), and the POSTs are served (status transactions = N, then N+1); the rollback prints `current -> releases/A (previous -> releases/B)`, exit 0, and the node serves N+1 transactions on A; every refusal is by name and exit 4 with nothing switched: `is already installed at`, `nothing to roll back to`, `refuses that store's format` (P/releases/B removed again on a fresh prefix; the node's config.json restored after the rollback case)."
+      ],
+      "implementation": {
+        "test": "tests.test_native_install",
+        "cases": [
+          "test_upgrade_beside_and_rollback_walk_with_the_printed_gap",
+          "test_a_release_that_refuses_the_store_switches_nothing"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "packaging/install.sh",
+        "books/native-health.lisp",
+        "tests/acl2/native-health-tests.lisp"
+      ]
     }
   ]
 }
