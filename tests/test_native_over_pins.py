@@ -6,6 +6,7 @@ exercises the real swap's :readers refusal.  Releasing or cancelling the
 response settles the pin and the same real reclaim then installs.
 """
 import re
+import socket
 import time
 import unittest
 
@@ -114,6 +115,9 @@ class NativeOverPinsTests(unittest.TestCase):
                     self.assertTrue(client.command("GROUP " + GROUP).startswith(b"211 2 "))
                     at = len(owner.stderr.since(0))
                     client.send(("OVER 1-34\r\nSTAT %s\r\n" % msgid("f0")).encode())
+                    # A write-half-close is not response cancellation.  The
+                    # complete sparse OVER and following STAT still drain.
+                    client.sock.shutdown(socket.SHUT_WR)
                     status = client.line()
                     self.assertTrue(status.startswith(b"224 "), status)
                     rows = []

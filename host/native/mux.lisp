@@ -1099,7 +1099,10 @@ whatever the descriptor says."
          (pending (fnn-mux-pending-tls loop)))
     (dolist (conn pending)
       (fnn-mux-dispatch loop conn))
-    (let* ((polled (remove-if (lambda (conn) (zerop (fnn-mux-interest conn)))
+    (let* ((polled (remove-if (lambda (conn)
+                               (or (eq (fnn-mux-conn-phase conn) :done)
+                                   (and (zerop (fnn-mux-interest conn))
+                                        (null (fnn-mux-conn-plan conn)))))
                               (fnn-mux-loop-conns loop)))
            (n (1+ (length polled)))
            (fds (make-array n)) (events (make-array n))
@@ -1127,13 +1130,21 @@ whatever the descriptor says."
         (loop for conn in polled for i from 1
               unless (or (zerop (aref revents i))
                          (eq (fnn-mux-conn-phase conn) :done))
-                do (fnn-mux-dispatch loop conn)))))
+                do (if (and (fnn-mux-conn-plan conn)
+                            (zerop (fnn-mux-interest conn))
+                            (not (zerop (logand (aref revents i) +fnn-mux-poll-trouble+))))
+                       ;; A timer-held plan still observes actual descriptor
+                       ;; failure.  POLLIN/EOF alone is deliberately absent:
+                       ;; a client may SHUT_WR and read the complete reply.
+                       (fnn-mux-guarded (loop conn) (fnn-mux-finish loop conn))
+                     (fnn-mux-dispatch loop conn))))))
   ;; PKT-875: what this loop still owes its clients, for a stop's drain.
   (let ((owed (count-if (lambda (conn)
                           (and (not (eq (fnn-mux-conn-phase conn) :done))
                                (or (fnn-mux-conn-await conn)
                                    (and (fnn-mux-conn-replying conn)
-                                        (fnn-mux-conn-out conn)))))
+                                        (or (fnn-mux-conn-out conn)
+                                            (fnn-mux-conn-plan conn))))))
                         (fnn-mux-loop-conns loop))))
     (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
       (setf (fnn-mux-loop-unsent loop) owed)))
