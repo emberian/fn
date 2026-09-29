@@ -29,6 +29,7 @@
 (in-package "ACL2")
 (include-book "owner-store-budget")
 (include-book "records-concrete")
+(local (in-theory (enable fn-rcon-event-twin-rules)))  ; Q3f: the concrete twins' equalities
 
 (defun fn-pcar-next-lower (records)
   (declare (xargs :guard (fn-sf-record-valuesp records) :verify-guards nil))

@@ -225,3 +225,12 @@
            :in-theory (disable fn-record-encode-impl))))
 
 (in-theory (disable fn-rcon-record-encode-impl))
+
+; The twins' equalities rewrite one vocabulary into another (ledger
+; accessor-equality); they are closed here and opened, as one theory, by the
+; books that reason about the concrete twins (Q3f, lane assurance-hygiene-4).
+(deftheory fn-rcon-record-twin-rules
+  '(fn-rcon-metadata-bytes-p-is-metadata-bytes-p fn-rcon-msgidp-is-msgidp
+    fn-rcon-record-p-is-record-p fn-rcon-record-encode-impl-is-record-encode-impl))
+
+(in-theory (disable fn-rcon-record-twin-rules))
