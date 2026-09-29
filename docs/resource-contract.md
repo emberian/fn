@@ -13,8 +13,10 @@ The short answer, so nobody has to read the rows to learn it: the memory,
 work-per-step and admission bounds are deterministic functions of the
 operator's profile and are refused by name at the boundary; several of them
 are theorems about a model whose host subject is real (the host calls the
-function the theorem is about); none is certified at the current source
-digest by a manifest the registry cites (see "The coordinates" below); the
+function the theorem is about); every book they live in is green at its
+current bytes by the day's union cites, while in the registry's own sense
+all but one of them (PRF-257) are uncertified at the current digest (see
+"The coordinates" below); the
 time rows guarantee classification only, never latency; the stack row is a
 lint with a counted debt, not a proof; TLS has no bound of its own; disk has
 no growth theorem; and the "Not bounded" list at the end is not empty.
@@ -31,14 +33,15 @@ file, because an archived manifest or an edited book would put it out of
 date. Two notions of "certified" exist in the tree and the tool prints
 both, because they disagree. `tools/green_check.py` judges a BOOK at its
 current bytes against every held manifest: at the revision this document
-was written against (origin/dev `f286c0204`) every book this contract cites
-was green, certified that day by the batch's union cites on persvati and
-hbox (`--table` names the run for each). `planning/proofs.json` judges a
-PROOF against the manifests its own entry cites, which are the manifests the
-lane that wrote it recorded: at the same revision it marked 6 of 353 proofs
-`certified` and 320 `uncertified-at-current-digest`, and of the proofs this
+was written against (origin/dev `1922efe84`, 2026-09-29) every book this
+contract cites was green, certified within the previous day by the batch's
+union cites on persvati and hbox (`--table` names the run for each).
+`planning/proofs.json` judges a PROOF against the manifests its own entry
+cites, which are the manifests the lane that wrote it recorded: at the same
+revision it marked 5 of 360 proofs `certified` and 327
+`uncertified-at-current-digest`, and of the 30 registered proofs this
 contract cites only PRF-257 (the LZ4 decoder, row **W5**) was among the
-six. A row's theorem is therefore certified at these bytes in the first
+five. A row's theorem is therefore certified at these bytes in the first
 sense and, in the registry's sense, certified only by an older run until
 the entry cites the newer one. Both are strictly more than a commit message
 says and strictly less than "the served image runs these bytes": no row
