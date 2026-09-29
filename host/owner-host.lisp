@@ -1831,7 +1831,8 @@
   (declare (xargs :stobjs (state fn-arena) :mode :program
                   :guard (and (fn-cbor-octet-listp id-octets)
                               (fn-cbor-octet-listp subject-octets)
-                              (fn-cbor-octet-listp evidence-octets))))
+                              (fn-cbor-octet-listp evidence-octets)))
+           (ignorable fn-arena))
   (let* ((s (fn-owner-store state))
          (node (fn-sn-node s)))
     ; books/post-fields.lisp fn-pfld-retention-inputsp.
@@ -1952,7 +1953,8 @@
 ; carried historical projection decides whether it may be staged.
 (defun fn-owner-prepare-topic (event fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
-                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))))
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))
+                              (fn-prc-carryp (fn-owner-retain-carry state))))
            (ignorable fn-arena))
   (if (not (fn-th-topic-eventp event))
       (value :invalid)
