@@ -95,7 +95,12 @@ HOSTS = {
     # other (tools/cert_cache_sync.py; `fetch` mirrors each run).  Until then
     # persvati ran w25 (1b4169e9) and every book certified twice.
     "persvati": {
-        "acl2": "/tank/fn/toolchains/w28/acl2-literal-4g",
+        # The CERTIFY launcher is the tls64k one too (coordinator decision
+        # 2026-09-29, batch BB): books/image-world* exhaust --tls-limit 16384
+        # once a lane's world sits on dev ("Thread local storage exhausted",
+        # persvati run-20260929T012533Z-3ad0).  A certifying SBCL is
+        # single-threaded; the node's own TLS limit is books/profile-limits'.
+        "acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
         # The same launcher at --tls-limit 65536: make check's host_check
         # loads the production world, which exhausts the 16384 default.
         "image_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
@@ -103,7 +108,7 @@ HOSTS = {
         "wrap": "",
     },
     "hbox": {
-        "acl2": "/tank/fn/toolchains/w28/acl2-literal-4g",
+        "acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",  # see persvati's
         # The same ACL2 at --tls-limit 65536: the production world exhausts
         # SBCL's default thread-local storage (tools/hbox_native.sh IMAGE_ACL2;
         # packaging/release-tarball.sh FN_IMAGE_ACL2).
