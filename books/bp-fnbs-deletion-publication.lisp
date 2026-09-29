@@ -69,11 +69,14 @@
   :rule-classes nil)
 
 ; fn-bpn-nth agrees with nth inside a true list (the deletion record
-; recognizer is stated with nth, the authorization with fn-bpn-nth).
-(defthm fn-bpn-nth-is-nth-on-true-lists
-  (implies (and (natp n) (true-listp x) (< n (len x)))
-           (equal (fn-bpn-nth n x) (nth n x)))
-  :hints (("Goal" :in-theory (enable fn-bpn-nth fn-cbor-ag-car fn-cbor-ag-cdr))))
+; recognizer is stated with nth, the authorization with fn-bpn-nth).  Local:
+; books/bp-node-machine-invariants.lisp exports the unbounded theorem of this
+; name, and books/image-world includes both books.
+(local
+ (defthm fn-bpn-nth-is-nth-on-true-lists
+   (implies (and (natp n) (true-listp x) (< n (len x)))
+            (equal (fn-bpn-nth n x) (nth n x)))
+   :hints (("Goal" :in-theory (enable fn-bpn-nth fn-cbor-ag-car fn-cbor-ag-cdr)))))
 
 ; A stored record's epoch and operation id are frame naturals (the record
 ; recognizer says so); stated once so the keystone keeps the recognizer closed.
