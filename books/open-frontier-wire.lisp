@@ -82,7 +82,8 @@
   (equal (fn-ofw-wire-next (append a b) acc)
          (fn-ofw-wire-next b (fn-ofw-wire-next a acc)))
   :hints (("Goal" :induct (fn-ofw-wire-next a acc)
-           :in-theory (e/d (fn-ofw-wire-next) (fn-rcon-wire-event-txid)))))
+           :in-theory (e/d (fn-ofw-wire-next)
+                           (fn-rcon-wire-event-txid fn-ofw-wire-next-is-coordinates-next)))))
 
 (defthm fn-ofw-wire-next-natp
   (natp (fn-ofw-wire-next events acc))
