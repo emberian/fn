@@ -14082,6 +14082,34 @@
         "planning/evidence/pkt-615-number-bound-2026-09-28.md"
       ],
       "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound."
+    },
+    {
+      "id": "PRF-959",
+      "title": "A state checkpoint's verifiable digest is a function of its prefix: the loaded file digests the same whatever image wrote it and whenever the log rotated",
+      "statement": "books/store-checkpoint-digest.lisp fn-sckd-digest-of-written-file: under fn-scka-load-of-written-file's hypotheses (the file the writer produced for CONFIGS, RECORDS, a frontier and the payloads PS, with any REVISION and LOG in its F row), fn-sckd-digest of the tables fn-scka-load answers and fn-sdg-arena-pool of the arena it leaves equals fn-sckd-digest-of-prefix CONFIGS RECORDS FRONTIER PS, which reads neither REVISION nor LOG (fn-sckd-digest-ignores-revision-and-log). fn-sckd-digest is fn-sckd-combine of fn-sckd-tables-digest (schema, S, frontier, P, E, R) and the pool. host: fn-store-sco-decode-finish (host/store-node-host.lisp) calls fn-sckd-tables-digest on the loaded tables when `store ROOT digest' asked, and fn-store-sco-note-checkpoint-digest, called by fnn-state-checkpoint-load-arena (host/native/io.lisp) right after the load, calls fn-sckd-combine with fn-sdg-arena-pool; fn-store-sn-replay-digest-report prints `checkpoint-digest sequence=S HEX'. Scope: PKT-854 (planning/evidence/proto-determinism-2026-09-27.md N1); the digest is an abstract fn-digest (crypto-seam): equal digests imply nothing about preimages in this logic.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028",
+        "STO-011"
+      ],
+      "depends_on": [
+        "PRF-083",
+        "PRF-356"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": "tests/acl2/store-checkpoint-digest-tests.lisp (two writers of one prefix with different revision and log: tables differ, digests equal; not constant in frontier, prefix, pool); tests/test_native_replay_determinism.py test_b (the two copies' checkpoint-digest lines agree, a full replay prints none).",
+      "progress_note": "correctness-remainder-4, 2026-09-29: PKT-854 landed; REPL-admitted on persvati; certification at READY.",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sckd-digest-of-written-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sckd-digest-ignores-revision-and-log"
+        }
+      ]
     }
   ]
 }

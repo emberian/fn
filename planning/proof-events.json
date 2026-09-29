@@ -13525,6 +13525,19 @@
           "name": "fn-bpcc-frame-decode-of-sealed"
         }
       ]
+    },
+    {
+      "id": "PRF-959",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sckd-digest-of-written-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sckd-digest-ignores-revision-and-log"
+        }
+      ]
     }
   ]
 }
