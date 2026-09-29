@@ -205,6 +205,92 @@ def body_calls(form, logic: bool) -> list:
     return out
 
 
+# DATA-SIZED APPENDS (lane depth-debt-2).  `append' recurses on its first
+# argument, and a function whose guards are not verified runs its logic
+# through `*1*', where binary-append's own recursion runs too: one control-
+# stack frame per element of the first argument (the kind-5 persist's
+# 40,721 BINARY-APPEND frames, lane depth-debt).  Guard-verified code runs
+# the raw `append', a loop.  So on the closure, every `append' in a body that
+# runs its logic, whose first argument (every argument but the last) is not a
+# literal, a quoted constant, a `*constant*' or a `(list ...)' of fixed
+# arity, is a finding: verify the function's guards (so its raw code runs),
+# or list it under "append" -> "bounded" with the bound named.
+_SMALL_APPEND_HEADS = {"list", "quote"}
+
+
+def _small_first(arg) -> bool:
+    if isinstance(arg, (int, float)) or (isinstance(arg, str) and not isinstance(arg, Sym)):
+        return True
+    if isinstance(arg, Sym):
+        n = _name(arg)
+        return n in ("nil", "t") or bool(CONSTANT.fullmatch(n or ""))
+    if isinstance(arg, list) and arg:
+        return _name(arg[0]) in _SMALL_APPEND_HEADS
+    return arg is None
+
+
+def appends(term, out: list) -> None:
+    """Append every data-sized first argument of an `append' in TERM (the
+    mbe branch that runs, as `calls' reads it)."""
+    if not isinstance(term, list) or not term:
+        return
+    op = term[0]
+    name = _name(op) if not isinstance(op, list) else None
+    if name in OPAQUE or name == "mbt":
+        return
+    if name == "mbe":
+        args = term[1:]
+        pairs = dict((_name(args[i]), args[i + 1]) for i in range(0, len(args) - 1, 2))
+        if _BRANCH[0] in pairs:
+            appends(pairs[_BRANCH[0]], out)
+        return
+    if name in ("append", "binary-append") and len(term) > 2:
+        for a in term[1:-1]:
+            if not _small_first(a):
+                out.append(a)
+    if name in ("let", "let*") and len(term) > 1 and isinstance(term[1], list):
+        for binding in term[1]:
+            if isinstance(binding, list) and len(binding) > 1:
+                appends(binding[1], out)
+        for a in term[2:]:
+            appends(a, out)
+        return
+    for a in (term if isinstance(op, list) else term[1:]):
+        appends(a, out)
+
+
+def _show(x) -> str:
+    if isinstance(x, list):
+        return "(" + " ".join(_show(a) for a in x) + ")"
+    return _name(x) if isinstance(x, Sym) else repr(x)
+
+
+def body_appends(form, logic: bool) -> list:
+    out: list = []
+    _BRANCH[0] = ":logic" if logic else ":exec"
+    try:
+        for f in _body_forms(form[3:]):
+            appends(f, out)
+    finally:
+        _BRANCH[0] = ":exec"
+    return out
+
+
+def append_findings(defs: dict) -> list[dict]:
+    rows = []
+    for name, d in sorted(defs.items()):
+        form = d.form
+        if name not in _LOGIC_RUN:
+            continue
+        if callgraph.head(form) not in callgraph.FUNCTION_HEADS or len(form) < 4:
+            continue
+        found = body_appends(form, True)
+        if found:
+            rows.append({"function": name, "where": "{}:{}".format(d.path, d.line),
+                         "first": [_show(a) for a in found]})
+    return rows
+
+
 def _xargs(form) -> dict:
     """The keyword arguments of FORM's (declare (xargs ...)) forms."""
     found: dict = {}
@@ -522,6 +608,8 @@ def closure() -> tuple[dict[str, callgraph.Definition], set[str]]:
 def findings() -> tuple[list[dict], int, int]:
     """(every non-tail recursion on the closure, closure size, root count)."""
     defs, roots = closure()
+    _LAST_DEFS.clear()
+    _LAST_DEFS.update(defs)
     sites: dict[str, list] = {}
     for name, d in defs.items():
         form = d.form
@@ -544,9 +632,36 @@ def findings() -> tuple[list[dict], int, int]:
     return rows, len(sites), len(roots)
 
 
+_LAST_DEFS: dict = {}
+
+
 def load_baseline(path: Path = BASELINE) -> dict:
     data = json.loads(path.read_text(encoding="utf-8"))
-    return {"bounded": dict(data.get("bounded", {})), "debt": dict(data.get("debt", {}))}
+    app = data.get("append", {})
+    return {"bounded": dict(data.get("bounded", {})), "debt": dict(data.get("debt", {})),
+            "append": {"bounded": dict(app.get("bounded", {})), "debt": dict(app.get("debt", {}))}}
+
+
+def check_appends(rows: list[dict], baseline: dict) -> list[str]:
+    """The data-sized append rule (see `appends'): the same only-shrinks
+    discipline as the recursions, under the baseline's "append" key."""
+    listed = baseline.get("append", {"bounded": {}, "debt": {}})
+    problems = []
+    found = {r["function"]: r for r in rows}
+    for fn, r in sorted(found.items()):
+        if fn in listed["bounded"] or fn in listed["debt"]:
+            continue
+        problems.append(
+            "{} ({}): appends onto {} in a body the host runs through *1* (its guards are "
+            "not verified), where binary-append recurses once per element of its first "
+            "argument.  Verify the function's guards (the raw append is a loop), or list it "
+            "under \"append\" -> \"bounded\" in tools/depth_baseline.json with the bound "
+            "named".format(fn, r["where"], ", ".join(r["first"])))
+    for kind in ("bounded", "debt"):
+        for fn in sorted(set(listed[kind]) - set(found)):
+            problems.append("{}: listed under \"append\" -> \"{}\" but no longer appends data "
+                            "through *1* on the closure: remove its entry".format(fn, kind))
+    return problems
 
 
 def check(rows: list[dict], baseline: dict, constants: set[str] | None = None) -> list[str]:
@@ -663,12 +778,25 @@ def main(argv: list[str] | None = None) -> int:
         for r in rows:
             print("{:8s} {:45s} {}  {}".format(r["class"], r["function"], r["where"], r["why"]))
     problems = check(rows, baseline)
+    app_rows = append_findings(_LAST_DEFS)
+    if arguments.list:
+        listed = baseline["append"]
+        for r in app_rows:
+            cls = ("bounded" if r["function"] in listed["bounded"]
+                   else "debt" if r["function"] in listed["debt"] else "UNLISTED")
+            print("append-{:8s} {:45s} {}  {}".format(cls, r["function"], r["where"],
+                                                     " | ".join(r["first"])))
+    problems += check_appends(app_rows, baseline)
     for p in problems:
         print("depth_check: " + p, file=sys.stderr)
     print("depth_check: {} host-called root(s), {} function(s) in the closure, {} non-tail "
-          "recursion(s): {} bounded, {} debt, {} problem(s)".format(
+          "recursion(s): {} bounded, {} debt; {} data-sized append(s) through *1*: {} bounded, {} debt; "
+          "{} problem(s)".format(
               roots, size, len(rows), sum(r["class"] == "bounded" for r in rows),
-              sum(r["class"] == "debt" for r in rows), len(problems)), file=sys.stderr)
+              sum(r["class"] == "debt" for r in rows), len(app_rows),
+              sum(r["function"] in baseline["append"]["bounded"] for r in app_rows),
+              sum(r["function"] in baseline["append"]["debt"] for r in app_rows),
+              len(problems)), file=sys.stderr)
     return 1 if problems else 0
 
 
