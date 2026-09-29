@@ -5890,6 +5890,23 @@
         "tests/test_bp_obligation_native.py",
         "planning/evidence/operations-2026-09-28.md"
       ]
+    },
+    {
+      "id": "SCN-206",
+      "title": "An article that would take a group's number past 2,147,483,647 is refused by name at admission, and the served path counts no articles",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-057"
+      ],
+      "steps": [
+        "A store one of whose groups has its high watermark at 2,147,483,647 (RFC 3977 section 6's bound).",
+        "A POST, an IHAVE and a TAKETHIS of an article for that group; a re-pin of a reader over the store."
+      ],
+      "expected": [
+        "POST answers 441 naming :article-numbers-exhausted, IHAVE 437, TAKETHIS 439, and nothing is stored; the re-pin walks no article count (fn-nntp-projectionp decides configuration only)."
+      ],
+      "execution_scope": "Specified at batch BB for lane join-f2-615 (PKT-615): proved in tests/acl2/store-number-bound-tests.lisp and owner-prepare-served-tests.lisp; a native case owed."
     }
   ]
 }

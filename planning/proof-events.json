@@ -10732,11 +10732,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-sjh-okp-at-owner-outcome",
-          "note": "KEYSTONE (join-f2-2). fn-owner-outcome (fn-apc-own-outcome under the carries)."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-open-peer",
           "note": "KEYSTONE (join-f2-2). fn-owner-open-peer (fn-ocfg-open-peer)."
         },
@@ -10839,11 +10834,6 @@
           "kind": "theorem",
           "name": "fn-sjh-viewsp-of-ocfg-store-step",
           "note": "KEYSTONE (join-f2-2). The store's steps other than its finish: the working view refreshes forward."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sjh-viewsp-of-ocfg-step-view-event",
-          "note": "KEYSTONE (join-f2-2). Every other fn-owner-step event and the connection events keep the view."
         },
         {
           "kind": "theorem",
