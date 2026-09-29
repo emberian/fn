@@ -16,13 +16,13 @@
 (defconst *fn-bpcc-frame-magic* '(70 78 67 67))   ; FNCC
 (defconst *fn-bpcc-frame-kinds* '(:config :carry :waive))
 ; :config (JOURNAL-NAME), the journal's first record; :carry (VERB WORK
-; REASON), books/bp-carry-control.lisp's control record; :waive (WORK
-; PRINCIPAL REASON), its operator waiver (`carry drop WORK --abandon',
+; REASON), books/bp-carry-control.lisp's control record; :waive ("abandon"
+; WORK REASON PRINCIPAL), its operator waiver (`carry drop WORK --abandon',
 ; lane carry-abandon, PRF-950).
 (defconst *fn-bpcc-frame-specs*
   (list (cons :config '(:text))
         (cons :carry '(:text :text :text))
-        (cons :waive '(:text :text :text))))
+        (cons :waive '(:text :text :text :text))))
 (defconst *fn-bpcc-frame-max-payload*
   (fn-frame-table-width *fn-bpcc-frame-specs*))
 
