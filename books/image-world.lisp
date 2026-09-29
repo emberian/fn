@@ -207,6 +207,7 @@
 (include-book "history-image-snapshot")
 (include-book "owner-snapshot-request")
 (include-book "snapshot-file-copy")
+(include-book "snapshot-publication")
 (include-book "store-capacity-vector")
 (include-book "store-carried-folds")
 (include-book "retention-figures")
