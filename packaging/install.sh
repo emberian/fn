@@ -110,11 +110,10 @@ web_face() {
     echo "--reader: $config already has a [web] table; left as it is"
     return 0
   fi
-  domain=$(uname -n)
-  case $domain in ''|*[!A-Za-z0-9.-]*) domain=localhost ;; esac
-  printf '\n[web]\nport = 8920\nhost = "127.0.0.1"\nproxied = true\nsite = "Friends news"\ndomain = "%s"\n' \
-    "$domain" >> "$config"
-  echo "--reader: added [web] to $config (127.0.0.1:8920, behind the HTTPS proxy: $prefix/share/fn/caddy/fn-web.caddy); edit site and domain, then restart the node"
+  # No domain key: a post's From takes the node's own name (`policy set
+  # path-identity'), never this machine's host name.
+  printf '\n[web]\nport = 8920\nhost = "127.0.0.1"\nproxied = true\nsite = "Friends news"\n' >> "$config"
+  echo "--reader: added [web] to $config (127.0.0.1:8920, behind the HTTPS proxy: $prefix/share/fn/caddy/fn-web.caddy); edit site if you like, then restart the node"
 }
 if [ "$service" = no ]; then
   mkdir -p "$node"

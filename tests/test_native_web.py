@@ -78,6 +78,10 @@ class FaceCases:
     fn_reader's rehearsal made (planning/evidence/release-web-reader-2026-09-27.md)."""
 
     TLS = False
+    # The From's domain: the [web] table's `domain', or, when it names none,
+    # the node's own name (`policy set path-identity'); see the two classes.
+    DOMAIN = 'domain = "friends.invalid"\n'
+    IDENTITY = None
 
     @classmethod
     def setUpClass(cls):
@@ -87,11 +91,14 @@ class FaceCases:
         node.write_config(extra=(
             'tls_port = {}\ntls_cert = "{}"\ntls_key = "{}"\n\n'
             '[auth]\nrequired = true\nprotected_only = true\n\n'
-            '[web]\nport = {}\nsite = "Friends news"\ndomain = "friends.invalid"\n{}'.format(
+            '[web]\nport = {}\nsite = "Friends news"\n{}{}'.format(
                 node.tls_port, node.cert, node.root / "key.pem", cls.web_port,
-                "tls = true\n" if cls.TLS else "")))
+                cls.DOMAIN, "tls = true\n" if cls.TLS else "")))
         cls.config = node.config
         node.init("local.general", "control.cancel", timeout=240)
+        if cls.IDENTITY:
+            node.operator("policy", "set", "path-identity", cls.IDENTITY, timeout=240,
+                          expect=EXIT.OK)
         # Three listeners announce: NNTP, NNTP over TLS, and the web face.
         node.listening = 3
         node.start()
@@ -163,6 +170,10 @@ class FaceCases:
         self.assertEqual(status, 200)
         self.assertIn("My first post, from the browser. Grüße ✓", page)
         self.assertIn("&lt;b&gt;not bold&lt;/b&gt;", page)      # escaped, never markup
+        # The From the face wrote: LOGIN <LOGIN@DOMAIN>, DOMAIN the named one
+        # or the node's own name.
+        self.assertIn("wren &lt;wren@%s&gt;" % (self.IDENTITY if not self.DOMAIN else "friends.invalid"),
+                      page)
         self.assertIn("Remove my post", page)
         remove = re.search(r"href='(/remove\?[^']+)'>Remove my post", page).group(1)
         status, _, page, _, _ = b.request("GET", remove.replace("&amp;", "&"))
@@ -288,8 +299,11 @@ class FaceCases:
 
 @requires(IMAGE)
 class NativeWebFaceTests(FaceCases, unittest.TestCase):
-    """Plain HTTP from loopback (the way a TLS proxy on the machine reaches it)."""
+    """Plain HTTP from loopback (the way a TLS proxy on the machine reaches it);
+    no [web] domain, so a post's From carries the node's own name."""
     TLS = False
+    DOMAIN = ""
+    IDENTITY = "friends.example"
 
     def test_4_fuzzed_requests_are_answered_or_closed(self):
         self.fuzz_requests_are_answered_or_closed()

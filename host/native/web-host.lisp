@@ -279,7 +279,12 @@ exposure admission decides (the id, or NIL when it refused)."
         (fnn-listen port :address (coerce address '(simple-array (unsigned-byte 8) (*)))
                          :family family :backlog 64)
       (let ((face (%make-fnn-web-face :plan plan
-                                      :config (fnn-core 'fn-web-host-plan-config plan)
+                                      ;; The From's domain when [web] names none: the
+                                      ;; node's own name, read from the owner's live
+                                      ;; configuration as the article limit is.
+                                      :config (fnn-core 'fn-web-host-plan-config plan
+                                                        (first (fnn-call 'fn-web-host-identity
+                                                                         *the-live-state*)))
                                       :limits limits :listener listener
                                       :tls-context (and tls tls-context)
                                       :service service)))

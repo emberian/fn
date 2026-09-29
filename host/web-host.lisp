@@ -24,7 +24,20 @@
 (defun fn-web-host-plan-family (plan) (declare (xargs :mode :program)) (fn-web-plan-family plan))
 (defun fn-web-host-plan-address (plan) (declare (xargs :mode :program)) (fn-web-plan-address plan))
 (defun fn-web-host-plan-tls (plan) (declare (xargs :mode :program)) (fn-web-plan-tls plan))
-(defun fn-web-host-plan-config (plan) (declare (xargs :mode :program)) (fn-web-plan-config plan))
+(defun fn-web-host-plan-config (plan identity)
+  (declare (xargs :mode :program))
+  (fn-web-plan-config plan identity))
+
+; The node's own name, the `path-identity' policy of the owner's live
+; configuration (the one Path and Injection-Info carry): the domain of a
+; post's From when [web] names none (books/web-config.lisp fn-web-plan-domain).
+; Octets, or nil while the policy is unset.
+(defun fn-web-host-identity (state)
+  (declare (xargs :mode :program :stobjs state))
+  (let ((identity (fn-cfg-policy (fn-cfg-value (fn-owner-config state)) "path-identity")))
+    (if (and (stringp identity) (not (equal identity "")))
+        (fn-record-string-octets identity)
+      nil)))
 
 (defun fn-web-host-limits (article-limit)
   (declare (xargs :mode :program))
