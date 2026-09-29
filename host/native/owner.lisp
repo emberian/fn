@@ -3461,7 +3461,40 @@ CLOSING STARTTLS CONSUMED)."
                  closing starttls consumed)))
       (:fnn-extent-cold
        (fnn-owner-cold-line service cid incoming socket class peerp (second results)))
-      (t (values-list results)))))
+      (:defer (values-list results))
+      (t (fnn-owner-page-read-hold cid (first results))
+         (values-list results)))))
+
+;;; Developer image only (the resilience framework's `page-read-outstanding'
+;;; point, planning/design-resilience-framework-2026-09-29.md section 5):
+;;; FN_NATIVE_PAGE_READ_HOLD=MIN-OCTETS:RELEASE-FILE holds a served read
+;;; AFTER its step ran against the reader's pinned view (the plan is built;
+;;; the owner mutex is released) and BEFORE its reply is rendered and
+;;; delivered, when ACL2's first render window of the plan
+;;; (fn-splan-window-size) is at least MIN-OCTETS, so a scenario holds the
+;;; ARTICLE it started and not the short status replies before it.  It
+;;; prints `PAGE-READ held at=page-read-outstanding cid=N window=W' and waits
+;;; until the release file exists; the scenario cancels the reader, retires
+;;; the old generation (reclaim) and then creates the file, and the read is
+;;; delivered (or meets its closed socket).  A SIGKILL during the hold is the
+;;; death form.  Once the file exists every later read passes.
+(defun fnn-owner-page-read-hold (cid plan)
+  (let ((raw (fnn-developer-selector "FN_NATIVE_PAGE_READ_HOLD")))
+    (when (and raw (plusp (length raw)))
+      (let* ((colon (position #\: raw))
+             (min (and colon (plusp colon)
+                       (every #'digit-char-p (subseq raw 0 colon))
+                       (parse-integer raw :end colon))))
+        (unless (and min (< (1+ colon) (length raw)))
+          (fnn-fault "invalid FN_NATIVE_PAGE_READ_HOLD (expected MIN-OCTETS:RELEASE-FILE)"))
+        (let ((release (subseq raw (1+ colon))))
+          (unless (probe-file release)
+            (let ((size (fnn-core 'fn-splan-window-size plan)))
+              (unless (and (integerp size) (>= size 0))
+                (fnn-fault "owner returned a malformed render window size"))
+              (when (and (plusp size) (>= size min))
+                (fnn-err "PAGE-READ held at=page-read-outstanding cid=~d window=~d" cid size)
+                (loop until (probe-file release) do (sleep 0.05))))))))))
 
 ;;; Row A4, option (c) (lane composed-owner-3; books/owner-cold-line.lisp,
 ;;; PRF-933).  The served read span is pure over its stobjs, so it runs with
