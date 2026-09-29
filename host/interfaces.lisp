@@ -2951,7 +2951,8 @@
   :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-tcl-delivery-plan
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-tcl-delivery-plan-decides-exactly-by-the-held-final-ack-and-the-callback))
 
 (definterface fn-tcl-delivery-plan-detail
   :class ::common-lisp-compliant)

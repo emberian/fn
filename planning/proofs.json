@@ -17328,6 +17328,24 @@
       "events": [
         "fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets"
       ]
+    },
+    {
+      "id": "PRF-1036",
+      "title": "fn-tcl-delivery-plan decides the delivery plan's status exactly by the held final ACK and the durability callback's answer, and carries the held messages when accepted, the prior messages and one XFER_REFUSE when refused, and nothing when uncertain or faulted",
+      "statement": "books/tcpcl-delivery.lisp, called by host/native/tcpcl.lisp's transfer completion (it acts on fn-tcl-delivery-plan-status and writes fn-tcl-delivery-plan-messages). KEYSTONE fn-tcl-delivery-plan-decides-exactly-by-the-held-final-ack-and-the-callback, two-sided per status: the status is one of :accepted, :refused, :uncertain, :fault; it is :accepted iff the final ACK of the transfer is held in the messages (fn-tcl-held-final-ackp) and the callback answered a two-element (:accepted nil-or-string), :refused iff held and (:refused detail), :uncertain iff held and (:uncertain detail); an accepted plan carries the held messages and the callback's detail, a refused plan the prior messages followed by one XFER_REFUSE naming the transfer with (fn-tcl-delivery-refuse-reason detail), an uncertain or faulted plan no message (nothing is sent on uncertainty), and a fault's detail is :missing-final-ack or :bad-callback-result. Teeth: tests/acl2/tcpcl-delivery-tests.lisp (the held ACK of transfer 0 with each callback answer by name and the messages carried; no held ACK and two malformed callbacks answer the fault with its detail).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/tcpcl-delivery.lisp",
+        "tests/acl2/tcpcl-delivery-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-5: the bp book entries, one two-sided keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode)."
     }
   ]
 }
