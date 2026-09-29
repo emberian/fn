@@ -144,7 +144,21 @@ class FaceCases:
         status, _, page, _, _ = b.request("GET", "/g?name=local.general")
         self.assertEqual(status, 200)
         self.assertIn("Hello from wren", page)
+        # The index's From column is the display name, not the mailbox the
+        # face wrote (LOGIN <LOGIN@DOMAIN>); the groups page counts Posts.
+        self.assertIn("<td class='from'>wren</td>", page)
+        self.assertNotIn("&lt;wren@", page)
         number = re.search(r"href='/a\?g=local.general&amp;n=(\d+)'>Hello from wren", page).group(1)
+        status, _, compose, _, _ = b.request("GET", "/new?g=local.general")
+        self.assertEqual(status, 200)
+        self.assertIn("'>back to the group</a>]", compose)
+        status, _, groups, _, _ = b.request("GET", "/")
+        self.assertIn("<th class='num'>Posts</th>", groups)
+        # An article that is not there: the page carries ARTICLE's own line.
+        status, _, missing, _, _ = b.request("GET", "/a?g=local.general&n=999999")
+        self.assertEqual(status, 404)
+        self.assertIn("423 ", missing)
+        self.assertNotIn("211 ", missing)
         status, _, page, _, _ = b.request("GET", "/a?g=local.general&n=" + number)
         self.assertEqual(status, 200)
         self.assertIn("My first post, from the browser. Grüße ✓", page)

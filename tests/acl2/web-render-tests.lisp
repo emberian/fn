@@ -100,6 +100,22 @@
                                  (wrnt-octs "1"))))
 (assert-event (and (fn-wr-segs-okp *wrnt-group*)
                    (fn-wr-pieces-okp (fn-wr-pieces *wrnt-group* *wrnt-in*))))
+
+; What a friend reads on the groups and compose pages (lane
+; operability-review, 2026-09-29): the groups table counts "Posts", and the
+; compose page offers a way back without posting, in the outcome page's own
+; words (no new markup: fn-wr-segs-okp holds as before).
+(defun wrnt-chars (xs) (declare (xargs :mode :program))
+  (if (consp xs) (cons (code-char (car xs)) (wrnt-chars (cdr xs))) nil))
+(defun wrnt-str (xs) (declare (xargs :mode :program)) (coerce (wrnt-chars xs) 'string))
+(assert-event
+ (let ((groups (wrnt-emit (fn-wr-groups-main (list (list (wrnt-octs "local.general") (wrnt-octs "3") nil))) nil))
+       (compose (fn-wr-compose-main (wrnt-octs "local.general") (wrnt-octs "tok") nil nil nil)))
+   (and (search "<th class='num'>Posts</th>" (wrnt-str groups))
+        (not (search "Arts" (wrnt-str groups)))
+        (fn-wr-segs-okp compose)
+        (search "'>back to the group</a>] [<a href='/'>groups</a>]</p>" (wrnt-str (wrnt-emit compose nil)))
+        (search "href='/g?name=local.general'>back to the group" (wrnt-str (wrnt-emit compose nil))))))
 (assert-event (and (not (fn-wr-segs-okp (list (cons :m (wrnt-octs "<script>")))))
                    (not (fn-wr-pieces-okp (fn-wr-pieces (list (cons :m (wrnt-octs "<script>"))) nil)))))
 (must-fail-checked

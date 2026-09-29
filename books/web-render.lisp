@@ -524,7 +524,7 @@
    "</a>"
    " <span class='dim'>(read only)</span>"
    "</td></tr>"
-   "<h1>Groups</h1><table class='index'><thead><tr><th class='num'>Arts</th><th>Group</th></tr></thead><tbody>"
+   "<h1>Groups</h1><table class='index'><thead><tr><th class='num'>Posts</th><th>Group</th></tr></thead><tbody>"
    "</tbody></table>"
    "<h1>Groups</h1><p class='dim'>There are no groups you can read here yet.</p>"
    "</td><td class='subj'><a class='title' href='/a?g="
@@ -767,7 +767,7 @@
 (defun fn-wr-groups-main (rows)
   (declare (xargs :guard t))
   (if (consp rows)
-      (append (list (fn-wm "<h1>Groups</h1><table class='index'><thead><tr><th class='num'>Arts</th><th>Group</th></tr></thead><tbody>"))
+      (append (list (fn-wm "<h1>Groups</h1><table class='index'><thead><tr><th class='num'>Posts</th><th>Group</th></tr></thead><tbody>"))
               (fn-wr-group-rows rows)
               (list (fn-wm "</tbody></table>")))
     (list (fn-wm "<h1>Groups</h1><p class='dim'>There are no groups you can read here yet.</p>"))))
@@ -913,7 +913,10 @@
                 (fn-wr-txt subject)
                 (fn-wm "' required><label for='body'>Message</label><textarea id='body' name='body' required>")
                 (fn-wr-txt body)
-                (fn-wm "</textarea><p><button type='submit'>Post</button></p></form>"))))
+                (fn-wm "</textarea><p><button type='submit'>Post</button></p></form>")
+                ; A way back without posting (the outcome page's own words).
+                (fn-wm "<p class='keys'>[<a href='/g?name=") (fn-wr-url group)
+                (fn-wm "'>back to the group</a>] [<a href='/'>groups</a>]</p>"))))
 
 (defun fn-wr-remove-main (group csrf msgid)
   (declare (xargs :guard t))

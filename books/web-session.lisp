@@ -534,9 +534,74 @@
       (cons (fn-wss-active-row (fn-wss-split j ce j 32 fn-web-in) fn-web-in)
             (fn-wss-active-rows le be fn-web-in)))))
 
+; The From column of the index shows the author's NAME, not the whole
+; mailbox (RFC 5322 3.4: name-addr = [display-name] angle-addr; addr-spec):
+; a full "Ada Lovelace <ada.lovelace@subdomain.example>" wrapped every row
+; of the index over five lines on a desktop and eight on a phone
+; (lane operability-review, 2026-09-29).  The span is narrowed, never
+; copied: the phrase before "<" with its trailing blanks and one pair of
+; quotes dropped; the addr-spec inside the brackets when there is no
+; phrase; the whole field when there are no brackets.  The article page
+; still shows the whole From line.
+(defun fn-wss-octet-at (a b octet fn-web-in)
+  ; The first OCTET in [A, B), or B.
+  (declare (xargs :stobjs fn-web-in
+                  :guard (and (natp a) (natp b) (<= b (fn-octets-len fn-web-in)))
+                  :measure (nfix (- b a))))
+  (cond ((or (not (natp a)) (not (natp b)) (<= b a)) (nfix b))
+        ((equal (fn-octets-get a fn-web-in) octet) a)
+        (t (fn-wss-octet-at (1+ a) b octet fn-web-in))))
+
+(defthm fn-wss-octet-at-bounds
+  (implies (and (natp a) (natp b) (<= a b))
+           (and (<= a (fn-wss-octet-at a b octet fn-web-in))
+                (<= (fn-wss-octet-at a b octet fn-web-in) b)))
+  :rule-classes ((:linear :trigger-terms ((fn-wss-octet-at a b octet fn-web-in)))))
+
+(defun fn-wss-trim-end (a b fn-web-in)
+  ; B moved back over the blanks (SP, HT) that end [A, B), never below A.
+  (declare (xargs :stobjs fn-web-in
+                  :guard (and (natp a) (natp b) (<= b (fn-octets-len fn-web-in)))
+                  :measure (nfix (- b a))))
+  (cond ((or (not (natp a)) (not (natp b)) (<= b a)) (nfix b))
+        ((member (fn-octets-get (1- b) fn-web-in) '(32 9)) (fn-wss-trim-end a (1- b) fn-web-in))
+        (t b)))
+
+(defthm fn-wss-trim-end-bounds
+  (implies (and (natp a) (natp b) (<= a b))
+           (and (<= a (fn-wss-trim-end a b fn-web-in))
+                (<= (fn-wss-trim-end a b fn-web-in) b)))
+  :rule-classes ((:linear :trigger-terms ((fn-wss-trim-end a b fn-web-in)))))
+
+(defun fn-wss-name-span (span fn-web-in)
+  ; The display name's span within a From field's SPAN (above); SPAN itself
+  ; when it is not a span of fn-web-in.
+  (declare (xargs :stobjs fn-web-in :guard t))
+  (if (fn-wss-spanp span (fn-octets-len fn-web-in))
+      (let* ((s (car span)) (e (cdr span))
+             (p (fn-wss-octet-at s e 60 fn-web-in))
+             (q (fn-wss-trim-end s p fn-web-in)))
+        (cond ((>= p e) span)
+              ((< s q)
+               (if (and (<= (+ s 2) q)
+                        (equal (fn-octets-get s fn-web-in) 34)
+                        (equal (fn-octets-get (1- q) fn-web-in) 34))
+                   (cons (1+ s) (1- q))
+                 (cons s q)))
+              (t (cons (1+ p) (fn-wss-octet-at (1+ p) e 62 fn-web-in)))))
+    span))
+
+(defthm fn-wss-name-span-is-a-span
+  ; The name's span lies within the field's: nothing outside the reply is
+  ; ever named (the emitter's segments stay within fn-web-in).
+  (implies (fn-wss-spanp span n)
+           (fn-wss-spanp (fn-wss-name-span span fn-web-in) n))
+  :hints (("Goal" :in-theory (disable fn-octets-get fn-octets-len))))
+
 ; OVER (RFC 3977 8.3): "number TAB subject TAB from TAB date TAB ..." per
 ; line.  A row for the page: (NUMBER SUBJECT FROM DATE), the last three
-; spans.  Newest first (the order the page shows).
+; spans; the FROM span narrowed to the display name (fn-wss-name-span).
+; Newest first (the order the page shows).
 (defun fn-wss-over-rows (j be acc fn-web-in)
   (declare (xargs :stobjs fn-web-in
                   :guard (and (natp j) (natp be) (<= be (fn-octets-len fn-web-in)))
@@ -548,7 +613,9 @@
            (f (fn-wss-split j ce j 9 fn-web-in)))
       (fn-wss-over-rows le be
                         (cons (list (fn-wss-span-slice (fn-wrq-nth 0 f) fn-web-in)
-                                    (fn-wrq-nth 1 f) (fn-wrq-nth 2 f) (fn-wrq-nth 3 f))
+                                    (fn-wrq-nth 1 f)
+                                    (fn-wss-name-span (fn-wrq-nth 2 f) fn-web-in)
+                                    (fn-wrq-nth 3 f))
                               acc)
                         fn-web-in))))
 
@@ -1491,17 +1558,25 @@
 
 (defconst *fn-wss-window* 100)
 
+(defun fn-wss-trouble-at (code title message at ctx config sessions fn-web-in fn-web-out)
+  ; The trouble page, with the node's own line read from the reply at AT
+  ; (an offset into fn-web-in; the route that fed several commands names
+  ; the reply that refused, not the first one).
+  (declare (xargs :stobjs (fn-web-in fn-web-out) :guard t))
+  (let ((at (if (and (natp at) (<= at (fn-octets-len fn-web-in))) at 0)))
+    (mv-let (a fn-web-out)
+      ; The node's own line, when fn-web-in holds a reply; while it still
+      ; holds the request (whose first line is never a status line: its
+      ; method is GET, HEAD or POST) nothing of the request is echoed.
+      (fn-wss-outcome code :no title message
+                      (and (fn-wss-reply-code (fn-wss-reply at fn-web-in))
+                           (fn-wss-status-text at fn-web-in))
+                      nil ctx config fn-web-in fn-web-out)
+      (mv a sessions fn-web-out))))
+
 (defun fn-wss-trouble (code title message ctx config sessions fn-web-in fn-web-out)
   (declare (xargs :stobjs (fn-web-in fn-web-out) :guard t))
-  (mv-let (a fn-web-out)
-    ; The node's own line, when fn-web-in holds a reply; while it still
-    ; holds the request (whose first line is never a status line: its
-    ; method is GET, HEAD or POST) nothing of the request is echoed.
-    (fn-wss-outcome code :no title message
-                    (and (fn-wss-reply-code (fn-wss-reply 0 fn-web-in))
-                         (fn-wss-status-text 0 fn-web-in))
-                    nil ctx config fn-web-in fn-web-out)
-    (mv a sessions fn-web-out)))
+  (fn-wss-trouble-at code title message 0 ctx config sessions fn-web-in fn-web-out))
 
 ; --- The groups (GET /): LIST ACTIVE (RFC 3977 7.6.3).
 (defun fn-wss-k-groups (sessions flow event config fn-web-in fn-web-out)
@@ -1609,9 +1684,14 @@
                                              (fn-wrq-nth 2 v) (fn-wrq-nth 3 v))
                          ctx config fn-web-in fn-web-out)
             (mv a sessions fn-web-out)))
-      (fn-wss-trouble 404 (fn-wrq-oct "Not here")
-                      (fn-wrq-oct "That post isn't here: it may have been removed.")
-                      ctx config sessions fn-web-in fn-web-out))))
+      ; The line shown is the reply that refused: ARTICLE's (423, 430) when
+      ; GROUP answered 211, else GROUP's own (411).
+      (fn-wss-trouble-at 404 (fn-wrq-oct "Not here")
+                         (fn-wrq-oct "That post isn't here: it may have been removed.")
+                         (if (equal (fn-wss-reply-code r1) 211)
+                             (min (fn-wss-reply-next r1) (fn-octets-len fn-web-in))
+                           0)
+                         ctx config sessions fn-web-in fn-web-out))))
 
 ; --- Posting and removing: "POST" alone first (RFC 3977 6.3.1: the article
 ; only after 340), then the rest of what fn-web-out holds.

@@ -123,6 +123,64 @@
 (assert-event (search "Welcome &lt;b&gt;here&lt;/b&gt;" (wsst-str (nth 2 *g*))))
 (assert-event (search "<a class='title' href='/a?g=local.general&amp;n=2'>Hello from carol</a>"
                       (wsst-str (nth 2 *g*))))
+; The From column is the display name (fn-wss-name-span), never the whole
+; mailbox: "op <op@x>" shows "op", "carol <carol@news.example>" "carol".
+(assert-event (and (search "<td class='from'>op</td>" (wsst-str (nth 2 *g*)))
+                   (search "<td class='from'>carol</td>" (wsst-str (nth 2 *g*)))
+                   (not (search "op@x" (wsst-str (nth 2 *g*))))
+                   (not (search "carol@news.example" (wsst-str (nth 2 *g*))))))
+
+; --- Every shape of From (RFC 5322 3.4): a quoted phrase loses its quotes, a
+; bare angle-addr shows the address inside, a bare addr-spec shows whole,
+; blanks before "<" are dropped, an encoded-word phrase is decoded, and an
+; empty "<>" shows nothing; the subject and date columns are untouched.
+(defconst *g2* (wsst-request (wsst-get "/g?name=local.general") *cfg* *ss* 200 nil nil
+  (list (wsst-crlf (list "211 6 1 6 local.general"))
+        (append (wsst-crlf (list "224 overview follows"))
+                (wsst-octs "1	one	\"Ada L.\" <ada@x>	27 Sep 2026	<a1@x>		10	1") '(13 10)
+                (wsst-octs "2	two	<bare@x>	27 Sep 2026	<a2@x>		10	1") '(13 10)
+                (wsst-octs "3	three	plain@x	27 Sep 2026	<a3@x>		10	1") '(13 10)
+                (wsst-octs "4	four	Bob   <bob@x>	27 Sep 2026	<a4@x>		10	1") '(13 10)
+                (wsst-octs "5	five	=?UTF-8?Q?Gr=C3=BC=C3=9Fe?= <g@x>	27 Sep 2026	<a5@x>		10	1") '(13 10)
+                (wsst-octs "6	six	<>	27 Sep 2026	<a6@x>		10	1") '(13 10)
+                (wsst-crlf (list "."))))))
+(assert-event (let ((page (wsst-str (nth 2 *g2*))))
+                (and (search "<td class='from'>Ada L.</td>" page)
+                     (search "<td class='from'>bare@x</td>" page)
+                     (search "<td class='from'>plain@x</td>" page)
+                     (search "<td class='from'>Bob</td>" page)
+                     ; the decoded phrase, its UTF-8 octets written as they are
+                     (search (concatenate 'string "<td class='from'>"
+                                          (wsst-str (list 71 114 195 188 195 159 101)) "</td>")
+                             page)
+                     (search "<td class='from'></td>" page)
+                     (search "'>four</a></td>" page)
+                     (search "<td class='date'>27 Sep 2026</td>" page)
+                     (not (search "ada@x" page))
+                     (not (search "bob@x" page)))))
+
+; The narrowing is a span of the field's span (fn-wss-name-span-is-a-span):
+; the executable check on the six fields above, and its teeth: a span past
+; the buffer is answered as it came, never widened.  (with-local-stobj lives
+; in a function, never at the top level.)
+(defun wsst-name-spans-ok ()
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-web-in
+    (mv-let (ok fn-web-in)
+      (let* ((in (append (wsst-octs "\"Ada L.\" <ada@x>") (wsst-octs "|<bare@x>|plain@x|Bob   <bob@x>|<>")))
+             (fn-web-in (fn-octets-from-list in fn-web-in))
+             (n (len in)))
+        (mv (and (equal (fn-wss-name-span (cons 0 16) fn-web-in) (cons 1 7))
+                 (equal (fn-wss-name-span (cons 17 25) fn-web-in) (cons 18 24))
+                 (equal (fn-wss-name-span (cons 26 33) fn-web-in) (cons 26 33))
+                 (equal (fn-wss-name-span (cons 34 47) fn-web-in) (cons 34 37))
+                 (equal (fn-wss-name-span (cons 48 50) fn-web-in) (cons 49 49))
+                 (fn-wss-spanp (fn-wss-name-span (cons 0 16) fn-web-in) n)
+                 (equal (fn-wss-name-span (cons 0 (+ n 5)) fn-web-in) (cons 0 (+ n 5)))
+                 (equal (fn-wss-name-span :not-a-span fn-web-in) :not-a-span))
+            fn-web-in))
+      ok)))
+(assert-event (wsst-name-spans-ok))
 
 ; --- The article, un-stuffed and escaped; carol's own: "Remove my post".
 (defconst *a* (wsst-request (wsst-get "/a?g=local.general&n=2") *cfg* *ss* 200 nil nil
@@ -132,6 +190,23 @@
 (assert-event (and (search "<pre class='body'>.dot line" (wsst-str (nth 2 *a*)))
                    (search "My first post, &lt;from&gt; the browser." (wsst-str (nth 2 *a*)))))
 (assert-event (search "Remove my post" (wsst-str (nth 2 *a*))))
+; The article page keeps the whole From line (the narrowing is the index's).
+(assert-event (search "carol &lt;carol@news.example&gt;" (wsst-str (nth 2 *a*))))
+
+; --- An article the node does not have: the page's line is ARTICLE's own
+; refusal (423), never GROUP's 211 that preceded it (fn-wss-trouble-at).
+(defconst *a423* (wsst-request (wsst-get "/a?g=local.general&n=9") *cfg* *ss* 200 nil nil
+  (list (wsst-crlf (list "211 2 1 2 local.general" "423 no such article number in this group")))))
+(assert-event (and (equal (car (car (last (car *a423*)))) :respond)
+                   (equal (cadr (car (last (car *a423*)))) 404)
+                   (search "That post isn&#39;t here" (wsst-str (nth 2 *a423*)))
+                   (search "423 no such article number in this group" (wsst-str (nth 2 *a423*)))
+                   (not (search "211 2 1 2" (wsst-str (nth 2 *a423*))))))
+; And when GROUP itself refused (411), that line is the one shown.
+(defconst *a411* (wsst-request (wsst-get "/a?g=local.general&n=9") *cfg* *ss* 200 nil nil
+  (list (wsst-crlf (list "411 no such newsgroup")))))
+(assert-event (and (equal (cadr (car (last (car *a411*)))) 404)
+                   (search "411 no such newsgroup" (wsst-str (nth 2 *a411*)))))
 
 ; --- A post: "POST" alone, then (after 340) the authored article; the
 ; body's "." line and ".QUIT" line are stuffed.

@@ -40,6 +40,15 @@
          :respond)
   :hints (("Goal" :in-theory (enable fn-wss-outcome))))
 
+(defthm fn-wss-trouble-at-responds
+  (and (equal (car (car (fn-wss-trouble-at code title message at ctx config sessions
+                                                fn-web-in fn-web-out)))
+              :respond)
+       (equal (car (cdr (fn-wss-trouble-at code title message at ctx config sessions
+                                            fn-web-in fn-web-out)))
+              sessions))
+  :hints (("Goal" :in-theory (enable fn-wss-trouble-at))))
+
 (defthm fn-wss-trouble-responds
   (and (equal (car (car (fn-wss-trouble code title message ctx config sessions
                                              fn-web-in fn-web-out)))
@@ -119,6 +128,12 @@
   (fn-web-sends-to (car (fn-wss-send-session route stage data octets session ctx sessions fn-web-out))
                    (fn-wss-s-cid session) (fn-wss-c-session ctx))
   :hints (("Goal" :in-theory (enable fn-wss-send-session fn-wss-flow fn-wss-f-ctx))))
+
+(defthm fn-wss-trouble-at-sends-to
+  (fn-web-sends-to (car (fn-wss-trouble-at code title message at ctx config sessions
+                                           fn-web-in fn-web-out))
+                   cid session)
+  :hints (("Goal" :in-theory (disable fn-wss-trouble-at))))
 
 (defthm fn-wss-trouble-sends-to
   (fn-web-sends-to (car (fn-wss-trouble code title message ctx config sessions fn-web-in fn-web-out))
