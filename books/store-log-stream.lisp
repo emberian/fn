@@ -240,13 +240,17 @@
                (or (equal (fn-frame-result-kind r) *fn-lg-record-kind*)
                    (and batchp
                         (mbe :logic (ec-call (fn-lg-unpack-okp body max))
-                             :exec (fn-lgw-unpack-okp body max))))
+                             :exec (fn-lgw-unpack-okp body max)))
+                   ; a rotation entry (lane store-lineage): no record
+                   (and (equal (fn-frame-result-kind r) *fn-lg-rotation-kind*)
+                        (equal (len body) *fn-lg-rotation-body-octets*)))
                (equal (ec-call (fn-bs-take *fn-frame-trailer-octets* (fn-frame-result-payload r)))
                       prev))
-          (mv t (if batchp
-                    (mbe :logic (ec-call (fn-lg-unpack body))
-                         :exec (fn-lgw-unpack body))
-                  (list body)))
+          (mv t (cond (batchp
+                       (mbe :logic (ec-call (fn-lg-unpack body))
+                            :exec (fn-lgw-unpack body)))
+                      ((equal (fn-frame-result-kind r) *fn-lg-rotation-kind*) nil)
+                      (t (list body))))
         (mv nil nil)))))
 
 (defthm fn-lgw-decide-is-okp-and-records
