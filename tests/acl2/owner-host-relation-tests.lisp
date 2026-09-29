@@ -70,3 +70,14 @@
 ; not the Store companion; the fault keeps that failure.
 (assert-event (and (fn-ocl-relation (cdr (fn-ocfg-fault *lgt-bad-oc0* 1)))
                    (not (fn-lgoc-invariantp (cdr (fn-ocfg-fault *lgt-bad-oc0* 1))))))
+
+; BEGIN and DECLARE-GROUP (fn-ohr-step-begin-, fn-ohr-step-declare-group-preserves-ocl-relation).
+(defconst *ohrt-begun* (in-arena-fn-ocfg-step *sr-arena* *ohrt-oc* (list :begin 0)))
+(assert-event (and (fn-ocl-relation *ohrt-begun*)
+                   (equal (fn-own-pending (fn-ocfg-owner *ohrt-begun*)) 0)))
+(assert-event (not (fn-ocl-relation (in-arena-fn-ocfg-step *sr-arena* *ohrt-stale* (list :begin 0)))))
+(defconst *ohrt-declared* (in-arena-fn-ocfg-step *sr-arena* *ohrt-oc* (list :declare-group "fn.declared")))
+(assert-event (and (fn-ocl-relation *ohrt-declared*)
+                   (member-equal "fn.declared"
+                                 (fn-own-replay-facts (fn-own-facts (fn-ocfg-owner *ohrt-declared*))))))
+(assert-event (not (fn-ocl-relation (in-arena-fn-ocfg-step *sr-arena* *ohrt-stale* (list :declare-group "fn.declared")))))
