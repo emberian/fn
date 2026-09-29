@@ -847,15 +847,18 @@ warns on stderr with both numbers, exit code 0:
 `init` with no `--profile` and no limit (and every `init` under a
 `mission`) picks the largest of four sizes this machine's memory holds:
 64, 32 or 16 MiB of articles, else 8 MiB. A short post to one group
-takes about 1,180 bytes (860 for the post, 320 for its group), so that is
-about 56,000 posts at the top and about 7,000 at the bottom. `status`
+takes about 4,900 bytes (860 for the post, 320 for its group, and about
+3,700 for its header of about 400 bytes; see below), so that is about
+13,800 posts at the top and about 1,700 at the bottom. `status`
 shows the limits on its `profile` line and about how many posts still fit
-on its `capacity articles-left=N` line. A friend's feed uses the same room. The smallest size
-needs about 1.9 GB for its first run (`reservation=1906 MB` with a 190 MB
-image): fn reserves room for every article to carry the longest header
-the store admits, so a machine that gives `init` less, such as a 2 GB
-machine after the system's share, is refused by name; name smaller limits
-(`--max-transactions`, `--max-history-octets`). For more, remove the `mission`
+on its `capacity articles-left=N` line. A friend's feed uses the same room. A
+header costs the node's memory far more than its size on disk, so each
+article's header is charged to its history budget at 8 bytes a byte (12
+more for each byte of its Message-ID): articles with long headers fill the
+store sooner, and past its budget a POST is refused by name
+(`unaffordable`). The smallest size's first run needs about 1 GB, so a
+2 GB machine (1,536 MB after the system's share) gets the 16 MiB size.
+For more, remove the `mission`
 line from `fn.toml` and `init` with the limits above, or raise them later
 with `store export` and `store import --max-... N`.
 

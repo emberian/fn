@@ -37,13 +37,23 @@ membership charge."
   (declare (xargs :guard t))
   (fn-record-encoded-octets-ceiling (nfix payload-length) (nfix group-count)))
 
+; Lane heap-pool (B9): and the header charge its row will carry
+; (`fn-sbud-held-heap-charge'), at its worst: every payload octet a header
+; octet, a Message-ID of 250.  Only the gate at the edge of H sees this worst
+; case; the committed row carries its own header's charge.
+(defun fn-sbud-article-header-figure (payload-length)
+  (declare (xargs :guard t))
+  (+ (* *fn-sbud-header-weight* (nfix payload-length))
+     (* *fn-sbud-msgid-weight* 250)))
+
 (defun fn-sbud-article-figure (payload-length group-count)
   "The history octets one article of PAYLOAD-LENGTH octets in GROUP-COUNT
-groups is charged: its record ceiling at the produced widths and its
-memberships."
+groups is charged: its record ceiling at the produced widths, its
+memberships, and its header charge at its worst."
   (declare (xargs :guard t))
   (+ (fn-record-encoded-octets-ceiling (nfix payload-length) (nfix group-count))
-     (* *fn-sbud-membership-octets* (nfix group-count))))
+     (* *fn-sbud-membership-octets* (nfix group-count))
+     (fn-sbud-article-header-figure payload-length)))
 
 (defun fn-sbud-article-verdict-at (profile used bytes-used payload-length
                                            group-count)
