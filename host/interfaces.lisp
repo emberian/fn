@@ -1439,7 +1439,7 @@
   :class ::program)
 
 (definterface fn-owner-consumer-local-wait-admit
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-consumer-local-wait-step
   :class ::program)
@@ -1590,13 +1590,13 @@
   :class ::program)
 
 (definterface fn-owner-key-statement-redecide-log-line
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-key-statement-redecide-plan
   :class ::program)
 
 (definterface fn-owner-key-statement-request
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-known-abort
   :class ::program)
@@ -1757,7 +1757,7 @@
   :class ::program)
 
 (definterface fn-owner-statement-fence
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-tls-established
   :class ::program)
