@@ -47,7 +47,9 @@
                      '(fn-sn-statep (fn-own-store o))))
 (assert-event (equal (guard 'fn-own-step nil (w state))
                      '(if (fn-arena-p fn-arena)
-                          (fn-sn-statep (fn-own-store o))
+                          (if (fn-sn-statep (fn-own-store o))
+                              (fn-own-eventp event)
+                            'nil)
                         'nil)))
 
 ; -----------------------------------------------------------------------------
