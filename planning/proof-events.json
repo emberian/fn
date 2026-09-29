@@ -13192,6 +13192,64 @@
       ]
     },
     {
+      "id": "PRF-928",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-psub-pack-dc-is-pack"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psub-unpack-of-pack-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psub-unpack-of-pack-groups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psub-unpack-of-pack-sub"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psub-packed-octets-len-is-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-take-installs-the-enqueued-submission"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-take-installs-the-queued-submission-whatever-it-carries"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-article-slots-are-held"
+        }
+      ]
+    },
+    {
+      "id": "PRF-929",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-wire-statep-article-holds-at-most-the-body-limit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-feed-byte-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tb-served-run-holds-at-most-the-body-limit-mid-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-scan-is-span-fold"
+        }
+      ]
+    },
+    {
       "id": "PRF-906",
       "events": [
         {
