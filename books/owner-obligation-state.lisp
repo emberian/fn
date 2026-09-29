@@ -45,6 +45,10 @@
 (defthm fn-owner-obligation-view-of-put
   (equal (fn-owner-obligation-view (fn-owner-obligation-view-put view state)) view))
 
+(defthm fn-owner-obligation-view-put-preserves-state-p1
+  (implies (state-p1 state)
+           (state-p1 (fn-owner-obligation-view-put view state))))
+
 (defthm fn-owner-obligation-view-of-other-global-put
   (implies (not (equal key 'fn-owner-obligation-view))
            (equal (fn-owner-obligation-view (f-put-global key value state))
@@ -63,6 +67,9 @@
                 (not (equal key 'fn-owner-obligation-view)))
            (equal (f-get-global key (fn-owner-install-ocfg oc state))
                   (f-get-global key state))))
+
+(defthm fn-owner-installed-state-p1
+  (implies (state-p1 state) (state-p1 (fn-owner-install-ocfg oc state))))
 
 (defthm fn-rov-owner-installed-ledger
   (equal (fn-rov-owner-ledger (fn-owner-install-ocfg oc state)) (fn-rov-oc-ledger oc)))
@@ -108,6 +115,9 @@
                 (not (equal key 'fn-owner-obligation-view)))
            (equal (f-get-global key (fn-owner-install-rebuilt-ocfg oc view state))
                   (f-get-global key state))))
+(defthm fn-owner-rebuilt-state-p1
+  (implies (state-p1 state)
+           (state-p1 (fn-owner-install-rebuilt-ocfg oc view state))))
 (defthm fn-rov-owner-rebuilt-ledger
   (equal (fn-rov-owner-ledger (fn-owner-install-rebuilt-ocfg oc view state))
          (fn-rov-oc-ledger oc)))
@@ -120,6 +130,8 @@
   :hints (("Goal" :in-theory (disable fn-owner-install-rebuilt-ocfg)
            :use ((:instance fn-rov-owner-rebuilt-establishes-correspondence
                     (view (fn-rov-build (fn-retain-pins (fn-rov-oc-ledger oc)))))))))
+(defthm fn-owner-open-state-p1
+  (implies (state-p1 state) (state-p1 (fn-owner-install-open-ocfg oc state))))
 
 (in-theory (disable fn-rov-oc-ledger fn-owner-obligation-view
                     fn-owner-obligation-view-put fn-rov-owner-ledger
