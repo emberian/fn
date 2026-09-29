@@ -4,7 +4,7 @@
   "coverage": {
     "declared": 1117,
     "declared_and_dispatched": 1100,
-    "guard_verified": 386,
+    "guard_verified": 391,
     "with_keystone": 134
   },
   "entries": [
@@ -11368,7 +11368,7 @@
       "name": "fn-bpn-host-authored-wire-name",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
@@ -11506,7 +11506,7 @@
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": "fn-bpn-evidence-authorize",
+      "delegates": null,
       "dispatched_from": [
         "host/native/bp.lisp"
       ],
@@ -12260,7 +12260,7 @@
       "name": "fn-bpn-host-sequence-reservation-frame",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
@@ -12280,7 +12280,7 @@
       "name": "fn-bpn-host-sequence-reservation-sequence",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
@@ -12300,7 +12300,7 @@
       "name": "fn-bpn-host-sequence-reservationp",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
@@ -12320,7 +12320,7 @@
       "name": "fn-bpn-host-sequence-reserve",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
@@ -14826,7 +14826,7 @@
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": "fn-tcl-encode",
+      "delegates": null,
       "dispatched_from": [
         "host/native/tcpcl.lisp"
       ],

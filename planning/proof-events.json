@@ -13663,6 +13663,10 @@
         {
           "kind": "theorem",
           "name": "fn-bpn-host-authored-wire-name-names-the-reserved-sequence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-authored-wire-authorize-carries-reservation"
         }
       ]
     },
