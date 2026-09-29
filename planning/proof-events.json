@@ -13633,6 +13633,72 @@
           "name": "fn-bpcc-frame-decode-of-sealed"
         }
       ]
+    },
+    {
+      "id": "PRF-927",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orc-rewrite-row-is-the-offline-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orc-rewrite-rows-is-the-offline-rewrite"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orc-fold-is-the-offline-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orc-decision-names-the-rewritten-articles"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orc-rewrite-rows-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orc-fold-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orc-one-pass-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orc-never-past-a-deferral"
+        }
+      ]
+    },
+    {
+      "id": "PRF-930",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-reseat-frame-keeps-the-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-reseat-checkpoint-frame-keeps-the-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-first-naming-none"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-first-naming-found"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-first-naming-compose"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-close-set-is-safe"
+        }
+      ]
     }
   ]
 }

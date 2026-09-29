@@ -2691,7 +2691,9 @@
         "PRF-279",
         "PRF-271",
         "PRF-327",
-        "PRF-918"
+        "PRF-918",
+        "PRF-927",
+        "PRF-930"
       ],
       "verification": [
         "proof",
@@ -5095,7 +5097,9 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-918"
+        "PRF-918",
+        "PRF-927",
+        "PRF-930"
       ],
       "verification": [
         "proof",
@@ -5103,10 +5107,11 @@
       ],
       "evidence": [
         "tests/acl2/expiry-tests.lisp",
-        "tests/test_native_expiry.py"
+        "tests/test_native_expiry.py",
+        "tests/acl2/owner-reclaim-tests.lisp"
       ],
       "implementation_note": "`retention expire {GROUP|*} {clear | [keep D] [default D] [purge D] [octets N]}` stages five configuration quota rows (books/expiry-policy.lisp); `store reclaim` builds its context with the set the policy expires at its recorded instant (books/expiry.lisp fn-xpy-ctx, host/checkpoint-host.lisp fn-store-reclaim-context) and releases an expired article exactly as a released one (books/expiry-verdict.lisp): the tombstone, the checkpoint and the drop. An article leaves only when every group it is filed in expires it. Served: `423/430 article reclaimed`, distinct from `withdrawn` and from no article; the Message-ID and the numbers stay.",
-      "note": "OPEN: expiry runs offline (`store reclaim` refuses while an owner runs); expiry while serving needs the owner's checkpoint publication to carry the rewrite. GROUP's count and low water and LISTGROUP still include a reclaimed article (pre-existing, reclaim). Reclaim frees bytes, never transactions: a count-full store stays count-full (Q11, D13)."
+      "note": "OPEN: expiry runs offline. A running owner answers `store reclaim --dry-run` (the fold over its rows, PRF-927) and refuses `store reclaim` by name (offline-only) until the installing pass lands (lane online-reclaim NEXT: checkpoint of the rewritten capture, live swap, drop; online disk release also needs the extent descriptors of dropped segments closed). GROUP's count and low water and LISTGROUP still include a reclaimed article (pre-existing, reclaim). Reclaim frees bytes, never transactions: a count-full store stays count-full (Q11, D13)."
     },
     {
       "id": "HST-032",

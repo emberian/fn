@@ -14166,6 +14166,69 @@
         "planning/evidence/pkt-615-number-bound-2026-09-28.md"
       ],
       "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound."
+    },
+    {
+      "id": "PRF-927",
+      "title": "Reclamation over a running owner's rows is the offline reclamation: the rewritten rows' octets are the offline rewrite of the history, the fold is the offline fold, and the decision names exactly the rewritten articles",
+      "statement": "Subject: host/owner-host.lisp fn-owner-orc-chunk = books/owner-reclaim.lisp fn-orc-chunk (called by host/native/owner.lisp fnn-owner-reclaim-walk, from fnn-owner-reclaim-dry-run), and fn-owner-orc-decide = fn-rci-decide-stream / fn-lgr-decide-stream over its fold. fn-orc-rewrite-row-is-the-offline-event: the octets (fn-store-event-encode of alpha) of the rewritten row are fn-rclp-event of the row's octets, no hypothesis; fn-orc-rewrite-rows-is-the-offline-rewrite: for any rows, context and arena, the rewritten rows' octets are fn-rclp-events of the rows' octets (so PRF-119's theorems about the offline rewrite -- a held article is never touched, a reclaimed one stays reclaimed, a rerun rewrites nothing -- hold of the online rewrite); fn-orc-fold-is-the-offline-fold: the fold over the rows is fn-rcls-fold over their octets; fn-orc-decision-names-the-rewritten-articles: when the recorded decision over the fold reclaims, the configuration was recorded, the run is not a dry run, the profile is admitted, and the Message-IDs and freed octets it reports are fn-rclp-rewritten-msgids and fn-rclp-freed of the rows' octets. fn-orc-rewrite-rows-of-append and fn-orc-fold-of-append: the host's chunks compose to the whole history's rewrite and fold. fn-orc-one-pass-in-flight, fn-orc-never-past-a-deferral: the request's answer. Scope: a running owner answers `store reclaim --dry-run` (nothing written); the installing pass (checkpoint of the rewritten capture, live swap, drop) is open.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-119",
+        "PRF-918"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-reclaim.lisp",
+        "tests/acl2/owner-reclaim-tests.lisp",
+        "tests/test_native_expiry.py"
+      ],
+      "progress_note": "Lane online-reclaim (2026-09-29, Q16). REPL-admitted on hbox and persvati. Open: the installing pass while serving (lanedumps/online-reclaim.md NEXT).",
+      "events": [
+        "fn-orc-rewrite-row-is-the-offline-event",
+        "fn-orc-rewrite-rows-is-the-offline-rewrite",
+        "fn-orc-fold-is-the-offline-fold",
+        "fn-orc-decision-names-the-rewritten-articles",
+        "fn-orc-rewrite-rows-of-append",
+        "fn-orc-fold-of-append",
+        "fn-orc-one-pass-in-flight",
+        "fn-orc-never-past-a-deferral"
+      ]
+    },
+    {
+      "id": "PRF-930",
+      "title": "A running owner gives the disk blocks of the files a checkpoint publication dropped back while serving: every live payload the installed checkpoint holds is reseated at its frame without changing the arena, and a dropped file's descriptor closes only when no extent, no log member in flight and no off-mutex reader names it",
+      "statement": "Subject: host/native/owner.lisp fnn-owner-release-extents (called by fnn-owner-publish-captured after a durable install) calls books/extent-retire.lisp fn-xrt-reseat-checkpoint-frame per payload frame the arena run wrote (host/native/io.lisp fnn-checkpoint-write-arena-steps records each frame's entry offset and fn-xrt-step-handles), fn-xrt-scan in bounded calls (started when fn-xrt-scan-may-start), and fn-xrt-close-set; host/native/extent.lisp fnn-extent-close closes what it names. fn-xrt-reseat-frame-keeps-the-arena (KEYSTONE): when the file durably holds, at the frame entry's offset, the octets the buffer holds (A-DURABLE-EXTENT's faithful file), the reseat leaves the arena (every handle's payload) unchanged; each payload is the commit's reseat (PRF-309 fn-arx-commit-reseat) with R the payload's own octets, so a wrong pairing reseats nothing. fn-xrt-first-naming-none (KEYSTONE): a scan answering none over [LO, END) means no extent entry there names a retired file; fn-xrt-first-naming-compose: the bounded calls are one scan. fn-xrt-close-set-is-safe: a closed file is retired, named by no member in flight, and closes only after a clean scan with no other off-mutex arena reader. Before this every extent descriptor was held for the process's life, so the online compaction (PKT-868) freed no disk until restart. Scope: the realizer file table and descriptors are host state; the reseat's progress (every checkpoint payload found in its frame) is observed by the native (df shrinks), not proved.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-309"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/extent-retire.lisp",
+        "tests/acl2/extent-retire-tests.lisp",
+        "host/native/extent.lisp",
+        "host/native/owner.lisp",
+        "host/native/io.lisp"
+      ],
+      "progress_note": "Lane online-reclaim-2 (2026-09-29, Q16 (b)). REPL-admitted on persvati.",
+      "events": [
+        "fn-xrt-reseat-frame-keeps-the-arena",
+        "fn-xrt-reseat-checkpoint-frame-keeps-the-arena",
+        "fn-xrt-first-naming-none",
+        "fn-xrt-first-naming-found",
+        "fn-xrt-first-naming-compose",
+        "fn-xrt-close-set-is-safe"
+      ]
     }
   ]
 }
