@@ -275,11 +275,20 @@ class BpRun:
             seen = True
         except Exception:
             seen = False
+        # The obligation's pin is a stopped-store observation: while the
+        # sender node runs it holds its store's lifecycle lock and
+        # `bp-obligation status` is refused (rc=1, pinned unknown: run
+        # rf5-444f-1, both variants no-witness on receipt-delivered); on the
+        # stopped store it reads `status=receipted pinned=no`.
+        sender_node.stop(grace=10)
         r = self.invoke("bp-obligation", "status", self.sender_store, self.sender_workflow, WORK)
         pinned = ("no" if b"pinned=no" in r.stdout else
                   "yes" if b"pinned=yes" in r.stdout else "unknown")
+        words = {} if r.returncode == EXIT.OK else {
+            "words": " ".join(((r.stdout or b"") + b" " + (r.stderr or b""))
+                              .decode("ascii", "replace").split())[:160]}
         self.j.client("status", operation=op_id, receipt="accepted" if seen else "absent",
-                      pinned=pinned, returncode=r.returncode)
+                      pinned=pinned, returncode=r.returncode, **words)
 
     def probe(self, op_id: str):
         # `operator CONFIG status --replay': the counts over the replayed log
