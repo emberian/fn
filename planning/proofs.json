@@ -14740,7 +14740,6 @@
       ],
       "progress_note": "",
       "events": [
-        "fn-hkn-release-keeps-the-stage-and-the-bindings-by-definition",
         "fn-hkn-reduce-pins-keeps-the-ids",
         "fn-hkn-reduce-pin-keeps-the-identifying-fields",
         "fn-hkn-find-id-after-reduce",
@@ -14749,7 +14748,8 @@
         "fn-hkn-release-discharges-the-same-obligation",
         "fn-hkn-release-frees-exactly-the-content-charge",
         "fn-hkn-release-enables-only-what-the-freed-charge-affords",
-        "fn-hkn-retry-refused-after-release-as-before"
+        "fn-hkn-retry-refused-after-release-as-before",
+        "fn-hkn-a-found-pin-is-scanned"
       ]
     },
     {

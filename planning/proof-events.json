@@ -14059,10 +14059,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-hkn-release-keeps-the-stage-and-the-bindings-by-definition"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-hkn-reduce-pins-keeps-the-ids"
         },
         {
@@ -14096,6 +14092,10 @@
         {
           "kind": "theorem",
           "name": "fn-hkn-retry-refused-after-release-as-before"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-a-found-pin-is-scanned"
         }
       ]
     },
