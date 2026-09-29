@@ -621,6 +621,101 @@ class InstallTests(unittest.TestCase):
             self.assertFalse((target / "books/mid.port").exists())
 
 
+class ConcurrentWriterTests(unittest.TestCase):
+    """Item 28: an installer racing a publisher that relabels the same pairs
+    (a farm harvest) installs them; a real change retries with backoff."""
+
+    TOOLCHAIN = certs.stable_identity(TEST_COMPATIBILITY)
+    FARM = "/farm/run-race"
+
+    def published(self, one: str, two: str):
+        root = worktree(one, certified=["books/base", "books/mid"])
+        manifest = manifest_for(root, ["books/base", "books/mid"], write=False)
+        manifest["compiled_digests_sha256"] = {
+            name: certs.content_hash(root / f"{name}.fasl") for name in ("books/base", "books/mid")}
+        cache = Path(two) / "cache"
+        certs.publish(root, cache, [dict(manifest, evidence="run-0")], origin=self.FARM,
+                      origin_kind="run")
+        return root, manifest, cache
+
+    @staticmethod
+    def install(target, cache, toolchain):
+        return certs.install_partial(
+            target, cache, ["books/mid"], toolchain, acl2=Path("/fixture/acl2"),
+            pair_checker=lambda paths, pairs, acl2, root: {p: (True, True) for p in pairs})
+
+    def test_a_relabel_between_choice_and_copy_is_not_a_change(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            root, manifest, cache = self.published(one, two)
+            directory = entry(cache, root, "books/base", Path(self.FARM))
+            selected = certs.read_meta(directory)
+            certs.publish(root, cache, [dict(manifest, evidence="run-1")], origin=self.FARM,
+                          origin_kind="run")
+            self.assertNotEqual(certs.read_meta(directory), selected)  # relabelled
+            target = worktree(two + "/target")
+            self.assertTrue(certs.install_entry(directory, selected, target / "books/base.cert",
+                                                target / "books/base.port"))
+            # A new certificate under the entry is a change.
+            (directory / "book.cert").write_bytes(b"other certificate")
+            changed = dict(certs.read_meta(directory),
+                           cert_sha256=certs.content_hash(directory / "book.cert"))
+            (directory / "meta.json").write_text(json.dumps(changed))
+            (target / "books/base.cert").unlink()
+            with self.assertRaises(certs.EntryChanged):
+                certs.install_entry(directory, selected, target / "books/base.cert",
+                                    target / "books/base.port")
+
+    def test_a_real_change_retries_with_a_doubling_backoff(self):
+        pauses = []
+        real = certs.install_entry
+        calls = {"n": 0}
+
+        def flaky(*args, **kwargs):
+            calls["n"] += 1
+            if calls["n"] <= 3:
+                raise certs.EntryChanged("racing writer")
+            return real(*args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            _, _, cache = self.published(one, two)
+            target = worktree(two + "/target")
+            with mock.patch.object(certs, "install_entry", flaky), \
+                 mock.patch.object(certs.time, "sleep", pauses.append):
+                report = self.install(target, cache, self.TOOLCHAIN)
+        self.assertEqual(report.installed, 2)
+        self.assertEqual(len(pauses), 3)
+        self.assertLess(pauses[0], pauses[2])
+        self.assertLessEqual(certs.ENTRY_BACKOFF, pauses[0])
+
+    def test_two_writers_race_without_entry_changed(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            root, manifest, cache = self.published(one, two)
+            target = worktree(two + "/target")
+            stop = threading.Event()
+            relabels = []
+
+            def publisher():
+                i = 0
+                while not stop.is_set():
+                    i += 1
+                    certs.publish(root, cache, [dict(manifest, evidence=f"run-{i}")],
+                                  origin=self.FARM, origin_kind="run")
+                    relabels.append(i)
+
+            thread = threading.Thread(target=publisher)
+            thread.start()
+            try:
+                for _ in range(25):
+                    for name in ("books/base", "books/mid"):
+                        (target / f"{name}.cert").unlink(missing_ok=True)
+                    report = self.install(target, cache, self.TOOLCHAIN)
+                    self.assertEqual(report.installed, 2)
+            finally:
+                stop.set()
+                thread.join()
+            self.assertGreater(len(relabels), 1)
+
+
 class CompiledFileTests(unittest.TestCase):
     """The `.fasl` travels with its pair, keyed identically, and only with it."""
 

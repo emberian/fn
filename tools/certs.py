@@ -141,10 +141,12 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import random
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from typing import Iterable
 
 
@@ -581,6 +583,35 @@ class EntryChanged(RuntimeError):
     """The selected cache generation changed before it could be copied."""
 
 
+# A republish of the same pair (another run's harvest relabels it) rewrites
+# only these: who vouched, from where, when.  An installer that selected the
+# entry before the relabel still installs the same bytes under the same
+# closure key, so the relabel is not a change to it.  Under a farm harvest
+# publishing ~900 entries, every relabel raised EntryChanged in a concurrent
+# installer and three immediate retries lost the race (limits-live-4,
+# incremental-finalize, online-reclaim: `farm submit` died, 2026-09-29).
+PROVENANCE_ONLY = frozenset({
+    "evidence", "origin_host", "certification_provenance", "published_at",
+    "published_from", "host", "fasl_kept_from",
+})
+
+# Attempts, and the first backoff, for an entry that did change (a new
+# certificate under the key): each retry re-chooses, after a jittered,
+# doubling pause so two writers do not retry in lockstep.
+ENTRY_ATTEMPTS = 6
+ENTRY_BACKOFF = 0.05
+
+
+def same_installable(current: dict, selected: dict) -> bool:
+    """Whether CURRENT describes the pair SELECTED chose, up to provenance."""
+    keys = (set(current) | set(selected)) - PROVENANCE_ONLY
+    return bool(current) and all(current.get(k) == selected.get(k) for k in keys)
+
+
+def entry_backoff(attempt: int, sleep=None) -> None:
+    (sleep or time.sleep)(ENTRY_BACKOFF * (2 ** attempt) * (1 + random.random()))
+
+
 def entry_matches_meta(directory: Path, meta: dict) -> bool:
     cert = directory / "book.cert"
     if not cert.is_file():
@@ -632,7 +663,8 @@ def install_entry(directory: Path, selected: dict, cert: Path, port: Path,
     cache's.
     """
     with entry_lock(directory, exclusive=False):
-        if read_meta(directory) != selected or not entry_matches_meta(directory, selected):
+        current = read_meta(directory)
+        if not same_installable(current, selected) or not entry_matches_meta(directory, current):
             raise EntryChanged(str(directory))
         cached = directory / "book.cert"
         cert_same = cert.is_file() and content_hash(cert) == content_hash(cached)
@@ -1018,8 +1050,9 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
             else:
                 report.kept += 1
     except EntryChanged:
-        if _attempt >= 2:
+        if _attempt >= ENTRY_ATTEMPTS - 1:
             raise
+        entry_backoff(_attempt)
         return install_artifact_set(root, cache, roots, toolchain_identity,
                                     reject, require_origin, purge_on_miss,
                                     dependencies_only, acl2, pair_checker,
@@ -1235,8 +1268,9 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
         try:
             moved = install_entry(directory, meta, cert, port, report)
         except EntryChanged:
-            if _attempt >= 2:
+            if _attempt >= ENTRY_ATTEMPTS - 1:
                 raise
+            entry_backoff(_attempt)
             return install_partial(root, cache, roots, toolchain_identity, acl2,
                                    pair_checker, _attempt + 1, recertify)
         if moved:
@@ -1694,14 +1728,15 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
                 report.uncached.append(name)
             continue
         port = source.with_suffix(".port")
-        for attempt in range(3):
+        for attempt in range(ENTRY_ATTEMPTS):
             directory, meta = chosen
             try:
                 moved = install_entry(directory, meta, cert, port, report)
                 break
             except EntryChanged:
-                if attempt == 2:
+                if attempt == ENTRY_ATTEMPTS - 1:
                     raise
+                entry_backoff(attempt)
                 chosen = choose_entry(book_entries(root, cache, name),
                                       str(root.resolve()))
                 if chosen is None:
