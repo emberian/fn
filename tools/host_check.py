@@ -716,7 +716,7 @@ def load_check(acl2: Path, files: list[str], timeout: int,
                                "marker (see the transcript's tail)")
     print(f"host_check --load: WORLD {world_note}")
     findings += interface_step(interface_world_undefined(output) if world is not None else None,
-                               echo=False)
+                               echo=False, static_always=False)
     for finding in findings:
         print(f"FAIL {finding}")
     if not completed:
@@ -828,14 +828,30 @@ def interface_report(decls: list[dict], reading: dict, static: list[str],
 
 
 def interface_step(undefined: list[str] | None = None, root: Path = ROOT,
-                   echo: bool = True) -> list[str]:
-    """Print the step's report; return its findings."""
+                   echo: bool = True, static_always: bool = True) -> list[str]:
+    """Print the step's report; return its findings.
+
+    The static half reads the whole tree (ledger.load_tree: minutes cold on a
+    box), so inside --load (STATIC_ALWAYS false) it runs only when this branch
+    touched a host file or git cannot say; the world half always runs there."""
     import interface_emit
     decls = interface_emit.declarations(root)
+    touched = touched_host_files(root)
+    if not static_always and touched == []:
+        undefined_names = sorted(undefined or [])
+        findings = [f"interfaces: {name} is declared in host/interfaces.lisp and is not a "
+                    "function of the certified world" for name in undefined_names]
+        print(f"host_check interfaces: {len(decls)} declared; "
+              + ("world: not evaluated (no certified umbrella)" if undefined is None
+                 else f"world: {len(undefined_names)} declared name(s) not a function")
+              + "; static half skipped (this branch touches no host file; "
+                "`host_check.py --interfaces` runs it)")
+        for finding in findings if echo else ():
+            print(f"FAIL {finding}")
+        return findings
     reading = interface_emit.host_reading(root)
     static = interface_emit.findings(decls, reading, root)
-    lines, findings = interface_report(decls, reading, static, touched_host_files(root),
-                                       undefined)
+    lines, findings = interface_report(decls, reading, static, touched, undefined)
     for line in lines:
         print(line)
     for finding in findings if echo else ():

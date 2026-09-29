@@ -353,6 +353,20 @@ class DeclaredInterfaceTests(unittest.TestCase):
         source = inspect.getsource(host_check.load_check)
         self.assertIn("interface_world_forms(interface_names(declared))", source)
         self.assertIn("interface_step(interface_world_undefined(output)", source)
+        self.assertIn("static_always=False", source)
+
+    def test_inside_load_an_untouched_branch_skips_the_static_half(self):
+        from unittest import mock
+        import interface_emit
+        out = io.StringIO()
+        with mock.patch.object(host_check, "touched_host_files", lambda root: []), \
+                mock.patch.object(interface_emit, "declarations", lambda root: self.DECLS), \
+                mock.patch.object(interface_emit, "host_reading",
+                                  side_effect=AssertionError("static half ran")), \
+                contextlib.redirect_stdout(out):
+            found = host_check.interface_step(["fn-gone"], echo=False, static_always=False)
+        self.assertEqual(len(found), 1)
+        self.assertIn("static half skipped", out.getvalue())
 
 
 if __name__ == "__main__":
