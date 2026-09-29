@@ -39,6 +39,15 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-compaction-control-path-octets result))
 
+;; Row S9: `retire' (books/native-retire.lisp).
+(defun fn-native-operator-host-result-retire-argv (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-retire-argv result))
+
+(defun fn-native-operator-host-result-retire-control-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-retire-control-path-octets result))
+
 (defun fn-native-operator-host-result-reclaim-argv (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-reclaim-argv result))

@@ -121,6 +121,7 @@
 (include-book "owner-reclaim-conns")
 (include-book "owner-reclaim-ready")
 (include-book "extent-retire")
+(include-book "owner-retire")
 (include-book "config-owner-live")
 (include-book "config-owner-publish")
 (include-book "config-owner-carried")

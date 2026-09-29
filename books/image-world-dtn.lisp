@@ -187,6 +187,7 @@
 (include-book "owner-control-post-reason")
 (include-book "owner-reclaim-conns")
 (include-book "owner-reclaim-ready")
+(include-book "owner-retire")
 (include-book "config-owner-live")
 (include-book "config-owner-publish")
 (include-book "config-owner-carried")

@@ -515,6 +515,43 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
    'fn-native-operator-host-result-compaction-control-path-octets
    'fn-native-operator-host-result-compaction-argv))
 
+;;; Row S9: `retire [--drain SECONDS]'.  The running owner is asked
+;;; (books/native-retire.lisp's vector; host/native/admin.lisp
+;;; fnn-owner-retire-begin answers `retire draining' or refuses by name); with
+;;; no owner the verb is refused by name (nothing drains a stopped node).
+;;; After the answer the operator waits while ACL2's liveness decision over
+;;; the socket and the lock says an owner runs (the owner's drain ends by its
+;;; window, books/owner-retire.lisp fn-oret-drain-step-ends-by-the-window,
+;;; and its stop by the deadline, PRF-357), then prints the report the owner
+;;; fenced before it stopped.  No report is uncertain, never success.
+(defun fnn-operator-execute-retire (result root)
+  (let ((code (fnn-operator-execute-owner-request
+               result root
+               (lambda ()
+                 (fnn-out "~a" (fnn-octets-string (fnn-octets (fnn-core 'fn-nret-not-running-line))))
+                 +fnn-exit-refused+)
+               'fn-native-operator-host-result-retire-control-path-octets
+               'fn-native-operator-host-result-retire-argv)))
+    (if (not (eql code +fnn-exit-ok+))
+        code
+      (let* ((live *fnn-operator-live-owner*)
+             (path-list (fnn-core 'fn-native-operator-host-result-retire-control-path-octets
+                                  result)))
+        (loop while (member (funcall (fnn-olo-admin-observe live) root path-list nil)
+                            '(:live :held))
+              do (sleep 1))
+        (let ((report (fnn-join root (fnn-octets-string
+                                      (fnn-octets (fnn-core 'fn-nret-report-file-name))))))
+          (if (probe-file report)
+              (with-open-file (in report :element-type '(unsigned-byte 8))
+                (let ((buffer (make-array (file-length in) :element-type '(unsigned-byte 8))))
+                  (read-sequence buffer in)
+                  (fnn-emit *fnn-stdout* (fnn-octets-string buffer))
+                  +fnn-exit-ok+))
+            (progn
+              (fnn-out "~a" (fnn-octets-string (fnn-octets (fnn-core 'fn-nret-no-report-line))))
+              +fnn-exit-uncertain+)))))))
+
 (defun fnn-operator-execute-store-action (result action)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
     (handler-case
@@ -944,6 +981,8 @@ answer that is neither the report nor a refusal (the transport) is uncertain."
           (:admin (fnn-operator-execute-admin result))
           (:account-invite (fnn-operator-execute-account-invite result))
           (:account-hash (fnn-operator-execute-account-hash result))
+          (:retire (fnn-operator-execute-retire
+                    result (fnn-core 'fn-native-operator-host-result-store-root result)))
           (:owner-required
            (fnn-operator-emit-status :usage "action" "requires native owner callback")
            +fnn-exit-usage+)

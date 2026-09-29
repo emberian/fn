@@ -13,6 +13,7 @@
 (include-book "native-admin")
 (include-book "accounts")
 (include-book "native-auth-admin")
+(include-book "native-retire")
 (include-book "byte-store-frame")
 (include-book "outcome-class")
 ; PKT-209: `control log' and `control evidence MESSAGE-ID'.
@@ -645,7 +646,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd" "moderation" "article" "consumer" "carry")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd" "moderation" "article" "consumer" "carry" "retire")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -702,8 +703,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG tls reload (the running owner re-reads its tls_cert and tls_key and serves them to new connections; sessions already open keep theirs; refused by name, the old certificate still served, when the files do not load, the key does not match, the certificate is not valid now, or it drops a name the served one has)")
         ((equal subject "carry")
          "usage: fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK [--abandon] REASON...} (the BP carry obligations in the FNWF workflow journal at the absolute path JOURNAL: list and inspect print each work's message, peer, status, Store pin, hold and last attempt; pause stops the requests for WORK (* every work) until resume; drop stops carrying WORK for REASON, final; the Store pin stays until the receipt releases it, or, with --abandon, the operator waives the obligation: the waiver (your uid, REASON) is durable and the Store pin is released now, refused unless the pin is held; the store must not be served)")
+        ((equal subject "retire")
+         "usage: fn operator CONFIG retire [--drain SECONDS] (the running node refuses new connections, stops pulling, lets its feeds drain for at most SECONDS (0 without --drain; at most 86400), prints per peer what stays undelivered and the obligation ledger, takes a final checkpoint and stops; what stays is released only by carry drop WORK --abandon on the stopped store)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd|consumer|carry} (fn operator CONFIG help COMMAND for one command's words; fn --version for the release and its source revision)")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd|consumer|carry|retire} (fn operator CONFIG help COMMAND for one command's words; fn --version for the release and its source revision)")))
 
 ;; PRF-097: the peering verbs (specs/peering.md section 9).  Their words are
 ;; values and absolute paths; what the documents say, and whether they are
@@ -976,6 +979,23 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
              (if (null rest)
                  (fn-nop-result :accepted :plan "health" config (list :health))
                (fn-nop-usage :unexpected-arguments "health" config rest)))
+            ; Row S9: `retire [--drain SECONDS]' (books/native-retire.lisp
+            ; decides the window; a value past its bound is refused by name).
+            ((equal command "retire")
+             (cond ((or (null rest)
+                        (and (equal (fn-ncfg-first rest) "--drain")
+                             (consp (cdr rest)) (null (cddr rest))))
+                    (let ((plan (fn-nret-plan
+                                 (if (null rest)
+                                     0
+                                   (let ((n (fn-nop-profile-decimal (fn-ncfg-second rest))))
+                                     (if (natp n) n :not-a-number))))))
+                      (if (equal (fn-ncfg-first plan) :accepted)
+                          (fn-nop-result :accepted :plan "retire" config
+                                         (list :retire (fn-ncfg-second plan)))
+                        (fn-nop-refused (list :retire (fn-ncfg-second plan))
+                                        "retire" config rest))))
+                   (t (fn-nop-usage :unexpected-arguments "retire" config rest))))
             ((or (equal command "pins") (equal command "obligations"))
              (if (null rest)
                  (fn-nop-result :accepted :plan command config
@@ -1852,6 +1872,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
           ((equal (fn-native-operator-result-command result) "pins") :status)
           ((equal (fn-native-operator-result-command result) "health") :health)
           ((equal (fn-native-operator-result-command result) "obligations") :status)
+          ((equal (fn-native-operator-result-command result) "retire") :retire)
           ((and (member-equal (fn-native-operator-result-command result)
                               '("control" "moderation"))
                 (fn-cevg-kindp (fn-ncfg-first
@@ -2656,6 +2677,28 @@ when that store already exists is `fn-native-operator-init-outcome'."
 (defun fn-native-operator-result-compaction-control-path-octets (result)
   (declare (xargs :guard t))
   (if (fn-native-operator-result-compaction-planp result)
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
+
+;; Row S9: `retire' is a request to the running owner, sent as
+;; books/native-retire.lisp's vector over the control socket.
+(defun fn-native-operator-result-retire-planp (result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-operator-result-status result) :accepted)
+       (equal (fn-native-operator-result-command result) "retire")
+       (equal (fn-ncfg-first (fn-native-operator-result-arguments result)) :retire)
+       t))
+
+(defun fn-native-operator-result-retire-argv (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-retire-planp result)
+      (fn-nret-request-argv (fn-ncfg-second (fn-native-operator-result-arguments result)))
+    nil))
+
+(defun fn-native-operator-result-retire-control-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-retire-planp result)
       (fn-record-string-octets
        (fn-native-config-control-path (fn-native-operator-result-config result)))
     nil))

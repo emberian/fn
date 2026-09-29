@@ -141,6 +141,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-config-show-tests \
 	books/native-config-paths \
 	tests/acl2/native-config-paths-tests \
+	books/native-retire \
+	books/owner-retire \
+	tests/acl2/native-retire-tests \
 	books/native-auth-profile \
 	tests/acl2/native-auth-profile-tests \
 	tests/acl2/native-auth-host-tests \

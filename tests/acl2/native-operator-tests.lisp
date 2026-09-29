@@ -1640,3 +1640,38 @@
                       (fn-native-admin-plan
                        (fn-nop-test-argv (list "account" "unbind" "a b"))))
                      :account-login))
+
+;; Row S9: `retire [--drain SECONDS]' (books/native-retire.lisp).
+(assert-event (fn-nop-help-subjectp "retire"))
+(defconst *fn-nop-retire*
+  (fn-native-operator-run *fn-nop-minimal-config* (fn-nop-test-argv '("retire"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-retire*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-retire*) :retire))
+(assert-event (equal (fn-native-operator-result-arguments *fn-nop-retire*) '(:retire 0)))
+(defconst *fn-nop-retire-600*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("retire" "--drain" "600"))))
+(assert-event (equal (fn-native-operator-result-arguments *fn-nop-retire-600*) '(:retire 600)))
+;; The vector sent is the one the owner reads as (:begin 600).
+(assert-event (equal (fn-nret-request (fn-native-operator-result-retire-argv *fn-nop-retire-600*))
+                     '(:begin 600)))
+(assert-event (equal (fn-native-operator-result-retire-control-path-octets *fn-nop-retire-600*)
+                     (fn-record-string-octets
+                      (fn-native-config-control-path
+                       (fn-native-operator-result-config *fn-nop-retire-600*)))))
+;; Refused by name past the bound, and for a value that is not a number.
+(defconst *fn-nop-retire-over*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("retire" "--drain" "86401"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-retire-over*) :refused))
+(assert-event (equal (fn-native-operator-result-reason *fn-nop-retire-over*)
+                     '(:retire :drain-seconds-over-bound)))
+(assert-event (equal (fn-native-operator-result-retire-argv *fn-nop-retire-over*) nil))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("retire" "--drain" "soon"))))
+                     '(:retire :drain-seconds-not-a-number)))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("retire" "now"))))
+                     :usage))

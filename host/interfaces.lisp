@@ -4387,3 +4387,42 @@
 ; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
 (definterface fn-store-sco-want-checkpoint-digest
   :class :program)
+
+;; Row S9 (retire): books/native-retire.lisp, books/owner-retire.lisp.
+(definterface fn-nret-request
+  :class :common-lisp-compliant
+  :keystones (fn-nret-request-of-request-argv
+              fn-nret-request-window-is-bounded))
+
+(definterface fn-nret-begin-answer
+  :class :common-lisp-compliant)
+
+(definterface fn-nret-refusal-line
+  :class :common-lisp-compliant)
+
+(definterface fn-nret-refused-log-line
+  :class :common-lisp-compliant)
+
+(definterface fn-nret-report-file-name
+  :class :common-lisp-compliant)
+
+(definterface fn-nret-begin-log-line
+  :class :common-lisp-compliant)
+
+(definterface fn-nret-end-log-line
+  :class :common-lisp-compliant)
+
+(definterface fn-nret-not-running-line
+  :class :common-lisp-compliant)
+
+(definterface fn-nret-no-report-line
+  :class :common-lisp-compliant)
+
+(definterface fn-owner-retire-step
+  :class ::program
+  :keystones ((fn-oret-drain-step-ends-by-the-window :via fn-oret-drain-step)
+              (fn-oret-drain-step-waits-while-feeds-drain :via fn-oret-drain-step)))
+
+(definterface fn-owner-retire-report
+  :class ::program
+  :keystones ((fn-oret-report-carries-the-obligations-report :via fn-oret-report)))
