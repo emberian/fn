@@ -170,7 +170,7 @@
                                   (fn-ncfg-normalize fn-ncfg-parse-lines
                                    fn-ncfg-lines fn-ncfg-listener-refusal))))))
 
-; KEYSTONE (row S8).  The subject is fn-ncpath-config-octets, which the host
+; PRF-1021 KEYSTONE (row S8).  The subject is fn-ncpath-config-octets, which the host
 ; calls through fn-native-operator-run-at (books/native-operator.lisp) before
 ; every operator verb.  Over a fn.toml the loader admits and a base, the
 ; octets it hands on load as exactly the configuration with every relative

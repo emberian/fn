@@ -340,7 +340,8 @@ class OperatorWalkTests(unittest.TestCase):
         a.stop()
         self.mark("second run")
 
-        # The restore, on a copy with rewritten paths and its own port.
+        # The restore, on a copy with its own port.  Row S8: the mission's
+        # paths are relative to fn.toml's directory, so no path is rewritten.
         # Beside A, not inside it: store/control.sock must stay within a Unix
         # socket's 103 octets.
         copy = Path(tempfile.mkdtemp(prefix="c-", dir=self.tmp))
@@ -348,8 +349,8 @@ class OperatorWalkTests(unittest.TestCase):
             subprocess.run(["cp", "-a", str(backup / part), str(copy / part)], check=True)
         (copy / "log").mkdir()
         port = free_port()
-        config = (backup / "fn.toml").read_text(encoding="utf-8").replace(
-            str(a.root) + "/", str(copy) + "/")
+        config = (backup / "fn.toml").read_text(encoding="utf-8")
+        self.assertNotIn(str(a.root), config, "the mission wrote an absolute node path")
         config = re.sub(r"(?m)^port=\d+$", "port={}".format(port), config)
         c = self.timed(Node(self, IMAGE, root=copy, name="copy", launcher=str(self.fn),
                             control=False, port=port))
@@ -365,6 +366,38 @@ class OperatorWalkTests(unittest.TestCase):
         self.assertIn("DUPLICATE", text(again), "the backup's article is new")
         self.assertIn("ACCEPTED", text(later), "a later article was restored")
         c.operator("health", expect=HEALTH_CLEAR)
+
+    def test_a_node_moved_by_copying_its_directory(self):
+        """Row S8, moving a node: stop, copy the node directory elsewhere,
+        start the copy.  fn.toml's paths are relative to its own directory,
+        so the copy serves its own store, log and socket and the original is
+        left as it was; nothing in fn.toml is edited."""
+        a = self.initialized("m", "m.walk.invalid")
+        a.start()
+        self.post(a, "moved-1")
+        a.stop()
+        before = sorted(p.name for p in (a.root / "store").iterdir())
+        moved = Path(tempfile.mkdtemp(prefix="mv-", dir=self.tmp)) / "node"
+        subprocess.run(["cp", "-a", str(a.root), str(moved)], check=True)
+        written = (moved / "fn.toml").read_bytes()
+        self.assertNotIn(str(a.root).encode(), written, "fn.toml names the old directory")
+        m = self.timed(Node(self, IMAGE, root=moved, name="moved", launcher=str(self.fn),
+                            control=False, port=a.port))
+        m.config.write_bytes(written)  # the harness wrote its own; the copy's, byte for byte
+        m.log = moved / "log" / "fn.log"
+        # Same file system: nothing to rebind; `status' opens the moved store.
+        m.operator("status", expect=EXIT.OK)
+        m.start()
+        self.mark("moved node listening")
+        self.assertIn("DUPLICATE", text(self.post(m, "moved-1")), "the moved store")
+        self.assertIn("ACCEPTED", text(self.post(m, "moved-2")))
+        m.stop()
+        self.assertGreater(m.log.stat().st_size, 0, "the moved node logs in its own directory")
+        # The original was not written by the moved node.
+        self.assertEqual(sorted(p.name for p in (a.root / "store").iterdir()), before)
+        a.start()
+        self.assertIn("ACCEPTED", text(self.post(a, "moved-2")), "the original's own store")
+        a.stop()
 
     def test_sigkill_of_the_owner_then_status_recover_run_and_health(self):
         a = self.initialized("a", "a.walk.invalid")

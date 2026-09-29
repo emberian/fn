@@ -659,10 +659,22 @@ is not a `<path-identity>`. Set the policy instead.
 What `run` admits of fn.toml, key by key (`fn-native-config-unsupported-key`,
 books/native-config.lisp): `[store]`, `[listener]` (a numeric address or a
 loopback alias, TLS paths paired), `[auth]` (`protected_only` only with a TLS
-pair), `[posting] enabled`, `[control]`, and `[log] path` when it is absolute.
-It refuses, naming the key, `[posting] agent`, `[anchor]`, `[acl2]` and a
-relative `[log] path`: `usage operator run (UNSUPPORTED-PROFILE agent)` and
-exit 5. The offline verbs above still accept such a file.
+pair), `[posting] enabled`, `[control]`, and `[log] path`.
+It refuses, naming the key, `[posting] agent`, `[anchor]` and `[acl2]`:
+`usage operator run (UNSUPPORTED-PROFILE agent)` and exit 5. The offline
+verbs above still accept such a file.
+
+Row S8 (moving a node): every verb resolves fn.toml's relative paths
+(`[store] path`, `tls_cert`, `tls_key`, `[auth] path`, `[log] path`,
+`[control] path`) under fn.toml's own directory before it plans
+(`books/native-operator.lisp` `fn-native-operator-run-at`, called by
+`host/native/operator.lisp` `fnn-operator-run-at` with the process's working
+directory and the path as given; `books/native-config-paths.lisp`, keystone
+`fn-ncpath-config-octets-load-the-resolved-configuration`: the octets the
+operator loads are the resolved configuration's rendering). A resolved path
+past 512 octets is refused `resolved-path-bounds`. `mission` writes
+`store`, `tls/cert.pem`, `tls/key.pem`, `store/auth.toml`, `log/fn.log` and
+`store/control.sock`.
 
 `help` does not read the configuration file. `run` uses the normalized native
 owner callback. Missing, nonregular or oversized configuration is usage (5);

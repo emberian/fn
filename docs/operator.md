@@ -678,6 +678,20 @@ detect or repair it. Restore only the newest backup of a node whose
 readers have seen its numbers, or tell its readers to reset their
 newsreader's record of what they have read for the node.
 
+### Move the node
+
+1. Stop the node.
+2. Copy the whole node folder to its new place (`cp -a /var/lib/fn
+   /srv/fn`).
+3. If the new place is on another disk, record it:
+   `fn operator /srv/fn/fn.toml store rebind-filesystem`.
+4. Start the node from the new `fn.toml`. With `install.sh`, run it again
+   with `--node /srv/fn` so the service may write there.
+
+Nothing in `fn.toml` needs changing when its paths are relative (as
+`mission` writes them). An absolute path still names the same place after
+the move.
+
 An **export** (`store export`) is different. It carries the store's history
 for moving to a new store, not the node's secrets or settings. Keep backups
 and exports both.
@@ -963,13 +977,18 @@ before the article is saved. The full figures are in
 
 `[store] path`; `[listener] host`, `port`, `tls_cert`, `tls_key`,
 `tls_port`; `[auth] required`, `protected_only`; `[posting] enabled`;
-`[control] path`; `[log] path` (absolute); `[alerts] headroom_min_percent`
+`[control] path`; `[log] path`; `[alerts] headroom_min_percent`
 (default 10). `[listener] host` takes one or more addresses, comma
 separated, IPv4 or IPv6 (`[::1], 192.0.2.7`), or `localhost`; `0.0.0.0` and
 `::` are refused. Groups, peers and policies are not in this file: they are
 kept in the store and changed with commands. `run` refuses `[posting] agent`,
 `[anchor]` and `[acl2]` (set the node's name with `policy set path-identity`).
 Restart after editing the file.
+
+A path that does not start with `/` is inside the folder `fn.toml` is in,
+whatever folder you run `fn` from: `path = "store"` next to
+`/var/lib/fn/fn.toml` is `/var/lib/fn/store`. `mission` writes the paths
+this way. `[alerts] command` must start with `/`.
 
 ### Store settings
 
