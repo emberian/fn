@@ -2,6 +2,7 @@
 """Check fn's design links and ledgers; this does not execute proof/scenario work."""
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -182,10 +183,21 @@ def conflict_markers() -> None:
             fail(f"{name}:{line}: a merge conflict marker is committed here")
 
 
+def markdown_files():
+    """Every *.md outside IGNORED, which the walk never enters: ROOT.rglob
+    walked all of build/ (certificates, lane worktrees, gate trees) and
+    filtered afterwards, minutes on a box, and made the step's traced inputs
+    every file under build/ (check-parallel, 2026-09-29)."""
+    for base, directories, names in os.walk(ROOT):
+        directories[:] = [d for d in directories if d not in IGNORED]
+        for name in names:
+            if name.endswith(".md") and name not in IGNORED:
+                yield Path(base) / name
+
+
 def main() -> int:
     conflict_markers()
-    markdown = sorted(p for p in ROOT.rglob("*.md")
-                      if not (set(p.relative_to(ROOT).parts) & IGNORED))
+    markdown = sorted(markdown_files())
     for path in markdown:
         for target in re.findall(r"\[[^\]\n]*\]\(([^)\n]+)\)", prose(path)):
             link(target, path, str(path.relative_to(ROOT)))

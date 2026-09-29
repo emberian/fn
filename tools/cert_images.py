@@ -34,6 +34,14 @@ What ACL2 does with an image (measured, planning/evidence/cert-images-2026-09-28
   The image definition therefore lives in this committed file and changes
   rarely: every book's certificate follows from its sources and the image
   set.
+* An attachable stobj's attachment must be made before the stobj is
+  defined: `(attach-stobj fn-arena fn-arena-extent)` precedes the include of
+  books/payload-arena.  An image that already holds the stobj's defining
+  book makes a later `attach-stobj` fail ("The name FN-ARENA is in use, so
+  it cannot serve here as an attachable stobj"; batch BB, the image-world
+  umbrellas).  So an image is never used for a book whose certification
+  world (local includes too, and the book itself) makes, outside the image,
+  an attachment of a stobj the image defines (`applicable`).
 * SBCL's save-lisp-and-die coalesces numbers, so after restart a bignum
   defconst's value is no longer `eq` to the value ACL2 recorded for it, and
   reloading that book's compiled file (which ACL2 does for a redundant
@@ -77,6 +85,30 @@ FIXUP = (
     '(lp)\n')
 
 
+def stobj_events(text: str) -> tuple[frozenset[str], frozenset[str]]:
+    """(stobjs a book defines, stobjs it attaches), from the ledger's reader:
+    every `defstobj`/`defabsstobj` and `attach-stobj` form, at any depth."""
+    defined: set[str] = set()
+    attached: set[str] = set()
+    try:
+        forms = ledger.read_forms(text)
+    except ledger.ReadError:
+        return frozenset(), frozenset()
+    pending = list(forms)
+    while pending:
+        form = pending.pop()
+        if not isinstance(form, list) or not form:
+            continue
+        head = form[0]
+        if isinstance(head, ledger.Sym) and len(form) >= 2 and isinstance(form[1], ledger.Sym):
+            if head in ("defstobj", "defabsstobj"):
+                defined.add(str(form[1]))
+            elif head == "attach-stobj":
+                attached.add(str(form[1]))
+        pending.extend(item for item in form if isinstance(item, list))
+    return frozenset(defined), frozenset(attached)
+
+
 class Graph:
     """The non-local include graph of the tree, from the ledger's reader."""
 
@@ -85,8 +117,11 @@ class Graph:
         self.edges: dict[str, list[str]] = {}
         self.nonlocal_edges: dict[str, list[str]] = {}
         self.cost_ms: dict[str, float] = {}
+        # Per book: the stobjs it defines and the stobjs it attaches.
+        self.stobjs: dict[str, frozenset[str]] = {}
+        self.attaches: dict[str, frozenset[str]] = {}
         self._nonlocal_closure: dict[str, frozenset[str]] = {}
-        self._attaches: dict[str, bool] = {}
+        self._closure: dict[str, frozenset[str]] = {}
 
     def load(self, book: str) -> None:
         pending = [book]
@@ -108,6 +143,8 @@ class Graph:
             theorems = sum(1 for t in analysis.theorems if not getattr(t, "local", False))
             functions = sum(1 for f in analysis.functions if not getattr(f, "local", False))
             self.cost_ms[name] = MS_PER_DEFINITION * functions + MS_PER_THEOREM * theorems
+            defined, attached = stobj_events(source.read_text(encoding="latin-1"))
+            self.stobjs[name], self.attaches[name] = defined, attached
             pending.extend(self.edges[name])
 
     def nonlocal_closure(self, book: str) -> frozenset[str]:
@@ -128,15 +165,31 @@ class Graph:
             self._nonlocal_closure[book] = found
         return found
 
-    def attaches(self, book: str) -> bool:
-        """BOOK issues a top-level attach-stobj event."""
-        found = self._attaches.get(book)
+    def closure(self, book: str) -> frozenset[str]:
+        """BOOK and everything it includes, local includes too: its certification world."""
+        found = self._closure.get(book)
         if found is None:
-            source = self.root / f"{book}.lisp"
-            text = source.read_text(errors="replace") if source.exists() else ""
-            found = re.search(r"^\(attach-stobj\s", text, re.M) is not None
-            self._attaches[book] = found
+            seen: set[str] = set()
+            pending = [book]
+            while pending:
+                name = pending.pop()
+                if name in seen:
+                    continue
+                seen.add(name)
+                self.load(name)
+                pending.extend(self.edges[name])
+            found = frozenset(seen)
+            self._closure[book] = found
         return found
+
+    def attached(self, book: str) -> frozenset[str]:
+        """Every stobj an attach-stobj in BOOK's certification world names."""
+        return frozenset().union(*(self.attaches[name] for name in self.closure(book)))
+
+    def defines(self, books: frozenset[str]) -> frozenset[str]:
+        for name in books:
+            self.load(name)
+        return frozenset().union(*(self.stobjs[name] for name in books))
 
     def include_cost(self, books: frozenset[str]) -> float:
         return sum(self.cost_ms.get(book, 0.0) for book in books)
@@ -161,37 +214,70 @@ def book_directory(book: str) -> str | None:
     return parent if parent in DIRECTORIES else None
 
 
-def image_for(book: str, images: list[dict], graph: Graph) -> dict | None:
-    """The image BOOK certifies from: the one with the largest include cost
-    whose every root is in BOOK's non-local closure (so a plain-world
-    include of BOOK loads exactly the books its portcullis names) and is not
-    BOOK itself.  Deterministic: a function of the sources and the image set.
-    """
+PLAIN = "plain"
+
+
+def world_id(image: dict, directory: str) -> str:
+    """What a certificate made from IMAGE for a book in DIRECTORY was made in.
+
+    Part of the certificate cache key (`certs.closure_key`): the image's
+    include-books are the certificate's portcullis, which a plain-world
+    includer replays, so an image-made pair is never filed with plain ones."""
+    return f"{image['name']}@{directory}:{','.join(image['roots'])}"
+
+
+def applicable(book: str, images: list[dict], graph: Graph) -> list[dict]:
+    """The images BOOK may certify from, costliest first.
+
+    An image qualifies when every root is in BOOK's non-local closure (so a
+    plain-world include of BOOK loads exactly the books its portcullis
+    names), it does not hold BOOK, and it defines no stobj that BOOK's
+    certification world attaches (an attachment must precede the stobj)."""
     if book_directory(book) is None:
-        return None
+        return []
     reach = graph.nonlocal_closure(book)
-    attaching = {b for b in reach if graph.attaches(b)}
-    best, best_cost = None, 0.0
+    world = graph.closure(book)
+    found = []
     for image in images:
         roots = image["roots"]
         if book in roots or not all(root in reach for root in roots):
             continue
-        closure = frozenset().union(*(graph.nonlocal_closure(r) for r in roots))
+        closure = image_closure(image, graph)
         if book in closure:
             continue
-        # An attach-stobj event must precede the stobj's definition (ACL2:
-        # "The name FN-ARENA is in use, so it cannot serve here as an
-        # attachable stobj").  A book that includes an attaching book the
-        # image does not already hold cannot start from that image: the
-        # image has defined the stobj first (composed-owner-3, 2026-09-29:
-        # books/image-world* under the served-catalog-owner image).
-        if attaching - closure:
+        # The attachments this certification would make on top of the image
+        # (by books the image does not already hold) must not name a stobj
+        # the image has defined.  An image that holds the attaching book made
+        # the attachment itself, first (composed-owner-3 at ae64a5c42 found the
+        # same defect and allows exactly that case).
+        attached = frozenset().union(*(graph.attaches[name] for name in world - closure))
+        if attached & graph.defines(closure):
             continue
-        cost = graph.include_cost(closure)
-        if cost > best_cost or (cost == best_cost and best is not None
-                                and image["name"] < best["name"]):
-            best, best_cost = image, cost
-    return best
+        found.append((-graph.include_cost(closure), image["name"], image))
+    return [image for _, _, image in sorted(found, key=lambda item: item[:2])]
+
+
+def image_for(book: str, images: list[dict], graph: Graph) -> dict | None:
+    """The costliest image BOOK may certify from (`applicable`), or None."""
+    found = applicable(book, images, graph)
+    return found[0] if found else None
+
+
+def worlds(root: Path, book: str) -> list[str]:
+    """Every world a certificate of BOOK may validly have been made in under
+    ROOT's image set: plain, and each applicable image.  `certs` looks a book
+    up under each."""
+    graph = _GRAPHS.get(str(root))
+    if graph is None:
+        graph = _GRAPHS[str(root)] = Graph(root)
+        _CONFIGS[str(root)] = load_config(root)
+    directory = book_directory(book)
+    return [PLAIN] + [world_id(image, directory)
+                      for image in applicable(book, _CONFIGS[str(root)], graph)]
+
+
+_GRAPHS: dict[str, Graph] = {}
+_CONFIGS: dict[str, list[dict]] = {}
 
 
 def image_closure(image: dict, graph: Graph) -> frozenset[str]:
@@ -264,13 +350,8 @@ class Runner:
         # book -> applicable image names, costliest first
         self.applicable: dict[str, list[str]] = {}
         for book in books:
-            if book_directory(book) is None:
-                continue
-            reach = self.graph.nonlocal_closure(book)
-            names = [name for name, image in by_name.items()
-                     if book not in image["roots"] and book not in self.closures[name]
-                     and all(r in reach for r in image["roots"])]
-            self.applicable[book] = sorted(names, key=lambda n: (-self.cost[n], n))
+            self.applicable[book] = [image["name"] for image
+                                     in applicable(book, self.images, self.graph)]
         self.kick()
 
     def _wanted(self) -> list[tuple[str, str]]:
@@ -331,10 +412,10 @@ class Runner:
             for name in self.applicable.get(book, []):
                 built = self.builds.get((name, directory))
                 if built and built.get("ok"):
-                    label = f"{name}@{directory}"
+                    label = world_id(self.by_name[name], directory)
                     self.used[book] = label
                     return Path(built["launcher"]), len(self.by_name[name]["roots"]), label
-            self.used[book] = "plain"
+            self.used[book] = PLAIN
             return None
 
     def finished(self, book: str, passed: bool) -> None:
