@@ -1877,7 +1877,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-anchor-rp-outcome
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-anchor-rp-outcome-is-terminal-only-after-the-directory-barrier))
 
 (definterface fn-anchor-rp-recover-start
   :class ::common-lisp-compliant)
@@ -2662,7 +2663,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnp-tcpcl-outcome
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct))
 
 (definterface fn-bpnp-used
   :class ::common-lisp-compliant)

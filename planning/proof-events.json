@@ -13584,6 +13584,24 @@
           "name": "fn-smid-durability-warning-warns-exactly-when-the-mount-is-unsafe"
         }
       ]
+    },
+    {
+      "id": "PRF-955",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-anchor-rp-outcome-is-terminal-only-after-the-directory-barrier"
+        }
+      ]
+    },
+    {
+      "id": "PRF-956",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct"
+        }
+      ]
     }
   ]
 }

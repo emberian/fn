@@ -14248,6 +14248,40 @@
         "tests/acl2/store-mount-identity-tests.lisp"
       ],
       "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (4,825 steps); certification pending in the lane's READY manifest."
+    },
+    {
+      "id": "PRF-955",
+      "title": "The anchor replace outcome the host reads is terminal only after the directory barrier, uncertain exactly when the step fenced",
+      "statement": "books/anchor-replace.lisp. KEYSTONE fn-anchor-rp-outcome-is-terminal-only-after-the-directory-barrier about the host-called fn-anchor-rp-outcome (host/native/anchor.lisp) over fn-anchor-rp-step: the outcome is one of :durable, :recovered, :fault, :uncertain, :pending; from a phase not already terminal it is :durable iff the phase is :replace-visible and the event is (:directory-result :ok), :recovered iff the phase is :recover-directory and the event is (:recovery-directory-result :ok); :uncertain iff the step is :fenced; :fault iff the step is :known-fail. Lifts the two step keystones to the word the host acts on. Teeth: tests/acl2/anchor-replace-tests.lisp (the visible replace's barrier :ok is :durable; the same barrier from the issued phase, and a failed barrier, are not).",
+      "milestone": "M5",
+      "requirements": [
+        "TOP-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/anchor-replace.lisp",
+        "tests/acl2/anchor-replace-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (14,415 steps); certification pending (the successor's farm round)."
+    },
+    {
+      "id": "PRF-956",
+      "title": "The sender's reading of a TCPCL session keeps sent, refused with its reason, failed and uncertain distinct",
+      "statement": "books/bp-node-progress.lisp. KEYSTONE fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct about the host-called fn-bpnp-tcpcl-outcome (host/native/bp-node.lisp fnn-bpnode-forward-contact): :sent iff the connection observed :accepted; a (:refused CODE) result iff observed :refused with a frame-nat reason, keeping the code; :failed iff observed :refused with no reason; :uncertain iff none of those (a lost connection after the durable kind 8, a refusal whose reason is not a code), so the row is retried and never counted sent or failed. Complements fn-bpnp-tcpcl-outcome-keeps-the-refusal-reason (books/bp-node-forward-retry.lisp). Teeth: tests/acl2/bp-node-forward-retry-tests.lisp (the four readings; a non-code reason and a lost connection are :uncertain).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/bp-node-progress.lisp",
+        "tests/acl2/bp-node-forward-retry-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (937 steps); certification pending (the successor's farm round)."
     }
   ]
 }
