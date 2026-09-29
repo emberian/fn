@@ -37,11 +37,16 @@
                          *bpnfce-non-bundle-record*))))
 
 ; Values whose wire does not decode to a bundle: the served codec refuses
-; before building a held record, the earlier one built and refused.
+; before building a held record, the earlier one built and refused.  The
+; earlier one builds through fn-bpnf-frame-held-with-anchor, whose guard
+; (fn-bpb-bundlep bundle) a non-bundle now violates, so its logical value
+; (nil, as the equality theorem says) is evaluated with guard checking off.
 (defconst *bpnfce-bad-wire-values* (update-nth 10 '(255 255 255) *bpnfce-values*))
-(assert-event (and (null (fn-bpnf-stored-from-values *bpnfce-bad-wire-values*))
-                   (null (fn-bpnf-stored-from-values-before-guards
-                          *bpnfce-bad-wire-values*))))
+(with-guard-checking-event
+ :none
+ (assert-event (and (null (fn-bpnf-stored-from-values *bpnfce-bad-wire-values*))
+                    (null (fn-bpnf-stored-from-values-before-guards
+                           *bpnfce-bad-wire-values*)))))
 
 ; Inputs that are not lists: equal (nil) on both sides, as the theorems say
 ; of every input.
