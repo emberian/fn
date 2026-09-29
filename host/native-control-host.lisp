@@ -72,18 +72,15 @@
   (declare (xargs :mode :program))
   (fn-native-control-refusal-status reason))
 
-(defun fn-native-control-host-max-active-clients ()
-  (declare (xargs :mode :program))
-  (fn-native-control-max-active-clients))
-
 ;; host-decisions-2 packet B: whether an accepted control connection gets a
 ;; worker (:launch), is answered BUSY (:busy) or is closed (:stopping), from
-;; the stop flag and the live worker count the host observes
+;; the stop flag and the live worker count the host observes and the store
+;; profile the owner opened (PKT-700: its ceiling)
 ;; (books/native-control-launch.lisp, KEYSTONE
 ;; fn-ncla-launch-exactly-below-the-ceiling).
-(defun fn-native-control-host-launch-disposition (stoppingp active)
+(defun fn-native-control-host-launch-disposition (stoppingp active profile)
   (declare (xargs :mode :program))
-  (fn-ncla-launch-disposition stoppingp active))
+  (fn-ncla-launch-disposition stoppingp active profile))
 
 ;; PKT-344: the offline control verb's path, decided from the socket node and
 ;; the writer lock (fn-native-control-liveness-decides), and its note line.

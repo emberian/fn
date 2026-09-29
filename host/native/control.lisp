@@ -13,7 +13,7 @@
 (defstruct (fnn-control-state (:constructor %make-fnn-control-state))
   path listener accept-thread service
   (lock (sb-thread:make-mutex :name "fn local control"))
-  (workers nil) (clients nil) (stopping nil) (max-clients 0)
+  (workers nil) (clients nil) (stopping nil)
   (read-maximum 0)
   device inode lease-path lease-fd)
 
@@ -564,13 +564,18 @@ ACL2 returns."
 (defun fnn-control-launch-client (control socket)
   (let ((disposition nil))
     (fnn-with-control (control)
-      ;; ACL2's disposition over the stop flag and the live worker count
-      ;; (books/native-control-launch.lisp fn-ncla-launch-disposition): the
-      ;; ceiling comparison is not the host's.
+      ;; ACL2's disposition over the stop flag, the live worker count and
+      ;; the profile of the store the owner opened, whose field 16 is the
+      ;; ceiling (books/native-control-launch.lisp fn-ncla-launch-disposition,
+      ;; PKT-700): the ceiling comparison is not the host's.  The accept loop
+      ;; runs only after fnn-control-start, after the open.
       (setq disposition
             (fnn-core 'fn-native-control-host-launch-disposition
                       (and (fnn-control-state-stopping control) t)
-                      (length (fnn-control-state-workers control))))
+                      (length (fnn-control-state-workers control))
+                      (fnn-store-config
+                       (fnn-owner-service-store
+                        (fnn-control-state-service control)))))
       (case disposition
             ((:stopping :busy) nil)
             (:launch
@@ -707,9 +712,7 @@ ACL2 returns."
                (> (length control-path-octets) 0)
                (member posting-enabledp '(t nil)))
     (fnn-fault "malformed ACL2 control run plan"))
-  (let* ((max-clients
-           (fnn-core 'fn-native-control-host-max-active-clients))
-         (lease-octets
+  (let* ((lease-octets
            (fnn-core 'fn-native-control-host-lease-path
                      (fnn-octet-list control-path-octets)))
          (lease-path
@@ -717,8 +720,7 @@ ACL2 returns."
                 (fnn-octets-string (fnn-octets lease-octets))))
          (control (%make-fnn-control-state
                    :path (fnn-octets-string control-path-octets)
-                   :lease-path lease-path
-                   :max-clients max-clients))
+                   :lease-path lease-path))
          (*fnn-owner-start-hooks*
            (append *fnn-owner-start-hooks*
                    (list (lambda (service)
@@ -731,18 +733,17 @@ ACL2 returns."
            (append *fnn-owner-close-hooks*
                    (list (lambda (service)
                            (fnn-control-close control service))))))
-    (unless (and (integerp max-clients) (< 0 max-clients 65))
-      (fnn-fault "ACL2 returned an invalid control client ceiling"))
     (unless lease-path
       (fnn-fault "ACL2 refused the control lease path"))
     ;; A developer image validates its control stop selector here, before
     ;; the store opens, so a malformed value never surfaces on a worker after
     ;; a durable submission.
     (fnn-control-stop-cut-armed-p)
-    ;; PKT-605: the connection budget counts these clients' threads.
-    (let ((*fnn-mux-control-clients* max-clients))
-      (fnn-owner-run-normalized store-octets listener-host-octets listener-port
-                                oncep max-connections tls-context tls-port))))
+    ;; PKT-605: the connection budget counts these clients' threads, the
+    ;; store profile's ceiling (PKT-700: fnn-mux-thread-count reads it after
+    ;; the open).
+    (fnn-owner-run-normalized store-octets listener-host-octets listener-port
+                              oncep max-connections tls-context tls-port)))
 
 (defun fnn-control-connect (path)
   (let ((socket (make-instance 'sb-bsd-sockets:local-socket

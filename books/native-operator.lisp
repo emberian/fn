@@ -650,7 +650,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
   "Bounded operator help output, selected only from ACL2-normalized subjects."
   (declare (xargs :guard t))
   (cond ((equal subject "init")
-         "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; raise max-transactions, max-history-octets or max-article-octets later with policy set, on the running node)")
+         "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] [--max-control-clients N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; raise max-transactions, max-history-octets or max-article-octets later with policy set, on the running node)")
         ((equal subject "run") "usage: fn operator CONFIG run [--once]")
         ((equal subject "show")
          "usage: fn operator CONFIG show [TABLE KEY] (the normalized configuration as fn.toml, or one key's value)")

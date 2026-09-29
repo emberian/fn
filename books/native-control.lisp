@@ -107,8 +107,6 @@
 (defthm fn-nctrl-max-frame-within-frame-width
   (<= *fn-nctrl-max-payload* *fn-frame-max-payload*)
   :rule-classes nil)
-; Work bound: concurrent control clients the owner serves.
-(defconst *fn-nctrl-max-active-clients* (fn-profile-limit :control-clients))
 (defconst *fn-nctrl-lease-suffix* '(46 108 111 99 107)) ; .lock
 (defconst *fn-nctrl-max-lease-path* (+ *fn-ncfg-max-path* 5))
 
@@ -760,14 +758,10 @@ distinguish an unobserved refusal from a durable acceptance."
   :hints (("Goal" :in-theory (enable fn-native-control-liveness
                                      fn-native-control-liveness-offlinep))))
 
-(defun fn-native-control-max-active-clients ()
-  "The fixed local transport worker ceiling selected by ACL2 policy."
-  (declare (xargs :guard t))
-  *fn-nctrl-max-active-clients*)
-
-(defthm fn-native-control-max-active-clients-is-positive
-  (and (posp (fn-native-control-max-active-clients))
-       (<= (fn-native-control-max-active-clients) 64)))
+; The concurrent control clients the owner serves are the store profile's
+; ceiling (books/byte-store-frame.lisp field 16, fn-bs-profile-max-control-
+; clients: PKT-700); books/native-control-launch.lisp decides a launch over
+; it and books/heap-reservation.lisp reserves its threads.
 
 ; The generic frame library deliberately exports its ten-octet header and
 ; 32-octet digest facts separately.  Close that arithmetic here so the reader

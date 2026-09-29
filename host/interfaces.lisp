@@ -3126,6 +3126,9 @@
 (definterface fn-aj-host-recover
   :class ::ideal)
 
+(definterface fn-bs-profile-max-control-clients
+  :class ::common-lisp-compliant)
+
 (definterface fn-bs-profile-resolve
   :class ::common-lisp-compliant
   :keystones (fn-native-mission-profiles-valid
@@ -3713,9 +3716,6 @@
 (definterface fn-native-control-host-liveness-note
   :class ::program)
 
-(definterface fn-native-control-host-max-active-clients
-  :class ::program)
-
 (definterface fn-native-control-host-max-article
   :class ::program)
 
@@ -3779,9 +3779,6 @@
 
 (definterface fn-native-control-host-transport-word
   :class ::program)
-
-(definterface fn-native-control-max-active-clients
-  :class ::common-lisp-compliant)
 
 (definterface fn-native-hybrid-control-host-author-decode
   :class ::program)

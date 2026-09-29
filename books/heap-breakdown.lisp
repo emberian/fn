@@ -68,13 +68,13 @@
 ; collector's room (the figure less the base), the rounding to SBCL's
 ; megabytes, the image outside the dynamic space and the threads.
 (defun fn-heap-breakdown (action profile core nursery observed connections)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t) (ignore connections))
   (let* ((obs (fn-heap-operation-observation action observed))
          (base-terms (fn-heap-breakdown-base profile core obs))
          (base (fn-heap-store-base-octets profile core obs))
          (fig (fn-heap-store-figure-octets profile core nursery obs))
          (mb (fn-heap-mb-of fig))
-         (threads (fn-heap-thread-count connections))
+         (threads (fn-heap-thread-count profile))
          (stack-kib (fn-heap-stack-kib profile)))
     (append base-terms
             (list (cons :collector-room (- fig base))
@@ -133,7 +133,7 @@
                    (fn-heap-breakdown action profile core nursery observed connections))
                   (fn-heap-reservation-octets
                    (fn-heap-mb-of (fn-heap-operation-figure-octets action profile core nursery observed))
-                   core (fn-heap-stack-kib profile) (fn-heap-thread-count connections))))
+                   core (fn-heap-stack-kib profile) (fn-heap-thread-count profile))))
   :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets fn-heap-reservation-octets)
                                   (fn-heap-breakdown-base fn-heap-store-base-octets
                                    fn-heap-store-figure-octets fn-heap-thread-count

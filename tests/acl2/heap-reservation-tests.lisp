@@ -27,7 +27,7 @@
   (let ((r (fn-heap-reserve-decide profile core nursery observations connections)))
     (and (equal (fn-heap-decision-mb r)
                 (fn-heap-decision-mb (fn-heap-decide profile core nursery observations)))
-         (<= (+ *fn-heap-mux-loops* (fn-native-control-max-active-clients)
+         (<= (+ *fn-heap-mux-loops* (fn-bs-profile-max-control-clients profile)
                 *fn-heap-fixed-threads*)
              (fn-heap-reserve-threads r))
          (<= *fn-heap-stack-octets*
@@ -61,8 +61,15 @@
 ; judgement).
 (defconst *hrt-4096* (list (* 4096 *fn-heap-mib*)))
 (assert! (equal (fn-heap-stack-kib *fn-heap-small-profile*) 1024))
-(assert! (equal (fn-heap-thread-count 32) 30))
-(assert! (equal (fn-heap-thread-count 0) 30))
+(assert! (equal (fn-heap-thread-count *fn-heap-small-profile*) 30))
+; PKT-700: the control clients are the profile's ceiling (field 16), so a
+; profile of 200 reserves 214 threads and one of 5 reserves 19.
+(assert! (equal (fn-heap-thread-count
+                 (fn-bs-profile-resolve '(:development ((16 . 200))) nil))
+                214))
+(assert! (equal (fn-heap-thread-count
+                 (fn-bs-profile-resolve '(:development ((16 . 5))) nil))
+                19))
 (assert! (equal (fn-heap-reserve-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
                                         *hrt-4096* 32)
                 '(:heap 660 "small" 4096 1024 30)))
@@ -113,7 +120,7 @@
  (defthm hrt-without-admitted
    (let ((r (fn-heap-reserve-decide profile core nursery observations connections)))
      (implies (equal (car r) :heap)
-              (<= (+ *fn-heap-mux-loops* (fn-native-control-max-active-clients)
+              (<= (+ *fn-heap-mux-loops* (fn-bs-profile-max-control-clients profile)
                      *fn-heap-fixed-threads*)
                   (fn-heap-reserve-threads r))))
    :hints (("Goal" :do-not-induct t
@@ -122,7 +129,7 @@
                             (fn-heap-reserve-decide fn-heap-decide
                              fn-bs-profile-admittedp fn-heap-machine-octets
                              fn-heap-decide-refuses-exactly-past-the-machine
-                             fn-native-control-max-active-clients
+                             fn-bs-profile-max-control-clients
                              fn-heap-mb-of))))))
 
 ; Without the accepted reservation: the thread refusal on 800 MB.
@@ -135,7 +142,7 @@
  (defthm hrt-without-heap
    (let ((r (fn-heap-reserve-decide profile core nursery observations connections)))
      (implies (fn-bs-profile-admittedp profile)
-              (<= (+ *fn-heap-mux-loops* (fn-native-control-max-active-clients)
+              (<= (+ *fn-heap-mux-loops* (fn-bs-profile-max-control-clients profile)
                      *fn-heap-fixed-threads*)
                   (fn-heap-reserve-threads r))))
    :hints (("Goal" :do-not-induct t
@@ -144,7 +151,7 @@
                             (fn-heap-reserve-decide fn-heap-decide
                              fn-bs-profile-admittedp fn-heap-machine-octets
                              fn-heap-decide-refuses-exactly-past-the-machine
-                             fn-native-control-max-active-clients
+                             fn-bs-profile-max-control-clients
                              fn-heap-mb-of))))))
 
 ; A natural connection count is no longer a hypothesis: the threads do not
@@ -1045,16 +1052,17 @@
                 :heap))
 (assert! (<= (fn-heap-init-reservation-octets *fn-heap-small-profile* *hrt-core* *hrt-nursery*)
              (fn-heap-machine-octets *hrt-2g*)))
-; Without the admitted profile: no profile on a 500 MiB machine is accepted
-; (the store-less figure, 310 MB), while the init reservation of no profile
-; (569,639,944 octets) is past the machine.
-(defconst *hrt-500m* (list (* 500 *fn-heap-mib*)))
+; Without the admitted profile: no profile on a 450 MiB machine is accepted
+; (the store-less figure), while the init reservation of no profile
+; (485,753,864 octets: since PKT-700 no profile reserves no control
+; clients' threads) is past the machine.
+(defconst *hrt-450m* (list (* 450 *fn-heap-mib*)))
 (assert! (not (fn-bs-profile-admittedp nil)))
-(assert! (equal (car (fn-heap-reserve-full-store-decide nil *hrt-core* *hrt-nursery* *hrt-500m*
+(assert! (equal (car (fn-heap-reserve-full-store-decide nil *hrt-core* *hrt-nursery* *hrt-450m*
                                                        (fn-heap-reserve-init-connections)))
                 :heap))
 (assert! (not (<= (fn-heap-init-reservation-octets nil *hrt-core* *hrt-nursery*)
-                  (fn-heap-machine-octets *hrt-500m*))))
+                  (fn-heap-machine-octets *hrt-450m*))))
 ; Without the accepted decision: the small preset on 300 MiB is refused, and
 ; its reservation is past the machine.
 (defconst *hrt-300m* (list (* 300 *fn-heap-mib*)))

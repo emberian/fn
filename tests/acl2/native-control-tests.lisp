@@ -57,7 +57,6 @@
 (assert-event (equal (fn-native-control-status-exit-code :clock-unusable) 1))
 (assert-event (equal (fn-native-control-status-exit-code :uncertain) 3))
 (assert-event (equal (fn-native-control-status-exit-code :fault) 4))
-(assert-event (equal (fn-native-control-max-active-clients) 16))
 
 ; The control surface has two words beyond the three outcomes, and this is
 ; the projection that decides what each one costs the caller.  :duplicate is

@@ -25,8 +25,8 @@
 ; both images, 7 times the measured floor.
 ;
 ; THE THREADS: the owner's client workers (one per accepted connection up to
-; the configuration's max-connections), the local control clients
-; (fn-native-control-max-active-clients), and the fixed ones: the main
+; the configuration's max-connections), the local control clients (the
+; store profile's ceiling, fn-bs-profile-max-control-clients: PKT-700), and the fixed ones: the main
 ; thread, SBCL's finalizer, the service log writer, the checkpoint
 ; publisher, the outbound feed and pull workers, the control accept loop,
 ; the TLS, implicit-TLS and extra plain listeners; twelve with two spare.
@@ -85,8 +85,11 @@
 ;; THE THREADS since connection-multiplexing (PRF-223, host/native/mux.lisp):
 ;; a served connection is no thread but a record on one of the I/O loops, so
 ;; the node runs the fixed threads, the loops and the control clients,
-;; whatever its connections (CONNECTIONS stays an argument: the reservation
-;; is the run's, and the connections' heap parts are connection-budget's).
+;; whatever its connections (CONNECTIONS stays an argument of the reservation:
+;; it is the run's, and the connections' heap parts are connection-budget's).
+;; The control clients are the store profile's ceiling (PKT-700, field 16):
+;; the reservation refuses by name a ceiling the machine cannot hold, so no
+;; fixed bound on it stands here.
 ;; Before this lane the reservation still counted one thread per connection
 ;; (32 x 5 MiB at the default capacity).  The host's thread count for the
 ;; connection budget is this one (fnn-mux-thread-count).
@@ -96,9 +99,9 @@
   (declare (xargs :guard t))
   *fn-heap-mux-loops*)
 
-(defun fn-heap-thread-count (connections)
-  (declare (xargs :guard t) (ignore connections))
-  (+ *fn-heap-mux-loops* (fn-native-control-max-active-clients)
+(defun fn-heap-thread-count (profile)
+  (declare (xargs :guard t))
+  (+ *fn-heap-mux-loops* (fn-bs-profile-max-control-clients profile)
      *fn-heap-fixed-threads*))
 
 (defun fn-heap-reservation-octets (mb core stack-kib threads)
@@ -131,6 +134,7 @@
   :rule-classes :type-prescription)
 
 (defun fn-heap-reserve-decide (profile core nursery observations connections)
+  (declare (ignore connections))
   (declare (xargs :guard t
                   :guard-hints (("Goal" :in-theory (disable fn-heap-decide
                                                             fn-bs-profile-admittedp
@@ -144,7 +148,7 @@
            (fn-heap-reserve-storeless d core observations))
           (t
            (let* ((stack (fn-heap-stack-kib profile))
-                  (threads (fn-heap-thread-count connections))
+                  (threads (fn-heap-thread-count profile))
                   (total (fn-heap-reservation-octets (fn-heap-decision-mb d)
                                                      core stack threads))
                   (machine (fn-heap-machine-octets observations)))
@@ -200,11 +204,11 @@
                     (let ((total (fn-heap-reservation-octets
                                   (fn-heap-decision-mb d) core
                                   (fn-heap-stack-kib profile)
-                                  (fn-heap-thread-count connections))))
+                                  (fn-heap-thread-count profile))))
                       (if (<= total (fn-heap-machine-octets observations))
                           (list :heap (fn-heap-decision-mb d) (nth 2 d) (nth 3 d)
                                 (fn-heap-stack-kib profile)
-                                (fn-heap-thread-count connections))
+                                (fn-heap-thread-count profile))
                         (list :refused :machine-cannot-hold-threads
                               (fn-heap-mb-of total) (nth 3 d)))))))
   :hints (("Goal" :in-theory (e/d (fn-heap-reserve-decide)
@@ -241,6 +245,7 @@
   :rule-classes :type-prescription)
 
 (defun fn-heap-reserve-of (d profile core observations connections)
+  (declare (ignore connections))
   (declare (xargs :guard (true-listp d)
                   :guard-hints (("Goal" :in-theory (disable fn-bs-profile-admittedp
                                                             fn-heap-stack-kib
@@ -252,7 +257,7 @@
          (fn-heap-reserve-storeless d core observations))
         (t
          (let* ((stack (fn-heap-stack-kib profile))
-                (threads (fn-heap-thread-count connections))
+                (threads (fn-heap-thread-count profile))
                 (total (fn-heap-reservation-octets (fn-heap-decision-mb d)
                                                    core stack threads))
                 (machine (fn-heap-machine-octets observations)))
@@ -343,7 +348,7 @@
              (and (equal (fn-heap-decision-mb r)
                          (fn-heap-decision-mb
                           (fn-heap-decide profile core nursery observations)))
-                  (<= (+ *fn-heap-mux-loops* (fn-native-control-max-active-clients)
+                  (<= (+ *fn-heap-mux-loops* (fn-bs-profile-max-control-clients profile)
                          *fn-heap-fixed-threads*)
                       (fn-heap-reserve-threads r))
                   (<= *fn-heap-stack-octets*
@@ -365,7 +370,7 @@
                             fn-bs-profile-admittedp fn-heap-machine-octets
                             fn-heap-reservation-octets fn-heap-reserve-of-holds-the-decision
                             fn-heap-decide-refuses-exactly-past-the-machine
-                            fn-native-control-max-active-clients fn-heap-kib-of-covers
+                            fn-bs-profile-max-control-clients fn-heap-kib-of-covers
                             fn-heap-mb-of)))))
 
 ; KEYSTONE (PKT-686).  An accepted reservation is the operation's accepted
@@ -966,7 +971,7 @@
   (fn-heap-reservation-octets
    (fn-heap-mb-of (fn-heap-operation-figure-octets :run profile core nursery nil))
    core (fn-heap-stack-kib profile)
-   (fn-heap-thread-count (fn-heap-reserve-init-connections))))
+   (fn-heap-thread-count profile)))
 
 ;; An explicit target budget holds the profile's whole reservation (the
 ;; figure init promises: the full store's run, its core and every thread's
@@ -1178,6 +1183,7 @@
   :hints (("Goal" :in-theory (e/d (fn-heap-reserve-of fn-heap-reservation-octets
                                    fn-heap-thread-count)
                                   (fn-bs-profile-admittedp fn-heap-stack-kib
+                                   fn-bs-profile-max-control-clients
                                    fn-heap-machine-octets fn-heap-decision-mb))))))
 
 (local
