@@ -3015,7 +3015,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/consumer-owner-local.lisp",
         "tests/acl2/consumer-owner-local-tests.lisp",
@@ -3961,7 +3961,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/frame-fields.lisp",
         "books/frame-invariants.lisp",
@@ -4522,7 +4522,7 @@
         "PRF-084"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "books/config.lisp",
@@ -4689,7 +4689,7 @@
         "PRF-099"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "books/key-statements.lisp",
@@ -5824,7 +5824,7 @@
         "PRF-124"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "tests/acl2/peer-invite-tests.lisp",
@@ -6565,7 +6565,7 @@
         "PRF-160"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "tests/acl2/peer-invite-tests.lisp",
@@ -7468,7 +7468,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-config.lisp",
         "tests/acl2/native-config-tests.lisp",
@@ -7851,7 +7851,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tls-reload.lisp",
         "tests/acl2/tls-reload-tests.lisp",
@@ -7881,7 +7881,7 @@
         "PRF-212"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tls-reload.lisp",
         "tests/acl2/tls-reload-tests.lisp",
@@ -8358,7 +8358,7 @@
         "PRF-097"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/manifests/certify-20260928T163441Z-33654.json",
         "books/peer-host.lisp",
@@ -9647,7 +9647,7 @@
         "PRF-252"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/consumer-reason.lisp",
         "books/consumer-owner-local.lisp",
@@ -10973,7 +10973,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-control-launch.lisp",
         "tests/acl2/native-control-launch-tests.lisp",
@@ -12514,7 +12514,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-config.lisp",
         "host/web-host.lisp",
@@ -14059,7 +14059,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-control.lisp",
         "books/native-control-reason.lisp",
@@ -14947,7 +14947,7 @@
         "PRF-172"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/control-request-word.lisp",
         "tests/acl2/control-request-word-tests.lisp",
@@ -16343,7 +16343,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-set.lisp",
         "books/native-admin-peer.lisp",
@@ -17617,6 +17617,29 @@
         "tests/acl2/page-read-host-tests.lisp"
       ],
       "progress_note": "paged-history-5: clean source REPL g61phledgerteethclean (34 forms), g61phhostteeth (6 forms), 0 refused; adapter functions common-lisp-compliant. No committed certification manifest or native verdict yet. SCN-1002 specifies actual boundary observations."
+    },
+    {
+      "id": "PRF-1073",
+      "title": "A refused cold dependency is answered by a named resource 403 without a fictitious deadline",
+      "statement": "Subject fn-orln-unavailable-span in books/owner-resource-line.lisp, called by fn-owner-resource-unavailable-line-at in host/owner-host.lisp. fn-orln-a-refused-cold-line-is-answered-unavailable: for natural in-range I, a named resource/identity refusal and command-mode connection, consume exactly through the current line LF (positive if input remains), emit exactly one ACL2 resource403 reply and preserve owner except resetting that connection wire to line start. It does not claim a dependency waited or timed out. Native admission/refusal routing remains pending.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-1065"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-orln-a-refused-cold-line-is-answered-unavailable"
+      ],
+      "evidence": [
+        "books/owner-resource-line.lisp",
+        "host/owner-host.lisp",
+        "tests/acl2/owner-resource-line-tests.lisp"
+      ],
+      "progress_note": "Clean-source resource teeth g61phresource403teeth hbox11forms0refused; includes actual reached owner fixtures and full positive/hypothesis-removal/mutation witnesses. No certification manifest or native verdict yet."
     }
   ]
 }

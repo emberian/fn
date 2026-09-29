@@ -31,6 +31,18 @@
     (update-fn-prp-data (list ledger (fn-prl-nth 1 data) (fn-prl-nth 2 data)
                               (fn-prl-nth 3 data)) fn-page-read-pool)))
 
+; A missing pool is explicitly the old offline/unfunded registration mode.
+; It admits no served read and proves no descriptor capacity. Supported pool
+; install must precede recovery before a funded served claim is made.
+(defun fn-owner-page-read-registration-mode (fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (if (fn-prp-data fn-page-read-pool) :funded-pool :unfunded-offline))
+
+(defun fn-owner-page-read-close-preview (file fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (if (not (fn-prp-data fn-page-read-pool)) :unfunded-offline
+    (fn-prl-close-preview (fn-owner-page-read-ledger fn-page-read-pool) file)))
+
 (defun fn-owner-page-read-register (file fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (if (not (fn-prp-data fn-page-read-pool))

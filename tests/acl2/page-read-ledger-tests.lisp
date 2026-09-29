@@ -94,3 +94,8 @@
 (assert! (equal (mv-list 3 (fn-prl-admit *prl-empty* 7 12 200 64 999
                                       *prl-worker* *prl-native*))
                 (list :invalid-read-demand nil *prl-empty*)))
+
+(assert! (equal (fn-prl-close-preview *prl-issued* 11) :read-file-held))
+(assert! (equal (fn-prl-close-preview (mv-nth 1 *prl-published*) 11) :read-file-held))
+(assert! (equal (fn-prl-close-preview (mv-nth 1 *prl-finished*) 11) :closable))
+(assert! (equal (fn-prl-close-preview (mv-nth 1 *prl-closed*) 11) :stale))

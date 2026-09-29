@@ -1576,7 +1576,11 @@ held|short`.
 
 The P12 cold-pool increment (PRF-1065, SCN-1002) separates resident octets,
 disk octets, registered descriptor credits, executing worker slots and
-spent process-local read identities. Its ACL2 adapter admits only a funded
+spent process-local read identities. A named refused cold issue emits one
+403 resource-unavailable line (PRF-1073), consumes that command only and
+preserves its session. Identity exhaustion names the required restart.
+These are admission refusals, with no invented deadline observation.
+Its ACL2 adapter admits only a funded
 charge and binds the whole read token to it. Refusal is unchanged; timeout
 or cancellation cannot refund. Native settlement must follow observed
 worker death and join. Cached vectors retain their charge until eviction,

@@ -162,3 +162,25 @@
 (must-fail-checked
  (assert-event (equal (fn-native-config-load (caddr *ncst-refused*))
                       (list :accepted (cadr *ncst-refused*)))))
+
+; P12 explicit cold policy is normalized and canonically rendered; its
+; numerical allocator/launcher suitability is a separate admission boundary.
+(defconst *ncst-cold*
+  (ncst-with '("[resources]" "cold_heap_octets = 65536" "cold_workers = 2"
+               "cold_descriptors = 16" "cold_read_ids = 1000")))
+(assert-event (equal (car *ncst-cold*) :accepted))
+(assert-event (equal (fn-native-config-cold-resources (cadr *ncst-cold*)) '(65536 2 16 1000)))
+(assert-event (fn-native-config-show-wfp (cadr *ncst-cold*)))
+(assert-event (equal (fn-native-config-load (fn-native-config-show-octets (cadr *ncst-cold*)))
+                     *ncst-cold*))
+(assert-event (not (fn-native-config-cold-resources *ncst-min*)))
+(assert-event (equal (ncst-with '("[resources]" "cold_workers = 2")) '(:refused :invalid)))
+(assert-event (equal (ncst-with '("[resources]" "cold_heap_octets = 1" "cold_workers = 0"
+                                 "cold_descriptors = 1" "cold_read_ids = 1"))
+                     '(:refused :invalid)))
+(assert-event (equal (ncst-with '("[resources]" "cold_heap_octets = 18446744073709551616"
+                                 "cold_workers = 1" "cold_descriptors = 1" "cold_read_ids = 1"))
+                     '(:refused :invalid)))
+
+(assert-event (equal (fn-native-config-unsupported-key (cadr *ncst-cold*)) "cold_resources"))
+(assert-event (not (fn-native-config-operator-availablep (cadr *ncst-cold*))))

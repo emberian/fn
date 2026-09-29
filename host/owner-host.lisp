@@ -219,6 +219,7 @@
 ; lane composed-owner-3 (PRF-933, row A4 (c)): a cold line past its
 ; dependency deadline answered 403, the session unchanged.
 (include-book "../books/owner-cold-line")
+(include-book "../books/owner-resource-line")
 ; lane composed-owner-5 (PRF-941, row A6): the arena readers' generation
 ; pins (host/native/io.lisp fnn-arena-pins-step).
 (include-book "../books/arena-reader-pins")
@@ -4100,6 +4101,31 @@
           (value :bad-range)
         (let ((result (fn-ocln-unavailable-span (fn-owner-ocfg state) id start
                                                 since now limit fn-octets)))
+          (if (null result)
+              (value :not-command)
+            (let* ((effects (fn-own-tls-result-effects result))
+                   (consumed (fn-own-tls-result-consumed result))
+                   (state (fn-owner-install-ocfg (fn-own-tls-result-owner result) state))
+                   (state (fn-owner-exposure-observe id effects consumed state)))
+              (value (fn-splan-step-make
+                      effects
+                      (fn-served-closingp effects)
+                      (fn-served-starttlsp effects)
+                      (fn-served-submission effects)
+                      consumed
+                      (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
+                      (f-get-global 'fn-owner-exposure-close state))))))))))
+
+; PRF-1073: named refusal before dependency allocation; not a deadline.
+(defun fn-owner-resource-unavailable-line-at (id start word fn-octets fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program)
+           (ignorable fn-arena fn-cat))
+  (let ((owner (fn-owner-core state)))
+    (if (not (fn-own-find-conn id (fn-own-conns owner)))
+        (value :unknown)
+      (if (not (and (natp start) (<= start (fn-octets-len fn-octets))))
+          (value :bad-range)
+        (let ((result (fn-orln-unavailable-span (fn-owner-ocfg state) id start word fn-octets)))
           (if (null result)
               (value :not-command)
             (let* ((effects (fn-own-tls-result-effects result))
