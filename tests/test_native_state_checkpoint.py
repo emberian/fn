@@ -35,7 +35,7 @@ import unittest
 from tests.campaign import native_cuts
 from tests import test_native_operator_verbs as verbs
 from tests.native_harness import (
-    EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, ROOT, executable, native_image)
+    EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, ROOT, Node, executable, native_image)
 
 IMAGE = native_image("FN_NATIVE_HOST")
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
@@ -447,6 +447,44 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertEqual(self.observation(), expected)
         self.path().write_bytes(good)
         self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
+
+    def test_an_equal_count_checkpoint_of_another_history_is_refused_by_name(self):
+        """Row A3: two stores, each with a checkpoint at 3 records of its own
+        history and no suffix after it (the suffix segment is empty, so the
+        log's chain names no predecessor to compare with).  The other store's
+        checkpoint put in this store's place is refused by name -- its binding
+        names another store -- where before the binding it opened as this
+        store's history."""
+        created = self.op("init", "--profile", "development", "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        self.ids = ["<scp-mine-{}@example.invalid>".format(n) for n in range(3)]
+        self.post(self.ids)
+        self.keep_log()
+        made = self.checkpoint()
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=0")
+        mine = self.path().read_bytes()
+        saved = (self.node, self.root, self.store, self.config, self.port, self.control)
+        other = Node(self, self.image, listener=True, control=True)
+        other.image = self.image
+        self.node, self.root, self.store, self.config, self.port, self.control = (
+            other, other.root, other.store_path, other.config, other.port, other.control)
+        try:
+            created = self.op("init", "--profile", "development", "fn.test")
+            self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+            self.post(["<scp-theirs-{}@example.invalid>".format(n) for n in range(3)])
+            made = self.checkpoint()
+            self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
+            theirs = self.path().read_bytes()
+        finally:
+            self.node, self.root, self.store, self.config, self.port, self.control = saved
+        self.assertNotEqual(theirs, mine)
+        self.path().write_bytes(theirs)
+        status = self.op("status")
+        self.assertIn(b"checkpoint image refused reason=(:refused :store-identity)", status.stderr)
+        self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
+        self.path().write_bytes(mine)
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=0")
 
     def test_a_running_owner_refuses_the_verb(self):
         self.init_with_checkpoint_at_three()
