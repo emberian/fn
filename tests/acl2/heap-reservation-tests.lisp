@@ -62,7 +62,7 @@
 (assert! (equal (fn-heap-thread-count 0) 30))
 (assert! (equal (fn-heap-reserve-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
                                         *hrt-4096* 32)
-                '(:heap 1572 "small" 4096 1024 30)))
+                '(:heap 1528 "small" 4096 1024 30)))
 (assert! (equal (car (fn-heap-reserve-decide *fn-heap-small-profile* *hrt-core*
                                              *hrt-nursery* (list *hrt-datasize*) 32))
                 :refused))
@@ -71,7 +71,7 @@
                 '(:refused :machine-cannot-hold-profile 1572 1536)))
 (assert! (equal (fn-heap-reserve-full-store-decide *fn-heap-small-profile* *hrt-core*
                                                   *hrt-nursery* (list (* 2048 *fn-heap-mib*)) 32)
-                '(:heap 1572 "small" 2048 1024 30)))
+                '(:heap 1528 "small" 2048 1024 30)))
 (assert! (<= (fn-heap-reservation-octets 1572 *hrt-core* 1024 30)
              (* 2048 *fn-heap-mib*)))
 
@@ -219,7 +219,7 @@
 ; is 10,914 MB where 4,096 records of up to 65,535 memberships each made
 ; 171,623 MB (reservation-after-flip).
 (assert! (equal (hrt-init *hrt-bare* *hrt-hbox* nil nil *hrt-largest*)
-                '(:init (:scale nil) "scale" 14272 94464 :largest t)))
+                '(:init (:scale nil) "scale" 14228 94464 :largest t)))
 (assert! (equal (car (hrt-init *hrt-bare* *hrt-hbox* *hrt-2g*)) :init))
 ; Under a 2,048 MB budget the small floor (16 MiB before lane heap-bounds:
 ; the records' term derived from the profile's limits takes the small store's
@@ -228,7 +228,7 @@
 (assert! (equal (fn-heap-init-decision-request (hrt-init *hrt-bare* *hrt-hbox* *hrt-2g*))
                 (fn-heap-small-candidate *hrt-bare*)))
 (assert! (equal (hrt-init *hrt-bare* (* 2 *hrt-gib*) nil)
-                '(:refused :init-budget-cannot-hold-profile 1906 1536 "small" :conservative)))
+                '(:refused :init-budget-cannot-hold-profile 1862 1536 "small" :conservative)))
 (assert! (equal (hrt-init *hrt-bare* (* 3 *hrt-gib*) nil)
                 (list :init *fn-heap-small-request* "small" 1906 2304
                       :conservative t)))
@@ -246,20 +246,20 @@
 (assert! (equal (fn-bs-profile-max-article-octets
                  (fn-bs-profile-resolve (fn-heap-small-candidate *hrt-mission*) nil))
                 1048576))
-(assert! (equal (nth 3 (hrt-init *hrt-mission* *hrt-hbox* *hrt-2g*)) 2002))
+(assert! (equal (nth 3 (hrt-init *hrt-mission* *hrt-hbox* *hrt-2g*)) 2034))
 ; Under 1 GiB the mission's small capacity's first run (1,327 MB) is refused
 ; by name, as under 512 MiB: never lowered.
 (defconst *hrt-half* (list (* 512 *fn-heap-mib*)))
 (assert! (equal (hrt-init *hrt-mission* *hrt-hbox* *hrt-1g*)
-                '(:refused :init-budget-cannot-hold-profile 2002 1024 "custom"
+                '(:refused :init-budget-cannot-hold-profile 2034 1024 "custom"
                            :conservative)))
 (assert! (equal (hrt-init *hrt-mission* *hrt-hbox* *hrt-half*)
-                '(:refused :init-budget-cannot-hold-profile 2002 512 "custom"
+                '(:refused :init-budget-cannot-hold-profile 2034 512 "custom"
                            :conservative)))
 (assert! (equal (fn-heap-reserve-full-store-decide
                  (fn-bs-profile-resolve (fn-heap-small-candidate *hrt-mission*) nil)
                  *hrt-core* *hrt-nursery* *hrt-half* 32)
-                '(:refused :machine-cannot-hold-profile 1668 512)))
+                '(:refused :machine-cannot-hold-profile 1700 512)))
 ; An operator's request is written as named when the budget holds it; past
 ; the budget it is REFUSED by name with both numbers (ember, 2026-09-27
 ; 17:30Z; lane membership-budget), unless the operator names a target
@@ -269,19 +269,19 @@
 (defconst *hrt-target-16g* '(49 54 51 56 52))   ; FN_INIT_BUDGET_MB=16384
 (defconst *hrt-target-4g* '(52 48 57 54))       ; FN_INIT_BUDGET_MB=4096
 (assert! (equal (hrt-init '(:scale nil) *hrt-hbox* *hrt-2g*)
-                '(:refused :init-budget-cannot-hold-profile 14272 2048 "scale"
+                '(:refused :init-budget-cannot-hold-profile 14228 2048 "scale"
                            :requested)))
 (assert! (equal (fn-heap-init-decision-request (hrt-init '(:scale nil) *hrt-hbox* *hrt-2g*))
                 nil))
 (assert! (equal (hrt-init '(:scale nil) *hrt-hbox* *hrt-2g* *hrt-target-16g*)
-                '(:init (:scale nil) "scale" 14272 2048 :requested nil 16384)))
+                '(:init (:scale nil) "scale" 14228 2048 :requested nil 16384)))
 ; A named target that does not hold it either: refused, the budget this
 ; machine and the target allow.
 (assert! (equal (hrt-init '(:scale nil) *hrt-hbox* *hrt-2g* *hrt-target-4g*)
-                '(:refused :init-budget-cannot-hold-profile 14272 2048 "scale"
+                '(:refused :init-budget-cannot-hold-profile 14228 2048 "scale"
                            :requested)))
 (assert! (equal (hrt-init '(:development ((1 . 100000))) *hrt-hbox* nil)
-                '(:init (:development ((1 . 100000))) "custom" 7408 94464
+                '(:init (:development ((1 . 100000))) "custom" 7364 94464
                   :requested t)))
 ; The gate's profile (scale, T = 2^20, 4 KiB articles): 37,448 MB, held
 ; within hbox's 94,464 MB budget; under 2 GiB refused by name.
@@ -291,17 +291,17 @@
                 :refused))
 (assert! (equal (car (hrt-init '(:default ((2 . 4096))) *hrt-hbox* nil)) :refused))
 (assert! (equal (fn-heap-init-report-line (hrt-init *hrt-bare* (* 3 *hrt-gib*) nil))
-                "init: profile=small sizing=conservative reservation=1906 MB budget=2304 MB within-budget=yes"))
+                "init: profile=small sizing=conservative reservation=1862 MB budget=2304 MB within-budget=yes"))
 (assert! (equal (fn-heap-init-report-line (hrt-init *hrt-bare* (* 2 *hrt-gib*) nil))
-                "refused init-budget-cannot-hold-profile profile=small sizing=conservative reservation=1906 MB budget=1536 MB"))
+                "refused init-budget-cannot-hold-profile profile=small sizing=conservative reservation=1862 MB budget=1536 MB"))
 (assert! (equal (fn-heap-init-report-line (hrt-init '(:scale nil) *hrt-hbox* *hrt-2g*))
-                "refused init-budget-cannot-hold-profile profile=scale sizing=requested reservation=14272 MB budget=2048 MB"))
+                "refused init-budget-cannot-hold-profile profile=scale sizing=requested reservation=14228 MB budget=2048 MB"))
 (assert! (equal (fn-heap-init-report-line (hrt-init '(:scale nil) *hrt-hbox* *hrt-2g*
                                                     *hrt-target-16g*))
-                "init: profile=scale sizing=requested reservation=14272 MB budget=2048 MB within-budget=no target-budget=16384 MB"))
+                "init: profile=scale sizing=requested reservation=14228 MB budget=2048 MB within-budget=no target-budget=16384 MB"))
 (assert! (equal (fn-heap-init-exit-code (hrt-init '(:scale nil) *hrt-hbox* *hrt-2g*)) 1))
 (assert! (equal (fn-heap-init-report-line (hrt-init *hrt-mission* *hrt-hbox* *hrt-half*))
-                "refused init-budget-cannot-hold-profile profile=custom sizing=conservative reservation=2002 MB budget=512 MB"))
+                "refused init-budget-cannot-hold-profile profile=custom sizing=conservative reservation=2034 MB budget=512 MB"))
 (assert! (equal (fn-heap-init-exit-code (hrt-init *hrt-mission* *hrt-hbox* *hrt-half*)) 1))
 (assert! (equal (fn-heap-init-exit-code (hrt-init *hrt-bare* *hrt-hbox* *hrt-2g*)) 0))
 
@@ -405,7 +405,7 @@
 ; H / 320 since lane membership-budget, where up to 4,096 groups a record
 ; made 11,383,456,834,754,682 octets).
 (assert! (equal (fn-heap-figure-octets *fn-bs-profile-defaults* 0 0)
-                228636898867930))
+                228636965968410))
 
 ; The keystone's teeth.  Hypotheses: the decision accepts, and says held.
 (defun hrt-init-conclusion (d core nursery physical limits budget-octets)
@@ -903,14 +903,14 @@
 (assert! (equal (fn-heap-reserve-operation-decide :run *fn-heap-small-profile* *hrt-core*
                                                   *hrt-nursery* (list *hrt-datasize*) 32
                                                   '(0 . 0))
-                '(:refused :machine-cannot-hold-threads 1782 1536)))
+                '(:refused :machine-cannot-hold-threads 1738 1536)))
 (assert! (equal (car (fn-heap-reserve-operation-decide :run *fn-heap-small-profile*
                                                        *hrt-core* *hrt-nursery*
                                                        (list *hrt-datasize*) 32 nil))
                 :refused))
 (assert! (equal (fn-heap-reserve-operation-decide :run *fn-heap-small-profile* *hrt-core*
                                                   *hrt-nursery* *hrt-2g* 32 '(0 . 0))
-                '(:heap 1448 "small" 2048 1024 30)))
+                '(:heap 1404 "small" 2048 1024 30)))
 (assert! (equal (car (fn-heap-reserve-operation-decide :run *fn-heap-small-profile*
                                                        *hrt-core* *hrt-nursery*
                                                        *hrt-2g* 32 nil))
@@ -927,7 +927,7 @@
                 '(:heap 1639 "small" 2048 1024 30)))
 (assert! (equal (fn-heap-reserve-operation-decide :compact *fn-heap-small-profile* 195856696
                                                   *hrt-nursery* *hrt-2g* 0 '(0 . 0))
-                '(:heap 1452 "small" 2048 1024 30)))
+                '(:heap 1408 "small" 2048 1024 30)))
 (assert! (equal (car (fn-heap-reserve-operation-decide :reclaim *fn-heap-small-profile*
                                                        195856696 *hrt-nursery*
                                                        (list *hrt-datasize*) 0 nil))
@@ -1112,7 +1112,7 @@
 (defconst *hrt-of-r2* (fn-heap-reserve-of *hrt-of-d2* *fn-heap-small-profile* *hrt-core*
                                           *hrt-1300m* 32))
 (assert! (equal (car *hrt-of-d2*) :heap))
-(assert! (equal *hrt-of-r2* '(:refused :machine-cannot-hold-threads 1906 1600)))
+(assert! (equal *hrt-of-r2* '(:refused :machine-cannot-hold-threads 1862 1600)))
 (assert! (not (<= (fn-heap-reservation-octets (fn-heap-decision-mb *hrt-of-d2*) *hrt-core*
                                               1024 30)
                   (fn-heap-machine-octets *hrt-1300m*))))
@@ -1263,7 +1263,7 @@
 (assert! (equal (fn-heap-reserve-report-line
                  (fn-heap-status-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
                                         *hrt-big* '(7271160 . 3000)))
-                "heap=1544 MB profile=small machine=125952 MB stack=1024 KB threads=30"))
+                "heap=1500 MB profile=small machine=125952 MB stack=1024 KB threads=30"))
 ; The default mission's top rung (1 MiB articles) on this machine: the
 ; launcher's figure.  (The mutation this paragraph held, connection-budget's
 ; launch figure that `status' printed before lane reservation-figure, went
@@ -1274,7 +1274,7 @@
 (assert! (equal (fn-heap-reserve-report-line
                  (fn-heap-status-decide *hrt-mission-top* *hrt-core* *hrt-nursery*
                                         *hrt-big* '(7271160 . 3000)))
-                "heap=9198 MB profile=custom machine=125952 MB stack=1024 KB threads=30"))
+                "heap=9230 MB profile=custom machine=125952 MB stack=1024 KB threads=30"))
 
 ; -----------------------------------------------------------------------------
 ; Lane membership-budget (2026-09-27).
@@ -1297,7 +1297,7 @@
 (defconst *hrt-dsz* *hrt-2g*)
 (assert! (equal (fn-heap-reserve-full-store-decide *fn-heap-small-profile* *hrt-core*
                                                    *hrt-nursery* *hrt-dsz* 32)
-                '(:heap 1572 "small" 2048 1024 30)))
+                '(:heap 1528 "small" 2048 1024 30)))
 (assert! (equal (hrt-reopens-hyps *fn-heap-small-profile* *hrt-dsz* 32) '(t)))
 (assert! (hrt-reopens-conclusion *fn-heap-small-profile* *hrt-dsz* 32 nil))
 (assert! (hrt-reopens-conclusion *fn-heap-small-profile* *hrt-dsz* 32 '(0 . 0)))
