@@ -68,7 +68,7 @@
  (defthm fn-olc-list-counts-has-no-offer
    (not (fn-post-offeredp
          (fn-nntp-result-effects
-          (fn-nntp-list-counts-command session archive args))))
+          (fn-nntp-list-counts-command session archive closed args))))
    :hints (("Goal" :in-theory (e/d (fn-nntp-list-counts-command
                                     fn-nntp-list-counts)
                                    (fn-nntp-counts-lines fn-post-offeredp
@@ -79,7 +79,7 @@
 (local
  (defthm fn-olc-list-counts-effects-true-listp
    (true-listp (fn-nntp-result-effects
-                (fn-nntp-list-counts-command session archive args)))
+                (fn-nntp-list-counts-command session archive closed args)))
    :hints (("Goal" :in-theory (e/d (fn-nntp-list-counts-command
                                     fn-nntp-list-counts fn-nntp-single
                                     fn-nntp-multi fn-nntp-make-result
@@ -122,7 +122,13 @@
                           (fn-served-dispatch conn (list :command line) fn-arena))
                          (fn-nntp-result-effects
                           (fn-nntp-list-counts-command
-                           ns (fn-served-conn-archive conn) (cddr tokens))))
+                           ns (fn-served-conn-archive conn)
+                           ;; PKT-703: the closed list LIST ACTIVE's status
+                           ;; reads (the posting configuration's, with this
+                           ;; login's moderator entries).
+                           (fn-inj-config-closed
+                            (fn-auth-moderation-config as (fn-served-conn-config conn)))
+                           (cddr tokens))))
                   (equal (fn-served-conn-wire
                           (fn-served-result-conn
                            (fn-served-dispatch conn (list :command line) fn-arena)))
@@ -151,7 +157,10 @@
                   (archive (fn-served-conn-archive conn))
                   (index (fn-served-conn-pinned-index conn))
                   (verdicts (fn-served-conn-verdicts conn))
-                  (env (fn-post-reader-env (fn-served-conn-config conn) (fn-served-conn-observation conn)))
+                  (env (fn-post-reader-env
+                        (fn-auth-moderation-config (fn-served-conn-session conn)
+                                                   (fn-served-conn-config conn))
+                        (fn-served-conn-observation conn)))
                   (keyword (car (fn-nntp-tokenize line)))
                   (args (cdr (fn-nntp-tokenize line))))))))
 
@@ -204,7 +213,10 @@
                      (fn-served-step conn (append prefix (list byte)) fn-arena))
                     (fn-nntp-result-effects
                      (fn-nntp-list-counts-command
-                      ns (fn-served-conn-archive conn) (cddr tokens))))))
+                      ns (fn-served-conn-archive conn)
+                      (fn-inj-config-closed
+                       (fn-auth-moderation-config as (fn-served-conn-config conn)))
+                      (cddr tokens))))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-served-step-of-one-framed-event
                   (event (list :command line)))

@@ -1327,36 +1327,39 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-scat-counts-lines-loop (archive groups v fn-cat acc)
+(defun fn-scat-counts-lines-loop (archive groups closed v fn-cat acc)
   (declare (xargs :stobjs fn-cat :guard (and (natp v) (true-listp acc)) :verify-guards nil))
   (if (consp groups)
       (fn-scat-counts-lines-loop archive
                                  (cdr groups)
+                                 closed
                                  v
                                  fn-cat
                                  (cons (fn-nntp-counts-summary-line (car groups)
                                                                     (fn-scat-group-summary archive
                                                                                            (car groups)
                                                                                            v
-                                                                                           fn-cat))
+                                                                                           fn-cat)
+                                                                    closed)
                                        acc))
     (revappend acc nil)))
 
-(defun fn-scat-counts-lines (archive groups v fn-cat)
+(defun fn-scat-counts-lines (archive groups closed v fn-cat)
   (declare (xargs :verify-guards nil :stobjs fn-cat :guard (natp v)))
   (mbe :logic
        (if (consp groups)
            (cons (fn-nntp-counts-summary-line
-                  (car groups) (fn-scat-group-summary archive (car groups) v fn-cat))
-                 (fn-scat-counts-lines archive (cdr groups) v fn-cat))
+                  (car groups) (fn-scat-group-summary archive (car groups) v fn-cat)
+                  closed)
+                 (fn-scat-counts-lines archive (cdr groups) closed v fn-cat))
          nil)
-       :exec (fn-scat-counts-lines-loop archive groups v fn-cat nil)))
+       :exec (fn-scat-counts-lines-loop archive groups closed v fn-cat nil)))
 
 (local
  (defthm fn-scat-counts-lines-loop-is-revappend
-   (equal (fn-scat-counts-lines-loop archive groups v fn-cat acc)
-          (revappend acc (fn-scat-counts-lines archive groups v fn-cat)))
-   :hints (("Goal" :induct (fn-scat-counts-lines-loop archive groups v fn-cat acc)
+   (equal (fn-scat-counts-lines-loop archive groups closed v fn-cat acc)
+          (revappend acc (fn-scat-counts-lines archive groups closed v fn-cat)))
+   :hints (("Goal" :induct (fn-scat-counts-lines-loop archive groups closed v fn-cat acc)
                    :in-theory (union-theories '(fn-scat-counts-lines-loop fn-scat-counts-lines revappend car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
@@ -1372,19 +1375,35 @@
 (defthm fn-scat-counts-lines-is-archive
   (implies (and (fn-cnx-freshp fn-cat) (not (member-equal nil groups))
                 (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
-           (equal (fn-scat-counts-lines archive groups v fn-cat)
-                  (fn-nntp-counts-lines archive groups)))
-  :hints (("Goal" :induct (fn-scat-counts-lines archive groups v fn-cat)
+           (equal (fn-scat-counts-lines archive groups closed v fn-cat)
+                  (fn-nntp-counts-lines archive groups closed)))
+  :hints (("Goal" :induct (fn-scat-counts-lines archive groups closed v fn-cat)
            :in-theory (e/d (fn-nntp-counts-lines fn-nntp-counts-line)
                            (fn-scat-group-summary fn-nntp-group-summary
                             fn-cat-view-articles fn-cnx-freshp
                             fn-nntp-counts-summary-line)))))
 
-(defun fn-nntp-list-counts-command-cat (session archive args v fn-cat)
+;; KEYSTONE (PKT-703, the catalog arm the host runs: host/owner-host.lisp
+;; fn-owner-chunk-span-at -> fn-scr-command (books/served-catalog-chain) ->
+;; fn-nntp-archive-command-cat -> fn-nntp-list-counts-command-cat -> this):
+;; line I of the served LIST COUNTS carries line I of LIST ACTIVE's status
+;; (RFC 6048 section 2.2.2), for any catalog state; CLOSED is the
+;; environment's (fn-nntp-env-closed).
+(defthm fn-scat-counts-lines-status-is-the-active-status
+  (equal (fn-nlc-status-octet (nth i (fn-scat-counts-lines archive groups closed v fn-cat)))
+         (fn-nlc-status-octet (nth i (fn-nntp-active-status-lines archive groups closed))))
+  :hints (("Goal" :induct (nth i groups)
+           :expand ((fn-scat-counts-lines archive groups closed v fn-cat)
+                    (fn-nntp-active-status-lines archive groups closed))
+           :in-theory (e/d ()
+                           (fn-nlc-status-octet fn-nntp-counts-summary-line
+                            fn-nntp-active-status-line fn-scat-group-summary)))))
+
+(defun fn-nntp-list-counts-command-cat (session archive closed args v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
   (if (null args)
       (fn-nntp-multi session (fn-proto-text "LIST" :newsgroups)
-                     (fn-scat-counts-lines archive (fn-state-groups archive) v fn-cat))
+                     (fn-scat-counts-lines archive (fn-state-groups archive) closed v fn-cat))
     (if (and (consp args) (null (cdr args)))
         (let ((parsed (fn-wildmat-parse (car args))))
           (if (fn-wildmat-result-okp parsed)
@@ -1393,7 +1412,7 @@
                               archive
                               (fn-nntp-filter-groups-by-wildmat
                                (fn-wildmat-result-value parsed) (fn-state-groups archive))
-                              v fn-cat))
+                              closed v fn-cat))
             (fn-nntp-single session (fn-proto-text * :syntax))))
       (fn-nntp-single session (fn-proto-text * :syntax)))))
 
@@ -1438,8 +1457,8 @@
 (defthm fn-nntp-list-counts-command-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat) (fn-statep archive)
                 (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
-           (equal (fn-nntp-list-counts-command-cat session archive args v fn-cat)
-                  (fn-nntp-list-counts-command session archive args)))
+           (equal (fn-nntp-list-counts-command-cat session archive closed args v fn-cat)
+                  (fn-nntp-list-counts-command session archive closed args)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-list-counts-command fn-nntp-list-counts)
                            (fn-scat-counts-lines fn-nntp-counts-lines
@@ -2364,7 +2383,8 @@
              (consp args)
              (fn-nntp-keyword-tokenp (car args))
              (fn-nntp-keywordp (car args) "COUNTS"))
-        (fn-nntp-list-counts-command-cat session archive (cdr args) v fn-cat))
+        (fn-nntp-list-counts-command-cat session archive (fn-nntp-env-closed env)
+                                         (cdr args) v fn-cat))
        ((and (or (fn-nntp-keywordp keyword "ARTICLE")
                  (fn-nntp-keywordp keyword "HEAD")
                  (fn-nntp-keywordp keyword "BODY")

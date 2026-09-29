@@ -697,11 +697,11 @@
 ; The function the host calls under the catalog (fn-scr-own-read-span), at
 ; an owner carrying the invariant.
 (defthm fn-scj-versions-atmost-of-scr-own-read-span
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (fn-scj-invp o fn-arena fn-cat)
                 (fn-scj-versions-okp o))
            (fn-scj-versions-okp (fn-own-tls-result-owner
-                                 (fn-scr-own-read-span o id i end fn-octets fn-arena fn-cat))))
+                                 (fn-scr-own-read-span o id i end cache fn-octets fn-arena fn-cat))))
   :hints (("Goal" :in-theory (e/d (fn-scj-versions-okp)
                                   (fn-scr-own-read-span fn-scar-own-read-span
                                    fn-scj-versions-atmost-of-scar-own-read-span))
@@ -717,7 +717,7 @@
 ; keystone fn-scj-invp-of-orr-read-span asks) and at or below the working
 ; view's version (a capture is a view the owner held).
 (defthm fn-scj-versions-atmost-of-orr-read-span
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (fn-scj-versions-okp (fn-ocfg-owner oc))
                 (implies (consp views)
@@ -725,7 +725,7 @@
                               (<= (nfix (fn-own-view-version (car views)))
                                   (nfix (fn-own-view-version (fn-own-view (fn-ocfg-owner oc))))))))
            (fn-scj-versions-okp (fn-ocfg-owner (fn-own-tls-result-owner
-                                                (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat)))))
+                                                (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat)))))
   :hints (("Goal" :cases ((consp views))
            :in-theory (union-theories '(fn-scj-orr-read-span-owner fn-scj-scr-ocfg-read-span-owner)
                                       (theory 'minimal-theory)))
@@ -739,7 +739,7 @@
                  (:instance fn-orr-with-view-fields
                             (oc (fn-own-tls-result-owner
                                  (fn-scr-ocfg-read-span (fn-ocfg-with-view oc (car views))
-                                                        id i end fn-octets fn-arena fn-cat)))
+                                                        id i end cache fn-octets fn-arena fn-cat)))
                             (v (fn-own-view (fn-ocfg-owner oc))))
                  (:instance fn-scr-own-read-span-is-scar-own-read-span
                             (o (fn-ocfg-owner (fn-ocfg-with-view oc (car views)))))
