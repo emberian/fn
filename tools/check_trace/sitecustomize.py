@@ -116,6 +116,7 @@ def _install(directory: str) -> None:
         elif event == "subprocess.Popen":
             executable, argv, cwd, env = args
             argv = [os.fsdecode(a) for a in (argv if isinstance(argv, (list, tuple)) else [argv])]
+            state["popen"] = argv
             program = os.path.basename(os.fsdecode(executable or argv[0]))
             where = norm(cwd) if cwd is not None else state["cwd"]
             if program == "git":
@@ -128,6 +129,9 @@ def _install(directory: str) -> None:
                     emit(["x", f"python child isolated from the tracer: {' '.join(argv)[:120]}"])
             else:
                 emit(["x", f"child process {program}"])
+        elif event in ("os.posix_spawn", "os.exec") and state.get("popen") is not None and \
+                [os.fsdecode(a) for a in args[1]] == state["popen"]:
+            pass  # how subprocess.Popen, judged above, starts that child
         elif event in ("os.system", "os.posix_spawn", "os.spawn", "os.exec", "sqlite3.connect",
                        "ctypes.dlopen"):
             emit(["x", event])
