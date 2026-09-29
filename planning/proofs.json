@@ -14276,6 +14276,27 @@
         "planning/evidence/pkt-615-number-bound-2026-09-28.md"
       ],
       "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound."
+    },
+    {
+      "id": "PRF-947",
+      "title": "The host-called kind-5 FNBS inspection fn-bpnf-inspect-adu is guard-verified through its codec, and the recognizer and codec it verifies under equal their earlier definitions on every input",
+      "statement": "books/bp-fnbs-codec.lisp: fn-bpnf-frame-held and fn-bpnf-frame-held-with-anchor take a bundle (guard fn-bpb-bundlep: a held record's id is the bundle's id); fn-bpnf-stored-recordp recognises the held record (fn-bpnf-heldp) before reading its slots; fn-bpnf-stored-from-values refuses a wire that does not decode to a bundle before building a held record from it; with fn-bpnf-heldp-is-a-true-list, fn-bpnf-heldp-bundle-is-a-bundle and fn-bpnf-stored-recordp-held-bundle-is-a-bundle every function on the chain the host calls is guard-verified: fn-bpnf-frame-ingressp, fn-bpnf-stored-anchorp, the two frame-held constructors, fn-bpnf-stored-record, fn-bpnf-stored-recordp, fn-bpn-peer-from-octets, fn-bpnf-stored-from-values, fn-bpnf-stored-record-unframe (the decoded payload is octets: fn-frame-decode-payload-octets at its own digest and cap) and fn-bpnf-inspect-adu (books/bp-fnbs-inspect.lisp). books/bp-fnbs-codec-equivalence.lisp keeps the earlier definitions verbatim and proves fn-bpnf-stored-recordp-equals-before-guards and fn-bpnf-stored-from-values-equals-before-guards (equal on every input, rule-classes nil) and fn-bpnf-stored-recordp-refuses-a-non-bundle (the record the earlier codec built from a non-bundle failed the recognizer). Teeth: tests/acl2/bp-fnbs-codec-equivalence-tests.lisp evaluates both twins on the codec tests' actual kind-5 records, on a record whose held bundle is not a bundle, on a wire that does not decode, on non-list inputs, and fn-bpnf-inspect-adu on the actual frame. Scope: guard verification of the served inspection path; no claim about the bytes the host reads (the host copies bounded octets and never reads Lisp syntax).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-006"
+      ],
+      "depends_on": [
+        "PRF-919"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-fnbs-codec.lisp",
+        "books/bp-fnbs-inspect.lisp",
+        "books/bp-fnbs-codec-equivalence.lisp",
+        "tests/acl2/bp-fnbs-codec-equivalence-tests.lisp"
+      ],
+      "events": []
     }
   ]
 }

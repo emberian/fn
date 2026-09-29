@@ -658,6 +658,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fnbs-inspect-tests \
 	books/bp-fnbs-codec-invariants \
 	tests/acl2/bp-fnbs-codec-tests \
+	books/bp-fnbs-codec-equivalence \
+	tests/acl2/bp-fnbs-codec-equivalence-tests \
 	books/bp-fnbs-byte-publisher \
 	books/bp-fnbs-byte-invariants \
 	books/bp-fnbs-replay \
