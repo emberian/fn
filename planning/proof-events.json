@@ -10687,6 +10687,106 @@
           "kind": "theorem",
           "name": "fn-sjh-okp-of-other-prepare",
           "note": "KEYSTONE (join-f2). The retention, consumer and topic prepares stage events that load no row: fn-sjh-okp with no pending row."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-finish-identity",
+          "note": "KEYSTONE (join-f2-2). host/owner-host.lisp fn-owner-finish-identity, every branch: a signed composite's row (its acceptance and verdict equations derived from the store, fn-sjh-idf-finish-equations), an article row, no row, a finish that changed nothing; fn-sjh-okp after with the pending row the host keeps. Teeth: tests/acl2/served-catalog-join-host-tests.lisp items 1, 4, 5."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-idf-finish-equations",
+          "note": "The identity finish's (I) equations from the store's identity completion: the node conses exactly the composite's held article and the verdicts gain the pair of its verdict statement (Message-IDs equal through fn-stxa-bindsp and fn-row-composite-okp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-of-ocfg-step-owner-event",
+          "note": "KEYSTONE (join-f2-2). Every fn-owner-step event other than the store's, the completion and the connection events (begin, take, submits, outcomes, feeds, ticks, observe, declare-group, configure, reconfigure staging): fn-sjh-okp with the same pending row."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-begin",
+          "note": "KEYSTONE (join-f2-2). fn-owner-begin (fn-pout-begin)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-declare-group",
+          "note": "KEYSTONE (join-f2-2). fn-owner-declare-group (fn-pout-declare-group)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-observe",
+          "note": "KEYSTONE (join-f2-2). fn-owner-observe (fn-ocfg-observe)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-unstage",
+          "note": "KEYSTONE (join-f2-2). fn-owner-reconfigure-unstage (fn-psrv-unstage keeps the owner)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-node-secret",
+          "note": "KEYSTONE (join-f2-2). fn-owner-install-node-secret."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-install-profile",
+          "note": "KEYSTONE (join-f2-2). fn-owner-install-profile (fn-osb-install)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-outcome",
+          "note": "KEYSTONE (join-f2-2). fn-owner-outcome (fn-apc-own-outcome under the carries)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-open-peer",
+          "note": "KEYSTONE (join-f2-2). fn-owner-open-peer (fn-ocfg-open-peer)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-chunk-span",
+          "note": "KEYSTONE (join-f2-2). fn-owner-chunk-span-at: the owner of fn-mca-read-span's result (every credit, slot and disk branch). Named premises: fn-scol-okp and the captured reader view's liveness (fn-sjh-views-okp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-files-okp-exec-is-files-okp",
+          "note": "The executable twin of fn-sjh-okp's store side (S and LINK) is the predicate; evaluated in tests/acl2/served-catalog-join-host-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-log-reserve",
+          "note": "KEYSTONE (join-f2-2). fn-owner-io :log-reserve (fn-olr-ocfg-reserve, the io route composed)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-log-order",
+          "note": "KEYSTONE (join-f2-2). fn-owner-io :log-order."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-reconfigure-complete",
+          "note": "KEYSTONE (join-f2-2). fn-owner-reconfigure-complete (fn-oclc-publish): the carried configure keeps the store's files, verdicts and acceptance articles."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-open",
+          "note": "KEYSTONE (join-f2-2). fn-owner-open with no capture (fn-ocar-ocfg-open)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-open-captured",
+          "note": "KEYSTONE (join-f2-2). fn-owner-open at a captured reader view, the working view put back; fn-sjh-views-okp named."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-exposure-open",
+          "note": "KEYSTONE (join-f2-2). fn-owner-exposure-open (fn-ocar-exp-open)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-read-step",
+          "note": "KEYSTONE (join-f2-2). fn-owner-tls-established and fn-owner-account-outcome (fn-ocfg-read-step)."
         }
       ]
     },
