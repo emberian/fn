@@ -822,7 +822,7 @@ not on this tree yet; its citations are checked once they land.
 | C2 | `books/owner-time-model`: `fn-otm-health-disk-held-iff-stalled-or-full`; `books/native-health`: `fn-nh-exit-code-is-zero-or-past-the-outcome-codes` | PRF-358, PRF-172 | none |  |
 | C3 | `books/owner-time-bars`: `fn-otb-a-member-is-answered-once`, `fn-otb-a-late-completion-is-consumed-once`, `fn-otb-a-deadline-keeps-the-io-owned`, `fn-otb-a-late-page-is-unavailable-never-absent` | PRF-384 | none |  |
 | C4 | `books/outcome-class`: `fn-outcome-code-separates-the-classes`, `fn-outcome-code-is-fenced-iff-fenced` | PRF-143 | none |  |
-| D1 | `books/store-capacity-vector`: `fn-cvec-roomp-is-within-the-profile`, `fn-cvec-held-row-within-its-figure`; `books/store-reclaim-pack`: `fn-rclp-events-keep-the-length` | PRF-138, PRF-119 | none |  |
+| D1 | `books/store-capacity-vector`: `fn-cvec-roomp-is-within-the-profile`, `fn-cvec-held-row-within-its-figure`; `books/store-reclaim-pack`: `fn-rclp-events-keep-the-length`; `books/bp-carry-waiver`: `fn-bpcw-waiver-releases-exactly-once` | PRF-138, PRF-119, PRF-950 | none |  |
 | D2 | `books/owner-time-model`: `fn-otm-admit-keeps-the-space-need`; `books/owner-time-journal-writer`: `fn-otm-jw-file-reads-agrees-or-gap` | PRF-359, PRF-360 | none |  |
 | D3 | `books/owner-checkpoint-writer`: `fn-ockp-decide-defers-by-the-estimate`; `books/store-maintenance-reserve`: `fn-smr-roomp-is-within-the-bound` | PRF-200, PRF-129 | none |  |
 | D4 | none (measured or open) | none | none |  |
@@ -876,8 +876,8 @@ The outcome classes and their codes (`*fn-outcome-codes*`, books/outcome-class.l
 
 Counts.
 
-- Depth lint baseline (tools/depth_baseline.json): 193 debt entries (data-sized recursion on a host-called path with no bound), 186 bounded.
-- Named assumptions: 16 `A-*` rows in specs/failures.md, 13 encapsulates in books/assumptions.lisp.
+- Depth lint baseline (tools/depth_baseline.json): 193 debt entries (data-sized recursion on a host-called path with no bound), 170 bounded.
+- Named assumptions: 18 `A-*` rows in specs/failures.md, 13 encapsulates in books/assumptions.lisp.
 - The throughput gate's tolerance (tools/throughput_gate.py, planning/throughput-baseline.json): 25% over the baseline per operation, plaintext.
 
 <!-- END resource-contract -->
