@@ -652,7 +652,7 @@
 ;; owner `fn-owner' is never written here.
 
 (defun fn-owner-sco-global (name state)
-  (declare (xargs :stobjs state :guard t))
+  (declare (xargs :stobjs state :guard (symbolp name)))
   (if (boundp-global name state) (f-get-global name state) nil))
 
 ; The committed record count: the snoc-list's carried count, which is
@@ -2454,7 +2454,7 @@
 ; for postingp: books/auth-secret.lisp's verifier v2 fields.
 
 (defun fn-owner-auth-cred-of (row)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (true-listp row)))
   (fn-auth-make-cred (nth 0 row) (nth 1 row)
                      (fn-authsec-verifier (nth 2 row) (nth 3 row)
                                           (nth 5 row) (nth 6 row))
@@ -2827,7 +2827,8 @@
 ; key.  A partial binding is :uncertain and must fence startup.
 ; The record for the first unresolved intent, or nil (none, or unbound).
 (defun fn-owner-feed-reconcile-record (state)
-  (declare (xargs :stobjs state :guard (and (boundp-global 'fn-owner state) (boundp-global 'fn-owner-feed-intents state))))
+  (declare (xargs :stobjs state :guard (and (boundp-global 'fn-owner state) (boundp-global 'fn-owner-feed-intents state)
+                              (listp (f-get-global 'fn-owner-feed-intents state)))))
   (let ((values (car (f-get-global 'fn-owner-feed-intents state))))
     (and values
          (fn-own-feed-intent-reconcile-record
@@ -3796,7 +3797,7 @@
 ;; NNT-041: several listeners.  The node is public when any listener is
 ;; (fn-exp-address-publicp decides each).
 (defun fn-owner-exposure-projections-publicp (projections)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (alistp projections)))
   (and (consp projections)
        (or (fn-exp-address-publicp (car (car projections)) (cadr (car projections)))
            (fn-owner-exposure-projections-publicp (cdr projections)))))

@@ -5,6 +5,7 @@
 ; correspondence and growing-history execution cost explicit when changing
 ; these entries. Do not add whole-store recognition per served operation.
 (in-package "ACL2")
+(include-book "../books/store-checkpoint-digest") ; fn-sckd-tables-digest (fn-store-sco-decode-finish) was used without it
 (include-book "../books/store-observed")
 (include-book "../books/history-columns-relation")
 (include-book "../books/open-frontier")
