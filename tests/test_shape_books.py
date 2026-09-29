@@ -45,5 +45,67 @@ class FanInTests(unittest.TestCase):
         self.assertEqual(shape_books.last_changed("books/base", Path("/nonexistent")), "unknown")
 
 
+class ResolveAndDispatchTests(unittest.TestCase):
+    """Item 26: bare names resolve; --affected-by alone is the chain view."""
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        for rel in ("books/wire.lisp", "books/twin.lisp", "tests/acl2/twin.lisp",
+                    "tests/acl2/wire-tests.lisp"):
+            (self.root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (self.root / rel).write_text("; book\n")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_every_spelling_farm_takes_and_a_bare_name(self):
+        for word in ("books/wire", "books/wire.lisp", str(self.root / "books/wire.lisp"),
+                     "wire", "wire.lisp"):
+            self.assertEqual(shape_books.resolve_book(word, self.root), "books/wire", word)
+        self.assertEqual(shape_books.resolve_book("wire-tests", self.root),
+                         "tests/acl2/wire-tests")
+
+    def test_ambiguous_and_missing_are_refused_by_name_not_traceback(self):
+        with self.assertRaises(SystemExit) as caught:
+            shape_books.resolve_book("twin", self.root)
+        self.assertIn("ambiguous", str(caught.exception))
+        self.assertIn("tests/acl2/twin.lisp", str(caught.exception))
+        with self.assertRaises(SystemExit) as caught:
+            shape_books.resolve_book("nope", self.root)
+        self.assertIn("no such book", str(caught.exception))
+        self.assertIn("books/nope.lisp", str(caught.exception))
+
+    def test_affected_by_alone_prints_the_chain_view(self):
+        from unittest import mock
+        import io
+        import contextlib
+        calls = []
+        with mock.patch.object(shape_books, "chain_report",
+                               lambda affected, through: calls.append((affected, through)) or ["CHAIN"]), \
+                mock.patch.object(shape_books, "tree_counts",
+                                  side_effect=AssertionError("the top table ran")):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(shape_books.main(["--affected-by", "books/wire.lisp"]), 0)
+        self.assertEqual(calls, [(["books/wire.lisp"], None)])
+        self.assertEqual(out.getvalue().strip(), "CHAIN")
+
+    def test_book_takes_a_bare_name(self):
+        from unittest import mock
+        import io
+        import contextlib
+        with mock.patch.object(shape_books, "tree_counts",
+                               return_value=({"books/top": (1, 1)}, 3)), \
+                mock.patch.object(shape_books, "resolve_book",
+                                  lambda w: {"top": "books/top"}[w]), \
+                mock.patch.object(shape_books, "last_changed", lambda b: "x"):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(shape_books.main(["--book", "top"]), 0)
+        self.assertIn("books/top.lisp", out.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()

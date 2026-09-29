@@ -761,6 +761,124 @@ class SourceDependencyTests(unittest.TestCase):
         self.assertIn("outside this book's dependencies", why)
 
 
+class RefusalHeadlineTests(unittest.TestCase):
+    """Item 27: a refused start says `--ld books/X` on its first line."""
+
+    GRAPH = {"tests/acl2/mid-tests": ["books/mid", "books/base"],
+             "books/mid": ["books/base"], "books/base": []}
+
+    def test_the_headline_names_the_root_cause_and_the_ld_command(self):
+        line = proof_repl.refusal_headline(self.GRAPH, ["books/base", "books/mid"])
+        self.assertTrue(line.startswith("proof-repl: REFUSED"), line)
+        self.assertIn("books/base.lisp (and 1 book(s) that include it)", line)
+        self.assertIn("`--ld books/base`", line)
+        self.assertNotIn("--ld books/mid", line)
+        self.assertIn("--certify-missing", line)
+
+    def test_install_closure_refusal_leads_with_it(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = worktree(temporary + "/tree")
+            cache = pathlib.Path(temporary) / "cache"
+            cache.mkdir()
+            fake_acl2 = pathlib.Path(temporary) / "acl2"
+            fake_acl2.write_text("#!/bin/sh\nexit 0\n")
+            fake_acl2.chmod(0o755)
+            with mock.patch.object(proof_repl, "ROOT", root), \
+                 mock.patch.dict(os.environ, {"FN_ACL2": str(fake_acl2)}), \
+                 mock.patch.object(proof_repl.certs, "cache_directory", return_value=cache), \
+                 mock.patch.object(proof_repl.acl2_toolchain, "fingerprint",
+                                   return_value=SimpleNamespace(
+                                       qualified=True,
+                                       identity=proof_repl.certs.stable_identity(
+                                           TEST_COMPATIBILITY), reason="")), \
+                 mock.patch.object(proof_repl.acl2_slots, "slot",
+                                   side_effect=lambda label: nullcontext()):
+                ok, detail, _ = proof_repl.install_closure("tests/acl2/mid-tests")
+        self.assertFalse(ok)
+        first = detail.splitlines()[0]
+        self.assertTrue(first.startswith("proof-repl: REFUSED"), detail)
+        self.assertIn("--ld books/base", first)
+
+
+class CertifyMissingTestBookTests(unittest.TestCase):
+    """Item 30: `start --certify-missing` on a tests/acl2 book whose
+    dependency is uncertified certifies it and then starts (bp-remainder saw a
+    refusal "no cached certificate" after the certify run said nothing left)."""
+
+    def run_start(self, temporary, break_install_set=False):
+        from tests.test_certs import SERIALIZED
+        root = worktree(temporary + "/tree", certified=["books/base"])
+        cache = pathlib.Path(temporary) / "cache"
+        base_manifest = manifest_for(root, ["books/base"], write=False)
+        base_manifest["compiled_digests_sha256"] = {
+            "books/base": proof_repl.certs.content_hash(root / "books/base.fasl")}
+        proof_repl.certs.publish(root, cache, [base_manifest], ["books/base"],
+                                 origin="/farm/run-base", origin_kind="run")
+        fake_acl2 = pathlib.Path(temporary) / "acl2"
+        fake_acl2.write_text("#!/bin/sh\nexit 0\n")
+        fake_acl2.chmod(0o755)
+        certified = []
+
+        def certify(command, cwd=None, stdout=None, stderr=None):
+            # What certify_books.py --incremental does for books/mid: a
+            # compiled pair in the tree, published under this worktree.
+            books = [word for word in command if word.startswith("books/")]
+            certified.extend(books)
+            for name in books:
+                (root / f"{name}.cert").write_bytes(SERIALIZED + name.encode())
+                (root / f"{name}.port").write_text("; port\n")
+                (root / f"{name}.fasl").write_bytes(b"FASL " + name.encode())
+                manifest = manifest_for(root, [name], write=False)
+                manifest["compiled_digests_sha256"] = {
+                    name: proof_repl.certs.content_hash(root / f"{name}.fasl")}
+                proof_repl.certs.publish(root, cache, [manifest], [name], origin=str(root))
+            return subprocess.CompletedProcess(command, 0)
+
+        real_sets = proof_repl.certs.artifact_sets
+        calls = {"n": 0}
+
+        def sets(*args, **kwargs):
+            calls["n"] += 1
+            return [] if break_install_set and certified else real_sets(*args, **kwargs)
+
+        with mock.patch.object(proof_repl, "ROOT", root), \
+             mock.patch.dict(os.environ, {"FN_ACL2": str(fake_acl2)}), \
+             mock.patch.object(proof_repl.certs, "cache_directory", return_value=cache), \
+             mock.patch.object(proof_repl.acl2_toolchain, "fingerprint",
+                               return_value=SimpleNamespace(
+                                   qualified=True,
+                                   identity=proof_repl.certs.stable_identity(TEST_COMPATIBILITY),
+                                   reason="")), \
+             mock.patch.object(proof_repl.acl2_slots, "slot",
+                               side_effect=lambda label: nullcontext()), \
+             mock.patch.object(proof_repl.certs.cert_alists, "acl2_certificate_pairs",
+                               side_effect=lambda paths, pairs, acl2, root:
+                                   {pair: (True, True) for pair in pairs}), \
+             mock.patch.object(proof_repl.certs, "artifact_sets", sets), \
+             mock.patch.object(proof_repl.subprocess, "run", certify):
+            ok, detail, order = proof_repl.install_closure(
+                "tests/acl2/mid-tests", auto="certify")
+        return root, ok, detail, certified
+
+    def test_the_certified_dependency_installs_and_the_session_starts(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root, ok, detail, certified = self.run_start(temporary)
+            self.assertEqual(certified, ["books/mid"])
+            self.assertTrue(ok, detail)
+            self.assertNotIn("REFUSED", detail)
+            self.assertTrue((root / "books/mid.cert").is_file())
+            self.assertTrue((root / "books/base.fasl").is_file())
+
+    def test_install_set_short_after_the_certify_takes_the_runners_install(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root, ok, detail, certified = self.run_start(temporary, break_install_set=True)
+            self.assertEqual(certified, ["books/mid"])
+            self.assertTrue(ok, detail)
+            self.assertIn("install-partial) covers the closure", detail)
+            self.assertTrue((root / "books/base.cert").is_file())
+            self.assertTrue((root / "books/mid.cert").is_file())
+
+
 class GraphTests(unittest.TestCase):
     GRAPH = {"t": ["m", "b"], "m": ["b"], "b": [], "z": []}
 
@@ -802,6 +920,22 @@ class GraphTests(unittest.TestCase):
                 graph = proof_repl.include_graph(root, "books/mid")
                 text = "\n".join(proof_repl.diagnose(graph, ["books/base"], cache, "1b4169e9" * 8))
         self.assertIn("only for ACL2 toolchain(s) d5f2b9f0, and this ACL2 is 1b4169e9", text)
+
+
+class UncompiledDiagnosisTests(unittest.TestCase):
+    def test_diagnosis_names_a_cache_entry_without_its_fasl(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = worktree(temporary + "/tree")
+            cache = pathlib.Path(temporary) / "cache"
+            with mock.patch.object(proof_repl, "ROOT", root):
+                key = proof_repl.certs.closure_key(root, "books/base")[0]
+                entry = cache / key / "0123456789abcdef"
+                entry.mkdir(parents=True)
+                (entry / "meta.json").write_text(json.dumps(
+                    {"toolchain_identity": "1b4169e9" * 8, "fasl_sha256": None}))
+                graph = proof_repl.include_graph(root, "books/mid")
+                text = "\n".join(proof_repl.diagnose(graph, ["books/base"], cache, "1b4169e9" * 8))
+        self.assertIn("only without their compiled file (.fasl)", text)
 
 
 class CacheStartupTests(unittest.TestCase):

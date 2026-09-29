@@ -128,6 +128,7 @@ DETACH=0
 DRY=0
 DEADLINE=5400
 ENVS=
+IMAGES_GIVEN=0
 POSITIONAL=
 IMAGE_SET=
 REUSE=
@@ -136,7 +137,7 @@ while [ $# -gt 0 ]; do
     case $1 in
         --name) NAME=$2; shift 2 ;;
         --label) LABEL=$2; shift 2 ;;
-        --images) IMAGES=$2; shift 2 ;;
+        --images) IMAGES=$2; IMAGES_GIVEN=1; shift 2 ;;
         --mem) MEM=$2; shift 2 ;;
         --jobs)
             case $2 in ''|*[!0-9]*|0) echo "hbox_native: --jobs takes a positive integer" >&2; exit 2 ;; esac
@@ -194,6 +195,17 @@ for module in "$@"; do
     case $module in *[!A-Za-z0-9_.]*) echo "hbox_native: bad module name $module" >&2; exit 2 ;; esac
 done
 case $NAME in ''|*[!A-Za-z0-9._-]*) echo "hbox_native: bad --name $NAME" >&2; exit 2 ;; esac
+# Without --images, the list is what the modules read, over developer
+# (tools/native_env.py images): a module reading FN_NATIVE_HOST gets the
+# production image built instead of a refusal (three lanes lost a launch each,
+# 2026-09-29).  An explicit --images is taken as given, and a module reading
+# an image it leaves out is refused by name below.
+if [ "$IMAGES_GIVEN" = 0 ]; then
+    DERIVE_ENV=
+    for assignment in $ENVS; do DERIVE_ENV="$DERIVE_ENV --env $assignment"; done
+    # shellcheck disable=SC2086
+    IMAGES=$(python3 "$HERE/tools/native_env.py" images --images "$IMAGES" $DERIVE_ENV "$@") || exit 2
+fi
 DTN=0
 DTN_PRODUCTION=0
 DTN_DEVELOPER=0

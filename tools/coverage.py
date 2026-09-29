@@ -102,6 +102,7 @@ import collections
 import datetime as _dt
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -716,6 +717,128 @@ def twins_command(args) -> int:
     return 0
 
 
+WORLD_HOST = ROOT / "tools" / "extract" / "world-host.lisp"
+
+
+def top_level_forms(text: str) -> list[str]:
+    """The top-level forms of a generated Lisp file (comments dropped)."""
+    forms, depth, start, i, in_string = [], 0, None, 0, False
+    while i < len(text):
+        c = text[i]
+        if in_string:
+            if c == "\\":
+                i += 1
+            elif c == '"':
+                in_string = False
+        elif c == ";":
+            while i < len(text) and text[i] != "\n":
+                i += 1
+            continue
+        elif c == '"':
+            in_string = True
+        elif c == "(":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0 and start is not None:
+                forms.append(text[start:i + 1])
+                start = None
+        i += 1
+    return forms
+
+
+def host_forms() -> list[str]:
+    """world-host.lisp's forms as a session over books/ sends them: its own
+    prologue, each host `ld' (path from books/, the session's cbd), and the
+    closure check; never `in-package'."""
+    out = []
+    for form in top_level_forms(WORLD_HOST.read_text(encoding="utf-8")):
+        if form.startswith("(in-package"):
+            continue
+        out.append(form.replace('(ld "../../host/', '(ld "../host/'))
+    return out
+
+
+def dump_steps(host: str, name: str, remote_json: str,
+               with_host: bool = True) -> list[tuple[str, list[str]]]:
+    """(what, proof_repl argv) for one dump, in order."""
+    repl = [sys.executable, str(ROOT / "tools" / "proof_repl.py")]
+    steps = [("start the session over books/image-world",
+              repl + ["start", name, "books/image-world", "--host", host])]
+    if with_host:
+        for form in host_forms():
+            what = (form.split('"')[1] if form.startswith("(ld ") else
+                    "the prologue" if form.startswith("(if ") else
+                    "restore the compiler" if form.startswith("(set-compiler") else
+                    "the closure check")
+            steps.append((what, repl + ["send", name, form, "--host", host,
+                                        "--limit", "1200"]))
+    steps.append(("load tools/coverage_dump.lisp",
+                  repl + ["send", name, '(ld "../tools/coverage_dump.lisp")', "--host", host]))
+    steps.append(("dump the world",
+                  repl + ["send", name, f'(cov-dump "{remote_json}" state)', "--host", host,
+                          "--limit", "1800"]))
+    return steps
+
+
+def dump_command(args, run=subprocess.run) -> int:
+    """`coverage.py dump --host BOX`: the recipe nobody should re-derive.
+
+    A session over books/image-world alone lists every host entry ABSENT
+    (661 of them; decision-keystones-2 reverted a baseline built that way),
+    and ld-ing world-host.lisp whole from a session ended it on an inner
+    error.  So: start, send world-host.lisp's forms one at a time (a failure
+    names its host file and stops), load the dumper, dump on the box, copy
+    the JSON home, stop the session.
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    import proof_repl  # noqa: E402
+    lane = args.lane or proof_repl.default_lane()
+    if not lane:
+        raise SystemExit("coverage: dump needs --lane (or run from build/lanes/NAME)")
+    host, name = args.host, args.name or f"cov-{lane}"
+    tree = proof_repl.remote_tree(host, lane)
+    # cov-dump writes an absolute path; a relative gates root is under $HOME.
+    remote_json = f"{tree}/build/coverage/world.json"
+    absolute = remote_json if remote_json.startswith("/") else None
+    if absolute is None:
+        home = run(["ssh", host, "echo $HOME"], capture_output=True, text=True)
+        absolute = f"{(home.stdout or '').strip()}/{remote_json}"
+    env = dict(os.environ, FN_LANE=lane)
+    out = Path(args.out)
+    code, started = 0, False
+    try:
+        run(["ssh", host, f"mkdir -p {absolute.rsplit('/', 1)[0]}"])
+        for what, argv in dump_steps(host, name, absolute, not args.no_host_files):
+            print(f"coverage dump: {what}", file=sys.stderr, flush=True)
+            done = run(argv, cwd=ROOT, env=env)
+            if argv[2] == "start":
+                started = done.returncode == 0
+            if done.returncode != 0:
+                print(f"coverage dump: FAILED at {what} (exit {done.returncode}); "
+                      "nothing was dumped", file=sys.stderr)
+                code = 1
+                break
+        if code == 0:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            if run(["scp", "-q", f"{host}:{absolute}", str(out)]).returncode != 0:
+                print(f"coverage dump: the dump is on {host}:{absolute} and did not copy",
+                      file=sys.stderr)
+                code = 1
+            else:
+                print(f"coverage dump: {out} ({host}, "
+                      f"{'WITHOUT' if args.no_host_files else 'with'} the host files); next: "
+                      f"python3 tools/coverage.py build --world {out} --box {host} --write",
+                      file=sys.stderr)
+    finally:
+        if started and not args.keep:
+            run([sys.executable, str(ROOT / "tools" / "proof_repl.py"), "stop", name,
+                 "--host", host], cwd=ROOT, env=env)
+    return code
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command")
@@ -724,6 +847,14 @@ def main(argv=None) -> int:
     b.add_argument("--box", default=None, help="where the session ran (the coordinate)")
     b.add_argument("--write", action="store_true", help="write coverage.json and the gaps file")
     b.add_argument("--baseline", action="store_true", help="also rewrite coverage-baseline.json")
+    d = sub.add_parser("dump", help="dump the world (image-world + the host files) on a box")
+    d.add_argument("--host", required=True, metavar="BOX")
+    d.add_argument("--lane", default=None)
+    d.add_argument("--name", default=None, help="the proof_repl session (default cov-LANE)")
+    d.add_argument("--out", default=str(DEFAULT_WORLD))
+    d.add_argument("--no-host-files", action="store_true",
+                   help="the umbrella alone (every host entry then reads ABSENT)")
+    d.add_argument("--keep", action="store_true", help="leave the session running")
     q = sub.add_parser("query", help="ask the coverage")
     q.add_argument("--family", default=None)
     q.add_argument("--subsystem", default=None, choices=SUBSYSTEMS)
@@ -787,6 +918,8 @@ def main(argv=None) -> int:
         return 0
     if args.command == "twins":
         return twins_command(args)
+    if args.command == "dump":
+        return dump_command(args)
     if args.command == "summary":
         cov = load_coverage()
         counts = summary(cov["entries"])

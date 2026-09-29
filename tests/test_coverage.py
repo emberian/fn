@@ -329,5 +329,56 @@ class TwinsTests(unittest.TestCase):
                 self.assertIn("fn-x-tail-exec", out.getvalue())
 
 
+class DumpTests(unittest.TestCase):
+    """`coverage.py dump --host BOX`: image-world, then the host files, then the dump."""
+
+    def drive(self, fail_at=None):
+        import subprocess
+        from types import SimpleNamespace
+        calls = []
+
+        def run(argv, **kwargs):
+            calls.append((argv, kwargs.get("env", {}).get("FN_LANE")))
+            code = 1 if fail_at and any(fail_at in word for word in argv) else 0
+            return subprocess.CompletedProcess(argv, code, stdout="", stderr="")
+
+        with tempfile.TemporaryDirectory() as directory:
+            args = SimpleNamespace(host="hbox", lane="lanex", name=None, keep=False,
+                                   no_host_files=False, out=directory + "/world.json")
+            import io
+            import contextlib
+            with contextlib.redirect_stderr(io.StringIO()) as err:
+                code = coverage.dump_command(args, run=run)
+        return code, calls, err.getvalue()
+
+    def test_the_host_files_load_one_by_one_between_start_and_dump(self):
+        code, calls, err = self.drive()
+        self.assertEqual(code, 0, err)
+        words = [argv for argv, _ in calls]
+        repl = [w for w in words if w[0].endswith("python3") or "proof_repl.py" in " ".join(w)]
+        self.assertEqual(repl[0][2:5], ["start", "cov-lanex", "books/image-world"])
+        sent = [w[4] for w in repl if w[2] == "send"]
+        self.assertTrue(sent[0].startswith("(if (boundp-global 'fn-image-world-books"))
+        lds = [form for form in sent if form.startswith('(ld "../host/')]
+        self.assertGreater(len(lds), 10)
+        self.assertEqual(lds[0], '(ld "../host/store-host.lisp" :ld-error-action :error)')
+        self.assertTrue(any("FN_IMAGE_WORLD_CLOSED" in form for form in sent))
+        self.assertEqual(sent[-2], '(ld "../tools/coverage_dump.lisp")')
+        self.assertEqual(sent[-1], '(cov-dump "/tank/fn/gates/lanex-repl/build/coverage/world.json" state)')
+        self.assertEqual(words[-2][:2], ["scp", "-q"])
+        self.assertEqual(repl[-1][2:4], ["stop", "cov-lanex"])
+        self.assertTrue(all(lane == "lanex" for w, lane in calls if "proof_repl.py" in " ".join(w)))
+        self.assertIn("coverage.py build --world", err)
+
+    def test_a_failing_host_file_is_named_and_the_session_stopped(self):
+        code, calls, err = self.drive(fail_at="owner-host.lisp")
+        self.assertEqual(code, 1)
+        self.assertIn("FAILED at ../host/owner-host.lisp", err)
+        words = [argv for argv, _ in calls]
+        self.assertFalse(any(w[0] == "scp" for w in words))
+        self.assertFalse(any("cov-dump" in " ".join(w) for w in words))
+        self.assertEqual(words[-1][2:4], ["stop", "cov-lanex"])
+
+
 if __name__ == "__main__":
     unittest.main()

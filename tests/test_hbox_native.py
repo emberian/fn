@@ -231,10 +231,24 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertEqual(after.returncode, 0, after.stderr)
         self.assertEqual(after.stdout, before.stdout)
 
-    def test_a_reader_of_an_unbuilt_image_is_refused_by_name(self):
-        # PKT-437 (2): the default run builds only the developer image, and
-        # this module reads FN_NATIVE_HOST (the production image).
+    def test_without_images_the_list_is_what_the_modules_read(self):
+        # This module reads FN_NATIVE_HOST (the production image): without
+        # --images the run builds it rather than refusing (three lanes lost a
+        # launch each to the refusal, 2026-09-29).
         answer = dry("HEAD", "tests.test_native_hybrid_author")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        self.assertIn("images derived from what the modules read: --images "
+                      "developer,production; added production "
+                      "(tests.test_native_hybrid_author reads FN_NATIVE_HOST)", answer.stderr)
+        self.assertEqual(len(image_lines(answer.stdout)), 2)
+        # A module that reads only the developer image changes nothing.
+        plain = dry("HEAD", "tests.test_native_owner")
+        self.assertNotIn("images derived", plain.stderr)
+
+    def test_a_reader_of_an_unbuilt_image_is_refused_by_name(self):
+        # PKT-437 (2): an explicit --images developer, and this module reads
+        # FN_NATIVE_HOST (the production image).
+        answer = dry("--images", "developer", "HEAD", "tests.test_native_hybrid_author")
         self.assertEqual(answer.returncode, 2, answer.stdout)
         self.assertEqual(answer.stdout, "")
         self.assertIn("tests.test_native_hybrid_author reads FN_NATIVE_HOST: build the "

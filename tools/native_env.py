@@ -287,9 +287,38 @@ def join_images(built: list[str], *extra: str) -> str:
     return ",".join(image for image in ORDER if image in wanted)
 
 
+def needed_images(images: list[str], given: dict[str, str], modules: list[str]
+                  ) -> tuple[str, list[str]]:
+    """The images these modules read, over IMAGES: (the list, why each was added).
+
+    `hbox_native` without --images builds this list instead of refusing a
+    module that reads an unbuilt image (FN_NATIVE_HOST -> production): three
+    lanes lost a launch each to that refusal (2026-09-29).
+    """
+    built, why = list(images), []
+    while True:
+        missing = plan_missing(built, given, modules)
+        new = [(module, name, image) for module, name, image in missing if image not in built]
+        if not new:
+            return join_images(built), why
+        for module, name, image in new:
+            if image not in built:
+                built.append(image)
+            why.append(f"{image} ({module} reads {name})")
+
+
+def plan_missing(images, given, modules) -> list[tuple[str, str, str]]:
+    return _plan(images, given, modules)[3]
+
+
 def plan(images: list[str], given: dict[str, str], modules: list[str]
          ) -> tuple[list[str], list[str], list[str]]:
     """(lines, refusals, notes) for these modules and this run's images."""
+    lines, refusals, notes, _ = _plan(images, given, modules)
+    return lines, refusals, notes
+
+
+def _plan(images: list[str], given: dict[str, str], modules: list[str]):
     lines, notes = [], []
     missing: list[tuple[str, str, str]] = []
     for module in modules:
@@ -335,7 +364,7 @@ def plan(images: list[str], given: dict[str, str], modules: list[str]
     wanted = join_images(images, *(image for _, _, image in missing))
     refusals = [f"{module} reads {name}: build the {image} image with --images {wanted}"
                 for module, name, image in missing]
-    return lines, refusals, notes
+    return lines, refusals, notes, missing
 
 
 def readers() -> dict[str, list[str]]:
@@ -384,6 +413,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--images", default="developer")
     p.add_argument("--env", action="append", default=[], help="NAME=VALUE the caller set")
     p.add_argument("modules", nargs="+")
+    p = sub.add_parser("images", help="the image list these modules read, over --images")
+    p.add_argument("--images", default="developer")
+    p.add_argument("--env", action="append", default=[], help="NAME=VALUE the caller set")
+    p.add_argument("modules", nargs="+")
     sub.add_parser("table", help="the variable table (Markdown)")
     p = sub.add_parser("identity", help="the production image's four identity variables")
     p.add_argument("--image", default="build/fn-host",
@@ -418,6 +451,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if found else 1
     images = [image for image in arguments.images.split(",") if image]
     given = dict(item.split("=", 1) for item in arguments.env)
+    if arguments.command == "images":
+        wanted, why = needed_images(images, given, arguments.modules)
+        if why:
+            print("hbox_native: images derived from what the modules read: "
+                  f"--images {wanted}; added " + "; ".join(why), file=sys.stderr)
+        print(wanted)
+        return 0
     lines, refusals, notes = plan(images, given, arguments.modules)
     for note in notes:
         print(f"hbox_native: note: {note}", file=sys.stderr)

@@ -1116,6 +1116,10 @@ def main() -> int:
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = BUILD_ROOT / f"certify-{stamp}-{os.getpid()}"
     run_dir.mkdir(parents=True, exist_ok=False)
+    # Named at the start, not only at the end: `farm.py submit`/`status` read
+    # it from the run's log so the certify id is known before `wait`.
+    shown = run_dir.relative_to(ROOT) if run_dir.is_relative_to(ROOT) else run_dir
+    print(f"Certification run: {shown}", file=sys.stderr, flush=True)
 
     manifest: dict[str, Any] = {
         # Identity first: a manifest that has left its directory behind must

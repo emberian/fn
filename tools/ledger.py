@@ -1178,7 +1178,8 @@ class Tree:
     """The whole readable tree: books, functions, theorems, roots."""
 
     def __init__(self, books: dict[str, Book], roots: list[str],
-                 hosts: "dict[str, HostFile] | None" = None, *, eager: bool = True) -> None:
+                 hosts: "dict[str, HostFile] | None" = None, *, eager: bool = True,
+                 suspect_cache: "Path | None" = None) -> None:
         self.books = books
         self.roots = roots
         # ACL2 `ld` wrappers and explicit raw `load` adapters: see host_names.
@@ -1205,13 +1206,66 @@ class Tree:
         # builds the tree with eager=False and asks `suspects_of' for its
         # own theorems only; `suspects' computes the whole map on first use.
         self._suspects: "dict[str, list[str]] | None" = None
+        # C8: the suspect reasons persist per theorem under a key naming
+        # everything the detectors read (suspect_keys), so a one-book edit
+        # re-judges that book's theorems and those whose definitions moved.
+        self._suspect_cache = suspect_cache
         if eager:
             self._suspects = self._all_suspects()
 
     def _all_suspects(self) -> dict[str, list[str]]:
-        return {name: reasons for name, reasons in
-                ((theorem.name, self.suspect_reasons(theorem))
-                 for theorem in self.theorems.values()) if reasons}
+        if self._suspect_cache is None:
+            return {name: reasons for name, reasons in
+                    ((theorem.name, self.suspect_reasons(theorem))
+                     for theorem in self.theorems.values()) if reasons}
+        keys = self.suspect_keys()
+        cached = _suspect_cache_read(self._suspect_cache)
+        fresh: dict[str, list[str]] = {}
+        found: dict[str, list[str]] = {}
+        for name, theorem in self.theorems.items():
+            key = keys[name]
+            reasons = cached.get(key)
+            if reasons is None:
+                reasons = self.suspect_reasons(theorem)
+            fresh[key] = reasons
+            if reasons:
+                found[name] = reasons
+        self.suspect_recomputed = sum(1 for key in fresh if key not in cached)
+        if fresh != cached:
+            _suspect_cache_write(self._suspect_cache, fresh)
+        return found
+
+    def suspect_keys(self) -> dict[str, str]:
+        """Each theorem's key: its own forms, the statement of every theorem
+        it names, and the definitional closure of every function it names
+        (both sides of each definition, through every symbol of its body),
+        plus, for a `*-preserves-*` name, the functions its subject prefix
+        names.  That is everything `suspect_reasons' reads: the lemma
+        lookups of detectors 1-2, the unfolding of 3-6 (to any depth), the
+        name set of 7."""
+        own = {name: _form_digest((f.formals, f.body)) for name, f in self.functions.items()}
+        edges = {name: sorted(symbols_of(f.body) & own.keys() - {name})
+                 for name, f in self.functions.items()}
+        closure = _closure_digests(own, edges)
+        statements = {name: _form_digest(t.statement) for name, t in self.theorems.items()}
+        by_prefix: "dict[str, list[str]]" = {}
+        keys = {}
+        for name, theorem in self.theorems.items():
+            h = hashlib.blake2b(digest_size=20)
+            h.update(_form_digest((theorem.name, theorem.statement, theorem.hints)).encode())
+            for symbol in sorted(symbols_of([theorem.statement, theorem.hints])):
+                if symbol in closure:
+                    h.update(b"f" + symbol.encode() + b"=" + closure[symbol].encode())
+                if symbol in statements:
+                    h.update(b"t" + symbol.encode() + b"=" + statements[symbol].encode())
+            if "-preserves-" in name:
+                subject = name.split("-preserves-")[0]
+                if subject not in by_prefix:
+                    by_prefix[subject] = sorted(
+                        f for f in self.functions if f == subject or f.startswith(subject + "-"))
+                h.update(b"p" + "\0".join(by_prefix[subject]).encode())
+            keys[name] = h.hexdigest()
+        return keys
 
     @property
     def suspects(self) -> dict[str, list[str]]:
@@ -1550,6 +1604,109 @@ class Tree:
             return None  # the name does not claim a function we know
         return (f"preserves-no-subject-call: the statement never calls "
                 f"{subject} or a {subject}- transition")
+
+
+def symbols_of(form: object, found: "set[str] | None" = None) -> set[str]:
+    """Every symbol anywhere in FORM, quoted subforms included."""
+    found = set() if found is None else found
+    stack = [form]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, Sym):
+            found.add(str(item))
+        elif isinstance(item, list):
+            stack.extend(item)
+    return found
+
+
+def _form_digest(form: object) -> str:
+    return hashlib.blake2b(repr(form).encode(), digest_size=16).hexdigest()
+
+
+def _closure_digests(own: dict[str, str], edges: dict[str, list[str]]) -> dict[str, str]:
+    """Each node's digest over its own and everything it reaches (Tarjan's
+    strongly connected components, iteratively; a cycle shares one digest)."""
+    index: dict[str, int] = {}
+    low: dict[str, int] = {}
+    on_stack: set[str] = set()
+    stack: list[str] = []
+    component: dict[str, int] = {}
+    components: list[list[str]] = []
+    counter = 0
+    for start in sorted(own):
+        if start in index:
+            continue
+        work = [(start, 0)]
+        while work:
+            node, position = work.pop()
+            if position == 0:
+                index[node] = low[node] = counter
+                counter += 1
+                stack.append(node)
+                on_stack.add(node)
+            successors = edges.get(node, [])
+            for next_position in range(position, len(successors)):
+                child = successors[next_position]
+                if child not in index:
+                    work.append((node, next_position + 1))
+                    work.append((child, 0))
+                    break
+                if child in on_stack:
+                    low[node] = min(low[node], index[child])
+            else:
+                if low[node] == index[node]:
+                    members = []
+                    while True:
+                        member = stack.pop()
+                        on_stack.discard(member)
+                        component[member] = len(components)
+                        members.append(member)
+                        if member == node:
+                            break
+                    components.append(sorted(members))
+                if work:
+                    parent = work[-1][0]
+                    low[parent] = min(low[parent], low[node])
+    # Components complete in reverse topological order: callees first.
+    digests: list[str] = []
+    for members in components:
+        h = hashlib.blake2b(digest_size=16)
+        reached = set()
+        for member in members:
+            h.update(member.encode() + b"=" + own[member].encode())
+            reached.update(component[c] for c in edges.get(member, []))
+        for other in sorted(reached - {component[members[0]]}):
+            h.update(digests[other].encode())
+        digests.append(h.hexdigest())
+    return {name: digests[component[name]] for name in own}
+
+
+def _suspect_cache_read(path: Path) -> dict[str, list[str]]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(data, dict) or data.get("format") != _suspect_cache_format():
+        return {}
+    entries = data.get("entries")
+    return entries if isinstance(entries, dict) else {}
+
+
+def _suspect_cache_write(path: Path, entries: dict[str, list[str]]) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, name = tempfile.mkstemp(prefix=path.name + ".", dir=path.parent)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump({"format": _suspect_cache_format(), "entries": entries}, handle)
+        os.replace(name, path)
+    except OSError:
+        pass
+
+
+def _suspect_cache_format() -> str:
+    """The detectors are this file: a changed ledger.py is a fresh cache."""
+    return hashlib.sha256(b"fn-suspect-cache-1\0" + Path(__file__).resolve().read_bytes()
+                          ).hexdigest()
 
 
 def logic_body(function: Function) -> object:
@@ -3049,7 +3206,8 @@ def load_tree(*, lazy: bool = False) -> Tree:
     tree = Tree({relative: analyze_book(path, relative) for path, relative in books},
                 roots,
                 {relative: analyze_host(path, relative) for path, relative in hosts},
-                eager=not lazy)
+                eager=not lazy,
+                suspect_cache=(directory / "suspects.json") if directory is not None else None)
     _TREE_CACHE = (key, tree)
     if lazy:
         return tree

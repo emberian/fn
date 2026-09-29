@@ -607,6 +607,41 @@ def refuse_a_running_run_in_the_same_tree(host: str, root: Path, remote: Path,
                         f"(wait for it, or submit to the other box)")
 
 
+CERTIFY_ID = re.compile(r"Certification (?:run|evidence): (?:\S*/)?build/acl2/"
+                        r"(certify-[0-9]{8}T[0-9]{6}Z-[0-9]+)")
+# `submit` asks the box this many times, CERTIFY_ID_PAUSE apart, for the
+# certify id the runner prints once it starts; `status` and `wait` name it
+# later when the runner was slower than that.
+CERTIFY_ID_ATTEMPTS = 5
+CERTIFY_ID_PAUSE = 3
+
+
+def note_certify_id(root: Path, identifier: str, certify_id: str) -> None:
+    """Record the run's certify-... id in its local run record (when there is one).
+
+    `evidence_manifests.py add RUN` maps a farm run to its certify id from
+    this record, so a lane need not `wait` (the fetched log) to file it.
+    """
+    path = record_path(root, identifier)
+    record = run_record(root, identifier)
+    if not record or record.get("certify_id") == certify_id:
+        return
+    record["certify_id"] = certify_id
+    try:
+        path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    except OSError:
+        pass
+
+
+def remote_certify_id(host: str, remote: Path, identifier: str) -> str | None:
+    """The certify id the run's log on the box names, or None yet."""
+    done = ssh(host, f"cd {remote_quote(remote)} 2>/dev/null && "
+               f"grep -m1 -E 'Certification (run|evidence): ' build/farm/{identifier}.log "
+               "2>/dev/null", check=False)
+    found = CERTIFY_ID.search(done.stdout or "")
+    return found.group(1) if found else None
+
+
 def run_record(root: Path, identifier: str) -> dict:
     """What `submit` recorded for this run, or an empty mapping."""
     try:
@@ -829,6 +864,19 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n",
                     encoding="utf-8")
+    # The certify id, as soon as the runner names it (evidence_manifests add
+    # wanted it before `wait`; decision-keystones-2, 2026-09-29).
+    for attempt in range(CERTIFY_ID_ATTEMPTS):
+        certify_id = remote_certify_id(host, remote, identifier)
+        if certify_id:
+            note_certify_id(root, identifier, certify_id)
+            print(f"{identifier}: certify id {certify_id}", file=sys.stderr)
+            break
+        if attempt + 1 < CERTIFY_ID_ATTEMPTS:
+            SLEEP(CERTIFY_ID_PAUSE)
+    else:
+        print(f"{identifier}: the runner has not named its certify id yet; "
+              f"`farm.py status {host}` or `wait` will", file=sys.stderr)
     return identifier
 
 
@@ -975,6 +1023,8 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
     # (correctness-remainder: 25), and a wait that printed nothing through
     # them read as a wait that never returned.
     final = progress.get("MANIFEST", "").split()
+    if len(final) > 1:
+        note_certify_id(root, identifier, final[1])
     print(f"{identifier} on {host}: finished with exit code {code}"
           + (f" -- {killed_words(signalled)}" if signalled is not None else "")
           + (f"; manifest {final[1]} {final[0]}" if len(final) > 1 else "")
@@ -1319,6 +1369,19 @@ def time_of(path):
     return (dt.datetime.strptime(found.group(1), "%Y%m%dT%H%M%SZ")
             .replace(tzinfo=dt.timezone.utc) if found else None)
 
+named = re.compile(r"Certification (?:run|evidence): (?:\S*/)?build/acl2/(certify-[0-9]{8}T[0-9]{6}Z-[0-9]+)")
+
+def certify_id_of(log):
+    try:
+        with log.open(encoding="utf-8", errors="replace") as text:
+            for line in text:
+                found = named.search(line)
+                if found:
+                    return found.group(1)
+    except OSError:
+        pass
+    return None
+
 logs = sorted(farm.glob("run-*.log"))
 dirs = sorted((path for path in (root / "build/acl2").glob("certify-*")
                if path.is_dir()), key=lambda path: path.name)
@@ -1337,9 +1400,14 @@ for log in logs:
     matching = [path for path in dirs if (when := time_of(path)) is not None
                 and started <= when < cutoff]
     directory = matching[0] if len(matching) == 1 else None
+    certify_id = certify_id_of(log)
+    if certify_id and (root / "build/acl2" / certify_id).is_dir():
+        # The run's log names its directory: no guessing by time window.
+        directory = root / "build/acl2" / certify_id
     status_file = log.with_suffix(".status")
     state = status_file.read_text().strip() if status_file.exists() else "unfinalized"
-    row = {"run_id": log.stem, "state": state, "data": "missing"}
+    row = {"run_id": log.stem, "state": state, "data": "missing",
+           "certify_id": certify_id or (directory.name if directory is not None else None)}
     if directory is not None and state != "unfinalized":
         manifest = read_json(directory / "manifest.json")
         if manifest is not None:
@@ -1439,9 +1507,11 @@ def status(host: str, remote: Path, local_root: Path | None = None) -> int:
         raise FarmError(f"{host}: invalid status snapshot under {remote}: {error}") from error
     print(f"{host}:{remote}")
     print("run-id state data manifest-passed manifest-failed observed-exited "
-          "observed-active oldest-observed-active cache-installed+kept/origins")
+          "observed-active oldest-observed-active cache-installed+kept/origins certify-id")
     for row in rows:
         identifier = row["run_id"]
+        if row.get("certify_id"):
+            note_certify_id(local_root or remote, identifier, row["certify_id"])
         cache = cache_summary(run_record(local_root or remote, identifier)) or "-"
         age = (f"{row['age_seconds']}s" if row.get("age_seconds") is not None
                else "-")
@@ -1450,7 +1520,8 @@ def status(host: str, remote: Path, local_root: Path | None = None) -> int:
         label = row["data"]
         if label == "manifest":
             label += f"({row['manifest']})"
-        print(" ".join([identifier, row["state"], label, *counts, age, cache]))
+        print(" ".join([identifier, row["state"], label, *counts, age, cache,
+                        row.get("certify_id") or "-"]))
     return 0
 
 
