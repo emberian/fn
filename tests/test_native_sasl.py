@@ -21,13 +21,12 @@ import queue
 import re
 import shutil
 import subprocess
-import sys
 import threading
 import time
 import unittest
 
 from tests.native_harness import (
-    ROOT, Client, Node, article, client_context, native_image, requires)
+    EXIT_OK, Client, Node, article, client_context, native_image, requires)
 from tests.sasl_client import b64, plain_response, scram_login, status_data
 
 IMAGE = native_image("FN_NATIVE_HOST")
@@ -50,12 +49,12 @@ class NativeSaslTests(unittest.TestCase):
                 self.tls_port, self.node.cert, self.root / "key.pem", self.auth))
         initialized = self.node.store("init", "fn.test")
         self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
-        enrolled = subprocess.run(
-            [sys.executable, "bin/fn", "--config", str(self.node.config),
-             "principal", "set-password", LOGIN, "--password", PASSWORD, "--posting"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=self.node.environment(), timeout=600, check=False)
-        self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+        # The native operator reads the password and its confirmation from
+        # standard input when there is no tty; it stores verifier v2 (the
+        # SCRAM keys), never the password.
+        secret = PASSWORD if isinstance(PASSWORD, bytes) else PASSWORD.encode()
+        self.node.operator("principal", "set-password", LOGIN, "--posting",
+                           input=secret + b"\n" + secret + b"\n", expect=EXIT_OK)
         self.node.start()
 
     # -- sessions --------------------------------------------------------
