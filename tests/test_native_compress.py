@@ -19,10 +19,11 @@ host/native/deflate.lisp); its outbound one by the vendored zlib
   * an unknown algorithm is 503 and a malformed one 501.
 """
 import threading
+import time
 import unittest
 import zlib
 
-from tests.native_harness import EXIT_OK, Client, Node, native_image, requires
+from tests.native_harness import EXIT_OK, Client, Node, _line_containing, native_image, requires
 
 IMAGE = native_image("FN_NATIVE_HOST")
 
@@ -86,6 +87,14 @@ class NativeCompressTests(unittest.TestCase):
 
     def start(self):
         return self.node.start(verb=("run", "--once"))
+
+    def service_log_until(self, process, marker, timeout=60):
+        """The service log (the owner's standard error) through the line
+        naming MARKER."""
+        _text, end = process.stderr.wait_for(_line_containing(marker), 0,
+                                             time.monotonic() + timeout)
+        if end is None:
+            process.fail("service-log marker {!r} absent after {} s".format(marker, timeout))
 
     def client(self):
         return Client(self.port, timeout=30, greeting=(b"201",))
@@ -187,7 +196,7 @@ class NativeCompressTests(unittest.TestCase):
             except OSError:
                 pass
             self.assertTrue(done.wait(60), "the connection was not closed")
-        process.output_until(b"compress-bomb", timeout=60)
+        self.service_log_until(process, b"compress-bomb")
         self.node.exited(EXIT_OK)
 
     def test_a_malformed_stream_is_refused_by_name(self):
@@ -198,7 +207,7 @@ class NativeCompressTests(unittest.TestCase):
             client.sock.sendall(b"\x06\x00\x00\x00")  # BTYPE 3
             client.sock.settimeout(30)
             self.assertEqual(client.sock.recv(65536), b"")
-        process.output_until(b"compress-malformed", timeout=60)
+        self.service_log_until(process, b"compress-malformed")
         self.node.exited(EXIT_OK)
 
 
