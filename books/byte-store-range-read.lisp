@@ -83,7 +83,96 @@
            :use ((:instance fn-assume-host-exclusive-read-keeps-content
                             (before s0) (after s1))))))
 
-; The host's loop reads a header range, then the rest of that segment, then
-; the next header, to end of file; each read is the previous range's
-; successor, so the loop's output is the whole range by induction on this
-; lemma.  The whole-file statement over the loop is not yet an event.
+; -----------------------------------------------------------------------------
+; The whole-file statement over the host's loop (lane byte-model, PKT-043).
+;
+; fnn-state-checkpoint-plan (host/native/io.lisp) reads the file as a chain
+; of consecutive ranges on one descriptor under the store lock: a segment
+; header, that segment's chunk, its trailer, the next header, to the end of
+; the file; each read runs in a later state, and consecutive states are
+; related by A-HOST-EXCLUSIVE-READ (fn-assume-host-exclusive-read: nothing
+; changes the content between two of the loop's reads).  fn-bs-read-ranges
+; is the loop's output: the concatenation of the ranges, each read in its
+; own state; fn-bs-exclusive-chainp is the assumption over the chain of
+; states.  The lengths LENS are whatever the loop decides (the header's
+; declared chunk length): the statement holds for every length list that
+; fits the file.
+
+(defun fn-bs-exclusive-chainp (states ino)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (consp states) (consp (cdr states)))
+      (and (fn-assume-host-exclusive-read (car states) (cadr states) ino)
+           (fn-bs-exclusive-chainp (cdr states) ino))
+    t))
+
+(defun fn-bs-sum-lens (lens)
+  (declare (xargs :guard t))
+  (if (consp lens) (+ (nfix (car lens)) (fn-bs-sum-lens (cdr lens))) 0))
+
+(defun fn-bs-read-ranges (states ino off lens)
+  (declare (xargs :guard (natp off) :verify-guards nil))
+  (if (and (consp lens) (consp states))
+      (append (fn-bs-read-range (car states) ino off (nfix (car lens)))
+              (fn-bs-read-ranges (cdr states) ino (+ off (nfix (car lens))) (cdr lens)))
+    nil))
+
+(local
+ (defthm fn-bs-rr-read-range-true-listp
+   (true-listp (fn-bs-read-range s ino off n))))
+
+(local
+ (defthm fn-bs-rr-read-range-of-zero
+   (equal (fn-bs-read-range s ino off 0) nil)))
+
+(local
+ (defthm fn-bs-rr-sum-lens-natp
+   (natp (fn-bs-sum-lens lens))
+   :rule-classes :type-prescription))
+
+(local
+ (defthm fn-bs-rr-exclusive-read-same-range
+   (implies (fn-assume-host-exclusive-read s0 s1 ino)
+            (equal (fn-bs-read-range s1 ino off n)
+                   (fn-bs-read-range s0 ino off n)))
+   :hints (("Goal" :in-theory (disable fn-bs-content)))))
+
+; The loop's output over a chain of states is one range of the first
+; state's content: the induction the pairwise lemma promised.
+(defthm fn-bs-read-ranges-is-the-range
+  (implies (and (fn-bs-exclusive-chainp states ino)
+                (consp states)
+                (<= (len lens) (len states))
+                (natp off)
+                (<= (+ off (fn-bs-sum-lens lens)) (len (fn-bs-content (car states) ino))))
+           (equal (fn-bs-read-ranges states ino off lens)
+                  (fn-bs-read-range (car states) ino off (fn-bs-sum-lens lens))))
+  :hints (("Goal" :induct (fn-bs-read-ranges states ino off lens)
+           :in-theory (e/d () (fn-bs-read-range fn-bs-content fn-bs-read-ranges-concatenate
+                               fn-bs-rr-exclusive-read-same-range)))
+          ("Subgoal *1/1" :cases ((consp (cdr states)))
+           :use ((:instance fn-bs-read-ranges-concatenate
+                            (s0 (car states)) (s1 (cadr states))
+                            (n (nfix (car lens))) (m (fn-bs-sum-lens (cdr lens))))
+                 (:instance fn-bs-rr-exclusive-read-same-range
+                            (s0 (car states)) (s1 (cadr states))
+                            (off (+ off (nfix (car lens)))) (n (fn-bs-sum-lens (cdr lens))))))))
+
+(local
+ (defthm fn-bs-rr-take-len
+   (implies (true-listp x) (equal (take (len x) x) x))))
+
+; The whole file: the ranges from offset 0 whose lengths sum to the file's
+; length read the file's content, as fnn-state-checkpoint-plan reads a
+; checkpoint to its end.
+(defthm fn-bs-read-ranges-read-the-whole-file
+  (implies (and (fn-bs-exclusive-chainp states ino)
+                (consp states)
+                (<= (len lens) (len states))
+                (equal (fn-bs-sum-lens lens) (len (fn-bs-content (car states) ino))))
+           (equal (fn-bs-read-ranges states ino 0 lens)
+                  (true-list-fix (fn-bs-content (car states) ino))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-read-ranges-is-the-range (off 0)))
+           :in-theory (e/d (fn-bs-read-range)
+                           (fn-bs-content fn-bs-read-ranges fn-bs-exclusive-chainp
+                            fn-bs-read-ranges-is-the-range)))))
