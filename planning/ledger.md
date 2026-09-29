@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1681 |
-| Certification roots in the Makefile | 1616 |
-| Books inside the root closure | 1679 |
-| `defthm` and `defthmd` events | 27609 |
-| `defun` events | 18040 |
+| Books read | 1683 |
+| Certification roots in the Makefile | 1618 |
+| Books inside the root closure | 1681 |
+| `defthm` and `defthmd` events | 27613 |
+| `defun` events | 18050 |
 | Functions with verified guards | 3457 |
 | Functions declared `:verify-guards nil` and never verified | 2076 |
-| Functions left at the default with an explicit guard | 9800 |
-| Functions left at the default with no guard | 2707 |
-| `assert-event` checks | 22904 |
+| Functions left at the default with an explicit guard | 9809 |
+| Functions left at the default with no guard | 2708 |
+| `assert-event` checks | 22915 |
 | `must-fail` checks | 2480 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 317 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2394 |
-| Host-names warnings | 2002 |
+| Include-hygiene warnings | 2400 |
+| Host-names warnings | 2082 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -190,6 +190,7 @@ that `make certify` requests.
 | `books/bp-native-app.lisp` | root | 5 | 48 | 3/0/45/0 | 0 | 0 | 0 |
 | `books/bp-node-busy-delivery.lisp` | root | 19 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/bp-node-contact-driver.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 1 |
+| `books/bp-node-control.lisp` | root | 4 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/bp-node-debt-cache-invariants.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-debt.lisp` | root | 5 | 20 | 6/0/14/0 | 0 | 0 | 0 |
 | `books/bp-node-dispatch.lisp` | root | 1 | 5 | 0/1/4/0 | 0 | 0 | 0 |
@@ -1133,6 +1134,7 @@ that `make certify` requests.
 | `tests/acl2/bp-native-app-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/bp-native-app-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 19 | 0 | 0 |
 | `tests/acl2/bp-node-contact-driver-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 26 | 8 | 0 |
+| `tests/acl2/bp-node-control-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 11 | 0 | 0 |
 | `tests/acl2/bp-node-counterexamples-tests.lisp` | root | 0 | 44 | 0/12/1/31 | 59 | 58 | 0 |
 | `tests/acl2/bp-node-debt-cache-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 2 | 0 |
 | `tests/acl2/bp-node-debt-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 6 | 4 | 0 |

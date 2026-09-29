@@ -17903,6 +17903,52 @@
       "events": [
         "fn-cfg-set-group-authority-installs-binding"
       ]
+    },
+    {
+      "id": "PRF-1063",
+      "title": "Serialized BP control startup binds actual CONFIG.store and grants only same-owner parsed route mutations",
+      "statement": "Host-called subjects books/bp-node-control.lisp fn-bpnc-startup and fn-bpnc-turn-plan, called by host/native/bp-control.lisp fnn-bpnc-start and fnn-bpnc-handle. A ready startup implies the actual native-config load was accepted and its parsed Store octets equal the supplied Store argument. An execute grant implies same-owner evidence, an admin projection, and exactly the accepted native-admin plan whose kind is set-bp-route or remove-bp-route. This boundary restricts the existing durable owner admin path; it does not itself prove disk honesty or listener rebinding. Complete positive and hypothesis-removal teeth use parsed valid config and route vectors; mutation teeth refuse nonowner and unrelated group admin.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-002",
+        "HST-010"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-node-control.lisp",
+        "tests/acl2/bp-node-control-tests.lisp",
+        "host/native/bp-control.lisp"
+      ],
+      "progress_note": "Clean persvati proof REPL bpnc-clean admitted 17/17 forms, 17150 prover steps; exact teeth18/18. Matching combined image/native evidence pending; no qualification claim.",
+      "events": [
+        "fn-bpnc-ready-startup-binds-the-parsed-store",
+        "fn-bpnc-grant-is-the-authorized-route-plan"
+      ]
+    },
+    {
+      "id": "PRF-1064",
+      "title": "BP control listener complete bind install retire protocol",
+      "statement": "Host-called subjects fn-bpnc-socket-initial, fn-bpnc-socket-action and fn-bpnc-socket-step, called by fnn-bpnc-start/step/retire. The composed open run reaches live exactly when the startup is ready and both bind and install completions succeed. From prepared, bound or live, stop produces an actual retire effect; its completion reaches closed on success or fenced otherwise, with no next effect. Raw listener, lease and installed inode ownership are retained until retirement. Teeth assert the entire equivalence for successful open and both failed completions; positive retirement success/failure and corrupt-phase hypothesis removal. Scope is the explicit control listener; BP transport listener rebinding remains open.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-002",
+        "HST-010"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-node-control.lisp",
+        "tests/acl2/bp-node-control-tests.lisp",
+        "host/native/bp-control.lisp"
+      ],
+      "progress_note": "Clean persvati proof REPL bpnc-clean admitted 17/17 forms, 17150 prover steps; exact teeth18/18. Matching combined image/native evidence pending; no qualification claim.",
+      "events": [
+        "fn-bpnc-open-run-live-iff-both-completions-succeed",
+        "fn-bpnc-retirement-stops-the-control-listener"
+      ]
     }
   ]
 }
