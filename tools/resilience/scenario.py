@@ -41,7 +41,8 @@ STAGES = ("issued", "performed", "persisted", "observed")
 WITNESSES = ("post-accepted", "retry-reconciled", "read-completed",
              "read-during-competing-work", "reclaim-freed", "recovery-completed",
              "memberships-listed", "checkpoint-installed",
-             "receipt-delivered", "receipt-effect-once", "cross-route-retry-refused")
+             "receipt-delivered", "receipt-effect-once", "cross-route-retry-refused",
+             "init-old-or-new")
 REPLAY = ("exact", "timed", "image")
 CONTRACTS = ("local-commit-log",)
 CANDIDATE_RULES = ("absent", "present", "either")
@@ -125,6 +126,8 @@ TABLE_SELECTORS = {
     "STATEMENT_CUTS": "FN_NATIVE_KEY_STATEMENT_FAULT",
 }
 RECLAIM_CUTS_SOURCE = "host/native/owner.lisp:+fnn-reclaim-cuts+"
+BLOCK_BOUNDARY = "power-loss"                   # adapters/power_loss.py (W7d)
+BLOCK_RECOVERY_BOUNDARY = "recovery-power-loss"
 
 
 class ScenarioError(ValueError):
@@ -282,6 +285,18 @@ def boundary_registry() -> dict:
             "rule": rule, "rules": {r: rule for r in ROUTES},
             "operations": ["reclaim"], "actions": ["kill"],
             "selector": "FN_NATIVE_RECLAIM_FAULT", "selector_name": name, "executable": True}
+    # The block replay backend's boundaries (W7d, adapters/power_loss.py):
+    # a power cut at a recorded write boundary of the device under the
+    # committing node (tools/power_loss.py, dm-log-writes), and one during
+    # the recovery that follows.  The crash rule is the composition the
+    # checker applies (power-loss-prefix), not a cut table's column.
+    for name, ops in ((BLOCK_BOUNDARY, ["post", "checkpoint", "reclaim", "probe"]),
+                      (BLOCK_RECOVERY_BOUNDARY, ["recover"])):
+        registry[name] = {"source": "tools/power_loss.py (dm-log-writes)", "tables": [],
+                          "program": None, "book": "books/store-log-crash.lisp",
+                          "rule": None, "rules": {}, "operations": ops,
+                          "actions": ["drop-writes"], "selector": None,
+                          "executable": True, "backend": "block-replay"}
     io = ROOT / "host" / "native" / "io.lisp"
     selectors = io.read_text() if io.is_file() else ""
     for name, row in PENDING_BOUNDARIES.items():

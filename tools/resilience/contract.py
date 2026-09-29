@@ -132,6 +132,21 @@ RULES = {
         "and changes nothing: the store's committed history and the served bytes are those "
         "before it (no theorem states the conflict decision at the store boundary yet)",
         None, "books/nntp-post.lisp", None, "pending"),
+    "power-loss-prefix": Rule(
+        "power-loss-prefix",
+        "a power cut at a recorded write boundary (tools/power_loss.py, dm-log-writes; W7d) "
+        "leaves the recovered store serving every acknowledged post (its 240 was durable) "
+        "and a PREFIX of the unacknowledged ones in log order (the recovery truncates at the "
+        "first incomplete record), whatever writes the device presented (flush, prefix, "
+        "subset or torn selection): the served count is the committed count and no "
+        "acknowledged article is absent or other; judged whole-history, never per article",
+        "fn-lg-batch-crash-is-a-prefix", "books/store-log-crash.lisp", None, "registered"),
+    "number-stability": Rule(
+        "number-stability",
+        "after recovery a fresh article takes a local number above every number the "
+        "recovered store serves: no allocated number is handed out twice (tools/power_loss.py "
+        "bindings; no theorem states it at the served boundary yet)",
+        None, "tools/power_loss.py", None, "pending"),
     "receipt-policy-order": Rule(
         "receipt-policy-order",
         "a policy change after the decision is recorded does not re-decide it: the "
@@ -166,14 +181,27 @@ def fated(scenario) -> list:
     return [o for o in scenario.operations if o.op in FATED]
 
 
-def histories(scenario, budget: int):
+def histories(scenario, budget: int, journal=None):
     """Every assignment of a fate to each post's (and each BP request
     carrier's) original attempt, or None past BUDGET (the caller answers
-    `inconclusive`, never `consistent`)."""
-    ids = [o.id for o in fated(scenario)]
+    `inconclusive`, never `consistent`).  With JOURNAL, an attempt whose
+    own reply the client saw (accepted: committed; refused: absent) has
+    that fate fixed before enumeration: the first narrowing step would fix
+    it anyway, and only the attempts with a lost reply are uncertain (a
+    power-loss image with a hundred acknowledged posts and two in flight
+    has four histories, not 2^102)."""
+    fixed = {}
+    if journal is not None:
+        for r in journal.of_kind("client"):
+            if r.get("event") == "reply" and r.get("outcome") in ("accepted", "refused"):
+                op = scenario.operation(r["operation"])
+                if op.op in FATED and op.id not in fixed and not r.get("cross_route"):
+                    fixed[op.id] = "committed" if r["outcome"] == "accepted" else "absent"
+    ids = [o.id for o in fated(scenario) if o.id not in fixed]
     if 2 ** len(ids) > budget:
         return None
-    return [dict(zip(ids, fates)) for fates in itertools.product(FATES, repeat=len(ids))]
+    return [dict(fixed, **dict(zip(ids, fates)))
+            for fates in itertools.product(FATES, repeat=len(ids))]
 
 
 def identity_committed_at(scenario, history: dict, identity: str, seq: int, journal) -> bool:
@@ -315,10 +343,44 @@ def narrow(scenario, history: dict, rec: dict, journal, registry: dict) -> tuple
                 if post_id not in declared:
                     return False, used   # a membership the post never named
             return True, used
+        if ev == "served-counts":
+            # The block replay rig's classification as one observation (W7d,
+            # counts until the rig writes per-article outcomes): the served
+            # count is the committed count, nothing is served with other
+            # bytes, the rest are absent.
+            # The rig's `served_ref` counts a match with the uncut run's
+            # reference, a 430 matching a 430 reference (a refused post)
+            # included, so on counts the composition says: no article is
+            # served with other bytes (an acknowledged article's 430 is
+            # `other`), and the absent ones are among the unanswered whose
+            # fate is absent.  The prefix property waits for per-article
+            # outcomes (`per`).
+            committed = sum(1 for o in scenario.posts()
+                            if committed_at(scenario, history, o.id, seq, journal))
+            refused = sum(1 for r in journal.of_kind("client")
+                          if r["seq"] < seq and r.get("event") == "reply"
+                          and r.get("outcome") == "refused"
+                          and scenario.operation(r["operation"]).op == "post")
+            ok = (rec.get("other", 0) == 0
+                  and rec["served"] + rec["absent"] == rec["attempted"]
+                  and rec["absent"] <= rec["attempted"] - refused - committed)
+            return ok, ("power-loss-prefix", "committed-serves-exact")
+        if ev == "numbers":
+            fresh, top = rec.get("fresh_number"), rec.get("max_served")
+            if fresh is None or top is None:
+                return False, ("number-stability",)
+            return fresh > top, ("number-stability",)
         if ev == "recover":
             # A killed recovery (outcome lost) says nothing; the healing
             # recovery completes, or the history was not kept.
             if rec.get("phase") == "healing":
+                if rec.get("outcome") == "no-store":
+                    # The cut fell before the store's initialization was
+                    # durable (the block rig's init phase): no store is the
+                    # old state, consistent only with nothing committed.
+                    committed = any(committed_at(scenario, history, o.id, seq, journal)
+                                    for o in fated(scenario))
+                    return not committed, ("crash-prefix",)
                 return rec.get("outcome") == "completed", ("recovery-keeps-history",)
             return True, ()
         return True, ()
@@ -339,6 +401,12 @@ def narrow(scenario, history: dict, rec: dict, journal, registry: dict) -> tuple
             if op.op == "reclaim":
                 return True, ("reclaim-old-or-new",)
             return True, ()
+        if ev == "persisted-write-selection":
+            # Whatever the device presented, the committed unacknowledged
+            # posts are a prefix of the open batch in log order.
+            fates = [history.get(o) == "committed" for o in rec.get("open", ())]
+            prefix = all(fates[:sum(fates)]) if fates else True
+            return prefix, ("power-loss-prefix",)
         if ev == "persisted-records":
             count = len(scenario.prior_posts()) + sum(
                 1 for o in scenario.posts()
@@ -378,6 +446,12 @@ def witnesses_observed(scenario, journal) -> set:
             seen.add("reclaim-freed")
         if ev == "recover" and r.get("phase") == "healing" and r.get("outcome") == "completed":
             seen.add("recovery-completed")
+        if ev == "recover" and r.get("phase") == "healing" and r.get("init_phase") and (
+                r.get("outcome") == "completed"
+                or (r.get("outcome") == "no-store" and r.get("reinit") == 0)):
+            # A cut in the store's initialization leaves the old state (no
+            # store, re-initialized) or the new (a store that recovers).
+            seen.add("init-old-or-new")
         if ev == "list-group" and r.get("members"):
             seen.add("memberships-listed")
         if ev == "status" and str(r.get("open", "")).startswith("open=checkpoint:"):

@@ -14,6 +14,7 @@ named with their owners.  No image, no store: the journals are the tester's
 fabricated inputs."""
 from __future__ import annotations
 
+import collections
 from pathlib import Path
 import tempfile
 import unittest
@@ -688,6 +689,95 @@ class XrefAndCrossRouteTests(unittest.TestCase):
                 r["xref"] = None
         v = checker.check(s, j, registry=REGISTRY)
         self.assertEqual(v.kind, "consistent", v.to_json())
+
+
+class PowerLossBackendTests(unittest.TestCase):
+    """W7d, first increment: the block replay rig's records (the 2026-09-26
+    evidence, 236 crash images) as scenarios and journals judged whole-
+    history.  Every cut record is consistent under the composition; every
+    control record (a POST judged acknowledged whose writes follow the cut)
+    is a violation citing the composition's rules; recover-crash records
+    carry the second fault; a tampered count is caught."""
+
+    @classmethod
+    def setUpClass(cls):
+        from tools.resilience.adapters import power_loss
+        cls.pl = power_loss
+        cls.records = power_loss.records()
+
+    def test_every_evidence_record_reaches_its_expected_verdict(self):
+        self.assertGreaterEqual(len(self.records), 200)
+        kinds = collections.Counter()
+        init_stuck = []
+        for rec in self.records:
+            s, j, v = self.pl.check_record(rec)
+            with self.subTest(scenario=s.id):
+                self.assertEqual(validate(s, REGISTRY), [], s.id)
+                self.assertEqual(s.replay, "image")
+                kinds[(rec["phase"] in self.pl.CONTROL_PHASES, v.kind)] += 1
+                if rec["phase"] == "init" and v.kind == "violation":
+                    # The documented constraint (planning/evidence/power-
+                    # loss-2026-09-26.md, "Constraint"): a cut inside
+                    # `operator init` can leave a store directory that
+                    # neither recovers (a missing staging directory, config
+                    # or allocation frontier) nor re-initializes
+                    # (STORE-EXISTS).  The rig footnoted it; the whole-
+                    # history checker judges it: init is not old-or-new.
+                    init_stuck.append(rec["cut"])
+                    self.assertEqual(v.explanation["rules"], ["recovery-keeps-history"])
+                    self.assertEqual(rec["reinit"], 1, rec)
+                    continue
+                self.assertEqual(v.kind, s.expected, (s.id, v.cause, v.explanation))
+                if v.kind == "consistent":
+                    # Counts alone leave the in-flight posts' fates open
+                    # where no recovery count narrows them (the reclaim
+                    # and reference phases): more than one history may
+                    # survive; a post or checkpoint image narrows to one.
+                    self.assertGreaterEqual(v.surviving, 1, s.id)
+                    if rec.get("first_phase", rec["phase"]) in ("post", "checkpoint"):
+                        self.assertEqual(v.surviving, 1, s.id)
+                    self.assertTrue(v.green, (s.id, v.witnesses_missing))
+                if rec["phase"] in self.pl.CONTROL_PHASES:
+                    # Caught by the recovery's own count (articles= below
+                    # the acknowledged) or by the served counts.
+                    self.assertTrue(set(v.explanation["rules"]) & {
+                        "recovery-keeps-history", "power-loss-prefix"}, v.explanation)
+                if rec.get("second"):
+                    fired = [r["boundary"] for r in j.of_kind("environment")
+                             if r.get("event") == "fault-fired"]
+                    self.assertEqual(fired, [self.pl.BOUNDARY, self.pl.RECOVERY_BOUNDARY])
+        self.assertEqual(kinds[(True, "violation")], 6)
+        self.assertEqual(sorted(init_stuck), [169, 187, 200, 222, 234, 236])
+        self.assertEqual(kinds[(False, "violation")], len(init_stuck))
+        self.assertEqual(sorted(row[0] for row in self.pl.summary()["unexpected"]),
+                         sorted("power-loss-init-{}".format(c) for c in init_stuck))
+
+    def test_a_served_count_below_the_acknowledged_is_a_violation(self):
+        rec = dict(next(r for r in self.records if r["phase"] == "post" and r["acked"] >= 3))
+        rec["served_ref"] -= 1
+        rec["absent"] += 1
+        s, j, v = self.pl.check_record(rec)
+        self.assertEqual(v.kind, "violation", v.to_json())
+        self.assertIn(v.explanation["record"]["event"], ("persisted-records", "served-counts"))
+
+    def test_a_non_prefix_selection_is_no_history(self):
+        s = self.pl.scenario_for({"phase": "post", "cut": 1, "mode": "subset", "acked": 1,
+                                  "refused": 0, "served_ref": 2, "absent": 1, "other": 0})
+        history = {"post-1": "committed", "post-2": "absent", "post-3": "committed"}
+        rec = {"seq": 0, "kind": "environment", "event": "persisted-write-selection",
+               "open": ["post-2", "post-3"]}
+        ok, rules = contract.narrow(s, history, rec, Journal(s.id), REGISTRY)
+        self.assertFalse(ok)
+        self.assertEqual(rules, ("power-loss-prefix",))
+        history["post-2"] = "committed"
+        self.assertTrue(contract.narrow(s, history, rec, Journal(s.id), REGISTRY)[0])
+
+    def test_a_reused_number_is_a_violation(self):
+        rec = dict(next(r for r in self.records if r["phase"] == "post" and r.get("binding")))
+        rec["binding"] = dict(rec["binding"], fresh_number=rec["binding"]["max_served"])
+        s, j, v = self.pl.check_record(rec)
+        self.assertEqual(v.kind, "violation", v.to_json())
+        self.assertEqual(v.explanation["rules"], ["number-stability"])
 
 
 class ContractRuleTests(unittest.TestCase):
