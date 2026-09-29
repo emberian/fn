@@ -4,8 +4,8 @@ import subprocess
 import unittest
 
 from tests.native_harness import (
+    Acl2Session,
     acl2_octets, environment, executable, native_image, run, scratch)
-from tools import run_store  # the ACL2 bridge session (Acl2Store, metadata): no image verb yet
 
 IMAGE = native_image("FN_NATIVE_DTN_DEVELOPER_HOST")
 
@@ -223,10 +223,9 @@ class NativeApplicationJournalTests(unittest.TestCase):
         # Python is setup/oracle only: it asks ACL2 for a canonical request
         # ADU.  The operation under test and every durable record are native.
         article = self.payload.read_bytes()
-        bridge = run_store.Acl2Store()
-        try:
+        with Acl2Session(IMAGE) as bridge:
             msgid = self.msgid.encode("ascii")
-            _archive, subject, _evidence = run_store.metadata(msgid, article, bridge)
+            subject = bridge.subject(msgid, article)
             # The committed record's exact octets, as the open reads them:
             # `store export' writes them (format 9 keeps them in the record
             # log, not in a transaction file).
@@ -234,10 +233,6 @@ class NativeApplicationJournalTests(unittest.TestCase):
             exported = self.invoke("store", self.store, "export", archive)
             self.assertEqual(exported.returncode, 0, exported.stderr)
             record = next((archive / "records").glob("*.txn")).read_bytes()
-            bridge.call(
-                '(ld "host/bp-receipt-journal-host.lisp" '
-                ':ld-error-action :return :ld-error-triples t)'
-            )
             fields = [
                 b"work-a", subject, b"dtn://fn-a/", b"dtn://fn.lab/inbox",
                 b"policy-a", b"incarnation-a", b"authorization-a", b"terms-a",
@@ -246,8 +241,6 @@ class NativeApplicationJournalTests(unittest.TestCase):
             form += " ".join(self.text_form(field) for field in fields)
             form += " '(" + " ".join(map(str, article)) + ")))"
             request = acl2_octets(bridge.call(form))
-        finally:
-            bridge.close()
 
         request_path = self.tmp / "request.adu"
         record_path = self.tmp / "store.record"

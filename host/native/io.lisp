@@ -2399,24 +2399,56 @@ empties it first (fnn-bridge-recover)."
           (values :ok (second answer))
           (values :refused 0)))))
 
-(defun fnn-recover-suffix-rows (store suffix config-records &optional decoded)
-  "The open from the loaded checkpoint: the suffix decoded
-(fn-store-sn-recover-records; DECODED when the caller decoded SUFFIX with it
-already), interned ON TOP of the arena the load left by
-the guard-verified fn-intern-events (records nil 0: the canonical handles
-continue from the checkpoint's payload count), then the open over the rows
-(fn-store-sn-recover-from-checkpoint).  The three calls are
+(defun fnn-recover-suffix-intern (suffix configs acc)
+  "The suffix over the loaded checkpoint (SUFFIX, the records as octet
+vectors; CONFIGS, the configuration records as ACL2's octet lists) decoded
+and interned ON TOP of the arena the load left, a chunk at a time: the
+chunks `fnn-recover-record-chunks' closes (fn-srs-chunk-fullp), each
+decoded (fn-store-decode-records, which is fn-srs-decode) and interned by
+the guard-verified fn-srs-intern-step, as the full replay's chunks are.
+Answers (values ROWS ACC2): ROWS oldest first (fn-srs-rows), or :bad when
+the configuration history or any chunk does not decode or intern; ACC2 the
+txid fold (fn-store-log-next-txid-of-events) of every decoded event over
+ACC, or ACC when ROWS is :bad.
+
+Lane heap-bounds (row B3): the suffix was converted to octet lists and
+decoded WHOLE (sixteen heap octets an octet and its decode beside it), so a
+checkpoint's long suffix held two list copies of every suffix octet at once
+-- the reopen of a 100,000-post store with a 19,082-record suffix exhausted
+the heap at the launcher's own figure, whose open term is a chunk.  Any
+chunking interns what one step over the whole suffix interns
+(books/store-recover-stream.lisp KEYSTONES
+fn-srs-steps-are-one-step-of-the-concatenation and
+fn-srs-one-step-is-the-intern-of-the-decode, for any arena: here the
+checkpoint's), which is the fn-intern-events of the decode that
+fn-scka-recover-rows makes (books/store-checkpoint-arena.lisp)."
+  (if (eq (fnn-core 'fn-store-sn-recover-records nil configs) :bad)
+      (values :bad acc)
+      (let ((next (fnn-recover-record-chunks suffix)) (rows nil) (fold acc))
+        (loop
+          (let ((decoded (funcall next)))
+            (when (eq decoded :end) (return))
+            (when (eq decoded :bad) (return-from fnn-recover-suffix-intern (values :bad acc)))
+            (setq fold (fnn-core 'fn-store-log-next-txid-of-events decoded fold)
+                  rows (first (fnn-call 'fn-srs-intern-step rows decoded (fnn-live-arena))))
+            (when (eq rows :bad) (return-from fnn-recover-suffix-intern (values :bad acc)))))
+        (values (fnn-core 'fn-srs-rows rows) fold))))
+
+(defun fnn-recover-suffix-rows (store suffix config-records &optional (interned nil internedp))
+  "The open from the loaded checkpoint: the suffix decoded and interned ON
+TOP of the arena the load left, a chunk at a time (fnn-recover-suffix-intern;
+INTERNED, its rows, when the caller interned SUFFIX with it already; the
+canonical handles continue from the checkpoint's payload count), then the
+open over the rows (fn-store-sn-recover-from-checkpoint).  The calls are
 fn-scka-recover-rows over the host's extension (books/store-checkpoint-
-arena.lisp, KEYSTONE fn-scka-recover-from-checkpoint-is-full-recover)."
+arena.lisp, KEYSTONE fn-scka-recover-from-checkpoint-is-full-recover), its
+intern chunked (fnn-recover-suffix-intern's keystones)."
   (let* ((configs (mapcar #'fnn-octet-list config-records))
-         (decoded (or decoded
-                      (fnn-core 'fn-store-sn-recover-records
-                                (mapcar #'fnn-octet-list suffix) configs))))
-    (if (eq decoded :bad)
+         (rows (if internedp interned (values (fnn-recover-suffix-intern suffix configs 0)))))
+    (if (eq rows :bad)
         :fault
-        (let ((rows (first (fnn-call 'fn-intern-events decoded nil 0 (fnn-live-arena)))))
-          (fnn-action (fnn-core-state 'fn-store-sn-recover-from-checkpoint
-                                      rows (fnn-store-frontier store) configs))))))
+        (fnn-action (fnn-core-state 'fn-store-sn-recover-from-checkpoint
+                                    rows (fnn-store-frontier store) configs)))))
 
 
 (defun fnn-open-report (store)
@@ -4776,6 +4808,27 @@ in use (lane compression-extents-2)."
                     +fnn-exit-ok+)))
       (fnn-store-close store))))
 
+(defun fnn-command-provenance (root message-id)
+  "`store ROOT provenance MSGID': the provenance the article's retention pin
+records, as ACL2 describes it (host/store-node-host.lisp
+fn-store-prov-for-msgid, books/provenance-inspect.lisp fn-provi-of-msgid),
+then LF; refused when the store binds no such Message-ID or its pin was
+released.  The host decodes nothing: it relays ACL2's octets."
+  (multiple-value-bind (store records) (fnn-open-live-store root nil)
+    (declare (ignore records))
+    (unwind-protect
+         (progn
+           (unless (every (lambda (c) (< (char-code c) 128)) message-id)
+             (error 'fnn-usage-error :message "Message-ID is not ASCII"))
+           (let ((value (fnn-core-state 'fn-store-prov-for-msgid
+                                        (fnn-ascii-octet-list message-id))))
+             (cond ((null value) +fnn-exit-refused+)
+                   (t (write-sequence (fnn-as-octets value) *fnn-stdout*)
+                      (write-byte 10 *fnn-stdout*)
+                      (finish-output *fnn-stdout*)
+                      +fnn-exit-ok+))))
+      (fnn-store-close store))))
+
 (defun fnn-probe-article (sequence size)
   "A well-formed article of exactly SIZE octets for probe record SEQUENCE: a
 head naming its Message-ID, groups and Subject, a blank line, and a body of
@@ -5371,6 +5424,7 @@ connection `fn-reader-reset' opens and projects with
 ;;;   store ROOT init [GROUP...] | recover | status | retention | config
 ;;;   store ROOT post MESSAGE-ID PAYLOAD CHARGE|- FAULT|- GROUP...
 ;;;   store ROOT inspect MESSAGE-ID
+;;;   store ROOT provenance MESSAGE-ID
 ;;;   store ROOT probe COUNT
 ;;;   reader PORT ONCE(0|1) STORE-ROOT|-
 ;;;   model CHUNK-FILE STORE-ROOT|-
@@ -5597,6 +5651,9 @@ with its depth, and the rows under it name the path that called it."
     ;; the catalog's tables (books/catalog.lisp exports, :exec side)
     fn-cat$c-group-number fn-cat$c-msgid-seqs fn-cat$c-at fn-cat$c-visible-at
     fn-cat$c-group-next fn-cat$c-group-count
+    ;; the maintained group summary and withdrawal horizon (one cell each)
+    fn-cat$c-group-live-count fn-cat$c-group-live-low fn-cat$c-group-live-high
+    fn-cat$c-horizon
     ;; the catalog finders over them
     fn-cnx-view-seq fn-cnx-view-range fn-scat-range-numbers
     (fn-cat-view-last-visible . 0) fn-cat-row-article
@@ -6254,8 +6311,12 @@ acknowledges past the committed records' count)."
   ;; The oracle's records are the segment's own, decoded again from its
   ;; bytes (the concrete kernel keeps only their count).
   (let ((ks (fnn-log-kernel log))
+        ;; From the segment's own genesis (a store's segment 1 chains from
+        ;; its genesis record: `log scan-store'), the log's constant one
+        ;; for a bare rig segment.
         (records (fnn-log-open-kernel (fnn-log-fd log) (fnn-log-extent log)
-                                      (fnn-log-unit log) (fnn-log-max log))))
+                                      (fnn-log-unit log) (fnn-log-max log)
+                                      (or (fnn-log-genesis log) *fn-lg-genesis*))))
     (fnn-out "~a records=~d frontier=~d next=~d last=~a workload=~(~a~)"
              what (fnn-core 'fn-lgc-acked ks) (fnn-core 'fn-lgc-frontier ks)
              (fnn-core 'fn-lgc-next-txid ks) (fnn-hex (fnn-core 'fn-lgc-last ks))
@@ -6729,7 +6790,7 @@ and last trailer must be the kernel's, or the read is a fault."
              (fnn-fault "the active log segment does not read back its committed records")))
       (fnn-close fd))))
 
-(defun fnn-recover-log-from-log-checkpoint (store config-records suffix s &optional decoded)
+(defun fnn-recover-log-from-log-checkpoint (store config-records suffix s &optional (interned nil internedp))
   "The open from a checkpoint whose F row names the log's first suffix
 segment: SUFFIX is the scan from there (T8: with the checkpoint's records it
 is the whole history), replayed over the checkpoint
@@ -6738,7 +6799,9 @@ there is no full replay to fall back to: a checkpoint the open cannot use is
 refused by name."
   (progn
     ;; S: the loaded checkpoint's (fnn-recover-log loaded it once, first).
-    (let ((action (fnn-recover-suffix-rows store suffix config-records decoded)))
+    (let ((action (if internedp
+                      (fnn-recover-suffix-rows store suffix config-records interned)
+                      (fnn-recover-suffix-rows store suffix config-records))))
       (unless (eq action :recovering)
         ;; A replay that stopped names itself (fn-store-open-refusal-text:
         ;; books/store-open-replay-refusal.lisp); else the checkpoint is damaged.
@@ -6851,19 +6914,17 @@ does, and records how the log holds the history (fnn-store-log-history) for
               (when replay
                 (fnn-recover-log-stream-flush replay)
                 (setq acc (fourth replay)))
-              ;; The suffix over a log checkpoint, decoded once (ACL2's
-              ;; fn-store-sn-recover-records): the txid fold reads the decoded
-              ;; events (fn-store-log-next-txid-of-events, as the streamed
-              ;; replay's does), and the replay over the checkpoint takes the
-              ;; same decode (fnn-recover-suffix-rows).  A suffix that does not
-              ;; decode folds nothing here; its replay refuses the open.
+              ;; The suffix over a log checkpoint, decoded and interned once,
+              ;; a chunk at a time (fnn-recover-suffix-intern): the txid fold
+              ;; reads each chunk's decoded events (fn-store-log-next-txid-of-
+              ;; events, as the streamed replay's does), and the replay over
+              ;; the checkpoint opens over the rows (fnn-recover-suffix-rows).
+              ;; A suffix that does not decode folds nothing here; its replay
+              ;; refuses the open.
               (when (and log-position (not replay))
-                (setq kept (nreverse kept)
-                      decoded (fnn-core 'fn-store-sn-recover-records
-                                        (mapcar #'fnn-octet-list kept)
-                                        (mapcar #'fnn-octet-list config-records)))
-                (unless (eq decoded :bad)
-                  (setq acc (fnn-core 'fn-store-log-next-txid-of-events decoded acc))))
+                (setq kept (nreverse kept))
+                (multiple-value-setq (decoded acc)
+                  (fnn-recover-suffix-intern kept (mapcar #'fnn-octet-list config-records) acc)))
               (fnn-log-batch-reset log)
               (setf (fnn-store-log-last store)
                     (and newest (list (fnn-core 'fn-lgc-count (fnn-log-kernel log)) newest)))
@@ -7235,9 +7296,41 @@ observation (the COMPLETE re-signals it under the owner)."
 ;; EXTENT UNIT MAX SIZE BATCHES PER' (the power-loss rig's workload: recover,
 ;; then BATCHES batches of PER workload records, one `ACK' line after each
 ;; fence and its acknowledgements, flushed).
+(defun fnn-command-log-scan-store (root)
+  "`log scan-store ROOT': the rig's SCAN line over a format-10 store's first
+segment, every parameter the store's own and none typed: the profile from
+config.json (fnn-metadata-config-decode), the chain segment 1 starts from out
+of journal/000000.log under that profile (fnn-genesis-open: ACL2's
+fn-store-genesis-open, refused by name), the unit (fn-store-log-unit) and
+the record bound (fn-store-profile-max-record-octets; the entry header's
+length field is read against it).  Read only, no lock: the durable prefix a
+crash would keep, while an owner may run (tests/native_log_observation.py)."
+  (let* ((store (make-fnn-store root))
+         (raw (fnn-read-regular-bounded (fnn-config-path store) 16384))
+         (profile (fnn-metadata-config-decode raw))
+         (genesis (progn (setf (fnn-store-config store) profile)
+                         (fnn-genesis-open store profile)))
+         (unit (fnn-store-log-unit))
+         (max (fnn-store-log-max store))
+         (path (fnn-segment-path-at store 1))
+         (extent (fnn-log-observed-extent path))
+         (fd (fnn-log-open-segment path extent unit t)))
+    (unwind-protect
+         (fnn-log-rig-line "SCAN" (%make-fnn-log :path path :fd fd :unit unit :max max
+                                             :extent extent :genesis genesis
+                                             :kernel (nth-value 1 (fnn-log-open-kernel
+                                                                   fd extent unit max genesis)))
+                       0)
+      (fnn-close fd)))
+  +fnn-exit-ok+)
+
 (defun fnn-command-log (command argv)
+  (when (string= command "scan-store")
+    (unless (= (length argv) 1)
+      (error 'fnn-usage-error :message "log scan-store ROOT"))
+    (return-from fnn-command-log (fnn-command-log-scan-store (first argv))))
   (unless (member command '("scan" "recover" "append") :test #'equal)
-    (error 'fnn-usage-error :message "log scan|recover|append SEGMENT EXTENT UNIT MAX SIZE [BATCHES PER]"))
+    (error 'fnn-usage-error :message "log scan|recover|append SEGMENT EXTENT UNIT MAX SIZE [BATCHES PER] | log scan-store ROOT"))
   (when (and (not (string= command "scan")) (not (fnn-developer-image-p)))
     (error 'fnn-usage-error :message (format nil "log ~a is a developer-image verb" command)))
   (when (< (length argv) (if (string= command "append") 7 5))
@@ -7349,6 +7442,7 @@ observation (the COMPLETE re-signals it under the owner)."
                   (fnn-refuse "~a" (fnn-core 'fn-store-repair-control-text)))
                  ((string= command "config") (fnn-command-config root))
                  ((string= command "inspect") (need 4) (fnn-command-inspect root (first rest)))
+                 ((string= command "provenance") (need 4) (fnn-command-provenance root (first rest)))
                  ((string= command "probe")
                   (need 4)
                   (fnn-command-probe root (parse-integer (first rest))
@@ -7413,7 +7507,7 @@ observation (the COMPLETE re-signals it under the owner)."
 ;;; dynamic space (1.6 GB at the launcher's 32 GB) and let that much garbage
 ;;; pile up between collections (rep-wave-d baseline, section 1.2).  It bounds
 ;;; dead memory, never data, and decides nothing ACL2 decides.
-(defparameter +fnn-gc-nursery-octets+ (* 64 1024 1024))
+(defparameter +fnn-gc-nursery-octets+ (* (fn-profile-limit :gc-nursery-mib) 1024 1024)) ; books/profile-limits.lisp
 
 ;;; HST-025: the trigger is also bounded by the dynamic space this process
 ;;; reserved.  SBCL's own default is a fixed fraction of it (5%); a copying

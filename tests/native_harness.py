@@ -650,6 +650,127 @@ def acl2_keyword(output):
     return body.decode("ascii").lower()[1:]
 
 
+# --- The image's own ACL2 session ------------------------------------------
+
+ACL2_SESSION_PROMPT = re.compile(rb"ACL2 [a-z]*!?>+\s*\Z")
+
+
+class Acl2Session:
+    """`fn acl2 session` of a developer image (host/native/acl2-session.lisp):
+    ACL2's loop over the image's own certified world, for the fixtures only
+    ACL2 may compute (a content identity, a BP request, bundle or fragment a
+    scripted peer sends, a staged store frame).  `call(form)` returns what
+    ACL2 printed up to and including its prompt, the shape `acl2_result`
+    and its siblings parse.  It replaces the retired Python host's bridge
+    session (tools/run_store.py Acl2Store): no second ACL2, no books to
+    include, and nothing here computes a value ACL2 owns."""
+
+    def __init__(self, image=None, *, timeout=120):
+        if image is None:
+            image = native_image("FN_NATIVE_DEVELOPER_HOST")
+            if not executable(image):
+                image = native_image("FN_NATIVE_DTN_DEVELOPER_HOST")
+        self.image = Path(image)
+        self.timeout = timeout
+        self.proc = subprocess.Popen(
+            # The session is the test's own ACL2, not the node under test: it
+            # runs at ACL2's save-exec stack (64 MiB, what the retired bridge
+            # session had), because printing a 49 KiB bundle's octet list
+            # recurses past the deployed node's 1 MiB control stack.
+            [str(self.image), "--fn", "acl2", "session"], cwd=ROOT,
+            env=environment({"SBCL_USER_ARGS": "--control-stack-size 64MB"}, stack=False),
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        try:
+            self._until_prompt()
+            # The bridge's mode: invariant-risk checks without warning text.
+            self.call("(set-check-invariant-risk t)")
+        except BaseException:
+            self.close()
+            raise
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+    def _until_prompt(self, timeout=None):
+        import select
+        data = bytearray()
+        timeout = timeout or self.timeout
+        deadline = time.monotonic() + timeout
+        fd = self.proc.stdout.fileno()
+        while not ACL2_SESSION_PROMPT.search(data[-64:]):
+            left = deadline - time.monotonic()
+            if left <= 0:
+                raise Acl2ValueError("no ACL2 prompt within {} s: {!r}".format(
+                    timeout, bytes(data[-400:])))
+            ready, _, _ = select.select([fd], [], [], left)
+            if ready:
+                chunk = os.read(fd, 65536)
+                if not chunk:
+                    raise Acl2ValueError("the ACL2 session ended (exit {}): {!r}".format(
+                        self.proc.poll(), bytes(data[-400:])))
+                data += chunk
+        return bytes(data)
+
+    def call(self, form, timeout=None):
+        """FORM (text) evaluated; ACL2's printed value and its prompt.  The
+        image's world already holds every book it was built with; an
+        `include-book` here would load a book's source over it, uncertified
+        (the image's tree need not hold certificates), and is refused.  An
+        `ld` of a tool's own program file (tools/synth-log-store.lisp) is
+        the tool's business."""
+        if re.match(r"\s*\(include-book\s", form, re.IGNORECASE):
+            raise Acl2ValueError("the image's world is loaded; no include-book in a session")
+        self.proc.stdin.write(form.encode("utf-8") + b"\n")
+        self.proc.stdin.flush()
+        output = self._until_prompt(timeout)
+        return ACL2_SESSION_PROMPT.sub(ACL2_PROMPT, output)
+
+    @staticmethod
+    def literal(octets):
+        """OCTETS as an ACL2 list of naturals, `(72 101 ...)`."""
+        return "(" + " ".join(str(octet) for octet in octets) + ")"
+
+    def text(self, octets):
+        """A form whose value is OCTETS as the string ACL2's record fields hold."""
+        return "(fn-store-octets->string '" + self.literal(octets) + ")"
+
+    def subject(self, msgid, article):
+        """ARTICLE's canonical subject identity, as the text a record field
+        carries (books/identity.lisp: fn-store-subject-id-of-payload, then
+        fn-store-identity-text).  MSGID is accepted for the old call shape
+        (run_store.metadata) and not part of the subject."""
+        del msgid
+        return acl2_octets(self.call(
+            "(fn-store-identity-text (fn-store-subject-id-of-payload '"
+            + self.literal(article) + "))"))
+
+    def bp_request(self, fields, article):
+        """The BP application request (books/bp-adu.lisp fn-bpa-encode of
+        fn-bpa-make-request) of FIELDS -- work, subject, source, destination,
+        policy, origin, authorization, terms, each octets -- and ARTICLE."""
+        return acl2_octets(self.call(
+            "(fn-bpa-encode (fn-bpa-make-request "
+            + " ".join(self.text(value) for value in fields)
+            + " '" + self.literal(article) + "))"))
+
+    def close(self):
+        proc, self.proc = getattr(self, "proc", None), None
+        if proc is None:
+            return
+        with contextlib.suppress(OSError, ValueError):
+            proc.stdin.write(b":q\n")
+            proc.stdin.close()
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        proc.stdout.close()
+
+
 # --- Images and the environment ------------------------------------------
 
 # Where each image variable points when unset (tools/native_env.py IMAGES

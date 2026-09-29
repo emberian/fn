@@ -14,7 +14,8 @@
 (in-package "ACL2")
 (include-book "served-carried")
 (include-book "owner-tls-prefix")
-(include-book "config-owner-live")
+(include-book "config-owner-live-complete")
+(include-book "config-store-traces")
 
 (defun fn-scar-conn-boundedp (conn groups live)
   (declare (xargs :guard t))

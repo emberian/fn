@@ -16,6 +16,7 @@
 (in-package "ACL2")
 (include-book "journal-publish")
 (include-book "byte-store-txn-name")
+(include-book "consumer-position")
 
 (defconst *fn-bpn-evidence-max-records* 4096)
 

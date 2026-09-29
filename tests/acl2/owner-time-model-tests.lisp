@@ -161,7 +161,7 @@ disk space: unobserved (statvfs gave nothing; an append that finds the disk full
 ; committer's START-NEXT (its wake is :start-next: a member queued, the syncer
 ; not returned) and two readers wait; then a status and the readers.  The
 ; quanta before the reader: :inspect, :commit (took a member), :inspect.
-(assert-event (equal (fn-otm-committer-wake *otmt-s1* nil t) :start-next))
+(assert-event (equal (fn-otm-committer-wake *otmt-s1* nil t *otmt-rci*) :start-next))
 (defconst *otmt-ws* (list (list *otmt-rci* :next-started)
                           (list *otmt-rci* :next-started)
                           (list *otmt-ri* nil)
@@ -209,7 +209,7 @@ disk space: unobserved (statvfs gave nothing; an append that finds the disk full
 (defconst *otmt-ws-c* (list (list *otmt-rc* :next-started) (list *otmt-rc* :next-started)))
 (assert-event (not (fn-otm-barrier-walk-okp *otmt-s1* *otmt-ws-c*)))
 (assert-event (equal (fn-otm-committer-wake (otmt-event (otmt-pick *otmt-s1* *otmt-rc*) :next-started)
-                                            nil t)
+                                            nil t *otmt-rc*)
                      :wait))
 (assert-event (equal (fn-otm-walk-started *otmt-s1* *otmt-ws-c*) 2))
 ; the first item alone satisfies it
@@ -364,7 +364,9 @@ disk space: unobserved (statvfs gave nothing; an append that finds the disk full
 (assert-event (equal (t2-jparse (otmt-text "1 2")) '(:torn nil)))
 (assert-event (equal (t2-jparse (otmt-text "1 x
 ")) '(:malformed nil)))
-(assert-event (equal (fn-otm-start-line 5 7) (otmt-text "0 0 5 7 0 0 0
+(assert-event (equal (fn-otm-start-line 7 t) (otmt-text "0 0 0 7 1 0 0
+")))
+(assert-event (equal (fn-otm-start-line 7 nil) (otmt-text "0 0 0 7 0 0 0
 ")))
 
 ; A reached run of the host's calls, interleaved (the gate's pick, the

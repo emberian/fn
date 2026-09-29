@@ -46,13 +46,13 @@
 (include-book "owner")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 
-; LOCAL, deliberately.  books/owner-invariants owns the connection-list
+; LOCAL, deliberately.  books/owner-invariants-outcome owns the connection-list
 ; algebra this book reasons with (`fn-own-find-conn-of-remove-conn-other');
 ; citing it is right and restating it here would be a second copy.  But
 ; host/owner-host.lisp includes THIS book to reach `fn-own-fault', and a
 ; served node has no use for two thousand lines of proof rules in its world,
 ; so the dependency stops at the certificate.
-(local (include-book "owner-invariants"))
+(local (include-book "owner-invariants-outcome"))
 
 ; -----------------------------------------------------------------------------
 ; The reply

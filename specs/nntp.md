@@ -426,6 +426,22 @@ durability. This is the reading the power-loss campaign measured
 (`planning/evidence/power-loss-2026-09-26.md`, "a lost POST's number is used
 again": at 258 cuts the fresh POST after recovery took the lost in-flight
 POST's number, and no acknowledged or served number moved or was issued twice).
+The ruling (lane durability-bugs, row I3, 2026-09-28): a number is ISSUED
+when a party outside the owner can observe it (a reader's GROUP, LISTGROUP,
+OVER or ARTICLE n, a web page, a log line, a feed, a consumer, a 240), and a
+number once issued is never issued again, across any number of crashes
+(PRF-903, books/number-durability.lisp: KEYSTONES
+fn-ndur-recovery-keeps-every-visible-number over the host's open,
+fn-ndur-prepare-never-allocates-below-the-watermark,
+fn-ndur-crash-trace-never-reissues-a-number). Every observation is of the
+completed prefix, whose barrier returned fenced
+(fn-ocvm-reader-view-is-the-completed-prefix); the live status page's
+`articles=` count is the one exception, a count, not a number (PKT-885). A
+durable per-group reservation was rejected: it would protect numbers no party
+could observe, at a barrier per block and a record kind, against RFC 3977
+section 6's "SHOULD allocate the next sequential unused number". The
+power-cut campaign's observing reader (`tools/power_loss.py workload
+--observe`, SCN-198) checks it natively.
 
 NNT-042: a reader connection's view of the store is a VERSION (the public
 concept is the ViewId: the committed count when the view was taken, until the
@@ -1436,6 +1452,89 @@ ownership and stable `MSG_PEEK`/consume behavior are explicit scheduling and
 platform premises; a short, changed or failed consume closes the connection
 without replaying the logical transition.
 
+### AUTHINFO SASL (NNT-056)
+
+NNT-056: AUTHINFO SASL: SCRAM-SHA-256 (and -PLUS over TLS 1.3 with tls-exporter) and PLAIN over TLS, with ACL2 deciding the whole exchange and the server never storing the password
+
+RFC 4643 section 2.4 defines `AUTHINFO SASL`; fn offers three mechanisms,
+chosen for what they let fn state, not for coverage:
+
+| mechanism | offered when | what it adds |
+| --- | --- | --- |
+| `SCRAM-SHA-256-PLUS` ([RFC 5802], [RFC 7677], [RFC 9266]) | TLS 1.3 is active and the host installed the `tls-exporter` value | the password never crosses the wire, the server proves it holds the verifier (283), and the exchange is bound to this TLS session, so a relayed exchange fails |
+| `SCRAM-SHA-256` | the host installed the connection's nonce seed | the password never crosses the wire; mutual authentication |
+| `PLAIN` ([RFC 4616]) | TLS is active (483 before) | USER/PASS without its whitespace limits (RFC 4643 section 2.4.2's recommendation), checked by the same verifier |
+
+**Deviation, stated**: RFC 4643 section 2.4.2 makes DIGEST-MD5 mandatory to
+implement. [RFC 6331] moved DIGEST-MD5 to Historic; fn does not implement it
+and names SCRAM-SHA-256 as its interoperable mechanism instead.
+`tls-exporter` (RFC 9266) replaces RFC 5802's default `tls-unique`, which is
+undefined for TLS 1.3. The mechanism names are compared without regard to
+case.
+
+**The wire.** `AUTHINFO SASL MECH [INITIAL]`; `383 CHALLENGE` (the empty
+challenge is `383 =`); the client's response is a line of canonical base64,
+`=` for empty, `*` to cancel. Replies: 281 (PLAIN accepted), 283
+server-final (SCRAM accepted: the client checks `v=` before trusting the
+server), 481 (failed or cancelled; the reason is never on the wire and 481
+counts toward the address's failed-login limit exactly as USER/PASS's does),
+483, 501, 502, 503 (a mechanism this connection does not offer), 504 (a
+response that is not canonical base64). While an exchange is kept, a line is
+its response and never a command (RFC 4643 section 3.2). A challenge is sent
+on one reply line of at most 512 octets; RFC 4643 lets a server exceed that
+and fn does not, so a client nonce too long for server-first to fit fails the
+exchange with 481. CAPABILITIES lists `AUTHINFO USER SASL` (or `AUTHINFO
+SASL`) and `SASL` with the offered mechanisms, and keeps the `SASL` line after
+authentication (RFC 4643 section 2.2).
+
+**The stored credential gains SCRAM's keys.** The verifier becomes
+`(:fn-authsec-v2 salt digest stored-key server-key)`: the salt and fast digest
+of v1 (USER/PASS and PLAIN check it), and SCRAM's StoredKey and ServerKey
+derived from the password under the same salt and 4096 iterations of
+PBKDF2-HMAC-SHA-256 (RFC 7677 section 4's minimum). The server never keeps the
+password or SaltedPassword. PBKDF2 runs at enrolment only (`principal
+set-password`, an XREDEEM redemption): every served step runs under the
+owner's one mutex, and a per-login KDF would stall every connection. So a
+stolen verifier is attacked through the fast digest; the iteration count
+protects what crosses the wire, not what a stolen file reveals. Retiring the
+fast digest means running the KDF off the mutex (a resumable step); that is
+an open item for ember, not a claim. Fresh deploy: no v1 row is read.
+
+**SASLprep.** Every fn password and login is an NNTP printable token (octets
+33 to 126), and on that alphabet SASLprep ([RFC 4013]) is the identity, so fn
+compares octets. A client that SASLpreps a non-ASCII password presents octets
+fn never enrolled and fails.
+
+**The server nonce and the binding** come from the host, never from a client
+octet: the `(:sasl-context SEED BINDING)` wire event, sent at open and again
+after every TLS handshake, installs 32 CSPRNG octets and (under TLS 1.3) the
+32-octet exporter value; 382 clears both. The s-nonce is base64 of 18 octets
+of BLAKE3-keyed(SEED, "fn/scram-server-nonce/v1" || c-nonce): fn's derivation,
+so BLAKE3. A login the snapshot does not hold gets a server-first like any
+other (the salt derived from the login) and fails at the proof, after the
+same work. That salt is not keyed by a secret: fn does not claim logins are
+secret (XREDEEM's login-taken refusal names them).
+
+**Proved** (PRF-915, PRF-916, PRF-917): HMAC and PBKDF2 execute as their RFC
+text (an `mbe` whose guard proof equates the key-block midstate evaluation
+with the definition); an honest SCRAM client -- one that derived its proof
+from the enrolled password -- is accepted for every AuthMessage; a
+client-final carrying another exchange's nonce, or another binding than the
+exchange fixed, is refused before any key is read; a login without a stored
+key never succeeds; PLAIN succeeds exactly on the check USER/PASS runs. That a
+client without the password cannot forge a proof is HMAC's and SHA-256's
+strength (A-CRYPTO) and is witnessed, not proved. Evidence by evaluation: RFC
+4231's HMAC vectors, RFC 7914's PBKDF2 vectors and RFC 7677's complete
+exchange, byte for byte, with one-change teeth
+(`tests/acl2/hmac-sha256-tests.lisp`, `tests/acl2/scram-tests.lisp`).
+
+[RFC 4013]: https://www.rfc-editor.org/rfc/rfc4013.html
+[RFC 4616]: https://www.rfc-editor.org/rfc/rfc4616.html
+[RFC 5802]: https://www.rfc-editor.org/rfc/rfc5802.html
+[RFC 6331]: https://www.rfc-editor.org/rfc/rfc6331.html
+[RFC 7677]: https://www.rfc-editor.org/rfc/rfc7677.html
+[RFC 9266]: https://www.rfc-editor.org/rfc/rfc9266.html
+
 ### Invitation-code accounts (NNT-034)
 
 NNT-034: An operator's one-use invitation code lets a friend make their own AUTHINFO account over TLS, bound once and only once across a crash, without the operator editing auth.toml or restarting
@@ -1696,13 +1795,13 @@ and sends, waits or closes as the answer says.
 
 | Slot | Decides | The client sees | Loopback default | Public default |
 | --- | --- | --- | --- | --- |
-| `exposure-connections` | the connection capacity: connections held at once (NNT-043) | `400 too many connections; try again later`, then close (RFC 3977 §5.1.1) | 31 | 31 |
-| `exposure-per-address` | connections held from one source address outside `exposure-trusted` | `400 too many connections from this address; try again later` | the total | 8 |
-| `exposure-steps-per-second` | served steps one address starts per 1000 ms (one step: one host read, D27 work) | nothing: the connection waits for the next quantum (TCP backpressure) | unlimited | 64 |
-| `exposure-first-seconds` | wait for the first command (RFC 3977 §3.1 permits a shorter one) | close, no reply (§3.1) | none | 60 |
-| `exposure-idle-seconds` | autologout after that (§3.1: at least three minutes) | close, no reply | none | 600 |
-| `exposure-auth-failures` | `481` answers one address may draw per minute | `400 too many authentication failures; closing connection`, and at the next accept `400 too many authentication failures from this address` | unlimited | 10 |
-| `exposure-posts-per-minute` | submissions per authenticated principal per minute | nothing: the principal's connections wait for the next minute | unlimited | 60 |
+| `exposure-connections` | the connection capacity: connections held at once (NNT-043) | `400 too many connections; try again later`, then close (RFC 3977 §5.1.1) | <!--limit:max-connections - 1-->31<!--/limit--> | <!--limit:max-connections - 1-->31<!--/limit--> |
+| `exposure-per-address` | connections held from one source address outside `exposure-trusted` | `400 too many connections from this address; try again later` | the total | <!--limit:exposure-per-address-->8<!--/limit--> |
+| `exposure-steps-per-second` | served steps one address starts per 1000 ms (one step: one host read, D27 work) | nothing: the connection waits for the next quantum (TCP backpressure) | unlimited | <!--limit:exposure-steps-per-second-->64<!--/limit--> |
+| `exposure-first-seconds` | wait for the first command (RFC 3977 §3.1 permits a shorter one) | close, no reply (§3.1) | none | <!--limit:exposure-first-seconds-->60<!--/limit--> |
+| `exposure-idle-seconds` | autologout after that (§3.1: at least three minutes) | close, no reply | none | <!--limit:exposure-idle-seconds-->600<!--/limit--> |
+| `exposure-auth-failures` | `481` answers one address may draw per minute | `400 too many authentication failures; closing connection`, and at the next accept `400 too many authentication failures from this address` | unlimited | <!--limit:exposure-auth-failures-->10<!--/limit--> |
+| `exposure-posts-per-minute` | submissions per authenticated principal per minute | nothing: the principal's connections wait for the next minute | unlimited | <!--limit:exposure-posts-per-minute-->60<!--/limit--> |
 | `anonymous` (policy) | what an unauthenticated session may do: `none` or `open` | under `none`, `480 authentication required` for every reader and posting command (RFC 4643 §2.2) | as `[auth] required` | `none` |
 
 Progress that resets the timers is an answered command or 512 octets

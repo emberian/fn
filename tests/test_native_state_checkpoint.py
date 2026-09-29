@@ -87,10 +87,20 @@ class StateCheckpointSourceTests(unittest.TestCase):
         self.assertIn("'fn-store-sco-select", opened)
         self.assertIn("(fnn-recover-suffix-rows store suffix config-records)", opened)
         suffix_rows = native_cuts.host_function(io, "fnn-recover-suffix-rows")
-        self.assertIn("'fn-store-sn-recover-records", suffix_rows)
-        self.assertIn("(fnn-call 'fn-intern-events decoded nil 0 (fnn-live-arena))", suffix_rows)
+        self.assertIn("(fnn-recover-suffix-intern suffix configs 0)", suffix_rows)
         self.assertIn("'fn-store-sn-recover-from-checkpoint", suffix_rows)
         self.assertNotIn("fn-arena-clear", suffix_rows)
+        # heap-bounds (B3): the suffix is decoded and interned a chunk at a
+        # time on top of the loaded arena (fn-srs-intern-step is the
+        # fn-intern-events of fn-scka-recover-rows over any chunking:
+        # fn-srs-steps-are-one-step-of-the-concatenation), never whole.
+        suffix_intern = native_cuts.host_function(io, "fnn-recover-suffix-intern")
+        self.assertIn("'fn-store-sn-recover-records nil configs", suffix_intern)
+        self.assertIn("(fnn-recover-record-chunks suffix)", suffix_intern)
+        self.assertIn("(fnn-call 'fn-srs-intern-step rows decoded (fnn-live-arena))", suffix_intern)
+        self.assertIn("(fnn-core 'fn-srs-rows rows)", suffix_intern)
+        self.assertNotIn("fn-arena-clear", suffix_intern)
+        self.assertNotIn("(mapcar #'fnn-octet-list suffix)", suffix_intern)
         # rep-wave-d-3: the file is read into the octet buffer as the
         # writer's plan shape, each segment admitted by ACL2 against the
         # profile's bounds before it is read; checkpoint-pipeline (schema 3):

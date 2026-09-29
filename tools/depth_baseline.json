@@ -184,7 +184,9 @@
   "fn-wss-put-span": "sets slot k of a found-fields list; k is at most 5 (*fn-wss-shown-fields*).",
   "fn-wss-slices": "walks a status line's space-separated fields; a handful of fixed fields.",
   "fn-xref-locations": "walks Xref pairs (memberships); bounded by *fn-record-max-groups*",
-  "fn-xref-pairs-of": "walks an article's memberships; bounded by *fn-record-max-groups*"
+  "fn-xref-pairs-of": "walks an article's memberships; bounded by *fn-record-max-groups*",
+  "fn-otb-minus": "walks a batch's member connection ids (or the ledger's told ids): at most two batches in flight, each at most the operator's log-batch-records row (a profile field, D27), never store data",
+  "fn-otb-dedup": "walks a batch's member connection ids (or the ledger's told ids): at most two batches in flight, each at most the operator's log-batch-records row (a profile field, D27), never store data"
  },
  "debt": {
   "fn-acct-kinds-lines": "D27: walks fn-cfg-accounts, the operator's account config rows; bounded by the profile, not traffic",
@@ -252,12 +254,10 @@
   "fn-cfg-moderator-rows": "D27: walks logins, the login names given in one admin moderator-set command; bounded by that command's argument list",
   "fn-cfg-name-line-octets": "D27: walks names, the live group names plus one candidate; bounded by active groups (operator profile)",
   "fn-cfg-parse-items": "count is checked against *fn-cfg-max-items*=65535 by its caller fn-cfg-decode-exact -- far above the stack budget",
-  "fn-cfg-peer-names": "D27: walks config rows; bounded by the peer config table",
   "fn-cfg-row-logins": "D27: walks rows, one admin delta's moderator rows; bounded by that delta's row count",
   "fn-cfg-row-replace-key": "D27: walks rows, same current-config-row domain as fn-cfg-row-upsert; bounded by the profile",
   "fn-cfg-row-upsert": "D27: walks rows, the operator's current config rows (quota/policy/peer/limit); replaces or appends, bounded by profile",
   "fn-cfg-rows-deleting-account": "D27: walks rows, the accounts table (deletable current state, not a history); bounded by the profile",
-  "fn-cfg-rows-with-key": "D27: walks rows, the peer/config table keyed rows; bounded by the operator's profile",
   "fn-cfg-rows-without-access": "D27: walks rows, access-grant config rows; bounded by the operator's profile",
   "fn-cfg-rows-without-binding": "D27: walks rows, consumer-bind config rows; bounded by the operator's profile",
   "fn-cfg-rows-without-consumer-bind": "D27: walks rows, consumer-bind config rows; bounded by the operator's profile",

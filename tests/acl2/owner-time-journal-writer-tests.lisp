@@ -29,17 +29,17 @@
         (list :note 2 1)
         (list :event :return 40000 nil)))
 (defconst *otjw-es*
-  (cons (fn-otm-jw-start-entry 9000 1234)
+  (cons (fn-otm-jw-start-entry 1234 t)
         (mv-let (es s) (fn-otm-run (fn-otm-init) *otjw-steps*) (declare (ignore s)) es)))
 (assert-event (equal *otjw-es*
-                     '((0 0 9000 1234 0 0 0)
+                     '((0 0 0 1234 1 0 0)
                        (1 3 10000 2000 6000 250 1)
                        (2 1 12000 0 0 0 5)
                        (3 1 16000 0 0 0 6)
                        (4 5 16000 2 1 0 0)
                        (5 4 40000 0 0 0 4))))
 ; An earlier segment the open's cut left whole (the same run, an earlier start).
-(defconst *otjw-e0* (cons (fn-otm-jw-start-entry 100 1000) (cdr *otjw-es*)))
+(defconst *otjw-e0* (cons (fn-otm-jw-start-entry 1000 t) (cdr *otjw-es*)))
 (defconst *otjw-ok* '(t 0 t))
 (assert-event (and (fn-otm-run-okp *otjw-steps*)
                    (fn-otm-nat-lists-p *otjw-e0*) (fn-otm-nat-lists-p *otjw-es*)
@@ -220,7 +220,7 @@
 
 ; The segment corollary (fn-otm-jw-segment-agrees): the host's start line is
 ; the start entry's line.
-(assert-event (equal (fn-otm-start-line 9000 1234) (fn-otm-jline (car *otjw-es*))))
+(assert-event (equal (fn-otm-start-line 1234 t) (fn-otm-jline (car *otjw-es*))))
 
 ; fn-otm-jw-open-step-cuts-a-written-file: the whole file as one chunk (the
 ; first chunk of a short file) is cut at its whole lines; teeth for the

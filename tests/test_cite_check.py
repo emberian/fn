@@ -110,6 +110,19 @@ class ScanTests(unittest.TestCase):
                             history={"books/folded.lisp"})
         self.assertEqual({f.klass for f in found}, {"annotated"})
 
+    def test_a_path_retired_on_purpose_is_disclosed_by_the_registry(self):
+        """planning/retired-paths.json: a book comment citing a file removed
+        on purpose is counted `retired`, never raised; an unlisted removed
+        file is still drift."""
+        original = cite_check.RETIRED
+        cite_check.RETIRED = frozenset({"tools/old_host.py"})
+        self.addCleanup(setattr, cite_check, "RETIRED", original)
+        found = self.silent({"books/owner.lisp": "; driven by tools/old_host.py once\n"},
+                            history={"tools/old_host.py"})
+        self.assertEqual({f.klass for f in found}, {"retired"})
+        self.assertEqual(self.only({"books/owner.lisp": "; driven by tools/other.py\n"},
+                                   history={"tools/other.py"}).klass, "drift")
+
     def test_disclosure_does_not_reach_an_unrelated_citation(self):
         finding = self.only({"books/lace.lisp":
                              "; `books/gone.lisp' proves it.\n"

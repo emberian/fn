@@ -10,6 +10,7 @@
 (include-book "frame-trailer")
 (include-book "byte-store-txn-name")
 (include-book "journal-publish")
+(include-book "consumer-position")
 
 (set-verify-guards-eagerness 0)
 

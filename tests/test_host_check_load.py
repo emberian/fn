@@ -44,6 +44,27 @@ class ClassifyTests(unittest.TestCase):
                                     "ld host file defines it"])
         self.assertEqual(counts, {"files": 1, "world": 2, "world_calls": 1, "warnings": 1})
 
+    def test_a_load_time_constant_of_the_world_is_the_worlds(self):
+        # Lane generators G5: host/native/mux.lisp's defconstant reads
+        # books/profile-limits.lisp's constant; loaded alone it is unbound,
+        # and the constant it defines is the world's too.  An unbound name
+        # no book defines still fails.
+        definers = {"+fnn-mux-loops+": "host/native/mux.lisp",
+                    "+fnn-mux-typo+": "host/native/mux.lisp"}
+        findings, counts, _ = host_check.classify_load(
+            "FNLC-FILE host/native/mux.lisp\n"
+            "FNLC-ERROR host/native/mux.lisp #2 (DEFCONSTANT +FNN-MUX-LOOPS+): "
+            "The variable *FN-LG-GENESIS* is unbound.\n"
+            "FNLC-ERROR host/native/mux.lisp #3 (DEFCONSTANT +FNN-MUX-TYPO+): "
+            "The variable *FN-NO-SUCH* is unbound.\n"
+            "FNLC-UNDEFINED variable ACL2 +FNN-MUX-LOOPS+\n"
+            "FNLC-DONE\n",
+            host_check.world_names(self.WORLD), self.WORLD, definers)
+        self.assertEqual(findings, ["error: host/native/mux.lisp #3 (DEFCONSTANT +FNN-MUX-TYPO+): "
+                                    "The variable *FN-NO-SUCH* is unbound."])
+        self.assertEqual(counts["world_calls"], 1)
+        self.assertEqual(counts["world"], 1)
+
     def test_a_raw_function_a_comment_mentions_is_not_the_worlds(self):
         # Batch AX: fnn-control-live-status, defined only in the raw
         # host/native/control.lisp, was counted as the world's because an ld

@@ -93,6 +93,18 @@ its host Lisp/runtime, cryptographic primitive implementations, the I/O adapter,
 and stated platform assumptions. Claims grow only as refinement and integration
 evidence appear. See [failures](../specs/failures.md) and [proofs](proofs.md).
 
+The stated assumptions are the `encapsulate` forms of `books/assumptions.lisp`
+and of the books it includes, which are every assumption book there is:
+
+- `books/assumptions.lisp`: every named assumption not listed below, and the
+  include of each part;
+- `books/assumptions-durable.lisp`: A-DURABLE-EXTENT and A-DURABLE-LZ, the
+  durable extent and its compressed realizer, a part of its own so that the
+  payload arena (and every book above it) depends on these two and not on the
+  byte store's crash model.
+
+Including `books/assumptions.lisp` reaches all of them.
+
 **The digest left that boundary on 2026-09-20.** `books/blake3.lisp` defines
 BLAKE3 over octet lists as a total, guard-verified ACL2 function (SHA-256's
 `books/sha256.lisp` until 2026-09-28, store format 10; SHA-256 now remains only
