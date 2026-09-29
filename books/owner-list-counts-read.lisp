@@ -31,6 +31,15 @@
                   (fn-gidx-build
                    (fn-state-articles (fn-served-conn-archive conn)))))))
 
+; fn-served-pinned-index pins an empty view with its control pin (PKT-443);
+; the empty view's buckets are nil.
+(local
+ (defthm fn-olc-gidx-build-of-no-articles
+   (implies (not (consp articles))
+            (equal (fn-gidx-build articles) nil))
+   :hints (("Goal" :in-theory (enable fn-gidx-build fn-index-build
+                                      fn-gidx-build-entries)))))
+
 (local
  (defthm fn-olc-pinned-index-corresponds
    (implies (fn-olc-buckets-okp conn)
