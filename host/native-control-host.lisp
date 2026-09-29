@@ -4,6 +4,8 @@
 ;; host-decisions-2 packet B: the control launch decision (fn-ncla-).
 (include-book "../books/native-control-launch")
 (include-book "../books/native-control-reason")
+;; online-reclaim-5: the word an operator request prints (fn-crqw-).
+(include-book "../books/control-request-word")
 (include-book "../books/consumer-local-control")
 (include-book "../books/consumer-wait-codec")
 (include-book "../books/consumer-reason")

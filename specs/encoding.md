@@ -113,10 +113,11 @@ strings. Two kinds of identity cannot share a preimage by construction.
 
 The pre-v1 derivation — `"sha256:" || hex(SHA-256(payload))` and
 `"archive:" || hex(SHA-256(msgid || 0x00 || subject))` — is deleted, not kept
-beside this one. A store holding those identities was written under store
-format `fn-store-experiment-4`; the current format is `fn-store-experiment-5`
-([`books/store-config.lisp`](../books/store-config.lisp)), so such a store is
-refused at open by its configuration rather than misread.
+beside this one. A store holding those identities was written under an
+experimental store format long retired; an image opens one format,
+`fn-store-10` (`fn-bs-meta-formatp`,
+[`books/byte-store-frame.lisp`](../books/byte-store-frame.lisp)), so such a
+store is refused at open by its profile rather than misread.
 
 ENC-003: identity and signature preimages specify a domain, schema version,
 algorithm identifiers, field encoding, and exact bytes. Do not hash native Lisp
@@ -189,8 +190,8 @@ FNWF and FNRJ frames are byte-identical to the Python frames they replace, and
 Python encoders. FNWF extends the deployed seven-kind table append-only with
 codes 8 (`:undertake`) and 9 (`:release`); the old seven code values and
 their captured octets are unchanged. FNST gains the record kind octet it lacked, so a store written
-under the old framing is refused by its configuration format
-(`fn-store-experiment-5`) rather than misread. FNBI moves its BID length into a
+under the old framing is refused by its format word (the one format an image
+opens is `fn-store-10`, `fn-bs-meta-formatp`) rather than misread. FNBI moves its BID length into a
 payload text field; because an inbound bundle can reach four mebibytes and
 cannot cross the decimal-octet bridge, ACL2 builds and validates the frame head
 and the host concatenates bundle bytes it never interprets.
