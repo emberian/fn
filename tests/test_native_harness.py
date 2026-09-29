@@ -286,5 +286,23 @@ class FailedTestStderrTests(unittest.TestCase):
         self.assertEqual(native_harness._STARTED, {})
 
 
+class StableStatusLinesTests(unittest.TestCase):
+    """obstructions-7 item 66: the lines a compaction changes, one site."""
+
+    def test_open_and_stopped_lines_go_everything_else_stays(self):
+        from tests.native_harness import stable_status_lines
+        report = ("stopped checkpoint=4 journal-octets=10 transactions-at-most=3\n"
+                  "open=checkpoint:4 suffix=0\ngroups=2\narticles=7\n")
+        self.assertEqual(stable_status_lines(report), ["groups=2", "articles=7"])
+        self.assertEqual(stable_status_lines(report.encode()), [b"groups=2", b"articles=7"])
+        self.assertEqual(stable_status_lines(report, also=("groups=",)), ["articles=7"])
+        # A report differing only in those lines compares equal; any other not.
+        replayed = report.replace("checkpoint=4", "checkpoint=0").replace(
+            "open=checkpoint:4 suffix=0", "open=replay")
+        self.assertEqual(stable_status_lines(report), stable_status_lines(replayed))
+        self.assertNotEqual(stable_status_lines(report),
+                            stable_status_lines(report.replace("articles=7", "articles=6")))
+
+
 if __name__ == "__main__":
     unittest.main()

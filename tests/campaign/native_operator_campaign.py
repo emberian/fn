@@ -94,6 +94,16 @@ def injected_from(stored: bytes, payload: bytes) -> bool:
     The body and every header line of the payload are kept, in order, as the
     tail of the stored header; each added line is one of INJECTED_FIELDS, at
     most once, and none of them duplicates a field the payload already had.
+
+    Xref is not among them, by decision (resilience-framework-3, 2026-09-29):
+    it is SERVED, never stored.  `inspect` shows the stored octets, which
+    never carry one (a supplied Xref is refused at injection, books/
+    injection.lisp, RFC 5537 section 3.5 item 2); ARTICLE serves the stored
+    octets behind one Xref line the node generates at serve time (RFC 5537
+    section 3.5 item 8, RFC 5536 section 3.2.14; books/nntp-reader-compat.lisp
+    fn-rcompat-served-payload-inserts-one-line), which a served-bytes
+    comparison splits off and judges on its own
+    (tools/resilience/adapters/native_cuts.py served_split).
     """
     got, want = split_article(stored), split_article(payload)
     if got is None or want is None or got[1] != want[1]:

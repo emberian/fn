@@ -859,7 +859,7 @@
                                    fn-th-commit-report fn-th-prefix-find-ref fn-stxk-find
                                    fn-store-event-p fn-stxk-p fn-hstxa-p
                                    fn-th-local-admin-eventp fn-th-topic-eventp
-                                   fn-th-topic-v1-anchorp fn-store-event-sequence)))))
+                                   fn-store-event-sequence)))))
 
 (defthm fn-cstp-topic-step-of-held
   (implies (and (equal (fn-th-at 0 p) :ok)

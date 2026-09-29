@@ -41,6 +41,7 @@
 ; PKT-854: `store ROOT digest' reads fn-sckd-tables-digest (the checkpoint's
 ; tables digest) at the open; no other host file brings it into the world.
 (include-book "../books/store-checkpoint-digest")
+(include-book "../books/store-finalize-incremental") ; fn-sfi-extend-open (fn-store-sn-recover-from-checkpoint)
 (include-book "../books/store-checkpoint-arena-writer")
 (include-book "../books/owner-checkpoint-pipeline")
 ; PKT-444 (1): the open names a pre-C1 control record instead of faulting.
@@ -92,7 +93,7 @@
 ;; since the last read.  One process serves one Store (owner mode, or the
 ;; store node's), so one stobj.
 (defun fn-host-hist-sync (store fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (declare (xargs :stobjs (fn-hist state) :guard t))
   (let ((reload (and (boundp-global 'fn-store-sn-hist-reload state)
                      (f-get-global 'fn-store-sn-hist-reload state))))
     (let ((fn-hist (fn-hist-refresh (fn-sn-files store) reload fn-hist)))

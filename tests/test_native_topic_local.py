@@ -8,7 +8,8 @@ import hashlib
 from pathlib import Path
 import unittest
 
-from tests.native_harness import ROOT, Node, environment, executable, native_image
+from tests.native_harness import (ROOT, Node, environment, executable, native_image,
+                                  stable_status_lines)
 from tests import native_log_observation
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
@@ -183,17 +184,10 @@ class NativeTopicLocalTest(unittest.TestCase):
                              (result.stdout + result.stderr).decode("utf-8", "replace"))
 
         def state(result):
-            # The open's route (open=checkpoint:S after a compaction) is not
-            # the state, nor is the stopped report's header line (row S3:
-            # `stopped checkpoint=N journal-octets=B transactions-at-most=M`
-            # reads the checkpoint header, which the compaction wrote; the
-            # exact count is `status --replay`'s), nor the checkpoint file's
-            # own line (`checkpoint-file octets=B modified=T`: the file the
-            # compaction wrote); every other line is.
-            return [line for line in result.stdout.splitlines()
-                    if not (line.startswith(b"open=")
-                            or line.startswith(b"stopped ")
-                            or line.startswith(b"checkpoint-file "))]
+            # Row S3: the open's route, the stopped header and the checkpoint
+            # file's own line are not the state
+            # (native_harness.stable_status_lines); every other line is.
+            return stable_status_lines(result.stdout)
         self.assertEqual(state(self.invoke("store", self.store, "status")),
                          state(before_status))
         self.assertEqual(self.invoke("store", self.store, "retention").stdout,

@@ -330,10 +330,6 @@ BOOK_TAIL = """
 """
 
 
-def lisp_string(text):
-    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
-
-
 def slug(heading):
     """GitHub's anchor for a heading: lower case, punctuation dropped,
     spaces to hyphens."""
