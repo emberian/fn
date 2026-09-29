@@ -313,12 +313,16 @@ modules() {
 gate_envs() {
   git show "$REV:$NATIVE_GATE" 2>/dev/null | awk -F'\t' '$1 == "env" { printf "--env %s ", $2 }'
 }
+# The `mem' line: the memory scope every module runs in (hbox_native.sh --mem).
+gate_mem() {
+  git show "$REV:$NATIVE_GATE" 2>/dev/null | awk -F'\t' '$1 == "mem" { m = $2 } END { if (m != "") printf "--mem %s ", m }'
+}
 
 g_native() {
   mods=$(modules | tr '\n' ' ')
   # shellcheck disable=SC2046
   set -- --name "cut-$VERSION-$SHORT" --label "$SHORT" --images developer,production,dtn,dtn-developer,reference,developer-stripped \
-    --deadline 43200 $(gate_envs) "$REV"
+    --deadline 43200 $(gate_envs) $(gate_mem) "$REV"
   echo "modules ($(echo $mods | wc -w | tr -d ' ')): $mods"
   if [ "$DRY" = yes ]; then
     # shellcheck disable=SC2086

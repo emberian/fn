@@ -930,11 +930,13 @@ def digest_check(node: Node, events: Events, label):
                       first=a[-700:], second=(b or err_b)[-700:],
                       journal_rc=journal.returncode,
                       journal=journal.stdout.decode("utf-8", "replace")[-400:],
+                      journal_err=journal.stderr.decode("utf-8", "replace")[-400:],
                       errs=(first.stderr + second.stderr).decode("utf-8", "replace")[-400:])
     shutil.rmtree(copy, ignore_errors=True)
     if journal.returncode != 0:
         events.emit("finding", what="store journal: the decision journal does not replay",
-                    label=label, journal=journal.stdout.decode("utf-8", "replace")[-300:])
+                    label=label, journal=journal.stdout.decode("utf-8", "replace")[-300:],
+                    journal_err=journal.stderr.decode("utf-8", "replace")[-300:])
     if not same:
         events.emit("finding", what="store digest: two opens of one history disagree",
                     label=label, compacted=compacted)

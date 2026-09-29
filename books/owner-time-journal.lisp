@@ -815,12 +815,35 @@
 ;; -----------------------------------------------------------------------------
 ;; The operator's replay (host/native/io.lisp `store ROOT journal'): the
 ;; file read back and replayed from fn-otm-init, one line.
-(defun fn-otm-journal-starts (entries)
-  (declare (xargs :guard t))
+;; Executes by a loop (G4): the recursion took one control-stack frame per
+;; journal entry, and `store journal' after the fitness soak's 15,310 posts
+;; exhausted the served image's 1 MiB control stack in fn-otm-journal-report
+;; (exit 4, no report).  The :logic is the recursion, unchanged.
+(defun fn-otm-journal-starts-loop (entries acc)
+  (declare (xargs :guard (natp acc)))
   (if (consp entries)
-      (+ (if (and (consp (car entries)) (consp (cdar entries)) (equal (cadar entries) 0)) 1 0)
-         (fn-otm-journal-starts (cdr entries)))
-    0))
+      (fn-otm-journal-starts-loop
+       (cdr entries)
+       (+ (if (and (consp (car entries)) (consp (cdar entries)) (equal (cadar entries) 0)) 1 0)
+          acc))
+    acc))
+
+(defun fn-otm-journal-starts (entries)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp entries)
+           (+ (if (and (consp (car entries)) (consp (cdar entries)) (equal (cadar entries) 0)) 1 0)
+              (fn-otm-journal-starts (cdr entries)))
+         0)
+       :exec (fn-otm-journal-starts-loop entries 0)))
+
+(encapsulate ()
+  (local
+   (defthm fn-otm-journal-starts-loop-is-acc-plus
+     (implies (natp acc)
+              (equal (fn-otm-journal-starts-loop entries acc)
+                     (+ acc (fn-otm-journal-starts entries))))))
+  (verify-guards fn-otm-journal-starts))
 
 (defun fn-otm-verdict-text (verdict)
   (declare (xargs :guard t))
