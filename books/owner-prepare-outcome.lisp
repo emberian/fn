@@ -155,6 +155,12 @@
         next)))
 
 ; host/owner-host.lisp fn-owner-prepare-topic.
+;
+; The six callers of fn-ocfg-step below are guard-verified (lane depth-debt-6,
+; row K2): each sends a literal event, so fn-ocfg-eventp opens to t, and the
+; store state their guards state is fn-ocfg-step's.  fn-pout-prepare-identity
+; waits on fn-oiis-prepare-identity (books/owner-identity-served),
+; still :ideal.
 (defun fn-pout-prepare-topic (oc e)
   (declare (xargs :guard (fn-sn-statep (fn-sbud-oc-store oc))))
   (let ((next (fn-psrv-prepare-topic oc e)))
@@ -175,6 +181,7 @@
             :prepared
           :refused)
         next)))
+(verify-guards fn-pout-prepare-retention)
 
 (defun fn-pout-prepare-consumer (oc e fn-arena)
   (declare (xargs :stobjs fn-arena
@@ -185,6 +192,7 @@
             :prepared
           :refused)
         next)))
+(verify-guards fn-pout-prepare-consumer)
 
 ; host/owner-host.lisp fn-owner-refuse-reservation: the configured owner's
 ; (:store (:refuse-reservation TXID)) at the reservation's txid, :refused
@@ -198,6 +206,7 @@
             :refused
           :fault)
         (fn-ocfg-step oc (list :store (list :refuse-reservation txid)) fn-arena))))
+(verify-guards fn-pout-refuse-reservation)
 
 ; host/owner-host.lisp fn-owner-known-abort: (:store (:known-abort)),
 ; :aborted exactly when the Store's gate holds.
@@ -207,6 +216,7 @@
                   :verify-guards nil))
   (mv (if (fn-sn-known-abort-enabledp (fn-sbud-oc-store oc)) :aborted :fault)
       (fn-ocfg-step oc (list :store (list :known-abort)) fn-arena)))
+(verify-guards fn-pout-known-abort)
 
 ; host/owner-host.lisp fn-owner-begin: (:begin ID), whose test is this gate
 ; (fn-pout-begin-unfolds).
@@ -224,6 +234,7 @@
                   :verify-guards nil))
   (mv (if (fn-pout-begin-admitsp oc id) :begun :refused)
       (fn-ocfg-step oc (list :begin id) fn-arena)))
+(verify-guards fn-pout-begin)
 
 ; host/owner-host.lisp fn-owner-declare-group: (:declare-group NAME), whose
 ; test is this gate (fn-pout-declare-group-unfolds).
@@ -240,6 +251,7 @@
                   :verify-guards nil))
   (mv (if (fn-pout-declare-group-admitsp oc name) :declared :refused)
       (fn-ocfg-step oc (list :declare-group name) fn-arena)))
+(verify-guards fn-pout-declare-group)
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONES: each word is the answer the host's comparison gave (behaviour
