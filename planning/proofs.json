@@ -15433,8 +15433,7 @@
       "evidence": "tests/acl2/store-checkpoint-digest-tests.lisp (two writers of one prefix with different revision and log: tables differ, digests equal; not constant in frontier, prefix, pool); tests/test_native_replay_determinism.py test_b (the two copies' checkpoint-digest lines agree, a full replay prints none).",
       "progress_note": "correctness-remainder-4, 2026-09-29: PKT-854 landed; REPL-admitted on persvati; certification at READY.",
       "events": [
-        "fn-sckd-digest-of-written-file",
-        "fn-sckd-digest-ignores-revision-and-log"
+        "fn-sckd-digest-of-written-file"
       ]
     },
     {
