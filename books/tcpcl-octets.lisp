@@ -1641,24 +1641,22 @@
            :use ((:instance fn-tcl-decode-refuse-of-encode-body (mru mru))))))
 
 (defthm fn-tcl-decode-message-of-encode-term
-  (implies (fn-tcl-messagep (fn-tcl-make-sess-term flags reason) mru)
-           (equal (fn-tcl-decode-message (append (fn-tcl-encode (fn-tcl-make-sess-term flags reason)) rest) mru)
-                  (fn-tcl-parse-ok (fn-tcl-make-sess-term flags reason) rest)))
-  ; The sub-decoder round trip has mru only in its hypothesis, which the
-  ; goal would otherwise open into conjuncts, so the recognizer stays closed
-  ; here and the keystone is cited with mru bound.
-  :hints (("Goal" :do-not-induct t :in-theory (disable fn-tcl-messagep)
-           :use ((:instance fn-tcl-decode-term-of-encode-body (mru mru))))))
+  ; No hypothesis: the two fields are written and read back as single
+  ; octets verbatim, so the round trip holds for any values and any MRU.
+  ; (fn-tcl-messagep was proved redundant here: assurance-hygiene-8.)
+  (equal (fn-tcl-decode-message (append (fn-tcl-encode (fn-tcl-make-sess-term flags reason)) rest) mru)
+         (fn-tcl-parse-ok (fn-tcl-make-sess-term flags reason) rest))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (enable fn-tcl-encode-term-body fn-tcl-decode-term fn-tcl-has))))
 
 (defthm fn-tcl-decode-message-of-encode-reject
-  (implies (fn-tcl-messagep (fn-tcl-make-msg-reject reason header) mru)
-           (equal (fn-tcl-decode-message (append (fn-tcl-encode (fn-tcl-make-msg-reject reason header)) rest) mru)
-                  (fn-tcl-parse-ok (fn-tcl-make-msg-reject reason header) rest)))
-  ; The sub-decoder round trip has mru only in its hypothesis, which the
-  ; goal would otherwise open into conjuncts, so the recognizer stays closed
-  ; here and the keystone is cited with mru bound.
-  :hints (("Goal" :do-not-induct t :in-theory (disable fn-tcl-messagep)
-           :use ((:instance fn-tcl-decode-reject-of-encode-body (mru mru))))))
+  ; No hypothesis: the two fields are written and read back as single
+  ; octets verbatim, so the round trip holds for any values and any MRU.
+  ; (fn-tcl-messagep was proved redundant here: assurance-hygiene-8.)
+  (equal (fn-tcl-decode-message (append (fn-tcl-encode (fn-tcl-make-msg-reject reason header)) rest) mru)
+         (fn-tcl-parse-ok (fn-tcl-make-msg-reject reason header) rest))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (enable fn-tcl-encode-reject-body fn-tcl-decode-reject fn-tcl-has))))
 
 (defthm fn-tcl-decode-message-of-encode-keepalive
   (equal (fn-tcl-decode-message (append (fn-tcl-encode (fn-tcl-make-keepalive)) rest) mru)

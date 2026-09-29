@@ -292,3 +292,10 @@
 (assert-event (equal (fn-peer-refused-record nil *th-cfg* (th-o "<g@example.invalid>") *th-good*) nil))
 (assert-event (equal (fn-peer-refused-record nil *th-cfg-skew* (th-o "<bp@example.invalid>") *th-badpath*)
                      '(("<bp@example.invalid>" . :path-syntax))))
+
+; KEYSTONE fn-rck-skew-within-the-rfc (PRF-236; no hypothesis), by name: the
+; default, the operator's 3600, and a value that is no configuration all
+; give a natural skew within the RFC's 86400 seconds.
+(assert-event (and (natp (fn-rck-skew *th-cfg*)) (<= (fn-rck-skew *th-cfg*) 86400)
+                   (natp (fn-rck-skew *th-cfg-skew*)) (<= (fn-rck-skew *th-cfg-skew*) 86400)
+                   (natp (fn-rck-skew :junk)) (<= (fn-rck-skew :junk) 86400)))

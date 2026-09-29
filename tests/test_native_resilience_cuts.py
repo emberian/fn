@@ -31,7 +31,10 @@ SELECTED = os.environ.get("FN_NATIVE_RESILIENCE_CUT")
 # Harness-failure causes that mean "the held form is not on this image":
 # the adapters raise them from the image's own evidence (the receipt path
 # past its hold point; `store inspect --group` refused), never from a timeout.
-PENDING_BY_NAME = ("hold-unavailable:", "inspect-group-unavailable:")
+PENDING_BY_NAME = ("hold-unavailable:", "inspect-group-unavailable:",
+                   # a nemesis verb refused by the image under the running node
+                   # (`bp-route remove`: store-held, no control socket)
+                   "live-route-unavailable:")
 
 
 class CutScenarioTableTests(unittest.TestCase):
@@ -175,6 +178,7 @@ if IMAGE_AVAILABLE:
             rows = {r["scenario"]: r for r in schedule_points.status()}
             pending = sorted(k for k, r in rows.items() if r["status"] == "pending")
             self.assertEqual(pending, ["schedule-page-read-outstanding",
+                                       "schedule-receipt-observed-reorder",
                                        "schedule-reclaim-candidate-selected"],
                              "a pending point changed status: run it, or name why not")
             for s in schedule_points.scenarios():

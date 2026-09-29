@@ -147,6 +147,33 @@ RULES = {
         "recovered store serves: no allocated number is handed out twice (tools/power_loss.py "
         "bindings; no theorem states it at the served boundary yet)",
         None, "tools/power_loss.py", None, "pending"),
+    "relay-changes-permitted": Rule(
+        "relay-changes-permitted",
+        "a copy of one article served by the other agent after transit differs from the "
+        "copy it was given only in the NORMALIZED fields the record names (Path, which each "
+        "relaying or injecting agent prefixes with its identity, RFC 5537 3.6 step 4 and "
+        "3.2.1; Xref, the serving agent's own, RFC 5537 3.7 step 7 and specs/peering.md "
+        "2.3): the body octet for octet, every other field and its count the same, the "
+        "receiver's own identity in the served Path and never the sender's Xref; response "
+        "classes, Message-IDs, memberships and authored bytes are never normalized (design "
+        "W7e; fn's served Xref line is fn-rcompat-served-payload-inserts-one-line, no "
+        "theorem states the transit Path prefix at the store boundary yet)",
+        None, "books/nntp-reader-compat.lisp", None, "pending"),
+    "loop-refused": Rule(
+        "loop-refused",
+        "an article offered by transit whose Path already names the receiving agent is "
+        "refused (437, or 435 as already held: RFC 5537 3.6 step 3, RFC 3977 6.3.2.1) "
+        "and is not stored or served (no theorem states the loop refusal at the store "
+        "boundary yet; the host's is measured by tools/inn_lab.py scenario_duplicates_and_loop)",
+        None, "specs/peering.md", None, "pending"),
+    "injection-complete": Rule(
+        "injection-complete",
+        "an article fn injected (a POST or `operator post` it acknowledged) is offered to "
+        "its peer with the fields an injecting agent must add, Path naming fn and "
+        "Injection-Info (RFC 5537 3.5 items 4 and 11), so the peer's 437 naming a missing "
+        "field refutes the injection, never the transfer (no theorem states the offered "
+        "octets carry the injected fields yet; books/injection.lisp builds them)",
+        None, "books/injection.lisp", None, "pending"),
     "receipt-policy-order": Rule(
         "receipt-policy-order",
         "a policy change after the decision is recorded does not re-decide it: the "
@@ -244,6 +271,15 @@ def narrow(scenario, history: dict, rec: dict, journal, registry: dict) -> tuple
             op = scenario.operation(rec["operation"])
             out = rec["outcome"]
             if op.op == "post":
+                if op.args.get("loop"):
+                    # A Path naming the receiver: refused with 437 (or 435
+                    # as held) and absent, never taken (W7e, loop-refused);
+                    # an accepted or lost loop is judged here, before the
+                    # committed history could explain it.
+                    status = str(rec.get("status", ""))
+                    named = status.startswith("437") or status.startswith("435")
+                    return (out == "refused" and named
+                            and history[op.id] == "absent"), ("loop-refused",)
                 if out == "accepted":
                     return history[op.id] == "committed", ("committed-publishes-id",)
                 if out == "refused":
@@ -324,6 +360,23 @@ def narrow(scenario, history: dict, rec: dict, journal, registry: dict) -> tuple
                 if set(got) != set(expected) or any(
                         n is not None and got[g] != n for g, n in expected.items()):
                     return False, ("xref-locations-exact",)
+            diff = rec.get("differential")
+            if diff is not None and rec["result"] in ("match", "other"):
+                # The interop backend (W7e): the copy the other agent serves
+                # against the copy it was given, judged from the differential
+                # itself (never from the adapter's word): only the named
+                # normalized fields differ, the body is identical, the
+                # receiver's Path names itself, the sender's Xref is not served.
+                touched = (set(diff.get("changed", ())) | set(diff.get("only_first", ()))
+                           | set(diff.get("only_second", ())))
+                permitted = (bool(diff.get("body_identical"))
+                             and touched <= set(diff.get("normalized", ()))
+                             and diff.get("path_names_self", True)
+                             and not diff.get("sender_xref_served", False))
+                if not permitted or not is_in:
+                    return False, ("relay-changes-permitted", "committed-serves-exact")
+                return rec["result"] == "match", ("relay-changes-permitted",
+                                                  "committed-serves-exact")
             if rec["result"] == "match":
                 rules = ("committed-serves-exact", "committed-publishes-id")
                 return is_in, rules + (("xref-locations-exact",) if xref else ())
@@ -412,6 +465,19 @@ def narrow(scenario, history: dict, rec: dict, journal, registry: dict) -> tuple
             if op.op == "reclaim":
                 return True, ("reclaim-old-or-new",)
             return True, ()
+        if ev == "peer-transfer":
+            # The interop backend (W7e): the transport's answer to an offer of
+            # one article between fn and its peer.  An offer the receiver took
+            # (335/235, 238/239) carries an article committed at the sender;
+            # a 437 naming a missing injected field refutes fn's injection.
+            op = scenario.operation(rec["operation"])
+            was = committed_at(scenario, history, op.id, seq, journal)
+            status = str(rec.get("status", ""))
+            if rec.get("outcome") == "accepted":
+                return was, ("committed-publishes-id",)
+            if rec.get("outcome") == "refused" and "Missing" in status and was:
+                return False, ("injection-complete",)
+            return True, ()
         if ev == "persisted-write-selection":
             # Whatever the device presented, the committed unacknowledged
             # posts are a prefix of the open batch in log order.
@@ -451,6 +517,15 @@ def witnesses_observed(scenario, journal) -> set:
                 seen.add("cross-route-retry-refused")
         if ev == "read" and r.get("result") == "match":
             seen.add("read-completed")
+            if r.get("differential") is not None:
+                seen.add("relay-normalized")
+        if ev == "reply":
+            op = scenario.operation(r["operation"])
+            if op.op == "post" and op.args.get("loop") and r["outcome"] == "refused":
+                seen.add("loop-refused")
+            if (op.op == "retry" and r.get("route") == "peer-transit"
+                    and r["outcome"] == "duplicate"):
+                seen.add("duplicate-refused")
         if ev == "read" and r.get("during_competing_work") and r.get("result") == "match":
             seen.add("read-during-competing-work")
         if ev == "reclaim" and r.get("freed"):

@@ -809,3 +809,18 @@
                       (fn-inj-decide *it-bare-lf* *it-lab-cfg* *it-lab-obs*))
                      :unparsable))
 (assert-event (not (fn-alb-long-header-linep *it-bare-lf* (1+ *fn-article-max-octets*))))
+
+; KEYSTONE fn-inj-injected-article-names-the-configured-agent (PRF-053), by
+; name.  Positive: the good article under the open configuration is
+; injected and its octets carry the configured agent's Injection-Info line.
+(assert-event
+ (and (fn-inj-injectedp *fn-t-decision*)
+      (fn-inj-infixp (fn-inj-injection-info-line (fn-inj-config-agent *fn-t-cfg*))
+                     (fn-inj-decision-octets *fn-t-decision*))))
+; The hypothesis removed: under the closed configuration nothing is
+; injected, and no Injection-Info line is carried.
+(assert-event
+ (let ((d (fn-inj-decide *fn-t-good* *fn-t-cfg-closed* *fn-t-obs*)))
+   (and (not (fn-inj-injectedp d))
+        (not (fn-inj-infixp (fn-inj-injection-info-line (fn-inj-config-agent *fn-t-cfg-closed*))
+                            (fn-inj-decision-octets d))))))

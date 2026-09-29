@@ -21,6 +21,9 @@
 ; The lace of the retained store (records-flip): the rows' lace and ALPHA.
 (include-book "../../books/stx-lace-rows")
 (include-book "../../books/peer-transit-authority")
+; The store-node machine's run (its states *sni-finished*, *sni-forked*), for
+; the served-state teeth at the end of this file (lane stx-model-3).
+(include-book "store-node-index-tests")
 ; The store's records reach the committed history image's decode
 ; (books/store-records-field.lisp, lane arena-store-7), whose books include
 ; crypto-attach: it attaches fn-digest to BLAKE3 after crypto-seam-tests
@@ -903,3 +906,50 @@
 (assert-event (equal (fn-pta-group-verdict *stxt-pta-index-bfork* *stxt-keyring* *stxt-group*
                                            *stxt-a* *stxt-pta-s-b*)
                      :equivocation))
+
+; -----------------------------------------------------------------------------
+; W5b (lane stx-model-3): the refusal by its cause on the STORE-NODE MACHINE'S
+; index, not a hand-built one.  tests/acl2/store-node-index-tests' run reaches
+; *sni-finished* (one statement by *sni-creator*) and *sni-forked* (a second
+; statement by the same creator at the same slot: the equivocation the merge
+; recorded, fn-sn-equivocatorp anchored there on both runs).  The group is
+; governed by a configuration value whose group entry names a principal as
+; its policy-id (stx-model-2's reconciliation: the policy-id IS the group's
+; authority when it is a principal id; the default policy-id of `store init'
+; governs nothing).
+
+(defconst *stxt-governed-v*
+  (fn-cfg-value-make (list (fn-cfg-group-make "fn.test" 1 *fn-cfg-default-stamp* nil
+                                              *sni-creator* 0))
+                     nil nil nil nil nil nil nil nil nil))
+(defconst *stxt-default-v*
+  (fn-cfg-value-make (list (fn-cfg-group-make "fn.test" 1 *fn-cfg-default-stamp* nil
+                                              *fn-cfg-default-policy-id* 0))
+                     nil nil nil nil nil nil nil nil nil))
+(assert-event (fn-prin-idp *sni-creator*))
+(assert-event (equal (fn-pta-group-authority *stxt-governed-v* 1 "fn.test") *sni-creator*))
+(assert-event (equal (fn-pta-group-authority *stxt-default-v* 1 "fn.test") nil))
+
+; The machine's index records the fork, and only the forked run's.
+(assert-event (not (fn-pta-poster-forkedp (fn-sn-index *sni-finished*) *sni-stmt*)))
+(assert-event (fn-pta-poster-forkedp (fn-sn-index *sni-forked*) *sni-stmt-2*))
+(assert-event (fn-pta-poster-forkedp (fn-sn-index *sni-forked*) *sni-stmt*))
+(assert-event (fn-prin-verifiedp *sni-stmt-2* (fn-sn-keyring *sni-forked*)))
+
+; The verdicts by name: the single statement under a governed group with no
+; policy in force is :no-policy (the poster is not refused); each fork is
+; :equivocation; the same fork on the ungoverned group is :ungoverned.
+(assert-event (equal (fn-pta-groups-verdict (fn-sn-index *sni-finished*) (fn-sn-keyring *sni-finished*)
+                                            *stxt-governed-v* 1 '("fn.test") *sni-stmt*)
+                     :no-policy))
+(assert-event (equal (fn-pta-groups-verdict (fn-sn-index *sni-forked*) (fn-sn-keyring *sni-forked*)
+                                            *stxt-governed-v* 1 '("fn.test") *sni-stmt-2*)
+                     :equivocation))
+(assert-event (equal (fn-pta-groups-verdict (fn-sn-index *sni-forked*) (fn-sn-keyring *sni-forked*)
+                                            *stxt-governed-v* 1 '("fn.test") *sni-stmt*)
+                     :equivocation))
+(assert-event (equal (fn-pta-groups-verdict (fn-sn-index *sni-forked*) (fn-sn-keyring *sni-forked*)
+                                            *stxt-default-v* 1 '("fn.test") *sni-stmt-2*)
+                     :ungoverned))
+; The refusal is of AUTHORITY: both forks' bytes are in the store.
+(assert-event (equal (len (fn-stx-store (fn-sn-node *sni-forked*))) 2))

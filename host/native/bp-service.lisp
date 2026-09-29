@@ -1340,7 +1340,7 @@ fn-bpnjc-contact-next-is-the-head-scan): it names the event to drive
 through fn-bpnp-step and the hop's node ID, holds a job its routing refuses,
 or closes the contact.  ACL2 threads the keys this contact has offered and
 the cursor, so a job whose transfer was not accepted (requeued) waits for the
-next contact (fn-bpnp-contact-offers-each-job-at-most-once) and the contact
+next contact (fn-bpnj-contact-offers-each-job-at-most-once) and the contact
 examines each job once (fn-bpnjc-drain-visits-are-linear).  The contact
 opens at the peer's frontier (fn-bpnjc-contact-cursor) and its close
 advances it (fn-bpnjc-contact-close).  Answers the list of ACL2's answers,

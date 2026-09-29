@@ -42,8 +42,7 @@
 (defun fn-bpn-host-lifecycle-recovery-stages (answer)
   (fn-bpn-lifecycle-recovery-stages answer))
 
-(defun fn-bpn-host-lifecycle-recovery-agrees-p (answer st)
-  (and (fn-bpn-lifecycle-recovery-agrees-with-statep answer st) t))
+; fn-bpn-host-lifecycle-recovery-agrees-p: books/bp-node-host-machine (guard-verified, with its keystone).
 
 (defun fn-bpn-host-lifecycle-publication-authorize
   (st token record lock-owned final-absent)
