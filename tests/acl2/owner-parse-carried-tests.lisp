@@ -114,15 +114,18 @@
                                                     nil *apc-t-pat-carry*)
                      '(:no-local-binding :unenrolled)))
 ; ... and with the carrier-plan memo filled for the same octets (PRF-982).
-(defconst *apc-t-pat-plans* (fn-apc-plans-extend *pat-relayed* nil *apc-t-pat-carry*))
-(assert-event (fn-apc-plansp *apc-t-pat-plans*))
-(assert-event (consp *apc-t-pat-plans*))
+; (The statement decoder is an attachment, which a defconst may not evaluate.)
+(defun apct-pat-plans ()
+  (declare (xargs :verify-guards nil))
+  (fn-apc-plans-extend *pat-relayed* nil *apc-t-pat-carry*))
+(assert-event (fn-apc-plansp (apct-pat-plans)))
+(assert-event (consp (apct-pat-plans)))
 (assert-event (equal (fn-apc-transit-refusal-detail *pat-relayed* *pat-after-revocation*
                                                     nil :verified :verified
-                                                    *apc-t-pat-plans* *apc-t-pat-carry*)
+                                                    (apct-pat-plans) *apc-t-pat-carry*)
                      '(:no-local-binding :revoked-principal)))
 (assert-event (equal (fn-apc-transit-verdict *pat-relayed* *pat-after-revocation* nil nil
-                                             :verified :verified *apc-t-pat-plans*
+                                             :verified :verified (apct-pat-plans)
                                              *apc-t-pat-carry*)
                      :revoked-principal))
 (assert-event (equal (fn-apc-filing-plan *apc-t-stored* *apc-t-groups* nil *apc-t-carry*)
