@@ -48,7 +48,7 @@
 (local (in-theory (enable (:definition fn-arn-extent-guardp)
                           (:definition fn-arn-extentp)
                           (:rewrite fn-arn-payload-listp-true-listp)
-                          (:rewrite fn-bs-stxa-is-no-other-wire-event)
+                          (:rewrite fn-stxa-is-no-other-wire-event)
                           (:rewrite fn-intern-event-arena))))
 
 ; -----------------------------------------------------------------------------
