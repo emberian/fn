@@ -222,13 +222,29 @@ def native_declared_cut_names(parameter: str) -> tuple[str, ...]:
 
 
 def developer_selectors() -> tuple[str, ...]:
-    """The environment selectors host/native/io.lisp registers for its gate."""
+    """The environment selectors host/native/io.lisp registers for its gate
+    (every name of +fnn-developer-selectors+: FN_ACCOUNT_*, FN_BP_* and
+    FN_APP_* ones too, which the FN_NATIVE_ pattern used to drop)."""
     source = (ROOT / "host/native/io.lisp").read_text()
     match = re.search(r"\(defparameter \+fnn-developer-selectors\+\s+'\((.*?)\)\)",
                       source, re.S)
     if not match:
         raise AssertionError("developer selector table not found")
-    return tuple(re.findall(r'"(FN_NATIVE_[A-Z_]+)"', match.group(1)))
+    return tuple(re.findall(r'"(FN_[A-Z0-9_]+)"', match.group(1)))
+
+
+SELECTOR_READ = re.compile(r'\(fnn-developer-selector\s+"(FN_[A-Z0-9_]+)"\)')
+
+
+def selectors_read() -> dict[str, list[str]]:
+    """Each selector a host/native file reads by name through
+    fnn-developer-selector, with the files that read it.  A name the table
+    does not register faults at the read (fnn-developer-selector)."""
+    found: dict[str, list[str]] = {}
+    for path in sorted((ROOT / "host" / "native").glob("*.lisp")):
+        for name in SELECTOR_READ.findall(path.read_text(encoding="utf-8")):
+            found.setdefault(name, []).append(path.name)
+    return found
 
 
 def model_cut_names(program: str, book: str = "byte-store-programs.lisp") -> tuple[str, ...]:

@@ -4,16 +4,17 @@
 (include-book "topic-history-local-admin-tests")
 (include-book "must-fail-checked")
 
-(assert-event (fn-th-topic-eventp *thad-anchor-event*))
+; The anchor a Store carries is the nine-field one the local administrator
+; prepares; the eight-field admission core is not a topic event.
+(defconst *thae-anchor-event* (fn-stmt-value *thla-anchor*))
+(assert-event (fn-th-topic-eventp *thae-anchor-event*))
+(assert-event (not (fn-th-topic-eventp *thad-anchor-event*)))
 (assert-event (fn-th-topic-eventp *thad-report-event*))
 (assert-event (fn-th-topic-eventp *thla-install*))
-(assert-event (fn-th-topic-eventp (fn-stmt-value *thla-anchor*)))
 (make-event `(defconst *thae-admin-octets*
                ',(fn-th-topic-event-encode *thla-install*)))
 (make-event `(defconst *thae-anchor-octets*
-               ',(fn-th-topic-event-encode *thad-anchor-event*)))
-(make-event `(defconst *thae-anchor-v2-octets*
-               ',(fn-th-topic-event-encode (fn-stmt-value *thla-anchor*))))
+               ',(fn-th-topic-event-encode *thae-anchor-event*)))
 (make-event `(defconst *thae-report-octets*
                ',(fn-th-topic-event-encode *thad-report-event*)))
 (assert-event (and *thae-anchor-octets* *thae-report-octets*))
@@ -26,21 +27,14 @@
 (assert-event (<= (len *thae-report-octets*) *fn-th-topic-max-octets*))
 (assert-event
  (equal (fn-th-topic-event-decode-exact *thae-anchor-octets*)
-        (fn-stmt-ok *thad-anchor-event*)))
+        (fn-stmt-ok *thae-anchor-event*)))
 (assert-event
- (equal (fn-th-topic-event-decode-exact *thae-anchor-v2-octets*)
-        *thla-anchor*))
-(assert-event
- (equal (fn-th-at 1 (fn-th-topic-event-items *thad-anchor-event*))
-        (cons :uint *fn-th-topic-version*)))
-(assert-event
- (equal (fn-th-at 1
-                  (fn-th-topic-event-items (fn-stmt-value *thla-anchor*)))
+ (equal (fn-th-at 1 (fn-th-topic-event-items *thae-anchor-event*))
         (cons :uint *fn-th-topic-anchor-v2-version*)))
 (assert-event
  (equal (fn-th-topic-event-from-items
          (update-nth 1 (cons :uint 3)
-                     (fn-th-topic-event-items (fn-stmt-value *thla-anchor*))))
+                     (fn-th-topic-event-items *thae-anchor-event*)))
         (fn-stmt-error :version)))
 (assert-event
  (not (fn-stmt-okp
@@ -48,13 +42,16 @@
         (fn-stxe-encode-items
          (update-nth 1 (cons :uint *fn-th-topic-version*)
                      (fn-th-topic-event-items
-                      (fn-stmt-value *thla-anchor*))))))))
+                      *thae-anchor-event*)))))))
+; The fifteen-item version-1 anchor wire (no installation generation) is
+; not a topic event.
 (assert-event
  (not (fn-stmt-okp
        (fn-th-topic-event-decode-exact
         (fn-stxe-encode-items
-         (update-nth 1 (cons :uint *fn-th-topic-anchor-v2-version*)
-                     (fn-th-topic-event-items *thad-anchor-event*)))))))
+         (update-nth 1 (cons :uint *fn-th-topic-version*)
+                     (butlast (fn-th-topic-event-items *thae-anchor-event*)
+                              1)))))))
 (assert-event
  (not (fn-stmt-okp
        (fn-th-topic-event-from-items

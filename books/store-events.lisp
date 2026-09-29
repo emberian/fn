@@ -11,6 +11,7 @@
 (include-book "held-record")
 (include-book "consumer-store-events")
 (include-book "topic-history-store-events")
+(include-book "defevent") ; the retention event kinds' stable codes, one form
 
 (defconst *fn-store-event-magic* '(102 110 45 101)) ; fn-e
 (defconst *fn-store-event-version* 0)
@@ -225,10 +226,22 @@
 (verify-guards fn-store-event-evidence)
 (verify-guards fn-store-event-charge)
 
-(defun fn-store-event-kind-code (kind)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (equal kind :undertake) *fn-store-event-undertake-code*
-    (if (equal kind :release) *fn-store-event-release-code* 2)))
+;; The retention event kinds' stable codes are one form (books/defevent.lisp):
+;; it generates the encoder fn-store-event-kind-code as it was written by hand
+;; (0 undertake, 1 release, 2 for anything else; the book's theorem set is
+;; unchanged) and the registry row (tools/event_emit.py, planning/events.json).
+;; The decoders compare the code with the two constants above
+;; (books/records-concrete.lisp, books/store-budget.lisp); the assertion pins
+;; the table to them.
+(defevent fn-store-event-kind
+  :version 1
+  :var kind
+  :codes ((:undertake 0) (:release 1))
+  :otherwise 2
+  :encode fn-store-event-kind-code)
+(assert-event
+ (and (equal (fn-store-event-kind-code :undertake) *fn-store-event-undertake-code*)
+      (equal (fn-store-event-kind-code :release) *fn-store-event-release-code*)))
 
 (defun fn-store-retention-event-encode (event)
   (declare (xargs :guard t :verify-guards nil))

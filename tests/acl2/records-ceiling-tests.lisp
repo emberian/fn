@@ -42,12 +42,12 @@
 (assert-event (not (fn-cbor-result-okp (fn-cbor-decode *rct-payload-item*))))
 (assert-event (equal (fn-cbor-encode (cons :bytes *rct-payload*)) nil))
 
-; Records within the old widths keep their bytes: the golden schema-0 vector
+; Records within the old widths keep their bytes: the golden schema-1 vector
 ; (books/records.lisp) is unchanged.
 (assert-event
  (equal (fn-record-encode
-         (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 :legacy))
-        *fn-record-schema0-golden-octets*))
+         (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5))
+        *fn-record-schema1-golden-octets*))
 
 ; -----------------------------------------------------------------------------
 ; `fn-record-encode-length-bound' (records-seam; no hypothesis).  The

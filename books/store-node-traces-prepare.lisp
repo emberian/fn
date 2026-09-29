@@ -65,7 +65,7 @@
 ; the topic anchor recognizer split the preparation goals on arms they only
 ; carry.  A proof that reads one of them enables it in its hint.
 (local (in-theory (disable fn-cp-idp-true-listp fn-cp-id-length-bound
-                           fn-replay-identity-step fn-th-topic-v1-anchorp
+                           fn-replay-identity-step
                            fn-snt-history-recoverable-under-record-bound
                            fn-sn-new-success-requires-actual-matching-durable-node-completion)))
 

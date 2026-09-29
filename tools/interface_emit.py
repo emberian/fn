@@ -40,9 +40,15 @@ applies directly, and refuses
   declared);
 * a generated file that differs from what the forms say.
 
-What it cannot check is the world: the class, the kinds and the keystones
-are ACL2's to confirm, at image build (host/interfaces.lisp) and in
-tests/acl2/definterface-tests.lisp.
+* a declaration whose :class or :kinds is not what the image build will
+  find (tools/interface_kinds.py computes both from the source the way
+  books/definterface.lisp's fn-di-problem reads the world, and skips what
+  the source alone cannot decide -- item 68: the image build stopped on a
+  missing :kinds after its 25 minutes).
+
+What it cannot check is the world: the keystones, and the class and kinds
+the source cannot decide, are ACL2's to confirm, at image build
+(host/interfaces.lisp) and in tests/acl2/definterface-tests.lisp.
 
     python3 tools/interface_emit.py            # report
     python3 tools/interface_emit.py --check    # exit 1 on any finding (make check)
@@ -305,6 +311,8 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--write", action="store_true")
+    parser.add_argument("--kinds", action="store_true",
+                        help="also report :class/:kinds disagreements without --check")
     args = parser.parse_args(argv)
     if args.write:
         from tools import acl2_slots  # noqa: E402
@@ -315,6 +323,16 @@ def main(argv=None) -> int:
         ROOTS_SH.write_text(render_roots(decls))
         REGISTRY.write_text(render_registry(decls, reading))
     problems = findings(decls, reading)
+    if args.check or args.kinds:
+        # the image build's :class / :kinds check, estimated from the source
+        # (tools/interface_kinds.py, obstructions-8 item 68)
+        from tools import interface_kinds
+        judged, skipped = interface_kinds.judge(
+            decls, interface_kinds.read_source(interface_kinds.tree_files()))
+        problems += judged
+        print("interface_emit: :class/:kinds as the image build checks them: {} "
+              "disagreement(s), {} declaration(s) the source cannot judge".format(
+                  len(judged), skipped))
     declared = sum(1 for d in decls if d["name"] in reading["dispatched"])
     print("interface_emit: {} declared; {} of the raw host's {} dispatched entries; "
           "{} extraction roots, {} EXTRA; {} finding(s)".format(

@@ -115,7 +115,7 @@
 ; from its bytes at intern, books/catalog-record.lisp fn-held-facts-of).  A
 ; row of BYTES at sequence SEQ and txid TXID; its handle is SEQ.
 (defun cvt-rec (seq txid msgid groups bytes)
-  (fn-held-make seq txid 1 msgid seq groups "a" "s" "e" 2 :legacy
+  (fn-held-make seq txid 1 msgid seq groups "a" "s" "e" 2 0
                 (fn-held-facts-of bytes)
                 (fn-hc-make (fn-stx-make-verdict :absent nil 0) nil 0) nil nil))
 (defconst *cvt-t-bytes*
@@ -199,9 +199,9 @@
  ;; (PKT-635): C3 and T3 below, at handles 1 and 0.  The withdrawals are
  ;; decided from their rows' control facts in the history (flip-L8-2).
  (let* ((c3 (fn-make-article "<c2@example.invalid>" 1
-                             (list "control.cancel") (list (cons "control.cancel" 1)) t :legacy))
+                             (list "control.cancel") (list (cons "control.cancel" 1)) t 0))
         (t3 (fn-make-article "<t@example.invalid>" 0 (list "fn.mod.a")
-                             (list (cons "fn.mod.a" 1)) t :legacy))
+                             (list (cons "fn.mod.a" 1)) t 0))
         (st (fn-make-state (list "control.cancel" "fn.mod.a")
                            (list (cons "control.cancel" 2) (cons "fn.mod.a" 2))
                            (list c3 t3) 2 nil nil))
