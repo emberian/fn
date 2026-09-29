@@ -1432,7 +1432,7 @@ def world_check(builds=WORLD_BUILDS, root: Path = ROOT) -> tuple[list[str], list
 
 def repository_definitions(root: Path = ROOT) -> dict[str, list[str]]:
     """name -> the repository books (books/**, root-relative, no .lisp) that
-    define it non-locally."""
+    define it non-locally (functions, macros, stobjs; not theorems)."""
     import ledger
     found: dict[str, list[str]] = {}
     for path in sorted((root / "books").rglob("*.lisp")):
@@ -1441,7 +1441,11 @@ def repository_definitions(root: Path = ROOT) -> dict[str, list[str]]:
         if book.read_error:
             continue
         local = {f.name for f in book.functions if f.local}
-        for name in (book.definitions - local) | stobj_names(path):
+        # Theorems are not called: a definterface's :keystones list cites
+        # them in a call's shape (host/interfaces.lisp), and interface_emit
+        # judges those.
+        theorems = {t.name for t in book.theorems}
+        for name in (book.definitions - local - theorems) | stobj_names(path):
             found.setdefault(name, []).append(relative)
     return found
 

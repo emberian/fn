@@ -98,11 +98,13 @@ class BookHoleTests(unittest.TestCase):
         host = ('(in-package "ACL2")\n'
                 + ('(include-book "../books/digest")\n' if include_it else "")
                 + "(defun fn-open (x)\n  (declare (xargs :mode :program))\n"
-                  "  (list (fn-digest x) (fn-base-f x) (car x) '(fn-local-only q)))\n")
+                  "  (list (fn-digest x) (fn-base-f x) (car x) '(fn-local-only q)))\n"
+                  "(definterface fn-open :keystones (fn-digest-keystone))\n")
         build = BUILD.replace('"../../books/base"', '"books/base"')
         files = {"host/native/build.lisp": build, "books/base.lisp": BASE,
                  "books/digest.lisp": '(in-package "ACL2")\n(defun fn-digest (x) x)\n'
-                                      '(local (defun fn-local-only (x) x))\n',
+                                      '(local (defun fn-local-only (x) x))\n'
+                                      '(defthm fn-digest-keystone (equal (fn-digest x) x))\n',
                  "host/a-host.lisp": host, "host/c-host.lisp": '(in-package "ACL2")\n',
                  "host/native/raw.lisp": ""}
         for name, text in files.items():
