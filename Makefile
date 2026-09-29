@@ -919,6 +919,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-join-host-arms \
 	books/served-catalog-join-host-read \
 	books/served-catalog-join-host-exec \
+	books/served-catalog-join-host-entries \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
