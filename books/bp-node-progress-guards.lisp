@@ -43,7 +43,9 @@
 (verify-guards fn-bpnp-has-forward-pendingp)
 (verify-guards fn-bpnp-tcpcl-outcome)
 (verify-guards fn-bpnp-wait-for)
+(verify-guards fn-bpnp-remove-wait-loop)
 (verify-guards fn-bpnp-remove-wait)
+(verify-guards fn-bpnp-prune-waits-loop)
 (verify-guards fn-bpnp-prune-waits)
 (verify-guards fn-bpnp-wait-key)
 (verify-guards fn-bpnp-primary)
@@ -75,6 +77,7 @@
 (verify-guards fn-bpnp-delivery-view)
 (verify-guards fn-bpnp-dispatched-held)
 (verify-guards fn-bpnp-dispatch-matches-heldp)
+(verify-guards fn-bpnp-replace-dispatched-loop)
 (verify-guards fn-bpnp-replace-dispatched)
 (verify-guards fn-bpnp-dispatch-apply)
 ;; The helper's premise is the base state; its remaining obligations are
@@ -152,6 +155,7 @@
                                fn-bpn-machine-statep
                                fn-bpb-bundlep fn-bpnf-heldp))))
 (verify-guards fn-bpnp-held-dest)
+(verify-guards fn-bpnp-routed-rows-loop)
 (verify-guards fn-bpnp-routed-rows)
 (verify-guards fn-bpnp-routed-start
   :hints (("Goal" :do-not-induct t

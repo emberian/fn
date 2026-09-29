@@ -158,12 +158,13 @@
 (defthm fn-stx-lace-of-store-is-lace
   (fn-lace-p (fn-stx-lace-of-store articles keyring)))
 
-(defun fn-stx-lace (node keyring)
-  (declare (xargs :guard (fn-prin-keyringp keyring)))
-  (fn-stx-lace-of-store (fn-stx-store node) keyring))
-
-(defthm fn-stx-lace-is-lace
-  (fn-lace-p (fn-stx-lace node keyring)))
+; The NODE lace is books/stx-node-lace.lisp's fn-stx-lace (PKT-892,
+; 2026-09-29): the node's articles carry arena HANDLES since the records
+; flip, so the octet model above is applied to ALPHA of the node's articles
+; (fn-articles-wire-of, each handle read through the arena), never to the
+; node's articles themselves.  Until then `fn-stx-lace' here applied it to
+; the handles and read no statement from any node the machine produces
+; (planning/evidence/stx-vacuity-2026-09-29.md).
 
 ; -----------------------------------------------------------------------------
 ; The bridge: accepting a transit article is a lace merge of its delta
@@ -178,9 +179,11 @@
 ; EXISTED.  So the observation was assumed, and every keystone below that
 ; hypothesises it -- fn-stx-lace-of-accept-is-merge, fn-stx-transit-ids-are-
 ; union, fn-stx-transit-equivocation-survives-later-merges, and
-; fn-stx-index-invariant-preserved-by-accept in books/stx-index.lisp -- was
-; preservation under a hypothesis nothing established.  The theorem after the
-; definition establishes it, at the transition the host actually calls.
+; fn-stx-index-invariant-preserved-by-accept -- was preservation under a
+; hypothesis nothing established.  The theorem after the definition
+; establishes it, at the transition the host actually calls.  Since
+; 2026-09-29 those keystones live in books/stx-node-lace.lisp, stated over
+; the node lace read through the arena (PKT-892).
 
 (defun fn-stx-acceptedp (node next article)
   (declare (xargs :guard t))
@@ -234,94 +237,11 @@
            (equal (fn-lace-merge lace delta)
                   (append lace delta))))
 
-(defthm fn-stx-lace-of-accept-is-merge
-  (implies (and (fn-stx-acceptedp node next article)
-                (fn-stx-delta-freshp
-                 (fn-stx-lace node keyring)
-                 (fn-stx-delta (fn-article-payload article) keyring)))
-           (equal (fn-stx-lace next keyring)
-                  (fn-lace-merge (fn-stx-lace node keyring)
-                                 (fn-stx-delta (fn-article-payload article)
-                                               keyring))))
-  :hints (("Goal" :in-theory (disable fn-stx-delta-freshp fn-lace-merge
-                                      fn-stx-delta))))
-
-; -----------------------------------------------------------------------------
-; S3-1 (corollary of fn-lace-merge-ids-are-union and the bridge above)
-
-(defthm fn-stx-transit-ids-are-union
-  (implies (and (fn-stx-acceptedp node next article)
-                (fn-stx-delta-freshp
-                 (fn-stx-lace node keyring)
-                 (fn-stx-delta (fn-article-payload article) keyring)))
-           (iff (member-equal h (fn-lace-ids (fn-stx-lace next keyring)))
-                (or (member-equal h (fn-lace-ids (fn-stx-lace node keyring)))
-                    (member-equal h (fn-lace-ids
-                                     (fn-stx-delta (fn-article-payload article)
-                                                   keyring))))))
-  :hints (("Goal"
-           :use ((:instance fn-stx-lace-of-accept-is-merge))
-           :in-theory (disable fn-stx-lace-of-accept-is-merge fn-stx-lace
-                               fn-stx-acceptedp fn-stx-delta-freshp
-                               fn-stx-delta fn-lace-merge))))
-
-; -----------------------------------------------------------------------------
-; S3-2 (corollary of fn-lace-distinct-same-slot-is-equivocation and the
-; bridge).  Note the two membership conjuncts: NEITHER FORK IS DROPPED, which
-; is the substantive half and does not follow from the equivocator predicate.
-
-(defthm fn-stx-transit-equivocation-is-detected
-  (implies (and (fn-stx-acceptedp node next article)
-                (fn-stx-delta-freshp
-                 (fn-stx-lace node keyring)
-                 (fn-stx-delta (fn-article-payload article) keyring))
-                (member-equal s1 (fn-stx-lace node keyring))
-                (equal (list s2) (fn-stx-delta (fn-article-payload article)
-                                               keyring))
-                (not (equal s1 s2))
-                (fn-lace-same-slotp s1 s2))
-           (and (fn-lace-equivocatorp (fn-stx-lace next keyring)
-                                      (fn-stmt-creator s1)
-                                      (fn-stmt-incarnation s1))
-                (member-equal s1 (fn-stx-lace next keyring))
-                (member-equal s2 (fn-stx-lace next keyring))))
-  :hints (("Goal"
-           :use ((:instance fn-stx-lace-of-accept-is-merge)
-                 (:instance fn-stx-merge-of-fresh-short-delta
-                            (lace (fn-stx-lace node keyring))
-                            (delta (fn-stx-delta (fn-article-payload article)
-                                                 keyring)))
-                 (:instance fn-lace-distinct-same-slot-is-equivocation
-                            (lace (append (fn-stx-lace node keyring)
-                                          (list s2)))))
-           :in-theory (disable fn-stx-lace-of-accept-is-merge
-                               fn-stx-merge-of-fresh-short-delta
-                               fn-lace-distinct-same-slot-is-equivocation
-                               fn-stx-lace fn-stx-acceptedp fn-stx-delta
-                               fn-stx-delta-freshp fn-lace-merge
-                               (:d fn-lace-equivocatorp)
-                               (:d fn-lace-same-slotp)))))
-
-; Evidence of a fork cannot be erased by a later merge: the wire form of
-; fn-lace-merge-preserves-equivocation (corollary).
-(defthm fn-stx-transit-equivocation-survives-later-merges
-  (implies (and (fn-stx-acceptedp node next article)
-                (fn-stx-delta-freshp
-                 (fn-stx-lace node keyring)
-                 (fn-stx-delta (fn-article-payload article) keyring))
-                (fn-lace-equivocatorp (fn-stx-lace node keyring) p i))
-           (fn-lace-equivocatorp (fn-stx-lace next keyring) p i))
-  :hints (("Goal"
-           :use ((:instance fn-stx-lace-of-accept-is-merge)
-                 (:instance fn-lace-merge-preserves-equivocation
-                            (lace (fn-stx-lace node keyring))
-                            (delta (fn-stx-delta (fn-article-payload article)
-                                                 keyring))))
-           :in-theory (disable fn-stx-lace-of-accept-is-merge
-                               fn-lace-merge-preserves-equivocation
-                               fn-stx-lace fn-stx-acceptedp fn-stx-delta
-                               fn-stx-delta-freshp fn-lace-merge
-                               (:d fn-lace-equivocatorp)))))
+; The bridge's keystones -- fn-stx-lace-of-accept-is-merge (S3-1),
+; fn-stx-transit-ids-are-union, fn-stx-transit-equivocation-is-detected (S3-2)
+; and fn-stx-transit-equivocation-survives-later-merges -- are stated in
+; books/stx-node-lace.lisp over the node lace read through the arena.  Kept
+; here: the freshness predicate and the merge of a fresh short delta they use.
 
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md section 2).  The projection's recursion

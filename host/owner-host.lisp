@@ -76,6 +76,7 @@
 ; The retention admission of a POST through a carried obligation-id trie
 ; (fn-prc-refresh, fn-prc-sbud-prepare; fn-owner-prepare-buffer).
 (include-book "../books/post-retain-carried")
+(include-book "../books/identity-retain-carried")
 ;; lane prepare-served: the served decision inside the prepares the host calls
 ;; (fn-psrv-prepare, fn-psrv-refusal-kind, fn-psrv-prepare-identity,
 ;; fn-psrv-prepare-topic) and the configuration un-stage (fn-psrv-unstage).
@@ -1408,6 +1409,26 @@
       (f-get-global 'fn-owner-parse-carry state)
     nil))
 
+; The carrier-plan memo (books/owner-parse-carried.lisp, PKT-552): one entry
+; ((RECEIVED . PLAN)), PLAN = fn-hc-received-plan of RECEIVED.  Its only
+; writer is fn-owner-plans-for, through fn-apc-plans-extend, which keeps
+; fn-apc-plansp under fn-apc-p of the parse carry (fn-apc-plansp-of-extend;
+; nil before the first write), so each reader is its reference
+; (fn-apc-plan-is-received-plan).  A signed POST decides its carrier plan in
+; its first reader and reads it in the others.
+(defun fn-owner-plan-carry (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-plan-carry state)
+      (f-get-global 'fn-owner-plan-carry state)
+    nil))
+
+(defun fn-owner-plans-for (received state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((plans (fn-apc-plans-extend received (fn-owner-plan-carry state)
+                                     (fn-owner-parse-carry state)))
+         (state (f-put-global 'fn-owner-plan-carry plans state)))
+    (mv plans state)))
+
 ;; PKT-789: the configuration the take staged the in-flight submission's
 ;; octets under (fn-apc-take's CFG).  The article completion names the
 ;; submission by those octets (fn-own-completion-names-submission-p over
@@ -1845,10 +1866,22 @@
       ;; unchanged otherwise.
       ;; fn-pout-prepare-identity (books/owner-prepare-outcome.lisp) answers
       ;; its word (KEYSTONE fn-pout-prepare-identity-answers-the-store-change).
+      ;; served-costs-4 (Q5b): the prepare the host calls is
+      ;; fn-irc-pout-prepare-identity (books/identity-retain-carried.lisp)
+      ;; with the carried obligation-id trie brought to the Store node's
+      ;; ledger, as the article prepare above: the gate's record application
+      ;; answers the retention admission from the trie instead of scanning
+      ;; every pin and release (KEYSTONE
+      ;; fn-irc-pout-prepare-identity-of-refresh-is-pout: its word and owner
+      ;; are fn-pout-prepare-identity's for every carry the host holds).
+      (let ((carry (fn-prc-refresh (fn-owner-retain-carry state)
+                                   (fn-node-retention (fn-sn-node s)))))
       (mv-let (word next)
-        (fn-pout-prepare-identity (fn-owner-ocfg state) event (fn-arena-count fn-arena))
+        (fn-irc-pout-prepare-identity (fn-owner-ocfg state) event
+                                      (fn-arena-count fn-arena) carry)
       (let* ((row (fn-oii-identity-row event (fn-sn-keyring s) (fn-sn-keyring-generation s)
                                        (fn-arena-count fn-arena)))
+             (state (f-put-global 'fn-owner-retain-carry carry state))
              (state (fn-owner-install-ocfg next state)))
         (cond ((not (equal word :prepared)) (value word))
               ((fn-oii-identity-sealsp event)
@@ -1865,7 +1898,7 @@
                                (cons event row))
                              state)))
                  (value (list :seal (fn-oii-identity-payload event)))))
-              (t (value :prepared))))))))
+              (t (value :prepared)))))))))
 
 ; The consumer proposal is constructed by ACL2.  The host carries this exact
 ; bounded event into Store; it does not rebuild the scope, epoch or cursor.
@@ -2049,8 +2082,19 @@
   (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let* ((before (fn-owner-core state))
          (before-files (fn-sn-files (fn-own-store before)))
+         ;; served-costs-4 (Q5b): the completion the host calls is
+         ;; fn-irc-rix-ocfg-complete (books/identity-retain-carried.lisp),
+         ;; its gate and finish applying an identity, consumer or topic
+         ;; record through the carried obligation-id trie brought to the
+         ;; Store node's ledger (KEYSTONE
+         ;; fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete).
+         (carry (fn-prc-refresh (fn-owner-retain-carry state)
+                                (fn-node-retention
+                                 (fn-sn-node (fn-own-store before)))))
+         (state (f-put-global 'fn-owner-retain-carry carry state))
          (state (fn-owner-install-ocfg
-                 (fn-rix-ocfg-complete (fn-owner-ocfg state) fn-hist) state))
+                 (fn-irc-rix-ocfg-complete (fn-owner-ocfg state) fn-hist carry)
+                 state))
          (after (fn-owner-core state))
          (after-files (fn-sn-files (fn-own-store after))))
     (if (and (equal (fn-sf-phase before-files) :completing)
@@ -2389,12 +2433,14 @@
 ; builds the record, the verifier and the configuration.  Nothing here
 ; derives a digest, compares a secret or decides a permission: the rows are
 ; transport (AGENTS.md's one-owner rule).  A row is
-; (name-octets principal-octets salt-octets digest-octets postingp).
+; (name principal salt digest postingp stored-key server-key), octets but
+; for postingp: books/auth-secret.lisp's verifier v2 fields.
 
 (defun fn-owner-auth-cred-of (row)
   (declare (xargs :mode :program))
   (fn-auth-make-cred (nth 0 row) (nth 1 row)
-                     (fn-authsec-verifier (nth 2 row) (nth 3 row))
+                     (fn-authsec-verifier (nth 2 row) (nth 3 row)
+                                          (nth 5 row) (nth 6 row))
                      (and (nth 4 row) t)))
 
 (defun fn-owner-auth-creds-of (rows)
@@ -2892,8 +2938,9 @@
          ; the re-pin tests the rebuilt session at the node the held session
          ; already carries instead of re-running fn-node-statep on it, and
          ; opens the reader session with fn-acar-nntp-projectionp, which
-         ; omits the fn-statep of the whole view archive that
-         ; fn-ocl-view-historyp carries (fn-acar-view-historyp-carries-view-statep).
+         ; omits the fn-statep of the whole view archive and the safety of
+         ; its group names, both of which fn-ocl-view-historyp carries
+         ; (fn-acar-view-historyp-carries-view-statep).
          ; post-alloc-2: fn-apc-own-outcome, equal to fn-acar-own-outcome
          ; under the intent and parse carries fn-owner-take wrote
          ; (fn-apc-own-outcome-is-acar-own-outcome): the durable article's
@@ -3051,10 +3098,11 @@
 (defun fn-owner-peer-carrier-plan (received transitp state)
   (declare (xargs :stobjs state :mode :program))
   ; fn-apc-current-plan-is-reference (books/owner-parse-carried.lisp).
-  (value (fn-apc-current-plan
-          received (fn-sn-keyring-snapshots (fn-owner-store state))
-          (fn-owner-transit-carried-list transitp state)
-          (and transitp t) (fn-owner-parse-carry state))))
+  (mv-let (plans state) (fn-owner-plans-for received state)
+    (value (fn-apc-current-plan
+            received (fn-sn-keyring-snapshots (fn-owner-store state))
+            (fn-owner-transit-carried-list transitp state)
+            (and transitp t) plans (fn-owner-parse-carry state)))))
 
 ;; C1 (control messages): the filing step every ingress takes first,
 ;; books/peer-authored-accept.lisp fn-pa-filing-plan over the received
@@ -3099,7 +3147,8 @@
 (defun fn-owner-peer-carrier-form (received state)
   (declare (xargs :stobjs state :mode :program))
   ; fn-apc-carrier-form-is-reference (books/owner-parse-carried.lisp).
-  (value (fn-apc-carrier-form received (fn-owner-parse-carry state))))
+  (mv-let (plans state) (fn-owner-plans-for received state)
+    (value (fn-apc-carrier-form received plans (fn-owner-parse-carry state)))))
 
 (defun fn-owner-served-carried-word (word detail state)
   (declare (xargs :stobjs state :mode :program))
@@ -3174,10 +3223,11 @@
   (declare (xargs :stobjs state :mode :program))
   ;; PKT-433 (d): (CLASS VERDICT) (fn-pcb-transit-refusal-detail), or nil.
   ;; fn-apc-transit-refusal-detail-is-reference (books/owner-parse-carried).
-  (value (fn-apc-transit-refusal-detail
-          received (fn-sn-keyring-snapshots (fn-owner-store state))
-          (fn-owner-transit-carried-list transitp state) ed ml
-          (fn-owner-parse-carry state))))
+  (mv-let (plans state) (fn-owner-plans-for received state)
+    (value (fn-apc-transit-refusal-detail
+            received (fn-sn-keyring-snapshots (fn-owner-store state))
+            (fn-owner-transit-carried-list transitp state) ed ml
+            plans (fn-owner-parse-carry state)))))
 
 ; PKT-473 (PRF-184): an accepted transit arm's verdict
 ; (books/peer-carriage.lisp fn-pcb-transit-verdict) under the same keyring
@@ -3186,10 +3236,11 @@
 (defun fn-owner-transit-verdict (received transitp ed ml state)
   (declare (xargs :stobjs state :mode :program))
   ; fn-apc-transit-verdict-is-reference (books/owner-parse-carried.lisp).
-  (value (fn-apc-transit-verdict
-          received (fn-sn-keyring-snapshots (fn-owner-store state))
-          (fn-owner-transit-carried-list transitp state)
-          (and transitp t) ed ml (fn-owner-parse-carry state))))
+  (mv-let (plans state) (fn-owner-plans-for received state)
+    (value (fn-apc-transit-verdict
+            received (fn-sn-keyring-snapshots (fn-owner-store state))
+            (fn-owner-transit-carried-list transitp state)
+            (and transitp t) ed ml plans (fn-owner-parse-carry state)))))
 
 (defun fn-owner-peer-carried-event
     (coordinates msgid received group-codes obligation subject evidence charge
@@ -3485,6 +3536,32 @@
              (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))
 
+; The host's (:sasl-context SEED BINDING) wire event (books/nntp-auth.lisp):
+; SEED, fresh OS CSPRNG octets the SCRAM server nonce is derived from, and
+; BINDING, NIL or the connection's RFC 9266 tls-exporter value.  Sent once
+; after the open (plaintext) or the handshake (implicit TLS), and again after
+; every STARTTLS handshake, after fn-owner-tls-established: the 382 clears the
+; context.  It emits no reply; the widths are ACL2's (books/sasl.lisp).
+(defun fn-owner-sasl-context (id seed binding fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (let ((owner (fn-owner-core state)))
+    (if (not (fn-own-find-conn id (fn-own-conns owner)))
+        (value :unknown)
+      (let* ((result (fn-ocfg-read-step (fn-owner-ocfg state)
+                                        id (list :sasl-context seed binding)
+                                        fn-arena))
+             (state (fn-owner-install-ocfg (cdr result) state))
+             (state (fn-owner-install-effects (car result) state)))
+        (value :ok)))))
+
+(defun fn-owner-sasl-seed-octets ()
+  (declare (xargs :mode :program))
+  *fn-sasl-seed-octets*)
+
+(defun fn-owner-sasl-binding-octets ()
+  (declare (xargs :mode :program))
+  *fn-sasl-binding-octets*)
+
 ;; RFC 8054 (lane compress): the compression layer this connection's session
 ;; owes the host after a 206 (books/nntp-auth.lisp fn-auth-compress): the
 ;; algorithm (:deflate), or nil.  The host installs the layer once the 206's
@@ -3630,6 +3707,62 @@
                  (fn-own-max-conns (fn-owner-core state))
                  (fn-owner-exposure-publicp state)
                  (fn-auth-config-requiredp (fn-owner-auth state))))
+
+;; PRF-986 (PKT-639, W2a): the TLS handshake as an admission decision
+;; (books/tls-handshake-budget.lisp).  The limits are the operator's live
+;; rows (`policy set tls-handshakes-per-source-per-minute|
+;; tls-handshakes-in-flight|tls-handshake-ms N'), ACL2's defaults when absent.
+(defun fn-owner-handshake-state (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-handshakes state)
+      (f-get-global 'fn-owner-handshakes state)
+    (fn-hsb-initial)))
+
+(defun fn-owner-handshake-limits (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((v (fn-cfg-value (fn-owner-config state))))
+    (fn-hsb-limits (fn-cfg-limit v "tls-handshakes-per-source-per-minute")
+                   (fn-cfg-limit v "tls-handshakes-in-flight")
+                   (fn-cfg-limit v "tls-handshake-ms"))))
+
+;; Before any handshake work on a socket from (FAMILY . ADDRESS): QUEUEDP
+;; when the socket is one that waited for a slot.  The value is
+;; (VERDICT X DEADLINE-MS LINE): VERDICT :admit (X the handshake id, to hand
+;; back to fn-owner-handshake-done), :wait (the socket waits unadmitted, at
+;; most DEADLINE-MS), or :refuse (X the reason; LINE the service log's line,
+;; and the socket is closed without SSL_accept).
+(defun fn-owner-handshake-admit (family address queuedp state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((hl (fn-owner-handshake-limits state))
+         (source (cons family address))
+         (trustedp (fn-exp-trusted-addressp
+                    source (fn-exp-lim-trusted (fn-owner-exposure-limits state))))
+         (r (fn-hsb-admit (fn-owner-handshake-state state) hl trustedp source
+                          (fn-owner-exposure-now state) queuedp))
+         (state (f-put-global 'fn-owner-handshakes (fn-hsb-state r) state))
+         (verdict (fn-hsb-verdict r)))
+    (value (list verdict (fn-hsb-detail r) (fn-hsb-lim-deadline hl)
+                 (if (equal verdict :refuse)
+                     (fn-hsb-refusal-line (fn-hsb-detail r) source)
+                   nil)))))
+
+;; A handshake fn-owner-handshake-admit admitted ended: completed, failed,
+;; timed out or closed.
+(defun fn-owner-handshake-done (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-handshakes
+                             (fn-hsb-done (fn-owner-handshake-state state) id)
+                             state)))
+    (value :ok)))
+
+;; A socket that waited for a slot left without a decision (its deadline,
+;; its peer's close, the service's stop).
+(defun fn-owner-handshake-leave (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-handshakes
+                             (fn-hsb-leave (fn-owner-handshake-state state))
+                             state)))
+    (value :ok)))
 
 ;; The octets one served step may read (books/connection-budget.lisp
 ;; fn-cbud-step-read-octets): 512 under a step rate, 4 KiB without one.

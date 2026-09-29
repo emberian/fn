@@ -1,6 +1,7 @@
 ;;; fn native host: the payload arena's EXTENT realizer (lane arena-offheap-2,
 ;;; 2026-09-27; PRF-281; design planning/evidence/arena-offheap-2026-09-27.md
-;;; section 3).  Loaded after io.lisp by host/native/build.lisp.
+;;; section 3; identity: lane extent-identity, 2026-09-29, PRF-994).  Loaded
+;;; after io.lisp by host/native/build.lisp.
 ;;;
 ;;; A-DURABLE-EXTENT (books/assumptions.lisp) constrains the realizer
 ;;; `fn-durable-realize-octet' to answer the durable octet; this file is its
@@ -11,14 +12,34 @@
 ;;; durable file an extent names (a log segment or an installed checkpoint;
 ;;; an id is never reused within the process and an unlinked file stays
 ;;; readable through its descriptor until the file is RETIRED and ACL2's close
-;;; decision names it: see the end of this file), preads an entry's protected prefix into a bounded
-;;; cache (ACL2's fn-arx-read-cache-entries entries) with the entry's trailer,
-;;; and asks ACL2 whether the prefix's frame digest is that trailer, over its
-;;; own octet buffer (fn-arx-entry-ok-buffer, books/payload-extent-read.lisp).  A
-;;; mismatch or a short read is refused by name -- arena-extent-digest,
-;;; arena-extent-read -- as a store fault (a recovery event: the store is
-;;; fenced); the octet is never answered.  pread, not mmap: portable (Linux,
-;;; OpenBSD), no SIGBUS on a zeroed or truncated tail, one copy.
+;;; decision names it: see the end of this file), preads an entry's protected
+;;; prefix and its trailer into a bounded cache (ACL2's
+;;; fn-arx-read-cache-entries entries), and asks ACL2 for the VERDICT of that
+;;; read against the descriptor's commitment (fn-arx-entry-verdict-buffer,
+;;; books/payload-extent-read.lisp, over its own octet buffer fn-octets-rd):
+;;; the trailer recorded after the prefix must be the descriptor's trailer
+;;; (KEYSTONE fn-arx-entry-verdict-buffer-ok-is-the-commitment) and the
+;;; prefix's frame digest must be that trailer.  Each verdict but :ok is
+;;; refused by name -- arena-extent-trailer (the recorded trailer is not the
+;;; descriptor's: another well-formed entry at this offset, a wrong offset,
+;;; an entry of another store or generation), arena-extent-digest (the
+;;; prefix's digest is not its trailer), arena-extent-read (no file, a short
+;;; read) -- as a store fault (a recovery event: the store is fenced); the
+;;; octet is never answered.  pread, not mmap: portable (Linux, OpenBSD), no
+;;; SIGBUS on a zeroed or truncated tail, one copy.
+;;;
+;;; IDENTITY.  A cached entry is keyed by the whole descriptor identity --
+;;; the file id, the prefix's offset and length and the expected trailer --
+;;; and a hit answers only a read that was verified under exactly that
+;;; identity.  The file id is this process's name for one durable INCARNATION
+;;; of a file: the (device, inode) pair `fnn-extent-register' records from the
+;;; descriptor it opened, never reused within the process, dropped (with every
+;;; cached entry of it) by `fnn-extent-close'.  It is never persisted: every
+;;; descriptor is re-derived at the open from the file the open itself read
+;;; and checked, so no process-local id crosses a restart, and the identity
+;;; that does cross a restart is the commitment (the entry's trailer, which
+;;; the open's chain check established).  A transient OS descriptor number is
+;;; not an identity here: it is looked up under the id, never compared.
 
 (in-package "ACL2")
 
@@ -27,20 +48,40 @@
 (defvar *fnn-extent-lock* (sb-thread:make-mutex :name "fn extent realizer"))
 (defvar *fnn-extent-fds* (make-hash-table))   ; guarded-by: *fnn-extent-lock* (file id -> fd)
 (defvar *fnn-extent-paths* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> path)
+(defvar *fnn-extent-incarnations* (make-hash-table))
+;; guarded-by: *fnn-extent-lock* (file id -> (device . inode) of the file opened)
 (defvar *fnn-extent-bases* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> page 0's offset)
 (defvar *fnn-extent-next-id* 1)
-(defvar *fnn-extent-cache* nil)               ; ((file eoff . octets) ...), most recent first
+(defvar *fnn-extent-cache* nil)
+;; ((file eoff elen trailer . octets) ...), most recent first: the verified
+;; entries, each under the descriptor identity it was verified for
 (defvar *fnn-extent-stats* (list 0 0 0))      ; hits, misses (preads), refusals
 
 (defun fnn-extent-register (path)
-  "A new file id for PATH: a read-only descriptor held for the process's life."
-  (let ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
+  "A new file id for PATH: a read-only descriptor held for the process's life,
+and the durable incarnation (device . inode) it opened."
+  (let* ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
+         (st (fnn-fstat fd))
+         (incarnation (cons (sb-posix:stat-dev st) (sb-posix:stat-ino st))))
     (sb-thread:with-mutex (*fnn-extent-lock*)
       (let ((id *fnn-extent-next-id*))
         (incf *fnn-extent-next-id*)
         (setf (gethash id *fnn-extent-fds*) fd
-              (gethash id *fnn-extent-paths*) path)
+              (gethash id *fnn-extent-paths*) path
+              (gethash id *fnn-extent-incarnations*) incarnation)
         id))))
+
+(defun fnn-extent-incarnation (file)
+  "The (device . inode) file id FILE opened, or NIL.  Called with the
+realizer's lock held."
+  (gethash file *fnn-extent-incarnations*))
+
+(defun fnn-extent-where (file eoff)
+  "The refusal's naming of the entry at EOFF of FILE: its path and durable
+incarnation.  Called with the realizer's lock held."
+  (let ((inc (fnn-extent-incarnation file)))
+    (format nil "~a (file ~a~@[, dev ~a ino ~a~]) at ~a"
+            (gethash file *fnn-extent-paths*) file (car inc) (cdr inc) eoff)))
 
 (defun fnn-extent-register-at (path base)
   "A new file id for PATH whose page A the page fill reads at BASE + 16 KiB * A
@@ -90,21 +131,58 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
             (or (cdr (assoc 'fn-octets-rd (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the realizer's buffer stobj is not in this image")))))
 
+(defmacro fnn-with-octets-rd ((st octets fill) &body body)
+  "BODY with the realizer's buffer ST holding OCTETS (its array) at FILL;
+the buffer lets go of OCTETS afterwards.  Called with the realizer's lock
+held."
+  `(let ((,st (fnn-live-octets-rd)))
+     (setf (svref ,st 0) ,octets
+           (svref ,st 1) ,fill)
+     (unwind-protect
+          (progn ,@body)
+       (setf (svref ,st 1) 0
+             (svref ,st 0) (make-array 0 :element-type '(unsigned-byte 8))))))
+
+(defun fnn-extent-entry-verdict (octets elen trailer)
+  "ACL2's verdict of the entry read into OCTETS (its protected prefix, ELEN
+octets, then its 32-octet trailer) against the descriptor's expected
+TRAILER: the realizer's own buffer fn-octets-rd holds the prefix in place
+(its array is OCTETS, its fill ELEN) and fn-arx-entry-verdict-buffer
+(books/payload-extent-read.lisp, KEYSTONE
+fn-arx-entry-verdict-buffer-ok-is-the-commitment) answers :ok, :trailer or
+:digest.  Called with the realizer's lock held."
+  (fnn-with-octets-rd (st octets elen)
+    (first (fnn-call 'fn-arx-entry-verdict-buffer trailer (coerce (subseq octets elen) 'list) st))))
+
 (defun fnn-extent-entry-ok (octets elen)
-  "ACL2's check of the entry read into OCTETS (its protected prefix, ELEN
-octets, then its 32-octet trailer): the realizer's own buffer fn-octets-rd
-holds the prefix in place (its array is OCTETS, its fill ELEN) and
+  "ACL2's self-consistency check of the entry read into OCTETS (its
+protected prefix, ELEN octets, then its 32-octet trailer):
 fn-arx-entry-ok-buffer (books/payload-extent-read.lisp, KEYSTONE
 fn-arx-entry-ok-buffer-is-the-frame-check) compares the frame digest of the
-buffer, read by index, with the trailer.  Called with the realizer's lock
-held; the buffer lets go of OCTETS afterwards."
-  (let ((st (fnn-live-octets-rd)))
-    (setf (svref st 0) octets
-          (svref st 1) elen)
-    (unwind-protect
-         (first (fnn-call 'fn-arx-entry-ok-buffer (coerce (subseq octets elen) 'list) st))
-      (setf (svref st 1) 0
-            (svref st 0) (make-array 0 :element-type '(unsigned-byte 8))))))
+prefix with the trailer read after it.  For a read that has no descriptor
+yet (fnn-extent-entry-fresh); a read of an accepted extent is decided
+against the descriptor's trailer by fnn-extent-entry-verdict.  Called with
+the realizer's lock held."
+  (fnn-with-octets-rd (st octets elen)
+    (first (fnn-call 'fn-arx-entry-ok-buffer (coerce (subseq octets elen) 'list) st))))
+
+(defun fnn-extent-read-entry (file eoff elen)
+  "One pread of the entry at [EOFF, EOFF+ELEN+32) of FILE into a fresh
+array; refused by name (arena-extent-read) when no such file is registered
+or the file holds fewer octets.  Called with the realizer's lock held."
+  (let ((fd (gethash file *fnn-extent-fds*))
+        (octets (make-array (+ elen 32) :element-type '(unsigned-byte 8))))
+    (incf (second *fnn-extent-stats*))
+    (unless fd
+      (incf (third *fnn-extent-stats*))
+      (error 'fnn-extent-fault
+             :message (format nil "arena-extent-read: no durable file ~a is registered" file)))
+    (unless (= (fnn-extent-pread fd octets eoff) (+ elen 32))
+      (incf (third *fnn-extent-stats*))
+      (error 'fnn-extent-fault
+             :message (format nil "arena-extent-read: ~a holds fewer than ~a octets"
+                              (fnn-extent-where file eoff) (+ elen 32))))
+    octets))
 
 ;;; Row A4 (option (c), lane composed-owner-3; books/owner-cold-line.lisp):
 ;;; the served read span runs with *fnn-extent-no-io* bound true (host/native/
@@ -122,56 +200,76 @@ held; the buffer lets go of OCTETS afterwards."
   (plusp (fnn-extent-cache-limit)))
 
 (defun fnn-extent-entry (file eoff elen trailer)
-  (declare (ignorable trailer))
-  "The verified protected prefix of the entry at [EOFF, EOFF+ELEN) of FILE,
-from the cache or read once (one pread of the prefix and its trailer) and
-checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
-  (let ((hit (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)))
+  "The verified entry (its protected prefix at [EOFF, EOFF+ELEN) of FILE
+and its trailer) of the descriptor whose expected trailer is TRAILER, from
+the cache under that identity or read once and decided by ACL2 against it
+(fnn-extent-entry-verdict); every verdict but :ok is refused by name.
+Called with the realizer's lock held."
+  (let ((hit (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
+                                       (eql (third e) elen) (eql (fourth e) trailer)))
                       *fnn-extent-cache*)))
     (if hit
         (progn (incf (first *fnn-extent-stats*))
                (unless (eq hit (first *fnn-extent-cache*))
                  (setq *fnn-extent-cache* (cons hit (delete hit *fnn-extent-cache* :test #'eq))))
-               (cddr hit))
-      (let ((fd (gethash file *fnn-extent-fds*))
-            (octets (if *fnn-extent-no-io*
-                        (throw 'fnn-extent-cold (list file eoff elen trailer))
-                        (make-array (+ elen 32) :element-type '(unsigned-byte 8)))))
-        (incf (second *fnn-extent-stats*))
-        (unless fd
+               (cddddr hit))
+      (let* ((octets (if *fnn-extent-no-io*
+                         (throw 'fnn-extent-cold (list file eoff elen trailer))
+                         (fnn-extent-read-entry file eoff elen)))
+             (verdict (fnn-extent-entry-verdict octets elen trailer)))
+        (unless (eq verdict :ok)
           (incf (third *fnn-extent-stats*))
           (error 'fnn-extent-fault
-                 :message (format nil "arena-extent-read: no durable file ~a is registered" file)))
-        (unless (= (fnn-extent-pread fd octets eoff) (+ elen 32))
-          (incf (third *fnn-extent-stats*))
-          (error 'fnn-extent-fault
-                 :message (format nil "arena-extent-read: ~a at ~a holds fewer than ~a octets"
-                                  (gethash file *fnn-extent-paths*) eoff (+ elen 32))))
-        (unless (eq (fnn-extent-entry-ok octets elen) t)
-          (incf (third *fnn-extent-stats*))
-          (error 'fnn-extent-fault
-                 :message (format nil "arena-extent-digest: the entry at ~a of ~a does not match its trailer"
-                                  eoff (gethash file *fnn-extent-paths*))))
+                 :message
+                 (case verdict
+                   (:trailer
+                    (format nil "arena-extent-trailer: the entry at ~a is not the extent's: its recorded trailer is not the descriptor's"
+                            (fnn-extent-where file eoff)))
+                   (:digest
+                    (format nil "arena-extent-digest: the entry at ~a does not match its trailer"
+                            (fnn-extent-where file eoff)))
+                   (t
+                    (format nil "arena-extent-verdict: ACL2 answered ~s for the entry at ~a"
+                            verdict (fnn-extent-where file eoff))))))
         (let ((limit (fnn-extent-cache-limit)))
           (when (plusp limit)
-            (push (list* file eoff octets) *fnn-extent-cache*)
+            (push (list* file eoff elen trailer octets) *fnn-extent-cache*)
             (when (> (length *fnn-extent-cache*) limit)
               (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit)))))
         octets))))
+
+(defun fnn-extent-entry-fresh (file eoff elen)
+  "The entry at [EOFF, EOFF+ELEN+32) of FILE read once for a descriptor not
+yet made (the publication's reseat, host/native/owner.lisp
+fnn-owner-release-extents: ACL2 then compares the frame's payloads with the
+arena's and makes the descriptors from the frame's own trailer,
+books/extent-retire.lisp fn-xrt-reseat-one), self-consistency checked by
+ACL2 (fnn-extent-entry-ok) and refused by name otherwise; never cached (a
+cache entry needs the identity a descriptor gives it).  Called with the
+realizer's lock held."
+  (let ((octets (fnn-extent-read-entry file eoff elen)))
+    (unless (eq (fnn-extent-entry-ok octets elen) t)
+      (incf (third *fnn-extent-stats*))
+      (error 'fnn-extent-fault
+             :message (format nil "arena-extent-digest: the entry at ~a does not match its trailer"
+                              (fnn-extent-where file eoff))))
+    octets))
 
 ;;; The entry a cold span needs, read into the cache (a store fault is
 ;;; signalled as always: the caller re-signals it in the owner's thread).
 ;;; Called OFF the owner mutex, from a thread of its own.  The pread runs
 ;;; WITHOUT the realizer's lock, so a stalled disk holds only this thread:
 ;;; cached reads on every other connection proceed (the lock is taken to find
-;;; the descriptor, and again to check the entry -- ACL2's check uses the
-;;; realizer's one buffer -- and keep it).
+;;; the descriptor, and again to decide the entry -- ACL2's verdict uses the
+;;; realizer's one buffer -- and keep it).  The entry is decided against the
+;;; descriptor's TRAILER (fnn-extent-entry-verdict) and cached under that
+;;; identity, exactly as fnn-extent-entry decides and caches it.
 (defun fnn-extent-prefetch (file eoff elen trailer)
-  (declare (ignore trailer))
   (let ((fd nil)
         (octets (make-array (+ elen 32) :element-type '(unsigned-byte 8))))
     (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-      (when (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)))
+      (when (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
+                                      (eql (third e) elen) (eql (fourth e) trailer)))
                      *fnn-extent-cache*)
         (return-from fnn-extent-prefetch t))
       (setq fd (gethash file *fnn-extent-fds*))
@@ -185,21 +283,35 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
         (unless (= got (+ elen 32))
           (incf (third *fnn-extent-stats*))
           (error 'fnn-extent-fault
-                 :message (format nil "arena-extent-read: ~a at ~a holds fewer than ~a octets"
-                                  (gethash file *fnn-extent-paths*) eoff (+ elen 32))))
-        (unless (eq (fnn-extent-entry-ok octets elen) t)
-          (incf (third *fnn-extent-stats*))
-          (error 'fnn-extent-fault
-                 :message (format nil "arena-extent-digest: the entry at ~a of ~a does not match its trailer"
-                                  eoff (gethash file *fnn-extent-paths*))))
+                 :message (format nil "arena-extent-read: ~a holds fewer than ~a octets"
+                                  (fnn-extent-where file eoff) (+ elen 32))))
+        (let ((verdict (fnn-extent-entry-verdict octets elen trailer)))
+          (unless (eq verdict :ok)
+            (incf (third *fnn-extent-stats*))
+            (error 'fnn-extent-fault
+                   :message
+                   (case verdict
+                     (:trailer
+                      (format nil "arena-extent-trailer: the entry at ~a is not the extent's: its recorded trailer is not the descriptor's"
+                              (fnn-extent-where file eoff)))
+                     (:digest
+                      (format nil "arena-extent-digest: the entry at ~a does not match its trailer"
+                              (fnn-extent-where file eoff)))
+                     (t
+                      (format nil "arena-extent-verdict: ACL2 answered ~s for the entry at ~a"
+                              verdict (fnn-extent-where file eoff)))))))
         (let ((limit (fnn-extent-cache-limit)))
           (when (plusp limit)
-            (push (list* file eoff octets) *fnn-extent-cache*)
+            (push (list* file eoff elen trailer octets) *fnn-extent-cache*)
             (when (> (length *fnn-extent-cache*) limit)
               (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit)))))
         t))))
 
 ;;; The realizer (A-DURABLE-EXTENT's constrained function), raw and *1*.
+;;; The descriptor's guard (books/payload-arena-extent-logic.lisp
+;;; fn-arn-extent-guardp: EOFF <= POFF, POFF+PLEN <= EOFF+ELEN) places the
+;;; payload slice inside the verified prefix; the arena's invariant
+;;; (fn-arena$x-wfp) carries it to every call.
 (defun fn-durable-realize-octet (file eoff elen poff plen trailer i)
   (declare (ignore plen))
   (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
@@ -209,8 +321,8 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
   (fn-durable-realize-octet file eoff elen poff plen trailer i))
 
 ;;; The whole payload in one call (fn-durable-realize-octets): one lock, one
-;;; cache lookup or one pread and one trailer check, one list of PLEN octets
-;;; built from the verified buffer.
+;;; cache lookup or one pread and one verdict, one list of PLEN octets built
+;;; from the verified buffer.
 (defun fn-durable-realize-octets (file eoff elen poff plen trailer)
   (let ((entry (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
                  (fnn-extent-entry file eoff elen trailer)))
@@ -227,20 +339,21 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
 
 ;;; A-DURABLE-LZ (books/assumptions.lisp; lane compression-extents, PRF-326):
 ;;; the realizer of a COMPRESSED extent.  It reads the block C through the
-;;; extent realizer above (the entry's trailer checked by ACL2), runs ACL2's
-;;; DEFLATE payload decoder over it (host/native/deflate.lisp fnn-pzd-decode:
-;;; fn-zpl-decode-bufs over pooled buffers; KEYSTONE
-;;; fn-zpl-decode-bufs-is-the-lz-value, books/deflate-pool.lisp: an :ok
-;;; answer is the value the constraint names) and answers ACL2's octets.  A decode that fails is
-;;; refused by name (arena-extent-lz-decode, a store fault: a recovery
-;;; event) and nothing is answered.  One decoded payload is kept (the last
-;;; one read) so a reader that reads octet by octet (fn-arena$x-get) decodes
-;;; once; the key includes the dictionary's identity (EQ: one shared list
-;;; per dictionary).
+;;; extent realizer above (the entry decided by ACL2 against the
+;;; descriptor's trailer), runs ACL2's DEFLATE payload decoder over it
+;;; (host/native/deflate.lisp fnn-pzd-decode: fn-zpl-decode-bufs over pooled
+;;; buffers; KEYSTONE fn-zpl-decode-bufs-is-the-lz-value,
+;;; books/deflate-pool.lisp: an :ok answer is the value the constraint names)
+;;; and answers ACL2's octets.  A decode that fails is refused by name
+;;; (arena-extent-lz-decode, a store fault: a recovery event) and nothing is
+;;; answered.  One decoded payload is kept (the last one read) so a reader
+;;; that reads octet by octet (fn-arena$x-get) decodes once; the key is the
+;;; whole descriptor identity (file, entry, expected trailer, block, length)
+;;; and the dictionary's identity (EQ: one shared list per dictionary).
 (defvar *fnn-extent-lz-last* nil)             ; (key dict . octets)
 
 (defun fn-durable-realize-lz (file eoff elen poff plen trailer n dict)
-  (let* ((key (list file eoff poff plen n))
+  (let* ((key (list file eoff elen trailer poff plen n))
          (hit (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
                 (let ((last *fnn-extent-lz-last*))
                   (and last (equal (first last) key) (eq (second last) dict)
@@ -251,12 +364,12 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
           (unless (and (consp r) (eq (first r) :ok) (eql (length (rest r)) n))
             ;; The path is read under the lock that guards the table: another
             ;; thread may be registering a file (fnn-extent-register).
-            (let ((path (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-                          (incf (third *fnn-extent-stats*))
-                          (gethash file *fnn-extent-paths*))))
+            (let ((where (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+                           (incf (third *fnn-extent-stats*))
+                           (fnn-extent-where file poff))))
               (error 'fnn-extent-fault
-                     :message (format nil "arena-extent-lz-decode: the block at ~a of ~a does not decode to its ~a octets"
-                                      poff path n))))
+                     :message (format nil "arena-extent-lz-decode: the block at ~a does not decode to its ~a octets"
+                                      where n))))
           (let ((octets (rest r)))
             (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
               (setq *fnn-extent-lz-last* (list* key dict octets)))
@@ -264,6 +377,29 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
 
 (defun acl2_*1*_acl2::fn-durable-realize-lz (file eoff elen poff plen trailer n dict)
   (fn-durable-realize-lz file eoff elen poff plen trailer n dict))
+
+;;; A-ARENA-STORED (books/assumptions-stored.lisp; lane compress-5, NNT-055):
+;;; handle H's payload AS IT IS STORED, for XFN-ZARTICLE
+;;; (books/nntp-zarticle.lisp fn-zar-stored).  The live fn-arena is the
+;;; concrete arena of books/payload-arena-extent.lisp; EXT[H] names H's
+;;; extent.  For a COMPRESSED extent (FILE EOFF ELEN POFF PLEN TRAILER N
+;;; DICT) the answer is (DICT C N), C the block's durable octets read through
+;;; the extent realizer above (one pread, ACL2's trailer check); nothing is
+;;; decoded.  Any other handle (resident, staged, a plain extent, past the
+;;; array) answers NIL, and ACL2 then answers as ARTICLE does.
+(defun fn-arena-stored (h fn-arena)
+  (let ((e (and (integerp h) (<= 0 h)
+                (< h (fn-arena$x-ext-length fn-arena))
+                (fn-arena$x-exti h fn-arena))))
+    (if (fn-arn-lz-extentp e)
+        (list (nth 7 e)
+              (fn-durable-realize-octets (nth 0 e) (nth 1 e) (nth 2 e)
+                                         (nth 3 e) (nth 4 e) (nth 5 e))
+              (nth 6 e))
+      nil)))
+
+(defun acl2_*1*_acl2::fn-arena-stored (h fn-arena)
+  (fn-arena-stored h fn-arena))
 
 ;;; A-PGS-HOST-IO's page fill (books/assumptions.lisp `fn-pgs-fill-realize';
 ;;; lane arena-store-7, 2026-09-28): the 2048 little-endian u64 words page
@@ -334,13 +470,15 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
 
 (defun fnn-extent-close (ids)
   "Close the descriptors of IDS (ACL2's close set) and forget every cached
-entry of them.  Answers the count closed."
+entry of them: a closed id is never reused, so no later hit can name it.
+Answers the count closed."
   (sb-thread:with-mutex (*fnn-extent-lock*)
     (let ((closed 0))
       (dolist (id ids)
         (let ((fd (gethash id *fnn-extent-fds*)))
           (remhash id *fnn-extent-fds*)
           (remhash id *fnn-extent-paths*)
+          (remhash id *fnn-extent-incarnations*)
           (when fd
             (fnn-close fd)
             (incf closed))))
@@ -354,3 +492,10 @@ entry of them.  Answers the count closed."
   "The descriptors the realizer holds (the natives' observation)."
   (sb-thread:with-mutex (*fnn-extent-lock*)
     (hash-table-count *fnn-extent-fds*)))
+
+(defun fnn-extent-stats-line ()
+  "The realizer's counters (the natives' observation): hits, preads,
+refusals."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (format nil "extent-cache hits=~d misses=~d refusals=~d"
+            (first *fnn-extent-stats*) (second *fnn-extent-stats*) (third *fnn-extent-stats*))))

@@ -57,7 +57,9 @@ def fabricated_green_run(scenario: Scenario, boundary_rule: str = "either",
                                for r in scenario.retries())):
                     members.append(p.id)
             j.client("list-group", operation=o.id, group=g, members=members)
-    j.stage("healing", "ended")
+        if o.op == "recover" and o.id in scenario.healing:
+            j.client("recover", operation=o.id, outcome="completed", phase="healing")
+    j.stage("healing", "ended", elapsed=0.5)
     return j
 
 
@@ -138,12 +140,36 @@ def kill_stage(scenario, journal):
     return scenario, j
 
 
+def overrun_healing(scenario, journal):
+    """The healing phase ran past the scenario's declared bound (a bound of
+    kind seconds): the verdict says so by kind, never green."""
+    s, j = copy.deepcopy(scenario), copy.deepcopy(journal)
+    s.healing_bound = {"kind": "seconds", "value": 1, "source": "mutation"}
+    for r in j.records:
+        if r["kind"] == "stage" and r["name"] == "healing" and r["event"] == "ended":
+            r["elapsed"] = 5.0
+    return s, j
+
+
+def unmeasured_healing(scenario, journal):
+    """A bound declared and the healing stage's elapsed never recorded: a
+    harness failure, not a bound met."""
+    s, j = copy.deepcopy(scenario), copy.deepcopy(journal)
+    s.healing_bound = {"kind": "seconds", "value": 60, "source": "mutation"}
+    for r in j.records:
+        if r["kind"] == "stage" and r["name"] == "healing" and r["event"] == "ended":
+            r.pop("elapsed", None)
+    return s, j
+
+
 MUTATIONS = {
     "suppress-workload": suppress_workload,
     "refuse-every-post": refuse_every_post,
     "disable-fault-hook": disable_fault_hook,
     "omit-witness": omit_witness,
     "kill-stage": kill_stage,
+    "overrun-healing": overrun_healing,
+    "unmeasured-healing": unmeasured_healing,
 }
 
 # (kind, cause prefix) each mutation must yield; the two that act on the
@@ -156,6 +182,8 @@ EXPECTED = {
     "disable-fault-hook": ("harness-failure", "fault-never-occurred:"),
     "omit-witness": ("no-witness", "missing:retry-reconciled"),
     "kill-stage": ("harness-failure", "stage-killed:healing"),
+    "overrun-healing": ("healing-overran", "healing:5.0s>1s"),
+    "unmeasured-healing": ("harness-failure", "healing-unmeasured"),
     "truncate-history": ("harness-failure", "truncated-history"),
     "corrupt-checker-result": ("harness-failure", "checker-corrupted"),
 }

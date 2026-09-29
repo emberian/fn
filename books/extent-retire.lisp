@@ -45,6 +45,7 @@
 (in-package "ACL2")
 (include-book "payload-commit-extent")
 (include-book "payload-arena-extent")
+(include-book "payload-extent-read")
 (include-book "store-checkpoint-reader")
 (include-book "arena-reader-pins")
 (local (include-book "arithmetic/top" :dir :system))
@@ -92,13 +93,20 @@
 
 ; One payload: the commit's reseat with R the payload's octets at [J, J+L)
 ; of the buffer, the file's copy at START + J.
+; The place carries the frame's COMMITMENT (lane extent-identity, PRF-994):
+; the 32 trailer octets the buffer holds after the prefix, at [END, END+32)
+; (the host fills the buffer with the prefix and its trailer), as the
+; descriptor's trailer; the realizer decides every read of the reseated
+; handle against it (books/payload-extent-read.lisp).
 (defun fn-xrt-reseat-one (h file start end j l fn-octets fn-arena)
   (declare (xargs :stobjs (fn-octets fn-arena)
                   :guard (and (natp file) (natp start) (natp end) (natp j) (natp l)
-                              (<= (+ j l) end) (<= end (fn-octets-len fn-octets)))
+                              (<= (+ j l) end)
+                              (<= (+ end *fn-frame-trailer-octets*) (fn-octets-len fn-octets)))
                   :verify-guards nil))
   (fn-arx-commit-reseat h file
-                        (list start (+ end *fn-frame-trailer-octets*) (+ start j) l)
+                        (list start (+ end *fn-frame-trailer-octets*) (+ start j) l
+                              (fn-arx-trailer-nat-at-buffer end fn-octets))
                         (fn-oct-slice-list j (+ j l) fn-octets)
                         fn-arena))
 
@@ -113,7 +121,8 @@
 (defun fn-xrt-reseat-frame (handles file start i end fn-octets fn-arena)
   (declare (xargs :stobjs (fn-octets fn-arena)
                   :guard (and (natp file) (natp start) (natp i) (natp end)
-                              (<= i end) (<= end (fn-octets-len fn-octets)))
+                              (<= i end)
+                              (<= (+ end *fn-frame-trailer-octets*) (fn-octets-len fn-octets)))
                   :measure (len handles)
                   :verify-guards nil))
   (if (atom handles)
@@ -139,7 +148,7 @@
 (defun fn-xrt-reseat-checkpoint-frame (handles file start end fn-octets fn-arena)
   (declare (xargs :stobjs (fn-octets fn-arena)
                   :guard (and (natp file) (natp start) (natp end)
-                              (<= end (fn-octets-len fn-octets)))))
+                              (<= (+ end *fn-frame-trailer-octets*) (fn-octets-len fn-octets)))))
   (if (<= *fn-xrt-chunk-at* end)
       (fn-xrt-reseat-frame handles file start *fn-xrt-chunk-at* end fn-octets fn-arena)
     (mv nil fn-arena)))
@@ -205,7 +214,8 @@
                    fn-arena))
    :hints (("Goal" :use ((:instance fn-arx-commit-reseat-keeps-the-arena
                                     (position (list start (+ end *fn-frame-trailer-octets*)
-                                                    (+ start j) l))
+                                                    (+ start j) l
+                                                    (fn-arx-trailer-nat-at-buffer end fn-octets)))
                                     (r (fn-oct-slice-list j (+ j l) fn-octets)))
                   (:instance fn-xrt-member-durable))
             :in-theory (e/d (fn-xrt-reseat-one)

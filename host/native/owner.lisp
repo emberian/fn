@@ -255,11 +255,16 @@ rate reaches the next read)."
   "A private render buffer that holds N octets."
   (fn-octets$c-reserve n (create-fn-octets$c)))
 
-(defun fnn-owner-render-next (plan)
+(defun fnn-owner-render-next (plan &optional compressedp)
   "Render the next window of PLAN: (values OCTETS PLAN-REST DONEP), OCTETS a
 fresh vector (empty only when nothing remained), DONEP when nothing remains
-after it."
-  (let ((size (fnn-core 'fn-splan-window-size plan)))
+after it.  COMPRESSEDP: the connection has a COMPRESS layer, and the window
+is ACL2's flush-schedule window (books/nntp-compress.lisp
+fn-zc-render-window-size), each one sync flush."
+  (let ((size (if compressedp
+                  (fnn-core 'fn-zc-render-window-size
+                            (fnn-core 'fn-splan-window-size plan))
+                (fnn-core 'fn-splan-window-size plan))))
     (unless (and (integerp size) (>= size 0))
       (fnn-fault "owner returned a malformed render window size"))
     (destructuring-bind (status rest buf)
@@ -285,6 +290,19 @@ after it."
     (unless (keywordp value)
       (fnn-fault "owner returned non-action from ~a" name))
     value))
+
+;;; The SASL context of a served connection (books/nntp-auth.lisp
+;;; (:sasl-context SEED BINDING); host/owner-host.lisp fn-owner-sasl-context).
+;;; The seed is read from the OS CSPRNG off the owner mutex, at ACL2's width;
+;;; installing it is one owner action under the caller's quantum.
+(defun fnn-owner-sasl-seed ()
+  "Fresh CSPRNG octets for one connection's SCRAM server nonces."
+  (fnn-csprng-octets (fnn-core 'fn-owner-sasl-seed-octets) "SASL seed"))
+
+(defun fnn-owner-sasl-context (cid seed binding)
+  "Install CID's SASL context; the caller holds the owner mutex."
+  (unless (eq (fnn-owner-action 'fn-owner-sasl-context cid seed binding) :ok)
+    (fnn-fault "owner rejected the SASL context")))
 
 (defun fnn-owner-arena-action (name &rest args)
   "fnn-owner-action for an owner entry that reads or seals the payload arena
@@ -954,8 +972,8 @@ the next class (none when nothing waits: fn-osch-next answers nil)."
 (defun fnn-owner-monotonic-ms ()
   "One reading of the monotonic clock, in milliseconds: the only clock the
 disk's deadline logic reads (books/owner-time-model.lisp takes it as NOW;
-the host compares no times)."
-  (floor (* (get-internal-real-time) 1000) internal-time-units-per-second))
+the host compares no times; ACL2 converts the ticks: io.lisp fnn-monotonic-ms)."
+  (fnn-monotonic-ms))
 
 (defun fnn-owner-space-event (service need)
   "PRF-359 (PKT-872): record the store filesystem's free octets (statvfs,
@@ -3882,11 +3900,15 @@ or pending (closed by a later release) and serving continues."
                     *fnn-extent-checkpoint-id* new-id)))
           (dolist (f (reverse frames))
             (destructuring-bind (eoff elen handles) f
+              ;; A fresh read (no descriptor names the frame yet): the frame
+              ;; and its trailer, self-consistency checked; ACL2 makes the
+              ;; descriptors from the frame's own trailer, held in the buffer
+              ;; after the prefix (fn-xrt-reseat-one; lane extent-identity).
               (let ((octets (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-                              (fnn-extent-entry new-id eoff elen 0))))
+                              (fnn-extent-entry-fresh new-id eoff elen))))
                 (fnn-owner-gated (service :control)
                   (let ((st (fnn-live-octets-pub)))
-                    (setf (svref st 0) octets (svref st 1) elen)
+                    (setf (svref st 0) octets (svref st 1) (length octets))
                     (unwind-protect
                          (let ((answer (fnn-call 'fn-xrt-reseat-checkpoint-frame
                                                  handles new-id eoff elen st arena)))

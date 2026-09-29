@@ -121,7 +121,7 @@
 ; kernel is unchanged.
 (assert-event
  (let* ((ops (list (list :prepare (slc-rec 3)) (list :append (slc-unit) (slc-extent))
-                   (list :fence (slc-unit)) (list :finish-one) (list :rotate)))
+                   (list :fence (slc-unit)) (list :finish-one) (list :rotate 2 (slc-unit))))
         (before (fn-lgc-host-run (mv-let (records c0) (slc-open) (declare (ignore records)) c0)
                                  (butlast ops 1)))
         (c (fn-lgc-host-run (mv-let (records c0) (slc-open) (declare (ignore records)) c0) ops))
@@ -132,8 +132,11 @@
         (fn-lgc-rotate-needed-p before)
         (equal c (fn-lgc-of ks))
         (equal (fn-lgc-count c) 0)
-        (equal (fn-lgc-frontier c) 0)
-        (equal (fn-lgc-last c) (fn-lgc-last before))
+        ;; the new segment's head (lane store-lineage): the frontier past the
+        ;; rotation entry, the chain head its trailer, not the closed one's
+        (equal (fn-lgc-frontier c) (len (fn-lgc-rotation-octets before 2 (slc-unit))))
+        (equal (fn-lgc-last c) (fn-lgx-trailer (fn-lgx-rotation-frame (fn-lgc-last before) 2)))
+        (not (equal (fn-lgc-last c) (fn-lgc-last before)))
         (equal (fn-lgc-next-txid c) 4)
         (equal (fn-lgk-committed ks) nil))))
 
@@ -141,7 +144,7 @@
  (let* ((c0 (mv-let (records c0) (slc-open) (declare (ignore records)) c0))
         (c1 (fn-lgc-t-prepare c0 (slc-rec 3))))
    (and (not (fn-lgc-rotate-admitsp c1))
-        (equal (fn-lgc-host-step c1 (list :rotate)) c1))))
+        (equal (fn-lgc-host-step c1 (list :rotate 2 (slc-unit))) c1))))
 
 ; -----------------------------------------------------------------------------
 ; Lane kernel-concrete-2 (PRF-282): the pipelined commit's operations, the

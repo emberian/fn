@@ -32,11 +32,13 @@
 ; article count through fn-articles-freshp, 10 to 13 percent of POST CPU at
 ; N = 120 (planning/evidence/commit-path-2-2026-09-24.md).  The carried copy
 ; opens it with fn-acar-nntp-projectionp, the same recognizer without the
-; fn-statep conjunct, equal to it when the archive is an acceptance state
-; (fn-acar-view-statep).  fn-ocl-view-historyp names the view archive as
-; fn-node-acceptance of a node satisfying fn-node-statep, so the configured
-; owner's relation carries that premise too; the advance keeps the view and
-; the POST commit keeps the relation.
+; fn-statep and group-name conjuncts, equal to it when the archive is an
+; acceptance state whose group names are safe (fn-acar-view-statep).
+; fn-ocl-view-historyp names the view archive as fn-node-acceptance of a
+; node satisfying fn-node-statep, replayed from a configured node whose
+; groups are its configuration's validated names, so the configured owner's
+; relation carries both premises (fn-acar-view-historyp-carries-view-statep);
+; the advance keeps the view and the POST commit keeps the relation.
 
 (in-package "ACL2")
 (include-book "owner-served-carried")
@@ -61,7 +63,91 @@
 ; (fn-acar-ocl-relation-carries-view-statep) and it is never evaluated.
 (defun fn-acar-view-statep (o)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-statep (fn-own-view-archive (fn-own-view o))))
+  (let ((archive (fn-own-view-archive (fn-own-view o))))
+    (and (fn-statep archive)
+         (fn-nntp-safe-group-listp (fn-state-groups archive)))))
+
+; -----------------------------------------------------------------------------
+; Safe group names, carried by the configuration (lane join-f2-9, PKT-615's
+; follow-up).  fn-nntp-projectionp's group conjunct asks that every group name
+; be a nonempty printable token of at most 460 octets (RFC 3977 section 3.1's
+; 512-octet initial line).  The view archive's group list IS the configured
+; node's allocation domain (fn-cnode-statep), every name in it passed
+; fn-cfg-group-entryp when the configuration record creating it was admitted
+; (books/config.lisp, fn-record-group-namep: RFC 5536 section 3.1.4's grammar,
+; at most 256 octets), and every such name is a safe NNTP name.  So the
+; configured owner's relation carries the conjunct and the re-pin no longer
+; converts every group name to octets per durable POST.
+
+(local (defthm fn-acar-record-octets-aux-is-nntp-octets-aux
+  (equal (fn-record-string-octets-aux chars) (fn-nntp-string-octets-aux chars))
+  :hints (("Goal" :in-theory (enable fn-record-string-octets-aux
+                                     fn-nntp-string-octets-aux)))))
+
+(local (defthm fn-acar-group-name-octets-are-printable
+  (implies (fn-record-group-name-octets-aux xs need)
+           (fn-nntp-printable-tokenp xs))
+  :hints (("Goal" :in-theory (enable fn-record-group-name-octets-aux
+                                     fn-record-group-component-octetp
+                                     fn-nntp-printable-tokenp)))))
+
+(defthm fn-acar-record-group-name-is-safe
+  (implies (fn-record-group-namep text)
+           (fn-nntp-safe-group-namep text))
+  :hints (("Goal" :in-theory (enable fn-record-group-namep fn-nntp-safe-group-namep
+                                     fn-record-ascii-stringp fn-record-string-octets
+                                     fn-nntp-string-octets fn-record-nonempty-at-mostp
+                                     fn-record-group-name-octetsp))))
+
+(defthm fn-acar-cfg-group-names-are-safe
+  (implies (fn-cfg-group-listp es)
+           (fn-nntp-safe-group-listp (fn-cfg-group-all-names es)))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-group-listp fn-cfg-group-all-names
+                                   fn-cfg-group-entryp fn-nntp-safe-group-listp)
+                                  (fn-record-group-namep fn-nntp-safe-group-namep)))))
+
+(defthm fn-acar-cfgp-domain-is-safe
+  (implies (fn-cfgp config)
+           (fn-nntp-safe-group-listp (fn-cnode-domain-of config)))
+  :hints (("Goal" :in-theory (e/d (fn-cfgp fn-cfg-valuep fn-cnode-domain-of)
+                                  (fn-cfg-group-all-names fn-nntp-safe-group-listp)))))
+
+(local (defthm fn-acar-advance-txid-keeps-groups
+  (equal (fn-state-groups (fn-node-acceptance (fn-replay-advance-txid node x)))
+         (fn-state-groups (fn-node-acceptance node)))
+  :hints (("Goal" :in-theory (enable fn-replay-advance-txid)))))
+
+(local (defthm fn-acar-node-statep-of-nil
+  (not (fn-node-statep nil))))
+
+(defthm fn-acar-cnode-groups-are-safe
+  (implies (fn-cnode-statep cn)
+           (fn-nntp-safe-group-listp
+            (fn-state-groups (fn-node-acceptance (fn-cnode-node cn)))))
+  :hints (("Goal" :in-theory (e/d (fn-cnode-statep fn-cnode-domain)
+                                  (fn-nntp-safe-group-listp fn-cnode-domain-of
+                                   fn-node-statep fn-statep fn-cfgp)))))
+
+(defthm fn-acar-replay-node-groups-are-safe
+  (implies (fn-node-statep (fn-cst-replay-node configs events frontier))
+           (fn-nntp-safe-group-listp
+            (fn-state-groups
+             (fn-node-acceptance (fn-cst-replay-node configs events frontier)))))
+  :hints (("Goal" :in-theory (e/d (fn-cst-replay-node)
+                                  (fn-nntp-safe-group-listp fn-cnode-domain-of
+                                   fn-node-statep fn-cnode-statep fn-statep fn-cfgp
+                                   fn-cpr-replay fn-replay-advance-txid)))))
+
+; KEYSTONE (the carry): the pinned view's group list is safe whenever the view
+; is its history's (fn-ocl-view-historyp, a conjunct of fn-ocl-relation).
+(defthm fn-acar-view-historyp-carries-safe-groups
+  (implies (fn-ocl-view-historyp o)
+           (fn-nntp-safe-group-listp
+            (fn-state-groups (fn-own-view-archive (fn-own-view o)))))
+  :hints (("Goal" :in-theory (e/d (fn-ocl-view-historyp fn-ctl-visible-state)
+                                  (fn-nntp-safe-group-listp fn-node-statep
+                                   fn-cst-replay-node fn-statep
+                                   fn-ctl-visible-articles)))))
 
 ; -----------------------------------------------------------------------------
 ; The projection recognizer of the pinned view, carried.
@@ -71,18 +157,21 @@
 ; whole archive: fn-articles-freshp is quadratic in the article count and
 ; fn-article-listp reads every article.  The re-pin opens a session on the
 ; view archive after every durable POST, so that recognizer ran once per POST
-; over a value the owner's relation already describes.  The carried
-; recognizer keeps the two remaining conjuncts: the group list and the
-; next-number table (both O(G)); no article is visited (the whole-archive
-; count left fn-nntp-projectionp with PKT-615).
+; over a value the owner's relation already describes.  The group list's
+; conjunct converted every group name to octets per POST; the relation
+; carries it too (fn-acar-view-historyp-carries-safe-groups, lane join-f2-9).
+; The carried recognizer keeps the next-number table: G integer comparisons,
+; no allocation, no article visited.  That conjunct is carried by
+; fn-onb-boundp (books/owner-number-bound.lisp), which fn-ocl-relation does
+; not include, so it stays evaluated here.
 
 (defun fn-acar-nntp-projectionp (archive)
   (declare (xargs :guard t))
-  (and (fn-nntp-safe-group-listp (fn-state-groups archive))
-       (fn-nntp-nexts-boundedp (fn-state-nexts archive))))
+  (fn-nntp-nexts-boundedp (fn-state-nexts archive)))
 
 (defthm fn-acar-nntp-projectionp-is-nntp-projectionp
-  (implies (fn-statep archive)
+  (implies (and (fn-statep archive)
+                (fn-nntp-safe-group-listp (fn-state-groups archive)))
            (equal (fn-acar-nntp-projectionp archive)
                   (fn-nntp-projectionp archive)))
   :hints (("Goal" :in-theory (enable fn-nntp-projectionp))))
@@ -93,7 +182,8 @@
                         (if (fn-acar-nntp-projectionp archive) t nil)))
 
 (defthm fn-acar-open-session-is-open-session
-  (implies (fn-statep archive)
+  (implies (and (fn-statep archive)
+                (fn-nntp-safe-group-listp (fn-state-groups archive)))
            (equal (fn-acar-open-session archive)
                   (fn-nntp-open-session archive)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-open-session)
@@ -341,9 +431,11 @@
 (defthm fn-acar-view-historyp-carries-view-statep
   (implies (fn-ocl-view-historyp o)
            (fn-acar-view-statep o))
-  :hints (("Goal" :in-theory (e/d (fn-ocl-view-historyp fn-acar-view-statep)
-                                  (fn-statep fn-node-statep
-                                   fn-cst-replay-node)))))
+  :hints (("Goal" :use (fn-acar-view-historyp-carries-safe-groups)
+           :in-theory (e/d (fn-ocl-view-historyp fn-acar-view-statep)
+                           (fn-statep fn-node-statep fn-nntp-safe-group-listp
+                            fn-acar-view-historyp-carries-safe-groups
+                            fn-cst-replay-node)))))
 
 (defthm fn-acar-ocl-relation-carries-view-statep
   (implies (fn-ocl-relation oc)

@@ -12,6 +12,7 @@
 
 (in-package "ACL2")
 (include-book "cbor")
+(include-book "rev-onto")
 
 ; The format id is encoded with the CBOR primitives, opened locally here.
 (local (in-theory (enable fn-cbor-codec-vocabulary)))
@@ -38,22 +39,63 @@
         (fn-store-group-name (- code 1) (cdr groups)))
     nil))
 
-(defun fn-store-group-code-in (name groups)
-  ; The zero-based code of a group, or nil.
-  (declare (xargs :guard (true-listp groups)))
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+(defun fn-store-group-code-in-loop (name groups i)
+  (declare (xargs :guard (and (true-listp groups) (natp i))))
   (if (consp groups)
       (if (equal name (car groups))
-          0
-        (let ((rest (fn-store-group-code-in name (cdr groups))))
-          (if (null rest) nil (+ 1 rest))))
+          i
+        (fn-store-group-code-in-loop name (cdr groups) (+ 1 i)))
     nil))
+
+(defun fn-store-group-code-in (name groups)
+  ; The zero-based code of a group, or nil.
+  (declare (xargs :guard (true-listp groups) :verify-guards nil))
+  (mbe :logic (if (consp groups)
+                  (if (equal name (car groups))
+                      0
+                    (let ((rest (fn-store-group-code-in name (cdr groups))))
+                      (if (null rest) nil (+ 1 rest))))
+                nil)
+       :exec (fn-store-group-code-in-loop name groups 0)))
+
+(defthm fn-store-group-code-in-loop-is-plus
+  (implies (natp i)
+           (equal (fn-store-group-code-in-loop name groups i)
+                  (let ((r (fn-store-group-code-in name groups)))
+                    (if r (+ i r) nil)))))
+
+(verify-guards fn-store-group-code-in)
+
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element (an article's Newsgroups list: header
+; content, no fixed cap).  The right fold runs from the left over the reversed
+; list; the base is the recursion's, decided by the list's final tail.
+(defun fn-store-groups-from-codes-step (groups x rest)
+  (declare (xargs :guard (and (true-listp groups)
+                              (or (equal rest :bad) (true-listp rest)))))
+  (let ((group (if (natp x) (fn-store-group-name x groups) nil)))
+    (if group
+        (if (or (equal rest :bad) (member-equal group rest))
+            :bad
+          (cons group rest))
+      :bad)))
+
+(defun fn-store-groups-from-codes-loop (rev groups acc)
+  (declare (xargs :guard (and (true-listp groups)
+                              (or (equal acc :bad) (true-listp acc)))))
+  (if (consp rev)
+      (fn-store-groups-from-codes-loop (cdr rev) groups (fn-store-groups-from-codes-step groups (car rev) acc))
+    acc))
 
 (defun fn-store-groups-from-codes (codes groups)
   ; A code list becomes a distinct group list from the table, or :bad.
   ; Duplicate and unknown codes are refused here rather than deeper in the
   ; model.
-  (declare (xargs :guard (true-listp groups)))
-  (if (consp codes)
+  (declare (xargs :guard (true-listp groups) :verify-guards nil))
+  (mbe :logic
+   (if (consp codes)
       (let ((group (if (natp (car codes))
                        (fn-store-group-name (car codes) groups)
                      nil)))
@@ -63,12 +105,46 @@
                   :bad
                 (cons group rest)))
           :bad))
-    (if (null codes) nil :bad)))
+    (if (null codes) nil :bad))
+   :exec (fn-store-groups-from-codes-loop (fn-ag-rev-onto codes nil) groups
+                      (if (true-listp codes) nil :bad))))
+
+(defthm fn-store-groups-from-codes-loop-of-rev-onto
+  (equal (fn-store-groups-from-codes-loop (fn-ag-rev-onto codes zs) groups (if (true-listp codes) nil :bad))
+         (fn-store-groups-from-codes-loop zs groups (fn-store-groups-from-codes codes groups)))
+  :hints (("Goal" :induct (fn-ag-rev-onto codes zs)
+                  :in-theory (disable fn-store-group-name))))
+
+(verify-guards fn-store-groups-from-codes
+  :hints (("Goal" :use ((:instance fn-store-groups-from-codes-loop-of-rev-onto (zs nil)))
+                  :in-theory (disable fn-store-groups-from-codes-loop-of-rev-onto))))
+
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element (an article's Newsgroups list: header
+; content, no fixed cap).  The right fold runs from the left over the reversed
+; list; the base is the recursion's, decided by the list's final tail.
+(defun fn-store-codes-from-groups-step (groups x rest)
+  (declare (xargs :guard (and (true-listp groups)
+                              (or (equal rest :bad) (true-listp rest)))))
+  (let ((code (fn-store-group-code-in x groups)))
+    (if (null code)
+        :bad
+      (if (or (equal rest :bad) (member-equal code rest))
+          :bad
+        (cons code rest)))))
+
+(defun fn-store-codes-from-groups-loop (rev groups acc)
+  (declare (xargs :guard (and (true-listp groups)
+                              (or (equal acc :bad) (true-listp acc)))))
+  (if (consp rev)
+      (fn-store-codes-from-groups-loop (cdr rev) groups (fn-store-codes-from-groups-step groups (car rev) acc))
+    acc))
 
 (defun fn-store-codes-from-groups (names groups)
   ; The inverse direction the Python boundary needs: names to codes, or :bad.
-  (declare (xargs :guard (true-listp groups)))
-  (if (consp names)
+  (declare (xargs :guard (true-listp groups) :verify-guards nil))
+  (mbe :logic
+   (if (consp names)
       (let ((code (fn-store-group-code-in (car names) groups)))
         (if (null code)
             :bad
@@ -76,7 +152,19 @@
             (if (or (equal rest :bad) (member-equal code rest))
                 :bad
               (cons code rest)))))
-    (if (null names) nil :bad)))
+    (if (null names) nil :bad))
+   :exec (fn-store-codes-from-groups-loop (fn-ag-rev-onto names nil) groups
+                      (if (true-listp names) nil :bad))))
+
+(defthm fn-store-codes-from-groups-loop-of-rev-onto
+  (equal (fn-store-codes-from-groups-loop (fn-ag-rev-onto names zs) groups (if (true-listp names) nil :bad))
+         (fn-store-codes-from-groups-loop zs groups (fn-store-codes-from-groups names groups)))
+  :hints (("Goal" :induct (fn-ag-rev-onto names zs)
+                  :in-theory (disable fn-store-group-code-in))))
+
+(verify-guards fn-store-codes-from-groups
+  :hints (("Goal" :use ((:instance fn-store-codes-from-groups-loop-of-rev-onto (zs nil)))
+                  :in-theory (disable fn-store-codes-from-groups-loop-of-rev-onto))))
 
 ; -----------------------------------------------------------------------------
 ; The two directions are inverse

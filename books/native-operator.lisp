@@ -593,6 +593,17 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
               (fn-nop-msgid-wordp (cadr words)))
          (fn-nop-result :accepted :plan "store" config
                         (list :inspect (cadr words))))
+        ; Row S3d (lane operability-5): `store inspect --group GROUP', the
+        ; group's memberships, article numbers to Message-IDs
+        ; (books/owner-inspect-group.lisp fn-oig-report), over the stopped
+        ; store or the running owner's archive.  GROUP as typed
+        ; (fn-cevg-groupp): the report looks it up.
+        ((and (consp words) (equal (car words) "inspect")
+              (consp (cdr words)) (equal (cadr words) "--group")
+              (consp (cddr words)) (null (cdddr words))
+              (fn-cevg-groupp (caddr words)))
+         (fn-nop-result :accepted :plan "store" config
+                        (list :inspect-group (caddr words))))
         ((and (consp words) (equal (car words) "checkpoint") (null (cdr words)))
          (fn-nop-result :accepted :plan "store" config (list :checkpoint)))
         ((and (consp words) (equal (car words) "reclaim") (null (cdr words)))
@@ -639,7 +650,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
   "Bounded operator help output, selected only from ACL2-normalized subjects."
   (declare (xargs :guard t))
   (cond ((equal subject "init")
-         "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; a different one is a reinstall: store export, then store import --FIELD N)")
+         "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; raise max-transactions, max-history-octets or max-article-octets later with policy set, on the running node)")
         ((equal subject "run") "usage: fn operator CONFIG run [--once]")
         ((equal subject "show")
          "usage: fn operator CONFIG show [TABLE KEY] (the normalized configuration as fn.toml, or one key's value)")
@@ -657,7 +668,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
         ((equal subject "recover") "usage: fn operator CONFIG recover [--repair truncate SEGMENT:OFFSET] (the repair only as a log-damaged refusal names it: the damaged segment is kept under quarantine/, then the log is truncated before the damage)")
         ((equal subject "store")
-         "usage: fn operator CONFIG store {export ARCHIVE-DIR | import ARCHIVE-DIR [--FIELD N ...] | compact | checkpoint | reclaim [--dry-run | --recorded] | inspect MESSAGE-ID | rebind-filesystem [--storage-require-durable on|off]} (offline; refused while an owner runs; rebind-filesystem records the filesystem the store is on now, after a deliberate move or a restore; import makes a new store: the configured store must not exist, and the archive's profile, with any field raised, is the new store's)")
+         "usage: fn operator CONFIG store {export ARCHIVE-DIR | import ARCHIVE-DIR [--FIELD N ...] | compact | checkpoint | reclaim [--dry-run | --recorded] | inspect MESSAGE-ID | inspect --group GROUP | rebind-filesystem [--storage-require-durable on|off]} (offline; refused while an owner runs; rebind-filesystem records the filesystem the store is on now, after a deliberate move or a restore; import makes a new store: the configured store must not exist, and the archive's profile, with any field raised, is the new store's)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME | group describe NAME [TEXT ...] (LIST NEWSGROUPS shows TEXT; no TEXT clears it) | group policy NAME y|n | group moderate NAME --moderators LOGIN[,LOGIN...] [--queue QUEUE] [--submission ADDRESS] | group moderate NAME --off | group subscribe-default [NAME ...] (LIST SUBSCRIPTIONS recommends the NAMEs in order; none clears it)")
         ((equal subject "motd")
          "usage: fn operator CONFIG motd {set LINE [LINE ...] | clear} (LIST MOTD shows one LINE per argument, each at most 256 octets)")
@@ -671,15 +682,15 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "control")
          "usage: fn operator CONFIG control {grant PRINCIPAL-HEX cancel NAMESPACE | revoke PRINCIPAL-HEX cancel NAMESPACE | list | log | evidence MESSAGE-ID} (NAMESPACE is a group name or one ending in .*; spec peering 8; log lists the withdrawal records, evidence shows one article's decision context)")
         ((equal subject "peer")
-         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- source-address|principal VALUE [PROFILE ALLOW-CLEAR] STREAMING [starttls|implicit SERVER-NAME ANCHOR-PEM] | peer remove NAME | peer list | peer pull NAME SECONDS | peer catch-up NAME SECONDS | peer feed NAME pause|resume | peer budget NAME OCTETS COUNT | peer keygen KEYDIR | peer genesis KEYDIR | peer invite NAME GROUPS HOST PORT PATH KEYDIR OUT MY-HOST|- MY-PORT|- | peer accept FILE KEYDIR PATH REACHABLE|- OUT | peer confirm ACCEPTANCE INVITATION (KEYDIR, FILE and OUT absolute; keygen makes a new KEYDIR with both key pairs and runs genesis; spec peering 9)")
+         "usage: fn operator CONFIG peer set NAME [--host HOST] [--port PORT] [--take GROUPS|-] [--send GROUPS|-] [--streaming true|false] [--tls clear|starttls|implicit] [--server-name NAME|-] [--anchor PEM|-] [--login FILE|-] [--allow-clear true|false] [--principal HEX | --source-address IPV4] (changes the named fields of a peer, live; every other field and the pull, carries and budget settings stay) | peer login NAME LOGIN FILE (asks the password your friend gave you twice, writes FILE for NAME and sets it as NAME's login) | peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- source-address|principal VALUE [PROFILE ALLOW-CLEAR] STREAMING [starttls|implicit SERVER-NAME ANCHOR-PEM] | peer remove NAME | peer list | peer pull NAME SECONDS | peer catch-up NAME SECONDS | peer feed NAME pause|resume | peer budget NAME OCTETS COUNT | peer keygen KEYDIR | peer genesis KEYDIR | peer invite NAME GROUPS HOST PORT PATH KEYDIR OUT MY-HOST|- MY-PORT|- | peer accept FILE KEYDIR PATH REACHABLE|- OUT | peer confirm ACCEPTANCE INVITATION (KEYDIR, FILE and OUT absolute; peer add, set, remove, pull and feed apply to the running node; keygen makes a new KEYDIR with both key pairs and runs genesis; spec peering 9)")
         ((equal subject "bp-boundary")
          "usage: fn operator CONFIG bp-boundary add NAME PATH BP-EID PORT [INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] [carries SOURCE-EID ...] (IPv4 loopback; the short form grants no inbound articles; carries lists the source EIDs this neighbour may relay, each judged under its own enrollment here)")
         ((equal subject "bp-route")
          "usage: fn operator CONFIG bp-route {add PATTERN BOUNDARY [PRIORITY] | remove PATTERN BOUNDARY} (PATTERN is a BP EID, or one ending in * for every EID with that prefix; the next hop of held transit, spec bp-node-machine 4.7)")
         ((equal subject "policy")
-         "usage: fn operator CONFIG policy set {path-identity IDENTITY | posting-policy bound-logins|open}")
+         "usage: fn operator CONFIG policy set KEY VALUE, KEY one of: path-identity IDENTITY | posting-policy bound-logins|open | complaints-to ADDR | anonymous none|open | exposure-connections N | exposure-per-address N | exposure-steps-per-second N | exposure-idle-seconds N | exposure-first-seconds N | exposure-auth-failures N | exposure-posts-per-minute N | exposure-trusted CIDR[,CIDR...]|none | relay-date-skew SECONDS | refused-offer-capacity N | relay-require-path 0|1 | log-batch-records N | log-batch-octets N | barrier-deadline-ms N | barrier-stall-ms N | clock-event-ms N | compress-min-octets N | disk-reserve-octets N | max-transactions N | max-history-octets N | max-article-octets N (each applies to a running node at once, the three store limits as their answer says: now, at the next start, or refused by name)")
         ((equal subject "principal")
-         "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin, restart to apply; bind and unbind apply to a running node at once)")
+         "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin; its last word says when it applies: applied (the running node took it), effective-at-next-start (no node running) or restart-required (fn.toml names no [control] path); bind and unbind apply to a running node at once)")
         ((equal subject "consumer")
          "usage: fn operator CONFIG consumer {bind NAME --account LOGIN | unbind NAME | show} (bind confines local consumer NAME to the groups LOGIN may read: its poll and ack then need LOGIN's password and serve only the events of a group LOGIN's access rule admits; unbind returns it to the operator's unrestricted consumer; show is the account list report; apply to a running node at once; spec consumer-progress Bound consumers)")
         ((equal subject "account")
@@ -697,7 +708,11 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ;; values and absolute paths; what the documents say, and whether they are
 ;; accepted, is books/peer-invite.lisp's, asked by host/native/peer-invite.lisp.
 (defconst *fn-nop-peering-arity*
-  '(("keygen" . 1) ("genesis" . 1) ("invite" . 9) ("accept" . 5) ("confirm" . 2)))
+  '(("keygen" . 1) ("genesis" . 1) ("invite" . 9) ("accept" . 5) ("confirm" . 2)
+    ; Row S5: `peer login NAME LOGIN FILE' writes the FNAUTH1 file from two
+    ; password entries (books/peer-set.lisp fn-pset-login-file) and sets it
+    ; as the peer's login (`peer set NAME --login FILE').
+    ("login" . 3)))
 
 (defun fn-nop-peering-verbp (word)
   (declare (xargs :guard t))
@@ -722,6 +737,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                                     (fn-nop-absolute-pathp (nth 4 args))))
         ((equal verb "confirm") (and (fn-nop-absolute-pathp (nth 0 args))
                                      (fn-nop-absolute-pathp (nth 1 args))))
+        ((equal verb "login") (fn-nop-absolute-pathp (nth 2 args)))
         (t nil)))
 
 (defun fn-nop-parse-peering (words config)
@@ -1849,6 +1865,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
                          :inspect)
                   :inspect)
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :inspect-group)
+                  :inspect-group)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                          :rebind-filesystem)
                   :rebind-filesystem)
                  (t :none)))
@@ -2716,7 +2735,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
 
 (defconst *fn-nop-store-actions*
   '(:run :post :status :health :recover :compact :checkpoint :reclaim
-    :reclaim-dry-run :reclaim-recorded :export :admin :inspect
+    :reclaim-dry-run :reclaim-recorded :export :admin :inspect :inspect-group
     :peering :principal :keys :tls :carry))
 
 (defun fn-native-operator-result-needs-storep (result)
@@ -2868,7 +2887,7 @@ control path no supported platform binds whole."
           ((and (equal status :refused) (equal reason :no-store))
            "no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)")
           ((and (equal status :usage) (equal reason :mission-fixes-profile))
-           "under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. To raise a bound later: fn operator CONFIG store export DIR, reinstall, then fn operator CONFIG store import DIR --FIELD N; or delete the mission line from fn.toml to choose a profile at init")
+           "under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. To raise a bound later: fn operator CONFIG policy set max-transactions|max-history-octets|max-article-octets N; or delete the mission line from fn.toml to choose a profile at init")
           ((and (equal status :usage) (fn-nop-help-subjectp command))
            (fn-nop-help-text command))
           (t nil))))
@@ -2893,6 +2912,17 @@ control path no supported platform binds whole."
            (stringp (fn-ncfg-second (fn-native-operator-result-arguments result))))
       (fn-record-string-octets
        (fn-ncfg-second (fn-native-operator-result-arguments result)))
+    nil))
+
+; Row S3d: the group `store inspect --group GROUP' names, or nil.
+(defun fn-native-operator-result-inspect-group (result)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "store")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :inspect-group)
+           (stringp (fn-ncfg-second (fn-native-operator-result-arguments result))))
+      (fn-ncfg-second (fn-native-operator-result-arguments result))
     nil))
 
 (defun fn-nop-octets-text (octets)

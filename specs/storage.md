@@ -77,6 +77,20 @@ reading the configuration history or scanning the log before any fold
 (`max-config-generations`, `max-record-octets`, `max-open-suffix`) are not
 live; a lowered T lowers `max-open-suffix` with it as init's resolution does.
 No limit change moves data or needs an export and an import.
+Each live field has three distinct values (PRF-996): the requested policy
+(the configuration history's, `fn-lim-effective`), the funded limit the
+running process admits under (the profile its owner installed at its open or
+at an applied change), and the immutable representation ceiling
+(`fn-lim-ceiling`: the configuration delta's u32; T also the txid width, A the
+article codec). Admission reads the funded limit; a change recorded for the
+next start does not fund (`fn-lim-funded-after-decide`). A value past the
+ceiling is refused as the representation's (`above-representation-ceiling`);
+a refusal is classed policy, representation or resource, and is a resource
+refusal exactly when the reservation cannot hold the requested profile
+(`fn-lim-resource-refusal-is-the-reservations`), the same words a start that
+cannot fund its store refuses with. `policy set` replies with the decision
+and `limit FIELD requested=R funded=U ceiling=C`; an offline `status` prints
+that line for each field with `funded=none`.
 
 STO-015: a namespace the store holds is bounded by the operator's profile,
 never by a constant (D27). Configuration generations and AUTHINFO
@@ -349,6 +363,8 @@ a different history. This is a local fn guarantee; no RFC speaks to it.
 
 ### Compressed payloads: DEFLATE over a shipped dictionary (STO-037)
 
+STO-037: A stored payload may be held compressed: a raw DEFLATE stream over a shipped preset dictionary named by its BLAKE3 digest, decoded by the verified inflater, never transcoded at rest
+
 A stored article record may hold its payload compressed
 (`books/payload-lz-record.lisp`, the frame `fn-z`: DICT-ID, the payload span,
 the record without it, and C). C is a raw DEFLATE stream (RFC 1951) made
@@ -361,8 +377,11 @@ dictionary: the first four octets of its BLAKE3 digest, 0 for none
   `books/deflate-inflate.lisp`). The COMPRESS wire uses the same inflater.
   An :ok answer is exactly N octets, and the stream ended at its final
   block or at a sync flush at the end of its input.
-- **The encoder is untrusted.** zlib (`host/native/fn-deflate.c`
-  `fn_deflate_payload`, level 9, over the current dictionary) proposes C.
+- **The encoder is untrusted.** The image's SBCL deflater
+  (`host/native/deflate.lisp` `fnn-ldf-deflate-payload`, zlib's level-9
+  search limits, over the current dictionary) proposes C; it replaced
+  zlib's `fn_deflate_payload` after ember's 2x-of-zlib gate
+  (`planning/evidence/deflater-gate-2026-09-29/result.md`).
   The append takes the frame only when the decoder gives the span back
   (`fn-lzr-append-decide`). A wrong candidate is a named store fault; a
   candidate that does not shrink the record keeps it as it is.
@@ -526,11 +545,15 @@ log in three programs (lane operations; books/store-log-segments.lisp
 `fn-lgs-rotate-durable-program`): the next segment is created in `staging/`
 as `.stage-segment-NNNNNN`, preallocated and fenced (cuts `rotate-created`,
 `rotate-fenced`) off the owner mutex; the switch, under the mutex with no
-batch in flight, renames it into `journal/` (cut `rotate-renamed`), its only
-I/O; `journal/` is fenced (cut `rotate-durable`) off the mutex by the new
+batch in flight, renames it into `journal/` (cut `rotate-renamed`) and writes the
+segment's ROTATION ENTRY at offset 0 (cut `rotate-headed`; the head, lane
+store-lineage: an FNLG frame of kind 3 chained from the closed segment's
+last trailer, its body the segment index, no record;
+`fn-lgc-rotation-octets`), its only I/O; the new segment's file and then
+`journal/` are fenced (cut `rotate-durable`) off the mutex by the new
 segment's first fence, before any member written there is acknowledged, and
 by the publication before the checkpoint's F row names the segment with the
-closed segment's last trailer as its genesis
+head's trailer as its genesis (an F row never names an unheaded segment)
 (books/store-log-rotate-spare.lisp: `fn-lgrs-journal-fence-names-the-acknowledged-batch`,
 and without that fence an acknowledged batch can be left under the staging
 name only); after the checkpoint is installed (rename and root fence) the
@@ -545,7 +568,7 @@ another predecessor (`log-chain-broken`, never read as a torn tail). A death
 at any rotation or drop cut reopens to the same history: a spare staged but
 not renamed is a staging orphan the writable open sweeps (segment K stays the
 active one); after the rename and before `rotate-durable` the new segment is
-an interrupted rotation the open completes, holding nothing acknowledged; and a covered segment left by a drop is dropped again
+an interrupted rotation the writable open completes (a reader reads it as empty and writes nothing), holding nothing acknowledged; and a covered segment left by a drop is dropped again
 (`fn-lgs-open-plan-scan-ignores-covered`). The history the open replays after
 the drop is the full chain's (T8, `fn-lgw-segment-drop-preserves-the-open`, over the streamed open).
 `store compact` on a `fn-store-9` store is a checkpoint with rotation
@@ -658,8 +681,10 @@ stays authoritative, and the file may be deleted at any time.
 STO-016: The checkpoint open costs less than the full replay it replaces,
 and a publication does not hold served commands.
 
-- **The file carries the count.** The F row carries S and the frontier
-  (`fn-sct-tables-of-capture`, STO-026); every committed event below S is
+- **The file carries the count and the bound.** The F row carries S, the
+  frontier, the revision, the log position and NEXT, the prefix's transaction
+  bound (`fn-sct-tables-of-capture`, STO-026; PRF-992: the open takes NEXT
+  from the row and finalizes over the suffix alone, never walking the prefix); every committed event below S is
   one E row and one P row (its payload, once), and the load rebuilds the
   event index from E (`fn-sct-capture-of-tables-of-capture`): the record
   list is stored once, never twice. Nothing is capped: one row per event,
@@ -996,6 +1021,61 @@ it is the next representation step); a whole-state substitution of checkpoint
 and page file whose log suffix is empty is bound only by the store's
 identity and salt.
 
+Lineage (row A10, lane store-lineage, PRF-979; `books/store-log-lineage.lisp`,
+`tests/acl2/store-log-lineage-tests.lisp`, `tests/test_native_store_lineage.py`).
+Every segment K >= 2 opens with its rotation entry, so the log's chain runs
+through the heads: the F row's genesis G for K is the head's trailer, and
+the head names its predecessor P, the closed segment's last trailer. The
+open decides `fn-lgl-open K G HEAD T0 MAX` over the first `fn-lgl-head-len`
+octets of K before it reads a record (`fnn-log-lineage-genesis`): nil, or
+refused by name -- `foreign-lineage` (the head's trailer is not G; for K = 1,
+G is not the genesis record's trailer T0), `segment-head-damaged`,
+`segment-misnamed`; then K is streamed from P and the head validates as its
+first entry with no record (`fn-lg-scan-of-rotation-entry-append`, the
+format's keystone; `fn-lgs-rotate-is-the-recovered-kernel`: the rotated-to
+kernel is the recovery over the head and zeros; `fn-lgc-rotate-refines`).
+Keystones: `fn-lgl-open-of-rotated-segment` (a segment the rotation wrote
+from P, opened under (K, G), is accepted exactly when G is the head's
+trailer), `fn-lgl-fork-refused` (two rotations to K from distinct trailers:
+each copy's checkpoint is refused against the other's log, under the
+per-pair collision hypothesis `fn-lgl-trailer-distinct`, 2^-128 per pair --
+the collision figure, not the second-preimage one),
+`fn-lgl-accepted-shares-lineage`. The tooth: the old open's three decisions
+are identical for a store's own checkpoint and a diverged copy's with an
+empty suffix. A rotation that died between the rename and the head leaves
+the segment named and unheaded: the writable open scans it to nothing and
+heads it from the chain it carried (`fnn-log-head-segment`, the same bytes
+the rotation writes); a reader writes nothing and reads it as empty (the
+closed segments' history, the one the writable open reaches); an F row never names it (the
+head's fence precedes `journal/`'s).
+
+What the lineage is and is not (the 2026-09-29 review of the lineage
+decision). The lineage is the store's ancestry: the chain of the genesis
+record and every entry since, carried through the rotation heads and bound
+by every checkpoint's F row together with the store identity, the covered
+prefix and the image root (`fn-hib`). Four claims, and what the mechanism
+gives: cross-file consistency between a checkpoint and the log it names --
+yes; ancestry, that the named segment continues the history the checkpoint
+covers -- yes, to the chain's collision bound; freshness against a
+remembered head -- NO: a complete restore of every local file is
+indistinguishable from an old legitimate start, and detecting it needs a
+head the operator or a peer holds outside the store; exclusive writer
+authority -- no, the owner lock and the deployment give that. The contract
+therefore says that the open detects mismatched components and foreign
+branches relative to the retained lineage; it never says it detects every
+rollback. Two representations of the same complete logical prefix are the
+same history: a copy that did not diverge opens under the same (K, G), an
+ordinary restart is not a new lineage, and nothing is rewritten at open (no
+per-open nonce in the checkpoint -- it would refuse a legitimate ancestor
+checkpoint after a normal restart; a per-open incarnation, if one is ever
+needed to fence stale process-local work, is an event, not the lineage).
+The check is additive to the binding's prefix relation and conceals nothing
+of it: a substituted checkpoint whose (K, G) is this log's still opens only
+through `fn-hib-open`. A branch identity with an explicit parent and fork
+point is what a deliberate adoption (`store adopt`, proposed in
+docs/operator.md, not built) writes into the log as an attributed record,
+so the same chain authenticates it -- never a second independent history.
+
 ## History classes and lifetimes
 
 STO-010: every class of durable state the store holds has a stated lifetime,
@@ -1215,6 +1295,34 @@ checkpoint's install reopens the history as it was and a rerun reclaims
 again; from the install on the open reads the rewritten history and a rerun
 reclaims nothing more (`fn-rclp-events-idempotent`,
 `fn-rclp-a-reclaimed-event-stays-reclaimed`).
+
+What the rewritten history MEANS is decided in books/history-knowledge.lisp
+(W8; PRF-997 to PRF-1000). A Message-ID's knowledge state over the event
+history and the node's stage is one of five: not accepted, accepted and
+retained, accepted and reclaimed, outcome unresolved (staged, not in the
+readable history: a lost acknowledgement or an indeterminate completion),
+history unavailable; the rewrite turns only "accepted and retained" into
+"accepted and reclaimed" and changes no other answer
+(`fn-hkn-reclamation-never-forgets-an-acceptance`): the current absence of
+a payload never collapses to "not accepted". An acceptance records its
+commitment: the replay step that accepts an article record binds the
+record's Message-ID to its content subject and obligation id and holds the
+pin with the record's own release evidence and charge
+(`fn-hkn-acceptance-records-subject-principal-and-undertaking`), none of
+which is a function of the open's groups or capacity
+(`fn-hkn-replay-binds-the-recorded-evidence-not-the-policy`). Reclamation
+is the logical release first (`fn-hkn-release`: the payload at the
+tombstone, the pin's charge at the history unit) and the rewrite implements
+it; over the released node a retry or a conflicting retry is refused as
+before, a receipt discharges the same obligation or none, every known
+obligation id stays known, and the one observable change is exactly the
+freed content charge: a request the ledger refused for capacity alone may
+be admitted after, and only such a request
+(`fn-hkn-release-enables-only-what-the-freed-charge-affords`). A refused
+node transition is the identity per entry; the full-store POST's footprint
+is one transaction id (`fn-rfx-refused-post-consumes-one-txid`), and that
+path never spends a recovery barrier
+(`fn-hkn-refusal-keeps-the-recovery-barriers`).
 
 The two operations (the Fable mandate, section 8):
 

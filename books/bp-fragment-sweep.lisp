@@ -46,6 +46,7 @@
 (in-package "ACL2")
 
 (include-book "bp-fragment")
+(include-book "rev-onto")
 
 (local (include-book "arithmetic/top" :dir :system))
 
@@ -420,12 +421,41 @@
                      (cdr queue) i)
     (mv active queue)))
 
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of the active fragment set (data, not a bound).  The :logic is
+; the recursion, unchanged; the :exec is a loop, equal by fn-bpfw-head-cell-loop-of-rev-onto (a right fold, run from the left over the reversed list).
+(defun fn-bpfw-head-cell-step (x rest)
+  (declare (xargs :guard t))
+  (fn-bpf-merge-cell (if (consp x) (car x) :gap) rest))
+
+(defun fn-bpfw-head-cell-loop (rev acc)
+  (declare (xargs :guard t))
+  (if (consp rev)
+      (fn-bpfw-head-cell-loop (cdr rev) (fn-bpfw-head-cell-step (car rev) acc))
+    acc))
+
 (defun fn-bpfw-head-cell (active)
-  (declare (xargs :guard (true-list-listp active)))
-  (if (consp active)
-      (fn-bpf-merge-cell (if (consp (car active)) (car (car active)) :gap)
-                         (fn-bpfw-head-cell (cdr active)))
-    :gap))
+  (declare (xargs :guard (true-list-listp active) :verify-guards nil))
+  (mbe :logic (if (consp active)
+                  (fn-bpf-merge-cell (if (consp (car active)) (car (car active)) :gap)
+                                     (fn-bpfw-head-cell (cdr active)))
+                :gap)
+       :exec (fn-bpfw-head-cell-loop (fn-ag-rev-onto active nil) :gap)))
+
+(defthm fn-bpfw-head-cell-loop-of-rev-onto
+  (equal (fn-bpfw-head-cell-loop (fn-ag-rev-onto active zs) :gap)
+         (fn-bpfw-head-cell-loop zs (fn-bpfw-head-cell active)))
+  :hints (("Goal" :induct (fn-ag-rev-onto active zs)
+                  :in-theory (union-theories
+                              '(fn-bpfw-head-cell-loop fn-bpfw-head-cell fn-bpfw-head-cell-step fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-bpfw-head-cell
+  :hints (("Goal" :use ((:instance fn-bpfw-head-cell-loop-of-rev-onto (zs nil)))
+                  :in-theory (union-theories
+                              '(fn-bpfw-head-cell-loop fn-bpfw-head-cell)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;

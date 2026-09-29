@@ -55,13 +55,33 @@
               (fn-bpnf-fragment-coherence-key
                (fn-bpb-bundle-primary (fn-bpnf-held-bundle anchor))))))
 
-(defun fn-bpnf-active-set-rows (held anchor)
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of the held rows (data, not a bound).  The :logic is
+; the recursion, unchanged; the :exec is a loop, equal by <f>-loop-is-rev-onto.
+(defun fn-bpnf-active-set-rows-loop (held anchor acc)
   (declare (xargs :guard t))
   (if (consp held)
-      (if (fn-bpnf-same-fragment-family-p (car held) anchor)
-          (cons (car held) (fn-bpnf-active-set-rows (cdr held) anchor))
-        (fn-bpnf-active-set-rows (cdr held) anchor))
-    nil))
+      (fn-bpnf-active-set-rows-loop
+       (cdr held) anchor
+       (if (fn-bpnf-same-fragment-family-p (car held) anchor) (cons (car held) acc) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-bpnf-active-set-rows (held anchor)
+  (declare (xargs :guard t))
+  (mbe :logic (if (consp held)
+                  (if (fn-bpnf-same-fragment-family-p (car held) anchor)
+                      (cons (car held) (fn-bpnf-active-set-rows (cdr held) anchor))
+                    (fn-bpnf-active-set-rows (cdr held) anchor))
+                nil)
+       :exec (fn-bpnf-active-set-rows-loop held anchor nil)))
+
+(defthm fn-bpnf-active-set-rows-loop-is-rev-onto
+  (equal (fn-bpnf-active-set-rows-loop held anchor acc)
+         (fn-ag-rev-onto acc (fn-bpnf-active-set-rows held anchor)))
+  :hints (("Goal" :induct (fn-bpnf-active-set-rows-loop held anchor acc)
+                  :in-theory (union-theories
+                              '(fn-bpnf-active-set-rows-loop fn-bpnf-active-set-rows fn-ag-rev-onto atom not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
 
 ; The anchor must be a current held row.  Thus an arbitrary caller-supplied
 ; header cannot make a phantom family out of rows with a matching key.
@@ -71,6 +91,27 @@
            (fn-bpnf-family-member anchor (fn-bpnf-held-list st)))
       (fn-bpnf-active-set-rows (fn-bpnf-held-list st) anchor)
     nil))
+
+; The :exec's per-row cell: the total field selectors are logically
+; identical to the record projections of the :logic and avoid a duplicate
+; record scan on this path.  The loop (lane depth-debt, PRF-919) runs over
+; the held rows in constant stack; equal by fn-bpnf-fragment-cells-loop-is-
+; rev-onto (books/bp-node-fragment-guards.lisp).
+(defun fn-bpnf-fragment-cell-exec (h)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((bundle (fn-bpnf-held-bundle h))
+         (primary (fn-bpb-bundle-primary bundle))
+         (payload (fn-bpb-block-data
+                   (fn-bpb-bundle-payload bundle))))
+    (fn-bpf-make (fn-bpn-nth 9 primary)
+                 payload (fn-bpn-nth 10 primary))))
+
+(defun fn-bpnf-fragment-cells-loop (held acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp held)
+      (fn-bpnf-fragment-cells-loop (cdr held)
+                                   (cons (fn-bpnf-fragment-cell-exec (car held)) acc))
+    (fn-ag-rev-onto acc nil)))
 
 (defun fn-bpnf-fragment-cells (held)
   (declare (xargs :guard t :verify-guards nil))
@@ -84,18 +125,7 @@
                             payload (fn-bpp-total-adu-length primary))
                (fn-bpnf-fragment-cells (cdr held))))
      nil)
-   :exec
-   (if (consp held)
-       ; The total field selectors are logically identical to the record
-       ; projections above and avoid a duplicate record scan on this path.
-       (let* ((bundle (fn-bpnf-held-bundle (car held)))
-              (primary (fn-bpb-bundle-primary bundle))
-              (payload (fn-bpb-block-data
-                        (fn-bpb-bundle-payload bundle))))
-         (cons (fn-bpf-make (fn-bpn-nth 9 primary)
-                            payload (fn-bpn-nth 10 primary))
-               (fn-bpnf-fragment-cells (cdr held))))
-     nil)))
+   :exec (fn-bpnf-fragment-cells-loop held nil)))
 
 ; This is the actual foundation-state query: the reassembler consumes the
 ; held bundles selected from the machine's own list, not a parallel family

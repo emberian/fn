@@ -540,6 +540,13 @@
 ; Transfer-time decision: the whole article is here
 
 
+; An article the octets do not parse to (OKP nil) is refused by the octets
+; alone: the later arms never read a nil article.
+(defthm fn-peer-intrinsic-refusal-of-when-not-okp
+  (implies (not okp)
+           (fn-peer-intrinsic-refusal-of msgid okp article check limitp))
+  :hints (("Goal" :in-theory (enable fn-peer-intrinsic-refusal-of))))
+
 (defun fn-peer-decide-transfer (node cfg peer msgid octets clock id subject)
   (declare (xargs :guard (fn-node-statep node) :verify-guards nil))
   (let* ((record (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))
@@ -1906,6 +1913,12 @@
                                       (:d fn-cfg-ag-car) (:d fn-cfg-ag-cdr)))))
 (verify-guards fn-peer-sessionp)
 (verify-guards fn-peer-relayed-octets)
+; After fn-peer-relayed-octets (the octets it relays): the transfer decision's
+; own guard is fn-peer-intrinsic-refusal-of-when-not-okp's.
+(verify-guards fn-peer-decide-transfer)
+(verify-guards fn-peer-header-limit-refusal)
+(verify-guards fn-peer-decide-transfer-under)
+(verify-guards fn-peer-injection-arguments)
 ; fn-peer-session-consistentp: OPEN, and not needed.  It calls
 ; fn-post-session-consistentp (books/nntp-post.lisp), which is itself
 ; :verify-guards nil; it is a specification predicate, not on the served

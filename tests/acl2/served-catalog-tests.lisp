@@ -320,10 +320,31 @@
 ;;; Teeth for KEYSTONE P (fn-scat-available-article-is-available).  Without
 ;;; GROUP (a corrupted-state witness: an atom in a row's numbers alist, which
 ;;; fn-held-numbersp forbids): the catalog binds the nil group past the atom,
-;;; the served membership walk stops at it.  (For KEYSTONE N this witness
-;;; does not separate the sides: the clamp at the group's next number hides
-;;; the row; N carries GROUP from P and its weakening is not attempted.)
+;;; the served membership walk stops at it.
 (defconst *sct-c-atom* (list (sct-held *sct-w0* 0 '(7 (nil . 1)))))
+
+;;; KEYSTONE N without GROUP, the same corrupted state: the catalog's range
+;;; over the nil group is (1) (fn-cat-assoc skips the atom), the served walk's
+;;; is empty (the membership number of the atom is nil).  The state is not a
+;;; catalog (fn-cat-p fails), so no live fn-cat stobj can hold it (the
+;;; abstract stobj's exports check their guards); the prover evaluates the
+;;; two sides by rewriting once fn-cnx-view-range-is-walk stays off (with it,
+;;; fn-cnx-walk-range, verify-guards nil, is left under HIDE).
+(defthm sct-teeth-n-group-hypotheses
+  (and (fn-cnx-freshp *sct-c-atom*) (not nil) (natp 1) (natp 3)
+       (not (fn-cat-p *sct-c-atom*))
+       (equal (fn-scat-range-numbers nil 1 3 1 *sct-c-atom*) '(1))
+       (equal (fn-nntp-group-range-numbers nil 1 3 (fn-cat-view-articles 1 *sct-a* *sct-c-atom*))
+              nil))
+  :hints (("Goal" :in-theory (disable fn-cnx-view-range-is-walk)))
+  :rule-classes nil)
+
+(must-fail-checked
+ (defthm sct-teeth-n-without-group
+   (equal (fn-scat-range-numbers nil 1 3 1 *sct-c-atom*)
+          (fn-nntp-group-range-numbers nil 1 3 (fn-cat-view-articles 1 *sct-a* *sct-c-atom*)))
+   :hints (("Goal" :in-theory (disable fn-cnx-view-range-is-walk)))
+   :rule-classes nil))
 
 (defthm sct-teeth-p-group-hypotheses
   (and (fn-cnx-freshp *sct-c-atom*) (not nil)

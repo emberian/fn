@@ -23,12 +23,14 @@
     "# `fn principal set-password`.  Each entry is the verifier of")
    (list 10)
    (fn-record-string-octets
-    "# books/auth-secret.lisp: a 16-octet salt and the tagged SHA-256")
+    "# books/auth-secret.lisp: a 16-octet salt, the tagged digest of")
    (list 10)
    (fn-record-string-octets
-    "# of salt || secret.  The secret itself is not stored.  This v1") (list 10)
+    "# salt || secret, and SCRAM-SHA-256's StoredKey and ServerKey.") (list 10)
    (fn-record-string-octets
-    "# verifier is not a tunable-cost or memory-hard password KDF.") (list 10)
+    "# The secret itself is not stored.  The fast digest is not a") (list 10)
+   (fn-record-string-octets
+    "# tunable-cost or memory-hard password KDF.") (list 10)
    (fn-record-string-octets
     "# AUTHINFO still carries the secret over an unprotected") (list 10)
    (fn-record-string-octets
@@ -193,14 +195,51 @@
         :bad)
     (fn-acct-local-principal name)))
 
-(defun fn-native-auth-admin-upsert (name credential credentials)
+; The credential table's walks execute by loops (lane depth-debt,
+; PRF-919): the table is operator data with no fixed cap (D27), and a
+; recursion one control-stack frame per credential could exhaust the
+; 1,024 KiB stack.  Each is (mbe :logic <the recursion, unchanged> :exec <a
+; loop>), equal by its <f>-loop lemma (books/rev-onto.lisp).
+(local
+ (defthm fn-native-auth-admin-rev-onto-of-rev-onto
+   (equal (fn-ag-rev-onto (fn-ag-rev-onto x acc) y)
+          (fn-ag-rev-onto acc (append x y)))))
+
+(defun fn-native-auth-admin-upsert-loop (name credential credentials acc)
   (declare (xargs :guard t))
   (if (consp credentials)
       (if (equal (fn-auth-cred-name (car credentials)) name)
-          (cons credential (cdr credentials))
-        (cons (car credentials)
-              (fn-native-auth-admin-upsert name credential (cdr credentials))))
-    (list credential)))
+          (fn-ag-rev-onto acc (cons credential (cdr credentials)))
+        (fn-native-auth-admin-upsert-loop name credential (cdr credentials)
+                                          (cons (car credentials) acc)))
+    (fn-ag-rev-onto acc (list credential))))
+
+(defun fn-native-auth-admin-upsert (name credential credentials)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp credentials)
+           (if (equal (fn-auth-cred-name (car credentials)) name)
+               (cons credential (cdr credentials))
+             (cons (car credentials)
+                   (fn-native-auth-admin-upsert name credential (cdr credentials))))
+         (list credential))
+       :exec (fn-native-auth-admin-upsert-loop name credential credentials nil)))
+
+(defthm fn-native-auth-admin-upsert-loop-is-rev-onto
+  (equal (fn-native-auth-admin-upsert-loop name credential credentials acc)
+         (fn-ag-rev-onto acc (fn-native-auth-admin-upsert name credential credentials)))
+  :hints (("Goal" :induct (fn-native-auth-admin-upsert-loop name credential credentials acc)
+                  :in-theory (union-theories
+                              '(fn-native-auth-admin-upsert-loop fn-native-auth-admin-upsert
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-native-auth-admin-upsert
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-native-auth-admin-upsert fn-ag-rev-onto
+                                fn-native-auth-admin-upsert-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-native-auth-admin-octets-lessp (left right)
   (declare (xargs :guard t))
@@ -210,25 +249,91 @@
         ((< (ifix (car right)) (ifix (car left))) nil)
         (t (fn-native-auth-admin-octets-lessp (cdr left) (cdr right)))))
 
-(defun fn-native-auth-admin-insert-credential (credential credentials)
+(defun fn-native-auth-admin-insert-credential-loop (credential credentials acc)
   (declare (xargs :guard t))
   (if (atom credentials)
-      (list credential)
+      (fn-ag-rev-onto acc (list credential))
     (if (fn-native-auth-admin-octets-lessp
          (fn-auth-cred-name credential)
          (fn-auth-cred-name (car credentials)))
-        (cons credential credentials)
-      (cons (car credentials)
-            (fn-native-auth-admin-insert-credential
-             credential (cdr credentials))))))
+        (fn-ag-rev-onto acc (cons credential credentials))
+      (fn-native-auth-admin-insert-credential-loop
+       credential (cdr credentials) (cons (car credentials) acc)))))
+
+(defun fn-native-auth-admin-insert-credential (credential credentials)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (atom credentials)
+           (list credential)
+         (if (fn-native-auth-admin-octets-lessp
+              (fn-auth-cred-name credential)
+              (fn-auth-cred-name (car credentials)))
+             (cons credential credentials)
+           (cons (car credentials)
+                 (fn-native-auth-admin-insert-credential
+                  credential (cdr credentials)))))
+       :exec (fn-native-auth-admin-insert-credential-loop credential credentials nil)))
+
+(defthm fn-native-auth-admin-insert-credential-loop-is-rev-onto
+  (equal (fn-native-auth-admin-insert-credential-loop credential credentials acc)
+         (fn-ag-rev-onto acc (fn-native-auth-admin-insert-credential
+                              credential credentials)))
+  :hints (("Goal" :induct (fn-native-auth-admin-insert-credential-loop
+                           credential credentials acc)
+                  :in-theory (union-theories
+                              '(fn-native-auth-admin-insert-credential-loop
+                                fn-native-auth-admin-insert-credential
+                                fn-ag-rev-onto atom car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-native-auth-admin-insert-credential
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-native-auth-admin-insert-credential fn-ag-rev-onto
+                                fn-native-auth-admin-insert-credential-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
+
+; The insertion sort, a right fold: the :exec inserts the reversed list's
+; elements from the left into ACC, the sort of the suffix already folded.
+(defun fn-native-auth-admin-sort-credentials-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-native-auth-admin-sort-credentials-loop
+       (cdr rev) (fn-native-auth-admin-insert-credential (car rev) acc))
+    acc))
+
+(verify-guards fn-native-auth-admin-sort-credentials-loop)
 
 (defun fn-native-auth-admin-sort-credentials (credentials)
-  (declare (xargs :guard t))
-  (if (consp credentials)
-      (fn-native-auth-admin-insert-credential
-       (car credentials)
-       (fn-native-auth-admin-sort-credentials (cdr credentials)))
-    nil))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp credentials)
+           (fn-native-auth-admin-insert-credential
+            (car credentials)
+            (fn-native-auth-admin-sort-credentials (cdr credentials)))
+         nil)
+       :exec (fn-native-auth-admin-sort-credentials-loop
+              (fn-ag-rev-onto credentials nil) nil)))
+
+(defthm fn-native-auth-admin-sort-credentials-loop-of-rev-onto
+  (equal (fn-native-auth-admin-sort-credentials-loop
+          (fn-ag-rev-onto credentials zs) nil)
+         (fn-native-auth-admin-sort-credentials-loop
+          zs (fn-native-auth-admin-sort-credentials credentials)))
+  :hints (("Goal" :induct (fn-ag-rev-onto credentials zs)
+                  :in-theory (union-theories
+                              '(fn-native-auth-admin-sort-credentials-loop
+                                fn-native-auth-admin-sort-credentials
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-native-auth-admin-sort-credentials
+  :hints (("Goal" :use ((:instance fn-native-auth-admin-sort-credentials-loop-of-rev-onto
+                                   (zs nil)))
+                  :in-theory (union-theories
+                              '(fn-native-auth-admin-sort-credentials-loop
+                                fn-native-auth-admin-sort-credentials)
+                              (theory 'minimal-theory)))))
 
 (defun fn-native-auth-admin-quoted (octets)
   (declare (xargs :guard t))
@@ -274,6 +379,14 @@
       (fn-record-string-octets "digest")
       (fn-id-hex-octets (fn-authsec-octets
                          (fn-authsec-ver-digest verifier))))
+     (fn-native-auth-admin-field
+      (fn-record-string-octets "scram_stored_key")
+      (fn-id-hex-octets (fn-authsec-octets
+                         (fn-authsec-ver-stored-key verifier))))
+     (fn-native-auth-admin-field
+      (fn-record-string-octets "scram_server_key")
+      (fn-id-hex-octets (fn-authsec-octets
+                         (fn-authsec-ver-server-key verifier))))
      (fn-native-auth-admin-signing-field name bindings)
      (fn-record-string-octets
       (if (fn-auth-cred-postingp credential)
@@ -281,12 +394,39 @@
         "posting = false"))
      (list 10 10))))
 
-(defun fn-native-auth-admin-serialize-creds (credentials bindings)
+(defun fn-native-auth-admin-serialize-creds-loop (credentials bindings acc)
   (declare (xargs :guard t))
   (if (consp credentials)
-      (append (fn-native-auth-admin-serialize-cred (car credentials) bindings)
-              (fn-native-auth-admin-serialize-creds (cdr credentials) bindings))
-    nil))
+      (fn-native-auth-admin-serialize-creds-loop
+       (cdr credentials) bindings
+       (fn-ag-rev-onto (fn-native-auth-admin-serialize-cred (car credentials) bindings) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-native-auth-admin-serialize-creds (credentials bindings)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp credentials)
+           (append (fn-native-auth-admin-serialize-cred (car credentials) bindings)
+                   (fn-native-auth-admin-serialize-creds (cdr credentials) bindings))
+         nil)
+       :exec (fn-native-auth-admin-serialize-creds-loop credentials bindings nil)))
+
+(defthm fn-native-auth-admin-serialize-creds-loop-is-rev-onto
+  (equal (fn-native-auth-admin-serialize-creds-loop credentials bindings acc)
+         (fn-ag-rev-onto acc (fn-native-auth-admin-serialize-creds credentials bindings)))
+  :hints (("Goal" :induct (fn-native-auth-admin-serialize-creds-loop credentials bindings acc)
+                  :in-theory (union-theories
+                              '(fn-native-auth-admin-serialize-creds-loop fn-native-auth-admin-serialize-creds
+                                fn-ag-rev-onto fn-native-auth-admin-rev-onto-of-rev-onto
+                                car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-native-auth-admin-serialize-creds
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-native-auth-admin-serialize-creds fn-ag-rev-onto
+                                fn-native-auth-admin-serialize-creds-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-native-auth-admin-serialize (credentials bindings)
   (declare (xargs :guard t))
@@ -311,12 +451,39 @@
               nil)
             (list 10))))
 
-(defun fn-native-auth-admin-public-report (credentials bindings)
+(defun fn-native-auth-admin-public-report-loop (credentials bindings acc)
   (declare (xargs :guard t))
   (if (consp credentials)
-      (append (fn-native-auth-admin-public-row (car credentials) bindings)
-              (fn-native-auth-admin-public-report (cdr credentials) bindings))
-    nil))
+      (fn-native-auth-admin-public-report-loop
+       (cdr credentials) bindings
+       (fn-ag-rev-onto (fn-native-auth-admin-public-row (car credentials) bindings) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-native-auth-admin-public-report (credentials bindings)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp credentials)
+           (append (fn-native-auth-admin-public-row (car credentials) bindings)
+                   (fn-native-auth-admin-public-report (cdr credentials) bindings))
+         nil)
+       :exec (fn-native-auth-admin-public-report-loop credentials bindings nil)))
+
+(defthm fn-native-auth-admin-public-report-loop-is-rev-onto
+  (equal (fn-native-auth-admin-public-report-loop credentials bindings acc)
+         (fn-ag-rev-onto acc (fn-native-auth-admin-public-report credentials bindings)))
+  :hints (("Goal" :induct (fn-native-auth-admin-public-report-loop credentials bindings acc)
+                  :in-theory (union-theories
+                              '(fn-native-auth-admin-public-report-loop fn-native-auth-admin-public-report
+                                fn-ag-rev-onto fn-native-auth-admin-rev-onto-of-rev-onto
+                                car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-native-auth-admin-public-report
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-native-auth-admin-public-report fn-ag-rev-onto
+                                fn-native-auth-admin-public-report-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-native-auth-admin-list (octets presentp max-credentials)
   ; Host-called list subject.  It projects only public credential fields.
@@ -389,14 +556,42 @@
 
 ; The bindings with NAME's replaced by PRINCIPAL, or removed when PRINCIPAL
 ; is nil.
-(defun fn-native-auth-admin-rebind (name principal bindings)
+(defun fn-native-auth-admin-rebind-loop (name principal bindings acc)
   (declare (xargs :guard t))
   (if (consp bindings)
-      (if (and (consp (car bindings)) (equal (car (car bindings)) name))
-          (fn-native-auth-admin-rebind name principal (cdr bindings))
-        (cons (car bindings)
-              (fn-native-auth-admin-rebind name principal (cdr bindings))))
-    (if principal (list (cons name principal)) nil)))
+      (fn-native-auth-admin-rebind-loop
+       name principal (cdr bindings)
+       (if (and (consp (car bindings)) (equal (car (car bindings)) name))
+           acc
+         (cons (car bindings) acc)))
+    (fn-ag-rev-onto acc (if principal (list (cons name principal)) nil))))
+
+(defun fn-native-auth-admin-rebind (name principal bindings)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp bindings)
+           (if (and (consp (car bindings)) (equal (car (car bindings)) name))
+               (fn-native-auth-admin-rebind name principal (cdr bindings))
+             (cons (car bindings)
+                   (fn-native-auth-admin-rebind name principal (cdr bindings))))
+         (if principal (list (cons name principal)) nil))
+       :exec (fn-native-auth-admin-rebind-loop name principal bindings nil)))
+
+(defthm fn-native-auth-admin-rebind-loop-is-rev-onto
+  (equal (fn-native-auth-admin-rebind-loop name principal bindings acc)
+         (fn-ag-rev-onto acc (fn-native-auth-admin-rebind name principal bindings)))
+  :hints (("Goal" :induct (fn-native-auth-admin-rebind-loop name principal bindings acc)
+                  :in-theory (union-theories
+                              '(fn-native-auth-admin-rebind-loop fn-native-auth-admin-rebind
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-native-auth-admin-rebind
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-native-auth-admin-rebind fn-ag-rev-onto
+                                fn-native-auth-admin-rebind-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-native-auth-admin-bind (octets presentp name signing-text
                                         max-credentials)

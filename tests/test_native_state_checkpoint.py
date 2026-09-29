@@ -61,11 +61,25 @@ class StateCheckpointSourceTests(unittest.TestCase):
         # fn-rii-sco-extend-open-is-extend-then-open: the extension and
         # fn-rii-classified-open of it), opened by fn-store-sn-open-classified
         # (fn-store-sn-open-extended's body).
-        self.assertIn("(fn-rii-sco-extend-open checkpoint config-records rows frontier)", recover)
+        # incremental-finalize (row A9, PRF-946 / PRF-992): the open from a
+        # checkpoint calls fn-sfi-extend-open with the F row's NEXT (the
+        # global fn-store-sco-next, kept by fn-store-sco-decode-finish) and
+        # finalizes over the suffix alone; KEYSTONE
+        # fn-sfi-extend-open-is-rii-extend-open equates it to
+        # fn-rii-sco-extend-open, which the full open (fn-store-sn-recover-rows)
+        # still calls.
+        self.assertIn("(fn-sfi-extend-open checkpoint config-records rows frontier next)", recover)
+        self.assertNotIn("fn-rii-sco-extend-open checkpoint", recover)
         self.assertNotIn("fn-arena", recover)
         self.assertIn("(fn-store-sn-open-classified", recover)
         rii0 = (ROOT / "books" / "replay-identity-index.lisp").read_text(encoding="ascii")
         self.assertIn("(defthm fn-rii-sco-extend-open-is-extend-then-open", rii0)
+        sfi = (ROOT / "books" / "store-finalize-incremental.lisp").read_text(encoding="ascii")
+        self.assertIn("(defthm fn-sfi-extend-open-is-rii-extend-open", sfi)
+        finish = native_cuts.host_function(node_host, "fn-store-sco-decode-finish")
+        self.assertIn("(fn-sct-tables-next (cadr loaded))", finish)
+        rows = native_cuts.host_function(node_host, "fn-store-sn-recover-rows")
+        self.assertIn("(fn-rii-sco-extend-open (fn-sco-capture config-records nil)", rows)
         # The open the host takes is fn-sco-store-open over the same
         # arguments, called directly or through the one ACL2 function the
         # host calls in its place (since 2e25e21b fn-sopc-classified-open,
@@ -459,6 +473,27 @@ class StateCheckpointTests(StateCheckpointFixture):
         process, err = self.node.try_start()
         self.assertIsNone(err, "a watermark at the bound starts")
         self.node.stop(process=process)
+
+    def test_a_running_owner_answers_the_request_and_the_offline_verb_is_refused(self):
+        """On a running owner, `operator ... store checkpoint' is PKT-868's
+        compaction request (host/native/operator.lisp
+        fnn-operator-execute-compaction -> host/native/admin.lisp
+        fnn-owner-compaction-request): the owner answers it by name and
+        publishes in place while serving.  This test formerly expected a
+        refusal, which predates PKT-868.  The offline `store checkpoint'
+        entry still takes the store lock, so it is refused while the owner
+        holds it and leaves the checkpoint file untouched."""
+        self.init_with_checkpoint_at_three()
+        old = self.digest()
+        self.node.start()
+        offline = self.checkpoint("store")
+        self.assertNotEqual(offline.returncode, EXIT_OK, offline.stdout.decode())
+        self.assertEqual(self.digest(), old)
+        asked = self.checkpoint("operator")
+        self.assertEqual(asked.returncode, EXIT_OK, asked.stderr.decode())
+        self.assertIn(b"requested", asked.stdout + asked.stderr)
+        self.node.stop()
+        self.assertEqual(self.open_line(), "open=checkpoint:5 suffix=0")
 
     def test_the_checkpoint_carries_its_history_image_and_the_open_adopts_it(self):
         """Lane composed-owner (books/history-image-snapshot.lisp): the file

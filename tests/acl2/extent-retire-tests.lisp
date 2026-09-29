@@ -29,8 +29,11 @@
 ; A frame at file offset 100 (the buffer's cell 0 is the frame start less
 ; 32): 32 octets of the previous trailer, the 37-octet header, then the
 ; chunk: handle 0's payload (1 2 3) as its length (one digit, 3) and its
-; octets.  The prefix is 74 octets.
-(defconst *xrt-buf* (append (make-list 69 :initial-element 0) '(1 3 1 2 3)))
+; octets.  The prefix is 74 octets; the frame's 32-octet trailer follows it
+; in the buffer (the host fills prefix and trailer: the reseat's place
+; carries the trailer's commitment, lane extent-identity).
+(defconst *xrt-buf* (append (make-list 69 :initial-element 0) '(1 3 1 2 3)
+                            (make-list 32 :initial-element 7)))
 
 (defconst *xrt-pos* '(100 106 171 3))
 

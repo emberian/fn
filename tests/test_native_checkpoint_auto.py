@@ -468,7 +468,7 @@ class AutoCheckpointTests(AutoCheckpointFixture):
     def test_a_death_at_each_rotation_cut_of_the_owner_loses_nothing_acknowledged(self):
         # HST-033 (SCN-199): the owner's rotation with its file I/O off the
         # owner mutex.  At each of its cuts (the spare staged: rotate-created,
-        # rotate-fenced; the switch: rotate-renamed; journal/'s fence:
+        # rotate-fenced; the switch: rotate-renamed; the head: rotate-headed; journal/'s fence:
         # rotate-durable) the owner dies (FN_NATIVE_LOG_FAULT); every POST it
         # acknowledged is in the store after `recover', no staged spare is
         # left, and a fresh owner publishes the whole history.
@@ -476,7 +476,7 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         pristine = self.root / "pristine-store"
         import shutil
         shutil.copytree(self.store, pristine)
-        for cut in ("rotate-created", "rotate-fenced", "rotate-renamed", "rotate-durable"):
+        for cut in ("rotate-created", "rotate-fenced", "rotate-renamed", "rotate-headed", "rotate-durable"):
             with self.subTest(cut=cut):
                 shutil.rmtree(self.store)
                 shutil.copytree(pristine, self.store)

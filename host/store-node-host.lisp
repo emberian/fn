@@ -209,22 +209,26 @@
   (declare (xargs :mode :program))
   (fn-bs-profile-max-config-generations profile))
 
-(defun fn-store-config-observation-entries (entries)
-  "Convert only octet representation; decoding/name policy stays in fn-nco-observe."
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+(defun fn-store-config-observation-entries-loop (entries acc)
   (declare (xargs :mode :program))
   (if (consp entries)
       (let ((entry (car entries)))
         (if (and (true-listp entry) (equal (len entry) 2)
                  (fn-cbor-octet-listp (car entry))
                  (fn-cbor-octet-listp (cadr entry)))
-            (let ((rest (fn-store-config-observation-entries (cdr entries))))
-              (if (equal rest :bad)
-                  :bad
-                 (cons (list (fn-store-octets->string (car entry))
-                             (car (cdr entry)))
-                       rest)))
+            (fn-store-config-observation-entries-loop
+             (cdr entries)
+             (cons (list (fn-store-octets->string (car entry)) (car (cdr entry)))
+                   acc))
           :bad))
-    (if (null entries) nil :bad)))
+    (if (null entries) (fn-ag-rev-onto acc nil) :bad)))
+
+(defun fn-store-config-observation-entries (entries)
+  "Convert only octet representation; decoding/name policy stays in fn-nco-observe."
+  (declare (xargs :mode :program))
+  (fn-store-config-observation-entries-loop entries nil))
 
 (defun fn-store-config-observation (entries max-generations)
   "The recovery subject for one bounded physical config directory observation."
@@ -639,10 +643,17 @@ reopen predicate, writer-lock observation and observed final namespace."
                (state (f-put-global 'fn-store-sco-log-position
                                     (list (fn-sct-tables-log (cadr loaded))
                                           (fn-sco-at 2 (fn-sct-tables-f (cadr loaded))))
-                                    state)))
+                                    state))
+               ; The F row's NEXT: the prefix's transaction bound the
+               ; publication wrote (books/store-checkpoint-tables.lisp
+               ; fn-sct-next-of-tables-is-bound-of-loaded-records, PRF-992);
+               ; the open's fn-sfi-extend-open takes it, never a walk.
+               (state (f-put-global 'fn-store-sco-next
+                                    (fn-sct-tables-next (cadr loaded)) state)))
           (mv nil (list :ok (fn-sco-sequence checkpoint)) state fn-octets))
       (let* ((state (f-put-global 'fn-store-sco-checkpoint nil state))
-             (state (f-put-global 'fn-store-sco-log-position nil state)))
+             (state (f-put-global 'fn-store-sco-log-position nil state))
+             (state (f-put-global 'fn-store-sco-next nil state)))
         (mv nil
             (list :refused (if (and (consp loaded) (consp (cdr loaded)))
                                (cadr loaded)
@@ -774,14 +785,24 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program
                   :guard (fn-octet-list-listp config-octet-records)))
   (let ((checkpoint (fn-store-sco-current state))
+        (next (and (boundp-global 'fn-store-sco-next state)
+                   (f-get-global 'fn-store-sco-next state)))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
-    (if (or (null checkpoint) (equal rows :bad) (equal config-records :bad)
-            (null config-records))
+    (if (or (null checkpoint) (not (natp next)) (equal rows :bad)
+            (equal config-records :bad) (null config-records))
         (value :fault)
-      ; The suffix is replayed once: E is fn-sco-open's extension, and the
-      ; open and the configuration are read off it (fn-sco-open is
-      ; fn-sco-finalize of E; fn-sco-replay-result is E's fold finished).
-      (let ((pair (fn-rii-sco-extend-open checkpoint config-records rows frontier)))
+      ; The suffix is replayed once and the prefix never (row A9, PRF-946,
+      ; PRF-992): E is fn-sco-open's extension, the finalize is taken from
+      ; the carried verdict over the suffix from the F row's NEXT, and the
+      ; open and the configuration are read off E.  KEYSTONE
+      ; fn-sfi-extend-open-is-rii-extend-open (books/store-finalize-
+      ; incremental.lisp): equal to fn-rii-sco-extend-open whenever the
+      ; checkpoint finalized :ok at some frontier and NEXT is its records'
+      ; bound; both facts are the publication's (books/store-finalize-
+      ; published.lisp fn-sfp-open-from-publication-is-the-twin) and reach
+      ; this open through the bytes the trailer verified: the trust row
+      ; A-CHECKPOINT-PUBLICATION (books/assumptions-publication.lisp).
+      (let ((pair (fn-sfi-extend-open checkpoint config-records rows frontier next)))
         (fn-store-sn-open-classified (car pair) (cadr pair) config-records state)))))
 
 ; Each ROW's wire event (alpha, books/store-intern.lisp fn-row-wire-of: the
@@ -978,13 +999,21 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cfg-generation (f-get-global 'fn-store-cfg state))))
 
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+; ACC is the octets so far, reversed.
+(defun fn-store-cfg-join-names-loop (names acc)
+  (declare (xargs :mode :program))
+  (if (consp names)
+      (let ((acc (fn-ag-rev-onto (fn-record-string-octets (car names)) acc)))
+        (fn-store-cfg-join-names-loop (cdr names)
+                                      (if (consp (cdr names)) (cons 10 acc) acc)))
+    (fn-ag-rev-onto acc nil)))
+
 (defun fn-store-cfg-join-names (names)
   ; Names as one octet list separated by LF, which no group name contains.
   (declare (xargs :mode :program))
-  (if (consp names)
-      (append (fn-record-string-octets (car names))
-              (if (consp (cdr names)) (cons 10 (fn-store-cfg-join-names (cdr names))) nil))
-    nil))
+  (fn-store-cfg-join-names-loop names nil))
 
 (defun fn-store-cfg-served (state)
   ; The served table at the live generation.
