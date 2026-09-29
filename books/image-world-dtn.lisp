@@ -174,6 +174,7 @@
 (include-book "accounts")
 (include-book "owner-config")
 (include-book "owner-checkpoint-open")
+(include-book "owner-reclaim-pass")
 (include-book "config-owner-live")
 (include-book "config-owner-publish")
 (include-book "config-owner-carried")
