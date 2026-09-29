@@ -105,6 +105,7 @@ import datetime as _dt
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -456,18 +457,40 @@ def cover(world: World, registry: Registry, entry: str, entries: frozenset) -> d
     }
 
 
-def coordinate(world_path: Path, box: str | None) -> dict:
+SHA = re.compile(r"[0-9a-f]{7,40}")
+
+
+def source_revision(given: str | None = None, root: Path = ROOT) -> str:
+    """The commit the dumped world was built from (item 48): GIVEN
+    (--source-revision) when named, else the tree's HEAD.  A box tree with no
+    git (a shipped copy) must name it: a coverage file without its source
+    coordinate is not a claim (AGENTS.md, "A claim names its coordinate")."""
     try:
-        revision = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
-                                  capture_output=True, text=True, check=True).stdout.strip()
+        head = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
+                              capture_output=True, text=True, check=True).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
-        revision = None
-    return {"source_revision": revision, "box": box,
+        head = None
+    if given:
+        if not SHA.fullmatch(given):
+            raise SystemExit(f"coverage: --source-revision {given!r} is not a commit sha")
+        if head and not head.startswith(given) and not given.startswith(head):
+            print(f"coverage: --source-revision {given} is not this tree's HEAD {head}; "
+                  f"recording {given}", file=sys.stderr)
+        return given
+    if head is None:
+        raise SystemExit("coverage: no git here (a shipped box tree?): name the commit the "
+                         "world was dumped from with --source-revision SHA")
+    return head
+
+
+def coordinate(world_path: Path, box: str | None, revision: str | None = None) -> dict:
+    return {"source_revision": source_revision(revision), "box": box,
             "dump_sha256": hashlib.sha256(world_path.read_bytes()).hexdigest(),
             "date": _dt.date.today().isoformat()}
 
 
-def build(world_path: Path, box: str | None = None, root: Path = ROOT) -> dict:
+def build(world_path: Path, box: str | None = None, root: Path = ROOT,
+          revision: str | None = None) -> dict:
     world = World(load_json(world_path))
     registry = Registry(root)
     declared = load_json(root / "planning" / "interfaces.json")["entries"]
@@ -487,7 +510,7 @@ def build(world_path: Path, box: str | None = None, root: Path = ROOT) -> dict:
                         "(tools/coverage_dump.lisp) and planning/interfaces.json, proofs.json, "
                         "requirements.json and families.json.  Do not edit; regenerate at "
                         "convergence."),
-        "coordinate": {**coordinate(world_path, box), "world_cbd": world.cbd,
+        "coordinate": {**coordinate(world_path, box, revision), "world_cbd": world.cbd,
                        "theorems": len(world.theorems),
                        "functions": sum(1 for n in world.functions if world.in_tree(n))},
         "rule": {"decision": "branches (if in its private closure) and constructs an outcome "
@@ -939,6 +962,9 @@ def main(argv=None) -> int:
     b.add_argument("--box", default=None, help="where the session ran (the coordinate)")
     b.add_argument("--write", action="store_true", help="write coverage.json and the gaps file")
     b.add_argument("--baseline", action="store_true", help="also rewrite coverage-baseline.json")
+    b.add_argument("--source-revision", metavar="SHA", default=None,
+                   help="the commit the world was dumped from (required where the tree "
+                        "has no git; default this tree's HEAD)")
     d = sub.add_parser("dump", help="dump the world (image-world + the host files) on a box")
     where = d.add_mutually_exclusive_group(required=True)
     where.add_argument("--host", metavar="BOX", help="ship this tree to BOX and dump there")
@@ -978,7 +1004,7 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "build":
-        cov = build(args.world, args.box)
+        cov = build(args.world, args.box, revision=args.source_revision)
         if args.write:
             COVERAGE.write_text(json.dumps(cov, indent=1) + "\n")
             GAPS.write_text(render_gaps(cov))

@@ -415,6 +415,27 @@ class EventLagTests(unittest.TestCase):
         self.assertEqual(registry.event_lag, [])
 
 
+class SourceRevisionTests(unittest.TestCase):
+    """Item 48: a tree without git names the dump's commit."""
+
+    def test_no_git_requires_the_flag_and_the_flag_is_recorded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(SystemExit) as refused:
+                coverage.source_revision(None, Path(directory))
+            self.assertIn("--source-revision SHA", str(refused.exception))
+            self.assertEqual(coverage.source_revision("33bb1ada7", Path(directory)),
+                             "33bb1ada7")
+            with self.assertRaises(SystemExit):
+                coverage.source_revision("HEAD~1", Path(directory))
+
+    def test_build_records_the_named_revision(self):
+        root = tree()
+        cov = coverage.build(root / "build" / "coverage" / "world.json", "persvati",
+                             root=root, revision="abc1234")
+        self.assertEqual(cov["coordinate"]["source_revision"], "abc1234")
+        self.assertEqual(cov["coordinate"]["box"], "persvati")
+
+
 class LoadOnlyTests(unittest.TestCase):
     """The tls256k launcher loads; it never certifies (item 46)."""
 
