@@ -734,6 +734,12 @@ checkpoint's S, or NIL."
   (let* ((mode (fnn-store-open-mode store))
          (s (and (eq (first mode) :checkpoint) (second mode)))
          (result (fnn-owner-action 'fn-owner-recover-from-store-open max-connections)))
+    ;; A watermark past RFC 3977 section 6's bound is a damaged Store, refused
+    ;; by name (books/owner-number-bound.lisp fn-onb-open-okp); the node does
+    ;; not start on it.
+    (when (eq result :article-numbers-damaged)
+      (fnn-refuse "store ~a is damaged: an article-number watermark exceeds RFC 3977's bound (2147483647)"
+                  (fnn-store-root store)))
     (unless (eq result :recovering)
       (fnn-fault "owner rejected committed history"))
     (unless (eq (fnn-owner-core 'fn-owner-sco-note-durable s) :noted)

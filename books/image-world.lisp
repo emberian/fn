@@ -240,6 +240,7 @@
 (include-book "owner-identity-intern")
 (include-book "owner-identity-served")
 (include-book "owner-prepare-outcome")
+(include-book "owner-number-bound")
 (include-book "owner-feed-port")
 (include-book "feed-link-backoff")
 (include-book "feed-pause")

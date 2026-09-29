@@ -32,7 +32,7 @@
 ; with no capture held, under the relation, the view index and the catalog,
 ; the served read of the span keeps the configured owner's relation.
 (defthm fn-ohr-read-span-preserves-ocl-relation
-  (implies (and (fn-ocl-relation oc)
+  (implies (and (fn-gacc-okp cache) (fn-ocl-relation oc)
                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                 (fn-scol-okp fn-arena fn-cat)
@@ -41,17 +41,17 @@
                 (not (consp views))
                 (not (eq (fn-otm-admit-post s) :shed))
                 (not (fn-oas-over-p oc (fn-own-tls-result-owner
-                                        (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat))
+                                        (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat))
                                     id slots))
                 (equal (car (fn-mcr-resize credits (fn-mca-conn-key id)
                                            (fn-mca-need (fn-own-tls-result-owner
-                                                         (fn-oas-read-span oc views id i end s slots
+                                                         (fn-oas-read-span oc views id i end cache s slots
                                                                            fn-octets fn-arena fn-cat))
                                                         id reserve)))
                        :ok))
            (fn-ocl-relation
             (fn-own-tls-result-owner
-             (car (fn-mca-read-span credits oc views id i end s slots reserve fn-octets fn-arena fn-cat)))))
+             (car (fn-mca-read-span credits oc views id i end cache s slots reserve fn-octets fn-arena fn-cat)))))
   :hints (("Goal"
            :use (fn-mca-read-span-within-the-credit-unfolds
                  fn-oas-read-span-when-held-unfolds
@@ -70,7 +70,7 @@
 ; (the chain above, as an equation), so the carried relation lifts through
 ; fn-ohr-carried-of-same-store: the read keeps the store.
 (defthm fn-ohr-read-span-is-the-consumed-read
-  (implies (and (fn-ocl-relation oc)
+  (implies (and (fn-gacc-okp cache) (fn-ocl-relation oc)
                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                 (fn-scol-okp fn-arena fn-cat)
@@ -79,16 +79,16 @@
                 (not (consp views))
                 (not (eq (fn-otm-admit-post s) :shed))
                 (not (fn-oas-over-p oc (fn-own-tls-result-owner
-                                        (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat))
+                                        (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat))
                                     id slots))
                 (equal (car (fn-mcr-resize credits (fn-mca-conn-key id)
                                            (fn-mca-need (fn-own-tls-result-owner
-                                                         (fn-oas-read-span oc views id i end s slots
+                                                         (fn-oas-read-span oc views id i end cache s slots
                                                                            fn-octets fn-arena fn-cat))
                                                         id reserve)))
                        :ok))
            (equal (fn-own-tls-result-owner
-                   (car (fn-mca-read-span credits oc views id i end s slots reserve fn-octets fn-arena fn-cat)))
+                   (car (fn-mca-read-span credits oc views id i end cache s slots reserve fn-octets fn-arena fn-cat)))
                   (cdr (fn-ocfg-read oc id
                                      (take (fn-own-tls-result-consumed
                                             (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena))
@@ -112,7 +112,7 @@
                                   (fn-ocfg-read fn-own-read fn-own-read-full)))))
 
 (defthm fn-ohr-read-span-preserves-carried-relation
-  (implies (and (fn-lgoc-invariantp oc)
+  (implies (and (fn-gacc-okp cache) (fn-lgoc-invariantp oc)
                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                 (fn-scol-okp fn-arena fn-cat)
@@ -121,17 +121,17 @@
                 (not (consp views))
                 (not (eq (fn-otm-admit-post s) :shed))
                 (not (fn-oas-over-p oc (fn-own-tls-result-owner
-                                        (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat))
+                                        (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat))
                                     id slots))
                 (equal (car (fn-mcr-resize credits (fn-mca-conn-key id)
                                            (fn-mca-need (fn-own-tls-result-owner
-                                                         (fn-oas-read-span oc views id i end s slots
+                                                         (fn-oas-read-span oc views id i end cache s slots
                                                                            fn-octets fn-arena fn-cat))
                                                         id reserve)))
                        :ok))
            (fn-lgoc-invariantp
             (fn-own-tls-result-owner
-             (car (fn-mca-read-span credits oc views id i end s slots reserve fn-octets fn-arena fn-cat)))))
+             (car (fn-mca-read-span credits oc views id i end cache s slots reserve fn-octets fn-arena fn-cat)))))
   :hints (("Goal"
            :use (fn-ohr-read-span-is-the-consumed-read
                  fn-ohr-carried-implies-ocl-relation
