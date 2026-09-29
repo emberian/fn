@@ -851,7 +851,7 @@ not on this tree yet; its citations are checked once they land.
 | W2 | `books/transit-bound`: `fn-tb-served-run-retains-at-most-the-body-limit` | PRF-313 | none |  |
 | W3 | `books/store-budget-naming`: `fn-sbud-post-boundary-refuses-exactly-past-the-profile-bound`; `books/owner-served-bound`: `fn-osb-install-serves-the-profile-bound` | PRF-110, PRF-095 | none |  |
 | W4 | `books/served-tls-prefix`: `fn-served-step-counted-consumed-is-bounded`, `fn-served-step-counted-carries-at-most-one-submission`, `fn-served-drain-run-is-boundary-independent` | PRF-213 | none |  |
-| W5 | `books/payload-lz`: fn-lz-run-out-len-bound (pending), fn-lz-decode-buf-out-len-bound (pending), fn-lz-seq-budget (pending), fn-lz-advance-budget (pending) | PRF-257 | none |  |
+| W5 | `books/payload-deflate`: `fn-pzd-decode-ok`, `fn-pzd-decode-bufs-is-decode` | PRF-257 | none |  |
 | W6 | `books/deflate-inflate`: `fn-zin-feed-out-bound`, `fn-zin-loop-stops`, `fn-zin-loop-split-budget`, `fn-zin-feed-bomb-bound` | PRF-909, PRF-910 | none | lane/compress d90102b90 |
 | W7 | `books/owner-scheduler`: `fn-osch-control-waits-at-most-the-bound` | PRF-248 | none |  |
 | W8 | `books/owner-commit-fairness`: `fn-ocf-control-waits-at-most-the-bound`, `fn-ocf-potential-at-most-twenty-two`, `fn-ocf-seal-potential-at-most-six` | PRF-901 | none |  |
