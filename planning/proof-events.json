@@ -10924,8 +10924,8 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-clkr-observation-of-ns-decides-the-wall",
-          "note": "host/bp-ingress-host.lisp fn-bpi-host-observation: fn-clkr-observation-of-ns."
+          "name": "fn-clkr-wall-reading-is-the-ns-decision",
+          "note": "host/native/io.lisp fnn-owner-wall-milliseconds (and fnn-store-prepare-observation) calls fn-otm-wall-reading over gettimeofday's seconds and microseconds at +fnn-owner-unix-dtn-offset-seconds+. Teeth: tests/acl2/clock-reading-tests.lisp (clkt-wall-reading-*: a 2026 reading and the second before the epoch; removal of integerp seconds, natp microseconds and the epoch offset)."
         }
       ]
     },
