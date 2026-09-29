@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1662 |
-| Certification roots in the Makefile | 1600 |
-| Books inside the root closure | 1661 |
-| `defthm` and `defthmd` events | 27369 |
-| `defun` events | 17899 |
+| Books read | 1666 |
+| Certification roots in the Makefile | 1602 |
+| Books inside the root closure | 1663 |
+| `defthm` and `defthmd` events | 27422 |
+| `defun` events | 17910 |
 | Functions with verified guards | 3355 |
-| Functions declared `:verify-guards nil` and never verified | 2063 |
-| Functions left at the default with an explicit guard | 9804 |
-| Functions left at the default with no guard | 2677 |
-| `assert-event` checks | 22771 |
-| `must-fail` checks | 2463 |
+| Functions declared `:verify-guards nil` and never verified | 2066 |
+| Functions left at the default with an explicit guard | 9805 |
+| Functions left at the default with no guard | 2684 |
+| `assert-event` checks | 22786 |
+| `must-fail` checks | 2475 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
-| Theorems flagged SUSPECT by shape | 1208 |
+| Theorems flagged SUSPECT by shape | 1211 |
 | Export-hygiene warnings | 317 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2368 |
+| Include-hygiene warnings | 2373 |
 | Host-names warnings | 1982 |
 | Hand-written-record warnings | 18 |
 
@@ -764,6 +764,9 @@ that `make certify` requests.
 | `books/principal.lisp` | root | 6 | 27 | 0/0/27/0 | 0 | 0 | 4 |
 | `books/productive-contract.lisp` | root | 29 | 8 | 0/2/6/0 | 0 | 0 | 0 |
 | `books/productive-observer.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/productive-read-chain.lisp` | - | 43 | 1 | 0/1/0/0 | 0 | 0 | 3 |
+| `books/productive-read.lisp` | - | 2 | 2 | 0/2/0/0 | 0 | 0 | 0 |
+| `books/productive-transfer.lisp` | root | 8 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/profile-limits.lisp` | closure | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/protocol-builders.lisp` | root | 82 | 7 | 0/1/6/0 | 0 | 0 | 2 |
 | `books/protocol-codes-rows.lisp` | root | 7 | 5 | 0/1/4/0 | 0 | 0 | 0 |
@@ -1547,6 +1550,7 @@ that `make certify` requests.
 | `tests/acl2/posting-account-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 5 | 2 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 44 | 0 | 0 |
 | `tests/acl2/productive-contract-tests.lisp` | root | 0 | 8 | 0/7/1/0 | 24 | 5 | 0 |
+| `tests/acl2/productive-transfer-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 15 | 12 | 0 |
 | `tests/acl2/profile-monotonicity-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 23 | 0 | 0 |
 | `tests/acl2/proto-adt-2-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 26 | 0 | 0 |
 | `tests/acl2/proto-adt-tests.lisp` | root | 0 | 6 | 0/0/3/3 | 21 | 0 | 0 |
@@ -2372,6 +2376,9 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-pcb-bound-carrier-with-a-failed-primitive-is-signature-failed` | `books/peer-carriage.lisp` | 550 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-refusal-class and the conclusion is that arm's value |
 | `fn-pcb-event-carriage-needs-a-composite` | `books/peer-carriage.lisp` | 62 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-event-carriage and the conclusion is that arm's value |
 | `fn-pcb-transit-verdict-names-the-accepted-arm` | `books/peer-carriage.lisp` | 806 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-transit-verdict and the conclusion is that arm's value |
+| `fn-pcr-counted-accessors-of-make-by-definition` | `books/productive-read-chain.lisp` | 489 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-pcr-tls-served-wire-by-definition` | `books/productive-read-chain.lisp` | 656 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-pcr-with-wire-overwrite-by-definition` | `books/productive-read-chain.lisp` | 382 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-peer-archive-command-pinned-preserves-consistent-session` | `books/peer-inbound.lisp` | 2031 | instance-corollary: the statement is fn-nntp-archive-command-pinned-preserves-consistent-session instantiated, discharging nothing |
 | `fn-peer-decide-transfer-under-keeps-refusals-and-duplicates-by-definition` | `books/transit-header-limits.lisp` | 91 | arm-of-definition: the hypotheses select one IF/COND arm of fn-peer-decide-transfer-under and the conclusion is that arm's value |
 | `fn-peer-decision-kind-of-fn-peer-decision` | `books/peer-inbound.lisp` | 131 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

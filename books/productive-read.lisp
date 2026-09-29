@@ -2,10 +2,11 @@
 ; PRF-1053 fn-pcr-served-read-is-the-reference-read, PRF-1054
 ; fn-pcr-retrieval-answers-220-with-the-stored-octets).
 ;
-; WIP -- DRAFT STATEMENTS, NOT YET REPL-ADMITTED (wind-down 2026-09-30).  Every
-; form below is the statement the lane designed from the surveyed chain; the
-; successor admits them in proof_repl (see LANEDUMP.md NEXT) before this book
-; goes into the Makefile.  The include set is a first guess.
+; DISCOVERY ADMISSIONS, NOT CERTIFICATION. Both statements were admitted in
+; protected persvati REPL pcr61. The successor composition is in
+; productive-read-chain.lisp, including an admitted complete numbered ARTICLE
+; host-called read. Complete teeth, Message-ID/absent variants and union/native
+; evidence remain open; neither book is a Makefile qualification root yet.
 ;
 ; THE SUBJECT (the function the host calls): fn-mca-read-span, which
 ; host/owner-host.lisp fn-owner-chunk-span-at calls for one served socket
@@ -45,9 +46,9 @@
 ;   peer -> post -> fn-nntp-step -> fn-nntp-command-pinned ->
 ;   fn-nntp-archive-command-pinned = fn-rcompat-retrieval (PRF-243,
 ;   fn-nntp-archive-command-pinned-article-head-is-served, nntp-pinned-msgid)
-; The five pass-through links between fn-served-step and
-; fn-nntp-archive-command-pinned are NOT proved by this book: the witness
-; evaluates them on the real fixture; they are the gap the lifecycle list names.
+; This lower book does not itself establish the protocol/wire joins.
+; productive-read-chain.lisp admits those actual joins and the full numbered
+; host read; the remaining witness/variant/evidence work stays explicit.
 
 (in-package "ACL2")
 (include-book "owner-credits")
