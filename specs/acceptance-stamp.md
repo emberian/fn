@@ -1,6 +1,14 @@
 # The acceptance stamp (T2)
 
-Status: T2a is implemented and qualified on its frozen native image. T2b's
+Status (2026-09-29): the schema-0 reader is DELETED. Every record carries a
+u64 stamp (`fn-record-stampp` is `fn-record-uint64p`), the codec has schemas 1
+and 2, and a schema-0 header is refused `:unknown-version`: no release reads
+another release's store (no migrations: fresh deploys at 6.6.0). S3, the
+`:legacy` stamp and every schema-0 form below are the history of T2, not the
+contract; `fn-record-schema0-encode`, `fn-record-schema-0-bytes-decode-as-legacy`
+and `fn-sn-prepare-refuses-a-legacy-record` no longer exist.
+
+T2a is implemented and qualified on its frozen native image. T2b's
 NEWNEWS books and affected ACL2 closure are certified; native reader-image
 validation is pending. The forms below state the contract; certification
 evidence, rather than this note, determines which statements have been proved

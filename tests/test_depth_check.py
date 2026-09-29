@@ -119,6 +119,63 @@ class BaselineTests(unittest.TestCase):
         self.assertIn("*fn-nctrl-max-command-frame*", d.defined_constants())
 
 
+class InterpretedTests(unittest.TestCase):
+    """obstructions-7 item 61: host-reached functions that are not
+    guard-verified run *1*; their own class, per host file, served first."""
+
+    def definition(self, text, path="books/x.lisp"):
+        # depth_check's own callgraph and ledger: `tools.ledger`'s Sym is
+        # another class once a module earlier in the run imported `ledger`
+        # from tools/ (persvati's 13-module run, 2026-09-29).
+        callgraph = d.callgraph
+        form = d.ledger.read_forms(text)[0]
+        return callgraph.Definition(name=str(form[1]).lower(), kind="function", path=path,
+                                    line=1, form=form)
+
+    def test_static_class_estimate(self):
+        cls = d.static_class
+        self.assertEqual(cls(self.definition("(defun f (x) (car x))"), set(), set()), "ideal")
+        self.assertEqual(cls(self.definition("(defun f (x) (car x))"), {"f"}, set()),
+                         "common-lisp-compliant")
+        self.assertEqual(cls(self.definition(
+            "(defun f (x) (declare (xargs :guard (consp x))) (car x))"), set(), set()),
+            "common-lisp-compliant")
+        self.assertEqual(cls(self.definition(
+            "(defun f (x) (declare (xargs :guard (consp x) :verify-guards nil)) (car x))"),
+            set(), set()), "ideal")
+        self.assertEqual(cls(self.definition(
+            "(defun f (x) (declare (xargs :mode :program)) x)"), set(), set()), "program")
+        self.assertEqual(cls(self.definition(
+            "(defun f (x) (declare (type integer x)) x)"), set(), set()), "common-lisp-compliant")
+        self.assertEqual(cls(self.definition("(defun f (x) x)", "books/e.lisp"), set(),
+                             {"books/e.lisp"}), "common-lisp-compliant")
+
+    def test_world_classes_read_the_dump(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "world.json"
+            path.write_text(json.dumps({"functions": [
+                {"name": "ACL2::FN-A", "class": ":IDEAL"},
+                {"name": "FN-B", "class": "COMMON-LISP-COMPLIANT"}]}))
+            self.assertEqual(d.world_classes(path),
+                             {"fn-a": "ideal", "fn-b": "common-lisp-compliant"})
+
+    def test_report_lists_served_and_receive_hosts_first(self):
+        rows = [{"function": "fn-z", "where": "books/z.lisp:3", "hosts": ["host/native/admin.lisp"],
+                 "loses": []},
+                {"function": "fn-r", "where": "books/r.lisp:9",
+                 "hosts": ["host/native/bp-node.lisp", "host/native/admin.lisp"],
+                 "loses": ["its mbe loop twin", "a frame per element in append"]}]
+        lines = d.interpreted_report(rows, "world w.json")
+        self.assertIn("2 host-reached function(s) are not guard-verified", lines[0])
+        self.assertEqual([line for line in lines if line.startswith("host/")],
+                         ["host/native/bp-node.lisp: 1", "host/native/admin.lisp: 2"])
+        self.assertIn("  interpreted fn-r  books/r.lisp:9  loses its mbe loop twin; a frame per "
+                      "element in append", lines)
+
+
 if __name__ == "__main__":
     unittest.main()
 

@@ -776,3 +776,10 @@
              fn-cbor-u32-from-upper-bound fn-cbor-u16-to-from-octets
              fn-cbor-u32-to-from-octets fn-cbor-unsigned-reencode-prefix
              fn-cbor-bytes-reencode-prefix fn-cbor-encoding-is-true-list))
+
+; The ihs include above is non-local, so its rules are live in every book
+; that includes this one.  Its (:generalize mod-x-y-=-x+y-for-rationals)
+; turned each induction that generalizes a term over MOD into a FLOOR/MOD
+; search (tests/acl2/number-durability-tests: one must-fail from 11,444 to
+; 300,001 steps).  No book here reasons with it: closed at its source.
+(in-theory (disable (:generalize mod-x-y-=-x+y-for-rationals)))

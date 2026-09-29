@@ -667,6 +667,62 @@ def remote_certify_id(host: str, remote: Path, identifier: str) -> str | None:
     return found.group(1) if found else None
 
 
+def find_run_record(root: Path, identifier: str,
+                    runner=subprocess.run) -> tuple[Path, dict]:
+    """(the worktree that holds RUN's record, the record): this worktree's
+    first, else any worktree of this repository's (`git worktree list`).
+    `farm.py status RUN` from another worktree read its own tree on the box
+    and reported another run (item 63)."""
+    record = run_record(root, identifier)
+    if record:
+        return root, record
+    try:
+        listed = runner(["git", "-C", str(root), "worktree", "list", "--porcelain"],
+                        capture_output=True, text=True, timeout=30, check=False).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        listed = ""
+    for line in (listed or "").splitlines():
+        if line.startswith("worktree "):
+            other = Path(line.split(" ", 1)[1])
+            record = run_record(other, identifier)
+            if record:
+                return other, record
+    return root, {}
+
+
+def run_status(host: str | None, identifier: str, root: Path,
+               remote: Path | None = None) -> int:
+    """One run's row, wherever it was submitted from, with its certify id."""
+    where, record = find_run_record(root, identifier)
+    host = host if host in HOSTS else record.get("host")
+    if host not in HOSTS:
+        raise FarmError(f"{identifier}: no record in any worktree here names its box; "
+                        "give it: farm.py status BOX RUN [--remote-root PATH]")
+    remote = remote or Path(record.get("box_path") or record.get("remote_path") or where)
+    result = ssh(host, status_script(remote), check=False)
+    if result.returncode != 0:
+        raise FarmError(f"{host}: cannot read status under {remote}: "
+                        f"{result.stdout.strip() or f'ssh exited {result.returncode}'}")
+    try:
+        rows = [row for row in json.loads(result.stdout) if row.get("run_id") == identifier]
+    except ValueError as error:
+        raise FarmError(f"{host}: invalid status snapshot under {remote}: {error}") from error
+    if not rows:
+        raise FarmError(f"{identifier} is not a run under {host}:{remote}"
+                        + ("" if record else " (and no worktree here recorded it)"))
+    row = rows[0]
+    certify_id = (row.get("certify_id") or record.get("certify_id")
+                  or remote_certify_id(host, remote, identifier))
+    if certify_id and record:
+        note_certify_id(where, identifier, certify_id)
+    label = row["data"] + (f"({row['manifest']})" if row["data"] == "manifest" else "")
+    print(f"{identifier} on {host}:{remote} (recorded in {where if record else 'no worktree'})")
+    print(f"state {row['state']}; data {label}; passed {row.get('passed', '-')} failed "
+          f"{row.get('failed', '-')} active {row.get('active', '-')}")
+    print(f"certify id {certify_id or 'not yet named (the runner has not started)'}")
+    return 0
+
+
 def run_record(root: Path, identifier: str) -> dict:
     """What `submit` recorded for this run, or an empty mapping."""
     try:
@@ -993,8 +1049,12 @@ def progress_script(root: Path, identifier: str) -> str:
     # while `status` already showed this run's manifest passed.
     named = (f"$(grep -m1 -oE 'build/acl2/certify-[0-9]{{8}}T[0-9]{{6}}Z-[0-9]+' {log} "
              "2>/dev/null)")
+    # The newest directory is taken only when it is not older than this run
+    # (item 63: operability-3's wait took a PREVIOUS run's final manifest,
+    # the newest directory before this run's runner had made its own).
     newest = (f"$(n={named}; if [ -n \"$n\" ] && [ -d \"$n\" ]; then echo \"$n/\"; "
-              "else ls -td build/acl2/certify-*/ 2>/dev/null | head -1; fi)")
+              f"else python3 -c {shlex.quote(RUNS_OWN_NEWEST)} {shlex.quote(identifier)} "
+              "2>/dev/null; fi)")
     return (
         f"cd {remote_quote(root)} 2>/dev/null || {{ echo 'NOROOT'; exit 9; }}; "
         f"printf 'STATUS %s\\n' \"$(cat build/farm/{identifier}.status "
@@ -1019,18 +1079,41 @@ def progress_script(root: Path, identifier: str) -> str:
         # finished as far as its verdict goes (depth-debt-2, d27-representation-2:
         # waits that never returned on a final manifest).
         f"printf 'MANIFEST %s\\n' \"$(python3 -c {shlex.quote(MANIFEST_VERDICT)} "
-        f"\"$d\" 2>/dev/null)\""
+        f"\"$d\" {shlex.quote(identifier)} 2>/dev/null)\""
     )
 
 
+# A run id's stamp (run-YYYYmmddTHHMMSSZ-xxxx, taken where `submit` ran) and
+# a certify directory's (certify-YYYYmmddTHHMMSSZ-PID, taken on the box):
+# a directory more than RUN_SKEW_SECONDS older than the run is another run's.
+RUN_SKEW_SECONDS = 120
+_STAMPS = (
+    "import datetime as t,re,sys,pathlib\n"
+    "def at(name):\n"
+    "    f=re.search(r'(\\d{8}T\\d{6}Z)',name)\n"
+    "    return t.datetime.strptime(f.group(1),'%Y%m%dT%H%M%SZ') if f else None\n"
+    "def mine(d,run):\n"
+    "    a,b=at(pathlib.Path(d).name),at(run)\n"
+    f"    return a is not None and b is not None and (b-a).total_seconds()<={RUN_SKEW_SECONDS}\n"
+)
+# The newest build/acl2/certify-* directory that is not older than the run.
+RUNS_OWN_NEWEST = _STAMPS + (
+    "ds=sorted((p for p in pathlib.Path('build/acl2').glob('certify-*') if p.is_dir()),"
+    "key=lambda p:p.stat().st_mtime,reverse=True)\n"
+    "d=next((p for p in ds[:1] if mine(p.name,sys.argv[1])),None)\n"
+    "print(str(d)+'/') if d else None\n"
+)
 # Prints `<status> <certify-id>` for a final manifest (one with
-# `finished_utc`), nothing otherwise.  The runner records a provisional
-# manifest with status `failed` at its start; that one is not a verdict.
-MANIFEST_VERDICT = (
-    "import json,sys,pathlib\n"
+# `finished_utc`) of THIS run's directory, nothing otherwise.  The runner
+# records a provisional manifest with status `failed` at its start; that one
+# is not a verdict, and neither is a final manifest whose directory is older
+# than the run (item 63).
+MANIFEST_VERDICT = _STAMPS + (
+    "import json\n"
     "d=pathlib.Path(sys.argv[1])\n"
     "m=json.loads((d/'manifest.json').read_text())\n"
-    "print(m.get('status','unknown'),d.name) if m.get('finished_utc') else None\n"
+    "ok=len(sys.argv)<3 or mine(d.name,sys.argv[2])\n"
+    "print(m.get('status','unknown'),d.name) if m.get('finished_utc') and ok else None\n"
 )
 
 
@@ -1898,6 +1981,10 @@ def main(argv: list[str] | None = None) -> int:
             arguments.rest.insert(0, arguments.host)
         arguments.host = choose_host(root, list(arguments.rest),
                                      list(arguments.affected_by))
+    elif arguments.action == "status" and arguments.host.startswith("run-"):
+        # `farm.py status RUN`: the box comes from the run's record (item 63).
+        arguments.rest.insert(0, arguments.host)
+        arguments.host = "auto"
     elif arguments.host == "auto":
         parser.error(f"{arguments.action} needs the box the run is on (its submit "
                      "printed it); auto picks a box only for submit")
@@ -1959,6 +2046,13 @@ def main(argv: list[str] | None = None) -> int:
                                     if arguments.remote_root else None))
             print("\n".join(lines))
             return 1 if not lines[-1].startswith("== 0 ") else 0
+        if arguments.rest:
+            if len(arguments.rest) != 1:
+                parser.error("status takes at most one run id: farm.py status [BOX] RUN")
+            host = arguments.host if arguments.host in HOSTS else None
+            return run_status(host, arguments.rest[0], root,
+                              expand_remote(host, arguments.remote_root)
+                              if arguments.remote_root and host else None)
         remote = (expand_remote(arguments.host, arguments.remote_root)
                   if arguments.remote_root else root)
         return status(arguments.host, remote, root)

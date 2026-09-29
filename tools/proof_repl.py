@@ -38,6 +38,7 @@ Measuring and probing (2026-09-27, the lanes' recurring obstructions):
     proof_repl.py send NAME '(defthm a ...) (defthm b ...)'   # several forms
     proof_repl.py send-range NAME BOOK --from EVENT --until EVENT [--keep-going]
                                           # --until EXCLUDES its event; --through sends it
+    proof_repl.py send-file NAME tests/acl2/X-tests.lisp [--keep-going]
     proof_repl.py forms BOOK                                  # #N and name of each form
     proof_repl.py probe NAME EVENT [--hints '((...))'] [--form F] [--stop]
 
@@ -55,7 +56,8 @@ answer is (build/proof-repl/NAME/last-output.txt); the diagnostic forms
 trimmed.  `probe` proves a renamed copy of EVENT in a second session
 NAME.probe loaded up to just before it (reused while the book's bytes before
 EVENT and its closure are unchanged) and undoes the attempt afterwards, so
-neither session moves; `status` reports the load's time and steps and its
+neither session moves.  The probe loads the book FILE: an event sent to NAME
+by hand is not in it (it names them; `--with-sent` sends them first); `status` reports the load's time and steps and its
 costliest forms.
 
 A dependency the cache has no certificate for at this tree's bytes: `start`
@@ -85,7 +87,12 @@ events stay local -- the default since obstructions-5 item 32
 loads form by form, which names the refused event.  `--host BOX`
 (hbox, persvati) runs a command in the lane's tree on that box with the
 box's own ACL2 and cache after syncing tools/ and the book's closure; on a
-box itself FN_ACL2 and FN_CERT_CACHE default to that box's.
+box itself FN_ACL2 and FN_CERT_CACHE default to that box's.  Before that
+sync a `start` names the closure's books this branch changed (against the
+merge base with origin/dev) and loads them from source as `--ld` (item 82);
+a second live session of the lane on the box gets its own tree
+<lane>-repl-<NAME> (item 79); a bare book name (`--ld store-log`) resolves
+under books/ (item 78).
 
 Round 3 (lane tooling-leftovers, 2026-09-27): `start` sends each of the
 book's events under `with-prover-time-limit` too (`--load-limit S`, default
@@ -191,6 +198,7 @@ from pathlib import Path
 import queue
 import re
 import shutil
+import shlex
 import signal
 import socket
 import subprocess
@@ -1188,9 +1196,19 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
         state["acl2_pgid"] = acl2.pgid
         skip = set(ld)
         per_form = state["load_limit"] or None
-        loaded = all(load_book(acl2, one, state, load_timeout, skip, record=False,
-                               encapsulate=ld_local, limit=per_form)
-                     for one in ld)
+        loaded = True
+        for one in ld:
+            if not load_book(acl2, one, state, load_timeout, skip, record=False,
+                             encapsulate=ld_local, limit=per_form):
+                # The session record names the dependency and its first error
+                # line (obstructions-7 item 57: depth-debt-5 saw "live, 0
+                # forms loaded" three times and never the dependency's error).
+                loaded = False
+                state["failed_dependency"] = one
+                state["dependency_error"] = next(
+                    (line.strip() for line in str(state.get("error") or "").splitlines()
+                     if line.strip()), "no error text (see the session log)")
+                break
         if loaded:
             load_book(acl2, book, state, load_timeout, skip,
                       stop_before=(upto or "").lower(), stop_after=(through or "").lower(),
@@ -1329,11 +1347,21 @@ def ask(name: str, request: dict, timeout: float = 3600,
 
 
 def normalize_book(name: str) -> str:
+    """A book's tree-relative name without .lisp.  A bare name (`store-log`,
+    no directory) that is not a file at the root resolves under books/, or to
+    the one book of that name below books/ (obstructions-9 item 78: three
+    sessions were lost to `--source-deps store-log`)."""
     name = name[:-len(".lisp")] if name.endswith(".lisp") else name
     path = Path(name)
     if path.is_absolute():
         with contextlib.suppress(ValueError):
             name = path.resolve().relative_to(ROOT.resolve()).as_posix()
+    elif "/" not in name and name and not (ROOT / f"{name}.lisp").is_file():
+        if (ROOT / "books" / f"{name}.lisp").is_file():
+            return f"books/{name}"
+        found = sorted((ROOT / "books").rglob(f"{name}.lisp")) if (ROOT / "books").is_dir() else []
+        if len(found) == 1:
+            return found[0].relative_to(ROOT).with_suffix("").as_posix()
     return name
 
 
@@ -1693,8 +1721,11 @@ def _start(args) -> int:
             print("proof-repl: the session did not become ready; see", directory / "log")
             return 1
         code = status(args)
-        line, partial = load_verdict(read_state(args.name) or {})
+        final = read_state(args.name) or {}
+        line, partial = load_verdict(final)
         print(line)
+        if final.get("failed_dependency"):
+            return SOURCE_DEPS_FAILED
         return PARTIAL_LOAD if partial else code
     finally:
         os.close(lock_fd)
@@ -1715,6 +1746,12 @@ def load_verdict(state: dict) -> tuple[str, bool]:
     name, book = state.get("name", "?"), state.get("book", "?")
     loaded = len(state.get("loaded") or [])
     stopped = state.get("stopped_at")
+    if state.get("failed_dependency"):
+        return (f"proof-repl {name}: NOT LIVE -- the dependency {state['failed_dependency']} "
+                f"failed to load from source at {stopped or '?'}: "
+                f"{state.get('dependency_error')}; none of {book}'s forms were sent. "
+                f"`proof_repl stop {name}`, then fix it or start with --certify-missing; "
+                f"exit {SOURCE_DEPS_FAILED}", True)
     if not stopped:
         asked = state.get("upto") or state.get("through")
         return (f"proof-repl {name}: LOADED {book}: {loaded} forms"
@@ -1913,6 +1950,200 @@ def send_many(name: str, items: list[tuple[str, str]], limit: float | None,
     return 1 if totals.refused else 0
 
 
+# --- :expand (:free ...) over a controller (obstructions-7/8 item 65) -----
+#
+# `:expand ((:free (n) (f x n)))' expands EVERY instance of (f x _), the
+# recursive call its expansion introduces included: when N sits where F's
+# recursion is controlled (a formal of its measure, else an argument its
+# recursive call changes), each expansion makes a new match and the prover
+# re-expands until the step limit.  A warning at send, never a refusal.
+
+def _theory_check():
+    import theory_check  # noqa: PLC0415
+    return theory_check
+
+
+def expand_terms(form: str) -> list:
+    """Every term an `:expand' hint of FORM names, as nested lists."""
+    try:
+        read = _theory_check().forms(form)
+    except ValueError:
+        return []
+    found: list = []
+
+    def walk(node) -> None:
+        if not isinstance(node, list):
+            return
+        for position, item in enumerate(node):
+            if item == ":expand" and position + 1 < len(node):
+                value = node[position + 1]
+                if isinstance(value, list) and value:
+                    if isinstance(value[0], list):
+                        found.extend(term for term in value if isinstance(term, list))
+                    else:
+                        found.append(value)
+            walk(item)
+
+    walk(read)
+    return found
+
+
+def _symbols(term) -> set[str]:
+    if isinstance(term, list):
+        return set().union(*(_symbols(item) for item in term)) if term else set()
+    return {term} if isinstance(term, str) and not term.startswith('"') else set()
+
+
+def _self_calls(term, name: str) -> list[list]:
+    if not isinstance(term, list) or not term:
+        return []
+    if term[0] == "quote":
+        return []
+    calls = [term] if term[0] == name else []
+    for item in term[1:]:
+        calls.extend(_self_calls(item, name))
+    return calls
+
+
+def controller_positions(definition: list) -> list[int]:
+    """The argument positions controlling DEFINITION's recursion: the formals
+    its :measure mentions, else those its recursive calls change; [] for a
+    function that does not call itself."""
+    if len(definition) < 4 or not isinstance(definition[2], list):
+        return []
+    name, formals = definition[1], [f for f in definition[2] if isinstance(f, str)]
+    body = definition[-1]
+    calls = _self_calls(body, name)
+    if not calls:
+        return []
+    for item in definition[3:-1]:
+        if isinstance(item, list) and item and item[0] == "declare":
+            for decl in item[1:]:
+                if isinstance(decl, list) and decl and decl[0] == "xargs":
+                    rest = decl[1:]
+                    for key, value in zip(rest[::2], rest[1::2]):
+                        if key == ":measure":
+                            used = _symbols(value)
+                            return [i for i, f in enumerate(formals) if f in used]
+    return sorted({i for call in calls for i, f in enumerate(formals)
+                   if i + 1 < len(call) and call[i + 1] != f})
+
+
+DEFUN_HEADS = ("defun", "defund", "defun-inline", "defund-inline")
+
+
+def find_definition(name: str, texts: list[str]) -> list | None:
+    """NAME's defun: first in TEXTS (the forms being sent, the session's
+    book), else the tree's books/ and tests/acl2/ (git grep, then that file)."""
+    def search(text: str) -> list | None:
+        try:
+            read = _theory_check().forms(text)
+        except ValueError:
+            return None
+        stack = list(read)
+        while stack:
+            form = stack.pop(0)
+            if not isinstance(form, list) or not form:
+                continue
+            if form[0] in DEFUN_HEADS and len(form) > 1 and form[1] == name:
+                return form
+            if form[0] in ("mutual-recursion", "local", "encapsulate", "progn"):
+                stack[:0] = form[1:]
+        return None
+
+    for text in texts:
+        if name in text.lower():
+            found = search(text)
+            if found:
+                return found
+    pattern = r"\(def(un|und)(-inline)?[[:space:]]+" + re.escape(name) + r"([[:space:])]|$)"
+    listed = subprocess.run(["git", "-C", str(ROOT), "grep", "-l", "-i", "-E", pattern,
+                             "--", "books", "tests/acl2"],
+                            capture_output=True, text=True, check=False).stdout.split()
+    for relative in listed[:3]:
+        found = search((ROOT / relative).read_text(encoding="utf-8", errors="replace"))
+        if found:
+            return found
+    return None
+
+
+def _spell(term) -> str:
+    if isinstance(term, list):
+        return "(" + " ".join(_spell(item) for item in term) + ")"
+    return str(term)
+
+
+def free_expand_warnings(form: str, texts: list[str] = ()) -> list[str]:
+    """One line per `:expand (:free VARS (F ...))' of FORM that frees an
+    argument at a controller position of F's recursion."""
+    lines = []
+    for term in expand_terms(form):
+        if len(term) < 3 or term[0] != ":free" or not isinstance(term[1], list):
+            continue
+        free, target = set(term[1]), term[2]
+        if not isinstance(target, list) or not target or not isinstance(target[0], str):
+            continue
+        definition = find_definition(target[0], [form, *texts])
+        if definition is None:
+            continue
+        for position in controller_positions(definition):
+            if position + 1 < len(target) and _symbols(target[position + 1]) & free:
+                formal = definition[2][position]
+                lines.append(
+                    f"proof-repl: warning: :expand {_spell(term)} frees "
+                    f"{_spell(target[position + 1])}, in {target[0]}'s controlling argument "
+                    f"{formal}: each expansion's recursive call matches again and is "
+                    f"expanded in turn (a loop, or a blow-up to the step limit); name the "
+                    f"instances to expand, or keep {formal}'s argument bound")
+                break
+    return lines
+
+
+def warn_free_expands(items: list[str], texts: list[str] = ()) -> None:
+    for form in items:
+        for line in free_expand_warnings(form, list(texts)):
+            print(line, file=sys.stderr, flush=True)
+
+
+# --- what `send` added to a session, for its probe (item 72) -------------
+#
+# A probe session is loaded from the BOOK FILE up to the event: a lemma sent
+# by hand to session NAME is in NAME's world and not in NAME.probe's, so the
+# probe "did not see" it (online-reclaim, 2026-09-29).  `send` records each
+# event form a session accepted, tagged with the session's start; `probe`
+# names them, and `probe --with-sent` sends them (above its checkpoint, so
+# they are undone with the attempt).
+
+SENT_EVENTS = "sent-events.jsonl"
+
+
+def record_sent(name: str, forms: list[str]) -> None:
+    started = (read_state(name) or {}).get("started_at")
+    events = [form for form in forms if is_event(form)]
+    if not events or started is None:
+        return
+    with contextlib.suppress(OSError):
+        with open(session_dir(name) / SENT_EVENTS, "a", encoding="utf-8") as handle:
+            for form in events:
+                handle.write(json.dumps({"started_at": started, "form": form}) + "\n")
+
+
+def sent_events(name: str) -> list[str]:
+    """The event forms `send` added to session NAME since it started."""
+    started = (read_state(name) or {}).get("started_at")
+    try:
+        lines = (session_dir(name) / SENT_EVENTS).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    out = []
+    for line in lines:
+        with contextlib.suppress(json.JSONDecodeError):
+            row = json.loads(line)
+            if row.get("started_at") == started and started is not None:
+                out.append(row["form"])
+    return out
+
+
 def send(args) -> int:
     form = args.form if args.form != "-" else sys.stdin.read()
     try:
@@ -1936,11 +2167,18 @@ def send(args) -> int:
     several, ready = prepare_includes(args.name, several)
     if not ready:
         return 1
+    book = (read_state(args.name) or {}).get("book")
+    warn_free_expands(several, [(ROOT / f"{book}.lisp").read_text(encoding="utf-8")]
+                      if book and (ROOT / f"{book}.lisp").exists() else [])
     if len(several) <= 1:
-        return send_one(args.name, several[0] if several else form, args.limit, args.full)
-    items = [(form_label(index, one), one) for index, one in enumerate(several, 1)]
-    return send_many(args.name, items, args.limit, args.full,
-                     getattr(args, "keep_going", False))
+        code = send_one(args.name, several[0] if several else form, args.limit, args.full)
+    else:
+        items = [(form_label(index, one), one) for index, one in enumerate(several, 1)]
+        code = send_many(args.name, items, args.limit, args.full,
+                         getattr(args, "keep_going", False))
+    if code == 0:
+        record_sent(args.name, several or [form])
+    return code
 
 
 def session_directory(name: str) -> Path | None:
@@ -2057,6 +2295,81 @@ def range_words(name: str, book: str, chosen: range, items: list, skipped: list[
     return words
 
 
+def file_includes_rooted(form: str, file_dir: Path) -> str:
+    """FORM with an include path written relative to FILE_DIR (the sent
+    file's directory) rewritten root-relative, for prepare_includes to make
+    relative to the session's directory."""
+    match = INCLUDE.match(form.strip())
+    if not match or ":dir" in match.group(2).lower():
+        return form
+    target = include_target(form, file_dir)
+    if target is None or target.startswith("/") or not (ROOT / f"{target}.lisp").is_file():
+        return form
+    return form.replace(f'"{match.group(1)}"', f'"{target}"', 1)
+
+
+def send_file(args) -> int:
+    """Every form of a file, in order, into a live session (item 75).
+
+    For a test file (tests/acl2/X-tests.lisp) beside a book session: its
+    includes are written relative to ITS directory, so each is rewritten for
+    the session's (and a book with no certificate is acquired first, as
+    `send` does); then the forms go one at a time with a line each, stopping
+    at the first refusal unless --keep-going.  send-range sends a range of a
+    book with the book's own paths; this sends a whole file with its paths
+    made the session's."""
+    path = book_path(args.file)
+    text = path.read_text(encoding="utf-8")
+    all_forms = forms(text)
+    if not all_forms:
+        print(f"proof-repl send-file: {args.file} has no forms")
+        return 2
+    for one in all_forms:
+        why = leaves_loop(one)
+        if why:
+            print(f"proof-repl: refusing {args.file}: {one.strip()[:40]!r}: {why}",
+                  file=sys.stderr)
+            return 2
+        if undoes(one) and not getattr(args, "allow_undo", False):
+            print(f"proof-repl: refusing {args.file}: {one.strip()[:40]!r} takes events "
+                  "back out of the session; pass --allow-undo if that is meant",
+                  file=sys.stderr)
+            return 2
+    labels = [form_label(index, one) for index, one in enumerate(all_forms, 1)]
+    rooted = [file_includes_rooted(one, path.parent) for one in all_forms]
+    prepared, ready = prepare_includes(args.name, rooted)
+    if not ready:
+        return 1
+    relative = path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else str(path)
+    print(f"proof-repl send-file: {len(prepared)} form(s) of {relative} into {args.name}, "
+          "in order" + (" (every refusal reported)" if args.keep_going else
+                        " (stopping at the first refusal)"))
+    warn_free_expands(prepared, [text])
+    code = send_many(args.name, list(zip(labels, prepared)), args.limit, args.full,
+                     args.keep_going)
+    if code == 0:
+        record_sent(args.name, prepared)
+    return code
+
+
+def guard_notes(text: str, chosen: range) -> list[str]:
+    """For each guard verification among the CHOSEN forms (0-based), the
+    same-book callees and the form each is verified at (obstructions-7 item
+    56): a callee verified LATER passes in a session whose world already has
+    it and fails at certify."""
+    lines = []
+    for index, name, callees in _theory_check().guard_events(text):
+        if index - 1 not in chosen or not callees:
+            continue
+        later = [f"{callee} #{at}" for callee, at in callees if at > index]
+        words = ", ".join(f"{callee} #{at}" for callee, at in callees)
+        lines.append(f"note: form #{index} verifies {name}'s guards; its callees here are "
+                     f"verified at {words}"
+                     + (f" -- LATER: {', '.join(later)} (certify fails at #{index}; a "
+                        f"session that already has them passes)" if later else ""))
+    return lines
+
+
 def send_range(args) -> int:
     """A book's forms from --from to --until/--through into a live session."""
     path = book_path(args.book)
@@ -2071,6 +2384,10 @@ def send_range(args) -> int:
                       args.until))
     if not items:
         return 0
+    text = path.read_text(encoding="utf-8")
+    for line in guard_notes(text, chosen):
+        print(line, flush=True)
+    warn_free_expands([form for _, form in items], [text])
     if ld_local:
         hoisted, body = encapsulated("\n".join(form for _, form in items), path.parent,
                                      set(), None)
@@ -2371,6 +2688,17 @@ def probe(args) -> int:
         base = load()
         if base is None:
             return 1
+
+    extra = sent_events(args.name) if not args.book else []
+    if extra and not getattr(args, "with_sent", False):
+        print(f"proof-repl probe: {len(extra)} event(s) sent by hand to {args.name} are not "
+              f"in the probe (it loads {book} from the file); --with-sent sends them first: "
+              + ", ".join(head_and_name(form)[1] or form.strip()[:30] for form in extra[:6])
+              + (" ..." if len(extra) > 6 else ""))
+    elif extra:
+        attempts = extra + attempts
+        print(f"proof-repl probe: sending the {len(extra)} event(s) sent by hand to "
+              f"{args.name} first (undone with the attempt)")
 
     totals = Totals()
     refused = timed_out = False
@@ -3059,8 +3387,8 @@ def refuse_stale_remote(host: str, tree: str, relative: str,
 
 # The commands about one existing session: without --host they go to the
 # machine its start recorded.
-SESSION_COMMANDS = ("send", "send-range", "resync", "status", "stop", "probe", "diff",
-                    "checkpoints")
+SESSION_COMMANDS = ("send", "send-range", "send-file", "resync", "status", "stop", "probe",
+                    "diff", "checkpoints")
 
 # Minutes `start --host BOX` waits for another lane's reservation of BOX.
 # config-and-legacy and operations (2026-09-28) waited 10 and 13 minutes in
@@ -3167,6 +3495,96 @@ def remote_lane_and_tree(args, host: str) -> tuple[str | None, str]:
     return lane, remote_tree(host, lane, override)
 
 
+# Run on the box (python3, no tools/ needed): each session of TREE other than
+# NAME whose lock record names a live proof_repl.py start/serve/probe of it.
+LIVE_SIBLINGS_SCRIPT = r"""
+import json, os, sys
+tree, name = sys.argv[1], sys.argv[2]
+locks = os.path.join(tree, "build", "proof-repl", ".locks")
+try:
+    entries = sorted(os.listdir(locks))
+except OSError:
+    entries = []
+for other in entries:
+    base = other[:-len(".probe")] if other.endswith(".probe") else other
+    if base == name:
+        continue
+    try:
+        pid = int(json.load(open(os.path.join(locks, other))).get("pid") or 0)
+        words = open("/proc/%d/cmdline" % pid, "rb").read().decode().split("\0")
+    except (OSError, ValueError, AttributeError):
+        continue
+    if any(w.endswith("proof_repl.py") for w in words) and base in words:
+        print(base)
+"""
+
+
+def live_siblings(host: str, tree: str, name: str, runner=None) -> list[str] | None:
+    """The other live sessions in HOST's TREE (None: the box did not answer)."""
+    script = (f"python3 - {shlex.quote(tree)} {shlex.quote(name)} <<'FN_SIBLINGS'\n"
+              f"{LIVE_SIBLINGS_SCRIPT}\nFN_SIBLINGS")
+    try:
+        done = (runner or subprocess.run)(ssh_command(host, script), stdin=subprocess.DEVNULL,
+                                          text=True, capture_output=True, timeout=60)
+    except subprocess.TimeoutExpired:
+        return None
+    if done.returncode:
+        return None
+    return sorted({line.strip() for line in done.stdout.splitlines() if line.strip()})
+
+
+def own_remote_tree(args, host: str, lane: str | None, tree: str, runner=None) -> str:
+    """The tree a remote `start` of args.name uses (obstructions-9 item 79).
+
+    Two sessions of one lane on one box shared <lane>-repl: each start's
+    rsync rewrote the books and tools/ under the other's load.  When another
+    session is live in the lane's tree, this start takes its own tree
+    <lane>-repl-<NAME> and says so; an explicit --remote-tree is refused by
+    name instead, since its owner chose that directory.
+    """
+    others = live_siblings(host, tree, args.name, runner)
+    if not others:
+        return tree
+    if getattr(args, "remote_tree", None):
+        raise SystemExit(f"proof-repl: --host {host}: session(s) {', '.join(others)} are live "
+                         f"in {tree}; a second session there races their sync and load. "
+                         f"Stop them, or pass another --remote-tree")
+    own = f"{tree}-{args.name}"
+    print(f"proof-repl --host {host}: session(s) {', '.join(others)} of lane {lane} are live "
+          f"in {tree}; session {args.name!r} gets its own tree {own} (item 79)", flush=True)
+    return own
+
+
+def changed_dependencies(book: str, named=(), base_ref: str = "origin/dev") -> list[str]:
+    """The books of BOOK's closure (not BOOK) whose bytes here differ from
+    the merge base with BASE_REF, committed or not, less those NAMED.
+
+    obstructions-9 item 82 (operability-7): a lane that changed a WIDE book
+    (books/native-admin) needs it from source in every session on a book
+    that includes it, and a --host start learned so from the box's refusal
+    only after the sync.  No box cache holds a certificate for bytes only
+    this branch has, so `start --host` loads these from source (as --ld)
+    and says so before syncing.
+    """
+    book = normalize_book(book)
+    try:
+        graph = include_graph(ROOT, book)
+    except (OSError, certs.UnreadableBook, ValueError):
+        return []
+
+    def out(*words):
+        done = subprocess.run(["git", "-C", str(ROOT), *words], capture_output=True, text=True)
+        return done.stdout if done.returncode == 0 else None
+    base = (out("merge-base", "HEAD", base_ref) or "").strip()
+    if not base:
+        return []
+    changed = set((out("diff", "--name-only", base, "--") or "").split())
+    changed |= set((out("ls-files", "--others", "--exclude-standard") or "").split())
+    wanted = {normalize_book(one) for one in named}
+    return sorted(name for name in graph
+                  if name != book and f"{name}.lisp" in changed and name not in wanted)
+
+
 def run_remote(args, argv: list[str]) -> int:
     """This command, on args.host, in the lane's tree there, after syncing what it reads."""
     host = args.host
@@ -3180,10 +3598,23 @@ def run_remote(args, argv: list[str]) -> int:
         # holds it and until when at once, and wait only --lease-wait minutes
         # (`--host auto` already skipped it).
         refuse_or_wait_for_lease(host, getattr(args, "lease_wait", DEFAULT_LEASE_WAIT))
-        books = [args.book, *(getattr(args, "ld", None) or [])]
+        books = [args.book, *(normalize_book(one) for one in getattr(args, "ld", None) or [])]
         source_deps = getattr(args, "source_deps", None)
         if source_deps and source_deps != "*":
-            books += [one.strip() for one in source_deps.split(",") if one.strip()]
+            books += [normalize_book(one.strip()) for one in source_deps.split(",") if one.strip()]
+        if not (source_deps == "*" or getattr(args, "ld_missing", False)
+                or getattr(args, "certify_missing", False)):
+            changed = changed_dependencies(args.book, books[1:])
+            if changed:
+                print(f"proof-repl --host {host}: {len(changed)} dependenc"
+                      f"{'y' if len(changed) == 1 else 'ies'} of {normalize_book(args.book)} "
+                      f"changed on this branch (no box has their certificates): "
+                      f"{', '.join(changed)}; loading them from source (as --ld; the books "
+                      "between that include them follow). --certify-missing certifies "
+                      "them instead (item 82)", flush=True)
+                books += changed
+                for one in changed:
+                    forwarded += ["--ld", one]
     elif command == "probe":
         record = session_dir(args.name) / "remote.json"
         try:
@@ -3203,8 +3634,15 @@ def run_remote(args, argv: list[str]) -> int:
                     books.append(target)
     elif command in ("list", "reap", "gc") and not getattr(args, "no_sync", False):
         extra.append("tools/proof_repl.py")  # sync_files adds the rest of tools/
-    elif command in ("send-range", "resync", "diff"):
-        path = book_path(args.book)
+    elif command in ("send-range", "resync", "diff", "send-file"):
+        named = args.file if command == "send-file" else args.book
+        path = book_path(named)
+        if command == "send-file":
+            # its includes' closures go to the box, as a sent include's does
+            for one in forms(path.read_text(encoding="utf-8")):
+                target = include_target(one, path.parent)
+                if target is not None and (ROOT / f"{target}.lisp").is_file():
+                    books.append(target)
         try:
             relative = path.relative_to(ROOT.resolve()).as_posix()
         except ValueError:
@@ -3216,10 +3654,11 @@ def run_remote(args, argv: list[str]) -> int:
             shutil.copyfile(path, staged)
             relative = staged.relative_to(ROOT).as_posix()
         extra.append(relative)
-        forwarded = [relative if word == args.book else word for word in forwarded]
+        forwarded = [relative if word == named else word for word in forwarded]
         if getattr(args, "no_sync", False):
             refuse_stale_remote(host, tree, relative)
     if command == "start":
+        tree = own_remote_tree(args, host, lane, tree)
         remember_host(args.name, host, tree, normalize_book(args.book), lane)
     if (books or extra) and not getattr(args, "no_sync", False):
         files = sync_files(books, extra)
@@ -3422,6 +3861,18 @@ def main(argv: list[str] | None = None) -> int:
                         "from-source books are always skipped)")
     add_remote_options(p, sync=True)
     p.set_defaults(run=send_range)
+    p = sub.add_parser("send-file", help="every form of a file (a tests/acl2 test file), "
+                                         "in order, its include paths made the session's")
+    p.add_argument("name")
+    p.add_argument("file", help="the file of forms (tests/acl2/X-tests.lisp, .lisp optional)")
+    p.add_argument("--limit", type=float, default=None)
+    p.add_argument("--full", action="store_true", help="every form's whole output")
+    p.add_argument("--keep-going", action="store_true",
+                   help="report every refusal instead of stopping at the first")
+    p.add_argument("--allow-undo", action="store_true",
+                   help="send a form that takes events back out (`:u`, `:ubt`, ...)")
+    add_remote_options(p, sync=True)
+    p.set_defaults(run=send_file)
     p = sub.add_parser("resync", help="undo the session back to EVENT and resend the "
                                       "book from there (or from the first earlier event "
                                       "the world lacks)")
@@ -3464,6 +3915,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--idle-seconds", type=float, default=None, help=argparse.SUPPRESS)
     p.add_argument("--full", action="store_true")
     p.add_argument("--stop", action="store_true", help="stop the probe session afterwards")
+    p.add_argument("--with-sent", action="store_true",
+                   help="first send the events `send` added to session NAME by hand (the "
+                        "probe loads the book file, so it does not have them otherwise)")
     add_remote_options(p, sync=True)
     p.set_defaults(run=probe)
     p = sub.add_parser("status")

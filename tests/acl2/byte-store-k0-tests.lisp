@@ -252,3 +252,136 @@
 (must-fail-checked (assert-event (bsk0-r-arms-okp (bsk0-r-bad-relation))))
 (must-fail-checked (assert-event (bsk0-r-arms-okp (bsk0-r-bad-stage))))
 (must-fail-checked (assert-event (bsk0-r-arms-okp (bsk0-r-bad-absent))))
+
+; ---------------------------------------------------------------------------
+;;; KEYSTONE fn-bs-k0-record-fence-pair-relation (PRF-041, row B2 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; From a related start with a valid record input and an absent stage, the
+;;; record program's pair 11 (the fsync-dir fence of the link) is related.
+(assert-event
+ (let ((bs (car (bsk0-r-start))) (ks (bsk0-r-prepared)) (run (bsk5-record-2-run)))
+   (and (equal run (bsk0-r-run bs ks ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2)))
+        (fn-bs-store-relation bs ks *bsk5-arena*)
+        (consp (fn-sf-records ks))
+        (fn-bs-record-inputp ks ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2) *bsk5-arena*)
+        (not (fn-bs-lookup bs :staging ".stage-k5-2"))
+        (bsk0-related-at run 11))))
+(bsk0-unrelated-at (bsk0-r-bad-relation) 11)
+(bsk0-unrelated-at (bsk0-r-wrong-frame) 11)
+(bsk0-unrelated-at (bsk0-r-bad-absent) 11)
+
+;;; KEYSTONE fn-bs-record-directory-commit-observation-preserves-relation (PRF-041, row B3 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; A related :record-attempted pair whose transaction directory is committed
+;;; stays related after the :ok directory observation, which moves it to :completing.
+(defun bsk0-dir-commit-okp (bs ks)
+  (and (fn-bs-store-relation bs (fn-sf-record-dir-result ks :ok) *bsk5-arena*)
+       (equal (fn-sf-phase (fn-sf-record-dir-result ks :ok)) :completing)))
+(assert-event
+ (let* ((p (nth 12 (bsk5-record-2-run))) (bs (car p)) (ks (cdr p)))
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
+        (consp (fn-sf-records ks))
+        (equal (fn-sf-phase ks) :record-attempted)
+        (fn-bs-record-directory-committedp bs ks *bsk5-arena*)
+        (bsk0-dir-commit-okp bs ks)
+        (equal (fn-sf-record-dir-result ks :ok) (cdr (nth 14 (bsk5-record-2-run)))))))
+; Drop the committed directory: at pair 10 the link is not yet fenced.
+(assert-event
+ (let* ((p (nth 10 (bsk5-record-2-run))) (bs (car p)) (ks (cdr p)))
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
+        (equal (fn-sf-phase ks) :record-attempted)
+        (not (fn-bs-record-directory-committedp bs ks *bsk5-arena*)))))
+(must-fail-checked
+ (assert-event
+  (let ((p (nth 10 (bsk5-record-2-run)))) (bsk0-dir-commit-okp (car p) (cdr p)))))
+; The same drop over the retained article: the pre-publication bytes still
+; relate to the attempted kernel (the link is not yet durable), but the
+; directory is not committed there and the :ok observation breaks the relation.
+(assert-event
+ (let ((bs (car (bsk0-r-start))) (ks (cdr (nth 12 (bsk5-record-2-run)))))
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
+        (equal (fn-sf-phase ks) :record-attempted)
+        (not (fn-bs-record-directory-committedp bs ks *bsk5-arena*)))))
+(must-fail-checked
+ (assert-event
+  (bsk0-dir-commit-okp (car (bsk0-r-start)) (cdr (nth 12 (bsk5-record-2-run))))))
+; Drop the relation: the committed kernel over the initial byte image.
+(assert-event
+ (let ((ks (cdr (nth 12 (bsk5-record-2-run)))))
+   (and (not (fn-bs-store-relation (bsk5-initial) ks *bsk5-arena*))
+        (equal (fn-sf-phase ks) :record-attempted))))
+(must-fail-checked
+ (assert-event (bsk0-dir-commit-okp (bsk5-initial) (cdr (nth 12 (bsk5-record-2-run))))))
+
+;;; KEYSTONE fn-bs-k0-staging-create-preserves-relation (PRF-041, row B11 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; Creating an absent staging name over a related, replay-invisible pair keeps it related.
+(defun bsk0-created (b stage)
+  (mv-let (r b1) (fn-bs-create b :staging stage :ok) (declare (ignore r)) b1))
+(assert-event
+ (let ((b (car (bsk0-r-start))) (k (bsk0-r-prepared)) (stage ".stage-k5-2"))
+   (and (fn-bs-store-relation b k *bsk5-arena*)
+        (consp (fn-sf-records k))
+        (not (fn-bs-replay-visiblep k))
+        (fn-bs-namep stage)
+        (not (fn-bs-lookup b :staging stage))
+        (fn-bs-store-relation (bsk0-created b stage) k *bsk5-arena*)
+        (equal (bsk0-created b stage) (car (nth 1 (bsk5-record-2-run)))))))
+; Drop the relation: the created stage over the initial byte image.
+(assert-event (not (fn-bs-store-relation (bsk5-initial) (bsk0-r-prepared) *bsk5-arena*)))
+(must-fail-checked
+ (assert-event
+  (fn-bs-store-relation (bsk0-created (bsk5-initial) ".stage-k5-2") (bsk0-r-prepared) *bsk5-arena*)))
+
+;;; KEYSTONE fn-bs-k0-staging-fence-preserves-relation (PRF-041, row B12 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; Fencing the staging directory of a related, replay-invisible pair keeps it related.
+(assert-event
+ (let ((b (car (bsk0-r-start))) (k (bsk0-r-prepared)))
+   (and (fn-bs-store-relation b k *bsk5-arena*)
+        (consp (fn-sf-records k))
+        (not (fn-bs-replay-visiblep k))
+        (fn-bs-store-relation (fn-bs-fence-dir b :staging) k *bsk5-arena*))))
+(assert-event
+ (let ((p (nth 16 (bsk5-record-2-run))))
+   (and (fn-bs-store-relation (car p) (cdr p) *bsk5-arena*)
+        (not (fn-bs-replay-visiblep (cdr p)))
+        (fn-bs-store-relation (fn-bs-fence-dir (car p) :staging) (cdr p) *bsk5-arena*))))
+(must-fail-checked
+ (assert-event
+  (fn-bs-store-relation (fn-bs-fence-dir (bsk5-initial) :staging) (bsk0-r-prepared) *bsk5-arena*)))
+
+;;; KEYSTONE fn-bs-k0-pending-staging-extension-preserves-relation (PRF-041, row B10 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; Appending pending operations that touch neither :root nor :transactions and
+;;; write no authority inode keeps a related, replay-invisible pair related.
+;;; The instance is the record program's write of the second frame into the
+;;; staging inode created at pair 1.
+(defun bsk0-ext-b () (car (nth 1 (bsk5-record-2-run))))
+(defun bsk0-ext-k () (cdr (nth 1 (bsk5-record-2-run))))
+(defun bsk0-ext-ops (b)
+  (list (list :write (fn-bs-lookup b :staging ".stage-k5-2") 0 (bsk5-frame-2))))
+(defun bsk0-ext (b ops)
+  (fn-bs-make (fn-bs-unit b) (fn-bs-inodes b) (fn-bs-dirs b)
+              (append (fn-bs-pending b) ops) (fn-bs-next-ino b)))
+(assert-event
+ (let* ((b (bsk0-ext-b)) (k (bsk0-ext-k)) (ops (bsk0-ext-ops b)))
+   (and (fn-bs-store-relation b k *bsk5-arena*)
+        (consp (fn-sf-records k))
+        (not (fn-bs-replay-visiblep k))
+        (fn-bs-statep (bsk0-ext b ops))
+        (not (fn-bs-ops-for-dir ops :root))
+        (not (fn-bs-ops-for-dir ops :transactions))
+        (fn-bs-k0-writes-avoid ops (fn-bs-authority-inode-list b))
+        (fn-bs-store-relation (bsk0-ext b ops) k *bsk5-arena*))))
+; Drop writes-avoid: the same write aimed at an authority inode (the
+; retained record's) is a legal byte state, and the pair is no longer related.
+(defun bsk0-ext-bad-ops (b)
+  (list (list :write (car (fn-bs-authority-inode-list b)) 0 (bsk5-frame-2))))
+(assert-event
+ (let* ((b (bsk0-ext-b)) (k (bsk0-ext-k)) (ops (bsk0-ext-bad-ops b)))
+   (and (fn-bs-store-relation b k *bsk5-arena*)
+        (not (fn-bs-replay-visiblep k))
+        (fn-bs-statep (bsk0-ext b ops))
+        (not (fn-bs-ops-for-dir ops :root))
+        (not (fn-bs-ops-for-dir ops :transactions))
+        (not (fn-bs-k0-writes-avoid ops (fn-bs-authority-inode-list b))))))
+(must-fail-checked
+ (assert-event
+  (let ((b (bsk0-ext-b)))
+    (fn-bs-store-relation (bsk0-ext b (bsk0-ext-bad-ops b)) (bsk0-ext-k) *bsk5-arena*))))

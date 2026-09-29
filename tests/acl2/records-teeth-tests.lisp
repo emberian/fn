@@ -147,25 +147,18 @@
 ;                    (fn-record-result-record (fn-record-decode-exact octets)))))
 
 ; The witness: an accepted encoding carries the magic and the schema octet
-; its record needs (1 at schema 1, 0 at schema 0).
+; its record needs (1 at schema 1).
 (assert-event (equal (take 5 *rec-teeth-octets*) *fn-record-magic-octets*))
 (assert-event (equal (nth 5 *rec-teeth-octets*)
                      (fn-record-schema-octet
                       (fn-record-result-record
                        (fn-record-decode-exact *rec-teeth-octets*)))))
 (assert-event (equal (nth 5 *rec-teeth-octets*) 1))
-(defconst *rec-teeth-legacy-record*
-  (fn-record-with-stamp *rec-teeth-record* :legacy))
-(defconst *rec-teeth-legacy-octets*
-  (fn-record-encode-impl *rec-teeth-legacy-record*))
-(assert-event (equal (nth 5 *rec-teeth-legacy-octets*) 0))
-(assert-event (equal (fn-record-decode-exact *rec-teeth-legacy-octets*)
-                     (list :ok *rec-teeth-legacy-record*)))
-(assert-event
- (equal (fn-record-encode
-         (fn-record-result-record
-          (fn-record-decode-exact *rec-teeth-legacy-octets*)))
-        *rec-teeth-legacy-octets*))
+; A stampless schema-0 header over the same fields is refused.
+(assert-event (not (fn-record-result-okp
+                    (fn-record-decode-exact
+                     (append (take 5 *rec-teeth-octets*) '(0)
+                             (butlast (nthcdr 6 *rec-teeth-octets*) 1))))))
 
 ; The hypothesis dropped, for the magic: a Store event of another kind
 ; (`fn-e', books/store-events.lisp), refused by the record decoder.

@@ -34,7 +34,7 @@
 (assert-event (fn-sct-log-positionp (list 3 *sckdt-genesis*)))
 (assert-event (not (equal *sckdt-a* *sckdt-b*)))
 ; ... and their checkpoint digests are equal
-; (fn-sckd-digest-ignores-revision-and-log's positive witness).
+; (fn-sckd-digest-ignores-revision-and-log-by-definition's positive witness).
 (assert-event (equal (fn-sckd-digest *sckdt-a* *sckdt-pool*)
                      (fn-sckd-digest *sckdt-b* *sckdt-pool*)))
 (assert-event (equal (len (fn-sckd-digest *sckdt-a* *sckdt-pool*)) 32))
