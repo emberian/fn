@@ -13,8 +13,6 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
-;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
-;;; ---- derived stubs: END ----
 
 ;; The deployed forms, loaded by name so a rename fails here rather than
 ;; leaving a stale copy in its place.
