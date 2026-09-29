@@ -3074,7 +3074,7 @@
 ; (books/peer-carriage.lisp fn-pcb-refusal-class): :no-local-binding,
 ; :unsupported-profile, :signature-failed or :malformed, or nil.  ED and ML
 ; are the host's two primitive outcomes (nil when not observed).
-; PKT-240: through the seven-class verdict, whose refusal arm is
+; PKT-240: through the eight-class verdict, whose refusal arm is
 ; fn-pcb-refusal-class on every input
 ; (fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class).
 (defun fn-owner-transit-refusal-class (received transitp ed ml state)

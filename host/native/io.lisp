@@ -2435,6 +2435,10 @@ empties it first (fnn-bridge-recover)."
     (let ((answer (fnn-core-buffer-state 'fn-store-sco-decode-finish i end)))
       ;; The file is read; the buffer's array (the whole file) is given back.
       (fnn-octets-release)
+      ;; PKT-854: the arena is exactly the checkpoint's payloads here; a
+      ;; requested checkpoint digest takes its pool now (a no-op otherwise).
+      (when (and (consp answer) (eq (first answer) :ok))
+        (fnn-core-state 'fn-store-sco-note-checkpoint-digest))
       (if (and (consp answer) (eq (first answer) :ok)
                (integerp (second answer)) (>= (second answer) 0))
           (values :ok (second answer))
@@ -3231,6 +3235,9 @@ the open folded (host/store-node-host.lisp fn-store-sn-replay-digest-report,
 books/state-digest.lisp), then the open line.  Two opens of the same history
 print the same digests; tests/test_native_replay_determinism.py compares
 them across processes, copies, checkpoint and full replay, and boxes."
+  ;; PKT-854: the open's checkpoint load keeps its verifiable digest
+  ;; (host/store-node-host.lisp fn-store-sco-note-checkpoint-digest).
+  (fnn-core-state 'fn-store-sco-want-checkpoint-digest t)
   (multiple-value-bind (store count) (fnn-open-live-store root nil)
     (declare (ignore count))
     (unwind-protect
