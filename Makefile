@@ -68,6 +68,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/blake3-stobj \
 	tests/acl2/blake3-stobj-tests \
 	books/frame-octets \
+	tests/acl2/stack-depth-twins-tests \
 	books/frame-fields \
 	books/frame-journal \
 	books/frame \
@@ -233,6 +234,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-budget-stored \
 	tests/acl2/store-budget-stored-tests \
 	books/store-carried-folds \
+	tests/acl2/owner-store-indexed-tests \
 	tests/acl2/store-carried-folds-tests \
 	books/store-profile-facts \
 	books/store-replay-bound \
@@ -1327,6 +1329,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-journal \
 	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
+	tests/acl2/owner-time-space-tests \
 	books/owner-article-slots \
 	books/owner-article-held \
 	tests/acl2/owner-article-slots-tests \
@@ -1551,6 +1554,7 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) tools/ledger.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
 	@$(CHECK_EXECUTE)
 
 check-fast-lane:
@@ -1588,6 +1592,8 @@ check:
 # the ones that do wait for it (they had each analysed it at once).
 	@$(CHECK_STEP_WARM) $(PYTHON) tools/ledger.py --load-tree
 	@$(CHECK_STEP) $(PYTHON) tools/check_scaffold.py
+# Every tests/acl2/*-tests.lisp is a certification root (Q7j).
+	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
 # Every command the docs name exists with the grammar the docs give (NNT-032):
 # operator invocations are judged by ACL2's grammar in the generated book
 # tests/acl2/docs-operator-grammar-tests.lisp, which this fails on when it is
