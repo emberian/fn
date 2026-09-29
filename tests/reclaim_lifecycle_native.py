@@ -284,7 +284,7 @@ CLEAN = None
 RECLAIM_CUTS = [(a, "state-checkpoint-" + c)
                 for c in ("created", "written", "staged-durable", "replaced", "durable")
                 for a in ("kill", "eio")] + \
-    [("log", c) for c in ("rotate-created", "rotate-fenced", "rotate-durable",
+    [("log", c) for c in ("rotate-created", "rotate-fenced", "rotate-renamed", "rotate-durable",
                           "drop-unlinked", "drop-durable")]
 
 

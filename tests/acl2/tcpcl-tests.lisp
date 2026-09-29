@@ -350,8 +350,9 @@
 (assert-event (equal (fn-tcl-inbound-outcome-count (fn-tcl-result-events *t-b-cont*) 0) 0))
 (assert-event (equal (fn-tcl-inbound-received-len (fn-tcl-session-inbound (fn-tcl-result-session *t-b-cont*))) 4))
 ; fn-tcl-retained-input-is-bounded on a closed session: the whole buffer
-; comes back, longer than any message.
-(defconst *t-long* (make-list 6000 :initial-element 4))
+; comes back, longer than any message (fn-tcl-max-message: 69,656 + MRU
+; since a node ID is admitted at its u16 field's width).
+(defconst *t-long* (make-list 70000 :initial-element 4))
 (assert-event (equal (fn-tcl-result-unconsumed (fn-tcl-drive (fn-tcl-result-session *t-b-cut*) *t-long* 0))
                      *t-long*))
 (assert-event (< (fn-tcl-max-message 3) (len *t-long*)))

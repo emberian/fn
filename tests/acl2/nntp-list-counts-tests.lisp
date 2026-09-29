@@ -81,6 +81,70 @@
                 "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT")
                (fn-nntp-capability-lines nil)))
 
+;; PKT-703: the status field is LIST ACTIVE's (RFC 6048 section 2.2.2).  A
+;; closed list as the connection's posting configuration carries it
+;; (books/nntp-post.lisp fn-post-reader-env-closed): fn.other read-only (its
+;; octets), fn.letters moderated (a (:moderated G Q MODS) entry, books/
+;; moderation.lisp); fn.empty neither.  Reachable: the owner installs such
+;; entries (books/owner-agent.lisp fn-oag-post-config).
+(defconst *nlc-t-closed*
+  (list (fn-nntp-string-octets "fn.other")
+        (list :moderated (fn-nntp-string-octets "fn.letters") "fn.letters.q" nil)))
+(defconst *nlc-t-env*
+  (fn-nntp-env-with-closed (fn-clock-observation 0 0 0 nil) nil t *nlc-t-closed*))
+(defmacro nlc-t-cmd-env (session index keyword args)
+  `(in-arena-fn-nntp-archive-command-pinned *sr-arena* ,session *nlc-t-a2* ,index nil *nlc-t-env* (fn-nntp-string-octets ,keyword) (list ,@(pairlis-x1 'fn-nntp-string-octets
+                                                      (pairlis$ args nil)))))
+; Pinned buckets and the archive arm alike: m, n and y, as LIST ACTIVE.
+(assert-event
+ (equal (nlc-t-cmd-env *nlc-t-open* *nlc-t-pin* "LIST" ("COUNTS"))
+        (fn-nntp-multi *nlc-t-open* "215 list of newsgroups follows"
+                       (nlc-t-lines "fn.letters 2 1 2 m" "fn.other 1 1 1 n"
+                                    "fn.empty 0 1 0 y"))))
+(assert-event
+ (equal (nlc-t-cmd-env *nlc-t-open* *nlc-t-trie* "LIST" ("COUNTS"))
+        (nlc-t-cmd-env *nlc-t-open* *nlc-t-pin* "LIST" ("COUNTS"))))
+(assert-event
+ (equal (nlc-t-cmd-env *nlc-t-open* *nlc-t-pin* "LIST" ("ACTIVE"))
+        (fn-nntp-multi *nlc-t-open* "215 list of active newsgroups follows"
+                       (nlc-t-lines "fn.letters 2 1 m" "fn.other 1 1 n"
+                                    "fn.empty 0 1 y"))))
+(assert-event
+ (equal (nlc-t-cmd-env *nlc-t-open* *nlc-t-pin* "LIST" ("COUNTS" "fn.l*"))
+        (fn-nntp-multi *nlc-t-open* "215 list of newsgroups follows"
+                       (nlc-t-lines "fn.letters 2 1 2 m"))))
+; A moderator's view names the group by an approver entry: still m.
+(assert-event
+ (equal (fn-nntp-counts-summary-line
+         "fn.letters" (fn-nntp-group-summary *nlc-t-a2* "fn.letters")
+         (list (list :approver (fn-nntp-string-octets "fn.letters") "fn.letters.q")))
+        (fn-nntp-string-octets "fn.letters 2 1 2 m")))
+; The keystones, at each line of these lists (reachable positive witnesses;
+; they have no hypotheses).
+(assert-event
+ (and (equal (fn-nlc-status-octet
+              (nth 0 (fn-gidx-counts-lines *nlc-t-a2* *nlc-t-buckets*
+                                           *nlc-t-groups* *nlc-t-closed*)))
+             109)
+      (equal (fn-nlc-status-octet
+              (nth 1 (fn-nntp-counts-lines *nlc-t-a2* *nlc-t-groups* *nlc-t-closed*)))
+             (fn-nlc-status-octet
+              (nth 1 (fn-nntp-active-status-lines *nlc-t-a2* *nlc-t-groups*
+                                                  *nlc-t-closed*))))
+      (equal (fn-nlc-status-octet
+              (nth 1 (fn-nntp-counts-lines *nlc-t-a2* *nlc-t-groups* *nlc-t-closed*)))
+             110)
+      (equal (fn-nlc-status-octet
+              (nth 2 (fn-nntp-counts-lines *nlc-t-a2* *nlc-t-groups* *nlc-t-closed*)))
+             121)))
+; Mutation (the pre-fix renderer, the constant " y"): its line for the
+; moderated group disagrees with LIST ACTIVE's, so the keystone refutes it.
+(assert-event
+ (not (equal (fn-nlc-status-octet (fn-nntp-string-octets "fn.letters 2 1 2 y"))
+             (fn-nlc-status-octet
+              (nth 0 (fn-nntp-active-status-lines *nlc-t-a2* *nlc-t-groups*
+                                                  *nlc-t-closed*))))))
+
 ; fn-gidx-list-counts-command-is-the-archive-fold, hypothesis 2: buckets
 ; that are not the build of the archive (the first archive's) answer a
 ; different count for the same archive.
@@ -94,8 +158,8 @@
   200000
  (defthm nlc-t-fold-false-without-buckets
    (implies (fn-nntp-projectionp archive)
-            (equal (fn-gidx-list-counts-command session archive buckets args)
-                   (fn-nntp-list-counts-command session archive args))))))
+            (equal (fn-gidx-list-counts-command session archive buckets closed args)
+                   (fn-nntp-list-counts-command session archive closed args))))))
 
 ; Hypothesis 1: an archive that is not a projection, here one article with
 ; two memberships in one group, has a bucket count the fold does not.
@@ -118,15 +182,15 @@
 (assert-event
  (not (equal (fn-gidx-list-counts-command
               *nlc-t-open* *nlc-t-dup*
-              (fn-gidx-build (fn-state-articles *nlc-t-dup*)) nil)
-             (fn-nntp-list-counts-command *nlc-t-open* *nlc-t-dup* nil))))
+              (fn-gidx-build (fn-state-articles *nlc-t-dup*)) nil nil)
+             (fn-nntp-list-counts-command *nlc-t-open* *nlc-t-dup* nil nil))))
 (must-fail-checked
  (with-prover-step-limit
   200000
  (defthm nlc-t-fold-false-without-projection
    (implies (equal buckets (fn-gidx-build (fn-state-articles archive)))
-            (equal (fn-gidx-list-counts-command session archive buckets args)
-                   (fn-nntp-list-counts-command session archive args))))))
+            (equal (fn-gidx-list-counts-command session archive buckets closed args)
+                   (fn-nntp-list-counts-command session archive closed args))))))
 
 ; fn-gidx-counts-work-of-build-bound, its one hypothesis: listing one group
 ; four times visits more than G*B + M.

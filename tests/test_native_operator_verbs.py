@@ -134,6 +134,46 @@ class NativeOperatorVerbFixture(unittest.TestCase):
 
 
 @unittest.skipUnless(executable(IMAGE), "build/fn-host is required")
+class NativeOperatorWideArgvTests(NativeOperatorVerbFixture):
+    """PKT-867 (HST-032): an operator command has no word count or word
+    length bound.  `init' names 60 groups in one argv (the 32-word bound
+    refused 29); on the running owner a `motd set' of 40 lines and a
+    `group describe' of 60 words travel in one control frame (the admin
+    vector's 16-word bound refused them) and read back whole over NNTP."""
+
+    listener = True
+
+    def test_init_names_sixty_groups_and_a_live_command_carries_sixty_words(self):
+        groups = ["fit.g%02d" % n for n in range(60)]
+        created = self.operator("init", *groups)
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        self.node.start()
+        with self.node.session(timeout=60) as client:
+            status, body = client.multiline("LIST NEWSGROUPS")
+            self.assertTrue(status.startswith(b"215"), status)
+            rows = body.splitlines(keepends=True)
+            self.assertEqual(sorted(row.split(b"\t")[0] for row in rows),
+                             [g.encode("ascii") for g in groups])
+        lines = ["line %02d of the message" % n for n in range(40)]
+        motd = self.operator("motd", "set", *lines)
+        self.assertEqual(motd.returncode, EXIT_OK, motd.stderr.decode())
+        words = ["w%02d" % n for n in range(60)]
+        described = self.operator("group", "describe", "fit.g07", *words)
+        self.assertEqual(described.returncode, EXIT_OK, described.stderr.decode())
+        with self.node.session(timeout=60) as client:
+            status, body = client.multiline("LIST MOTD")
+            self.assertTrue(status.startswith(b"215"), status)
+            self.assertEqual(body.decode("ascii").splitlines(), lines)
+            status, body = client.multiline("LIST NEWSGROUPS fit.g07")
+            self.assertEqual(body, ("fit.g07\t" + " ".join(words) + "\r\n").encode("ascii"))
+        # An empty word is still refused by name before anything is read.
+        bad = self.operator("status", "")
+        self.assertEqual(bad.returncode, EXIT_USAGE, bad.stderr.decode())
+        self.assertIn(b"ARGV-MALFORMED", bad.stderr.upper(), bad.stderr.decode())
+        self.node.stop()
+
+
+@unittest.skipUnless(executable(IMAGE), "build/fn-host is required")
 class NativeOperatorInitTests(NativeOperatorVerbFixture):
     def test_reports_piped_to_a_reader_that_left_exit_quietly(self):
         # PKT-712: `status | head` and `health | head` printed SBCL's

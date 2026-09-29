@@ -254,10 +254,7 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
 ;; reports the refusal under the no-store figure.
 (defun fnn-heap-operator-profile (config-path words)
   (handler-case
-      (let* ((argv-octets (fnn-operator-argv-octets
-                           words
-                           (fnn-core 'fn-native-operator-host-argv-max-arguments)
-                           (fnn-core 'fn-native-operator-host-argv-max-octets)))
+      (let* ((argv-octets (fnn-operator-argv-octets words))
              (preflight (fnn-core 'fn-native-operator-host-preflight argv-octets)))
         (when (and (not (fnn-core 'fn-native-operator-host-preflight-needs-config-path-p
                                   preflight))

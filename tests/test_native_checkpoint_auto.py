@@ -100,9 +100,18 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         self.assertIn("(fn-sf-frontier (fn-sn-files st))", capture)
         budget = native_cuts.host_function(owner_host, "fn-owner-sco-budget")
         self.assertIn("(fn-ock-capture-budget profile)", budget)
-        maybe = native_cuts.host_function(owner, "fnn-owner-maybe-publish")
+        maybe = native_cuts.host_function(owner, "fnn-owner-maybe-publish-quantum")
         self.assertEqual(maybe.count("(fnn-checkpoint-budget-test-override nil)"), 2)
-        self.assertIn("(fnn-disk-free-octets (fnn-owner-service-store service))", maybe)
+        # HST-033: the free space is read before the quantum's gate entry
+        # (statvfs is I/O, never under the owner mutex), and the rotation
+        # under it is the spare's rename (io.lisp fnn-log-rotate; its file
+        # I/O is fnn-log-prepare-spare's, made off the mutex).
+        free = maybe.index("(fnn-disk-free-octets (fnn-owner-service-store service))")
+        self.assertLess(free, maybe.index("(fnn-owner-gated (service :control)"))
+        self.assertIn("(fnn-log-rotation-ready-p", maybe)
+        outer = native_cuts.host_function(owner, "fnn-owner-maybe-publish")
+        self.assertIn("(fnn-log-prepare-spare store)", outer)
+        native_cuts.verify_log_segment_cut_map()
         self.assertNotIn("fnn-checkpoint-budget-test-override", publish)
         # The staged write's two cuts still bracket the write, whether a
         # vector or the plan writer is handed in; the cut map is unchanged.
@@ -110,6 +119,29 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         self.assertLess(staged.index("(fnn-at store created)"), staged.index("(funcall contents fd)"))
         self.assertLess(staged.index("(funcall contents fd)"), staged.index("(fnn-at store written)"))
         native_cuts.verify_state_checkpoint_cut_map()
+
+    def test_no_statvfs_runs_under_the_owner_mutex(self):
+        # HST-033: a greeting's clock observation (fnn-owner-advance-clock,
+        # under the mutex) keeps ACL2's NEED only; the free-space reading is
+        # taken before the quantum's gate entry (fnn-owner-gated ->
+        # fnn-owner-space-preobserve), and a status render observes before it
+        # takes the mutex.
+        owner = (ROOT / "host" / "native" / "owner.lisp").read_text(encoding="ascii")
+        control = (ROOT / "host" / "native" / "control.lisp").read_text(encoding="ascii")
+        for name in ("fnn-owner-advance-clock", "fnn-owner-space-observe-if-due",
+                     "fnn-owner-sched-snapshot"):
+            body = native_cuts.host_function(owner, name)
+            self.assertNotIn("fnn-disk-free-octets", body, name)
+            self.assertNotIn("(fnn-owner-space-event ", body, name)
+        gated = owner[owner.index("(defmacro fnn-owner-gated"):]
+        gated = gated[:gated.index("\n(defun ")]
+        self.assertLess(gated.index("(fnn-owner-space-preobserve ,service)"),
+                        gated.index("(fnn-owner-gate-enter"))
+        preobserve = native_cuts.host_function(owner, "fnn-owner-space-preobserve")
+        self.assertIn("'fn-otm-space-due-p", preobserve)
+        status = native_cuts.host_function(control, "fnn-control-live-status-answer")
+        self.assertLess(status.index("(fnn-owner-space-preobserve service t)"),
+                        status.index("(fnn-owner-serialized"))
 
 
 class AutoCheckpointFixture(scp.StateCheckpointFixture):
@@ -327,6 +359,103 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         self.assertEqual(int(line.group(1)), 72)
         self.node.stop(process=owner)
         self.assertEqual(self.open_line(), "open=checkpoint:72 suffix=0")
+
+
+    def test_a_death_at_each_rotation_cut_of_the_owner_loses_nothing_acknowledged(self):
+        # HST-033 (SCN-199): the owner's rotation with its file I/O off the
+        # owner mutex.  At each of its cuts (the spare staged: rotate-created,
+        # rotate-fenced; the switch: rotate-renamed; journal/'s fence:
+        # rotate-durable) the owner dies (FN_NATIVE_LOG_FAULT); every POST it
+        # acknowledged is in the store after `recover', no staged spare is
+        # left, and a fresh owner publishes the whole history.
+        self.init_development()
+        pristine = self.root / "pristine-store"
+        import shutil
+        shutil.copytree(self.store, pristine)
+        for cut in ("rotate-created", "rotate-fenced", "rotate-renamed", "rotate-durable"):
+            with self.subTest(cut=cut):
+                shutil.rmtree(self.store)
+                shutil.copytree(pristine, self.store)
+                owner = self.node.start(env={"FN_NATIVE_LOG_FAULT": cut})
+                self.ids = self.post_batch(0, 64)
+                deadline = time.monotonic() + 180.0
+                while owner.poll() is None and time.monotonic() < deadline:
+                    time.sleep(0.25)
+                    try:
+                        self.nudge(5)
+                    except (OSError, EOFError):
+                        pass
+                self.assertEqual(owner.poll(), -9, "the owner did not die at {}".format(cut))
+                self.node.stop(expect=None, process=owner)
+                recovered = self.op("recover")
+                self.assertEqual(recovered.returncode, EXIT_OK, (cut, recovered.stderr.decode()))
+                self.assertEqual(self.headroom()["transactions-used"], 64, cut)
+                for message_id in self.ids:
+                    out = self.store_cli("inspect", message_id)
+                    self.assertEqual(out.returncode, EXIT_OK, (cut, message_id))
+                self.assertEqual(sorted(p.name for p in (self.store / "staging").glob(".stage-segment-*")),
+                                 [], cut)
+                segments = sorted(p.name for p in (self.store / "journal").glob("0*.log")
+                                  if p.name != "000000.log")
+                if cut in ("rotate-created", "rotate-fenced"):
+                    self.assertEqual(segments, ["000001.log"], cut)
+                else:
+                    self.assertEqual(segments, ["000001.log", "000002.log"], cut)
+                owner = self.node.start()
+                line = self.owner_line(owner, CHECKPOINT_AUTO)
+                self.assertIsNotNone(line, "no automatic publication after {}".format(cut))
+                self.assertEqual(int(line.group(1)), 64)
+                self.node.stop(process=owner)
+                self.assertEqual(self.open_line(), "open=checkpoint:64 suffix=0")
+
+
+    def test_store_compact_on_the_running_owner_is_a_request_it_answers_by_name(self):
+        # PKT-868 (HST-034, SCN-200): `store compact' used to be refused
+        # while the owner ran (`store is already locked'), so compaction
+        # meant a stop.  Now the running owner answers the request by
+        # ACL2's word (books/owner-compact-request.lisp) and publishes at a
+        # suffix far below K/2 = 64, off its mutex, while it keeps serving;
+        # a second request finds nothing to compact; a death in the
+        # publication's first batch reopens with the store as it was.
+        self.init_development()
+        self.keep_log()
+        owner = self.node.start()
+        self.ids = self.post_batch(0, 10)
+        asked = self.op("store", "compact")
+        self.assertEqual(asked.returncode, EXIT_OK, asked.stderr.decode())
+        self.assertIn(b"requested", asked.stdout + asked.stderr)
+        line = self.owner_line(owner, CHECKPOINT_AUTO)
+        self.assertIsNotNone(line, "the requested publication did not run")
+        self.assertEqual(int(line.group(1)), 10)
+        # serving continued: more POSTs are answered
+        self.ids += self.post_batch(10, 2)
+        again = self.op("store", "checkpoint")
+        self.assertEqual(again.returncode, EXIT_OK, again.stderr.decode())
+        self.assertIn(b"requested", again.stdout + again.stderr)
+        line = self.owner_line(owner, CHECKPOINT_AUTO)
+        self.assertIsNotNone(line, "the second request did not publish")
+        self.assertEqual(int(line.group(1)), 12)
+        nothing = self.op("store", "compact")
+        self.assertEqual(nothing.returncode, EXIT_OK, nothing.stderr.decode())
+        self.assertIn(b"nothing-to-compact", nothing.stdout + nothing.stderr)
+        self.node.stop(process=owner)
+        self.assertEqual(self.open_line(), "open=checkpoint:12 suffix=0")
+        before = self.digest()
+        # A death in the requested publication's first batch: the old
+        # checkpoint stands and the recover sweeps the stage.
+        owner = self.node.start(env={"FN_NATIVE_CHECKPOINT_BATCH_FAULT": "0:kill"})
+        self.ids += self.post_batch(12, 3)
+        asked = self.op("store", "compact")
+        deadline = time.monotonic() + 120.0
+        while owner.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.25)
+        self.assertIsNotNone(owner.poll(), "the owner survived the batch fault")
+        self.node.stop(expect=None, process=owner)
+        self.assertEqual(self.digest(), before)
+        recovered = self.op("recover")
+        self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr.decode())
+        self.assertEqual(self.open_line(), "open=checkpoint:12 suffix=3")
+        self.assertEqual(self.headroom()["transactions-used"], 15)
 
 
 if __name__ == "__main__":

@@ -773,14 +773,14 @@
 (local (defthm fn-tcl-need-message-under-max
          (implies (and (fn-cbor-octet-listp buf) (natp mru)
                        (fn-tcl-parse-needp (fn-tcl-decode-message buf mru)))
-                  (< (len buf) (+ 5145 mru)))
+                  (< (len buf) (+ *fn-tcl-max-message-overhead* mru)))
          :hints (("Goal" :in-theory (e/d (fn-tcl-max-message)
                                          (fn-tcl-need-means-short-buffer))
                   :use fn-tcl-need-means-short-buffer))))
 
 (local (defthm fn-tcl-need-contact-under-max
          (implies (and (natp mru) (fn-tcl-parse-needp (fn-tcl-decode-contact buf)))
-                  (< (len buf) (+ 5145 mru)))
+                  (< (len buf) (+ *fn-tcl-max-message-overhead* mru)))
          :hints (("Goal" :use fn-tcl-need-means-short-buffer-contact
                   :in-theory (disable fn-tcl-need-means-short-buffer-contact)))))
 

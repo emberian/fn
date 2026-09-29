@@ -72,6 +72,7 @@ if role == "build":
         open(os.path.join(e, n), "w").write(";; stand-in\n")
     open(os.path.join(e, "lib", "libfn-blake3.so"), "w").write("stand-in blake3\n")
     open(os.path.join(e, "csc-served.args"), "w").write("csc -O3 served-main.scm -o served\n")
+    open(os.path.join(e, "link.args"), "w").write("-L%s/lib -lfn-blake3\n" % e)
     open(os.path.join(e, "extract.lsp"), "w").write(
         "(xt-extract-with (quote (FOO)) (quote (CREATE-X)) \"build/extract/served.json\" state)\n")
     if FAULT != "build-no-served":
@@ -93,15 +94,21 @@ elif role == "sbcl":
         if verb == "model":
             if FAULT == "model-empty":
                 sys.exit(0)
-            if FAULT == "image-model-exit":
+            if FAULT == "image-model-exit" and not os.environ.get("FAKE_CORE"):
                 sys.exit(5)
-            sys.stdout.buffer.write(transcript(rest[0], "model")); sys.exit(0)
+            out = transcript(rest[0], "model")
+            if os.environ.get("FAKE_CORE") and FAULT == "core-differ":
+                out += b"core differs\r\n"
+            if os.environ.get("FAKE_CORE") and FAULT == "core-store-differ" and rest[1:] and rest[1] != "-":
+                out = b"500 core\r\n"
+            sys.stdout.buffer.write(out); sys.exit(0)
     if FAULT == "probe-sbcl-exit":
         sys.exit(6)
     sys.path.insert(0, os.environ["FAKE_EXTRACT_DIR"])
     import probes
     for label, entry, a in probes.PROBES:
-        print("PROBE %s returned 0" % label)
+        print("PROBE %s %s" % (label, "returned 1" if os.environ.get("FAKE_CORE") and FAULT == "core-probe-differ"
+                                else "returned 0"))
 
 elif role == "served":
     verb = args[0]
@@ -208,16 +215,62 @@ elif role == "fcheck":
     if FAULT == "fcheck-exit-after":
         sys.exit(9)
 
+elif role == "core":
+    # stand-in for tools/extract/core.sh TREE: a core that answers as the image
+    k = os.path.join(args[0], "build", "core")
+    os.makedirs(k, exist_ok=True)
+    if FAULT == "core-build-exit":
+        print("stand-in core build failing"); sys.exit(3)
+    for n in ("core.json", "defs.lisp", "packages.lisp", "core-world.lisp", "host-block.lisp"):
+        open(os.path.join(k, n), "w").write("stand-in\n")
+    json.dump({"defun": 3, "star1": 1, "stobj-prim": 0, "host-defined": ["ACL2::FN-SIG-VERIFY"]},
+              open(os.path.join(k, "inventory.json"), "w"))
+    exe = os.path.join(k, "fn-core")
+    open(exe, "w").write("#!/bin/sh\nFAKE_CORE=1 exec %s %s sbcl \"$@\"\n" % (sys.executable, os.path.abspath(__file__)))
+    os.chmod(exe, 0o755)
+    print("core: built (stand-in)")
+
+elif role == "stateful":
+    # stand-in for tools/extract/stateful.py IMAGE PROGRAM OUT
+    out = args[2]
+    os.makedirs(out, exist_ok=True)
+    cases = ["posts", "interrupted"]
+    json.dump({"cases": {c: {"classes": ["post"], "steps": 2} for c in cases}},
+              open(os.path.join(out, "manifest.json"), "w"))
+    if FAULT == "stateful-no-report":
+        sys.exit(0)
+    results = [{"case": c, "verdict": "agree", "steps": [{"verdict": "agree"}] * 2} for c in cases]
+    doc = {"status": "PASS", "covered": ["post"], "missing": [], "steps_run": 4, "steps_expected": 4}
+    if FAULT == "stateful-differ":
+        results[1] = {"case": "interrupted", "verdict": "DIFFER", "step": "01 post", "reason": "outcome differs (stdout)"}
+        doc["status"] = "FAIL"
+    if FAULT == "stateful-duplicate":
+        results.append(dict(results[0]))
+    if FAULT == "stateful-missing-case":
+        results = results[:1]
+    if FAULT == "stateful-missing-class":
+        doc["missing"] = ["late-completion"]
+    if FAULT == "stateful-short":
+        doc["steps_run"] = 3
+    doc["results"] = results
+    json.dump(doc, open(os.path.join(out, "stateful.json"), "w"))
+    print("stand-in stateful")
+    sys.exit(7 if FAULT == "stateful-exit" else 0)
+
 elif role == "ldd":
     e = os.path.dirname(args[0])
     print("\tlibfn-blake3.so => %s/lib/libfn-blake3.so (0x0)" % e)
+    # the image's ML-DSA-65 library (TREE/build/lib), or a second copy
+    mldsa = os.path.join(e, "lib") if FAULT == "ldd-other-mldsa" else os.path.join(os.path.dirname(e), "lib")
+    print("\tlibfn-mldsa65.so => %s/libfn-mldsa65.so (0x0)" % mldsa)
+    print("\tlibfn-lz4.so => %s/libfn-lz4.so (0x0)" % os.path.join(os.path.dirname(e), "lib"))
     if FAULT != "ldd-no-libcrypto":
         print("\tlibcrypto.so.3 => %s (0x0)" % os.environ["FAKE_LIBCRYPTO"])
     print("\tlibchicken.so.11 => %s (0x0)" % os.environ["FAKE_LIBCRYPTO"])
 '''
 
 LINKED = ("fcheck.py", "chicken.py", "probes.py", "transcripts.py", "compare.sh",
-          "fcheck-main.scm", "declared-blockers.json")
+          "fcheck-main.scm", "declared-blockers.json", "sig-vectors.json")
 
 
 class Fixture:
@@ -256,12 +309,19 @@ class Fixture:
         fakelib = Path(self.tmp.name) / "fakelib"
         fakelib.mkdir()
         (fakelib / "libcrypto.so.3").write_text("stand-in libcrypto\n")
+        (t / "build" / "lib").mkdir()
+        (t / "build" / "lib" / "libfn-mldsa65.so").write_text("stand-in ML-DSA-65\n")
+        (t / "build" / "lib" / "libfn-lz4.so").write_text("stand-in LZ4\n")
+        (t / "build" / "extract" / "lib").mkdir(parents=True)
+        (t / "build" / "extract" / "lib" / "libfn-mldsa65.so").write_text("a second ML-DSA-65 build\n")
         self.store = Path(self.tmp.name) / "store"
         self.store.mkdir()
         (self.store / "segment").write_text("stand-in store\n")
         self.tools = gate.Tools(acl2=[str(bin_ / "acl2")], csc=str(bin_ / "csc"), chicken_lib=str(bin_),
                                 swarm=[], build=[PY, str(self.standin), "build", str(t)],
                                 ldd=[str(bin_ / "ldd")], cc=["echo", "cc stand-in"],
+                                stateful=[PY, str(self.standin), "stateful"],
+                                core=[PY, str(self.standin), "core", str(t)],
                                 store=str(self.store), per=400, source="stand-in")
         self.env = {"FAKE_EXTRACT_DIR": str(ROOT / "tools" / "extract"),
                     "FAKE_LIBCRYPTO": str(fakelib / "libcrypto.so.3")}
@@ -332,8 +392,45 @@ class ExtractGateTest(unittest.TestCase):
                          ["tools/extract/world.lisp", "tools/extract/world-host.lisp", "books/a.cert", "host/h.lisp"])
         self.assertEqual(m["extraction_roots"], ["FOO"])
         self.assertEqual(m["resolved_attachments"], [{"name": "ACL2::ATT", "target": "ACL2::FOO", "via": "attachment"}])
-        self.assertEqual(set(m["foreign_libraries"]), {"libfn-blake3", "libcrypto", "libchicken"})
+        self.assertEqual(set(m["foreign_libraries"]), {"libfn-blake3", "libfn-mldsa65", "libfn-lz4", "libcrypto", "libchicken"})
         self.assertTrue(m["compiler"]["fcheck"].startswith("csc -O2"))
+
+    # The Common Lisp product (lane extract-writable): built, and held to the
+    # image's replies on every transcript, probe and store read.
+    def test_core_build_exit(self):
+        self.assertFails("core-build-exit", "core", "core.sh exited 3")
+
+    def test_core_transcript_differ(self):
+        self.assertFails("core-differ", "transcripts", "the core's reply differs")
+
+    def test_core_probe_differ(self):
+        self.assertFails("core-probe-differ", "probes", "probes.py compare core")
+
+    def test_core_store_differ(self):
+        self.assertFails("core-store-differ", "store", "the core's reply differs")
+
+    # The stateful differential (lane extract-writable): every way its report
+    # can fall short fails the gate at `stateful'.
+    def test_stateful_differ(self):
+        self.assertFails("stateful-differ", "stateful", "core: interrupted DIFFER at 01 post")
+
+    def test_stateful_no_report(self):
+        self.assertFails("stateful-no-report", "stateful", "stateful.json")
+
+    def test_stateful_duplicate_case(self):
+        self.assertFails("stateful-duplicate", "stateful", "ran 2 times")
+
+    def test_stateful_missing_case(self):
+        self.assertFails("stateful-missing-case", "stateful", "ran 0 times")
+
+    def test_stateful_missing_class(self):
+        self.assertFails("stateful-missing-class", "stateful", "classes not covered")
+
+    def test_stateful_short(self):
+        self.assertFails("stateful-short", "stateful", "3 of 4 steps ran")
+
+    def test_stateful_nonzero_exit(self):
+        self.assertFails("stateful-exit", "stateful", "exited 7")
 
     # GPT-6's witness: the function-test binary exits 73 before any result.
     def test_gpt6_exit_73_standin_fails(self):
@@ -365,6 +462,10 @@ class ExtractGateTest(unittest.TestCase):
 
     def test_missing_libcrypto(self):
         self.assertFails("ldd-no-libcrypto", "manifest", "does not resolve libcrypto")
+
+    # A-SIG-NATIVE: a second build of the verifier is not the image's library.
+    def test_other_mldsa_library_fails(self):
+        self.assertFails("ldd-other-mldsa", "manifest", "not the image's")
 
     # 2 transcripts
     def test_transcript_mismatch(self):
