@@ -50,6 +50,7 @@
 (defvar *fnn-extent-paths* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> path)
 (defvar *fnn-extent-incarnations* (make-hash-table))
 ;; guarded-by: *fnn-extent-lock* (file id -> (device . inode) of the file opened)
+(defvar *fnn-extent-bases* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> page 0's offset)
 (defvar *fnn-extent-next-id* 1)
 (defvar *fnn-extent-cache* nil)
 ;; ((file eoff elen trailer . octets) ...), most recent first: the verified
@@ -82,8 +83,24 @@ incarnation.  Called with the realizer's lock held."
     (format nil "~a (file ~a~@[, dev ~a ino ~a~]) at ~a"
             (gethash file *fnn-extent-paths*) file (car inc) (cdr inc) eoff)))
 
+(defun fnn-extent-register-at (path base)
+  "A new file id for PATH whose page A the page fill reads at BASE + 16 KiB * A
+(the history image region of the state checkpoint's file: books/history-image-
+snapshot.lisp); a read-only descriptor held for the process's life, so the
+file stays readable after a later checkpoint replaces its name."
+  (let ((id (fnn-extent-register path)))
+    (sb-thread:with-mutex (*fnn-extent-lock*)
+      (setf (gethash id *fnn-extent-bases*) base))
+    id))
+
 (defun fnn-extent-pread (fd octets offset)
   "Fill OCTETS from OFFSET of FD; the count read (short at end of file)."
+  ;; Developer image only (lane composed-owner-3, row A4): a stalled read
+  ;; device.  While the named file exists a pread does not return, as a read
+  ;; from a device under maintenance does not (tests/test_native_slow_disk.py).
+  (let ((stall (fnn-developer-selector "FN_NATIVE_TEST_READ_STALL_FILE")))
+    (when (and stall (plusp (length stall)))
+      (loop while (probe-file stall) do (sleep 0.05))))
   (let ((n (length octets)) (done 0))
     (loop while (< done n) do
       (let ((got (sb-sys:with-pinned-objects (octets)
@@ -167,6 +184,21 @@ or the file holds fewer octets.  Called with the realizer's lock held."
                               (fnn-extent-where file eoff) (+ elen 32))))
     octets))
 
+;;; Row A4 (option (c), lane composed-owner-3; books/owner-cold-line.lisp):
+;;; the served read span runs with *fnn-extent-no-io* bound true (host/native/
+;;; owner.lisp fnn-owner-chunk-span-no-io).  A miss then reads nothing: it
+;;; THROWS the entry it needs to the tag fnn-extent-cold (a throw, not a
+;;; condition: fnn-call turns every condition into a store fault), the span (pure over its
+;;; stobjs) is discarded, and the host reads the entry OUTSIDE the owner mutex
+;;; (fnn-extent-prefetch) within ACL2's dependency deadline
+;;; (fn-otb-dependency-step).  A hit is a hit either way: the warm path does
+;;; no more work than before.  With a cache limit of 0 nothing a prefetch
+;;; reads is kept, so the no-I/O mode is never used (fnn-extent-no-io-usable-p).
+(defvar *fnn-extent-no-io* nil)
+
+(defun fnn-extent-no-io-usable-p ()
+  (plusp (fnn-extent-cache-limit)))
+
 (defun fnn-extent-entry (file eoff elen trailer)
   "The verified entry (its protected prefix at [EOFF, EOFF+ELEN) of FILE
 and its trailer) of the descriptor whose expected trailer is TRAILER, from
@@ -181,7 +213,9 @@ Called with the realizer's lock held."
                (unless (eq hit (first *fnn-extent-cache*))
                  (setq *fnn-extent-cache* (cons hit (delete hit *fnn-extent-cache* :test #'eq))))
                (cddddr hit))
-      (let* ((octets (fnn-extent-read-entry file eoff elen))
+      (let* ((octets (if *fnn-extent-no-io*
+                         (throw 'fnn-extent-cold (list file eoff elen trailer))
+                         (fnn-extent-read-entry file eoff elen)))
              (verdict (fnn-extent-entry-verdict octets elen trailer)))
         (unless (eq verdict :ok)
           (incf (third *fnn-extent-stats*))
@@ -220,6 +254,58 @@ realizer's lock held."
              :message (format nil "arena-extent-digest: the entry at ~a does not match its trailer"
                               (fnn-extent-where file eoff))))
     octets))
+
+;;; The entry a cold span needs, read into the cache (a store fault is
+;;; signalled as always: the caller re-signals it in the owner's thread).
+;;; Called OFF the owner mutex, from a thread of its own.  The pread runs
+;;; WITHOUT the realizer's lock, so a stalled disk holds only this thread:
+;;; cached reads on every other connection proceed (the lock is taken to find
+;;; the descriptor, and again to decide the entry -- ACL2's verdict uses the
+;;; realizer's one buffer -- and keep it).  The entry is decided against the
+;;; descriptor's TRAILER (fnn-extent-entry-verdict) and cached under that
+;;; identity, exactly as fnn-extent-entry decides and caches it.
+(defun fnn-extent-prefetch (file eoff elen trailer)
+  (let ((fd nil)
+        (octets (make-array (+ elen 32) :element-type '(unsigned-byte 8))))
+    (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+      (when (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
+                                      (eql (third e) elen) (eql (fourth e) trailer)))
+                     *fnn-extent-cache*)
+        (return-from fnn-extent-prefetch t))
+      (setq fd (gethash file *fnn-extent-fds*))
+      (incf (second *fnn-extent-stats*))
+      (unless fd
+        (incf (third *fnn-extent-stats*))
+        (error 'fnn-extent-fault
+               :message (format nil "arena-extent-read: no durable file ~a is registered" file))))
+    (let ((got (fnn-extent-pread fd octets eoff)))
+      (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+        (unless (= got (+ elen 32))
+          (incf (third *fnn-extent-stats*))
+          (error 'fnn-extent-fault
+                 :message (format nil "arena-extent-read: ~a holds fewer than ~a octets"
+                                  (fnn-extent-where file eoff) (+ elen 32))))
+        (let ((verdict (fnn-extent-entry-verdict octets elen trailer)))
+          (unless (eq verdict :ok)
+            (incf (third *fnn-extent-stats*))
+            (error 'fnn-extent-fault
+                   :message
+                   (case verdict
+                     (:trailer
+                      (format nil "arena-extent-trailer: the entry at ~a is not the extent's: its recorded trailer is not the descriptor's"
+                              (fnn-extent-where file eoff)))
+                     (:digest
+                      (format nil "arena-extent-digest: the entry at ~a does not match its trailer"
+                              (fnn-extent-where file eoff)))
+                     (t
+                      (format nil "arena-extent-verdict: ACL2 answered ~s for the entry at ~a"
+                              verdict (fnn-extent-where file eoff)))))))
+        (let ((limit (fnn-extent-cache-limit)))
+          (when (plusp limit)
+            (push (list* file eoff elen trailer octets) *fnn-extent-cache*)
+            (when (> (length *fnn-extent-cache*) limit)
+              (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit)))))
+        t))))
 
 ;;; The realizer (A-DURABLE-EXTENT's constrained function), raw and *1*.
 ;;; The descriptor's guard (books/payload-arena-extent-logic.lisp
@@ -325,13 +411,14 @@ realizer's lock held."
 ;;; (books/history-records-disk.lisp: the lazy decode of the committed
 ;;; history image `fn-hrs-disk-history', and fn-hrecs's retry loop).
 (defun fn-pgs-fill-realize (file addr)
-  (let ((fd (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-              (gethash file *fnn-extent-fds*)))
-        (octets (make-array 16384 :element-type '(unsigned-byte 8))))
+  (multiple-value-bind (fd base)
+      (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+        (values (gethash file *fnn-extent-fds*) (gethash file *fnn-extent-bases* 0)))
+   (let ((octets (make-array 16384 :element-type '(unsigned-byte 8))))
     (unless (and fd (integerp addr) (<= 0 addr))
       (error 'fnn-extent-fault
              :message (format nil "history-page-read: no page file ~a (page ~a)" file addr)))
-    (let ((got (fnn-extent-pread fd octets (* addr 16384))))
+    (let ((got (fnn-extent-pread fd octets (+ base (* addr 16384)))))
       (unless (= got 16384)
         (let ((path (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
                       (gethash file *fnn-extent-paths*))))
@@ -345,7 +432,7 @@ realizer's lock held."
           (loop for b of-type fixnum from 7 downto 0 do
             (setq w (logior (ash w 8) (aref octets (+ base b)))))
           (push w acc)))
-      acc)))
+      acc))))
 
 (defun acl2_*1*_acl2::fn-pgs-fill-realize (file addr)
   (fn-pgs-fill-realize file addr))
@@ -355,14 +442,20 @@ realizer's lock held."
 ;;; process's life: once a checkpoint publication has reseated the live
 ;;; payloads at the installed checkpoint's frames, the files it dropped (the
 ;;; covered log segments, the previous checkpoint) are RETIRED, and a retired
-;;; file's descriptor is closed when ACL2's close decision names it
-;;; (fn-xrt-close-set: a clean scan of the extent column, no log member in
-;;; flight naming it, no off-mutex arena reader).  Closing the last
-;;; descriptor of an unlinked file gives its blocks back while the owner
-;;; serves.  host/native/owner.lisp fnn-owner-release-extents drives it.
+;;; file waits until ACL2 finds it quiet (fn-xrt-quiet-files: its count in
+;;; the arena's file column is 0 and no log member in flight names it), is
+;;; then pending at the arena-reader generation stamped there, and its
+;;; descriptor closes once no off-mutex arena reader pinned at or below that
+;;; stamp still runs (fnn-arena-clear-p, books/arena-reader-pins.lisp).
+;;; Closing the last descriptor of an unlinked file gives its blocks back
+;;; while the owner serves.  host/native/owner.lisp fnn-owner-release-extents
+;;; drives it.
 
 (defvar *fnn-extent-retired* nil)
-;; guarded-by: the owner mutex (file ids waiting for their close)
+;; guarded-by: the owner mutex (file ids not yet found quiet)
+(defvar *fnn-extent-pending* nil)
+;; guarded-by: the owner mutex ((S . IDS) ...: quiet file ids waiting for
+;; the readers pinned at or below the stamp S)
 (defvar *fnn-extent-checkpoint-id* nil)
 ;; guarded-by: the owner mutex (the realizer id of the installed checkpoint
 ;; the last reseat pointed payloads at)

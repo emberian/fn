@@ -13720,19 +13720,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-xrt-first-naming-none"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-xrt-first-naming-found"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-xrt-first-naming-compose"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-xrt-close-set-is-safe"
+          "name": "fn-xrt-quiet-files-are-unnamed"
         }
       ]
     },
@@ -16394,6 +16382,240 @@
           "kind": "theorem",
           "name": "fn-auth-step-preserves-consistent-session",
           "note": "The step with the SASL arms still preserves the session invariant (the SASL states, the context)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-920",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hib-adopt-establishes",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-open-is-log-prefix",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-open-binds-prefix",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-replay-extends",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-fill-rel",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-get-keeps",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-hrecs-get-fuel-enough",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-complete-keeps",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-complete-stale",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-evict-keeps",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-undone-evict",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hib-complete-progress",
+          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
+        }
+      ]
+    },
+    {
+      "id": "PRF-923",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hif-run-is-foldl",
+          "pending_subject": "Subject is the paged fold over the history image; no served reader calls it until the served open adopts the image (lane composed-owner NEXT); the instances show the template admits and proves."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hif-run-resume",
+          "pending_subject": "Subject is the paged fold over the history image; no served reader calls it until the served open adopts the image (lane composed-owner NEXT); the instances show the template admits and proves."
+        }
+      ]
+    },
+    {
+      "id": "PRF-938",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arx-files-unnamed-names-none"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-file-count-zero-names-none"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-files-agree-of-mark"
+        }
+      ]
+    },
+    {
+      "id": "PRF-941",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arpn-release-postdates-every-live-pin"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arpn-release-keeps-every-covered-retirement"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arpn-retire-stamp-covers-every-live-pin"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arpn-step-preserves-okp"
+        }
+      ]
+    },
+    {
+      "id": "PRF-987",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orli-live-record-is-the-recorded-config-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orli-live-record-decides-the-context"
+        }
+      ]
+    },
+    {
+      "id": "PRF-933",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocln-a-cold-line-is-answered-unavailable"
+        }
+      ]
+    },
+    {
+      "id": "PRF-992",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-open-from-publication-is-the-twin"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-published-capture-finalizes-ok"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-published-next-is-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-next-lower-natp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-next-lower-is-next-lower"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-next-of-tables-of-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-next-of-tables-is-bound-of-loaded-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-open-under-checkpoint-publication"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-assume-checkpoint-publication-is-a-publication"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-extend-capture-by-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-finalize-of-capture-is-the-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-next-of-capture-tables"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-observed-history-bound-natp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-observed-history-is-a-true-list"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1005",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sfk-check-ok-is-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfk-check-ok-facts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfk-check-wrong-msgid-trie-is-not-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfk-check-shape-answers-are-not-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfk-carry-checks-ok"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-assume-carried-pair-is-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-carried-open-under-carried-pair"
         }
       ]
     }

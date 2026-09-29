@@ -459,6 +459,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reclaim-tests \
 	books/extent-retire \
 	tests/acl2/extent-retire-tests \
+	books/owner-reclaim-instant \
+	tests/acl2/owner-reclaim-instant-tests \
 	books/store-log-route-phases \
 	books/store-log-extend \
 	tests/acl2/store-log-extend-tests \
@@ -580,6 +582,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/replay-identity-index-tests \
 	books/store-finalize-incremental \
 	tests/acl2/store-finalize-incremental-tests \
+	books/store-finalize-published \
+	tests/acl2/store-finalize-published-tests \
+	books/store-finalize-carried-check \
+	tests/acl2/store-finalize-carried-check-tests \
+	books/assumptions-publication \
 	books/bp-fnbs-delivery-codec \
 	tests/acl2/bp-fnbs-delivery-codec-tests \
 	books/bp-fnbs-delivery-replay \
@@ -1405,6 +1412,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-bars \
 	tests/acl2/owner-time-bars-tests \
 	tests/acl2/tls-handshake-budget-tests \
+	tests/acl2/owner-cold-line-tests \
+	books/arena-reader-pins \
+	tests/acl2/arena-reader-pins-tests \
 	books/feed-restart-domain \
 	tests/acl2/feed-restart-domain-tests \
 	books/web-request \
@@ -1579,6 +1589,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-records-disk \
 	books/store-records-field \
 	tests/acl2/history-records-disk-tests \
+	books/history-image-binding \
+	books/history-image-fold \
+	books/history-image-snapshot \
+	tests/acl2/history-image-binding-tests \
+	tests/acl2/history-image-campaign-tests \
 	books/image-world \
 	books/image-world-dtn \
 	books/image-world-store-test
