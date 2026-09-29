@@ -20681,13 +20681,9 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "ideal",
-      "kinds": [
-        [
-          "journal-octets",
-          "natp"
-        ]
-      ],
+      "kinds": [],
       "exempt": {
+        "journal-octets": "a COUNT of octets (the journal files' lstat sizes), a natural the report nfixes; not bytes",
         "config-octets": "fn-spo-config-open decides the open verdict first and refuses a malformed config by name"
       },
       "keystones": [],
@@ -20704,13 +20700,9 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "ideal",
-      "kinds": [
-        [
-          "journal-octets",
-          "natp"
-        ]
-      ],
+      "kinds": [],
       "exempt": {
+        "journal-octets": "a COUNT of octets (the journal files' lstat sizes), a natural the report nfixes; not bytes",
         "config-octets": "fn-spo-config-open decides the open verdict first and refuses a malformed config by name"
       },
       "keystones": [],
