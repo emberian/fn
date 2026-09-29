@@ -172,5 +172,5 @@
                   ; a frame whose trailer is not its digest: refused throughout
                   c (equal (first c) nil)
                   (equal (second c) '(:refused :frame)))
-             fn-octets))))))
+             fn-octets)))))
  :stobjs-out '(nil fn-octets))
