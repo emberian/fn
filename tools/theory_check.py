@@ -314,9 +314,10 @@ def _executed_symbols(term, out: set[str]) -> None:
 DEFUNS = ("defun", "defund", "defun-inline", "defund-inline", "define")
 
 
-def guard_order(text: str) -> list[str]:
-    """Each guard verification of F calling a G of the same book whose guards
-    are verified only later: 'form #I (F) calls G, verified at form #J'."""
+def guard_events(text: str) -> list[tuple[int, str, list[tuple[str, int]]]]:
+    """Each guard verification in the book, in order: (form number, the
+    function, [(a callee of the same book, the form its guards are verified
+    at)]).  Form numbers count top-level forms from 1, as proof_repl's do."""
     forms = [_unlocal(form) for form in _ledger().read_forms(text)]
     eager = False
     verified_at: dict[str, int] = {}
@@ -346,13 +347,23 @@ def guard_order(text: str) -> list[str]:
             verified_at.setdefault(name, index)
             if name in defs:
                 events.append((index, name, defs[name][3:]))
-    found = []
+    out = []
     for index, name, body in events:
         called: set[str] = set()
         _executed_symbols(body, called)
-        for callee in sorted(called - {name}):
-            later = verified_at.get(callee)
-            if callee in defs and later is not None and later > index:
+        callees = [(callee, verified_at[callee]) for callee in sorted(called - {name})
+                   if callee in defs and callee in verified_at]
+        out.append((index, name, callees))
+    return out
+
+
+def guard_order(text: str) -> list[str]:
+    """Each guard verification of F calling a G of the same book whose guards
+    are verified only later: 'form #I (F) calls G, verified at form #J'."""
+    found = []
+    for index, name, callees in guard_events(text):
+        for callee, later in callees:
+            if later > index:
                 found.append(f"form #{index} verifies the guards of {name}, which calls "
                              f"{callee}, whose guards are verified only at form #{later}: "
                              f"certify fails here (a world session passes)")

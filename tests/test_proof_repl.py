@@ -1947,5 +1947,93 @@ class FailedDependencyTests(unittest.TestCase):
         self.assertIn('if final.get("failed_dependency"):', start)
 
 
+class FreeExpandTests(unittest.TestCase):
+    """obstructions-8 item 65: `:expand (:free ...)' over a recursion's controller warns."""
+
+    BOOK = """
+(defun countdown (x n)
+  (declare (xargs :measure (nfix n)))
+  (if (zp n) x (countdown (cons n x) (1- n))))
+(defun walk (x acc)
+  (if (atom x) acc (walk (cdr x) (cons (car x) acc))))
+(defun plain (x n) (+ x n))
+"""
+
+    def test_freeing_the_measured_argument_warns(self):
+        form = ("(defthm c1 (equal (countdown x n) (countdown x n)) :hints "
+                "((\"Goal\" :expand ((:free (n) (countdown x n))))))")
+        lines = proof_repl.free_expand_warnings(form, [self.BOOK])
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("countdown's controlling argument n", lines[0])
+
+    def test_freeing_an_argument_the_recursive_call_changes_warns(self):
+        form = "(thm (equal (walk x a) (walk x a)) :hints ((\"Goal\" :expand (:free (x) (walk x a)))))"
+        lines = proof_repl.free_expand_warnings(form, [self.BOOK])
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("walk's controlling argument x", lines[0])
+
+    def test_freeing_only_a_non_controller_is_quiet(self):
+        form = "(thm t :hints ((\"Goal\" :expand ((:free (x) (countdown x n)) (walk y a)))))"
+        self.assertEqual(proof_repl.free_expand_warnings(form, [self.BOOK]), [])
+        # walk's controller is x (it changes); acc changes too, so freeing acc warns:
+        form = "(thm t :hints ((\"Goal\" :expand ((:free (a) (walk y a))))))"
+        self.assertEqual(len(proof_repl.free_expand_warnings(form, [self.BOOK])), 1)
+
+    def test_a_non_recursive_function_is_quiet(self):
+        form = "(thm t :hints ((\"Goal\" :expand ((:free (n) (plain x n))))))"
+        self.assertEqual(proof_repl.free_expand_warnings(form, [self.BOOK]), [])
+        self.assertEqual(proof_repl.controller_positions(
+            ["defun", "plain", ["x", "n"], ["+", "x", "n"]]), [])
+
+    def test_an_unknown_function_is_quiet(self):
+        form = "(thm t :hints ((\"Goal\" :expand ((:free (n) (no-such-fn-o8 x n))))))"
+        self.assertEqual(proof_repl.free_expand_warnings(form, []), [])
+
+    def test_send_prints_the_warning_and_still_sends(self):
+        form = "(thm t :hints ((\"Goal\" :expand ((:free (n) (countdown x n))))))"
+        args = SimpleNamespace(name="s", form=form, limit=None, full=False)
+        err = io.StringIO()
+        with mock.patch.object(proof_repl, "prepare_includes", return_value=([form], True)), \
+                mock.patch.object(proof_repl, "read_state", return_value={}), \
+                mock.patch.object(proof_repl, "find_definition",
+                                  return_value=proof_repl._theory_check().forms(self.BOOK)[0]), \
+                mock.patch.object(proof_repl, "send_one", return_value=0) as sent, \
+                contextlib.redirect_stderr(err):
+            self.assertEqual(proof_repl.send(args), 0)
+        sent.assert_called_once()
+        self.assertIn("proof-repl: warning: :expand (:free (n) (countdown x n))", err.getvalue())
+
+
+class GuardNotesTests(unittest.TestCase):
+    """obstructions-8 (item 56's proof_repl note): send-range names each
+    verification's same-book callees and the form each is verified at."""
+
+    BOOK = """(in-package "ACL2")
+(defun g (x) (declare (xargs :guard t :verify-guards nil)) x)
+(defun f (x) (declare (xargs :guard t)) (g x))
+(verify-guards g)
+(defun h (x) (declare (xargs :guard t)) (g x))
+"""
+
+    def test_a_later_callee_is_flagged_and_an_earlier_one_named(self):
+        notes = proof_repl.guard_notes(self.BOOK, range(0, 5))
+        self.assertEqual(len(notes), 2, notes)
+        self.assertIn("form #3 verifies f's guards", notes[0])
+        self.assertIn("LATER: g #4", notes[0])
+        self.assertIn("form #5 verifies h's guards", notes[1])
+        self.assertIn("verified at g #4", notes[1])
+        self.assertNotIn("LATER", notes[1])
+
+    def test_numbers_match_the_forms_send_range_counts(self):
+        forms = proof_repl.forms(self.BOOK)
+        self.assertTrue(forms[2].lstrip().startswith("(defun f"))
+        self.assertTrue(forms[3].lstrip().startswith("(verify-guards g"))
+
+    def test_only_the_chosen_forms_are_noted(self):
+        notes = proof_repl.guard_notes(self.BOOK, range(4, 5))
+        self.assertEqual(len(notes), 1)
+        self.assertIn("form #5", notes[0])
+
+
 if __name__ == "__main__":
     unittest.main()

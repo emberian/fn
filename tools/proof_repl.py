@@ -1932,6 +1932,161 @@ def send_many(name: str, items: list[tuple[str, str]], limit: float | None,
     return 1 if totals.refused else 0
 
 
+# --- :expand (:free ...) over a controller (obstructions-7/8 item 65) -----
+#
+# `:expand ((:free (n) (f x n)))' expands EVERY instance of (f x _), the
+# recursive call its expansion introduces included: when N sits where F's
+# recursion is controlled (a formal of its measure, else an argument its
+# recursive call changes), each expansion makes a new match and the prover
+# re-expands until the step limit.  A warning at send, never a refusal.
+
+def _theory_check():
+    import theory_check  # noqa: PLC0415
+    return theory_check
+
+
+def expand_terms(form: str) -> list:
+    """Every term an `:expand' hint of FORM names, as nested lists."""
+    try:
+        read = _theory_check().forms(form)
+    except ValueError:
+        return []
+    found: list = []
+
+    def walk(node) -> None:
+        if not isinstance(node, list):
+            return
+        for position, item in enumerate(node):
+            if item == ":expand" and position + 1 < len(node):
+                value = node[position + 1]
+                if isinstance(value, list) and value:
+                    if isinstance(value[0], list):
+                        found.extend(term for term in value if isinstance(term, list))
+                    else:
+                        found.append(value)
+            walk(item)
+
+    walk(read)
+    return found
+
+
+def _symbols(term) -> set[str]:
+    if isinstance(term, list):
+        return set().union(*(_symbols(item) for item in term)) if term else set()
+    return {term} if isinstance(term, str) and not term.startswith('"') else set()
+
+
+def _self_calls(term, name: str) -> list[list]:
+    if not isinstance(term, list) or not term:
+        return []
+    if term[0] == "quote":
+        return []
+    calls = [term] if term[0] == name else []
+    for item in term[1:]:
+        calls.extend(_self_calls(item, name))
+    return calls
+
+
+def controller_positions(definition: list) -> list[int]:
+    """The argument positions controlling DEFINITION's recursion: the formals
+    its :measure mentions, else those its recursive calls change; [] for a
+    function that does not call itself."""
+    if len(definition) < 4 or not isinstance(definition[2], list):
+        return []
+    name, formals = definition[1], [f for f in definition[2] if isinstance(f, str)]
+    body = definition[-1]
+    calls = _self_calls(body, name)
+    if not calls:
+        return []
+    for item in definition[3:-1]:
+        if isinstance(item, list) and item and item[0] == "declare":
+            for decl in item[1:]:
+                if isinstance(decl, list) and decl and decl[0] == "xargs":
+                    rest = decl[1:]
+                    for key, value in zip(rest[::2], rest[1::2]):
+                        if key == ":measure":
+                            used = _symbols(value)
+                            return [i for i, f in enumerate(formals) if f in used]
+    return sorted({i for call in calls for i, f in enumerate(formals)
+                   if i + 1 < len(call) and call[i + 1] != f})
+
+
+DEFUN_HEADS = ("defun", "defund", "defun-inline", "defund-inline")
+
+
+def find_definition(name: str, texts: list[str]) -> list | None:
+    """NAME's defun: first in TEXTS (the forms being sent, the session's
+    book), else the tree's books/ and tests/acl2/ (git grep, then that file)."""
+    def search(text: str) -> list | None:
+        try:
+            read = _theory_check().forms(text)
+        except ValueError:
+            return None
+        stack = list(read)
+        while stack:
+            form = stack.pop(0)
+            if not isinstance(form, list) or not form:
+                continue
+            if form[0] in DEFUN_HEADS and len(form) > 1 and form[1] == name:
+                return form
+            if form[0] in ("mutual-recursion", "local", "encapsulate", "progn"):
+                stack[:0] = form[1:]
+        return None
+
+    for text in texts:
+        if name in text.lower():
+            found = search(text)
+            if found:
+                return found
+    pattern = r"\(def(un|und)(-inline)?[[:space:]]+" + re.escape(name) + r"([[:space:])]|$)"
+    listed = subprocess.run(["git", "-C", str(ROOT), "grep", "-l", "-i", "-E", pattern,
+                             "--", "books", "tests/acl2"],
+                            capture_output=True, text=True, check=False).stdout.split()
+    for relative in listed[:3]:
+        found = search((ROOT / relative).read_text(encoding="utf-8", errors="replace"))
+        if found:
+            return found
+    return None
+
+
+def _spell(term) -> str:
+    if isinstance(term, list):
+        return "(" + " ".join(_spell(item) for item in term) + ")"
+    return str(term)
+
+
+def free_expand_warnings(form: str, texts: list[str] = ()) -> list[str]:
+    """One line per `:expand (:free VARS (F ...))' of FORM that frees an
+    argument at a controller position of F's recursion."""
+    lines = []
+    for term in expand_terms(form):
+        if len(term) < 3 or term[0] != ":free" or not isinstance(term[1], list):
+            continue
+        free, target = set(term[1]), term[2]
+        if not isinstance(target, list) or not target or not isinstance(target[0], str):
+            continue
+        definition = find_definition(target[0], [form, *texts])
+        if definition is None:
+            continue
+        for position in controller_positions(definition):
+            if position + 1 < len(target) and _symbols(target[position + 1]) & free:
+                formal = definition[2][position]
+                lines.append(
+                    f"proof-repl: warning: :expand {_spell(term)} frees "
+                    f"{_spell(target[position + 1])}, in {target[0]}'s controlling argument "
+                    f"{formal}: each expansion's recursive call matches again and is "
+                    f"expanded in turn (a loop, or a blow-up to the step limit); name the "
+                    f"instances to expand, or keep {formal}'s argument bound")
+                break
+    return lines
+
+
+def warn_free_expands(items: list[str], texts: list[str] = ()) -> None:
+    for form in items:
+        for line in free_expand_warnings(form, list(texts)):
+            print(line, file=sys.stderr, flush=True)
+
+
 def send(args) -> int:
     form = args.form if args.form != "-" else sys.stdin.read()
     try:
@@ -1955,6 +2110,9 @@ def send(args) -> int:
     several, ready = prepare_includes(args.name, several)
     if not ready:
         return 1
+    book = (read_state(args.name) or {}).get("book")
+    warn_free_expands(several, [(ROOT / f"{book}.lisp").read_text(encoding="utf-8")]
+                      if book and (ROOT / f"{book}.lisp").exists() else [])
     if len(several) <= 1:
         return send_one(args.name, several[0] if several else form, args.limit, args.full)
     items = [(form_label(index, one), one) for index, one in enumerate(several, 1)]
@@ -2076,6 +2234,24 @@ def range_words(name: str, book: str, chosen: range, items: list, skipped: list[
     return words
 
 
+def guard_notes(text: str, chosen: range) -> list[str]:
+    """For each guard verification among the CHOSEN forms (0-based), the
+    same-book callees and the form each is verified at (obstructions-7 item
+    56): a callee verified LATER passes in a session whose world already has
+    it and fails at certify."""
+    lines = []
+    for index, name, callees in _theory_check().guard_events(text):
+        if index - 1 not in chosen or not callees:
+            continue
+        later = [f"{callee} #{at}" for callee, at in callees if at > index]
+        words = ", ".join(f"{callee} #{at}" for callee, at in callees)
+        lines.append(f"note: form #{index} verifies {name}'s guards; its callees here are "
+                     f"verified at {words}"
+                     + (f" -- LATER: {', '.join(later)} (certify fails at #{index}; a "
+                        f"session that already has them passes)" if later else ""))
+    return lines
+
+
 def send_range(args) -> int:
     """A book's forms from --from to --until/--through into a live session."""
     path = book_path(args.book)
@@ -2090,6 +2266,10 @@ def send_range(args) -> int:
                       args.until))
     if not items:
         return 0
+    text = path.read_text(encoding="utf-8")
+    for line in guard_notes(text, chosen):
+        print(line, flush=True)
+    warn_free_expands([form for _, form in items], [text])
     if ld_local:
         hoisted, body = encapsulated("\n".join(form for _, form in items), path.parent,
                                      set(), None)
