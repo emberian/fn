@@ -36,6 +36,9 @@
 (include-book "../books/owner-compact-request")
 ; Q16: content reclamation on a running owner (fn-orc-).
 (include-book "../books/owner-reclaim")
+(include-book "../books/owner-reclaim-conns")
+;; online-reclaim-5: the swapped owner is :ready after the open's barriers.
+(include-book "../books/owner-reclaim-ready")
 ; Q16 (b): online disk release of dropped files (fn-xrt-).
 (include-book "../books/extent-retire")
 ; The publication through the octet buffer, decided before it is encoded
@@ -197,6 +200,12 @@
 ; (its generation, the connections told before its late completion), a
 ; read's page-dependency outcome, the restart's clock domain.
 (include-book "../books/owner-time-bars")
+; lane composed-owner-3 (PRF-933, row A4 (c)): a cold line past its
+; dependency deadline answered 403, the session unchanged.
+(include-book "../books/owner-cold-line")
+; lane composed-owner-5 (PRF-941, row A6): the arena readers' generation
+; pins (host/native/io.lisp fnn-arena-pins-step).
+(include-book "../books/arena-reader-pins")
 (include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
@@ -767,7 +776,16 @@
                  (fn-sf-frontier (fn-sn-files st))
                  free
                  revision
-                 (fn-owner-sco-global 'fn-owner-sco-base-payloads state)))))
+                 (fn-owner-sco-global 'fn-owner-sco-base-payloads state)
+                 ; the store's identity for the history image's binding
+                 ; (books/history-image-binding.lisp): the genesis record's
+                 ; node identity and the history salt
+                 (let ((v (and (boundp-global 'fn-store-genesis state)
+                               (f-get-global 'fn-store-genesis state))))
+                   (list (if (and (consp v) (equal (car v) :genesis) (consp (cdr v)))
+                             (fn-gen-node (cadr v))
+                           nil)
+                         (fn-gen-verdict-salt v)))))))
 
 ; Off the mutex, over the values captured above and the live arena, READ
 ; only (host/native/owner.lisp fnn-owner-publish-captured): NEXT, the capture
@@ -787,8 +805,11 @@
 ; The arena is read at handles below the count the capture saw: the owner
 ; thread only appends to it (a seal never moves a sealed payload's bytes),
 ; so what is read is what was sealed before the capture.
-(defun fn-owner-sco-prepare (base h0 configs records frontier revision log seg budget free
-                                  walked fn-arena)
+(defun fn-owner-sco-next (base h0 configs records walked seg fn-arena)
+  ; The first half of fn-owner-sco-prepare: (NEXT WS WALKED), or NIL when the
+  ; history is not encodable (READS the arena only).  The host builds the
+  ; history image of NEXT's records between the halves and passes the
+  ; binding in LOG to the second.
   (declare (xargs :stobjs fn-arena :mode :program))
   (let* ((next0 (and base (natp h0) (<= (len (fn-sco-records base)) (len records))
                      (fn-scka-next-checkpoint (fn-scka-restore-base base) h0 configs records
@@ -798,13 +819,26 @@
                      (if (equal canon :bad) :bad (fn-sco-capture configs canon)))
                  next0)))
     (if (or (equal next :bad) (not (and (consp walked) (atom (nth 0 walked)))))
-        (list (list :unencodable nil nil nil nil 0 0) nil 0 nil)
-      (let* ((ws (fn-scka-lens-setup (reverse (nth 1 walked)) seg))
-             (setup (fn-scka-publication-setup next frontier revision log seg budget free
-                                               (nth 3 ws))))
-        (list setup next (nth 0 ws)
-              (list (nth 0 ws) (nth 2 ws)
-                    (fn-scka-initial-state (reverse (nth 2 walked)) (nth 1 ws) 0)))))))
+        nil
+      (list next (fn-scka-lens-setup (reverse (nth 1 walked)) seg) walked))))
+
+(defun fn-owner-sco-setup-of (prepared frontier revision log seg budget free)
+  ; The second half: (list SETUP NEXT N ARUN) as fn-owner-sco-prepare answers.
+  (declare (xargs :mode :program))
+  (if (not (consp prepared))
+      (list (list :unencodable nil nil nil nil 0 0) nil 0 nil)
+    (let* ((next (nth 0 prepared)) (ws (nth 1 prepared)) (walked (nth 2 prepared))
+           (setup (fn-scka-publication-setup next frontier revision log seg budget free
+                                             (nth 3 ws))))
+      (list setup next (nth 0 ws)
+            (list (nth 0 ws) (nth 2 ws)
+                  (fn-scka-initial-state (reverse (nth 2 walked)) (nth 1 ws) 0))))))
+
+(defun fn-owner-sco-prepare (base h0 configs records frontier revision log seg budget free
+                                  walked fn-arena)
+  (declare (xargs :stobjs fn-arena :mode :program))
+  (fn-owner-sco-setup-of (fn-owner-sco-next base h0 configs records walked seg fn-arena)
+                         frontier revision log seg budget free))
 
 ; Outside the mutex, the host calls `fn-ock-next-checkpoint' (NEXT, the
 ; capture of the captured history: fn-ock-next-checkpoint-is-the-capture),
@@ -855,16 +889,16 @@
 ; (the publication's, as fn-owner-sco-due reads it; FREE the statvfs the
 ; host took before the quantum), whether an instant is or will be recorded.
 ; A dry run writes nothing: no publication or deferral stands against it.
-; Until the pass that installs lands (LANEDUMP online-reclaim NEXT: the live
-; swap), a running owner answers only the dry run; `store reclaim' and
-; `--recorded' are refused by name, :offline-only (stop the owner, reclaim,
-; start it: the offline verb).
+; A running owner answers the dry run, `--recorded' (the pass that
+; installs, books/owner-reclaim-pass.lisp) and `store reclaim', which first
+; records the instant at the clock through the live reconfiguration
+; (fn-owner-orc-instant-stage) and then runs the same pass over it.
 (defun fn-owner-orc-request (mode override free state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((profile (fn-owner-store-profile state))
          (dry (eq mode :dry-run))
          (v (fn-cfg-value (fn-ocfg-config (fn-owner-ocfg state)))))
-    (value (if (not dry)
+    (value (if (not (member-eq mode '(:dry-run :recorded :reclaim)))
                :offline-only
              (fn-orc-request-word
             (fn-owner-orc-pass state)
@@ -877,7 +911,15 @@
 
 (defun fn-owner-orc-request-status (word)
   (declare (xargs :mode :program))
-  (if (member-eq word '(:offline-only :profile)) :refused (fn-orc-request-status word)))
+  ; Q16 (a): the pass's answers -- :installed and :none accepted; a deferral
+  ; by name (:deferred-credit, -delta, -unbound, -busy, -readers, -rebuild, the
+  ; publication's -budget/-space/-unencodable) and :failed refused.
+  (if (or (member-eq word '(:offline-only :profile :failed))
+          (and (keywordp word)
+               (let ((n (symbol-name word)))
+                 (and (< 9 (length n)) (equal (subseq n 0 9) "DEFERRED-")))))
+      :refused
+    (fn-orc-request-status word)))
 
 ; The capture (under the mutex, after the log's rotation for a reclaim; a dry
 ; run rotates nothing): the owner's rows by pointer, their count, the
@@ -3659,6 +3701,41 @@
                   (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
                   (f-get-global 'fn-owner-exposure-close state))))))))
 
+; Row A4 (c), lane composed-owner-3 (PRF-933): the line of the octet buffer
+; that begins at START, whose page did not come within the dependency
+; deadline (host/native/owner.lisp fnn-owner-unavailable-line, after
+; fn-otb-dependency-step answered :unavailable).  books/owner-cold-line.lisp
+; fn-ocln-unavailable-span decides it: time-bars' 403, the whole line
+; consumed (fn-oct-line-end), the connection's wire back at the start of a
+; line in command mode and nothing else of the owner moved
+; (fn-ocln-a-cold-line-is-answered-unavailable).  :not-command when the
+; connection is not in command mode (no command, so no payload read: the
+; host faults).  The step is typed as fn-owner-chunk-span-at's.
+(defun fn-owner-unavailable-line-at (id start since now limit fn-octets fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program)
+           (ignorable fn-arena fn-cat))
+  (let ((owner (fn-owner-core state)))
+    (if (not (fn-own-find-conn id (fn-own-conns owner)))
+        (value :unknown)
+      (if (not (and (natp start) (<= start (fn-octets-len fn-octets))))
+          (value :bad-range)
+        (let ((result (fn-ocln-unavailable-span (fn-owner-ocfg state) id start
+                                                since now limit fn-octets)))
+          (if (null result)
+              (value :not-command)
+            (let* ((effects (fn-own-tls-result-effects result))
+                   (consumed (fn-own-tls-result-consumed result))
+                   (state (fn-owner-install-ocfg (fn-own-tls-result-owner result) state))
+                   (state (fn-owner-exposure-observe id effects consumed state)))
+              (value (fn-splan-step-make
+                      effects
+                      (fn-served-closingp effects)
+                      (fn-served-starttlsp effects)
+                      (fn-served-submission effects)
+                      consumed
+                      (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
+                      (f-get-global 'fn-owner-exposure-close state))))))))))
+
 (defun fn-owner-chunk-span (id start end sched fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
   (fn-owner-chunk-span-at id start end sched fn-octets fn-arena fn-cat state))
@@ -4242,3 +4319,162 @@ existing port only after fn-fc has made this connection ready."
 (defun fn-owner-catchup-plans (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cu-plans (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))
+
+;; Q16 (a) (lane online-reclaim-3): the pass that installs
+;; (books/owner-reclaim-pass.lisp), driven by host/native/owner.lisp
+;; fnn-owner-reclaim-pass.
+
+; The capture (under the mutex): the pass's credit reserved first under
+; :reclaim (fn-orcp-reserve, at fn-orcp-estimate of the committed record
+; octets the owner carries, fn-owner-record-octets); refused by name, nothing
+; is captured or in flight.  Admitted, fn-owner-orc-capture's values (the
+; pass and the publication in flight at COUNT) and the owner's connection
+; bound.  Answers (:deferred :credit ESTIMATE) or (:captured CAPTURE
+; MAX-CONNS).
+(defun fn-owner-orcp-capture (mode clock override free revision state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((carried (and (boundp-global 'fn-owner-record-octets state)
+                       (f-get-global 'fn-owner-record-octets state)))
+         (octets (if (and (consp carried) (natp (cdr carried))) (cdr carried) 0))
+         (r (fn-orcp-reserve (fn-owner-credits state) octets)))
+    (if (not (eq (car r) :ok))
+        (value (list :deferred :credit (fn-orcp-estimate octets)))
+      (let ((state (fn-owner-put-credits (cadr r) state)))
+        (mv-let (erp captured state)
+          (fn-owner-orc-capture mode clock override free revision state)
+          (declare (ignore erp))
+          (value (list :captured captured
+                       (fn-own-max-conns (fn-owner-core state)))))))))
+
+; Under the mutex, a chunk of the rewritten rows: its tombstoned records
+; interned into the live arena under the captured Store's key ring
+; (fn-orcp-intern-rows).  (mv ROWS FN-ARENA).
+;; Q16 (lane online-reclaim-6): the reclaim's instant recorded LIVE, the twin
+;; of the offline host/checkpoint-host.lisp fn-store-reclaim-instant-record:
+;; the one delta fn-rci-delta of CLOCK's stamp, staged on the private
+;; connection CID by the path every live reconfiguration takes
+;; (fn-owner-reconfigure-deltas: the generation pin, the connection budget,
+;; the staged record), published by host/native/admin.lisp
+;; fnn-owner-live-reconfigure-locked.  An unrepresentable instant is refused
+;; by name, :reclaim-instant, before anything is staged.  KEYSTONE
+;; (books/owner-reclaim-instant.lisp, PRF-987)
+;; fn-orli-live-record-decides-the-context: the record this stages yields the
+;; context the offline record decides at NOW
+;; (fn-rci-recorded-context-is-the-decided-context).
+(defun fn-owner-orc-instant-stage (cid clock fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (let* ((stamp (fn-record-stamp-of-observation clock))
+         (now (if (natp stamp) stamp nil)))
+    (if (fn-rci-representablep now)
+        (fn-owner-reconfigure-deltas cid (list (fn-rci-delta now)) fn-arena state)
+      (value (fn-ores-config-refused :reclaim-instant)))))
+
+(defun fn-owner-orcp-intern-chunk (rows keyring generation fn-arena)
+  (declare (xargs :stobjs fn-arena :mode :program))
+  (fn-orcp-intern-rows rows keyring generation fn-arena))
+
+(defun fn-owner-orcp-keyring (s)
+  (declare (xargs :mode :program))
+  (list (fn-sn-keyring s) (fn-sn-keyring-generation s)))
+
+; Off the mutex, pure: the rebuild (fn-orcp-rebuild: KEYSTONE
+; fn-orcp-rebuild-is-the-full-open) and the carried folds the install makes
+; over the rebuilt Store (fn-owner-install-extended, fn-owner-install-
+; profile): the retention carry, the record octets, the completion debt, the
+; carried usage.  (list E OC CARRY OCTETS DEBT USAGE), OC :fault on a
+; refused open.
+(defun fn-owner-orcp-rebuild (rows configs frontier max-conns)
+  (declare (xargs :mode :program))
+  (let* ((r (fn-orcp-rebuild rows configs frontier max-conns))
+         (oc (cadr r)))
+    (if (equal oc :fault)
+        (list (car r) :fault nil nil nil nil)
+      (let* ((s (fn-own-store (fn-ocfg-owner oc)))
+             (records (fn-sf-records (fn-sn-files s)))
+             (count (fn-sf-records-count (fn-sn-files s))))
+        (list (car r) oc
+              (fn-prc-refresh nil (fn-node-retention (fn-sn-node s)))
+              (cons count (fn-sbud-bytes-used s))
+              (cons count (fn-cvec-record-debt records))
+              (cons count (fn-pcb-tally-records records nil)))))))
+
+; Off the mutex, into FRESH catalog and history instances (the served ones
+; untouched): the catalog of the rebuilt Store's rows and its history
+; columns, as fn-owner-install-extended loads them.
+(defun fn-owner-orcp-load-columns (rows view-index salt fn-arena fn-cat fn-hist)
+  (declare (xargs :stobjs (fn-arena fn-cat fn-hist) :mode :program))
+  (let* ((fn-cat (fn-sca-load-held-rows rows view-index fn-arena fn-cat))
+         (fn-hist (fn-hist-load rows salt fn-hist)))
+    (mv :loaded fn-cat fn-hist)))
+
+(defun fn-owner-orcp-salt (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-gen-verdict-salt (and (boundp-global 'fn-store-genesis state)
+                                   (f-get-global 'fn-store-genesis state)))))
+
+(defun fn-owner-orcp-view-index (oc)
+  (declare (xargs :mode :program))
+  (fn-own-view-index (fn-own-view (fn-ocfg-owner oc))))
+
+; The swap word over the owner now (under the mutex; fn-orcp-swap-word):
+; the capture's count, frontier and Store against the owner's, the commit
+; pipeline idle (no queued, pending or in-flight submission and no
+; prepared catalog commit), READERS the other off-mutex arena readers.
+; Its :swap stands only when the swap is admissible over the REBUILT owner
+; (fn-orcp-swap-decision: the rebuild installed, the configuration is
+; the live one, every re-pinned session bounded), else :unbound by name --
+; decided before the install (fn-orcn-swap-over-the-rebuild-keeps-conn-
+; histories, books/owner-reclaim-conns.lisp).
+(defun fn-owner-orcp-swap-word (count-cap frontier-cap s-cap readers rebuilt state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((oc (fn-owner-ocfg state))
+         (o (fn-ocfg-owner oc))
+         (st (fn-own-store o)))
+    (value (fn-orcp-swap-decision
+            (fn-orcp-swap-word count-cap frontier-cap s-cap
+                               (fn-sf-records-count (fn-sn-files st))
+                               (fn-sf-frontier (fn-sn-files st))
+                               st
+                               (and (null (fn-own-queue o)) (null (fn-own-pending o))
+                                    (null (fn-own-inflight o))
+                                    (null (f-get-global 'fn-owner-cat-pending state)))
+                               readers)
+            oc (nth 1 rebuilt)))))
+
+(defun fn-owner-orcp-swap (rebuilt state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((e (nth 0 rebuilt))
+         (oc (nth 1 rebuilt))
+         (next (fn-orcp-swapped-ocfg (fn-owner-ocfg state) oc))
+         (swapped (fn-ocfg-owner next))
+         (state (fn-owner-install-ocfg next state))
+         (count (fn-sf-records-count (fn-sn-files (fn-own-store swapped))))
+         (state (f-put-global 'fn-owner-retain-carry (nth 2 rebuilt) state))
+         (state (f-put-global 'fn-owner-record-octets (nth 3 rebuilt) state))
+         (state (f-put-global 'fn-owner-record-debt (nth 4 rebuilt) state))
+         (state (f-put-global 'fn-owner-carried-usage (nth 5 rebuilt) state))
+         (state (f-put-global 'fn-owner-sco-base (fn-scka-strip-base e) state))
+         ; No H0: the next publication is the whole capture of the canonical
+         ; rows (fn-owner-sco-prepare's nil branch), the checkpoint an open
+         ; of this history publishes.  The open notes the arena's count
+         ; because its rows ARE canonical (interned from the emptied or the
+         ; checkpoint's canonical arena); the rebuilt E's rows keep their
+         ; live handles, so E is not the canonical capture the incremental
+         ; path's base must be (fn-scka-next-checkpoint-is-capture) and no
+         ; count makes it one.  The whole walk is the publication's own cost
+         ; (fnn-checkpoint-walk walks every record either way).
+         (state (f-put-global 'fn-owner-sco-base-payloads nil state))
+         (state (f-put-global 'fn-owner-sco-durable count state))
+         (state (f-put-global 'fn-owner-sco-attempted count state))
+         (state (f-put-global 'fn-owner-sco-deferred nil state))
+         (state (f-put-global 'fn-owner-sco-inflight nil state))
+         (state (f-put-global 'fn-owner-orc-pass nil state))
+         (state (fn-owner-put-credits (fn-orcp-release (fn-owner-credits state)) state)))
+    (value count)))
+
+; A pass that installs nothing ends here (under the mutex): its credit back,
+; nothing in flight (fn-owner-orc-finish).
+(defun fn-owner-orcp-finish (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (fn-owner-put-credits (fn-orcp-release (fn-owner-credits state)) state)))
+    (fn-owner-orc-finish state)))

@@ -877,6 +877,69 @@ lazy decode); the served readers move to `fn-hrecs-read` one at a time. No
 path builds a based field yet: the served open's adopt of a committed image
 is next.
 
+The adoption and the binding (PRF-920, lane composed-owner;
+`books/history-image-binding.lisp`; rows A2-A4 of the 6.6.0 list; GPT-6's
+review of 2026-09-28). The relation the reads above keep over the page file,
+`fn-hrecs-disk-faithful` (every unverified page at its address IS the
+image's), is not established by anything and could not be without reading
+every page; it is replaced by two relations the open establishes or states
+narrowly. ROOT-HOLDS (`fn-hib-root-holds`): the adopted root's tables name the
+digests of H's image pages. DISK-BOUND (`fn-hib-disk-bound`): the page file
+holds no BLAKE3 second preimage of an image page at the address the table
+names -- the cryptographic-failure assumption as a hypothesis on the actual
+file, with the collision figure (2^-128 per pair) as its pessimistic bound;
+no universal injectivity is assumed. Under them a fill verifies a page
+exactly when its words are H's page, and any other words (damage, a torn
+write, another history's page) are refused by the page store's check, by
+name: damage is never an answer and never absence. The ADOPTION
+(`fn-hib-adopt`) opens the page store at the committed root, fills and
+checks page 0, reads the header FROM PAGE 0 (never from a handle), checks its
+count against the binding's, and adopts; it ESTABLISHES `fn-hrs-rel` (the
+relation `fn-hrecs-faithful` is), root-holds and the disk bound
+(`fn-hib-adopt-establishes`), refusing by name otherwise. The BINDING the
+snapshot writes beside the checkpoint's fold state is (:hib NODE CODEC COUNT
+TRAIL REC SALT): the store's identity (the genesis record's node identity
+and salt), the image's interpretation (FNADTSN2 version, the tree codec's
+schema), the prefix's length, the prefix's IDENTITY (TRAIL: the log's chain
+value after the entries holding records [0, COUNT) -- not the count) and the
+page store's commit record exactly. The open (`fn-hib-open`) checks each
+against the store, the image format, the log's chain value at the prefix
+and the page file's root slots, refusing :store-identity, :salt, :codec,
+:prefix, :root-absent, (:count N COUNT), or the page store's refusal of the
+root's directory or table pages. Proved: an accepted binding's snapshot
+covered exactly the log's prefix entries, given that two entry lists
+chained from the same genesis trailer to the same value are equal
+(`fn-hib-chain-distinct`, the narrow chain bound: a failure needs a frame
+digest collision among the frames compared) (`fn-hib-open-binds-prefix`);
+the adopted image holds the snapshot's history, of exactly that prefix
+(`fn-hib-open-is-log-prefix`); replaying the log's suffix extends it by the
+suffix with nothing else changed (`fn-hib-replay-extends`). A read's need
+becomes a request (:page-request OP ROOT P PHYS DIGEST) the host can serve
+outside the owner; its completion keeps faithfulness (`fn-hib-complete-keeps`)
+and a late one -- the root or the page's entry changed since -- changes
+nothing and is refused :stale-root / :stale-page (`fn-hib-complete-stale`),
+so a stale completion is never mistaken for damage. Eviction of an
+unpinned page keeps faithfulness (`fn-hib-evict-keeps`); an operation that
+pins each page its reads asked for completes within the image's page count
+of its own completions whatever other operations and evictions do
+(`fn-hib-undone-evict`, `fn-hib-complete-progress`); the read loop never runs
+out of fuel with no relation to the disk at all
+(`fn-hib-hrecs-get-fuel-enough`). Teeth: `tests/acl2/history-image-binding-tests.lisp`,
+live runs over committed page files, including row A3's adversarial cases:
+equal-count histories whose image and binding are swapped (:root-absent,
+the directory refused, :prefix), an old root over a newer table generation
+(the table page refused :table-damaged; copy-on-write keeps the old root
+readable), a late fill after the active root changed (:stale-root, nothing
+changed, the new root still answers), and a crash between the two
+publications (the old root selected and read; the out-of-order case
+:root-absent, never an empty history). Scope: nothing on the served path
+calls these yet (the served checkpoint does not write the image, the served
+open does not adopt it); the eviction frees no memory in this
+representation (one words array per image; the page-frame table that frees
+it is the next representation step); a whole-state substitution of checkpoint
+and page file whose log suffix is empty is bound only by the store's
+identity and salt.
+
 ## History classes and lifetimes
 
 STO-010: every class of durable state the store holds has a stated lifetime,
@@ -1168,9 +1231,27 @@ the fold is the offline fold, `fn-orc-fold-is-the-offline-fold`), so the
 decision names exactly the rewritten articles
 (`fn-orc-decision-names-the-rewritten-articles`). Today the owner answers
 `--dry-run` (its report in the owner's log, posts and reads continuing) and
-refuses `store reclaim` and `--recorded` by name (`offline-only`) until the
-installing pass (the rewritten capture's checkpoint, the live swap, the
-drop) lands.
+`--recorded`, which INSTALLS (Q16 (a), `books/owner-reclaim-pass.lisp`,
+PRF-939): the pass reserves its second copy of the history in the run's
+credit ledger under its own key (`fn-orcp-reserve-keeps-funded`; past the
+budget `deferred reason=credit` by name, nothing moved), captures under
+the owner mutex, and off it rewrites, decides, stages the reclaimed
+checkpoint, interns the tombstones in owner quanta and rebuilds the owner
+the full open of the rewritten history installs
+(`fn-orcp-rebuild-is-the-full-open`) with fresh catalog and history
+columns. One owner quantum then installs the checkpoint (the commit point)
+and swaps the owner, re-pinning each connection to the rebuilt view
+(O(connections)), only when nothing was committed since the capture, the
+commit pipeline is idle and no other off-mutex reader holds the arena
+(`fn-orcp-swap-only-over-the-capture`); otherwise the pass defers by name
+(`delta`, `busy`, `readers`) and installs nothing. The covered segments are
+then dropped and their blocks given back (PRF-930). A death before the
+install leaves the old publication, from it the new
+(`fn-orcp-every-cut-is-old-or-new`), and a rerun rewrites nothing more
+(`fn-orcp-rerun-rewrites-nothing`). Local policy until the carried finalize
+verdict lands: a pass under continuous posting defers (`delta`). `store
+reclaim` without `--recorded` (which records the instant first) stays
+`offline-only` on a running owner.
 
 What becomes available again, precisely: the payload octets of each
 reclaimed record, on disk when the covered segments are dropped, and in the
