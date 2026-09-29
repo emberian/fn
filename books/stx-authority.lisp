@@ -36,21 +36,24 @@
   (declare (xargs :guard t))
   (if (fn-stx-records-creator-scan (fn-stx-index-records index) authority) t nil))
 
-(defun fn-stx-authority-outcome (index node article keyring group authority)
-  (declare (xargs :guard (and (fn-article-syntax-p article)
+(defun fn-stx-authority-outcome (index node article keyring group authority
+                                       fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-article-syntax-p article)
                               (fn-prin-keyringp keyring))))
   (let ((s (fn-stx-statement-of article)))
     (cond ((and s (fn-stx-index-equivocatorp index (fn-stmt-creator s)
                                              (fn-stmt-incarnation s)))
            :equivocation)
           ((fn-stx-authority-forkedp index authority) :authority-equivocation)
-          ((fn-stx-transit-authority-ok node article keyring group authority)
+          ((fn-stx-transit-authority-ok node article keyring group authority
+                                        fn-arena)
            :admitted)
           (t :refused))))
 
 (defthm fn-stx-authority-outcome-is-typed
   (member-equal (fn-stx-authority-outcome index node article keyring group
-                                          authority)
+                                          authority fn-arena)
                 *fn-stx-authority-outcomes*))
 
 ; The creator has forked this slot: the statement carries no authority, and
@@ -63,7 +66,7 @@
                  (fn-stmt-creator (fn-stx-statement-of article))
                  (fn-stmt-incarnation (fn-stx-statement-of article))))
            (equal (fn-stx-authority-outcome index node article keyring group
-                                            authority)
+                                          authority fn-arena)
                   :equivocation)))
 
 ; The group authority has forked: fn-pol-current is nil and the group admits
@@ -77,7 +80,7 @@
                            (fn-stmt-creator (fn-stx-statement-of article))
                            (fn-stmt-incarnation (fn-stx-statement-of article))))))
            (equal (fn-stx-authority-outcome index node article keyring group
-                                            authority)
+                                          authority fn-arena)
                   :authority-equivocation)))
 
 

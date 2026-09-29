@@ -3755,11 +3755,15 @@ a later publication) and serving continues."
                     *fnn-extent-checkpoint-id* new-id)))
           (dolist (f (reverse frames))
             (destructuring-bind (eoff elen handles) f
+              ;; A fresh read (no descriptor names the frame yet): the frame
+              ;; and its trailer, self-consistency checked; ACL2 makes the
+              ;; descriptors from the frame's own trailer, held in the buffer
+              ;; after the prefix (fn-xrt-reseat-one; lane extent-identity).
               (let ((octets (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-                              (fnn-extent-entry new-id eoff elen 0))))
+                              (fnn-extent-entry-fresh new-id eoff elen))))
                 (fnn-owner-gated (service :control)
                   (let ((st (fnn-live-octets-pub)))
-                    (setf (svref st 0) octets (svref st 1) elen)
+                    (setf (svref st 0) octets (svref st 1) (length octets))
                     (unwind-protect
                          (let ((answer (fnn-call 'fn-xrt-reseat-checkpoint-frame
                                                  handles new-id eoff elen st arena)))

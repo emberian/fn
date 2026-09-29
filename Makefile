@@ -404,6 +404,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/feed-pause-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
+	books/history-knowledge \
+	tests/acl2/history-knowledge-tests \
 	books/store-reclaim-stream \
 	tests/acl2/store-reclaim-stream-tests \
 	books/reclaim-admission \
@@ -1229,8 +1231,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/relay-source \
 	tests/acl2/relay-source-routes-tests \
 	tests/acl2/owner-served-invariants-tests \
+	books/productive-contract \
+	books/productive-observer \
+	tests/acl2/productive-contract-tests \
 	tests/acl2/owner-numbering-tests \
 	books/number-durability \
+	books/number-durability-handles \
 	tests/acl2/number-durability-tests \
 	tests/acl2/owner-fault-tests \
 	tests/acl2/owner-verdict-tests \
@@ -1382,6 +1388,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-stop-drain-tests \
 	books/owner-time-bars \
 	tests/acl2/owner-time-bars-tests \
+	tests/acl2/tls-handshake-budget-tests \
 	books/feed-restart-domain \
 	tests/acl2/feed-restart-domain-tests \
 	books/web-request \
@@ -1486,6 +1493,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/stx-invariants \
 	books/stx-lace \
 	books/stx-index \
+	books/stx-node-lace \
 	books/stx-policy \
 	books/stx-epochs \
 	books/stx-authority \

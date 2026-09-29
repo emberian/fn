@@ -6068,6 +6068,33 @@
         "books/owner-export-request.lisp",
         "tests/acl2/owner-export-request-tests.lisp"
       ]
+    },
+    {
+      "id": "SCN-212",
+      "title": "The warranted lifecycle: accept a post, lose its acknowledgement, restart, reconcile, read through the indexed view, two holds, discharge one, compaction, discharge the other, reclaim the payload, retry",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-1000"
+      ],
+      "steps": [
+        "A valid, authorized, funded POST from connection 4; the nine specified primitive completions (specs/productive-contract.md section 3).",
+        "The 240 is lost on the wire (the socket closes after the completion is consumed).",
+        "Restart; the original operation is reconciled from the durable history (the record's pair is in the successes; the Message-ID is bound).",
+        "ARTICLE by number and by Message-ID through the indexed view of a reader pinned after the restart.",
+        "Two independent holds on the article (a local archive pin and a forwarding obligation); discharge the first.",
+        "Compaction (store-reclaim-pack) with the second hold outstanding; discharge the second; reclaim the payload.",
+        "Retry the original POST with the same Message-ID."
+      ],
+      "expected": [
+        "Prefix 1: 240 and the record in the durable history (PRF-1001); the wire octets are *fn-pcx-240-line* (PRF-1003).",
+        "Prefix 2: the client sees nothing; the owner's completion is consumed and the record stands (the uncertain, if rendered, names :effect-failed-after-publication, PRF-1002).",
+        "Prefix 3: the reopened store holds the record; the article's number and Message-ID are those issued (PRF-903 fn-ndur-, the store's replay theorems).",
+        "Prefix 4: 220 with the article's octets from the indexed view (open: specs/productive-contract.md section 5).",
+        "Prefixes 5 to 6: retained while any hold is outstanding; the tombstone after reclaim keeps identity, numbering and obligation fields (store-reclaim-pack; the future-observation equivalence is lane reclaim-equivalence's).",
+        "Prefix 7: 441 duplicate by name, no second allocation (fn-pidx- PRF-191); after reclaim, still a duplicate (open: store-lineage / reclaim-equivalence)."
+      ],
+      "execution_scope": "Specified for row W6 (lane productive-contract, 2026-09-29): prefixes 1 and 2 proved (PRF-1001, PRF-1002, PRF-1003) and exercised in tests/acl2/productive-contract-tests.lisp; the others carry the coverage named in specs/lifecycle.md 'The warranted lifecycle'; a native case owed at convergence."
     }
   ]
 }
