@@ -1545,3 +1545,23 @@
                      (fn-native-admin-plan (fn-na-test-argv '("reclaim" "request"))))))
 (assert-event (not (fn-native-admin-result-owner-requestp
                     (fn-native-admin-plan (fn-na-test-argv '("reclaim" "now"))))))
+; PRF-996: `policy set LIVE-FIELD N' takes any decimal natural; past the
+; u32 the plan is accepted as :set-store-limit carrying N, and the ceiling
+; is fn-lim-decide's refusal by name (tests/acl2/limits-live-tests.lisp),
+; never the parser's.
+(assert-event
+ (let ((plan (fn-native-admin-plan
+              (fn-na-test-argv '("policy" "set" "max-history-octets" "4294967296")))))
+   (and (equal (fn-native-admin-result-status plan) :accepted)
+        (equal (fn-native-admin-result-kind plan) :set-store-limit)
+        (equal (fn-native-admin-result-capacity plan) 4294967296))))
+(assert-event (fn-native-admin-naturalp "4294967296"))
+(assert-event (not (fn-native-admin-decimalp "4294967296")))
+(assert-event (not (fn-native-admin-naturalp "04096")))
+(assert-event (not (fn-native-admin-naturalp "4k")))
+(assert-event (not (fn-native-admin-naturalp "")))
+(assert-event
+ (not (equal (fn-native-admin-result-status
+              (fn-native-admin-plan
+               (fn-na-test-argv '("policy" "set" "max-history-octets" "04096"))))
+             :accepted)))

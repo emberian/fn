@@ -157,19 +157,17 @@ class LimitsLiveTests(AutoCheckpointFixture):
         self.assertGreater(first, 0)
 
     def test_a_value_past_the_representation_ceiling_is_refused_by_name(self):
-        # PRF-996: the verb's row carries N in a u32; past it nothing is
-        # staged.  In composition the operator's parser refuses N first
-        # (books/native-admin-shape.lisp fn-native-admin-decimalp: a u32), so
-        # the answer is the usage refusal (exit 5), not fn-lim-decide's
-        # :above-representation-ceiling, which a direct decision names
-        # (tests/acl2/limits-live-tests.lisp).  OPEN (LANEDUMP limits-live-7):
-        # route an over-u32 decimal of a live field to fn-lim-decide so the
-        # operator is told the ceiling.
+        # PRF-996: the verb's row carries N in a u32.  The parser takes any
+        # decimal natural (books/native-admin.lisp fn-native-admin-naturalp),
+        # so past the ceiling the change is fn-lim-decide's refusal by name,
+        # with the ceiling, exit refused, nothing staged -- not a usage line.
         self.init_small()
         before = sorted(p.name for p in (self.store / "config").iterdir())
         past = self.policy("max-history-octets", 4294967296)
-        self.assertEqual(past.returncode, 5, past.stderr.decode())
-        self.assertIn(b"usage: fn operator CONFIG policy set", past.stderr)
+        self.assertEqual(past.returncode, 1, past.stderr.decode())
+        self.assertIn(b"refused limit max-history-octets=4294967296 above-representation-ceiling: "
+                      b"the format carries at most 4294967295", past.stderr)
+        self.assertNotIn(b"usage:", past.stderr)
         self.assertEqual(sorted(p.name for p in (self.store / "config").iterdir()), before)
         at = self.policy("max-history-octets", 4294967295)
         self.assertNotIn(b"above-representation-ceiling", at.stderr + at.stdout)
