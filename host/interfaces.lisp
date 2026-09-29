@@ -2507,7 +2507,7 @@
   :keystones (fn-bpn-report-observe-next-selects-exactly-the-least-yielding-row))
 
 (definterface fn-bpn-report-outbox-next
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpn-report-outbox-next-selects-exactly-the-least-yielding-row))
 
 (definterface fn-bpn-report-outbox-peer-matchp
