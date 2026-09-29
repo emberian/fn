@@ -420,8 +420,62 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
       (fnn-refuse "ACL2 refused the confirm request's documents"))
     (fnn-pinv-status-code (fnn-hybrid-control-send control-path request))))
 
+;;; Row S5: `peer login NAME LOGIN FILE'.  The password is read twice from
+;;; the terminal (or two lines of stdin), never from argv; ACL2 decides the
+;;; entries agree and renders the FNAUTH1 octets (books/peer-set.lisp
+;;; fn-pset-login-file, whose file reads back as exactly that login and
+;;; password: fn-pset-login-file-reads-back).  The file is written owner-only
+;;; beside FILE and renamed over it, then `peer set NAME --login FILE' is
+;;; applied, to the running owner when there is one.
+(defun fnn-pinv-write-private (path octets)
+  (let* ((tmp (format nil "~a.tmp-~d" path (sb-posix:getpid)))
+         (buffer (coerce (fnn-octets octets) '(simple-array (unsigned-byte 8) (*))))
+         (fd (sb-posix:open tmp (logior sb-posix:o-wronly sb-posix:o-creat
+                                        sb-posix:o-excl)
+                            #o600)))
+    (unwind-protect
+         (sb-sys:with-pinned-objects (buffer)
+           (let ((written (sb-posix:write fd (sb-sys:vector-sap buffer)
+                                          (length buffer))))
+             (unless (= written (length buffer))
+               (fnn-refuse "peer login: short write to ~a" tmp)))
+           (sb-posix:fsync fd))
+      (sb-posix:close fd))
+    (sb-posix:rename tmp path)))
+
+(defun fnn-pinv-login (result words)
+  (let ((name (first words)) (login (second words)) (file (third words)))
+    (unless (fboundp 'fnn-native-auth-admin-prompt-secrets)
+      (fnn-refuse "peer login: this image has no credentials surface"))
+    (multiple-value-bind (password confirm)
+        (funcall 'fnn-native-auth-admin-prompt-secrets)
+      (let ((decision (fnn-core 'fn-pset-login-file login password confirm)))
+        (unless (eq (first decision) :ok)
+          (fnn-refuse "peer login refused: ~a"
+                      (string-downcase (symbol-name (second decision)))))
+        (fnn-pinv-write-private file (second decision))
+        (fnn-out "login peer=~a file=~a" name file)
+        (let* ((argv (fnn-core 'fn-pset-login-argv name file))
+               (plan (fnn-core 'fn-native-admin-host-plan argv))
+               (root (fnn-core 'fn-native-operator-host-result-store-root result))
+               (control (fnn-core
+                         'fn-native-operator-host-result-peering-control-path-octets
+                         result))
+               (control-path (and (fnn-octet-list-p control) (consp control)
+                                  (fnn-octets control)))
+               (live *fnn-operator-live-owner*))
+          (unless (fnn-admin-plan-acceptedp plan)
+            (fnn-refuse "peer login: ACL2 refused `peer set ~a --login': ~a"
+                        name (fnn-admin-plan-reason plan)))
+          (if (and control-path live
+                   (funcall (fnn-olo-socket-present live) control-path))
+              ;; The live owner's refusal detail (the reason word ACL2
+              ;; named over its table) goes to the status line.
+              (funcall (fnn-olo-admin live) control-path argv :live)
+            (fnn-admin-execute root plan)))))))
+
 (defun fnn-pinv-execute (result)
-  "Execute an accepted `peer keygen|genesis|invite|accept|confirm' plan."
+  "Execute an accepted `peer keygen|genesis|invite|accept|confirm|login' plan."
   (let* ((words (fnn-core 'fn-native-operator-host-result-peering-words result))
          (verb (first words))
          (control (fnn-core
@@ -430,8 +484,14 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
          (control-path (and (fnn-octet-list-p control) (consp control)
                             (fnn-octets-string (fnn-octets control)))))
     (handler-case
-        (let ((code
+        (let* ((detail nil)
+               (code
                 (cond ((equal verb "genesis") (fnn-pinv-genesis (second words)))
+                      ((equal verb "login")
+                       (multiple-value-bind (exit live-detail)
+                           (fnn-pinv-login result (rest words))
+                         (setq detail live-detail)
+                         exit))
                       ((equal verb "keygen") (fnn-pinv-keygen (second words)))
                       ((null control-path)
                        (fnn-refuse "the configuration names no control socket"))
@@ -442,7 +502,8 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
                       ((equal verb "confirm")
                        (fnn-pinv-confirm control-path (rest words)))
                       (t (fnn-fault "ACL2 returned an unknown peering verb")))))
-          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "peer")
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "peer"
+                                    detail)
           code)
       (error (condition)
         (let ((code (fnn-exit-code-for condition)))

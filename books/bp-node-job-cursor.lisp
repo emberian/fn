@@ -1060,13 +1060,42 @@
       f
     (fn-bpnjc-advance (cdr rest) peer (+ 1 f) c)))
 
-(defun fn-bpnjc-table-with (table peer f)
+; The table holds an entry per BP peer, operator data with no fixed cap
+; (D27): the walk executes by a loop (lane depth-debt, PRF-919), (mbe
+; :logic <the recursion, unchanged> :exec <a loop carrying the reversed
+; prefix>).
+(defun fn-bpnjc-table-with-loop (table peer f acc)
   (declare (xargs :guard t))
   (if (atom table)
-      (list (cons peer f))
+      (fn-ag-rev-onto acc (list (cons peer f)))
     (if (and (consp (car table)) (equal (car (car table)) peer))
-        (cons (cons peer f) (cdr table))
-      (cons (car table) (fn-bpnjc-table-with (cdr table) peer f)))))
+        (fn-ag-rev-onto acc (cons (cons peer f) (cdr table)))
+      (fn-bpnjc-table-with-loop (cdr table) peer f (cons (car table) acc)))))
+
+(defun fn-bpnjc-table-with (table peer f)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (atom table)
+                  (list (cons peer f))
+                (if (and (consp (car table)) (equal (car (car table)) peer))
+                    (cons (cons peer f) (cdr table))
+                  (cons (car table) (fn-bpnjc-table-with (cdr table) peer f))))
+       :exec (fn-bpnjc-table-with-loop table peer f nil)))
+
+(defthm fn-bpnjc-table-with-loop-is-rev-onto
+  (equal (fn-bpnjc-table-with-loop table peer f acc)
+         (fn-ag-rev-onto acc (fn-bpnjc-table-with table peer f)))
+  :hints (("Goal" :induct (fn-bpnjc-table-with-loop table peer f acc)
+                  :in-theory (union-theories
+                              '(fn-bpnjc-table-with-loop fn-bpnjc-table-with
+                                fn-ag-rev-onto atom car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-bpnjc-table-with
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnjc-table-with fn-ag-rev-onto
+                                fn-bpnjc-table-with-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-bpnjc-contact-close (table st peer cursor)
   (declare (xargs :guard t))

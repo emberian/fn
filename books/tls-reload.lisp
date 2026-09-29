@@ -64,12 +64,38 @@
     (nfix acc)))
 
 ; The first N elements of XS and the rest (a tail of XS).
-(defun fn-tlsr-split (n xs)
+; The walks over certificate content below execute by loops (lane
+; depth-debt, PRF-919): the certificate is the operator's file, with no
+; fixed cap on its size or its name list (D27), so a recursion one frame per
+; octet or per name could exhaust the 1,024 KiB control stack.  Each is (mbe
+; :logic <the recursion, unchanged> :exec <a loop>), equal by a lemma over
+; books/rev-onto.lisp's fn-ag-rev-onto.
+(defun fn-tlsr-split-loop (n xs acc)
   (declare (xargs :guard (natp n)))
   (if (or (zp n) (not (consp xs)))
-      (cons nil xs)
-    (let ((r (fn-tlsr-split (- n 1) (cdr xs))))
-      (cons (cons (car xs) (car r)) (cdr r)))))
+      (cons (fn-ag-rev-onto acc nil) xs)
+    (fn-tlsr-split-loop (- n 1) (cdr xs) (cons (car xs) acc))))
+
+(defun fn-tlsr-split (n xs)
+  (declare (xargs :guard (natp n) :verify-guards nil))
+  (mbe :logic (if (or (zp n) (not (consp xs)))
+                  (cons nil xs)
+                (let ((r (fn-tlsr-split (- n 1) (cdr xs))))
+                  (cons (cons (car xs) (car r)) (cdr r))))
+       :exec (fn-tlsr-split-loop n xs nil)))
+
+(defthm fn-tlsr-split-loop-is-rev-onto
+  (equal (fn-tlsr-split-loop n xs acc)
+         (cons (fn-ag-rev-onto acc (car (fn-tlsr-split n xs)))
+               (cdr (fn-tlsr-split n xs))))
+  :hints (("Goal" :induct (fn-tlsr-split-loop n xs acc)
+                  :in-theory (union-theories
+                              '(fn-tlsr-split-loop fn-tlsr-split
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-tlsr-split
+  :hints (("Goal" :in-theory (disable fn-tlsr-split-loop))))
 
 (defthm fn-tlsr-split-rest-shorter
   (<= (len (cdr (fn-tlsr-split n xs))) (len xs))
@@ -221,10 +247,12 @@
     nil))
 
 ; The dNSNames of GeneralName items XS, in order, or :malformed.
-(defun fn-tlsr-general-names (xs)
+; The loop reads the items left to right and stops at the first malformed
+; one: the recursion's answer is :malformed exactly when some item is.
+(defun fn-tlsr-general-names-loop (xs acc)
   (declare (xargs :guard t :measure (len xs)))
   (if (not (consp xs))
-      nil
+      (fn-ag-rev-onto acc nil)
     (let ((tag (car xs))
           (header (fn-tlsr-der-length (cdr xs))))
       (if (or (not (natp tag)) (<= 256 tag) (equal (logand tag 31) 31)
@@ -232,12 +260,45 @@
               (< (len (cdr header)) (car header)))
           :malformed
         (let* ((split (fn-tlsr-split (car header) (cdr header)))
-               (content (car split))
-               (rest (fn-tlsr-general-names (cdr split))))
-          (cond ((equal rest :malformed) :malformed)
-                ((not (equal tag 130)) rest)
-                ((fn-tlsr-name-octetsp content) (cons content rest))
+               (content (car split)))
+          (cond ((not (equal tag 130))
+                 (fn-tlsr-general-names-loop (cdr split) acc))
+                ((fn-tlsr-name-octetsp content)
+                 (fn-tlsr-general-names-loop (cdr split) (cons content acc)))
                 (t :malformed)))))))
+
+(defun fn-tlsr-general-names (xs)
+  (declare (xargs :guard t :measure (len xs) :verify-guards nil))
+  (mbe :logic
+       (if (not (consp xs))
+           nil
+         (let ((tag (car xs))
+               (header (fn-tlsr-der-length (cdr xs))))
+           (if (or (not (natp tag)) (<= 256 tag) (equal (logand tag 31) 31)
+                   (not (consp header))
+                   (< (len (cdr header)) (car header)))
+               :malformed
+             (let* ((split (fn-tlsr-split (car header) (cdr header)))
+                    (content (car split))
+                    (rest (fn-tlsr-general-names (cdr split))))
+               (cond ((equal rest :malformed) :malformed)
+                     ((not (equal tag 130)) rest)
+                     ((fn-tlsr-name-octetsp content) (cons content rest))
+                     (t :malformed))))))
+       :exec (fn-tlsr-general-names-loop xs nil)))
+
+(defthm fn-tlsr-general-names-loop-is-rev-onto
+  (equal (fn-tlsr-general-names-loop xs acc)
+         (if (equal (fn-tlsr-general-names xs) :malformed)
+             :malformed
+           (fn-ag-rev-onto acc (fn-tlsr-general-names xs))))
+  :hints (("Goal" :induct (fn-tlsr-general-names-loop xs acc)
+                  :in-theory (disable fn-tlsr-der-length fn-tlsr-split
+                                      fn-tlsr-name-octetsp))))
+
+(verify-guards fn-tlsr-general-names
+  :hints (("Goal" :in-theory (disable fn-tlsr-der-length fn-tlsr-split
+                                      fn-tlsr-name-octetsp))))
 
 ; The extension value: one SEQUENCE (0x30) holding exactly the items.  No
 ; extension (nil) names nothing; anything else unreadable is :malformed.
@@ -453,14 +514,42 @@
               (fn-tlsr-decimal (nth 5 fields) 2) (list 90))
     (fn-record-string-octets "unreadable")))
 
-(defun fn-tlsr-names-octets (names)
+(defun fn-tlsr-names-octets-loop (names acc)
   (declare (xargs :guard t))
   (if (consp names)
-      (append (if (fn-cbor-octet-listp (car names)) (true-list-fix (car names)) nil)
-              (if (consp (cdr names))
-                  (cons 44 (fn-tlsr-names-octets (cdr names)))
-                nil))
-    nil))
+      (fn-tlsr-names-octets-loop
+       (cdr names)
+       (fn-ag-rev-onto (if (consp (cdr names)) (list 44) nil)
+                       (fn-ag-rev-onto (if (fn-cbor-octet-listp (car names))
+                                           (true-list-fix (car names))
+                                         nil)
+                                       acc)))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-tlsr-names-octets (names)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp names)
+           (append (if (fn-cbor-octet-listp (car names)) (true-list-fix (car names)) nil)
+                   (if (consp (cdr names))
+                       (cons 44 (fn-tlsr-names-octets (cdr names)))
+                     nil))
+         nil)
+       :exec (fn-tlsr-names-octets-loop names nil)))
+
+(local (defthm fn-tlsr-rev-onto-of-rev-onto
+  (equal (fn-ag-rev-onto (fn-ag-rev-onto a b) c)
+         (fn-ag-rev-onto b (append a c)))))
+
+(defthm fn-tlsr-names-octets-loop-is-rev-onto
+  (equal (fn-tlsr-names-octets-loop names acc)
+         (fn-ag-rev-onto acc (fn-tlsr-names-octets names)))
+  :hints (("Goal" :induct (fn-tlsr-names-octets-loop names acc)
+                  :in-theory (disable fn-cbor-octet-listp true-list-fix))))
+
+(verify-guards fn-tlsr-names-octets
+  :hints (("Goal" :in-theory (disable fn-cbor-octet-listp true-list-fix
+                                      fn-tlsr-names-octets-loop))))
 
 (defconst *fn-tlsr-none-line* (fn-record-string-octets "tls none"))
 

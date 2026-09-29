@@ -25,6 +25,7 @@
 ; This book owns the prefix `fn-rof-' (docs/prefixes.md).
 
 (in-package "ACL2")
+(include-book "rev-onto")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -40,12 +41,36 @@
         (fn-rof-lookup msgid (cdr mem)))
     nil))
 
-(defun fn-rof-first (n xs)
-  ; At most the first N elements (`take' pads; this does not).
+; Executes by a loop (lane depth-debt, PRF-919): it walks up to N elements, N the operator-configured refused-offer memory, operator
+; data with no fixed cap (D27), so the recursion took one control-stack
+; frame per element.  The :logic is the recursion, unchanged.
+(defun fn-rof-first-loop (n xs acc)
   (declare (xargs :guard (natp n)))
   (if (and (consp xs) (not (zp n)))
-      (cons (car xs) (fn-rof-first (- n 1) (cdr xs)))
-    nil))
+      (fn-rof-first-loop (- n 1) (cdr xs) (cons (car xs) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-rof-first (n xs)
+  ; At most the first N elements (`take' pads; this does not).
+  (declare (xargs :guard (natp n) :verify-guards nil))
+  (mbe :logic (if (and (consp xs) (not (zp n)))
+                  (cons (car xs) (fn-rof-first (- n 1) (cdr xs)))
+                nil)
+       :exec (fn-rof-first-loop n xs nil)))
+
+(defthm fn-rof-first-loop-is-rev-onto
+  (equal (fn-rof-first-loop n xs acc)
+         (fn-ag-rev-onto acc (fn-rof-first n xs)))
+  :hints (("Goal" :induct (fn-rof-first-loop n xs acc)
+                  :in-theory (union-theories
+                              '(fn-rof-first-loop fn-rof-first fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-rof-first
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-rof-first fn-ag-rev-onto fn-rof-first-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; Remember REASON for MSGID under capacity CAP.  A Message-ID already held
 ; keeps its first entry and its place; a new one goes to the front and the

@@ -239,3 +239,53 @@
 
 (defthm fn-zc-deflate-state-octets-value
   (equal (fn-zc-deflate-state-octets) 57344))
+
+; -----------------------------------------------------------------------------
+; The flush schedule and the output it may make (GPT-6's compression review,
+; 2026-09-29 section 6: zlib's deflateBound bounds a stream ended by Z_FINISH
+; or Z_NO_FLUSH, not interactive flushes; the schedule and the buffered
+; output belong in the reservation).
+;
+; SCHEDULE.  Under a layer the host renders the reply plan in windows of at
+; most `fn-zc-window-octets' plaintext octets (`fn-zc-render-window-size' of
+; the plan's own window) and compresses each with exactly one Z_SYNC_FLUSH
+; (host/native/mux.lisp fnn-mux-z-out, host/native/deflate.lisp
+; fnn-zout-sync).  A sync flush empties zlib's input and leaves the stream
+; byte aligned, so every call starts from no pending input and no pending
+; bits: a call's output is one segment of the stream.
+;
+; OUTPUT.  For these parameters (window bits 12 at most hash bits 13) zlib's
+; own bound on a segment of N octets is its "fixed" bound N + N/8 + N/256 +
+; N/512 + 4 (deflate.c deflateBound); the sync flush adds an empty stored
+; block (at most 7 pad bits and 4 octets) after the last block's end code,
+; which the 16 octets here cover.  That is a statement about foreign code:
+; the host gives zlib exactly this capacity and a segment that does not fit
+; is a fault that closes the connection (fn_deflate_sync's -2), never a
+; truncated stream.  books/connection-budget.lisp charges the buffer.
+
+(defun fn-zc-window-octets ()
+  (declare (xargs :guard t))
+  4096)
+
+(defun fn-zc-render-window-size (size)
+  ; The plaintext window the host renders under a layer: the plan's own
+  ; window (books/served-plan.lisp fn-splan-window-size), at most
+  ; `fn-zc-window-octets'.
+  (declare (xargs :guard t))
+  (min (nfix size) (fn-zc-window-octets)))
+
+(defun fn-zc-sync-output-octets (n)
+  ; The compressed octets one sync-flushed window of N plaintext octets is
+  ; given room for.
+  (declare (xargs :guard t))
+  (let ((n (nfix n)))
+    (+ n (floor n 8) (floor n 256) (floor n 512) 4 16)))
+
+(defthm fn-zc-render-window-size-bounds
+  (and (<= (fn-zc-render-window-size size) (fn-zc-window-octets))
+       (<= (fn-zc-render-window-size size) (nfix size))
+       (implies (posp size) (posp (fn-zc-render-window-size size))))
+  :rule-classes nil)
+
+(defthm fn-zc-sync-output-octets-of-a-window
+  (equal (fn-zc-sync-output-octets (fn-zc-window-octets)) 4652))

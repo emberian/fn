@@ -19,10 +19,11 @@
 ;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
 (local (in-theory (disable (tau-system))))
 
-; 2000-01-01T00:00:00Z in Unix milliseconds (the DTN epoch; the same figure as
+; 2000-01-01T00:00:00Z in Unix milliseconds (the DTN epoch, the served wall
+; reading's own constant in books/clock-wall-reading.lisp; the same figure as
 ; books/nntp-responses.lisp *fn-nntp-unix-dtn-offset-ms*, asserted equal in
 ; tests/acl2/clock-reading-tests.lisp).
-(defconst *fn-clkr-dtn-epoch-unix-ms* 946684800000)
+(defconst *fn-clkr-dtn-epoch-unix-ms* (* 1000 *fn-otm-dtn-epoch-unix-seconds*))
 (defconst *fn-clkr-ns-per-ms* 1000000)
 
 (defun fn-clkr-ms-of-ns (ns)
@@ -84,9 +85,9 @@
 ; caller, host/bp-ingress-host.lisp, is not loaded by the served images; the
 ; served wall reading is host/native/io.lisp fnn-owner-wall-milliseconds and
 ; fnn-store-prepare-observation, which hand gettimeofday's seconds and
-; microseconds to fn-otm-wall-reading (books/clock-wall-reading.lisp).  At
-; the DTN epoch's offset, that decision is this book's: the reading has a
-; wall exactly when its nanoseconds are at or after the epoch, and the wall
+; microseconds to fn-otm-wall-reading (books/clock-wall-reading.lisp), whose
+; epoch is its own constant.  That decision is this book's: the reading has
+; a wall exactly when its nanoseconds are at or after the epoch, and the wall
 ; is the milliseconds past it (fn-clkr-ms-of-ns, fn-clkr-wall-usablep's
 ; clock conjuncts).
 (local (include-book "arithmetic-5/top" :dir :system))
@@ -98,9 +99,8 @@
                    (+ (* 1000 seconds) (floor microseconds 1000))))))
 
 (defthm fn-clkr-wall-reading-is-the-ns-decision
-  (implies (and (integerp seconds) (natp microseconds)
-                (equal offset (floor *fn-clkr-dtn-epoch-unix-ms* 1000)))
-           (let ((w (fn-otm-wall-reading seconds microseconds offset))
+  (implies (and (integerp seconds) (natp microseconds))
+           (let ((w (fn-otm-wall-reading seconds microseconds))
                  (ns (+ (* 1000000000 seconds) (* 1000 microseconds))))
              (and (iff (cadr w)
                        (and (natp ns)
@@ -110,3 +110,28 @@
                              (- (fn-clkr-ms-of-ns ns) *fn-clkr-dtn-epoch-unix-ms*)
                            0)))))
   :hints (("Goal" :in-theory (enable fn-otm-wall-reading fn-clkr-ms-of-ns))))
+
+; KEYSTONE (PRF-305, the served monotonic readings).  The owner, the store's
+; prepare and the feed ports hand SBCL's tick counter and its rate to
+; fn-otm-monotonic-ms (host/native/owner.lisp fnn-owner-monotonic-ms,
+; host/native/io.lisp fnn-store-prepare-observation and
+; fnn-bridge-config-initial, host/native/feed-service.lisp fnn-feed-now); the
+; BP node hands CLOCK_BOOTTIME's seconds and nanoseconds to
+; fn-otm-boottime-ms (host/native/bp.lisp fnn-bp-monotonic-now).  Each is
+; fn-clkr-ms-of-ns of the reading in nanoseconds: for the tick counter, when
+; a tick is a whole number of nanoseconds (SBCL's rate is 1000000).
+(local
+ (defthm fn-clkr-floor-of-scaled-ticks
+   (implies (and (natp ticks) (posp units) (integerp (/ 1000000000 units)))
+            (equal (floor (* ticks (/ 1000000000 units)) 1000000)
+                   (floor (* ticks 1000) units)))))
+
+(defthm fn-clkr-monotonic-readings-are-the-ns-decision
+  (and (implies (and (natp ticks) (posp units) (integerp (/ 1000000000 units)))
+                (equal (fn-otm-monotonic-ms ticks units)
+                       (fn-clkr-ms-of-ns (* ticks (/ 1000000000 units)))))
+       (implies (and (natp seconds) (natp nanoseconds))
+                (equal (fn-otm-boottime-ms seconds nanoseconds)
+                       (fn-clkr-ms-of-ns (+ (* seconds 1000000000) nanoseconds)))))
+  :hints (("Goal" :in-theory (enable fn-otm-monotonic-ms fn-otm-boottime-ms
+                                     fn-clkr-ms-of-ns))))

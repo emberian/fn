@@ -45,6 +45,7 @@
 
 (in-package "ACL2")
 (include-book "octets-stobj")
+(include-book "rev-onto")
 (local (include-book "arithmetic-5/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -770,20 +771,68 @@
                           (fn-ot-b64-encode rest))))
   :hints (("Goal" :in-theory (disable fn-ot-b64-c0 fn-ot-b64-c1 fn-ot-b64-c2 fn-ot-b64-c3))))
 
-(defun fn-ot-b64-decode (xs)
+; fn-ot-b64-decode executes by a loop (lane depth-debt, PRF-919): one frame
+; per four characters of a header's base64 text, whose length nothing caps
+; below the article.  ACC holds the octets so far, reversed; the first
+; refusal is the answer, with no octets, as in the recursion.
+(defun fn-ot-b64-decode-loop (xs acc)
   (declare (xargs :guard t :measure (len xs)))
-  (cond ((atom xs) (mv nil nil))
+  (cond ((atom xs) (mv nil (fn-ag-rev-onto acc nil)))
         ((or (atom (cdr xs)) (atom (cddr xs)) (atom (cdddr xs)))
          (mv :b64-quantum nil))
         (t (let ((last (atom (cddddr xs))))
              (mv-let (err k o0 o1 o2)
                (fn-ot-b64-quantum (car xs) (cadr xs) (caddr xs) (cadddr xs) last)
                (cond (err (mv err nil))
-                     ((not (equal k 3)) (mv nil (fn-ot-b64-quantum-octets k o0 o1 o2 nil)))
-                     (t (mv-let (err2 rest) (fn-ot-b64-decode (cddddr xs))
-                          (if err2
-                              (mv err2 nil)
-                            (mv nil (fn-ot-b64-quantum-octets 3 o0 o1 o2 rest)))))))))))
+                     ((not (equal k 3))
+                      (mv nil (fn-ag-rev-onto acc (fn-ot-b64-quantum-octets k o0 o1 o2 nil))))
+                     (t (fn-ot-b64-decode-loop (cddddr xs) (list* o2 o1 o0 acc)))))))))
+
+(defun fn-ot-b64-decode (xs)
+  (declare (xargs :guard t :measure (len xs) :verify-guards nil))
+  (mbe :logic
+       (cond ((atom xs) (mv nil nil))
+             ((or (atom (cdr xs)) (atom (cddr xs)) (atom (cdddr xs)))
+              (mv :b64-quantum nil))
+             (t (let ((last (atom (cddddr xs))))
+                  (mv-let (err k o0 o1 o2)
+                    (fn-ot-b64-quantum (car xs) (cadr xs) (caddr xs) (cadddr xs) last)
+                    (cond (err (mv err nil))
+                          ((not (equal k 3)) (mv nil (fn-ot-b64-quantum-octets k o0 o1 o2 nil)))
+                          (t (mv-let (err2 rest) (fn-ot-b64-decode (cddddr xs))
+                               (if err2
+                                   (mv err2 nil)
+                                 (mv nil (fn-ot-b64-quantum-octets 3 o0 o1 o2 rest))))))))))
+       :exec (fn-ot-b64-decode-loop xs nil)))
+
+(defthm fn-ot-b64-decode-shape
+  (and (equal (list (mv-nth 0 (fn-ot-b64-decode xs)) (mv-nth 1 (fn-ot-b64-decode xs)))
+              (fn-ot-b64-decode xs))
+       (implies (mv-nth 0 (fn-ot-b64-decode xs))
+                (equal (mv-nth 1 (fn-ot-b64-decode xs)) nil)))
+  :hints (("Goal" :induct (fn-ot-b64-decode xs)
+                  :in-theory (disable fn-ot-b64-quantum-octets))))
+
+(defthm fn-ot-b64-decode-loop-is-rev-onto
+  (equal (fn-ot-b64-decode-loop xs acc)
+         (if (mv-nth 0 (fn-ot-b64-decode xs))
+             (mv (mv-nth 0 (fn-ot-b64-decode xs)) nil)
+           (mv nil (fn-ag-rev-onto acc (mv-nth 1 (fn-ot-b64-decode xs))))))
+  :hints (("Goal" :induct (fn-ot-b64-decode-loop xs acc)
+                  :in-theory (disable fn-ot-b64-decode-shape))))
+
+(defthm fn-ot-b64-decode-loop-nil
+  (equal (fn-ot-b64-decode-loop xs nil) (fn-ot-b64-decode xs))
+  :hints (("Goal" :use ((:instance fn-ot-b64-decode-shape))
+                  :in-theory (union-theories '(fn-ot-b64-decode-loop-is-rev-onto fn-ag-rev-onto)
+                                             (theory 'minimal-theory)))))
+
+(verify-guards fn-ot-b64-decode
+  :hints (("Goal" :expand ((fn-ot-b64-decode xs))
+                  :in-theory (disable (:definition fn-ot-b64-decode)
+                                      (:definition fn-ot-b64-decode-loop)
+                                      fn-ot-b64-decode-loop-is-rev-onto fn-ot-b64-decode-shape
+                                      fn-ot-b64-quantum-octets fn-ot-b64-quantum))))
 
 (defthm fn-ot-b64-decode-error-kinds
   (member (mv-nth 0 (fn-ot-b64-decode xs))

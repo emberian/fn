@@ -1561,6 +1561,51 @@ class OwnershipTests(unittest.TestCase):
 
 
 
+class UntilIsExclusiveTests(unittest.TestCase):
+    """obstructions-6 item 53: --until's exclusion is said, in the help and the run."""
+
+    def test_the_head_line_says_until_excludes_its_event(self):
+        words = proof_repl.range_words("s", "books/b", range(0, 3), [("a", "(x)")], [], 0,
+                                       False, until="fn-target")
+        self.assertIn("--until fn-target is EXCLUSIVE: fn-target itself is NOT sent "
+                      "(--through fn-target sends it)", words)
+        self.assertNotIn("EXCLUSIVE", proof_repl.range_words(
+            "s", "books/b", range(0, 3), [], [], 0, False))
+
+    def test_the_help_and_usage_say_it(self):
+        self.assertIn("--until EXCLUDES its event", proof_repl.__doc__)
+        parser_help = subprocess.run([sys.executable, str(ROOT / "tools" / "proof_repl.py"),
+                                      "send-range", "--help"], capture_output=True,
+                                     text=True).stdout
+        self.assertIn("EXCLUSIVE", parser_help)
+        self.assertIn("INCLUSIVE", parser_help)
+
+
+class LeaveLoopTests(unittest.TestCase):
+    """obstructions-6 item 49: forms that leave the ACL2 loop are refused by name."""
+
+    def test_leaving_forms_are_named(self):
+        for form in (":q", "(value :q)", "(er-progn (value-triple 1) (value :q))",
+                     "(mv nil :q state)", "(good-bye)", "(exit 0)", "(quit)",
+                     "(sb-ext:exit)", "(set-raw-mode t)", "(set-raw-mode-on! state)"):
+            self.assertIsNotNone(proof_repl.leaves_loop(form), form)
+        for form in ("(value-triple :q)", "(progn! (set-raw-mode t) (load \"x\"))",
+                     "(defthm q-lemma (equal (car (cons :q b)) :q))", ":pe car",
+                     "(set-raw-mode nil)", "(value :quiet)"):
+            self.assertIsNone(proof_repl.leaves_loop(form), form)
+
+    def test_send_refuses_before_anything_is_sent(self):
+        asked = []
+        with mock.patch.object(proof_repl, "ask", lambda *a, **k: asked.append(a) or {}), \
+                contextlib.redirect_stderr(io.StringIO()) as said:
+            code = proof_repl.send(argparse.Namespace(name="s", form="(+ 1 2) (value :q)",
+                                                      limit=None, full=False))
+        self.assertEqual(code, 2)
+        self.assertEqual(asked, [])
+        self.assertIn("exits LP into raw Lisp", said.getvalue())
+        self.assertIn("proof_repl.py stop s", said.getvalue())
+
+
 class ObstructionsTwoTests(unittest.TestCase):
     """obstructions-2 item 5: suffix, argument order, values, undo, fallback."""
 

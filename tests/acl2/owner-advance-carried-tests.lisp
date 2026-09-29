@@ -271,3 +271,80 @@
    (fn-ocl-relation
     (fn-ocfg-with-owner *acar-t-bad-completing*
                         (cdr (fn-ccar-own-finish (fn-ocfg-owner *acar-t-bad-completing*) (fn-ocfg-config *acar-t-bad-completing*) fn-arena))))))
+
+; -----------------------------------------------------------------------------
+; Safe group names, carried (PRF-1010, lane join-f2-9).
+
+; fn-acar-record-group-name-is-safe: a configured group name is a safe NNTP
+; name; without the hypothesis, a name with spaces is neither.
+(assert-event (fn-record-group-namep "comp.lang.lisp"))
+(assert-event (fn-nntp-safe-group-namep "comp.lang.lisp"))
+(assert-event (not (fn-record-group-namep "not a name")))
+(assert-event (not (fn-nntp-safe-group-namep "not a name")))
+(must-fail-checked
+ (defthm fn-acar-t-safe-name-without-record-name
+   (fn-nntp-safe-group-namep "not a name")))
+
+; fn-acar-cfgp-domain-is-safe on the witness's configuration.
+(assert-event (fn-cfgp (fn-ocfg-config *acar-t-committed*)))
+(assert-event (equal (fn-cnode-domain-of (fn-ocfg-config *acar-t-committed*))
+                     '("fn.letters" "fn.test" "fn.live")))
+(assert-event (fn-nntp-safe-group-listp
+               (fn-cnode-domain-of (fn-ocfg-config *acar-t-committed*))))
+
+; KEYSTONE fn-acar-view-historyp-carries-safe-groups.  Witness: the committed
+; owner's view is its history's, and its three group names are safe.
+(assert-event (fn-ocl-view-historyp *acar-t-o*))
+(assert-event (equal (fn-state-groups *acar-t-archive*)
+                     '("fn.letters" "fn.test" "fn.live")))
+(assert-event (fn-nntp-safe-group-listp (fn-state-groups *acar-t-archive*)))
+
+; Hypothesis removal (test-only surgery): the same view archive with an
+; unconfigured group "not a name" at watermark 1.  It is still an acceptance
+; state, so only the group conjunct separates the carried recognizer from
+; fn-nntp-projectionp; the view is no longer its history's, and the
+; conclusion fails.
+(defconst *acar-t-badname-archive*
+  (let ((a *acar-t-archive*))
+    (fn-make-state (cons "not a name" (fn-state-groups a))
+                   (cons (cons "not a name" 1) (fn-state-nexts a))
+                   (fn-state-articles a) (fn-state-next-txid a)
+                   (fn-state-pending a) (fn-state-fenced a))))
+(defconst *acar-t-badname-o*
+  (let ((o *acar-t-o*))
+    (fn-own-make (fn-own-store o)
+                 (update-nth 2 *acar-t-badname-archive* (fn-own-view o))
+                 (fn-own-conns o)
+                 (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
+                 (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
+                 (fn-own-config o) (fn-own-queue o) (fn-own-inflight o)
+                 (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
+(assert-event (equal (fn-own-view-archive (fn-own-view *acar-t-badname-o*))
+                     *acar-t-badname-archive*))
+(assert-event (fn-statep *acar-t-badname-archive*))
+(assert-event (not (fn-ocl-view-historyp *acar-t-badname-o*)))
+(assert-event (not (fn-acar-view-statep *acar-t-badname-o*)))
+(assert-event (fn-acar-conn-sessionp *acar-t-badname-o* 1))
+(must-fail-checked
+ (defthm fn-acar-t-safe-groups-without-history
+   (fn-nntp-safe-group-listp
+    (fn-state-groups (fn-own-view-archive (fn-own-view *acar-t-badname-o*))))))
+; fn-acar-nntp-projectionp-is-nntp-projectionp and
+; fn-acar-open-session-is-open-session without the group hypothesis (fn-statep
+; holds): the carried flag says t, the reference nil.
+(assert-event (fn-acar-nntp-projectionp *acar-t-badname-archive*))
+(assert-event (not (fn-nntp-projectionp *acar-t-badname-archive*)))
+(must-fail-checked
+ (defthm fn-acar-t-projection-without-safe-groups
+   (equal (fn-acar-nntp-projectionp *acar-t-badname-archive*)
+          (fn-nntp-projectionp *acar-t-badname-archive*))))
+(must-fail-checked
+ (defthm fn-acar-t-open-session-without-safe-groups
+   (equal (fn-acar-open-session *acar-t-badname-archive*)
+          (fn-nntp-open-session *acar-t-badname-archive*))))
+; fn-acar-own-advance-result-is-own-advance-result on that owner: the
+; re-pinned session would claim a projection the reference denies.
+(must-fail-checked
+ (defthm fn-acar-t-advance-without-safe-groups
+   (equal (fn-acar-own-advance-result *acar-t-badname-o* 1)
+          (fn-own-advance-result *acar-t-badname-o* 1))))

@@ -324,7 +324,7 @@
           (if (or prior context) (list nil joined)
             (list t (fn-bpaj-make-state
                      (fn-bpaj-receiver joined)
-                     (append (fn-bpaj-intents joined) (list r))
+                     (fn-bpaj-snoc (fn-bpaj-intents joined) r)
                      (fn-bpaj-facts joined) t))))))
      ((equal kind :request-transit-context)
       (let ((intent (fn-bpaj-context-intent joined r)))
@@ -342,7 +342,7 @@
               (list t (fn-bpaj-make-state
                        (fn-bprr-nth 1 answer)
                        (fn-bpaj-intents joined)
-                       (append (fn-bpaj-facts joined) (list r)) t)))))))
+                       (fn-bpaj-snoc (fn-bpaj-facts joined) r) t)))))))
      ((equal kind :request-context)
       (if (fn-bpaj-strictp joined) (list nil joined)
         (let ((answer (fn-bpaj-bprr-apply-record-fast
@@ -938,7 +938,7 @@
             (theory 'minimal-theory)
             '(car-cons cdr-cons fn-bpaj-nth-one-of-two-list
               fn-bpaj-bprr-nth-one-is-bpa-nth
-              fn-bpaj-apply-record
+              fn-bpaj-apply-record fn-bpaj-snoc
               fn-bpaj-statep-of-constructor
               fn-bpaj-intent-listp-append-one
               fn-bpaj-fact-listp-append-one

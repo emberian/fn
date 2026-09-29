@@ -442,6 +442,20 @@
            (fn-proto-within (fn-nntp-result-effects (fn-nntp-msgid-retrieval-indexed session archive index kind token fn-arena)) codes))
   :hints (("Goal" :in-theory (enable fn-nntp-msgid-retrieval-indexed))))
 
+;; fn-zar-command (books/nntp-zarticle.lisp)
+(defthm fn-proto-codes-of-zar-command
+  (implies (and (member-equal 229 codes) (member-equal 220 codes) (member-equal 423 codes)
+                (member-equal 430 codes) (member-equal 501 codes) (member-equal 503 codes))
+           (fn-proto-within (fn-nntp-result-effects (fn-zar-command session archive index args fn-arena)) codes))
+  :hints (("Goal" :in-theory (e/d (fn-zar-command fn-zar-initial)
+                                  (fn-zar-decide fn-zdn-body-lines fn-zar-line-okp
+                                   fn-nntp-msgid-retrieval-indexed))
+           :use ((:instance fn-proto-codes-of-nntp-msgid-retrieval-indexed
+                            (kind :article)
+                            (token (if (equal (car (fn-zar-decide args index fn-arena)) :stored)
+                                       (cadr (fn-zdn-request args))
+                                     (cadr (fn-zar-decide args index fn-arena)))))))))
+
 ;; fn-nntp-newgroups-response (books/nntp-responses.lisp)
 (defthm fn-proto-codes-of-nntp-newgroups-response
   (implies (and (member-equal 231 codes) (member-equal 501 codes) (member-equal 503 codes))

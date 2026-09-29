@@ -62,20 +62,47 @@
 
 ; The events in order; :bad if any is refused (a composite whose article does
 ; not decode, or a value the codec does not produce).
-(defun fn-intern-events (ws keyring generation fn-arena)
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of data with no fixed cap.  The :logic is
+; the recursion, unchanged; the :exec is the loop, equal by the lemma below.
+(defun fn-intern-events-loop (ws keyring generation acc fn-arena)
   (declare (xargs :stobjs fn-arena
                   :guard (and (fn-prin-keyringp keyring) (natp generation))))
   (if (atom ws)
-      (mv nil fn-arena)
+      (mv (fn-ag-rev-onto acc nil) fn-arena)
     (mv-let (row fn-arena)
       (fn-intern-event (car ws) keyring generation fn-arena)
       (if (eq row :bad)
           (mv :bad fn-arena)
-        (mv-let (rest fn-arena)
-          (fn-intern-events (cdr ws) keyring generation fn-arena)
-          (if (eq rest :bad)
-              (mv :bad fn-arena)
-            (mv (cons row rest) fn-arena)))))))
+        (fn-intern-events-loop (cdr ws) keyring generation (cons row acc) fn-arena)))))
+
+(defun fn-intern-events (ws keyring generation fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-prin-keyringp keyring) (natp generation))
+                  :verify-guards nil))
+  (mbe :logic
+       (if (atom ws)
+           (mv nil fn-arena)
+         (mv-let (row fn-arena)
+           (fn-intern-event (car ws) keyring generation fn-arena)
+           (if (eq row :bad)
+               (mv :bad fn-arena)
+             (mv-let (rest fn-arena)
+               (fn-intern-events (cdr ws) keyring generation fn-arena)
+               (if (eq rest :bad)
+                   (mv :bad fn-arena)
+                 (mv (cons row rest) fn-arena))))))
+       :exec (fn-intern-events-loop ws keyring generation nil fn-arena)))
+
+(defthm fn-intern-events-loop-is-rev-onto
+  (equal (fn-intern-events-loop ws keyring generation acc fn-arena)
+         (mv-let (r a) (fn-intern-events ws keyring generation fn-arena)
+           (mv (if (eq r :bad) :bad (fn-ag-rev-onto acc r)) a)))
+  :hints (("Goal" :induct (fn-intern-events-loop ws keyring generation acc fn-arena)
+                  :in-theory (disable fn-intern-event))))
+
+(verify-guards fn-intern-events
+  :hints (("Goal" :in-theory (disable fn-intern-event))))
 
 ; -----------------------------------------------------------------------------
 ; 2. ALPHA.  A row's bytes (total: a handle outside the arena reads as no
@@ -201,56 +228,12 @@
 ; -- 4.1 One event.
 
 ; The row is a retained event, or :bad.
-(defthm fn-hstxa-is-no-wire-event
-  (implies (fn-hstxa-p x)
-           (and (not (fn-record-p x)) (not (fn-store-retention-event-p x))
-                (not (fn-stxe-p x)) (not (fn-stxk-p x)) (not (fn-stxa-p x))
-                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
-  :hints (("Goal" :use ((:instance fn-hstxa-p-forward-shape))
-           :in-theory (e/d (fn-record-p fn-record-shapep fn-store-retention-event-p
-                            fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                            fn-stxa-p fn-stxa-shapep fn-cpe-eventp
-                            fn-th-topic-eventp fn-th-local-admin-eventp)
-                           (fn-hstxa-p)))))
-
-(defthm fn-held-is-no-wire-event
-  (implies (fn-held-p x)
-           (and (not (fn-record-p x)) (not (fn-store-retention-event-p x))
-                (not (fn-stxe-p x)) (not (fn-stxk-p x)) (not (fn-stxa-p x))
-                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
-  :hints (("Goal" :use ((:instance fn-held-p-forward-shape)
-                        (:instance fn-held-p-forward-natural-head))
-           :in-theory (e/d (fn-record-p fn-record-shapep fn-store-retention-event-p
-                            fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                            fn-stxa-p fn-stxa-shapep fn-cpe-eventp fn-held-shapep
-                            fn-th-topic-eventp fn-th-local-admin-eventp)
-                           (fn-held-p)))))
-
-(defthm fn-hstxa-is-not-held
-  (implies (fn-hstxa-p x) (not (fn-held-p x)))
-  :hints (("Goal" :use ((:instance fn-hstxa-p-forward-shape)
-                        (:instance fn-held-p-forward-natural-head))
-           :in-theory (disable fn-hstxa-p fn-held-p))))
-
-(defthm fn-stxa-is-no-other-wire-event
-  (implies (fn-stxa-p x)
-           (and (not (fn-record-p x)) (not (fn-store-retention-event-p x))
-                (not (fn-stxe-p x)) (not (fn-stxk-p x))
-                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
-  :hints (("Goal" :in-theory (enable fn-record-p fn-record-shapep fn-store-retention-event-p
-                                     fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                                     fn-stxa-p fn-stxa-shapep fn-cpe-eventp
-                                     fn-th-topic-eventp fn-th-local-admin-eventp))))
-
-(defthm fn-record-is-no-other-wire-event
-  (implies (fn-record-p x)
-           (and (not (fn-store-retention-event-p x))
-                (not (fn-stxe-p x)) (not (fn-stxk-p x))
-                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
-  :hints (("Goal" :in-theory (enable fn-record-p fn-record-shapep fn-store-retention-event-p
-                                     fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                                     fn-cpe-eventp
-                                     fn-th-topic-eventp fn-th-local-admin-eventp))))
+; The wire vocabularies' disjointness (PKT-745): proved once in
+; books/store-events.lisp, disabled there, enabled here as this book always
+; exported them (the fifth it withdrew at its end, so it is enabled locally).
+(in-theory (enable fn-hstxa-is-no-wire-event fn-held-is-no-wire-event
+                   fn-hstxa-is-not-held fn-record-is-no-other-wire-event))
+(local (in-theory (enable fn-stxa-is-no-other-wire-event)))
 
 (local (defthm fn-intern-list-row-fields
   (let ((row (car (fn-cat-intern-list w keyring generation fn-arena))))
@@ -1079,5 +1062,4 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-intern-event-arena)
-                    (:rewrite fn-stxa-is-no-other-wire-event)))
+(in-theory (disable (:rewrite fn-intern-event-arena)))

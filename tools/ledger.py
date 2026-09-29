@@ -3480,8 +3480,22 @@ def check_theorem_event(tree: Tree, ident: str, name: str) -> list[str]:
                         f"Makefile certification root reaches")
     if name in tree.suspects:
         problems.append(f"{ident}: {name} is SUSPECT ("
-                        + "; ".join(tree.suspects[name]) + ")")
+                        + "; ".join(tree.suspects[name]) + "); " + suspect_advice(name))
     return problems
+
+
+UNCITED_SUFFIXES = ("-by-definition", "-unfolds")
+
+
+def suspect_advice(name: str) -> str:
+    """What to do with a cited SUSPECT event (AGENTS.md, "Cite keystones"):
+    reclaim-equivalence renamed its lemma `-by-definition`, kept citing it,
+    and lost a round to this refusal (obstructions-6 item 52)."""
+    if name.endswith(UNCITED_SUFFIXES):
+        return ("a `-unfolds` / `-by-definition` lemma is never cited as an event: "
+                "drop it from planning/proof-events.json and cite the keystone it serves")
+    return ("cite the keystone instead; if this lemma is a restatement, name it "
+            "`-unfolds` or `-by-definition` AND do not cite it as an event")
 
 
 def check_function_event(tree: Tree, ident: str, name: str) -> list[str]:

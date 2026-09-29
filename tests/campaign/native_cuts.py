@@ -726,7 +726,10 @@ SEGMENT_PROGRAM_HOSTS = {
 }
 SEGMENT_STEP_HOST = {"create": "(fnn-open path", "fsync-file": "(fnn-fsync-file ",
                      "fsync-dir": "(fnn-fsync-dir ", "unlink": "(fnn-unlink ",
-                     "rename": "(fnn-rename-no-replace "}
+                     "rename": "(fnn-rename-no-replace ",
+                     # the rotation entry at offset 0 of the new segment
+                     # (lane store-lineage; books/store-log-lineage.lisp)
+                     "write": "(fnn-log-pwrite "}
 
 
 def verify_log_segment_cut_map() -> None:
