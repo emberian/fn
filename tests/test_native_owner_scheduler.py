@@ -664,7 +664,7 @@ class SchedulerNativeTests(unittest.TestCase):
         poster_conn, poster = self.connect()
         reader_conn, reader = self.connect()
         with poster_conn, reader_conn:
-            self.begin_post(poster, msgid, b"the poster's body\r\n")
+            self.begin_post(poster, msgid, b"the poster's body")
             time.sleep(0.5)
             peer_conn, peer = self.peer_connect()
             with peer_conn:
