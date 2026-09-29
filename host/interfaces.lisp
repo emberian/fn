@@ -4432,3 +4432,6 @@
 (definterface fn-owner-retire-report
   :class ::program
   :keystones ((fn-oret-report-carries-the-obligations-report :via fn-oret-report)))
+
+(definterface fn-native-operator-host-result-retire-control-path-octets
+  :class ::program)
