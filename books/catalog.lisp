@@ -4525,10 +4525,10 @@
             :in-theory (e/d (fn-cat$corr-w fn-cat$corr fn-cat$corr-base fn-cat$corr-live fn-cat$corr-wbv
                              fn-cat-key-of fn-cat-live-okp fn-cat-groups-coverp fn-cat-wbv-okp fn-cat-wbv-coverp
                              fn-cat-numbers-okp fn-cat-numbers-coverp fn-cat-groups-okp fn-cat-rows-corr)
-                            (fn-cat$c-index-set-key fn-mpxt-set-key fn-mpxt-set-key-is-a-list
-                             fn-mpxt-build-nil))
-            :use ((:instance fn-mpxt-key-octets-of-set-key (fn-mpxt (nth 2 fn-cat$c)))
-                  (:instance fn-mpxt-build-nil))))))
+                            (fn-cat$c-index-set-key fn-mpxt-set-key fn-mpxt-clear-is-build-nil
+                             fn-mpxt-create-is-build-nil fn-mpxt-clear create-fn-mpxt
+                             fn-mpxt-set-key-is-a-list))
+            :use ((:instance fn-mpxt-set-key-canonical (fn-mpxt (nth *fn-cat$c-mpx* fn-cat$c))))))))
 
 (defthm fn-cat-clear-keyed{correspondence}
   (implies (and (fn-cat$corr-w fn-cat$c fn-cat)
@@ -4547,7 +4547,7 @@
   :rule-classes nil)
 
 (defthm fn-cat-clear-keyed{preserved}
-  (implies (and (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))
+  (implies (and (fn-cat$ap fn-cat) (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))
            (fn-cat$ap (fn-cat$a-clear-keyed key fn-cat)))
   :rule-classes nil)
 
@@ -4776,7 +4776,11 @@
            (iff (equal (fn-mpxt-build-unplaced key (append fn-cat (list h)))
                        (fn-mpxt-build-unplaced key fn-cat))
                 (not (fn-cat-msgid-saturatedp key msgid fn-cat))))
-  :hints (("Goal" :in-theory (enable fn-cat-msgid-saturatedp))))
+  :hints (("Goal" :in-theory (e/d (fn-cat-msgid-saturatedp fn-cat$a-msgid-saturatedp)
+                                  (fn-mpxt-build-append fn-mpxt-build-saturatedp-is-the-build
+                                   fn-mpxt-build-nil fn-mpxt-set-key-is-a-list mv-nth
+                                   fn-mpxt-build-saturatedp-is-the-outcome))
+           :use ((:instance fn-mpxt-build-saturatedp-is-the-outcome (rows fn-cat))))))
 
 (defthm fn-cat-index-health-is-the-build
   (equal (fn-cat-index-health key fn-cat)
