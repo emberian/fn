@@ -3122,6 +3122,10 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-replay-identity-append-of-true-lists"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-cpe-projection-replay-append"
         },
         {
