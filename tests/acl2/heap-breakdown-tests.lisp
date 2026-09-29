@@ -28,7 +28,8 @@
 
 ;; The reachable witness: `init''s number for the small preset (the run of
 ;; the full store, unobserved, at init's connections): the hypothesis holds,
-;; the terms add up to it: 1,015 MiB since lane heap-pool charged the
+;; the terms add up to it: 965 MiB since lane chunked-body-2 packed the
+;; articles in flight, 1,015 MiB since lane heap-pool charged the
 ;; header to the history budget (the records' fixed part 128 MiB and the
 ;; header charge's heap 8 H = 64 MiB; 1,884 MiB under lane heap-bounds'
 ;; uncharged term, 1,235 MiB before it with zero-copy-commit's 32 article
@@ -38,8 +39,7 @@
 (assert! (hbt-conclusion :run *hbt-small* *hbt-core* *hbt-nursery* nil
                          (fn-heap-reserve-init-connections)))
 (assert! (equal (fn-heap-init-reservation-octets *hbt-small* *hbt-core* *hbt-nursery*)
-                1064408064))
-                1929483264))
+                1011979264))
 (assert! (equal (fn-heap-breakdown :run *hbt-small* *hbt-core* *hbt-nursery* nil
                                    (fn-heap-reserve-init-connections))
                 '((:image-dynamic . 147604131)
@@ -53,12 +53,9 @@
                   (:inflight-lists . 7864320)
                   (:taken-submission-lists . 1580864)
                   (:octet-buffers . 50725002)
-                  (:articles . 50855936)
-                  (:collector-room . 86603609)
-                  (:megabyte-rounding . 279866)
                   (:articles . 3441664)
-                  (:collector-room . 134217728)
-                  (:megabyte-rounding . 596307)
+                  (:collector-room . 80055979)
+                  (:megabyte-rounding . 232104)
                   (:image-outside-heap . 214012928)
                   (:thread-stacks . 31457280)
                   (:thread-runtime . 125829120))))
@@ -68,11 +65,12 @@
 ;; since the payload and the memberships share H, 826 MB with the article
 ;; slots (zero-copy-commit), 1,406 MB with the records' term derived from the
 ;; profile's limits (lane heap-bounds; the empty store's open chunk is 0), 520
-;; MB with the header charged to the history budget (lane heap-pool).
+;; MB with the header charged to the history budget (lane heap-pool), 470 MB
+;; with the articles in flight charged as packed submissions (lane
+;; chunked-body-2).
 (assert! (equal (fn-heap-mb-of (fn-heap-operation-figure-octets :init *hbt-small* *hbt-core*
                                                                  *hbt-nursery* nil))
-                520))
-                1362))
+                470))
 (assert! (hbt-conclusion :init *hbt-small* *hbt-core* *hbt-nursery* nil 32))
 
 ;; The hypothesis is needed: `store compact' reserves the larger of its list

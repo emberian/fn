@@ -695,10 +695,12 @@
 ;; full replay of such a store adds at most 108 MiB (one chunk and one record
 ;; as lists, the input's vectors, 1 KiB a record); a `run' sizes the open by
 ;; the store on disk (`fn-heap-operation-decide', :run), so the empty store's
-;; chunk term is 0 (lane heap-bounds, B4).  The articles in flight (lane
-;; zero-copy-commit) add 48.5 MiB: 32 slots of 1,589,248 octets (an article
-;; of A = 32 KiB, its header bound and a line, as lists, twice for the
-;; collector).  The run of an empty small store is accepted on every machine
+;; chunk term is 0 (lane heap-bounds, B4).  The articles in flight are
+;; charged as packed submissions since lane chunked-body-2
+;; (books/heap-store-figure.lisp fn-heap-article-reserve-octets), not as
+;; lists; with heap-pool's header charge the base is 282,764,298 octets
+;; (269.7 MiB), the value ACL2 evaluates.  The run of an empty small store
+;; is accepted on every machine
 ;; of at least 1,536 MiB (OpenBSD's default login class) for any image up to
 ;; 512 MiB of dynamic content, and on 2,048 MiB too (the friend's machine
 ;; has about 2 GB).
