@@ -361,7 +361,8 @@ plan remains."
 window now, each next one when the socket took the last (fnn-mux-flush).
 The connection holds one window and the plan's continuation, never the
 whole reply; a plan with nothing to write runs AFTER at once."
-  (multiple-value-bind (octets rest donep) (fnn-owner-render-next plan)
+  (multiple-value-bind (octets rest donep)
+      (fnn-owner-render-next plan (and (fnn-mux-conn-zout conn) t))
     (setf (fnn-mux-conn-plan conn) (if donep nil rest))
     (if (> (length octets) 0)
         (fnn-mux-queue loop conn octets :send-reply after)
@@ -386,7 +387,8 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
         (return-from fnn-mux-flush nil))
       (let ((plan (fnn-mux-conn-plan conn)))
         (if plan
-            (multiple-value-bind (octets rest donep) (fnn-owner-render-next plan)
+            (multiple-value-bind (octets rest donep)
+      (fnn-owner-render-next plan (and (fnn-mux-conn-zout conn) t))
               (setf (fnn-mux-conn-plan conn) (if donep nil rest)
                     (fnn-mux-conn-out conn) (fnn-mux-z-out conn octets)
                     (fnn-mux-conn-out-at conn) 0

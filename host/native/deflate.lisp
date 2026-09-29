@@ -124,8 +124,11 @@ unusable after it)."
                 (error 'fnn-owner-connection-fault :operation :compress
                        :cause "the stream is closed")))
          (src (coerce octets '(simple-array (unsigned-byte 8) (*))))
-         (cap (fnn-%deflate-bound h (length src))))
-    (unless (plusp cap)
+         ;; ACL2's room for one sync-flushed window (books/nntp-compress.lisp
+         ;; fn-zc-sync-output-octets): output that does not fit is
+         ;; fn_deflate_sync's -2, a fault on this connection, never a cut.
+         (cap (fnn-core 'fn-zc-sync-output-octets (length src))))
+    (unless (and (integerp cap) (plusp cap))
       (error 'fnn-owner-connection-fault :operation :compress
              :cause (format nil "no bound for ~a octets" (length src))))
     (let* ((dst (make-array cap :element-type '(unsigned-byte 8)))

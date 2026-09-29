@@ -255,11 +255,16 @@ rate reaches the next read)."
   "A private render buffer that holds N octets."
   (fn-octets$c-reserve n (create-fn-octets$c)))
 
-(defun fnn-owner-render-next (plan)
+(defun fnn-owner-render-next (plan &optional compressedp)
   "Render the next window of PLAN: (values OCTETS PLAN-REST DONEP), OCTETS a
 fresh vector (empty only when nothing remained), DONEP when nothing remains
-after it."
-  (let ((size (fnn-core 'fn-splan-window-size plan)))
+after it.  COMPRESSEDP: the connection has a COMPRESS layer, and the window
+is ACL2's flush-schedule window (books/nntp-compress.lisp
+fn-zc-render-window-size), each one sync flush."
+  (let ((size (if compressedp
+                  (fnn-core 'fn-zc-render-window-size
+                            (fnn-core 'fn-splan-window-size plan))
+                (fnn-core 'fn-splan-window-size plan))))
     (unless (and (integerp size) (>= size 0))
       (fnn-fault "owner returned a malformed render window size"))
     (destructuring-bind (status rest buf)
