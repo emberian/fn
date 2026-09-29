@@ -77,7 +77,7 @@
                            fn-bs-publication-admissiblep fn-bs-profile-validp
                            fn-bs-profile-of fn-bs-profile-admittedp
                            fn-bs-profile-max-history-octets
-                           fn-sbud-article-figure)))
+                           fn-sbud-article-figure fn-sbud-article-gate-figure)))
 
 ; -----------------------------------------------------------------------------
 ; Completion debt over the committed records
@@ -285,7 +285,7 @@ the capacity vector at the composite's figure."
                   :admissible)
            (fn-cvec-roomp profile (+ 1 (nfix used))
                           (+ (nfix bytes-used)
-                             (fn-sbud-article-figure payload-length group-count))
+                             (fn-sbud-article-gate-figure payload-length group-count))
                           debt))
       :admissible
     :unaffordable))
@@ -295,7 +295,7 @@ the capacity vector at the composite's figure."
   (declare (xargs :guard t))
   (if (fn-cvec-roomp profile (+ 1 (nfix used))
                      (+ (nfix bytes-used)
-                        (fn-sbud-article-figure payload-length group-count))
+                        (fn-sbud-article-gate-figure payload-length group-count))
                      debt)
       (fn-sbud-article-budget profile bytes-used payload-length group-count)
     0))
@@ -527,6 +527,8 @@ the capacity vector at the composite's figure."
   :hints (("Goal" :use ((:instance fn-sbud-held-header-octets-is-within-the-octets
                                    (row (fn-hstxa-held row)))
                         (:instance fn-sbud-held-msgid-octets-is-within-250
+                                   (row (fn-hstxa-held row)))
+                        (:instance fn-sbud-held-msgid-octets-is-within-the-octets
                                    (row (fn-hstxa-held row))))
            :in-theory (e/d (fn-sbud-row-octets fn-sbud-row-memberships
                                    fn-cvec-statement-figure fn-sbud-article-header-figure
@@ -595,7 +597,7 @@ the capacity vector at the composite's figure."
   :hints (("Goal" :use ((:instance fn-cvec-roomp-antitone-in-octets
                                    (used (+ 1 (fn-sbud-used (fn-sbud-oc-store oc))))
                                    (b (+ bytes-used
-                                         (fn-sbud-article-figure
+                                         (fn-sbud-article-gate-figure
                                           (len (fn-record-payload record))
                                           (len (fn-record-groups record)))))
                                    (b2 (+ bytes-used (len (fn-record-encode record)))))
@@ -623,7 +625,7 @@ the capacity vector at the composite's figure."
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-cvec-roomp-antitone-in-octets
                                    (used (+ 1 used))
-                                   (b (+ bytes-used (fn-sbud-article-figure
+                                   (b (+ bytes-used (fn-sbud-article-gate-figure
                                                      payload-length group-count)))
                                    (b2 (+ bytes-used (len (fn-record-encode record)))))
                         (:instance fn-sbud-article-figure-bounds-the-record))
@@ -647,7 +649,7 @@ the capacity vector at the composite's figure."
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-cvec-roomp-antitone-in-octets
                                    (used (+ 1 used))
-                                   (b (+ bytes-used (fn-sbud-article-figure
+                                   (b (+ bytes-used (fn-sbud-article-gate-figure
                                                      payload-length group-count)))
                                    (b2 (+ bytes-used (len (fn-record-encode record)))))
                         (:instance fn-sbud-article-figure-bounds-the-producer-record))
@@ -699,7 +701,7 @@ the capacity vector at the composite's figure."
   (declare (xargs :guard t :verify-guards nil))
   (let ((kind (fn-store-event-kind record)))
     (cond ((equal kind :article)
-           (fn-sbud-article-figure (fn-cvec-row-payload-length record)
+           (fn-sbud-article-gate-figure (fn-cvec-row-payload-length record)
                                    (len (fn-record-groups record))))
           ((equal kind :accepted-statement)
            (fn-cvec-statement-figure (fn-sbud-row-memberships record)))
@@ -782,13 +784,14 @@ the capacity vector at the composite's figure."
            (<= (+ (fn-cvec-row-payload-length record)
                   (* *fn-sbud-membership-octets* group-count)
                   (fn-sbud-held-heap-charge record))
-               (fn-sbud-article-figure (fn-cvec-row-payload-length record)
+               (fn-sbud-article-gate-figure (fn-cvec-row-payload-length record)
                                        group-count)))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-sbud-held-header-octets-is-within-the-octets
                                    (row record))
-                        (:instance fn-sbud-held-msgid-octets-is-within-250 (row record)))
-           :in-theory (e/d (fn-sbud-article-figure fn-sbud-article-header-figure
+                        (:instance fn-sbud-held-msgid-octets-is-within-250 (row record))
+                        (:instance fn-sbud-held-msgid-octets-is-within-the-octets (row record)))
+           :in-theory (e/d (fn-sbud-article-gate-figure fn-sbud-article-figure fn-sbud-article-header-figure
                                    fn-sbud-held-heap-charge fn-cvec-row-payload-length
                                    fn-record-encoded-octets-ceiling)
                                   (fn-sbud-held-header-octets fn-sbud-held-msgid-octets)))))
@@ -809,7 +812,7 @@ the capacity vector at the composite's figure."
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-cvec-roomp-antitone-in-octets
                                    (used (+ 1 used))
-                                   (b (+ bytes-used (fn-sbud-article-figure
+                                   (b (+ bytes-used (fn-sbud-article-gate-figure
                                                      (fn-cvec-row-payload-length record)
                                                      group-count)))
                                    (b2 (+ bytes-used (fn-cvec-row-payload-length record)
@@ -819,7 +822,7 @@ the capacity vector at the composite's figure."
            :in-theory (e/d (fn-cvec-article-verdict-at fn-sbud-article-verdict-at
                             fn-sbud-admitp fn-bs-history-admissiblep)
                            (fn-cvec-roomp fn-smr-roomp fn-cvec-row-payload-length
-                            fn-sbud-article-figure)))))
+                            fn-sbud-article-figure fn-sbud-article-gate-figure)))))
 
 ;  KEYSTONE (one committed record of any kind keeps the vector).
 (defthm fn-cvec-record-keeps-the-vector

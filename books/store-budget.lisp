@@ -119,12 +119,15 @@ ceiling cannot hold KIND's worst-case encoded record."
          (start (fn-hf-body-start facts)))
     (min octets (if (natp start) start octets))))
 
-; A held row's Message-ID octets (a Message-ID is at most 250,
-; fn-record-msgidp; the min keeps the charge's bound local).
+; A held row's Message-ID octets: at most 250 (fn-record-msgidp) and at most
+; its octets (the Message-ID is a field of its header, a part of the
+; payload; the min keeps the charge within a figure of the payload's length,
+; so an article of no payload is charged nothing more than its record).
 (defun fn-sbud-held-msgid-octets (row)
   (declare (xargs :guard t))
   (let ((msgid (fn-record-msgid row)))
-    (min 250 (if (stringp msgid) (length msgid) 0))))
+    (min (min 250 (nfix (fn-hf-octets (fn-held-facts row))))
+         (if (stringp msgid) (length msgid) 0))))
 
 (defun fn-sbud-held-heap-charge (row)
   (declare (xargs :guard t))
@@ -137,6 +140,10 @@ ceiling cannot hold KIND's worst-case encoded record."
 
 (defthm fn-sbud-held-msgid-octets-is-within-250
   (<= (fn-sbud-held-msgid-octets row) 250)
+  :rule-classes :linear)
+
+(defthm fn-sbud-held-msgid-octets-is-within-the-octets
+  (<= (fn-sbud-held-msgid-octets row) (nfix (fn-hf-octets (fn-held-facts row))))
   :rule-classes :linear)
 
 (defthm fn-sbud-held-heap-charge-natp

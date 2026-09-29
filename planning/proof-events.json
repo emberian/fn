@@ -4465,6 +4465,16 @@
         {
           "kind": "theorem",
           "name": "fn-sbud-article-figure-bounds-the-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-gate-figure-bounds-every-record",
+          "note": "Lane heap-pool: the gate figure (the record figure and the header charge at its worst) bounds every record of two payload octets or more, wide or narrow, at any producer width (the widest overhead is 28 octets past the narrow ceiling)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-verdict-keeps-history-for-every-record",
+          "note": "KEYSTONE (lane heap-pool): an article the gate admits never pushes history past H, for every record of two payload octets or more, without the narrowness or u32-charge hypotheses (the gate's header figure covers the widening). Teeth tests/acl2/store-budget-article-tests.lisp."
         }
       ]
     },

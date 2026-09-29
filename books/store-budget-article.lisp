@@ -31,29 +31,45 @@
 ;; group (books/store-budget.lisp, where the figure is derived), the same
 ;; charge the committed row carries (`fn-sbud-row-octets'), so the history
 ;; bound H bounds a store's memberships and a crosspost is paid for.
-(defun fn-sbud-article-record-figure (payload-length group-count)
-  "The record ceiling of one article at the produced widths, without its
-membership charge."
-  (declare (xargs :guard t))
-  (fn-record-encoded-octets-ceiling (nfix payload-length) (nfix group-count)))
-
-; Lane heap-pool (B9): and the header charge its row will carry
-; (`fn-sbud-held-heap-charge'), at its worst: every payload octet a header
-; octet, a Message-ID of 250.  Only the gate at the edge of H sees this worst
-; case; the committed row carries its own header's charge.
 (defun fn-sbud-article-header-figure (payload-length)
   (declare (xargs :guard t))
   (+ (* *fn-sbud-header-weight* (nfix payload-length))
-     (* *fn-sbud-msgid-weight* 250)))
+     (* *fn-sbud-msgid-weight* (min 250 (nfix payload-length)))))
 
-(defun fn-sbud-article-figure (payload-length group-count)
-  "The history octets one article of PAYLOAD-LENGTH octets in GROUP-COUNT
-groups is charged: its record ceiling at the produced widths, its
-memberships, and its header charge at its worst."
+(defun fn-sbud-article-record-figure (payload-length group-count)
+  "What the gate charges one article without its membership charge: its
+record ceiling at the produced widths and (lane heap-pool) its header
+charge at its worst (`fn-sbud-article-header-figure'), so an article refused
+for its header is not named a refusal of its memberships."
   (declare (xargs :guard t))
   (+ (fn-record-encoded-octets-ceiling (nfix payload-length) (nfix group-count))
-     (* *fn-sbud-membership-octets* (nfix group-count))
      (fn-sbud-article-header-figure payload-length)))
+
+(defun fn-sbud-article-figure (payload-length group-count)
+  "The record figure of one article of PAYLOAD-LENGTH octets in GROUP-COUNT
+groups: its record ceiling at the produced widths and its memberships."
+  (declare (xargs :guard t))
+  (+ (fn-record-encoded-octets-ceiling (nfix payload-length) (nfix group-count))
+     (* *fn-sbud-membership-octets* (nfix group-count))))
+
+; Lane heap-pool (B9): the GATE charges the record figure and the header
+; charge its row will carry (`fn-sbud-held-heap-charge'), at its worst: every
+; payload octet a header octet, a Message-ID of 250 (or of the payload's
+; octets, if fewer: the Message-ID is part of the header).  Only the gate at the
+; edge of H sees this worst case; the committed row carries its own header's
+; charge.  The record figure still bounds the record (the keystones below).
+(defun fn-sbud-article-gate-figure (payload-length group-count)
+  "The history octets one article of PAYLOAD-LENGTH octets in GROUP-COUNT
+groups is charged at the gate: its record figure and its header charge at its
+worst."
+  (declare (xargs :guard t))
+  (+ (fn-sbud-article-figure payload-length group-count)
+     (fn-sbud-article-header-figure payload-length)))
+
+(defthm fn-sbud-article-figure-within-the-gate
+  (<= (fn-sbud-article-figure payload-length group-count)
+      (fn-sbud-article-gate-figure payload-length group-count))
+  :rule-classes :linear)
 
 (defun fn-sbud-article-verdict-at (profile used bytes-used payload-length
                                            group-count)
@@ -63,7 +79,7 @@ gate at the article's own figure."
   (if (and (fn-sbud-admitp (fn-sbud-budget profile :article) used)
            (fn-bs-history-admissiblep
             profile bytes-used
-            (fn-sbud-article-figure payload-length group-count)))
+            (fn-sbud-article-gate-figure payload-length group-count)))
       :admissible
     :unaffordable))
 
@@ -73,7 +89,7 @@ profile's article budget when the article's figure fits the history bound,
 else 0 (so `fn-sbud-prepare' refuses and the owner answers :unaffordable)."
   (declare (xargs :guard t))
   (if (fn-bs-history-admissiblep
-       profile bytes-used (fn-sbud-article-figure payload-length group-count))
+       profile bytes-used (fn-sbud-article-gate-figure payload-length group-count))
       (fn-sbud-budget profile :article)
     0))
 
@@ -96,6 +112,48 @@ else 0 (so `fn-sbud-prepare' refuses and the owner answers :unaffordable)."
                             fn-record-encoded-octets-ceiling)
                            (fn-record-encode-narrow-length-bound)))))
 
+;; Lane heap-pool: the GATE figure bounds EVERY record of those counts, wide
+;; or narrow, at any producer width: the widest record's overhead is 28 octets
+;; past the narrow ceiling's (records-shape *fn-record-wide-overhead-octets*),
+;; and the header figure (20 octets a payload octet up to 250) covers it
+;; from two payload octets on.  So for such records the narrowness and
+;; u32-charge hypotheses of the keystones below are not needed at the gate;
+;; a record of no or one payload octet keeps them.
+(defthm fn-sbud-article-gate-figure-bounds-every-record
+  (implies (and (<= (len (fn-record-payload record)) (nfix payload-length))
+                (<= (len (fn-record-groups record)) (nfix group-count))
+                (<= 2 (len (fn-record-payload record))))
+           (<= (len (fn-record-encode record))
+               (fn-sbud-article-gate-figure payload-length group-count)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-record-encode-length-bound))
+           :in-theory (e/d (fn-sbud-article-gate-figure fn-sbud-article-figure
+                            fn-sbud-article-header-figure
+                            fn-record-encoded-octets-ceiling
+                            fn-record-wide-encoded-octets-ceiling)
+                           (fn-record-encode-length-bound)))))
+
+; KEYSTONE (lane heap-pool: an admitted article never pushes history past H,
+; for every record of two payload octets or more: no narrowness, no width).
+(defthm fn-sbud-article-verdict-keeps-history-for-every-record
+  (implies (and (equal (fn-sbud-article-verdict-at profile used bytes-used
+                                                   payload-length group-count)
+                       :admissible)
+                (<= (len (fn-record-payload record)) (nfix payload-length))
+                (<= (len (fn-record-groups record)) (nfix group-count))
+                (<= 2 (len (fn-record-payload record))))
+           (fn-profile-replay-within-boundp
+            profile (+ bytes-used (len (fn-record-encode record)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-sbud-article-gate-figure-bounds-every-record))
+           :in-theory (e/d (fn-sbud-article-verdict-at
+                            fn-bs-history-admissiblep
+                            fn-profile-replay-within-boundp)
+                           (fn-sbud-article-figure fn-sbud-article-gate-figure
+                            fn-sbud-admitp fn-sbud-budget
+                            fn-bs-profile-admittedp
+                            fn-bs-profile-max-history-octets)))))
+
 ; KEYSTONE (an admitted article never pushes history past H).  If the article
 ; verdict at BYTES-USED committed octets admits an article of those counts,
 ; the committed octets plus its narrow record are within H: the bound the next
@@ -116,7 +174,7 @@ else 0 (so `fn-sbud-prepare' refuses and the owner answers :unaffordable)."
            :in-theory (e/d (fn-sbud-article-verdict-at
                             fn-bs-history-admissiblep
                             fn-profile-replay-within-boundp)
-                           (fn-sbud-article-figure
+                           (fn-sbud-article-figure fn-sbud-article-gate-figure
                             fn-sbud-admitp fn-sbud-budget
                             fn-bs-profile-admittedp
                             fn-bs-profile-max-history-octets)))))
@@ -140,7 +198,7 @@ else 0 (so `fn-sbud-prepare' refuses and the owner answers :unaffordable)."
                             fn-sbud-article-budget fn-sbud-admitp
                             fn-bs-history-admissiblep
                             fn-profile-replay-within-boundp)
-                           (fn-sbud-article-figure
+                           (fn-sbud-article-figure fn-sbud-article-gate-figure
                             fn-opc-prepare fn-sbud-budget fn-sbud-used
                             fn-bs-profile-admittedp
                             fn-bs-profile-max-history-octets)))))
@@ -179,7 +237,7 @@ else 0 (so `fn-sbud-prepare' refuses and the owner answers :unaffordable)."
            :in-theory (e/d (fn-sbud-article-verdict-at
                             fn-bs-history-admissiblep
                             fn-profile-replay-within-boundp)
-                           (fn-sbud-article-figure fn-record-uint32p
+                           (fn-sbud-article-figure fn-sbud-article-gate-figure fn-record-uint32p
                             fn-sbud-admitp fn-sbud-budget
                             fn-bs-profile-admittedp
                             fn-bs-profile-max-history-octets)))))
@@ -203,7 +261,7 @@ else 0 (so `fn-sbud-prepare' refuses and the owner answers :unaffordable)."
                             fn-sbud-article-budget fn-sbud-admitp
                             fn-bs-history-admissiblep
                             fn-profile-replay-within-boundp)
-                           (fn-sbud-article-figure fn-record-uint32p
+                           (fn-sbud-article-figure fn-sbud-article-gate-figure fn-record-uint32p
                             fn-opc-prepare fn-sbud-budget fn-sbud-used
                             fn-bs-profile-admittedp
                             fn-bs-profile-max-history-octets)))))
