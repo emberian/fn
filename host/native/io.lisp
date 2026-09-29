@@ -5533,6 +5533,10 @@ tree root), or stop the build."
     "FN_APP_JOURNAL_TEST_OBSERVER"
     "FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE"
     "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE"
+    ;; Cut receipt-observed (host/native/bp-app.lisp
+    ;; fnn-bpapp-pause-after-decision): =decided holds the receipt path after
+    ;; the recorded decision until the RELEASE file appears.
+    "FN_APP_JOURNAL_TEST_HOLD_RECEIPT" "FN_APP_JOURNAL_TEST_HOLD_RECEIPT_RELEASE"
     "FN_APP_JOURNAL_TEST_FENCE_STORE" "FN_APP_JOURNAL_TEST_READ_ONLY_STORE"
     "FN_APP_JOURNAL_TEST_FAIL" "FN_IMMUTABLE_PUBLISH_TEST_FAIL"
     "FN_PEER_TEST_STOP_AFTER_CONSUME" "FN_PEER_TEST_STOP_AFTER_CONFIGURE"
