@@ -297,7 +297,7 @@
 
 (defthm fn-oah-scr-own-read-span-steps
   (fn-oah-steps (fn-own-tls-result-owner
-                 (fn-scr-own-read-span o id i end fn-octets fn-arena fn-cat))
+                 (fn-scr-own-read-span o id i end cache fn-octets fn-arena fn-cat))
                 o id)
   :hints (("Goal" :in-theory (e/d (fn-scr-own-read-span)
                                   (fn-scar-finish-read fn-oah-steps fn-scr-step-span-fast
@@ -305,14 +305,14 @@
 
 (defthm fn-oah-scr-ocfg-read-span-steps
   (fn-oah-steps (fn-ocfg-owner (fn-own-tls-result-owner
-                                (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)))
+                                (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)))
                 (fn-ocfg-owner oc) id)
   :hints (("Goal" :in-theory (e/d (fn-scr-ocfg-read-span)
                                   (fn-scr-own-read-span fn-oah-steps fn-ocfg-with-read-owner)))))
 
 (defthm fn-oah-orr-read-span-steps
   (fn-oah-steps (fn-ocfg-owner (fn-own-tls-result-owner
-                                (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat)))
+                                (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat)))
                 (fn-ocfg-owner oc) id)
   :hints (("Goal" :in-theory (union-theories '(fn-orr-read-span fn-oah-tls-accessors)
                                              (theory 'minimal-theory))
@@ -321,18 +321,18 @@
                                  (fn-ocfg-with-view
                                   (fn-own-tls-result-owner
                                    (fn-scr-ocfg-read-span (fn-ocfg-at-reader-view oc views)
-                                                          id i end fn-octets fn-arena fn-cat))
+                                                          id i end cache fn-octets fn-arena fn-cat))
                                   (fn-own-view (fn-ocfg-owner oc)))))
                             (o2 (fn-ocfg-owner
                                  (fn-own-tls-result-owner
                                   (fn-scr-ocfg-read-span (fn-ocfg-at-reader-view oc views)
-                                                         id i end fn-octets fn-arena fn-cat))))
+                                                         id i end cache fn-octets fn-arena fn-cat))))
                             (o1 (fn-ocfg-owner (fn-ocfg-at-reader-view oc views)))
                             (o (fn-ocfg-owner oc)))
                  (:instance fn-oah-with-view-keeps
                             (oc (fn-own-tls-result-owner
                                  (fn-scr-ocfg-read-span (fn-ocfg-at-reader-view oc views)
-                                                        id i end fn-octets fn-arena fn-cat)))
+                                                        id i end cache fn-octets fn-arena fn-cat)))
                             (v (fn-own-view (fn-ocfg-owner oc))))
                  (:instance fn-oah-scr-ocfg-read-span-steps
                             (oc (fn-ocfg-at-reader-view oc views)))
@@ -377,7 +377,7 @@
 ;; The host's read before the slots (the shed read included).
 (defthm fn-oah-otm-read-span-steps
   (fn-oah-steps (fn-ocfg-owner (fn-own-tls-result-owner
-                                (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat)))
+                                (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat)))
                 (fn-ocfg-owner oc) id)
   :hints (("Goal" :in-theory (union-theories '(fn-otm-read-span fn-oah-tls-accessors)
                                              (theory 'minimal-theory))
@@ -385,18 +385,18 @@
                             (o3 (fn-ocfg-owner
                                  (fn-otm-unshed-ocfg
                                   (fn-own-tls-result-owner
-                                   (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end
+                                   (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end cache
                                                      fn-octets fn-arena fn-cat))
                                   id (fn-otm-conn-allow oc id))))
                             (o2 (fn-ocfg-owner
                                  (fn-own-tls-result-owner
-                                  (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end
+                                  (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end cache
                                                     fn-octets fn-arena fn-cat))))
                             (o1 (fn-ocfg-owner (fn-otm-shed-ocfg oc id)))
                             (o (fn-ocfg-owner oc)))
                  (:instance fn-oah-unshed-ocfg-keeps
                             (oc (fn-own-tls-result-owner
-                                 (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end
+                                 (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end cache
                                                    fn-octets fn-arena fn-cat)))
                             (allow (fn-otm-conn-allow oc id)))
                  (:instance fn-oah-shed-ocfg-keeps)
@@ -446,7 +446,7 @@
 
 (defthm fn-oah-posting-off-read-steps
   (fn-oah-steps (fn-ocfg-owner (fn-own-tls-result-owner
-                                (fn-oas-posting-off-read oc views id i end s
+                                (fn-oas-posting-off-read oc views id i end cache s
                                                          fn-octets fn-arena fn-cat)))
                 (fn-ocfg-owner oc) id)
   :hints (("Goal" :in-theory (union-theories '(fn-oas-posting-off-read fn-oah-tls-accessors)
@@ -456,18 +456,18 @@
                                  (fn-otm-owner-with-allow
                                   (fn-own-tls-result-owner
                                    (fn-otm-read-span (fn-otm-owner-with-allow oc id nil) views id
-                                                     i end s fn-octets fn-arena fn-cat))
+                                                     i end cache s fn-octets fn-arena fn-cat))
                                   id (fn-otm-conn-allow oc id))))
                             (o2 (fn-ocfg-owner
                                  (fn-own-tls-result-owner
                                   (fn-otm-read-span (fn-otm-owner-with-allow oc id nil) views id
-                                                    i end s fn-octets fn-arena fn-cat))))
+                                                    i end cache s fn-octets fn-arena fn-cat))))
                             (o1 (fn-ocfg-owner (fn-otm-owner-with-allow oc id nil)))
                             (o (fn-ocfg-owner oc)))
                  (:instance fn-oah-with-allow-keeps
                             (oc (fn-own-tls-result-owner
                                  (fn-otm-read-span (fn-otm-owner-with-allow oc id nil) views id
-                                                   i end s fn-octets fn-arena fn-cat)))
+                                                   i end cache s fn-octets fn-arena fn-cat)))
                             (allow (fn-otm-conn-allow oc id)))
                  (:instance fn-oah-with-allow-keeps (allow nil))
                  (:instance fn-oah-otm-read-span-steps (oc (fn-otm-owner-with-allow oc id nil)))))))
@@ -501,7 +501,7 @@
 
 (defthm fn-oah-otm-read-span-others
   (equal (fn-oah-others (fn-ocfg-owner (fn-own-tls-result-owner
-                                        (fn-otm-read-span oc views id i end s
+                                        (fn-otm-read-span oc views id i end cache s
                                                           fn-octets fn-arena fn-cat)))
                         id)
          (fn-oah-others (fn-ocfg-owner oc) id))
@@ -510,7 +510,7 @@
 
 (defthm fn-oah-posting-off-read-others
   (equal (fn-oah-others (fn-ocfg-owner (fn-own-tls-result-owner
-                                        (fn-oas-posting-off-read oc views id i end s
+                                        (fn-oas-posting-off-read oc views id i end cache s
                                                                  fn-octets fn-arena fn-cat)))
                         id)
          (fn-oah-others (fn-ocfg-owner oc) id))
@@ -519,7 +519,7 @@
 
 (defthm fn-oah-read-span-others
   (equal (fn-oah-others (fn-ocfg-owner (fn-own-tls-result-owner
-                                        (fn-oas-read-span oc views id i end s slots
+                                        (fn-oas-read-span oc views id i end cache s slots
                                                           fn-octets fn-arena fn-cat)))
                         id)
          (fn-oah-others (fn-ocfg-owner oc) id))
@@ -532,7 +532,7 @@
 (defthm fn-oah-read-span-keeps-the-other-records
   (equal (fn-own-remove-conn
           id (fn-own-conns (fn-ocfg-owner (fn-own-tls-result-owner
-                                           (fn-oas-read-span oc views id i end s slots
+                                           (fn-oas-read-span oc views id i end cache s slots
                                                              fn-octets fn-arena fn-cat)))))
          (fn-own-remove-conn id (fn-own-conns (fn-ocfg-owner oc))))
   :hints (("Goal" :in-theory (e/d (fn-oah-others) (fn-oas-read-span fn-oah-read-span-others))
@@ -543,7 +543,7 @@
 (defthm fn-oah-read-span-leaves-the-others-article-mode
   (implies (not (equal id2 id))
            (let ((oc1 (fn-own-tls-result-owner
-                       (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat))))
+                       (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat))))
              (and (equal (fn-own-find-conn id2 (fn-own-conns (fn-ocfg-owner oc1)))
                          (fn-own-find-conn id2 (fn-own-conns (fn-ocfg-owner oc))))
                   (equal (fn-oas-articlep oc1 id2) (fn-oas-articlep oc id2)))))
@@ -557,7 +557,7 @@
                  (:instance fn-oah-find-of-remove-other
                             (conns (fn-own-conns (fn-ocfg-owner
                                                   (fn-own-tls-result-owner
-                                                   (fn-oas-read-span oc views id i end s slots
+                                                   (fn-oas-read-span oc views id i end cache s slots
                                                                      fn-octets fn-arena
                                                                      fn-cat))))))))))
 
@@ -570,7 +570,7 @@
 (defthm fn-oah-read-span-keeps-held-within-the-slots
   (implies (<= (fn-oas-held oc) (nfix slots))
            (<= (fn-oas-held (fn-own-tls-result-owner
-                             (fn-oas-read-span oc views id i end s slots
+                             (fn-oas-read-span oc views id i end cache s slots
                                                fn-octets fn-arena fn-cat)))
                (nfix slots)))
   :hints (("Goal" :in-theory (e/d (fn-oas-over-p)
@@ -593,7 +593,7 @@
 
 (defthm fn-oah-otm-read-span-bounds
   (let ((o2 (fn-ocfg-owner (fn-own-tls-result-owner
-                            (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat))))
+                            (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat))))
         (o (fn-ocfg-owner oc)))
     (and (<= (fn-oah-ex o2 id) (fn-oah-ex o id))
          (<= (len (fn-own-queue o2)) (+ 1 (len (fn-own-queue o))))
@@ -607,7 +607,7 @@
 ;; connection: at most what it held, plus one when the read left ID in
 ;; article mode with one more submission queued.
 (defthm fn-oah-admitted-otm-held
-  (let* ((r (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat))
+  (let* ((r (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat))
          (o1 (fn-ocfg-owner (fn-own-tls-result-owner r))))
     (implies (fn-oas-articlep oc id)
              (<= (fn-oas-held (fn-own-tls-result-owner r))
@@ -626,12 +626,12 @@
 ;; :body-overlimit, 441) without waiting for any other, and partial uploads
 ;; cannot hold the pool in a state where each needs more of it to finish.
 (defthm fn-oas-read-span-never-blocks-an-admitted-article
-  (let ((r (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat)))
+  (let ((r (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat)))
     (implies (and (fn-oas-articlep oc id)
                   (or (not (fn-oas-articlep (fn-own-tls-result-owner r) id))
                       (equal (len (fn-own-queue (fn-ocfg-owner (fn-own-tls-result-owner r))))
                              (len (fn-own-queue (fn-ocfg-owner oc))))))
-             (equal (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat)
+             (equal (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat)
                     r)))
   :hints (("Goal" :in-theory (e/d (fn-oas-over-p)
                                   (fn-otm-read-span fn-oas-held fn-oah-held-is
@@ -652,11 +652,11 @@
 ;; close): what the read completed is kept, and the whole-read refusal is
 ;; unreachable for an admitted connection.
 (defthm fn-oah-admitted-read-keeps-what-it-completed
-  (let ((r (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat)))
+  (let ((r (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat)))
     (implies (fn-oas-articlep oc id)
-             (or (equal (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat)
+             (or (equal (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat)
                         r)
-                 (equal (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat)
+                 (equal (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat)
                         (fn-oas-close-result r id)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-oas-read-span fn-oas-tiers fn-oas-over-p)
@@ -665,5 +665,5 @@
                                    fn-oas-posting-off-read))
            :use (fn-oah-admitted-otm-held
                  (:instance fn-oah-close-result-held
-                            (r (fn-otm-read-span oc views id i end s fn-octets fn-arena
+                            (r (fn-otm-read-span oc views id i end cache s fn-octets fn-arena
                                                  fn-cat)))))))

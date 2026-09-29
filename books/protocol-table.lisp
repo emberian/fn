@@ -874,7 +874,8 @@
                   (fn-nntp-keyword-tokenp (car args))
                   (fn-nntp-keywordp (car args) "COUNTS"))
              (fn-gidx-list-counts-command
-              session archive (fn-gidx-pin-buckets index) (cdr args)))
+              session archive (fn-gidx-pin-buckets index) (fn-nntp-env-closed env)
+              (cdr args)))
            ((fn-rcompat-reply session archive index env keyword args fn-arena)
              (fn-rcompat-reply session archive index env keyword args fn-arena))
            (t (fn-nntp-list-command session archive env args)))
@@ -980,6 +981,8 @@
              (441 :refused :post :refused "441 posting failed; REASON" :computed)
              (441 :refused :post :refused-unparsable
               "441 posting failed; the article is not valid syntax")
+             (441 :refused :post :refused-line-length
+              "441 posting failed; a header line is longer than 998 octets (RFC 5322 section 2.1.1); fold it")
              (441 :refused :post :refused-header-fields-limit
               "441 posting failed; the header has more fields than the profile's max-header-fields")
              (441 :refused :post :refused-header-lines-limit

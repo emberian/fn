@@ -21,14 +21,17 @@
     (fn-psrv-prepare-identity
      oc (fn-oii-identity-row w (fn-sn-keyring s) (fn-sn-keyring-generation s) h))))
 
-; The entry is signed-post's prepare when the row's groups are served, and
-; the owner unchanged otherwise.
+; The entry is signed-post's prepare when the row's groups are served and
+; their numbers within RFC 3977 section 6's bound, and the owner unchanged
+; otherwise.
 (defthm fn-oiis-prepare-identity-unfolds
   (equal (fn-oiis-prepare-identity oc w h)
          (let ((s (fn-own-store (fn-ocfg-owner oc))))
-           (if (fn-psrv-event-servedp
-                (fn-ocfg-config oc)
-                (fn-oii-identity-row w (fn-sn-keyring s) (fn-sn-keyring-generation s) h))
+           (if (and (fn-psrv-event-servedp
+                     (fn-ocfg-config oc)
+                     (fn-oii-identity-row w (fn-sn-keyring s) (fn-sn-keyring-generation s) h))
+                    (fn-psrv-event-numberedp
+                     oc (fn-oii-identity-row w (fn-sn-keyring s) (fn-sn-keyring-generation s) h)))
                (fn-oii-ocfg-prepare-identity oc w h)
              oc)))
   :hints (("Goal" :in-theory '(fn-oiis-prepare-identity fn-psrv-prepare-identity

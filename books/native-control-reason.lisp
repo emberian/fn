@@ -109,7 +109,9 @@
 (defun fn-native-control-reasoned-admin-encode (argv)
   (declare (xargs :guard t))
   (if (or (not (fn-native-admin-argvp argv)) (not (consp argv))
-          (< *fn-native-admin-max-arguments* (len argv)))
+          (not (fn-nctrl-admin-words-widthp argv))
+          ; the count is a u32 codec field (a width, not a bound)
+          (< *fn-cbor-max-uint* (len argv)))
       :bad
     (let ((payload (fn-nctrl-admin-argv-encode argv)))
       (if payload (fn-nctrl-seal *fn-nctrl-reasoned-admin-kind* payload) :bad))))
@@ -138,8 +140,10 @@
 ; LOGIN, ID and REASON may be empty (a withdrawal names no login, an
 ; approval no reason) and a frame field is never empty, so each travels
 ; after one octet 1: the field is (1 . OCTETS).
-(defconst *fn-nctrl-moderation-field-octets*
-  (+ 1 *fn-native-admin-max-argument-octets*))
+; PKT-867: a field's width is the least control read bound (a field never
+; outgrows the frame that carries it; the owner reads the frame under the
+; profile's bound), not an argv word bound.
+(defconst *fn-nctrl-moderation-field-octets* *fn-nctrl-max-command-frame*)
 (defconst *fn-nctrl-moderation-spec*
   (list (cons :enum *fn-nctrl-moderation-ops*)
         (cons :blob *fn-nctrl-moderation-field-octets*)
@@ -376,6 +380,67 @@
                             fn-frame-fields-parse
                             fn-frame-fields-octets fn-frame-values-okp
                             fn-native-control-reply-decode)))))
+
+;; KEYSTONE (PKT-867, D27: no argv word count or word length bound).  An
+;; administrative argv the client can seal -- any number of ASCII words, each
+;; of any length up to the record codec's byte-string width -- is the argv
+;; the owner decodes.  Subjects: the client seals with
+;; fn-native-control-host-admin-encode / -reasoned-admin-encode and the owner
+;; opens with fn-native-control-host-admin-decode / -reasoned-admin-decode
+;; (host/native-control-host.lisp, called by host/native/control.lisp
+;; fnn-control-admin and the owner's request read).  What bounds one
+;; command is the frame, read under the profile's bound; nothing counts words.
+;; Teeth: tests/acl2/native-control-tests.lisp (200 words; a 70,000-octet
+;; word, past the narrow codec's 65,535; an unsealable argv is :bad).
+(defthm fn-native-control-admin-decode-of-encode
+  (implies (not (equal (fn-native-control-admin-encode argv) :bad))
+           (equal (fn-native-control-admin-decode (fn-native-control-admin-encode argv))
+                  (list :admin argv)))
+  :hints (("Goal" :do-not-induct t
+                  :cases ((and (fn-cbor-octet-listp (fn-nctrl-admin-argv-encode argv))
+                               (<= (len (fn-nctrl-admin-argv-encode argv))
+                                   *fn-nctrl-max-payload*))))
+          ("Subgoal 2" :in-theory (e/d (fn-native-control-admin-encode fn-nctrl-seal)
+                                       (fn-nctrl-admin-argv-encode))
+                       :expand ((fn-native-control-admin-encode argv)))
+          ("Subgoal 1"
+           :use ((:instance fn-nctrl-open-of-seal
+                            (kind *fn-nctrl-admin-kind*)
+                            (payload (fn-nctrl-admin-argv-encode argv)))
+                 (:instance fn-nctrl-admin-argv-decode-of-encode))
+           :in-theory (e/d (fn-native-control-admin-encode fn-native-control-admin-decode
+                            fn-nctrl-admin-payload-decode
+                            fn-frame-result-okp fn-frame-ok fn-frame-result-payload
+                            fn-record-parse-okp fn-record-parse-value fn-record-parse-ok)
+                           (fn-nctrl-open-of-seal fn-nctrl-admin-argv-decode-of-encode
+                            fn-nctrl-admin-argv-encode fn-nctrl-admin-argv-decode
+                            fn-nctrl-open fn-nctrl-seal (:e fn-nctrl-seal)
+                            fn-native-admin-argvp fn-nctrl-admin-words-widthp)))))
+
+(defthm fn-native-control-reasoned-admin-decode-of-encode
+  (implies (not (equal (fn-native-control-reasoned-admin-encode argv) :bad))
+           (equal (fn-native-control-reasoned-admin-decode (fn-native-control-reasoned-admin-encode argv))
+                  (list :admin argv)))
+  :hints (("Goal" :do-not-induct t
+                  :cases ((and (fn-cbor-octet-listp (fn-nctrl-admin-argv-encode argv))
+                               (<= (len (fn-nctrl-admin-argv-encode argv))
+                                   *fn-nctrl-max-payload*))))
+          ("Subgoal 2" :in-theory (e/d (fn-native-control-reasoned-admin-encode fn-nctrl-seal)
+                                       (fn-nctrl-admin-argv-encode))
+                       :expand ((fn-native-control-reasoned-admin-encode argv)))
+          ("Subgoal 1"
+           :use ((:instance fn-nctrl-open-of-seal
+                            (kind *fn-nctrl-reasoned-admin-kind*)
+                            (payload (fn-nctrl-admin-argv-encode argv)))
+                 (:instance fn-nctrl-admin-argv-decode-of-encode))
+           :in-theory (e/d (fn-native-control-reasoned-admin-encode fn-native-control-reasoned-admin-decode
+                            fn-nctrl-admin-payload-decode
+                            fn-frame-result-okp fn-frame-ok fn-frame-result-payload
+                            fn-record-parse-okp fn-record-parse-value fn-record-parse-ok)
+                           (fn-nctrl-open-of-seal fn-nctrl-admin-argv-decode-of-encode
+                            fn-nctrl-admin-argv-encode fn-nctrl-admin-argv-decode
+                            fn-nctrl-open fn-nctrl-seal (:e fn-nctrl-seal)
+                            fn-native-admin-argvp fn-nctrl-admin-words-widthp)))))
 
 (defthm fn-nctrl-legacy-is-no-status
   (implies (member-equal s *fn-nctrl-statuses*) (not (equal s :legacy)))

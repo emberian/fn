@@ -104,7 +104,7 @@
                    (equal (car (last *sdt-active*))
                           (fn-nntp-active-line *sdt-empty* "fn.g50000"))))
 (assert-event (equal (len (fn-nntp-newsgroup-lines *sdt-groups*)) 50000))
-(assert-event (equal (len (fn-nntp-counts-lines *sdt-empty* *sdt-groups*)) 50000))
+(assert-event (equal (len (fn-nntp-counts-lines *sdt-empty* *sdt-groups* nil)) 50000))
 
 ; -----------------------------------------------------------------------------
 ; The syntax conversions and the reply's pieces: 100,000 characters and
