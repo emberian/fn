@@ -265,6 +265,10 @@ def main(argv=None) -> int:
                         help="count premises applied to a term as well as to a bare variable")
     parser.add_argument("--json", action="store_true", help="every premise, machine-readable")
     parser.add_argument("--explain", metavar="R", help="every theorem assuming or concluding R")
+    parser.add_argument("--pattern", metavar="REGEX",
+                        help="the listing, --markdown and --json: only premises whose name matches "
+                             "(e.g. the relation-shaped ones: 'inv|relation|okp|statep|carried'); "
+                             "never applied to --strict or --baseline")
     arguments = parser.parse_args(argv)
 
     graph = reach_check.Graph()
@@ -289,6 +293,11 @@ def main(argv=None) -> int:
         write_baseline(findings)
         print(f"premise_audit: baseline written, {len(findings)} entries")
         return 0
+    if arguments.pattern and not arguments.strict:
+        import re
+        chosen = re.compile(arguments.pattern)
+        premises = {r: row for r, row in premises.items() if chosen.search(r)}
+        findings = {r: row for r, row in findings.items() if chosen.search(r)}
     if arguments.json:
         print(json.dumps(premises, indent=2, sort_keys=True))
         return 0
