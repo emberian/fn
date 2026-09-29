@@ -176,6 +176,13 @@
               (mv (if (consp res) res (list :refused :commit)) nil nil fn-hrecs$c)
             (mv :ok (nth 1 res) (fn-his-plan-writes lpages res) fn-hrecs$c)))))))
 
+(defun fn-his-release (fn-hrecs$c)
+  ; The concrete emptied (the page store's arrays given back): after the
+  ; publication has written the image, and after the open's check, the
+  ; words of a whole image are not kept.  Decides nothing.
+  (declare (xargs :stobjs fn-hrecs$c))
+  (fn-hrc-reset 0 fn-hrecs$c))
+
 ; -----------------------------------------------------------------------------
 ; The open.
 

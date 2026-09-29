@@ -2356,6 +2356,8 @@ checked; the last row compared with the checkpoint's last record): (values
            (verdict (second answer)))
       (unless (and (consp answer) (null (first answer)))
         (fnn-fault "ACL2 error in fn-store-sco-image-open"))
+      ;; checked; the adopted words are not kept (nothing reads them yet)
+      (fnn-call 'fn-his-release (fnn-live-hrecs))
       (if (null verdict)
           (values :ok s)
           (progn
@@ -2997,7 +2999,9 @@ WRITES); with no position, (values POSITION NIL): no binding, no image."
                       (dotimes (b 8)
                         (setf (aref page (+ i b)) (ldb (byte 8 (* 8 b)) x)))
                       (incf i 8)))
-                  (fnn-write-range fd page 0 16384)))))))))
+                  (fnn-write-range fd page 0 16384)))))
+        ;; the image's words are not kept past the write
+        (fnn-call 'fn-his-release (fnn-live-hrecs))))))
 
 (defun fnn-checkpoint-write-steps (fd setup segment sequence profile st arun)
   "Write the file's frames to FD step by step: the arena run ARUN first
