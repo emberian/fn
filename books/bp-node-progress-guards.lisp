@@ -319,13 +319,25 @@
     (fn-bpnp-keeps-base-p st (fn-bpnf-family-persist-step st epoch op result))
     :hints (("Goal" :do-not-induct t
              :in-theory (union-theories '(fn-bpnf-family-persist-step) (theory 'fn-bpnp-keep-all)))))
+  ;; The twins over the host-carried reassembly job (Q4a increment B): the
+  ;; job steps answer with the family steps' state shapes.
+  (defthm fn-bpnp-job-propose-step-keeps-base
+    (fn-bpnp-keeps-base-p st (fn-bpfj-propose-step st anchor-arrival observation job limit))
+    :hints (("Goal" :do-not-induct t
+             :in-theory (union-theories '(fn-bpfj-propose-step) (theory 'fn-bpnp-keep-all)))))
+  (defthm fn-bpnp-job-persist-step-keeps-base
+    (fn-bpnp-keeps-base-p st (fn-bpfj-persist-step st epoch op result job limit))
+    :hints (("Goal" :do-not-induct t
+             :in-theory (union-theories '(fn-bpfj-persist-step) (theory 'fn-bpnp-keep-all)))))
   (defthm fn-bpnp-fragment-step-keeps-base
     (fn-bpnp-keeps-base-p st (fn-bpnf-fragment-step st event))
     :hints (("Goal" :do-not-induct t
              :in-theory (union-theories '(fn-bpnf-fragment-step
                                           fn-bpnp-foundation-step-keeps-base
                                           fn-bpnp-family-propose-step-keeps-base
-                                          fn-bpnp-family-persist-step-keeps-base)
+                                          fn-bpnp-family-persist-step-keeps-base
+                                          fn-bpnp-job-propose-step-keeps-base
+                                          fn-bpnp-job-persist-step-keeps-base)
                                         (theory 'fn-bpnp-keep-all)))))
   (defthm fn-bpnp-delete-propose-step-keeps-base
     (fn-bpnp-keeps-base-p st (fn-bpn-report-delete-propose-step st obs enabled))

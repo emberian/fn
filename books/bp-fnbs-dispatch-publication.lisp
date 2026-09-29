@@ -6,7 +6,10 @@
 
 (defun fn-bpnp-dispatch-publication-authorize
   (st epoch op record lock-owned final-absent)
-  (declare (xargs :guard t))
+  ;; The *1* class (Q4a item 2): host-called; the guard names the kinds the
+  ;; host passes (the entry guard checks them by name) and the wrapper runs raw.
+  (declare (xargs :guard (and (fn-frame-natp epoch) (fn-frame-natp op))
+                  :verify-guards nil))
   (let ((issued (fn-bpnf-issued st)))
     (if (and (fn-bpnf-operationp issued)
              (fn-bpnf-operation-matchp issued epoch op)
@@ -43,8 +46,14 @@
        (equal (nth 6 operation) (fn-jpub-initial t))))
 
 (defun fn-bpnp-dispatch-publication-name (operation)
-  (declare (xargs :guard t)) (nth 4 operation))
+  (declare (xargs :guard (true-listp operation))) (nth 4 operation))
 (defun fn-bpnp-dispatch-publication-frame (operation)
-  (declare (xargs :guard t)) (nth 5 operation))
+  (declare (xargs :guard (true-listp operation))) (nth 5 operation))
 (defun fn-bpnp-dispatch-publication-publisher (operation)
-  (declare (xargs :guard t)) (nth 6 operation))
+  (declare (xargs :guard (true-listp operation))) (nth 6 operation))
+
+(verify-guards fn-bpnp-dispatch-publication-authorize)
+(verify-guards fn-bpnp-dispatch-publication-operationp)
+(verify-guards fn-bpnp-dispatch-publication-name)
+(verify-guards fn-bpnp-dispatch-publication-frame)
+(verify-guards fn-bpnp-dispatch-publication-publisher)

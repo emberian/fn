@@ -67,3 +67,8 @@
                            (fn-frame-parse-value parsed))))
               (if (equal (fn-bpnf-delete-frame record) octets)
                   record nil))))))))
+
+;; The *1* class (Q4a item 2, bp-remainder-5): the host-called publication
+;; wrappers call these; verified so that their wrappers can be.
+(verify-guards fn-bpnf-delete-values)
+(verify-guards fn-bpnf-delete-frame)

@@ -441,3 +441,12 @@
               (fn-bpnp-deferral-replace arrival (fn-bpn-nth 5 record) held)
               (fn-bpnp-deferred-held h (fn-bpn-nth 5 record)))
       (list :fault :deferral-row))))
+
+;; The *1* class (Q4a item 2, bp-remainder-5): the host-called publication
+;; wrappers call these; verified so that their wrappers can be.
+(verify-guards fn-bpnp-session-idp)
+(verify-guards fn-bpnp-transfer-outcomep)
+(verify-guards fn-bpnp-forward-outcomep)
+(verify-guards fn-bpnp-forward-attempt-recordp)
+(verify-guards fn-bpnp-forward-result-recordp)
+(verify-guards fn-bpnp-deferral-recordp)

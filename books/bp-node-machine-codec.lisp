@@ -266,6 +266,7 @@
 (defun fn-bpn-peer-octets (peer)
   (declare (xargs :guard (fn-bpp-eidp peer)))
   (fn-bpc-enc :item (fn-bpp-eid-value peer)))
+(verify-guards fn-bpn-peer-octets) ; the *1* class (Q4a item 2): the forward codec calls it
 
 (defun fn-bpn-peer-from-octets (octets)
   (declare (xargs :guard t))
