@@ -50,6 +50,7 @@
 (include-book "../books/store-log-stream")
 ;; The open tells a torn tail from damage (lane log-corruption).
 (include-book "../books/store-log-damage")
+(include-book "../books/store-log-lineage")
 ;; The walk over the entry's octet buffer (lane snapshot-open-3; KEYSTONE
 ;; fn-lgw-step-buf-is-step): host/native/io.lisp fnn-log-stream-segment.
 (include-book "../books/store-log-buffer")

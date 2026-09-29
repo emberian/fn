@@ -1143,6 +1143,11 @@
            :use ((:instance fn-lg-rot-nthcdr-of-append-exact
                             (a (fn-lg-rotation-entry prev k unit)) (b x))))))
 
+; Closed from here: the rotation entry's shape is what the lemmas above say
+; of it (the segments book, the concrete kernel and the lineage book open it
+; in hints only).
+(in-theory (disable fn-lg-rotation-frame fn-lg-rotation-entry))
+
 (defthm fn-lg-scan-consumed-natp
   (natp (cdr (fn-lg-scan octets prev unit max)))
   :rule-classes :type-prescription

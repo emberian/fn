@@ -184,6 +184,7 @@
 (include-book "../../books/store-log-kernel-concrete")
 (include-book "../../books/store-log-stream")
 (include-book "../../books/store-log-damage")
+(include-book "../../books/store-log-lineage")
 (include-book "../../books/store-log-buffer")
 (include-book "../../books/store-log-walk-once")
 (include-book "../../books/store-log-extend")

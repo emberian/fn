@@ -116,6 +116,18 @@
       (if (equal g t0) nil (list :refused :foreign-lineage))
     (fn-lgl-head-check octets k g max)))
 
+; The reply line of a refusal, as the host prints it (ACL2 owns the text).
+(defun fn-lgl-refusal-text (verdict)
+  (declare (xargs :guard t))
+  (let ((reason (and (consp verdict) (consp (cdr verdict)) (cadr verdict))))
+    (cond ((eq reason :foreign-lineage)
+           "open refused reason=foreign-lineage: the checkpoint's log segment continues another history (a restored backup or another store's checkpoint)")
+          ((eq reason :segment-head-damaged)
+           "open refused reason=segment-head-damaged: the checkpoint's log segment has no readable rotation entry")
+          ((eq reason :segment-misnamed)
+           "open refused reason=segment-misnamed: the checkpoint's log segment is headed for another segment index")
+          (t "open refused reason=foreign-lineage: the checkpoint's log segment does not continue this history"))))
+
 ; -----------------------------------------------------------------------------
 ; The keystone.
 
