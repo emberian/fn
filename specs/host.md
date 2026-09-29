@@ -1567,3 +1567,36 @@ its committed frontier and concurrent key/configuration changes, and its
 marker-last durability program need their own implementation and evidence.
 SCN-217 uses stopped copies with explicitly supplied completion-observation
 fixtures; it establishes no running-capture guarantee.
+
+
+### Snapshot producer
+
+HST-040 (S7, planned): the running or stopped producer captures one committed
+Store frontier, its configuration history, genesis identity, retained identity
+snapshots/verdicts and keyring generation. A restore must recover the retained
+article/conflict/provenance, configuration, identity, consumer obligation,
+topic, resource and history state at that frontier. Transient connections,
+recovery barriers and process-local descriptors are not copied state.
+
+The chosen implementation reconstructs a complete state checkpoint from an
+O(1) owner capture and protected arena generation, with a captured empty suffix
+segment after the normal rotation. The producer writes outside the owner mutex
+in bounded batches. It copies immutable configuration records only through the
+captured epoch; node-secret file mutations require the same exclusive writer
+lease and therefore cannot overlap a running capture. Shared publication
+scratch and reclaim must be excluded throughout the producer lifetime. Pinned
+old artifacts and new resident/disk/fd/worker demands must be funded by the
+supported resource profile before work; exhausting a quantum resumes rather
+than truncates a store.
+
+PRF-1068 is the required maintained-live-projection to target-recovery
+correspondence. PRF-992's checkpoint-open theorem alone is insufficient: its
+captured-history-open premise must be derived, including independent identity,
+consumer and topic prefixes, and actual post-replay keyring installation.
+PRF-1069 scopes the host-called file-copy cursor to exact captured prefix
+coverage and bounded I/O; source version ownership and durability are separate.
+The completion marker is published last only after all target data is durable;
+ambiguous rename/fence failures stay uncertain and preserve recovery evidence.
+SCN-215 is reserved for actual producer output and subsequent complete restore
+checks. The offline checker SCN-217's artificial observation fixtures establish
+none of these producer guarantees.

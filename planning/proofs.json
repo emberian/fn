@@ -17578,6 +17578,27 @@
         "fn-pak-boundary-never-says-mpx-saturated",
         "fn-sca-load-held-rows-keyed-is-load-held-rows"
       ]
+    },
+    {
+      "id": "PRF-1069",
+      "title": "Snapshot prefix copying advances exactly the observed full bounded read and never silently truncates a captured file",
+      "statement": "Subject fn-osc-plan and fn-osc-advance, called by host/native/io.lisp fnn-snapshot-copy-prefix. Under a valid captured (source-incarnation, prefix-length, offset), positive work quantum and exact observed planned read count, fn-osc-successful-step-is-the-exact-bounded-prefix preserves incarnation and total limit, advances by exactly that count, makes progress without passing the captured limit, and reads at most the quantum. A short read refuses unchanged; completion requires offset equal to the entire limit. This is cursor/IO-boundary refinement, not physical file immutability, coherent producer capture or disk durability. Those need version ownership, PRF1068 and snapshot crash program evidence.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-040"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-osc-successful-step-is-the-exact-bounded-prefix"
+      ],
+      "evidence": [
+        "books/snapshot-file-copy.lisp",
+        "tests/acl2/snapshot-file-copy-tests.lisp",
+        "host/native/io.lisp"
+      ],
+      "progress_note": "Clean REPL oscc61 persvati admitted 12 teeth forms with source book encapsulated, zero refusal, 0.08s/15108 steps. Native matching source pending; no certificate or snapshot producer claim."
     }
   ]
 }

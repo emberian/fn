@@ -4423,6 +4423,46 @@ by fn-bs-imp-classify."
         (fnn-out "imported records=~d configuration=~d" count (length configs))
         +fnn-exit-ok+))))
 
+(defconstant +fnn-snapshot-copy-quantum+ 65536
+  "I/O work per snapshot cursor step; never a cap on the captured file.")
+
+(defun fnn-snapshot-copy-prefix (source-fd limit destination)
+  "Copy exactly LIMIT committed octets from one held source incarnation.
+ACL2 plans every allocation and next offset.  Short reads refuse before
+advancing; bytes beyond the captured prefix are never read.  Destination is
+fresh and completion is still gated by the later SNAPSHOT durability program."
+  (let ((cursor (fnn-core 'fn-osc-begin source-fd limit))
+        (fd (fnn-open destination (logior sb-posix:o-wronly sb-posix:o-creat
+                                         sb-posix:o-excl +fnn-o-nofollow+) #o600)))
+    (unwind-protect
+         (loop
+           (let ((plan (fnn-core 'fn-osc-plan cursor +fnn-snapshot-copy-quantum+)))
+             (case (first plan)
+               (:done (return))
+               (:read
+                (fnn-checkpoint-yield "snapshot-copy" (third plan))
+                (let* ((octets (fnn-make-octets (fourth plan)))
+                       (got (fnn-extent-pread source-fd octets (third plan)))
+                       (advance (fnn-core 'fn-osc-advance cursor
+                                          +fnn-snapshot-copy-quantum+ got)))
+                  (unless (eq (first advance) :continue)
+                    (fnn-refuse-io "snapshot source prefix read failed at ~a: ~a"
+                                   (third plan) (second advance)))
+                  (fnn-write-all fd octets)
+                  (setq cursor (second advance))))
+               (otherwise (fnn-fault "ACL2 refused a snapshot copy cursor: ~a" plan)))))
+      (fnn-close fd))))
+
+(defun fnn-snapshot-copy-regular (source destination &optional captured-limit)
+  "One source descriptor held through every bounded prefix-copy step.
+Caller establishes stable version ownership, and supplies CAPTURED-LIMIT for
+an appendable file.  Other files are immutable for this source writer lease."
+  (fnn-check-regular source t)
+  (let* ((fd (fnn-open source (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
+         (limit (or captured-limit (sb-posix:stat-size (fnn-fstat fd)))))
+    (unwind-protect (fnn-snapshot-copy-prefix fd limit destination)
+      (fnn-close fd))))
+
 (defun fnn-command-store-bless-snapshot (dir)
   "S7a: read-only validation of an existing copy, not a snapshot producer.
 

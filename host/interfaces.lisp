@@ -4503,3 +4503,9 @@
 ; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
 (definterface fn-store-sco-want-checkpoint-digest
   :class ::program)
+
+; S7 producer prefix-copy loop in host/native/io.lisp; source is a held fd.
+(definterface fn-osc-begin
+  :class :common-lisp-compliant :arg-kinds ((limit . natp)))
+(definterface fn-osc-plan :class :common-lisp-compliant)
+(definterface fn-osc-advance :class :common-lisp-compliant)
