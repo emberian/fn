@@ -904,6 +904,16 @@ that is neither accepted nor refused (the transport) is uncertain."
   "The profile octets this operator command loaded (for `run': ACL2's plan
 of the node's web face from the same octets, books/web-config.lisp).")
 
+;;; Row S8: fn.toml's relative paths are resolved under its own directory.
+;;; The host observes its working directory and hands it with the path as
+;;; given; ACL2 decides the directory and the resolution
+;;; (books/native-config-paths.lisp).
+(defun fnn-operator-run-at (config-path config-octets argv-octets)
+  (fnn-core 'fn-native-operator-host-run-at
+            (fnn-octet-list (fnn-string-octets (sb-posix:getcwd)))
+            (fnn-octet-list (fnn-string-octets config-path))
+            config-octets argv-octets))
+
 (defun fnn-command-operator (config-path argv)
   (let* ((argv-octets (fnn-operator-argv-octets argv))
          (preflight (fnn-core 'fn-native-operator-host-preflight argv-octets)))
@@ -918,7 +928,7 @@ of the node's web face from the same octets, books/web-config.lisp).")
                (config-octets (fnn-operator-read-config config-path config-bound))
                (*fnn-operator-config-octets* config-octets))
           (fnn-operator-dispatch-plan
-           (fnn-core 'fn-native-operator-host-run config-octets argv-octets)))
+           (fnn-operator-run-at config-path config-octets argv-octets)))
       (fnn-operator-dispatch-plan preflight))))
 
 (fnn-register-verb "operator"

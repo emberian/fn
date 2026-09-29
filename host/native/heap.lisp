@@ -261,7 +261,7 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
                    (fnn-core 'fn-native-operator-host-preflight-needs-config-p preflight))
           (let* ((config-octets (fnn-operator-read-config
                                  config-path (fnn-core 'fn-native-config-host-max-octets)))
-                 (result (fnn-core 'fn-native-operator-host-run config-octets argv-octets))
+                 (result (fnn-operator-run-at config-path config-octets argv-octets))
                  (root (fnn-core 'fn-native-operator-host-result-store-root result)))
             (when (and (eq (fnn-core 'fn-native-operator-host-result-status result) :accepted)
                        (stringp root))

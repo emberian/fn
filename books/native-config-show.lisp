@@ -1265,17 +1265,21 @@
        (fn-ncfg-absolutep node)
        (not (equal (fn-ncfg-first (fn-ncfg-reverse (fn-record-string-octets node))) 47))))
 
+; Row S8 (moving a node): the paths a mission writes are relative to the
+; node directory fn.toml is in (books/native-config-paths.lisp resolves them
+; for every verb), so a node directory copied elsewhere is the same node.
 (defun fn-native-mission-config (name node host port)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t)
+           (ignore node))
   (let ((row (fn-native-mission-row name)))
     (fn-native-config-make
-     (fn-ncfg-join-path node "/store") host port
-     (fn-ncfg-join-path node "/tls/cert.pem") (fn-ncfg-join-path node "/tls/key.pem")
+     "store" host port
+     "tls/cert.pem" "tls/key.pem"
      (fn-ncfg-second row) (fn-ncfg-third row)
-     (fn-ncfg-join-path node "/store/auth.toml")
+     "store/auth.toml"
      (fn-ncfg-first row) nil nil
-     (fn-ncfg-join-path node "/log/fn.log")
-     (fn-ncfg-join-path node "/store/control.sock") nil nil
+     "log/fn.log"
+     "store/control.sock" nil nil
      nil (fn-ncfg-nth 3 row) (fn-ncfg-nth 4 row) *fn-ncfg-default-cooldown-seconds*
      name nil *fn-ncfg-default-ops-scope* *fn-ncfg-default-keep-releases*
      *fn-ncfg-default-log-max-bytes* *fn-ncfg-default-log-keep* nil nil)))

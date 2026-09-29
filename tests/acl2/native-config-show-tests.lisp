@@ -143,9 +143,11 @@
 (assert-event (not (fn-native-config-posting-enabledp *ncst-relay*)))
 (assert-event (fn-native-config-auth-protected-onlyp *ncst-relay*))
 (assert-event (equal (fn-native-config-alerts-refusal-rate-per-minute *ncst-relay*) 120))
-(assert-event (fn-native-config-operator-availablep *ncst-relay*))
-(assert-event (equal (fn-native-config-store *ncst-relay*)
-                     "/tank/fn/scratch/operator-config/relay/store"))
+; Row S8: the mission writes its paths relative to the node directory; the
+; operator resolves them (tests/acl2/native-config-paths-tests.lisp has the
+; resolved configuration, which `run' accepts).
+(assert-event (equal (fn-native-config-store *ncst-relay*) "store"))
+(assert-event (equal (fn-native-config-log-path *ncst-relay*) "log/fn.log"))
 ; Refusals.
 (assert-event (equal (fn-native-mission-plan "moon" *ncst-node* "127.0.0.1" 1)
                      '(:refused :unknown-mission)))

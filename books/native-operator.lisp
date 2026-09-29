@@ -9,6 +9,7 @@
 (in-package "ACL2")
 (include-book "native-config")
 (include-book "native-config-show")
+(include-book "native-config-paths")
 (include-book "native-admin")
 (include-book "accounts")
 (include-book "native-auth-admin")
@@ -1153,6 +1154,21 @@ is installed into the owner for both served and control submission."
                     parsed))))))))))
 
 (in-theory (disable fn-native-operator-run))
+
+;; Row S8: the operator entry the host calls.  CWD is the host's working
+;; directory and CONFIG-PATH the fn.toml path as given (octet lists); the
+;; configuration's relative paths are resolved under fn.toml's directory
+;; (books/native-config-paths.lisp, KEYSTONE
+;; fn-ncpath-config-octets-load-the-resolved-configuration) before the
+;; command is planned, and a resolved path past the path bound is refused by
+;; name.
+(defun fn-native-operator-run-at (cwd config-path config-octets argv-octets)
+  (declare (xargs :guard t))
+  (let ((octets (fn-ncpath-config-octets config-octets
+                                         (fn-ncpath-base cwd config-path))))
+    (if (equal octets :bad)
+        (fn-nop-usage (list :configuration :resolved-path-bounds) nil nil nil)
+      (fn-native-operator-run octets argv-octets))))
 
 (defun fn-native-operator-result-run-planp (result)
   (declare (xargs :guard t))

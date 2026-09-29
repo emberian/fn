@@ -159,6 +159,12 @@
   :exempt ((argv-octets "a list of argument octet lists, preflighted (fn-native-operator-host-preflight)")
            (config-octets "read by fnn-operator-read-config, bounded; NIL when absent")))
 
+(definterface fn-native-operator-host-run-at
+  :class :program
+  :kinds ((cwd fn-cbor-octet-listp) (config-path fn-cbor-octet-listp))
+  :exempt ((argv-octets "a list of argument octet lists, preflighted (fn-native-operator-host-preflight)")
+           (config-octets "read by fnn-operator-read-config, bounded; NIL when absent")))
+
 (definterface fn-owner-control-submit
   :class :program
   :kinds ((msgid-octets fn-cbor-octet-listp) (group-octets fn-octet-list-listp))

@@ -23,6 +23,10 @@
   (declare (xargs :mode :program))
   (fn-native-operator-run config-octets argv-octets))
 
+(defun fn-native-operator-host-run-at (cwd config-path config-octets argv-octets)
+  (declare (xargs :mode :program))
+  (fn-native-operator-run-at cwd config-path config-octets argv-octets))
+
 (defun fn-native-operator-host-result-carry-fields (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-carry-fields result))
