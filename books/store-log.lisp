@@ -1079,6 +1079,15 @@
                             (a (fn-lg-rotation-frame prev k))
                             (b (append (fn-bs-zeros (fn-lg-pad-len (len (fn-lg-rotation-frame prev k)) unit)) x)))))))
 
+(defthm fn-lg-rotation-frame-consp
+  (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k))
+           (consp (fn-lg-rotation-frame prev k)))
+  :hints (("Goal" :do-not-induct t
+           :use fn-lg-rotation-frame-len
+           :expand ((len (fn-lg-rotation-frame prev k)))
+           :in-theory (disable fn-lg-rotation-frame fn-lg-rotation-frame-len fn-frame-digestp
+                               fn-lg-rotation-indexp))))
+
 ; The entry validates against its predecessor and yields no record.
 (defthm fn-lg-entry-okp-of-rotation-frame
   (implies (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k)
@@ -1126,10 +1135,11 @@
                     (cons (car rest) (+ (len (fn-lg-rotation-entry prev k unit)) (cdr rest))))))
   :hints (("Goal" :do-not-induct t
            :expand ((fn-lg-scan (append (fn-lg-rotation-entry prev k unit) x) prev unit max))
-           :in-theory (e/d (fn-lg-rotation-entry)
-                           (fn-lg-rotation-frame fn-lg-slice fn-lg-entry-okp fn-lg-slice-records
-                            fn-lg-declared-len fn-lg-pad-len fn-lg-trailer fn-frame-open
-                            fn-cbor-u32-bytes fn-frame-digestp fn-lg-rotation-indexp fn-lg-scan))
+           :in-theory (e/d ()
+                           (fn-lg-rotation-entry fn-lg-rotation-frame fn-lg-slice fn-lg-entry-okp
+                            fn-lg-slice-records fn-lg-declared-len fn-lg-pad-len fn-lg-trailer
+                            fn-frame-open fn-cbor-u32-bytes fn-frame-digestp fn-lg-rotation-indexp
+                            fn-lg-scan))
            :use ((:instance fn-lg-rot-nthcdr-of-append-exact
                             (a (fn-lg-rotation-entry prev k unit)) (b x))))))
 
