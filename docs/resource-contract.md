@@ -371,23 +371,20 @@ under "Not bounded".
 - Exceeded: not applicable (a structural bound).
 - Not bounded: the length of the step's own work inside the owner (**W7**).
 
-**W5** — the LZ4 payload decoder.
-- Bounded: the decoder is total and guard-verified; its output is at most
-  the recorded length (the only allocation); it runs in quanta whose budget
-  strictly decreases per advance, so a call does at most its budget's
-  iterations.
-- Mechanism: `fn-lz-run` (budgeted, answers `:more` when the budget is
-  spent) and `fn-lz-decode-buf` (a whole block on one budget of
-  3|c| + n + 2). Host subjects: `fn-lzr-read-step`, `fn-lzr-intern-step`
-  (`host/native/io.lisp`), one block per record.
-- Evidence: THEOREM (PRF-257, the one cited proof the registry marks
-  `certified` at the writing digest). NOT proved: that the block budget
-  suffices for every well-formed block (only the literal block is), and no
-  split-and-resume theorem exists for `fn-lz-run` (compare **W6**).
-- Exceeded: a spent block budget answers `:budget`, a refusal of that
-  record, never a truncated value.
+**W5** — the stored-payload decoder (DEFLATE, the 2026-09-28 Q15
+decision; the LZ4 block codec of `payload-lz` is retired).
+- Bounded: `fn-pzd-decode` answers `(:ok OCTETS)` of exactly the recorded
+  length N or `(:error STATUS)` (`fn-pzd-decode-ok`); its output limit is
+  N+1, and each inflater call is bounded by **W6**'s budget.
+- Mechanism: `fn-pzd-decode-bufs` over pooled window/table/output buffers
+  equals the list decoder (`fn-pzd-decode-bufs-is-decode`). Host subject:
+  `fnn-pzd-decode` (`host/native/deflate.lisp`), called from
+  `fn-durable-realize-lz` (`host/native/extent.lisp`), one call per record.
+- Evidence: THEOREM (PRF-257).
+- Exceeded: a stream that does not end at exactly N octets is refused by
+  name, never a truncated value.
 - Not bounded: the compressed size of a record is R, the profile's; the
-  decoder has no input-size bound of its own (`payload-lz-append` says so).
+  decoder has no input-size bound of its own.
 
 **W6** — the DEFLATE inflater (COMPRESS, landing).
 - Bounded: per call, output at most the limit; a spent quantum answers
@@ -911,7 +908,7 @@ not on this tree yet; its citations are checked once they land.
 | W2 | `books/transit-bound`: `fn-tb-served-run-retains-at-most-the-body-limit` | PRF-313 | none |  |
 | W3 | `books/store-budget-naming`: `fn-sbud-post-boundary-refuses-exactly-past-the-profile-bound`; `books/owner-served-bound`: `fn-osb-install-serves-the-profile-bound` | PRF-110, PRF-095 | none |  |
 | W4 | `books/served-tls-prefix`: `fn-served-step-counted-consumed-is-bounded`, `fn-served-step-counted-carries-at-most-one-submission`, `fn-served-drain-run-is-boundary-independent` | PRF-213 | none |  |
-| W5 | `books/payload-lz`: fn-lz-run-out-len-bound (pending), fn-lz-decode-buf-out-len-bound (pending), fn-lz-seq-budget (pending), fn-lz-advance-budget (pending) | PRF-257 | none |  |
+| W5 | `books/payload-deflate`: `fn-pzd-decode-ok`, `fn-pzd-decode-bufs-is-decode` | PRF-257 | none |  |
 | W6 | `books/deflate-inflate`: `fn-zin-feed-out-bound`, `fn-zin-loop-stops`, `fn-zin-loop-split-budget`, `fn-zin-feed-bomb-bound` | PRF-909, PRF-910 | none | lane/compress d90102b90 |
 | W7 | `books/owner-scheduler`: `fn-osch-control-waits-at-most-the-bound` | PRF-248 | none |  |
 | W8 | `books/owner-commit-fairness`: `fn-ocf-control-waits-at-most-the-bound`, `fn-ocf-potential-at-most-twenty-two`, `fn-ocf-seal-potential-at-most-six` | PRF-901 | none |  |
