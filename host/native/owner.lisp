@@ -4402,7 +4402,7 @@ component; the other checkpoint summary and history-image phases must also
 be resumable and funded before the producer controller uses the result."
   (let ((cursor (fnn-core 'fn-osp-cpr-begin configs records)))
     (loop
-      (fnn-checkpoint-yield "snapshot-prepare-configured" nil)
+      (fnn-checkpoint-yield "snapshot-prepare-configured" (fifth cursor))
       (let ((tick (fnn-core 'fn-osp-cpr-tick
                             (first cursor) (second cursor) (third cursor)
                             (fourth cursor) (fifth cursor))))
@@ -4417,7 +4417,7 @@ The private cursor retains unconsumed captured records by pointer and the
 four carried accumulators; it never copies an accumulated record prefix."
   (let ((cursor (fnn-core 'fn-osp-fold-begin records)))
     (loop
-      (fnn-checkpoint-yield "snapshot-prepare-summaries" nil)
+      (fnn-checkpoint-yield "snapshot-prepare-summaries" (sixth cursor))
       (let ((tick (fnn-core 'fn-osp-fold-tick cursor)))
         (case (first tick)
           (:done (return (second tick)))
@@ -4431,13 +4431,23 @@ The arena lease must cover this entire read; the inner row conversion still
 needs the supported profile's allocation/work bound before producer dispatch."
   (let ((cursor (fnn-core 'fn-osp-canon-begin records)))
     (loop
-      (fnn-checkpoint-yield "snapshot-prepare-canonical" nil)
-      (let ((tick (fnn-core 'fn-osp-canon-tick cursor)))
+      (fnn-checkpoint-yield "snapshot-prepare-canonical" (third cursor))
+      (let ((tick (fnn-core 'fn-osp-canon-tick cursor (fnn-live-arena))))
         (case (first tick)
           (:done (return (second tick)))
           (:continue (setq cursor (second tick)))
           (:refused (fnn-refuse-io "snapshot canonical preparation refused: ~a" (second tick)))
           (otherwise (fnn-fault "invalid canonical snapshot preparation tick")))))))
+
+(defun fnn-snapshot-prepare-capture (configs records)
+  "Assemble the original checkpoint tuple from completed resumable phases.
+No whole-history fn-sco-capture/fn-owner-sco-next is called by this path."
+  (let ((canonical (fnn-snapshot-prepare-canonical-rows records)))
+    (when (eq canonical :bad)
+      (fnn-refuse-io "snapshot canonical rows refused"))
+    (let ((configured (fnn-snapshot-prepare-configured-fold configs canonical))
+          (summaries (fnn-snapshot-prepare-summary-folds canonical)))
+      (fnn-core 'fn-osp-assemble canonical configured summaries))))
 
 (defun fnn-snapshot-write-captured-checkpoint (target captured position profile)
   "Write the captured whole Store into TARGET's complete checkpoint.
@@ -4450,8 +4460,9 @@ component neither publishes SNAPSHOT nor mutates the source checkpoint."
     (declare (ignore base suffix base-payloads))
     (let* ((segment (fnn-core 'fn-ockp-segment-octets record-octets
                              +fnn-checkpoint-batch-octets+))
-           (prepared (fnn-core 'fn-owner-sco-next nil nil configs records
-                                (fnn-checkpoint-walk records) segment (fnn-live-arena)))
+           (prepared (fnn-core 'fn-owner-osn-prepared-run
+                                (fnn-snapshot-prepare-capture configs records)
+                                (fnn-checkpoint-walk records) segment))
            (image nil))
       (unwind-protect
            (multiple-value-bind (bound-position built-image)

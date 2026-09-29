@@ -4602,8 +4602,6 @@
   :direct "Image-build declaration lint over the loaded world; no client data or served decision")
 
 ; S7 O(1) owner capture/release; caller remains pending funded producer.
-(definterface fn-owner-osn-capture :class :program)
-(definterface fn-owner-osn-release :class :program)
 
 (definterface fn-osp-cpr-begin :class :common-lisp-compliant)
 (definterface fn-osp-cpr-tick :class :common-lisp-compliant)
@@ -4613,3 +4611,6 @@
 
 (definterface fn-osp-canon-begin :class :common-lisp-compliant)
 (definterface fn-osp-canon-tick :class :common-lisp-compliant)
+
+(definterface fn-osp-assemble :class :common-lisp-compliant)
+(definterface fn-owner-osn-prepared-run :class :program)

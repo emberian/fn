@@ -995,6 +995,16 @@
         nil
       (list next (fn-scka-lens-setup (reverse (nth 1 walked)) seg) walked))))
 
+; Shared arena-run setup is still a whole-list stage.  The snapshot calls
+; this over the finished resumable capture rather than recomputing it;
+; resumable lengths/segment setup and allocation admission remain pending.
+(defun fn-owner-osn-prepared-run (capture walked seg)
+  (declare (xargs :mode :program))
+  (if (or (equal capture :bad)
+          (not (and (consp walked) (atom (fn-sco-at 0 walked)))))
+      nil
+    (list capture (fn-scka-lens-setup (reverse (fn-sco-at 1 walked)) seg) walked)))
+
 (defun fn-owner-sco-setup-of (prepared frontier revision log seg budget free)
   ; The second half: (list SETUP NEXT N ARUN) as fn-owner-sco-prepare answers.
   (declare (xargs :mode :program))

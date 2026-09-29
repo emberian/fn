@@ -1689,3 +1689,12 @@ lease for the entire read. Real interned article rows with an orphan payload
 witness the changed canonical handles. This is row-transition progress;
 inner row conversion still requires a supported allocation/work bound, and
 the actual controller, page/hash preparation and funded lifetime remain open.
+
+The snapshot checkpoint reconstruction component now assembles those
+completed cursor values through `fn-osp-assemble`, preserving the original
+checkpoint tuple at the named definition boundary. It no longer calls the
+whole-history `fn-owner-sco-next` to recompute them. Arena lengths/segment
+setup, history-image page commit and writer hash preparation still need
+resumable/funded composition. Restored canonical handles differ from the
+captured source handles; the final recovery guarantee must compose the
+existing arena writer/load alpha refinements with the captured-view inverse.

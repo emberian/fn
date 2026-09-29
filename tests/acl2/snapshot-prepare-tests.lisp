@@ -183,3 +183,16 @@
         (not (equal (fn-osp-canon-value cursor fn-arena)
                     (if (equal (car tick) :continue)
                         (fn-osp-canon-value (nth 1 tick) fn-arena) (nth 1 tick)))))))
+
+; Completed actual configured/summary values assemble the original tuple;
+; this literal boundary witness has nonempty retained obligations/history.
+(assert-event
+ (let* ((configured (nth 1 *osp-t4*))
+        (summaries (nth 1 (fn-osp-fold-tick *osp-f2*))))
+   (and (true-listp *osp-events*)
+        (equal configured
+               (fn-sco-cpr-prefix (fn-cnode-initial (fn-cfg-initial))
+                                  *osp-configs* *osp-events* 0 0))
+        (equal summaries (fn-osp-fold-value (fn-osp-fold-begin *osp-events*)))
+        (equal (fn-osp-assemble *osp-events* configured summaries)
+               (fn-sco-capture *osp-configs* *osp-events*)))))

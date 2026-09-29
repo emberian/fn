@@ -319,3 +319,25 @@
                   (true-listp (fn-sco-at 4 next)))))
   :hints (("Goal" :in-theory (e/d (fn-osp-canon-tick fn-sco-at)
                                   (fn-scka-intern-one fn-row-wire-of fn-scka-sealsp)))))
+
+; Assemble the exact completed fold values without replaying them.  The
+; boundary below names their correspondence, not a new inverse keystone.
+(defun fn-osp-assemble (records configured summaries)
+  (declare (xargs :guard t))
+  (fn-sco-make records configured (fn-sco-at 0 summaries)
+               (fn-sco-at 1 summaries) (fn-sco-at 2 summaries)
+               (fn-sco-at 3 summaries)))
+(defthm fn-osp-assembled-folds-are-capture-by-definition
+  (implies (and (true-listp records)
+                (equal configured
+                       (fn-sco-cpr-prefix (fn-cnode-initial (fn-cfg-initial))
+                                          configs records 0 0))
+                (equal summaries (fn-osp-fold-value (fn-osp-fold-begin records))))
+           (equal (fn-osp-assemble records configured summaries)
+                  (fn-sco-capture configs records)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-osp-assemble fn-osp-fold-value fn-osp-fold-begin
+                  fn-sco-make fn-sco-capture fn-sco-consumer-resume fn-sco-at)
+                (fn-sco-cpr-prefix fn-replay-identity-loop fn-cpe-projection-replay
+                 fn-th-prefix-loop fn-cei-build-aux fn-cnode-initial
+                 fn-cfg-initial fn-stxk-initial-context fn-th-prefix-state)))))
