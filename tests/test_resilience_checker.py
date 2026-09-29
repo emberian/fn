@@ -459,10 +459,12 @@ class SchedulePointTests(unittest.TestCase):
                                         "schedule-reclaim-candidate-selected",
                                         "schedule-receipt-observed-reorder"})
         # The reorder variant: its held form exists; the nemesis verb (a live
-        # `bp-route remove` under the running receiver) has no host path.
-        self.assertIn("no live path", pending["schedule-receipt-observed-reorder"]["reasons"][0])
+        # `bp-route remove` under the running receiver) still needs source
+        # integration and an image that exercises the same serialized owner.
+        self.assertIn("matching-image execution pending",
+                      pending["schedule-receipt-observed-reorder"]["reasons"][0])
         self.assertEqual(pending["schedule-receipt-observed-reorder"]["owner"],
-                         "coordinator (finding, resilience-framework-5)")
+                         "bp_resume (serialized live BP control); resilience (SCN-218 adapter)")
         self.assertEqual(pending["schedule-page-read-outstanding"]["owner"], "online-reclaim-8")
         self.assertEqual(pending["schedule-reclaim-candidate-selected"]["owner"],
                          "online-reclaim-8")

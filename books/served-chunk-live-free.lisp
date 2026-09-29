@@ -345,10 +345,16 @@
                           (fn-scr-ocfg-read-span oc2 id i end cache fn-octets fn-arena fn-cat))
                          (fn-own-tls-result-consumed
                           (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)))
-                  (equal (fn-own-tls-result-effects
-                          (fn-scr-ocfg-read-span oc2 id i end cache fn-octets fn-arena fn-cat))
-                         (fn-own-tls-result-effects
-                          (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat))))))
+                  ;; the effects, modulo the OVER cursor (books/served-catalog-chain.lisp:
+                  ;; the keystone equates the expanded effects)
+                  (equal (fn-ovw-expand
+                          (fn-own-tls-result-effects
+                           (fn-scr-ocfg-read-span oc2 id i end cache fn-octets fn-arena fn-cat))
+                          fn-arena fn-cat)
+                         (fn-ovw-expand
+                          (fn-own-tls-result-effects
+                           (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat))
+                          fn-arena fn-cat)))))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-scl-other-post-keeps-a-chunk-selecting-nothing

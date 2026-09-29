@@ -1296,3 +1296,6 @@
        fn-bpn-restart-step-preserves-machine-invariant
        fn-bpn-answer-constructor-accessors fn-bpn-member)
      (theory 'minimal-theory)))))
+
+;; The *1* class (Q4a item 2, bp-remainder-5): host-called entries and their callees.
+(verify-guards fn-bpn-machine-invariantp)

@@ -57,8 +57,10 @@ class ScriptedTransitPeer:
     connection number, so a test can say which form carried each article.
     """
 
-    def __init__(self, mode_reply):
+    def __init__(self, mode_reply, accept_gate=None):
         self.mode_reply = mode_reply
+        self.accept_gate = accept_gate
+        self.accepted = set()
         self.listener = socket.socket()
         self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.listener.bind(("127.0.0.1", 0))
@@ -73,6 +75,8 @@ class ScriptedTransitPeer:
 
     def close(self):
         self.closed = True
+        if self.accept_gate is not None:
+            self.accept_gate.set()
         self.listener.close()
 
     def serve(self):
@@ -115,14 +119,22 @@ class ScriptedTransitPeer:
                     article = self.read_article(stream)
                     with self.lock:
                         self.articles[words[1]] = ("IHAVE", article)
+                    if self.accept_gate is not None and not self.accept_gate.wait(60):
+                        return
                     stream.write(b"235 article transferred OK\r\n")
+                    with self.lock:
+                        self.accepted.add(words[1])
                 elif verb == "CHECK":
                     stream.write(b"238 " + words[1].encode("ascii") + b"\r\n")
                 elif verb == "TAKETHIS":
                     article = self.read_article(stream)
                     with self.lock:
                         self.articles[words[1]] = ("TAKETHIS", article)
+                    if self.accept_gate is not None and not self.accept_gate.wait(60):
+                        return
                     stream.write(b"239 " + words[1].encode("ascii") + b"\r\n")
+                    with self.lock:
+                        self.accepted.add(words[1])
                 elif verb == "QUIT":
                     stream.write(b"205 bye\r\n")
                     return
@@ -905,6 +917,45 @@ class NativePeeringTests(unittest.TestCase):
         self.assertIsNotNone(got, "the scripted peer never received the article; "
                              "commands={}".format(peer.commands))
         return peer, source, message_id, served, got
+
+    def test_productive_local_transfer_precedes_remote_acceptance(self):
+        """PRF-1062: actual article bytes arrive while 239 is withheld.
+
+        This witnesses local handoff only.  The test peer is scripted, and
+        sending its 239 is explicitly independent of the bytes it observed.
+        """
+        gate = threading.Event()
+        peer = ScriptedTransitPeer("203 streaming permitted", accept_gate=gate)
+        self.addCleanup(peer.close)
+        source = self.initialize("productive-source")
+        target = types.SimpleNamespace(name="productive-peer", port=peer.port)
+        self.configure_peer(source, target)
+        self.start(source)
+        message_id = "<productive-transfer@example.invalid>"
+        marker = ".productive-transfer"
+        self.post(source, message_id, marker)
+        served = self.await_article(source, message_id)
+        got = peer.await_article(message_id)
+        self.assertIsNotNone(got, peer.commands)
+        self.assertEqual(got, ("TAKETHIS", served))
+        self.assertIn(b"\r\n.productive-transfer\r\n", got[1])
+        with peer.lock:
+            commands = list(peer.commands)
+            self.assertNotIn(message_id, peer.accepted)
+        self.assertIn("CHECK " + message_id, [line for _, line in commands])
+        self.assertIn("TAKETHIS " + message_id, [line for _, line in commands])
+        journal = source.store_path / "feed" / "productive-peer.fnfd"
+        self.assertTrue(journal.is_file())
+        self.assertGreater(journal.stat().st_size, 0)
+        self.assertIsNone(source.process.poll())
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "productive-local-transfer-before-remote-acceptance",
+            "commands": commands, "identical": got[1] == served,
+            "remote_acceptance_withheld": True, "journal_present": True,
+            "journal_bytes": journal.stat().st_size,
+            "identity": self.verify_process_identity(source),
+        }, sort_keys=True))
+        gate.set()
 
     def test_feed_to_a_peer_without_streaming_falls_back_to_ihave(self):
         """PRF-207: a peer that answers MODE STREAM with 501 (RFC 3977

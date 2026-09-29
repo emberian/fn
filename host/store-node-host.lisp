@@ -19,6 +19,8 @@
 (include-book "../books/store-budget-article")
 (include-book "../books/store-maintenance-reserve")
 (include-book "../books/history-image-snapshot")
+; S7a offline snapshot validation verdicts, called from native/io.lisp.
+(include-book "../books/owner-snapshot-request")
 (include-book "../books/store-capacity-vector")
 (include-book "../books/store-carried-folds")
 ; PKT-220: the retention figures `operator CONFIG obligations' opens with.
