@@ -15022,6 +15022,34 @@
         "fn-mpxt-seqs-is-cat-msgid-seqs",
         "fn-mpxt-spec-from-is-cat-seqs-for"
       ]
+    },
+    {
+      "id": "PRF-1010",
+      "title": "The configured owner's relation carries the safety of the pinned view's group names, and the re-pin after a durable POST no longer checks them",
+      "statement": "books/owner-advance-carried.lisp. fn-acar-record-group-name-is-safe: (fn-record-group-namep text) implies (fn-nntp-safe-group-namep text) -- a name of RFC 5536 section 3.1.4's grammar within the configuration's 256-octet label is a nonempty printable token within the 460 octets that keep RFC 3977 section 3.1's 512-octet 211/215 lines. fn-acar-cfgp-domain-is-safe: (fn-cfgp config) implies (fn-nntp-safe-group-listp (fn-cnode-domain-of config)). fn-acar-cnode-groups-are-safe: (fn-cnode-statep cn) implies the node acceptance's group list is safe. KEYSTONE fn-acar-view-historyp-carries-safe-groups: (fn-ocl-view-historyp o) implies (fn-nntp-safe-group-listp (fn-state-groups (fn-own-view-archive (fn-own-view o)))); fn-ocl-view-historyp is a conjunct of fn-ocl-relation. fn-acar-view-statep now conjoins that group safety, and fn-acar-view-historyp-carries-view-statep / fn-acar-ocl-relation-carries-view-statep carry it. fn-acar-nntp-projectionp (the flag fn-acar-open-session records) is now fn-nntp-nexts-boundedp of the archive only; fn-acar-nntp-projectionp-is-nntp-projectionp and fn-acar-open-session-is-open-session hold under (fn-statep archive) and (fn-nntp-safe-group-listp (fn-state-groups archive)). Host: host/owner-host.lisp fn-owner-outcome calls fn-oop-outcome -> fn-apc-own-outcome -> fn-acar-own-advance-result -> fn-acar-open-session on the pinned view archive once per durable POST; fn-owner-open / fn-owner-exposure-open reach it through fn-ocar-auth-open-reader / fn-ocar-peer-open-reader (books/owner-open-carried.lisp), and host/reader-host.lisp fn-reader-reset through fn-rdc-served-open (books/reader-open-carried.lisp), whose selection's fn-nntp-projectionp supplies the new hypothesis. The keystones stated under fn-ocl-relation (fn-acar-own-outcome-is-reference-under-ocl-relation, fn-ocar-ocfg-open-is-ocfg-open-under-ocl-relation) keep their statements. Scope: the watermark conjunct (fn-nntp-nexts-boundedp) is still evaluated per re-pin (G integer comparisons, no allocation): it is carried by fn-onb-boundp (PRF-958), which fn-ocl-relation does not include.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-188",
+        "PRF-958"
+      ],
+      "assumptions": [],
+      "status": "proved",
+      "evidence": [
+        "books/owner-advance-carried.lisp",
+        "books/owner-open-carried.lisp",
+        "books/reader-open-carried.lisp",
+        "tests/acl2/owner-advance-carried-tests.lisp"
+      ],
+      "progress_note": "Lane join-f2-9 (Claude Opus 5.5, 2026-09-29; PKT-615's follow-up, item 2b). The owner relation DOES carry the configured node's state: fn-ocl-view-historyp names the view archive as the visible state of fn-cst-replay-node's acceptance, which is fn-replay-advance-txid of a node whose fn-cnode-statep says its groups are the configuration's domain and fn-cfgp validated each name (books/config.lisp fn-cfg-group-entryp). So the group conjunct is dropped from the re-pin rather than threaded. Teeth tests/acl2/owner-advance-carried-tests.lisp (PRF-1010 block): reachable witness on the committed configured owner (fn-ocl-view-historyp, groups fn.letters/fn.test/fn.live safe, the configuration's domain safe); hypothesis removal: the same view archive with an unconfigured group \"not a name\" (still fn-statep) fails fn-ocl-view-historyp and the conclusion, and the carried flag, open session and advance result each differ from the reference there.",
+      "events": [
+        "fn-acar-view-historyp-carries-safe-groups",
+        "fn-acar-record-group-name-is-safe",
+        "fn-acar-cfgp-domain-is-safe",
+        "fn-acar-cnode-groups-are-safe"
+      ]
     }
   ]
 }

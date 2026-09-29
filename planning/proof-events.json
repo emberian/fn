@@ -14536,6 +14536,27 @@
           "name": "fn-mpxt-spec-from-is-cat-seqs-for"
         }
       ]
+    },
+    {
+      "id": "PRF-1010",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-acar-view-historyp-carries-safe-groups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acar-record-group-name-is-safe"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acar-cfgp-domain-is-safe"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acar-cnode-groups-are-safe"
+        }
+      ]
     }
   ]
 }

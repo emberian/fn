@@ -57,7 +57,8 @@
    nil nil nil nil))
 
 (defthm fn-ocar-auth-open-reader-is-auth-open-session
-  (implies (fn-statep archive)
+  (implies (and (fn-statep archive)
+                (fn-nntp-safe-group-listp (fn-state-groups archive)))
            (equal (fn-ocar-auth-open-reader archive acfg)
                   (fn-auth-open-session archive nil nil nil acfg nil)))
   :hints (("Goal" :use ((:instance fn-acar-open-session-is-open-session))
@@ -65,7 +66,7 @@
                             fn-post-open-session)
                            (fn-acar-open-session fn-nntp-open-session
                             fn-acar-open-session-is-open-session
-                            fn-statep fn-auth-configp)))))
+                            fn-statep fn-nntp-safe-group-listp fn-auth-configp)))))
 
 ; fn-peer-open-session ARCHIVE NIL NODE CFG, the reader context's session,
 ; with the node and configuration recognizers carried.
@@ -77,6 +78,7 @@
 
 (defthm fn-ocar-peer-open-reader-is-peer-open-session
   (implies (and (fn-statep archive)
+                (fn-nntp-safe-group-listp (fn-state-groups archive))
                 (fn-node-statep node)
                 (fn-cfgp cfg))
            (equal (fn-ocar-peer-open-reader archive node cfg)
@@ -85,7 +87,7 @@
            :in-theory (e/d (fn-peer-open-session fn-post-open-session)
                            (fn-acar-open-session fn-nntp-open-session
                             fn-acar-open-session-is-open-session
-                            fn-statep fn-node-statep fn-cfgp)))))
+                            fn-statep fn-nntp-safe-group-listp fn-node-statep fn-cfgp)))))
 
 ; -----------------------------------------------------------------------------
 ; The owner's open, carried.
@@ -105,7 +107,8 @@
    buckets))
 
 (defthm fn-ocar-served-open-group-indexed-is-reference
-  (implies (fn-statep archive)
+  (implies (and (fn-statep archive)
+                (fn-nntp-safe-group-listp (fn-state-groups archive)))
            (equal (fn-ocar-served-open-group-indexed
                    archive index buckets verdicts line-limit body-limit config
                    observation injection acfg)
@@ -115,7 +118,8 @@
   :hints (("Goal" :in-theory (e/d (fn-served-open-group-indexed
                                    fn-served-open-indexed)
                                   (fn-ocar-auth-open-reader fn-auth-open-session
-                                   fn-statep fn-served-pin-group-index
+                                   fn-statep fn-nntp-safe-group-listp
+                                   fn-served-pin-group-index
                                    fn-served-greeting)))))
 
 (defun fn-ocar-own-open (o acfg)
@@ -178,13 +182,17 @@
 (defthm fn-ocar-own-reader-context-is-reference
   (implies (and (fn-statep (fn-own-conn-archive
                             (fn-own-find-conn id (fn-own-conns o))))
+                (fn-nntp-safe-group-listp
+                 (fn-state-groups (fn-own-conn-archive
+                                   (fn-own-find-conn id (fn-own-conns o)))))
                 (fn-node-statep (fn-sn-node (fn-own-store o)))
                 (fn-cfgp cfg))
            (equal (fn-ocar-own-reader-context o id cfg)
                   (fn-own-reader-context o id cfg)))
   :hints (("Goal" :in-theory (e/d (fn-own-reader-context)
                                   (fn-ocar-peer-open-reader fn-peer-open-session
-                                   fn-statep fn-node-statep fn-cfgp)))))
+                                   fn-statep fn-nntp-safe-group-listp
+                                   fn-node-statep fn-cfgp)))))
 
 (defun fn-ocar-ocfg-open (oc acfg)
   (declare (xargs :guard t))
@@ -278,7 +286,7 @@
                            (fn-ocar-own-open fn-own-open
                             fn-ocar-own-reader-context fn-own-reader-context
                             fn-ocl-relation fn-statep fn-node-statep fn-cfgp
-                            fn-own-ids-below-next-p
+                            fn-nntp-safe-group-listp fn-own-ids-below-next-p
                             fn-acar-ocl-relation-carries-view-statep
                             fn-scar-ocl-relation-carries-node-statep
                             fn-ocar-ocl-relation-carries-open-premises
