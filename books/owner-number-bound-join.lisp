@@ -561,3 +561,233 @@
 
 ; The captured open with the views carried: the bound needs no view premise
 ; (fn-onbj-boundp-at-owner-open-captured), the same host function.
+(defthm fn-onbj-inflight-fitp-when-ready
+  (implies (equal (fn-sf-phase (fn-sn-files s)) :ready)
+           (fn-onb-inflight-fitp s))
+  :hints (("Goal" :in-theory (enable fn-onb-inflight-fitp fn-sf-record-phasep))))
+
+(defthm fn-onbj-store-boundp-of-known-abort
+  (implies (fn-onb-store-boundp s)
+           (fn-onb-store-boundp (fn-sn-known-abort s)))
+  :hints (("Goal" :cases ((fn-sn-known-abort-enabledp s))
+           :in-theory (e/d (fn-onb-store-boundp fn-cstp-sn-update-fields)
+                           (fn-onb-node-boundp fn-sn-known-abort-enabledp fn-sn-known-abort-files
+                            fn-node-complete fn-replay-advance-txid fn-sn-statep)))
+          ("Subgoal 2" :in-theory (enable fn-sn-known-abort))
+          ("Subgoal 1" :in-theory (e/d (fn-onb-store-boundp fn-cstp-sn-update-fields fn-sn-known-abort)
+                                       (fn-onb-node-boundp fn-sn-known-abort-enabledp fn-sn-known-abort-files
+                                        fn-node-complete fn-replay-advance-txid fn-sn-statep))
+           :use ((:instance fn-pout-known-abort-reaches-ready)
+                 (:instance fn-onbj-inflight-fitp-when-ready (s (fn-sn-known-abort s)))))))
+
+(defthm fn-onbj-store-boundp-of-refuse-reservation
+  (implies (fn-onb-store-boundp s)
+           (fn-onb-store-boundp (fn-sn-refuse-reservation s txid)))
+  :hints (("Goal" :in-theory (e/d (fn-onb-store-boundp fn-sn-refuse-reservation fn-sn-refuse-reservation-enabledp
+                                   fn-sf-refuse-reservation fn-cstp-sn-update-fields)
+                                  (fn-onb-node-boundp fn-replay-advance-txid fn-sn-statep fn-sf-statep fn-node-statep))
+           :use ((:instance fn-onbj-inflight-fitp-when-ready
+                            (s (fn-sn-refuse-reservation s txid)))))))
+
+(defthm fn-onbj-boundp-of-ocfg-known-abort
+  (implies (fn-onb-boundp (fn-ocfg-owner oc))
+           (fn-onb-boundp (fn-ocfg-owner (fn-ocfg-step oc (list :store (list :known-abort)) fn-arena))))
+  :hints (("Goal" :in-theory (union-theories '(fn-sjh-ocfg-store-step-owner fn-own-store-step fn-snrt-step
+                                               fn-onbj-boundp-of-refresh-with-store fn-onbj-store-boundp-when-boundp
+                                               fn-onbj-store-boundp-of-known-abort car-cons (:e car))
+                                             (theory 'minimal-theory)))))
+
+(defthm fn-onbj-boundp-of-ocfg-refuse-reservation
+  (implies (fn-onb-boundp (fn-ocfg-owner oc))
+           (fn-onb-boundp (fn-ocfg-owner (fn-ocfg-step oc (list :store (list :refuse-reservation txid)) fn-arena))))
+  :hints (("Goal" :in-theory (union-theories '(fn-sjh-ocfg-store-step-owner fn-own-store-step fn-snrt-step
+                                               fn-onbj-boundp-of-refresh-with-store fn-onbj-store-boundp-when-boundp
+                                               fn-onbj-store-boundp-of-refuse-reservation car-cons cdr-cons (:e car))
+                                             (theory 'minimal-theory)))))
+
+; KEYSTONE: host/owner-host.lisp fn-owner-known-abort installs
+; fn-pout-known-abort's owner (the store back at :ready).
+(defthm fn-onbj-boundp-at-owner-known-abort
+  (implies (fn-onb-boundp (fn-ocfg-owner oc))
+           (fn-onb-boundp (fn-ocfg-owner (mv-nth 1 (fn-pout-known-abort oc fn-arena)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-pout-known-abort mv-nth car-cons cdr-cons (:e zp) (:e binary-+))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-onbj-boundp-of-ocfg-known-abort)))))
+
+; KEYSTONE: host/owner-host.lisp fn-owner-refuse-reservation installs
+; fn-pout-refuse-reservation's owner.
+(defthm fn-onbj-boundp-at-owner-refuse-reservation
+  (implies (fn-onb-boundp (fn-ocfg-owner oc))
+           (fn-onb-boundp (fn-ocfg-owner (mv-nth 1 (fn-pout-refuse-reservation oc fn-arena)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-pout-refuse-reservation mv-nth car-cons cdr-cons (:e zp) (:e binary-+))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-onbj-boundp-of-ocfg-refuse-reservation (txid (+ -1 (fn-sf-frontier (fn-sn-files (fn-sbud-oc-store oc))))))))))
+; -----------------------------------------------------------------------------
+; The completions (host/owner-host.lisp fn-owner-finish, the article and
+; submission finishes): the Store's finish keeps the bound
+; (fn-onb-store-boundp-of-finish, unconditional), the view stays, the
+; refresh keeps it.
+
+(defthm fn-onbj-boundp-of-refresh-make
+  (implies (and (fn-onb-store-boundp s)
+                (fn-nntp-nexts-boundedp (fn-state-nexts (fn-own-view-archive v))))
+           (fn-onb-boundp (fn-own-refresh (fn-own-make s v c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13))))
+  :hints (("Goal" :in-theory (e/d (fn-onb-boundp) (fn-own-refresh fn-onb-store-boundp fn-nntp-nexts-boundedp))
+           :use ((:instance fn-onb-boundp-of-refresh
+                            (o (fn-own-make s v c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13)))))))
+
+(defthm fn-onbj-boundp-of-own-complete
+  (implies (fn-onb-boundp o)
+           (fn-onb-boundp (fn-own-complete o)))
+  :hints (("Goal" :in-theory (e/d (fn-own-complete) (fn-own-refresh fn-sn-finish fn-sn-completion-enabledp
+                                                     fn-nntp-nexts-boundedp))
+           :use ((:instance fn-onb-store-boundp-of-finish (s (fn-own-store o)))
+                 (:instance fn-onbj-store-boundp-when-boundp)
+                 (:instance fn-onb-boundp)))))
+
+(defthm fn-onbj-boundp-of-ccar-own-complete-enabled
+  (implies (and (fn-onb-boundp o)
+                (fn-ccar-completion-enabledp (fn-own-store o)))
+           (fn-onb-boundp (fn-ccar-own-complete-enabled o)))
+  :hints (("Goal" :in-theory '(fn-ccar-own-complete)
+           :use ((:instance fn-ccar-own-complete-is-own-complete)
+                 (:instance fn-onbj-boundp-of-own-complete)))))
+
+(defthm fn-onbj-boundp-of-ccar-ocfg-complete
+  (implies (fn-onb-boundp (fn-ocfg-owner oc))
+           (fn-onb-boundp (fn-ocfg-owner (fn-ccar-ocfg-complete oc))))
+  :hints (("Goal" :in-theory (union-theories '(fn-ccar-ocfg-complete fn-ccar-own-complete-is-own-complete
+                                               fn-onbj-boundp-of-own-complete fn-ocfg-owner-of-fn-ocfg-make)
+                                             (theory 'minimal-theory)))))
+
+; KEYSTONE: host/owner-host.lisp fn-owner-finish installs
+; fn-rix-ocfg-complete's owner, which is the carried completion's over the
+; owner's history (fn-rix-ocfg-complete-is-ccar-ocfg-complete).  Both
+; fn-sjh-okp-at-owner-finish-no-row's and -finish-identity's owners.
+(defthm fn-onbj-boundp-at-owner-finish
+  (implies (and (fn-hist-of-storep fn-hist (fn-own-store (fn-ocfg-owner oc)))
+                (fn-onb-boundp (fn-ocfg-owner oc)))
+           (fn-onb-boundp (fn-ocfg-owner (fn-rix-ocfg-complete oc fn-hist))))
+  :hints (("Goal" :in-theory '(fn-rix-ocfg-complete-is-ccar-ocfg-complete fn-onbj-boundp-of-ccar-ocfg-complete))))
+
+; KEYSTONE: the article finish (fn-ccar-own-finish): the owner, or its
+; enabled completion.
+(defthm fn-onbj-boundp-at-host-article-finish
+  (implies (fn-onb-boundp o)
+           (fn-onb-boundp (cdr (fn-ccar-own-finish o cfg fn-arena))))
+  :hints (("Goal" :in-theory (union-theories '(fn-ccar-own-finish fn-onbj-boundp-of-ccar-own-complete-enabled car-cons cdr-cons)
+                                             (theory 'minimal-theory)))))
+
+; KEYSTONE: host/owner-host.lisp's submission finish installs
+; fn-apc-own-finish's owner, the article finish's under the parse carry and
+; the owner's history (fn-apc-own-finish-is-ccar-own-finish).
+(defthm fn-onbj-boundp-at-owner-finish-submission
+  (implies (and (fn-apc-p carry)
+                (fn-hist-of-storep fn-hist (fn-own-store o))
+                (fn-onb-boundp o))
+           (fn-onb-boundp (cdr (fn-apc-own-finish o cfg fn-arena fn-hist carry))))
+  :hints (("Goal" :in-theory '(fn-apc-own-finish-is-ccar-own-finish fn-onbj-boundp-at-host-article-finish))))
+; -----------------------------------------------------------------------------
+; The prepares.  The identity prepare's bound is fn-onb-boundp-at-owner-
+; prepare-identity (no premise: both fn-sjh-okp-at-owner-prepare-identity-
+; sealed's and -unsealed's owner).  The article prepare's premise, the view's
+; identity index (fn-pidx-view-okp), is the host's: the owner relation and
+; the catalog join's indexed view give it (fn-pidx-view-okp-of-live-owner).
+
+; KEYSTONE: host/owner-host.lisp fn-owner-prepare-buffer installs
+; fn-pout-prepare-article's owner.
+(defthm fn-onbj-boundp-at-owner-prepare-buffer
+  (implies (and (fn-prc-carryp carry)
+                (fn-ocl-relation oc)
+                (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
+                (fn-onb-boundp (fn-ocfg-owner oc)))
+           (fn-onb-boundp (fn-ocfg-owner (mv-nth 1 (fn-pout-prepare-article oc record budget carry)))))
+  :hints (("Goal" :in-theory nil
+           :use ((:instance fn-sjh-okp-unfolds (o (fn-ocfg-owner oc)))
+                 (:instance fn-pidx-view-okp-of-live-owner)
+                 (:instance fn-onb-boundp-at-owner-prepare-buffer)))))
+; -----------------------------------------------------------------------------
+; The live configuration's completion (host/owner-host.lisp
+; fn-owner-reconfigure-complete: fn-oclc-publish).  The carried configure
+; installs a node over the same watermarks, a group new to the domain
+; starting at 1 (fn-cnode-extend-nexts), with nothing pending, and keeps the
+; store's files (at :ready).
+
+(defthm fn-onbj-next-number-bounded
+  (implies (fn-nntp-nexts-boundedp nexts)
+           (and (natp (fn-next-number g nexts))
+                (<= (fn-next-number g nexts) *fn-nntp-max-article-number*)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-next-number fn-nntp-nexts-boundedp))))
+
+(defthm fn-onbj-extend-nexts-bounded
+  (implies (fn-nntp-nexts-boundedp nexts)
+           (fn-nntp-nexts-boundedp (fn-cnode-extend-nexts names nexts)))
+  :hints (("Goal" :in-theory (e/d (fn-cnode-extend-nexts fn-nntp-nexts-boundedp) (fn-next-number))
+           :induct (fn-cnode-extend-nexts names nexts))
+          ("Subgoal *1/1" :use ((:instance fn-onbj-next-number-bounded (g (car names)))))))
+
+(defthm fn-onbj-node-boundp-of-oclc-advance
+  (implies (fn-onb-node-boundp node)
+           (fn-onb-node-boundp (fn-oclc-advance node txid)))
+  :hints (("Goal" :in-theory (e/d (fn-oclc-advance fn-onb-node-boundp) (fn-nntp-nexts-boundedp fn-snb-groups-fitp
+                                                                        fn-oclc-advance-okp)))))
+
+(defthm fn-onbj-node-boundp-of-oclc-apply
+  (implies (fn-onb-node-boundp (fn-cnode-node cn))
+           (fn-onb-node-boundp (fn-cnode-node (fn-oclc-apply cn record))))
+  :hints (("Goal" :in-theory (e/d (fn-oclc-apply fn-onb-node-boundp)
+                                  (fn-nntp-nexts-boundedp fn-snb-groups-fitp fn-cnode-carried-acceptablep
+                                   fn-cfg-apply-record fn-cnode-domain-of fn-cnode-extend-nexts)))))
+
+(defthm fn-onbj-store-boundp-of-oclc-configure
+  (implies (fn-onb-store-boundp st)
+           (fn-onb-store-boundp (mv-nth 0 (fn-oclc-configure st config record))))
+  :hints (("Goal" :in-theory (e/d (fn-oclc-configure fn-onb-store-boundp fn-cpo-install fn-sn-with-configuration
+                                   fn-sn-node fn-sn-files)
+                                  (fn-onb-node-boundp fn-oclc-advance fn-oclc-apply fn-cnode-carried-acceptablep
+                                   fn-oclc-advance-okp fn-oclc-install-okp fn-cfg-recordp))
+           :use ((:instance fn-onbj-inflight-fitp-when-ready
+                            (s (mv-nth 0 (fn-oclc-configure st config record))))
+                 (:instance fn-sjh-rc-configure-store-fields (s st))))))
+
+(defthm fn-onbj-boundp-of-oclc-complete
+  (implies (fn-onb-boundp (fn-ocfg-owner oc))
+           (fn-onb-boundp (fn-ocfg-owner (fn-oclc-complete oc))))
+  :hints (("Goal" :in-theory (union-theories '(fn-oclc-complete fn-ocfg-owner-of-fn-ocfg-make fn-ocl-owner-with-store)
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-onbj-store-boundp-when-boundp (o (fn-ocfg-owner oc)))
+                 (:instance fn-onbj-store-boundp-of-oclc-configure
+                            (st (fn-own-store (fn-ocfg-owner oc))) (config (fn-ocfg-config oc))
+                            (record (fn-ocfg-staged oc)))
+                 (:instance fn-onbj-boundp-of-refresh-with-store
+                            (o (fn-ocfg-owner oc))
+                            (s (mv-nth 0 (fn-oclc-configure (fn-own-store (fn-ocfg-owner oc))
+                                                            (fn-ocfg-config oc) (fn-ocfg-staged oc)))))))))
+
+; KEYSTONE (the live configuration's completion).  host/owner-host.lisp
+; fn-owner-reconfigure-complete installs fn-oclc-publish's owner: refused or
+; recovery-required, the owner it was given; durable, the configured owner
+; over the carried configure's store.  No premise beyond the bound before.
+(defthm fn-onbj-boundp-at-owner-reconfigure-complete
+  (implies (fn-onb-boundp (fn-ocfg-owner oc))
+           (fn-onb-boundp (fn-ocfg-owner (mv-nth 1 (fn-oclc-publish oc generation max-octets)))))
+  :hints (("Goal" :in-theory (e/d (fn-oclc-publish fn-sjh-ocfg-owner-of-with-owner fn-onbj-arm-configure
+                                   fn-onbj-boundp-of-oclc-complete)
+                                  (fn-oclc-complete fn-own-configure fn-oag-post-config
+                                   fn-cfg-record-generation fn-ocfg-with-owner)))))
+; -----------------------------------------------------------------------------
+; The opens (install, recover, full open: host/owner-host.lisp
+; fn-owner-install-extended).  The host installs an owner only when
+; fn-onb-open-okp holds (KEYSTONE fn-onb-boundp-when-open-okp gives
+; fn-onb-boundp there, whichever open built it).  At an idle store -- every
+; open's (fn-sjh-okp-at-install's premise) -- the check is exactly the
+; bound: the open refuses a store by name only when a watermark is past it.
+
+; KEYSTONE: at an idle store the open's check is the bound.
+(defthm fn-onbj-open-okp-is-boundp-when-idle
+  (implies (fn-own-store-idlep (fn-own-store o))
+           (equal (fn-onb-open-okp o) (fn-onb-boundp o)))
+  :hints (("Goal" :in-theory (e/d (fn-own-store-idlep fn-snt-idle-phasep fn-sf-record-phasep)
+                                  (fn-onb-open-okp fn-onb-boundp))
+           :use ((:instance fn-onb-open-okp-is-boundp-outside-a-transaction)))))

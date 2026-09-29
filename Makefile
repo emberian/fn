@@ -1072,6 +1072,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-prepare-served-events-tests \
 	books/owner-number-bound \
 	tests/acl2/owner-number-bound-tests \
+	books/owner-number-bound-join \
+	tests/acl2/owner-number-bound-join-tests \
 	tests/acl2/owner-identity-served-tests \
 	tests/acl2/owner-prepare-served-abort-tests \
 	books/owner-prepare-outcome \

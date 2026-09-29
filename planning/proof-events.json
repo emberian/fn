@@ -13547,6 +13547,110 @@
         {
           "kind": "theorem",
           "name": "fn-onb-boundp-when-open-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-of-ocfg-step-owner-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-begin"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-declare-group"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-observe"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-unstage"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-node-secret"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-install-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-open-peer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-log-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-log-order"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-open-captured"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-exposure-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-read-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-chunk-span"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-chunk-span-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-chunk-span-fully-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-known-abort"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-refuse-reservation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-host-article-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-finish-submission"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-prepare-buffer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-boundp-at-owner-reconfigure-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-onbj-open-okp-is-boundp-when-idle"
         }
       ]
     },
