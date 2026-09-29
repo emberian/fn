@@ -649,8 +649,6 @@
    (fn-article-header-census (fn-peer-relayed-octets cfg peer octets))
    limits))
 
-(verify-guards fn-peer-decide-transfer)
-
 (defun fn-peer-decide-transfer-under
     (node cfg peer msgid octets clock id subject limits)
   (declare (xargs :guard (fn-node-statep node) :verify-guards nil))
@@ -1915,6 +1913,11 @@
                                       (:d fn-cfg-ag-car) (:d fn-cfg-ag-cdr)))))
 (verify-guards fn-peer-sessionp)
 (verify-guards fn-peer-relayed-octets)
+; After fn-peer-relayed-octets (the octets it relays): the transfer decision's
+; own guard is fn-peer-intrinsic-refusal-of-when-not-okp's.
+(verify-guards fn-peer-decide-transfer)
+(verify-guards fn-peer-header-limit-refusal)
+(verify-guards fn-peer-decide-transfer-under)
 ; fn-peer-session-consistentp: OPEN, and not needed.  It calls
 ; fn-post-session-consistentp (books/nntp-post.lisp), which is itself
 ; :verify-guards nil; it is a specification predicate, not on the served
