@@ -418,7 +418,30 @@ executable counterpart (`fnn-call`, the raw-Lisp spelling of `ec-call`), under
 the image's `guard-checking-on`, which the entry asserts is `t`, the same
 policy the interpreted bridge evaluates under. A `:program` wrapper therefore
 runs raw beneath its counterpart in both hosts; the complete call-graph guard
-requirement of packet C3-05 is unchanged by the packaging.
+requirement of packet C3-05 is unchanged by the packaging. One exception, by
+declaration (D40): an entry whose `definterface` carries `:raw-with (THM ...)`
+is applied as its guard-verified definition, not its counterpart --
+guard verification is the condition for faithful raw execution, and the named
+theorems are the argument that the guard's carried conjuncts (the owner's
+`fn-sn-statep` of the live Store, established at the open and preserved by
+every transition) hold at the call. `books/definterface.lisp` checks declaration
+shape against the loaded world, including a positive predicate conclusion.
+That lint does not prove that theorem premises hold or that its arguments
+name the entry's actual state and effects. The five proposed owner annotations
+are withheld until that host-subject argument exists; they still use their
+executable counterparts. The entry guard's arity and kind checks run before
+either dispatch, and
+`planning/interfaces.json` (`raw_dispatched`) lists every such entry. The
+developer image keeps the counterpart path behind
+`FN_NATIVE_DISPATCH_COUNTERPART=1` so a native can compare both.
+
+The off-mutex owner reclamation rebuild calls the logical entry
+`fn-owner-orcp-rebuild` (books/owner-reclaim-carry.lisp). Its returned field 2
+always satisfies `fn-prc-carryp` (PRF-1060), including a refused open's nil
+carry. This initializes a returned value; live installation and later carry
+preservation remain separate obligations. Its cold callees are not all
+guard-verified, so the entry remains `:ideal`; this theorem enables no raw
+owner dispatch.
 
 ### The saved image's memory
 

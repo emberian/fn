@@ -282,6 +282,10 @@
 (include-book "books/heap-open-nursery")
 (include-book "books/heap-reservation")
 
+; D40: explicit raw declaration scope. Every selected entry is checked in
+; this loaded world; an unavailable target refuses the build.
+(ld "host/interfaces-raw.lisp" :ld-error-action :error)
+
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.
 ;; No include-book since the umbrella added a book (tools/extract/world.py).
@@ -307,6 +311,9 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        ;; D40: the raw-dispatched entries, from the fn-interfaces table of
+        ;; this world (an unknown or unverified target stops the build).
+        (fnn-install-raw-dispatch)
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
         ; The COMPRESS DEFLATE layer (RFC 8054): mux.lisp serves it here too.

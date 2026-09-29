@@ -17263,6 +17263,15 @@
           "name": "fn-rpin-acquire-holds-the-captured-generation"
         }
       ]
+    },
+    {
+      "id": "PRF-1060",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-orcp-rebuild-establishes-retain-carry"
+        }
+      ]
     }
   ]
 }

@@ -17713,6 +17713,28 @@
         "fn-rpin-step-preserves-funded-ownership",
         "fn-rpin-acquire-holds-the-captured-generation"
       ]
+    },
+    {
+      "id": "PRF-1060",
+      "title": "The host-called off-mutex owner rebuild constructs a valid retention carry",
+      "statement": "Subject: books/owner-reclaim-carry.lisp fn-owner-orcp-rebuild, called by host/native/owner.lisp fnn-owner-reclaim-pass. fn-owner-orcp-rebuild-establishes-retain-carry: unconditionally, fn-prc-carryp holds of field 2 of its returned list. A refused open returns nil there; a successful rebuild constructs fn-prc-refresh of nil against the rebuilt Store retention ledger. This establishes the returned value only; it does not prove that the live swap installs it unchanged, that the other carry-writing transitions preserve it, or the complete guards of raw owner entries. The moved cold function remains :ideal, not guard-verified; raw owner dispatch remains disabled. Local policy; no RFC requirement.",
+      "depends_on": [
+        "PRF-289"
+      ],
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-reclaim-carry.lisp",
+        "tests/acl2/owner-reclaim-carry-tests.lisp"
+      ],
+      "progress_note": "Execution-costs takeover: exact unchanged definition moved from host to book; clean REPL admits carry theorem and nonempty reachable witness. Certification and native union image are runner-owned and pending.",
+      "events": [
+        "fn-owner-orcp-rebuild-establishes-retain-carry"
+      ]
     }
   ]
 }

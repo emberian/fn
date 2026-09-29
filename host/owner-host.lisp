@@ -51,6 +51,7 @@
 (include-book "../books/owner-reclaim-conns")
 ;; online-reclaim-5: the swapped owner is :ready after the open's barriers.
 (include-book "../books/owner-reclaim-ready")
+(include-book "../books/owner-reclaim-carry")
 ; Q16 (b): online disk release of dropped files (fn-xrt-).
 (include-book "../books/extent-retire")
 ; The publication through the octet buffer, decided before it is encoded
@@ -3926,14 +3927,26 @@
 ;; defaults of every absent row.
 ;; NNT-041: several listeners.  The node is public when any listener is
 ;; (fn-exp-address-publicp decides each).
+;; The listener projections the raw host hands the install (host/native/
+;; owner.lisp fnn-owner-run: one (FAMILY ADDRESS-OCTETS) per bound listener,
+;; ACL2's projected family and the address as a list): the shape the two
+;; guards below read, and nothing else about them (K2, depth-debt-9).
+(defun fn-owner-exposure-projectionsp (projections)
+  (declare (xargs :guard t))
+  (if (atom projections)
+      (null projections)
+    (and (consp (car projections))
+         (consp (cdr (car projections)))
+         (fn-owner-exposure-projectionsp (cdr projections)))))
+
 (defun fn-owner-exposure-projections-publicp (projections)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard (fn-owner-exposure-projectionsp projections)))
   (and (consp projections)
        (or (fn-exp-address-publicp (car (car projections)) (cadr (car projections)))
            (fn-owner-exposure-projections-publicp (cdr projections)))))
 
 (defun fn-owner-exposure-install-set (projections state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (fn-owner-exposure-projectionsp projections)))
   (let* ((publicp (fn-owner-exposure-projections-publicp projections))
          (state (f-put-global 'fn-owner-exposure (fn-exp-initial) state))
          (state (f-put-global 'fn-owner-exposure-close nil state))
@@ -4807,20 +4820,7 @@ existing port only after fn-fc has made this connection ready."
 ; profile): the retention carry, the record octets, the completion debt, the
 ; carried usage.  (list E OC CARRY OCTETS DEBT USAGE), OC :fault on a
 ; refused open.
-(defun fn-owner-orcp-rebuild (rows configs frontier max-conns)
-  (declare (xargs :mode :program))
-  (let* ((r (fn-orcp-rebuild rows configs frontier max-conns))
-         (oc (cadr r)))
-    (if (equal oc :fault)
-        (list (car r) :fault nil nil nil nil)
-      (let* ((s (fn-own-store (fn-ocfg-owner oc)))
-             (records (fn-sf-records (fn-sn-files s)))
-             (count (fn-sf-records-count (fn-sn-files s))))
-        (list (car r) oc
-              (fn-prc-refresh nil (fn-node-retention (fn-sn-node s)))
-              (cons count (fn-sbud-bytes-used s))
-              (cons count (fn-cvec-record-debt records))
-              (cons count (fn-pcb-tally-records records nil)))))))
+; Defined by books/owner-reclaim-carry.lisp under the same host-called name.
 
 ; Off the mutex, into FRESH catalog and history instances (the served ones
 ; untouched): the catalog of the rebuilt Store's rows and its history
