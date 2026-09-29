@@ -535,7 +535,12 @@ under "Not bounded".
   through SBCL's FFI (`host/native/tls.lisp`); every handshake, on 563 and after STARTTLS, is
   ACL2's admission before SSL_accept (PRF-986, `fn-hsb-admit`, host subject
   `fn-owner-handshake-admit`): per source (an IPv4 address, an IPv6 /64) at
-  most N a minute (`tls-handshakes-per-source-per-minute`, a token bucket),
+  most N a minute (`tls-handshakes-per-source-per-minute`, a token bucket;
+  a listed source at its own rate, the policy row
+  `tls-handshake-source-overrides`, at most the profile's 64 entries,
+  `fn-hsb-overrides-of-word-is-bounded`), the accounting table at most
+  64 x L rows (a new source past it refused `sources-full`, no row evicted;
+  `fn-hsb-buckets-are-bounded`), an IPv4-mapped IPv6 peer its IPv4 source,
   node-wide at most L in flight and L started a second
   (`tls-handshakes-in-flight`), each within D (`tls-handshake-ms`), at most
   32 x L sockets waiting unadmitted; refused by name `tls refused
@@ -544,7 +549,8 @@ under "Not bounded".
   closed|refused|busy|other}` is `fn-cbud-tls-refusal-line` (PKT-640).
 - Evidence: THEOREM for the prefix (PRF-213) and the handshake admission
   (PRF-986: `fn-hsb-steps-keep-the-bound`, `fn-hsb-admits-per-tick-are-bounded`,
-  `fn-hsb-source-admits-are-bounded`); MEASURED for the memory
+  `fn-hsb-source-admits-are-bounded`, `fn-hsb-buckets-are-bounded`,
+  `fn-hsb-overrides-of-word-is-bounded`); MEASURED for the memory
   (`*fn-cbud-tls-octets*`, 128 KiB, connection-multiplexing record, hbox,
   OpenSSL 3.3.1); the library itself is TRUSTED, stated in
   `host/native/tls.lisp` and HST-016 (specs/host.md), and it has no `A-*`

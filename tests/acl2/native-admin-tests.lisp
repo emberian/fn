@@ -430,6 +430,57 @@
          (fn-native-admin-plan
           (fn-na-test-argv '("policy" "set" "exposure-trusted" "192.168.1.0/33"))))
         :policy))
+; PRF-986 (row W2a): the per-source handshake allowances, a :set-policy row
+; admitted exactly when the owner's parse lists it; the owner's read of the
+; configuration the plan's delta makes is that list.
+(defconst *fn-na-hs-overrides*
+  (fn-native-admin-plan
+   (fn-na-test-argv '("policy" "set" "tls-handshake-source-overrides"
+                      "100.64.0.1=600,2001:db8:1:2::/64=120"))))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-hs-overrides*) :set-policy))
+(assert-event (equal (fn-native-admin-plan-deltas *fn-na-hs-overrides*)
+                     (list (fn-cfg-set-policy "tls-handshake-source-overrides"
+                                              "100.64.0.1=600,2001:db8:1:2::/64=120"))))
+(assert-event
+ (equal (fn-hsb-config-overrides
+         (fn-cfg-apply (fn-cfg-value (fn-cfg-initial)) 1 0
+                       (fn-native-admin-plan-deltas *fn-na-hs-overrides*)))
+        (list (cons '(:inet 100 64 0 1) 600)
+              (cons '(:inet6 32 1 13 184 0 1 0 2) 120))))
+(assert-event
+ (equal (fn-native-admin-result-kind
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "tls-handshake-source-overrides" "none"))))
+        :set-policy))
+; Refused by the parse's name: an address that does not parse, a zero rate,
+; and one entry past the profile's 64.
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "tls-handshake-source-overrides"
+                             "100.64.0.300=600"))))
+        :override-address))
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "tls-handshake-source-overrides"
+                             "100.64.0.1=0"))))
+        :override-address))
+(defun fn-na-hs-many (n)
+  (if (zp n) "10.0.0.1=5"
+    (concatenate 'string "10.0.0.1=5," (fn-na-hs-many (1- n)))))
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan
+          (fn-na-test-argv (list "policy" "set" "tls-handshake-source-overrides"
+                                 (fn-na-hs-many 63)))))
+        :accepted))
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-plan
+          (fn-na-test-argv (list "policy" "set" "tls-handshake-source-overrides"
+                                 (fn-na-hs-many 64)))))
+        :overrides-full))
 ; The other kinds carry no value.
 (assert-event (null (fn-native-admin-result-value *fn-na-create*)))
 (assert-event (null (fn-native-admin-result-value *fn-na-capacity*)))

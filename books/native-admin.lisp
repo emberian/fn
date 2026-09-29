@@ -17,6 +17,7 @@
 (include-book "peer-config")
 ; PRF-161: the exposure slots and the anonymous words `policy set' admits.
 (include-book "public-exposure-rows")
+(include-book "tls-handshake-source") ; PRF-986: the override list's parse
 ; PRF-235, PRF-236: the transit hygiene limit slots.
 (include-book "relay-checks")
 (include-book "identity")
@@ -613,6 +614,7 @@
                                                fn-cbor-octet-listp
                                                fn-exp-limit-slotp fn-rck-limit-slotp
                                                fn-exp-trusted-wordp
+                                               fn-hsb-overrides-of-word
                                                fn-exp-anonymous-wordp
                                                fn-xpy-targetp fn-xpy-words-policy
                                                default-car default-cdr
@@ -710,6 +712,24 @@
              (fn-exp-trusted-wordp (cadddr words)))
         (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
                                 (cadddr argv)))
+       ; PRF-986 (row W2a): `policy set tls-handshake-source-overrides
+       ; WORD', the per-source handshake allowances for known shared
+       ; addresses (a carrier NAT), a durable `:set-policy' row applied live
+       ; (host fn-owner-handshake-limits reads it through
+       ; fn-hsb-config-overrides).  The word is admitted exactly when the
+       ; owner's parse lists it (`none' clears it); otherwise refused by
+       ; the parse's name, :override-address or :overrides-full (past the
+       ; profile's tls-handshake-source-overrides entries).
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (equal (caddr words) *fn-hsb-overrides-slot*))
+        (let ((r (fn-hsb-overrides-of-word
+                  (cadddr words) (fn-profile-limit :tls-handshake-source-overrides))))
+          (if (member-equal r '(:override-address :overrides-full))
+              (fn-native-admin-result :refused r nil nil 0 nil nil)
+            (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
+                                    (cadddr argv)))))
        ; PRF-161: a limit of the public reader port, a `:set-limit' row
        ; (SLOT, "") staged, published and replayed like the retention rule.
        ((and (equal (len words) 4)

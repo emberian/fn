@@ -580,10 +580,21 @@ admitted before may still be running).
 
 What it cannot do: from one shared address the node cannot tell many
 people from one attacker. Everyone behind one carrier-grade NAT, one office
-router or one proxy shares one budget; raise it for that address with the
-policy above if your readers arrive that way, and the node's own bound still
-holds. A flood from many addresses is held by the node's bound, so honest
-readers then wait their turn too.
+router or one proxy shares one budget. If your readers arrive that way,
+give that address (or IPv6 /64) its own rate, leaving everyone else's alone:
+
+```
+fn operator /etc/fn/fn.toml policy set tls-handshake-source-overrides 100.64.0.1=600,2001:db8:1:2::/64=120
+fn operator /etc/fn/fn.toml policy set tls-handshake-source-overrides none
+```
+
+Each entry is `ADDRESS=N` or `ADDRESS/64=N`, N handshakes a minute; `none`
+clears the list. It applies live. The list holds at most 64 entries (the
+profile's `tls-handshake-source-overrides`); one more is refused
+`overrides-full`, and an entry that does not parse is refused
+`override-address`; a refused list changes nothing. The node's own bound still
+holds for every source. A flood from many addresses is held by the node's
+bound, so honest readers then wait their turn too.
 
 You do not need a proxy to be safe. A TCP proxy in front of fn adds nothing
 here and costs the per-address limits (fn sees the proxy's address); fn does

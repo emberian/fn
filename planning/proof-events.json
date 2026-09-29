@@ -14181,6 +14181,18 @@
         {
           "kind": "theorem",
           "name": "fn-hsb-scratch-within-the-machine-term"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-buckets-are-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-mapped-address-is-one-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-overrides-of-word-is-bounded"
         }
       ]
     },
