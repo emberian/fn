@@ -8,6 +8,13 @@
   (setf (fnn-bpnc-model node)
         (fnn-core 'fn-bpnc-socket-step (fnn-bpnc-model node) event)))
 
+(defun fnn-bpnc-release-lease (control)
+  "Observe unlock/close completion; never retry a possibly retired descriptor."
+  (let ((fd (fnn-control-state-lease-fd control)))
+    (when fd
+      (setf (fnn-control-state-lease-fd control) nil)
+      (unwind-protect (fnn-flock fd +fnn-lock-un+) (fnn-close fd)))))
+
 (defun fnn-bpnc-retire (node)
   (let* ((control (fnn-bpnc-control node))
          (failure nil))
@@ -16,9 +23,10 @@
       (when (eq (first action) :retire)
         (handler-case
             (progn
-              (when (fnn-control-state-listener control)
-                (fnn-socket-shut (fnn-control-state-listener control))
-                (setf (fnn-control-state-listener control) nil))
+              (let ((listener (fnn-control-state-listener control)))
+                (when listener
+                  (setf (fnn-control-state-listener control) nil)
+                  (sb-bsd-sockets:socket-close listener)))
               ;; Remove only the socket inode this run installed.  Retain
               ;; the path lease until that removal has finished.
               (let* ((path (fnn-octets-string (fnn-octets (second action))))
@@ -29,10 +37,10 @@
                            (eql (sb-posix:stat-ino info)
                                 (fnn-control-state-inode control)))
                   (fnn-unlink path)))
-              (fnn-control-release-lease control))
+              (fnn-bpnc-release-lease control))
           (error (condition)
             (setq failure condition)
-            (fnn-control-release-lease control)))
+            (ignore-errors (fnn-bpnc-release-lease control))))
         (fnn-bpnc-step node (list :retire-result (if failure :failed :ok)))
         (when failure (error failure))))))
 
@@ -136,7 +144,7 @@
                (fnn-send-all (fnn-socket-fd socket) (fnn-octets reply)
                              +fnn-control-io-seconds+)))
            (when fatal (error fatal)))
-      (fnn-socket-shut socket))))
+      (sb-bsd-sockets:socket-close socket))))
 
 (defun fnn-bpnc-pump (node &optional (timeout-ms 0))
   "At most one local request per BP scheduling boundary."
