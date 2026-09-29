@@ -13016,6 +13016,31 @@
      "kind": "theorem",
      "name": "fn-ohr-with-node-secret-preserves-carried-relation",
      "note": "fn-owner-install-node-secret (fn-own-with-node-secret)."
+    },
+    {
+     "kind": "theorem",
+     "name": "fn-ohr-step-begin-preserves-ocl-relation",
+     "note": "fn-owner-begin (fn-pout-begin: fn-ocfg-step (:begin id)). Teeth: tests/acl2/owner-host-relation-tests.lisp."
+    },
+    {
+     "kind": "theorem",
+     "name": "fn-ohr-step-declare-group-preserves-ocl-relation",
+     "note": "fn-owner-declare-group (fn-pout-declare-group: fn-ocfg-step (:declare-group name)); the facts frame fn-ohr-ocl-relation-with-owner-of-same-control-and-facts. Teeth: tests/acl2/owner-host-relation-tests.lisp."
+    },
+    {
+     "kind": "theorem",
+     "name": "fn-ohr-chunk-preserves-ocl-relation",
+     "note": "fn-owner-chunk (fn-scar-ocfg-read-tls-prefix) under the carried view index and the connection's wire state. Teeth owed (a served-span fixture)."
+    },
+    {
+     "kind": "theorem",
+     "name": "fn-ohr-exposure-open-preserves-ocl-relation",
+     "note": "fn-owner-exposure-open (fn-ocar-exp-open) with no peer named; a configured peer is PKT-888. Teeth owed (a public-exposure fixture)."
+    },
+    {
+     "kind": "theorem",
+     "name": "fn-ohr-finish-synced-preserves-ocl-relation",
+     "note": "fn-owner-finish-synced (fn-rix-ocfg-complete) with nothing staged. Teeth owed (needs the history stobj)."
     }
    ]
   },
