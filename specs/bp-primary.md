@@ -250,17 +250,18 @@ exactly the interoperability claim the assurance rules forbid.
 
 ## What remains open
 
-- **Four theorems are stated in their books but commented out as open**, each
-  with the reason at its site: `fn-bpp-previous-node-round-trip` and
-  `fn-bpp-hop-count-round-trip` in `books/bp-primary-invariants.lisp` (the
-  Previous Node and Hop Count data therefore have both codec directions
-  executable but only the Bundle Age round trip proved), and
-  `fn-bpf-cut-covers` and `fn-bpf-reassemble-ok-agrees-with-every-fragment` in
-  `books/bp-fragment-invariants.lisp` (a cut's fragments are proved to agree
-  with the payload and to share its total, not yet to cover it; a successful
-  reassembly is proved to reconstruct a complete agreeing cover, not yet to
-  agree with each fragment it consumed). Nothing else in this document cites
-  them.
+- **Two round trips are stated in `books/bp-primary-invariants.lisp` but
+  commented out as open**, each with the reason at its site:
+  `fn-bpp-data-previous-node` of `fn-bpp-previous-node-data` and
+  `fn-bpp-data-hop-count` of `fn-bpp-hop-count-data` are the identity on a
+  recognized value. The Previous Node and Hop Count data therefore have both
+  codec directions executable but only the Bundle Age round trip
+  (`fn-bpp-bundle-age-round-trip`) proved. The fragment facts once listed here
+  are proved in `books/bp-fragment-invariants.lisp`: a cut covers its payload
+  (`fn-bpf-cut-covers-index`, `fn-bpf-cut-covers-range`, lifted to
+  `fn-bpf-fragment-ok-covers-all`), and a successful reassembly agrees with
+  each fragment it consumed
+  (`fn-bpf-reassemble-ok-agrees-with-every-fragment`).
 - **Two theorem hypotheses are kept for their guards, not for their truth.**
   `fn-bpp-adu-key-ignores-destination-lifetime-and-crc-type-by-definition` and
   `fn-bpf-fragment-block-preserves-adu-key` both hold without `fn-bpp-blockp`;
@@ -321,12 +322,12 @@ In `tests/acl2/bp-primary-tests`:
   dropped: octets `(1)`, which the decoder refuses as `:malformed`.
   Re-encoding the block that refusal does not carry gives the all-default
   block's octets, not `(1)`.
-- `fn-bpp-previous-node-round-trip`, `fn-bpp-previous-nodep` dropped: the dtn
-  endpoint `//n2/inbox`, whose demux is non-empty, so it is not a node ID.
-  The round trip answers `nil`.
-- `fn-bpp-hop-count-round-trip`, `fn-bpp-hop-countp` dropped: the hop count
-  with limit `0`, which is out of the 1..255 range. The round trip answers
-  `nil`.
+- The open Previous Node round trip (above), `fn-bpp-previous-nodep`
+  dropped: the dtn endpoint `//n2/inbox`, whose demux is non-empty, so it is
+  not a node ID. The body evaluates to `nil`.
+- The open Hop Count round trip (above), `fn-bpp-hop-countp` dropped: the hop
+  count with limit `0`, which is out of the 1..255 range. The body evaluates
+  to `nil`.
 
 In `tests/acl2/bp-fragment-tests`:
 

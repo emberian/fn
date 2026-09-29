@@ -3638,7 +3638,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-rcl-reclaim-never-touches-a-held-article"
+          "name": "fn-rclp-event-never-touches-a-held-article"
         },
         {
           "kind": "theorem",
@@ -4467,6 +4467,16 @@
         {
           "kind": "theorem",
           "name": "fn-sbud-article-figure-bounds-the-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-gate-figure-bounds-every-record",
+          "note": "Lane heap-pool: the gate figure (the record figure and the header charge at its worst) bounds every record of two payload octets or more, wide or narrow, at any producer width (the widest overhead is 28 octets past the narrow ceiling)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-verdict-keeps-history-for-every-record",
+          "note": "KEYSTONE (lane heap-pool): an article the gate admits never pushes history past H, for every record of two payload octets or more, without the narrowness or u32-charge hypotheses (the gate's header figure covers the widening). Teeth tests/acl2/store-budget-article-tests.lisp."
         }
       ]
     },
@@ -4663,7 +4673,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-rclp-events-never-touch-a-held-article"
+          "name": "fn-rclp-event-never-touches-a-held-article"
         },
         {
           "kind": "theorem",
@@ -7113,12 +7123,17 @@
         {
           "kind": "theorem",
           "name": "fn-heap-records-retained-within-the-terms",
-          "note": "KEYSTONE (lane heap-bounds, B2): the state retained by records admissible under the profile (Message-ID within 250, header within max-header-octets and a part of the payload) is within the figure's record terms: *fn-heap-record-octets* a record and the header term fn-heap-record-headers-octets of min(USED, N x HDR). Per-octet costs named in books/heap-store-figure.lisp from the retained structures; teeth tests/acl2/heap-figure-tests.lisp."
+          "note": "KEYSTONE (lane heap-bounds, B2; restated by lane heap-pool, B9): the state records (MID HDR PAYLOAD) retain, twice for the collector, is within the figure's record terms: *fn-heap-record-octets* (the fixed part) a record and *fn-heap-charge-heap-octets* (8) a charged octet of USED (payloads and header charges). The header charge is the history budget's (books/store-budget.lisp fn-sbud-held-heap-charge: 8 a header octet, 12 more a Message-ID octet; fn-heap-record-charge-is-the-budgets-charge), so a header-heavy store reaches H sooner and is refused by name (unaffordable). Teeth tests/acl2/heap-figure-tests.lisp."
         },
         {
           "kind": "theorem",
           "name": "fn-heap-small-profile-run-fits-a-two-gib-machine",
           "note": "Lane heap-bounds: the small run holds any core up to 512 MiB on 2,048 MiB; on 1,536 MiB only up to 192 MiB (fn-heap-small-profile-run-fits-a-small-machine, restated)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-record-charge-is-the-budgets-charge",
+          "note": "Lane heap-pool: the model's record charge is the history budget's charge of a held row (fn-sbud-held-heap-charge over fn-sbud-held-header-octets and fn-sbud-held-msgid-octets)."
         }
       ]
     },
@@ -11381,7 +11396,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cvec-statement-row-within-its-figure"
+          "name": "fn-cvec-statement-row-within-its-figure",
+          "note": "Lane heap-pool: a composite's charge (encoding, 320 a group, its article's header charge) is within its figure when its encoding and its article's octets are within the kind's ceiling; the admission's runtime check is the charge against the figure (fn-cvec-record-admittedp). Before lane heap-pool the two were equivalent (no header charge)."
         },
         {
           "kind": "theorem",
@@ -11390,6 +11406,11 @@
         {
           "kind": "theorem",
           "name": "fn-oii-publication-group-count-is-the-rows"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-held-row-within-its-figure",
+          "note": "Lane heap-pool: a held row's charge (payload, 320 a group, its header charge) is within the figure its article was admitted at (fn-sbud-article-figure: the charge at its worst, 8 P + 12 x 250)."
         }
       ]
     },
@@ -12266,7 +12287,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-web-sessions-bound-by-281"
+          "name": "fn-web-step-admits-no-session-but-by-281"
         },
         {
           "kind": "theorem",
@@ -14237,6 +14258,238 @@
         {
           "kind": "theorem",
           "name": "fn-ocln-a-cold-line-is-answered-unavailable"
+        }
+      ]
+    },
+    {
+      "id": "PRF-937",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ofr-replay-ok-frontier-admits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofr-loop-ok-within-frontier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofr-apply-record-idle-past-txid"
+        }
+      ]
+    },
+    {
+      "id": "PRF-940",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lim-effective-of-append-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lim-apply-deltas-of-the-verb"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lim-decide-accepted-keeps-use-within"
+        }
+      ]
+    },
+    {
+      "id": "PRF-945",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-clo-clean-stop-is-accepted-or-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-finalize-never-answers-frontier-at-the-computed-frontier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-capture-of-clean-stop-is-accepted-or-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-store-open-of-clean-stop-is-accepted-or-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-relation-state-opens-or-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-capture-of-clean-stop-opens-or-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-observed-at-the-computed-frontier"
+        }
+      ]
+    },
+    {
+      "id": "PRF-950",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpcw-waiver-releases-exactly-once"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcw-only-a-waiver-waives"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcw-only-a-waiver-authors-a-waiver-release"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcw-admitted-waiver-authors-its-release"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcw-waiver-of-an-unheld-obligation-is-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcw-refusal-ignores-the-pin"
+        }
+      ]
+    },
+    {
+      "id": "PRF-957",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-confirm-is-the-records-for"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-records-is-the-records-for"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-records-is-hist-msgid-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-candidates-ascending"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-candidates-below"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-candidates-nat-listp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-spec-from-is-records-for"
+        }
+      ]
+    },
+    {
+      "id": "PRF-946",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-extend-open-is-rii-extend-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-extend-open-finalizes-the-extension"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-historyp-extend-is-observed-historyp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-sf-record-listp-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-sf-record-listp-refrontier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-finalize-carried-is-finalize-configured"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-sn-statep-carried-is-rii-sn-statep-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-verdict-pairs-are-verdicts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-identity-loop-keeps-snapshots"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfi-carried-verdict-facts"
+        }
+      ]
+    },
+    {
+      "id": "PRF-969",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-seqs-is-spec-from"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-confirm-is-the-spec"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-faithful-from-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-candidates-ascending"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-candidates-below"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-candidates-nat-listp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-put-preserves-faithful"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-put-run-finds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-pages-okp-of-put-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-faithful-from-of-put-run"
+        }
+      ]
+    },
+    {
+      "id": "PRF-970",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-seqs-is-cat-msgid-seqs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-spec-from-is-cat-seqs-for"
         }
       ]
     }
