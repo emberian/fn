@@ -2754,7 +2754,6 @@
 
 (definterface fn-bpnj-step
   :class ::common-lisp-compliant
-  :kinds ((event fn-bpnj-host-eventp))
   :keystones (fn-bpnj-step-preserves-guard-premises
               fn-bpnj-step-forwarded-needs-a-durable-finished-record
               fn-bpnj-stale-job-result-settles-nothing))
