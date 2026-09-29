@@ -3803,7 +3803,8 @@ stamp no other reader is pinned at or below (fnn-arena-clear-p S PIN, PIN
 this thread's own pin) is closed.  Runs on a thread that is itself an
 off-mutex arena reader pinned at PIN.  A failure leaves the files retired
 or pending (closed by a later release) and serving continues."
-  (let ((arena (fnn-live-arena)) (new-id nil) (reseated 0) (incomplete 0) (closed 0))
+  (let ((arena (fnn-live-arena)) (new-id nil) (reseated 0) (incomplete 0) (closed 0)
+        (named-detail nil))
     (handler-case
         (progn
           (setq new-id (fnn-extent-register (fnn-state-checkpoint-path store)))
@@ -3843,13 +3844,22 @@ or pending (closed by a later release) and serving continues."
                   (if (fnn-arena-clear-p (car entry) pin)
                       (incf closed (fnn-extent-close (cdr entry)))
                       (push entry keep)))
-                (setq *fnn-extent-pending* (nreverse keep)))))
-          (fnn-err "CHECKPOINT release reseated=~d incomplete=~d closed=~d retired=~d open=~d~@[ held=~(~a~)~]"
+                (setq *fnn-extent-pending* (nreverse keep)))
+              ;; Each retired file still named, and by what: (ID COUNT LOG),
+              ;; COUNT the extent column's entries naming it, LOG whether a
+              ;; log member in flight or fenced names it.
+              (let ((members (fnn-log-member-files (fnn-store-log store))))
+                (setq named-detail
+                      (loop for id in *fnn-extent-retired*
+                            collect (list id (fnn-call 'fn-arx-file-count id arena)
+                                          (if (member id members) 1 0)))))))
+          (fnn-err "CHECKPOINT release reseated=~d incomplete=~d closed=~d retired=~d open=~d~@[ held=~(~a~)~]~@[ named=~{~{~d:~d:~d~}~^,~}~]"
                    reseated incomplete closed
                    (+ (length *fnn-extent-retired*)
                       (reduce #'+ *fnn-extent-pending* :key (lambda (e) (length (cdr e)))))
                    (fnn-extent-open-count)
-                   (cond (*fnn-extent-retired* :named) (*fnn-extent-pending* :readers))))
+                   (cond (*fnn-extent-retired* :named) (*fnn-extent-pending* :readers))
+                   named-detail))
       (serious-condition (e)
         (fnn-err "CHECKPOINT release failed (files stay retired): ~a" e)))))
 
@@ -4229,7 +4239,17 @@ FN_NATIVE_RECLAIM_FAULT names it."
           (fnn-fault "invalid FN_NATIVE_RECLAIM_FAULT (expected CUT:kill)"))
         (when (string-equal (subseq raw 0 colon) (symbol-name cut))
           (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
-          (fnn-fault "test SIGKILL did not terminate the process"))))))
+          (fnn-fault "test SIGKILL did not terminate the process")))))
+  ;; Developer image only (Q16 item 5): while the file
+  ;; FN_NATIVE_TEST_RECLAIM_STALL_FILE names exists, the pass waits at its
+  ;; :rebuilt cut, off the owner mutex, so posts commit between the capture
+  ;; and the swap and the swap word answers :delta
+  ;; (tests/test_native_expiry.py, the continuous-posting case).
+  (when (eq cut :rebuilt)
+    (let ((stall (fnn-developer-selector "FN_NATIVE_TEST_RECLAIM_STALL_FILE")))
+      (when (and stall (plusp (length stall)) (probe-file stall))
+        (fnn-err "RECLAIM stalled at=rebuilt")
+        (loop while (probe-file stall) do (sleep 0.05))))))
 
 (defun fnn-fresh-stobj (name)
   "A fresh, empty instance of the live stobj NAME (fn-cat, fn-hist) for the
