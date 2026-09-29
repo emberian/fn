@@ -741,6 +741,33 @@ def wants_full(form: str) -> bool:
     return form_head(form) in DIAGNOSTIC_HEADS
 
 
+# Commands that take events back out of the session.  chunked-body-2 sent
+# `(u)` twice meaning to print and silently lost its last event; `send`
+# refuses them unless --allow-undo (resync is the command that undoes).
+UNDO_HEADS = frozenset(("u", "ubt", "ubt!", "ubu", "ubu!", "ubt?", "ubu?",
+                        "ubt-prehistory", "reset-prehistory"))
+
+
+def undoes(form: str) -> bool:
+    return form_head(form) in UNDO_HEADS
+
+
+def value_lines(form: str, output: str, keep: int = 20) -> list[str]:
+    """What a non-event form printed, for the one-line-per-form answers.
+
+    `send` of several forms printed only `ok` per form, so a diagnostic
+    value such as `(disabledp 'zp)` was dropped (d27-representation-2).  An
+    event's output is its proof, summarised by the cost line; any other
+    form's output is its answer, kept up to KEEP lines.
+    """
+    if is_event(form) or is_keyword_command(form) and form_head(form) in UNDO_HEADS:
+        return []
+    lines = output_lines(output)
+    if len(lines) > keep:
+        lines = lines[:keep] + [f"[... {len(lines) - keep} more lines; --full shows them]"]
+    return lines
+
+
 def output_lines(output: str) -> list[str]:
     return [line for line in output.splitlines() if line.strip() not in ("ACL2 !>", "")]
 
@@ -1444,7 +1471,31 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
     return True, "\n".join(printed), order
 
 
+# `_start`'s answer when a dependency loaded from source failed: `start`
+# stops what is left and starts again over certificates.
+SOURCE_DEPS_FAILED = 75
+
+
 def start(args) -> int:
+    """Start a session; a from-source dependency that fails to load falls back
+    to --certify-missing, saying so (limits-live-3: after the chunked-body-2
+    merge a dependency's ENCAPSULATE failed from source, a false red)."""
+    code = _start(args)
+    if code != SOURCE_DEPS_FAILED:
+        return code
+    with contextlib.suppress(SystemExit):
+        stop(args)
+    args.certify_missing = True
+    args.source_deps = None
+    args.ld_missing = False
+    args.ld = []
+    print("proof-repl: retrying with --certify-missing: the dependencies are "
+          "certified (on this machine, into its cache) and included, as a "
+          "certification would include them")
+    return _start(args)
+
+
+def _start(args) -> int:
     directory = session_dir(args.name)
     lock_fd = open_session_lock(args.name, "start")
     if lock_fd is None:
@@ -1511,6 +1562,14 @@ def start(args) -> int:
                 if state.get("error") and not state.get("ready"):
                     print(f"proof-repl: session {args.name!r} failed during load; "
                           f"see {directory / 'log'}")
+                    failed_in = [one for one in from_source
+                                 if str(state.get("stopped_at") or "").startswith(one + ":")]
+                    if failed_in and not getattr(args, "certify_missing", False):
+                        print(f"proof-repl: the failure is in {failed_in[0]}, loaded "
+                              f"from source ({state.get('stopped_at')}); a from-source "
+                              "load is not a certification and can fail where one "
+                              "passes")
+                        return SOURCE_DEPS_FAILED
                     return 1
             time.sleep(0.5)
         else:
@@ -1627,6 +1686,9 @@ def send_many(name: str, items: list[tuple[str, str]], limit: float | None,
             print(output)
         elif refused:
             print(brief(output, where=save_output(name, output, f"-{position}")))
+        else:
+            for line in value_lines(form, output):
+                print("        " + line)
         if answer.get("timed_out"):
             print(f"[{label}: no answer within the hard limit; the session was killed]")
             break
@@ -1648,6 +1710,13 @@ def send(args) -> int:
         several = commands(form)
     except ValueError:
         several = [form]  # the session answers with the parse error
+    undoing = [one for one in several if undoes(one)]
+    if undoing and not getattr(args, "allow_undo", False):
+        print(f"proof-repl: refusing {undoing[0].strip()[:40]!r}: it takes events back "
+              "out of the session (`(u)` is not a print).  Pass --allow-undo if that "
+              "is meant, or `resync NAME BOOK --from EVENT` to undo and resend a book.",
+              file=sys.stderr)
+        return 2
     if len(several) <= 1:
         return send_one(args.name, form, args.limit, args.full)
     items = [(form_label(index, one), one) for index, one in enumerate(several, 1)]
@@ -2898,7 +2967,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--full", action="store_true", help="everything ACL2 printed")
     p.add_argument("--keep-going", action="store_true",
                    help="several forms: send the rest after a refusal")
-    add_remote_options(p)
+    p.add_argument("--allow-undo", action="store_true",
+                   help="send (u), (ubt ...), :ubt! ... and the like; refused without it")
+    add_remote_options(p, sync=True)  # --no-sync accepted: send syncs nothing
     p.set_defaults(run=send)
     p = sub.add_parser("send-range", help="a book's forms from one event to another, "
                                           "with ACL2 time and prover steps per form")
@@ -2999,14 +3070,24 @@ def main(argv: list[str] | None = None) -> int:
     # order): options before the subcommand move after it (f1-bisect,
     # 2026-09-28: "invalid choice: 'auto'").
     lead = []
-    while argv and argv[0] in ("--host", "--remote-tree", "--acl2") and len(argv) > 1:
-        lead += argv[:2]
-        argv = argv[2:]
+    while argv and (argv[0] in ("--host", "--remote-tree", "--acl2") and len(argv) > 1
+                    or argv[0] == "--no-sync" or argv[0].startswith(
+                        ("--host=", "--remote-tree=", "--acl2="))):
+        width = 2 if argv[0] in ("--host", "--remote-tree", "--acl2") else 1
+        lead += argv[:width]
+        argv = argv[width:]
     if lead and argv:
         argv = argv[:1] + lead + argv[1:]
     elif lead:
         argv = lead
     args = parser.parse_args(argv)
+    if args.command in ("start", "probe") and getattr(args, "book", None) \
+            and args.book.endswith(".lisp"):
+        # `start NAME books/X.lisp` reached the box as books/X.lisp.lisp
+        # (small-rows, 2026-09-29): the name is the book without its suffix.
+        suffixed = args.book
+        args.book = suffixed[:-len(".lisp")]
+        argv = [args.book if word == suffixed else word for word in argv]
     if (getattr(args, "host", None) is None and args.command in SESSION_COMMANDS
             and recorded_host(args.name)):
         # The session's machine is recorded here (remember_host): no --host again.

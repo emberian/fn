@@ -7,6 +7,9 @@ freeze lanes did not have (review of 2026-09-22, F1 and F5).
 """
 from __future__ import annotations
 
+import argparse
+import contextlib
+import io
 import json
 import os
 import pathlib
@@ -1126,10 +1129,11 @@ class SessionTests(unittest.TestCase):
 
     def test_2e_keyword_commands_and_raw_lisp_aborts_do_not_hang_the_session(self):
         started = time.monotonic()
-        ubt = self.cli("send", self.name, ":ubt!", "--limit", "60")
+        ubt = self.cli("send", self.name, ":ubt!", "--limit", "60",
+                       "--allow-undo")
         self.assertEqual(ubt.returncode, 0, ubt.stdout)
         self.assertLess(time.monotonic() - started, 30)
-        one = self.cli("send", self.name, ":ubt! foo")
+        one = self.cli("send", self.name, ":ubt! foo", "--allow-undo")
         self.assertEqual(one.returncode, 0, one.stdout)
         self.assertNotIn("#1", one.stdout)  # one command, not two forms
         abort = self.cli("send", self.name, "(raw-abort)")
@@ -1401,6 +1405,71 @@ class OwnershipTests(unittest.TestCase):
                 capture_output=True, text=True, cwd=ROOT, timeout=30)
             self.assertIn("far-lane", listing.stdout)
             self.assertIn(str(tree), listing.stdout)
+
+
+
+class ObstructionsTwoTests(unittest.TestCase):
+    """obstructions-2 item 5: suffix, argument order, values, undo, fallback."""
+
+    def test_undo_commands_are_refused_without_allow_undo(self):
+        for form in ("(u)", ":u", "(ubt 'x)", ":ubt! foo", "(ubu! 3)"):
+            self.assertTrue(proof_repl.undoes(form), form)
+        for form in ("(disabledp 'zp)", "(defthm u t)", ":pe car"):
+            self.assertFalse(proof_repl.undoes(form), form)
+        asked = []
+        with mock.patch.object(proof_repl, "ask", lambda *a, **k: asked.append(a) or {}), \
+                contextlib.redirect_stderr(io.StringIO()) as said:
+            code = proof_repl.send(argparse.Namespace(name="s", form="(+ 1 2) (u)",
+                                                      limit=None, full=False,
+                                                      allow_undo=False))
+        self.assertEqual((code, asked), (2, []))
+        self.assertIn("--allow-undo", said.getvalue())
+
+    def test_several_forms_keep_a_diagnostic_value(self):
+        answers = iter([{"output": "ACL2 !>\nT\nACL2 !>"},
+                        {"output": "Summary\nForm: ( DEFTHM X ...)\n"}])
+        out = io.StringIO()
+        with mock.patch.object(proof_repl, "ask", lambda *a, **k: next(answers)), \
+                mock.patch.object(proof_repl, "save_output", lambda *a, **k: "log"), \
+                contextlib.redirect_stdout(out):
+            proof_repl.send_many("s", [("#1 disabledp", "(disabledp 'zp)"),
+                                       ("#2 defthm x", "(defthm x t)")], None)
+        lines = out.getvalue().splitlines()
+        self.assertIn("        T", lines)
+        self.assertNotIn("        Summary", lines)
+
+    def test_a_book_named_with_its_suffix_is_normalised_and_no_sync_may_lead(self):
+        seen = []
+        with mock.patch.object(proof_repl, "run_remote",
+                               lambda args, argv: seen.append((args.book, argv)) or 0), \
+                mock.patch.object(proof_repl, "remember_host", lambda *a: None), \
+                contextlib.redirect_stderr(io.StringIO()):
+            proof_repl.main(["--host", "persvati", "start", "n", "books/x.lisp"])
+        self.assertEqual(seen[0][0], "books/x")
+        self.assertIn("books/x", seen[0][1])
+        self.assertNotIn("books/x.lisp", seen[0][1])
+        sent = []
+        with mock.patch.object(proof_repl, "run_remote",
+                               lambda args, argv: sent.append(argv) or 0), \
+                contextlib.redirect_stderr(io.StringIO()):
+            proof_repl.main(["--no-sync", "--host", "hbox", "send", "n", "(+ 1 2)"])
+            proof_repl.main(["send", "n", "(+ 1 2)", "--host", "hbox", "--no-sync"])
+        self.assertEqual(len(sent), 2)
+
+    def test_a_failed_from_source_dependency_falls_back_to_certify_missing(self):
+        calls = []
+
+        def fake_start(args):
+            calls.append((args.certify_missing, args.source_deps))
+            return proof_repl.SOURCE_DEPS_FAILED if len(calls) == 1 else 0
+        args = argparse.Namespace(name="s", certify_missing=False, source_deps="*",
+                                  ld_missing=False, ld=[])
+        with mock.patch.object(proof_repl, "_start", fake_start), \
+                mock.patch.object(proof_repl, "stop", lambda args: 0), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(proof_repl.start(args), 0)
+        self.assertEqual(calls, [(False, "*"), (True, None)])
+        self.assertIn("retrying with --certify-missing", out.getvalue())
 
 
 if __name__ == "__main__":
