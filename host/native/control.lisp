@@ -20,6 +20,15 @@
 (defmacro fnn-with-control ((control) &body body)
   `(sb-thread:with-mutex ((fnn-control-state-lock ,control)) ,@body))
 
+(defvar *fnn-control-buffer-lock*
+  (sb-thread:make-mutex :name "fn local control buffer")
+  "The control buffer's lock (io.lisp fnn-live-octets-ctl): a client's frame is
+filled and decoded under it, before any owner work; never held across the
+owner mutex.")
+
+(defmacro fnn-with-control-buffer (() &body body)
+  `(sb-thread:with-mutex (*fnn-control-buffer-lock*) ,@body))
+
 (defun fnn-control-socket-path-p (info)
   (and info (sb-posix:s-issock (sb-posix:stat-mode info))))
 
@@ -381,55 +390,42 @@ ACL2 returns."
            (handler-case
                (let* ((frame (prog1 (fnn-control-read-frame socket maximum)
                                (fnn-control-answering control socket)))
-                      (frame-list (and (typep frame 'fnn-octets)
-                                       (fnn-octet-list frame)))
-                      (reasoned-frame
-                        (and frame-list
-                             (setq reasoned
-                                   (fnn-core 'fn-native-control-host-reasoned-framep
-                                             frame-list))))
-                      (request
-                        (and frame-list
-                             (fnn-core (if reasoned-frame
-                                           'fn-native-control-host-reasoned-request-decode
-                                         'fn-native-control-host-request-decode)
-                                       frame-list)))
-                      (admin
-                        (and frame-list
-                             (fnn-core (if reasoned-frame
-                                           'fn-native-control-host-reasoned-admin-decode
-                                         'fn-native-control-host-admin-decode)
-                                       frame-list)))
-                      ;; PKT-657, PKT-575: the moderation request (kind 21).
-                      (moderation
-                        (and frame-list
-                             (fnn-core 'fn-native-control-host-moderation-decode
-                                       frame-list)))
-                      (topic
+                      ;; D27 (books/native-control-buffer.lisp, PRF-960): the
+                      ;; frame is decoded in place from the control buffer,
+                      ;; once, under the control buffer lock; ACL2 owns the
+                      ;; dispatch (fn-frb-control-decode-is-reference) and the
+                      ;; host destructures (REASONED REQUEST ADMIN MODERATION
+                      ;; TOPIC CONSUMER).  No list of the frame is built for
+                      ;; the FNCT decoders.
+                      (decoded
                         (and (typep frame 'fnn-octets)
-                             (fnn-core 'fn-native-control-host-topic-request-decode
-                                       (fnn-octet-list frame))))
+                             (let ((d (fnn-with-control-buffer ()
+                                        (fnn-core 'fn-native-control-host-decode-frame
+                                                  (fnn-octets-ctl-fill frame)))))
+                               (setq reasoned (first d))
+                               d)))
+                      (request (and decoded (second decoded)))
+                      (admin (and decoded (third decoded)))
+                      ;; PKT-657, PKT-575: the moderation request (kind 21).
+                      (moderation (and decoded (fourth decoded)))
+                      (topic (and decoded (fifth decoded)))
                       ;; PKT-709: the plain request (kind 4) or the reasoned
                       ;; one (kind 22, the same payload), decided alike.
-                      (consumer
-                        (and (typep frame 'fnn-octets)
-                             (let ((plain
-                                     (fnn-core 'fn-native-control-host-consumer-request-decode
-                                               (fnn-octet-list frame))))
-                               (if (and (consp plain) (eq (car plain) :consumer))
-                                   plain
-                                 (fnn-core 'fn-native-control-host-consumer-reasoned-request-decode
-                                           (fnn-octet-list frame))))))
+                      (consumer (and decoded (sixth decoded)))
+                      ;; The FNLS requests (the status class of D27 row Q2):
+                      ;; still over the octet list, built once.
+                      (frame-list (and (typep frame 'fnn-octets)
+                                       (fnn-octet-list frame)))
                       (live
-                        (and (typep frame 'fnn-octets)
+                        (and frame-list
                              (fnn-core 'fn-native-live-status-host-requestp
-                                       (fnn-octet-list frame))))
+                                       frame-list)))
                       ;; lane obligations-paged: a paged report's request
                       ;; (FNLS frame kind 4, books/native-live-pages.lisp).
                       (pages
-                        (and (not live) (typep frame 'fnn-octets)
+                        (and (not live) frame-list
                              (fnn-core 'fn-native-live-pages-host-requestp
-                                       (fnn-octet-list frame)))))
+                                       frame-list))))
                  (cond
                    (live
                     (list :live-status-reply

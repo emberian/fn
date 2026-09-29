@@ -13893,6 +13893,37 @@
       "progress_note": "Lane d27-representation (D27 boundary 9, row Q2 of COMPLETE-BEFORE-6.6.0, 2026-09-29). Teeth in tests/acl2/article-buffer-tests.lisp: the positive witness in the live buffer, every error arm, the hypothesis-removal witness on the logical definitions (a cell of 300: the reference refuses, the twin parses on), the consumers' witnesses. Not here: the signed arm's source as a buffer range (PKT-743); a header-parse cache across the transit's four calls."
     },
     {
+      "id": "PRF-960",
+      "title": "The local-control frame is opened in place from the octet buffer, and the host site's dispatch over the buffer is the dispatch over the octet list",
+      "statement": "books/frame-buffer.lisp: fn-frb-decode DIGEST MAX fn-octets reads the header's fields by index, compares the trailer in place and answers fn-frame-decode's result with the payload LOCATED by its length (KEYSTONE fn-frb-decode-is-frame-decode: under fn-octets-p, the buffer's invariant, the twin equals fn-frb-of the reference decode of the buffer's value; fn-frb-payload-is-window: the reference's payload is the buffer's window of that length after the 10-octet header, an error's the empty one). books/native-control-buffer.lisp: fn-frb-open-with DIGEST KIND fn-octets is fn-nctrl-open with the digest as an argument (KEYSTONE fn-frb-open-with-is-nctrl-open-with, against fn-frb-nctrl-open-with, which fn-nctrl-open is by definition with the trailer of its protected prefix); fn-frb-open-payload-with lifts it to the reference's exact result, the payload copied out of its window (one cons of the payload, never of the frame); fn-frb-open and fn-frb-open-payload compute the digest ONCE as frame-digest-buffer's window digest of the protected prefix (fn-frb-open-is-nctrl-open, fn-frb-open-payload-is-nctrl-open). fn-frb-control-decode is the whole dispatch of host/native/control.lisp fnn-control-handle-client (reasoned flag, request, admin, moderation, topic, consumer; the kinds and the order the host used) from one digest, and equals fn-frb-control-reference, the same dispatch over the octet list through the reference decoders (fn-frb-control-decode-is-reference). The reference decoders fn-ncl-request-decode, fn-cwait-request-decode, fn-ncr-request-decode, fn-thlc-request-decode and fn-native-control-moderation-decode are each the open followed by a payload grammar over the opened frame (-payload-decode), which both they and the buffer entry call. Every executable is guard-verified. host/native-control-host.lisp fn-native-control-host-decode-frame is the entry, over the control service's own buffer fn-octets-ctl (congruent to fn-octets; the owner's buffer is filled under the owner mutex, a control worker decodes before it takes that mutex), called by fnn-control-handle-client under the control buffer lock after fnn-octets-ctl-fill of the frame: no list of the frame is built for the FNCT decoders, and the frame is digested once per request instead of once per decoder.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001",
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-935",
+        "PRF-106"
+      ],
+      "assumptions": [],
+      "status": "proposed",
+      "events": [
+        "fn-frb-open-with-is-nctrl-open-with",
+        "fn-frb-open-payload-with-is-nctrl-open-with",
+        "fn-frb-open-is-nctrl-open",
+        "fn-frb-open-payload-is-nctrl-open",
+        "fn-frb-control-decode-is-reference",
+        "fn-frb-decode-is-frame-decode",
+        "fn-frb-payload-is-window"
+      ],
+      "evidence": [
+        "books/frame-buffer.lisp",
+        "books/native-control-buffer.lisp",
+        "tests/acl2/frame-buffer-tests.lisp"
+      ],
+      "progress_note": "Lane d27-representation-3 (D27 row Q2, the frame-control class, 2026-09-29). Teeth in tests/acl2/frame-buffer-tests.lisp: positive witnesses in the live buffer (an explicit-trailer frame for the decode and the digest-given open; real sealed frames through the window digest's attachment for the composed open and the dispatch), every error arm of the decode, and a hypothesis-removal witness per literal theorem with a non-octet cell in the payload (the digest explicit, since fn-frame-digest is constrained). fn-frb-payload-is-window was restated with the single hypothesis fn-octets-p: of its two hypotheses neither had a removal witness (an ok decode is one of an octet list; under the invariant the keystone decides the error arms)."
+    },
+    {
       "id": "PRF-904",
       "title": "LIST COUNTS carries LIST ACTIVE's status for every group: m for a moderated group, n for a read-only one, y otherwise",
       "statement": "RFC 6048 section 2.2.2: the last field of a LIST COUNTS line is LIST ACTIVE's status (RFC 3977 section 7.6.3; RFC 6048 section 2.1.1). books/nntp-responses.lisp fn-nntp-counts-summary-line renders fn-nntp-closed-status of the group under the connection's CLOSED list (the reader environment's, books/nntp-post.lisp fn-post-reader-env-closed: the read-only groups, the moderated entries, a moderator's approver entries), the list LIST ACTIVE's status reads; the reference fn-nntp-list-counts-command, the pinned bucket arm fn-gidx-list-counts-command (books/nntp.lisp) and the catalog arm fn-nntp-list-counts-command-cat (books/served-catalog.lisp) take (fn-nntp-env-closed env) from their dispatchers. KEYSTONES: fn-scat-counts-lines-status-is-the-active-status (the host's arm: host/owner-host.lisp fn-owner-chunk-span-at -> fn-scr-command -> fn-nntp-archive-command-cat -> fn-nntp-list-counts-command-cat -> fn-scat-counts-lines), fn-gidx-counts-lines-status-is-the-active-status, fn-nntp-counts-lines-status-is-the-active-status (books/nntp-list-counts.lisp): line I of the LIST COUNTS lines over GROUPS and CLOSED ends with the octet line I of LIST ACTIVE's status lines over the same GROUPS and CLOSED ends with, for any archive, buckets and catalog; fn-nntp-counts-summary-line-status names that octet (fn-nntp-closed-status-octet). The served equations to the archive fold (fn-nntp-list-counts-command-cat-is-archive, fn-gidx-list-counts-command-is-the-archive-fold, fn-served-dispatch-list-counts) carry CLOSED. Before PKT-703 the field was the constant y.",

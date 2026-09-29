@@ -164,9 +164,11 @@
   (declare (xargs :guard t))
   (if (and (consp x) (equal (car x) 1)) (cdr x) :bad))
 
-(defun fn-native-control-moderation-decode (octets)
+; The payload grammar over an opened frame; the decode below is the open
+; (fn-nctrl-open) followed by it, and books/native-control-buffer.lisp opens
+; the frame in place and calls the grammar.
+(defun fn-nctrl-moderation-payload-decode (opened)
   (declare (xargs :guard t))
-  (let ((opened (fn-nctrl-open octets *fn-nctrl-moderation-request-kind*)))
     (if (not (fn-frame-result-okp opened))
         :bad
       (let ((payload (fn-frame-result-payload opened)))
@@ -184,7 +186,11 @@
                           (fn-nctrl-moderation-field (cadr v))
                           (fn-nctrl-moderation-field (caddr v))
                           (fn-nctrl-moderation-field (cadddr v)))
-                  :bad)))))))))
+                  :bad))))))))
+
+(defun fn-native-control-moderation-decode (octets)
+  (declare (xargs :guard t))
+  (fn-nctrl-moderation-payload-decode (fn-nctrl-open octets *fn-nctrl-moderation-request-kind*)))
 
 ; -----------------------------------------------------------------------------
 ; The reply

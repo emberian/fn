@@ -13377,6 +13377,39 @@
       ]
     },
     {
+      "id": "PRF-960",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-frb-open-with-is-nctrl-open-with"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-open-payload-with-is-nctrl-open-with"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-open-is-nctrl-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-open-payload-is-nctrl-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-control-decode-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-decode-is-frame-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frb-payload-is-window"
+        }
+      ]
+    },
+    {
       "id": "PRF-904",
       "events": [
         {
