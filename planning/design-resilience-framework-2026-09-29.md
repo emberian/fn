@@ -346,7 +346,7 @@ IR-driven backend. Schedule plans and separate oracle records accompany the
 traces; the driver must consume every planned step exactly once before it
 accepts the result.
 
-The next increment executes a bounded acceptance-model IR through
+The implemented bounded acceptance-model IR executes through
 `tools/resilience/adapters/simulator.py`: its validated model-prepare,
 model-complete and model-recover operations are translated to calls of the
 actual ACL2 acceptance functions, not precomputed oracle replies. It retains
@@ -388,7 +388,11 @@ declared campaign, and feedback reaches SBCL code. AFTER THE CUT.
 ## 11. What this increment does not claim
 
 No theorem changed; no native verdict is transferred from the old asserts
-to the new checker until W7b's module runs on the box at the READY sha; the
-"pending" schedule points have no host coordinate and no verdict; the
+to the new checker until W7b's module runs on the box at the READY sha.
+The page-I/O, capture-first reclaim and live BP control rows now have source
+coordinates and bounded native recipes, but remain pending matching-image
+execution; those source coordinates supply no native verdict. The fixed
+page-I/O and reclaim drivers reject altered recipe fields before native setup,
+so they cannot silently execute their fixture for a different supplied IR. The
 checker's enumeration is explicit and small (histories are products of
 per-uncertain-post fates) and says `inconclusive` past its budget.
