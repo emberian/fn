@@ -842,9 +842,14 @@ def progress_script(root: Path, identifier: str) -> str:
     log = f"build/farm/{identifier}.log"
     newest = "$(ls -td build/acl2/certify-*/ 2>/dev/null | head -1)"
     return (
-        f"cd {remote_quote(root)} 2>/dev/null || exit 9; "
+        f"cd {remote_quote(root)} 2>/dev/null || {{ echo 'NOROOT'; exit 9; }}; "
         f"printf 'STATUS %s\\n' \"$(cat build/farm/{identifier}.status "
         f"2>/dev/null || echo running)\"; "
+        # Whether this tree has the run at all: a wait from another worktree
+        # looked under its own remote root and polled a run that was not
+        # there for the whole --wait-seconds (one-format, 2026-09-29).
+        f"printf 'KNOWN %s\\n' \"$(test -e {log} -o -e build/farm/{identifier}.status "
+        f"&& echo yes || echo no)\"; "
         f"d={newest}; "
         f"printf 'MARKERS %s\\n' \"$(grep -lE '{SUCCESS_LINE}' \"$d\"*.certify.log "
         f"2>/dev/null | wc -l | tr -d ' ')\"; "
@@ -853,14 +858,35 @@ def progress_script(root: Path, identifier: str) -> str:
         f"printf 'TAIL %s\\n' \"$(tail -c 300 {log} 2>/dev/null | tr '\\n' ' ')\"; "
         # The runner's plan (certify_books: the critical chain of what it
         # certifies and the job count it chose), once it has printed it.
-        f"printf 'PLAN %s\\n' \"$(grep -m1 '^Critical chain: ' {log} 2>/dev/null)\""
+        f"printf 'PLAN %s\\n' \"$(grep -m1 '^Critical chain: ' {log} 2>/dev/null)\"; "
+        # The run's manifest once it is final: the runner writes it with
+        # `finished_utc` and only then publishes and exits, so a run whose
+        # manifest is final but whose status file is not yet written is
+        # finished as far as its verdict goes (depth-debt-2, d27-representation-2:
+        # waits that never returned on a final manifest).
+        f"printf 'MANIFEST %s\\n' \"$(python3 -c {shlex.quote(MANIFEST_VERDICT)} "
+        f"\"$d\" 2>/dev/null)\""
     )
+
+
+# Prints `<status> <certify-id>` for a final manifest (one with
+# `finished_utc`), nothing otherwise.  The runner records a provisional
+# manifest with status `failed` at its start; that one is not a verdict.
+MANIFEST_VERDICT = (
+    "import json,sys,pathlib\n"
+    "d=pathlib.Path(sys.argv[1])\n"
+    "m=json.loads((d/'manifest.json').read_text())\n"
+    "print(m.get('status','unknown'),d.name) if m.get('finished_utc') else None\n"
+)
 
 
 def parse_progress(output: str) -> dict[str, str]:
     fields: dict[str, str] = {}
     for line in output.splitlines():
-        for key in ("STATUS", "MARKERS", "STARTED", "TAIL", "PLAN"):
+        if line.strip() == "NOROOT":
+            fields["NOROOT"] = "yes"
+        for key in ("STATUS", "MARKERS", "STARTED", "TAIL", "PLAN", "KNOWN",
+                    "MANIFEST"):
             if line.startswith(key + " "):
                 fields[key] = line[len(key) + 1:].strip()
     return fields
@@ -900,8 +926,23 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
         if progress.get("PLAN") and not planned:
             print(f"{identifier} on {host}: {progress['PLAN']}", flush=True)
             planned = True
+        if progress.get("NOROOT") or progress.get("KNOWN") == "no":
+            where = ("no such directory" if progress.get("NOROOT")
+                     else "neither its log nor its status file is there")
+            raise FarmError(
+                f"{identifier} is not a run under {host}:{remote} ({where}); "
+                f"wait from the worktree that submitted it, or pass "
+                f"--remote-root with the gate it ran in")
         state = progress.get("STATUS", "running")
         if state != "running":
+            break
+        final = progress.get("MANIFEST", "").split()
+        if final:
+            # The verdict is decided; the runner is publishing or hung after it.
+            state = "0" if final[0] == "passed" else "1"
+            print(f"{identifier} on {host}: manifest {final[1] if len(final) > 1 else ''} "
+                  f"is final ({final[0]}) though the status file is not written yet; "
+                  f"taking its verdict", flush=True)
             break
         elapsed = int(time.monotonic() - started)
         print(f"{identifier} on {host}: running, {progress.get('MARKERS', '0')} "
@@ -922,10 +963,20 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
         code = int(state)
     except ValueError:
         code = 1
-    collect(host, identifier, root, remote, cache)
     signalled = killed_signal(code)
+    # Say the verdict before the collection: fetching the evidence, sweeping
+    # the box's cache and mirroring to the other box can take many minutes
+    # (correctness-remainder: 25), and a wait that printed nothing through
+    # them read as a wait that never returned.
+    final = progress.get("MANIFEST", "").split()
     print(f"{identifier} on {host}: finished with exit code {code}"
-          + (f" -- {killed_words(signalled)}" if signalled is not None else ""))
+          + (f" -- {killed_words(signalled)}" if signalled is not None else "")
+          + (f"; manifest {final[1]} {final[0]}" if len(final) > 1 else "")
+          + "; now collecting the evidence and publishing the pairs", flush=True)
+    phase_started = time.monotonic()
+    collect(host, identifier, root, remote, cache)
+    print(f"{identifier} on {host}: collected in "
+          f"{int(time.monotonic() - phase_started)}s", flush=True)
     return code
 
 

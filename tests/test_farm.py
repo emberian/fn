@@ -825,6 +825,70 @@ class WaitTests(unittest.TestCase):
             self.assertTrue(sweeps)
             self.assertIn("--cache /scratch/cache", sweeps[-1])
 
+    def test_wait_returns_on_a_final_manifest_before_the_status_file(self):
+        """A final manifest is the verdict: the runner may still be publishing.
+
+        depth-debt-2 and d27-representation-2: waits that never returned
+        while `farm.py status` already showed manifest(passed/failed).
+        """
+        class Final(Fake):
+            def __call__(self, command, **kwargs):
+                result = super().__call__(command, **kwargs)
+                if command[0] == "ssh" and "STATUS" in command[-1]:
+                    result.stdout = ("STATUS running\nKNOWN yes\nMARKERS 3\n"
+                                     "MANIFEST failed certify-20260929T000000Z-7\n")
+                return result
+        fake = Final([], log=self.LOG)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            out = io.StringIO()
+            with driving(fake, root / "cache"), contextlib.redirect_stdout(out):
+                code = farm.wait("hbox", "run-m", root, poll=1, timeout_seconds=600)
+            self.assertEqual(code, 1)
+            self.assertEqual(sum("STATUS" in s for s in fake.scripts()), 1)
+            said = out.getvalue()
+            self.assertIn("is final (failed)", said)
+            self.assertIn("manifest certify-20260929T000000Z-7 failed", said)
+            # The verdict comes before the collection's phase, not after it.
+            self.assertLess(said.index("finished with exit code 1"),
+                            said.index("collected in"))
+
+    def test_a_provisional_manifest_is_not_a_verdict(self):
+        script = farm.progress_script(Path("/r"), "run-p")
+        self.assertIn("finished_utc", farm.MANIFEST_VERDICT)
+        self.assertIn("MANIFEST", script)
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory) / "certify-x"
+            run_dir.mkdir()
+            (run_dir / "manifest.json").write_text(json.dumps({"status": "failed"}))
+            said = subprocess.run([sys.executable, "-c", farm.MANIFEST_VERDICT,
+                                   str(run_dir)], capture_output=True, text=True)
+            self.assertEqual(said.stdout.strip(), "")
+            (run_dir / "manifest.json").write_text(json.dumps(
+                {"status": "passed", "finished_utc": "2026-09-29T00:00:00+00:00"}))
+            said = subprocess.run([sys.executable, "-c", farm.MANIFEST_VERDICT,
+                                   str(run_dir)], capture_output=True, text=True)
+            self.assertEqual(said.stdout.strip(), "passed certify-x")
+
+    def test_wait_refuses_a_run_that_is_not_under_its_remote_root(self):
+        for answer, words in (("NOROOT\n", "no such directory"),
+                              ("STATUS running\nKNOWN no\n", "neither its log")):
+            class Missing(Fake):
+                def __call__(self, command, **kwargs):
+                    result = super().__call__(command, **kwargs)
+                    if command[0] == "ssh" and "STATUS" in command[-1]:
+                        result.stdout = answer
+                    return result
+            fake = Missing([], log=self.LOG)
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                with driving(fake, root / "cache"):
+                    with self.assertRaises(farm.FarmError) as raised:
+                        farm.wait("hbox", "run-q", root, poll=1, timeout_seconds=600)
+                self.assertIn(words, str(raised.exception))
+                self.assertIn("--remote-root", str(raised.exception))
+                self.assertEqual(fake.rsyncs(), [])
+
     def test_progress_parsing_ignores_unrelated_output(self):
         fields = farm.parse_progress(
             "Warning: something\nSTATUS running\nMARKERS 12\nSTARTED 40\nTAIL a b c\n")
