@@ -5236,6 +5236,29 @@
       ],
       "implementation_note": "RFC 3977 section 6 requirement (article numbers 1..2,147,483,647), enforced as a protocol bound, not an implementation ceiling (D27): admission refuses (:article-numbers-exhausted; POST 441 with reason, IHAVE 437, TAKETHIS 439) instead of allocating a number past it. The whole-archive article-count conjunct of fn-nntp-projectionp (no RFC basis; an O(N) walk at every re-pin) is removed. Local policy: the last number assigned in a group is 2,147,483,646, so the watermark after it (rendered as an emptied group's low number, RFC 3977 section 6.1.1.2) is itself an article number.",
       "note": "PKT-615 as the coordinator decided it (lane join-f2-615, 2026-09-28). Scenario: no native scenario reaches the bound (2^31 articles); the refusal is exercised by the ACL2 teeth at constructed boundary states, labelled as such."
+    },
+    {
+      "id": "REP-016",
+      "title": "A TCPCL passive entity that receives a Contact Header of a version it does not implement sends its own header and SESS_TERM Version mismatch and closes at once: nothing after the peer's header is parsed as a TCPCLv4 message and no MSG_REJECT is sent (RFC 9174 section 4.3)",
+      "specification": "specs/tcpcl.md#5-rfc-9174-clause-matrix",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-977"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "rfc9174.txt",
+        "books/tcpcl-session.lisp",
+        "books/tcpcl-invariants.lisp",
+        "tests/acl2/tcpcl-tests.lisp",
+        "host/native/tcpcl.lisp",
+        "tests/test_bp_service_native.py",
+        "planning/evidence/bp-cursors-2026-09-27.md"
+      ]
     }
   ]
 }

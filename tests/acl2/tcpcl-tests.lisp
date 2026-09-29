@@ -291,7 +291,48 @@
 (defconst *t-b-v3* (fn-tcl-drive *t-b0* '(100 116 110 33 3 0) 0))
 (assert-event (equal (fn-tcl-result-events *t-b-v3*)
                      (list (list :send (fn-tcl-make-contact 4 0))
-                           (list :send (fn-tcl-make-sess-term 0 2)))))
+                           (list :send (fn-tcl-make-sess-term 0 2))
+                           '(:close))))
+(assert-event (equal (fn-tcl-session-phase (fn-tcl-result-session *t-b-v3*)) :closed))
+; PKT-650: the rest of a v3 header (ION's: keepalive 15, SDNV EID length,
+; "ipn:150.0") in the same chunk is never parsed as v4 messages -- no MSG_REJECT
+(defconst *t-b-v3-ion*
+  (fn-tcl-drive *t-b0*
+                '(100 116 110 33 3 0 0 15 9 105 112 110 58 49 53 48 46 48) 0))
+(assert-event (equal (fn-tcl-result-events *t-b-v3-ion*)
+                     (fn-tcl-result-events *t-b-v3*)))
+;; Teeth for fn-tcl-passive-version-mismatch-closes-without-reject.
+;; Positive: every antecedent literal holds and every conclusion literal.
+(defconst *t-v3-m* (fn-tcl-make-contact 3 0))
+(defconst *t-v3-r* (fn-tcl-step *t-b0* *t-v3-m* 0))
+(assert-event (and (equal (fn-tcl-session-role *t-b0*) :passive)
+                   (equal (fn-tcl-session-phase *t-b0*) :tcp-connected)
+                   (equal (fn-tcl-msg-kind *t-v3-m*) :contact)
+                   (not (equal (fn-tcl-contact-version *t-v3-m*) 4))))
+(assert-event (and (equal (fn-tcl-session-phase (fn-tcl-result-session *t-v3-r*)) :closed)
+                   (equal (fn-tcl-result-events *t-v3-r*)
+                          (list (fn-tcl-send-event (fn-tcl-own-contact *t-b0*))
+                                (fn-tcl-send-event (fn-tcl-make-sess-term 0 2))
+                                '(:close)))
+                   (equal (fn-tcl-step (fn-tcl-result-session *t-v3-r*)
+                                       (fn-tcl-make-sess-term 0 0) 1)
+                          (fn-tcl-make-result (fn-tcl-result-session *t-v3-r*) nil nil))))
+;; Hypothesis removal, the role: an ACTIVE entity in Contact (the other
+;; literals hold) closes with no SESS_TERM -- the events conclusion fails.
+(defconst *t-v3-a* (fn-tcl-step (fn-tcl-result-session *t-a1*) *t-v3-m* 0))
+(assert-event (and (equal (fn-tcl-session-role (fn-tcl-result-session *t-a1*)) :active)
+                   (equal (fn-tcl-session-phase (fn-tcl-result-session *t-a1*)) :contact)
+                   (equal (fn-tcl-result-events *t-v3-a*) '((:close)))))
+;; Hypothesis removal, the version: version 4 to the passive entity (the
+;; other literals hold) reaches Messaging, not Closed.
+(defconst *t-v4-r* (fn-tcl-step *t-b0* (fn-tcl-make-contact 4 0) 0))
+(assert-event (equal (fn-tcl-session-phase (fn-tcl-result-session *t-v4-r*)) :messaging))
+;; Hypothesis removal, the phase: a passive entity already Messaging ignores
+;; a second contact header -- no close.
+(defconst *t-v3-late* (fn-tcl-step (fn-tcl-result-session *t-v4-r*) *t-v3-m* 0))
+(assert-event (and (equal (fn-tcl-session-role (fn-tcl-result-session *t-v4-r*)) :passive)
+                   (not (equal (fn-tcl-session-phase (fn-tcl-result-session *t-v3-late*))
+                               :closed))))
 ; the active entity closes on version 3
 (defconst *t-a-v3* (fn-tcl-drive (fn-tcl-result-session *t-a1*) '(100 116 110 33 3 0) 0))
 (assert-event (equal (fn-tcl-result-events *t-a-v3*) '((:close))))

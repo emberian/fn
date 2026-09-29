@@ -13513,6 +13513,15 @@
           "name": "fn-bpcc-frame-decode-of-sealed"
         }
       ]
+    },
+    {
+      "id": "PRF-977",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-passive-version-mismatch-closes-without-reject"
+        }
+      ]
     }
   ]
 }

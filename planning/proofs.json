@@ -14113,6 +14113,28 @@
         "planning/evidence/pkt-615-number-bound-2026-09-28.md"
       ],
       "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound."
+    },
+    {
+      "id": "PRF-977",
+      "title": "A passive TCPCL entity closes on an unsupported contact version without parsing the rest of the peer's stream",
+      "statement": "books/tcpcl-invariants.lisp over books/tcpcl-session.lisp (RFC 9174 section 4.3; PKT-650). KEYSTONE fn-tcl-passive-version-mismatch-closes-without-reject: for a passive session in TCP-connected or Contact and a contact message whose version is not 4, fn-tcl-step answers a :closed session whose events are exactly its own Contact Header (when not yet sent), SESS_TERM Version mismatch and (:close), and fn-tcl-step on that session answers no event for any further message. fn-tcl-drive applies fn-tcl-step to each decoded message and stops on a :closed session; the host is host/native/tcpcl.lisp fnn-tcl-session through fn-tcl-host-drive, which returns on :closed and closes the socket after the sends. Witnesses tests/acl2/tcpcl-tests.lisp: *t-v3-r* (positive), *t-v3-a* (role removed: an active entity closes with no SESS_TERM), *t-v4-r* (version 4 reaches Messaging), *t-v3-late* (a passive session in Messaging does not close), *t-b-v3-ion* (ION's whole v3 header in one chunk answers the same three events). What it does not say: anything about TCPCLv3 fallback (not implemented; a lower version is Version mismatch).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-016"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-tcl-passive-version-mismatch-closes-without-reject"
+      ],
+      "evidence": [
+        "books/tcpcl-invariants.lisp",
+        "books/tcpcl-session.lisp",
+        "tests/acl2/tcpcl-tests.lisp",
+        "tests/test_bp_service_native.py"
+      ],
+      "progress_note": "Lane bp-remainder (2026-09-29): REPL-admitted on persvati; the native case in tests/test_bp_service_native.py."
     }
   ]
 }
