@@ -377,6 +377,87 @@
                        (fn-article-line-value field-result)
                        (fn-article-header-rev-add-line header-rev line)))))))))))))
 
+; The field under construction, carried reversed: (raw-lines-rev lower-name
+; unfolded-value-rev).  A continuation line then costs its own length, not the
+; field's accumulated length (PKT-552/770).
+(defun fn-article-open-fieldp (cur)
+  (declare (xargs :guard t))
+  (and (true-listp cur)
+       (equal (len cur) 3)
+       (true-listp (car cur))
+       (true-listp (car (cdr (cdr cur))))))
+
+(defun fn-article-close-field (cur)
+  (declare (xargs :guard (fn-article-open-fieldp cur)))
+  (fn-article-make-field (reverse (car cur)) (car (cdr cur))
+                         (reverse (car (cdr (cdr cur))))))
+
+(defun fn-article-open-field (field)
+  (declare (xargs :guard (fn-article-fieldp field)))
+  (list (reverse (fn-article-field-raw-lines field))
+        (fn-article-field-name field)
+        (reverse (fn-article-field-unfolded-value field))))
+
+(defun fn-article-add-fold-open (cur line)
+  (declare (xargs :guard (and (fn-article-open-fieldp cur)
+                              (true-listp line))))
+  (list (cons line (car cur))
+        (car (cdr cur))
+        (revappend line (car (cdr (cdr cur))))))
+
+(defun fn-article-parse-lines-acc (octets limits lines-left header-bytes nfields
+                                          fields-rev cur header-rev)
+  (declare (xargs :measure (nfix lines-left)
+                  :guard (and (true-listp octets)
+                              (natp lines-left)
+                              (natp header-bytes)
+                              (natp nfields)
+                              (true-listp fields-rev)
+                              (or (null cur)
+                                  (fn-article-open-fieldp cur))
+                              (true-listp header-rev))
+                  :verify-guards nil))
+  (if (zp lines-left)
+      (fn-article-error :header-lines-limit)
+    (let ((next (fn-article-next-line octets)))
+      (if (not (fn-article-line-okp next))
+          next
+        (let ((line (fn-article-line-value next))
+              (rest (fn-article-line-rest next)))
+          (if (null line)
+              (if (not (fn-article-body-crlfp rest))
+                  (fn-article-error :invalid-header)
+                (fn-article-ok
+                 (fn-article-make
+                  (reverse header-rev) rest
+                  (fn-article-finish-fields
+                   fields-rev (and cur (fn-article-close-field cur))))))
+            (if (< (fn-article-limit-octets limits)
+                   (+ header-bytes (len line) 2))
+                (fn-article-error :header-octets-limit)
+              (if (fn-article-wspp (car line))
+                  (if (not cur)
+                      (fn-article-error :invalid-header)
+                    (if (not (fn-article-fold-linep line))
+                        (fn-article-error :invalid-header)
+                      (fn-article-parse-lines-acc
+                       rest limits (1- lines-left) (+ header-bytes (len line) 2)
+                       nfields fields-rev (fn-article-add-fold-open cur line)
+                       (fn-article-header-rev-add-line header-rev line))))
+                (let ((field-result (fn-article-new-field line)))
+                  (if (not (fn-article-line-okp field-result))
+                      field-result
+                    (if (<= (fn-article-limit-fields limits)
+                            (+ (if cur 1 0) (nfix nfields)))
+                        (fn-article-error :header-fields-limit)
+                      (fn-article-parse-lines-acc
+                       rest limits (1- lines-left) (+ header-bytes (len line) 2)
+                       (if cur (+ 1 (nfix nfields)) nfields)
+                       (if cur (cons (fn-article-close-field cur) fields-rev)
+                         fields-rev)
+                       (fn-article-open-field (fn-article-line-value field-result))
+                       (fn-article-header-rev-add-line header-rev line)))))))))))))
+
 ; The admission parser: OCTETS under the header LIMITS of the profile the
 ; store runs under.  The article-octet preflight is the codec ceiling; the
 ; operator's article bound is applied before this by every admission.
@@ -386,9 +467,12 @@
       (fn-article-error :limit)
     (if (not (fn-cbor-octet-listp octets))
       (fn-article-error :invalid-header)
-      (fn-article-parse-lines octets limits
-                              (1+ (fn-article-limit-lines limits))
-                              0 0 nil nil nil))))
+      (mbe :logic (fn-article-parse-lines octets limits
+                                          (1+ (fn-article-limit-lines limits))
+                                          0 0 nil nil nil)
+           :exec (fn-article-parse-lines-acc octets limits
+                                             (1+ (fn-article-limit-lines limits))
+                                             0 0 nil nil nil)))))
 
 ; The parser every reader of a stored or received article uses: the widest
 ; limits any profile can write (each the article codec's ceiling, the
@@ -649,6 +733,76 @@
                     fn-article-new-field fn-article-split-colon-aux
                     fn-article-line-value fn-article-line-rest
                     fn-article-add-fold fn-article-header-rev-add-line
+                    fn-article-finish-fields fn-article-body-crlfp))))
+; The executed parse is the accumulator loop; the logical one is unchanged.
+(local
+ (defthm fn-article-three-list-recomposes
+   (implies (and (true-listp x) (equal (len x) 3))
+            (equal (list (car x) (cadr x) (caddr x)) x))
+   :hints (("Goal" :expand ((len x) (len (cdr x)) (len (cddr x))
+                            (len (cdddr x)) (true-listp (cdddr x)))))))
+
+(defthm fn-article-close-add-fold-open
+  (implies (and (fn-article-open-fieldp cur) (true-listp line))
+           (equal (fn-article-close-field (fn-article-add-fold-open cur line))
+                  (fn-article-add-fold (fn-article-close-field cur) line)))
+  :hints (("Goal" :in-theory (enable fn-article-add-fold))))
+
+(defthm fn-article-close-open-field
+  (implies (fn-article-fieldp field)
+           (equal (fn-article-close-field (fn-article-open-field field))
+                  field))
+  :hints (("Goal" :in-theory (enable fn-article-fieldp))))
+
+(defthm fn-article-add-fold-open-fieldp
+  (implies (and (fn-article-open-fieldp cur) (true-listp line))
+           (fn-article-open-fieldp (fn-article-add-fold-open cur line))))
+
+(defthm fn-article-open-field-open-fieldp
+  (implies (fn-article-fieldp field)
+           (fn-article-open-fieldp (fn-article-open-field field)))
+  :hints (("Goal" :in-theory (enable fn-article-fieldp))))
+
+(defthm fn-article-close-field-nonnil
+  (fn-article-close-field cur)
+  :rule-classes :type-prescription)
+
+; PKT-552/770: the host-called parse (fn-article-parse-under, through mbe)
+; runs this loop, in which a continuation line costs its own length; it
+; returns exactly what the reference loop returns on every input.
+(defthm fn-article-parse-lines-acc-is-parse-lines
+  (implies (or (null cur) (fn-article-open-fieldp cur))
+           (equal (fn-article-parse-lines-acc octets limits lines-left
+                                              header-bytes nfields
+                                              fields-rev cur header-rev)
+                  (fn-article-parse-lines octets limits lines-left
+                                          header-bytes nfields fields-rev
+                                          (and cur (fn-article-close-field cur))
+                                          header-rev)))
+  :hints (("Goal" :induct (fn-article-parse-lines-acc octets limits lines-left
+                                                       header-bytes nfields
+                                                       fields-rev cur header-rev)
+           :do-not '(generalize fertilize eliminate-destructors)
+           :in-theory (disable fn-article-close-field fn-article-add-fold-open
+                               fn-article-open-field fn-article-open-fieldp
+                               fn-article-add-fold fn-article-new-field
+                               fn-article-next-line fn-article-header-rev-add-line
+                               fn-article-finish-fields fn-article-body-crlfp
+                               fn-article-line-okp fn-article-line-value
+                               fn-article-line-rest fn-article-fold-linep
+                               fn-article-make fn-article-ok fn-article-error
+                               fn-article-wspp fn-article-limit-octets
+                               fn-article-limit-fields))))
+
+(verify-guards fn-article-parse-lines-acc
+  :hints (("Goal"
+           :in-theory
+           (disable fn-article-next-line fn-article-next-line-aux
+                    fn-article-new-field fn-article-split-colon-aux
+                    fn-article-line-value fn-article-line-rest
+                    fn-article-add-fold-open fn-article-close-field
+                    fn-article-open-field fn-article-open-fieldp
+                    fn-article-header-rev-add-line
                     fn-article-finish-fields fn-article-body-crlfp))))
 (verify-guards fn-article-parse-under)
 (verify-guards fn-article-parse)

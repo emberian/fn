@@ -168,6 +168,23 @@
             (len (fn-article-field-unfolded-value field))))
   :hints (("Goal" :in-theory (disable fn-aw-append))))
 
+;; The executed fold (fn-article-add-fold-open, the accumulator loop that
+;; fn-article-parse-under runs through mbe): a continuation line costs its own
+;; length, independent of the field it extends (PKT-552/770).  Contrast
+;; fn-aw-add-fold-cost, the reference fold's cost, which grows with the field.
+(defun fn-aw-add-fold-open (cur line)
+  (let ((value (fn-aw-revappend line (car (cdr (cdr cur))))))
+    (fn-aw-r (list (cons line (car cur)) (car (cdr cur)) (fn-aw-v value))
+             (+ 1 (fn-aw-c value)))))
+(defthm fn-aw-add-fold-open-value
+  (equal (fn-aw-v (fn-aw-add-fold-open cur line))
+         (fn-article-add-fold-open cur line))
+  :hints (("Goal" :in-theory (disable fn-aw-revappend))))
+(defthm fn-aw-add-fold-open-cost
+  (equal (fn-aw-c (fn-aw-add-fold-open cur line))
+         (+ 2 (len line)))
+  :hints (("Goal" :in-theory (disable fn-aw-revappend))))
+
 (defun fn-aw-header-add (header-rev line)
   (let* ((back (fn-aw-reverse line))
          (content (fn-aw-append (fn-aw-v back) header-rev))
