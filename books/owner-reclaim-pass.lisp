@@ -34,6 +34,8 @@
 (in-package "ACL2")
 (include-book "owner-reclaim")
 (include-book "owner-credits")
+(include-book "owner-checkpoint-open")
+(include-book "replay-identity-index")
 
 ; -----------------------------------------------------------------------------
 ; 1. The pass's memory.
@@ -145,14 +147,18 @@
 ; pointer, which EQUAL answers at once).
 ;   :delta    something was committed since the capture (deferred by name
 ;             until the delta is absorbable; the pass installs nothing).
+;   :busy     the commit pipeline holds a submission (queued, pending or
+;             in flight: IDLE nil), decided against the old Store (retried
+;             a bounded number of times, then deferred by name).
 ;   :readers  another reader holds the arena off the mutex (retried a
 ;             bounded number of times, then deferred by name).
 ;   :swap     the install and the swap are exact.
-(defun fn-orcp-swap-word (count-cap frontier-cap s-cap count-now frontier-now s-now readers)
+(defun fn-orcp-swap-word (count-cap frontier-cap s-cap count-now frontier-now s-now idle readers)
   (declare (xargs :guard t))
   (cond ((not (and (equal count-now count-cap) (equal frontier-now frontier-cap)))
          :delta)
         ((not (equal s-now s-cap)) :delta)
+        ((not idle) :busy)
         ((not (equal readers 0)) :readers)
         (t :swap)))
 
@@ -162,11 +168,12 @@
 ; (fn-orcp-swapped-history-is-the-offline-rewrite below).
 (defthm fn-orcp-swap-only-over-the-capture
   (implies (equal (fn-orcp-swap-word count-cap frontier-cap s-cap
-                                     count-now frontier-now s-now readers)
+                                     count-now frontier-now s-now idle readers)
                   :swap)
            (and (equal s-now s-cap)
                 (equal count-now count-cap)
                 (equal frontier-now frontier-cap)
+                idle
                 (equal readers 0)))
   :rule-classes nil)
 
@@ -176,7 +183,7 @@
 ; (fn-orc-rewrite-rows-is-the-offline-rewrite).
 (defthm fn-orcp-swapped-history-is-the-offline-rewrite
   (implies (and (equal (fn-orcp-swap-word count-cap frontier-cap s-cap
-                                          count-now frontier-now s-now readers)
+                                          count-now frontier-now s-now idle readers)
                        :swap)
                 (equal rows (fn-sf-records (fn-sn-files s-cap))))
            (equal (fn-orc-rows-octets (fn-orc-rewrite-rows rows ctx fn-arena) fn-arena)
@@ -238,3 +245,109 @@
                         (:instance fn-rclp-events-idempotent
                                    (events (fn-orc-rows-octets rows fn-arena))))
                   :in-theory (disable fn-orc-rows-octets fn-orc-rewrite-rows fn-rclp-events))))
+
+; -----------------------------------------------------------------------------
+; 4. The rebuild and the swapped owner.
+
+; The rewritten rows interned: each tombstoned record (a plain record, the
+; only rows the rewrite makes: fn-orc-record-is-not-held) interned into the
+; live arena under the captured Store's keyring and generation
+; (fn-intern-event, as the open interns), every other row kept by pointer.
+; The host calls it a chunk at a time under the owner mutex (the arena is
+; appended by the owner's quanta only); the fresh handles are above every
+; count a reader captured, and no row the owner serves names them until
+; the swap.  (mv ROWS FN-ARENA), ROWS :bad when a record does not intern.
+(defun fn-orcp-intern-rows (rows keyring generation fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-prin-keyringp keyring) (natp generation))
+                  :verify-guards nil))
+  (if (atom rows)
+      (mv nil fn-arena)
+    (mv-let (row fn-arena)
+      (if (fn-record-p (car rows))
+          (fn-intern-event (car rows) keyring generation fn-arena)
+        (mv (car rows) fn-arena))
+      (if (eq row :bad)
+          (mv :bad fn-arena)
+        (mv-let (rest fn-arena)
+          (fn-orcp-intern-rows (cdr rows) keyring generation fn-arena)
+          (if (eq rest :bad)
+              (mv :bad fn-arena)
+            (mv (cons row rest) fn-arena)))))))
+
+; The rebuild, off the mutex over the interned rewritten ROWS: the open's
+; extension of the empty capture over them (fn-rii-sco-extend, the host's
+; extension) and the owner the open installs from it.  (list E OC).
+(defun fn-orcp-rebuild (rows configs frontier max-conns)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((e (fn-rii-sco-extend (fn-sco-capture configs nil) configs rows)))
+    (list e (fn-ock-recover-extended e configs frontier max-conns))))
+
+; KEYSTONE.  The rebuilt owner is the owner the full open of the rewritten
+; history installs (fn-owner-recover-from-checkpoint-equals-full-recover over
+; the empty prefix): the swap installs what a restart after the reclaim
+; opens, over the same rows.  No hypothesis.
+(defthm fn-orcp-rebuild-is-the-full-open
+  (equal (cadr (fn-orcp-rebuild rows configs frontier max-conns))
+         (fn-ock-recover-full configs frontier rows max-conns))
+  :hints (("Goal" :use ((:instance fn-owner-recover-from-checkpoint-equals-full-recover
+                                   (prefix nil) (suffix rows)))
+                  :in-theory (union-theories '(fn-orcp-rebuild fn-rii-sco-extend-is-sco-extend
+                                               car-cons cdr-cons binary-append
+                                               (:executable-counterpart consp))
+                                             (theory 'minimal-theory)))))
+
+; One connection re-pinned to OWNER's live view, as GROUP moves a pin
+; (books/served.lisp fn-served-repin): the connection served over OWNER,
+; its pin moved, and taken back as fn-own-finish-read takes a read's pin
+; back.  Its session, wire, configuration and observation are kept.
+(defun fn-orcp-repin-conn (owner conn)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((sconn (fn-served-repin
+                 (fn-own-served-conn owner conn (fn-own-conn-live-session owner conn))))
+         (pinned (fn-served-conn-pinned sconn)))
+    (fn-own-conn-make-group-indexed (fn-own-conn-id conn)
+                                    (fn-served-pinned-version pinned)
+                                    (fn-served-pinned-frontier pinned)
+                                    (fn-served-conn-wire sconn)
+                                    (fn-served-conn-session sconn)
+                                    (fn-served-conn-archive sconn)
+                                    (fn-own-conn-config conn)
+                                    (fn-own-conn-observation conn)
+                                    (fn-served-conn-verdicts sconn)
+                                    (fn-served-conn-index sconn)
+                                    (fn-served-conn-group-index sconn)
+                                    (fn-served-conn-control sconn))))
+
+(defun fn-orcp-repin-conns (owner conns)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp conns)
+      (cons (fn-orcp-repin-conn owner (car conns))
+            (fn-orcp-repin-conns owner (cdr conns)))
+    nil))
+
+; The swapped owner: the rebuilt owner's Store and view; the live owner's
+; connections (each re-pinned to the rebuilt view: O(connections)), next
+; id, bounds, commit pipeline, ledger, clock, facts, posting
+; configuration, feeds, key ring and refused-offer memory.
+(defun fn-orcp-swapped-owner (live rebuilt)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((o (fn-own-make (fn-own-store rebuilt) (fn-own-view rebuilt)
+                        nil (fn-own-next-id live) (fn-own-max-conns live)
+                        (fn-own-pending live) (fn-own-ledger-field live)
+                        (fn-own-clock live) (fn-own-facts live) (fn-own-config live)
+                        (fn-own-queue live) (fn-own-inflight live) (fn-own-feeds live)
+                        (fn-own-node-secret live) (fn-own-refused live))))
+    (fn-own-set-conns o (fn-orcp-repin-conns o (fn-own-conns live)))))
+
+; KEYSTONE.  The swapped owner serves exactly the Store the full open of the
+; rewritten history installs, and keeps every live connection (the same
+; ids, in order).
+(defthm fn-orcp-swapped-store-is-the-full-open
+  (equal (fn-own-store (fn-orcp-swapped-owner
+                        live (fn-ocfg-owner (cadr (fn-orcp-rebuild rows configs frontier
+                                                                   max-conns)))))
+         (fn-own-store (fn-ocfg-owner (fn-ock-recover-full configs frontier rows max-conns))))
+  :hints (("Goal" :in-theory (e/d (fn-orcp-swapped-owner fn-own-set-conns)
+                                  (fn-orcp-rebuild fn-ock-recover-full fn-orcp-repin-conns))
+                  :use fn-orcp-rebuild-is-the-full-open)))
