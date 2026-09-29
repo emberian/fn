@@ -129,7 +129,7 @@
 (defun-nx fn-scr-catalogp (archive index v fn-arena fn-cat)
   (and (equal (fn-state-articles archive)
               (fn-cat-view-articles v fn-arena fn-cat))
-       (fn-nntp-projectionp archive)
+       (fn-statep archive)
        (fn-gidx-pin-correspondencep index archive)
        (fn-midx-correspondencep (fn-gidx-pin-trie index)
                                 (fn-state-articles archive))

@@ -53,12 +53,35 @@
         (pgs-octet (ash (ifix w) -32)) (pgs-octet (ash (ifix w) -40))
         (pgs-octet (ash (ifix w) -48)) (pgs-octet (ash (ifix w) -56))))
 
+(defun pgs-words-le-octets-loop (ws acc)
+  ; the octets of WS reversed onto ACC (depth_check: a loop twin)
+  (declare (xargs :guard (true-listp acc)))
+  (if (consp ws)
+      (pgs-words-le-octets-loop (cdr ws) (revappend (pgs-word-le-octets (car ws)) acc))
+    (revappend acc nil)))
+
 (defun pgs-words-le-octets (ws)
   ; The octets of a list of words, each word little-endian, in list order.
-  (declare (xargs :guard t))
-  (if (consp ws)
-      (append (pgs-word-le-octets (car ws)) (pgs-words-le-octets (cdr ws)))
-    nil))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp ws)
+                  (append (pgs-word-le-octets (car ws)) (pgs-words-le-octets (cdr ws)))
+                nil)
+       :exec (pgs-words-le-octets-loop ws nil)))
+
+(local
+ (defthm pgs-revappend-append-assoc
+   (equal (revappend (revappend x y) z) (revappend y (append x z)))
+   :hints (("Goal" :induct (revappend x y)))))
+
+(local
+ (defthm pgs-words-le-octets-loop-is
+   (equal (pgs-words-le-octets-loop ws acc)
+          (revappend acc (pgs-words-le-octets ws)))
+   :hints (("Goal" :induct (pgs-words-le-octets-loop ws acc)
+            :in-theory (disable pgs-word-le-octets)))))
+
+(verify-guards pgs-words-le-octets
+  :hints (("Goal" :in-theory (disable pgs-word-le-octets))))
 
 ; -----------------------------------------------------------------------------
 ; A word's two u32 halves, four octets each, are its eight octets (the

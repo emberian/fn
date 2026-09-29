@@ -121,6 +121,14 @@ remote_check and `boxes.sh --pick` never pick the laptop, and a laptop
 `start --certify-missing` certifies the closure into this machine's cache
 under its own toolchain identity (box certificates are keyed by theirs).
 
+Round 6 (lane tooling-obstructions, 2026-09-28): `start --host BOX` on a box
+another lane reserved names the holder and expiry at once and waits only
+for a lease ending within `--lease-wait` minutes (default 2), else refuses;
+`--host auto` passes over the laptop when its cache lacks any of the book's
+dependencies; a remote start records its box before it runs
+(build/proof-repl/NAME/remote.json), and send/send-range/resync/status/
+stop/probe without --host go there (`--host laptop` runs here).
+
 A session holds one slot of the machine's ACL2 pool for its whole life, so
 it belongs to its lane and ends with it (PKT-346: fifteen finished lanes'
 sessions once held fifteen of persvati's sixteen slots).  `start` records
@@ -2377,15 +2385,7 @@ SSH_OPTIONS = ("-o", "ControlMaster=auto", "-o", "ControlPersist=600",
 
 
 def farm_hosts() -> dict:
-    """tools/farm.py's HOSTS, read as a literal: importing farm pulls in the
-    native-campaign modules under tests/, which a synced REPL tree lacks."""
-    import ast  # noqa: E402
-    tree = ast.parse((Path(__file__).resolve().parent / "farm.py").read_text(encoding="utf-8"))
-    for node in tree.body:
-        if (isinstance(node, ast.Assign) and len(node.targets) == 1
-                and getattr(node.targets[0], "id", None) == "HOSTS"):
-            return ast.literal_eval(node.value)
-    raise SystemExit("proof-repl: tools/farm.py has no HOSTS table")
+    return acl2_slots.farm_hosts()
 
 
 def box_settings(host: str) -> dict:
@@ -2397,19 +2397,9 @@ def box_settings(host: str) -> dict:
 
 
 def apply_box_defaults(environ=os.environ, hostname: str | None = None) -> str | None:
-    """On a farm box, default FN_ACL2 and FN_CERT_CACHE to that box's own.
-
-    A lane that ssh'd to persvati otherwise meets 'no ACL2 executable at
-    acl2' and then an empty ~/.cache/fn-certs (openbsd-release-fixes).
-    An explicit setting always wins.  Answers the box's name, or None.
-    """
-    host = (hostname or socket.gethostname()).split(".")[0]
-    if host not in REMOTE_TREES or ("FN_ACL2" in environ and "FN_CERT_CACHE" in environ):
-        return None
-    settings = box_settings(host)
-    environ.setdefault("FN_ACL2", os.path.expanduser(settings["acl2"]))
-    environ.setdefault("FN_CERT_CACHE", os.path.expanduser(settings["cache"]))
-    return host
+    """On a farm box, default FN_ACL2 and FN_CERT_CACHE to that box's own
+    (acl2_slots.apply_box_defaults; openbsd-release-fixes)."""
+    return acl2_slots.apply_box_defaults(environ, hostname)
 
 
 # `--host laptop`: this machine, when it is not a farm box.  Only REPL
@@ -2453,6 +2443,43 @@ def laptop_offer(environ=os.environ) -> tuple[float, int] | None:
     if free <= 0:
         return None
     return os.getloadavg()[0] / (os.cpu_count() or 1), free
+
+
+def local_cache_gap(book: str, cache: Path | None = None,
+                    toolchain: str | None = None) -> tuple[int, int]:
+    """(dependencies of BOOK this machine's cache has no certificate for, all of them).
+
+    `--host auto` weighed the laptop on load alone and took it with a cache
+    that lacked 76 and 87 books of dev's closure (operations, auth-tls-bugs,
+    2026-09-28): the start then refused and the lane forced --host hbox.  A
+    dependency counts as held when the cache has an entry for its closure key
+    at these bytes (for TOOLCHAIN, when named).  An unreadable closure is
+    all gap.
+    """
+    cache = certs.cache_directory() if cache is None else cache
+    try:
+        graph = include_graph(ROOT, normalize_book(book))
+    except (OSError, certs.UnreadableBook, ValueError):
+        return 1, 1
+    wanted = [name for name in graph if name != normalize_book(book)]
+    lacking = 0
+    for name in wanted:
+        try:
+            entries = certs.cached_entries(cache, certs.closure_key(ROOT, name)[0])
+        except (OSError, certs.UnreadableBook):
+            entries = []
+        if toolchain:
+            entries = [one for one in entries
+                       if one[1].get("toolchain_identity") in (None, toolchain)]
+        if not entries:
+            lacking += 1
+    return lacking, len(wanted)
+
+
+def laptop_toolchain(environ=os.environ) -> str | None:
+    configured = acl2_slots.configured_acl2(environ)
+    found = configured if "/" in configured else shutil.which(configured)
+    return acl2_toolchain.fingerprint(Path(found)).identity if found else None
 
 
 def remote_tree(host: str, lane: str | None, override: str | None = None) -> str:
@@ -2577,6 +2604,85 @@ def refuse_stale_remote(host: str, tree: str, relative: str,
             f"{relative} (sha256 {local[:16]}); drop --no-sync to sync it first")
 
 
+# The commands about one existing session: without --host they go to the
+# machine its start recorded.
+SESSION_COMMANDS = ("send", "send-range", "resync", "status", "stop", "probe")
+
+# Minutes `start --host BOX` waits for another lane's reservation of BOX.
+# config-and-legacy and operations (2026-09-28) waited 10 and 13 minutes in
+# `boxes.sh wait` with nothing on the screen (its note went to a `| tail`):
+# a longer lease is refused at once, naming its holder and expiry.
+DEFAULT_LEASE_WAIT = 2.0
+
+
+def box_lease(host: str, checker=None) -> tuple[str, int] | None:
+    """(`boxes.sh`'s line naming the holder and expiry, minutes left) of a
+    lease on HOST held by another lane, or None when it is free (or ours)."""
+    if checker is None:
+        def checker():
+            done = subprocess.run(["sh", str(ROOT / "tools" / "boxes.sh"), "check", host],
+                                  capture_output=True, text=True, check=False)
+            return done.returncode, done.stderr
+    code, text = checker()
+    if code != 4:
+        return None
+    line = next((one for one in text.splitlines() if " reserved by " in one), text.strip())
+    left = re.search(r"\((\d+) min left\)", line)
+    return line.removeprefix("boxes: "), int(left.group(1)) if left else 0
+
+
+def refuse_or_wait_for_lease(host: str, wait_minutes: float, checker=None,
+                             waiter=None) -> None:
+    held = box_lease(host, checker)
+    if held is None:
+        return
+    line, left = held
+    print(f"proof-repl --host {host}: {line}", file=sys.stderr, flush=True)
+    if left > wait_minutes:
+        raise SystemExit(
+            f"proof-repl: {host} is reserved for {left} more min (over --lease-wait "
+            f"{wait_minutes:g}); no session started: use --host auto (the other box), "
+            f"--lease-wait {left + 1}, or FN_BOX_RESERVATION=ignore when you are its holder")
+    print(f"proof-repl --host {host}: waiting up to {wait_minutes:g} min for the lease",
+          file=sys.stderr, flush=True)
+    if waiter is None:
+        def waiter():
+            return subprocess.run(["sh", str(ROOT / "tools" / "boxes.sh"), "wait", host,
+                                   "--max", str(max(1, int(wait_minutes + 0.999)))],
+                                  check=False).returncode
+    if waiter() != 0:
+        raise SystemExit(f"proof-repl: {host} is still reserved (tools/boxes.sh); "
+                         "no session started")
+
+
+def remember_host(name: str, host: str | None, tree: str | None = None,
+                  book: str | None = None, lane: str | None = None) -> None:
+    """Record which machine session NAME runs on (build/proof-repl/NAME/remote.json).
+
+    Written before a remote start runs, so send/send-range/status/stop after
+    a failed or interrupted start still go to that box without --host again
+    (full-vs-uncertain, 2026-09-28: "no live session" from the local look);
+    a local start removes it, so a name reused on another machine follows the
+    newest start (time-bars: one name on two hosts confused resync).
+    """
+    directory = session_dir(name)
+    record = directory / "remote.json"
+    if host is None:
+        record.unlink(missing_ok=True)
+        return
+    directory.mkdir(parents=True, exist_ok=True)
+    record.write_text(json.dumps({"host": host, "tree": tree, "book": book,
+                                  "lane": lane}) + "\n")
+
+
+def recorded_host(name: str | None) -> str | None:
+    if not name:
+        return None
+    with contextlib.suppress(OSError, KeyError, ValueError, TypeError):
+        return json.loads((session_dir(name) / "remote.json").read_text())["host"]
+    return None
+
+
 def run_remote(args, argv: list[str]) -> int:
     """This command, on args.host, in the lane's tree there, after syncing what it reads."""
     host = args.host
@@ -2587,12 +2693,10 @@ def run_remote(args, argv: list[str]) -> int:
     extra: list[str] = []
     command = args.command
     if command == "start":
-        # A box reserved for a measurement (tools/boxes.sh reserve) is waited
-        # for before a session starts there; `--host auto` already skipped it.
-        waited = subprocess.run(["sh", str(ROOT / "tools" / "boxes.sh"), "wait", host],
-                                check=False)
-        if waited.returncode != 0:
-            raise SystemExit(f"proof-repl: {host} is reserved (tools/boxes.sh); no session started")
+        # A box reserved for a measurement (tools/boxes.sh reserve): say who
+        # holds it and until when at once, and wait only --lease-wait minutes
+        # (`--host auto` already skipped it).
+        refuse_or_wait_for_lease(host, getattr(args, "lease_wait", DEFAULT_LEASE_WAIT))
         books = [args.book, *(getattr(args, "ld", None) or [])]
         source_deps = getattr(args, "source_deps", None)
         if source_deps and source_deps != "*":
@@ -2623,6 +2727,8 @@ def run_remote(args, argv: list[str]) -> int:
         forwarded = [relative if word == args.book else word for word in forwarded]
         if getattr(args, "no_sync", False):
             refuse_stale_remote(host, tree, relative)
+    if command == "start":
+        remember_host(args.name, host, tree, normalize_book(args.book), lane)
     if (books or extra) and not getattr(args, "no_sync", False):
         files = sync_files(books, extra)
         seconds = sync_to(host, tree, files)
@@ -2641,16 +2747,10 @@ def run_remote(args, argv: list[str]) -> int:
         done = subprocess.run(ssh_command(host, script), stdin=subprocess.DEVNULL)
     else:
         done = subprocess.run(ssh_command(host, script), input=stdin_text, text=True)
-    if command == "start" and done.returncode == 0:
-        directory = session_dir(args.name)
-        directory.mkdir(parents=True, exist_ok=True)
-        (directory / "remote.json").write_text(json.dumps(
-            {"host": host, "tree": tree, "book": normalize_book(args.book),
-             "lane": lane}) + "\n")
     return done.returncode
 
 
-def resolve_auto_host(args, picker=None, offer=None) -> str:
+def resolve_auto_host(args, picker=None, offer=None, cache_gap=None) -> str:
     """`--host auto`: a session's own machine, else the least loaded one now.
 
     A command about an existing session (send, send-range, resync, status,
@@ -2659,7 +2759,9 @@ def resolve_auto_host(args, picker=None, offer=None) -> str:
     `start` and the machine-wide `list`/`reap` pick the box with the lowest
     load per core (tools/boxes.sh --pick prints both).  `start` takes this
     machine instead when `laptop_offer` does and its load per core is below
-    the picked box's: at most its pool's slots, sessions only.
+    the picked box's: at most its pool's slots, sessions only -- and never
+    when its certificate cache lacks any of the book's dependencies
+    (`local_cache_gap`; a box's cache is the one the farm publishes to).
     """
     name = getattr(args, "name", None)
     if args.command != "start" and name:
@@ -2690,7 +2792,14 @@ def resolve_auto_host(args, picker=None, offer=None) -> str:
         local = (offer or laptop_offer)()
         if local is not None:
             load, free = local
-            if host not in REMOTE_TREES or box_load is None or load < box_load:
+            lacking, wanted = (0, 0)
+            if getattr(args, "book", None):
+                lacking, wanted = (cache_gap or (lambda book: local_cache_gap(
+                    book, toolchain=laptop_toolchain())))(args.book)
+            if lacking and host in REMOTE_TREES:
+                print(f"proof-repl --host auto: not this machine: its certificate cache "
+                      f"lacks {lacking} of {args.book}'s {wanted} dependencies", flush=True)
+            elif host not in REMOTE_TREES or box_load is None or load < box_load:
                 print(f"proof-repl --host auto: this machine ({load:.2f} load per core, "
                       f"{free} free slot(s)) over {host or 'no box'}"
                       + (f" ({box_load:.2f})" if box_load is not None else ""), flush=True)
@@ -2700,7 +2809,7 @@ def resolve_auto_host(args, picker=None, offer=None) -> str:
     return host
 
 
-def add_remote_options(parser, sync: bool = False) -> None:
+def add_remote_options(parser, sync: bool = False, lease: bool = False) -> None:
     parser.add_argument("--host", default=None, metavar="BOX",
                         help="run this on BOX (hbox, persvati, laptop = this machine, or "
                              "auto: a session's own machine, else the lower load per core, "
@@ -2716,6 +2825,13 @@ def add_remote_options(parser, sync: bool = False) -> None:
     if sync:
         parser.add_argument("--no-sync", action="store_true",
                             help="with --host: do not rsync tools/ and the closure first")
+    if lease:
+        parser.add_argument("--lease-wait", type=float, default=DEFAULT_LEASE_WAIT,
+                            metavar="MIN",
+                            help="with --host BOX: when another lane reserved BOX, wait "
+                                 "for a lease that ends within MIN minutes (default "
+                                 f"{DEFAULT_LEASE_WAIT:g}); a longer one is refused at "
+                                 "once, naming its holder and expiry")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -2757,7 +2873,7 @@ def main(argv: list[str] | None = None) -> int:
                    help="load each from-source dependency inside one (encapsulate () ...), "
                         "so its local lemmas stay local as a certified include keeps them "
                         "(default: form by form, locals leak into the session)")
-    add_remote_options(p, sync=True)
+    add_remote_options(p, sync=True, lease=True)
     p.set_defaults(run=start)
     p = sub.add_parser("serve")
     p.add_argument("name")
@@ -2891,6 +3007,13 @@ def main(argv: list[str] | None = None) -> int:
     elif lead:
         argv = lead
     args = parser.parse_args(argv)
+    if (getattr(args, "host", None) is None and args.command in SESSION_COMMANDS
+            and recorded_host(args.name)):
+        # The session's machine is recorded here (remember_host): no --host again.
+        args.host = recorded_host(args.name)
+        print(f"proof-repl: session {args.name!r} is on {args.host} (its record); "
+              "--host laptop runs here", file=sys.stderr, flush=True)
+        argv = argv + ["--host", args.host]
     if getattr(args, "host", None) == "auto":
         args.host = resolve_auto_host(args)
         argv = [args.host if word == "auto" else word for word in argv]
@@ -2898,6 +3021,8 @@ def main(argv: list[str] | None = None) -> int:
         if socket.gethostname().split(".")[0] in REMOTE_TREES:
             raise SystemExit("proof-repl: --host laptop: this is a farm box")
         args.host = None
+    if args.command == "start" and not getattr(args, "host", None):
+        remember_host(args.name, None)
     if getattr(args, "host", None):
         return run_remote(args, argv)
     if getattr(args, "acl2", None):

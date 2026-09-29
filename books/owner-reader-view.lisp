@@ -380,7 +380,7 @@
   :hints (("Goal" :use ((:instance fn-ocl-view-historyp-of-a-view-captured-before-appends
                                    (o0 (fn-ocfg-owner oc0)) (o (fn-ocfg-owner oc)))
                         (:instance fn-ocl-view-configp-of-a-view-captured-before-appends))
-           :in-theory (e/d (fn-ocl-relation)
+           :in-theory (e/d (fn-ocl-vocabulary) ; withdrawn by config-owner-live-complete
                            (fn-ocl-view-historyp-of-a-view-captured-before-appends
                             fn-ocl-view-configp-of-a-view-captured-before-appends
                             fn-ocl-conns-historyp fn-ocl-config-historyp

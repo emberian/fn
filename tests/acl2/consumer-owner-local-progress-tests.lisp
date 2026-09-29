@@ -4,6 +4,7 @@
 (include-book "must-fail-checked")
 (include-book "../../books/consumer-owner-local-progress")
 (include-book "../../books/history-fold-refinement")
+(include-book "../../books/byte-store-frame")
 
 ; lane history-columns-3: the readers take the history stobj fn-hist.
 (defun fn-col-poll-h (o consumer)

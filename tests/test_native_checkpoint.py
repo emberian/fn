@@ -384,7 +384,12 @@ class NativeProductionCompactTests(unittest.TestCase):
             self.assertIn("locked", held.stderr)
         finally:
             self.stop_owner(owner)
-        segments = lambda: sorted(p.name for p in (store / "journal").iterdir())
+        # Format 10's genesis (journal/000000.log) is never rotated or
+        # dropped: kept, and not listed (test_native_log_compaction.segments).
+        def segments():
+            self.assertTrue((store / "journal" / "000000.log").is_file())
+            return sorted(p.name for p in (store / "journal").iterdir()
+                          if p.name != "000000.log")
         history = self.transaction_bytes(store)
         records = sum(1 for n in history if n.startswith("records/"))
         self.assertGreaterEqual(records, 5)

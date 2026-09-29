@@ -678,3 +678,12 @@
            (fn-own-shapep (fn-own-reader-context o id cfg)))
   :hints (("Goal" :in-theory (enable fn-own-reader-context
                                       fn-own-set-conns))))
+
+; The relation's definitions, withdrawn on export (they were withdrawn by
+; books/config-owner-live.lisp, which includes this part; a book that includes
+; only this part sees the same theory).  Parts 2 and 3 re-enable them locally.
+(deftheory fn-ocl-vocabulary
+  '(fn-ocl-owner-with-store fn-ocl-store-config fn-ocl-complete fn-ocl-conn-historyp
+    fn-ocl-conns-historyp fn-ocl-view-historyp fn-ocl-config-historyp
+    fn-ocl-view-configp fn-ocl-relation))
+(in-theory (disable fn-ocl-vocabulary))

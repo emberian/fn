@@ -51,7 +51,18 @@ class NativeServedCostTests(unittest.TestCase):
         # Since time-model-2 (PRF-323) the host calls fn-otm-read-span
         # (books/owner-time-admission.lisp), which is fn-orr-read-span on
         # both arms: admitted as is, shedding with the posting bit off.
-        self.assertIn("(fn-otm-read-span", definition(host, "fn-owner-chunk-span-at"))
+        # Since zero-copy-commit (PRF-377) the host calls fn-oas-read-span
+        # (books/owner-article-slots.lisp), which is fn-otm-read-span within
+        # the connection's article slots (fn-oas-read-span-when-held-unfolds).
+        # Since credits (PRF-380) through fn-mca-read-span
+        # (books/owner-credits.lisp), fn-oas-read-span within the credit.
+        self.assertIn("(fn-mca-read-span", definition(host, "fn-owner-chunk-span-at"))
+        credits = definition((ROOT / "books/owner-credits.lisp").read_text(),
+                             "fn-mca-read-span")
+        self.assertIn("(fn-oas-read-span", credits)
+        slots = definition((ROOT / "books/owner-article-slots.lisp").read_text(),
+                           "fn-oas-read-span")
+        self.assertIn("(fn-otm-read-span", slots)
         admission = definition((ROOT / "books/owner-time-admission.lisp").read_text(),
                                "fn-otm-read-span")
         self.assertEqual(admission.count("(fn-orr-read-span"), 2)

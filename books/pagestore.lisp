@@ -174,11 +174,25 @@
 (defconst *pgs-entry-words* 6)          ; phys, txid, four digest words
 (defconst *pgs-tab-entries* 341)        ; entries per table page: floor(2048 / 6)
 
+(defun pgs-ntables-loop (n acc)
+  ; pgs-ntables N plus ACC, one frame (depth_check: a loop twin)
+  (declare (xargs :guard (natp acc) :measure (nfix n)))
+  (let ((n (nfix n)))
+    (if (zp n) acc (pgs-ntables-loop (- n *pgs-tab-entries*) (+ 1 acc)))))
+
 (defun pgs-ntables (n)
   ; The table pages of a table of N entries.
-  (declare (xargs :guard t :measure (nfix n)))
-  (let ((n (nfix n)))
-    (if (zp n) 0 (+ 1 (pgs-ntables (- n *pgs-tab-entries*))))))
+  (declare (xargs :guard t :measure (nfix n) :verify-guards nil))
+  (mbe :logic (let ((n (nfix n)))
+                (if (zp n) 0 (+ 1 (pgs-ntables (- n *pgs-tab-entries*)))))
+       :exec (pgs-ntables-loop n 0)))
+
+(local
+ (defthm pgs-ntables-loop-is-ntables
+   (implies (acl2-numberp acc)
+            (equal (pgs-ntables-loop n acc) (+ acc (pgs-ntables n))))))
+
+(verify-guards pgs-ntables)
 
 (defthm pgs-len-of-nthcdr
   (equal (len (nthcdr n x)) (nfix (- (len x) (nfix n))))

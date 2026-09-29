@@ -391,6 +391,57 @@ class NativePeeringTests(unittest.TestCase):
             "duplicate": duplicate[:3].decode(), "identity": identities,
         }, sort_keys=True))
 
+    def test_receiver_killed_mid_ihave_keeps_what_it_acknowledged(self):
+        """tools/twonode_gate.py's three questions on two native owners (the
+        gate drove the Python host and retired with it, python-diet T5).
+        The rest of its feed question is owned elsewhere: IHAVE 335/235 and
+        the 435 duplicate by exchange_both_ways and the streaming driver
+        above, the Path loop (437 after 335) by tools/inn_lab.py against a
+        real INN.
+        independent: X posted on A and Y on B; each answers only its own.
+        feed: X offered to B by IHAVE, acknowledged 235.
+        kill: B SIGKILLed after 335 with half of Z sent; restarted, B still
+        serves X and Y octet for octet, Z is absent and takes a fresh 335/235
+        (the interrupted transfer left nothing), and A never stopped.
+        The v0 matrix's rows V0-CRASH-KILL, V0-CRASH-SURVIVOR, V0-CRASH-RECOVER,
+        V0-CRASH-ACKNOWLEDGED, V0-CRASH-INTERRUPTED and V0-CRASH-RESTART are
+        this case (tools/v0_matrix.py retired with it, python-diet T2b)."""
+        a = self.initialize("kill-a")
+        b = self.initialize("kill-b")
+        self.configure_peer(b, a, outbound="-")
+        self.start(a)
+        self.start(b)
+        x, y, z = ("<twonode-{}@example.invalid>".format(n) for n in "xyz")
+        self.post(a, x, "x")
+        self.post(b, y, "y")
+        x_on_a, y_on_b = self.await_article(a, x), self.await_article(b, y)
+        self.assertIsNone(self.article_from(b, x))
+        self.assertIsNone(self.article_from(a, y))
+
+        self.transit(b, x, x_on_a)
+        self.assertEqual(self.await_article(b, x), x_on_a)
+
+        source = self.article(z, "interrupted")
+        with socket.create_connection(("127.0.0.1", b.port), timeout=30) as client:
+            stream = whole_stream(client)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            stream.write(b"IHAVE " + z.encode("ascii") + b"\r\n")
+            self.assertTrue(stream.readline().startswith(b"335 "))
+            stream.write(source[:len(source) // 2])
+            receiver = b.process
+            receiver.kill()
+            receiver.wait(timeout=30)
+            receiver.finish()
+
+        self.start(b)
+        self.assertEqual(self.await_article(b, x), x_on_a)
+        self.assertEqual(self.await_article(b, y), y_on_b)
+        self.assertIsNone(self.article_from(b, z))
+        self.assertIsNone(a.process.poll(), "A stopped while B died")
+        self.assertEqual(self.await_article(a, x), x_on_a)
+        self.transit(b, z, source)
+        self.assertEqual(self.await_article(b, z), source)
+
     def test_reset_while_transit_completes_keeps_durable_article_and_owner(self):
         source = self.initialize("reset-source")
         target = self.initialize("reset-target")

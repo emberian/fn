@@ -17,6 +17,7 @@
 
 (in-package "ACL2")
 (include-book "native-admin-peer")
+(include-book "consumer-position")
 (local (include-book "arithmetic-5/top" :dir :system))
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).

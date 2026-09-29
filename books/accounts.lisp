@@ -37,6 +37,8 @@
 (include-book "identity")
 (include-book "native-admin-shape")
 (include-book "clock-unit")
+(include-book "article")
+(include-book "consumer-position")
 (local (include-book "identity-invariants"))
 (local (include-book "records-canonicality"))
 

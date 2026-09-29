@@ -41,6 +41,7 @@
 (include-book "consumer-owner-local-progress")
 (include-book "store-open-pre-c1")
 (include-book "control-visible")
+(include-book "byte-store-scan")
 
 ; The recognizers stay closed: the lemmas below dispatch on the row's kind.
 (local (in-theory (disable fn-stxa-p fn-held-p fn-hstxa-p fn-record-p)))

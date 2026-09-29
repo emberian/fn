@@ -426,6 +426,22 @@ durability. This is the reading the power-loss campaign measured
 (`planning/evidence/power-loss-2026-09-26.md`, "a lost POST's number is used
 again": at 258 cuts the fresh POST after recovery took the lost in-flight
 POST's number, and no acknowledged or served number moved or was issued twice).
+The ruling (lane durability-bugs, row I3, 2026-09-28): a number is ISSUED
+when a party outside the owner can observe it (a reader's GROUP, LISTGROUP,
+OVER or ARTICLE n, a web page, a log line, a feed, a consumer, a 240), and a
+number once issued is never issued again, across any number of crashes
+(PRF-903, books/number-durability.lisp: KEYSTONES
+fn-ndur-recovery-keeps-every-visible-number over the host's open,
+fn-ndur-prepare-never-allocates-below-the-watermark,
+fn-ndur-crash-trace-never-reissues-a-number). Every observation is of the
+completed prefix, whose barrier returned fenced
+(fn-ocvm-reader-view-is-the-completed-prefix); the live status page's
+`articles=` count is the one exception, a count, not a number (PKT-885). A
+durable per-group reservation was rejected: it would protect numbers no party
+could observe, at a barrier per block and a record kind, against RFC 3977
+section 6's "SHOULD allocate the next sequential unused number". The
+power-cut campaign's observing reader (`tools/power_loss.py workload
+--observe`, SCN-198) checks it natively.
 
 NNT-042: a reader connection's view of the store is a VERSION (the public
 concept is the ViewId: the committed count when the view was taken, until the
