@@ -339,6 +339,31 @@ def _reply_outcome(result) -> str:
     return "refused"
 
 
+def served_matches(served: bytes, payload: bytes) -> bool:
+    """The served copy of PAYLOAD: the stored article (the payload with the
+    owner's injected fields ahead of its header: campaign.injected_from) as
+    ARTICLE serves it, with the served-time `Xref` (RFC 3977 §6.2.1) ahead
+    of that.  Xref is served, never stored, so it is dropped before the
+    stored-bytes comparison; nothing else is normalized."""
+    while served.lower().startswith(b"xref:"):
+        served = served.split(b"\r\n", 1)[1] if b"\r\n" in served else b""
+    return campaign.injected_from(served, payload)
+
+
+def _served_outcome(first: bytes, final) -> tuple:
+    """(outcome, status) of a served POST: 240 accepted; the 441 that names
+    the stored article a duplicate; a closed connection a lost reply."""
+    if final is None:
+        return ("lost" if first == b"" else "refused"), first
+    if final.startswith(b"240"):
+        return "accepted", final
+    if final == b"":
+        return "lost", first
+    if final.startswith(b"441") and b"already stored" in final:
+        return "duplicate", final
+    return "refused", final
+
+
 def _snapshot(store: Path) -> dict:
     out = {}
     for p in sorted(store.rglob("*")):
@@ -395,7 +420,8 @@ class Run:
     """One scenario on IMAGE under WORK: the recorder every family shares."""
 
     def __init__(self, scenario: Scenario, image: Path, work: Path, fault_hook: bool = True):
-        self.s, self.image, self.work = scenario, Path(image), Path(work)
+        # Absolute: the served node runs its verbs with its own directory as cwd.
+        self.s, self.image, self.work = scenario, Path(image).resolve(), Path(work).resolve()
         self.hook = fault_hook
         self.registry = boundary_registry()
         self.j = Journal(scenario.id)
@@ -594,23 +620,20 @@ class Run:
             return owner, stopped
         return owner, None
 
-    def served_post(self, op: Operation, route: str):
-        payload = self.payloads[op.id].read_bytes()
+    def served_post(self, op: Operation, route: str, of: str | None = None, c=None):
+        """POST the article of OF (the operation's own id by default) on the
+        listener, through connection C or one of its own; the retry of a
+        served post is the same proto-article POSTed again."""
+        payload = self.payloads[of or op.id].read_bytes()
         try:
-            c = Nntp(self.node.port)
+            own = c is None
+            c = c or Nntp(self.node.port)
             first, final = c.post(payload)
-            c.close()
+            if own:
+                c.close()
         except (OSError, EOFError):
             first, final = b"", b""
-        if final is None:
-            # No 340: the owner refused the POST, or died before answering.
-            outcome, status = ("lost" if first == b"" else "refused"), first
-        elif final.startswith(b"240"):
-            outcome, status = "accepted", final
-        elif final == b"":
-            outcome, status = "lost", first
-        else:
-            outcome, status = "refused", final
+        outcome, status = _served_outcome(first, final)
         self.j.client("reply", operation=op.id, outcome=outcome, route=route,
                       status=status.decode("ascii", "replace").strip())
         return outcome
@@ -635,8 +658,10 @@ class Run:
         status, lines = c.multiline("ARTICLE " + mid(art))
         if status.startswith(b"220"):
             stored = b"".join(lines)
-            result = ("match" if campaign.matches(stored, self.payloads[art].read_bytes(), True)
-                      else "other")
+            result = "match" if served_matches(stored, self.payloads[art].read_bytes()) else "other"
+            if result == "other":
+                self.j.internal("served-bytes", operation=op.id,
+                                head=stored[:400].decode("ascii", "replace"))
         elif status.startswith(b"430"):
             result = "absent"
         else:
@@ -717,13 +742,9 @@ class Run:
                 elif o.op == "read":
                     self.served_read(o, c)
                 elif o.op == "retry":
-                    if c is not None:
-                        c.close()
-                        c = None
-                    if owner is not None:
-                        self.node.stop_owner(owner)
-                        owner = None
-                    self.store_retry(o)
+                    # The served retry: the same proto-article POSTed again on
+                    # the running node; 240 commits it, the 441 names it stored.
+                    self.served_post(o, "served-post", of=o.args["of"], c=c)
         finally:
             if c is not None:
                 c.close()
