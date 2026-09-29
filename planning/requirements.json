@@ -109,7 +109,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-001",
-        "PRF-002"
+        "PRF-002",
+        "PRF-903"
       ],
       "verification": [
         "proof",
@@ -125,7 +126,9 @@
         "fn-allocate-at-watermark",
         "fn-watermark-does-not-conflict",
         "fn-state-has-fresh-local-numbers",
-        "fn-durable-completion-installs-exact-pending-article"
+        "fn-durable-completion-installs-exact-pending-article",
+        "fn-ndur-recovery-keeps-every-visible-number",
+        "fn-ndur-crash-trace-never-reissues-a-number"
       ],
       "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). Allocation is at the watermark, conflicts with no installed number, and a durable completion installs exactly the pending article. Open: fn-allocate-at-watermark still carries hypotheses H1/H2 that core's report records as droppable once fn-watermark-bump-other is restated without its membership-list hypothesis."
     },
@@ -174,7 +177,6 @@
         "books/nntp-auth.lisp",
         "books/nntp-auth-invariants.lisp",
         "tests/acl2/nntp-auth-tests.lisp",
-        "tests/test_auth.py",
         "planning/evidence/auth-w10-2026-09-20.md"
       ],
       "implementation_note": "D09 requires both Ed25519 and ML-DSA-65 over ACL2's exact authored-source preimage. The native primitives and ACL2 conjunction fail closed for invalid or unsupported components. Kind-4 schema 1 retains the received carrier, exact authored source, its identity, enrolled snapshot and historical verdict; replay checks their structural binding without recomputing present keyring capability. A legacy fn-r record contains no verdict bytes: its live verification observation is explicitly non-durable and recovery reports no historical verdict. The selected receiver ingress profile classifies absent carriers into the legacy path, refuses malformed present carriers without downgrade, and requires the B-local current per-principal enrollment with exact ordered keys plus both primitive checks before a new kind-4 Store publication. Both NNTP and BP transit call the same helper under their existing durable intent. A byte-identical older fn-r duplicate remains fn-r and is never upgraded to a historical verdict. This new source has scoped ACL2 and raw primitive/host component evidence but no source-matched saved-image A-to-B acceptance yet. The current operator-local kind-3 lifecycle requires next-global-generation enrollments, selects the newest known snapshot per principal for new hybrid-author submissions, and persists a distinct principal-only revocation tombstone without altering historical kind-4 verdicts. Portable succession/recovery authority and full physical composition remain open.",
@@ -414,7 +416,6 @@
         "books/byte-store-program-invariants.lisp",
         "tests/acl2/byte-store-relation-tests.lisp",
         "tests/acl2/byte-store-program-invariants-tests.lisp",
-        "tests/test_store_node_host.py",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "planning/lanes/HANDOFF-w13-storage-initializer.md",
         "planning/lanes/HANDOFF-w13-transaction-name-codec.md",
@@ -451,14 +452,12 @@
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
         "books/store-files-invariants.lisp",
-        "tests/test_store.py",
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
         "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
-        "tests/test_store_node_host.py",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
         "planning/evidence/feed-journal-w12-host.json"
@@ -498,7 +497,8 @@
         "PRF-254",
         "PRF-255",
         "PRF-280",
-        "PRF-316"
+        "PRF-316",
+        "PRF-903"
       ],
       "verification": [
         "proof",
@@ -516,7 +516,6 @@
         "tests/evidence/2026-09-18-assurance.json",
         "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
-        "tests/test_store_node_host.py",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
         "tests/evidence/2026-09-21-four-node-lab.md",
@@ -978,8 +977,7 @@
         "scenario"
       ],
       "evidence": [
-        "tests/acl2/provenance-tests.lisp",
-        "tests/test_provenance.py"
+        "tests/acl2/provenance-tests.lisp"
       ],
       "implementation_note": "fn-retain-admissiblep, the two retention record fields and fn-node-stagep take fn-provp, which accepts every string as the :legacy kind, so no existing store, journal or checkpoint changes meaning. The POST writer's provenance is decided in ACL2 (fn-store-prov-post) and stored as the canonical wire form; the transit writer's typed record exists (fn-peer-transit-provenance) and is proved to render to the string the transit path writes, but the transit path still stores the rendering.",
       "note": "OPEN, with its obligation in planning/lanes/HANDOFF-w10-provenance.md: the transit path needs a kind formal on fn-peer-decide-transfer, fn-peer-transfer and fn-peer-injection-arguments before it can store the record's wire form, and the two BP drivers still read a host constant for their evidence label."
@@ -1146,7 +1144,8 @@
         "PRF-082",
         "PRF-114",
         "PRF-190",
-        "PRF-214"
+        "PRF-214",
+        "PRF-906"
       ],
       "verification": [
         "proof",
@@ -1214,7 +1213,6 @@
         "books/nntp-auth.lisp",
         "books/nntp-auth-invariants.lisp",
         "tests/acl2/nntp-auth-tests.lisp",
-        "tests/test_auth.py",
         "planning/evidence/auth-w10-2026-09-20.md"
       ],
       "implementation_note": "Laboratory reader advertises VERSION/IMPLEMENTATION only; complete planned bundle audit pending.",
@@ -1319,7 +1317,6 @@
         "books/nntp-auth.lisp",
         "books/nntp-auth-invariants.lisp",
         "tests/acl2/nntp-auth-tests.lisp",
-        "tests/test_auth.py",
         "planning/evidence/auth-w10-2026-09-20.md"
       ],
       "implementation_note": "A narrow proto-article subset checks Message-ID/Newsgroups multiplicity/grammar and absence of Injection-Info/Xref while preserving source field views. Full injection, gateway provenance, dates, native signatures and authority policy remain open. D01 selects exact authored source plus separate mutable trace/injection projections; full injection must honor that boundary without rewriting signed bytes.",
@@ -1428,7 +1425,6 @@
         "books/nntp-newnews.lisp",
         "books/nntp-responses.lisp",
         "tests/acl2/nntp-newnews-tests.lisp",
-        "tests/test_reader.py",
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
@@ -1566,7 +1562,6 @@
         "tests/evidence/2026-09-18-assurance.json",
         "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
-        "tests/test_store_node_host.py",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "planning/evidence/feed-journal-w12-host.json"
@@ -2693,7 +2688,8 @@
         "PRF-119",
         "PRF-279",
         "PRF-271",
-        "PRF-327"
+        "PRF-327",
+        "PRF-918"
       ],
       "verification": [
         "proof",
@@ -3108,7 +3104,8 @@
       "proof_targets": [
         "PRF-167",
         "PRF-178",
-        "PRF-300"
+        "PRF-300",
+        "PRF-386"
       ],
       "verification": [
         "proof",
@@ -3662,7 +3659,6 @@
         "books/nntp-responses.lisp",
         "tests/acl2/nntp-help-tests.lisp",
         "tests/acl2/nntp-legacy-tests.lisp",
-        "tests/test_reader.py",
         "planning/evidence/reader-clients-2026-09-26.md"
       ],
       "implementation_note": "RFC 3977 section 7.2 requires HELP and leaves its text free (the RFC requirement); fn guarantees the list is exact: every keyword fn-auth-step-pinned serves is listed, an unlisted keyword is 500 (a stronger fn guarantee, PRF-194). The six-line grouping is local policy. Gap inventory R4 (2026-09-26): HELP had omitted AUTHINFO, STARTTLS, XREDEEM and the transit verbs."
@@ -4494,8 +4490,7 @@
         "tests/native_bp_transit_identity_raw.lisp",
         "tests/native_feed_service_raw.lisp",
         "tests/native_live_config_cache_raw.lisp",
-        "tests/native_owner_bound_commit_raw.lisp",
-        "tools/run_owner.py"
+        "tests/native_owner_bound_commit_raw.lisp"
       ],
       "implementation_note": "Lane adapter-retirement: FeedPublication and ConfigResult typed; fnn-owner-name-list and fnn-owner-config-names deleted; the feed flush consumes one sealed frame plan. Lane adapter-retirement-2: the submission path's publication admits the owner's two submission ids (the batch AM fault: the operator post's :control), with keystones for every outcome; the take returns a SubmissionTaken (six fn-owner-submit-* mailboxes retired; the transit decision's memberships are its own fn-owner-transit-groups); Capture takes checkpoint-pipeline-5's field names. ServedStep is fenced to lane owner-scheduler (its render plan replaces the served step's return)."
     },
@@ -4629,7 +4624,8 @@
         "PRF-296",
         "PRF-303",
         "PRF-310",
-        "PRF-354"
+        "PRF-354",
+        "PRF-901"
       ],
       "verification": [
         "proof",
@@ -4907,7 +4903,8 @@
         "PRF-344",
         "PRF-342",
         "PRF-365",
-        "PRF-372"
+        "PRF-372",
+        "PRF-373"
       ],
       "verification": [
         "proof",
@@ -4932,7 +4929,10 @@
         "books/history-pages-owner.lisp",
         "tests/acl2/history-pages-owner-tests.lisp",
         "books/history-records.lisp",
-        "tests/acl2/history-records-tests.lisp"
+        "tests/acl2/history-records-tests.lisp",
+        "books/history-records-disk.lisp",
+        "books/store-records-field.lisp",
+        "tests/acl2/history-records-disk-tests.lisp"
       ],
       "implementation_note": "Lane arena-store (2026-09-27): the model, keystones, reclamation and the executable layer are proved; the host driver host/native/proto-pagestore.lisp runs them on hbox (process death and power loss, 0 violations); page 0 (the owner's root slots) is the model's reserved page, kept by pgs-disk-keeps and marked by pgs-g-start; the scenario is SCN-186. Limitation L-PGS-LAZY-SHAPE (record section 5): the host's lazy open shape-checks only the table pages its own commit wrote, the model's lazy open every table page. The owner does not use it yet (fn-hist on pages is the next step, lane arena-store-2)."
     },
@@ -5078,6 +5078,77 @@
         "docs/extensions/nntp-compress-dict.md",
         "specs/nntp.md"
       ]
+    },
+    {
+      "id": "HST-031",
+      "title": "The adopted F4 bars: a deadline is a notification, never a cancellation; an unresolved write's late completion is consumed exactly once into its own generation, never a second reply and never an early release of what the I/O owns; a late page is a named unavailable outcome, never absence; a restart is a new clock domain",
+      "specification": "specs/host.md#the-disk-as-an-adversarial-environment",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-384",
+        "PRF-385"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-time-bars.lisp",
+        "books/feed-restart-domain.lisp",
+        "books/peer-feed.lisp",
+        "books/owner-time-journal.lisp",
+        "tests/acl2/owner-time-bars-tests.lisp",
+        "tests/acl2/feed-restart-domain-tests.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_slow_disk.py",
+        "planning/design-time-model-2026-09-27.md",
+        "planning/evidence/time-bars-2026-09-28.md"
+      ],
+      "implementation_note": "Lane time-bars (row F1 of COMPLETE-BEFORE-6.6.0). Bars (ember 2026-09-28): D 5 s, H 30 s with at most 1 s notification slack, cached health p99 <= 250 ms and <= 1 s under the injected stall, warm reads <= 1 s, cold page-dependent reads a declared 5 s dependency deadline then 403 (design section 4b). The committer's told-connection list moved into ACL2 (fn-otb-*); the journal's start entry records the wall observation, no monotonic origin; the push feed's restart forgets the previous process's back-off deadline. The cold-read decision is the interface row A4's asynchronous page fault calls; until A4 a cold extent read is synchronous under the owner."
+    },
+    {
+      "id": "NNT-056",
+      "title": "AUTHINFO SASL: SCRAM-SHA-256 (and -PLUS over TLS 1.3 with tls-exporter) and PLAIN over TLS, with ACL2 deciding the whole exchange and the server never storing the password",
+      "specification": "specs/nntp.md#authinfo-sasl-nnt-056",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-915"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/hmac-sha256.lisp",
+        "books/scram.lisp",
+        "tests/acl2/hmac-sha256-tests.lisp",
+        "tests/acl2/scram-tests.lisp"
+      ],
+      "implementation_note": "RFC 4643 section 2.4 with PLAIN (RFC 4616), SCRAM-SHA-256 (RFC 5802, RFC 7677) and SCRAM-SHA-256-PLUS (RFC 9266 tls-exporter). DIGEST-MD5 (RFC 4643's mandatory mechanism) is not implemented: RFC 6331 made it Historic. Increment 1 (lane sasl): the HMAC-SHA-256/PBKDF2 and SCRAM mechanism books. Increment 2: the exchange (books/sasl.lisp), verifier v2 and the served AUTHINFO SASL arm."
+    },
+    {
+      "id": "RET-008",
+      "title": "A per-group expiry policy is an authorized release: the operator's keep/default/purge days and octets window, honouring a posted Expires: within the bounds, released through the one reclaim path with every holder still in force",
+      "specification": "specs/storage.md#content-reclamation-under-d13-sto-014",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-918"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "tests/acl2/expiry-tests.lisp",
+        "tests/test_native_expiry.py"
+      ],
+      "implementation_note": "`retention expire {GROUP|*} {clear | [keep D] [default D] [purge D] [octets N]}` stages five configuration quota rows (books/expiry-policy.lisp); `store reclaim` builds its context with the set the policy expires at its recorded instant (books/expiry.lisp fn-xpy-ctx, host/checkpoint-host.lisp fn-store-reclaim-context) and releases an expired article exactly as a released one (books/expiry-verdict.lisp): the tombstone, the checkpoint and the drop. An article leaves only when every group it is filed in expires it. Served: `423/430 article reclaimed`, distinct from `withdrawn` and from no article; the Message-ID and the numbers stay.",
+      "note": "OPEN: expiry runs offline (`store reclaim` refuses while an owner runs); expiry while serving needs the owner's checkpoint publication to carry the rewrite. GROUP's count and low water and LISTGROUP still include a reclaimed article (pre-existing, reclaim). Reclaim frees bytes, never transactions: a count-full store stays count-full (Q11, D13)."
     }
   ]
 }

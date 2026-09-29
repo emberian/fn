@@ -1,9 +1,11 @@
 """tools/chain_schedule.py: the load-normalised walls, the chain, the job plan."""
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
@@ -120,6 +122,33 @@ class QuietWallTests(unittest.TestCase):
             walls = chain.quiet_walls(["books/x"], history, "persvati")
             self.assertEqual(walls.measured, 0)
             self.assertEqual(walls.seconds["books/x"], chain.UNKNOWN_SECONDS)
+
+    def test_the_summary_cache_answers_the_same_and_follows_an_edit(self):
+        # tooling-obstructions: every call re-read ~400 MB of manifests.
+        with tempfile.TemporaryDirectory() as directory:
+            history = Path(directory) / "h"
+            history.mkdir()
+            summary = Path(directory) / "summary.json"
+            self.write(history, "20260101T000000Z", "persvati", {"books/x": 8.0},
+                       {"books/x": [30.0, 30.0]})
+            (history / "certify-20260102T000000Z-1.json").write_text("{not json")
+            plain = chain.quiet_walls(["books/x"], history, "persvati")
+            cached = chain.quiet_walls(["books/x"], history, "persvati", summary)
+            self.assertEqual(cached, plain)
+            self.assertTrue(summary.is_file())
+            # A second call reads the summary, not the manifests.
+            with mock.patch.object(Path, "read_text", autospec=True,
+                                   side_effect=lambda path, **_: (
+                                       summary.open(encoding="utf-8").read()
+                                       if path == summary else self.fail(f"read {path}"))):
+                self.assertEqual(chain.quiet_walls(["books/x"], history, "persvati", summary),
+                                 plain)
+            # An edited manifest is read again.
+            self.write(history, "20260101T000000Z", "persvati", {"books/x": 2.0},
+                       {"books/x": [1.0, 1.0]})
+            os.utime(history / "certify-20260101T000000Z-1.json", ns=(1, 1))
+            self.assertEqual(chain.quiet_walls(["books/x"], history, "persvati", summary)
+                             .seconds["books/x"], 2.0)
 
 
 if __name__ == "__main__":

@@ -42,13 +42,13 @@ class NativeControlEvidenceTests(filing.NativeControlFilingTests):
     test_two_node_withdrawal = None
 
     def operator(self, node, *words, expected=0):
-        return self.command([IMAGE, "--fn", "operator", node["config"], *words],
+        return self.command([IMAGE, "--fn", "operator", node.config, *words],
                             expected=expected).stdout.decode("ascii")
 
     def test_log_and_evidence_live_and_offline(self):
         openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
         node = self.initialize("evidence", ["fn.test", "control.cancel"])
-        root = node["root"]
+        root = node.root
         principal, ed_public, ed_secret = (root / "principal.bin",
                                            root / "ed-public.bin", root / "ed-secret.bin")
         principal.write_bytes(bytes([85]) * 32)
@@ -60,8 +60,8 @@ class NativeControlEvidenceTests(filing.NativeControlFilingTests):
         ml_private, ml_public = root / "ml-private.pem", root / "ml-public.pem"
         self.command([openssl, "genpkey", "-algorithm", "ML-DSA-65", "-out", ml_private])
         self.command([openssl, "pkey", "-in", ml_private, "-pubout", "-out", ml_public])
-        control = root / "control.sock"
-        self.start(node)
+        control = node.control
+        node.start()
 
         def author(stem, message_id, control_field):
             source = root / (stem + ".eml")
@@ -85,7 +85,7 @@ class NativeControlEvidenceTests(filing.NativeControlFilingTests):
         live_cancel = self.operator(node, "control", "evidence", CANCEL)
         live_target = self.operator(node, "control", "evidence", TARGET)
         live_absent = self.operator(node, "control", "evidence", "<absent@example.invalid>")
-        usage = self.command([IMAGE, "--fn", "operator", node["config"], "control",
+        usage = self.command([IMAGE, "--fn", "operator", node.config, "control",
                               "evidence", "not-a-message-id"], expected=5)
         self.stop(node)
         offline_log = self.operator(node, "control", "log")
@@ -112,12 +112,19 @@ class NativeControlEvidenceTests(filing.NativeControlFilingTests):
         self.assertEqual(target_lines[1], "decision=none")
         self.assertEqual(target_lines[2],
                          "withdrawn-by" + lines[1][len("withdrawal"):] + " effect=author")
-        self.assertEqual(live_absent,
-                         "evidence message-id=<absent@example.invalid> stored=no\n")
+        # The operator's status family ends with the store's heap line
+        # (PKT-016, host/native/operator.lisp fnn-operator-execute-status);
+        # the evidence is every line before it.
+        # (the heap figure follows the store's size on disk, so it may move
+        # between the live and the offline report).
+        def words(text):
+            return [line for line in text.splitlines() if not line.startswith("heap=")]
+        self.assertEqual(words(live_absent),
+                         ["evidence message-id=<absent@example.invalid> stored=no"])
         # Offline (recovery's decision over the replayed Store): the same words.
-        self.assertEqual(offline_log, live_log)
-        self.assertEqual(offline_cancel, live_cancel)
-        self.assertEqual(offline_target, live_target)
+        self.assertEqual(words(offline_log), words(live_log))
+        self.assertEqual(words(offline_cancel), words(live_cancel))
+        self.assertEqual(words(offline_target), words(live_target))
 
 
 if __name__ == "__main__":

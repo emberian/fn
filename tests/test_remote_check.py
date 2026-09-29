@@ -17,7 +17,10 @@ GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
 
 
 def git(tree, *words):
-    subprocess.run(["git", "-C", str(tree), *words], check=True, capture_output=True,
+    # No signing in the temporary repository: on the laptop a signing agent
+    # hung each commit for 60 s (batch AZ, 2026-09-28).
+    subprocess.run(["git", "-C", str(tree), "-c", "commit.gpgsign=false", *words],
+                   check=True, capture_output=True,
                    env={**os.environ, **GIT_ENV})
 
 
@@ -87,11 +90,67 @@ class RemoteCheckTests(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertEqual((self.lane / "out/file.txt").read_text(), "generated\n")
 
+    def test_fetch_keeps_a_file_changed_here_while_the_box_ran(self):
+        # A fetch clobbered a lane's newer ledger files (2026-09-28).
+        (self.lane / "Makefile").write_text(
+            "check-lane:\n\t@true\n"
+            "gen:\n\t@mkdir -p out && echo box > out/a.txt && echo box > out/b.txt\n")
+        (self.lane / "out").mkdir()
+        (self.lane / "out/a.txt").write_text("shipped\n")
+        git(self.lane, "add", ".")
+        git(self.lane, "commit", "-q", "-m", "gen")
+        # The box's make edits this worktree's out/a.txt mid-run, as a lane's
+        # merge or commit would; out/b.txt was absent when shipped.
+        self.env["FN_REMOTE_CHECK_WRAP"] = f"echo newer > {self.lane}/out/a.txt;"
+        done = self.run_check("--target", "gen", "--fetch", "out")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual((self.lane / "out/a.txt").read_text(), "newer\n")
+        self.assertEqual((self.lane / "build/remote-check/fetched/out/a.txt").read_text(),
+                         "box\n")
+        self.assertIn("kept this worktree's out/a.txt", done.stderr)
+        self.assertEqual((self.lane / "out/b.txt").read_text(), "box\n")
+
+    def test_cmd_runs_one_command_in_the_box_tree(self):
+        done = self.run_check("--cmd", "cat marker.txt; echo \"it's $((1 + 1))\"")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("it's 2", done.stdout)
+        self.assertTrue((self.lane / "build/remote-check/hbox-cmd.log").is_file())
+        failed = self.run_check("--cmd", "exit 7")
+        self.assertEqual(failed.returncode, 7, failed.stdout + failed.stderr)
+
+    def test_certificates_install_by_default_and_regen_fetches_the_generated_files(self):
+        (self.lane / "tools").mkdir()
+        (self.lane / "tools/certs.py").write_text("print('  installed 3')\n")
+        (self.lane / "tools/ledger.py").write_text(
+            "import pathlib\nfor n in ('ledger.json', 'ledger.md', 'proofs.json'):\n"
+            "    pathlib.Path('planning', n).write_text('regen ' + n)\n")
+        (self.lane / "tools/current_view.py").write_text(
+            "import pathlib\npathlib.Path('planning/current.md').write_text('regen current')\n")
+        (self.lane / "planning").mkdir()
+        for name in ("ledger.json", "ledger.md", "proofs.json", "current.md"):
+            (self.lane / "planning" / name).write_text("old\n")
+        git(self.lane, "add", ".")
+        git(self.lane, "commit", "-q", "-m", "tools")
+        done = self.run_check("--regen")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        log = (self.lane / "build/remote-check/hbox-regen.log").read_text()
+        self.assertIn("== certs install:   installed 3", log)
+        self.assertEqual((self.lane / "planning/current.md").read_text(), "regen current")
+        self.assertEqual((self.lane / "planning/proofs.json").read_text(), "regen proofs.json")
+        skipped = self.run_check("--no-install-certs", "--cmd", "true")
+        self.assertNotIn("certs install", (self.lane / "build/remote-check/hbox-cmd.log")
+                         .read_text())
+        self.assertEqual(skipped.returncode, 0)
+        self.assertEqual(self.run_check("--regen", "--cmd", "true").returncode, 2)
+
     def test_unknown_box_and_option_are_usage(self):
         done = subprocess.run(["sh", str(SCRIPT), "nobox"], cwd=self.lane, env=self.env,
                               capture_output=True, text=True)
         self.assertEqual(done.returncode, 2)
-        self.assertEqual(self.run_check("--bogus").returncode, 2)
+        bogus = self.run_check("--bogus")
+        self.assertEqual(bogus.returncode, 2)
+        self.assertIn("--log BOXPATH", bogus.stderr)
+        self.assertIn("a path ON THE BOX", bogus.stderr)
 
 
 if __name__ == "__main__":

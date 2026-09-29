@@ -28,8 +28,6 @@ session. None of them is a gate or a claim; each says what it does at the top.
   certify its system books, and time one book's certification in the
   `/home/ember/fn-gates/acl2p` gate under plain ACL2 or an ACL2(p) waterfall
   mode. A measurement, not a toolchain: see `planning/evidence/acl2p-2026-09-23.md`.
-- `hbox-matrix-provision.sh <image>`: two clean loopback stores for
-  `tools/v0_matrix.py --backend native-operator` (ports 11190/11191).
 - `hbox-node-deploy.sh TARBALL SHA256 NODE PREFIX LISTEN_IPV4 PORT PATH_IDENTITY`:
   a node from a RELEASE TARBALL (packaging/release-tarball.sh; D35), never
   from a checkout: the sum checked, the tarball's own `install.sh

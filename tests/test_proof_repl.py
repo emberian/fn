@@ -615,6 +615,76 @@ class RemoteTests(unittest.TestCase):
         listing = proof_repl.argparse.Namespace(command="list", name=None)
         self.assertEqual(proof_repl.resolve_auto_host(listing, box, lambda: (0.1, 6)), "hbox")
 
+    def test_host_auto_skips_the_laptop_when_its_cache_lacks_the_closure(self):
+        # operations, auth-tls-bugs: auto took the laptop with 76/87 books uncached.
+        start = proof_repl.argparse.Namespace(command="start", name="gap", book="books/x")
+        box = lambda: ("hbox", 0.50)  # noqa: E731
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(proof_repl.resolve_auto_host(
+                start, box, lambda: (0.25, 3), lambda book: (76, 90)), "hbox")
+        self.assertIn("lacks 76 of books/x's 90 dependencies", out.getvalue())
+        self.assertEqual(proof_repl.resolve_auto_host(
+            start, box, lambda: (0.25, 3), lambda book: (0, 90)), "laptop")
+        # No box answered: the laptop still, whatever its cache (the start says why).
+        self.assertEqual(proof_repl.resolve_auto_host(
+            start, lambda: ("", None), lambda: (0.25, 3), lambda book: (5, 9)), "laptop")
+
+    def test_local_cache_gap_counts_dependencies_without_an_entry(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            cache = pathlib.Path(temporary)
+            book = "books/account-list"  # a real book with a closure
+            graph = proof_repl.include_graph(proof_repl.ROOT, book)
+            wanted = len(graph) - 1
+            self.assertEqual(proof_repl.local_cache_gap(book, cache), (wanted, wanted))
+            if wanted:
+                name = next(one for one in graph if one != book)
+                key = proof_repl.certs.closure_key(proof_repl.ROOT, name)[0]
+                with mock.patch.object(proof_repl.certs, "cached_entries",
+                                       lambda c, k: [(c, {"toolchain_identity": "t"})]
+                                       if k == key else []):
+                    self.assertEqual(proof_repl.local_cache_gap(book, cache, "t"),
+                                     (wanted - 1, wanted))
+                    self.assertEqual(proof_repl.local_cache_gap(book, cache, "other"),
+                                     (wanted, wanted))
+        self.assertEqual(proof_repl.local_cache_gap("books/no-such-book", cache), (1, 1))
+
+    def test_a_reserved_host_is_named_at_once_and_a_long_lease_refused(self):
+        # config-and-legacy, operations: 10 and 13 silent minutes in boxes.sh wait.
+        line = "boxes: persvati reserved by chain-scheduler until 22:54Z (40 min left): curve"
+        held = lambda: (4, line + "\n")  # noqa: E731
+        waited = []
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            with self.assertRaises(SystemExit) as refused:
+                proof_repl.refuse_or_wait_for_lease("persvati", 2, held,
+                                                    lambda: waited.append(1) or 0)
+        self.assertEqual(waited, [])
+        self.assertIn("reserved by chain-scheduler until 22:54Z (40 min left)", err.getvalue())
+        self.assertIn("--host auto", str(refused.exception))
+        self.assertIn("--lease-wait 41", str(refused.exception))
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            proof_repl.refuse_or_wait_for_lease("persvati", 60, held,
+                                                lambda: waited.append(1) or 0)
+        self.assertEqual(waited, [1])
+        self.assertIn("chain-scheduler", err.getvalue())
+        proof_repl.refuse_or_wait_for_lease("persvati", 2, lambda: (0, ""),
+                                            lambda: self.fail("waited on a free box"))
+
+    def test_a_session_remembers_its_host_for_later_commands(self):
+        # full-vs-uncertain: send-range after a failed start needed --host again.
+        name = "remember-host-test"
+        self.addCleanup(shutil.rmtree, proof_repl.session_dir(name), True)
+        proof_repl.remember_host(name, "persvati", "/t", "books/x", "l")
+        self.assertEqual(proof_repl.recorded_host(name), "persvati")
+        seen = []
+        with mock.patch.object(proof_repl, "run_remote",
+                               lambda args, argv: seen.append((args.host, argv)) or 0), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(proof_repl.main(["status", name]), 0)
+        self.assertEqual(seen[0][0], "persvati")
+        proof_repl.remember_host(name, None)
+        self.assertIsNone(proof_repl.recorded_host(name))
+        self.assertIsNone(proof_repl.recorded_host(None))
+
     def test_laptop_offer_needs_a_qualified_launcher(self):
         with tempfile.TemporaryDirectory() as temporary:
             unqualified = pathlib.Path(temporary) / "acl2"

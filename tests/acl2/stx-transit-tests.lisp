@@ -19,6 +19,12 @@
 (include-book "../../books/codec-attach")
 ; The lace of the retained store (records-flip): the rows' lace and ALPHA.
 (include-book "../../books/stx-lace-rows")
+; The store's records reach the committed history image's decode
+; (books/store-records-field.lisp, lane arena-store-7), whose books include
+; crypto-attach: it attaches fn-digest to BLAKE3 after crypto-seam-tests
+; attached the toy.  This book's witnesses are over the toy realiser, so
+; it is attached again, last.
+(defattach fn-digest fn-toy-mix-digest)
 
 ; -----------------------------------------------------------------------------
 ; Two principals, one keyring, and a store made of article records

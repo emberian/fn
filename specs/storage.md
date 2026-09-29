@@ -865,6 +865,34 @@ lookup and the store's readers moved onto it (the owner's store still holds
 the record list), the open's adopt of a committed image, the flush's retry
 over pages not yet verified, the commit.
 
+The store's records over the committed image (PRF-373, lane arena-store-7;
+`books/history-records-disk.lisp`, `books/store-records-field.lisp`;
+coordinator decision 2026-09-28). The kernel state's records field
+(`fn-sf-records-field`) is a snoc-list of the whole history or a BASED field
+(:hrs-based HANDLE . SUFFIX): HANDLE names a committed history image (the page
+file, the page store's root record, the image's MKEY salt and header) and
+SUFFIX holds the records appended since. `fn-sf-records` of a based field is
+`fn-hrs-disk-history` HANDLE followed by the suffix's list; the image's
+history is DEFINED, not assumed: the decode opens the page store from the
+root record (the directory run and every table page from the file through
+`fn-pgs-fill-realize`, each checked by the page store's open), adopts the
+header and reads rows 0..N-1 by the retry loop (each page it needs filled
+from the file and digest-checked). It answers exactly N rows; a decode that
+is not clean (the open or a page refused) is a fault by name
+(history-image-fault: a recovery event), never a silent value. Proved: when
+the page file holds H's image at the addresses the committed tables name
+(`fn-hrs-disk-holds`) and the decode is clean, the history is H
+(`fn-hrs-disk-history-is-image`); a based field's list is then H followed by
+the suffix; the commit's append goes onto the suffix in O(1) and the count
+(image N plus the suffix's), the last record (the suffix's when it is not
+empty) and a record past the image read in O(1) / O(distance from the newest)
+without decoding. The transitions that keep the history keep the FIELD in
+the logic too (`fn-sf-remake`, the commit, the success), so a based state
+stays based. An unmigrated reader of the whole list pays one decode (the
+lazy decode); the served readers move to `fn-hrecs-read` one at a time. No
+path builds a based field yet: the served open's adopt of a committed image
+is next.
+
 ## History classes and lifetimes
 
 STO-010: every class of durable state the store holds has a stated lifetime,

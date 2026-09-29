@@ -167,6 +167,25 @@ class CheckTests(unittest.TestCase):
         self.assertEqual(cited - tracked, {OTHER})
 
 
+    def test_add_files_and_tracks_a_run_without_git_add_f(self):
+        # tooling-obstructions: lanes typed `git add -f` for every manifest.
+        import argparse
+        with tempfile.TemporaryDirectory() as directory:
+            root = repository(directory)
+            run_dir(root, RUN, {"status": "passed"})
+            args = argparse.Namespace(run_ids=[f"build/acl2/{RUN}"], source=[])
+            self.assertEqual(archive.cmd_add(args, root), 0)
+            staged = subprocess.run(["git", "-C", str(root), "diff", "--cached",
+                                     "--name-only"], capture_output=True, text=True,
+                                    check=True).stdout.split()
+            self.assertEqual(staged, [f"planning/evidence/manifests/{RUN}.json"])
+            absent = argparse.Namespace(run_ids=[OTHER], source=[])
+            self.assertEqual(archive.cmd_add(absent, root), 1)
+            self.assertEqual(archive.cmd_add(argparse.Namespace(run_ids=["x"], source=[]),
+                                             root), 2)
+        self.assertEqual(archive.add_command(RUN),
+                         f"python3 tools/evidence_manifests.py add {RUN}")
+
     def test_the_command_line_reports_the_four_counts_for_this_tree(self):
         done = subprocess.run(
             [sys.executable, str(TOOLS / "evidence_manifests.py"), "check"],
