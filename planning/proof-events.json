@@ -14162,6 +14162,39 @@
           "name": "fn-lim-decide-accepted-keeps-use-within"
         }
       ]
+    },
+    {
+      "id": "PRF-945",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-clo-clean-stop-is-accepted-or-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-finalize-never-answers-frontier-at-the-computed-frontier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-capture-of-clean-stop-is-accepted-or-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-store-open-of-clean-stop-is-accepted-or-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-relation-state-opens-or-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-capture-of-clean-stop-opens-or-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-observed-at-the-computed-frontier"
+        }
+      ]
     }
   ]
 }
