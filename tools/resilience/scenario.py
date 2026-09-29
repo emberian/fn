@@ -81,11 +81,18 @@ PENDING_BOUNDARIES = {
         "operations": ("receipt",),
         "owner": "bp-remainder-3",
         "kill_form": None,
-        "coordinate": "none yet: host/native/bp-app.lisp fnn-bpapp-receipt runs prepare, decide "
-                      "and the ADU without a held point (FN_APP_JOURNAL_TEST_FAIL_RECEIPT_"
-                      "DECISION_NAMESPACE fails the decision, it does not hold it); "
-                      "bp-remainder-3 adds a hold after the decision is recorded and before "
-                      "the ADU/completion"},
+        "held_form": {"selector": "FN_APP_JOURNAL_TEST_HOLD_RECEIPT", "value": "decided",
+                      "release": "FN_APP_JOURNAL_TEST_HOLD_RECEIPT_RELEASE",
+                      "where": "host/native/bp-app.lisp fnn-bpapp-pause-after-decision (the "
+                               "accept path and bp-node.lisp's delivery), after the decision "
+                               "is recorded and before the ADU/completion; prints 'BP APP "
+                               "RECEIPT-OBSERVED HOLD release=PATH', released when the named "
+                               "file appears; a signal there is the process-death form",
+                      "source": "lane/bp-remainder-codec 4247abc97 (READY f2e929ced)"},
+        "coordinate": "held form FN_APP_JOURNAL_TEST_HOLD_RECEIPT=decided (lane/bp-remainder-"
+                      "codec 4247abc97): the BP node runner that takes it is the next "
+                      "increment; until the selector is in this tree and that runner "
+                      "exists, pending"},
 }
 
 # Which operations reach each cut table, and the developer selector that
@@ -261,11 +268,17 @@ def boundary_registry() -> dict:
             "rule": rule, "rules": {r: rule for r in ROUTES},
             "operations": ["reclaim"], "actions": ["kill"],
             "selector": "FN_NATIVE_RECLAIM_FAULT", "selector_name": name, "executable": True}
+    io = ROOT / "host" / "native" / "io.lisp"
+    selectors = io.read_text() if io.is_file() else ""
     for name, row in PENDING_BOUNDARIES.items():
+        held = row.get("held_form")
         registry[name] = {"source": "design §5 (pending)", "tables": [], "program": None,
                           "book": None, "rule": None, "rules": {},
                           "operations": list(row["operations"]), "actions": [],
-                          "selector": None, "executable": False, "note": row["note"],
+                          "selector": held["selector"] if held else None,
+                          "held_form": held,
+                          "held_in_tree": bool(held and held["selector"] in selectors),
+                          "executable": False, "note": row["note"],
                           "owner": row["owner"], "kill_form": row["kill_form"],
                           "coordinate": row["coordinate"]}
     return registry
@@ -354,8 +367,11 @@ def pending_reasons(scenario: Scenario, registry: dict | None = None) -> list:
     for f in scenario.faults:
         entry = registry.get(f.boundary, {})
         if not entry.get("executable"):
-            reasons.append("{}: {} (owner {})".format(
-                f.boundary, entry.get("coordinate", "unregistered"), entry.get("owner", "?")))
+            reasons.append("{}: {} (owner {}){}".format(
+                f.boundary, entry.get("coordinate", "unregistered"), entry.get("owner", "?"),
+                " [held form in this tree: {}={}; runner pending]".format(
+                    entry["held_form"]["selector"], entry["held_form"]["value"])
+                if entry.get("held_in_tree") else ""))
         elif f.action not in entry.get("actions", ()):
             reasons.append("{}: no {} form of the cut (actions: {})".format(
                 f.boundary, f.action, ", ".join(entry.get("actions", ()))))
