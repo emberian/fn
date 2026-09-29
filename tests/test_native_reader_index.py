@@ -371,6 +371,11 @@ class NativeReaderIndexTest(unittest.TestCase):
         for i in range(0, count, max(1, count // 10)):
             status = self.command(reader, "STAT " + family[i])[0]
             self.assertTrue(status.startswith(b"223 "), (i, status))
+            article_status, article_rows = self.command(reader, "ARTICLE " + family[i], True)
+            self.assertTrue(article_status.startswith(b"220 "), (i, article_status))
+            self.assertIn(b"Message-ID: " + family[i].encode("ascii") + b"\r\n", article_rows)
+            self.assertIn(b"Subject: family " + str(i).encode("ascii") + b"\r\n", article_rows)
+            self.assertEqual(article_rows[-1], b"family member\r\n")
         self.assertTrue(self.command(reader, "STAT <f-not-a-member@example.invalid>")[0]
                         .startswith(b"430"))
         reader.close(quit=False)
