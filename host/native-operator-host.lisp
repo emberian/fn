@@ -5,6 +5,9 @@
 ; assign an exit code: fn-native-operator-run owns all three.
 (in-package "ACL2")
 (include-book "../books/native-operator")
+; Row S3 (lane operability-2): maintenance verbs on the running owner, the
+; stopped store's status from its checkpoint header.
+(include-book "../books/owner-maintenance-request")
 
 (defun fn-native-operator-host-preflight (argv-octets)
   (declare (xargs :mode :program))

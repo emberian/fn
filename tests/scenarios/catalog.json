@@ -5907,6 +5907,32 @@
         "POST answers 441 naming :article-numbers-exhausted, IHAVE 437, TAKETHIS 439, and nothing is stored; the re-pin walks no article count (fn-nntp-projectionp decides configuration only)."
       ],
       "execution_scope": "Specified at batch BB for lane join-f2-615 (PKT-615): proved in tests/acl2/store-number-bound-tests.lisp and owner-prepare-served-tests.lisp; a native case owed."
+    },
+    {
+      "id": "SCN-208",
+      "title": "`recover' and `store inspect' answer on the running owner; a stopped store's status is its checkpoint header's, with a bound the replayed count never exceeds",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-036"
+      ],
+      "steps": [
+        "A development-profile store; `run`; 3 POSTs; `operator recover`; `operator store inspect` of a stored and of a never-posted Message-ID; 2 POSTs; stop; `operator status`; `operator status --replay`; the offline inspect; `operator health`; `run`; `operator store checkpoint`; stop; `operator status`."
+      ],
+      "expected": [
+        "recover exits 0 with `recover accepted owner=serving` and the owner's `transactions=3` line (never `store is already locked`); inspect answers `accepted ... an article is stored here` exit 0 and `absent ...` exit 1 while the owner serves; the stopped status prints `stopped checkpoint=none journal-octets=B transactions-at-most=M` and no `transactions=` line, with M >= 5 = the `--replay` count; health carries `state=not-running` and the stopped line; after the checkpoint the stopped status prints `checkpoint=5`."
+      ],
+      "implementation": {
+        "test": "tests.test_native_maintenance_live",
+        "cases": [
+          "MaintenanceLiveTests.test_recover_and_inspect_answer_on_the_running_owner_and_a_stopped_status_reads_the_header"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
     }
   ]
 }

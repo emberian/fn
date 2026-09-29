@@ -13513,6 +13513,32 @@
           "name": "fn-bpcc-frame-decode-of-sealed"
         }
       ]
+    },
+    {
+      "id": "PRF-964",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-omr-inspect-live-is-the-offline-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-omr-inspect-status-is-the-offline-exit"
+        }
+      ]
+    },
+    {
+      "id": "PRF-965",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-omr-transactions-at-most-bounds-the-count"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-omr-stopped-line-is-header-and-octets-by-definition"
+        }
+      ]
     }
   ]
 }

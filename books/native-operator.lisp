@@ -921,6 +921,13 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((equal command "status")
              (cond ((null rest)
                     (fn-nop-result :accepted :plan "status" config (list :status)))
+                   ; Row S3: on a stopped store `status' reads the checkpoint
+                   ; header (books/owner-maintenance-request.lisp); `--replay'
+                   ; asks for the report over the replayed log.
+                   ((and (equal (fn-ncfg-first rest) "--replay")
+                         (null (fn-ncfg-rest rest)))
+                    (fn-nop-result :accepted :plan "status" config
+                                   (list :status :replay)))
                    ((and (equal (fn-ncfg-first rest) "--watch")
                          (null (fn-ncfg-rest (fn-ncfg-rest rest)))
                          (fn-nop-watch-seconds (fn-ncfg-second rest)))

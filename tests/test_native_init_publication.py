@@ -66,7 +66,7 @@ class InitFixture(ProfileFixture):
         return self.op("init", "--profile", "development", "fn.test", env=env)
 
     def assert_empty_store(self):
-        status = self.op("status")
+        status = self.op("status", "--replay")
         self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
         self.assertIn(b"transactions=0", status.stdout)
         segment = self.store / "journal" / "000001.log"

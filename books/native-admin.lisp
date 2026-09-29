@@ -917,6 +917,16 @@
        ; (fn-native-admin-result-owner-requestp; books/owner-compact-request).
        ((equal words '("compaction" "request"))
         (fn-native-admin-result :accepted nil :request-compaction nil 0 nil nil))
+       ; Row S3 (lane operability-2): what `store inspect ID' sends a running
+       ; owner (host/native/operator.lisp fnn-operator-execute-inspect): a
+       ; request for its own lookup of ID, no configuration record
+       ; (books/owner-maintenance-request.lisp fn-omr-inspect-word).
+       ((and (equal (fn-ncfg-first words) "inspect")
+             (equal (fn-ncfg-second words) "request")
+             (stringp (fn-ncfg-nth 2 words))
+             (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest words)))))
+        (fn-native-admin-result :accepted nil :request-inspect nil 0 nil
+                                (fn-ncfg-nth 2 words)))
        (t (fn-native-admin-result :refused :syntax nil nil nil nil nil))))))
 
 ; PKT-868: an accepted plan the live owner answers from its own state, not by
@@ -924,7 +934,17 @@
 (defun fn-native-admin-result-owner-requestp (result)
   (declare (xargs :guard t))
   (and (equal (fn-native-admin-result-status result) :accepted)
-       (equal (fn-native-admin-result-kind result) :request-compaction)))
+       (member-equal (fn-native-admin-result-kind result)
+                     '(:request-compaction :request-inspect))
+       t))
+
+; Row S3: the Message-ID an inspect request carries (its value field), or nil.
+(defun fn-native-admin-result-inspect-msgid (result)
+  (declare (xargs :guard t))
+  (and (fn-native-admin-result-owner-requestp result)
+       (equal (fn-native-admin-result-kind result) :request-inspect)
+       (stringp (fn-native-admin-result-value result))
+       (fn-native-admin-result-value result)))
 
 ; The delta list the LIVE owner stages for an accepted plan.
 ;
