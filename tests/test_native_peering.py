@@ -16,7 +16,8 @@ import time
 import types
 import unittest
 
-from tests.native_harness import EXIT_OK, Client, Node, free_port, native_image, scratch
+from tests.native_harness import (EXIT_OK, EXIT_REFUSED, EXIT_USAGE, Client, Node, free_port,
+                                  native_image, scratch)
 from tools.wire_stream import whole_stream
 
 
@@ -1138,6 +1139,64 @@ class NativePeeringTests(unittest.TestCase):
             "health": health.stdout.decode("ascii", "replace").splitlines()[:9],
             "restart_to_listening_s": round(opened, 2), "stop_s": stopped,
             "identity": identity}, sort_keys=True))
+
+    def test_retire_drains_refuses_new_connections_and_reports_a_silent_peer(self):
+        """Row S9 (PRF-1029): `retire --drain 4' on a node whose outbound
+        peer never answers (its port is closed).  A window past the bound is
+        refused by name before anything is asked; during the drain a new
+        connection gets the 502 and is closed; the window passes with the
+        three articles still owed, so the node takes its final checkpoint,
+        writes the report and stops by itself (exit 0), and `retire' prints
+        the report: the silent peer's three undelivered, state=deadline and
+        the release line.  On the stopped node `retire' is refused by name."""
+        closed = free_port()
+        node = self.fill_node("retire", closed)
+        self.start(node)
+        ids = ["<retire-{}@example.invalid>".format(n) for n in range(3)]
+        replies = self.inject(node, ids)
+        self.assertEqual({r[:3] for r in replies}, {b"239"}, replies)
+        over = node.operator("retire", "--drain", "86401", expect=EXIT_REFUSED)
+        self.assertIn(b"drain-seconds-over-bound", over.stdout + over.stderr)
+        self.assertIsNone(node.process.poll())
+        node.operator("retire", "--drain", "soon", expect=EXIT_REFUSED)
+        node.operator("retire", "now", expect=EXIT_USAGE)
+        result = {}
+        worker = threading.Thread(
+            target=lambda: result.setdefault(
+                "retire", node.operator("retire", "--drain", "4", timeout=240)))
+        worker.start()
+        refused = None
+        deadline = time.monotonic() + 30
+        while refused is None and time.monotonic() < deadline:
+            try:
+                with socket.create_connection(("127.0.0.1", node.port), timeout=10) as client:
+                    line = whole_stream(client).readline()
+                if line.startswith(b"502 "):
+                    refused = line
+                else:
+                    time.sleep(0.2)
+            except OSError:
+                time.sleep(0.2)
+        worker.join(timeout=240)
+        self.assertIsNotNone(refused, "no 502 while retiring")
+        self.assertEqual(refused, b"502 this node is retiring and accepts no new connections\r\n")
+        retire = result["retire"]
+        self.assertEqual(retire.returncode, EXIT_OK, retire.stdout + retire.stderr)
+        out = retire.stdout
+        self.assertIn(b"retire draining", out)
+        self.assertIn(b"retire peer=down undelivered=3 dropped=0", out)
+        self.assertIn(b"retired state=deadline undelivered=3", out)
+        self.assertIn(b"carry drop WORK --abandon", out)
+        report = Path(node.store_path) / "retire-report.txt"
+        self.assertTrue(report.exists())
+        self.assertIn(report.read_bytes(), out)
+        node.exited(EXIT_OK, timeout=120)
+        stopped = node.operator("retire", expect=EXIT_REFUSED)
+        self.assertIn(b"retire refused reason=not-running", stopped.stdout)
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "retire-silent-peer-prf-1029",
+            "refused": refused.decode("ascii", "replace").strip(),
+            "retire": out.decode("ascii", "replace").splitlines()}, sort_keys=True))
 
     def test_obligations_report_of_five_thousand_articles_answers(self):
         """PRF-336 (the openbsd-rehearsal, stop 2): `operator CONFIG

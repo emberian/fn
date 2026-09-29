@@ -721,6 +721,40 @@ Nothing in `fn.toml` needs changing when its paths are relative (as
 `mission` writes them). An absolute path still names the same place after
 the move.
 
+### Retire the node
+
+When a node goes away for good, let it hand on what it owes first:
+
+```sh
+fn operator /var/lib/fn/fn.toml retire --drain 600
+```
+
+From that moment the node answers every new connection with
+`502 this node is retiring and accepts no new connections` and closes it
+(on a TLS port it closes without the line), stops pulling from its peers,
+and keeps offering its feeds for at most 600 seconds (0 without `--drain`,
+at most 86400; more is refused as `drain-seconds-over-bound`). Readers
+already connected keep their sessions until it stops. When nothing is left
+to offer, or the time is up, the node takes a final checkpoint and stops,
+and `retire` prints what it wrote to `STORE/retire-report.txt`:
+
+```
+retire peer=friend undelivered=3 dropped=0
+obligations=2 reserved=4096
+obligation id=... kind=forward charge=2048 subject=...
+retired state=deadline undelivered=3 obligations=2
+retire release: what stays is released only by `carry drop WORK --abandon REASON' on the stopped store
+```
+
+`undelivered` is what the peer was never given; `dropped` is the part the
+feed gave up on at its retry limit. The obligations are the lines
+`obligations` prints. Nothing is released for you: on the stopped node,
+`carry drop WORK --abandon REASON` releases a carry you will not deliver
+(see `help carry`), and `store export` makes the archive. `retire` on a
+stopped node is refused (`retire refused reason=not-running`): nothing
+drains there. If the node stops without writing its report, `retire` says
+`retire uncertain reason=no-report` and exits 3; its log says why.
+
 ### New releases
 
 A new release is a fresh install. There is no upgrade in place and no going
@@ -1125,4 +1159,5 @@ with `policy set max-transactions N` (and `max-history-octets`,
   `charge-capacity` next to `charge-reserved`, the part held articles use
   (review item 15; [the ledger](operator-internals.md)).
 - `pins`, `obligations`: what the store is holding, and why.
+- `retire [--drain SECONDS]`: drain the feeds, report, checkpoint and stop a node that goes away for good ([Retire the node](#retire-the-node)).
 - `run`: what the service runs.

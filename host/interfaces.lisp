@@ -161,11 +161,6 @@
   :class :program
   :exempt ((argv-octets "the argv preflight is the check: it refuses a malformed argv by name")))
 
-(definterface fn-native-operator-host-run
-  :class :program
-  :exempt ((argv-octets "a list of argument octet lists, preflighted (fn-native-operator-host-preflight)")
-           (config-octets "read by fnn-operator-read-config, bounded; NIL when absent")))
-
 (definterface fn-native-operator-host-run-at
   :class :program
   :kinds ((cwd fn-cbor-octet-listp) (config-path fn-cbor-octet-listp))
@@ -3360,7 +3355,8 @@
   :class ::program)
 
 (definterface fn-native-operator-host-account-hash-text
-  :class ::program)
+  :class ::program
+  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-native-operator-host-control-outcome
   :class ::program)
