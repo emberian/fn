@@ -68,6 +68,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/blake3-stobj \
 	tests/acl2/blake3-stobj-tests \
 	books/frame-octets \
+	tests/acl2/stack-depth-twins-tests \
 	books/frame-fields \
 	books/frame-journal \
 	books/frame \
@@ -95,7 +96,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-stamp \
 	books/records-canonicality \
 	books/records-seam \
-	books/records-schema-v1 \
 	books/records-attach \
 	books/store-events \
 	tests/acl2/store-events-tests \
@@ -113,7 +113,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-poll-projection-tests \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
-	tests/acl2/records-schema-v1-teeth-tests \
 	tests/acl2/records-ceiling-tests \
 	tests/acl2/records-shape-tests \
 	books/provenance-codec \
@@ -235,6 +234,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-budget-stored \
 	tests/acl2/store-budget-stored-tests \
 	books/store-carried-folds \
+	tests/acl2/owner-store-indexed-tests \
 	tests/acl2/store-carried-folds-tests \
 	books/store-profile-facts \
 	books/store-replay-bound \
@@ -291,11 +291,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-range-read \
 	tests/acl2/byte-store-state-checkpoint-program-tests \
 	books/store-node-resolution \
+	books/refusal-effect \
 	books/store-identity-sequence-invariants \
 	tests/acl2/store-identity-sequence-invariants-tests \
 	books/consumer-store-invariants \
 	tests/acl2/consumer-store-invariants-tests \
 	tests/acl2/store-node-resolution-tests \
+	tests/acl2/refusal-effect-tests \
 	tests/acl2/store-node-resolution-traces-tests \
 	tests/acl2/store-identity-traces-tests \
 	books/store-sweep \
@@ -428,9 +430,15 @@ ACL2_BOOKS ?= books/defrecord \
 	books/expiry \
 	books/expiry-instant \
 	tests/acl2/expiry-tests \
+	books/owner-reclaim \
+	tests/acl2/owner-reclaim-tests \
+	books/extent-retire \
+	tests/acl2/extent-retire-tests \
 	books/store-log-route-phases \
 	books/store-log-extend \
 	tests/acl2/store-log-extend-tests \
+	books/store-log-durable \
+	tests/acl2/store-log-durable-tests \
 	books/store-init-log-publication \
 	tests/acl2/store-init-log-publication-tests \
 	books/owner-feed-txid-reuse \
@@ -1325,6 +1333,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-journal \
 	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
+	tests/acl2/owner-time-space-tests \
 	books/owner-article-slots \
 	books/owner-article-held \
 	tests/acl2/owner-article-slots-tests \
@@ -1549,6 +1558,7 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) tools/ledger.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
 	@$(CHECK_EXECUTE)
 
 check-fast-lane:
@@ -1586,6 +1596,8 @@ check:
 # the ones that do wait for it (they had each analysed it at once).
 	@$(CHECK_STEP_WARM) $(PYTHON) tools/ledger.py --load-tree
 	@$(CHECK_STEP) $(PYTHON) tools/check_scaffold.py
+# Every tests/acl2/*-tests.lisp is a certification root (Q7j).
+	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
 # Every command the docs name exists with the grammar the docs give (NNT-032):
 # operator invocations are judged by ACL2's grammar in the generated book
 # tests/acl2/docs-operator-grammar-tests.lisp, which this fails on when it is
@@ -1599,6 +1611,13 @@ check:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_shape_books
 # tools/rule_usage.py's graph simulation and log reading (lane fan-in-cuts).
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_rule_usage
+# The resource contract (docs/resource-contract.md, row R1): its generated
+# block is current, every theorem it cites exists in its book, every proof id
+# and record exists, and no cited book is red at its digest (green_check over
+# the cited books' closures); a cited book no held manifest certifies at its
+# current bytes is printed, and fails only under --strict (the release form).
+	@$(CHECK_STEP) $(PYTHON) tools/resource_contract.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_resource_contract
 # The website renders the guides' articles (site/build_site.py, stdlib only):
 # every article is well-formed (tools/docs_articles.py: its headers, its
 # Message-ID, 72 columns), every repository path it names exists, and every
@@ -1845,7 +1864,17 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/keystone_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/interface_emit.py --check
+# What the certified world says about each host-called entry (lane
+# coverage-crawler, 2026-09-29): planning/coverage.json is built from a dump
+# tools/coverage_dump.lisp writes in an ACL2 session over books/image-world
+# (regenerated at convergence, not per commit); this refuses a decision
+# entry with no direct theorem that planning/coverage-baseline.json does not
+# list (shrink-only), an unfiled requirement in planning/families.json, and
+# a gaps file that is not what the coverage renders.
+	@$(CHECK_STEP) $(PYTHON) tools/coverage.py check
 	@$(CHECK_STEP) $(PYTHON) tools/event_emit.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/alphabet_check.py --summary --strict
+	@$(CHECK_STEP) $(PYTHON) tools/premise_audit.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/profile_limits.py --check
 # Which host entries walk retained state (PKT-334, answers 2026-09-26 §2): a
 # function called once per request that traverses the Store history, the
@@ -1935,7 +1964,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_test_budget tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \
 	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync \
-	    tests.test_extract_gate tests.test_cert_images
+	    tests.test_extract_gate tests.test_cert_images tests.test_coverage tests.test_resource_contract tests.test_premise_audit tests.test_alphabet_check
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 

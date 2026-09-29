@@ -115,14 +115,14 @@ For each target marked `certified`, it checks that the registry names curated
 events in the current books and that each event's defining book has archived
 manifest evidence for its current source and include closure. It uses
 `green_check`'s verdict, so a pass records compatible evidence from a named
-run, not a certificate installed here or a qualified native image. The row
-must also cite that evidence itself: its `evidence` list names at least one
-manifest under `planning/evidence/manifests/`, every cited manifest exists, and
-for each event's book some cited manifest records the book `passed` at its
-current source digest and include closure. A certified row whose own citation
-has gone stale fails even when an uncited run would vouch for it; `--explain
-PRF-xxx` names, per event, the book, its current digest and the newest
-manifest that certified it, which is the citation to add. A row with no such
+run, not a certificate installed here or a qualified native image. That is
+the ONE meaning of "certified" (row R2, 2026-09-29): green at these bytes
+(`green_check.green_at_these_bytes`: the verdict green at the book's current
+digest and include closure, from an archived manifest). A manifest the row
+cites is provenance and must exist; citing it is not what certifies, and an
+uncited archived run vouches as well as a cited one. `--explain PRF-xxx`
+names, per event, the book, its current digest and the newest manifest that
+certified it. A row with no such
 manifest is not `certified`.
 
 `python3 tools/proof_cost.py` in `make check` holds the ten-second rule
@@ -849,12 +849,13 @@ Proof targets: `planned`, `uncertified-at-current-digest` or `certified`, and
 the proof target's `status` is generated, never typed: `python3 tools/ledger.py
 --write` derives it and `make check` (through `ledger.py --check`) refuses a
 hand-edited value. `planned` means the target cites no event; `certified` means
-a manifest the row cites under `planning/evidence/manifests/` recorded every
-event's defining book passed at its current source digest and include closure
-(the rule `tools/certified_claims.py` applies); anything else is
+every event's defining book is green at these bytes (`tools/green_check.py`'s
+verdict at its current source digest and include closure, from an archived
+manifest under `planning/evidence/manifests/`; the rule
+`tools/certified_claims.py` applies, row R2); anything else is
 `uncertified-at-current-digest`. Editing a book therefore turns its targets
-uncertified until the lane harvests and cites the run that certified the new
-bytes. The status speaks for the cited events, not for everything the target's
+uncertified until a run that certified the new bytes is archived
+(`tools/evidence_manifests.py add RUN-ID`). The status speaks for the cited events, not for everything the target's
 statement says.
 
 Implemented/validated requirements and certified proof targets require evidence

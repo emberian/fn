@@ -1516,6 +1516,21 @@
                     (fn-native-operator-run *fn-nop-minimal-config*
                                             (fn-nop-test-argv '("store" "reclaim"))))))
 
+;; Q16: `store reclaim' carries the reclaim request vector (its mode the
+;; second word) and the control path; `store compact' does not.
+(assert-event (fn-native-operator-result-reclaim-planp *fn-nop-reclaim*))
+(assert-event (equal (fn-native-operator-result-reclaim-argv *fn-nop-reclaim*)
+                     (fn-nop-test-argv '("reclaim" "request"))))
+(assert-event (equal (fn-native-operator-result-reclaim-argv *fn-nop-reclaim-dry*)
+                     (fn-nop-test-argv '("reclaim" "dry-run"))))
+(assert-event (equal (fn-native-operator-result-reclaim-argv
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "reclaim" "--recorded"))))
+                     (fn-nop-test-argv '("reclaim" "recorded"))))
+(assert-event (consp (fn-native-operator-result-reclaim-control-path-octets *fn-nop-reclaim*)))
+(assert-event (not (fn-native-operator-result-reclaim-planp *fn-nop-compact*)))
+(assert-event (null (fn-native-operator-result-reclaim-argv *fn-nop-compact*)))
+
 ; PKT-869: `carry JOURNAL ...' plans; a drop's reason is its words joined.
 (defconst *fn-nop-carry-drop*
   (fn-native-operator-run *fn-nop-minimal-config*

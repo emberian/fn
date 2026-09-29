@@ -825,6 +825,70 @@ class WaitTests(unittest.TestCase):
             self.assertTrue(sweeps)
             self.assertIn("--cache /scratch/cache", sweeps[-1])
 
+    def test_wait_returns_on_a_final_manifest_before_the_status_file(self):
+        """A final manifest is the verdict: the runner may still be publishing.
+
+        depth-debt-2 and d27-representation-2: waits that never returned
+        while `farm.py status` already showed manifest(passed/failed).
+        """
+        class Final(Fake):
+            def __call__(self, command, **kwargs):
+                result = super().__call__(command, **kwargs)
+                if command[0] == "ssh" and "STATUS" in command[-1]:
+                    result.stdout = ("STATUS running\nKNOWN yes\nMARKERS 3\n"
+                                     "MANIFEST failed certify-20260929T000000Z-7\n")
+                return result
+        fake = Final([], log=self.LOG)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            out = io.StringIO()
+            with driving(fake, root / "cache"), contextlib.redirect_stdout(out):
+                code = farm.wait("hbox", "run-m", root, poll=1, timeout_seconds=600)
+            self.assertEqual(code, 1)
+            self.assertEqual(sum("STATUS" in s for s in fake.scripts()), 1)
+            said = out.getvalue()
+            self.assertIn("is final (failed)", said)
+            self.assertIn("manifest certify-20260929T000000Z-7 failed", said)
+            # The verdict comes before the collection's phase, not after it.
+            self.assertLess(said.index("finished with exit code 1"),
+                            said.index("collected in"))
+
+    def test_a_provisional_manifest_is_not_a_verdict(self):
+        script = farm.progress_script(Path("/r"), "run-p")
+        self.assertIn("finished_utc", farm.MANIFEST_VERDICT)
+        self.assertIn("MANIFEST", script)
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory) / "certify-x"
+            run_dir.mkdir()
+            (run_dir / "manifest.json").write_text(json.dumps({"status": "failed"}))
+            said = subprocess.run([sys.executable, "-c", farm.MANIFEST_VERDICT,
+                                   str(run_dir)], capture_output=True, text=True)
+            self.assertEqual(said.stdout.strip(), "")
+            (run_dir / "manifest.json").write_text(json.dumps(
+                {"status": "passed", "finished_utc": "2026-09-29T00:00:00+00:00"}))
+            said = subprocess.run([sys.executable, "-c", farm.MANIFEST_VERDICT,
+                                   str(run_dir)], capture_output=True, text=True)
+            self.assertEqual(said.stdout.strip(), "passed certify-x")
+
+    def test_wait_refuses_a_run_that_is_not_under_its_remote_root(self):
+        for answer, words in (("NOROOT\n", "no such directory"),
+                              ("STATUS running\nKNOWN no\n", "neither its log")):
+            class Missing(Fake):
+                def __call__(self, command, **kwargs):
+                    result = super().__call__(command, **kwargs)
+                    if command[0] == "ssh" and "STATUS" in command[-1]:
+                        result.stdout = answer
+                    return result
+            fake = Missing([], log=self.LOG)
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                with driving(fake, root / "cache"):
+                    with self.assertRaises(farm.FarmError) as raised:
+                        farm.wait("hbox", "run-q", root, poll=1, timeout_seconds=600)
+                self.assertIn(words, str(raised.exception))
+                self.assertIn("--remote-root", str(raised.exception))
+                self.assertEqual(fake.rsyncs(), [])
+
     def test_progress_parsing_ignores_unrelated_output(self):
         fields = farm.parse_progress(
             "Warning: something\nSTATUS running\nMARKERS 12\nSTARTED 40\nTAIL a b c\n")
@@ -859,6 +923,130 @@ class WaitTests(unittest.TestCase):
         self.assertEqual(subprocess.run(
             ["grep", "-E", farm.SUCCESS_LINE], input=actual,
             text=True, capture_output=True, check=False).returncode, 0)
+
+
+class CancelAndUnionTests(unittest.TestCase):
+    """obstructions-2 item 2: cancel, the union help, --recertify-list."""
+
+    def test_submit_records_the_wrapper_pid_and_cancel_stops_that_tree(self):
+        class Started(Fake):
+            def __call__(self, command, **kwargs):
+                result = super().__call__(command, **kwargs)
+                if command[0] == "ssh" and "nohup sh -c" in command[-1]:
+                    result.stdout = "FN_FARM_STARTED run-x 4242\n"
+                if command[0] == "ssh" and "kill -TERM" in command[-1]:
+                    result.stdout = "CANCELLED 3\n"
+                return result
+        fake = Started([])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                identifier = farm.submit("hbox", root, ["books/alpha"], jobs=2,
+                                         timeout_seconds=60, affected_by=[])
+            record = farm.run_record(root, identifier)
+            self.assertEqual(record["pid"], 4242)
+            out = io.StringIO()
+            with driving(fake, root / "cache"), contextlib.redirect_stdout(out):
+                self.assertEqual(farm.cancel("hbox", identifier, root), 0)
+            script = fake.scripts()[-1]
+            self.assertIn("for p in 4242;", script)
+            self.assertIn(f"echo 143 > build/farm/{identifier}.status", script)
+            self.assertIn("stopped 3 process(es); status 143", out.getvalue())
+            with self.assertRaises(farm.FarmError):
+                farm.cancel("persvati", identifier, root)
+
+    def test_cancel_script_really_stops_a_tree_and_finalises_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "build/farm").mkdir(parents=True)
+            (root / "build/farm/run-c.log").write_text("")
+            child = subprocess.Popen(["sh", "-c", "sleep 300 & wait"])
+            try:
+                script = farm.cancel_script(root, "run-c", child.pid)
+                done = subprocess.run(["sh", "-c", script], capture_output=True,
+                                      text=True, timeout=30)
+                self.assertTrue(done.stdout.strip().startswith("CANCELLED"), done.stdout)
+                self.assertEqual(child.wait(timeout=10) != 0, True)
+                self.assertEqual((root / "build/farm/run-c.status").read_text().strip(),
+                                 "143")
+                again = subprocess.run(["sh", "-c", script], capture_output=True,
+                                       text=True, timeout=30)
+                self.assertEqual(again.stdout.strip(), "ALREADY 143")
+            finally:
+                if child.poll() is None:
+                    child.kill()
+            unknown = subprocess.run(["sh", "-c", farm.cancel_script(root, "run-none", None)],
+                                     capture_output=True, text=True, timeout=30)
+            self.assertEqual((unknown.returncode, unknown.stdout.strip()), (8, "UNKNOWN"))
+
+    def test_the_help_states_the_union_and_recertify_list_is_an_alias(self):
+        help_text = io.StringIO()
+        with contextlib.redirect_stdout(help_text), self.assertRaises(SystemExit):
+            farm.main(["--help"])
+        self.assertIn("UNION", help_text.getvalue())
+        self.assertIn("cancel", help_text.getvalue())
+        with tempfile.TemporaryDirectory() as directory:
+            listing = Path(directory) / "list"
+            listing.write_text("books/alpha\n")
+            with mock.patch.object(farm, "submit", return_value="run-l") as submitted, \
+                    mock.patch.object(farm, "honour_reservation"), \
+                    contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                farm.main(["submit", "hbox", "--recertify-list", str(listing)])
+            self.assertEqual(submitted.call_args.kwargs["recertify"], ["books/alpha"])
+
+
+class CacheChooserTests(unittest.TestCase):
+    """obstructions-2 item 3: `submit auto` follows the certificates."""
+
+    def choose(self, counts: dict[str, str], keys=("k1", "k2")):
+        scripts: list[str] = []
+
+        def answer(command, **kwargs):
+            scripts.append(command[-1])
+            host = command[-2]
+            code = 0 if host in counts else 255
+            return subprocess.CompletedProcess(command, code,
+                                               stdout=counts.get(host, ""))
+        picked: list[str] = []
+        with mock.patch.object(farm, "RUN", answer), \
+                mock.patch.object(farm, "closure_keys", lambda *a: list(keys)), \
+                contextlib.redirect_stderr(io.StringIO()):
+            host = farm.choose_host(Path("/r"), ["books/alpha"], [],
+                                    pick=lambda: picked.append(1) or "persvati")
+        return host, picked, scripts
+
+    def test_the_box_holding_clearly_more_certificates_wins_over_load(self):
+        keys = [f"k{i}" for i in range(600)]
+        host, picked, scripts = self.choose({"hbox": "590\n", "persvati": "106\n"}, keys)
+        self.assertEqual((host, picked), ("hbox", []))
+        self.assertIn("k599", scripts[0])
+        self.assertIn("os.path.isdir", scripts[0])
+
+    def test_close_caches_leave_the_choice_to_the_load(self):
+        keys = [f"k{i}" for i in range(600)]
+        host, picked, _ = self.choose({"hbox": "590\n", "persvati": "580\n"}, keys)
+        self.assertEqual((host, picked), ("persvati", [1]))
+
+    def test_an_unanswering_box_or_uncountable_closure_falls_back_to_load(self):
+        host, picked, _ = self.choose({"hbox": "2\n"})
+        self.assertEqual((host, picked), ("persvati", [1]))
+
+        def broken(*arguments):
+            raise ValueError("no Makefile")
+        with mock.patch.object(farm, "closure_keys", broken), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(farm.choose_host(Path("/r"), [], ["books/x"],
+                                              pick=lambda: "hbox"), "hbox")
+
+    def test_the_count_script_counts_existing_key_directories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            for key in ("aa", "bb"):
+                (Path(directory) / key).mkdir()
+            done = subprocess.run([sys.executable, "-c", farm.COUNT_KEYS],
+                                  input="aa\nbb\ncc\n", capture_output=True,
+                                  text=True, cwd=directory)
+            self.assertEqual(done.stdout.strip(), "2")
 
 
 class StatusTests(unittest.TestCase):
@@ -1138,6 +1326,18 @@ class FrictionTests(unittest.TestCase):
                 farm.refuse_bad_book_names(root, ["books/alpha"], [], ["../x"])
             with self.assertRaises(farm.FarmError):
                 farm.refuse_bad_book_names(root, ["books/alpha"], [], ["host/none"])
+
+    def test_affected_by_takes_a_host_file(self):
+        # decision-keystones: `--affected-by host/bp-node-host` was refused
+        # although a test book includes that host file.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            seed_books(root)
+            (root / "host").mkdir()
+            (root / "host" / "op-host.lisp").write_text("(in-package \"ACL2\")\n")
+            farm.refuse_bad_book_names(root, [], ["host/op-host.lisp"])
+            with self.assertRaises(farm.FarmError):
+                farm.refuse_bad_book_names(root, [], ["host/none"])
 
     def test_uncached_list_is_a_count_unless_verbose(self):
         lines = ["publish: 3 books, cache c", "  uncached: books/a",

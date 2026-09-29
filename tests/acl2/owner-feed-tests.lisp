@@ -58,8 +58,8 @@
 (assert-event (equal (fn-cfg-peer-find "nodeD" *oft-peers*) *oft-d*))
 
 ; The peer enumeration: one name per peer, in row order, and it is the
-; enumeration the CLI shows (host/store-node-host.lisp calls this function).
-(assert-event (equal (fn-own-feed-peer-names *oft-peers*)
+; enumeration the CLI shows and the one the owner's feed table installs.
+(assert-event (equal (fn-cfg-peer-names *oft-peers*)
                      '("nodeB" "nodeC" "nodeD")))
 
 ; -----------------------------------------------------------------------------
