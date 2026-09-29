@@ -1277,6 +1277,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/config-field-max-tests \
 	tests/acl2/feed-totality-tests \
 	tests/acl2/group-access-tests \
+	tests/acl2/group-access-cache-tests \
 	tests/acl2/group-status-tests \
 	tests/acl2/moderation-tests \
 	tests/acl2/peer-host-tests \

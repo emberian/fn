@@ -8109,14 +8109,6 @@
         {
           "kind": "theorem",
           "name": "fn-auth-delegate-pinned-preserves-consistentp"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-gac-views-find-is-restriction"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-gac-access-views-covers-pattern"
         }
       ]
     },
@@ -13383,6 +13375,93 @@
         {
           "kind": "theorem",
           "name": "fn-xpy-rci-recorded-context-is-the-decided-context"
+        }
+      ]
+    },
+    {
+      "id": "PRF-904",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scat-counts-lines-status-is-the-active-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-counts-lines-status-is-the-active-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-counts-lines-status-is-the-active-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-counts-summary-line-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-active-status-line-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-list-counts-command-cat-is-archive"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-list-counts-command-is-the-archive-fold"
+        }
+      ]
+    },
+    {
+      "id": "PRF-905",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-inj-decide-line-length-is-a-long-header-line"
+        }
+      ]
+    },
+    {
+      "id": "PRF-913",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scr-auth-delegate-is-scar-auth-delegate-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scr-cached-view-is-the-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scr-prepare-access-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scr-prepare-access-serves-the-pin"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gacc-view-is-the-view-entry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gacc-prepare-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gacc-view-of-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gacc-refresh-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gacc-grow-builds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-view-entry-is-per-command"
         }
       ]
     }

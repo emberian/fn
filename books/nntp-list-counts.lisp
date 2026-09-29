@@ -61,9 +61,9 @@
   (implies (and (fn-statep archive)
                 (fn-nntp-safe-group-listp groups))
            (equal (fn-gidx-counts-lines
-                   archive (fn-gidx-build (fn-state-articles archive)) groups)
-                  (fn-nntp-counts-lines archive groups)))
-  :hints (("Goal" :induct (fn-nntp-counts-lines archive groups)
+                   archive (fn-gidx-build (fn-state-articles archive)) groups closed)
+                  (fn-nntp-counts-lines archive groups closed)))
+  :hints (("Goal" :induct (fn-nntp-counts-lines archive groups closed)
            :in-theory (e/d (fn-gidx-counts-lines fn-nntp-counts-lines
                             fn-gidx-counts-line fn-nntp-counts-line
                             fn-nntp-safe-group-listp)
@@ -93,8 +93,8 @@
 (defthm fn-gidx-list-counts-command-is-the-archive-fold
   (implies (and (fn-nntp-projectionp archive)
                 (equal buckets (fn-gidx-build (fn-state-articles archive))))
-           (equal (fn-gidx-list-counts-command session archive buckets args)
-                  (fn-nntp-list-counts-command session archive args)))
+           (equal (fn-gidx-list-counts-command session archive buckets closed args)
+                  (fn-nntp-list-counts-command session archive closed args)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-gidx-list-counts-command
                             fn-nntp-list-counts-command fn-nntp-list-counts)
@@ -115,7 +115,8 @@
                 (fn-nntp-keywordp (car args) "COUNTS"))
            (equal (fn-nntp-archive-command-pinned
                    session archive index verdicts env keyword args fn-arena)
-                  (fn-nntp-list-counts-command session archive (cdr args))))
+                  (fn-nntp-list-counts-command session archive (fn-nntp-env-closed env)
+                                               (cdr args))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-archive-command-pinned
                             fn-nntp-archive-command fn-nntp-list-command
@@ -130,6 +131,92 @@
                             fn-gidx-listgroup-command
                             fn-nntp-over-range-indexed
                             fn-nntp-verdict-hdr-response)))))
+
+;; -----------------------------------------------------------------------------
+;; PKT-703: LIST COUNTS carries LIST ACTIVE's status.
+;;
+;; RFC 6048 section 2.2.2 defines LIST COUNTS's last field as LIST ACTIVE's
+;; status field (RFC 3977 section 7.6.3; `m' for a moderated group, RFC 6048
+;; section 2.1.1).  Both lines end with the octet fn-nntp-closed-status
+;; decides from the connection's CLOSED list (the read-only groups, the
+;; moderated entries and a moderator's approver entries, books/nntp-post.lisp
+;; fn-post-reader-env-closed); line I of a LIST COUNTS reply and line I of
+;; LIST ACTIVE over the same groups carry the same octet.  Host path: the
+;; catalog arm fn-scat-counts-lines (books/served-catalog.lisp, reached from
+;; host/owner-host.lisp fn-owner-chunk-span-at through fn-scr-command) renders
+;; each line with fn-nntp-counts-summary-line;
+;; fn-scat-counts-lines-status-is-the-active-status states it there.
+
+; The status field of a rendered line: its last octet.
+(defun fn-nlc-status-octet (line)
+  (declare (xargs :guard t))
+  (if (consp line) (car (last line)) nil))
+
+; The octet of fn-nntp-closed-status's answer ("n", "m" or "y").
+(defun fn-nntp-closed-status-octet (octets closed)
+  (declare (xargs :guard t))
+  (if (fn-nntp-closed-memberp octets closed) 110
+    (if (fn-nntp-moderated-memberp octets closed) 109 121)))
+
+(local
+ (defthm fn-nlc-car-last-append
+   (implies (consp y)
+            (equal (car (last (append x y))) (car (last y))))))
+
+(local
+ (defthm fn-nlc-consp-append-pieces
+   (implies (consp (car (last pieces)))
+            (consp (fn-nntp-append-pieces pieces)))
+   :hints (("Goal" :in-theory (enable fn-nntp-append-pieces)))))
+
+(local
+ (defthm fn-nlc-consp-last-piece
+   (implies (consp (car (last pieces)))
+            (equal (car (last (fn-nntp-append-pieces pieces)))
+                   (car (last (car (last pieces))))))
+   :hints (("Goal" :in-theory (enable fn-nntp-append-pieces)))))
+
+(defthm fn-nntp-counts-summary-line-status
+  (equal (fn-nlc-status-octet (fn-nntp-counts-summary-line group summary closed))
+         (fn-nntp-closed-status-octet (fn-nntp-string-octets group) closed))
+  :hints (("Goal" :in-theory (enable fn-nntp-counts-summary-line
+                                     fn-nntp-closed-status))))
+
+(defthm fn-nntp-active-status-line-status
+  (equal (fn-nlc-status-octet (fn-nntp-active-status-line archive group closed))
+         (fn-nntp-closed-status-octet (fn-nntp-string-octets group) closed))
+  :hints (("Goal" :in-theory (enable fn-nntp-active-status-line
+                                     fn-nntp-closed-status))))
+
+(local
+ (defun fn-nlc-nth-ind (i groups)
+   (if (consp groups)
+       (if (zp i) t (fn-nlc-nth-ind (1- i) (cdr groups)))
+     t)))
+
+;; KEYSTONE (reference): line I of the archive fold's LIST COUNTS carries
+;; line I of LIST ACTIVE's status, for every group list and closed list.
+(defthm fn-nntp-counts-lines-status-is-the-active-status
+  (equal (fn-nlc-status-octet (nth i (fn-nntp-counts-lines archive groups closed)))
+         (fn-nlc-status-octet (nth i (fn-nntp-active-status-lines archive groups closed))))
+  :hints (("Goal" :induct (fn-nlc-nth-ind i groups)
+           :expand ((fn-nntp-counts-lines archive groups closed)
+                    (fn-nntp-active-status-lines archive groups closed))
+           :in-theory (e/d (fn-nntp-counts-line)
+                           (fn-nlc-status-octet fn-nntp-counts-summary-line
+                            fn-nntp-active-status-line)))))
+
+;; KEYSTONE (pinned buckets, fn-nntp-archive-command-pinned's COUNTS arm):
+;; the same for the bucket summary's lines, whatever the buckets hold.
+(defthm fn-gidx-counts-lines-status-is-the-active-status
+  (equal (fn-nlc-status-octet (nth i (fn-gidx-counts-lines archive buckets groups closed)))
+         (fn-nlc-status-octet (nth i (fn-nntp-active-status-lines archive groups closed))))
+  :hints (("Goal" :induct (fn-nlc-nth-ind i groups)
+           :expand ((fn-gidx-counts-lines archive buckets groups closed)
+                    (fn-nntp-active-status-lines archive groups closed))
+           :in-theory (e/d (fn-gidx-counts-line)
+                           (fn-nlc-status-octet fn-nntp-counts-summary-line
+                            fn-nntp-active-status-line)))))
 
 ; -----------------------------------------------------------------------------
 ; Work: a group's line visits at most B bucket headers (B = the number of

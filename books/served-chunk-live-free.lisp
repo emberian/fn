@@ -327,7 +327,7 @@
          (oc1 (fn-ocfg-run oc events fn-arena))
          (oc2 (fn-ocfg-with-owner
                oc1 (cdr (fn-own-outcome (fn-ocfg-owner oc1) sub-id word)))))
-    (implies (and (fn-ocfg-writer-eventsp events)
+    (implies (and (fn-gacc-okp cache) (fn-ocfg-writer-eventsp events)
                   (not (equal id sub-id))
                   (not (fn-peer-session-cfg (fn-auth-session-base (fn-own-conn-session conn))))
                   (fn-scl-counted-selects-nothing-p
@@ -342,13 +342,13 @@
                   (fn-scol-okp fn-arena fn-cat)
                   (natp i) (natp end))
              (and (equal (fn-own-tls-result-consumed
-                          (fn-scr-ocfg-read-span oc2 id i end fn-octets fn-arena fn-cat))
+                          (fn-scr-ocfg-read-span oc2 id i end cache fn-octets fn-arena fn-cat))
                          (fn-own-tls-result-consumed
-                          (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)))
+                          (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)))
                   (equal (fn-own-tls-result-effects
-                          (fn-scr-ocfg-read-span oc2 id i end fn-octets fn-arena fn-cat))
+                          (fn-scr-ocfg-read-span oc2 id i end cache fn-octets fn-arena fn-cat))
                          (fn-own-tls-result-effects
-                          (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat))))))
+                          (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat))))))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-scl-other-post-keeps-a-chunk-selecting-nothing

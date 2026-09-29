@@ -409,6 +409,13 @@
         (list (olt-text "refused post path=served connection=3 reason=unknown-group time=2026-09-18T00:00:00Z")
               (olt-text "refused post path=served connection=3 reason=oversize time=2026-09-18T00:00:00Z")
               (olt-text "refused post path=served connection=3 reason=unnamed time=2026-09-18T00:00:00Z"))))
+; PKT-506: the line bound's 441 names it, and its log line reads it back.
+(assert-event (equal (fn-post-refusal-line :line-length)
+                     "441 posting failed; a header line is longer than 998 octets (RFC 5322 section 2.1.1); fold it"))
+(assert-event
+ (equal (fn-olog-served-refusal-lines
+         *olt-served* 3 (list (olt-reply (fn-post-refusal-line :line-length))))
+        (list (olt-text "refused post path=served connection=3 reason=line-length time=2026-09-18T00:00:00Z"))))
 ; A read with no 441 logs nothing.
 (assert-event
  (null (fn-olog-served-refusal-lines *olt-served* 3

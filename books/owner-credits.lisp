@@ -177,30 +177,30 @@
 ;; closed and answered 400 (books/owner-article-slots.lisp
 ;; fn-oas-posting-off-read, fn-oas-close-result; lane admission-gap split the
 ;; former fn-oas-refused-read into those two, batch BB 2026-09-28).
-(defun fn-mca-refused-read (oc views id i end s fn-octets fn-arena fn-cat)
+(defun fn-mca-refused-read (oc views id i end cache s fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (natp i) (natp end) (<= i end)
                               (<= end (fn-octets-len fn-octets))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
-  (let ((r (fn-oas-posting-off-read oc views id i end s fn-octets fn-arena fn-cat)))
+  (let ((r (fn-oas-posting-off-read oc views id i end cache s fn-octets fn-arena fn-cat)))
     (if (fn-oas-articlep (fn-own-tls-result-owner r) id)
         (fn-oas-close-result r id)
       r)))
 
 ; THE READ THE HOST CALLS (host/owner-host.lisp fn-owner-chunk-span-at):
 ; (RESULT . CREDITS').
-(defun fn-mca-read-span (credits oc views id i end s slots reserve fn-octets fn-arena fn-cat)
+(defun fn-mca-read-span (credits oc views id i end cache s slots reserve fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (natp i) (natp end) (<= i end)
                               (<= end (fn-octets-len fn-octets))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
   (let* ((key (fn-mca-conn-key id))
-         (r0 (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat))
+         (r0 (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat))
          (d0 (fn-mcr-resize credits key
                             (fn-mca-need (fn-own-tls-result-owner r0) id reserve))))
     (if (equal (car d0) :ok)
         (cons r0 (cadr d0))
-      (let* ((r1 (fn-mca-refused-read oc views id i end s fn-octets fn-arena fn-cat))
+      (let* ((r1 (fn-mca-refused-read oc views id i end cache s fn-octets fn-arena fn-cat))
              (d1 (fn-mcr-resize credits key
                                 (fn-mca-need (fn-own-tls-result-owner r1) id reserve))))
         (if (equal (car d1) :ok)
@@ -328,7 +328,7 @@
 (defthm fn-mca-read-span-keeps-funded
   (implies (fn-mcr-fundedp credits)
            (fn-mcr-fundedp
-            (cdr (fn-mca-read-span credits oc views id i end s slots reserve
+            (cdr (fn-mca-read-span credits oc views id i end cache s slots reserve
                                    fn-octets fn-arena fn-cat))))
   :hints (("Goal" :in-theory (union-theories '(fn-mca-read-span fn-mcr-resize-and-move-keep-funded
                                                car-cons cdr-cons)
@@ -338,13 +338,13 @@
 (defthm fn-mca-read-span-within-the-credit-unfolds
   (implies (equal (car (fn-mcr-resize credits (fn-mca-conn-key id)
                                       (fn-mca-need (fn-own-tls-result-owner
-                                                    (fn-oas-read-span oc views id i end s slots
+                                                    (fn-oas-read-span oc views id i end cache s slots
                                                                       fn-octets fn-arena fn-cat))
                                                    id reserve)))
                   :ok)
-           (equal (car (fn-mca-read-span credits oc views id i end s slots reserve
+           (equal (car (fn-mca-read-span credits oc views id i end cache s slots reserve
                                          fn-octets fn-arena fn-cat))
-                  (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat)))
+                  (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat)))
   :hints (("Goal" :in-theory (e/d () (fn-oas-read-span fn-mca-refused-read fn-mca-need
                                       fn-mcr-resize fn-mca-shut-read)))))
 
@@ -353,13 +353,13 @@
 ;; submission, or answered -- is never refused by the credit.
 (defthm fn-mca-read-span-never-blocks-what-is-held
   (implies (<= (fn-mca-need (fn-own-tls-result-owner
-                             (fn-oas-read-span oc views id i end s slots
+                             (fn-oas-read-span oc views id i end cache s slots
                                                fn-octets fn-arena fn-cat))
                             id reserve)
                (fn-mca-held credits id))
-           (equal (car (fn-mca-read-span credits oc views id i end s slots reserve
+           (equal (car (fn-mca-read-span credits oc views id i end cache s slots reserve
                                          fn-octets fn-arena fn-cat))
-                  (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat)))
+                  (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-mca-held)
                                   (fn-oas-read-span fn-mca-refused-read fn-mca-need
                                    fn-mcr-resize fn-mca-shut-read fn-mca-read-span
@@ -368,7 +368,7 @@
                  (:instance fn-mcr-resize-refuses-exactly-past-the-budget
                             (l credits) (id (fn-mca-conn-key id))
                             (n (fn-mca-need (fn-own-tls-result-owner
-                                             (fn-oas-read-span oc views id i end s slots
+                                             (fn-oas-read-span oc views id i end cache s slots
                                                                fn-octets fn-arena fn-cat))
                                             id reserve)))))))
 
@@ -400,7 +400,7 @@
 ;; they need -- the admitted read's, the refused read's or the shut read's.
 (defthm fn-mca-read-span-covers-the-connection
   (implies (<= (fn-mca-need oc id reserve) (fn-mca-held credits id))
-           (let ((rc (fn-mca-read-span credits oc views id i end s slots reserve
+           (let ((rc (fn-mca-read-span credits oc views id i end cache s slots reserve
                                        fn-octets fn-arena fn-cat)))
              (equal (fn-mca-held (cdr rc) id)
                     (fn-mca-need (fn-own-tls-result-owner (car rc)) id reserve))))
@@ -410,13 +410,13 @@
            :use ((:instance fn-mcr-resize-sets-the-credit (l credits) (a nil)
                             (id (fn-mca-conn-key id))
                             (n (fn-mca-need (fn-own-tls-result-owner
-                                             (fn-oas-read-span oc views id i end s slots
+                                             (fn-oas-read-span oc views id i end cache s slots
                                                                fn-octets fn-arena fn-cat))
                                             id reserve)))
                  (:instance fn-mcr-resize-sets-the-credit (l credits) (a nil)
                             (id (fn-mca-conn-key id))
                             (n (fn-mca-need (fn-own-tls-result-owner
-                                             (fn-mca-refused-read oc views id i end s
+                                             (fn-mca-refused-read oc views id i end cache s
                                                                   fn-octets fn-arena fn-cat))
                                             id reserve)))
                  (:instance fn-mcr-resize-sets-the-credit (l credits) (a nil)

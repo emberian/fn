@@ -261,12 +261,12 @@
 ; The read keystone with the column premise carried (fn-sjh-colsp gives
 ; fn-scol-okp): host/owner-host.lisp fn-owner-chunk-span-at.
 (defthm fn-sjh-okp-at-owner-chunk-span-carried
-  (implies (and (fn-sjh-colsp pending fn-arena fn-cat)
+  (implies (and (fn-gacc-okp cache) (fn-sjh-colsp pending fn-arena fn-cat)
                 (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-okp (fn-ocfg-owner
                         (fn-own-tls-result-owner
-                         (car (fn-mca-read-span credits oc views id i end s slots reserve
+                         (car (fn-mca-read-span credits oc views id i end cache s slots reserve
                                                 fn-octets fn-arena fn-cat))))
                        pending fn-arena fn-cat))
   :hints (("Goal" :in-theory '(fn-sjh-colsp-gives-scol-okp)

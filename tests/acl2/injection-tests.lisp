@@ -720,3 +720,69 @@
 ; Xref is still the server's.
 (assert-event (equal (it-path-reason (list "Path: not-for-mail" "Xref: h fn.letters:1"))
                      :xref))
+
+;; PKT-506: the line bound of RFC 5322 section 2.1.1, refused by its name;
+;; the same data folded is injected (a header field has no length bound of
+;; its own; the profile's header limits are the operator's, PRF-230).
+(defun it-refs-folded (k)
+  (declare (xargs :mode :program))
+  (if (zp k) nil
+    (cons (concatenate 'string " <" (coerce (make-list 32 :initial-element #\x) 'string)
+                       (coerce (explode-atom k 10) 'string) "@ex.invalid>")
+          (it-refs-folded (1- k)))))
+(defun it-refs-one-line (k)
+  (declare (xargs :mode :program))
+  (if (zp k) ""
+    (concatenate 'string (car (it-refs-folded 1)) (it-refs-one-line (1- k)))))
+(defun it-refs-article (refs-lines subject)
+  (declare (xargs :mode :program))
+  (it-lines (append (list "From: p@example.invalid" "Newsgroups: fn.letters"
+                          (concatenate 'string "Subject: " subject))
+                    refs-lines
+                    (list "" "body"))))
+(defconst *it-subject-900* (coerce (make-list 900 :initial-element #\s) 'string))
+; About 8,400 octets of References on one line: refused :line-length, and the
+; keystone's recognizer holds of it.
+(defconst *it-refs-long*
+  (it-refs-article (list (concatenate 'string "References:" (it-refs-one-line 200)))
+                   "long"))
+(assert-event (< 8000 (len *it-refs-long*)))
+(assert-event (equal (fn-inj-decision-reason
+                      (fn-inj-decide *it-refs-long* *it-lab-cfg* *it-lab-obs*))
+                     :line-length))
+(assert-event (fn-alb-long-header-linep *it-refs-long* (1+ *fn-article-max-octets*)))
+; The same 200 identifiers folded, one per line, with a 900-octet Subject:
+; injected, and the stored article's References and Subject are whole.
+(defconst *it-refs-folded-article*
+  (it-refs-article (cons (concatenate 'string "References:" (car (it-refs-folded 1)))
+                         (it-refs-folded 199))
+                   *it-subject-900*))
+(defconst *it-refs-folded-decision*
+  (fn-inj-decide *it-refs-folded-article* *it-lab-cfg* *it-lab-obs*))
+(assert-event (fn-inj-injectedp *it-refs-folded-decision*))
+(assert-event (not (fn-alb-long-header-linep *it-refs-folded-article*
+                                             (1+ *fn-article-max-octets*))))
+(assert-event
+ (let ((a (fn-article-result-article
+           (fn-article-parse (fn-inj-decision-octets *it-refs-folded-decision*)))))
+   (and (equal (len (fn-article-field-unfolded-value
+                     (car (fn-article-get-headers a (it-octets "subject")))))
+               901)
+        (< 8000 (len (fn-article-field-unfolded-value
+                      (car (fn-article-get-headers a (it-octets "references")))))))))
+; The boundary: a Subject line of exactly 998 octets is injected, 999 refused.
+(defconst *it-subject-989* (coerce (make-list 989 :initial-element #\s) 'string))
+(assert-event (equal (len (it-octets (concatenate 'string "Subject: " *it-subject-989*))) 998))
+(assert-event (fn-inj-injectedp
+               (fn-inj-decide (it-refs-article nil *it-subject-989*)
+                              *it-lab-cfg* *it-lab-obs*)))
+(assert-event (equal (fn-inj-decision-reason
+                      (fn-inj-decide (it-refs-article nil (concatenate 'string *it-subject-989* "s"))
+                                     *it-lab-cfg* *it-lab-obs*))
+                     :line-length))
+; Another syntax fault keeps its own name, and is not a long line: a bare LF.
+(defconst *it-bare-lf* (append (it-octets "From: p@example.invalid") '(10 13 10 13 10)))
+(assert-event (equal (fn-inj-decision-reason
+                      (fn-inj-decide *it-bare-lf* *it-lab-cfg* *it-lab-obs*))
+                     :unparsable))
+(assert-event (not (fn-alb-long-header-linep *it-bare-lf* (1+ *fn-article-max-octets*))))

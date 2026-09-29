@@ -4,7 +4,8 @@ sections 3.5 item 7, 3.5.1 and 7; RFC 6048 section 2.1.1).
 One node with an implicit-TLS listener and two invitation-code accounts,
 alice and carol.  `group moderate fn.mod --moderators alice` (offline; the
 queue defaults to fn.mod.moderation) makes fn.mod moderated: LIST ACTIVE
-lists it `m` on every connection.  carol posts to fn.mod without Approved:
+lists it `m` on every connection, and LIST COUNTS gives every group LIST
+ACTIVE's status (PKT-703).  carol posts to fn.mod without Approved:
 240, and the article is NOT in fn.mod (STAT of its Message-ID 430, GROUP
 fn.mod still empty); it is in the queue fn.mod.moderation as an envelope
 (Content-Type application/news-transmission; usage=moderate) whose Message-ID
@@ -176,7 +177,15 @@ class NativeModerationTests(unittest.TestCase):
     def active(self, stream):
         status, rows = self.multi(stream, "LIST ACTIVE")
         self.assertTrue(status.startswith("215"), status)
-        return {row.split()[0]: row.split()[3] for row in rows if row.strip()}
+        statuses = {row.split()[0]: row.split()[3] for row in rows if row.strip()}
+        # PKT-703 (RFC 6048 section 2.2.2): LIST COUNTS's last field is LIST
+        # ACTIVE's status, on the same connection (books/nntp-list-counts.lisp
+        # fn-scat-counts-lines-status-is-the-active-status).
+        status, rows = self.multi(stream, "LIST COUNTS")
+        self.assertTrue(status.startswith("215"), status)
+        self.assertEqual({row.split()[0]: row.split()[4] for row in rows if row.strip()},
+                         statuses)
+        return statuses
 
     def count(self, stream, group):
         status = self.line(stream, "GROUP " + group)
