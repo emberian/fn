@@ -146,3 +146,29 @@
       (equal (fn-sf-phase (fn-sn-files (fn-sn-finish *osr-ack-completing*))) :ready)
       (equal (fn-sn-consumer (fn-sn-finish *osr-ack-completing*))
              (fn-sn-consumer *csnt-after-ack*))))
+
+; The weakened opening theorem works during a real in-flight completion.
+(assert-event
+ (and (fn-osr-livep *osr-ack-completing*)
+      (equal (fn-sf-phase (fn-sn-files *osr-ack-completing*)) :completing)
+      (fn-sn-open-okp
+       (fn-cpo-open-observed
+        (fn-sn-config-history (fn-osr-capture *osr-ack-completing*))
+        (fn-sf-frontier (fn-sn-files (fn-osr-capture *osr-ack-completing*)))
+        (fn-sf-records (fn-sn-files (fn-osr-capture *osr-ack-completing*)))))))
+
+; Hypothesis removal for source/target projection equality: retain live carry,
+; omit readiness. Reservation burns a frontier position while the source node
+; stays before it; recovery advances that coordinate and equality fails.
+(defconst *osr-ack-reserved* (csnt-reserve *osr-ack-base*))
+(defconst *osr-ack-reserved-open*
+  (fn-sn-open-state
+   (fn-cpo-open-observed
+    (fn-sn-config-history (fn-osr-capture *osr-ack-reserved*))
+    (fn-sf-frontier (fn-sn-files (fn-osr-capture *osr-ack-reserved*)))
+    (fn-sf-records (fn-sn-files (fn-osr-capture *osr-ack-reserved*))))))
+(assert-event
+ (and (fn-osr-livep *osr-ack-reserved*)
+      (not (equal (fn-sf-phase (fn-sn-files *osr-ack-reserved*)) :ready))
+      (not (equal (fn-sn-node *osr-ack-reserved-open*)
+                  (fn-sn-node *osr-ack-reserved*)))))
