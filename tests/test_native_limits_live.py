@@ -18,7 +18,6 @@ reopens with the new T).
 """
 
 import hashlib
-import signal
 
 from tests.native_harness import EXIT_OK
 from tests.test_native_checkpoint_auto import AutoCheckpointFixture
@@ -33,8 +32,18 @@ def article(tag, n):
     return message_id, payload
 
 
+# The owner's reservation, pinned: fn-lim-decide compares the new profile's
+# heap figure with the running process's dynamic space (host/native/admin.lisp
+# fnn-owner-limit-serialized, run-mb), and the developer image's own figure is
+# the machine's (13,398 MB answered on hbox), not the deployed launcher's.
+RESERVATION = {"SBCL_USER_ARGS": "--dynamic-space-size 4096"}
+
+
 class LimitsLiveTests(AutoCheckpointFixture):
     T = 12
+
+    def start_owner(self):
+        return self.node.start(env=RESERVATION)
 
     def init_small(self):
         created = self.op("init", "--profile", "development", "--max-transactions",
@@ -52,7 +61,7 @@ class LimitsLiveTests(AutoCheckpointFixture):
         return self.op("policy", "set", field, str(n))
 
     def config_digest(self):
-        return hashlib.sha256((self.root / "config.json").read_bytes()).hexdigest()
+        return hashlib.sha256((self.store / "config.json").read_bytes()).hexdigest()
 
     def budget(self):
         return self.headroom()["transactions-budget"]
@@ -60,7 +69,7 @@ class LimitsLiveTests(AutoCheckpointFixture):
     def test_a_live_raise_within_the_reservation_serves_past_the_old_budget(self):
         self.init_small()
         sealed = self.config_digest()
-        owner = self.node.start()
+        owner = self.start_owner()
         outcomes = self.fill("within", 0, self.T + 1)
         self.assertEqual(outcomes[-1], 1, "the post past T is refused before the raise")
         raised = self.policy("max-transactions", self.T + 2)
@@ -74,7 +83,7 @@ class LimitsLiveTests(AutoCheckpointFixture):
 
     def test_a_raise_beyond_the_reservation_is_recorded_for_the_next_start(self):
         self.init_small()
-        owner = self.node.start()
+        owner = self.start_owner()
         self.fill("beyond", 0, self.T)
         raised = self.policy("max-history-octets", 805306368)
         self.assertEqual(raised.returncode, EXIT_OK, raised.stderr.decode())
@@ -88,13 +97,13 @@ class LimitsLiveTests(AutoCheckpointFixture):
 
     def test_a_lowering_below_use_is_refused_by_name_and_records_nothing(self):
         self.init_small()
-        owner = self.node.start()
+        owner = self.start_owner()
         self.fill("below", 0, 6)
-        before = sorted(p.name for p in (self.root / "config").iterdir())
+        before = sorted(p.name for p in (self.store / "config").iterdir())
         lowered = self.policy("max-transactions", 3)
         self.assertEqual(lowered.returncode, 1, lowered.stderr.decode())
         self.assertIn(b"below-current-use:max-transactions=3:the-store-holds=", lowered.stderr)
-        self.assertEqual(sorted(p.name for p in (self.root / "config").iterdir()), before)
+        self.assertEqual(sorted(p.name for p in (self.store / "config").iterdir()), before)
         self.node.stop(process=owner)
         # Offline, the same refusal, in ACL2's sentence.
         offline = self.policy("max-transactions", 3)
@@ -109,23 +118,24 @@ class LimitsLiveTests(AutoCheckpointFixture):
                       b"takes effect at the next restart (about ", changed.stdout)
         self.assertIn(b"no data moved", changed.stdout)
         first = self.budget()
-        owner = self.node.start()
+        owner = self.start_owner()
         self.node.stop(process=owner)
         second = self.budget()
-        owner = self.node.start()
+        owner = self.start_owner()
         self.node.stop(process=owner)
         self.assertEqual((first, second, self.budget()), (first, first, first))
         self.assertGreater(first, 0)
 
     def test_a_kill_after_the_durable_record_reopens_with_the_new_budget(self):
         self.init_small()
-        owner = self.node.start()
+        owner = self.start_owner()
         self.fill("kill", 0, self.T)
         raised = self.policy("max-transactions", self.T + 2)
         self.assertEqual(raised.returncode, EXIT_OK, raised.stderr.decode())
-        owner.send_signal(signal.SIGKILL)
-        owner.wait()
-        again = self.node.start()
+        owner.kill()
+        owner.wait(timeout=15)
+        owner.finish()
+        again = self.start_owner()
         self.assertEqual(self.post("kill", 100), EXIT_OK,
                          "the recovered owner serves the recorded T")
         self.node.stop(process=again)
