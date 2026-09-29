@@ -17236,16 +17236,7 @@
     },
     {
       "id": "PRF-1066",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-nbw-step-makes-bounded-progress"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-nbw-column-pieces-refine-article-row"
-        }
-      ]
+      "events": []
     }
   ]
 }
