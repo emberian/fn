@@ -33,8 +33,6 @@
 ; P3: open from an exact-state checkpoint.
 (include-book "../books/store-checkpoint-open")
 (include-book "../books/store-checkpoint-tables-reader")
-; PKT-854: `store ROOT digest' asks fn-sckd-tables-digest (fn-store-sco-decode-finish).
-(include-book "../books/store-checkpoint-digest")
 ; The state checkpoint under the records flip (lane checkpoint-arena): the
 ; arena run A before the four tables; its load (fn-scka-open-run, the
 ; host's fn-scka-seal-n calls, fn-scka-finish) and its writer
