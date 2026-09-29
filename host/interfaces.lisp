@@ -1843,7 +1843,10 @@
 (definterface fn-splan-cursor-step
   :class ::common-lisp-compliant
   :kinds ((w natp))
-  :keystones (fn-splan-cw-drain-is-the-expanded-reply))
+  ;; The keystone must call the entry: this one does (fn-splan-cw-drain-is-the-
+  ;; expanded-reply calls it only through fn-splan-cw-drain; hbox host-ld at
+  ;; 899634977 refused that).
+  :keystones (fn-splan-cursor-step-keeps-cw-remaining))
 
 (definterface fn-splan-cursor-window
   :class ::common-lisp-compliant)
