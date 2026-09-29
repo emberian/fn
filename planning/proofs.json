@@ -17560,6 +17560,72 @@
         "fn-bpnf-family-next-selects-exactly-the-first-ready-family",
         "fn-bpnf-family-next-aux-answers-the-first-ready-row"
       ]
+    },
+    {
+      "id": "PRF-1055",
+      "title": "Productive outbound NNTP offer for a queued article",
+      "statement": "A selectable feed (valid feed and observation, active contact, natural connection, elapsed backoff, no inflight article, queued head) and representable FNFD offer record cause the host-called fn-own-feed-port-tick-peer to return :accepted, the exact CHECK/IHAVE :command for that Message-ID, its :feed-offer record, the offered attempt in the queue and next-attempt+1. This is an offer, not article handoff.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-1000"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/productive-transfer.lisp",
+        "tests/acl2/productive-transfer-tests.lisp",
+        "specs/productive-contract.md",
+        "tests/test_native_peering.py"
+      ],
+      "progress_note": "2026-09-29 productive-read-transfer Codex continuation: clean persvati pct61 REPL admission; complete literal positive/removal/mutant teeth admitted. Runner owns union certification and source-matched native execution; neither supplied by admission. tests.test_native_peering.NativePeeringTests.test_productive_local_transfer_precedes_remote_acceptance observes the full article while the scripted peer withholds 239. Full READ/auth/wire composition and inbound durable transit remain open.",
+      "events": [
+        "fn-pct-tick-offers-the-queued-article"
+      ]
+    },
+    {
+      "id": "PRF-1056",
+      "title": "Outbound NNTP tick quiet/refusal preserves queued work",
+      "statement": "The host-called fn-own-feed-port-tick-peer returns accepted-quiet with unchanged feed and no records/effects for a valid feed with no selection; a bound malformed or unrepresentable feed transition returns :refused with table unchanged and no records/effects. A missing entry is :ignored, not :refused.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-1000"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/productive-transfer.lisp",
+        "tests/acl2/productive-transfer-tests.lisp",
+        "specs/productive-contract.md",
+        "tests/test_native_peering.py"
+      ],
+      "progress_note": "2026-09-29 productive-read-transfer Codex continuation: clean persvati pct61 REPL admission; complete literal positive/removal/mutant teeth admitted. Runner owns union certification and source-matched native execution; neither supplied by admission. tests.test_native_peering.NativePeeringTests.test_productive_local_transfer_precedes_remote_acceptance observes the full article while the scripted peer withholds 239. Full READ/auth/wire composition and inbound durable transit remain open.",
+      "events": [
+        "fn-pct-tick-hands-nothing-otherwise"
+      ]
+    },
+    {
+      "id": "PRF-1062",
+      "title": "Productive requested article handoff to the local NNTP transport",
+      "statement": "For a valid feed, reply 335/238 naming an offered Message-ID, natural connection and representable FNFD sent record, host-called fn-own-feed-port-observe-peer returns :accepted and exactly its :command carrying article octets (prefixed TAKETHIS for streaming), its :feed-sent record naming the same attempt, a sent queue entry and unchanged next-attempt. fn-owner-feed-octets supplies fn-ofa-feed-article bytes; native publication journals before socket write. This local effect is distinct from successful write, peer acceptance, durable retention and application processing.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-1000"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/productive-transfer.lisp",
+        "tests/acl2/productive-transfer-tests.lisp",
+        "specs/productive-contract.md",
+        "tests/test_native_peering.py"
+      ],
+      "progress_note": "2026-09-29 productive-read-transfer Codex continuation: clean persvati pct61 REPL admission; complete literal positive/removal/mutant teeth admitted. Runner owns union certification and source-matched native execution; neither supplied by admission. tests.test_native_peering.NativePeeringTests.test_productive_local_transfer_precedes_remote_acceptance observes the full article while the scripted peer withholds 239. Full READ/auth/wire composition and inbound durable transit remain open.",
+      "events": [
+        "fn-pct-requested-article-is-handed-to-the-local-transport"
+      ]
     }
   ]
 }

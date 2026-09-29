@@ -1272,6 +1272,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/productive-contract \
 	books/productive-observer \
 	tests/acl2/productive-contract-tests \
+	books/productive-transfer \
+	tests/acl2/productive-transfer-tests \
 	tests/acl2/owner-numbering-tests \
 	books/number-durability \
 	books/number-durability-handles \
