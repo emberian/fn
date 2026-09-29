@@ -178,12 +178,6 @@
       (fn-sco-capture configs records))))
 
 (local
- (defthm fn-ock-store-eventsp-of-append
-   (implies (fn-sco-store-eventsp (append p s))
-            (fn-sco-store-eventsp (true-list-fix p)))
-   :hints (("Goal" :in-theory (disable fn-store-event-p)))))
-
-(local
  (defthm fn-ock-true-listp-of-nthcdr
    (implies (true-listp r) (true-listp (nthcdr n r)))))
 
@@ -211,35 +205,31 @@
                                     fn-cpe-projection-replay fn-th-prefix-loop
                                     fn-cei-build-aux))))))
 
-; KEYSTONE of the publication.  From the capture of any prefix of an
-; admitted history, the owner publishes the capture of the whole history:
+; KEYSTONE of the publication, no hypothesis.  From the capture of any
+; record list, the owner publishes the capture of the whole history: when the
+; base's records are a prefix of a true-list history the extension over the
+; rest is that capture (a record that is not a Store event faults the
+; identity fold stickily, so no history hypothesis is needed), and otherwise
+; the definition captures the history afresh.  That is
 ; exactly the checkpoint the verb would capture, so a restart that opens it
 ; serves what a full replay serves (with the P3 keystone, for every later
 ; suffix).  The publication reads the owner and writes only the owner's
 ; checkpoint globals (host/owner-host.lisp fn-owner-sco-publish-octets), so
 ; it changes no served state.
 (defthm fn-ock-next-checkpoint-is-the-capture
-  (implies (fn-sn-observed-historyp frontier records)
-           (equal (fn-ock-next-checkpoint (fn-sco-capture configs prefix)
-                                          configs records)
-                  (fn-sco-capture configs records)))
+  (equal (fn-ock-next-checkpoint (fn-sco-capture configs prefix)
+                                 configs records)
+         (fn-sco-capture configs records))
   :hints (("Goal"
-           :use ((:instance fn-sco-record-listp-shape
-                            (sequence 0) (lower 0))
-                 (:instance fn-sco-extend-of-capture
+           :use ((:instance fn-sco-extend-of-capture
                             (prefix (true-list-fix prefix))
                             (suffix (nthcdr (len prefix) records)))
                  (:instance fn-ock-prefixp-splits
-                            (p (true-list-fix prefix)) (r records))
-                 (:instance fn-ock-store-eventsp-of-append
-                            (p prefix)
-                            (s (nthcdr (len prefix) records))))
-           :in-theory (e/d (fn-sn-observed-historyp fn-ock-next-checkpoint)
+                            (p (true-list-fix prefix)) (r records)))
+           :in-theory (e/d (fn-ock-next-checkpoint)
                            (fn-sco-extend fn-sco-capture fn-sco-store-eventsp
-                            fn-sf-record-listp fn-ock-prefixp
-                            fn-sco-record-listp-shape fn-ock-prefixp-splits
-                            fn-sco-extend-of-capture fn-sco-records
-                            fn-ock-store-eventsp-of-append)))))
+                            fn-ock-prefixp fn-ock-prefixp-splits
+                            fn-sco-extend-of-capture)))))
 
 ; Opening what the owner published, over any records committed after it, is
 ; the full open of the whole history: a publication never changes the state
@@ -250,8 +240,7 @@
                                                        configs records)
                                configs frontier later)
                   (fn-cpo-open-observed configs frontier (append records later))))
-  :hints (("Goal" :use ((:instance fn-ock-next-checkpoint-is-the-capture
-                                   (frontier frontier0))
+  :hints (("Goal" :use (fn-ock-next-checkpoint-is-the-capture
                         (:instance fn-sn-recover-from-checkpoint-equals-full-recover
                                    (prefix records) (suffix later)))
            :in-theory (union-theories (theory 'minimal-theory) '()))))

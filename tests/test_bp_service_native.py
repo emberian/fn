@@ -356,5 +356,34 @@ class NativeBpServiceTests(unittest.TestCase):
         self.assertIn("TCPCL passive uncertain", text)
         self.assertEqual(listener.returncode, LOST, text)
 
+    def test_v3_contact_is_refused_without_msg_reject(self):
+        # REP-016 / PRF-977 (PKT-650): ION's passive-side run sent a whole
+        # TCPCLv3 contact header; fn answered its v4 header and SESS_TERM
+        # Version mismatch, then parsed the rest of the v3 header as v4
+        # messages and sent MSG_REJECT 06 01 00.  RFC 9174 section 4.3:
+        # send the header and IMMEDIATELY terminate.
+        import socket
+        listener = start(
+            [self.image, "--fn", "bp", "receive", "0", "1", self.tmp / "bp-journal",
+             "dtn://fn-b/", "-", "3600000", "2", "32", "1048576", self.adu,
+             "dtn://fn-a/", "-", "0"], cwd=ROOT, env=environment())
+        self.addCleanup(listener.stop, 10)
+        port = int(listener.announcement(b"BP LISTENING ", timeout=15).rsplit(b" ", 1)[1])
+        v3 = b"dtn!\x03\x00" + b"\x00\x0f" + b"\x09" + b"ipn:150.0"
+        reply = b""
+        with socket.create_connection(("127.0.0.1", port), timeout=10) as conn:
+            conn.sendall(v3)
+            deadline = time.time() + 10
+            while time.time() < deadline:
+                chunk = conn.recv(4096)
+                if not chunk:
+                    break
+                reply += chunk
+            else:
+                self.fail(f"the passive side kept the connection open: {reply!r}")
+        # Its own v4 header (CAN_TLS clear), SESS_TERM flags 0 reason 2, EOF.
+        self.assertEqual(reply, b"dtn!\x04\x00" + b"\x05\x00\x02", output(listener))
+        self.assertNotIn(b"\x06", reply[6:], "no MSG_REJECT after the SESS_TERM")
+
 if __name__ == "__main__":
     unittest.main()

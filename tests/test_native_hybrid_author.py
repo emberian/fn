@@ -1163,7 +1163,7 @@ class NativeHybridAuthorTest(unittest.TestCase):
                 binary[4] ^= 0xFF
                 return binary
 
-            # PKT-433 (d): the log names the seven-class verdict beside the
+            # PKT-433 (d): the log names the eight-class verdict beside the
             # class word (books/peer-carriage.lisp fn-pcb-transit-refusal-detail).
             for name, patch, detail, verdict in (
                     ("<pcb-unsupported@example.invalid>", suite_two,

@@ -627,10 +627,12 @@
            (if (fn-oig-kindp kind) kind nil)))
         (t nil)))
 
-(defun fn-cev-request-decode (octets)
+; The payload grammar over an opened frame; the decode below is the open
+; (fn-nls-open) followed by it, and books/native-live-buffer.lisp opens the
+; frame in place and calls the grammar.
+(defun fn-cev-request-payload-decode (opened)
   "(:live-status KIND OFFSET), or (:refused REASON)."
   (declare (xargs :guard t :verify-guards nil))
-  (let ((opened (fn-nls-open octets *fn-cev-request-kind*)))
     (if (not (fn-frame-result-okp opened))
         (list :refused :frame)
       (let* ((r1 (fn-record-read-uint (fn-frame-result-payload opened)))
@@ -645,7 +647,12 @@
                                         (fn-record-parse-value r3))))
             (if kind
                 (list :live-status kind (fn-record-parse-value r2))
-              (list :refused :kind))))))))
+              (list :refused :kind)))))))
+
+(defun fn-cev-request-decode (octets)
+  "(:live-status KIND OFFSET), or (:refused REASON)."
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-cev-request-payload-decode (fn-nls-open octets *fn-cev-request-kind*)))
 
 ; Either request the owner pages: a status report (frame kind 1) or a
 ; control report (frame kind 3).

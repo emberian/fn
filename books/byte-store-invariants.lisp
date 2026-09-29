@@ -1,5 +1,5 @@
 ; fn: well-formedness, fences and crash-image bounds of the byte-level
-; storage model (crash model v2, §1.7 and the P1 keystones).
+; storage model (crash model v2, section 1.7 and the P1 keystones).
 ;
 ; Three groups of theorems, each proved from byte-store's definitions with
 ; no platform fact:
@@ -40,7 +40,7 @@
 ; it, the non-degenerate witness of fn-assume-crash-tearp.  K1, K2 and K3 are
 ; in books/byte-store-scan.lisp.
 ;
-; The two named assumptions of the design's §3.6 are the encapsulates at the
+; The two named assumptions of the design's section 3.6 are the encapsulates at the
 ; end.  They belong in books/assumptions.lisp; that book is owned by the
 ; hygiene lane (P7), and this book proposes the move rather than editing it.
 
@@ -746,7 +746,7 @@
 ; stays "no tears of an empty write" until it lands.
 
 ; -----------------------------------------------------------------------------
-; The named assumptions (design §3.6) LIVE IN books/assumptions.lisp.
+; The named assumptions (design section 3.6) LIVE IN books/assumptions.lisp.
 ;
 ; A-CRASH-IMAGE (`fn-assume-physical-crash') and A-CRYPTO-TRAILER
 ; (`fn-assume-crash-tearp'), with `fn-bs-torn-variantp', moved there on
@@ -775,7 +775,7 @@
 ; (defthm fn-bs-store-crash-image-scans                 ; K1, OPEN (P3)
 ;   (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image))
 ;            (fn-bs-scan-okp (fn-bs-scan-store image))))
-; Obligation: fn-bs-scan-store and fn-bs-store-relation (design §3.1-3.2)
+; Obligation: fn-bs-scan-store and fn-bs-store-relation (design section 3.1-3.2)
 ; over fn-frame-store-decode and the frontier codec encapsulate; then
 ; fn-bs-crash-keeps-fenced-content for every authority inode (the relation's
 ; fn-bs-authority-fencedp clause), fn-bs-crash-keeps-quiet-directory for the
@@ -795,7 +795,7 @@
 ; is the interface predicate it proves inhabited.
 ;
 ; (defthm fn-bs-store-recovery-is-a-kernel-crash         ; K3, OPEN (P3)
-;   ...as design §3.3, from K2 and fn-sf-crash-realizes-every-admissible-image
+;   ...as design section 3.3, from K2 and fn-sf-crash-realizes-every-admissible-image
 ;   (store-files-invariants.lisp), which the store deputy owns.)
 
 ; -----------------------------------------------------------------------------

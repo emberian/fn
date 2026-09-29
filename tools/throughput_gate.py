@@ -288,12 +288,42 @@ ALLOC_LISP = r"""
 """
 
 
+def _expand_here(text, image):
+    """TEXT with a frozen launcher's `$here' (its own directory: the v2
+    preamble `here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)') written out.
+    PKT-566: a frozen image's exec line names `$here/runtime/sbcl', which the
+    gate took literally, so it could not run the frozen bytes it qualifies."""
+    here = str(Path(image).resolve().parent)
+    return text.replace("${here}", here).replace("$here", here)
+
+
 def runtime_argv(image):
     """The launcher's sbcl, its runtime options and core, from its exec line."""
     text = Path(image).read_text()
     line = next(l for l in text.splitlines() if l.startswith("exec "))
-    words = shlex.split(line.replace("${SBCL_USER_ARGS}", ""))[1:]
+    words = shlex.split(_expand_here(line.replace("${SBCL_USER_ARGS}", ""), image))[1:]
     return words[:words.index("--end-runtime-options") + 1]
+
+
+def runtime_env(image):
+    """The SBCL_HOME and LD_LIBRARY_PATH the launcher sets before its exec: a
+    source launcher's literal `SBCL_HOME='...'', or a frozen launcher's
+    `export NAME="$here/..."' lines (the bundled runtime's home and lib/)."""
+    text = Path(image).read_text()
+    found = {}
+    home = re.search(r"SBCL_HOME='([^']*)'", text)
+    if home:
+        found["SBCL_HOME"] = home.group(1)
+    for name in ("SBCL_HOME", "LD_LIBRARY_PATH"):
+        m = re.search(r'^export %s="([^"]*)"' % name, text, re.M)
+        if m and "$here" in m.group(1):
+            value = _expand_here(m.group(1), image)
+            if name == "LD_LIBRARY_PATH":
+                value = re.sub(r"\$\{LD_LIBRARY_PATH:\+:\$LD_LIBRARY_PATH\}",
+                               (":" + os.environ["LD_LIBRARY_PATH"])
+                               if os.environ.get("LD_LIBRARY_PATH") else "", value)
+            found[name] = value
+    return found
 
 
 def measure_alloc(image, work, env, n, out):
@@ -302,11 +332,7 @@ def measure_alloc(image, work, env, n, out):
                                     "--max-article-octets", "2048", "fn.letters", "fn.test"])
     lisp = work / "alloc.lisp"
     lisp.write_text(ALLOC_LISP)
-    text = Path(image).read_text()
-    home = re.search(r"SBCL_HOME='([^']*)'", text)
-    aenv = dict(env, TG_ROOT=str(work / "store"), TG_N=str(n))
-    if home:
-        aenv["SBCL_HOME"] = home.group(1)
+    aenv = dict(env, TG_ROOT=str(work / "store"), TG_N=str(n), **runtime_env(image))
     argv = runtime_argv(image) + ["--no-userinit", "--disable-debugger", "--load", str(lisp)]
     r = subprocess.run(argv, env=aenv, cwd=str(work), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     text = r.stdout.decode("ascii", "replace")

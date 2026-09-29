@@ -80,7 +80,14 @@
                     ;; column relation F this is fn-nh-answer-report.
                     (fn-nsc-answer-report kind
                                          (fn-owner-store-profile state)
-                                         (fn-owner-ocfg state)
+                                         ;; PKT-885: at the reader view while
+                                         ;; a batch is in flight, so the
+                                         ;; counts never include it
+                                         ;; (fn-nsc-answer-report-counts-are-
+                                         ;; the-reader-view).
+                                         (fn-ocfg-at-reader-view
+                                          (fn-owner-ocfg state)
+                                          (fn-owner-reader-views state))
                                          (if (boundp-global 'fn-owner-record-octets state)
                                              (f-get-global 'fn-owner-record-octets state)
                                            nil)
