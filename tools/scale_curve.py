@@ -384,10 +384,21 @@ def signed_posts(pt):
 
     with pt.client() as c:
         post(c, carriers[0])
+    prof = pt.env.get("FN_PROF_OUT")
     with pt.client() as c:
+        if prof:
+            # --sprof on a `prof` image (tools/profile/native-profile-entry.lisp):
+            # sample the K timed POSTs only, and wait for the watcher's report.
+            Path(prof + ".start").write_text("cpu")
+            time.sleep(0.3)
         c0 = owner_cpu_s(pt.owner.pid)
         seconds = [post(c, x) for x in carriers[1:]]
         c1 = owner_cpu_s(pt.owner.pid)
+        if prof:
+            Path(prof + ".stop").write_text("1")
+            deadline = time.monotonic() + 120
+            while not Path(prof + ".1.txt").exists() and time.monotonic() < deadline:
+                time.sleep(0.2)
     out = summary("signed_post", seconds)
     out["owner_cpu_ms_per_post"] = 1000.0 * (c1 - c0) / SIGNED_K
     return out
@@ -684,6 +695,10 @@ def run_point(args) -> dict:
     env = native_env.harness_store_env(dict(os.environ, ACL2_CUSTOMIZATION="NONE"))
     for k in ("ACL2_SYSTEM_BOOKS", "FN_HOST", "FN_PROF_OUT", "FN_PROF_HOOK"):
         env.pop(k, None)
+    if args.sprof:
+        # A `prof` image's sb-sprof watcher (signed_posts starts and stops it).
+        Path(args.sprof).mkdir(parents=True, exist_ok=True)
+        env["FN_PROF_OUT"] = str(Path(args.sprof) / "prof-n{}".format(args.n))
     selected = args.probes.split(",")
     stages = args.stages.split(",")
     if "heap" in selected:
@@ -820,7 +835,8 @@ def cmd_run(args) -> int:
     def launch(n, label, stages, chosen, slot):
         argv = [sys.executable, str(HERE), "point", "--n", str(n), "--image", str(image),
                 "--tree", str(tree), "--fixtures", args.fixtures, "--work", str(work / label),
-                "--stages", stages, "--probes", ",".join(chosen)] + (["--keep"] if args.keep else [])
+                "--stages", stages, "--probes", ",".join(chosen)] + (["--keep"] if args.keep else []) + (
+                    ["--sprof", str(out / "sprof")] if args.sprof else [])
         argv = ["taskset", "-c", cores_for(slot, args.cores, args.first_core)] + argv
         if shutil.which("systemd-run") and not args.no_scope:
             argv = ["systemd-run", "--user", "--scope", "--quiet", "-p", "MemoryMax=" + args.mem,
@@ -1139,7 +1155,7 @@ def cmd_box(args) -> int:
         subprocess.run(["scp", "-q", str(HERE), "{}:{}/scale_curve.py".format(BOX, remote)], check=True)
         words = ["run", "--image", args.image, "--out", remote, "--ns", args.ns,
                  "--jobs", str(args.jobs), "--cores", str(args.cores), "--mem", args.mem,
-                 "--fixtures", args.fixtures]
+                 "--fixtures", args.fixtures] + (["--sprof"] if args.sprof else [])
         if args.probes:
             words += ["--probes", args.probes]
         if args.tree:
@@ -1195,6 +1211,9 @@ def main(argv=None) -> int:
         q.add_argument("--cores", type=int, default=4, help="cores per point (taskset)")
         q.add_argument("--mem", default="24G", help="MemoryMax per point")
         q.add_argument("--fixtures", default=FIXTURES)
+        q.add_argument("--sprof", action="store_true",
+                       help="a `prof` image (hbox_native --images prof): sb-sprof reports of "
+                            "signed_posts' timed batch under OUT/sprof/prof-nN.1.txt")
     r = sub.add_parser("run")
     run_options(r)
     r.add_argument("--out", required=True)
@@ -1207,6 +1226,7 @@ def main(argv=None) -> int:
         pt.add_argument(a, required=True)
     pt.add_argument("--n", type=int, required=True)
     pt.add_argument("--keep", action="store_true")
+    pt.add_argument("--sprof", default=None, help="directory for FN_PROF_OUT (run --sprof)")
     b = sub.add_parser("box")
     run_options(b)
     b.add_argument("--name", default=Path.cwd().name)
