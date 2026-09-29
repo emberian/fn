@@ -2732,7 +2732,7 @@ control path no supported platform binds whole."
           ((and (equal status :refused) (equal reason :no-store))
            "no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)")
           ((and (equal status :usage) (equal reason :mission-fixes-profile))
-           "under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. To raise max-transactions, max-history-octets or max-article-octets later: fn operator CONFIG policy set FIELD N, on the running node; or delete the mission line from fn.toml to choose a profile at init")
+           "under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. To raise a bound later: fn operator CONFIG policy set max-transactions|max-history-octets|max-article-octets N; or delete the mission line from fn.toml to choose a profile at init")
           ((and (equal status :usage) (fn-nop-help-subjectp command))
            (fn-nop-help-text command))
           (t nil))))
