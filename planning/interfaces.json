@@ -4,7 +4,7 @@
   "coverage": {
     "declared": 1224,
     "declared_and_dispatched": 1207,
-    "guard_verified": 546,
+    "guard_verified": 544,
     "with_keystone": 153
   },
   "entries": [
@@ -7925,6 +7925,38 @@
       "delegates": null,
       "dispatched_from": [
         "host/native/owner.lisp"
+      ],
+      "applied_directly_in": []
+    },
+    {
+      "name": "fn-owner-limit-carried",
+      "subsystem": "owner",
+      "declared_in": "host/interfaces.lisp",
+      "class": "program",
+      "kinds": [],
+      "exempt": {},
+      "keystones": [],
+      "extraction": null,
+      "direct": null,
+      "delegates": null,
+      "dispatched_from": [
+        "host/native/admin.lisp"
+      ],
+      "applied_directly_in": []
+    },
+    {
+      "name": "fn-owner-limit-decided",
+      "subsystem": "owner",
+      "declared_in": "host/interfaces.lisp",
+      "class": "program",
+      "kinds": [],
+      "exempt": {},
+      "keystones": [],
+      "extraction": null,
+      "direct": null,
+      "delegates": null,
+      "dispatched_from": [
+        "host/native/admin.lisp"
       ],
       "applied_directly_in": []
     },
@@ -20097,22 +20129,6 @@
       "applied_directly_in": []
     },
     {
-      "name": "fn-lim-apply-row",
-      "subsystem": "admin/operator",
-      "declared_in": "host/interfaces.lisp",
-      "class": "common-lisp-compliant",
-      "kinds": [],
-      "exempt": {},
-      "keystones": [],
-      "extraction": null,
-      "direct": null,
-      "delegates": null,
-      "dispatched_from": [
-        "host/native/admin.lisp"
-      ],
-      "applied_directly_in": []
-    },
-    {
       "name": "fn-lim-decide",
       "subsystem": "admin/operator",
       "declared_in": "host/interfaces.lisp",
@@ -20146,22 +20162,6 @@
     },
     {
       "name": "fn-lim-decision-status",
-      "subsystem": "admin/operator",
-      "declared_in": "host/interfaces.lisp",
-      "class": "common-lisp-compliant",
-      "kinds": [],
-      "exempt": {},
-      "keystones": [],
-      "extraction": null,
-      "direct": null,
-      "delegates": null,
-      "dispatched_from": [
-        "host/native/admin.lisp"
-      ],
-      "applied_directly_in": []
-    },
-    {
-      "name": "fn-lim-funded-after",
       "subsystem": "admin/operator",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
