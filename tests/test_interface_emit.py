@@ -88,9 +88,30 @@ class HostBindingTests(unittest.TestCase):
         found = self.problems(defined={"fn-c", "fn-d"})
         self.assertTrue(any("fn-a is defined by no book" in p for p in found), found)
 
+    def test_undeclared_dispatched_entry(self):
+        found = self.problems(dispatched={"fn-c": {"host/native/io.lisp"},
+                                          "fn-z": {"host/native/owner.lisp"}})
+        self.assertTrue(any("dispatches fn-z (host/native/owner.lisp) and no definterface"
+                            in p for p in found), found)
+
     def test_duplicate(self):
         found = self.problems(SOURCE + "(definterface fn-c :class :program)\n")
         self.assertTrue(any("fn-c is declared twice" in p for p in found), found)
+
+
+class GapTests(unittest.TestCase):
+    def test_subsystem_prefix_then_file(self):
+        self.assertEqual(interface_emit.subsystem("fn-owner-x", {"host/native/bp.lisp"}), "owner")
+        self.assertEqual(interface_emit.subsystem("fn-q", {"host/native/bp-node.lisp"}), "bp")
+        self.assertEqual(interface_emit.subsystem("fn-q", ()), "nntp/served")
+
+    def test_gap_rows(self):
+        decls = interface_emit.declarations(tree(SOURCE))
+        text = interface_emit.render_gaps(decls, reading())
+        # fn-a has keystones; fn-c (store: io.lisp), fn-d and create-fn-e have none.
+        self.assertIn("| `fn-c` | program | io |", text)
+        self.assertNotIn("`fn-a`", text)
+        self.assertIn("| all | 4 | 1 | 3 | 3 | 0 | 1 |", text)
 
 
 if __name__ == "__main__":
