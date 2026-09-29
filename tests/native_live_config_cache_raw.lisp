@@ -62,6 +62,9 @@
   (push (cons name args) *calls*)
   (case name
     (fn-native-admin-host-plan :plan)
+    ;; A configuration mutation, not an owner request (compaction or
+    ;; reclaim: ACL2's fn-native-admin-result-owner-requestp).
+    (fn-native-admin-host-owner-requestp nil)
     ;; The staging step's ConfigResult fields (books/owner-results.lisp).
     (fn-ores-config-word (second (first args)))
     (fn-ores-config-octets (third (first args)))
