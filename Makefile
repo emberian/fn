@@ -587,6 +587,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-profile-carried \
 	books/post-admission-keyed \
 	tests/acl2/post-admission-keyed-tests \
+	tests/acl2/page-read-resources-tests \
 	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
