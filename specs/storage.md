@@ -347,6 +347,37 @@ a different history. This is a local fn guarantee; no RFC speaks to it.
   volatile cache are not observable here and remain the operator's
   obligation (docs/operator.md, Storage requirements).
 
+### Compressed payloads: DEFLATE over a shipped dictionary (STO-037)
+
+A stored article record may hold its payload compressed
+(`books/payload-lz-record.lisp`, the frame `fn-z`: DICT-ID, the payload span,
+the record without it, and C). C is a raw DEFLATE stream (RFC 1951) made
+over a preset dictionary (RFC 1950 section 2.2), and DICT-ID names that
+dictionary: the first four octets of its BLAKE3 digest, 0 for none
+(docs/extensions/nntp-compress-dict.md).
+
+- **One format, one decoder.** C decodes through the verified inflater's
+  payload decoder (`books/payload-deflate.lisp` `fn-pzd-decode`, over
+  `books/deflate-inflate.lisp`). The COMPRESS wire uses the same inflater.
+  An :ok answer is exactly N octets, and the stream ended at its final
+  block or at a sync flush at the end of its input.
+- **The encoder is untrusted.** zlib (`host/native/fn-deflate.c`
+  `fn_deflate_payload`, level 9, over the current dictionary) proposes C.
+  The append takes the frame only when the decoder gives the span back
+  (`fn-lzr-append-decide`). A wrong candidate is a named store fault; a
+  candidate that does not shrink the record keeps it as it is.
+- **Dictionaries are shipped, append-only and kept forever**
+  (`books/payload-lz-dicts.lisp`). New payloads use the current one. A
+  payload is never transcoded at rest, and a frame whose DICT-ID the table
+  lacks is refused by name (:lz-dictionary), never guessed.
+- **The served read** decodes C over pooled host buffers
+  (`fn-pzd-decode-bufs`). KEYSTONE `fn-lzr-decode-bufs-is-the-lz-value`
+  says the octets are the value A-DURABLE-LZ names. Because every buffer is
+  rebuilt per payload (`fn-zin-payload-bufs-is-payload-with`), nothing
+  carries from one read to the next.
+- **The digests stay over the original octets** (D25): content identity,
+  Message-ID, signature and Cancel-Lock are computed before the append.
+
 ## Commit protocol
 
 The semantic phases are:
@@ -1121,6 +1152,34 @@ checkpoint's install reopens the history as it was and a rerun reclaims
 again; from the install on the open reads the rewritten history and a rerun
 reclaims nothing more (`fn-rclp-events-idempotent`,
 `fn-rclp-a-reclaimed-event-stays-reclaimed`).
+
+What the rewritten history MEANS is decided in books/history-knowledge.lisp
+(W8; PRF-997 to PRF-1000). A Message-ID's knowledge state over the event
+history and the node's stage is one of five: not accepted, accepted and
+retained, accepted and reclaimed, outcome unresolved (staged, not in the
+readable history: a lost acknowledgement or an indeterminate completion),
+history unavailable; the rewrite turns only "accepted and retained" into
+"accepted and reclaimed" and changes no other answer
+(`fn-hkn-reclamation-never-forgets-an-acceptance`): the current absence of
+a payload never collapses to "not accepted". An acceptance records its
+commitment: the replay step that accepts an article record binds the
+record's Message-ID to its content subject and obligation id and holds the
+pin with the record's own release evidence and charge
+(`fn-hkn-acceptance-records-subject-principal-and-undertaking`), none of
+which is a function of the open's groups or capacity
+(`fn-hkn-replay-binds-the-recorded-evidence-not-the-policy`). Reclamation
+is the logical release first (`fn-hkn-release`: the payload at the
+tombstone, the pin's charge at the history unit) and the rewrite implements
+it; over the released node a retry or a conflicting retry is refused as
+before, a receipt discharges the same obligation or none, every known
+obligation id stays known, and the one observable change is exactly the
+freed content charge: a request the ledger refused for capacity alone may
+be admitted after, and only such a request
+(`fn-hkn-release-enables-only-what-the-freed-charge-affords`). A refused
+node transition is the identity per entry; the full-store POST's footprint
+is one transaction id (`fn-rfx-refused-post-consumes-one-txid`), and that
+path never spends a recovery barrier
+(`fn-hkn-refusal-keeps-the-recovery-barriers`).
 
 The two operations (the Fable mandate, section 8):
 

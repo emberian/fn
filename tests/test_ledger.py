@@ -860,6 +860,26 @@ class TeethFormLintTests(unittest.TestCase):
 ''')
         self.assertEqual([entry["check"] for entry in found], ["general"])
 
+    def test_a_constant_inside_a_macro_is_a_witness(self):
+        """PKT-364: `cvt-disk-without-decision' named its constant through a
+        macro and read as a bare claim."""
+        found = self.findings('''(in-package "ACL2")
+(defmacro cvt-disk (x) `(fn-disk-of ,x *fn-cvt-sample-disk*))
+(defmacro cvt-general (x) `(fn-disk-of ,x (fn-any)))
+(defmacro cvt-via (x) `(cvt-disk ,x))
+(must-fail (thm (fn-decidedp (cvt-disk s))))
+(must-fail (thm (fn-decidedp (cvt-via s))))
+(must-fail (defthm cvt-bare (fn-decidedp (cvt-general s))))
+''')
+        self.assertEqual([entry["check"] for entry in found], ["cvt-bare"])
+
+    def test_a_macro_whose_constant_is_its_argument_names_nothing(self):
+        found = self.findings('''(in-package "ACL2")
+(defmacro wrap (x &key (hints ':none)) (declare (ignore hints)) `(fn-p ,x))
+(must-fail (thm (wrap y)))
+''')
+        self.assertEqual(len(found), 1)
+
     def test_a_must_fail_around_something_other_than_a_theorem_is_not_judged(self):
         self.assertEqual(self.findings('''(in-package "ACL2")
 (must-fail (defun f (x) (car x)))

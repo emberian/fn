@@ -99,10 +99,12 @@
                       (list (fn-cp-nth 1 two) (fn-cp-nth 1 three)))
               (list :refused :secret)))))))))
 
-(defun fn-cwait-request-decode (octets)
+; The payload grammar over an opened frame; the decode below is the open
+; (fn-nctrl-open) followed by it, and books/native-control-buffer.lisp opens
+; the frame in place and calls the grammar.
+(defun fn-cwait-request-payload-decode (opened)
   (declare (xargs :guard t :verify-guards nil))
-  (let* ((opened (fn-nctrl-open octets *fn-ncl-request-kind*))
-         (payload (and (fn-frame-result-okp opened)
+  (let* ((payload (and (fn-frame-result-okp opened)
                        (fn-frame-result-payload opened))))
     (if (and (consp payload)
              (member (car payload)
@@ -115,7 +117,11 @@
             (fn-cwait-read-body
              (equal (car payload) *fn-cwait-bound-wait-code*) (cdr payload))
           (list :refused :size))
-      (fn-ncl-request-decode octets))))
+      (fn-ncl-request-payload-decode opened))))
+
+(defun fn-cwait-request-decode (octets)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-cwait-request-payload-decode (fn-nctrl-open octets *fn-ncl-request-kind*)))
 
 (defun fn-cwait-cli-plan (command argv)
   (declare (xargs :guard t :verify-guards nil))
@@ -195,8 +201,10 @@
            (equal (fn-cwait-request-decode octets)
                   (fn-ncl-request-decode octets)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-cwait-request-decode)
-                                  (fn-nctrl-open fn-ncl-request-decode
+  :hints (("Goal" :in-theory (e/d (fn-cwait-request-decode
+                                   fn-cwait-request-payload-decode
+                                   fn-ncl-request-decode)
+                                  (fn-nctrl-open fn-ncl-request-payload-decode
                                    fn-cwait-read-body)))))
 
 (defthm fn-cwait-cli-plan-of-another-command-is-the-consumer-plan
@@ -299,6 +307,7 @@
                             fn-cp-read-u32)))))
 
 (verify-guards fn-cwait-read-body)
+(verify-guards fn-cwait-request-payload-decode)
 (verify-guards fn-cwait-request-decode)
 (verify-guards fn-cwait-cli-plan)
 ;; PKT-709 (friend-blockers-2): the report reader is guard-verified, so the

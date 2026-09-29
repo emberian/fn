@@ -33,14 +33,19 @@
 ;;;           the drain after a graceful close (1 s).
 ;;;
 ;;; TLS runs in the loop without waiting inside OpenSSL (host/native/tls.lisp
-;;; fnn-tls-accept-step, -read-now, -write-now): at most
-;;; +fnn-mux-handshakes-per-loop+ handshakes are in progress per loop and
-;;; the rest wait their turn, already admitted.  PKT-639: an implicit-TLS
-;;; connection meets fn-exp-open BEFORE any handshake work, so the capacity,
-;;; the per-address limit and the trusted range bound handshakes too, and a
-;;; refused one is closed without SSL_accept (the 400 cannot be sent in
-;;; clear on a TLS port).  PKT-640: a TLS failure is named in the service
-;;; log (books/connection-budget.lisp fn-cbud-tls-refusal-line).
+;;; fnn-tls-accept-step, -read-now, -write-now).  PKT-639 / PRF-986: every
+;;; handshake (implicit TLS and STARTTLS) is an admission ACL2 decides
+;;; BEFORE SSL_accept (books/tls-handshake-budget.lisp fn-hsb-admit, through
+;;; host/owner-host.lisp fn-owner-handshake-admit): the source's budget
+;;; (refused by name, `tls refused reason=handshake-budget source=...'),
+;;; the node's handshakes in flight and started per second (the socket
+;;; waits its turn unadmitted, at most ACL2's deadline, or is refused `busy'
+;;; when too many wait), and the deadline of the handshake itself.  An
+;;; implicit-TLS connection then meets fn-exp-open, so the capacity, the
+;;; per-address limit and the trusted range bound it too, and a refused one
+;;; is closed without SSL_accept (the 400 cannot be sent in clear on a TLS
+;;; port).  PKT-640: a TLS failure is named in the service log
+;;; (books/connection-budget.lisp fn-cbud-tls-refusal-line).
 ;;;
 ;;; The memory a connection costs, the fixed threads, and the refusal of a
 ;;; capacity the machine cannot hold are books/connection-budget.lisp's; the
@@ -49,10 +54,7 @@
 (in-package "ACL2")
 
 (defconstant +fnn-mux-loops+ *fn-heap-mux-loops*) ; books/profile-limits.lisp
-(defconstant +fnn-mux-handshakes-per-loop+ 8)
-(defconstant +fnn-mux-queued-per-loop+ 256)
 (defconstant +fnn-mux-send-seconds+ 10)
-(defconstant +fnn-mux-handshake-seconds+ 10)
 (defconstant +fnn-mux-idle-seconds+ 1)
 (defconstant +fnn-mux-drain-seconds+ 1)
 (defconstant +fnn-mux-tick-ms+ 250)
@@ -69,7 +71,8 @@
   service thread
   (lock (sb-thread:make-mutex :name "fn mux inbox"))
   (inbox nil) (conns nil) wake-read wake-write
-  (handshaking 0) (waiting nil)
+  ;; STARTTLS upgrades waiting for a handshake slot ACL2 has not granted.
+  (waiting nil)
   ;; Implicit-TLS sockets not yet admitted, waiting for a handshake slot.
   (queued nil)
   ;; Lane commit-onto-log: (CONN . COMPLETION) pairs the committer thread
@@ -88,8 +91,11 @@
 
 (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn))
   socket fd implicit-tls channel ssl cid opened-cid
-  ;; :new :handshake :hs-wait :serving :draining :done
+  ;; :new :tls-queued :handshake :hs-wait :serving :draining :done
   (phase :new)
+  ;; The handshake ACL2 admitted (fn-owner-handshake-admit's id) until its
+  ;; end is reported (fn-owner-handshake-done).
+  (hs-id nil)
   input
   out (out-at 0) out-deadline out-op after
   want resume-at idle-at hs-deadline drain-deadline
@@ -103,7 +109,13 @@
   (await nil)
   ;; PKT-875: the output queued is a batch's completion (a POST's reply):
   ;; a stop's drain waits for it to leave (fnn-mux-iterate's count).
-  (replying nil))
+  (replying nil)
+  ;; RFC 8054 (lane compress): the COMPRESS DEFLATE layer once installed:
+  ;; ZIN the inbound inflater (ACL2's, host/native/deflate.lisp fnn-zin),
+  ;; ZOUT the outbound compressor (zlib); ZSTASH the octets that followed
+  ;; the COMPRESS line in its read (already compressed), until the layer
+  ;; is installed.
+  (zin nil) (zout nil) (zstash nil))
 
 (defun fnn-mux-ticks (seconds)
   (+ (fnn-now) (round (* seconds internal-time-units-per-second))))
@@ -183,7 +195,8 @@ ACL2 lets one served step read (fnn-mux-read-buffer)."
   (let ((channel (fnn-mux-conn-channel conn)) (fd (fnn-mux-conn-fd conn))
         (buffer (fnn-mux-read-buffer service loop)))
     (cond (channel (fnn-tls-read-now channel (length buffer) buffer))
-          ((fnn-owner-service-tls-context service) (fnn-mux-peek-plain fd buffer))
+          ((and (fnn-owner-service-tls-context service) (null (fnn-mux-conn-zin conn)))
+           (fnn-mux-peek-plain fd buffer))
           (t (fnn-mux-read-plain fd buffer)))))
 
 (defun fnn-mux-write-now (conn)
@@ -246,8 +259,12 @@ the TLS session, then the socket.  Idempotent."
       (when (fnn-mux-conn-ssl conn)
         (ignore-errors (fnn-%ssl-free (fnn-mux-conn-ssl conn)))
         (setf (fnn-mux-conn-ssl conn) nil))
-      (when (eq was :handshake)
-        (decf (fnn-mux-loop-handshaking loop)))
+      (when (fnn-mux-conn-hs-id conn)
+        (fnn-mux-handshake-release loop conn))
+      (when (member was '(:tls-queued :hs-wait))
+        (ignore-errors
+          (fnn-owner-serialized
+           service nil (lambda () (fnn-owner-core 'fn-owner-handshake-leave)) :reader)))
       (setf (fnn-mux-loop-waiting loop)
             (delete conn (fnn-mux-loop-waiting loop) :test #'eq)
             (fnn-mux-loop-queued loop)
@@ -265,6 +282,9 @@ the TLS session, then the socket.  Idempotent."
            (fnn-mux-conn-class conn))))
       (when (fnn-mux-conn-channel conn)
         (ignore-errors (fnn-tls-close-channel (fnn-mux-conn-channel conn))))
+      (when (fnn-mux-conn-zout conn)
+        (ignore-errors (fnn-zout-free (fnn-mux-conn-zout conn)))
+        (setf (fnn-mux-conn-zout conn) nil))
       (fnn-socket-shut (fnn-mux-conn-socket conn))
       (setf (fnn-mux-loop-conns loop)
             (delete conn (fnn-mux-loop-conns loop) :test #'eq))
@@ -338,7 +358,7 @@ plan remains."
     ;; The named non-semantic scope (and its private test injection) of the
     ;; worker's send, fnn-owner-connection-call's.
     (fnn-owner-connection-call service op (lambda () nil))
-    (setf (fnn-mux-conn-out conn) (fnn-octets octets)
+    (setf (fnn-mux-conn-out conn) (fnn-mux-z-out conn (fnn-octets octets))
           (fnn-mux-conn-out-at conn) 0
           (fnn-mux-conn-out-op conn) op
           (fnn-mux-conn-out-deadline conn) (fnn-mux-ticks +fnn-mux-send-seconds+)
@@ -378,7 +398,7 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
         (if plan
             (multiple-value-bind (octets rest donep) (fnn-owner-render-next plan)
               (setf (fnn-mux-conn-plan conn) (if donep nil rest)
-                    (fnn-mux-conn-out conn) octets
+                    (fnn-mux-conn-out conn) (fnn-mux-z-out conn octets)
                     (fnn-mux-conn-out-at conn) 0
                     (fnn-mux-conn-out-deadline conn) (fnn-mux-ticks +fnn-mux-send-seconds+)))
           (let ((after (fnn-mux-conn-after conn)))
@@ -410,9 +430,65 @@ contract, without blocking the loop)."
   (case after
     (:close (fnn-mux-begin-drain loop conn))
     (:starttls (fnn-mux-request-handshake loop conn))
+    (:compress (fnn-mux-install-compress loop conn))
     (t (when (eq (fnn-mux-conn-phase conn) :serving)
          (fnn-mux-arm-idle conn)
          (fnn-mux-work loop conn)))))
+
+;;; RFC 8054 COMPRESS DEFLATE (lane compress).  The layer is installed once
+;;; the 206 has been written (fnn-mux-after :compress); from then on every
+;;; octet read goes through ACL2's inflater and every window written through
+;;; zlib.  ACL2 decided the 206 (books/nntp-auth.lisp fn-auth-compress) and
+;;; the host asks the session whether a layer is owed
+;;; (host/owner-host.lisp fn-owner-compress-owed), never the octets.
+
+(defun fnn-mux-z-out (conn octets)
+  "OCTETS as the connection sends them: compressed and sync-flushed once the
+layer is installed."
+  (if (fnn-mux-conn-zout conn)
+      (fnn-zout-sync (fnn-mux-conn-zout conn) octets)
+    octets))
+
+(defun fnn-mux-z-in (loop conn raw)
+  "Inflate RAW (with what an earlier call left) into the plaintext the next
+step reads, at most one served read of it (ACL2's output bound).  T when
+plaintext is in hand; NIL when more compressed input is needed or the
+stream was refused (its line logged, the connection closed)."
+  (let ((service (fnn-mux-service loop)))
+    (multiple-value-bind (plain status)
+        (fnn-zin-inflate (fnn-mux-conn-zin conn) raw
+                         (length (fnn-mux-read-buffer service loop)))
+      (cond ((stringp status)
+             (ignore-errors (fnn-log-line (map 'list #'char-code status)))
+             (fnn-mux-finish loop conn)
+             nil)
+            ((> (length plain) 0)
+             (setf (fnn-mux-conn-input conn) plain)
+             t)
+            (t (setf (fnn-mux-conn-want conn) :input)
+               nil)))))
+
+(defun fnn-mux-install-compress (loop conn)
+  "The 206 is written: install the layer, tell the owner the owed layer is
+established (the session leaves its hold), then serve what the client
+already sent compressed."
+  (let ((service (fnn-mux-service loop))
+        (cid (fnn-mux-conn-cid conn)))
+    (setf (fnn-mux-conn-zin conn) (fnn-zin-new)
+          (fnn-mux-conn-zout conn) (fnn-zout-new))
+    (fnn-owner-serialized
+     service cid
+     (lambda ()
+       (unless (eq (fnn-owner-action 'fn-owner-tls-established cid) :ok)
+         (fnn-fault "owner rejected the established compression layer")))
+     (fnn-mux-conn-class conn))
+    (let ((stash (fnn-mux-conn-zstash conn)))
+      (setf (fnn-mux-conn-zstash conn) nil)
+      (fnn-mux-arm-idle conn)
+      (if (and stash (> (length stash) 0))
+          (when (fnn-mux-z-in loop conn stash)
+            (fnn-mux-work loop conn))
+        (fnn-mux-work loop conn)))))
 
 (defun fnn-mux-step (loop conn)
   "One served step over the held input and what follows it: the worker's
@@ -456,6 +532,24 @@ the same octets are handed to the next step."
       ;; carried here is ever read from the socket twice.
       (setf (fnn-mux-conn-input conn) nil)
       (cond
+        ((and (eq starttls :deflate) (not closing))
+         ;; RFC 8054: the octets after the COMPRESS line are the client's
+         ;; compressed stream (it MUST NOT pipeline, but may); held for the
+         ;; inflater until the layer is installed.  Over a TLS context with
+         ;; no channel the read was a peek: only CONSUMED octets were taken
+         ;; and the rest is still the socket's.
+         (if (and (null channel) (fnn-owner-service-tls-context service))
+             (fnn-tls-consume-plaintext (fnn-mux-conn-fd conn)
+                                        (subseq incoming 0 consumed) 10)
+           (when (< consumed (length incoming))
+             (setf (fnn-mux-conn-zstash conn) (subseq incoming consumed)))))
+        ((fnn-mux-conn-zin conn)
+         ;; Compressed: the input is plaintext ACL2's inflater produced, not
+         ;; a socket read or a TLS record; the suffix is the next step's.
+         (when (/= consumed (length incoming))
+           (when (and (zerop consumed) (not closing))
+             (fnn-fault "owner consumed no octets and left the connection open"))
+           (setf (fnn-mux-conn-input conn) (subseq incoming consumed))))
         (channel
          ;; Once protected, no transport suffix may be reclassified as a
          ;; second handshake.  A closing step stops at the octet that closed
@@ -478,7 +572,7 @@ the same octets are handed to the next step."
          (when (and (zerop consumed) (not closing) (not starttls))
            (fnn-fault "owner consumed no octets and left the connection open"))
          (setf (fnn-mux-conn-input conn) (subseq incoming consumed))))
-      (when starttls
+      (when (eq starttls t)
         (when channel
           (fnn-fault "owner requested STARTTLS on a protected channel"))
         (unless (fnn-owner-service-tls-context service)
@@ -487,7 +581,10 @@ the same octets are handed to the next step."
       ;; fn-splan-step-handshake-owed): never with the step's own close or the
       ;; exposure's.  CLOSING with it is only a service stop (the drain was
       ;; uncertain), and a stopping service is closed, not upgraded.
-      (let ((after (cond (closing :close) (starttls :starttls) (t nil))))
+      (let ((after (cond (closing :close)
+                         ((eq starttls :deflate) :compress)
+                         (starttls :starttls)
+                         (t nil))))
         (if (and (consp plan) (eq (first plan) :await))
             (fnn-mux-await loop conn (second plan) (third plan) after)
           (fnn-mux-queue-plan loop conn plan after))))))
@@ -531,13 +628,20 @@ builds it for a step that drained in its own quantum."
 no exposure wait pending."
   (let ((service (fnn-mux-service loop)))
     (loop while (and (eq (fnn-mux-conn-phase conn) :serving)
-                     (fnn-mux-conn-input conn)
+                     (or (fnn-mux-conn-input conn)
+                         (and (fnn-mux-conn-zin conn)
+                              (fnn-zin-pending (fnn-mux-conn-zin conn))))
                      (null (fnn-mux-conn-out conn))
                      (null (fnn-mux-conn-await conn))
                      (null (fnn-mux-conn-resume-at conn)))
           do (when (or *fnn-sigterm-requested* (fnn-owner-service-stopping service))
                (return))
-             (fnn-mux-step loop conn))))
+             (if (fnn-mux-conn-input conn)
+                 (fnn-mux-step loop conn)
+               ;; A :full stop left compressed octets in hand: inflate the
+               ;; next read's worth without waiting for the socket.
+               (unless (fnn-mux-z-in loop conn (fnn-make-octets 0))
+                 (return))))))
 
 (defun fnn-mux-readable (loop conn)
   (let* ((service (fnn-mux-service loop))
@@ -552,6 +656,11 @@ no exposure wait pending."
     (cond ((member incoming '(:input :output))
            (setf (fnn-mux-conn-want conn) incoming))
           ((zerop (length incoming)) (fnn-mux-finish loop conn))
+          ((fnn-mux-conn-zin conn)
+           (setf (fnn-mux-conn-want conn) nil)
+           (fnn-mux-arm-idle conn)
+           (when (fnn-mux-z-in loop conn incoming)
+             (fnn-mux-work loop conn)))
           (t (setf (fnn-mux-conn-want conn) nil
                    (fnn-mux-conn-input conn) incoming)
              (fnn-mux-arm-idle conn)
@@ -578,45 +687,107 @@ nothing."
     (when (and (typep got 'fnn-octets) (zerop (length got)))
       (fnn-mux-finish loop conn))))
 
-;;; The handshakes: at most +fnn-mux-handshakes-per-loop+ at once per loop.
+;;; The handshakes: ACL2 admits each one (books/tls-handshake-budget.lisp).
 
-(defun fnn-mux-request-handshake (loop conn)
-  (setf (fnn-mux-conn-phase conn) :hs-wait)
-  (if (< (fnn-mux-loop-handshaking loop) +fnn-mux-handshakes-per-loop+)
-      (fnn-mux-start-handshake loop conn)
-    (setf (fnn-mux-loop-waiting loop)
-          (append (fnn-mux-loop-waiting loop) (list conn)))))
+(defun fnn-mux-handshake-ask (loop conn queuedp)
+  "ACL2's decision on a handshake for CONN's source, before any handshake
+work: (values VERDICT X DEADLINE-MS LINE), fn-owner-handshake-admit's."
+  (let ((service (fnn-mux-service loop)))
+    (multiple-value-bind (family address)
+        (fnn-owner-socket-address service (fnn-mux-conn-socket conn))
+      (let ((answer (fnn-owner-serialized
+                     service nil
+                     (lambda ()
+                       (fnn-owner-advance-clock)
+                       (fnn-owner-core 'fn-owner-handshake-admit family address
+                                       (and queuedp t)))
+                     :reader)))
+        (unless (and (consp answer) (member (first answer) '(:admit :wait :refuse))
+                     (posp (third answer)))
+          (fnn-fault "owner returned a malformed handshake decision"))
+        (values (first answer) (second answer) (third answer) (fourth answer))))))
 
-(defun fnn-mux-start-handshake (loop conn)
+(defun fnn-mux-handshake-release (loop conn)
+  "The admitted handshake of CONN ended (completed, failed, timed out, closed)."
+  (let ((id (fnn-mux-conn-hs-id conn)))
+    (setf (fnn-mux-conn-hs-id conn) nil)
+    (ignore-errors
+      (fnn-owner-serialized
+       (fnn-mux-service loop) nil
+       (lambda () (fnn-owner-core 'fn-owner-handshake-done id))
+       :reader))))
+
+(defun fnn-mux-handshake-refused (loop conn line)
+  "ACL2 refused CONN's handshake: its line in the service log, then the close."
+  (when (stringp line)
+    (ignore-errors (fnn-log-line (map 'list #'char-code line))))
+  (fnn-mux-finish loop conn))
+
+(defun fnn-mux-ms-ticks (ms)
+  (+ (fnn-now) (ceiling (* ms internal-time-units-per-second) 1000)))
+
+(defun fnn-mux-request-handshake (loop conn &optional queuedp)
+  "A STARTTLS upgrade owes its handshake: ACL2 admits it, it waits for a
+slot (QUEUEDP when it already waited), or it is refused and closed.  Answers
+whether it is still waiting."
+  (multiple-value-bind (verdict x ms line) (fnn-mux-handshake-ask loop conn queuedp)
+    (ecase verdict
+      (:admit (setf (fnn-mux-conn-hs-id conn) x)
+              (when queuedp
+                (setf (fnn-mux-loop-waiting loop)
+                      (delete conn (fnn-mux-loop-waiting loop) :test #'eq)))
+              (fnn-mux-start-handshake loop conn ms)
+              nil)
+      (:wait (unless queuedp
+               (setf (fnn-mux-conn-phase conn) :hs-wait
+                     (fnn-mux-conn-hs-deadline conn) (fnn-mux-ms-ticks ms)
+                     (fnn-mux-loop-waiting loop)
+                     (append (fnn-mux-loop-waiting loop) (list conn))))
+             t)
+      (:refuse (when queuedp
+                 ;; ACL2 counted it out of the waiting already.
+                 (setf (fnn-mux-conn-phase conn) :new))
+               (fnn-mux-handshake-refused loop conn line)
+               nil))))
+
+(defun fnn-mux-start-handshake (loop conn ms)
   (let ((service (fnn-mux-service loop)))
     (setf (fnn-mux-conn-ssl conn)
           (fnn-tls-accept-begin (fnn-owner-service-tls-context service)
                                 (fnn-mux-conn-fd conn))
           (fnn-mux-conn-phase conn) :handshake
-          (fnn-mux-conn-hs-deadline conn) (fnn-mux-ticks +fnn-mux-handshake-seconds+)
+          (fnn-mux-conn-hs-deadline conn) (fnn-mux-ms-ticks ms)
           (fnn-mux-conn-want conn) :input)
-    (incf (fnn-mux-loop-handshaking loop))
     (fnn-mux-handshake-step loop conn)))
 
-(defun fnn-mux-slot-free-p (loop)
-  (< (fnn-mux-loop-handshaking loop) +fnn-mux-handshakes-per-loop+))
-
 (defun fnn-mux-start-waiting-handshake (loop)
-  "A slot freed: an admitted STARTTLS upgrade first, then the oldest queued
-implicit-TLS socket, which is admitted now (fnn-mux-admit), just before its
-handshake."
-  (loop while (fnn-mux-slot-free-p loop)
-        do (cond ((fnn-mux-loop-waiting loop)
-                  (let ((next (pop (fnn-mux-loop-waiting loop))))
-                    (fnn-mux-guarded (loop next)
-                      (fnn-mux-start-handshake loop next))))
-                 ((fnn-mux-loop-queued loop)
-                  (let ((next (pop (fnn-mux-loop-queued loop))))
-                    (setf (fnn-mux-conn-phase next) :new
-                          (fnn-mux-conn-hs-deadline next) nil)
-                    (fnn-mux-guarded (loop next)
-                      (fnn-mux-admit loop next))))
-                 (t (return)))))
+  "Every pass and every freed slot: the waiting STARTTLS upgrades first, then
+the queued implicit-TLS sockets, oldest first, each asked again until ACL2
+answers :wait (the node's slots or this second's starts are spent)."
+  (loop
+    (let ((next (or (first (fnn-mux-loop-waiting loop))
+                    (first (fnn-mux-loop-queued loop)))))
+      (unless next (return))
+      (if (eq (fnn-mux-conn-phase next) :hs-wait)
+          (when (fnn-mux-guarded (loop next)
+                  (fnn-mux-request-handshake loop next t))
+            (return))
+        (let ((waits nil))
+          (fnn-mux-guarded (loop next)
+            (multiple-value-bind (verdict x ms line)
+                (fnn-mux-handshake-ask loop next t)
+              (ecase verdict
+                (:admit (pop (fnn-mux-loop-queued loop))
+                        (setf (fnn-mux-conn-phase next) :new
+                              (fnn-mux-conn-hs-deadline next) nil
+                              (fnn-mux-conn-hs-id next) x)
+                        (fnn-mux-admit loop next ms))
+                (:wait (setq waits t))
+                (:refuse (pop (fnn-mux-loop-queued loop))
+                         (setf (fnn-mux-conn-phase next) :new)
+                         (fnn-mux-handshake-refused loop next line)))))
+          ;; A fault inside the guard finished NEXT (it left the queue).
+          (when waits (return)))))))
 
 (defun fnn-mux-handshake-step (loop conn)
   (let ((service (fnn-mux-service loop))
@@ -631,7 +802,7 @@ handshake."
               (fnn-mux-conn-phase conn) :serving
               (fnn-mux-conn-want conn) nil
               (fnn-mux-conn-hs-deadline conn) nil)
-        (decf (fnn-mux-loop-handshaking loop))
+        (fnn-mux-handshake-release loop conn)
         (fnn-owner-serialized
          service cid
          (lambda ()
@@ -649,34 +820,34 @@ handshake."
   "A socket a loop adopted: the handshake pool's gate, then the admission."
   (let ((socket (fnn-mux-conn-socket conn)))
     (setf (fnn-mux-conn-fd conn) (fnn-socket-fd socket))
-    ;; The handshake pool bounds handshake work, and it is bounded BEFORE the
-    ;; exposure admits anything (PKT-639): an implicit-TLS connection is
-    ;; admitted only when a handshake slot of its loop is free, just before
-    ;; SSL_accept.  Until then it waits unadmitted -- a socket and a record,
-    ;; no handshake work, no share of the capacity -- in a queue of at most
-    ;; +fnn-mux-queued-per-loop+ for at most the handshake deadline; past
-    ;; that it is closed and named (`tls refused reason=busy' or
-    ;; `reason=timeout').  So a flood of half-open handshakes holds at most
-    ;; the pool's slots of the capacity and a plaintext reader is still
-    ;; admitted (hostile campaign, TLS slowloris half-open x200), while a
-    ;; burst of legitimate TLS readers waits its turn instead of being
-    ;; refused.  Like the kernel's accept queue, it decides no protocol
-    ;; answer.
-    (when (and (fnn-mux-conn-implicit-tls conn) (not (fnn-mux-slot-free-p loop)))
-      (if (< (length (fnn-mux-loop-queued loop)) +fnn-mux-queued-per-loop+)
-          (setf (fnn-mux-conn-phase conn) :tls-queued
-                (fnn-mux-conn-hs-deadline conn)
-                (fnn-mux-ticks +fnn-mux-handshake-seconds+)
-                (fnn-mux-loop-queued loop)
-                (append (fnn-mux-loop-queued loop) (list conn)))
-        (progn (fnn-mux-tls-log loop conn :busy)
-               (fnn-mux-finish loop conn)))
+    ;; PKT-639 / PRF-986: an implicit-TLS socket's handshake is ACL2's
+    ;; decision BEFORE the exposure admits anything and before SSL_accept
+    ;; (books/tls-handshake-budget.lisp): admitted (then the exposure open,
+    ;; then the handshake), waiting unadmitted for a slot -- a socket and a
+    ;; record, no handshake work, no share of the capacity -- at most ACL2's
+    ;; deadline (then closed and named `tls refused reason=timeout'), or
+    ;; refused and named (`reason=handshake-budget source=...' for a source
+    ;; past its budget, `reason=busy' when too many wait).  So a flood of
+    ;; half-open handshakes holds at most the node's slots, a flood from one
+    ;; source is refused past its budget while another source is served, and
+    ;; a plaintext reader is still admitted.
+    (when (fnn-mux-conn-implicit-tls conn)
+      (multiple-value-bind (verdict x ms line) (fnn-mux-handshake-ask loop conn nil)
+        (ecase verdict
+          (:admit (setf (fnn-mux-conn-hs-id conn) x)
+                  (fnn-mux-admit loop conn ms))
+          (:wait (setf (fnn-mux-conn-phase conn) :tls-queued
+                       (fnn-mux-conn-hs-deadline conn) (fnn-mux-ms-ticks ms)
+                       (fnn-mux-loop-queued loop)
+                       (append (fnn-mux-loop-queued loop) (list conn))))
+          (:refuse (fnn-mux-handshake-refused loop conn line))))
       (return-from fnn-mux-begin nil))
-    (fnn-mux-admit loop conn)))
+    (fnn-mux-admit loop conn nil)))
 
-(defun fnn-mux-admit (loop conn)
+(defun fnn-mux-admit (loop conn hs-ms)
   "The accept: the peer's address, then ACL2's admission and open in one
-call (books/public-exposure.lisp fn-exp-open), as the worker did it."
+call (books/public-exposure.lisp fn-exp-open), as the worker did it.  HS-MS
+is the deadline of the handshake ACL2 already admitted (implicit TLS)."
   (let ((service (fnn-mux-service loop))
         (socket (fnn-mux-conn-socket conn)))
     (multiple-value-bind (family address) (fnn-owner-socket-address service socket)
@@ -719,7 +890,7 @@ call (books/public-exposure.lisp fn-exp-open), as the worker did it."
            (if (fnn-mux-conn-implicit-tls conn)
                ;; PRF-162: the greeting is sent once the session is protected.
                (progn (setf (fnn-mux-conn-greeting conn) greeting)
-                      (fnn-mux-request-handshake loop conn))
+                      (fnn-mux-start-handshake loop conn hs-ms))
              (progn
                (setf (fnn-mux-conn-phase conn) :serving)
                (if (> (length greeting) 0)
@@ -779,7 +950,7 @@ operation then observes the error or the end of input)."
               ((and (eq (fnn-mux-conn-phase conn) :handshake)
                     (due (fnn-mux-conn-hs-deadline conn)))
                (error 'fnn-tls-handshake-error :detail "operation timed out"))
-              ((and (eq (fnn-mux-conn-phase conn) :tls-queued)
+              ((and (member (fnn-mux-conn-phase conn) '(:tls-queued :hs-wait))
                     (due (fnn-mux-conn-hs-deadline conn)))
                (fnn-mux-tls-log loop conn :timeout)
                (fnn-mux-finish loop conn))
@@ -800,7 +971,7 @@ operation then observes the error or the end of input)."
           (unless (eq (fnn-mux-conn-phase conn) :done)
             (when (fnn-mux-conn-out conn) (note (fnn-mux-conn-out-deadline conn)))
             (case (fnn-mux-conn-phase conn)
-              ((:handshake :tls-queued) (note (fnn-mux-conn-hs-deadline conn)))
+              ((:handshake :tls-queued :hs-wait) (note (fnn-mux-conn-hs-deadline conn)))
               (:draining (note (fnn-mux-conn-drain-deadline conn)))
               (:serving (note (fnn-mux-conn-resume-at conn))
                (unless (or (fnn-mux-conn-out conn) (fnn-mux-conn-input conn)
@@ -844,6 +1015,10 @@ whatever the descriptor says."
 (defun fnn-mux-iterate (loop)
   (fnn-mux-take-inbox loop)
   (fnn-mux-take-arrived loop)
+  ;; A new second's starts, or a slot another loop freed: the sockets that
+  ;; wait ask again (one owner call while ACL2 still answers :wait).
+  (when (or (fnn-mux-loop-waiting loop) (fnn-mux-loop-queued loop))
+    (fnn-mux-start-waiting-handshake loop))
   (let* ((next (fnn-mux-timers loop (fnn-now)))
          (pending (fnn-mux-pending-tls loop)))
     (dolist (conn pending)

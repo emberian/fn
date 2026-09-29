@@ -274,7 +274,23 @@ def world_text() -> str:
 
 
 def world_names(text: str) -> set[str]:
-    return {name.lower() for name in WORLD_DEF.findall(text)}
+    return {name.lower() for name in WORLD_DEF.findall(text)} | stobj_world_names()
+
+
+def stobj_world_names() -> set[str]:
+    """The names every `defstobj'/`defabsstobj' in the world generates (the
+    creator, recognizer, field accessors and updaters): no `def' form spells
+    them, so WORLD_DEF cannot see them, and `create-fn-zin-st' (host/native/
+    deflate.lisp's fnn-zin-new) was reported undefined (compress-4)."""
+    found: set[str] = set()
+    for directory in WORLD_DIRS:
+        base = ROOT / directory
+        paths = base.rglob("*.lisp") if directory == "books" else base.glob("*.lisp")
+        for path in sorted(paths):
+            text = path.read_text(encoding="utf-8", errors="replace").lower()
+            if "(defstobj" in text or "(defabsstobj" in text:
+                found |= {name.lower() for name in stobj_names(path)}
+    return found
 
 
 def in_world(name: str, defined: set[str], text: str) -> bool:
@@ -1000,8 +1016,12 @@ def _callers():
     return callers
 
 
-def ld_sequence(build: str = BUILD_SCRIPT, root: Path = ROOT) -> list[str]:
-    """The ld host files BUILD loads, in its order (an ld inside one in place)."""
+def ld_sequence(build: str = BUILD_SCRIPT, root: Path = ROOT,
+                cbd: str = ".") -> list[str]:
+    """The ld host files BUILD loads, in its order (an ld inside one in place).
+    CBD is the root-relative directory ACL2's connected book directory is at
+    when BUILD runs: the tree's root for the image builds, tools/extract for
+    the extraction world (tools/extract/world-host.lisp, `../../host/...')."""
     import ledger
     order: list[str] = []
 
@@ -1026,7 +1046,7 @@ def ld_sequence(build: str = BUILD_SCRIPT, root: Path = ROOT) -> list[str]:
 
     script = root / build
     for form, _ in ledger.Reader(script.read_text(encoding="utf-8")).top_level():
-        walk(form, root)
+        walk(form, Path(os.path.normpath(root / cbd)))
     return order
 
 

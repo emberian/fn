@@ -10,7 +10,7 @@ fn today has no configuration. It has *constants*: the carried group list is a
 `defconst` in [`books/store-config.lisp`](../books/store-config.lisp), retention
 capacity is a `defconst` in [`host/store-host.lisp`](../host/store-host.lisp),
 the BP policy/terms/issuer identifiers and the inbound group map are `defconst`s
-in [`host/bp-ingress-host.lisp`](../host/bp-ingress-host.lisp), and
+in `host/bp-ingress-host.lisp` (retired: planning/retired-paths.json), and
 `tools/run_store.py` refuses to open a store whose JSON configuration is not
 `==` to `DEFAULT_CONFIG`. Adding a newsgroup means recompiling the core and
 rewriting every store's configuration file by hand.
@@ -274,7 +274,7 @@ their call sites:
 | `*fn-bpi-host-group-map*` | `host/bp-ingress-host.lisp` | not yet deleted: the hand-synchronised octet/name pairs are still a host constant. What landed is the check, not the derivation: `fn-bpi-policy-appliesp-carried` (`books/bp-ingress-carried.lisp`) refuses a policy whose map values (`fn-bpi-map-values`) are not the store's live group list (`fn-sn-groups`), so a stale map refuses every ADU rather than misfiling one. Deriving the map from the group table is open |
 | `*fn-bpi-host-policy-id*`, `*fn-bpi-host-terms-id*`, `*fn-bpi-host-issuer-eid*` | `host/bp-ingress-host.lisp` | `(fn-cfg-policy v :acceptance)`, `:terms`, `:issuer-eid` |
 | `*fn-reader-groups*`, `*fn-reader-archive*`, `*fn-reader-id*`, `*fn-reader-payload*` | `host/reader-host.lisp` | a test fixture: move to `tests/acl2/reader-fixture.lisp` built over an explicit configuration record. The seed archive is not a deployment default |
-| `*fn-sim-groups*` | `host/simulator.lisp` | the scenario's own configuration record |
+| `*fn-sim-groups*` | `tests/acl2/simulator.lisp` | the scenario's own configuration record |
 | `DEFAULT_CONFIG["capacity"]`, `["group_table"]` | `tools/run_store.py` | the configuration record history, through the bridge |
 
 `*fn-reader-greeting*` stays: it is a protocol response, not a deployment
@@ -940,7 +940,8 @@ further events; the owner state shrinks by one slot rather than growing.*
 in §1.7's table; thread the store's configuration into the post boundary (landed
 as `fn-sbud-post-boundary` over the persisted profile, §1.7), the host's group
 lookups (landed as positions in the configured domain, `fn-store-group-codes`),
-`fn-bpi-host-policy` and `fn-bpi-host-context`; move the
+and the lab BP ingress host's policy and context (that host since retired,
+Q7k 2026-09-29); move the
 reader seed to `tests/acl2/reader-fixture.lisp`. `run_store.py` gains
 `reconfigure` (deltas in, D13 exit codes out) and `config` (print the generation
 and value); `run_owner.py` gains a `RECONFIGURE` control line. `DEFAULT_CONFIG`

@@ -96,40 +96,18 @@ class NativeCampaignMixin:
             self.assertEqual(killed, prior, cut_name)
 
     def run_post_log_cut(self, cut):
+        """The cut as a scenario, run by the resilience adapter (row W7b):
+        the same process calls, the three histories journaled beside the
+        store, the verdict the whole-history checker's (its rules cite
+        the theorems and the verified candidate column)."""
+        from tools.resilience.adapters import native_cuts as adapter
         with tempfile.TemporaryDirectory(prefix="fn-native-log-cut-") as tmp:
-            root = Path(tmp); store = root / "store"
-            prior = root / "prior"; prior.write_bytes(b"prior accepted protected content")
-            candidate = root / "candidate"; candidate.write_bytes(b"candidate protected content")
-            self.invoke(store, "init")
-            self.invoke(store, "post", "<prior@example.invalid>", prior, "-", "-", "fn.letters")
-            before = self.history(store)
-            self.assertEqual(len(before), 1)
-            env = dict(os.environ); env["FN_NATIVE_POST_FAULT"] = cut.name + ":kill"
-            killed = self.native_post(store, "<candidate@example.invalid>", candidate, env)
-            self.assertEqual(killed.returncode, -9, killed.stderr)
-            at_cut = self.history(store)
-            # `store post' commits a batch of one: the append and its barrier
-            # precede the member's finish (POST_LOG_ONE_CANDIDATE).
-            self.assert_cut_history(cut.name, native_cuts.POST_LOG_ONE_CANDIDATE[cut.name],
-                                    before, at_cut)
-            recovered = self.invoke(store, "recover")
-            self.assertIn(b"articles=", recovered.stdout)
-            self.assertEqual(self.history(store), at_cut, cut.name)
-            inspected = self.invoke(store, "inspect", "--message-id", "<prior@example.invalid>")
-            self.assertEqual(inspected.stdout, prior.read_bytes())
-            present = len(at_cut) == 2
-            shown = self.invoke(store, "inspect", "--message-id",
-                                "<candidate@example.invalid>", expected=None)
-            if present:
-                self.assertEqual(shown.returncode, 0, shown.stderr)
-                self.assertEqual(shown.stdout, candidate.read_bytes())
-            else:
-                self.assertNotEqual(shown.returncode, 0, cut.name)
-            retry = self.invoke(store, "post", "<candidate@example.invalid>", candidate,
-                                "-", "-", "fn.letters")
-            self.assertIn(b"duplicate" if present else b"committed sequence=", retry.stdout,
-                          cut.name)
-            self.assertEqual(len(self.history(store)), 2)
+            journal, verdict = adapter.run(adapter.scenario_for(cut), IMAGE, Path(tmp))
+            self.assertTrue(verdict.green, (cut.name, verdict.to_json()))
+            self.assertEqual((verdict.surviving, verdict.pending_rules, verdict.diagnostics),
+                             (1, [], []), cut.name)
+            fired = [r for r in journal.of_kind("environment") if r.get("event") == "fault-fired"]
+            self.assertEqual([r["boundary"] for r in fired], [cut.name])
 
 
 # Runtime tests only exist when the caller supplies a source-matched executable.

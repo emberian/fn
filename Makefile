@@ -259,6 +259,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-import-publication-tests \
 	books/store-init-publication \
 	tests/acl2/store-init-publication-tests \
+	tests/acl2/store-host-boundary-tests \
+	tests/acl2/bp-node-host-sequence-tests \
 	tests/acl2/store-profile-facts-tests \
 	books/store-genesis \
 	tests/acl2/store-genesis-tests \
@@ -402,6 +404,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/feed-pause-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
+	books/history-knowledge \
+	tests/acl2/history-knowledge-tests \
 	books/store-reclaim-stream \
 	tests/acl2/store-reclaim-stream-tests \
 	books/reclaim-admission \
@@ -460,14 +464,17 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-log-initializer-tests \
 	books/owner-log-route \
 	tests/acl2/owner-log-route-tests \
-	books/payload-lz \
-	tests/acl2/payload-lz-tests \
+	books/deflate-inflate \
+	books/payload-deflate \
+	books/payload-lz-dict-1 \
+	books/payload-lz-dicts \
 	books/payload-lz-value \
 	books/payload-lz-record \
 	books/payload-lz-replay \
 	tests/acl2/payload-lz-record-tests \
 	books/payload-lz-append \
 	tests/acl2/payload-lz-append-tests \
+	tests/acl2/deflate-inflate-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
@@ -1016,6 +1023,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/octet-window \
 	books/subject-id-buffer \
 	tests/acl2/subject-id-buffer-tests \
+	books/article-buffer \
+	tests/acl2/article-buffer-tests \
+	books/frame-buffer \
+	books/native-control-buffer \
+	books/native-live-buffer \
+	tests/acl2/frame-buffer-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
@@ -1070,8 +1083,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-store-steps \
 	books/owner-log-ocl \
 	tests/acl2/owner-log-ocl-tests \
+	books/owner-outcome-pinned \
 	books/owner-host-relation \
 	tests/acl2/owner-host-relation-tests \
+	books/owner-host-relation-span \
 	books/config-owner-live-authorize \
 	tests/acl2/config-owner-live-authorize-tests \
 	books/store-number-bound \
@@ -1085,6 +1100,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-prepare-served-events-tests \
 	books/owner-number-bound \
 	tests/acl2/owner-number-bound-tests \
+	books/msgid-pages \
+	tests/acl2/msgid-pages-tests \
+	books/msgid-pages-exec \
+	books/msgid-pages-catalog \
+	tests/acl2/msgid-pages-exec-tests \
+	books/owner-number-bound-join \
+	tests/acl2/owner-number-bound-join-tests \
 	tests/acl2/owner-identity-served-tests \
 	tests/acl2/owner-prepare-served-abort-tests \
 	books/owner-prepare-outcome \
@@ -1163,11 +1185,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-event-index \
 	tests/acl2/consumer-event-index-tests \
 	books/history-columns \
-	books/msgid-pages \
-	tests/acl2/msgid-pages-tests \
-	books/msgid-pages-exec \
-	books/msgid-pages-catalog \
-	tests/acl2/msgid-pages-exec-tests \
 	books/history-columns-relation \
 	tests/acl2/history-columns-relation-tests \
 	tests/acl2/history-columns-tests \
@@ -1212,8 +1229,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/relay-source \
 	tests/acl2/relay-source-routes-tests \
 	tests/acl2/owner-served-invariants-tests \
+	books/productive-contract \
+	books/productive-observer \
+	tests/acl2/productive-contract-tests \
 	tests/acl2/owner-numbering-tests \
 	books/number-durability \
+	books/number-durability-handles \
 	tests/acl2/number-durability-tests \
 	tests/acl2/owner-fault-tests \
 	tests/acl2/owner-verdict-tests \
@@ -1301,6 +1322,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/control-served-tests \
 	books/nntp-control \
 	tests/acl2/nntp-control-tests \
+	tests/acl2/served-empty-view-tests \
 	books/owner-control-read \
 	books/nntp-enrollment \
 	books/owner-enrollment-read \
@@ -1364,6 +1386,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-stop-drain-tests \
 	books/owner-time-bars \
 	tests/acl2/owner-time-bars-tests \
+	tests/acl2/tls-handshake-budget-tests \
 	books/feed-restart-domain \
 	tests/acl2/feed-restart-domain-tests \
 	books/web-request \
@@ -1391,6 +1414,20 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-carry-control-tests \
 	books/bp-carry-waiver \
 	tests/acl2/bp-carry-waiver-tests \
+	tests/acl2/store-checkpoint-digest-tests \
+	tests/acl2/owner-maintenance-request-tests \
+	tests/acl2/owner-reclaim-conns-tests \
+	tests/acl2/owner-reclaim-pass-tests \
+	tests/acl2/owner-reclaim-ready-tests \
+	tests/acl2/control-request-word-tests \
+	tests/acl2/packed-submission-tests \
+	tests/acl2/body-chunks-tests \
+	tests/acl2/bp-node-fragment-job-tests \
+	tests/acl2/deflate-pool-tests \
+	tests/acl2/native-operator-stage-tests \
+	tests/acl2/nntp-compress-dict-tests \
+	tests/acl2/owner-control-post-reason-tests \
+	tests/acl2/owner-export-request-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/reader-open-carried \
@@ -1454,6 +1491,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/stx-invariants \
 	books/stx-lace \
 	books/stx-index \
+	books/stx-node-lace \
 	books/stx-policy \
 	books/stx-epochs \
 	books/stx-authority \
@@ -1688,6 +1726,16 @@ check:
 # on build order with it).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_modes
+# Every host file is loaded by a build (Q7k): an image, the extraction world
+# or the store-test image; a prototype, a retired host or a test harness in
+# host/ is refused (KNOWN, shrink-only, names an exception with why).
+	@$(CHECK_STEP) $(PYTHON) tools/host_loaded_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_loaded_check
+# Every tests/*.sh witness says its class (raw: tests.test_native_raw_scripts
+# runs it; needs-image/needs-acl2: the convergence checklist names it;
+# helper) and a scenario-catalog row cites it (KNOWN shrink-only).
+	@$(CHECK_STEP) $(PYTHON) tools/witness_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_witness_check
 # specs/crash-model-v2.md section 2.3's transcription check for the native
 # host (the Python host and its transcribe_check retired, python-diet T5):
 # for each program tests/campaign/native_cuts.py names, the
@@ -1696,6 +1744,17 @@ check:
 # every error-arm observation is one of the program's error constants.  A
 # source check; it states what it cannot decide.  Mechanical, no ACL2.
 	@$(CHECK_STEP) $(PYTHON) tools/native_program_check.py
+# Every native module's image-free checks (PKT-540/569, Q7c): the source-text
+# assertions of 29 modules went red only on the next image.  Run in a scratch
+# root with no build/ and no FN_* variable, so image tests skip by their own
+# reason and a module that fails, imports nothing or collects nothing is red.
+	@$(CHECK_STEP) $(PYTHON) tools/native_source_check.py
+# The toolchain's system books (Q7h): every `:dir :system' include of the tree
+# and the std/lists extras are certified in this box's ACL2 (FN_ACL2), or the
+# step names the missing ones (tools/system_books.py certify); NOT RUN is red.
+	@$(CHECK_STEP) $(PYTHON) tools/system_books.py check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_system_books
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_source_check_native
 # No Python on the path a deployed node executes (D35): the process sites in
 # host/, the libraries the image loads, the shipped launcher and service files.
 	@$(CHECK_STEP) $(PYTHON) tools/runpath_check.py --quiet
@@ -1778,6 +1837,23 @@ check:
 # counts the sites left per file and only shrinks.
 	@$(CHECK_STEP) $(PYTHON) tools/clock_unit_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_clock_unit_check
+# The owner's ACL2 state globals (row Q3c, lane owner-relation-2): the host
+# keeps one canonical owner in `fn-owner' and every other `fn-owner-*' state
+# global is a side channel the adapter-retirement record
+# (planning/evidence/adapter-retirement-2026-09-26.md) wants folded into the
+# owner value or a wrapper's result.  tools/owner_globals_baseline.json holds
+# the distinct names per host file (95 across 8 files at the baseline) and
+# only shrinks.  Source-level, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/owner_globals_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_owner_globals_check
+
+# Host-called octet-list codecs (D27, row Q2 of COMPLETE-BEFORE-6.6.0): a host
+# dispatch that hands a codec an octet list consed from a byte vector
+# (fnn-octet-list).  tools/list_codec_baseline.json counts the sites per host
+# file and only shrinks; the target is zero (books/article-buffer.lisp is the
+# pattern: a buffer twin and its boundary theorem).
+	@$(CHECK_STEP) $(PYTHON) tools/list_codec_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_list_codec_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make

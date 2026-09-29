@@ -85,17 +85,20 @@ BOX=$1
 shift
 TARGET=check-lane
 FETCH=
+SHIP=
 DIRTY=1
 INSTALL=1
 TREE=
 LOG=
 CMD=
 REGEN=0
-SHIP=
 while [ $# -gt 0 ]; do
     case $1 in
         --target) [ $# -ge 2 ] || usage; TARGET=$2; shift 2 ;;
         --fetch) [ $# -ge 2 ] || usage; FETCH="$FETCH $2"; shift 2 ;;
+        --ship) [ $# -ge 2 ] || usage
+            case $2 in /*|*..*|*' '*) echo "remote_check: --ship $2: a path inside the tree, no spaces" >&2; exit 2 ;; esac
+            SHIP="$SHIP $2"; shift 2 ;;
         --no-dirty) DIRTY=0; shift ;;
         --install-certs) INSTALL=1; shift ;;
         --no-install-certs) INSTALL=0; shift ;;
@@ -103,10 +106,6 @@ while [ $# -gt 0 ]; do
         --regen) REGEN=1; TARGET=regen; shift ;;
         --tree) [ $# -ge 2 ] || usage; TREE=$2; shift 2 ;;
         --log) [ $# -ge 2 ] || usage; LOG=$2; shift 2 ;;
-        --ship)
-            [ $# -ge 2 ] || usage
-            case $2 in /*|*..*|'') echo "remote_check: --ship $2: a path inside this worktree" >&2; exit 2 ;; esac
-            SHIP="$SHIP $2"; shift 2 ;;
         -h|--help) usage ;;
         *) echo "remote_check: unknown option $1" >&2; usage ;;
     esac
@@ -141,6 +140,9 @@ SSH=${FN_REMOTE_CHECK_SSH:-ssh -o ServerAliveInterval=30 -o ControlMaster=auto -
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
     echo "remote_check: not inside a git worktree" >&2; exit 2; }
+for path in $SHIP; do
+    [ -f "$ROOT/$path" ] || { echo "remote_check: --ship $path: no such file here" >&2; exit 2; }
+done
 LANE=${FN_LANE:-$(basename "$ROOT")}
 case $LANE in *[!A-Za-z0-9._-]*|'') echo "remote_check: lane name '$LANE' is not a plain word" >&2; exit 2 ;; esac
 TREE=${TREE:-$BASE/$LANE-check}

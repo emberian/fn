@@ -14,6 +14,7 @@
 (in-package "ACL2")
 (include-book "store-log-buffer")
 (local (include-book "arithmetic/top" :dir :system))
+(local (in-theory (enable fn-rcon-event-twin-rules)))  ; Q3f: the concrete twins' equalities
 
 ; -----------------------------------------------------------------------------
 ; The walk without its txid fold, and the fold from the replay's decode.

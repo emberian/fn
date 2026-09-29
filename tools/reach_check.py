@@ -30,8 +30,11 @@ Each was true, proved, certified, and irrelevant to the running server.
     python3 tools/reach_check.py --baseline   # rewrite the baseline (deliberate)
 
 WHAT IT MEASURES.  The call graph over `books/*.lisp' and `host/*.lisp',
-seeded from every function `host/' defines, every book symbol a host file
-names, and every book symbol a `tools/*.py' bridge names in a string --- the
+seeded from every function a LOADED host file defines (one the image
+builds, host/native/build.lisp and build-dtn.lisp, or the extraction world
+tools/extract/world-host.lisp `ld' or `load'; a host file no build loads
+seeds nothing, PKT-412, and tools/host_loaded_check.py refuses it), every book
+symbol a loaded host file names, and every book symbol a `tools/*.py' bridge names in a string --- the
 bridges really do call ACL2 by building forms as text, so those are host
 lines too.  A `defabsstobj' export is a function whose body is its :logic and
 :exec functions, and `(attach-stobj GENERIC IMPL)' makes each GENERIC export
@@ -73,7 +76,12 @@ the host's fn-sca-finish) is hosted even when the host-level theorem is a
 different event.  The one macro it does expand is `fn-defrecord'
 (books/defrecord.lisp): its generated recognizer is a definition here, whose
 body is the record's `:fields' types, `:extra' conjuncts and
-`:recognizer-formals' (PKT-394).  `$' and braces are symbol constituents
+`:recognizer-formals' (PKT-394).  It also sees through a proof-only
+ABBREVIATION in a statement: an unreached, non-recursive, branch-free
+definition (or backquote macro) is read as the composition it names, so an
+event over `fn-osi-live-store' is about `fn-own-store' of the owner the host
+runs (PKT-376); a let-bound abbreviation is a model state only when what it
+abbreviates is.  `$' and braces are symbol constituents
 (before 2026-09-27 `(defun fn-arena$lcorr ...)' read as a definition of
 `fn-arena').
 
@@ -315,6 +323,94 @@ def stobj_attachments(paths) -> dict[str, set[str]]:
     return found
 
 
+# The builds whose loads are the running server's host lines, each with the
+# directory ACL2 runs it from: the two images, and the extraction world the
+# served product (the SBCL core) is extracted from, which adds the FN-XO
+# ports (host/store-open-host.lisp, store-write-host.lisp,
+# interfaces-extract.lisp).  A host file no build loads is not a host line
+# and seeds nothing (PKT-412); tools/host_loaded_check.py refuses one (Q7k).
+IMAGE_BUILDS = {"host/native/build.lisp": ".",
+                "host/native/build-dtn.lisp": ".",
+                "tools/extract/world-host.lisp": "tools/extract"}
+# A test image's build: what it loads is loaded (host_loaded_check), but a
+# test image is not the server, so it seeds nothing here.
+TEST_IMAGE_BUILDS = {"host/native/build-store-test.lisp": "."}
+RAW_LOAD = re.compile(r'\(load\s+"([^"]+\.lisp)"')
+RAW_LOAD_BESIDE = re.compile(r'\(load\s+\(merge-pathnames\s+"([^"]+\.lisp)"')
+
+
+def loaded_host_files(builds=IMAGE_BUILDS, root: pathlib.Path = ROOT) -> set[str]:
+    """Every host file BUILDS (a sequence of root-run builds, or a mapping of
+    build to the directory it runs from) load, root-relative: the build script,
+    each `ld' host file (an ld inside one in place: host_check.ld_sequence)
+    and each raw file it `load's, following a raw file's own loads (a
+    root-relative string, or a `merge-pathnames' beside the loading file)."""
+    import host_check
+    found: set[str] = set()
+    work: list[str] = []
+    for build in builds:
+        if not (root / build).is_file():
+            continue
+        work.append(build)
+        cbd = builds.get(build, ".") if isinstance(builds, dict) else "."
+        work += host_check.ld_sequence(build, root, cbd=cbd)
+    while work:
+        relative = work.pop()
+        if relative in found or not (root / relative).is_file():
+            continue
+        found.add(relative)
+        text = (root / relative).read_text(encoding="utf-8", errors="replace")
+        text = re.sub(r";[^\n]*", "", text)
+        work += RAW_LOAD.findall(text)
+        beside = pathlib.PurePosixPath(relative).parent
+        work += [str(beside / name) for name in RAW_LOAD_BESIDE.findall(text)]
+    return found
+
+
+# A proof-only ABBREVIATION: a non-recursive, branch-free definition that
+# names a composition of other functions (books/owner-store-indexed.lisp
+# `fn-osi-live-store' is `(fn-own-store (fn-ocfg-owner (fn-osi-live-owner
+# ...)))').  A theorem stated over it is a theorem over what it abbreviates:
+# before 2026-09-29 reach_check read such an event as about the unreached
+# abbreviation and reported it orphaned (PKT-376).  A branch (if, cond, and,
+# or, mbe ...) makes a definition a function in its own right, never an
+# abbreviation; a macro counts when its body is one backquoted template over
+# plain formals.
+ABBREVIATION_HEADS = ("defun", "defund", "defun-nx", "defun-inline", "defmacro")
+BRANCHING = frozenset({"if", "cond", "case", "case-match", "and", "or", "mbe",
+                       "mbt", "b*", "if*", "unquote-splicing", "&optional",
+                       "&key", "&rest", "&body", "&whole",
+                       # A binder sequences work (a stobj cleared, then
+                       # loaded: fn-sca-load-history): an operation, not a name.
+                       "let", "let*", "mv-let", "er-let*", "prog2$", "progn$"})
+
+
+def proof_only(tree) -> bool:
+    """Is a definition TREE proof-only: a macro, a `defun-nx', or declared
+    `:verify-guards nil' or `:non-executable t'?  An executable function
+    the host could call but does not is a function, never an abbreviation."""
+    if tree[0] in ("defmacro", "defun-nx"):
+        return True
+    for item in tree[3:-1]:
+        if isinstance(item, list) and item and item[0] == "declare":
+            for decl in item[1:]:
+                if isinstance(decl, list) and decl and decl[0] == "xargs":
+                    pairs = dict(zip(decl[1::2], decl[2::2]))
+                    if pairs.get(":verify-guards") == "nil" or pairs.get(":non-executable") == "t":
+                        return True
+    return False
+
+
+def _as_tree(form):
+    """A callgraph form (ledger.Sym symbols, plain-str string literals) as
+    this reader's lower-case atom tree; a string literal reads as None."""
+    if isinstance(form, list):
+        return [_as_tree(item) for item in form]
+    if isinstance(form, str):
+        return str(form).lower() if type(form) is not str else None
+    return str(form)
+
+
 class Graph:
     """The call graph, and what a host line can reach through it."""
 
@@ -376,15 +472,23 @@ class Graph:
         for constrained, bound in attached.items():
             self.edges.setdefault(constrained, set()).update(bound)
 
-        # Seeds: everything host/ defines, plus every book symbol a host file
-        # or a Python bridge names.  A bridge naming `fn-own-read` in a form
-        # it builds as text IS a host line; that is how the owner is driven.
+        # Seeds: everything a LOADED host file defines, plus every book
+        # symbol a loaded host file or a Python bridge names.  A bridge
+        # naming `fn-own-read` in a form it builds as text IS a host line;
+        # that is how the owner is driven.  A host file no image build loads
+        # is not (PKT-412): it is named in `unloaded_hosts'.
+        self.loaded_hosts = loaded_host_files()
+        self.unloaded_hosts = sorted(str(p.relative_to(ROOT)) for p in self.hosts
+                                     if str(p.relative_to(ROOT)) not in self.loaded_hosts)
+        host_defs = {n: d for n, d in host_defs.items() if d[0] in self.loaded_hosts}
         seen = set(host_defs)
         # name -> what reached it: the calling definition, or the host file
         # or bridge that names it (`--explain' prints the chain).
         self.via = {name: host_defs[name][0] for name in host_defs}
         self.seeds = collections.Counter()
         for path in self.hosts + self.bridges:
+            if path.suffix == ".lisp" and str(path.relative_to(ROOT)) in self.unloaded_hosts:
+                continue
             label = "host" if path.suffix == ".lisp" else "bridge"
             text = path.read_text(encoding="utf-8", errors="replace")
             for symbol in self.symbols(text) & set(self.book_defs):
@@ -418,6 +522,58 @@ class Graph:
                                     self.via[nxt] = name
                                     work.append(nxt)
         self.reachable = seen & set(self.book_defs)
+
+    def abbreviation(self, name: str):
+        """(formals, body, macro?) when NAME is an unreached proof-only
+        abbreviation (ABBREVIATION_HEADS' comment), else None."""
+        cache = self.__dict__.setdefault("_abbreviations", {})
+        if name in cache:
+            return cache[name]
+        found = None
+        entry = self.book_defs.get(name)
+        if entry is not None and name not in self.reachable:
+            form = entry[1]
+            if isinstance(form, str):
+                import ledger
+                try:
+                    form = next(iter(ledger.Reader(form).top_level()))[0]
+                except Exception:  # an unreadable text is no abbreviation
+                    form = None
+            tree = _as_tree(form)
+            if (isinstance(tree, list) and len(tree) >= 4 and tree[0] in ABBREVIATION_HEADS
+                    and isinstance(tree[2], list)
+                    and all(isinstance(f, str) for f in tree[2]) and proof_only(tree)):
+                formals, body = tree[2], tree[-1]
+                macro = tree[0] == "defmacro"
+                if macro:
+                    body = (body[1] if isinstance(body, list) and len(body) == 2
+                            and body[0] == "quasiquote" else None)
+                symbols = tree_symbols(body) if body is not None else set()
+                if (body is not None and isinstance(body, list) and name not in symbols
+                        and not (symbols & BRANCHING) and not set(formals) & BRANCHING):
+                    found = (formals, body, macro)
+        cache[name] = found
+        return found
+
+    def unfold(self, term):
+        """TERM, a call of an abbreviation, with the abbreviation's body in
+        its place (the formals bound to TERM's arguments), else None."""
+        if not isinstance(term, list) or not term or not isinstance(term[0], str):
+            return None
+        found = self.abbreviation(term[0])
+        if found is None:
+            return None
+        formals, body, macro = found
+        env = dict(zip(formals, term[1:]))
+        if macro:
+            def fill(t):
+                if isinstance(t, list):
+                    if len(t) == 2 and t[0] == "unquote" and isinstance(t[1], str):
+                        return env.get(t[1], t[1])
+                    return [fill(x) for x in t]
+                return t
+            return fill(body)
+        return _substitute(body, env)
 
     def host_chain(self, name: str) -> list[str]:
         """How a host line reaches NAME: the host file (or bridge, or stobj)
@@ -650,6 +806,9 @@ def model_state(term, env, graph) -> bool:
         return env.get(term, False)
     if not isinstance(term, list) or not term or term[0] == "quote":
         return False
+    unfolded = graph.unfold(term) if hasattr(graph, "unfold") else None
+    if unfolded is not None:
+        return model_state(unfolded, env, graph)
     head = term[0]
     if (isinstance(head, str) and head in graph.book_defs
             and head not in graph.reachable and head not in graph.stobj_names):
@@ -678,6 +837,13 @@ def hosted_call(term, env, graph, subjects) -> bool:
                 inner[name] = tainted
         return hosted_call(body, inner, graph, subjects)
     head = term[0]
+    unfolded = (graph.unfold(term) if isinstance(head, str) and head in subjects
+                and hasattr(graph, "unfold") else None)
+    if unfolded is not None:
+        # An abbreviation the event is about: what it abbreviates is.
+        widened = subjects | ((tree_symbols(unfolded) & set(graph.book_defs))
+                              - graph.stobj_names)
+        return hosted_call(unfolded, env, graph, widened)
     if (isinstance(head, str) and head in subjects and head in graph.reachable
             and not any(model_tainted(arg, env, graph) for arg in term[1:])):
         return True
@@ -1024,6 +1190,9 @@ def main(argv=None) -> int:
               f"{len(graph.reachable)} reachable from a host line "
               f"({len(graph.reachable) / len(graph.book_defs):.0%}); seeds: "
               + ", ".join(f"{n} from {k}" for k, n in graph.seeds.items()))
+        if graph.unloaded_hosts:
+            print("host files no image build loads (no seeds): "
+                  + ", ".join(graph.unloaded_hosts))
         print(f"{hosted} registry events hosted, {len(findings)} orphaned, "
               f"{len(fresh)} of those unbaselined, {len(unresolved)} "
               f"unresolvable here")

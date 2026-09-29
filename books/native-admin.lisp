@@ -571,6 +571,34 @@
 
 (in-theory (disable fn-native-admin-complaints-wordsp))
 
+; Row S10: the `policy set' keys that take a decimal count: the public
+; reader port's exposure limits (books/public-exposure-rows.lisp), the relay
+; checks' limits (books/relay-checks.lisp) and the store limits
+; (books/limits-live.lisp: max-transactions, max-history-octets,
+; max-article-octets).
+(defun fn-native-admin-counted-policy-keyp (key)
+  (declare (xargs :guard t))
+  (and (or (fn-exp-limit-slotp key)
+           (and (fn-rck-limit-slotp key)
+                (not (equal key *fn-rck-require-path-slot*)))
+           (member-equal key '("max-transactions" "max-history-octets"
+                               "max-article-octets" "compress-min-octets")))
+       t))
+
+; Row S10: every `policy set' key the grammar above has an arm for: the
+; counted ones and the worded ones (the path identity, the posting policy,
+; the trusted range, the anonymous policy, the complaints address, the
+; relay's require-path switch).  A key outside this set is unknown by name;
+; a known key with a malformed value keeps its own arm's answer.
+(defun fn-native-admin-known-policy-keyp (key)
+  (declare (xargs :guard t))
+  (and (or (fn-native-admin-counted-policy-keyp key)
+           (member-equal key (list "path-identity" "posting-policy"
+                                   *fn-exp-trusted-slot* *fn-exp-policy-slot*
+                                   *fn-ipp-complaints-slot*
+                                   *fn-rck-require-path-slot*)))
+       t))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t
@@ -734,7 +762,14 @@
                                            ;; PRF-359: the operator's free-space
                                            ;; reserve (books/owner-time-model.lisp
                                            ;; fn-otm-space-need).
-                                           "disk-reserve-octets"))
+                                           "disk-reserve-octets"
+                                           ;; PRF-986 (PKT-639): the TLS
+                                           ;; handshake budget
+                                           ;; (books/tls-handshake-budget.lisp
+                                           ;; fn-hsb-limits), each positive.
+                                           "tls-handshakes-per-source-per-minute"
+                                           "tls-handshakes-in-flight"
+                                           "tls-handshake-ms"))
              (fn-native-admin-decimalp (cadddr words))
              ; Lane compression-extents-2 (PRF-341): `compress-min-octets'
              ; (books/payload-lz-append.lisp fn-lzr-config-min) also admits
@@ -762,6 +797,23 @@
                                 (fn-native-admin-decimal-value
                                  (coerce (cadddr words) 'list))
                                 nil nil))
+
+       ; Row S10 (lane operability-2): `policy set KEY VALUE' that no arm
+       ; above took is refused by name, not by the usage line: a counted
+       ; key with a value that is no decimal count, else a key the node
+       ; does not have.  (A known key with a wrong non-numeric value keeps
+       ; the usage line: the line names the values.)
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (fn-native-admin-counted-policy-keyp (caddr words))
+             (not (fn-native-admin-decimalp (cadddr words))))
+        (fn-native-admin-result :refused :policy-value-not-a-number nil nil 0 nil nil))
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (not (fn-native-admin-known-policy-keyp (caddr words))))
+        (fn-native-admin-result :refused :unknown-policy-key nil nil 0 nil nil))
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
        ; D13 (STO-014): the operator's content-retention rule.  Two
@@ -932,6 +984,16 @@
        ; (fn-native-admin-result-owner-requestp; books/owner-compact-request).
        ((equal words '("compaction" "request"))
         (fn-native-admin-result :accepted nil :request-compaction nil 0 nil nil))
+       ; Row S3 (lane operability-2): what `store inspect ID' sends a running
+       ; owner (host/native/operator.lisp fnn-operator-execute-inspect): a
+       ; request for its own lookup of ID, no configuration record
+       ; (books/owner-maintenance-request.lisp fn-omr-inspect-word).
+       ((and (equal (fn-ncfg-first words) "inspect")
+             (equal (fn-ncfg-second words) "request")
+             (stringp (fn-ncfg-nth 2 words))
+             (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest words)))))
+        (fn-native-admin-result :accepted nil :request-inspect nil 0 nil
+                                (fn-ncfg-nth 2 words)))
        ; Q16: what `store reclaim' sends a running owner
        ; (host/native/operator.lisp fnn-operator-execute-store-action): a
        ; request for its reclaim pass (books/owner-reclaim.lisp), no
@@ -950,9 +1012,17 @@
   (declare (xargs :guard t))
   (and (equal (fn-native-admin-result-status result) :accepted)
        (member-equal (fn-native-admin-result-kind result)
-                     '(:request-compaction :request-reclaim :request-reclaim-recorded
-                       :request-reclaim-dry-run))
+                     '(:request-compaction :request-inspect :request-reclaim
+                       :request-reclaim-recorded :request-reclaim-dry-run))
        t))
+
+; Row S3: the Message-ID an inspect request carries (its value field), or nil.
+(defun fn-native-admin-result-inspect-msgid (result)
+  (declare (xargs :guard t))
+  (and (fn-native-admin-result-owner-requestp result)
+       (equal (fn-native-admin-result-kind result) :request-inspect)
+       (stringp (fn-native-admin-result-value result))
+       (fn-native-admin-result-value result)))
 
 ; Q16: the reclaim pass's mode an accepted reclaim request names, or nil
 ; (the compaction request).

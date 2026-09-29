@@ -947,6 +947,20 @@ def requires(*images):
     return unittest.skipUnless(not absent, "native image required: {}".format(", ".join(absent)))
 
 
+def slow(reason):
+    """unittest.skipUnless FN_RUN_SLOW=1, naming why the test is slow.
+
+    PKT-722: a test that takes most of an hour (the peer-row growth's 1,100
+    requests, 6,440 s on a loaded hbox) dominates every lane's native run.
+    Lanes skip it, reported as a skip with this reason, never as a pass;
+    batches and qualification run it with `tools/hbox_native.sh --env
+    FN_RUN_SLOW=1'."""
+    import unittest
+    return unittest.skipUnless(
+        os.environ.get("FN_RUN_SLOW") == "1",
+        "slow ({}): batches and qualification run it with --env FN_RUN_SLOW=1".format(reason))
+
+
 def deployed_stack(env):
     """PKT-876: every native test runs at the deployed control stack.  The
     image's own launcher carries ACL2's figure (tools/build_native_host.sh
@@ -1030,6 +1044,15 @@ def class_case(cls):
     case = unittest.TestCase()
     case.addCleanup = cls.addClassCleanup
     return case
+
+
+def durable_root():
+    """A directory on durable storage for stores that require it (a mission's
+    init refuses tmpfs: store-mount-identity): FN_TEST_DURABLE_TMP when set
+    (tools/hbox_native.sh sets hbox's local ext4), else the tree's build/test-tmp."""
+    root = Path(os.environ.get("FN_TEST_DURABLE_TMP") or ROOT / "build" / "test-tmp")
+    root.mkdir(parents=True, exist_ok=True)
+    return root
 
 
 def scratch(case, prefix="fn-native-"):

@@ -390,6 +390,11 @@ unset FN_OPENSSL_PREFIX
 mkdir -p \$S/bin
 $(openssl_setup)
 export FN_TEST_OPENSSL_BIN=\$S/bin/openssl-test
+# Durable scratch for stores that must sit on durable storage (a mission's
+# init: store-mount-identity), read through tests/native_harness.py
+# durable_root: hbox's root ext4 on NVMe, where an init's fsyncs cost 0.24 s;
+# the tank's ZFS cost 4.7 s at load 33 and one command 194 s (tooling-truth-3).
+export FN_TEST_DURABLE_TMP=\${FN_TEST_DURABLE_TMP:-/var/tmp}
 export FN_ACL2=\$ACL2 FN_CERT_CACHE=\$CACHE FN_CERT_ORIGIN_KIND=run
 mkdir -p \$L
 rm -f \$S/status
