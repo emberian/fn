@@ -276,7 +276,11 @@ range), which the caller runs under the owner mutex
       (fnn-fault "owner returned a malformed render window size"))
     (destructuring-bind (status rest buf)
         (fnn-call 'fn-splan-window plan size (fnn-make-render-buffer size))
-      (unless (eq status :ok)
+      ;; :cursor (lane join-f2-13): the window ended in front of a cursor
+      ;; effect, its octets written; the size above never reaches one (it
+      ;; is the octets of the effect the window starts in), so the status
+      ;; is :ok here, but a window that met one is whole as well.
+      (unless (member status '(:ok :cursor))
         (fnn-fault "owner returned non-octets in its served reply"))
       (let ((array (svref buf 0)) (fill (svref buf 1)))
         (values (if (= fill (length array))

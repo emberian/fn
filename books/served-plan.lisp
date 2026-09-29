@@ -41,6 +41,12 @@
 ; The host line: host/native/owner.lisp fnn-owner-render-next calls
 ; fn-splan-window with the connection's render buffer; fnn-owner-write-plan
 ; loops it until fn-splan-donep.
+; A CURSOR effect, (:over-cursor CUR), the served OVER/XOVER range's (lane
+; join-f2-13, PRF-1020): a window stops in front of it (status :cursor;
+; fn-splan-at-cursorp is the host's question before it sizes a window) and
+; the host runs its quantum under the owner mutex, books/served-plan-cursor
+; fn-splan-cursor-step, whose keystone fn-splan-cw-drain-is-the-expanded-
+; reply extends the second keystone above to plans with cursors.
 
 (in-package "ACL2")
 (include-book "served-reply-buffer")

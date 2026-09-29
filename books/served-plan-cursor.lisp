@@ -126,7 +126,8 @@
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
   (append (fn-splan-cur p) (fn-splan-cw-octets (fn-splan-rest p) wl fn-arena fn-cat)))
 
-; N rounds of the host's loop: a quantum at a cursor, else a window of W.
+; N rounds of the host's loop: a quantum at a cursor, else a window of W
+; octets (:malformed stops it, as the host faults).
 (defun fn-splan-cw-drain (p w wl n fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil :measure (nfix n)))
   (if (zp n)
@@ -139,7 +140,11 @@
             (mv status nil p)))
       (mv-let (status octets p2)
         (fn-splan-take (fn-splan-cur p) (fn-splan-rest p) w)
-        (if (equal status :ok)
+        ;; A window of W octets may end in front of a cursor (:cursor, the
+        ;; octets before it written): the next round runs its quantum.  The
+        ;; host's windows never do (fn-splan-window-size is the octets of
+        ;; the effect the window starts in), but the model takes every W.
+        (if (or (equal status :ok) (equal status :cursor))
             (mv-let (status2 more p3)
               (fn-splan-cw-drain p2 w wl (- n 1) fn-arena fn-cat)
               (mv status2 (append octets more) p3))

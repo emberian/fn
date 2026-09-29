@@ -33,7 +33,12 @@ from tests.native_harness import Client, Node, executable, native_image
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 FIXTURES = os.environ.get("FN_OPEN_DEPTH_FIXTURES")
-NAME = os.environ.get("FN_OVER_WINDOW_FIXTURE", "syn100k-2k")
+# The largest synthetic store the fixture directory holds (syn100k-2k when it
+# has been built; hbox holds n10k-2k, 10,000 articles: over a hundred quanta
+# at the default small window), or FN_OVER_WINDOW_FIXTURE.
+CANDIDATES = ("syn100k-2k", "n10k-2k")
+NAME = os.environ.get("FN_OVER_WINDOW_FIXTURE") or next(
+    (n for n in CANDIDATES if FIXTURES and (Path(FIXTURES) / n / "store").is_dir()), CANDIDATES[0])
 SMALL = os.environ.get("FN_OVER_WINDOW_SMALL", "97")
 WHOLE = "100000000"
 OPEN_SECONDS = 3600
