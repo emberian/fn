@@ -146,3 +146,33 @@
 (must-fail-checked
  (assert-event (equal (fn-auth-find-cred (as-row-login) (fn-auth-account-creds (list (as-row-junk))))
                       (fn-auth-account-cred (as-row-junk)))))
+
+; fn-acct-bound-row-succeeds.  Positive witness: robin's redeemed row is
+; bound, another invite is admitted at generation 3, and the row after it
+; is the same row (a successor).
+(defmacro as-digest () '(fn-acct-code-digest-text *as-code*))
+(defmacro as-invite-2 ()
+  '(fn-cfg-account-invite (fn-acct-code-digest-text (fn-record-string-octets "k3y-friend-0002-aaaa"))
+                          "operator" "2000000000"))
+(defmacro as-succeeds (v gen deltas)
+  `(fn-acct-row-successorp
+    (fn-cfg-account-row (fn-cfg-accounts ,v) (as-digest))
+    (fn-cfg-account-row (fn-cfg-accounts (fn-cfg-apply ,v ,gen *as-stamp* ,deltas)) (as-digest))))
+(assert-event (and (fn-acct-boundp (fn-cfg-accounts (as-v2)) (as-digest))
+                   (fn-cfg-admissiblep (as-v2) 3 *as-stamp* 0 510 (list (as-invite-2)))))
+(assert-event (as-succeeds (as-v2) 3 (list (as-invite-2))))
+; Hypothesis fn-acct-boundp removed: the pending row of generation 1 is not
+; bound; the admitted redeem changes it into a row that is no successor.
+(defmacro as-redeem () '(fn-acct-plan-delta (fn-acct-redeem-plan (as-v1) *as-stamp* *as-code*
+                                                                 *as-login* *as-password*
+                                                                 *as-salt* nil)))
+(assert-event (and (not (fn-acct-boundp (fn-cfg-accounts (as-v1)) (as-digest)))
+                   (fn-cfg-admissiblep (as-v1) 2 *as-stamp* 0 510 (list (as-redeem)))))
+(must-fail-checked (assert-event (as-succeeds (as-v1) 2 (list (as-redeem)))))
+; Hypothesis fn-cfg-admissiblep removed: re-inviting robin's digest is
+; refused (:account-digest-reused); applied anyway it replaces the bound row.
+(defmacro as-reinvite () '(fn-cfg-account-invite (as-digest) "operator" "2000000000"))
+(assert-event (and (fn-acct-boundp (fn-cfg-accounts (as-v2)) (as-digest))
+                   (equal (fn-cfg-admissible-reason (as-v2) 3 *as-stamp* 0 510 (list (as-reinvite)))
+                          :account-digest-reused)))
+(must-fail-checked (assert-event (as-succeeds (as-v2) 3 (list (as-reinvite)))))
