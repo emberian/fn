@@ -131,14 +131,18 @@ class Graph:
         return sum(self.cost_ms.get(book, 0.0) for book in books)
 
 
-def load_config(path: Path = CONFIG) -> list[dict]:
-    """The committed image set: a list of {"name", "roots"}; [] when absent."""
+def load_config(root: Path = ROOT) -> list[dict]:
+    """ROOT's committed image set, a list of {"name", "roots"}; [] when absent.
+
+    An image whose roots are not books of ROOT is dropped (a fixture tree)."""
+    path = root / CONFIG.relative_to(ROOT)
     if not path.is_file():
         return []
     value = json.loads(path.read_text(encoding="utf-8"))
     images = value.get("images") if isinstance(value, dict) else None
     return [image for image in images or []
-            if isinstance(image, dict) and image.get("name") and image.get("roots")]
+            if isinstance(image, dict) and image.get("name") and image.get("roots")
+            and all((root / f"{book}.lisp").is_file() for book in image["roots"])]
 
 
 def book_directory(book: str) -> str | None:
@@ -221,7 +225,7 @@ class Runner:
         import concurrent.futures
         import threading
         self.root, self.acl2, self.run, self.slot = root, acl2, run, slot
-        self.images = load_config() if images is None else images
+        self.images = load_config(root) if images is None else images
         self.directory = run_dir / "images"
         self.graph = Graph(root)
         self.pending = set(books)          # not yet started

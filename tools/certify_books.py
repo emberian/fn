@@ -1249,7 +1249,7 @@ def main() -> int:
     # this tree, handed to each book as they become available.
     images = None
     if (not args.pcert and args.images == "on" and args.books
-            and cert_images.load_config()):
+            and cert_images.load_config(ROOT)):
         images = cert_images.Runner(
             ROOT, run_dir, acl2, args.books,
             run=lambda image_acl2, driver, timeout: run_acl2(image_acl2, driver, timeout),
