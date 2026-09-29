@@ -47,7 +47,7 @@
 
 ; A new anchor carries the generation of the particular earlier immutable
 ; administrator installation, separately from its own Store generation.
-; The first eight fields remain the historical v1 anchor shape.
+; The first eight fields are the anchor core `fn-th-commit-anchor' reads.
 (defun fn-th-anchor-with-install-generation (anchor installed)
   (declare (xargs :guard t))
   (list (fn-th-at 0 anchor) (fn-th-at 1 anchor)
@@ -56,7 +56,7 @@
         (fn-th-at 6 anchor) (fn-th-at 7 anchor)
         (fn-th-at 3 installed)))
 
-(defun fn-th-anchor-v1-fields (anchor)
+(defun fn-th-anchor-core-fields (anchor)
   (declare (xargs :guard t))
   (list (fn-th-at 0 anchor) (fn-th-at 1 anchor)
         (fn-th-at 2 anchor) (fn-th-at 3 anchor)
@@ -83,7 +83,7 @@
 
 ; Recovery of a v2 anchor compares both the administrator ID and the exact
 ; earlier installation generation. It does not reauthorize history against
-; the current process UID. V1 history continues to use fn-th-commit-anchor.
+; the current process UID.
 (defun fn-th-commit-anchor-installed-v2
     (topic-event accepted snapshot installed anchors)
   (declare (xargs :guard t))
@@ -93,7 +93,7 @@
            (fn-th-local-admin-eventp installed)
            (equal (fn-th-at 7 topic-event) (fn-th-at 5 installed))
            (equal (fn-th-at 8 topic-event) (fn-th-at 3 installed)))
-      (fn-th-commit-anchor (fn-th-anchor-v1-fields topic-event)
+      (fn-th-commit-anchor (fn-th-anchor-core-fields topic-event)
                            accepted snapshot (fn-th-at 5 installed) anchors)
     (fn-stmt-error :administrator-generation)))
 

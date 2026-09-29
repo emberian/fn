@@ -155,7 +155,34 @@ def validate(root: Path, acl2: Path, roots: list[str], timeout: int = 1800,
         reason = "ACL2 load did not print its ready marker"
     else:
         reason = ""
+    if reason:
+        first = first_failed_book(output)
+        if first:
+            reason += "; " + first
     return LoadResult(not reason, output, completed.returncode, reason)
+
+
+BOOK_PATH = re.compile(r"((?:books|tests/acl2)/[A-Za-z0-9_./-]+?)(?:\.(?:cert|lisp|fasl|port))?"
+                       r"(?=[\"'\s)|,;:]|$)")
+
+
+def first_failed_book(output: str, window: int = 12) -> str:
+    """The first book the load failed on and the failure's line, from the
+    transcript: the book named nearest the first failure marker (at it, then
+    the lines after, then before).  obstructions-7 item 62: a failed acquire
+    said only "ACL2 load printed ACL2 Error" of a 700-book load."""
+    lines = output.splitlines()
+    at = next((index for index, line in enumerate(lines)
+               if any(marker in line for marker in FAILURE_MARKERS)), None)
+    if at is None:
+        return ""
+    order = [at] + list(range(at + 1, min(len(lines), at + window))) + \
+        list(range(at - 1, max(-1, at - window), -1))
+    for index in order:
+        found = BOOK_PATH.search(lines[index])
+        if found:
+            return "first failed book {} ({})".format(found.group(1), lines[at].strip()[:200])
+    return "first failure: " + lines[at].strip()[:200]
 
 
 @dataclass
