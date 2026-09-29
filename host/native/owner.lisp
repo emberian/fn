@@ -3592,11 +3592,11 @@ the crash keystone) and serving continues."
   ;; (fnn-owner-maybe-publish); the count is returned below.
   (unwind-protect
   (destructuring-bind (base configs records record-octets count suffix budget frontier free revision
-                        base-payloads ident)
+                        base-payloads)
       captured
     (declare (ignore count))
     (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil)
-          (payloads nil) (image nil)
+          (payloads nil)
           ;; the writer's segment: ACL2's choice under the record bound R the
           ;; capture handed over (fn-ockp-segment-octets, the verb's derivation)
           (segment (fnn-core 'fn-ockp-segment-octets record-octets
@@ -3610,22 +3610,10 @@ the crash keystone) and serving continues."
               ;; canonical rows and the file opens with their canonical
               ;; payloads (host/owner-host.lisp fn-owner-sco-prepare, which
               ;; READS the live arena below the captured count).
-              ;; NEXT (fn-owner-sco-next), the history image of NEXT's
-              ;; records with its binding into the F row's position
-              ;; (host/native/io.lisp fnn-history-image-build), then the
-              ;; setup over that position and the space the image leaves
-              ;; (fn-owner-sco-setup-of): fn-owner-sco-prepare in two halves.
               (destructuring-bind (setup prepared-next n arun)
-                  (let ((prepared (fnn-core 'fn-owner-sco-next base base-payloads configs records
-                                            (fnn-checkpoint-walk records) segment (fnn-live-arena))))
-                    (multiple-value-bind (position2 image2)
-                        (if prepared
-                            (fnn-history-image-build (fnn-core 'fn-sco-records (first prepared))
-                                                     (first ident) (second ident) position)
-                            (values position nil))
-                      (setq image image2)
-                      (fnn-core 'fn-owner-sco-setup-of prepared frontier revision position2 segment
-                                budget (max 0 (- free (fnn-history-image-octets image))))))
+                  (fnn-core 'fn-owner-sco-prepare base base-payloads configs records
+                            frontier revision position segment budget free
+                            (fnn-checkpoint-walk records) (fnn-live-arena))
                 (unless (and (consp setup) (= (length setup) 7))
                   (fnn-fault "owner returned a malformed checkpoint setup"))
                 (setq next prepared-next payloads n)
@@ -3649,7 +3637,6 @@ the crash keystone) and serving continues."
                                 (fnn-state-checkpoint-write
                                  store
                                  (lambda (fd)
-                                   (fnn-history-image-write fd image)
                                    (setq steps (fnn-checkpoint-write-steps
                                                 fd setup segment sequence (fnn-store-config store)
                                                 (fnn-live-octets-pub) arun))))
@@ -3742,7 +3729,7 @@ reads run as a :control quantum; the thread's registration is the roster's."
                                                 (fnn-checkpoint-budget-test-override nil)
                                                 free (fnn-checkpoint-revision)))))
             (unless (or (eq position :failed)
-                        (and (true-listp captured) (= (length captured) 12)))
+                        (and (true-listp captured) (= (length captured) 11)))
               (fnn-fault "owner returned a malformed checkpoint capture"))
             ;; The publication reads the live arena outside the mutex, so it
             ;; is counted as such a reader here, under the mutex, before its

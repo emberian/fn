@@ -542,13 +542,3 @@
   (declare (xargs :stobjs state :mode :program))
   (let ((state (f-put-global 'fn-store-genesis verdict state)))
     (mv nil t state)))
-
-;; The store's identity the history image's binding names
-;; (books/history-image-binding.lisp): the genesis record's node identity and
-;; the history salt the open answered (fn-gen-verdict-salt), or (NIL 0) when
-;; the open installed none.
-(defun fn-store-genesis-ident (state)
-  (declare (xargs :stobjs state :mode :program))
-  (let ((v (and (boundp-global 'fn-store-genesis state) (f-get-global 'fn-store-genesis state))))
-    (value (list (if (and (consp v) (equal (car v) :genesis) (consp (cdr v))) (fn-gen-node (cadr v)) nil)
-                 (fn-gen-verdict-salt v)))))
