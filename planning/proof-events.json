@@ -13536,10 +13536,6 @@
         {
           "kind": "theorem",
           "name": "fn-omr-transactions-at-most-bounds-the-count"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-omr-stopped-line-is-header-and-octets-by-definition"
         }
       ]
     },
