@@ -43,8 +43,9 @@
 ; A-CHECKPOINT-PUBLICATION.  (fn-assume-checkpoint-publishedp tables configs)
 ; holds of the tables a verified checkpoint file loaded to, under the
 ; configuration history CONFIGS the open passes; fn-assume-checkpoint-
-; publication names the publication: (list BASE RECORDS FRONTIER REVISION
-; LOG), the owner's next-checkpoint base, the records of the history it
+; publication names the publication: (list PREFIX RECORDS FRONTIER REVISION
+; LOG), the records of the base it extended (the previous publication's
+; capture, (fn-sco-capture configs prefix)), the records of the history it
 ; captured, its frontier, its revision and its log position.
 (encapsulate
   (((fn-assume-checkpoint-publishedp * *) => *)
@@ -58,11 +59,12 @@
   (defthm fn-assume-checkpoint-publication-is-a-publication
     (implies (fn-assume-checkpoint-publishedp tables configs)
              (let* ((p (fn-assume-checkpoint-publication tables configs))
-                    (base (nth 0 p)) (records (nth 1 p)) (frontier (nth 2 p))
+                    (prefix (nth 0 p)) (records (nth 1 p)) (frontier (nth 2 p))
                     (revision (nth 3 p)) (log (nth 4 p)))
                (and (equal tables
                            (fn-sct-tables-of-capture
-                            (fn-ock-next-checkpoint base configs records)
+                            (fn-ock-next-checkpoint (fn-sco-capture configs prefix)
+                                                    configs records)
                             frontier revision log))
                     (equal (fn-sn-open-kind
                             (fn-cpo-open-observed configs frontier records))
@@ -81,7 +83,7 @@
   :hints (("Goal" :do-not-induct t
            :use (fn-assume-checkpoint-publication-is-a-publication
                  (:instance fn-sfp-open-from-publication-is-the-twin
-                            (base (nth 0 (fn-assume-checkpoint-publication tables configs)))
+                            (prefix (nth 0 (fn-assume-checkpoint-publication tables configs)))
                             (records (nth 1 (fn-assume-checkpoint-publication tables configs)))
                             (frontier (nth 2 (fn-assume-checkpoint-publication tables configs)))
                             (revision (nth 3 (fn-assume-checkpoint-publication tables configs)))

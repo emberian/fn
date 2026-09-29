@@ -47,7 +47,8 @@
 (defconst *sfp-t-f* 9)
 (defconst *sfp-t-q* (list *sfp-t-article-2*))
 ; The owner's first publication: no base (the capture of the empty prefix).
-(defconst *sfp-t-base* (fn-sco-capture *sfp-t-configs* nil))
+(defconst *sfp-t-prefix* nil)
+(defconst *sfp-t-base* (fn-sco-capture *sfp-t-configs* *sfp-t-prefix*))
 
 ; The publication, its tables, and what the open loads from them.
 (defconst *sfp-t-published*
@@ -145,18 +146,20 @@
 ; (the second conjunct is false there), so a candidate that admitted them
 ; would violate the constraint -- the assumption is restrictive, not prose.
 (assert-event
- (let ((p (list *sfp-t-base* *sfp-t-records* *sfp-t-frontier* "rev-sfp" nil)))
+ (let ((p (list *sfp-t-prefix* *sfp-t-records* *sfp-t-frontier* "rev-sfp" nil)))
    (and (equal *sfp-t-tables*
                (fn-sct-tables-of-capture
-                (fn-ock-next-checkpoint (nth 0 p) *sfp-t-configs* (nth 1 p))
+                (fn-ock-next-checkpoint (fn-sco-capture *sfp-t-configs* (nth 0 p))
+                                        *sfp-t-configs* (nth 1 p))
                 (nth 2 p) (nth 3 p) (nth 4 p)))
         (equal (fn-sn-open-kind (fn-cpo-open-observed *sfp-t-configs* (nth 2 p) (nth 1 p)))
                :ok))))
 (assert-event
- (let ((p (list *sfp-t-base* *sfp-t-bad-records* *sfp-t-frontier* "rev-sfp" nil)))
+ (let ((p (list *sfp-t-prefix* *sfp-t-bad-records* *sfp-t-frontier* "rev-sfp" nil)))
    (and (equal *sfp-t-bad-tables*
                (fn-sct-tables-of-capture
-                (fn-ock-next-checkpoint (nth 0 p) *sfp-t-configs* (nth 1 p))
+                (fn-ock-next-checkpoint (fn-sco-capture *sfp-t-configs* (nth 0 p))
+                                        *sfp-t-configs* (nth 1 p))
                 (nth 2 p) (nth 3 p) (nth 4 p)))
         (not (equal (fn-sn-open-kind (fn-cpo-open-observed *sfp-t-configs* (nth 2 p) (nth 1 p)))
                     :ok)))))

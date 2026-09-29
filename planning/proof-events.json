@@ -14380,6 +14380,26 @@
         {
           "kind": "theorem",
           "name": "fn-assume-checkpoint-publication-is-a-publication"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-extend-capture-by-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-finalize-of-capture-is-the-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-next-of-capture-tables"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-observed-history-bound-natp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-observed-history-is-a-true-list"
         }
       ]
     }
