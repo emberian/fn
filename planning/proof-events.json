@@ -3595,6 +3595,10 @@
         {
           "kind": "theorem",
           "name": "fn-ctl-served-status-is-control-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-of-a-withdrawn-article-answers-430-withdrawn"
         }
       ]
     },
@@ -5808,6 +5812,10 @@
         {
           "kind": "theorem",
           "name": "fn-nctrl-reason-word-of-a-reason-is-not-none"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-host-refusal-names-its-class"
         }
       ]
     },

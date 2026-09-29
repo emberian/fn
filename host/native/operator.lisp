@@ -428,31 +428,45 @@ observation into the outcome and this function only carries it out."
                                     "account" condition)
           code)))))
 
-;;; PKT-597: `account hash LOGIN'.  The host reads the current key file
-;;; STORE/keys/node-secret.key through fnn-node-secret-read-entry (the checks
-;;; the owner makes at start; ACL2 parses it), ACL2 computes the
-;;; posting-account value of LOGIN under the current epoch's
-;;; `fn/posting-account/v1' key
-;;; (books/injection-info-policy.lisp fn-ipp-account-hash), and the value is
+;;; PKT-597, PKT-786: `account hash LOGIN'.  The host reads the current key
+;;; file STORE/keys/node-secret.key through fnn-node-secret-read-entry (the
+;;; checks the owner makes at start; ACL2 parses it) and the configuration's
+;;; credential file under the store profile's max-credentials (the owner's
+;;; bounded read, fnn-native-auth-read); ACL2 resolves LOGIN to its account
+;;; (the principal the credential file names, else the invitation-code
+;;; account's local principal) and computes that account's posting-account
+;;; value under the current epoch's `fn/posting-account/v1' key
+;;; (books/native-operator.lisp fn-nop-account-hash), and the value is
 ;;; printed to stdout.  The secret is never printed; nothing is written.
 (defun fnn-operator-execute-account-hash (result)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result))
-        (login (fnn-core 'fn-native-operator-host-result-account-hash-login result)))
+        (login (fnn-core 'fn-native-operator-host-result-account-hash-login result))
+        (auth-path (fnn-octets-string
+                    (fnn-core 'fn-native-operator-host-result-account-hash-auth-path-octets
+                              result))))
     (handler-case
         (let* ((store (make-fnn-store root :writable nil))
                (path (fnn-node-secret-path store))
                (current (or (fnn-node-secret-read-entry path "node secret")
                             (fnn-refuse "node secret ~a is missing: run `store ~a node-secret create' once"
-                                        path root))))
+                                        path root)))
+               (max-credentials (fnn-operator-store-max-credentials root)))
+          (multiple-value-bind (octets presentp)
+              (fnn-native-auth-read auth-path
+                                    (fnn-core 'fn-native-auth-host-max-octets
+                                              max-credentials))
           (let ((text (fnn-core 'fn-native-operator-host-account-hash-text
-                                (list current) login)))
+                                (list current) login octets presentp
+                                max-credentials)))
+            (when (eq text :credential-file-refused)
+              (fnn-refuse "credential file ~a is refused" auth-path))
             (unless (stringp text)
               (fnn-refuse "node secret ~a is not a node secret" path))
             (write-sequence (fnn-octets (fnn-ascii-octet-list (format nil "~a~%" text)))
                             *fnn-stdout*)
             (finish-output *fnn-stdout*)
             (fnn-operator-emit-status :accepted "account")
-            +fnn-exit-ok+))
+            +fnn-exit-ok+)))
       (error (condition)
         (let ((code (fnn-exit-code-for condition)))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)

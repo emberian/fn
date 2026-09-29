@@ -882,7 +882,10 @@
                                              (theory 'minimal-theory))
            :use ((:instance fn-scj-catalogp-of-finish
                             (archive (fn-own-view-archive v))
-                            (index (if (fn-own-view-group-index v)
+                            (index (if (or (fn-own-view-group-index v)
+                                           (and (fn-own-view-control v)
+                                                (not (consp (fn-state-articles
+                                                             (fn-own-view-archive v))))))
                                        (fn-gidx-pin-with-control (fn-own-view-index v)
                                                                  (fn-own-view-group-index v)
                                                                  (fn-own-view-control v))
