@@ -1688,6 +1688,17 @@ check:
 # every error-arm observation is one of the program's error constants.  A
 # source check; it states what it cannot decide.  Mechanical, no ACL2.
 	@$(CHECK_STEP) $(PYTHON) tools/native_program_check.py
+# Every native module's image-free checks (PKT-540/569, Q7c): the source-text
+# assertions of 29 modules went red only on the next image.  Run in a scratch
+# root with no build/ and no FN_* variable, so image tests skip by their own
+# reason and a module that fails, imports nothing or collects nothing is red.
+	@$(CHECK_STEP) $(PYTHON) tools/native_source_check.py
+# The toolchain's system books (Q7h): every `:dir :system' include of the tree
+# and the std/lists extras are certified in this box's ACL2 (FN_ACL2), or the
+# step names the missing ones (tools/system_books.py certify); NOT RUN is red.
+	@$(CHECK_STEP) $(PYTHON) tools/system_books.py check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_system_books
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_source_check_native
 # No Python on the path a deployed node executes (D35): the process sites in
 # host/, the libraries the image loads, the shipped launcher and service files.
 	@$(CHECK_STEP) $(PYTHON) tools/runpath_check.py --quiet
@@ -1829,6 +1840,7 @@ check:
 # no ACL2 (lane lane-tools-2, after payload-lz-record was outside the world).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --world
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_world
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_forward
 # Every host/ definition some file reaches (a raw file, a book, a bridge, a
 # launcher, a registry row): a new one nothing calls is WARNED, not refused,
 # unless tools/host_callers_baseline.json names why it stays (lane
@@ -1902,6 +1914,9 @@ check:
 # list (shrink-only), an unfiled requirement in planning/families.json, and
 # a gaps file that is not what the coverage renders.
 	@$(CHECK_STEP) $(PYTHON) tools/coverage.py check
+# A diff that changes one side of a reference <-> executable twin pair only
+# (planning/twins.json: mbe, defattach, naming; Q7i): flagged, not refused.
+	@$(CHECK_STEP) $(PYTHON) tools/coverage.py twins --diff auto
 	@$(CHECK_STEP) $(PYTHON) tools/event_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/alphabet_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/premise_audit.py --summary --strict

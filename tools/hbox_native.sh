@@ -83,7 +83,11 @@
 # published for dev commit SHA from hbox:/tank/fn/images/SHA, verified by its
 # SHA256SUMS; layout and publishing in tools/image_set.py; --images names
 # which of its production, developer, dtn, dtn-developer to link; the
-# images' identity source is SHA, the tree is REV), --env NAME=VALUE (repeatable; paths may use $T, the tree),
+# images' identity source is SHA, the tree is REV), --reuse-image RUN (no
+# certify and no build: link the images an earlier run built, RUN =
+# NAME/native-LABEL or a /tank/fn/scratch path, from RUN/tree/build; their
+# identity source is the one RUN's log names; `tools/image_set.py link-run`),
+# --env NAME=VALUE (repeatable; paths may use $T, the tree),
 # --deadline S (default 5400), --dry-run (print the box script; the refusal
 # and the per-module environment show there).  Options may come before or
 # after REV and the modules.
@@ -126,6 +130,7 @@ DEADLINE=5400
 ENVS=
 POSITIONAL=
 IMAGE_SET=
+REUSE=
 usage() { sed -n '2,95p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 while [ $# -gt 0 ]; do
     case $1 in
@@ -141,6 +146,13 @@ while [ $# -gt 0 ]; do
         --image-set)
             case $2 in *[!0-9a-f]*|'') echo "hbox_native: --image-set takes a commit sha" >&2; exit 2 ;; esac
             IMAGE_SET=$2; BUILD=0; shift 2 ;;
+        --reuse-image)
+            case $2 in /tank/fn/scratch/*) REUSE=$2 ;; */native-*) REUSE=/tank/fn/scratch/$2 ;;
+                native-*) REUSE=__NAME__/$2 ;;
+                *) echo "hbox_native: --reuse-image takes NAME/native-LABEL or a /tank/fn/scratch path" >&2; exit 2 ;;
+            esac
+            case $REUSE in *..*|*[!A-Za-z0-9._/-]*) echo "hbox_native: bad --reuse-image $2" >&2; exit 2 ;; esac
+            BUILD=0; shift 2 ;;
         --detach) DETACH=1; shift ;;
         --dry-run) DRY=1; shift ;;
         --deadline) DEADLINE=$2; shift 2 ;;
@@ -193,12 +205,17 @@ for image in $(echo "$IMAGES" | tr ',' ' '); do
         *) echo "hbox_native: --images takes developer,production,dtn,dtn-developer,reference,developer-stripped,prof" >&2; exit 2 ;;
     esac
 done
-if [ -n "$IMAGE_SET" ]; then
+if [ -n "$IMAGE_SET" ] && [ -n "$REUSE" ]; then
+    echo "hbox_native: --image-set and --reuse-image both name the images; give one" >&2; exit 2
+fi
+if [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ]; then
     for image in $(echo "$IMAGES" | tr ',' ' '); do
         case $image in production|developer|dtn|dtn-developer) ;;
             *) echo "hbox_native: an image set holds production, developer, dtn and dtn-developer, not $image" >&2; exit 2 ;;
         esac
     done
+fi
+if [ -n "$IMAGE_SET" ]; then
     IMAGE_SET=$(git -C "$HERE" rev-parse --verify --quiet "$IMAGE_SET^{commit}" || echo "$IMAGE_SET")
     case $IMAGE_SET in *[!0-9a-f]*) exit 2 ;; esac
     [ ${#IMAGE_SET} -eq 40 ] || { echo "hbox_native: --image-set $IMAGE_SET: not a commit here; give the full sha" >&2; exit 2; }
@@ -226,6 +243,13 @@ case $LABEL in ''|*[!A-Za-z0-9._-]*) echo "hbox_native: bad --label $LABEL" >&2;
 # The images' own source is the set's commit, whatever tree runs the tests.
 [ -z "$IMAGE_SET" ] || SOURCE_ID=$IMAGE_SET
 S=/tank/fn/scratch/$NAME/native-$LABEL
+case $REUSE in __NAME__/*) REUSE=/tank/fn/scratch/$NAME/${REUSE#__NAME__/} ;; esac
+if [ -n "$REUSE" ]; then
+    [ "$REUSE" != "$S" ] || { echo "hbox_native: --reuse-image $REUSE is this run's own tree (use --no-build)" >&2; exit 2; }
+    # The images' identity source is the reused run's, read on the box from
+    # the file link-run writes (its run.log's `== source` line).
+    SOURCE_ID='$(cat build/REUSED_SOURCE)'
+fi
 case $S in /tank/fn/node*) echo "hbox_native: refusing the live node path" >&2; exit 2 ;; esac
 
 # The box half.  Every step logs to $S/logs and a failure stops the run with
@@ -291,6 +315,12 @@ step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$tool
 step certify swarm-build python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
 step acquire python3 tools/proof_artifacts.py acquire --profile default --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
 step validate python3 tools/proof_artifacts.py validate --profile default --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
+# The ld host files in the image's order, before any image build: statically
+# (a call before its definition, seconds), then through ACL2 in the certified
+# world (tools/host_check.py's default).  limits-live-4 and online-reclaim-4
+# each lost an image build to a forward reference in host/owner-host.lisp.
+step host-forward python3 tools/host_check.py --forward
+step host-ld env FN_ACL2="${IMAGE_ACL2:-\$ACL2}" python3 tools/host_check.py
 BOX
         if [ $DTN -eq 1 ]; then
             # hbox-image-build.sh's dtn acquire/validate, before a DTN image.
@@ -322,6 +352,12 @@ BOX
 step image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log swarm-build sh tools/build_native_host.sh
 BOX
         done
+    fi
+    if [ -n "$REUSE" ]; then
+        cat <<BOX
+echo "== images: reused from the earlier run $REUSE"
+step image-reuse python3 \$S/bin/image_set.py link-run $REUSE \$T $(echo "$IMAGES" | tr ',' ' ')
+BOX
     fi
     if [ -n "$IMAGE_SET" ]; then
         cat <<BOX
@@ -385,12 +421,17 @@ cd "$T" || exit 0
 tstep() {
     name=$1; shift
     echo "== $name $(date -u +%H:%M:%SZ) load $(cut -d' ' -f1-3 /proc/loadavg)"
-    "$@" > $L/$name.log 2>&1
+    # A failed test's processes' stderr lands in $L/stderr/$name (and its
+    # digest in the module log after the failure): tools/test_budget.py.
+    FN_NATIVE_STDERR_DIR=$L/stderr/$name "$@" > $L/$name.log 2>&1
     rc=$?
     verdict=$(python3 tools/test_budget.py --verdict $L/$name.log)
     vrc=$?
     [ $rc -ne 0 ] || rc=$vrc
     echo "   $name exit $rc $(date -u +%H:%M:%SZ): $verdict ($L/$name.log)"
+    if [ -d $L/stderr/$name ]; then
+        echo "   $name: stderr of each failed test's processes in $L/stderr/$name ($(ls $L/stderr/$name | wc -l) files)"
+    fi
     echo $rc > $S/rc/$name
 }
 case $1 in
@@ -452,7 +493,7 @@ else
         || { echo "hbox_native: shipping $FULL failed" >&2; exit 3; }
 fi
 box_script "$@" | ssh "$HOST" "cat > $S/run.sh" || exit 3
-if [ -n "$IMAGE_SET" ]; then
+if [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ]; then
     ssh "$HOST" "mkdir -p $S/bin && cat > $S/bin/image_set.py" < "$FN_HBOX_NATIVE_COPY/image_set.py" || exit 3
 fi
 ssh -n "$HOST" "rm -f $S/status; nohup sh $S/run.sh > $S/run.log 2>&1 < /dev/null &" || exit 3

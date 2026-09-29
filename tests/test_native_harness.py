@@ -209,5 +209,64 @@ class ClientTests(unittest.TestCase):
                                b"Subject: s\r\nMessage-ID: <m@x>\r\n\r\nb\r\n")
 
 
+
+class FailedTestStderrTests(unittest.TestCase):
+    """obstructions-3 item 15: a failed native test prints and keeps the
+    stderr of every process it started; a passing test's are dropped."""
+
+    def run_cases(self, keep):
+        import io
+        import os
+        import tempfile
+        from unittest import mock
+        from tools import test_budget
+
+        class Cases(unittest.TestCase):
+            def test_refusal(self):
+                process = native_harness.start(
+                    [sys.executable, "-c",
+                     "import sys; sys.stderr.write('owner refused: heap figure 802 GB\\n')"])
+                process.wait(timeout=30)
+                process.stop()
+                self.fail("the owner did not start")
+
+            def test_filed(self):
+                with tempfile.TemporaryDirectory() as scratch:
+                    log = os.path.join(scratch, "owner.stderr")
+                    process = native_harness.start_filed(
+                        [sys.executable, "-c",
+                         "import sys; sys.stderr.write('filed refusal line\\n')"], log)
+                    process.wait(timeout=30)
+                    process.stdout.close()
+                    process.stderr.close()
+                # the directory, and the file, are gone here
+                raise RuntimeError("after the temp dir went")
+
+            def test_passes(self):
+                native_harness.start([sys.executable, "-c", "pass"]).stop()
+
+        stream = io.StringIO()
+        suite = unittest.defaultTestLoader.loadTestsFromTestCase(Cases)
+        with mock.patch.dict(os.environ, {"FN_NATIVE_STDERR_DIR": keep}):
+            unittest.TextTestRunner(stream=stream, resultclass=test_budget._TimedResult,
+                                    verbosity=0).run(suite)
+        return stream.getvalue()
+
+    def test_the_failed_tests_stderr_is_printed_and_kept(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as keep:
+            out = self.run_cases(keep)
+            self.assertIn("owner refused: heap figure 802 GB", out)
+            self.assertIn("filed refusal line", out)
+            self.assertNotIn("test_passes process", out)
+            kept = sorted(path.name for path in Path(keep).iterdir())
+            self.assertEqual(len(kept), 2, kept)
+            self.assertTrue(any(name.startswith("Cases.test_refusal-1-") for name in kept), kept)
+            text = b"".join(path.read_bytes() for path in Path(keep).iterdir())
+            self.assertIn(b"filed refusal line", text)
+        self.assertEqual(native_harness._STARTED, {})
+
+
 if __name__ == "__main__":
     unittest.main()

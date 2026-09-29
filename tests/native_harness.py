@@ -284,7 +284,98 @@ def start(argv, *, limit=DEFAULT_LIMIT, **popen):
     popen.setdefault("bufsize", 0)
     process = subprocess.Popen([str(word) for word in argv], stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, **popen)
-    return NativeProcess(process, limit=limit)
+    native = NativeProcess(process, limit=limit)
+    _register(argv, native)
+    return native
+
+
+# --- Stderr of a failed test ---------------------------------------------------
+#
+# Every process `start` or `start_filed` begins is recorded under the test
+# that started it.  When that test fails, tools/test_budget.py (the runner
+# hbox_native uses) prints each process's stderr digest after the failure
+# and writes the whole stderr to $FN_NATIVE_STDERR_DIR/<test>-<n>-<label>.stderr:
+# the owner's reason for refusing was on a stderr deleted with the test's
+# temporary directory (entry-guards-2, feed-queue, 2026-09-28/29).  A
+# passing test's records are dropped.
+
+_STARTED = {}
+
+
+def current_test_id():
+    """The id of the unittest.TestCase whose method is on the stack, or None."""
+    import sys
+    import unittest
+    frame = sys._getframe(1)
+    while frame is not None:
+        candidate = frame.f_locals.get("self")
+        if isinstance(candidate, unittest.TestCase):
+            return candidate.id()
+        frame = frame.f_back
+    return None
+
+
+def _register(argv, process, path=None):
+    test = current_test_id()
+    if test is None:
+        return
+    words = [str(word) for word in argv]
+    label = "-".join([Path(words[0]).name] + [w.lstrip("-") for w in words[1:3]
+                                              if not w.startswith("/")])
+    # A file log is read through a handle of our own: the test's cleanup
+    # may delete the file (its temporary directory) before the failure is
+    # reported, and an open handle keeps the bytes.
+    handle = None
+    if path is not None:
+        try:
+            handle = open(path, "rb")
+        except OSError:
+            handle = None
+    if test not in _STARTED:
+        # Tests run one at a time in a process: another test's records are
+        # from a test that has ended (a runner other than test_budget's
+        # never forgets them), so at most one test's processes are held.
+        for other in list(_STARTED):
+            forget(other)
+    _STARTED.setdefault(test, []).append((re.sub(r"[^A-Za-z0-9._-]", "_", label),
+                                          process, handle))
+
+
+def _stderr_bytes(process, handle):
+    if isinstance(process, NativeProcess):
+        return process.stderr.since(0)
+    if handle is not None:
+        try:
+            handle.seek(0)
+            return handle.read()
+        except (OSError, ValueError):
+            pass
+    return b""
+
+
+def failure_stderr(test, keep=None):
+    """Each process TEST started: its label, exit and stderr digest; the whole
+    stderr written under KEEP when given.  Empty when it started none."""
+    parts = []
+    for number, (label, process, handle) in enumerate(_STARTED.get(test, ()), 1):
+        text = _stderr_bytes(process, handle)
+        where = ""
+        if keep:
+            directory = Path(keep)
+            directory.mkdir(parents=True, exist_ok=True)
+            path = directory / "{}-{}-{}.stderr".format(
+                ".".join(test.split(".")[-2:]), number, label)
+            path.write_bytes(text)
+            where = " (kept: {})".format(path)
+        parts.append("-- {} process {} [{}] exit={}{}\n{}".format(
+            test, number, label, process.poll(), where, stderr_digest(text)))
+    return "\n".join(parts)
+
+
+def forget(test):
+    for _, _, handle in _STARTED.pop(test, ()):
+        if handle is not None:
+            handle.close()
 
 
 def stop_and_diagnostics(process, timeout=10, stderr_path=None):
@@ -531,6 +622,7 @@ def start_filed(argv, log_path, **popen):
                                    bufsize=0, **popen)
     process.stderr = open(log_path, "rb")
     process.stderr_path = log_path
+    _register(argv, process, log_path)
     return process
 
 
@@ -809,6 +901,20 @@ def requires(*images):
     import unittest
     absent = [str(image) for image in images if not executable(image)]
     return unittest.skipUnless(not absent, "native image required: {}".format(", ".join(absent)))
+
+
+def slow(reason):
+    """unittest.skipUnless FN_RUN_SLOW=1, naming why the test is slow.
+
+    PKT-722: a test that takes most of an hour (the peer-row growth's 1,100
+    requests, 6,440 s on a loaded hbox) dominates every lane's native run.
+    Lanes skip it, reported as a skip with this reason, never as a pass;
+    batches and qualification run it with `tools/hbox_native.sh --env
+    FN_RUN_SLOW=1'."""
+    import unittest
+    return unittest.skipUnless(
+        os.environ.get("FN_RUN_SLOW") == "1",
+        "slow ({}): batches and qualification run it with --env FN_RUN_SLOW=1".format(reason))
 
 
 def deployed_stack(env):

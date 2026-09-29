@@ -14,7 +14,7 @@
 ;
 ; `fn-lace-canonicalp` is `Lace.Canonical` (Blocklace.lean:80): no two
 ; distinct statements share an id.  `fn-lace-cross-canonicalp` is
-; `CrossCanonical` (LaceMerge.lean:247, minidregg LaceMerge.lean §3): the two
+; `CrossCanonical` (LaceMerge.lean:247, minidregg LaceMerge.lean section 3): the two
 ; laces resolve every shared id to the same statement.  Canonicity is the
 ; diagonal of cross-canonicity, exactly as `crossCanonical_self` says.  Both
 ; are explicit structural hypotheses a node can CHECK on the statements it

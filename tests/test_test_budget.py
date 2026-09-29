@@ -78,6 +78,16 @@ class TestBudgetRunner(unittest.TestCase):
                 def test_gated(self):
                     pass
         """))
+        # correctness-remainder's bounds_blob: an unguarded unittest.main()
+        # inside a class body read the runner's argv and exited 2.
+        (package / "exits.py").write_text(textwrap.dedent("""
+            import unittest
+            class Exits(unittest.TestCase):
+                def test_x(self):
+                    pass
+                unittest.main()
+        """))
+        (package / "empty.py").write_text("import unittest\n")
         self.environment = mock.patch.dict(
             os.environ, {"PYTHONPATH": str(self.directory)
                          + os.pathsep + os.environ.get("PYTHONPATH", "")})
@@ -160,7 +170,7 @@ class TestBudgetRunner(unittest.TestCase):
         self.assertFalse(record["all_skipped"])
         self.assertEqual((record["executed"], record["skipped"]), (1, 1))
         line = test_budget.summarize(record, 1)
-        self.assertIn("ok (1 skipped)", line)
+        self.assertIn("ok (1 skipped: NOT RUN, not passed)", line)
         self.assertIn("opt-in unset", line)
 
     def test_all_skipped_has_its_own_exit_bit(self):
@@ -180,7 +190,10 @@ class TestBudgetRunner(unittest.TestCase):
     def test_verdict_of_a_one_log(self):
         for name, code, needle in (("skipping", 4, "SKIPPED (2 of 2"),
                                    ("partial", 0, "OK (1 ran, 1 skipped)"),
-                                   ("failing", 1, "FAILED (1 failures")):
+                                   ("failing", 1, "FAILED (1 failures"),
+                                   ("exits", 1, "did not load: importing budgetcases.exits "
+                                                "exited with SystemExit(2)"),
+                                   ("empty", 1, "FAILED (0 tests collected")):
             log = self.directory / f"{name}.log"
             with open(log, "wb") as out:
                 subprocess.run([sys.executable, str(ROOT / "tools" / "test_budget.py"),
@@ -191,6 +204,12 @@ class TestBudgetRunner(unittest.TestCase):
                 cwd=ROOT, capture_output=True, text=True, timeout=60)
             self.assertEqual(answer.returncode, code, answer.stdout)
             self.assertIn(needle, answer.stdout)
+
+    def test_a_module_with_no_test_or_that_exits_on_import_is_not_a_pass(self):
+        for name in ("empty", "exits"):
+            record = self.run_module(name, 60)
+            self.assertFalse(record["passed"], record)
+            self.assertFalse(record["all_skipped"], record)
 
     def test_the_budget_can_be_lowered_never_raised(self):
         self.assertEqual(test_budget.budget_for("m", 300, {"m": 120}), 120)

@@ -1380,7 +1380,8 @@ def fixes(missing: list[str], jobs: int) -> list[str]:
 
 
 def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
-                    log: Path | None = None) -> tuple[bool, str, list[str]]:
+                    log: Path | None = None,
+                    include_self: bool = False) -> tuple[bool, str, list[str]]:
     """Acquire the dependencies under the same ACL2 used by the REPL child.
 
     Answers (acquired, what to print, the books to load from source in
@@ -1391,7 +1392,8 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
     first (so a lane's own `certify_books.py` run counts); then AUTO says what
     to do with what is still missing: "ld" loads it from source, "certify"
     certifies it with `certify_books.py --incremental` and tries again, and
-    None refuses with the diagnosis.
+    None refuses with the diagnosis.  INCLUDE_SELF acquires BOOK's own
+    certificate too (a book a live session is about to include).
     """
     try:
         graph = include_graph(ROOT, book)
@@ -1413,7 +1415,7 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
 
     def attempt(from_source: set[str], purge: bool):
         nonlocal fingerprint
-        required = set(graph) - from_source - {book}
+        required = set(graph) - from_source - (set() if include_self else {book})
         if not required:
             return None, required
         if fingerprint is None:
@@ -1431,7 +1433,8 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
                     purge_on_miss=purge, acl2=acl2), required
             return certs.install_artifact_set(
                 ROOT, cache, [book], toolchain_identity=fingerprint.identity,
-                dependencies_only=True, purge_on_miss=purge, acl2=acl2), required
+                dependencies_only=not include_self, purge_on_miss=purge,
+                acl2=acl2), required
 
     from_source = dependents_of(graph, wanted) - {book}
     try:
@@ -1585,9 +1588,46 @@ def _start(args) -> int:
         else:
             print("proof-repl: the session did not become ready; see", directory / "log")
             return 1
-        return status(args)
+        code = status(args)
+        line, partial = load_verdict(read_state(args.name) or {})
+        print(line)
+        return PARTIAL_LOAD if partial else code
     finally:
         os.close(lock_fd)
+
+
+# `start`'s answer when the book's load stopped at a refused form: the session
+# may be live, just before it, but it is not the book (join-f2-5 lost a farm
+# round to a start whose output looked like a full load).
+PARTIAL_LOAD = 3
+
+
+def load_verdict(state: dict) -> tuple[str, bool]:
+    """`start`'s last line: where the load stopped, or that it is complete.
+
+    Answers (the line, whether the load is partial).  A stop the caller
+    asked for (--upto/--through) is a complete load of what was asked.
+    """
+    name, book = state.get("name", "?"), state.get("book", "?")
+    loaded = len(state.get("loaded") or [])
+    stopped = state.get("stopped_at")
+    if not stopped:
+        asked = state.get("upto") or state.get("through")
+        return (f"proof-repl {name}: LOADED {book}: {loaded} forms"
+                + (f" (as asked, {'up to' if state.get('upto') else 'through'} {asked})"
+                   if asked else ""), False)
+    within, _, event = stopped.rpartition(": ")
+    try:
+        total = len(forms((ROOT / f"{book}.lisp").read_text(encoding="utf-8")))
+    except OSError:
+        total = None
+    return (f"proof-repl {name}: PARTIAL LOAD -- stopped at {event} in "
+            f"{within or book} (a from-source dependency) " if within else
+            f"proof-repl {name}: PARTIAL LOAD -- stopped at {event} in {book} "
+            ) + (f"after {loaded}" + (f" of {total}" if total else "") + " forms; "
+                 ) + ("the session is live just before it (fix it, then `send` or "
+                      "`send-range --from`); exit 3" if state.get("ready") else
+                      "the session is not live; exit 3"), True
 
 
 REFUSAL_MARKS = ("******** FAILED ********", "ACL2 Error")
@@ -1782,11 +1822,74 @@ def send(args) -> int:
               "is meant, or `resync NAME BOOK --from EVENT` to undo and resend a book.",
               file=sys.stderr)
         return 2
+    several, ready = prepare_includes(args.name, several)
+    if not ready:
+        return 1
     if len(several) <= 1:
-        return send_one(args.name, form, args.limit, args.full)
+        return send_one(args.name, several[0] if several else form, args.limit, args.full)
     items = [(form_label(index, one), one) for index, one in enumerate(several, 1)]
     return send_many(args.name, items, args.limit, args.full,
                      getattr(args, "keep_going", False))
+
+
+def session_directory(name: str) -> Path | None:
+    """The connected book directory of session NAME: its book's directory."""
+    book = (read_state(name) or {}).get("book")
+    return (ROOT / f"{book}.lisp").parent if book else None
+
+
+def rooted_include(form: str, directory: Path) -> tuple[str, str | None]:
+    """FORM with a repository-root-relative include path made relative to
+    DIRECTORY (the session's connected book directory), and the book it names.
+
+    A session on books/X has books/ as its directory, so `(include-book
+    "tests/acl2/y-tests")` named books/tests/acl2/y-tests and failed
+    (paged-history, 2026-09-29).  A path that names a book from DIRECTORY
+    is left alone; one that names a book only from the root is rewritten.
+    """
+    match = INCLUDE.match(form.strip())
+    if not match or ":dir" in match.group(2).lower():
+        return form, None
+    written = match.group(1)
+    if (directory / f"{written}.lisp").is_file() or not (ROOT / f"{written}.lisp").is_file():
+        return form, include_target(form, directory)
+    relative = os.path.relpath(ROOT / written, directory)
+    rewritten = form.replace(f'"{written}"', f'"{relative}"', 1)
+    return rewritten, include_target(rewritten, directory)
+
+
+def prepare_includes(name: str, several: list[str], acquire=None) -> tuple[list[str], bool]:
+    """The forms to send, each repository include made relative to the
+    session's directory, and whether every included book is certified.
+
+    A sent include of a book with no certificate here (a tests/acl2 book is
+    rarely in a books/ session's closure) is acquired first -- installed
+    from the cache, or certified -- as `start --certify-missing` acquires a
+    dependency; an include of an uncertified book would process its events
+    in the session, which is not what the certified book provides.
+    """
+    directory = session_directory(name)
+    if directory is None:
+        return several, True
+    acquire = acquire or (lambda book: install_closure(
+        book, (), "certify", 4, SESSIONS / f"{name}.include.log", include_self=True))
+    prepared = []
+    for one in several:
+        rewritten, target = rooted_include(one, directory)
+        if rewritten != one:
+            print(f"proof-repl: include path made relative to the session's directory "
+                  f"{directory.relative_to(ROOT).as_posix() if directory.is_relative_to(ROOT) else directory}/: "
+                  f"{rewritten.strip()}")
+        if (target is not None and (ROOT / f"{target}.lisp").is_file()
+                and not certs.valid_looking(ROOT / f"{target}.cert")):
+            acquired, detail, _ = acquire(target)
+            print(detail)
+            if not acquired:
+                print(f"proof-repl: not sending the include of {target}: no certificate "
+                      "could be acquired for it")
+                return several, False
+        prepared.append(rewritten)
+    return prepared, True
 
 
 def read_state(name: str) -> dict | None:
@@ -2719,7 +2822,7 @@ def remote_tree(host: str, lane: str | None, override: str | None = None) -> str
 
 
 def sync_files(books: list[str], extra: list[str] = ()) -> list[str]:
-    """The files a remote session needs: tools/ and the named books' include closures.
+    """The files a remote session needs: tools/, host/ and the named books' include closures.
 
     Never planning/ (hundreds of MB): the closure is what `start` reads,
     certifies and loads.  Certificates are not copied; the box installs
@@ -2732,6 +2835,11 @@ def sync_files(books: list[str], extra: list[str] = ()) -> list[str]:
         for name in names:
             if not name.endswith(SYNC_EXCLUDES):
                 wanted.add(str(Path(directory, name).relative_to(ROOT)))
+    # The host files too (2.6 MB): a session that `ld`s them (the coverage
+    # dump over image-world + tools/extract/world-host.lisp) found none on
+    # the box's tree (obstructions-3 item 14).
+    for path in sorted((ROOT / "host").rglob("*.lisp")):
+        wanted.add(str(path.relative_to(ROOT)))
     for book in books:
         try:
             graph = include_graph(ROOT, normalize_book(book))
@@ -2937,6 +3045,15 @@ def run_remote(args, argv: list[str]) -> int:
             raise SystemExit(f"proof-repl: --host probe: no record of session {args.name!r}'s "
                              "book here (start it with --host from this tree, or pass --book)")
         books += list(args.ld or [])
+    elif command == "send" and args.form != "-":
+        # A sent include of a repository book: its closure goes to the box.
+        record = session_dir(args.name) / "remote.json"
+        with contextlib.suppress(OSError, KeyError, json.JSONDecodeError, ValueError):
+            directory = (ROOT / f"{json.loads(record.read_text())['book']}.lisp").parent
+            for one in commands(args.form):
+                _, target = rooted_include(one, directory)
+                if target is not None and (ROOT / f"{target}.lisp").is_file():
+                    books.append(target)
     elif command in ("list", "reap", "gc") and not getattr(args, "no_sync", False):
         extra.append("tools/proof_repl.py")  # sync_files adds the rest of tools/
     elif command in ("send-range", "resync", "diff"):
