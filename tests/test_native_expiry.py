@@ -347,9 +347,15 @@ class DeveloperExpiryTests(ExpiryMixin, unittest.TestCase):
     # the captured Store (PRF-939 fn-orcp-swap-only-over-the-capture), so the
     # pass defers BY NAME, reason=delta -- refused, nothing installed -- and
     # every post is accepted and served.  The rerun on the quiet node
-    # installs and keeps them.  Until the pass can resume over the delta
-    # (incremental finalize's O(|Q|) resume, PRF-946) a pass under steady
-    # posting defers; it never installs a Store that lost a post.
+    # installs and keeps them.  Until the swap absorbs the delta a pass under
+    # steady posting defers; it never installs a Store that lost a post.  The
+    # absorbing resume is proved (PRF-968, books/store-finalize-incremental,
+    # lane incremental-finalize-2: fn-sfi-cpr-resume-carried-is-sco-cpr-resume,
+    # fn-sfi-extend-open-carried-is-rii-extend-open and the bound
+    # fn-sfi-cpr-resume-carried-steps-bounded, at most |configs| + |Q| steps
+    # with no node term; PRF-946 the incremental finalize).  Once
+    # incremental-finalize-3 wires it into the swap, this case expects the
+    # install over the delta.
     def test_posting_through_a_pass_defers_by_name_then_installs(self):
         node = self.copy_of(self.recorded_base(), "posting")
         stall = self.root / "reclaim-stall"
