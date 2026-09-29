@@ -275,6 +275,18 @@
                             fn-cu-select fn-cu-initial-line fn-cu-render-lines
                             fn-cu-chain-over fn-cu-parse-request)))))
 
+;; NNT-055: the XFN-ZARTICLE arm: a single, a block, or ARTICLE's retrieval.
+(defthm fn-auth-fold-zar-command-has-no-offer
+  (not (fn-post-offeredp
+        (fn-nntp-result-effects
+         (fn-zar-command session archive index args fn-arena))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-zar-command fn-nntp-msgid-retrieval-indexed fn-post-offeredp
+                            fn-nntp-reply-effect fn-nntp-article-response)
+                           (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets fn-zar-decide
+                            fn-zar-initial fn-zdn-body-lines fn-zar-line-okp
+                            fn-nntp-stuff-lines fn-nntp-crlf)))))
+
 (local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defthm fn-auth-fold-archive-command-pinned-has-no-offer
   (not (fn-post-offeredp
@@ -597,7 +609,8 @@
    :hints (("Goal" :in-theory
             (e/d (fn-auth-command)
                  (fn-auth-authinfo fn-auth-starttls fn-auth-single fn-auth-compress
-                  fn-auth-compressed-refusedp fn-zc-capability-lines fn-auth-compress-mayp
+                  fn-auth-compressed-refusedp fn-zc-capability-lines fn-zdn-capability-lines
+                  fn-auth-compress-mayp
                   fn-auth-fold-post-awaiting
                   fn-auth-gatedp fn-auth-postingp fn-nntp-keywordp
                   fn-nntp-keyword-tokenp fn-nntp-multi

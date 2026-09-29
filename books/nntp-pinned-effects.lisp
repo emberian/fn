@@ -22,6 +22,58 @@
                                fn-nntp-msgid-retrieval
                                fn-nntp-effects-msgid-retrieval))))
 
+(local (defthm fn-zdn-escape-is-response-text
+  (implies (fn-octet-listp c) (fn-nntp-response-textp (fn-zdn-escape c)))
+  :hints (("Goal" :in-theory (enable fn-octet-listp fn-octetp fn-nntp-response-octetp
+                                     fn-nntp-response-textp)))))
+
+(local (defthm fn-zdn-response-text-take
+  (implies (and (fn-nntp-response-textp e) (<= (nfix n) (len e)))
+           (fn-nntp-response-textp (take n e)))
+  :hints (("Goal" :in-theory (enable take fn-nntp-response-textp)))))
+
+(local (defthm fn-zdn-response-text-nthcdr
+  (implies (fn-nntp-response-textp e) (fn-nntp-response-textp (nthcdr n e)))
+  :hints (("Goal" :in-theory (enable nthcdr fn-nntp-response-textp)))))
+
+(local (defthm fn-zdn-chunks-are-block-text
+  (implies (fn-nntp-response-textp e) (fn-nntp-block-textp (fn-zdn-chunks e)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-block-textp) (take nthcdr))))))
+
+(defthm fn-zdn-body-lines-are-block-text
+  ; (lane compress-5: here, above books/nntp-effects, which sits above books/nntp)
+  ; Every line of the body is RFC 3977 block text: no NUL, CR or LF.
+  (implies (fn-octet-listp c) (fn-nntp-block-textp (fn-zdn-body-lines c))))
+
+
+; NNT-055: the XFN-ZARTICLE arm (books/nntp-zarticle.lisp): the stored
+; reply's line is checked (fn-zar-line-okp) and its lines are block text
+; (fn-zdn-body-lines-are-block-text); otherwise it is ARTICLE's retrieval.
+(local (defthm fn-zar-printable-is-response-text
+  (implies (fn-zar-printablep l) (fn-nntp-response-textp l))
+  :hints (("Goal" :in-theory (enable fn-nntp-response-textp fn-nntp-response-octetp)))))
+
+(defthm fn-zar-line-okp-is-an-initial-line
+  (implies (fn-zar-line-okp l)
+           (and (fn-nntp-response-textp l)
+                (fn-nntp-initial-status-linep l)
+                (<= (+ (len l) 2) *fn-nntp-max-response-octets*)))
+  :hints (("Goal" :in-theory (enable fn-zar-line-okp fn-nntp-initial-status-linep
+                                     fn-nntp-decimal-digitp)
+           :expand ((take 4 l) (take 3 (cdr l)) (take 2 (cddr l)) (take 1 (cdddr l))))))
+
+(defthm fn-zar-command-effects-well-formed
+  (implies (fn-midx-correspondencep index (fn-state-articles archive))
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects (fn-zar-command session archive index args fn-arena))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-zar-command)
+                           (fn-zar-line-okp fn-zar-decide fn-zar-initial fn-zdn-body-lines
+                            fn-nntp-multi-octets fn-nntp-single fn-nntp-effectsp
+                            fn-nntp-result-effects fn-nntp-msgid-retrieval-indexed
+                            fn-nntp-response-textp fn-nntp-initial-status-linep))
+           :use ((:instance fn-zar-decide-stored-denotes)))))
+
 (defthm fn-nov-indexed-lines-are-clean
   (fn-nov-clean-line-listp
    (fn-nov-lines-for-numbers-indexed group numbers entries trie fn-arena))

@@ -966,7 +966,9 @@
       ; is gated exactly as the other archive readers are.
       (fn-nntp-keywordp keyword "NEWNEWS")
       ; PRF-325: the catch-up stream serves stored articles.
-      (fn-nntp-keywordp keyword "XFNCATCHUP")))
+      (fn-nntp-keywordp keyword "XFNCATCHUP")
+      ; NNT-055: stored payloads, gated as ARTICLE is.
+      (fn-nntp-keywordp keyword "XFN-ZARTICLE")))
 
 (defun fn-auth-transit-keywordp (keyword)
   ; The three inbound-transfer verbs are peer policy, not reader policy.
@@ -1340,15 +1342,18 @@
       (fn-nntp-result-effects
       (fn-nntp-multi (fn-auth-reader-session as)
                      (fn-proto-text "CAPABILITIES" :list)
-                     (fn-zc-capability-lines
-                      (fn-auth-capability-lines-for-peer
-                       (fn-auth-session-config as)
-                       (fn-auth-session-subject as)
-                       (fn-auth-session-tlsp as)
-                       (and (fn-inj-config-allow config)
-                            (fn-auth-postingp as))
-                       (fn-auth-peer-record as))
-                      (fn-auth-session-compress as)
+                     ; NNT-055: XFN-DICT on the connections that may ask.
+                     (fn-zdn-capability-lines
+                      (fn-zc-capability-lines
+                       (fn-auth-capability-lines-for-peer
+                        (fn-auth-session-config as)
+                        (fn-auth-session-subject as)
+                        (fn-auth-session-tlsp as)
+                        (and (fn-inj-config-allow config)
+                             (fn-auth-postingp as))
+                        (fn-auth-peer-record as))
+                       (fn-auth-session-compress as)
+                       (fn-auth-compress-mayp as))
                       (fn-auth-compress-mayp as))))
      nil))
    (t nil)))
@@ -1867,6 +1872,7 @@
            :in-theory (e/d (fn-auth-command)
                            (fn-auth-authinfo fn-auth-starttls fn-auth-single
                             fn-auth-xredeem fn-auth-compress fn-zc-capability-lines
+                            fn-zdn-capability-lines
                             fn-auth-compressed-refusedp fn-auth-compress-mayp
                             fn-auth-gatedp fn-auth-postingp fn-nntp-keywordp
                             fn-nntp-keyword-tokenp fn-nntp-multi
@@ -2391,15 +2397,17 @@
                   (fn-nntp-result-effects
                    (fn-nntp-multi (fn-auth-reader-session as)
                                   "101 capability list follows"
-                                  (fn-zc-capability-lines
-                                   (fn-auth-capability-lines-for-peer
-                                    (fn-auth-session-config as)
-                                    (fn-auth-session-subject as)
-                                    (fn-auth-session-tlsp as)
-                                    (and (fn-inj-config-allow config)
-                                         (fn-auth-postingp as))
-                                    (fn-auth-peer-record as))
-                                   (fn-auth-session-compress as)
+                                  (fn-zdn-capability-lines
+                                   (fn-zc-capability-lines
+                                    (fn-auth-capability-lines-for-peer
+                                     (fn-auth-session-config as)
+                                     (fn-auth-session-subject as)
+                                     (fn-auth-session-tlsp as)
+                                     (and (fn-inj-config-allow config)
+                                          (fn-auth-postingp as))
+                                     (fn-auth-peer-record as))
+                                    (fn-auth-session-compress as)
+                                    (fn-auth-compress-mayp as))
                                    (fn-auth-compress-mayp as))))))
   :hints (("Goal"
            :do-not-induct t

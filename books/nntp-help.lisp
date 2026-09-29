@@ -56,7 +56,7 @@
     ("ARTICLE" "HEAD" "BODY" "STAT")
     ("OVER" "XOVER" "HDR" "XHDR" "XPAT")
     ("IHAVE" "CHECK" "TAKETHIS")
-    ("XFNCATCHUP")))
+    ("XFNCATCHUP" "XFN-ZARTICLE")))
 
 (defun fn-nntp-keyword-in-rowp (keyword row)
   (declare (xargs :guard t))
@@ -121,7 +121,8 @@
              (fn-nntp-keywordp k "XPAT")
              (fn-nntp-keywordp k "IHAVE") (fn-nntp-keywordp k "CHECK")
              (fn-nntp-keywordp k "TAKETHIS")
-             (fn-nntp-keywordp k "XFNCATCHUP")))
+             (fn-nntp-keywordp k "XFNCATCHUP")
+             (fn-nntp-keywordp k "XFN-ZARTICLE")))
   :hints (("Goal" :in-theory (e/d (fn-nntp-served-keywordp
                                    fn-nntp-keyword-in-tablep
                                    fn-nntp-keyword-in-rowp)
