@@ -4902,8 +4902,8 @@ reading of the octets printed (fn-oig-report-exit)."
            (fnn-core 'fn-native-live-status-host-inspect-group-exit octets))
       (fnn-store-close store))))
 
-(defun fnn-read-regular-prefix (path maximum)
-  "The first MAXIMUM octets of one regular, non-symlink file (all of it when
+(defun fnn-read-regular-prefix (path maximum &optional (offset 0))
+  "The MAXIMUM octets at OFFSET of one regular, non-symlink file (fewer when
 it is shorter), or NIL when there is none."
   (let ((st (fnn-check-regular path)))
     (and st
@@ -4911,20 +4911,36 @@ it is shorter), or NIL when there is none."
            (unwind-protect
                 ;; One read of MAXIMUM octets: never the whole file
                 ;; (fnn-read-bounded-fd refuses a longer file by design).
-                (let* ((buffer (fnn-make-octets maximum))
-                       (count (fnn-read-fd fd buffer)))
-                  (if (= count (length buffer)) buffer (subseq buffer 0 count)))
+                (let ((buffer (fnn-make-octets maximum)))
+                  (unless (zerop offset) (sb-posix:lseek fd offset sb-posix:seek-set))
+                  (let ((count (fnn-read-fd fd buffer)))
+                    (if (= count (length buffer)) buffer (subseq buffer 0 count))))
              (fnn-close fd))))))
+
+(defun fnn-stopped-checkpoint-header (path)
+  "The newest checkpoint's first segment header, as the open finds it
+(fnn-state-checkpoint-plan): the file's first fn-omr-header-octets, or,
+when ACL2 recognizes those as a history image region's header
+(fn-his-image-header-np, books/history-image-snapshot.lisp), as many past
+the region (fn-his-skip-octets).  NIL when there is no file."
+  (let* ((octets (fnn-nat (fnn-core 'fn-omr-header-octets)))
+         (prefix (fnn-read-regular-prefix path octets))
+         (np (and prefix (= (length prefix) octets)
+                  (fnn-core 'fn-his-image-header-np (fnn-octet-list prefix)))))
+    (if (integerp np)
+        (fnn-read-regular-prefix path octets
+                                 (+ octets (fnn-nat (fnn-core 'fn-his-skip-octets np))))
+      prefix)))
 
 (defun fnn-stopped-observation (root)
   "Row S3: what a stopped store's status is rendered from, nothing replayed:
-config.json's octets, the newest checkpoint's segment header (ACL2's
-fn-omr-header-octets of the file, no more), the journal's octets (every
+config.json's octets, the newest checkpoint's first segment header (ACL2's
+fn-omr-header-octets of it, past a history image region:
+fnn-stopped-checkpoint-header), the journal's octets (every
 segment's lstat size) and the checkpoint file's lstat."
   (let* ((store (make-fnn-store root))
          (config (fnn-octet-list (fnn-read-regular-bounded (fnn-config-path store) 16384)))
-         (prefix (fnn-read-regular-prefix (fnn-state-checkpoint-path store)
-                                          (fnn-nat (fnn-core 'fn-omr-header-octets))))
+         (prefix (fnn-stopped-checkpoint-header (fnn-state-checkpoint-path store)))
          (header (and prefix (fnn-octet-list prefix)))
          (dir (fnn-journal-dir store))
          (journal (loop for name in (fnn-log-segment-names store)
@@ -7974,7 +7990,12 @@ segment' (tests/test_native_topic_local.py)."
            (cond ((string= command "init") (fnn-command-developer-init root rest))
                  ((string= command "recover") (fnn-command-recover root rest))
                  ((string= command "node-secret") (need 4) (fnn-command-node-secret root rest))
-                 ((string= command "status") (fnn-command-status root))
+                 ((string= command "status")
+                  ;; the operator verb's two forms (fn-omr-status-replayp)
+                  (cond ((null rest) (fnn-command-status root))
+                        ((equal rest '("--replay")) (fnn-command-status root t))
+                        (t (error 'fnn-usage-error
+                                  :message "status takes nothing, or --replay (the report over the replayed log)"))))
                  ((string= command "checkpoint") (fnn-command-state-checkpoint root))
                  ((string= command "digest") (fnn-command-store-digest root))
                  ((string= command "journal") (fnn-command-store-journal root))
