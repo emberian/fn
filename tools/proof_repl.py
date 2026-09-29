@@ -2725,7 +2725,7 @@ def remote_tree(host: str, lane: str | None, override: str | None = None) -> str
 
 
 def sync_files(books: list[str], extra: list[str] = ()) -> list[str]:
-    """The files a remote session needs: tools/ and the named books' include closures.
+    """The files a remote session needs: tools/, host/ and the named books' include closures.
 
     Never planning/ (hundreds of MB): the closure is what `start` reads,
     certifies and loads.  Certificates are not copied; the box installs
@@ -2738,6 +2738,11 @@ def sync_files(books: list[str], extra: list[str] = ()) -> list[str]:
         for name in names:
             if not name.endswith(SYNC_EXCLUDES):
                 wanted.add(str(Path(directory, name).relative_to(ROOT)))
+    # The host files too (2.6 MB): a session that `ld`s them (the coverage
+    # dump over image-world + tools/extract/world-host.lisp) found none on
+    # the box's tree (obstructions-3 item 14).
+    for path in sorted((ROOT / "host").rglob("*.lisp")):
+        wanted.add(str(path.relative_to(ROOT)))
     for book in books:
         try:
             graph = include_graph(ROOT, normalize_book(book))

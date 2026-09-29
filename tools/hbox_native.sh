@@ -315,6 +315,12 @@ step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$tool
 step certify swarm-build python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
 step acquire python3 tools/proof_artifacts.py acquire --profile default --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
 step validate python3 tools/proof_artifacts.py validate --profile default --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
+# The ld host files in the image's order, before any image build: statically
+# (a call before its definition, seconds), then through ACL2 in the certified
+# world (tools/host_check.py's default).  limits-live-4 and online-reclaim-4
+# each lost an image build to a forward reference in host/owner-host.lisp.
+step host-forward python3 tools/host_check.py --forward
+step host-ld env FN_ACL2="${IMAGE_ACL2:-\$ACL2}" python3 tools/host_check.py
 BOX
         if [ $DTN -eq 1 ]; then
             # hbox-image-build.sh's dtn acquire/validate, before a DTN image.

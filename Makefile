@@ -1755,6 +1755,7 @@ check:
 # no ACL2 (lane lane-tools-2, after payload-lz-record was outside the world).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --world
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_world
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_forward
 # Every host/ definition some file reaches (a raw file, a book, a bridge, a
 # launcher, a registry row): a new one nothing calls is WARNED, not refused,
 # unless tools/host_callers_baseline.json names why it stays (lane

@@ -718,6 +718,8 @@ class RemoteTests(unittest.TestCase):
         self.assertIn("tools/proof_repl.py", files)
         self.assertIn("books/wildmat.lisp", files)
         self.assertIn("tests/acl2/extra.lisp", files)
+        # The host files a session may `ld` (item 14).
+        self.assertIn("host/owner-host.lisp", files)
         self.assertFalse(any(name.startswith("planning/") for name in files))
         self.assertFalse(any("__pycache__" in name or name.endswith(".pyc") for name in files))
         closure = proof_repl.include_graph(proof_repl.ROOT, "books/wildmat")
