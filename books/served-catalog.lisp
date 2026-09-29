@@ -2548,9 +2548,9 @@
    (implies (and (fn-statep archive)
                  (fn-string-listp groups))
             (equal (fn-gidx-counts-lines
-                    archive (fn-gidx-build (fn-state-articles archive)) groups)
-                   (fn-nntp-counts-lines archive groups)))
-   :hints (("Goal" :induct (fn-nntp-counts-lines archive groups)
+                    archive (fn-gidx-build (fn-state-articles archive)) groups closed)
+                   (fn-nntp-counts-lines archive groups closed)))
+   :hints (("Goal" :induct (fn-nntp-counts-lines archive groups closed)
             :in-theory (e/d (fn-gidx-counts-lines fn-nntp-counts-lines
                              fn-gidx-counts-line fn-nntp-counts-line fn-string-listp)
                             (fn-gidx-build fn-statep fn-gidx-group-summary
@@ -2562,8 +2562,8 @@
  (defthm fn-scat-gidx-list-counts-is-fold
    (implies (and (fn-statep archive)
                  (equal buckets (fn-gidx-build (fn-state-articles archive))))
-            (equal (fn-gidx-list-counts-command session archive buckets args)
-                   (fn-nntp-list-counts-command session archive args)))
+            (equal (fn-gidx-list-counts-command session archive buckets closed args)
+                   (fn-nntp-list-counts-command session archive closed args)))
    :hints (("Goal" :do-not-induct t
             :in-theory (e/d (fn-gidx-list-counts-command
                              fn-nntp-list-counts-command fn-nntp-list-counts)
