@@ -23,6 +23,8 @@
 (include-book "../books/store-carried-folds")
 ; PKT-220: the retention figures `operator CONFIG obligations' opens with.
 (include-book "../books/retention-figures")
+; PKT-854: `store ROOT digest' prints the checkpoint digest (fn-sckd-tables-digest).
+(include-book "../books/store-checkpoint-digest")
 (include-book "../books/store-capacity-config")
 ; PKT-510 (1): the offline request authorizes from the open's carried fold.
 (include-book "../books/config-carried-open")
