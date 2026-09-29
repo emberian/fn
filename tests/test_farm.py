@@ -301,6 +301,15 @@ class FailureTests(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertIn("did not start", errors.getvalue())
 
+    def test_the_images_choice_reaches_the_runner_on_the_box(self):
+        # FN_CERT_IMAGES in the submitting shell never reaches the box.
+        off = farm.remote_script("persvati", Path("/tank/fn/tree"), "run-1",
+                                 [], 4, 60, [], images="off")
+        self.assertIn("--images off", off)
+        default = farm.remote_script("persvati", Path("/tank/fn/tree"), "run-1",
+                                     [], 4, 60, [])
+        self.assertNotIn("--images", default)
+
     def test_every_step_of_the_submit_script_has_its_own_exit(self):
         script = farm.remote_script("persvati", Path("/tank/fn/tree"), "run-1",
                                     [], 4, 60, [])

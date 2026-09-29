@@ -260,7 +260,8 @@ def book_result(book: str, output: str, exit_code: int | str, nonce: str,
 def publish_pair(book: str, verdict: str, run_dir: Path, nonce: str,
                  recorded_sources: dict[str, str], output: str,
                  exit_code: int | str,
-                 toolchain_manifest: dict[str, Any]) -> dict[str, Any]:
+                 toolchain_manifest: dict[str, Any],
+                 world: str = "plain") -> dict[str, Any]:
     """Cache this book's pair the moment it certifies, not at the end of the run.
 
     Why here and not once at the end: a wide run on this tree exits non-zero
@@ -299,6 +300,8 @@ def publish_pair(book: str, verdict: str, run_dir: Path, nonce: str,
         "certificate_digests_sha256": {book: digest(certificate)},
         "compiled_digests_sha256": compiled_digests([book]),
         "evidence": str(run_dir),
+        # The world the certificate was made in: part of its cache key.
+        "cert_images": {"book_images": {book: world}},
         # A killed run has no final sweep.  Its already-passing books still
         # need the exact toolchain identity now required by set installation;
         # otherwise the per-book publication promised above is present in the
@@ -1330,9 +1333,10 @@ def main() -> int:
         if args.no_publish:
             return
         with publish_lock:
-            cache_events.append(publish_pair(book, verdict, run_dir, nonce,
-                                             source_digests, output, code,
-                                             manifest))
+            cache_events.append(publish_pair(
+                book, verdict, run_dir, nonce, source_digests, output, code,
+                manifest, images.used.get(book, "plain") if images is not None
+                else "plain"))
 
     # Under `--pcert` a book's evidence is three ACL2 runs, and what the run
     # records for it is their concatenation, each behind a wave line.  The
