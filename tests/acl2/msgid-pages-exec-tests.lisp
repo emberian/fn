@@ -217,7 +217,7 @@
 ; For each Message-ID: (counted-candidates = candidates, counted-pages = need,
 ;                       need <= pages, need <= 2, saturated)
 (defun mpxe-need-each (msgids fn-mpxt)
-  (declare (xargs :stobjs fn-mpxt :guard (true-listp msgids)
+  (declare (xargs :stobjs fn-mpxt :guard (and (true-listp msgids) (fn-mpxt-wfp fn-mpxt))
                   :guard-hints (("Goal" :in-theory (disable fn-mpxt-candidates-counted fn-mpxt-candidates
                                                             fn-mpxt-candidates-pages                                                             fn-mpxt-saturatedp)))))
   (if (consp msgids)
