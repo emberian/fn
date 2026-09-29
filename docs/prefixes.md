@@ -351,3 +351,5 @@ Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `host/config-host.lisp` marshals under `fn-cfg-host-`. The `fn-store-` tag is shared: `books/store-config` owns the group table under
 it and `host/store-host.lisp` marshals under it. A host wrapper never decides
 anything a book does not already decide.
+
+| `fn-gat-`, `gat-` | `tests/acl2/group-authority-tests` | Explicit authority publication and replay teeth; distinct posting policy and principal bindings. |

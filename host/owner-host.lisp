@@ -2652,6 +2652,9 @@
       (let* ((decision (fn-own-sub-decision sub))
              (node (fn-sn-node (fn-own-store owner)))
              (cfg (fn-owner-config state))
+             ; Authority uses THIS connection's pinned configuration. A
+             ; replacement governs later connections, not a queued old one.
+             (authority-cfg (fn-ocfg-conn-config (fn-owner-ocfg state) (fn-own-sub-id sub)))
              (peer (fn-peer-submission-peer decision))
              (msgid (fn-peer-submission-msgid decision))
              (octets (fn-peer-submission-octets decision))
@@ -2671,7 +2674,7 @@
           (mv-let (d authority)
             (fn-pta-decide (fn-sn-index (fn-own-store owner))
                            (fn-sn-keyring (fn-own-store owner))
-                           (fn-cfg-value cfg) (fn-cfg-generation cfg)
+                           (fn-cfg-value authority-cfg) (fn-cfg-generation authority-cfg)
                            node cfg peer msgid octets (fn-own-clock owner) id subject
                            (fn-own-config-header-limits (fn-own-config owner)))
           (let* ((args (fn-peer-injection-arguments node cfg peer msgid octets

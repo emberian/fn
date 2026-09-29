@@ -17142,6 +17142,15 @@
           "name": "fn-asj-strip-preserves-byte-order"
         }
       ]
+    },
+    {
+      "id": "PRF-1061",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-set-group-authority-installs-binding"
+        }
+      ]
     }
   ]
 }
