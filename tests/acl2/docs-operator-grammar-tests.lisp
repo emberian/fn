@@ -126,6 +126,7 @@
     ("docs/operator-internals.md#agents-consumers-bind-each-to-its-account" 3 "consumer" "show")
     ("docs/operator.md#1-choose-the-disk-for-the-store" 1 "store" "rebind-filesystem" "--storage-require-durable" "off")
     ("docs/operator.md#accounts-and-invitation-codes" 3 "account" "delete" "probe")
+    ("docs/operator.md#articles-carried-over-bp" 1 "carry" "/srv/fn/workflow" "list")
     ("docs/operator.md#a-damaged-record-log" 1 "recover" "--repair" "truncate" "000001.log:4096")
     ("docs/operator.md#the-node-does-not-start" 1 "policy" "set" "exposure-connections" "1000")
     ("docs/peering-with-a-friend.md#1-both-of-you-set-up-a-node" 1 "peer" "keygen" "/var/lib/fn/keys")
