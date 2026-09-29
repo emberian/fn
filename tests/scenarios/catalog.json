@@ -5933,6 +5933,32 @@
         "tests/test_native_checkpoint_auto.py",
         "planning/evidence/operations-2026-09-28.md"
       ]
+    },
+    {
+      "id": "SCN-209",
+      "title": "An operator post the full store refuses names its reason on the reply and the line; `policy set' with an unknown key or a non-numeric count is refused by name",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-037"
+      ],
+      "steps": [
+        "A development store with --max-transactions 4; `run`; 2 POSTs; `operator post` until one is refused; `operator policy set bogus-key 1`; `operator policy set exposure-connections abc`; stop."
+      ],
+      "expected": [
+        "The refused post prints `refused operator post WORD` (a Store word, never the bare REFUSED) and the owner logs `refused post path=control message-id=ID ... reason=WORD` with the same word; the two policy commands exit 1 naming unknown-policy-key (with the key list) and policy-value-not-a-number (a decimal count), and print no usage line."
+      ],
+      "implementation": {
+        "test": "tests.test_native_operator_refusals",
+        "cases": [
+          "OperatorRefusalTests.test_a_post_the_store_refuses_names_its_reason_and_policy_set_refuses_by_name"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
     }
   ]
 }

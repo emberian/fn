@@ -218,7 +218,11 @@ connections, refusals and limits in force.
 ### The log
 
 The log is `log/fn.log` in the node folder (on OpenBSD, syslog). fn only
-adds to it; it never empties or rotates it. Each post and each connection
+adds to it; it never empties or rotates it by itself. To rotate it, move
+the file and send the node `SIGHUP` (`kill -HUP PID`, or
+`systemctl kill -s HUP fn`): the node reopens `log/fn.log` at its next
+accept and keeps writing there, so a logrotate rule with `postrotate` and
+that signal works (no `copytruncate` needed). Each post and each connection
 gets one line, starting with the outcome:
 
 ```

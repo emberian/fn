@@ -13539,6 +13539,19 @@
           "name": "fn-omr-stopped-line-is-header-and-octets-by-definition"
         }
       ]
+    },
+    {
+      "id": "PRF-972",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocpr-line-names-the-reason-exactly-when-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocpr-reason-is-the-word-when-refused-by-definition"
+        }
+      ]
     }
   ]
 }

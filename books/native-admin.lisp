@@ -571,6 +571,20 @@
 
 (in-theory (disable fn-native-admin-complaints-wordsp))
 
+; Row S10: the `policy set' keys that take a decimal count: the public
+; reader port's exposure limits (books/public-exposure-rows.lisp), the relay
+; checks' limits (books/relay-checks.lisp) and the store limits
+; (books/limits-live.lisp: max-transactions, max-history-octets,
+; max-article-octets).
+(defun fn-native-admin-counted-policy-keyp (key)
+  (declare (xargs :guard t))
+  (and (or (fn-exp-limit-slotp key)
+           (and (fn-rck-limit-slotp key)
+                (not (equal key *fn-rck-require-path-slot*)))
+           (member-equal key '("max-transactions" "max-history-octets"
+                               "max-article-octets")))
+       t))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t
@@ -747,6 +761,23 @@
                                 (fn-native-admin-decimal-value
                                  (coerce (cadddr words) 'list))
                                 nil nil))
+       ; Row S10 (lane operability-2): `policy set KEY VALUE' that no arm
+       ; above took is refused by name, not by the usage line: a counted
+       ; key with a value that is no decimal count, else a key the node
+       ; does not have.  (A known key with a wrong non-numeric value keeps
+       ; the usage line: the line names the values.)
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (fn-native-admin-counted-policy-keyp (caddr words))
+             (not (fn-native-admin-decimalp (cadddr words))))
+        (fn-native-admin-result :refused :policy-value-not-a-number nil nil 0 nil nil))
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (not (fn-native-admin-counted-policy-keyp (caddr words)))
+             (not (member-equal (caddr words) '("path-identity" "posting-policy"))))
+        (fn-native-admin-result :refused :unknown-policy-key nil nil 0 nil nil))
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
        ; D13 (STO-014): the operator's content-retention rule.  Two

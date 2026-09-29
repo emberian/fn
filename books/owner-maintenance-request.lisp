@@ -60,7 +60,8 @@
 ; log (books/native-operator.lisp, the status grammar).
 (defun fn-omr-status-replayp (result)
   (declare (xargs :guard t))
-  (and (member-equal :replay (fn-native-operator-result-arguments result)) t))
+  (let ((args (fn-native-operator-result-arguments result)))
+    (and (true-listp args) (member-equal :replay args) t)))
 
 ; The control socket an accepted operator plan's configuration names, as
 ; octets (what the client sends the owner's request to); nil otherwise.
