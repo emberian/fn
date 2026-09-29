@@ -5105,7 +5105,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-974"
+        "PRF-974",
+        "PRF-993"
       ],
       "verification": [
         "proof",
@@ -5115,7 +5116,9 @@
         "docs/extensions/nntp-compress-dict.md",
         "specs/nntp.md",
         "books/nntp-compress-dict.lisp",
-        "tests/acl2/nntp-compress-dict-tests.lisp"
+        "tests/acl2/nntp-compress-dict-tests.lisp",
+        "books/nntp-zarticle.lisp",
+        "books/assumptions-stored.lisp"
       ]
     },
     {

@@ -21,8 +21,14 @@
 ;
 ; It is not included by books/assumptions.lisp: its signature needs the
 ; arena stobj (books/payload-arena.lisp), which is outside that book's
-; closure and would enter 766 books' worlds.  The theorems that use it
-; (books/nntp-zarticle.lisp) include it and name it.
+; closure and would enter 766 books' worlds.  An arena-free signature (an
+; ordinary value in the stobj's place) cannot be called from executable
+; code that holds the arena as a stobj, and a constraint over octets alone
+; would drop the link to H's payload that the keystone needs.  It is
+; registered instead: specs/failures.md's A-ARENA-STORED row names this
+; file, and tools/check_scaffold.py refuses an assumption book that is
+; neither included by assumptions.lisp nor named there.  The theorems that
+; use it (books/nntp-zarticle.lisp) include it and name it.
 
 (in-package "ACL2")
 (include-book "payload-arena")

@@ -13623,6 +13623,23 @@
         {
           "kind": "theorem",
           "name": "fn-zdn-request-shape"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zdn-body-round-trip"
+        }
+      ]
+    },
+    {
+      "id": "PRF-993",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-zar-decide-stored-denotes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zar-decide-complete"
         }
       ]
     },
