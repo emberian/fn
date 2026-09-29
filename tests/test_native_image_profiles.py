@@ -148,11 +148,26 @@ class NativeImageProfileSavedImageTests(unittest.TestCase):
         self.assertEqual(bp.returncode, 5, bp.stderr.decode())
         self.assertIn(b"unknown bp command", bp.stderr)
 
+        # PKT-590: the experimental ION subverbs are the developer image's;
+        # the other app-journal subverbs stay (refused here only for their
+        # missing arguments, not for the image).
+        for sub in ("workflow-ion-submit", "workflow-ion-status"):
+            ion = invoke(PRODUCTION, "app-journal", sub)
+            self.assertEqual(ion.returncode, 5, ion.stderr.decode())
+            self.assertIn(("app-journal %s is available only in the developer image"
+                           % sub).encode(), ion.stderr)
+        init = invoke(PRODUCTION, "app-journal", "workflow-init")
+        self.assertNotIn(b"available only in the developer image", init.stderr)
+        self.assertIn(b"app-journal: missing arguments", init.stderr)
+
     def test_restart_environment_cannot_hide_developer_entries_or_enable_production(self):
         owner = invoke(DEVELOPER, "owner", "run", "/not-opened", "0", "1", "8")
         self.assertNotIn(b"unknown verb owner", owner.stderr)
         reader = invoke(DEVELOPER, "reader", "not-a-port", "1", "-")
         self.assertNotIn(b"available only in the developer image", reader.stderr)
+        ion = invoke(DEVELOPER, "app-journal", "workflow-ion-status")
+        self.assertNotIn(b"available only in the developer image", ion.stderr)
+        self.assertIn(b"app-journal: missing arguments", ion.stderr)
 
 
 class RawPostEntryWitnesses(unittest.TestCase):

@@ -384,7 +384,7 @@
 ; whose S is 2^64 wraps the header field, so the read sequence differs.
 (assert-event
  (let* ((big (expt 2 64))
-        (segs (fn-sct-run-segments (fn-sct-rows-program (list (fn-sct-f-row big 9 "r" nil)) 0 nil nil big nil)
+        (segs (fn-sct-run-segments (fn-sct-rows-program (list (fn-sct-f-row big 9 "r" nil 0)) 0 nil nil big nil)
                                    64 big)))
    (not (equal (nth 3 (fn-scc-parse-header (car segs))) big))))
 (must-fail-checked

@@ -132,7 +132,10 @@ FN_OPENSSL_PREFIX is optional: unset, the system's pair is used."
     ;; OpenSSL 1.1+ and LibreSSL 2.7+ (OpenBSD 6.3) export all of them.
     "SSL_CTX_get0_certificate" "X509_get0_notBefore" "X509_get0_notAfter"
     "ASN1_STRING_get0_data" "ASN1_STRING_length" "X509_get_ext_by_NID"
-    "X509_get_ext" "X509_EXTENSION_get_data"))
+    "X509_get_ext" "X509_EXTENSION_get_data"
+    ;; SCRAM-SHA-256-PLUS (RFC 9266 tls-exporter): the negotiated version and
+    ;; the exporter.  OpenSSL 1.1.1+ and LibreSSL 2.x+ export both.
+    "SSL_version" "SSL_export_keying_material"))
 
 (defun fnn-tls-missing-symbols ()
   (remove-if #'sb-sys:find-foreign-symbol-address *fnn-tls-required-symbols*))
@@ -765,6 +768,42 @@ signals FNN-TLS-HANDSHAKE-ERROR; the caller frees SSL."
 
 (defun fnn-tls-channel-of (ssl fd)
   (fnn-tls-channel-make :pointer ssl :fd fd))
+
+;;; RFC 9266 section 2: the tls-exporter channel binding is the TLS exporter
+;;; (RFC 8446 section 7.5) with this label and no context, defined for TLS 1.3
+;;; only.  The width is ACL2's (books/sasl.lisp *fn-sasl-binding-octets*); the
+;;; binding is an observation of the TLS layer, and whether it is used is
+;;; ACL2's (books/nntp-auth.lisp keeps it only on a TLS session).
+(sb-alien:define-alien-routine ("SSL_version" fnn-%ssl-version)
+    sb-alien:int (ssl (* t)))
+(sb-alien:define-alien-routine ("SSL_export_keying_material"
+                                fnn-%ssl-export-keying-material)
+    sb-alien:int
+  (ssl (* t)) (out (* sb-alien:unsigned-char)) (olen sb-alien:unsigned-long)
+  (label sb-alien:c-string) (llen sb-alien:unsigned-long)
+  (context (* sb-alien:unsigned-char)) (contextlen sb-alien:unsigned-long)
+  (use-context sb-alien:int))
+
+(defconstant +fnn-tls-1.3-version+ #x0304)
+(defparameter +fnn-tls-exporter-label+ "EXPORTER-Channel-Binding")
+
+(defun fnn-tls-exporter (channel width)
+  "CHANNEL's RFC 9266 tls-exporter value as a list of WIDTH octets, or NIL
+when the session is not TLS 1.3 or the exporter fails (no binding: SCRAM
+without -PLUS is still offered)."
+  (unless (and (integerp width) (< 0 width 256))
+    (fnn-fault "ACL2 returned an invalid channel-binding width"))
+  (let ((ssl (and channel (fnn-tls-channel-pointer channel))))
+    (when (and ssl (= (fnn-%ssl-version ssl) +fnn-tls-1.3-version+))
+      (let ((out (fnn-make-octets width)))
+        (sb-sys:with-pinned-objects (out)
+          (fnn-%err-clear-error)
+          (when (= 1 (fnn-%ssl-export-keying-material
+                      ssl (fnn-tls-pointer out) width
+                      +fnn-tls-exporter-label+ (length +fnn-tls-exporter-label+)
+                      (sb-alien:sap-alien (sb-sys:int-sap 0) (* sb-alien:unsigned-char))
+                      0 0))
+            (fnn-octet-list out)))))))
 
 (defun fnn-tls-pending-p (channel)
   (and (fnn-tls-channel-pointer channel)

@@ -59,8 +59,9 @@
 ; OpenBSD's default login class allows 1536M of data; lane heap-bounds held
 ; it to 192 MiB until lane heap-pool charged the header) and so a 2,048 MiB
 ; one (`fn-heap-small-profile-run-fits-a-two-gib-machine': the friend's
-; machine has about 2 GB).  `init' with no preset word
-; and no field flag writes it on a machine under 4 GiB (`fn-heap-init-request').
+; machine has about 2 GB).  `init''s choice of it is books/heap-reservation.lisp
+; fn-heap-init-decide (the former fn-heap-init-request here was never called
+; by the host and is deleted: Q3a, assurance-hygiene-5).
 
 (in-package "ACL2")
 (include-book "owner-checkpoint-pipeline")
@@ -754,31 +755,6 @@
            :use ((:instance fn-heap-with-nursery-below-eight-sevenths
                             (base (fn-heap-store-base-octets *fn-heap-small-profile* core
                                                              '(0 . 0))))))))
-
-(defconst *fn-heap-small-machine-octets* (* 4 1024 *fn-heap-mib*))
-
-; The request `init' resolves: a bare request (no preset word, no field flag;
-; `--profile default' alone is the same request) on a machine under 4 GiB is
-; the small preset; every other request is the operator's, unchanged.
-(defun fn-heap-init-request (request machine)
-  (declare (xargs :guard t))
-  (if (and (equal request '(:default nil))
-           (posp machine)
-           (< machine *fn-heap-small-machine-octets*))
-      *fn-heap-small-request*
-    request))
-
-(defthm fn-heap-init-request-on-a-small-machine-is-small
-  (implies (and (posp machine) (< machine *fn-heap-small-machine-octets*))
-           (equal (fn-bs-profile-resolve (fn-heap-init-request '(:default nil) machine)
-                                         nil)
-                  *fn-heap-small-profile*)))
-
-(defthm fn-heap-init-request-keeps-the-operators-request
-  (implies (or (not (equal request '(:default nil)))
-               (not (posp machine))
-               (<= *fn-heap-small-machine-octets* machine))
-           (equal (fn-heap-init-request request machine) request)))
 
 ; -----------------------------------------------------------------------------
 ; The report line `status' and `health' print, and the launcher reads:

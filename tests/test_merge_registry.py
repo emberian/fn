@@ -237,6 +237,52 @@ class RequirementsAndCatalogThroughGit(unittest.TestCase):
             self.assertEqual(run("--installed").returncode, 0)
 
 
+class WorktreeSetupTests(unittest.TestCase):
+    """tools/worktree_setup.sh (item 39): a new worktree merges by row."""
+    SETUP = ROOT / "tools" / "worktree_setup.sh"
+
+    def run_setup(self, cwd: Path, *words: str) -> subprocess.CompletedProcess:
+        env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_SYSTEM=os.devnull,
+                   GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t",
+                   GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
+        return subprocess.run(["sh", str(self.SETUP), *words], cwd=cwd, env=env,
+                              capture_output=True, text=True)
+
+    def clone(self, directory: str) -> Path:
+        repo = Path(directory) / "main"
+        (repo / "tools").mkdir(parents=True)
+        subprocess.run(["git", "init", "-q", "-b", "dev", str(repo)], check=True)
+        (repo / "tools" / "merge_registry.py").write_text(DRIVER.read_text())
+        (repo / ".gitattributes").write_text((ROOT / ".gitattributes").read_text())
+        git(repo, "add", ".")
+        git(repo, "commit", "-q", "-m", "base")
+        return repo
+
+    def test_add_registers_the_driver_and_a_lane_merge_keeps_both_baselines(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.clone(directory)
+            before = self.run_setup(repo, "--check")
+            self.assertEqual(before.returncode, 1)
+            self.assertIn("NOT REGISTERED", before.stdout)
+            lane = Path(directory) / "lane"
+            added = self.run_setup(repo, str(lane), "lane/x", "dev")
+            self.assertEqual(added.returncode, 0, added.stdout + added.stderr)
+            self.assertIn("merge by row", added.stdout)
+            self.assertEqual(self.run_setup(lane, "--check").returncode, 0)
+            driver = subprocess.run(["git", "-C", str(lane), "config", "--get",
+                                     "merge.fn-registry.driver"], capture_output=True,
+                                    text=True).stdout.strip()
+            self.assertEqual(driver, "python3 tools/merge_registry.py %O %A %B %P")
+
+    def test_a_tree_without_the_route_is_refused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.clone(directory)
+            (repo / ".gitattributes").write_text("planning/proofs.json merge=fn-registry\n")
+            out = self.run_setup(repo)
+            self.assertEqual(out.returncode, 1)
+            self.assertIn("planning/reach-baseline.json merges as", out.stderr)
+
+
 class RuleTests(unittest.TestCase):
     def test_deleted_on_one_side_unchanged_on_the_other_stays_deleted(self):
         base = {"rows": [row("A"), row("B")]}
@@ -275,6 +321,46 @@ class RuleTests(unittest.TestCase):
             {"proofs": [row("P", events=[1, 3])]}, "planning/proofs.json")
         self.assertEqual(merged["proofs"][0]["events"], [1, 2])
         self.assertEqual(conflicts, [])
+
+    def test_generated_events_take_the_side_that_changed_them(self):
+        # Item 39: a lane that did not touch a row's events takes dev's newer
+        # list (the old keep-ours rule left it stale).
+        base = {"proofs": [row("P", events=[1])]}
+        merged, conflicts = merge_registry.merge_documents(
+            base, base, {"proofs": [row("P", events=[1, 3])]}, "planning/proofs.json")
+        self.assertEqual(merged["proofs"][0]["events"], [1, 3])
+        self.assertEqual(conflicts, [])
+        self.assertEqual(merge_registry.stale_generated(
+            base, base, {"proofs": [row("P", events=[1, 3])]}, "planning/proofs.json"), [])
+
+    def test_events_both_sides_changed_are_named_stale(self):
+        base = {"proofs": [row("P", events=[1])]}
+        ours, theirs = {"proofs": [row("P", events=[1, 2])]}, {"proofs": [row("P", events=[1, 3])]}
+        self.assertEqual(merge_registry.stale_generated(base, ours, theirs,
+                                                        "planning/proofs.json"),
+                         ["P events"])
+
+    def test_reach_baseline_merges_entry_by_entry(self):
+        base = {"note": "n", "accepted": {"PRF-1:a": "SPEC x", "PRF-2:b": "HOST y"}}
+        ours = {"note": "n", "accepted": {"PRF-1:a": "SPEC x", "PRF-3:c": "HOST z"}}
+        theirs = {"note": "n", "accepted": {"PRF-1:a": "SPEC x", "PRF-2:b": "HOST y",
+                                            "PRF-4:d": "SPEC w"}}
+        merged, conflicts = merge_registry.merge_documents(
+            base, ours, theirs, "planning/reach-baseline.json")
+        self.assertEqual(conflicts, [])
+        self.assertEqual(merged["accepted"], {"PRF-1:a": "SPEC x", "PRF-3:c": "HOST z",
+                                              "PRF-4:d": "SPEC w"})
+        _, conflicts = merge_registry.merge_documents(
+            base, {"note": "n", "accepted": {"PRF-1:a": "SPEC ours"}},
+            {"note": "n", "accepted": {"PRF-1:a": "SPEC theirs"}},
+            "planning/reach-baseline.json")
+        self.assertEqual(len(conflicts), 1)
+        self.assertEqual(merge_registry.conflict_records("p", conflicts)[0]["id"], "PRF-1:a")
+
+    def test_the_tree_reach_baseline_round_trips(self):
+        document = json.loads((ROOT / "planning/reach-baseline.json").read_text())
+        self.assertEqual(merge_registry.merge_documents(
+            document, document, document, "planning/reach-baseline.json"), (document, []))
 
     def test_the_four_registries_round_trip_unchanged(self):
         for path in ("planning/proofs.json", "planning/requirements.json",

@@ -1,4 +1,5 @@
 #!/bin/sh
+# witness: helper
 # A scratch node with its web face on, for tests/web_face_drive.mjs (SCN-187):
 #
 #   sh tests/web_face_scratch.sh prepare IMAGE DIR PORT   # fn.toml, init, a posting login

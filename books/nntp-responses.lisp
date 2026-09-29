@@ -767,14 +767,14 @@
   ; understood.  The lines are the rows of the served command table,
   ; *fn-nntp-served-command-table* in books/nntp-help.lisp: every keyword
   ; the served dispatcher fn-auth-step-pinned recognizes, including the
-  ; authentication layer's AUTHINFO, STARTTLS and XREDEEM and the peer
+  ; authentication layer's AUTHINFO, STARTTLS, XREDEEM and COMPRESS and the peer
   ; layer's IHAVE, CHECK and TAKETHIS (PRF-194: a keyword outside the table
   ; is answered 500 by the served step, and these lines render the table).
   (fn-nntp-multi session (fn-proto-text "HELP" :text)
                  (list (fn-nntp-string-octets
                         "CAPABILITIES HELP QUIT MODE DATE POST")
                        (fn-nntp-string-octets
-                        "AUTHINFO STARTTLS XREDEEM")
+                        "AUTHINFO STARTTLS XREDEEM COMPRESS")
                        (fn-nntp-string-octets
                         "GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS")
                        (fn-nntp-string-octets
@@ -783,8 +783,9 @@
                         "OVER XOVER HDR XHDR XPAT")
                        (fn-nntp-string-octets
                         "IHAVE CHECK TAKETHIS")
-                       ;; PRF-325: the catch-up stream (books/peer-catchup-serve.lisp).
-                       (fn-nntp-string-octets "XFNCATCHUP"))))
+                       ;; PRF-325: the catch-up stream (books/peer-catchup-serve.lisp);
+                       ;; PRF-993: the stored-payload retrieval (books/nntp-zarticle.lisp).
+                       (fn-nntp-string-octets "XFNCATCHUP XFN-ZARTICLE"))))
 
 ; -----------------------------------------------------------------------------
 ; Reader environment: the clock observation and the persisted group-creation
@@ -2165,14 +2166,39 @@
 ; alternative is a dynamic-programming match whose cost is set by stored
 ; article content rather than by the command.
 
+; Executes by a loop (lane depth-debt, PRF-919): the pattern tokens of one
+; XPAT command, joined from the last; STARTED says whether ACC already holds
+; the join of a nonempty suffix.  Equal by fn-nntp-xpat-join-loop-of-rev-onto.
+(defun fn-nntp-xpat-join-loop (rev acc started)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-nntp-xpat-join-loop
+       (cdr rev)
+       (if started
+           (fn-nntp-append-pieces (list (car rev) '(32) acc))
+         (fn-nntp-append-pieces (list (car rev))))
+       t)
+    acc))
+
 (defun fn-nntp-xpat-join (tokens)
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp tokens)
-      (if (consp (cdr tokens))
-          (fn-nntp-append-pieces
-           (list (car tokens) '(32) (fn-nntp-xpat-join (cdr tokens))))
-        (fn-nntp-append-pieces (list (car tokens))))
-    nil))
+  (mbe :logic
+       (if (consp tokens)
+           (if (consp (cdr tokens))
+               (fn-nntp-append-pieces
+                (list (car tokens) '(32) (fn-nntp-xpat-join (cdr tokens))))
+             (fn-nntp-append-pieces (list (car tokens))))
+         nil)
+       :exec (fn-nntp-xpat-join-loop (fn-ag-rev-onto tokens nil) nil nil)))
+
+(defthm fn-nntp-xpat-join-loop-of-rev-onto
+  (equal (fn-nntp-xpat-join-loop (fn-ag-rev-onto tokens zs) nil nil)
+         (fn-nntp-xpat-join-loop zs (fn-nntp-xpat-join tokens) (consp tokens)))
+  :hints (("Goal" :induct (fn-ag-rev-onto tokens zs)
+                  :in-theory (union-theories
+                              '(fn-nntp-xpat-join-loop fn-nntp-xpat-join
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
 
 (defun fn-nntp-xpat-matchesp (patterns content)
   ; `patterns` is an internal successful fn-wildmat-parse result, never an
@@ -2887,13 +2913,40 @@
             (fn-nntp-single session (fn-proto-text * :syntax))))
       (fn-nntp-single session (fn-proto-text * :syntax)))))
 
-(defun fn-nntp-motd-lines (lines)
+; Executes by a loop (lane depth-debt, PRF-919): it walks the configured MOTD lines, operator
+; data with no fixed cap (D27), and the recursion took one control-stack frame
+; per element.  (mbe :logic <the recursion, unchanged> :exec <a loop>), equal
+; by the lemma after it (books/rev-onto.lisp fn-ag-rev-onto).
+(defun fn-nntp-motd-lines-loop (lines acc)
   (declare (xargs :guard t))
   (if (consp lines)
-      (if (fn-nntp-description-textp (car lines))
-          (cons (car lines) (fn-nntp-motd-lines (cdr lines)))
-        (fn-nntp-motd-lines (cdr lines)))
-    nil))
+      (fn-nntp-motd-lines-loop (cdr lines)
+       (if (fn-nntp-description-textp (car lines)) (cons (car lines) acc) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-nntp-motd-lines (lines)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp lines)
+           (if (fn-nntp-description-textp (car lines))
+               (cons (car lines) (fn-nntp-motd-lines (cdr lines)))
+             (fn-nntp-motd-lines (cdr lines)))
+         nil)
+       :exec (fn-nntp-motd-lines-loop lines nil)))
+
+(defthm fn-nntp-motd-lines-loop-is-rev-onto
+  (equal (fn-nntp-motd-lines-loop lines acc)
+         (fn-ag-rev-onto acc (fn-nntp-motd-lines lines)))
+  :hints (("Goal" :induct (fn-nntp-motd-lines-loop lines acc)
+                  :in-theory (union-theories
+                              '(fn-nntp-motd-lines-loop fn-nntp-motd-lines fn-ag-rev-onto not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-nntp-motd-lines
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-nntp-motd-lines fn-ag-rev-onto fn-nntp-motd-lines-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; Section 2.5.2: "an argument MUST NOT be specified.  Otherwise, a 501
 ; response code MUST be returned", and "The motd MAY be empty": this server
@@ -2973,7 +3026,13 @@
 (verify-guards fn-nntp-hdr-response)
 (verify-guards fn-nntp-xhdr-response)
 
-(verify-guards fn-nntp-xpat-join)
+(verify-guards fn-nntp-xpat-join-loop)
+(verify-guards fn-nntp-xpat-join
+  :hints (("Goal" :use ((:instance fn-nntp-xpat-join-loop-of-rev-onto (zs nil)))
+                  :in-theory (union-theories
+                              '(fn-nntp-xpat-join-loop fn-nntp-xpat-join)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (verify-guards fn-nntp-xpat-matchesp)
 

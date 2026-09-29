@@ -72,7 +72,8 @@ the 2026-09-22 proof-engineering review. Green is not true.
   machine cannot reach is marked `unreachable-in-composition` or the branch
   goes. (`reach_check --strict`.)
 - **Cite keystones.** `ledger.py --check` refuses a flagged corollary or
-  restatement; name those lemmas `-unfolds` or `-by-definition`.
+  restatement; name those lemmas `-unfolds` or `-by-definition` and do not
+  cite them as events.
 - **Teeth ship with each keystone.** A reachable positive witness asserts
   the complete antecedent and conclusion, per literal theorem. A
   hypothesis-removal witness affirmatively checks every retained

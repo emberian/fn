@@ -1,5 +1,5 @@
-; fn: the operator's health verdict, nine distinct states (PRF-112; the
-; ninth, the disk, PRF-358).
+; fn: the operator's health verdict, ten distinct states (PRF-112; the
+; ninth, the disk, PRF-358; the tenth, a deferred checkpoint, PKT-542).
 ;
 ; `operator CONFIG health' says which of nine things is wrong, never one red
 ; bit (the mandate, section 11; PKT-098).  Each state has its own line and its
@@ -40,6 +40,14 @@
 ;                          decides it (PRF-358, PKT-879; provisional per
 ;                          PKT-853 (b): a slow disk is the line only).
 ;                          Appended last so codes 20..27 keep their meaning.
+;   9 checkpoint-deferred  the running owner's automatic checkpoint
+;                          publication is deferred (PKT-542: the file it
+;                          would write is past the profile's checkpoint
+;                          budget or the free space; every restart until one
+;                          fits is a full replay); the sixth element of the
+;                          status observation (books/native-live-status.lisp
+;                          fn-nls-obs-checkpoint-deferred) decides it.
+;                          Appended last so codes 20..28 keep their meaning.
 ;
 ; Each state is :held, :clear, or :unobserved (the source was not observed:
 ; offline there is no feed table; a fenced Store is not opened).  The exit
@@ -83,7 +91,8 @@
 
 (defconst *fn-nh-states*
   '(:fenced :exhausted :unqualified-profile :space-pressure
-    :no-route :stranded-transfer :unavailable-peer :receipt-debt :disk))
+    :no-route :stranded-transfer :unavailable-peer :receipt-debt :disk
+    :checkpoint-deferred))
 
 (defconst *fn-nh-unobserved-exit* 19)
 (defconst *fn-nh-first-exit* 20)
@@ -585,6 +594,7 @@ profile's."
         ((equal name :unavailable-peer) "unavailable-peer")
         ((equal name :receipt-debt) "receipt-debt")
         ((equal name :disk) "disk")
+        ((equal name :checkpoint-deferred) "checkpoint-deferred")
         (t "healthy")))
 
 (defun fn-nh-pair (name used bound)
@@ -679,6 +689,8 @@ profile's."
   (cons :unobserved (fn-record-string-octets " (the store was not opened)")))
 (defconst *fn-nh-no-disk*
   (cons :unobserved (fn-record-string-octets " (no running owner: the disk's mode lives in the owner)")))
+(defconst *fn-nh-no-checkpoint*
+  (cons :unobserved (fn-record-string-octets " (no running owner: the checkpoint publisher lives in the owner)")))
 (defconst *fn-nh-no-owner*
   (cons :unobserved (fn-record-string-octets " (no running owner: the feed table lives in the owner)")))
 
@@ -764,7 +776,26 @@ profile's."
          (cons :held (if (true-listp (cdr disk)) (cdr disk) nil)))
         (t (cons :clear nil))))
 
-(defun fn-nh-verdict (fence store min feeds disk)
+; PKT-542: CKPT is the owner's deferred automatic publication, the sixth
+; element of the status observation (books/native-live-status.lisp
+; fn-nls-obs-checkpoint-deferred: (:deferred REASON ESTIMATE BOUND), nil
+; when nothing is deferred), or :unobserved with no running owner.  Held
+; while deferred, with the reason and the two figures `status' prints.
+(defun fn-nh-checkpoint-deferredp (ckpt)
+  (declare (xargs :guard t))
+  (and (consp ckpt) (equal (car ckpt) :deferred)))
+
+(defun fn-nh-o-checkpoint (ckpt)
+  (declare (xargs :guard t))
+  (if (equal ckpt :unobserved)
+      *fn-nh-no-checkpoint*
+    (fn-nh-outcome (fn-nh-checkpoint-deferredp ckpt)
+                   (append (fn-nls-text " reason=")
+                           (fn-nls-reason-words (fn-ag-car (fn-ag-cdr ckpt)))
+                           (fn-nls-field "estimate" (fn-ag-car (fn-ag-cdr (fn-ag-cdr ckpt))))
+                           (fn-nls-field "budget" (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr ckpt)))))))))
+
+(defun fn-nh-verdict (fence store min feeds disk ckpt)
   (declare (xargs :guard t :verify-guards nil))
   (list (fn-nh-o-fenced fence)
         (fn-nh-o-exhausted store min)
@@ -774,7 +805,8 @@ profile's."
         (fn-nh-o-stranded feeds)
         (fn-nh-o-unavailable feeds)
         (fn-nh-o-debt store)
-        (fn-nh-o-disk disk)))
+        (fn-nh-o-disk disk)
+        (fn-nh-o-checkpoint ckpt)))
 
 ; -----------------------------------------------------------------------------
 ; The exit code
@@ -804,7 +836,7 @@ profile's."
 (defun fn-nh-code-state (code)
   "The state an exit code names; nil for 0 and 19."
   (declare (xargs :guard t))
-  (if (and (natp code) (<= *fn-nh-first-exit* code) (< code 29))
+  (if (and (natp code) (<= *fn-nh-first-exit* code) (< code 30))
       (fn-nh-nth (- code *fn-nh-first-exit*) *fn-nh-states*)
     nil))
 
@@ -822,9 +854,9 @@ profile's."
     t))
 
 (defun fn-nh-verdict-shapep (v)
-  "Nine outcomes, each :held, :clear or :unobserved."
+  "Ten outcomes, each :held, :clear or :unobserved."
   (declare (xargs :guard t))
-  (and (true-listp v) (equal (len v) 9)
+  (and (true-listp v) (equal (len v) 10)
        (fn-nh-outcomes-okp v)
        t))
 
@@ -957,17 +989,18 @@ profile's."
   "No owner is running and the Store opened: its facts, no feed table."
   (declare (xargs :guard t :verify-guards nil))
   (fn-nh-render (fn-nh-verdict nil (fn-nh-store-inputs profile s (fn-sbud-bytes-used s) cfg)
-                               min :unobserved :unobserved)))
+                               min :unobserved :unobserved :unobserved)))
 
 (defun fn-nh-fenced-report (reason)
   "The Store was not opened because it is fenced: only the fence is observed."
   (declare (xargs :guard t :verify-guards nil))
-  (fn-nh-render (fn-nh-verdict reason nil 0 :unobserved :unobserved)))
+  (fn-nh-render (fn-nh-verdict reason nil 0 :unobserved :unobserved :unobserved)))
 
-(defun fn-nh-live-report (profile oc cache min disk)
+(defun fn-nh-live-report (profile oc cache min disk ckpt)
   "The running owner's words over what it carries: its Store, configuration
-and feed table, with the committed octets extended from the carried sum, and
-its disk's outcome DISK (PRF-358)."
+and feed table, with the committed octets extended from the carried sum, its
+disk's outcome DISK (PRF-358) and its deferred checkpoint publication CKPT
+(PKT-542)."
   (declare (xargs :guard t :verify-guards nil))
   (let ((s (fn-own-store (fn-ocfg-owner oc))))
     (fn-nh-render
@@ -975,7 +1008,7 @@ its disk's outcome DISK (PRF-358)."
                     (fn-nh-store-inputs
                      profile s (fn-sbud-bytes-extend cache (fn-sf-records (fn-sn-files s)))
                      (fn-ocfg-config oc))
-                    min (fn-own-feeds (fn-ocfg-owner oc)) disk))))
+                    min (fn-own-feeds (fn-ocfg-owner oc)) disk ckpt))))
 
 ; What the owner renders for an FNLS request: the health report for :health,
 ; the status report of books/native-live-status.lisp otherwise.  DISK is
@@ -984,7 +1017,7 @@ its disk's outcome DISK (PRF-358)."
 (defun fn-nh-answer-report (kind profile oc cache obs min disk fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (equal kind :health)
-      (fn-nh-live-report profile oc cache min disk)
+      (fn-nh-live-report profile oc cache min disk (fn-nls-obs-checkpoint-deferred obs))
     (fn-nls-live-report kind profile oc cache obs fn-arena)))
 
 ; -----------------------------------------------------------------------------
@@ -1061,8 +1094,17 @@ its disk's outcome DISK (PRF-358)."
                      (t :clear))))
    :hints (("Goal" :in-theory (enable fn-nh-o-disk)))))
 
+(local
+ (defthm fn-nh-o-checkpoint-car
+   (and (consp (fn-nh-o-checkpoint ckpt))
+        (equal (car (fn-nh-o-checkpoint ckpt))
+               (cond ((equal ckpt :unobserved) :unobserved)
+                     ((fn-nh-checkpoint-deferredp ckpt) :held)
+                     (t :clear))))
+   :hints (("Goal" :in-theory (enable fn-nh-o-checkpoint)))))
+
 (defthm fn-nh-verdict-states
-  (let ((v (fn-nh-verdict fence store min feeds disk))
+  (let ((v (fn-nh-verdict fence store min feeds disk ckpt))
         (hr (fn-nh-store-hr store))
         (debt (fn-nh-store-debt store)))
     (and (fn-nh-verdict-shapep v)
@@ -1098,11 +1140,16 @@ its disk's outcome DISK (PRF-358)."
          (equal (car (fn-nh-nth 8 v))
                 (cond ((equal disk :unobserved) :unobserved)
                       ((and (consp disk) (equal (car disk) :held)) :held)
+                      (t :clear)))
+         (equal (car (fn-nh-nth 9 v))
+                (cond ((equal ckpt :unobserved) :unobserved)
+                      ((fn-nh-checkpoint-deferredp ckpt) :held)
                       (t :clear)))))
   :hints (("Goal" :in-theory (e/d (fn-nh-verdict fn-nh-verdict-shapep fn-nh-outcomes-okp)
                                   (fn-nh-o-fenced fn-nh-o-exhausted fn-nh-o-unqualified
                                    fn-nh-o-pressure fn-nh-o-no-route fn-nh-o-stranded
-                                   fn-nh-o-unavailable fn-nh-o-debt fn-nh-o-disk)))))
+                                   fn-nh-o-unavailable fn-nh-o-debt fn-nh-o-disk
+                                   fn-nh-o-checkpoint fn-nh-checkpoint-deferredp)))))
 
 ;; KEYSTONE (PRF-358, PKT-879: a stalled or full disk is never healthy).
 ;; The subject is fn-nh-verdict, which fn-nh-live-report renders for the
@@ -1113,15 +1160,36 @@ its disk's outcome DISK (PRF-358)."
 ;; when none of the first eight states is held.
 (defthm fn-nh-held-disk-is-never-healthy
   (implies (and (consp disk) (equal (car disk) :held))
-           (let ((code (fn-nh-exit-code (fn-nh-verdict fence store min feeds disk))))
+           (let ((code (fn-nh-exit-code (fn-nh-verdict fence store min feeds disk ckpt))))
              (and (<= 20 code) (<= code 28)
                   (iff (equal code 28)
                        (not (fn-nh-first-held-index
-                             (take 8 (fn-nh-verdict fence store min feeds disk)) 0))))))
+                             (take 8 (fn-nh-verdict fence store min feeds disk ckpt)) 0))))))
   :hints (("Goal" :in-theory (e/d (fn-nh-exit-code fn-nh-verdict fn-nh-first-held-index)
                                   (fn-nh-o-fenced fn-nh-o-exhausted fn-nh-o-unqualified
                                    fn-nh-o-pressure fn-nh-o-no-route fn-nh-o-stranded
-                                   fn-nh-o-unavailable fn-nh-o-debt fn-nh-o-disk)))))
+                                   fn-nh-o-unavailable fn-nh-o-debt fn-nh-o-disk
+                                   fn-nh-o-checkpoint)))))
+
+;; KEYSTONE (PKT-542: a deferred checkpoint is never healthy).  The subject
+;; is fn-nh-verdict, which fn-nh-live-report renders for the running owner
+;; (fn-nh-answer-report; host/native-live-status-host.lisp
+;; fn-native-live-status-host-answer through fn-nsc-answer-report, with CKPT
+;; = the observation's sixth element, fn-owner-sco-deferred).  A deferred
+;; publication is the tenth state held: the exit is a held state's code,
+;; never 0 or 19, and it is 29 exactly when none of the first nine is held.
+(defthm fn-nh-deferred-checkpoint-is-never-healthy
+  (implies (fn-nh-checkpoint-deferredp ckpt)
+           (let ((code (fn-nh-exit-code (fn-nh-verdict fence store min feeds disk ckpt))))
+             (and (<= 20 code) (<= code 29)
+                  (iff (equal code 29)
+                       (not (fn-nh-first-held-index
+                             (take 9 (fn-nh-verdict fence store min feeds disk ckpt)) 0))))))
+  :hints (("Goal" :in-theory (e/d (fn-nh-exit-code fn-nh-verdict fn-nh-first-held-index)
+                                  (fn-nh-o-fenced fn-nh-o-exhausted fn-nh-o-unqualified
+                                   fn-nh-o-pressure fn-nh-o-no-route fn-nh-o-stranded
+                                   fn-nh-o-unavailable fn-nh-o-debt fn-nh-o-disk
+                                   fn-nh-o-checkpoint)))))
 
 ;; KEYSTONE (PKT-711).  While a peer defers any of this node's articles (a
 ;; full Store answers 436), `health' holds unavailable-peer: the node is
@@ -1140,7 +1208,7 @@ its disk's outcome DISK (PRF-358)."
 (defthm fn-nh-deferring-peer-is-held
   (implies (and (member-equal e feeds)
                 (fn-nh-feed-deferredp (fn-own-feed-entry-feed e)))
-           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds disk))) :held))
+           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds disk ckpt))) :held))
   :hints (("Goal" :in-theory (disable fn-nh-verdict fn-nh-feed-deferredp fn-nh-nth)
            :use ((:instance fn-nh-verdict-states)))))
 
@@ -1201,14 +1269,14 @@ its disk's outcome DISK (PRF-358)."
 (defthm fn-nh-saturated-peer-is-held
   (implies (and (member-equal e feeds)
                 (fn-nh-feed-saturatedp (fn-own-feed-entry-feed e)))
-           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds disk))) :held))
+           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds disk ckpt))) :held))
   :hints (("Goal" :in-theory (disable fn-nh-verdict fn-nh-feed-saturatedp fn-nh-nth)
            :use ((:instance fn-nh-verdict-states)))))
 
 (defthm fn-nh-feed-queue-refusal-is-held
   (implies (and (fn-nh-names-have-entriesp names feeds)
                 (not (fn-own-feed-target-capacityp names feeds msgid)))
-           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds disk))) :held))
+           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds disk ckpt))) :held))
   :hints (("Goal" :use ((:instance fn-nh-full-target-is-saturated (tbl feeds))
                         (:instance fn-nh-saturated-peer-is-held
                                    (e (fn-own-feed-entry-of
@@ -1294,7 +1362,7 @@ its disk's outcome DISK (PRF-358)."
   (implies (and (fn-own-feed-tablep (fn-own-feeds o))
                 (equal (fn-own-submission-intent-result o evidence generation txid)
                        :capacity))
-           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min (fn-own-feeds o) disk)))
+           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min (fn-own-feeds o) disk ckpt)))
                   :held))
   :hints (("Goal" :use ((:instance fn-nh-feed-queue-refusal-is-held
                                    (names (fn-own-submission-targets o))
@@ -1316,12 +1384,12 @@ its disk's outcome DISK (PRF-358)."
                  (< (fn-nh-first-held-index v i) (+ i (len v)))))
    :rule-classes nil))
 
-; The scale (PKT-329).  For every verdict of at most nine outcomes (the
-; verdict has exactly nine: fn-nh-verdict-states) the code is 0, 19, or
-; 20..28.
+; The scale (PKT-329).  For every verdict of at most ten outcomes (the
+; verdict has exactly ten: fn-nh-verdict-states) the code is 0, 19, or
+; 20..29.
 (defthm fn-nh-exit-code-cases
-  (implies (<= (len v) 9)
-           (member-equal (fn-nh-exit-code v) '(0 19 20 21 22 23 24 25 26 27 28)))
+  (implies (<= (len v) 10)
+           (member-equal (fn-nh-exit-code v) '(0 19 20 21 22 23 24 25 26 27 28 29)))
   :hints (("Goal" :use ((:instance fn-nh-first-held-index-bounds (i 0)))
            :in-theory (disable fn-nh-first-held-index))))
 
@@ -1342,12 +1410,12 @@ its disk's outcome DISK (PRF-358)."
             (equal (fn-nh-exit-code v) (fn-outcome-code :accepted))))
   :hints (("Goal" :in-theory (enable fn-nh-exit-code fn-outcome-codep))))
 
-; KEYSTONE (the code names the state).  For every verdict of at most nine
-; outcomes (the verdict has exactly nine: fn-nh-verdict-states), the exit
+; KEYSTONE (the code names the state).  For every verdict of at most ten
+; outcomes (the verdict has exactly ten: fn-nh-verdict-states), the exit
 ; code the host returns names the first held state in `*fn-nh-states*' order,
 ; and it is 0 exactly when no state is held and none is unobserved.
 (defthm fn-nh-exit-code-decodes
-  (implies (<= (len v) 9)
+  (implies (<= (len v) 10)
            (and (equal (fn-nh-code-state (fn-nh-exit-code v)) (fn-nh-first-held v))
                 (iff (equal (fn-nh-exit-code v) 0)
                      (and (not (fn-nh-first-held-index v 0))
@@ -1382,7 +1450,7 @@ its disk's outcome DISK (PRF-358)."
 
 (local
  (defthm fn-nh-report-exit-of-code
-   (implies (and (member-equal c '(0 19 20 21 22 23 24 25 26 27 28))
+   (implies (and (member-equal c '(0 19 20 21 22 23 24 25 26 27 28 29))
                  (true-listp rest))
             (equal (fn-nh-report-exit
                     (append (fn-nh-exit-prefix) (append (fn-nh-digit2 c) rest)))
@@ -1399,9 +1467,9 @@ its disk's outcome DISK (PRF-358)."
 ; KEYSTONE (the exit the host returns is the verdict's).  The host prints the
 ; octets `fn-nh-render' made, locally or over the control socket, and returns
 ; `fn-nh-report-exit' of the octets it holds (`fn-native-health-host-exit');
-; for every verdict of at most nine outcomes that is the verdict's code.
+; for every verdict of at most ten outcomes that is the verdict's code.
 (defthm fn-nh-report-exit-of-render
-  (implies (<= (len v) 9)
+  (implies (<= (len v) 10)
            (equal (fn-nh-report-exit (fn-nh-render v)) (fn-nh-exit-code v)))
   :hints (("Goal" :in-theory (e/d (fn-nh-render fn-nh-header)
                                   (fn-nh-report-exit fn-nh-exit-code fn-nh-digit2 fn-nh-header-reason
@@ -1459,14 +1527,14 @@ its disk's outcome DISK (PRF-358)."
 (defthm fn-nh-live-report-is-the-store-report
   (implies (fn-sbud-octets-cache-validp
             cache (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
-           (equal (fn-nh-live-report profile oc cache min disk)
+           (equal (fn-nh-live-report profile oc cache min disk ckpt)
                   (fn-nh-render
                    (fn-nh-verdict nil
                                   (fn-nh-store-inputs
                                    profile (fn-own-store (fn-ocfg-owner oc))
                                    (fn-sbud-bytes-used (fn-own-store (fn-ocfg-owner oc)))
                                    (fn-ocfg-config oc))
-                                  min (fn-own-feeds (fn-ocfg-owner oc)) disk))))
+                                  min (fn-own-feeds (fn-ocfg-owner oc)) disk ckpt))))
   :hints (("Goal" :use ((:instance fn-sbud-bytes-used-is-kernel-sum
                                    (s (fn-own-store (fn-ocfg-owner oc)))))
            :in-theory '(fn-nh-live-report))))
@@ -1632,7 +1700,7 @@ its disk's outcome DISK (PRF-358)."
                                    fn-nh-exit-prefix)))))
 
 (defthm fn-nh-report-exit-of-render-and-more
-  (implies (and (<= (len v) 9) (true-listp more))
+  (implies (and (<= (len v) 10) (true-listp more))
            (equal (fn-nh-report-exit (append (fn-nh-render v) more))
                   (fn-nh-exit-code v)))
   :hints (("Goal" :use (fn-nh-report-exit-of-render
@@ -1802,13 +1870,13 @@ its disk's outcome DISK (PRF-358)."
           *fn-nls-lf*))
 
 ; `health' when the step says (:not-running): the header, why it stopped,
-; then the nine states over the Store this process opened read-only.
+; then the ten states over the Store this process opened read-only.
 (defun fn-nh-not-running-report (profile s cfg min last)
   (declare (xargs :guard t :verify-guards nil))
   (append (fn-nh-not-running-header)
           (fn-nh-last-run-words last)
           (fn-nh-lines (fn-nh-verdict nil (fn-nh-store-inputs profile s (fn-sbud-bytes-used s) cfg)
-                                      min :unobserved :unobserved)
+                                      min :unobserved :unobserved :unobserved)
                        *fn-nh-states*)))
 
 (verify-guards fn-nh-not-running-report)
@@ -1845,7 +1913,7 @@ its disk's outcome DISK (PRF-358)."
            :in-theory (disable fn-nh-report-exit-of-append))))
 
 ; KEYSTONE.  The not-running report's exit is 18, its own code: never 0,
-; never 19 (some state unobserved), never a held state's 20 to 28.
+; never 19 (some state unobserved), never a held state's 20 to 29.
 (defthm fn-nh-not-running-report-exit
   (equal (fn-nh-report-exit (fn-nh-not-running-report profile s cfg min last))
          *fn-nh-not-running-exit*)
@@ -1854,7 +1922,7 @@ its disk's outcome DISK (PRF-358)."
                                                  (fn-nh-lines
                                                   (fn-nh-verdict
                                                    nil (fn-nh-store-inputs profile s (fn-sbud-bytes-used s) cfg)
-                                                   min :unobserved :unobserved)
+                                                   min :unobserved :unobserved :unobserved)
                                                   *fn-nh-states*)))))
            :in-theory (union-theories
                        '(fn-nh-not-running-report fn-nh-true-listp-of-not-running-tail)

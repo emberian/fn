@@ -135,6 +135,8 @@
   (fn-record-octets-string
    (fn-feed-record-peer (fn-feed-journal-values record))))
 
+(verify-guards fn-ores-record-peer)
+
 (defun fn-ores-record-peers (records)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp records)
@@ -150,19 +152,58 @@
   (declare (xargs :guard t :verify-guards nil))
   (if (fn-cbor-octet-listp frame)
       (let ((prefix (fn-frame-protected-prefix frame)))
-        (append prefix (fn-frame-trailer prefix)))
+        (mbe :logic (append prefix (fn-frame-trailer prefix))
+             :exec (fn-ag-append prefix (fn-frame-trailer prefix))))
     :bad))
+
+(verify-guards fn-ores-seal)
+
+; Executes by a loop (lane depth-debt, PRF-919): one record per target peer,
+; operator data with no fixed cap (D27).  (mbe :logic <the recursion,
+; unchanged> :exec <a loop>).  The seal, the entry, the loop and the plan are
+; guard-verified (lane depth-debt-2), so the host's call runs the :exec; the
+; equality is fn-ores-sealed-plan-loop-is-rev-onto.
+(defun fn-ores-sealed-entry (r)
+  (declare (xargs :guard t :verify-guards nil))
+  (cons (fn-ores-record-peer r)
+        (fn-ores-seal
+         (fn-feed-encode (fn-feed-journal-kind r)
+                         (fn-feed-journal-values r)
+                         *fn-ores-zero-trailer*))))
+
+(defun fn-ores-sealed-plan-loop (records acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp records)
+      (fn-ores-sealed-plan-loop (cdr records)
+                                (cons (fn-ores-sealed-entry (car records)) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(verify-guards fn-ores-sealed-entry)
+(verify-guards fn-ores-sealed-plan-loop)
 
 (defun fn-ores-sealed-plan (records)
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp records)
-      (cons (cons (fn-ores-record-peer (car records))
-                  (fn-ores-seal
-                   (fn-feed-encode (fn-feed-journal-kind (car records))
-                                   (fn-feed-journal-values (car records))
-                                   *fn-ores-zero-trailer*)))
-            (fn-ores-sealed-plan (cdr records)))
-    nil))
+  (mbe :logic (if (consp records)
+                  (cons (cons (fn-ores-record-peer (car records))
+                              (fn-ores-seal
+                               (fn-feed-encode (fn-feed-journal-kind (car records))
+                                               (fn-feed-journal-values (car records))
+                                               *fn-ores-zero-trailer*)))
+                        (fn-ores-sealed-plan (cdr records)))
+                nil)
+       :exec (fn-ores-sealed-plan-loop records nil)))
+
+(defthm fn-ores-sealed-plan-loop-is-rev-onto
+  (equal (fn-ores-sealed-plan-loop records acc)
+         (fn-ag-rev-onto acc (fn-ores-sealed-plan records)))
+  :hints (("Goal" :induct (fn-ores-sealed-plan-loop records acc)
+                  :in-theory (union-theories
+                              '(fn-ores-sealed-plan-loop fn-ores-sealed-plan
+                                fn-ag-rev-onto car-cons cdr-cons fn-ores-sealed-entry)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-ores-sealed-plan
+  :hints (("Goal" :in-theory (disable fn-ores-sealed-entry fn-ores-seal fn-ores-record-peer))))
 
 (defun fn-ores-feed-publication (word peer records token command status log-line)
   (declare (xargs :guard t :verify-guards nil))
@@ -196,8 +237,17 @@
 ; fn-icar-submission-intent itself (the subject capability P7 names) and hands
 ; its value here.
 (defun fn-ores-intent-publication (intent token)
+  ; Total in INTENT (the host hands it a parsed intent): the executable
+  ; accessors refuse nothing, an atom reads as the empty intent, exactly as
+  ; the logical car/cdr do.
   (declare (xargs :guard t :verify-guards nil))
-  (fn-ores-feed-port-publication (car intent) (cdr intent) nil token nil))
+  (fn-ores-feed-port-publication
+   (mbe :logic (car intent) :exec (if (consp intent) (car intent) nil))
+   (mbe :logic (cdr intent) :exec (if (consp intent) (cdr intent) nil))
+   nil token nil))
+(verify-guards fn-ores-feed-publication)
+(verify-guards fn-ores-feed-port-publication)
+(verify-guards fn-ores-intent-publication)
 
 (defun fn-ores-submission-intent-publication (o carry evidence generation txid)
   (declare (xargs :guard t :verify-guards nil))

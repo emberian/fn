@@ -231,7 +231,7 @@ and a refusal is never reported as one (`fn-bprc-decode-never-fences`;
 NO-STORE, `fn-native-operator-absent-store-is-refused`).
 
 Outside the seven, and never an outcome class: `operator CONFIG health`
-exits with its verdict (0 all clear, 19 unobserved, 20 to 27 the first held
+exits with its verdict (0 all clear, 19 unobserved, 20 to 29 the first held
 state; HST-007). It is the one exception to the table, and it never
 overlaps it: for every verdict the code is 0 or at least 19, and it is an
 outcome code exactly when it is 0, the code of `:accepted`
@@ -1171,14 +1171,17 @@ verbs.
 
 ## Operator health
 
-HST-007: The operator's health verdict names which of nine things is wrong,
+HST-007: The operator's health verdict names which of ten things is wrong,
 never one red bit. `operator CONFIG health` prints one line per state in a
 fixed order: fenced, exhausted, unqualified-profile, space-pressure,
 no-route, stranded-transfer, unavailable-peer, receipt-debt, disk (PRF-358:
 the running owner's disk stalled or full, exit 28, both PROVISIONAL until
 ember decides the F4 bars and the health exit; appended so 20..27 keep
 their meaning; a slow disk is the `disk slow` line only, provisional per
-PKT-853 (b)); each line says
+PKT-853 (b)), checkpoint-deferred (PRF-963, PKT-542: the running owner's
+automatic checkpoint publication is deferred, `reason=R estimate=E
+budget=B`, so every restart until one fits is a full replay; exit 29,
+appended so 20..28 keep their meaning); each line says
 `held` (with the figures that hold it), `clear`, or `unobserved` (the source
 was not observed: offline there is no feed table, a fenced store is not
 opened). The exit code is 20 plus the index of the first held state, 19 when
@@ -1224,7 +1227,18 @@ decision named (`fn-native-control-printed-reason-is-the-decisions`). The
 kind-2 reply is unchanged, so a client that sends the plain request reads
 what it always read; a new client that meets an owner predating kind 13 gets
 that owner's refusal of a frame it could not decode and resends the plain
-request once. PRF-172; the native cases are SCN-102.
+request once. PRF-172; the native cases are SCN-102. A decision that owes
+the operator a sentence (a live `policy set max-transactions|max-history-
+octets|max-article-octets N`: what was applied, what the next start
+reserves, the use a lowering is below) is answered with reply kind 23: the
+status, the reason word (the decision's class: `applied`, `recorded`,
+`below-current-use`, ...) and a LINE ACL2 rendered
+(`fn-lim-decision-line`; printable ASCII, spaces allowed, at most 1,024
+octets), which the client prints after the status (`ACCEPTED applied limit
+max-transactions=14 heap=2342 MB: served now, no data moved`); a reply with
+no line is kind 18, unchanged (books/native-control-line.lisp,
+`fn-native-control-printed-line-is-the-decisions`, PRF-975;
+tests/test_native_limits_live.py).
 
 HST-011: An operator reads what the owner decided about withdrawing
 articles, in ACL2's words. `operator CONFIG control log` prints the count and
@@ -1282,7 +1296,11 @@ documented outcome. On an **absent** store (none of the store's five entries
 beside `[store] path`), every verb that opens a store answers `refused` with
 exit 6 and ACL2's line naming `init`, never a fault (4): the decision is
 `fn-native-operator-store-outcome` over the host's `lstat` observation, made
-before any open (PRF-130). `init` creates the store (0), refuses an existing
+before any open (PRF-130). When an interrupted `init` or `import` left its
+stage (ROOT.init-* or ROOT.import-*) beside an absent store, those verbs refuse
+(1) by the stage's name instead, INTERRUPTED-INIT or INTERRUPTED-IMPORT, and
+ACL2's line names the stage to remove (`fn-nsst-store-outcome`, PRF-971,
+PKT-781), since `init` itself refuses while the stage remains. `init` creates the store (0), refuses an existing
 one (1) and, under a mission's `fn.toml`, takes group words only: a profile
 word is a usage error (5) whose line says what it accepts. On a **fenced**
 store (a writer lock held with no answering owner, a clone fence) `health`
@@ -1516,6 +1534,8 @@ Lane operations, 2026-09-28 (planning/evidence/operations-2026-09-28.md).
 HST-032: An operator command carries any number of words of any length (PKT-867, PRF-902). ACL2 parses the argv the kernel admits in one pass in constant stack (loop twins), the administrative vector travels in the record codec, and what bounds one command is the control frame the owner reads under the profile's bound; KEYSTONE `fn-native-control-admin-decode-of-encode`: an argv the client can seal is the argv the owner decodes.
 
 HST-033: The owner holds its mutex for no disk I/O at a connection's greeting or a checkpoint's capture (PRF-907). The free-space observation (statvfs) is taken before the gate admits a quantum, at the NEED ACL2 computed under the mutex; the log rotation's spare is staged, preallocated and fenced off the mutex, the switch under it is one rename, and `journal/` is fenced off it before anything in the new segment is acknowledged or named (KEYSTONE `fn-lgrs-journal-fence-names-the-acknowledged-batch`).
+
+HST-036: Maintenance while serving (row S3, PRF-964, PRF-965). `recover` and `store inspect` on a running owner are answered by that owner over the same administrative route as HST-034 (ACL2's liveness decision over the socket and the writer lock, books/owner-maintenance-request.lisp `fn-omr-route`): `recover` is accepted by name (the owner's open recovered the store; its status follows), `store inspect ID` is the owner's own lookup answered as a word that the client renders as the offline report (KEYSTONE `fn-omr-inspect-live-is-the-offline-report`); an owner that holds the lock and answers nothing refuses by name (`owner-holds-the-store`) with what it would take; the offline executors run only when no owner holds the store. `status` and `health` on a stopped store read the newest checkpoint's 37-octet header and the journal's sizes, never a replay: `stopped checkpoint=N journal-octets=B transactions-at-most=M` (KEYSTONE `fn-omr-transactions-at-most-bounds-the-count`); `status --replay` is the report over the replayed log.
 
 HST-034: Compaction needs no stop (PKT-868, PRF-908). `store compact` and `store checkpoint` on a running owner are a request it answers by name (requested, coalesced, nothing-to-compact, refused while a deferral blocks) and serves with its own publication in bounded batches off its mutex; KEYSTONE `fn-ock-requested-next-is-due-with-a-suffix`.
 

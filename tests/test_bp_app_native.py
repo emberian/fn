@@ -344,14 +344,13 @@ class NativeBpApplicationTests(unittest.TestCase):
         self.assertTrue(answers[filed_id.decode()].startswith("223 "), witness)
         self.assertTrue(answers[cancel_id.decode()].startswith("430"), witness)
 
-    @unittest.expectedFailure
     def test_bp_filing_refusal_names_its_reason(self):
-        """PKT-443 (control-across-peers): the BP receiver refuses a control
-        article whose control group is not configured, but its refusal line
-        reads `reason=none` (host/bp-native-app-host.lisp keeps
-        fn-owner-app-refusal-reason only for the planner's refusals; the
-        filing refusal happens later, in fnn-owner-attempt-transit).  The
-        line should name `control-not-filed`, as NNTP's 437 does."""
+        """PKT-443 (2) (control-across-peers): the BP receiver refuses a
+        control article whose control group is not configured, and its
+        refusal line names the filing's reason, `control-not-filed`, as
+        NNTP's 437 does: the filing refusal happens in
+        fnn-owner-attempt-transit, after the plan, and its reason reaches
+        fn-owner-app-refusal-log as DETAIL (it read `reason=none`)."""
         msgid = b"<native-bp-cancel-reason@example.invalid>"
         article = (b"From: sender@example.invalid\r\nNewsgroups: fn.test\r\n"
                    b"Subject: cancel over BP\r\n"

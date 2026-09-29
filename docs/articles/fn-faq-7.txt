@@ -35,20 +35,20 @@ keys, the file, your address.
         /var/lib/fn/invite
 
 *The feed, both:* Nothing flows yet. Make a login for the other
-node, save the other's password, re-add the peer over STARTTLS, and
-restart:
+node, send your groups over STARTTLS, save the other's password
+(peer login asks it twice and writes the file), and pull. The
+running node takes each at once:
 
     fn operator CONFIG principal set-password friend-node \
         --principal PRINCIPAL-HEX --posting
-    umask 077; printf 'FNAUTH1\nme-node\nPASSWORD\n' > friend.fnauth
-    fn operator CONFIG peer add friend friend.example.net 198.51.100.9 \
-        119 'local.*' 'local.*' principal PRINCIPAL-HEX friend.fnauth \
-        false true starttls 198.51.100.9 friend-cert.pem
+    fn operator CONFIG peer set friend --send 'local.*' --tls starttls \
+        --server-name 198.51.100.9 --anchor /var/lib/fn/friend-cert.pem
+    fn operator CONFIG peer login friend me-node /var/lib/fn/friend.fnauth
     fn operator CONFIG peer pull friend 20
 
 *Check:* Post on one; read on the other. The log says:
 
     pull peer=friend round=done cursor=advanced transport=tls
 
-*Known gap:* A peer that cannot stream stalls. Give peer add false
-in place of true. help peer explains every word.
+*Known gap:* A peer that cannot stream stalls. Run peer set friend
+--streaming false. help peer explains every flag.

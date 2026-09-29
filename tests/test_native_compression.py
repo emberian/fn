@@ -4,11 +4,12 @@ books/payload-lz-record.lisp PRF-326).
 
 `operator CONFIG policy set compress-min-octets N` (a configuration row; no
 row is off) makes the append offer every article record whose payload span has
-at least N octets to the vendored LZ4-HC encoder (lib/libfn-lz4); ACL2's
-proved decoder checks the candidate before the record is taken, and every read
+at least N octets to the vendored zlib encoder (lib/libfn-deflate: a DEFLATE
+stream over the current shipped dictionary); ACL2's proved decoder checks the candidate before the record is taken, and every read
 of the log expands the frame through the same decoder.  Two twin stores get
 the same articles, one with the row: the compressed one holds fewer octets,
-`store ROOT compression` reports its compressed records and dictionary 0, and
+`store ROOT compression` reports its compressed records and the shipped
+dictionary's ID (baseline 1, planning/evidence/compress-dict/baseline-1.json), and
 every article reads back octet for octet as the uncompressed twin serves it --
 after a recover, after a second recover (the replay is deterministic), and
 after a torn last entry (a power loss through a compressed record recovers
@@ -28,6 +29,9 @@ from tests import fuzz_nntp as fz
 SEGMENT = "journal/000001.log"
 UNIT = 4096
 ARTICLES = 16
+# The first four BLAKE3 octets of the shipped baseline dictionary
+# (books/payload-lz-dicts.lisp *fn-lzd-baseline-1-id*).
+BASELINE_1_ID = 2220533217
 MIN = 64
 
 
@@ -116,7 +120,7 @@ class CompressionTests(unittest.TestCase):
         self.assertEqual(plain["dictionaries"], "none")
         self.assertEqual(packed["compress-min-octets"], str(MIN), line)
         self.assertEqual(int(packed["compressed-records"]), ARTICLES, line)
-        self.assertEqual(packed["dictionaries"], "0", line)
+        self.assertEqual(packed["dictionaries"], str(BASELINE_1_ID), line)
         self.assertLess(int(packed["stored-octets"]), int(packed["uncompressed-octets"]), line)
         # The expansions are the plain store's records: the same octets.
         self.assertEqual(packed["uncompressed-octets"], plain["uncompressed-octets"])
@@ -181,6 +185,68 @@ class CompressionTests(unittest.TestCase):
         result = fz.run_image(self.image, ["store", store, "recover"])
         self.assertEqual(result.returncode, fz.EXIT_REFUSED, result.stderr[-600:])
         self.assertIn(b"reason=log-damaged at=000001.log:%d " % victim, result.stderr)
+
+
+    # NNT-055, XFN-ZARTICLE (books/nntp-zarticle.lisp, PRF-993): a peer that
+    # lists the shipped baseline's digest gets the article as it is stored,
+    # yEnc-style escaped in lines of at most 128 octets (RFC 3977 3.1.1: a
+    # block carries no NUL, CR or LF), and those octets, unescaped and
+    # inflated against the baseline dictionary, are ARTICLE's; a peer that
+    # lists another digest gets ARTICLE's reply octet for octet.
+    def zarticle(self, digest_hex):
+        transcript = b"".join(b"XFN-ZARTICLE " + m + b" " + digest_hex + fz.CRLF
+                              for m in self.ids) + b"QUIT\r\n"
+        rc, out, err = fz.model_reply(self.image, [transcript], self.packed)
+        self.assertEqual(rc, 0, err[-400:])
+        return out.split(fz.CRLF)[1:]
+
+    def test_zarticle_sends_the_stored_block_to_a_peer_with_the_dictionary(self):
+        import zlib
+        evidence = Path(__file__).resolve().parents[1] / "planning/evidence/compress-dict"
+        dictionary = (evidence / "baseline-1.bin").read_bytes()
+        import json
+        b3 = json.loads((evidence / "baseline-1.json").read_text())["blake3"].encode()
+        lines = self.zarticle(b3)
+        i = 0
+        for m in self.ids:
+            head = lines[i].split(b" ")
+            self.assertEqual(head[:2], [b"229", b3], (m, lines[i]))
+            n, clen = int(head[2]), int(head[3])
+            i += 1
+            block = []
+            while lines[i] != b".":
+                line = lines[i][1:] if lines[i].startswith(b"..") else lines[i]
+                self.assertLessEqual(len(line), 128, m)
+                self.assertFalse(set(line) & {0, 10, 13}, m)
+                block.append(line)
+                i += 1
+            i += 1
+            escaped, c, k = b"".join(block), bytearray(), 0
+            while k < len(escaped):
+                if escaped[k] == 61 and k + 1 < len(escaped):
+                    c.append((escaped[k + 1] - 64) % 256)
+                    k += 2
+                else:
+                    c.append(escaped[k])
+                    k += 1
+            self.assertEqual(len(c), clen, m)
+            inflater = zlib.decompressobj(wbits=-15, zdict=dictionary)
+            decoded = inflater.decompress(bytes(c)) + inflater.flush()
+            self.assertEqual(len(decoded), n, m)
+            expected = fz.CRLF.join(l[1:] if l.startswith(b"..") else l
+                                    for l in self.baseline[m].split(fz.CRLF))
+            self.assertIn(decoded, (expected, expected + fz.CRLF), m)
+
+    def test_zarticle_answers_as_article_to_a_peer_without_the_dictionary(self):
+        lines = self.zarticle(b"00" * 32)
+        got = fz.store_article_map(fz.CRLF.join([b"greeting"] + lines), self.ids)
+        for m in self.ids:
+            self.assertEqual(got[m], self.baseline[m], m)
+
+    def test_zarticle_refuses_a_malformed_digest(self):
+        lines = self.zarticle(b"xyz")
+        for k in range(len(self.ids)):
+            self.assertTrue(lines[k].startswith(b"501"), lines[k])
 
 
 if __name__ == "__main__":

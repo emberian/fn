@@ -50,7 +50,7 @@
 
 (defun fnn-feed-now ()
   "One monotonic observation, in the ACL2 feed port's milliseconds."
-  (floor (* 1000 (get-internal-real-time)) internal-time-units-per-second))
+  (fnn-monotonic-ms))
 
 (defun fnn-feed-runtime-get (service)
   (sb-thread:with-mutex (*fnn-feed-runtime-lock*)

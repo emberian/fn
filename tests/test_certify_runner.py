@@ -804,8 +804,20 @@ class IncrementalTests(unittest.TestCase):
                no_fasl: str = "") -> FakeRepository:
         """A repository whose cache holds `books` and whose tree holds no pair."""
         repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
-        code, _ = repository.certify(books, jobs=2, no_fasl=no_fasl)
+        code, manifest = repository.certify(books, jobs=2, no_fasl=no_fasl)
         self.assertEqual(code, 0)
+        if no_fasl:
+            # A run that compiled nothing for it files no pair ...
+            self.assertIn(no_fasl, manifest["cert_cache"]["uncompiled"])
+            # ... so make the entry an earlier publisher filed without one.
+            code, _ = repository.certify(books, jobs=2)
+            self.assertEqual(code, 0)
+            for meta_path in repository.cache.rglob("meta.json"):
+                meta = json.loads(meta_path.read_text())
+                if meta["book"] == no_fasl:
+                    (meta_path.parent / "book.fasl").unlink()
+                    meta["fasl_sha256"] = None
+                    meta_path.write_text(json.dumps(meta))
         for suffix in ("cert", "port", "fasl"):
             for path in repository.root.glob(f"books/*.{suffix}"):
                 path.unlink()
@@ -827,7 +839,9 @@ class IncrementalTests(unittest.TestCase):
                 self.assertGreaterEqual(fasl.stat().st_mtime, cert.stat().st_mtime)
             self.assertIn("books/leaf-a", manifest["compiled_digests_sha256"])
 
-    def test_a_pair_cached_without_a_compiled_file_still_installs(self):
+    def test_a_pair_cached_without_a_compiled_file_is_certified_afresh(self):
+        """Installed bare, such a pair made the image build refuse the book
+        (payload-arena-attach, 2026-09-29); certifying it compiles it."""
         with tempfile.TemporaryDirectory() as directory:
             repository = self.seeded(directory, ["books/base", "books/mid"],
                                      no_fasl="books/base")
@@ -836,12 +850,9 @@ class IncrementalTests(unittest.TestCase):
             code, manifest = repository.certify(
                 ["books/leaf-a"], jobs=2, extra=["--incremental"])
             self.assertEqual((code, manifest["status"]), (0, "passed"))
-            self.assertEqual(manifest["cache_install"]["installed"], 2)
-            self.assertEqual((manifest["cache_install"]["fasl_installed"],
-                              manifest["cache_install"]["fasl_missing"]), (1, 1))
-            self.assertTrue((repository.root / "books/base.cert").is_file())
-            self.assertFalse((repository.root / "books/base.fasl").exists())
-            self.assertTrue((repository.root / "books/mid.fasl").is_file())
+            self.assertEqual(manifest["cache_install"]["uncompiled"], ["books/base"])
+            self.assertEqual(manifest["book_provenance"]["books/base"], "certified")
+            self.assertIn("books/base", repository.event_log())
 
     def test_a_cached_bottom_certifies_exactly_the_top_in_order(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1113,6 +1124,7 @@ class CachePublishTests(unittest.TestCase):
             cert = repository.root / "books/base.cert"
             cert.write_text('(IN-PACKAGE "ACL2")\n:BEGIN-PORTCULLIS-CMDS\n'
                             ':END-PORTCULLIS-CMDS\n')
+            (repository.root / "books/base.fasl").write_text("compiled\n")
             nonce = "1" * 32
             output = "ACL2 !>" + runner.success_token("books/base", nonce) + "\n"
             source_digests = {

@@ -44,7 +44,7 @@
 ; `node-invariants`, not `node`: `fn-node-prepare` and `fn-node-complete` now
 ; carry `(fn-node-statep s)` as their guard (BOARD, 2026-09-19 core), so the
 ; caller discharges it from the preservation keystones and never re-checks the
-; recognizer (docs/proof-style.md §4).
+; recognizer (docs/proof-style.md section 4).
 (include-book "node-invariants")
 (include-book "identity")
 (include-book "records")
@@ -88,13 +88,13 @@
        (natp (fn-ct-max-unknowns p))
        (natp (fn-ct-max-unknown-octets p))))
 
-; The profile recognizer is a carried invariant (docs/proof-style.md §4): it
+; The profile recognizer is a carried invariant (docs/proof-style.md section 4): it
 ; is checked once by the caller and every guard proof below discharges it
 ; from its own hypothesis.  Opening it destructured `profile` into six
 ; variables inside the guard conjecture of `fn-ct-deps-resolvep` and left a
 ; goal (`(not (natp profile9))`) with no induction scheme (measured here).
 ; What opacity takes away it exports back as forward-chaining, never rewrite
-; (docs/proof-style.md §1): the five field facts the guard proofs below used
+; (docs/proof-style.md section 1): the five field facts the guard proofs below used
 ; to get by opening the recognizer.  (Measured after that: the conjecture
 ; never needed the profile at all.  Its two checkpoints were `(integerp fuel)`
 ; and `(<= 0 fuel)`, the guard of `zp` on `fuel`; `(natp fuel)` in the guard
@@ -111,7 +111,7 @@
   :hints (("Goal" :in-theory (enable fn-ct-profilep))))
 
 ; The accessors go opaque with it, so the guard goals and the exported facts
-; stay in the same vocabulary (docs/proof-style.md §1): with the readers open
+; stay in the same vocabulary (docs/proof-style.md section 1): with the readers open
 ; the forward-chained `(natp (fn-ct-max-dependencies p))` did not meet the
 ; goal's `(rationalp (fn-frame-item 2 profile))`.
 (in-theory (disable fn-ct-profilep
@@ -360,7 +360,7 @@
                   (list :not-durable done nil))
                 fn-arena)))))))
 
-; The node invariant the fold carries (docs/proof-style.md §4): publication of
+; The node invariant the fold carries (docs/proof-style.md section 4): publication of
 ; one article answers with a node state whenever it was given one, so
 ; `fn-ct-publish-list` never re-runs `fn-node-statep` on its own recursion.
 (defthm fn-ct-publish-article-preserves-node-statep
@@ -436,7 +436,7 @@
           fn-arena))))
 
 ; -----------------------------------------------------------------------------
-; Export theory (docs/proof-style.md §2).  What leaves this book enabled: the
+; Export theory (docs/proof-style.md section 2).  What leaves this book enabled: the
 ; list-recursive vocabulary the proofs induct on (`fn-ct-id-listp`,
 ; `fn-ct-article-list-shapep`, `fn-ct-unknown-listp`, `fn-ct-find-provider`,
 ; `fn-ct-has-rivalp`, `fn-ct-conflict-evidence`) and the node-invariant

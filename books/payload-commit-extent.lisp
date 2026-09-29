@@ -85,9 +85,11 @@
       nil)))
 
 ; The extent of handle H's payload in the record R the log wrote at its
-; PLACE (START N ROFF RLEN) in FILE (books/payload-extent.lisp
-; fn-arx-list-places), or nil: the place must be R's (its length) and lie in
-; the entry's protected prefix.
+; PLACE (START N ROFF RLEN TRAILER) in FILE (books/payload-extent.lisp
+; fn-arx-list-places, the entry's commitment attached by
+; fn-arx-attach-trailers), or nil: the place must be R's (its length) and lie
+; in the entry's protected prefix.  The descriptor carries TRAILER: the
+; realizer decides every read against it (lane extent-identity, PRF-994).
 (defun fn-arx-commit-extent (h file position r fn-arena)
   (declare (xargs :stobjs fn-arena
                   :guard (and (natp h) (< h (fn-arena-count fn-arena))
@@ -101,7 +103,7 @@
                  (fn-arx-commit-place h r fn-arena))))
     (if (natp k)
         (list (nfix file) start (- n *fn-frame-trailer-octets*)
-              (+ roff k) (fn-arena-payload-len h fn-arena) 0)
+              (+ roff k) (fn-arena-payload-len h fn-arena) (nfix (nth 4 position)))
       nil)))
 
 (defthm fn-arx-arena-find-bounds

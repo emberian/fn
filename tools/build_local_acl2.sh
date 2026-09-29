@@ -26,9 +26,9 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 dest=${1:-$HOME/tools/acl2-fn}
 url=https://github.com/acl2/acl2/archive/refs/tags/8.7.tar.gz
 sum=d6013c22e190cbd702870d296b5370a068c14625bf7f9d305d2d87292b594d52
-books="arithmetic/top arithmetic-5/top ihs/quotient-remainder-lemmas std/lists/append
-std/lists/rev std/lists/revappend std/testing/assert-bang std/testing/assert-equal
-std/testing/must-fail"
+# The toolchain's system books: one list, read from the tree (tools/system_books.py;
+# the boxes certify the same list and `make check' names a missing one).
+books=$(python3 "$root/tools/system_books.py" list)
 sbcl=$(command -v "${SBCL:-sbcl}") || { echo "build_local_acl2: no sbcl" >&2; exit 2; }
 mkdir -p "$dest"
 cd "$dest"

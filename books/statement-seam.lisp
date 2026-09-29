@@ -10,7 +10,7 @@
 ; receipt codecs first, then the stx, policy, principal and hybrid books --
 ; reasons about them through the constraints below and nothing else, so no
 ; goal above this book can carry the bounded decoder's body (plan 2026-09-22
-; §4.1, step T1; review 2026-09-22, F3).  books/statement-attach.lisp
+; section 4.1, step T1; review 2026-09-22, F3).  books/statement-attach.lisp
 ; attaches the implementation with `defattach' for evaluation.
 ;
 ; WHAT THE CONSTRAINTS SAY:

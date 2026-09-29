@@ -580,15 +580,29 @@
 
 ; Like the base dispatcher, these are decoded logical events.  The two added
 ; branches call actual resolution operations without any invariant filter.
+; The two prepare arms fn-snrt-step dispatches that books/store-node leaves
+; :ideal (they verify as-is; the step's own verification needs them first).
+(verify-guards fn-sn-prepare-identity)
+(verify-guards fn-sn-prepare-consumer)
+; Likewise books/store-events' retention event constructor (an owner-host callee).
+(verify-guards fn-store-retention-event-make)
+
+; Total in EVENT as fn-snt-step is: the executable accessors read an atom
+; where a list is expected as nil, exactly as the logical car/cadr do (the
+; logical body is unchanged); the store is a store-node state.
 (defun fn-snrt-step (s event)
-  (case (car event)
-    (:refuse-reservation (fn-sn-refuse-reservation s (cadr event)))
-    (:known-abort (fn-sn-known-abort s))
-    (:prepare-retention (fn-sn-prepare-retention s (cadr event)))
-    (:prepare-identity (fn-sn-prepare-identity s (cadr event)))
-    (:prepare-consumer (fn-sn-prepare-consumer s (cadr event)))
-    (:prepare-topic (fn-sn-prepare-topic s (cadr event)))
-    (otherwise (fn-snt-step s event))))
+  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
+  (let ((arg (mbe :logic (cadr event)
+                  :exec (if (and (consp event) (consp (cdr event))) (cadr event) nil))))
+    (case (mbe :logic (car event) :exec (if (consp event) (car event) nil))
+      (:refuse-reservation (fn-sn-refuse-reservation s arg))
+      (:known-abort (fn-sn-known-abort s))
+      (:prepare-retention (fn-sn-prepare-retention s arg))
+      (:prepare-identity (fn-sn-prepare-identity s arg))
+      (:prepare-consumer (fn-sn-prepare-consumer s arg))
+      (:prepare-topic (fn-sn-prepare-topic s arg))
+      (otherwise (fn-snt-step s event)))))
+(verify-guards fn-snrt-step)
 
 (defun fn-snrt-run (s events)
   (if (consp events)

@@ -19,6 +19,10 @@
   ;; fn-bpnp-uncertain-receipt-transfer-keeps-the-job-owed), so the reading
   ;; costs only that connection, as spec bp-node-machine 4.3.2 states.
   (transfer nil) (transfer-scope :process)
+  ;; The (JOB . LIMIT) the family proposal in flight read (Q4a increment B,
+  ;; fnn-bps-fragment-effects), so its kind-18 :persist-result carries the
+  ;; same finished job; nil when no proposal is in flight.
+  (fragment-job nil)
   ;; Routing of queued base jobs (books/bp-node-contact-driver.lisp): nil
   ;; when the verb has no Store (the job keeps the address it was queued
   ;; with), else (:table TABLE), ACL2's route table (fn-bprt-table).
@@ -506,7 +510,7 @@ its outcome, which is the refusal to the offering ingress."
 (defun fnn-bps-route-segment-mru (route) (sixth route))
 (defun fnn-bps-route-transfer-mru (route) (seventh route))
 
-(defun fnn-bps-send-effect (service effect)
+(defun fnn-bps-send-effect-next (service effect)
   (let* ((route (second effect))
          (key (fourth effect))
          (wire (fifth effect))
@@ -607,12 +611,12 @@ its outcome, which is the refusal to the offering ingress."
     ;; from the durable :requeued record's reason (the :forward-refused
     ;; effect, fn-bpnrc-job-result-class-is-the-transport-class).
     (setf (fnn-bps-transfer service) outcome)
-    (fnn-bps-drive-effects service
-                           (fnn-bps-foundation-step
-                            service (list :job-result key attempt outcome)))))
+    (fnn-bps-foundation-step service (list :job-result key attempt outcome))))
 
-(defun fnn-bps-drive-effects (service effects)
-  (dolist (effect effects)
+(defun fnn-bps-drive-effect (service effect)
+  "Carry out one ACL2 effect; answer the effects ACL2 returned for it, which
+are driven next, before the effects after this one (depth first)."
+  (let ((next nil))
     (case (first effect)
       (:persist-dispatch
        (unless (= (length effect) 4)
@@ -624,8 +628,8 @@ its outcome, which is the refusal to the offering ingress."
                 (fnn-bps-persist-dispatch
                  service epoch operation-id record)))
          (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
-         (fnn-bps-drive-effects
-          service (fnn-bps-foundation-step
+         (setq next
+          (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
       (:dispatch-ready
        (fnn-out "BP received carrier dispatch durable"))
@@ -638,7 +642,7 @@ its outcome, which is the refusal to the offering ingress."
           (fnn-bps-note service :fenced)
           (fnn-indeterminate "bp-service: dispatch publication uncertain"))))
       (:persist-conflict
-       (fnn-bps-drive-effects service (fnn-bps-settle-conflict service effect)))
+       (setq next (fnn-bps-settle-conflict service effect)))
       (:persist-delete
        (unless (= (length effect) 4)
          (fnn-indeterminate "bp-service: malformed kind-10 publication effect"))
@@ -649,8 +653,8 @@ its outcome, which is the refusal to the offering ingress."
                 (fnn-bps-persist-kind-ten
                  service epoch operation-id record)))
          (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
-         (fnn-bps-drive-effects
-          service (fnn-bps-foundation-step
+         (setq next
+          (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
       (:delete-ready
        (fnn-out "BP held carrier deletion durable arrival=~d" (second effect)))
@@ -674,20 +678,22 @@ its outcome, which is the refusal to the offering ingress."
                 (fnn-bps-persist-kind-eighteen
                  service epoch operation-id record)))
          (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
-         (fnn-bps-drive-effects
-          service (fnn-bps-foundation-step
+         (setq next
+          (fnn-bps-foundation-step
                    service
                    ;; Q4a: the result carries the proposal's finished job and
                    ;; limit, so fn-bpfj-persist-step reads the image out of
-                   ;; the job it was proposed from.
-                   (if *fnn-bps-fragment-job*
-                       (list :persist-result epoch operation-id outcome
-                             (car *fnn-bps-fragment-job*)
-                             (cdr *fnn-bps-fragment-job*))
-                     (list :persist-result epoch operation-id outcome))))))
+                   ;; the job it was proposed from (fnn-bps-fragment-effects
+                   ;; left it in the service; consumed here, once).
+                   (let ((carried (fnn-bps-fragment-job service)))
+                     (setf (fnn-bps-fragment-job service) nil)
+                     (if carried
+                         (list :persist-result epoch operation-id outcome
+                               (car carried) (cdr carried))
+                       (list :persist-result epoch operation-id outcome)))))))
       (:family-ready
        (fnn-out "BP fragment family durable")
-       (fnn-bps-fragment-progress service))
+       (setq next (fnn-bps-fragment-effects service)))
       (:family-answer
        (case (second effect)
          (:refused (fnn-out "BP fragment family publication refused"))
@@ -704,8 +710,8 @@ its outcome, which is the refusal to the offering ingress."
                 (fnn-bps-persist-kind-seven
                  service epoch operation-id record)))
          (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
-         (fnn-bps-drive-effects
-          service (fnn-bps-foundation-step
+         (setq next
+          (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
       ((:persist-attempt :persist-forward-result :persist-deferral)
        (unless (= (length effect) 4)
@@ -716,8 +722,8 @@ its outcome, which is the refusal to the offering ingress."
               (outcome (fnn-bps-persist-forward
                         service epoch operation-id record)))
          (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
-         (fnn-bps-drive-effects
-          service (fnn-bps-foundation-step
+         (setq next
+          (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
       (:deliver
        (fnn-fault "bp-service: application delivery requires the owner caller"))
@@ -749,15 +755,15 @@ its outcome, which is the refusal to the offering ingress."
               (record (third effect))
               (outcome (fnn-bps-persist-record service token record)))
          (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
-         (fnn-bps-drive-effects
-          service (fnn-bps-step service (list :persist-result token outcome)))))
+         (setq next
+          (fnn-bps-step service (list :persist-result token outcome)))))
       (:cl-send
        (if (= (length effect) 7)
            (if *fnn-bps-forward-send*
                (funcall *fnn-bps-forward-send* effect)
              (fnn-indeterminate
               "bp-service: durable forward attempt lacks its session"))
-         (fnn-bps-send-effect service effect)))
+         (setq next (fnn-bps-send-effect-next service effect))))
       (:forward-ready
        (fnn-out "BP forwarding result durable arrival=~d status=~(~a~)"
                 (second effect) (third effect)))
@@ -862,8 +868,8 @@ its outcome, which is the refusal to the offering ingress."
               (outcome (fnn-bps-publish-generation service (fourth effect)
                                                    (fifth effect))))
          (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
-         (fnn-bps-drive-effects
-          service (fnn-bps-foundation-step
+         (setq next
+          (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
       (:generation-selected
        (fnn-out "BP journal generation selected generation=~d" (second effect))
@@ -875,7 +881,23 @@ its outcome, which is the refusal to the offering ingress."
       (:rotation-uncertain
        (fnn-bps-note service :fenced)
        (fnn-out "BP journal rotation uncertain generation=~d" (second effect)))
-      (t nil)))
+      (t nil))
+    next))
+
+;; Executes by a loop (lane depth-debt, PRF-919): an effect's answer used to be
+;; driven by a nested call, one control-stack frame per publication in the
+;; chain, and :family-ready re-entered through fnn-bps-fragment-progress once
+;; per ready fragment family, so the depth grew with the held fragments.  The
+;; order is the recursion's: an effect's answer is driven completely before
+;; the next effect of its list (a stack of the lists still to finish).
+(defun fnn-bps-drive-effects (service effects)
+  (let ((pending (list effects)))
+    (loop while pending
+          do (let ((current (pop pending)))
+               (when (consp current)
+                 (push (cdr current) pending)
+                 (let ((next (fnn-bps-drive-effect service (car current))))
+                   (when next (push next pending)))))))
   service)
 
 (defun fnn-bps-rotation-test-stop (point)
@@ -993,13 +1015,7 @@ octet is ACL2's."
 (books/bp-node-fragment-job fn-bpfj-step-is-bounded): the work of one
 scheduling step, whatever the family holds.")
 
-(defvar *fnn-bps-fragment-job* nil
-  "The (JOB . LIMIT) of the family proposal in flight, so the kind-18
-:persist-result carries the same finished job the proposal read
-(fn-bpfj-persist-step reads the image out of it; nothing is reassembled
-again).")
-
-(defun fnn-bps-fragment-progress (service)
+(defun fnn-bps-fragment-effects (service)
   ;; Q4a increment B.  ACL2's fn-bpfj-next-candidate names a live family
   ;; with an offset-zero source and reassembles nothing; the host starts that
   ;; family's reassembly job (fn-bpfj-start), steps it a bounded quantum at a
@@ -1008,9 +1024,11 @@ again).")
   ;; the image out of the job and refuses an image past the limit by name
   ;; (fn-bpfj-plan-refuses-past-the-limit-by-name); a stale job plans as
   ;; (:stale :job), which issues nothing.  A family whose proposal issues
-  ;; nothing is tried once per pass; each durable :family-ready retires at
-  ;; least one fragment and runs this again from drive-effects, so a pass
-  ;; that issued a proposal ends here.  A refusal/uncertainty does not loop.
+  ;; nothing is tried once per pass; the first proposal's effects are the
+  ;; answer (the drive loop persists it, and each durable :family-ready
+  ;; retires at least one fragment and asks here again); a
+  ;; refusal/uncertainty does not loop.  The job the proposal read is left
+  ;; in the service for its kind-18 :persist-result.
   (let ((tried nil)
         (limit (fnn-core 'fn-bpnpf-bundle-octets (fnn-bps-profile service))))
     (loop
@@ -1021,7 +1039,7 @@ again).")
              (candidate (fnn-core 'fn-bpfj-next-candidate
                                   (fnn-bps-state service) observation tried)))
         (unless (and (consp candidate) (eq (first candidate) :ready))
-          (return))
+          (return nil))
         (let* ((state (fnn-bps-state service))
                (anchor-arrival (second candidate))
                (anchor (fnn-core 'fn-bpnf-find-arrival anchor-arrival
@@ -1030,14 +1048,15 @@ again).")
           (loop until (eq (fnn-core 'fn-bpfj-finishedp job) t)
                 do (setq job (fnn-core 'fn-bpfj-step job +fnn-bps-fragment-quantum+)))
           (push (third candidate) tried)
-          (let* ((*fnn-bps-fragment-job* (cons job limit))
-                 (effects (fnn-bps-foundation-step
-                           service (list :family anchor-arrival observation
-                                         job limit))))
-            (fnn-bps-drive-effects service effects)
-            (when (and (consp effects) (consp (car effects))
-                       (eq (caar effects) :persist-family))
-              (return)))))))
+          (let ((effects (fnn-bps-foundation-step
+                          service (list :family anchor-arrival observation
+                                        job limit))))
+            (when effects
+              (setf (fnn-bps-fragment-job service) (cons job limit))
+              (return effects))))))))
+
+(defun fnn-bps-fragment-progress (service)
+  (fnn-bps-drive-effects service (fnn-bps-fragment-effects service))
   service)
 
 (defun fnn-bps-receive (service admission wire)

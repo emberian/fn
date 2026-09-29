@@ -11,6 +11,7 @@
 ; The codecs' attachments, as the host image evaluates them.
 (include-book "../../books/records-attach-concrete")
 (include-book "../../books/statement-attach")
+(local (in-theory (enable fn-rcon-record-twin-rules)))  ; Q3f: the concrete twins' equalities
 
 (defconst *srst-groups* '("fn.test"))
 (defconst *srst-records*

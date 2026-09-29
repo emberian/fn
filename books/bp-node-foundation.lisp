@@ -116,12 +116,32 @@
         (car held)
       (fn-bpnf-find-held key (cdr held)))))
 
-(defun fn-bpnf-held-octets (held)
-  (declare (xargs :guard t))
+; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
+; node's held-bundle or job queue, data with no fixed cap (D27), one
+; control-stack frame per row before.
+(defun fn-bpnf-held-octets-loop (held acc)
+  (declare (xargs :guard (acl2-numberp acc)))
   (if (atom held)
-      0
-    (+ (len (fn-bpnf-held-wire (car held)))
-       (fn-bpnf-held-octets (cdr held)))))
+      acc
+    (fn-bpnf-held-octets-loop (cdr held) (+ acc (len (fn-bpnf-held-wire (car held)))))))
+
+(defun fn-bpnf-held-octets (held)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (atom held)
+           0
+         (+ (len (fn-bpnf-held-wire (car held)))
+            (fn-bpnf-held-octets (cdr held))))
+       :exec (fn-bpnf-held-octets-loop held 0)))
+
+(defthm fn-bpnf-held-octets-loop-is-plus
+  (implies (acl2-numberp acc)
+           (equal (fn-bpnf-held-octets-loop held acc)
+                  (+ acc (fn-bpnf-held-octets held))))
+  :hints (("Goal" :induct (fn-bpnf-held-octets-loop held acc)
+                  :in-theory (disable fn-bpnf-held-wire))))
+
+
 
 (defun fn-bpnf-receive-decision (held ingress bundle)
   (declare (xargs :guard (fn-bpb-bundlep bundle)))
@@ -251,10 +271,14 @@
                 (fn-bpn-nth 11 h) '(:dispatch-done)
                 (fn-bpn-nth 13 h) (fn-bpn-nth 14 h) (fn-bpn-nth 15 h)))
 
-(defun fn-bpah-apply-delivery (record held)
+; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
+; node's held-bundle or job queue, data with no fixed cap (D27), one
+; control-stack frame per row before.
+; The loop carries the rows before the match reversed.
+(defun fn-bpah-apply-delivery-loop (record held acc)
   (declare (xargs :guard t :measure (acl2-count held)))
   (if (atom held)
-      (mv nil held nil)
+      (mv nil (fn-ag-rev-onto acc held) nil)
     (if (equal (fn-bpn-nth 3 record) (fn-bpn-nth 3 (car held)))
         (if (fn-bpah-delivery-matches-heldp record (car held))
             (let* ((h (car held))
@@ -266,14 +290,51 @@
                         (fn-bpnf-handoff
                          (fn-bpn-nth 6 record)
                          (fn-bpnf-held-key (fn-bpnf-held-principal h)
-                                            (fn-bpnf-held-id h))
+                                           (fn-bpnf-held-id h))
                          :owed)
                       nil)))
-              (mv t (cons (fn-bpah-delivered-held h record) (cdr held)) handoff))
-          (mv nil held nil))
-      (mv-let (ok tail handoff)
-        (fn-bpah-apply-delivery record (cdr held))
-        (mv ok (cons (car held) tail) handoff)))))
+              (mv t (fn-ag-rev-onto acc (cons (fn-bpah-delivered-held h record) (cdr held)))
+                  handoff))
+          (mv nil (fn-ag-rev-onto acc held) nil))
+      (fn-bpah-apply-delivery-loop record (cdr held) (cons (car held) acc)))))
+
+(defun fn-bpah-apply-delivery (record held)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count held)))
+  (mbe :logic
+       (if (atom held)
+           (mv nil held nil)
+         (if (equal (fn-bpn-nth 3 record) (fn-bpn-nth 3 (car held)))
+             (if (fn-bpah-delivery-matches-heldp record (car held))
+                 (let* ((h (car held))
+                        (status (fn-bpn-nth 5 record))
+                        (handoff
+                         (if (member-equal status
+                                           '(:request-accepted :request-duplicate
+                                             :request-returned))
+                             (fn-bpnf-handoff
+                              (fn-bpn-nth 6 record)
+                              (fn-bpnf-held-key (fn-bpnf-held-principal h)
+                                                 (fn-bpnf-held-id h))
+                              :owed)
+                           nil)))
+                   (mv t (cons (fn-bpah-delivered-held h record) (cdr held)) handoff))
+               (mv nil held nil))
+           (mv-let (ok tail handoff)
+             (fn-bpah-apply-delivery record (cdr held))
+             (mv ok (cons (car held) tail) handoff))))
+       :exec (fn-bpah-apply-delivery-loop record held nil)))
+
+(defthm fn-bpah-apply-delivery-loop-is-rev-onto
+  (equal (fn-bpah-apply-delivery-loop record held acc)
+         (mv-let (ok tail handoff)
+           (fn-bpah-apply-delivery record held)
+           (mv ok (fn-ag-rev-onto acc tail) handoff)))
+  :hints (("Goal" :induct (fn-bpah-apply-delivery-loop record held acc)
+                  :in-theory (disable fn-bpah-delivery-matches-heldp fn-bpnf-handoff
+                                      fn-bpnf-held-key fn-bpnf-held-principal
+                                      fn-bpnf-held-id fn-bpah-delivered-held fn-bpn-nth))))
+
+
 
 (defun fn-bpah-held-primary-identity (h)
   (declare (xargs :guard t))
@@ -343,12 +404,33 @@
 ; slots.  Next-op is allocated here, never supplied by a caller.  The host is
 ; not yet a caller: A2 must prove the FNBS publisher and replay relation
 ; before replacing the outbound-only host path.
-(defun fn-bpnf-held-arrival-frontier (held)
-  (declare (xargs :guard t :measure (acl2-count held)))
+; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
+; node's held-bundle or job queue, data with no fixed cap (D27), one
+; control-stack frame per row before.
+(defun fn-bpnf-held-arrival-frontier-loop (held acc)
+  (declare (xargs :guard (natp acc)))
   (if (consp held)
-      (max (1+ (nfix (fn-bpn-nth 3 (car held))))
-           (fn-bpnf-held-arrival-frontier (cdr held)))
-    0))
+      (fn-bpnf-held-arrival-frontier-loop
+       (cdr held) (max (1+ (nfix (fn-bpn-nth 3 (car held)))) acc))
+    acc))
+
+(defun fn-bpnf-held-arrival-frontier (held)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count held)))
+  (mbe :logic
+       (if (consp held)
+           (max (1+ (nfix (fn-bpn-nth 3 (car held))))
+                (fn-bpnf-held-arrival-frontier (cdr held)))
+         0)
+       :exec (fn-bpnf-held-arrival-frontier-loop held 0)))
+
+(defthm fn-bpnf-held-arrival-frontier-loop-is-max
+  (implies (natp acc)
+           (equal (fn-bpnf-held-arrival-frontier-loop held acc)
+                  (max acc (fn-bpnf-held-arrival-frontier held))))
+  :hints (("Goal" :induct (fn-bpnf-held-arrival-frontier-loop held acc)
+                  :in-theory (disable fn-bpn-nth))))
+
+
 
 (defun fn-bpnf-state-with-arrival
   (base held outcomes handoffs correlation issued waits epoch next-op next-arrival)
@@ -1033,6 +1115,7 @@
 (verify-guards fn-bpnf-held-nonfragment-headerp)
 (verify-guards fn-bpnf-held-administrative-headerp)
 (verify-guards fn-bpnf-find-held)
+(verify-guards fn-bpnf-held-octets-loop)
 (verify-guards fn-bpnf-held-octets)
 (verify-guards fn-bpnf-receive-decision)
 (verify-guards fn-bpnf-outcome)
@@ -1046,6 +1129,7 @@
 (verify-guards fn-bpnf-waitp)
 (verify-guards fn-bpnf-version-of)
 (verify-guards fn-bpnf-wait-wakes-p)
+(verify-guards fn-bpnf-held-arrival-frontier-loop)
 (verify-guards fn-bpnf-held-arrival-frontier)
 (verify-guards fn-bpnf-state-with-arrival)
 (verify-guards fn-bpnf-state)
@@ -1074,7 +1158,23 @@
 (verify-guards fn-bpah-held-delivery-pendingp)
 (verify-guards fn-bpah-delivery-matches-heldp)
 (verify-guards fn-bpah-delivered-held)
-(verify-guards fn-bpah-apply-delivery)
+(verify-guards fn-bpah-apply-delivery-loop)
+(defthm fn-bpah-apply-delivery-is-three-values
+  (equal (list (mv-nth 0 (fn-bpah-apply-delivery record held))
+               (mv-nth 1 (fn-bpah-apply-delivery record held))
+               (mv-nth 2 (fn-bpah-apply-delivery record held)))
+         (fn-bpah-apply-delivery record held))
+  :hints (("Goal" :induct (fn-bpah-apply-delivery record held)
+                  :in-theory (disable fn-bpah-delivery-matches-heldp fn-bpnf-handoff
+                                      fn-bpnf-held-key fn-bpnf-held-principal
+                                      fn-bpnf-held-id fn-bpah-delivered-held fn-bpn-nth))))
+
+(verify-guards fn-bpah-apply-delivery
+  :hints (("Goal" :use ((:instance fn-bpah-apply-delivery-loop-is-rev-onto (acc nil))
+                        (:instance fn-bpah-apply-delivery-is-three-values))
+                  :expand ((fn-bpah-apply-delivery record held))
+                  :in-theory (union-theories '(fn-ag-rev-onto)
+                                             (theory 'minimal-theory)))))
 (verify-guards fn-bpah-held-primary-identity)
 (verify-guards fn-bpah-deliver-step)
 (verify-guards fn-bpah-deliver-result-step)
