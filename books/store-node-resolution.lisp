@@ -580,6 +580,11 @@
 
 ; Like the base dispatcher, these are decoded logical events.  The two added
 ; branches call actual resolution operations without any invariant filter.
+; The two prepare arms fn-snrt-step dispatches that books/store-node leaves
+; :ideal (they verify as-is; the step's own verification needs them first).
+(verify-guards fn-sn-prepare-identity)
+(verify-guards fn-sn-prepare-consumer)
+
 ; Total in EVENT as fn-snt-step is: the executable accessors read an atom
 ; where a list is expected as nil, exactly as the logical car/cadr do (the
 ; logical body is unchanged); the store is a store-node state.

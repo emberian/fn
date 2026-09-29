@@ -510,6 +510,7 @@
          (fn-ocfg-pins oc) nil)
       (fn-ocfg-make (fn-own-complete (fn-ocfg-owner oc))
                     (fn-ocfg-config oc) (fn-ocfg-pins oc) nil))))
+(verify-guards fn-ocfg-complete)
 
 ; -----------------------------------------------------------------------------
 ; The connection events that write a pin: open, advance, close.

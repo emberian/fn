@@ -1779,6 +1779,7 @@
                            :ready)))
            :busy)
           (t :submitted))))
+(verify-guards fn-own-bp-transit-submit-result)
 
 (defun fn-own-bp-transit-submit (o cfg peer msgid octets id subject)
   (declare (xargs :guard t :verify-guards nil))
@@ -1790,6 +1791,7 @@
                           (fn-peer-make-submission peer :takethis
                                                    msgid octets)))
     o))
+(verify-guards fn-own-bp-transit-submit)
 
 (defun fn-own-bp-transit-submissionp (sub)
   (declare (xargs :guard t))
@@ -2208,6 +2210,7 @@
                 (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                 (fn-own-pending o) (fn-own-ledger-field o) (fn-own-clock o)
                 (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
+(verify-guards fn-own-store-step)
 
 ; Completion is the actual fn-sn-finish.  It is consumed exactly when the
 ; kernel is at :completing with a bound record; the consumed pair is the
