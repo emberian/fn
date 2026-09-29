@@ -7,19 +7,22 @@
 ; dependents, and each FNWF kind doubled books/frame's
 ; fn-frame-workflow-protected guard proof (476k to 874k prover steps for
 ; one).  This book is the frame over the generic codec of
-; books/frame-fields.lisp: its magic, its two kinds and their fields, the
+; books/frame-fields.lisp: its magic, its three kinds and their fields, the
 ; encoder and the decoder, and their round trip.
 (in-package "ACL2")
 (include-book "frame-journal")
 (include-book "frame-invariants")
 
 (defconst *fn-bpcc-frame-magic* '(70 78 67 67))   ; FNCC
-(defconst *fn-bpcc-frame-kinds* '(:config :carry))
+(defconst *fn-bpcc-frame-kinds* '(:config :carry :waive))
 ; :config (JOURNAL-NAME), the journal's first record; :carry (VERB WORK
-; REASON), books/bp-carry-control.lisp's control record.
+; REASON), books/bp-carry-control.lisp's control record; :waive (WORK
+; PRINCIPAL REASON), its operator waiver (`carry drop WORK --abandon',
+; lane carry-abandon, PRF-950).
 (defconst *fn-bpcc-frame-specs*
   (list (cons :config '(:text))
-        (cons :carry '(:text :text :text))))
+        (cons :carry '(:text :text :text))
+        (cons :waive '(:text :text :text))))
 (defconst *fn-bpcc-frame-max-payload*
   (fn-frame-table-width *fn-bpcc-frame-specs*))
 
@@ -36,7 +39,8 @@
 
 (defun fn-bpcc-frame-code (kind)
   (declare (xargs :guard t))
-  (cond ((equal kind :config) 1) ((equal kind :carry) 2) (t 0)))
+  (cond ((equal kind :config) 1) ((equal kind :carry) 2) ((equal kind :waive) 3)
+        (t 0)))
 
 (defun fn-bpcc-frame-protected (kind values)
   (declare (xargs :guard t))
@@ -60,7 +64,8 @@
                     (equal (fn-frame-result-version frame) *fn-frame-version*)))
           (fn-frame-error :magic)
         (let* ((code (fn-frame-result-kind frame))
-               (kind (cond ((equal code 1) :config) ((equal code 2) :carry) (t nil))))
+               (kind (cond ((equal code 1) :config) ((equal code 2) :carry)
+                           ((equal code 3) :waive) (t nil))))
           (if (not kind)
               (fn-frame-error :kind)
             (let ((parsed (fn-frame-fields-parse
