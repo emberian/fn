@@ -506,5 +506,55 @@ class BoxRowTests(unittest.TestCase):
         self.assertEqual(out.returncode, 2)
 
 
+class DetachedByDefaultTests(unittest.TestCase):
+    """A run survives its lane (obstructions-7 item 58): the start returns
+    detached, the record names box, dir, pid and log, and `status` / `attach`
+    read it from any later session."""
+
+    def test_start_detaches_and_records_the_pid(self):
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "calls"
+            for tool in ("ssh", "rsync"):
+                stub = Path(directory) / tool
+                stub.write_text('#!/bin/sh\necho "%s $*" >> %s\ncase "$*" in *nohup*) echo 4242 ;; '
+                                'esac\ncat > /dev/null\nexit 0\n'
+                                % (tool, log))
+                stub.chmod(0o755)
+            env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}", "FN_HBOX": "hbox"}
+            label = "detach-test-%d" % os.getpid()
+            record = ROOT / "build" / "hbox-native" / f"{label}.run"
+            self.addCleanup(lambda: record.unlink(missing_ok=True))
+            started = subprocess.run(["sh", str(SCRIPT), "--no-build", "--name", "t", "--label", label,
+                                      "HEAD", "tests.test_native_owner"],
+                                     cwd=ROOT, env=env, capture_output=True, text=True, timeout=120,
+                                     stdin=subprocess.DEVNULL)
+            self.assertEqual(started.returncode, 0, started.stdout + started.stderr)
+            self.assertIn(f"re-attach with: tools/hbox_native.sh attach {label}", started.stdout)
+            fields = dict(line.split("=", 1) for line in record.read_text().splitlines())
+            self.assertEqual(fields["box"], "hbox")
+            self.assertEqual(fields["pid"], "4242")
+            self.assertEqual(fields["dir"], f"/tank/fn/scratch/t/native-{label}")
+            self.assertEqual(fields["log"], fields["dir"] + "/run.log")
+            # No wait_for poll happened: the start did not attach.
+            self.assertNotIn("test -f", log.read_text())
+            status = subprocess.run(["sh", str(SCRIPT), "status", label], cwd=ROOT, env=env,
+                                    capture_output=True, text=True, timeout=60,
+                                    stdin=subprocess.DEVNULL)
+            self.assertEqual(status.returncode, 0, status.stderr)
+            self.assertIn("pid=4242", status.stdout)
+            self.assertIn("kill -0 '4242'", log.read_text())
+
+    def test_attach_without_a_record_names_the_runs_here(self):
+        answer = subprocess.run(["sh", str(SCRIPT), "attach", "no-such-label"], cwd=ROOT,
+                                capture_output=True, text=True, timeout=60)
+        self.assertEqual(answer.returncode, 2)
+        self.assertIn("no record", answer.stderr)
+        self.assertIn("no-such-label.run", answer.stderr)
+        # --wait keeps the old attach-at-once behaviour; the dry run takes it.
+        self.assertEqual(dry("--wait", "HEAD", "tests.test_native_owner").returncode, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

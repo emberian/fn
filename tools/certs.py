@@ -614,6 +614,77 @@ def entry_backoff(attempt: int, sleep=None) -> None:
     (sleep or time.sleep)(ENTRY_BACKOFF * (2 ** attempt) * (1 + random.random()))
 
 
+# The ACL2 certificate-alist probe's verdict for a (parent, child) pair is a
+# function of the two certificates' bytes alone (cert_alists reads each
+# post-alist and the child's familiar name from the certificate itself), so
+# it is memoised in the cache: an append-only `pair-facts.jsonl` keyed by the
+# two certificates' SHA-256 and the ACL2 executable.  Before this every
+# hbox_native build run and every incremental certify re-probed the whole
+# closure's pairs (about 20 CPU-minutes on hbox per run; obstructions-7 item
+# 58).  A line is written with one O_APPEND write, so concurrent runs
+# interleave whole lines; an unreadable line is ignored, never trusted.
+PAIR_FACTS = "pair-facts.jsonl"
+
+
+def memoized_pair_checker(cache: Path, checker=None):
+    """CHECKER (default the ACL2 probe) with its verdicts kept in CACHE."""
+    checker = checker or cert_alists.acl2_certificate_pairs
+
+    def check(paths: list[Path], pairs: list[tuple[int, int]], acl2: Path,
+              root: Path) -> dict[tuple[int, int], tuple[bool, bool]]:
+        store = Path(cache) / PAIR_FACTS
+        digests = [content_hash(Path(path)) if Path(path).is_file() else None
+                   for path in paths]
+        prover = str(Path(acl2).resolve()) if acl2 is not None else ""
+        known: dict[tuple[str, str], tuple[bool, bool]] = {}
+        try:
+            with store.open(encoding="utf-8") as handle:
+                for line in handle:
+                    try:
+                        fact = json.loads(line)
+                        if fact["acl2"] == prover:
+                            known[(fact["parent"], fact["child"])] = (
+                                bool(fact["required"]), bool(fact["equal"]))
+                    except (ValueError, KeyError, TypeError):
+                        continue
+        except OSError:
+            pass
+        found: dict[tuple[int, int], tuple[bool, bool]] = {}
+        ask: list[tuple[int, int]] = []
+        for p, c in pairs:
+            key = (digests[p], digests[c])
+            if None not in key and key in known:
+                found[(p, c)] = known[key]
+            else:
+                ask.append((p, c))
+        check.hits = len(found)
+        check.probed = len(ask)
+        if not ask:
+            return found
+        fresh = checker(paths, ask, acl2, root)
+        found.update(fresh)
+        lines = "".join(json.dumps({"acl2": prover, "parent": digests[p],
+                                    "child": digests[c], "required": fresh[(p, c)][0],
+                                    "equal": fresh[(p, c)][1]}, sort_keys=True) + "\n"
+                        for p, c in ask if (p, c) in fresh
+                        and digests[p] is not None and digests[c] is not None)
+        if lines:
+            try:
+                store.parent.mkdir(parents=True, exist_ok=True)
+                descriptor = os.open(store, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o664)
+                try:
+                    os.write(descriptor, lines.encode("utf-8"))
+                finally:
+                    os.close(descriptor)
+            except OSError:
+                pass
+        return found
+
+    check.hits = 0
+    check.probed = 0
+    return check
+
+
 def entry_matches_meta(directory: Path, meta: dict) -> bool:
     cert = directory / "book.cert"
     if not cert.is_file():
@@ -931,7 +1002,7 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
     candidates = list(grouped.values())
     if acl2 is not None:
         if pair_checker is None:
-            pair_checker = cert_alists.acl2_certificate_pairs
+            pair_checker = memoized_pair_checker(cache)
         for candidate in candidates:
             if candidate.complete:
                 candidate.entries = compatible_partial_choices(
@@ -1288,7 +1359,7 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
         raise ValueError("install-partial needs an ACL2 executable for exact "
                          "certificate-alist compatibility")
     if pair_checker is None:
-        pair_checker = cert_alists.acl2_certificate_pairs
+        pair_checker = memoized_pair_checker(cache)
     selected = compatible_partial_choices(root, options, acl2, pair_checker,
                                           prefer=roots)
     for name in sorted(required):

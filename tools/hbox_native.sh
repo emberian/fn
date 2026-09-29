@@ -75,9 +75,21 @@
 #      loaded box can be judged (feed-queue: 20.9 s against 2.7 s for one
 #      case at load 19-37).
 #
-# It prints the scratch path, then waits for `status` (tools/wait_for.sh) and
-# prints the summary; start it with run_in_background.  --detach returns after
-# the start instead.  The box run survives a dropped ssh (nohup).
+# It prints the scratch path and returns once the box run has started
+# (DETACHED by default, obstructions-7 item 58: a run must survive its lane's
+# death; ll5d died with limits-live-5 and lost its 20-minute install step).
+# The record build/hbox-native/LABEL.run names the box, the run directory,
+# the detached pid and the log, and
+#
+#   tools/hbox_native.sh status LABEL   prints the record, whether the pid is
+#                                        alive, the status file and the log's tail
+#   tools/hbox_native.sh attach LABEL   re-attaches: waits for `status`
+#                                        (tools/wait_for.sh, --deadline S),
+#                                        prints the run log, exits with status
+#
+# from any later session.  --wait keeps the old behaviour (start, then attach
+# at once; start it with run_in_background).  --detach is accepted and is the
+# default.  The box run survives a dropped ssh (nohup).
 #
 # Options: --box hbox|persvati|auto (above), --name NAME, --label LABEL, --images LIST, --mem SIZE,
 # --image-acl2 PATH (the ACL2 wrapper the IMAGES are built with; certification
@@ -141,7 +153,7 @@ IMAGE_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k
 JOBS=auto
 MODULE_JOBS=1
 BUILD=1
-DETACH=0
+DETACH=1
 DRY=0
 ALLOW_SKIPS=
 DEADLINE=5400
@@ -151,6 +163,41 @@ POSITIONAL=
 IMAGE_SET=
 REUSE=
 usage() { sed -n '2,/^set -eu/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2; exit 2; }
+# status / attach LABEL: read the record this worktree's start wrote.
+attach_run() {
+    record=$HERE/build/hbox-native/$2.run
+    case $2 in ''|*[!A-Za-z0-9._-]*) echo "hbox_native: $1 takes the run's LABEL" >&2; exit 2 ;; esac
+    [ -f "$record" ] || { echo "hbox_native: no record $record (runs started here: $(ls "$HERE/build/hbox-native" 2>/dev/null | sed 's/\.run$//' | tr '\n' ' '))" >&2; exit 2; }
+    HOST=$(sed -n 's/^box=//p' "$record")
+    S=$(sed -n 's/^dir=//p' "$record")
+    PID=$(sed -n 's/^pid=//p' "$record")
+    [ -n "$HOST" ] && [ -n "$S" ] || { echo "hbox_native: $record names no box or dir" >&2; exit 2; }
+    if [ "$1" = status ]; then
+        cat "$record"
+        ssh -n "$HOST" "if [ -n '$PID' ] && kill -0 '$PID' 2>/dev/null; then echo 'pid $PID: running'; else echo 'pid ${PID:-?}: not running'; fi; if [ -f $S/status ]; then echo \"status \$(cat $S/status)\"; else echo 'status: none yet'; fi; tail -n 12 $S/run.log 2>/dev/null"
+        exit $?
+    fi
+    DEADLINE=${3:-$DEADLINE}
+    echo "hbox_native: attached to $HOST:$S (pid ${PID:-?})"
+    set +e
+    sh "$FN_HBOX_NATIVE_COPY/wait_for.sh" --host "$HOST" --deadline "$DEADLINE" --interval 30 --file "$S/status" >/dev/null
+    waited=$?
+    set -e
+    ssh -n "$HOST" "cat $S/run.log; echo '== SHA256SUMS'; cat $S/SHA256SUMS 2>/dev/null"
+    if [ $waited -ne 0 ]; then
+        echo "hbox_native: no status after ${DEADLINE}s (wait_for exit $waited); the run may still be going in $HOST:$S (attach again)" >&2
+        exit 124
+    fi
+    status=$(ssh -n "$HOST" "cat $S/status")
+    echo "hbox_native: status $status ($HOST:$S)"
+    exit "$status"
+}
+case ${1:-} in
+    status|attach)
+        [ $# -ge 2 ] || usage
+        case ${3:-} in --deadline) set -- "$1" "$2" "${4:?--deadline S}" ;; '') ;; *) usage ;; esac
+        attach_run "$@" ;;
+esac
 while [ $# -gt 0 ]; do
     case $1 in
         --name) NAME=$2; shift 2 ;;
@@ -176,6 +223,7 @@ while [ $# -gt 0 ]; do
             case $REUSE in *..*|*[!A-Za-z0-9._/-]*) echo "hbox_native: bad --reuse-image $2" >&2; exit 2 ;; esac
             BUILD=0; shift 2 ;;
         --detach) DETACH=1; shift ;;
+        --wait) DETACH=0; shift ;;
         --dry-run) DRY=1; shift ;;
         # A module gated by an unset opt-in (FN_RUN_*_E2E ...) is refused at
         # launch unless this is given (tools/native_env.py plan; item 45).
@@ -582,25 +630,14 @@ box_script "$@" | ssh "$HOST" "cat > $S/run.sh" || exit 3
 if [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ]; then
     ssh "$HOST" "mkdir -p $S/bin && cat > $S/bin/image_set.py" < "$FN_HBOX_NATIVE_COPY/image_set.py" || exit 3
 fi
-ssh -n "$HOST" "rm -f $S/status; nohup sh $S/run.sh > $S/run.log 2>&1 < /dev/null &" || exit 3
+PID=$(ssh -n "$HOST" "rm -f $S/status; nohup sh $S/run.sh > $S/run.log 2>&1 < /dev/null & echo \$!") || exit 3
 echo "hbox_native: started; progress in $HOST:$S/run.log"
 # The record here names the box (item 67): status and re-attach read it.
 mkdir -p "$HERE/build/hbox-native"
-printf 'box=%s\ndir=%s\nlog=%s\nstatus=%s\nsource=%s\n' "$HOST" "$S" "$S/run.log" "$S/status" "$SOURCE_ID" \
+printf 'box=%s\ndir=%s\npid=%s\nlog=%s\nstatus=%s\nsource=%s\n' "$HOST" "$S" "$PID" "$S/run.log" "$S/status" "$SOURCE_ID" \
     > "$HERE/build/hbox-native/$LABEL.run"
 if [ $DETACH -eq 1 ]; then
-    echo "hbox_native: wait with: tools/wait_for.sh --host $HOST --deadline $DEADLINE --file $S/status"
+    echo "hbox_native: detached (pid $PID on $HOST); re-attach with: tools/hbox_native.sh attach $LABEL   (status: tools/hbox_native.sh status $LABEL)"
     exit 0
 fi
-set +e
-sh "$FN_HBOX_NATIVE_COPY/wait_for.sh" --host "$HOST" --deadline "$DEADLINE" --interval 30 --file "$S/status" >/dev/null
-waited=$?
-set -e
-ssh -n "$HOST" "cat $S/run.log; echo '== SHA256SUMS'; cat $S/SHA256SUMS 2>/dev/null"
-if [ $waited -ne 0 ]; then
-    echo "hbox_native: no status after ${DEADLINE}s (wait_for exit $waited); the run may still be going in $HOST:$S" >&2
-    exit 124
-fi
-status=$(ssh -n "$HOST" "cat $S/status")
-echo "hbox_native: status $status ($HOST:$S)"
-exit "$status"
+attach_run attach "$LABEL"
