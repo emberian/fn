@@ -316,14 +316,41 @@
 ; -----------------------------------------------------------------------------
 ; Posting: the groups outside POST join the closed list
 
-(defun fn-gac-unpostable-octets (text groups)
+; Executes by a loop (lane depth-debt, PRF-919): it walks the configured newsgroup list, operator
+; data with no fixed cap (D27), and the recursion took one control-stack frame
+; per element.  (mbe :logic <the recursion, unchanged> :exec <a loop>), equal
+; by the lemma after it (books/rev-onto.lisp fn-ag-rev-onto).
+(defun fn-gac-unpostable-octets-loop (text groups acc)
   (declare (xargs :guard t))
   (if (consp groups)
-      (if (fn-gac-readablep text (car groups))
-          (fn-gac-unpostable-octets text (cdr groups))
-        (cons (fn-gac-text-octets (car groups))
-              (fn-gac-unpostable-octets text (cdr groups))))
-    nil))
+      (fn-gac-unpostable-octets-loop text (cdr groups)
+       (if (not (fn-gac-readablep text (car groups))) (cons (fn-gac-text-octets (car groups)) acc) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-gac-unpostable-octets (text groups)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp groups)
+           (if (fn-gac-readablep text (car groups))
+               (fn-gac-unpostable-octets text (cdr groups))
+             (cons (fn-gac-text-octets (car groups))
+                   (fn-gac-unpostable-octets text (cdr groups))))
+         nil)
+       :exec (fn-gac-unpostable-octets-loop text groups nil)))
+
+(defthm fn-gac-unpostable-octets-loop-is-rev-onto
+  (equal (fn-gac-unpostable-octets-loop text groups acc)
+         (fn-ag-rev-onto acc (fn-gac-unpostable-octets text groups)))
+  :hints (("Goal" :induct (fn-gac-unpostable-octets-loop text groups acc)
+                  :in-theory (union-theories
+                              '(fn-gac-unpostable-octets-loop fn-gac-unpostable-octets fn-ag-rev-onto not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-gac-unpostable-octets
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-gac-unpostable-octets fn-ag-rev-onto fn-gac-unpostable-octets-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; A served group stays a group to the session when it may read it or post
 ; to it; a group it may do neither with is absent, so a POST naming it is
@@ -333,15 +360,44 @@
   (declare (xargs :guard t))
   (if (fn-octet-listp o) (fn-record-octets-string o) nil))
 
-(defun fn-gac-servable-octets (read post names)
+; Executes by a loop (lane depth-debt, PRF-919): it walks the configured newsgroup names, operator
+; data with no fixed cap (D27), and the recursion took one control-stack frame
+; per element.  (mbe :logic <the recursion, unchanged> :exec <a loop>), equal
+; by the lemma after it (books/rev-onto.lisp fn-ag-rev-onto).
+(defun fn-gac-servable-octets-loop (read post names acc)
   (declare (xargs :guard t))
   (if (consp names)
-      (if (or (null read) (null post)
-              (fn-gac-readablep read (fn-gac-octets-group (car names)))
-              (fn-gac-readablep post (fn-gac-octets-group (car names))))
-          (cons (car names) (fn-gac-servable-octets read post (cdr names)))
-        (fn-gac-servable-octets read post (cdr names)))
-    nil))
+      (fn-gac-servable-octets-loop read post (cdr names)
+       (if (or (null read) (null post)
+           (fn-gac-readablep read (fn-gac-octets-group (car names)))
+           (fn-gac-readablep post (fn-gac-octets-group (car names)))) (cons (car names) acc) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-gac-servable-octets (read post names)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp names)
+           (if (or (null read) (null post)
+                   (fn-gac-readablep read (fn-gac-octets-group (car names)))
+                   (fn-gac-readablep post (fn-gac-octets-group (car names))))
+               (cons (car names) (fn-gac-servable-octets read post (cdr names)))
+             (fn-gac-servable-octets read post (cdr names)))
+         nil)
+       :exec (fn-gac-servable-octets-loop read post names nil)))
+
+(defthm fn-gac-servable-octets-loop-is-rev-onto
+  (equal (fn-gac-servable-octets-loop read post names acc)
+         (fn-ag-rev-onto acc (fn-gac-servable-octets read post names)))
+  :hints (("Goal" :induct (fn-gac-servable-octets-loop read post names acc)
+                  :in-theory (union-theories
+                              '(fn-gac-servable-octets-loop fn-gac-servable-octets fn-ag-rev-onto not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-gac-servable-octets
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-gac-servable-octets fn-ag-rev-onto fn-gac-servable-octets-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; A derived posting configuration carries its source's article bound and
 ; header limits as one post bound (books/injection.lisp `fn-inj-post-bound'):

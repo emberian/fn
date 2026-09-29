@@ -337,6 +337,8 @@
 
 (verify-guards fn-scka-payload-of)
 (verify-guards fn-scka-canon-lens)
+(verify-guards fn-scka-batches-loop
+  :hints (("Goal" :in-theory (disable fn-scka-batch-count))))
 (verify-guards fn-scka-batches
   :hints (("Goal" :in-theory (disable fn-scka-batch-count))))
 (local

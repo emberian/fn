@@ -17,8 +17,12 @@ file (the trust-tagged adapter, host/native/*.lisp: ledger.raw_host_paths)
 names -- fnn-call's, fnn-core's, the owner dispatchers' quoted entries and
 any other mention -- and everything those reach through tools/callgraph.py's
 mention edges (macros followed).  For each `defun' there, the EXECUTABLE
-body: an (mbe :logic L :exec E) runs E (the functions are guard-verified or
-:program, so raw Lisp runs the :exec branch), `mbt' runs as t.  A call is in
+body: an (mbe :logic L :exec E) runs E when the function is guard-verified
+or :program (raw Lisp runs the :exec branch), and L when it is a logic-mode
+function whose guards are not verified (the host calls through the
+executable counterpart, host/native/io.lisp fnn-call, and `*1*' of such a
+function evaluates its logic: a loop twin in its :exec never runs; lane
+depth-debt, `unverified'); `mbt' runs as t.  A call is in
 tail position when it is the body; a branch of an `if'/`cond'/`case' in tail
 position; the last form of a `let', `let*', `mv-let', `when', `unless',
 `progn$', `prog2$', `return-last' or lambda body in tail position; the last
@@ -171,14 +175,90 @@ def calls(term, tail: bool, out: list) -> None:
             calls(args[0], tail, out)
     elif name == "mbe":
         pairs = dict((_name(args[i]), args[i + 1]) for i in range(0, len(args) - 1, 2))
-        if ":exec" in pairs:
-            calls(pairs[":exec"], tail, out)
+        if _BRANCH[0] in pairs:
+            calls(pairs[_BRANCH[0]], tail, out)
     elif name == "mbt":
         return
     else:
         out.append((name, tail))
         for a in args:
             calls(a, False, out)
+
+
+# Which branch of an `mbe' runs: :exec for a guard-verified (or :program)
+# function, whose raw definition the host reaches; :logic for a logic-mode
+# function whose guards are not verified, since the host calls ACL2 through
+# the executable counterpart (host/native/io.lisp fnn-call, `*1*'), which
+# runs such a function's logic -- its :exec twin never runs (lane depth-debt).
+_BRANCH = [":exec"]
+_LOGIC_RUN: set[str] = set()  # closure()'s unverified logic-mode functions
+
+
+def body_calls(form, logic: bool) -> list:
+    """(callee, tailp) for FORM's body, reading the mbe branch that runs."""
+    out: list = []
+    _BRANCH[0] = ":logic" if logic else ":exec"
+    try:
+        seq(_body_forms(form[3:]), True, out)
+    finally:
+        _BRANCH[0] = ":exec"
+    return out
+
+
+def _xargs(form) -> dict:
+    """The keyword arguments of FORM's (declare (xargs ...)) forms."""
+    found: dict = {}
+    for item in form[3:]:
+        if not (isinstance(item, list) and item and _name(item[0]) == "declare"):
+            continue
+        for decl in item[1:]:
+            if isinstance(decl, list) and decl and _name(decl[0]) == "xargs":
+                rest = decl[1:]
+                for i in range(0, len(rest) - 1, 2):
+                    found[_name(rest[i])] = rest[i + 1]
+            elif isinstance(decl, list) and decl and _name(decl[0]) == "type":
+                found.setdefault(":guard", True)
+    return found
+
+
+_VERIFY = re.compile(r"\(verify-guards\s+([^\s()]+)", re.IGNORECASE)
+_EAGER0 = re.compile(r"\(set-verify-guards-eagerness\s+0\s*\)", re.IGNORECASE)
+_EAGER2 = re.compile(r"\(set-verify-guards-eagerness\s+2\s*\)", re.IGNORECASE)
+
+
+def unverified(defs: dict) -> set[str]:
+    """The logic-mode functions of DEFS whose guards are not verified: an
+    explicit `:verify-guards nil', no guard declared (eagerness 1 verifies only
+    a declared guard), or a book at eagerness 0 -- each unless a
+    `(verify-guards NAME' event names it somewhere in books/ or host/."""
+    events: set[str] = set()
+    eager: dict[str, int] = {}
+    for top in ("books", "host"):
+        for path in sorted((ROOT / top).rglob("*.lisp")):
+            text = path.read_text(encoding="utf-8", errors="replace")
+            events.update(m.lower() for m in _VERIFY.findall(text))
+            rel = path.relative_to(ROOT).as_posix()
+            eager[rel] = 0 if _EAGER0.search(text) else 2 if _EAGER2.search(text) else 1
+    out = set()
+    for name, d in defs.items():
+        form = d.form
+        if callgraph.head(form) not in callgraph.FUNCTION_HEADS or len(form) < 4:
+            continue
+        x = _xargs(form)
+        mode = x.get(":mode")
+        if isinstance(mode, Sym) and _name(mode) == ":program":
+            continue
+        vg = x.get(":verify-guards")
+        if isinstance(vg, Sym) and _name(vg) == "nil":
+            ok = False
+        elif vg is not None:
+            ok = True
+        else:
+            level = eager.get(d.path, 1)
+            ok = level == 2 or (level == 1 and (":guard" in x or ":stobjs" in x))
+        if not ok and name not in events:
+            out.add(name)
+    return out
 
 
 def seq(forms: list, tail: bool, out: list) -> None:
@@ -381,7 +461,8 @@ def closure() -> tuple[dict[str, callgraph.Definition], set[str]]:
     """(the ACL2 function definitions of the host-called closure, the roots).
 
     The walk follows what RUNS: a function's executable body's calls (its
-    mbe :exec branch, never :logic), a macro's every mention (its template
+    mbe :exec branch; the :logic branch of a logic-mode function whose guards
+    are not verified, which the host's *1* call runs), a macro's every mention (its template
     builds the calls), an abstract stobj export's :exec function and a
     constrained function's attachment."""
     tree = ledger.load_tree()
@@ -405,6 +486,9 @@ def closure() -> tuple[dict[str, callgraph.Definition], set[str]]:
         for form, _line in tree.hosts[relative].forms:
             callgraph.symbols(form, named)
     roots = {n for n in named if n in functions or n in extra}
+    logic_run = unverified(functions)
+    _LOGIC_RUN.clear()
+    _LOGIC_RUN.update(logic_run)
 
     def successors(name: str) -> set[str]:
         found: set[str] = set(extra.get(name, ()))
@@ -413,8 +497,7 @@ def closure() -> tuple[dict[str, callgraph.Definition], set[str]]:
         elif name in functions:
             d = functions[name]
             if callgraph.head(d.form) in callgraph.FUNCTION_HEADS and len(d.form) >= 4:
-                out: list = []
-                seq(_body_forms(d.form[3:]), True, out)
+                out = body_calls(d.form, name in logic_run)
                 found |= {c for c, _ in out}
             else:  # a record's generated definitions: every mention
                 found |= graph.edges.get(name, set())
@@ -444,9 +527,7 @@ def findings() -> tuple[list[dict], int, int]:
         form = d.form
         if callgraph.head(form) not in callgraph.FUNCTION_HEADS or len(form) < 4:
             continue
-        out: list = []
-        seq(_body_forms(form[3:]), True, out)
-        sites[name] = out
+        sites[name] = body_calls(form, name in _LOGIC_RUN)
     graph = {n: sorted({c for c, _ in s if c in sites}) for n, s in sites.items()}
     rows = []
     for comp in _sccs(graph):

@@ -70,26 +70,81 @@
       (fn-record-string-octets (fn-oag-identity cfg))
     *fn-oag-unset-agent*))
 
-(defun fn-oag-group-octets (names)
+; The walks over the group and moderator tables below execute by loops (lane
+; depth-debt, PRF-919): the tables are operator data with no fixed cap (D27),
+; so a recursion one frame per entry could exhaust the 1,024 KiB control
+; stack.  Each is (mbe :logic <the recursion, unchanged> :exec <a loop>),
+; equal by <f>-loop-is-rev-onto / -of-rev-onto (books/rev-onto.lisp).
+(defun fn-oag-group-octets-loop (names acc)
   (declare (xargs :guard t))
   (if (consp names)
-      (cons (fn-nntp-string-octets (car names))
-            (fn-oag-group-octets (cdr names)))
-    nil))
+      (fn-oag-group-octets-loop (cdr names)
+                                (cons (fn-nntp-string-octets (car names)) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-oag-group-octets (names)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp names)
+                  (cons (fn-nntp-string-octets (car names))
+                        (fn-oag-group-octets (cdr names)))
+                nil)
+       :exec (fn-oag-group-octets-loop names nil)))
+
+(defthm fn-oag-group-octets-loop-is-rev-onto
+  (equal (fn-oag-group-octets-loop names acc)
+         (fn-ag-rev-onto acc (fn-oag-group-octets names)))
+  :hints (("Goal" :induct (fn-oag-group-octets-loop names acc)
+                  :in-theory (union-theories
+                              '(fn-oag-group-octets-loop fn-oag-group-octets
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-oag-group-octets
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-oag-group-octets fn-ag-rev-onto
+                                fn-oag-group-octets-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ;; The reader listing (PRF-195): each served group's description, and the
 ;; node's message, projected from the configuration's descriptions slot
 ;; (books/config.lisp `fn-cfg-description-octets', `fn-cfg-motd-lines').  A
 ;; group whose description is empty has no entry, so LIST NEWSGROUPS shows
 ;; it the marker.
-(defun fn-oag-descs (names v)
+(defun fn-oag-descs-loop (names v acc)
   (declare (xargs :guard t))
   (if (consp names)
-      (let ((d (fn-cfg-description-octets v (car names))))
-        (if (consp d)
-            (cons (cons (car names) d) (fn-oag-descs (cdr names) v))
-          (fn-oag-descs (cdr names) v)))
-    nil))
+      (fn-oag-descs-loop
+       (cdr names) v
+       (let ((d (fn-cfg-description-octets v (car names))))
+         (if (consp d) (cons (cons (car names) d) acc) acc)))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-oag-descs (names v)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp names)
+                  (let ((d (fn-cfg-description-octets v (car names))))
+                    (if (consp d)
+                        (cons (cons (car names) d) (fn-oag-descs (cdr names) v))
+                      (fn-oag-descs (cdr names) v)))
+                nil)
+       :exec (fn-oag-descs-loop names v nil)))
+
+(defthm fn-oag-descs-loop-is-rev-onto
+  (equal (fn-oag-descs-loop names v acc)
+         (fn-ag-rev-onto acc (fn-oag-descs names v)))
+  :hints (("Goal" :induct (fn-oag-descs-loop names v acc)
+                  :in-theory (union-theories
+                              '(fn-oag-descs-loop fn-oag-descs
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-oag-descs
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-oag-descs fn-ag-rev-onto
+                                fn-oag-descs-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; The third element is the node's <path-identity>, the posting agent below:
 ; the server name of the served Xref overview field (R3, PRF-206,
@@ -124,14 +179,42 @@
       nil)))
 
 ; One walk of the group table: the facts of the entries live at GEN.
-(defun fn-oag-group-facts (es gen)
+; A right fold: the :exec folds the reversed entries from the left.
+(defun fn-oag-group-facts-loop (rev gen acc)
   (declare (xargs :guard t))
-  (if (consp es)
-      (if (fn-cfg-entry-livep (car es) gen)
-          (append (fn-oag-group-fact-of (car es))
-                  (fn-oag-group-facts (cdr es) gen))
-        (fn-oag-group-facts (cdr es) gen))
-    nil))
+  (if (consp rev)
+      (fn-oag-group-facts-loop
+       (cdr rev) gen
+       (if (fn-cfg-entry-livep (car rev) gen)
+           (append (fn-oag-group-fact-of (car rev)) acc)
+         acc))
+    acc))
+
+(defun fn-oag-group-facts (es gen)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp es)
+                  (if (fn-cfg-entry-livep (car es) gen)
+                      (append (fn-oag-group-fact-of (car es))
+                              (fn-oag-group-facts (cdr es) gen))
+                    (fn-oag-group-facts (cdr es) gen))
+                nil)
+       :exec (fn-oag-group-facts-loop (fn-ag-rev-onto es nil) gen nil)))
+
+(defthm fn-oag-group-facts-loop-of-rev-onto
+  (equal (fn-oag-group-facts-loop (fn-ag-rev-onto es zs) gen nil)
+         (fn-oag-group-facts-loop zs gen (fn-oag-group-facts es gen)))
+  :hints (("Goal" :induct (fn-ag-rev-onto es zs)
+                  :in-theory (union-theories
+                              '(fn-oag-group-facts-loop fn-oag-group-facts
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-oag-group-facts
+  :hints (("Goal" :use ((:instance fn-oag-group-facts-loop-of-rev-onto (zs nil)))
+                  :in-theory (union-theories
+                              '(fn-oag-group-facts-loop fn-oag-group-facts)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; KEYSTONE (PKT-665).  Every entry live at GEN whose creating record's
 ; stamp carries a wall reading has its fact, dated by that reading.
@@ -197,25 +280,83 @@
 ;; read-only groups, so LIST ACTIVE's "m", the POST gate
 ;; (books/moderation.lisp) and a connection's approver view
 ;; (books/nntp-auth.lisp `fn-auth-moderation-config') read one list.
-(defun fn-oag-login-octets (logins)
+(defun fn-oag-login-octets-loop (logins acc)
   (declare (xargs :guard t))
   (if (consp logins)
-      (cons (fn-nntp-string-octets (car logins))
-            (fn-oag-login-octets (cdr logins)))
-    nil))
+      (fn-oag-login-octets-loop (cdr logins)
+                                (cons (fn-nntp-string-octets (car logins)) acc))
+    (fn-ag-rev-onto acc nil)))
 
-(defun fn-oag-moderation-entries (names v gen)
+(defun fn-oag-login-octets (logins)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp logins)
+                  (cons (fn-nntp-string-octets (car logins))
+                        (fn-oag-login-octets (cdr logins)))
+                nil)
+       :exec (fn-oag-login-octets-loop logins nil)))
+
+(defthm fn-oag-login-octets-loop-is-rev-onto
+  (equal (fn-oag-login-octets-loop logins acc)
+         (fn-ag-rev-onto acc (fn-oag-login-octets logins)))
+  :hints (("Goal" :induct (fn-oag-login-octets-loop logins acc)
+                  :in-theory (union-theories
+                              '(fn-oag-login-octets-loop fn-oag-login-octets
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-oag-login-octets
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-oag-login-octets fn-ag-rev-onto
+                                fn-oag-login-octets-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
+
+(defun fn-oag-moderation-entry (name m)
+  (declare (xargs :guard t))
+  (list :moderated (fn-nntp-string-octets name)
+        (fn-nntp-string-octets (fn-cfg-ag-car m))
+        (fn-oag-login-octets
+         (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr m))))))
+
+(defun fn-oag-moderation-entries-loop (names v gen acc)
   (declare (xargs :guard t))
   (if (consp names)
-      (let ((m (fn-cfg-group-moderation v gen (car names))))
-        (if (consp m)
-            (cons (list :moderated (fn-nntp-string-octets (car names))
-                        (fn-nntp-string-octets (fn-cfg-ag-car m))
-                        (fn-oag-login-octets
-                         (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr m)))))
-                  (fn-oag-moderation-entries (cdr names) v gen))
-          (fn-oag-moderation-entries (cdr names) v gen)))
-    nil))
+      (fn-oag-moderation-entries-loop
+       (cdr names) v gen
+       (let ((m (fn-cfg-group-moderation v gen (car names))))
+         (if (consp m) (cons (fn-oag-moderation-entry (car names) m) acc) acc)))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-oag-moderation-entries (names v gen)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp names)
+           (let ((m (fn-cfg-group-moderation v gen (car names))))
+             (if (consp m)
+                 (cons (list :moderated (fn-nntp-string-octets (car names))
+                             (fn-nntp-string-octets (fn-cfg-ag-car m))
+                             (fn-oag-login-octets
+                              (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr m)))))
+                       (fn-oag-moderation-entries (cdr names) v gen))
+               (fn-oag-moderation-entries (cdr names) v gen)))
+         nil)
+       :exec (fn-oag-moderation-entries-loop names v gen nil)))
+
+(defthm fn-oag-moderation-entries-loop-is-rev-onto
+  (equal (fn-oag-moderation-entries-loop names v gen acc)
+         (fn-ag-rev-onto acc (fn-oag-moderation-entries names v gen)))
+  :hints (("Goal" :induct (fn-oag-moderation-entries-loop names v gen acc)
+                  :in-theory (union-theories
+                              '(fn-oag-moderation-entries-loop fn-oag-moderation-entries
+                                fn-ag-rev-onto car-cons cdr-cons fn-oag-moderation-entry)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-oag-moderation-entries
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-oag-moderation-entries fn-ag-rev-onto
+                                fn-oag-moderation-entries-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-oag-post-config (cfg max-octets)
   "The posting configuration the owner installs for configuration CFG.

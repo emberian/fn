@@ -62,14 +62,49 @@
   (declare (xargs :guard t))
   (if (and (stringp x) (not (equal x ""))) (fn-nls-text x) (fn-nls-text "-")))
 
-(defun fn-cev-scope-words (scope)
+; A principal's granted scope is operator data with no fixed cap (D27): the
+; walk executes by a loop (lane depth-debt, PRF-919), the octets reversed
+; onto ACC, equal by fn-cev-scope-words-loop-is-rev-onto.
+(defun fn-cev-scope-words-loop (scope acc)
   (declare (xargs :guard t))
   (if (consp scope)
-      (append (fn-cev-string (car scope))
-              (if (consp (cdr scope))
-                  (cons 44 (fn-cev-scope-words (cdr scope)))
-                nil))
-    nil))
+      (fn-cev-scope-words-loop
+       (cdr scope)
+       (let ((acc (fn-ag-rev-onto (fn-cev-string (car scope)) acc)))
+         (if (consp (cdr scope)) (cons 44 acc) acc)))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-cev-scope-words (scope)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp scope)
+                  (append (fn-cev-string (car scope))
+                          (if (consp (cdr scope))
+                              (cons 44 (fn-cev-scope-words (cdr scope)))
+                            nil))
+                nil)
+       :exec (fn-cev-scope-words-loop scope nil)))
+
+(local
+ (defthm fn-cev-rev-onto-of-rev-onto
+   (equal (fn-ag-rev-onto (fn-ag-rev-onto x acc) y)
+          (fn-ag-rev-onto acc (append x y)))))
+
+(defthm fn-cev-scope-words-loop-is-rev-onto
+  (equal (fn-cev-scope-words-loop scope acc)
+         (fn-ag-rev-onto acc (fn-cev-scope-words scope)))
+  :hints (("Goal" :induct (fn-cev-scope-words-loop scope acc)
+                  :in-theory (union-theories
+                              '(fn-cev-scope-words-loop fn-cev-scope-words
+                                fn-ag-rev-onto fn-cev-rev-onto-of-rev-onto
+                                car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-cev-scope-words
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-cev-scope-words fn-ag-rev-onto
+                                fn-cev-scope-words-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-cev-scope (scope)
   (declare (xargs :guard t))

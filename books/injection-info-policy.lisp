@@ -17,11 +17,36 @@
 (include-book "article-fields")
 
 ; The octets of a text, a string's character codes or an octet list as is.
-(defun fn-ipp-codes (chars)
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+(defun fn-ipp-codes-loop (chars acc)
   (declare (xargs :guard (character-listp chars)))
   (if (consp chars)
-      (cons (char-code (car chars)) (fn-ipp-codes (cdr chars)))
-    nil))
+      (fn-ipp-codes-loop (cdr chars) (cons (char-code (car chars)) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-ipp-codes (chars)
+  (declare (xargs :guard (character-listp chars) :verify-guards nil))
+  (mbe :logic (if (consp chars)
+                  (cons (char-code (car chars)) (fn-ipp-codes (cdr chars)))
+                nil)
+       :exec (fn-ipp-codes-loop chars nil)))
+
+(defthm fn-ipp-codes-loop-is-rev-onto
+  (equal (fn-ipp-codes-loop chars acc)
+         (fn-ag-rev-onto acc (fn-ipp-codes chars)))
+  :hints (("Goal" :induct (fn-ipp-codes-loop chars acc)
+                  :in-theory (union-theories
+                              '(fn-ipp-codes-loop fn-ipp-codes fn-ag-rev-onto
+                                car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-ipp-codes
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-ipp-codes fn-ag-rev-onto fn-ipp-codes-loop-is-rev-onto
+                                character-listp)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-ipp-octets (text)
   (declare (xargs :guard t))
@@ -30,15 +55,44 @@
 ; An <addr-spec> of two dot-atoms, local "@" domain: what the operator may
 ; set as the complaints address.  atext has no DQUOTE, backslash, ";", SP,
 ; CR or LF, so the address stands in a <quoted-string> as it is.
-(defun fn-ipp-split-at (x)
-  ; (local . domain) at the first "@", or nil.
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+; The loop carries the octets before the "@" reversed.
+(defun fn-ipp-split-at-loop (x acc)
   (declare (xargs :guard t))
   (if (consp x)
       (if (equal (car x) 64)
-          (cons nil (cdr x))
-        (let ((r (fn-ipp-split-at (cdr x))))
-          (if r (cons (cons (car x) (car r)) (cdr r)) nil)))
+          (cons (fn-ag-rev-onto acc nil) (cdr x))
+        (fn-ipp-split-at-loop (cdr x) (cons (car x) acc)))
     nil))
+
+(defun fn-ipp-split-at (x)
+  ; (local . domain) at the first "@", or nil.
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp x)
+                  (if (equal (car x) 64)
+                      (cons nil (cdr x))
+                    (let ((r (fn-ipp-split-at (cdr x))))
+                      (if r (cons (cons (car x) (car r)) (cdr r)) nil)))
+                nil)
+       :exec (fn-ipp-split-at-loop x nil)))
+
+(defthm fn-ipp-split-at-loop-is-rev-onto
+  (equal (fn-ipp-split-at-loop x acc)
+         (let ((r (fn-ipp-split-at x)))
+           (if r (cons (fn-ag-rev-onto acc (car r)) (cdr r)) nil)))
+  :hints (("Goal" :induct (fn-ipp-split-at-loop x acc)
+                  :in-theory (union-theories
+                              '(fn-ipp-split-at-loop fn-ipp-split-at fn-ag-rev-onto
+                                car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-ipp-split-at
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-ipp-split-at fn-ag-rev-onto fn-ipp-split-at-loop-is-rev-onto
+                                car-cons cdr-cons)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-ipp-addr-specp (x)
   (declare (xargs :guard t))

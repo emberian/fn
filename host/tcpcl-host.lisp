@@ -123,11 +123,17 @@
                  (fn-tcl-negotiated-tls n))))
         (t e)))
 
-(defun fn-tcl-host-event-digests (events)
+; Executes by a loop (lane depth-debt, PRF-919): one digest per event of a
+; socket chunk's drive, as many as the chunk's messages.  ACC holds the
+; digests so far, reversed.
+(defun fn-tcl-host-event-digests-loop (events acc)
   (if (consp events)
-      (cons (fn-tcl-host-event-digest (car events))
-            (fn-tcl-host-event-digests (cdr events)))
-    nil))
+      (fn-tcl-host-event-digests-loop
+       (cdr events) (cons (fn-tcl-host-event-digest (car events)) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-tcl-host-event-digests (events)
+  (fn-tcl-host-event-digests-loop events nil))
 
 ; -----------------------------------------------------------------------------
 ; The differential's model side.  STEPS is the trace the session loop wrote:

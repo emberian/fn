@@ -300,17 +300,62 @@
   (declare (xargs :guard t))
   (coerce (explode-nonnegative-integer (nfix n) 10 nil) 'string))
 
-(defun fn-lzr-nats-text (ns)
-  (declare (xargs :guard t))
+; The dictionary list has no fixed cap (D27): the text executes by a loop
+; (lane depth-debt, PRF-919) that collects the characters reversed and
+; coerces once; fn-lzr-nats-text-loop-is-rev-onto equates it with the
+; recursion, and verify-guards below proves exec = logic.
+(defun fn-lzr-nats-text-loop (ns acc)
+  (declare (xargs :guard (character-listp acc) :verify-guards nil))
   (if (atom ns)
-      ""
-    (if (atom (cdr ns))
-        (fn-lzr-nat-text (car ns))
-      (concatenate 'string (fn-lzr-nat-text (car ns)) "," (fn-lzr-nats-text (cdr ns))))))
+      (coerce (fn-ag-rev-onto acc nil) 'string)
+    (fn-lzr-nats-text-loop
+     (cdr ns)
+     (fn-ag-rev-onto (coerce (if (atom (cdr ns))
+                                 (fn-lzr-nat-text (car ns))
+                               (concatenate 'string (fn-lzr-nat-text (car ns)) ","))
+                             'list)
+                     acc))))
+
+(local (defthm fn-lzr-character-listp-of-rev-onto
+  (implies (and (character-listp a) (character-listp b))
+           (character-listp (fn-ag-rev-onto a b)))))
+
+(local (defthm fn-lzr-rev-onto-of-rev-onto
+  (equal (fn-ag-rev-onto (fn-ag-rev-onto a b) c)
+         (fn-ag-rev-onto b (append a c)))))
+
+(local (defthm fn-lzr-append-assoc
+  (equal (append (append a b) c) (append a (append b c)))))
+
+(local (defthm fn-lzr-append-nil
+  (implies (true-listp a) (equal (append a nil) a))))
+
+(verify-guards fn-lzr-nats-text-loop)
+
+(defun fn-lzr-nats-text (ns)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (atom ns)
+           ""
+         (if (atom (cdr ns))
+             (fn-lzr-nat-text (car ns))
+           (concatenate 'string (fn-lzr-nat-text (car ns)) "," (fn-lzr-nats-text (cdr ns)))))
+       :exec (fn-lzr-nats-text-loop ns nil)))
 
 (defthm fn-lzr-nats-text-stringp
   (stringp (fn-lzr-nats-text ns))
   :rule-classes :type-prescription)
+
+(defthm fn-lzr-nats-text-loop-is-rev-onto
+  (implies (character-listp acc)
+           (equal (fn-lzr-nats-text-loop ns acc)
+                  (coerce (fn-ag-rev-onto acc (coerce (fn-lzr-nats-text ns) 'list))
+                          'string)))
+  :hints (("Goal" :induct (fn-lzr-nats-text-loop ns acc)
+                  :in-theory (disable fn-lzr-nat-text))))
+
+(verify-guards fn-lzr-nats-text
+  :hints (("Goal" :in-theory (disable fn-lzr-nat-text fn-lzr-nats-text-loop))))
 
 ; `store ROOT compression': MIN the profile's compress-min-octets.
 (defun fn-lzr-tally-text (min tally)

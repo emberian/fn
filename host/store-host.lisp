@@ -83,15 +83,20 @@
 ; A final namespace observation is not parsed by the native adapter.  The
 ; bounded host enumeration is sorted only to make its representation stable.
 ; This conversion only validates octets before the scan policy compares names.
-(defun fn-store-octet-lists->strings (xs)
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+; ACC holds the converted strings reversed; any element that is not an
+; octet list, or a non-nil final tail, answers :bad, as the recursion did.
+(defun fn-store-octet-lists->strings-loop (xs acc)
   (if (consp xs)
       (if (not (fn-cbor-octet-listp (car xs)))
           :bad
-        (let ((rest (fn-store-octet-lists->strings (cdr xs))))
-          (if (equal rest :bad)
-              :bad
-            (cons (fn-store-octets->string (car xs)) rest))))
-    (if (null xs) nil :bad)))
+        (fn-store-octet-lists->strings-loop
+         (cdr xs) (cons (fn-store-octets->string (car xs)) acc)))
+    (if (null xs) (fn-ag-rev-onto acc nil) :bad)))
+
+(defun fn-store-octet-lists->strings (xs)
+  (fn-store-octet-lists->strings-loop xs nil))
 
 ; The bound and the grammar are `fn-profile-txn-observation'
 ; (books/store-profile-facts.lisp); this wrapper converts octets.  The

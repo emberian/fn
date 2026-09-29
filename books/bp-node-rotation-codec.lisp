@@ -30,17 +30,57 @@
   (declare (xargs :guard t))
   (+ 4096 (* 4 (nfix max-jobs))))
 
+; The string conversions and the tree encoder execute by loops (lane
+; depth-debt, PRF-919): a checkpoint string or octet list is data, and a
+; recursion took one control-stack frame per character (and, through `append',
+; one per octet of every encoded car).  Each is (mbe :logic <the recursion,
+; unchanged> :exec <loop>), equal by <f>-loop-is-rev-onto / fn-bpnr-enc-go-is-enc.
+(defun fn-bpnr-codes-loop (chars acc)
+  (declare (xargs :guard t :verify-guards t))
+  (if (atom chars) (fn-ag-rev-onto acc nil)
+    (fn-bpnr-codes-loop (cdr chars)
+                        (cons (if (characterp (car chars)) (char-code (car chars)) 0)
+                              acc))))
+
 (defun fn-bpnr-codes (chars)
   (declare (xargs :guard t))
-  (if (atom chars) nil
-    (cons (if (characterp (car chars)) (char-code (car chars)) 0)
-          (fn-bpnr-codes (cdr chars)))))
+  (mbe :logic (if (atom chars) nil
+                (cons (if (characterp (car chars)) (char-code (car chars)) 0)
+                      (fn-bpnr-codes (cdr chars))))
+       :exec (fn-bpnr-codes-loop chars nil)))
+
+(defthm fn-bpnr-codes-loop-is-rev-onto
+  (equal (fn-bpnr-codes-loop chars acc)
+         (fn-ag-rev-onto acc (fn-bpnr-codes chars)))
+  :hints (("Goal" :induct (fn-bpnr-codes-loop chars acc)
+                  :in-theory (union-theories
+                              '(fn-bpnr-codes-loop fn-bpnr-codes fn-ag-rev-onto
+                                atom car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(defun fn-bpnr-chars-loop (codes acc)
+  (declare (xargs :guard t :verify-guards t))
+  (if (atom codes) (fn-ag-rev-onto acc nil)
+    (fn-bpnr-chars-loop (cdr codes)
+                        (cons (if (fn-cbor-octetp (car codes)) (code-char (car codes))
+                                (code-char 0))
+                              acc))))
 
 (defun fn-bpnr-chars (codes)
   (declare (xargs :guard t))
-  (if (atom codes) nil
-    (cons (if (fn-cbor-octetp (car codes)) (code-char (car codes)) (code-char 0))
-          (fn-bpnr-chars (cdr codes)))))
+  (mbe :logic (if (atom codes) nil
+                (cons (if (fn-cbor-octetp (car codes)) (code-char (car codes)) (code-char 0))
+                      (fn-bpnr-chars (cdr codes))))
+       :exec (fn-bpnr-chars-loop codes nil)))
+
+(defthm fn-bpnr-chars-loop-is-rev-onto
+  (equal (fn-bpnr-chars-loop codes acc)
+         (fn-ag-rev-onto acc (fn-bpnr-chars codes)))
+  :hints (("Goal" :induct (fn-bpnr-chars-loop codes acc)
+                  :in-theory (union-theories
+                              '(fn-bpnr-chars-loop fn-bpnr-chars fn-ag-rev-onto
+                                atom car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
 
 (defun fn-bpnr-counted (tag codes)
   (declare (xargs :guard t))
@@ -56,8 +96,9 @@
         (t nil)))
 
 ; Nil means "not encodable within this budget"; every encoding is a cons.
-(defun fn-bpnr-enc (x d)
-  (declare (xargs :guard (natp d) :measure (nfix d)))
+; Every value but a non-octet cons, encoded without recursion.
+(defun fn-bpnr-enc-leaf (x d)
+  (declare (xargs :guard (natp d)))
   (cond ((zp d) nil)
         ((null x) (list 0))
         ((equal x t) (list 1))
@@ -72,15 +113,80 @@
         ((stringp x) (fn-bpnr-counted 7 (fn-bpnr-codes (coerce x 'list))))
         ((characterp x) (list 8 (char-code x)))
         ((consp x)
-         (if (fn-cbor-octet-listp x)
-             (fn-bpnr-counted 9 x)
-           (let ((a (fn-bpnr-enc (car x) (1- d)))
-                 (b (fn-bpnr-enc (cdr x) (1- d))))
-             (and a b (cons 10 (append a b))))))
+         (if (fn-cbor-octet-listp x) (fn-bpnr-counted 9 x) nil))
         (t nil)))
 
-(verify-guards fn-bpnr-codes)
-(verify-guards fn-bpnr-chars)
+; The encoder by a loop along each list's spine: ACC is the octets so far,
+; reversed; a cons's car is encoded by one nested call and its cdr by the
+; tail call, so the depth is the value's car-nesting (a checkpoint's fixed
+; shape: the record, its row lists, a row, a row's fields), not a list's
+; length, and no `append' copies an encoded car on the stack.
+(defun fn-bpnr-enc-go (x d acc)
+  (declare (xargs :guard (natp d) :measure (nfix d)))
+  (if (and (not (zp d)) (consp x) (not (fn-cbor-octet-listp x)))
+      (let ((a (fn-bpnr-enc-go (car x) (1- d) nil)))
+        (and a (fn-bpnr-enc-go (cdr x) (1- d) (fn-ag-rev-onto a (cons 10 acc)))))
+    (let ((e (fn-bpnr-enc-leaf x d)))
+      (and e (fn-ag-rev-onto acc e)))))
+
+(defun fn-bpnr-enc (x d)
+  (declare (xargs :guard (natp d) :measure (nfix d)))
+  (mbe :logic
+       (cond ((zp d) nil)
+             ((null x) (list 0))
+             ((equal x t) (list 1))
+             ((symbolp x)
+              (let ((tag (fn-bpnr-symbol-tag x)))
+                (and tag
+                     (fn-bpnr-counted tag (fn-bpnr-codes
+                                           (coerce (symbol-name x) 'list))))))
+             ((natp x) (and (<= x *fn-bpc-max-uint*) (cons 5 (fn-bpc-u64-bytes x))))
+             ((integerp x)
+              (and (<= (- x) *fn-bpc-max-uint*) (cons 6 (fn-bpc-u64-bytes (- x)))))
+             ((stringp x) (fn-bpnr-counted 7 (fn-bpnr-codes (coerce x 'list))))
+             ((characterp x) (list 8 (char-code x)))
+             ((consp x)
+              (if (fn-cbor-octet-listp x)
+                  (fn-bpnr-counted 9 x)
+                (let ((a (fn-bpnr-enc (car x) (1- d)))
+                      (b (fn-bpnr-enc (cdr x) (1- d))))
+                  (and a b (cons 10 (append a b))))))
+             (t nil))
+       :exec (fn-bpnr-enc-go x d nil)))
+
+(local (defthm fn-bpnr-rev-onto-of-rev-onto
+  (equal (fn-ag-rev-onto (fn-ag-rev-onto a z) b)
+         (fn-ag-rev-onto z (append a b)))))
+
+(local (defthm fn-bpnr-enc-leaf-is-enc
+  (implies (not (and (not (zp d)) (consp x) (not (fn-cbor-octet-listp x))))
+           (equal (fn-bpnr-enc-leaf x d) (fn-bpnr-enc x d)))
+  :hints (("Goal" :expand ((fn-bpnr-enc x d))
+                  :in-theory (disable fn-bpnr-counted fn-bpc-u64-bytes fn-bpnr-codes
+                                      fn-bpnr-symbol-tag)))))
+
+(defthm fn-bpnr-enc-go-is-enc
+  (equal (fn-bpnr-enc-go x d acc)
+         (let ((e (fn-bpnr-enc x d)))
+           (and e (fn-ag-rev-onto acc e))))
+  :hints (("Goal" :induct (fn-bpnr-enc-go x d acc)
+                  :expand ((fn-bpnr-enc x d))
+                  :in-theory (union-theories
+                              '(fn-bpnr-enc-go fn-bpnr-enc-leaf-is-enc
+                                fn-bpnr-rev-onto-of-rev-onto fn-ag-rev-onto
+                                car-cons cdr-cons natp zp)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-bpnr-codes
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnr-codes fn-ag-rev-onto fn-bpnr-codes-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
+(verify-guards fn-bpnr-chars
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnr-chars fn-ag-rev-onto fn-bpnr-chars-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 (verify-guards fn-bpnr-counted
   :hints (("Goal" :in-theory (disable fn-bpc-u64-bytes floor mod))))
 (verify-guards fn-bpnr-symbol-tag)
@@ -264,6 +370,9 @@
                 (fn-cbor-octet-listp (fn-bpnr-enc x d))))
   :hints (("Goal" :use fn-bpnr-enc-shape :in-theory nil)))
 
+(verify-guards fn-bpnr-enc-leaf
+  :hints (("Goal" :in-theory (disable fn-bpc-u64-bytes floor mod))))
+(verify-guards fn-bpnr-enc-go)
 (verify-guards fn-bpnr-enc
   :hints (("Goal" :in-theory (disable fn-bpc-u64-bytes floor mod))))
 

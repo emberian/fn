@@ -206,22 +206,26 @@
   (declare (xargs :mode :program))
   (fn-bs-profile-max-config-generations profile))
 
-(defun fn-store-config-observation-entries (entries)
-  "Convert only octet representation; decoding/name policy stays in fn-nco-observe."
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+(defun fn-store-config-observation-entries-loop (entries acc)
   (declare (xargs :mode :program))
   (if (consp entries)
       (let ((entry (car entries)))
         (if (and (true-listp entry) (equal (len entry) 2)
                  (fn-cbor-octet-listp (car entry))
                  (fn-cbor-octet-listp (cadr entry)))
-            (let ((rest (fn-store-config-observation-entries (cdr entries))))
-              (if (equal rest :bad)
-                  :bad
-                 (cons (list (fn-store-octets->string (car entry))
-                             (car (cdr entry)))
-                       rest)))
+            (fn-store-config-observation-entries-loop
+             (cdr entries)
+             (cons (list (fn-store-octets->string (car entry)) (car (cdr entry)))
+                   acc))
           :bad))
-    (if (null entries) nil :bad)))
+    (if (null entries) (fn-ag-rev-onto acc nil) :bad)))
+
+(defun fn-store-config-observation-entries (entries)
+  "Convert only octet representation; decoding/name policy stays in fn-nco-observe."
+  (declare (xargs :mode :program))
+  (fn-store-config-observation-entries-loop entries nil))
 
 (defun fn-store-config-observation (entries max-generations)
   "The recovery subject for one bounded physical config directory observation."
@@ -841,13 +845,21 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cfg-generation (f-get-global 'fn-store-cfg state))))
 
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+; ACC is the octets so far, reversed.
+(defun fn-store-cfg-join-names-loop (names acc)
+  (declare (xargs :mode :program))
+  (if (consp names)
+      (let ((acc (fn-ag-rev-onto (fn-record-string-octets (car names)) acc)))
+        (fn-store-cfg-join-names-loop (cdr names)
+                                      (if (consp (cdr names)) (cons 10 acc) acc)))
+    (fn-ag-rev-onto acc nil)))
+
 (defun fn-store-cfg-join-names (names)
   ; Names as one octet list separated by LF, which no group name contains.
   (declare (xargs :mode :program))
-  (if (consp names)
-      (append (fn-record-string-octets (car names))
-              (if (consp (cdr names)) (cons 10 (fn-store-cfg-join-names (cdr names))) nil))
-    nil))
+  (fn-store-cfg-join-names-loop names nil))
 
 (defun fn-store-cfg-served (state)
   ; The served table at the live generation.

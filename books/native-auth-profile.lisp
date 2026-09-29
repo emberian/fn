@@ -35,18 +35,41 @@
   (declare (xargs :guard t))
   (* *fn-native-auth-lines-per-credential* (+ 1 (nfix max-credentials))))
 
+; The credential file's walks execute by loops (lane depth-debt, PRF-919):
+; the file is operator data with no fixed cap (D27), and a recursion one
+; control-stack frame per octet could exhaust the 1,024 KiB stack.  Each is
+; (mbe :logic <the recursion, unchanged> :exec <a loop>), equal by its
+; <f>-loop lemma.
+(defun fn-native-auth-line-count-loop (xs acc)
+  (declare (xargs :guard (acl2-numberp acc)))
+  (if (consp xs)
+      (if (consp (cdr xs))
+          (fn-native-auth-line-count-loop
+           (cdr xs) (+ acc (if (equal (car xs) 10) 1 0)))
+        (+ acc 1))
+    acc))
+
 (defun fn-native-auth-line-count (xs)
   ; Count conventional text lines: every LF ends one line, and nonempty bytes
   ; after the final LF form one more.  fn-ncfg-lines deliberately retains a
   ; terminal empty segment for parsing; that segment is not a 1,025th line in
   ; a file containing exactly 1,024 newline-terminated lines.
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (if (consp (cdr xs))
-          (+ (if (equal (car xs) 10) 1 0)
-             (fn-native-auth-line-count (cdr xs)))
-        1)
-    0))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp xs)
+                  (if (consp (cdr xs))
+                      (+ (if (equal (car xs) 10) 1 0)
+                         (fn-native-auth-line-count (cdr xs)))
+                    1)
+                0)
+       :exec (fn-native-auth-line-count-loop xs 0)))
+
+(defthm fn-native-auth-line-count-loop-is-plus
+  (implies (acl2-numberp acc)
+           (equal (fn-native-auth-line-count-loop xs acc)
+                  (+ acc (fn-native-auth-line-count xs))))
+  :hints (("Goal" :induct (fn-native-auth-line-count-loop xs acc))))
+
+(verify-guards fn-native-auth-line-count)
 
 (defun fn-native-auth-prefixp (prefix xs)
   (declare (xargs :guard t))
@@ -67,11 +90,35 @@
        (equal (nth (- (len xs) 2) xs) a)
        (equal (nth (1- (len xs)) xs) b)))
 
-(defun fn-native-auth-butlast-two (xs)
+(defun fn-native-auth-butlast-two-loop (xs acc)
   (declare (xargs :guard t))
   (if (and (consp xs) (consp (cdr xs)) (consp (cdr (cdr xs))))
-      (cons (car xs) (fn-native-auth-butlast-two (cdr xs)))
-    nil))
+      (fn-native-auth-butlast-two-loop (cdr xs) (cons (car xs) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-native-auth-butlast-two (xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (and (consp xs) (consp (cdr xs)) (consp (cdr (cdr xs))))
+                  (cons (car xs) (fn-native-auth-butlast-two (cdr xs)))
+                nil)
+       :exec (fn-native-auth-butlast-two-loop xs nil)))
+
+(defthm fn-native-auth-butlast-two-loop-is-rev-onto
+  (equal (fn-native-auth-butlast-two-loop xs acc)
+         (fn-ag-rev-onto acc (fn-native-auth-butlast-two xs)))
+  :hints (("Goal" :induct (fn-native-auth-butlast-two-loop xs acc)
+                  :in-theory (union-theories
+                              '(fn-native-auth-butlast-two-loop
+                                fn-native-auth-butlast-two
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-native-auth-butlast-two
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-native-auth-butlast-two fn-ag-rev-onto
+                                fn-native-auth-butlast-two-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-native-auth-login-namep (name)
   ; The canonical writer emits NAME through bin/fn's toml_quote: an NNTP

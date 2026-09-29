@@ -1019,34 +1019,104 @@
            (< (len (fn-tcl-parse-rest (fn-tcl-decode-for s buf))) (len buf)))
   :rule-classes (:rewrite :linear))
 
+; fn-tcl-drive executes by a loop (lane depth-debt, PRF-919): one
+; recursion per complete message in the buffer, and a socket chunk holds as
+; many as its octets allow, so the depth grew with the input.  The loop carries
+; the events so far reversed (EVACC) and appends each step's in front of them
+; by rev-onto; the :logic below is the recursion, unchanged.
+(defun fn-tcl-drive-loop (s buf now evacc)
+  (declare (xargs :guard (and (fn-tcl-session-cheapp s) (fn-cbor-octet-listp buf)
+                              (fn-clock-timep now))
+                  :verify-guards nil
+                  :measure (len buf)
+                  :hints (("Goal" :in-theory (disable fn-tcl-step fn-tcl-input-error
+                                                      fn-tcl-session-cheapp
+                                                      fn-cbor-octet-listp fn-clock-timep)))))
+  (if (mbe :logic (not (and (fn-tcl-session-cheapp s) (fn-cbor-octet-listp buf)
+                            (fn-clock-timep now)))
+           :exec nil)
+      (fn-tcl-make-result s (fn-ag-rev-onto evacc nil) buf)
+    (if (or (equal (fn-tcl-session-phase s) :closed) (not (consp buf)))
+        (fn-tcl-make-result s (fn-ag-rev-onto evacc nil) buf)
+      (let ((d (fn-tcl-decode-for s buf)))
+        (cond ((fn-tcl-parse-okp d)
+               (let ((r (fn-tcl-step s (fn-tcl-parse-msg d) now)))
+                 (fn-tcl-drive-loop (fn-tcl-result-session r) (fn-tcl-parse-rest d) now
+                                    (fn-ag-rev-onto (fn-tcl-result-events r) evacc))))
+              ((fn-tcl-parse-needp d) (fn-tcl-make-result s (fn-ag-rev-onto evacc nil) buf))
+              (t (let ((r (fn-tcl-input-error s (car buf) (fn-tcl-parse-reason d) now)))
+                   (fn-tcl-make-result (fn-tcl-result-session r)
+                                       (fn-ag-rev-onto evacc (fn-tcl-result-events r))
+                                       buf))))))))
+
 (defun fn-tcl-drive (s buf now)
   (declare (xargs :guard (and (fn-tcl-session-cheapp s) (fn-cbor-octet-listp buf)
                               (fn-clock-timep now))
                   :verify-guards nil
-                  :measure (len buf)))
+                  :measure (len buf)
+                  :hints (("Goal" :in-theory (disable fn-tcl-step fn-tcl-input-error
+                                                      fn-tcl-session-cheapp
+                                                      fn-cbor-octet-listp fn-clock-timep)))))
   ; The totality test names the carried invariant, not the specification
   ; recognizer: on the served path this is what the executable counterpart
   ; checks once per socket chunk, and it must not walk the staged octets.
   ; fn-tcl-sessionp implies it, so every keystone below is unaffected.
-  (if (mbe :logic (not (and (fn-tcl-session-cheapp s) (fn-cbor-octet-listp buf)
-                            (fn-clock-timep now)))
-           :exec nil)
-      (fn-tcl-make-result s nil buf)
-    (if (or (equal (fn-tcl-session-phase s) :closed) (not (consp buf)))
-        (fn-tcl-make-result s nil buf)
-      (let ((d (fn-tcl-decode-for s buf)))
-        (cond ((fn-tcl-parse-okp d)
-               (let* ((r (fn-tcl-step s (fn-tcl-parse-msg d) now))
-                      (tail (fn-tcl-drive (fn-tcl-result-session r) (fn-tcl-parse-rest d) now)))
-                 (fn-tcl-make-result (fn-tcl-result-session tail)
-                                     (fn-tcl-app (fn-tcl-result-events r)
-                                                 (fn-tcl-result-events tail))
-                                     (fn-tcl-result-unconsumed tail))))
-              ((fn-tcl-parse-needp d) (fn-tcl-make-result s nil buf))
-              (t (let ((r (fn-tcl-input-error s (car buf) (fn-tcl-parse-reason d) now)))
-                   (fn-tcl-make-result (fn-tcl-result-session r)
-                                       (fn-tcl-result-events r)
-                                       buf))))))))
+  (mbe :logic
+       (if (mbe :logic (not (and (fn-tcl-session-cheapp s) (fn-cbor-octet-listp buf)
+                                 (fn-clock-timep now)))
+                :exec nil)
+           (fn-tcl-make-result s nil buf)
+         (if (or (equal (fn-tcl-session-phase s) :closed) (not (consp buf)))
+             (fn-tcl-make-result s nil buf)
+           (let ((d (fn-tcl-decode-for s buf)))
+             (cond ((fn-tcl-parse-okp d)
+                    (let* ((r (fn-tcl-step s (fn-tcl-parse-msg d) now))
+                           (tail (fn-tcl-drive (fn-tcl-result-session r) (fn-tcl-parse-rest d) now)))
+                      (fn-tcl-make-result (fn-tcl-result-session tail)
+                                          (fn-tcl-app (fn-tcl-result-events r)
+                                                      (fn-tcl-result-events tail))
+                                          (fn-tcl-result-unconsumed tail))))
+                   ((fn-tcl-parse-needp d) (fn-tcl-make-result s nil buf))
+                   (t (let ((r (fn-tcl-input-error s (car buf) (fn-tcl-parse-reason d) now)))
+                        (fn-tcl-make-result (fn-tcl-result-session r)
+                                            (fn-tcl-result-events r)
+                                            buf)))))))
+       :exec (fn-tcl-drive-loop s buf now nil)))
+
+(local
+ (defthm fn-tcl-drive-rev-onto-of-rev-onto
+   (equal (fn-ag-rev-onto (fn-ag-rev-onto a acc) b)
+          (fn-ag-rev-onto acc (fn-tcl-app a b)))
+   :hints (("Goal" :induct (fn-ag-rev-onto a acc)
+                   :in-theory (enable fn-ag-rev-onto fn-tcl-app)))))
+
+(defthm fn-tcl-drive-loop-is-drive
+  (equal (fn-tcl-drive-loop s buf now evacc)
+         (let ((res (fn-tcl-drive s buf now)))
+           (fn-tcl-make-result (fn-tcl-result-session res)
+                               (fn-ag-rev-onto evacc (fn-tcl-result-events res))
+                               (fn-tcl-result-unconsumed res))))
+  :hints (("Goal" :induct (fn-tcl-drive-loop s buf now evacc)
+                  :expand ((fn-tcl-drive s buf now) (fn-tcl-drive-loop s buf now evacc))
+                  :in-theory (union-theories
+                              '(fn-tcl-drive-rev-onto-of-rev-onto
+                                fn-tcl-result-session-of-fn-tcl-make-result
+                                fn-tcl-result-events-of-fn-tcl-make-result
+                                fn-tcl-result-unconsumed-of-fn-tcl-make-result
+                                (:induction fn-tcl-drive-loop))
+                              (theory 'minimal-theory)))))
+
+(defthm fn-tcl-drive-is-its-result
+  (equal (fn-tcl-make-result (fn-tcl-result-session (fn-tcl-drive s buf now))
+                             (fn-tcl-result-events (fn-tcl-drive s buf now))
+                             (fn-tcl-result-unconsumed (fn-tcl-drive s buf now)))
+         (fn-tcl-drive s buf now))
+  :hints (("Goal" :expand ((fn-tcl-drive s buf now))
+                  :in-theory (union-theories
+                              '(fn-tcl-result-session-of-fn-tcl-make-result
+                                fn-tcl-result-events-of-fn-tcl-make-result
+                                fn-tcl-result-unconsumed-of-fn-tcl-make-result)
+                              (theory 'minimal-theory)))))
 
 ; -----------------------------------------------------------------------------
 ; Preservation keystones.  Each transition keeps fn-tcl-sessionp; the guard
@@ -2130,9 +2200,14 @@
                                    fn-tcl-touch-rx fn-tcl-segment-mru))
            :use ((:instance fn-tcl-touch-rx-preserves-cheapp)))))
 (verify-guards fn-tcl-decode-for)
-(verify-guards fn-tcl-drive
+(verify-guards fn-tcl-drive-loop
   :hints (("Goal" :in-theory (disable fn-tcl-step fn-tcl-decode-for fn-tcl-input-error
                                       fn-tcl-messagep fn-tcl-segment-mru))))
+(verify-guards fn-tcl-drive
+  :hints (("Goal" :in-theory (disable fn-tcl-step fn-tcl-decode-for fn-tcl-input-error
+                                      fn-tcl-messagep fn-tcl-segment-mru
+                                      fn-tcl-drive-loop-is-drive)
+                  :use ((:instance fn-tcl-drive-loop-is-drive (evacc nil))))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory.  Keystones and the list vocabulary stay enabled; every

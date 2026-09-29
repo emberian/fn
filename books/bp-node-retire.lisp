@@ -44,13 +44,33 @@
            (let ((g (fn-bpnr-generation-of-name name)))
              (and (natp g) (< g selected))))))
 
-(defun fn-bpnr-retired-names (names selected)
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of the journal root's listing (data, not a bound).  The :logic is
+; the recursion, unchanged; the :exec is a loop, equal by fn-bpnr-retired-names-loop-is-rev-onto.
+(defun fn-bpnr-retired-names-loop (names selected acc)
   (declare (xargs :guard t :verify-guards nil))
   (if (atom names)
-      nil
-    (if (fn-bpnr-retired-namep (car names) selected)
-        (cons (car names) (fn-bpnr-retired-names (cdr names) selected))
-      (fn-bpnr-retired-names (cdr names) selected))))
+      (fn-ag-rev-onto acc nil)
+    (fn-bpnr-retired-names-loop
+     (cdr names) selected
+     (if (fn-bpnr-retired-namep (car names) selected) (cons (car names) acc) acc))))
+
+(defun fn-bpnr-retired-names (names selected)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (atom names)
+                  nil
+                (if (fn-bpnr-retired-namep (car names) selected)
+                    (cons (car names) (fn-bpnr-retired-names (cdr names) selected))
+                  (fn-bpnr-retired-names (cdr names) selected)))
+       :exec (fn-bpnr-retired-names-loop names selected nil)))
+
+(defthm fn-bpnr-retired-names-loop-is-rev-onto
+  (equal (fn-bpnr-retired-names-loop names selected acc)
+         (fn-ag-rev-onto acc (fn-bpnr-retired-names names selected)))
+  :hints (("Goal" :induct (fn-bpnr-retired-names-loop names selected acc)
+                  :in-theory (union-theories
+                              '(fn-bpnr-retired-names-loop fn-bpnr-retired-names fn-ag-rev-onto atom not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
 
 ; The removal program.  LISTINGS maps a retired directory to the entry
 ; names the host observed in it (bounded by the namespace's work bound); a

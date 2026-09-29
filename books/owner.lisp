@@ -1019,12 +1019,38 @@
     (null facts)))
 
 ; Replay of the fact log: the created group names in creation order.
-(defun fn-own-replay-facts (facts)
+; Executes by a loop (lane depth-debt, PRF-919): it walks the per-group creation facts (the operator's group table), operator
+; data with no fixed cap (D27), so the recursion took one control-stack
+; frame per element.  The :logic is the recursion, unchanged.
+(defun fn-own-replay-facts-loop (facts acc)
   (declare (xargs :guard t))
   (if (consp facts)
-      (cons (fn-own-group-fact-name (car facts))
-            (fn-own-replay-facts (cdr facts)))
-    nil))
+      (fn-own-replay-facts-loop (cdr facts)
+       (cons (fn-own-group-fact-name (car facts)) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-own-replay-facts (facts)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp facts)
+           (cons (fn-own-group-fact-name (car facts))
+                 (fn-own-replay-facts (cdr facts)))
+         nil)
+       :exec (fn-own-replay-facts-loop facts nil)))
+
+(defthm fn-own-replay-facts-loop-is-rev-onto
+  (equal (fn-own-replay-facts-loop facts acc)
+         (fn-ag-rev-onto acc (fn-own-replay-facts facts)))
+  :hints (("Goal" :induct (fn-own-replay-facts-loop facts acc)
+                  :in-theory (union-theories
+                              '(fn-own-replay-facts-loop fn-own-replay-facts fn-ag-rev-onto not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-own-replay-facts
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-own-replay-facts fn-ag-rev-onto fn-own-replay-facts-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 ; -----------------------------------------------------------------------------
 ; The durable prefix a version names, and the archive it projects to.
@@ -1080,11 +1106,37 @@
 ;; list (or no index), the refreshed index IS the build of the new list, so
 ;; every served read over it answers as before.
 
-(defun fn-gidx-put-all (entries buckets)
+; Executes by a loop (lane depth-debt, PRF-919): it walks one article's index entries, operator
+; data with no fixed cap (D27), so the recursion took one control-stack
+; frame per element.  The :logic is the recursion, unchanged.
+(defun fn-gidx-put-all-loop (rev acc)
   (declare (xargs :guard t))
-  (if (consp entries)
-      (fn-gidx-put (car entries) (fn-gidx-put-all (cdr entries) buckets))
-    buckets))
+  (if (consp rev)
+      (fn-gidx-put-all-loop (cdr rev) (fn-gidx-put (car rev) acc))
+    acc))
+
+(defun fn-gidx-put-all (entries buckets)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp entries)
+                  (fn-gidx-put (car entries) (fn-gidx-put-all (cdr entries) buckets))
+                buckets)
+       :exec (fn-gidx-put-all-loop (fn-ag-rev-onto entries nil) buckets)))
+
+(defthm fn-gidx-put-all-loop-of-rev-onto
+  (equal (fn-gidx-put-all-loop (fn-ag-rev-onto entries zs) buckets)
+         (fn-gidx-put-all-loop zs (fn-gidx-put-all entries buckets)))
+  :hints (("Goal" :induct (fn-ag-rev-onto entries zs)
+                  :in-theory (union-theories
+                              '(fn-gidx-put-all-loop fn-gidx-put-all fn-ag-rev-onto
+                                car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-gidx-put-all
+  :hints (("Goal" :use ((:instance fn-gidx-put-all-loop-of-rev-onto (zs nil)))
+                  :in-theory (union-theories
+                              '(fn-gidx-put-all-loop fn-gidx-put-all)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defthm fn-gidx-build-entries-of-append
   (equal (fn-gidx-build-entries (append a b))

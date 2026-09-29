@@ -406,13 +406,24 @@ contract, without blocking the loop)."
                (fnn-mux-conn-drain-deadline conn)
                (fnn-mux-ticks +fnn-mux-drain-seconds+)))))))
 
+(defvar *fnn-mux-working* nil
+  "The connection whose fnn-mux-work loop is running on this thread, if any.")
+
+;; A reply that the socket takes at once ran AFTER inside the step that queued
+;; it, and AFTER re-entered fnn-mux-work for the same connection: one nesting
+;; of work -> step -> queue -> flush -> after per step boundary of a read's
+;; held input, so the depth grew with what one client sent (lane depth-debt,
+;; tools/raw_depth_check.py).  Inside that connection's own work loop, AFTER
+;; now only re-arms the idle timer: the running loop steps the rest of the
+;; input, as the nested call did, in the same order.
 (defun fnn-mux-after (loop conn after)
   (case after
     (:close (fnn-mux-begin-drain loop conn))
     (:starttls (fnn-mux-request-handshake loop conn))
     (t (when (eq (fnn-mux-conn-phase conn) :serving)
          (fnn-mux-arm-idle conn)
-         (fnn-mux-work loop conn)))))
+         (unless (eq *fnn-mux-working* conn)
+           (fnn-mux-work loop conn))))))
 
 (defun fnn-mux-step (loop conn)
   "One served step over the held input and what follows it: the worker's
@@ -529,7 +540,8 @@ builds it for a step that drained in its own quantum."
 (defun fnn-mux-work (loop conn)
   "Step the held input while the connection may: serving, no reply queued,
 no exposure wait pending."
-  (let ((service (fnn-mux-service loop)))
+  (let ((service (fnn-mux-service loop))
+        (*fnn-mux-working* conn))
     (loop while (and (eq (fnn-mux-conn-phase conn) :serving)
                      (fnn-mux-conn-input conn)
                      (null (fnn-mux-conn-out conn))

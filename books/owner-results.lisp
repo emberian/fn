@@ -153,16 +153,46 @@
         (append prefix (fn-frame-trailer prefix)))
     :bad))
 
-(defun fn-ores-sealed-plan (records)
+; Executes by a loop (lane depth-debt, PRF-919): one record per target peer,
+; operator data with no fixed cap (D27).  (mbe :logic <the recursion,
+; unchanged> :exec <a loop>).  This book's functions are not guard-verified,
+; so the equality is the theorem fn-ores-sealed-plan-loop-is-rev-onto rather
+; than a guard obligation; raw Lisp runs the :exec.
+(defun fn-ores-sealed-entry (r)
+  (declare (xargs :guard t :verify-guards nil))
+  (cons (fn-ores-record-peer r)
+        (fn-ores-seal
+         (fn-feed-encode (fn-feed-journal-kind r)
+                         (fn-feed-journal-values r)
+                         *fn-ores-zero-trailer*))))
+
+(defun fn-ores-sealed-plan-loop (records acc)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp records)
-      (cons (cons (fn-ores-record-peer (car records))
-                  (fn-ores-seal
-                   (fn-feed-encode (fn-feed-journal-kind (car records))
-                                   (fn-feed-journal-values (car records))
-                                   *fn-ores-zero-trailer*)))
-            (fn-ores-sealed-plan (cdr records)))
-    nil))
+      (fn-ores-sealed-plan-loop (cdr records)
+                                (cons (fn-ores-sealed-entry (car records)) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-ores-sealed-plan (records)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp records)
+                  (cons (cons (fn-ores-record-peer (car records))
+                              (fn-ores-seal
+                               (fn-feed-encode (fn-feed-journal-kind (car records))
+                                               (fn-feed-journal-values (car records))
+                                               *fn-ores-zero-trailer*)))
+                        (fn-ores-sealed-plan (cdr records)))
+                nil)
+       :exec (fn-ores-sealed-plan-loop records nil)))
+
+(defthm fn-ores-sealed-plan-loop-is-rev-onto
+  (equal (fn-ores-sealed-plan-loop records acc)
+         (fn-ag-rev-onto acc (fn-ores-sealed-plan records)))
+  :hints (("Goal" :induct (fn-ores-sealed-plan-loop records acc)
+                  :in-theory (union-theories
+                              '(fn-ores-sealed-plan-loop fn-ores-sealed-plan
+                                fn-ag-rev-onto car-cons cdr-cons fn-ores-sealed-entry)
+                              (theory 'minimal-theory)))))
 
 (defun fn-ores-feed-publication (word peer records token command status log-line)
   (declare (xargs :guard t :verify-guards nil))

@@ -22,12 +22,18 @@
                       0 *fn-reader-groups* :legacy)
    0 1 :durable))
 
-(defun fn-reader-group-octets (names)
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+(defun fn-reader-group-octets-loop (names acc)
   (declare (xargs :mode :program))
   (if (consp names)
-      (cons (fn-nntp-string-octets (car names))
-            (fn-reader-group-octets (cdr names)))
-    nil))
+      (fn-reader-group-octets-loop (cdr names)
+                                   (cons (fn-nntp-string-octets (car names)) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-reader-group-octets (names)
+  (declare (xargs :mode :program))
+  (fn-reader-group-octets-loop names nil))
 
 ; The posting configuration is derived from the selected archive by ACL2, so
 ; the groups fn will accept a local post into are exactly the groups the store
