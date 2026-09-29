@@ -701,7 +701,8 @@ def load_baseline(path: Path = BASELINE) -> dict:
     data = json.loads(path.read_text(encoding="utf-8"))
     app = data.get("append", {})
     return {"bounded": dict(data.get("bounded", {})), "debt": dict(data.get("debt", {})),
-            "append": {"bounded": dict(app.get("bounded", {})), "debt": dict(app.get("debt", {}))}}
+            "append": {"bounded": dict(app.get("bounded", {})), "debt": dict(app.get("debt", {}))},
+            "program": dict(data.get("program", {}))}
 
 
 def check_appends(rows: list[dict], baseline: dict) -> list[str]:

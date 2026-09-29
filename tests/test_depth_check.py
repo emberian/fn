@@ -128,6 +128,11 @@ class ProgramEntryTests(unittest.TestCase):
     refused, a listed one passes, a stale listing must leave."""
     ROW = {"function": "fn-xw-main", "where": "host/store-write-host.lisp:1877"}
 
+    def test_the_loaded_baseline_carries_the_program_list(self):
+        # load_baseline once dropped "program", so every survivor read as unlisted.
+        self.assertIn("program", d.load_baseline())
+        self.assertIsInstance(d.load_baseline()["program"], dict)
+
     def test_an_unlisted_program_entry_fails(self):
         problems = d.check_program([self.ROW], {"program": {}})
         self.assertEqual(len(problems), 1)

@@ -1359,6 +1359,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-carry-control-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
+	books/state-globals \
 	books/reader-open-carried \
 	tests/acl2/reader-open-carried-tests \
 	tests/acl2/group-number-index-tests \

@@ -67,6 +67,8 @@
                         (fn-sn-verdicts store))
     :refused))
 
+(verify-guards fn-rdc-store-selection)
+
 ; The projection recogniser's first conjunct is the acceptance-state one.
 (defthm fn-rdc-projection-is-a-state
   (implies (fn-nntp-projectionp archive)
