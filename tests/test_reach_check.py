@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -318,6 +319,38 @@ class RatchetTests(unittest.TestCase):
                                      "PRF-1:y": "SPEC: the model the hosted z refines",
                                      "PRF-1:w": "a reason with no disposition word"}),
             ["PRF-1:w", "PRF-1:x"])
+
+
+class BinderStatementTests(unittest.TestCase):
+    """A subject under a let*/mv-let (obstructions-2 item 13; the blind spot
+    premise_audit fixed on lane/closure-theorems 4c08b2a63).  No tree read."""
+
+    FORM = ("(defthm t2 (let* ((o (fn-open s))) (implies (fn-h o) (fn-r o))) "
+            ":hints ((\"Goal\" :in-theory (enable fn-h))))")
+
+    def test_the_binder_is_opened_and_the_hypothesis_is_assumed(self):
+        hyps, conclusion = reach_check.split_statement(self.FORM)
+        self.assertEqual(hyps, [["fn-h", ["fn-open", "s"]]])
+        self.assertEqual(conclusion, ["fn-r", ["fn-open", "s"]])
+        _, kept = reach_check.split_statement(self.FORM, keep_binders=True)
+        self.assertEqual(kept, ["let*", [["o", ["fn-open", "s"]]], ["fn-r", "o"]])
+        mv = "(defthm t3 (mv-let (a b) (fn-two x) (equal (fn-r b) a)))"
+        self.assertEqual(reach_check.split_statement(mv)[1],
+                         ["equal", ["fn-r", ["mv-nth", "1", ["fn-two", "x"]]],
+                          ["mv-nth", "0", ["fn-two", "x"]]])
+
+    def test_a_let_bound_subject_is_read_as_its_conclusion(self):
+        graph = SimpleNamespace(book_defs={"fn-open": 1, "fn-h": 1, "fn-r": 1},
+                                stobj_names=set(), export_of={},
+                                reachable={"fn-r", "fn-open"})
+        s = reach_check.Subject(graph, "t2", self.FORM)
+        # fn-h is the hypothesis predicate, never the subject.
+        self.assertEqual(s.functions, ["fn-open", "fn-r"])
+        self.assertTrue(s.hosted(graph))
+        # Over a bound model state (fn-open unreached) the hosted fn-r is a
+        # statement about the model: the binders stay for that judgement.
+        graph.reachable = {"fn-r"}
+        self.assertFalse(reach_check.Subject(graph, "t2", self.FORM).hosted(graph))
 
 
 if __name__ == "__main__":

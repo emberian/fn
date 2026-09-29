@@ -195,6 +195,8 @@
 ;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
 ;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
 (include-book "books/post-identity-index")
+(include-book "books/post-identity-catalog")
+(include-book "books/post-prepare-catalog")
 ;; fn-owner-prepare-buffer calls fn-prc-refresh and fn-prc-sbud-prepare.
 (include-book "books/post-retain-carried")
 ;; PRF-284: host/owner-host.lisp calls fn-pvc-make and the carried budget,

@@ -73,15 +73,26 @@ A row changes to MET only in the commit that adds that evidence.
 <!-- fundamentals -->
 | ID | fundamental | bar (measurable) | status | evidence |
 | --- | --- | --- | --- | --- |
-| F1 | The records freeze landed (PKT-293, PKT-635; records-freeze) | Retained heap about 1 octet per stored payload octet plus stated per-record metadata (today 16 B/octet: the history and the acceptance node hold octet lists). A reopen of the 1,000-post store under 128 MB RSS. | OPEN | planning/evidence/fundamentals-2026-09-28-d5ab87aecc40/F1.md |
+| F1 | The records freeze landed (PKT-293, PKT-635; records-freeze) | Retained heap about 1 octet per stored payload octet plus stated per-record metadata (today 16 B/octet: the history and the acceptance node hold octet lists). A reopen of the 1,000-post store judged by F8's split: its anonymous peak (RssAnon, sampled through the reopen) at most 64 MiB; virtual size, accountable physical memory and working set reported (row J2, ruling of 2026-09-29). | OPEN | planning/evidence/fundamentals-2026-09-28-d5ab87aecc40/F1.md |
 | F2 | The served machine reads through the catalog (catalog-slice step 7b/8) | GROUP/LISTGROUP/ARTICLE/OVER read v/fn-cat; R established at every host entry; the index lookups per served command measured on the served path, with the before/after at N = 10,000 | OPEN | planning/evidence/fundamentals-2026-09-28-d5ab87aecc40/F2.md |
-| F3 | The storage log (storage-log-design, PKT-636) | fsyncs per POST at batch 8 well under today's 7 barriers per commit, the figure stated by the design and measured; POST/s on the public node's edge disk stated (node-disk's mount) | OPEN | planning/evidence/fundamentals-2026-09-28-d5ab87aecc40/F3.md |
+| F3 | The storage log (storage-log-design, PKT-636) | Under 1 fsync per POST at the named rate: 8 concurrent posters, the POST/s they reach stated per disk (row J2, ruling of 2026-09-29); the gap to the design's 0.125 at batch 8 is finding F3-G below, stated in every record and never read as a pass; POST/s on the public node's edge disk stated (node-disk's mount) | OPEN | planning/evidence/fundamentals-2026-09-28-d5ab87aecc40/F3.md |
 | F4 | The owner scheduler (owner-scheduler, PKT-321) | Under the mixed hour (3 tight-loop readers, 1 POST every 0.5 s), every control request answered within its 10 s client deadline, control p99 stated; F4-R: every served read and status/health answered within D_R = 3 x Q_max, in the hour and under an injected 30 s disk stall; F4-W: every POST answered within H + Q_max (planning/design-time-model-2026-09-27.md section 4; mutating control its named exception, tail stated) | OPEN | planning/evidence/fundamentals-2026-09-28-d5ab87aecc40/F4.md |
 | F5 | Connection multiplexing (connection-multiplexing) | Memory per idle connection measured and stated (today one worker thread and its stack per connection, PKT-605); the capacity check against memory | MET | planning/evidence/fundamentals-2026-09-28-d5ab87aecc40/F5.md |
 | F6 | Opens at scale | The owner's open of a 20,000- and a 40,000-article store in seconds, not tens of seconds (the coordinator reads the bar as under 10 s each; ember may set it), peak RSS stated; checkpoint-pipeline measured 28.8 s and 5.15 GB at 40,000 x 2 KiB | OPEN | planning/evidence/fundamentals-2026-09-28-d5ab87aecc40/F6.md |
 | F7 | BP 10 MiB validated (SCN-077, PKT-630 (7); bp-fragments-10mib) | tests.test_bp_fragment_node_native wholly OK on dtn and dtn-developer, SCN-077 delivering a 10 MiB ADU into a Store profiled for it | MET | planning/evidence/fundamentals-2026-09-28-d5ab87aecc40/F7.md |
-| F8 | The memory target (D35) | Under 256 MB reserved and under 128 MB in use after 1,000 posts on the release image, AND a reopen of that store under 256 MB (image-floor-2: 68 MiB in use after 1,000 posts, but the reopen needs 280 MB; not merged) | OPEN | planning/evidence/fundamentals-2026-09-28-d5ab87aecc40/F8.md |
+| F8 | The memory target (D35) | The split (adopted 2026-09-28): after 1,000 posts on the release image, accountable physical memory (the anonymous pages) at most 256 MiB and working set (VmRSS) at most 128 MiB, virtual address space reported; AND a reopen of that store under 256 MB. The old "under 256 MB reserved" verdict is recorded beside them, visibly unmet, and judges nothing | OPEN | planning/evidence/fundamentals-2026-09-28-d5ab87aecc40/F8.md |
 <!-- end fundamentals -->
+
+Findings (measured, not bars; each stays in every record until it closes):
+
+- **F3-G, the batching gap** (row J2): 0.31 to 0.47 fsyncs per POST at 8
+  posters (117 to 225 POST/s on the edge; 0.469 NVMe and 0.344 ZFS on
+  d5ab87aecc40) against the storage-log design's 0.125 at batch 8, 2.5 to
+  3.8 times the design. F3's bar (under 1) is met by these figures; the
+  design's figure is not, and `tools/fundamentals.py` prints the gap as
+  `FINDING F3-G ... OPEN` in F3.md until a record shows it at or under
+  `--f3-design-per-post`. Owner: the storage log (group commit's batch
+  formation under 8 posters).
 
 Measured on ONE image, dev `33bbfae9c` (hbox, 2026-09-27 16:14Z to 17:22Z,
 load 17 to 39, rows pinned to cores 20 to 23; lane fundamentals-scoreboard;
@@ -141,7 +152,7 @@ are rough, from 2026-09-28's runs.
 | # | what | tool | pass bar | box | rough time |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Freeze: every change that alters store bytes has landed, including the one-format rename to `fn-store-1` (lane one-format: no legacy formats, no migration code; fresh deploys) | git; `tools/fixtures.py rebuild --image build/fn-host-developer --rev REV` on a hbox_native tree of REV | every registered fixture rebuilt at REV in `fn-store-1`, including the scale-curve fixture at capacity 300,000 (tools/scale_curve.py's; 1k-100k built in 18.8 s) (`tools/fixtures.py check --rev REV` clean); nothing format-9/10 left in tests | hbox | 1 h (fixtures) |
-| 2 | BOOK GREEN at REV | union cite of every root split hbox/persvati (`tools/farm.py`), `tools/green_check.py --strict` and `--profile default --strict`, `tools/remote_check.sh hbox --target check --install-certs` | green_check owes nothing; make check every step green | both | 1-2 h cold, minutes warm |
+| 2 | BOOK GREEN at REV | union cite of every root split hbox/persvati (`tools/farm.py`), `tools/green_check.py --strict` and `--profile default --strict`, `tools/remote_check.sh hbox --target check --install-certs`, `tools/resource_contract.py --check --strict` (the resource contract's release form: every book a row of docs/resource-contract.md cites is green at its current digest) | green_check owes nothing; make check every step green; the resource contract owes nothing | both | 1-2 h cold, minutes warm |
 | 3 | The quiet 2-job D26 measurement and the AGGREGATE budget (GPT-6 review 2026-09-28) | `tools/farm.py --all --jobs 2` on a quiet persvati (no other run on the box), then `tools/proof_cost.py --write-baseline --near 5` and `tools/proof_cost.py --write-aggregate` (the aggregate: prover-steps sum over every root-closure book and the heaviest include chain by steps; refused partial, refused over the recorded figure's tolerance without `--allow-regression`) | no book over 10 s at 2 jobs; no near-5 row's steps over +10%; the aggregate recorded (total 2-job certification seconds, the critical path, the high-fan-out interface books' cost) and not above the previous convergence's by more than the stated tolerance (proposed 10%; ember sets it) | persvati | 2-3 h |
 | 4 | The OpenBSD guest certifies the default closure | orfbld on hbox (FIX-FORWARDS "THE OPENBSD GUEST CERT"; the cut's gate 13 later builds the tarball in cutbld) | `or-cert.sh` CERTIFY EXIT 0, every book passed | hbox (VM) | 10-15 min |
 | 5 | NATIVE GREEN: the full native set on REV's six images | `tools/hbox_native.sh --images developer,production,dtn,dtn-developer,reference,developer-stripped REV <every tests.test_native_* module>` with the format and open-depth fixtures' env (open_depth at 100k) | every module OK; each per-test skip listed with its reason (section 3's notes); a red is classified, never re-expected | hbox | 1.5 h |
@@ -190,8 +201,7 @@ prints every other gate's commands and checks the box preconditions it can
 What the gates do not decide (the cut's qualification record, section 4):
 
 - **Per-test skips inside an OK module** are not evidence. The notes
-  `tools/native_env.py plan` prints today name them: FN_OLD_IMAGE and
-  FN_OLD_NATIVE_HOST (upgrade cases, moot under D34), FN_INN_SRC (the INN
+  `tools/native_env.py plan` prints today name them: FN_INN_SRC (the INN
   lab), FN_DTN7_REPO (dtn7-rs interop), FN_BUILD_OPENSSL_PREFIX
   (frozen_relocation). The record lists each one as unexercised with its
   reason.

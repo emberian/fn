@@ -11,8 +11,8 @@ code is redeemed on a developer image with FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH:
 the owner dies after the publication and before the reply; after a restart
 the account logs in and the retried exchange answers 281.  Plaintext XREDEEM
 on the protected listener is 483.  `account list` names both logins and
-never a code.  Finally, when FN_OLD_IMAGE names an image from before accounts
-(the deployed bbf52159), it refuses to open the store (PKT-440, witnessed).
+never a code.  (The old-image refusal case is gone: no migrations, fresh
+deploys at 6.6.0, D34.)
 
 The decisions are ACL2's: books/nntp-auth.lisp fn-auth-xredeem and
 fn-auth-redeem-outcome, books/accounts.lisp fn-acct-redeem-bounded-plan and
@@ -52,7 +52,6 @@ FRIEND_FN = os.environ.get("FN_FRIEND_FN")
 SMALL_PROFILE = ("--max-transactions", "16384", "--max-history-octets", "8388608",
                  "--max-record-octets", "196608", "--max-article-octets", "32768",
                  "--max-groups-per-article", "16", "--max-open-suffix", "128")
-OLD_IMAGE = os.environ.get("FN_OLD_IMAGE")
 READY = bool(IMAGE.is_file() and os.access(IMAGE, os.X_OK))
 DEVELOPER = "developer" in IMAGE.name
 
@@ -297,25 +296,4 @@ class NativeFriendsAccountsTests(unittest.TestCase):
                                         "<robin2-1@friend.example>")
             self.assertTrue(reply.startswith("240"), reply)
             self.stop()
-        # PKT-440: an image from before accounts refuses this store, and
-        # (the control) opens a store that never issued a code.  Its fn.toml
-        # names only the store and a listener, which that image parses.
-        if OLD_IMAGE:
-            def old_status(store, name):
-                config = self.root / (name + ".toml")
-                config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-                                  'port = {}\n'.format(store, free_port()), encoding="ascii")
-                result = run([OLD_IMAGE, "--fn", "operator", config, "status"], timeout=240)
-                print("NATIVE-ACCOUNTS old-image status", name, "->", result.returncode,
-                      text(result)[-160:].replace("\n", " "))
-                return result
-            fresh_node = Node(self, IMAGE, launcher=FRIEND_FN, root=self.root / "fresh",
-                                    control=False)
-            fresh = fresh_node.store_path
-            made = fresh_node.operator("init", *(SMALL_PROFILE if FRIEND_FN else ()),
-                                       "local.general", timeout=240)
-            self.assertEqual(made.returncode, 0, text(made))
-            self.assertEqual(old_status(fresh, "fresh").returncode, 0)
-            refused = old_status(self.store, "redeemed")
-            self.assertNotEqual(refused.returncode, 0)
             self.assertNotIn("usage", text(refused))

@@ -63,6 +63,10 @@
 ; PRF-191: a POST's Message-ID tests through the owner's view trie
 ; (fn-pidx-existing-action, fn-pidx-sbud-prepare).
 (include-book "../books/post-identity-index")
+; join-f2-midx: the duplicate test's lookup through the catalog, not the trie
+; (fn-pidx-existing-action-cat).
+(include-book "../books/post-identity-catalog")
+(include-book "../books/post-prepare-catalog")
 ; The retention admission of a POST through a carried obligation-id trie
 ; (fn-prc-refresh, fn-prc-sbud-prepare; fn-owner-prepare-buffer).
 (include-book "../books/post-retain-carried")
@@ -325,9 +329,8 @@
         (value :installed))
     (value :refused)))
 
-; The served read's install (fn-owner-chunk, the bridge's list read): every
-; projection `fn-owner-install-effects' makes EXCEPT the reply octets, which
-; are never built as a list here: `fn-owner-output' is NIL and the reply is
+; Every projection `fn-owner-install-effects' makes EXCEPT the reply octets,
+; which are never built as a list here: `fn-owner-output' is NIL and the reply is
 ; the effects' (the native host renders the step's plan off the mutex,
 ; fn-owner-chunk-span and books/served-plan.lisp, HST-023; before it the
 ; octet buffer of PRF-192, books/served-reply-buffer.lisp).
@@ -472,7 +475,7 @@
          (car opened) fn-arena fn-cat fn-hist state)))))
 
 ; The two recoveries below are the Python bridge's (tools/run_owner.py), whose
-; served path is fn-owner-chunk over the view's lists and reads no catalog:
+; served path was the retired fn-owner-chunk over the view's lists and reads no catalog:
 ; the catalog the install loads is a local one, dropped; the arena is the
 ; live one the open interned into (the native owner recovers through
 ; fn-owner-recover-from-store-open over the live stobjs).
@@ -1605,8 +1608,8 @@
 
 (defun fn-owner-prepare-buffer (msgid-octets group-codes id-octets
                                  subject-octets evidence-octets charge
-                                 fn-octets fn-arena fn-hist state)
-  (declare (xargs :stobjs (fn-octets fn-arena fn-hist state) :mode :program))
+                                 fn-octets fn-arena fn-cat fn-hist state)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat fn-hist state) :mode :program))
   (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
@@ -1619,11 +1622,11 @@
       ; is refused by the prepare below (fn-psrv-prepare, lane
       ; prepare-served): the host makes no served test of its own.
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             ; PRF-191: the held article through the view trie
-             ; (books/post-identity-index.lisp
-             ; fn-pidx-existing-action-is-store-existing-action).
-             (existing (fn-pidx-existing-action msgid fn-octets groups
-                                                (fn-owner-core state) fn-arena)))
+             ; PRF-191: the held article through the catalog's Message-ID
+             ; column (books/post-identity-catalog.lisp
+             ; fn-pidx-existing-action-cat-of-live-owner).
+             (existing (fn-pidx-existing-action-cat msgid fn-octets groups
+                                                    (fn-owner-core state) fn-arena fn-cat)))
         (if existing
             (mv nil existing fn-arena fn-hist state)
           (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
@@ -1677,8 +1680,16 @@
                  ; relays it.
                  (outcome (if (equal record :clock-unusable)
                               nil
+                            ; join-f2-midx: the same prepare with its duplicate
+                            ; test decided from the catalog
+                            ; (books/post-prepare-catalog.lisp KEYSTONE
+                            ; fn-ppc-pout-prepare-article-cat-is-pout-prepare-
+                            ; article: both values are fn-pout-prepare-article's
+                            ; under the join, fn-ppc-pout-prepare-article-cat-
+                            ; of-live-owner at the host's owner).
                             (mv-let (word next)
-                              (fn-pout-prepare-article before row budget carry)
+                              (fn-ppc-pout-prepare-article-cat before row budget carry
+                                                               fn-arena fn-cat)
                               ; Lane membership-budget: an :unaffordable
                               ; that the membership charge alone caused is
                               ; :memberships (books/store-capacity-vector.lisp
@@ -2138,6 +2149,9 @@
   ; function of the same configuration.
   (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((before (fn-owner-core state))
+         ;; The submission as it was queued (packed; lane chunked-body-2):
+         ;; what its connection's credit held for it, and what moves.
+         (queued (car (fn-own-queue before)))
          (state (fn-owner-step (list :take) fn-arena state))
          (after (fn-owner-core state))
          (sub (fn-own-inflight after)))
@@ -2168,7 +2182,7 @@
              ;; Lane credits: the submission's credit follows it from its
              ;; connection to the committer (fn-mca-take; :open until the
              ;; batch is appended, fn-owner-credits-seal).
-             (charge (fn-mca-sub-charge sub (fn-owner-credit-reserve state)))
+             (charge (fn-mca-sub-charge queued (fn-owner-credit-reserve state)))
              (state (f-put-global 'fn-owner-credit-taken charge state))
              (state (fn-owner-put-credits
                      (fn-mca-take (fn-owner-credits state) (fn-own-sub-id sub) charge)
@@ -3281,18 +3295,19 @@
 ; (fn-rcl-action-over-is-pb-without-a-tombstone);
 ; the list entry's fn-octet-listp test is the buffer's recognizer
 ; (fn-pbb-buffer-is-octet-listp).
-(defun fn-owner-existing-action-buffer (msgid-octets group-codes fn-octets fn-arena state)
-  (declare (xargs :stobjs (fn-octets fn-arena state) :mode :program))
+(defun fn-owner-existing-action-buffer (msgid-octets group-codes fn-octets fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
   (let ((groups (fn-store-groups-from-codes
                  group-codes
                  (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
     (if (not (fn-pfld-lookup-inputsp msgid-octets groups))
         (value :absent)
-      ; PRF-191: D25's buffer verdict through the view trie
-      ; (fn-pidx-existing-action-is-store-existing-action).
-      (let ((action (fn-pidx-existing-action
+      ; PRF-191: D25's buffer verdict, the article found through the
+      ; catalog's Message-ID column (books/post-identity-catalog.lisp,
+      ; fn-pidx-existing-action-cat-of-live-owner).
+      (let ((action (fn-pidx-existing-action-cat
                      (fn-store-octets->string msgid-octets) fn-octets groups
-                     (fn-owner-core state) fn-arena)))
+                     (fn-owner-core state) fn-arena fn-cat)))
         (value (if action action :absent))))))
 
 ; The subject identity of the payload in the octet buffer is
@@ -3416,16 +3431,18 @@
         (mv erp val state)))))
 
 
-; One observed socket region is one ACL2 prefix transition.  Its effects and
-; configured-owner state equal fn-ocfg-read over the prefix it consumed
-; (fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix); fn-owner-consumed names the exact
-; physical prefix.  The prefix ends early after a STARTTLS 382, a closed wire,
+; One observed socket region is one ACL2 prefix transition
+; (fn-owner-chunk-span-at below).  Its effects and configured-owner state
+; equal fn-ocfg-read over the prefix it consumed
+; (fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix); the step's consumed
+; count names the exact physical prefix.  The prefix ends early after a STARTTLS 382, a closed wire,
 ; or (PKT-600, PRF-213) the octet that completed a submission: the host then
 ; commits and answers it and feeds the rest of the region as the next read.  The native adapter leaves any suffix for the TLS record
 ; layer instead of parsing STARTTLS in raw Lisp.
-; The call is fn-scar-ocfg-read-tls-prefix (books/owner-served-carried.lisp),
-; which equals fn-ocfg-read-tls-prefix under the configured owner's relation
-; (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation): it takes the
+; The read is fn-scr-ocfg-read-span, fn-ocfg-read-tls-prefix over the span
+; under the configured owner's relation
+; (fn-scr-ocfg-read-span-is-reference-under-ocl-relation, through
+; books/owner-served-carried.lisp fn-scar-ocfg-read-tls-prefix): it takes the
 ; store node's fn-node-statep from that relation instead of re-evaluating it,
 ; O(N^2) in the archive, four times per read.  It also passes the owner
 ; view's Message-ID trie to the peer step, so an IHAVE/CHECK duplicate test is
@@ -3545,7 +3562,7 @@
          (state (f-put-global 'fn-owner-exposure (cdr r) state)))
     (value (if (equal (car r) :proceed) :proceed (cadr (car r))))))
 
-;; After a served step (fn-owner-chunk below): `fn-owner-exposure-close'
+;; After a served step (fn-owner-chunk-span-at below): `fn-owner-exposure-close'
 ;; holds the 400 the host appends before it closes, or NIL.  The step's
 ;; EFFECTS go in, not its reply octets: fn-exp-observe-effects is
 ;; fn-exp-observe of (fn-served-reply-octets effects)
@@ -3595,32 +3612,6 @@
                        (len (fn-own-conns (fn-owner-core state)))
                        (fn-owner-exposure-now state)))
 
-(defun fn-owner-chunk (id octets fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (let ((owner (fn-owner-core state)))
-    (if (not (fn-own-find-conn id (fn-own-conns owner)))
-        (value :unknown)
-      (let* ((result (fn-scar-ocfg-read-tls-prefix
-                      (fn-owner-ocfg state) id octets fn-arena))
-             (state (fn-owner-install-ocfg
-                     (fn-own-tls-result-owner result) state))
-             (state (fn-owner-install-served-effects
-                     (fn-own-tls-result-effects result) state))
-             (state (f-put-global 'fn-owner-consumed
-                                  (fn-own-tls-result-consumed result) state))
-             ; PRF-161: progress, failed logins and submissions of this step.
-             (state (fn-owner-exposure-observe
-                     id (fn-own-tls-result-effects result)
-                     (fn-own-tls-result-consumed result) state))
-             ; One line per 441 the effects send (books/owner-log.lisp
-             ; fn-olog-served-refusal-lines-one-per-441).
-             (state (f-put-global 'fn-owner-refusal-lines
-                                  (fn-olog-served-refusal-lines
-                                   (fn-owner-core state) id
-                                   (fn-own-tls-result-effects result))
-                                  state)))
-        (value :ok)))))
-
 ; Step 8 (catalog slice): the read runs books/served-catalog-chain.lisp
 ; fn-scr-ocfg-read-span, the same chain with the catalog carried to the
 ; retrieval arms (fn-scr-ocfg-read-span-is-reference-under-ocl-relation);
@@ -3640,7 +3631,8 @@
 ; exposure close.  No reply octets are built or rendered here: the effects
 ; are the render plan (books/served-plan.lisp), which the host renders into
 ; the connection's own buffer after the mutex is released.  The owner and
-; exposure states are installed exactly as fn-owner-chunk installs them.
+; exposure states are installed through fn-owner-install-ocfg and
+; fn-owner-exposure-observe.
 (defun fn-owner-chunk-span-at (id start end sched fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
   (let ((owner (fn-owner-core state)))

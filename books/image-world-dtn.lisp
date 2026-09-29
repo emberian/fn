@@ -94,6 +94,8 @@
 (include-book "subject-id-buffer")
 (include-book "store-reclaim-buffer")
 (include-book "post-identity-index")
+(include-book "post-identity-catalog")
+(include-book "post-prepare-catalog")
 (include-book "post-retain-carried")
 (include-book "store-profile-carried")
 (include-book "owner-prepare-served")
@@ -267,3 +269,4 @@
 (include-book "bp-run-class")
 (include-book "bp-node-profile")
 (include-book "bp-node-profile-admission")
+(include-book "bp-node-host-transfer")

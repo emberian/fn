@@ -266,14 +266,28 @@
         split
       (let ((name (fn-article-line-value split))
             (value (fn-article-line-rest split)))
+        ;; RFC 5322 section 2.2.3: a field body may begin on a continuation
+        ;; line (`References:' CRLF ` <id>'), so an EMPTY first-line value is
+        ;; a field still open; `fn-article-field-closedp' refuses it if no
+        ;; fold line follows (RFC 5536 section 2.2: no empty header field).
         (if (and (fn-article-namep name)
-                 (consp value)
-                 (fn-article-wspp (car value))
-                 (fn-article-header-bytes-p value)
-                 (fn-article-has-vcharp value))
+                 (or (null value)
+                     (and (consp value)
+                          (fn-article-wspp (car value))
+                          (fn-article-header-bytes-p value)
+                          (fn-article-has-vcharp value))))
             (list :ok (fn-article-make-field
                        (list line) (fn-article-ascii-downcase name) value))
           (fn-article-error :invalid-header))))))
+
+; A field may be closed (by the next field or the header's end) once its
+; unfolded value is non-empty: a first line's value either has a visible
+; character or is empty, and every fold line has one (fn-article-fold-linep),
+; so a non-empty value has one.  One test, no walk.
+(defun fn-article-field-closedp (current)
+  (declare (xargs :guard (or (null current) (fn-article-fieldp current))))
+  (or (null current)
+      (consp (fn-article-field-unfolded-value current))))
 
 (defun fn-article-fold-linep (line)
   (declare (xargs :guard t))
@@ -346,7 +360,8 @@
         (let ((line (fn-article-line-value next))
               (rest (fn-article-line-rest next)))
           (if (null line)
-              (if (not (fn-article-body-crlfp rest))
+              (if (or (not (fn-article-body-crlfp rest))
+                      (not (fn-article-field-closedp current)))
                   (fn-article-error :invalid-header)
                 (fn-article-ok
                  (fn-article-make
@@ -367,6 +382,8 @@
                 (let ((field-result (fn-article-new-field line)))
                   (if (not (fn-article-line-okp field-result))
                       field-result
+                   (if (not (fn-article-field-closedp current))
+                       (fn-article-error :invalid-header)
                     (if (<= (fn-article-limit-fields limits)
                             (+ (if current 1 0) (nfix nfields)))
                         (fn-article-error :header-fields-limit)
@@ -375,7 +392,7 @@
                        (if current (+ 1 (nfix nfields)) nfields)
                        (if current (cons current fields-rev) fields-rev)
                        (fn-article-line-value field-result)
-                       (fn-article-header-rev-add-line header-rev line)))))))))))))
+                       (fn-article-header-rev-add-line header-rev line))))))))))))))
 
 ; The admission parser: OCTETS under the header LIMITS of the profile the
 ; store runs under.  The article-octet preflight is the codec ceiling; the
@@ -637,6 +654,7 @@
 (verify-guards fn-article-line-rest)
 (verify-guards fn-article-split-colon-aux)
 (verify-guards fn-article-new-field)
+(verify-guards fn-article-field-closedp)
 (verify-guards fn-article-fold-linep)
 (verify-guards fn-article-add-fold)
 (verify-guards fn-article-header-rev-add-line)
@@ -649,7 +667,8 @@
                     fn-article-new-field fn-article-split-colon-aux
                     fn-article-line-value fn-article-line-rest
                     fn-article-add-fold fn-article-header-rev-add-line
-                    fn-article-finish-fields fn-article-body-crlfp))))
+                    fn-article-finish-fields fn-article-body-crlfp
+                    fn-article-field-closedp))))
 (verify-guards fn-article-parse-under)
 (verify-guards fn-article-parse)
 (verify-guards fn-article-field-name-equalp)

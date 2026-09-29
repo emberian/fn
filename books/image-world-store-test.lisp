@@ -124,6 +124,8 @@
 (include-book "owner-bound-commit")
 (include-book "owner-log-reopen")
 (include-book "post-identity-index")
+(include-book "post-identity-catalog")
+(include-book "post-prepare-catalog")
 (include-book "post-retain-carried")
 (include-book "owner-prepare-served")
 (include-book "history-columns-store")
