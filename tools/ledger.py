@@ -3368,7 +3368,8 @@ def apply_events(regenerated: dict[str, list[str]],
         if dropped:
             print(f"WARN: {entry['id']}: proofs.json events not in "
                   f"planning/proof-events.json are dropped (edit proof-events.json; "
-                  f"proofs.json's events are generated): {', '.join(dropped)}",
+                  f"proofs.json's events are generated): "
+                  f"{', '.join(str(d.get('name', d)) if isinstance(d, dict) else str(d) for d in dropped)}",
                   file=sys.stderr)
         if names:
             entry["events"] = names
