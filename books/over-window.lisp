@@ -1,27 +1,29 @@
 ; over-window.lisp -- OVER/XOVER of a range answered in bounded windows
-; (lane join-f2-10, 2026-09-29; PKT-733 (4), D27).
+; (lanes join-f2-10 and join-f2-12, 2026-09-29; PKT-733 (4), D27).
 ;
-; fn-nntp-over-range-cat (books/served-catalog.lisp) probes every number of
-; the clamped range and builds every NOV line in one served step: the work
-; one step does grows with the range.  This book answers the same range as
-; a CURSOR advanced one window of at most W numbers per quantum:
+; The served step answers an OVER/XOVER range with a CURSOR (books/served-
+; catalog.lisp fn-nntp-over-range-ovw: fn-ovw-start parses and clamps the
+; range once, no number probed, and the step's one effect is (:over-cursor
+; CUR)).  This book is the host's continuation and its proof:
 ;
-;   fn-ovw-start (session v token legacyp fn-cat) -> (mv octets cursor)
-;     the command's step: O(1) work (the range is parsed and clamped to the
-;     group's next number; no number is probed).  A cursor is NIL when the
-;     reply is complete (no group selected).
 ;   fn-ovw-step (cursor w fn-arena fn-cat) -> (mv octets cursor')
 ;     one quantum: at most W numbers probed and at most W NOV lines built.
 ;     The status line is decided lazily: 224 before the first line, or 423
 ;     (420 for XOVER) once the range is exhausted with no line; the
 ;     terminating dot follows the last window of a 224 reply.
+;   fn-ovw-run: the steps until the cursor is NIL (the list model).
 ;
 ; KEYSTONE fn-ovw-run-is-over-range-cat: for every W >= 1, the octets of the
 ; start followed by the steps until the cursor is NIL are exactly the reply
-; octets of fn-nntp-over-range-cat over the same catalog and view: the
-; windowed reply is the unbounded reader's, never truncated.  The progress
-; measure fn-ovw-remaining strictly decreases at every step of a live
-; cursor (fn-ovw-step-progresses), and a step's probes are the window's
+; octets of fn-nntp-over-range-cat (the unbounded reader) over the same
+; catalog and view: the windowed reply is never truncated.
+; fn-ovw-cursor-effect-expands-to-run: the served arm's effects, expanded
+; (fn-ovw-expand, what the chain equations of books/served-catalog-chain.lisp
+; are stated modulo), are the one reply effect carrying that run's octets,
+; for every W; fn-ovw-run-of-start-is-cursor-octets is the same fact on the
+; cursor the arm emits (what the host's continuation runs).  The progress
+; measure fn-ovw-remaining strictly decreases at every step of a live cursor
+; (fn-ovw-step-progresses), and a step's probes are the window's
 ; (fn-ovw-step-window-at-most-w: at most W numbers probed, at most W lines).
 ; FRAME fn-ovw-step-of-commit-pinned / fn-ovw-step-of-withdraw-pinned: a
 ; quantum run after a commit, or after a withdrawal marked at a later
@@ -39,47 +41,6 @@
 
 ; -----------------------------------------------------------------------------
 ; The cursor and one window
-
-(defun fn-ovw-status (text)
-  (declare (xargs :guard t))
-  (fn-nntp-crlf (fn-nntp-string-octets text)))
-
-; The lines of the numbers K..HI of GROUP in view V: the old reader's lines
-; restricted to one window.
-(defun fn-ovw-lines (group k hi v fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp k) (natp hi) (fn-scat-guard))))
-  (fn-nov-lines-for-numbers-cat
-   group (fn-scat-range-keep group (fn-cnx-range-aux group k hi v fn-cat) fn-cat)
-   v fn-arena fn-cat))
-
-; (GROUP K TOP V LEGACYP OWEDP): the next number to probe, the range's last
-; number (clamped once, at the start), the pinned view, XOVER or OVER, and
-; whether the status line is still owed (no line sent yet).
-(defun fn-ovw-cursor (group k top v legacyp owedp)
-  (declare (xargs :guard t))
-  (list group k top v legacyp owedp))
-
-(defun fn-ovw-cursorp (cur)
-  (declare (xargs :guard t))
-  (and (true-listp cur) (natp (nth 3 cur))))
-
-(defun fn-ovw-empty-text (legacyp)
-  (declare (xargs :guard t))
-  (if legacyp (fn-proto-text * :none-selected) (fn-proto-text * :empty-range)))
-
-; The command's step: O(1), no number probed.
-(defun fn-ovw-start (session v token legacyp fn-cat)
-  (declare (xargs :stobjs fn-cat :guard (natp v)))
-  (let ((group (fn-nntp-session-group session))
-        (range (fn-nntp-parse-range token)))
-    (if (null group)
-        (mv (fn-ovw-status (fn-proto-text * :no-group-selected)) nil)
-      (mv nil
-          (fn-ovw-cursor group (nfix (fn-nntp-range-low range))
-                         (min (nfix (fn-nntp-range-high range))
-                              (nfix (- (fn-cat-group-next group fn-cat) 1)))
-                         v legacyp t)))))
 
 (defun fn-ovw-remaining (cur)
   (declare (xargs :guard (true-listp cur)))
@@ -125,11 +86,6 @@
                 (mv-nth 1 (fn-ovw-step cur w fn-arena fn-cat)))
            (fn-ovw-cursorp (mv-nth 1 (fn-ovw-step cur w fn-arena fn-cat))))
   :hints (("Goal" :in-theory (disable fn-ovw-lines fn-nntp-stuff-lines fn-ovw-status))))
-
-(defthm fn-ovw-start-cursorp
-  (implies (and (natp v)
-                (mv-nth 1 (fn-ovw-start session v token legacyp fn-cat)))
-           (fn-ovw-cursorp (mv-nth 1 (fn-ovw-start session v token legacyp fn-cat)))))
 
 (verify-guards fn-ovw-step
   :hints (("Goal" :in-theory (disable fn-ovw-lines fn-nntp-stuff-lines fn-ovw-status))))
@@ -189,16 +145,6 @@
                                                   fn-scat-range-keep fn-nov-lines-for-numbers-cat))
            :use ((:instance fn-cnxw-range-is-windows (b (+ 1 hi)))))))
 
-(defun fn-ovw-reply (lines legacyp owedp)
-  (declare (xargs :guard t :verify-guards nil))
-  (if owedp
-      (if (consp lines)
-          (append (fn-ovw-status (fn-proto-text * :overview))
-                  (fn-nntp-stuff-lines lines)
-                  '(46 13 10))
-        (fn-ovw-status (fn-ovw-empty-text legacyp)))
-    (append (fn-nntp-stuff-lines lines) '(46 13 10))))
-
 (local
  (defun fn-ovw-ind (group k top v legacyp owedp w fn-arena fn-cat)
    (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil
@@ -216,14 +162,9 @@
    :hints (("Goal" :in-theory (enable fn-ovw-lines)))))
 
 (local
- (defthm fn-ovw-cursor-fields
-   (and (consp (fn-ovw-cursor group k top v legacyp owedp))
-        (equal (nth 0 (fn-ovw-cursor group k top v legacyp owedp)) group)
-        (equal (nth 1 (fn-ovw-cursor group k top v legacyp owedp)) k)
-        (equal (nth 2 (fn-ovw-cursor group k top v legacyp owedp)) top)
-        (equal (nth 3 (fn-ovw-cursor group k top v legacyp owedp)) v)
-        (equal (nth 4 (fn-ovw-cursor group k top v legacyp owedp)) legacyp)
-        (equal (nth 5 (fn-ovw-cursor group k top v legacyp owedp)) owedp))))
+ (defthm fn-ovw-cursor-consp
+   (consp (fn-ovw-cursor group k top v legacyp owedp))
+   :hints (("Goal" :in-theory (enable fn-ovw-cursor)))))
 
 (local
  (defthm fn-ovw-hi-natp
@@ -249,34 +190,19 @@
    :hints (("Goal" :in-theory (enable fn-ovw-hi)))))
 
 
-(local (in-theory (disable fn-ovw-cursor fn-ovw-hi)))
+(local (in-theory (disable fn-ovw-hi)))
 
 (defthm fn-ovw-run-is-reply
   (implies (and (natp k) (natp top))
            (equal (fn-ovw-run (fn-ovw-cursor group k top v legacyp owedp) w fn-arena fn-cat)
                   (fn-ovw-reply (fn-ovw-lines group k top v fn-arena fn-cat) legacyp owedp)))
   :hints (("Goal" :induct (fn-ovw-ind group k top v legacyp owedp w fn-arena fn-cat)
-           :in-theory (e/d (fn-ovw-step)
+           :in-theory (e/d (fn-ovw-step fn-ovw-reply)
                            (fn-ovw-run fn-ovw-lines fn-nntp-stuff-lines fn-ovw-status fn-ovw-empty-text
                             fn-ovw-lines-split))
            :expand ((:free (owedp) (fn-ovw-run (fn-ovw-cursor group k top v legacyp owedp) w fn-arena fn-cat))))
           ("Subgoal *1/1" :expand ((:free (owedp) (fn-ovw-run (fn-ovw-cursor group k top v legacyp owedp) w fn-arena fn-cat)))
                           :use ((:instance fn-ovw-lines-split (hi (fn-ovw-hi k top w)))))))
-
-; -----------------------------------------------------------------------------
-; The old reader, as the same specification
-
-(defun fn-ovw-spec (session v token legacyp fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
-  (let ((group (fn-nntp-session-group session))
-        (range (fn-nntp-parse-range token)))
-    (if (null group)
-        (fn-ovw-status (fn-proto-text * :no-group-selected))
-      (fn-ovw-reply (fn-ovw-lines group (nfix (fn-nntp-range-low range))
-                                  (min (nfix (fn-nntp-range-high range))
-                                       (nfix (- (fn-cat-group-next group fn-cat) 1)))
-                                  v fn-arena fn-cat)
-                    legacyp t))))
 
 (defthm fn-ovw-octets-is-spec
   (equal (fn-ovw-octets session v token legacyp w fn-arena fn-cat)
@@ -289,29 +215,16 @@
                                       (theory 'minimal-theory)))))
 
 (local
- (defthm fn-ovw-status-is-crlf
-   (equal (fn-nntp-crlf (fn-nntp-string-octets text)) (fn-ovw-status text))))
+ (defthm fn-ovw-spec-true-listp
+   (true-listp (fn-ovw-spec session v token legacyp fn-arena fn-cat))
+   :hints (("Goal" :in-theory (e/d (fn-ovw-spec fn-ovw-reply fn-ovw-status fn-ovw-empty-text)
+                                   (fn-ovw-lines fn-nntp-stuff-lines fn-nntp-string-octets))))))
 
 (local
- (defthm fn-ovw-reply-octets-of-one
-   (equal (fn-served-reply-octets (list (list :reply x))) (append x nil))
-   :hints (("Goal" :in-theory (enable fn-served-reply-octets)))))
-
-(defthm fn-ovw-over-range-cat-is-spec
-  (and (equal (car (fn-nntp-over-range-cat session v token legacyp fn-arena fn-cat))
-              session)
-       (equal (fn-served-reply-octets
-               (cdr (fn-nntp-over-range-cat session v token legacyp fn-arena fn-cat)))
-              (fn-ovw-spec session v token legacyp fn-arena fn-cat)))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-nntp-over-range-cat fn-scat-range-numbers fn-cnx-view-range
-                            fn-ovw-spec fn-ovw-reply fn-ovw-lines
-                            fn-nntp-single fn-nntp-multi fn-nntp-make-result fn-nntp-reply-effect
-                            fn-ovw-empty-text)
-                           (fn-cat-group-next-is-high fn-cat-group-next fn-cnx-range-aux
-                            fn-scat-range-keep fn-nov-lines-for-numbers-cat fn-nntp-stuff-lines
-                            fn-nntp-parse-range fn-ovw-status fn-nntp-crlf fn-nntp-string-octets
- fn-served-reply-octets)))))
+ (defthm fn-ovw-reply-octets-of-one-listp
+   (implies (true-listp x)
+            (equal (fn-served-reply-octets (list (fn-nntp-reply-effect x))) x))
+   :hints (("Goal" :in-theory (enable fn-served-reply-octets fn-nntp-reply-effect)))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE and the per-quantum bound
@@ -322,8 +235,32 @@
        (equal (fn-ovw-octets session v token legacyp w fn-arena fn-cat)
               (fn-served-reply-octets
                (cdr (fn-nntp-over-range-cat session v token legacyp fn-arena fn-cat)))))
-  :hints (("Goal" :in-theory (union-theories '(fn-ovw-octets-is-spec fn-ovw-over-range-cat-is-spec)
+  :hints (("Goal" :in-theory (union-theories '(fn-ovw-octets-is-spec fn-ovw-over-range-cat-is-spec
+                                               fn-ovw-reply-octets-of-one-listp fn-ovw-spec-true-listp)
                                              (theory 'minimal-theory)))))
+
+; The served arm's effects, expanded, carry the windowed run's octets, for
+; every W (books/served-catalog.lisp fn-nntp-over-range-ovw-expands-to-over-
+; range-cat with the keystone).
+(defthm fn-ovw-cursor-effect-expands-to-run
+  (equal (fn-ovw-expand (cdr (fn-nntp-over-range-ovw session v token legacyp fn-cat))
+                        fn-arena fn-cat)
+         (list (fn-nntp-reply-effect (fn-ovw-octets session v token legacyp w fn-arena fn-cat))))
+  :hints (("Goal" :in-theory (union-theories '(fn-nntp-over-range-ovw-expands-to-over-range-cat
+                                               fn-ovw-over-range-cat-is-spec fn-ovw-octets-is-spec)
+                                             (theory 'minimal-theory)))))
+
+; The cursor the arm emits (fn-ovw-start's, its status line owed) runs to
+; exactly the reply the cursor effect stands for, for every W: the host's
+; continuation writes what the expansion says.
+(defthm fn-ovw-run-of-start-is-cursor-octets
+  (implies (mv-nth 1 (fn-ovw-start session v token legacyp fn-cat))
+           (equal (fn-ovw-run (mv-nth 1 (fn-ovw-start session v token legacyp fn-cat)) w fn-arena fn-cat)
+                  (fn-ovw-cursor-octets (mv-nth 1 (fn-ovw-start session v token legacyp fn-cat))
+                                        fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ovw-start fn-ovw-cursor-octets fn-ovw-run-is-reply)
+                           (fn-ovw-run fn-ovw-lines fn-ovw-reply fn-nntp-parse-range fn-cat-group-next)))))
 
 (local
  (defthm fn-ovw-len-range-aux
