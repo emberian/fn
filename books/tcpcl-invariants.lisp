@@ -805,6 +805,43 @@
                     (fn-tcl-transfer-mru s))))
   :rule-classes nil)
 
+;; RFC 9174 section 4.3: a passive entity that receives a Contact Header of
+;; a version it does not implement sends its own header (unless already
+;; sent) and IMMEDIATELY terminates with Version mismatch.  No TCPCLv4
+;; session exists, so the session closes in the same step: the rest of the
+;; peer's stream (a v3 header's keepalive, SDNV and EID) is never parsed as
+;; v4 messages and draws no MSG_REJECT (section 5.1.2 presumes a v4
+;; session).  PKT-650: ION's v3 header drew `06 01 00` after the SESS_TERM.
+;; The subject is fn-tcl-step, which fn-tcl-drive (host: fn-tcl-host-drive,
+;; host/native/tcpcl.lisp fnn-tcl-session) applies to each decoded message;
+;; fn-tcl-step on a :closed session answers no event, so nothing after the
+;; header is acted on.  Witnesses: tests/acl2/tcpcl-tests.lisp *t-b-v3* and
+;; *t-b-v3-ion* (the header and ION's trailing octets in one chunk).
+(defthm fn-tcl-passive-version-mismatch-closes-without-reject
+  (implies (and (equal (fn-tcl-session-role s) :passive)
+                (or (equal (fn-tcl-session-phase s) :tcp-connected)
+                    (equal (fn-tcl-session-phase s) :contact))
+                (equal (fn-tcl-msg-kind m) :contact)
+                (not (equal (fn-tcl-contact-version m) 4)))
+           (and (equal (fn-tcl-session-phase
+                        (fn-tcl-result-session (fn-tcl-step s m now)))
+                       :closed)
+                (equal (fn-tcl-result-events (fn-tcl-step s m now))
+                       (append (if (equal (fn-tcl-session-phase s) :tcp-connected)
+                                   (list (fn-tcl-send-event (fn-tcl-own-contact s)))
+                                 nil)
+                               (list (fn-tcl-send-event
+                                      (fn-tcl-make-sess-term
+                                       0 *fn-tcl-term-version-mismatch*))
+                                     (list :close))))
+                (equal (fn-tcl-step (fn-tcl-result-session (fn-tcl-step s m now))
+                                    m2 now2)
+                       (fn-tcl-make-result
+                        (fn-tcl-result-session (fn-tcl-step s m now)) nil nil))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (enable fn-tcl-step fn-tcl-recv-contact fn-tcl-touch-rx
+                              fn-tcl-settle))))
+
 ; -----------------------------------------------------------------------------
 ; Export theory: the keystones stay; the outcome counter is list vocabulary.
 

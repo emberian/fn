@@ -540,10 +540,11 @@ never trimmed. A dependency edited since its certificate no longer stops
 `start` blind: it names the book whose own bytes are uncertified, and
 `--certify-missing` certifies it first or `--source-deps` loads it from
 source in the session, marked as uncertified in `status`.
-A from-source book loads form by form, so its `local` lemmas stay in the
-session as rules its dependents use, which a certified include would not give
-them; `--ld-local` loads each one inside a single `(encapsulate () ...)` so
-they stay local. Keyword commands (`:ubt! foo`, `:pe f`) are one command with
+A from-source book loads inside a single `(encapsulate () ...)` (its
+non-local `include-book` and `defpkg` forms first), so its `local` lemmas stay
+local as a certified include keeps them; `--ld-leak` loads it form by form
+instead, which names the refused event but leaves its local lemmas in the
+session as rules its dependents use. Keyword commands (`:ubt! foo`, `:pe f`) are one command with
 the rest of their line, and a raw-Lisp abort (a control-stack exhaustion, a
 memory fault) answers as a refusal in seconds instead of costing the session.
 `probe` keeps a checkpoint in its session (a label and the world's command

@@ -64,8 +64,11 @@ decision is recorded (`fn-sched-refused-submit-is-a-no-op`).
 
 `fn-sched-tick-step` is the modeled composition.
 `fn-sched-tick-step-is-select-drive-take` is the equation between it and the
-three calls the host makes in sequence: `fn-sched-host-selection`, the
-journal's `persist_attempt_then_call`, and `fn-sched-host-commit`.
+three calls a host makes in sequence: the selection, the journal's persisted
+attempt, and the commit. Its host adapter (`host/scheduler-host.lisp`) went
+with the Python host (python-diet T5b) and was removed again as a file no
+build loads (Q7k, 2026-09-29; `planning/retired-paths.json`): no served path
+calls this model today.
 
 ## The durable decision record
 

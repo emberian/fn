@@ -17,7 +17,7 @@
 ; seam opens `fn-record-shape-vocabulary' for them, never the codec.  The
 ; encoder and the exact decoder are `books/records.lisp' (their definitions)
 ; and `books/records-seam.lisp' (the constrained functions every book above
-; the seam calls); the split is plan 2026-09-22 §4.1, step T1.
+; the seam calls); the split is plan 2026-09-22 section 4.1, step T1.
 
 (in-package "ACL2")
 (include-book "cbor")
@@ -25,14 +25,14 @@
 
 (defconst *fn-record-magic* '(102 110 45 114))
 (defconst *fn-record-schema-version* 2)
-; Bounds (D27, planning/decisions.md; design 2026-09-25-bounds §2.3).  None
+; Bounds (D27, planning/decisions.md; design 2026-09-25-bounds section 2.3).  None
 ; of these is a policy on the data a store holds: the operator's bounds are
 ; the store profile's, and every served path applies the profile's bound
 ; before it builds a record.  What is here is either an RFC requirement or
 ; the widest value the record encoding can carry (a codec ceiling), chosen so
 ; that no profile the operator can write is capped by the codec.
 ;
-; RFC 5536 §3.1.3: a Message-ID is at most 250 octets.
+; RFC 5536 section 3.1.3: a Message-ID is at most 250 octets.
 (defconst *fn-record-max-msgid* 250)
 ; Codec ceiling: the whole encoded record is one FNST payload, whose LENGTH
 ; field is a u32 (books/frame-octets.lisp).  The item codec
@@ -43,9 +43,9 @@
 ; one, the configuration label (`*fn-cfg-max-label*' 256, books/config.lisp;
 ; `group create' stages the name as a label, books/native-admin
 ; `fn-native-admin-live-group-delta-is-a-typed-delta').  The NNTP wire's
-; group argument allows 460 (books/nntp-syntax.lisp; RFC 3977 §3.1); raising
+; group argument allows 460 (books/nntp-syntax.lisp; RFC 3977 section 3.1); raising
 ; this to 460 needs the configuration label raised with it (design
-; 2026-09-25-bounds §2.3; config.lisp is packet P1's).  Pre-D27 this was a
+; 2026-09-25-bounds section 2.3; config.lisp is packet P1's).  Pre-D27 this was a
 ; local 128.
 (defconst *fn-record-max-group-name* 256)
 ; Codec ceiling: the group count.  Chosen with the payload ceiling below so
@@ -500,7 +500,7 @@
   (or (equal stamp :legacy) (fn-record-uint64p stamp)))
 
 ; The schema octet a record's encoding carries.  At schema 0 every record
-; needs version 0.  The acceptance stamp (specs/acceptance-stamp.md §1.4)
+; needs version 0.  The acceptance stamp (specs/acceptance-stamp.md section 1.4)
 ; makes it a function of the stamp's kind (0 for a `:legacy' stamp, 1 for a
 ; natural one); the seam constraint `fn-record-accepted-schema-is-the-stamp-kind'
 ; is stated through this function so that the change is a change here and

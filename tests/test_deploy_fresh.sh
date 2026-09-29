@@ -1,4 +1,5 @@
 #!/bin/sh
+# witness: needs-image
 # tools/deploy_fresh.sh against a THROWAWAY node, on the node's host (hbox).
 # Nothing here reads or touches /tank/fn/node or fn-node.service: the "old
 # node" is a fixture built from the release tarball under

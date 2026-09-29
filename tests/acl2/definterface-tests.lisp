@@ -67,8 +67,40 @@
  (equal (fn-di-world-kinds 'fn-dit-f (w state))
         '((n natp) (tag symbolp) (octets fn-cbor-octet-listp))))
 
+; A one-form wrapper delegates its decision to the function it is exactly a
+; call of (:delegates, lane decision-keystones-2): accepted when the body is
+; the callee applied to the wrapper's formals.
+(defun fn-dit-w (n tag octets)
+  (declare (xargs :guard (and (natp n) (fn-cbor-octet-listp octets) (< n 5)
+                              (symbolp tag))))
+  (fn-dit-f n tag octets))
+
+(definterface fn-dit-w
+  :class :common-lisp-compliant
+  :kinds ((n natp) (tag symbolp) (octets fn-cbor-octet-listp))
+  :delegates fn-dit-f)
+
 ; ---------------------------------------------------------------------------
 ; 2. The world refutes.
+
+; :delegates: fn-dit-g's body applies fn-dit-f to constants, not to its own
+; formals, so its decision is not fn-dit-f's by definition.
+(assert-event (fn-di-problem 'fn-dit-g '(:class :program
+                     :exempt ((payload "a test: the body passes it on to a guarded entry"))
+                     :delegates fn-dit-f) (w state)))
+(must-fail-checked (definterface fn-dit-g :class :program
+                     :exempt ((payload "a test: the body passes it on to a guarded entry"))
+                     :delegates fn-dit-f)
+                   :unchecked "definterface's refusal is its claim; the assert-event above names the world check")
+
+; :delegates a name that is no function of the world.
+(assert-event (fn-di-problem 'fn-dit-w '(:class :common-lisp-compliant
+                     :kinds ((n natp) (tag symbolp) (octets fn-cbor-octet-listp))
+                     :delegates fn-dit-no-such-function) (w state)))
+(must-fail-checked (definterface fn-dit-w :class :common-lisp-compliant
+                     :kinds ((n natp) (tag symbolp) (octets fn-cbor-octet-listp))
+                     :delegates fn-dit-no-such-function)
+                   :unchecked "definterface's refusal is its claim; the assert-event above names the world check")
 
 (assert-event (fn-di-problem 'fn-dit-f '(:class :program
                      :kinds ((n natp) (tag symbolp) (octets fn-cbor-octet-listp))) (w state)))
@@ -140,6 +172,12 @@
 
 ; ---------------------------------------------------------------------------
 ; 3. Malformed forms.
+
+; :delegates takes a function name.
+(assert-event (equal (fn-di-refusal 'fn-dit-w '(:class :common-lisp-compliant :delegates 3))
+                     '(:bad-delegates 3)))
+(assert-event (equal (fn-di-refusal 'fn-dit-w '(:class :common-lisp-compliant :delegates nil))
+                     '(:bad-delegates nil)))
 
 (assert-event (equal (car (fn-di-refusal 'fn-dit-f '(:class :logic)))
                      :bad-class))
