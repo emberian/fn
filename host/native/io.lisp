@@ -7045,13 +7045,14 @@ value) at offset 0, the file fenced, journal/ fenced, the kernel the
 rotation's (fn-lgc-rotate; fn-lgs-rotate-is-the-recovered-kernel).  Its
 byte states are those of the rotation's own cuts rotate-renamed and
 rotate-headed (the same entry at the same offset), so a death here is a
-death there.  A reader refuses the segment: it must not write.  A headed
-segment reads past its head and is left alone."
+death there.  A reader writes nothing and reads the segment as it is, empty
+(frontier 0, no record): the history is the closed segments', the same one
+the writable open reaches (specs/storage.md: a death at any rotation cut
+reopens to the same history; `status' exits 0 after cut rotate-renamed).  A
+headed segment reads past its head and is left alone."
   (when (and (>= (fnn-log-index log) 2)
+             (fnn-store-writable store)
              (zerop (fnn-nat (fnn-core 'fn-lgc-frontier (fnn-log-kernel log)))))
-    (unless (fnn-store-writable store)
-      (fnn-refuse "log segment ~a is an interrupted rotation (no head): open it writable (recover)"
-                  (fnn-log-path log)))
     (let ((ks (fnn-log-kernel log)) (k (fnn-log-index log)) (unit (fnn-store-log-unit)))
       (fnn-log-pwrite (fnn-log-fd log) 0 (fnn-core 'fn-lgc-rotation-octets ks k unit))
       (fnn-fsync-file (fnn-log-fd log))
@@ -7093,7 +7094,7 @@ the process's life) and the stream binds each record's place for SINK
               (setf (fnn-log-index log) k
                     (fnn-log-genesis log) genesis)
               ;; An unheaded segment (a rotation that died before its head):
-              ;; headed now by a writable open, refused by a reader.
+              ;; headed now by a writable open, read as empty by a reader.
               (fnn-log-head-segment store log)
               (return-from fnn-log-scan-segments log))))))
     (fnn-fault "the log's open plan named no segment")))

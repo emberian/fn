@@ -518,7 +518,7 @@ another predecessor (`log-chain-broken`, never read as a torn tail). A death
 at any rotation or drop cut reopens to the same history: a spare staged but
 not renamed is a staging orphan the writable open sweeps (segment K stays the
 active one); after the rename and before `rotate-durable` the new segment is
-an interrupted rotation the open completes, holding nothing acknowledged; and a covered segment left by a drop is dropped again
+an interrupted rotation the writable open completes (a reader reads it as empty and writes nothing), holding nothing acknowledged; and a covered segment left by a drop is dropped again
 (`fn-lgs-open-plan-scan-ignores-covered`). The history the open replays after
 the drop is the full chain's (T8, `fn-lgw-segment-drop-preserves-the-open`, over the streamed open).
 `store compact` on a `fn-store-9` store is a checkpoint with rotation
@@ -993,7 +993,8 @@ are identical for a store's own checkpoint and a diverged copy's with an
 empty suffix. A rotation that died between the rename and the head leaves
 the segment named and unheaded: the writable open scans it to nothing and
 heads it from the chain it carried (`fnn-log-head-segment`, the same bytes
-the rotation writes); a reader refuses it; an F row never names it (the
+the rotation writes); a reader writes nothing and reads it as empty (the
+closed segments' history, the one the writable open reaches); an F row never names it (the
 head's fence precedes `journal/`'s).
 
 What the lineage is and is not (the 2026-09-29 review of the lineage
