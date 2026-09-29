@@ -164,3 +164,15 @@
                  (fn-bpnp-forward-unframe-with
                   octets *fn-bpnp-deferral-kind* *fn-bpnp-deferral-fields*))))
     (if (equal (fn-bpnp-deferral-frame record) octets) record nil)))
+
+;; The *1* class (Q4a item 2, bp-remainder-5): the host-called publication
+;; wrappers call these; verified so that their wrappers can be.
+(verify-guards fn-bpnp-forward-frame-with)
+(verify-guards fn-bpnp-attempt-values)
+(verify-guards fn-bpnp-attempt-frame)
+(verify-guards fn-bpnp-result-values)
+(verify-guards fn-bpnp-result-frame)
+(verify-guards fn-bpnp-deferral-values)
+(verify-guards fn-bpnp-deferral-frame)
+(verify-guards fn-bpnp-attempt-from-values)
+(verify-guards fn-bpnp-result-from-values)

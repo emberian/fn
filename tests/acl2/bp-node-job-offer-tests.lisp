@@ -10,6 +10,7 @@
 ; hypothesis-removal witness per hypothesis.
 (in-package "ACL2")
 (include-book "../../books/bp-node-job-offer-progress")
+(include-book "../../books/bp-node-job-offer-guards")
 (include-book "../../books/bp-node-receive-boundary")
 
 (defconst *jo-local* (cons :dtn '(47 47 102 110 45 97 47)))   ; dtn://fn-a/

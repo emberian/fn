@@ -587,9 +587,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-profile-carried \
 	books/post-admission-keyed \
 	tests/acl2/post-admission-keyed-tests \
+	tests/acl2/page-read-resources-tests \
 	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
+	books/replay-historical-limits \
+	tests/acl2/replay-historical-limits-tests \
 	books/store-finalize-incremental \
 	tests/acl2/store-finalize-incremental-tests \
 	books/store-finalize-published \
@@ -650,6 +653,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fnbs-forward-publication-tests \
 	books/bp-node-progress-invariants \
 	books/bp-node-progress-guards \
+	books/bp-node-job-offer-guards \
 	books/bp-node-progress-premises \
 	tests/acl2/bp-node-progress-premises-tests \
 	books/bp-node-progress-bridge \
@@ -758,6 +762,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fragment-sweep \
 	books/bp-fragment-resume \
 	tests/acl2/bp-fragment-resume-tests \
+	books/bp-fragment-job-shape \
 	books/bp-limits \
 	tests/acl2/bp-fragment-tests \
 	tests/acl2/bp-fragment-fast-tests \
@@ -1008,6 +1013,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-join-host-columns-open \
 	books/served-catalog-join-host-views \
 	books/catalog-number-window \
+	books/over-window \
 	books/served-chunk-live-free \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
@@ -1040,6 +1046,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-entries-tests \
 	tests/acl2/catalog-refresh-tests \
 	tests/acl2/served-catalog-tests \
+	tests/acl2/over-window-tests \
 	tests/acl2/served-catalog-view-tests \
 	tests/acl2/served-catalog-chain-tests \
 	tests/acl2/served-catalog-scan-tests \
@@ -1392,6 +1399,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-reply-buffer-tests \
 	books/served-plan \
 	tests/acl2/served-plan-tests \
+	books/served-plan-cursor \
+	tests/acl2/served-plan-cursor-tests \
 	books/owner-scheduler \
 	tests/acl2/owner-scheduler-tests \
 	books/owner-commit-class \
@@ -1430,6 +1439,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-cold-line-tests \
 	books/arena-reader-pins \
 	tests/acl2/arena-reader-pins-tests \
+	books/response-plan-pins \
+	tests/acl2/response-plan-pins-tests \
+	books/page-read-ownership \
+	tests/acl2/page-read-ownership-tests \
 	books/feed-restart-domain \
 	tests/acl2/feed-restart-domain-tests \
 	books/web-request \
@@ -1471,6 +1484,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-operator-stage-tests \
 	tests/acl2/owner-control-post-reason-tests \
 	tests/acl2/owner-export-request-tests \
+	books/owner-snapshot-request \
+	tests/acl2/owner-snapshot-request-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/state-globals \
