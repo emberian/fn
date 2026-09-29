@@ -51,7 +51,7 @@
   (fn-bpnf-fragment-cells (fn-bpnf-active-set st anchor)))
 
 (defun fn-bpfj-total (anchor)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpnf-active-fragmentp anchor)))
   (fn-bpp-total-adu-length
    (fn-bpb-bundle-primary (fn-bpnf-held-bundle anchor))))
 
@@ -63,7 +63,8 @@
 ; from what the start consumes anyway (the family's cells); never the whole
 ; held list.
 (defun fn-bpfj-start (st anchor)
-  (declare (xargs :guard (and (fn-bpfw-fragment-listp (fn-bpfj-cells st anchor))
+  (declare (xargs :guard (and (fn-bpnf-active-fragmentp anchor)
+                              (fn-bpfw-fragment-listp (fn-bpfj-cells st anchor))
                               (natp (fn-bpfj-total anchor)))))
   (let ((cells (fn-bpfj-cells st anchor))
         (total (fn-bpfj-total anchor)))
@@ -86,12 +87,13 @@
 ; The executable half of the invariant: the job was started from exactly
 ; the rows the family holds now.
 (defun fn-bpfj-currentp (st anchor job)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpnf-active-fragmentp anchor)))
   (and (equal (fn-bpfj-job-cells job) (fn-bpfj-cells st anchor))
        (equal (fn-bpfj-job-total job) (fn-bpfj-total anchor))))
 
 (defun fn-bpfj-wf (st anchor job)
-  (declare (xargs :guard (fn-bpfj-readable-jobp job)))
+  (declare (xargs :guard (and (fn-bpnf-active-fragmentp anchor)
+                              (fn-bpfj-readable-jobp job))))
   (and (fn-bpfj-currentp st anchor job)
        (equal (fn-bpfr-resume (fn-bpfj-job-sweep job))
               (fn-bpfw-sweep-acc nil (fn-bpfw-sort (fn-bpfj-job-cells job))

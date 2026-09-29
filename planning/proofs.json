@@ -5022,9 +5022,10 @@
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T063856Z-608753.json",
         "planning/evidence/manifests/certify-20260926T061654Z-546487.json",
-        "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
+        "planning/evidence/manifests/certify-20260926T102113Z-288651.json",
+        "books/bp-node-fragment-jobs.lisp"
       ],
-      "progress_note": "Lane bp-lifecycle (2026-09-25, wave 2), PKT-171. Teeth in tests/acl2/bp-fragment-sweep-tests (a 70000-octet ADU in 100 fragments, out of order and overlapping, every outcome against the spec, one witness per hypothesis of fn-bpfw-exact-canvas-reassembles) and tests/acl2/bp-fragment-send-tests (the 100-fragment and 70000-octet plans the capped reference refuses; a must-fail per hypothesis). Native: tests/test_bp_fragment_node_native test_seventy_fragments_across_a_kill_reassemble_once. See the record for the manifest and native SHAs.",
+      "progress_note": "Lane bp-lifecycle (2026-09-25, wave 2), PKT-171. Teeth in tests/acl2/bp-fragment-sweep-tests (a 70000-octet ADU in 100 fragments, out of order and overlapping, every outcome against the spec, one witness per hypothesis of fn-bpfw-exact-canvas-reassembles) and tests/acl2/bp-fragment-send-tests (the 100-fragment and 70000-octet plans the capped reference refuses; a must-fail per hypothesis). Native: tests/test_bp_fragment_node_native test_seventy_fragments_across_a_kill_reassemble_once. See the record for the manifest and native SHAs. Lane bp-remainder-4 (Fable, 2026-09-29): fn-bpfj-apply-conserves-jobs, the same over the kind-18 application read from the host-carried job (fn-bpfj-apply, any job); fn-bpnp-step-family-events-keep-jobs-agreeing now covers the (:family ... JOB LIMIT) and (:persist-result ... JOB LIMIT) forms through the twins' local lemmas.",
       "events": [
         "fn-bpfw-reassemble-is-spec",
         "fn-bpf-reassemble-is-capped-spec",
@@ -5037,7 +5038,8 @@
         "fn-bpfw-cell-at-of-sort",
         "fn-bpfw-sortedp-of-sort",
         "fn-bpnf-family-apply-conserves-jobs",
-        "fn-bpnp-step-family-events-keep-jobs-agreeing"
+        "fn-bpnp-step-family-events-keep-jobs-agreeing",
+        "fn-bpfj-apply-conserves-jobs"
       ]
     },
     {
@@ -9101,7 +9103,10 @@
         "fn-bpfr-step-is-bounded",
         "fn-bpfr-finished-state-is-the-sweep",
         "fn-bpfr-run-resumes",
-        "fn-bpfr-run-finishes"
+        "fn-bpfr-run-finishes",
+        "fn-bpfr-step-keeps-statep",
+        "fn-bpfr-step-keeps-cells-true-listp",
+        "fn-bpfr-resume-true-listp"
       ],
       "evidence": [
         "books/bp-fragment-resume.lisp",
@@ -9109,7 +9114,7 @@
         "tests/acl2/bp-fragment-resume-tests.lisp",
         "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ],
-      "progress_note": "Lane bp-fragments-10mib-2 (2026-09-27): REPL-admitted and certified with certify_books.py --incremental on persvati; no host caller yet."
+      "progress_note": "Lane bp-fragments-10mib-2 (2026-09-27): REPL-admitted and certified with certify_books.py --incremental on persvati; no host caller yet. Lane bp-remainder-4 (Fable, 2026-09-29): fn-bpfr-statep (the sweep state's shape between steps, never its cells) is the guard of fn-bpfr-step / -resume / -run / -finish, all guard-verified; fn-bpfr-step-keeps-statep and -keeps-cells-true-listp carry it across the host's loop."
     },
     {
       "id": "PRF-252",
@@ -14817,13 +14822,17 @@
         "fn-bpfj-plan-is-the-plan-within-the-limit",
         "fn-bpfj-plan-at-is-the-plan-at",
         "fn-bpfj-apply-is-the-apply",
-        "fn-bpfj-apply-at-is-the-apply-at"
+        "fn-bpfj-apply-at-is-the-apply-at",
+        "fn-bpfj-start-is-readable",
+        "fn-bpfj-step-keeps-readable"
       ],
       "evidence": [
         "books/bp-node-fragment-job.lisp",
-        "tests/acl2/bp-node-fragment-job-tests.lisp"
+        "tests/acl2/bp-node-fragment-job-tests.lisp",
+        "books/bp-fragment-job-shape.lisp",
+        "tests/acl2/bp-node-fragment-step-job-tests.lisp"
       ],
-      "progress_note": "Lane bp-remainder-2 (Fable, 2026-09-29): REPL-admitted on hbox (13 defthms). Lane bp-remainder-3 (Fable, 2026-09-29): host-reached -- Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). The debt-delta twin in bp-node-progress is deferred (the credit path still reassembles once per proposal and once per result, today's cost); the whole-bundle encode stays one step's work until PKT-585."
+      "progress_note": "Lane bp-remainder-2 (Fable, 2026-09-29): REPL-admitted on hbox (13 defthms). Lane bp-remainder-3 (Fable, 2026-09-29): host-reached -- Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). The debt-delta twin in bp-node-progress is deferred (the credit path still reassembles once per proposal and once per result, today's cost); the whole-bundle encode stays one step's work until PKT-585. Lane bp-remainder-4 (Fable, 2026-09-29): the job's shape is books/bp-fragment-job-shape (fn-bpfj-jobp: what a step needs, linear in the fragments; fn-bpfj-readable-jobp: the cells a true list too, for the readings), the guard of fn-bpfj-start / -step / -finishedp / -query / -plan / -apply and of the twins, checked by fn-bpnf-host-eventp of a job-carrying event; fn-bpfj-start-is-readable and fn-bpfj-step-keeps-readable carry it across the host's loop; every fn-bpfj-* the host reaches is guard-verified in books/bp-node-fragment-guards (fn-bpfj-image-octets, a specification function, is not)."
     },
     {
       "id": "PRF-939",

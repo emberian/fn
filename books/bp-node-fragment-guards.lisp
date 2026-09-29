@@ -279,24 +279,38 @@
 ;; Their guards are the job's shape (books/bp-fragment-job-shape), checked
 ;; at the receive boundary, never the cells per step.
 (verify-guards fn-bpfj-cells)
-(verify-guards fn-bpfj-total)
-(verify-guards fn-bpfj-start)
+(verify-guards fn-bpfj-total
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnfg-held-primary-guard-fields (h anchor)))
+           :in-theory (e/d (fn-bpnf-active-fragmentp)
+                           (fn-bpnf-heldp fn-bpb-bundlep fn-bpp-fragmentp
+                            fn-bpnfg-held-primary-guard-fields)))))
+(verify-guards fn-bpfj-start
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-bpnf-active-fragmentp fn-bpfj-cells
+                               fn-bpfj-total fn-bpfr-start
+                               fn-bpfw-fragmentp))))
 (verify-guards fn-bpfj-step
   :hints (("Goal" :in-theory (e/d (fn-bpfj-jobp fn-bpfr-statep)
                                   (fn-bpfw-fragmentp fn-bpfr-step)))))
 (verify-guards fn-bpfj-finishedp
   :hints (("Goal" :in-theory (e/d (fn-bpfj-jobp fn-bpfr-statep)
                                   (fn-bpfw-fragmentp)))))
-(verify-guards fn-bpfj-currentp)
+(verify-guards fn-bpfj-currentp
+  :hints (("Goal" :in-theory (disable fn-bpnf-active-fragmentp fn-bpfj-cells
+                                      fn-bpfj-total))))
 (verify-guards fn-bpfj-wf
   :hints (("Goal" :in-theory (e/d (fn-bpfj-readable-jobp fn-bpfj-jobp
                                    fn-bpfr-statep)
                                   (fn-bpfw-fragmentp fn-bpfw-sort
-                                   fn-bpfr-resume fn-bpfw-sweep-acc)))))
+                                   fn-bpfr-resume fn-bpfw-sweep-acc
+                                   fn-bpnf-active-fragmentp fn-bpfj-currentp)))))
 (verify-guards fn-bpfj-query
   :hints (("Goal" :in-theory (e/d (fn-bpfj-readable-jobp fn-bpfj-jobp
                                    fn-bpfr-statep)
-                                  (fn-bpfw-fragmentp fn-bpfr-finish)))))
+                                  (fn-bpfw-fragmentp fn-bpfr-finish
+                                   fn-bpnf-active-fragmentp fn-bpfj-currentp
+                                   fn-bpnf-family-member)))))
 (local
  (defthm fn-bpnfg-job-query-true-listp
    (true-listp (fn-bpfj-query st anchor job))
@@ -324,6 +338,17 @@
                                fn-bpn-state-field-types-for-guard
                                fn-bpnfg-held-octets-natp))))
 (verify-guards fn-bpfj-plan-at)
+(local
+ (defthm fn-bpnfg-job-query-is-not-ready
+   (not (equal (car (fn-bpfj-query st anchor job)) :ready))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bpfj-query fn-bpfr-finish fn-bpfw-outcome)
+                            (fn-bpnf-active-set fn-bpnf-fragment-cells
+                             fn-bpf-first-index fn-bpf-run-end
+                             fn-bpfw-inputsp fn-bpfr-resume
+                             fn-bpfj-currentp fn-bpfj-finishedp
+                             fn-bpnf-active-fragmentp
+                             fn-bpnf-family-member))))))
 (local
  (defthm fn-bpnfg-ready-job-plan-bundlep
    (implies (equal (fn-cbor-ag-car (fn-bpfj-plan st anchor job limit)) :ready)
