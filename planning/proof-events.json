@@ -13268,6 +13268,86 @@
           "name": "fn-gac-view-entry-is-per-command"
         }
       ]
+    },
+    {
+      "id": "PRF-902",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-admin-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-reasoned-admin-decode-of-encode"
+        }
+      ]
+    },
+    {
+      "id": "PRF-907",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgrs-journal-fence-names-the-acknowledged-batch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgrs-spare-name-is-swept-and-never-a-segment"
+        }
+      ]
+    },
+    {
+      "id": "PRF-908",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ock-requested-next-is-due-with-a-suffix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-requested-one-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-requested-never-past-a-deferral"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-requested-word-is-the-next-due"
+        }
+      ]
+    },
+    {
+      "id": "PRF-914",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpcc-gate-refuses-a-held-work"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcc-gate-is-the-plan-otherwise"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcc-drop-is-final"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcc-admitted-drop-drops"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcc-frame-decode-of-sealed"
+        }
+      ]
     }
   ]
 }

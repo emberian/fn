@@ -17,8 +17,8 @@
 ;       host holds after fnn-log-recover (log-recovered), for any store
 ;       whose segment inode exists: no obligation, no relation needed.
 ;   fn-lgob-file-fence-keeps-entry-operations      a file fence never drains a
-;       pending directory entry: a create in journal/ (P-ROTATE's
-;       rotate-created, init's init-segment-created), a rename into the root
+;       pending directory entry: a create or rename into journal/ (P-ROTATE's
+;       rotate-renamed, init's init-segment-created), a rename into the root
 ;       (a checkpoint install before its root fence) or into the parent (an
 ;       import at import-published) is still droppable by a crash after the
 ;       segment's fence.  So ONE barrier is not sufficient:

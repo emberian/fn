@@ -1330,6 +1330,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-route-programs-tests \
 	books/store-log-open-barriers \
 	tests/acl2/store-log-open-barriers-tests \
+	books/store-log-rotate-spare \
+	books/owner-compact-request \
+	tests/acl2/owner-compact-request-tests \
+	books/bp-carry-frame \
+	books/bp-carry-control \
+	tests/acl2/bp-carry-control-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/reader-open-carried \

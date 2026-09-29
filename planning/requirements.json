@@ -5100,6 +5100,114 @@
       ],
       "implementation_note": "`retention expire {GROUP|*} {clear | [keep D] [default D] [purge D] [octets N]}` stages five configuration quota rows (books/expiry-policy.lisp); `store reclaim` builds its context with the set the policy expires at its recorded instant (books/expiry.lisp fn-xpy-ctx, host/checkpoint-host.lisp fn-store-reclaim-context) and releases an expired article exactly as a released one (books/expiry-verdict.lisp): the tombstone, the checkpoint and the drop. An article leaves only when every group it is filed in expires it. Served: `423/430 article reclaimed`, distinct from `withdrawn` and from no article; the Message-ID and the numbers stay.",
       "note": "OPEN: expiry runs offline (`store reclaim` refuses while an owner runs); expiry while serving needs the owner's checkpoint publication to carry the rewrite. GROUP's count and low water and LISTGROUP still include a reclaimed article (pre-existing, reclaim). Reclaim frees bytes, never transactions: a count-full store stays count-full (Q11, D13)."
+    },
+    {
+      "id": "HST-032",
+      "title": "An operator command carries any number of words of any length: ACL2 parses the argv the kernel admits in one linear pass in constant stack, and an administrative argv the client can seal is exactly the argv the running owner decodes",
+      "specification": "specs/host.md#operator-commands-and-owner-critical-sections",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-902"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/native-operator.lisp",
+        "books/native-admin-shape.lisp",
+        "books/native-admin.lisp",
+        "books/native-admin-peer.lisp",
+        "books/native-control.lisp",
+        "books/native-control-reason.lisp",
+        "host/native/operator.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "tests/acl2/native-control-tests.lisp",
+        "tests/acl2/native-control-reason-tests.lisp",
+        "tests/test_native_operator_verbs.py"
+      ],
+      "implementation_note": "Lane operations (PKT-867, D27). The operator argv was capped at 32 words of 512 octets and the administrative vector the owner reads at 16: `init' could not name more than about 20 groups with a profile. Both caps are gone; the argv walks became loop twins (tools/depth_check.py baseline shrank by 16 entries), the words travel in the record codec (a word past 65,535 octets no longer vanishes from the frame), and what bounds one command is the control frame the owner reads under the profile's bound. Left: init's group validation (fn-record-groupsp) is quadratic in the named groups on the offline CLI, under the record's 65,535 group codec width."
+    },
+    {
+      "id": "HST-033",
+      "title": "The owner holds its mutex for no disk I/O at a connection's greeting or a checkpoint's capture: the free-space observation is taken before a quantum's gate entry, and the log rotation's file creation, preallocation and fences run outside the mutex, the switch under it being one rename",
+      "specification": "specs/host.md#operator-commands-and-owner-critical-sections",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-907"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/store-log-rotate-spare.lisp",
+        "books/store-log-segments.lisp",
+        "host/native/io.lisp",
+        "host/native/owner.lisp",
+        "host/native/control.lisp",
+        "tests/campaign/native_cuts.py",
+        "tests/test_native_checkpoint_auto.py",
+        "tests/test_native_log_compaction.py"
+      ],
+      "implementation_note": "Lane operations (row N1 item 4; GPT-6's 2026-09-28 review asked that I/O leave the semantic critical section). Before: every greeting's clock observation ran statvfs under the owner mutex when a space observation was due, the checkpoint capture ran statvfs and the whole of P-ROTATE (create, fallocate, fsync, fsync journal/) under it, and a status render ran statvfs under it. Now fnn-owner-gated observes before the gate admits the quantum (ACL2's fn-otm-space-due-p decides when; the NEED ACL2 computes under the mutex is kept on the service), the status render and the drain observe before their quantum, the capture's statvfs precedes its quantum, and P-ROTATE is three programs: the spare staged in staging/ off the mutex, the rename under it, journal/'s fence off it (by the new segment's first fence before any member there is acknowledged, and by the publication before its checkpoint names the segment). The whole-state greeting cost PKT-190 was retired earlier (served-path-scale-2)."
+    },
+    {
+      "id": "HST-034",
+      "title": "Compaction without downtime: `store compact' and `store checkpoint' on a running owner are a request it answers by name (requested, coalesced, nothing-to-compact, refused while a deferral blocks) and serves by its own publication, in bounded batches off its mutex, crash-safe by the publication's cuts",
+      "specification": "specs/host.md#operator-commands-and-owner-critical-sections",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-908"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-compact-request.lisp",
+        "tests/acl2/owner-compact-request-tests.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "host/owner-host.lisp",
+        "host/native/admin.lisp",
+        "host/native/operator.lisp",
+        "tests/test_native_checkpoint_auto.py"
+      ],
+      "implementation_note": "Lane operations (PKT-868). The verbs opened the store under its exclusive lock, so a running owner refused them and compaction meant stop 1.1 s + compact 3.7 s + start 1.0 s on a 12k store (fitness 2026-09-28). The owner already compacts itself (the automatic publication: capture under the mutex, bounded batches off it that yield at a stop, install, T8's drop); a request is one more reason for it to be due, at any suffix, never a second in flight and never past a deferral. The verb reaches the owner as the administrative vector `compaction request' by ACL2's liveness decision; with no owner it runs offline as before. A request lives in the owner's memory: a death before its capture loses the request (never data), and the operator asks again."
+    },
+    {
+      "id": "HST-035",
+      "title": "The operator lists, inspects, pauses, resumes and drops (with a reason) the BP carry obligations: each control is a durable workflow-journal event ACL2 decides, and a paused or dropped work's request is refused by name before anything is written",
+      "specification": "specs/host.md#operator-commands-and-owner-critical-sections",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-914"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/bp-carry-control.lisp",
+        "books/bp-carry-frame.lisp",
+        "books/app-journal.lisp",
+        "tests/acl2/bp-carry-control-tests.lisp",
+        "books/native-operator.lisp",
+        "host/workflow-host.lisp",
+        "host/native/workflow.lisp",
+        "host/native/bp-obligation.lisp",
+        "tests/test_bp_obligation_native.py"
+      ],
+      "implementation_note": "Lane operations (PKT-869). `fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK REASON...}' over the FNWF workflow journal, offline beside the store as the other obligation verbs are (a served store refuses). The controls are durable records of their own application journal (domain :carry at JOURNAL/carry, frame FNCC: books/bp-carry-frame.lisp), replayed over the workflow image, never FNWF kinds: books/frame-journal.lisp has about 1,100 dependents and each FNWF kind doubled books/frame's fn-frame-workflow-protected guard proof (476k to 874k steps for one). A drop stops the carrying and keeps the Store pin: books/retention.lisp releases a pin only with the evidence it was undertaken against (the receipt's), so an operator's abandonment of the pin is a new evidence kind, a decision for the register. Open: the verbs act on a stopped BP node; the application journals' lifetime namespace (app-journal.lisp *fn-aj-max-records* 4096, 16 MiB for FNWF) is a BP data cap (bounds inventory 1.4)."
     }
   ]
 }

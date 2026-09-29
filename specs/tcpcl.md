@@ -89,7 +89,7 @@ message level (`fn-tcl-decode-message`, dispatch on the type octet):
 | Consumption and typing | `fn-tcl-decode-message-consumes`, `-rest-octet-listp` | accepted | the rest is a strictly shorter octet list |
 | Exhaustive outcomes | `fn-tcl-decode-message-outcomes` | octet list | exactly one of ok, need, error |
 | MRU at the decoder | `fn-tcl-segment-never-exceeds-mru`, `fn-tcl-decoded-segment-fits-mru` | eight octets of length present; length over the MRU | the error is returned before any data octet is taken; accepted data fits the MRU |
-| Need bound | `fn-tcl-need-means-short-buffer` | octet list; natural MRU | a `need` is returned only for a buffer shorter than `fn-tcl-max-message` = 5145 + MRU octets |
+| Need bound | `fn-tcl-need-means-short-buffer` | octet list; natural MRU | a `need` is returned only for a buffer shorter than `fn-tcl-max-message` = 25 + node-ID width (65,535, RFC 9174 section 4.6's u16) + 4096 + MRU octets (5145 + MRU before the node ID was admitted at its field's width) |
 
 Item lists (session and transfer extension items) have their own round
 trip (`fn-tcl-decode-items-of-encode-items`), canonicality
@@ -97,7 +97,7 @@ trip (`fn-tcl-decode-items-of-encode-items`), canonicality
 (`fn-tcl-decode-items-yields-items`); an item list must exactly fill its
 declared length or the message is an error (§4.6, §5.2.2).
 
-The pessimistic number: the retained carry is below 5145 + Segment MRU
+The pessimistic number: the retained carry is below 69,656 + Segment MRU
 octets; the true maximum message is max(5145, 4118 + MRU) for SESS_INIT
 and XFER_SEGMENT respectively, so the bound is loose by at most 1027
 octets.

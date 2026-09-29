@@ -5146,12 +5146,12 @@
       ],
       "steps": [
         "A format-9 store filled by the served node (12 articles); `store compact`; 6 more articles; `store compact` again.",
-        "On the developer image, `store compact` killed at rotate-created, rotate-fenced, rotate-durable, drop-unlinked and drop-durable (FN_NATIVE_LOG_FAULT); `store recover`; `store compact`.",
+        "On the developer image, `store compact` killed at rotate-created, rotate-fenced, rotate-renamed, rotate-durable, drop-unlinked and drop-durable (FN_NATIVE_LOG_FAULT); `store recover`; `store compact`.",
         "A stale copy of the active segment as the next one; the checkpoint's first segment renamed away; the checkpoint removed after a drop."
       ],
       "expected": [
         "journal/ holds 000002.log then 000003.log only; `store inspect` answers for every article as before each compaction; the node commits after it.",
-        "The recover exits 0 and serves every article as before; after a drop cut the covered segment is gone, before rotate-durable segments 1 and 2 remain; the later compaction succeeds and leaves one segment.",
+        "The recover exits 0 and serves every article as before; after a drop cut the covered segment is gone; at rotate-created and rotate-fenced (the spare staged, never renamed) segment 1 alone remains and the staged spare is swept; at rotate-renamed and rotate-durable segments 1 and 2 remain; the later compaction succeeds and leaves one segment.",
         "`store recover` exits 1 naming log-chain-broken, history-short-of-checkpoint and checkpoint-damaged."
       ],
       "implementation": {
@@ -5774,6 +5774,121 @@
         "tests/test_native_header_lines.py",
         "planning/evidence/nntp-bugs-2026-09-28.md",
         "planning/evidence/nntp-bugs-2026-09-28/native-n3-test_native_header_lines.log"
+      ]
+    },
+    {
+      "id": "SCN-196",
+      "title": "An operator names sixty groups at init and sends a forty-line message of the day and a sixty-word description to the running owner, each in one command",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-032"
+      ],
+      "steps": [
+        "`operator init fit.g00 ... fit.g59` (61 words); `run`; LIST NEWSGROUPS; `operator motd set` with 40 lines; `operator group describe fit.g07` with 60 words; LIST MOTD; LIST NEWSGROUPS fit.g07; `operator status \"\"`."
+      ],
+      "expected": [
+        "init exits 0 and LIST NEWSGROUPS lists the sixty groups; both live commands exit 0; LIST MOTD answers the forty lines in order and LIST NEWSGROUPS fit.g07 the sixty words; the empty word is usage, ARGV-MALFORMED, exit 2."
+      ],
+      "implementation": {
+        "test": "tests.test_native_operator_verbs",
+        "cases": [
+          "NativeOperatorWideArgvTests.test_init_names_sixty_groups_and_a_live_command_carries_sixty_words"
+        ],
+        "native": true,
+        "record": "planning/evidence/operations-2026-09-28.md",
+        "log": "planning/evidence/operations-2026-09-28/native-head-operator_verbs.log"
+      },
+      "evidence": [
+        "tests/test_native_operator_verbs.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
+    },
+    {
+      "id": "SCN-199",
+      "title": "The served owner dies at each cut of its log rotation and loses nothing it acknowledged; no staged spare survives the recover",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-033"
+      ],
+      "steps": [
+        "A development-profile store (K = 128); for each of rotate-created, rotate-fenced, rotate-renamed, rotate-durable: the store restored, the developer owner started with FN_NATIVE_LOG_FAULT at that cut, 64 POSTs (the publication is then due), connections until the owner dies; `recover`; `store inspect` of each article; a fresh owner until CHECKPOINT auto; `status`."
+      ],
+      "expected": [
+        "Each owner dies by SIGKILL; `recover` exits 0; the 64 transactions and every article are there; staging/ holds no .stage-segment-*; journal/ holds 000001.log alone at the spare's cuts and 000001.log and 000002.log after the rename; the fresh owner publishes sequence 64 and the store opens from checkpoint:64."
+      ],
+      "implementation": {
+        "test": "tests.test_native_checkpoint_auto",
+        "cases": [
+          "AutoCheckpointTests.test_a_death_at_each_rotation_cut_of_the_owner_loses_nothing_acknowledged",
+          "AutoCheckpointSourceTests.test_no_statvfs_runs_under_the_owner_mutex"
+        ],
+        "native": true,
+        "record": "planning/evidence/operations-2026-09-28.md",
+        "log": "planning/evidence/operations-2026-09-28/native-i4c-checkpoint_auto.log"
+      },
+      "evidence": [
+        "tests/test_native_checkpoint_auto.py",
+        "tests/test_native_log_compaction.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
+    },
+    {
+      "id": "SCN-200",
+      "title": "`store compact' on the running owner compacts without a stop, answers by name, and a death in its publication leaves the store as it was",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-034"
+      ],
+      "steps": [
+        "A development-profile store (K = 128); `run`; 10 POSTs; `operator store compact`; 2 POSTs; `operator store checkpoint`; `operator store compact`; stop; then the developer owner with FN_NATIVE_CHECKPOINT_BATCH_FAULT=0:kill, 3 POSTs, `operator store compact`; `recover`."
+      ],
+      "expected": [
+        "The first request is answered requested and the owner logs CHECKPOINT auto sequence=10 while POSTs continue; the second publishes 12; the third answers nothing-to-compact; the store opens checkpoint:12 suffix=0; the killed publication leaves the checkpoint's bytes unchanged and the recover opens checkpoint:12 suffix=3 with 15 transactions."
+      ],
+      "implementation": {
+        "test": "tests.test_native_checkpoint_auto",
+        "cases": [
+          "AutoCheckpointTests.test_store_compact_on_the_running_owner_is_a_request_it_answers_by_name"
+        ],
+        "native": true,
+        "record": "planning/evidence/operations-2026-09-28.md",
+        "log": "planning/evidence/operations-2026-09-28/native-i4c-checkpoint_auto.log"
+      },
+      "evidence": [
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
+    },
+    {
+      "id": "SCN-203",
+      "title": "An operator lists a BP carry obligation, pauses and resumes it, drops it with a reason, and a held work's request is refused by name with nothing written",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-035"
+      ],
+      "steps": [
+        "`store init`, `store post` one article, `app-journal workflow-init`, `workflow-enqueue` work-a, `bp-obligation undertake`; `operator CONFIG carry JOURNAL list`, `inspect work-a`, `inspect work-z`; `pause work-a` twice; `bp-obligation request work-a`; `resume work-a` twice; `pause *`, `resume *`; `drop work-a peer retired`; `drop work-a x`; `resume work-a`; `bp-obligation request work-a`."
+      ],
+      "expected": [
+        "list and inspect print work-a with its Message-ID, pinned=yes hold=none; inspect work-z is refused unknown-work; the second pause is refused already-paused; the request while paused exits 1 naming reason=carry-paused and the journal's records are unchanged; the second resume is refused; after the drop list shows hold=dropped reason=peer retired and still pinned=yes; a second drop is refused already-dropped, a resume dropped; the request exits 1 naming reason=carry-dropped with nothing written."
+      ],
+      "implementation": {
+        "test": "tests.test_bp_obligation_native",
+        "cases": [
+          "NativeBpCarryVerbTests.test_list_pause_resume_drop_and_the_request_gate",
+          "NativeBpCarryVerbTests.test_usage_and_help"
+        ],
+        "native": true,
+        "record": "planning/evidence/operations-2026-09-28.md",
+        "log": "planning/evidence/operations-2026-09-28/native-head-bp_obligation.log"
+      },
+      "evidence": [
+        "tests/test_bp_obligation_native.py",
+        "planning/evidence/operations-2026-09-28.md"
       ]
     }
   ]

@@ -1500,3 +1500,13 @@
 (assert-event (equal (fn-native-admin-result-status
                       (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "barrier-deadline" "5000"))))
                      :refused))
+
+; PKT-868: the compaction request `store compact' sends a running owner is an
+; accepted plan the owner answers from its own state: no delta.
+(defconst *fn-na-compaction*
+  (fn-native-admin-plan (fn-na-test-argv '("compaction" "request"))))
+(assert-event (fn-native-admin-result-owner-requestp *fn-na-compaction*))
+(assert-event (null (fn-native-admin-plan-deltas *fn-na-compaction*)))
+(assert-event (not (fn-native-admin-result-queryp *fn-na-compaction*)))
+(assert-event (not (fn-native-admin-result-owner-requestp
+                    (fn-native-admin-plan (fn-na-test-argv '("compaction" "now"))))))

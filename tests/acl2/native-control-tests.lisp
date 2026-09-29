@@ -183,8 +183,9 @@
       nil
     (cons (fn-record-string-octets "extra")
           (fn-nctrl-test-repeat-argv (1- count)))))
+; PKT-867: past the retired 16-word bound (and far past it).
 (defconst *fn-nctrl-admin-over-budget-argv*
-  (fn-nctrl-test-repeat-argv (1+ *fn-native-admin-max-arguments*)))
+  (fn-nctrl-test-repeat-argv 200))
 (defconst *fn-nctrl-admin-512-octets*
   (append (fn-record-string-octets
            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
@@ -207,28 +208,34 @@
          (fn-native-control-admin-encode *fn-nctrl-admin-symmetric-argv*))
         (list :admin *fn-nctrl-admin-symmetric-argv*)))
 (assert-event
- (or (< *fn-native-admin-max-arguments* (len *fn-nctrl-admin-tls-argv*))
-     (equal (fn-native-control-admin-decode
-             (fn-native-control-admin-encode *fn-nctrl-admin-tls-argv*))
-            (list :admin *fn-nctrl-admin-tls-argv*))))
+ (equal (fn-native-control-admin-decode
+         (fn-native-control-admin-encode *fn-nctrl-admin-tls-argv*))
+        (list :admin *fn-nctrl-admin-tls-argv*)))
 (assert-event
  (equal (fn-native-control-admin-decode
          (fn-native-control-admin-encode (list *fn-nctrl-admin-512-octets*)))
         (list :admin (list *fn-nctrl-admin-512-octets*))))
+; PKT-867 teeth: 200 words and a 513-octet word round-trip whole.
 (assert-event
- (equal (fn-native-control-admin-encode
-         *fn-nctrl-admin-over-budget-argv*)
-        :bad))
+ (equal (fn-native-control-admin-decode
+         (fn-native-control-admin-encode *fn-nctrl-admin-over-budget-argv*))
+        (list :admin *fn-nctrl-admin-over-budget-argv*)))
 (assert-event
- (equal (fn-native-control-admin-encode
-         (list (append *fn-nctrl-admin-512-octets* '(97))))
-        :bad))
+ (equal (fn-native-control-admin-decode
+         (fn-native-control-admin-encode
+          (list (append *fn-nctrl-admin-512-octets* '(97)))))
+        (list :admin (list (append *fn-nctrl-admin-512-octets* '(97))))))
+; A word that is not ASCII, and an empty argv, still encode nothing.
+(assert-event
+ (equal (fn-native-control-admin-encode (list '(200))) :bad))
+(assert-event
+ (equal (fn-native-control-admin-encode nil) :bad))
 (assert-event
  (equal (car (fn-native-control-admin-decode
               (fn-nctrl-seal
                *fn-nctrl-admin-kind*
                (append (fn-cbor-encode
-                        (cons :uint (1+ *fn-native-admin-max-arguments*)))
+                        (cons :uint 201))
                        (fn-nctrl-admin-words-encode
                         *fn-nctrl-admin-over-budget-argv*)))))
         :refused))
