@@ -13722,117 +13722,6 @@
       ]
     },
     {
-      "id": "PRF-922",
-      "title": "The article in flight is held as a canonical store of packed blocks: the wire's article mode keeps the decoded body (completed lines with CR LF, then the current line) as fixed 512-octet naturals, one octet a byte; the served scan appends straight from the buffer and stays equal to the byte fold; the article event is the store's lines and they are its octets",
-      "statement": "books/packed-octets.lisp: fn-bch-pack xs = 256^|xs| + sum xs_i 256^i; fn-bch-unpack-of-pack (octet lists round-trip), fn-bch-pack-of-append, and the reader the host runs, fn-bch-digits-onto (divide and conquer, depth log2 of the length: fn-bch-digits-onto-is-digits; fn-bch-unpack-is-digits). books/body-chunks.lisp: the store (COUNT TAIL-LEN TAIL . BLOCKS); fn-bch-push appends one octet; KEYSTONE fn-bch-octets-of-push-list (the abstraction: appending XS to a well-formed store appends XS to its octets); KEYSTONE fn-bch-wf-is-of-octets (canonicity: a well-formed store is fn-bch-of its octets); the held body fn-bch-body-okp B N L (B's octets are N octets of lines each followed by CR LF, then the current line's decoded octets, L its arrived length) and its transitions fn-bch-body-okp-dot / -octet / -line / -whole-line; KEYSTONE fn-bch-join-of-terminator-lines (at a line start the lines the terminator reads out, joined with CR LF, are exactly the store's octets). books/body-chunks-span.lisp: KEYSTONE fn-bchs-push-span-is-push-list (no hypothesis): the span append straight from the octet buffer is the per-octet append of the span's octets, for every store. books/wire.lisp: in article mode the body-rev field is the store and line-rev is empty; fn-wire-statep has fn-bch-body-okp as its article conjunct; fn-wire-after-line reads the current line's length in constant work (fn-wire-partial-len). books/wire-invariants.lisp KEYSTONE fn-wire-article-event-is-the-held-body: the article a byte ends (fn-wire-feed-byte, the byte step of the served scan) is the store's completed lines (fn-wire-body-lines) and they joined are its octets. books/wire-scan.lisp: an article-mode run goes into the store by fn-bchs-push-span; fn-wire-scan-is-span-fold (PRF-346) stays hypothesis-free. The subject is the host's read: host/owner-host.lisp fn-owner-chunk-span-at -> fn-mca-read-span -> ... -> books/served-scan.lisp fn-scar-scan-span -> fn-wire-scan. Not claimed: the article event and the queued decision are still octet lists (16 octets of heap an octet); the credit (books/heap-store-figure.lisp fn-heap-article-reserve-octets) is therefore unchanged, and now covers the wire's form soundly (before, a body of A and a current line of A+1 could coexist as lists past the reserve's A+512).",
-      "milestone": "M5",
-      "requirements": [
-        "REP-012"
-      ],
-      "depends_on": [
-        "PRF-346"
-      ],
-      "assumptions": [],
-      "status": "certified",
-      "evidence": [
-        "books/packed-octets.lisp",
-        "books/body-chunks.lisp",
-        "books/body-chunks-span.lisp",
-        "books/wire.lisp",
-        "books/wire-invariants.lisp",
-        "books/wire-scan.lisp",
-        "books/wire-outbound-invariants.lisp",
-        "books/transit-bound.lisp",
-        "tests/acl2/body-chunks-tests.lisp",
-        "tests/acl2/wire-tests.lisp",
-        "specs/store-refinement.md"
-      ],
-      "progress_note": "Lane chunked-body (2026-09-28/29, B6 of COMPLETE-BEFORE-6.6.0): certification and native modules in the lane's READY.",
-      "events": [
-        "fn-bch-unpack-of-pack",
-        "fn-bch-pack-of-append",
-        "fn-bch-digits-onto-is-digits",
-        "fn-bch-unpack-is-digits",
-        "fn-bch-octets-of-push-list",
-        "fn-bch-wf-is-of-octets",
-        "fn-bch-body-okp-line",
-        "fn-bch-body-okp-whole-line",
-        "fn-bch-join-of-terminator-lines",
-        "fn-bchs-push-span-is-push-list",
-        "fn-wire-article-event-is-the-held-body"
-      ]
-    },
-    {
-      "id": "PRF-928",
-      "title": "The queued submission is packed: the owner's queue holds each submission's article octets as one natural and an injection's groups comma-joined into another, and the take unpacks it, so the committer installs exactly the submission the read enqueued; the per-article credit is the packed article",
-      "statement": "books/packed-submission.lisp: fn-psub-pack-dc (the executable packing, divide and conquer, depth log2 of the length; the lemma fn-psub-pack-dc-is-pack: it is fn-bch-pack of the first N octets); KEYSTONES fn-psub-unpack-of-pack-octets, fn-psub-unpack-of-pack-groups, fn-psub-unpack-of-pack-sub (no hypothesis: every field round-trips, a field that is not an octet list, or groups that are not joinable names, kept as (:raw . X)); fn-psub-packed-octets-len-is-len. books/owner.lisp: fn-own-enqueue appends (fn-psub-pack-sub SUB); fn-own-take-submission installs the fields of (fn-psub-unpack-sub (car queue)); fn-own-sub-fields-of-pack / -unpack and fn-own-decision-fields-of-pack (id, version, mark, login, account, the Message-ID, transit and control are the packed record's own); fn-own-sub-queued-decision (the decision a queued submission carries, unpacked). books/owner-invariants-outcome.lisp KEYSTONE fn-own-take-installs-the-enqueued-submission: after enqueuing SUB on an idle ready owner the take installs SUB's decision exactly; fn-own-take-installs-the-queued-submission-whatever-it-carries restated over the unpacked head. books/owner-credits.lisp fn-mca-sub-charge: twice fn-psub-sub-heap of the QUEUED submission (host/owner-host.lisp fn-owner-take charges the queue's head before the take), capped by the reserve. books/heap-store-figure.lisp fn-heap-article-reserve-octets = 2 x max(fn-heap-article-wire-octets, fn-heap-article-queued-octets) (544 octets a 512-octet block of the wire's store over A + 1 octets; the packed submission: A + HDR + a 250-octet Message-ID list + cells), and fn-heap-store-inflight-octets gains the taken (unpacked) submission, one at a time. The subject is the owner step the host calls (host/owner-host.lisp fn-owner-step -> fn-own-finish-read -> fn-own-enqueue; fn-owner-take -> fn-own-take-submission). Not claimed: that the packed forms take the figure's octets of heap (a measurement: measure at convergence, VmRSS with 30 posters mid-article at A = 1 MiB).",
-      "milestone": "M5",
-      "requirements": [
-        "REP-012"
-      ],
-      "depends_on": [
-        "PRF-922",
-        "PRF-380"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/packed-submission.lisp",
-        "books/owner.lisp",
-        "books/owner-invariants-outcome.lisp",
-        "books/owner-invariants-step.lisp",
-        "books/owner-credits.lisp",
-        "books/heap-store-figure.lisp",
-        "books/heap-figure.lisp",
-        "books/heap-breakdown.lisp",
-        "tests/acl2/packed-submission-tests.lisp",
-        "tests/acl2/owner-credits-tests.lisp",
-        "tests/test_native_article_slots.py",
-        "specs/store-refinement.md"
-      ],
-      "progress_note": "Lane chunked-body-2 (2026-09-29, B6b of COMPLETE-BEFORE-6.6.0): at A = 1 MiB the 64 MiB pool holds 30 articles in flight (it held 1).",
-      "events": [
-        "fn-psub-unpack-of-pack-octets",
-        "fn-psub-unpack-of-pack-groups",
-        "fn-psub-unpack-of-pack-sub",
-        "fn-psub-packed-octets-len-is-len",
-        "fn-own-take-installs-the-enqueued-submission",
-        "fn-own-take-installs-the-queued-submission-whatever-it-carries",
-        "fn-heap-article-slots-are-held"
-      ]
-    },
-    {
-      "id": "PRF-929",
-      "title": "Mid-article a connection holds at most the body limit and one octet: the wire closes :body-overlimit at the octet that dooms the line, not at its LF",
-      "statement": "books/wire.lisp: fn-wire-line-room (in article mode the line's room is also the body's: min(line limit, body limit + 1 - body-size)); fn-wire-feed-byte takes an ordinary octet only within it and otherwise closes :body-overlimit (:line-overlimit when the line limit binds); fn-wire-statep's article conjunct gains body-size + line-len <= body limit + 1; KEYSTONE fn-wire-statep-article-holds-at-most-the-body-limit (fn-wire-held-octets <= body limit + 1). The octet closed on dooms the article: its completed line would be over the body limit (a completed line adds its CR LF, and the terminator is one octet). books/wire-scan.lisp: the scan's run ends at the same room, fn-wire-scan-is-span-fold (PRF-346) unchanged and hypothesis-free. books/transit-bound.lisp KEYSTONE fn-tb-served-run-holds-at-most-the-body-limit-mid-article: after any served run from a wire-invariant state, mid-article, the held octets are at most the body limit and one. The subject is the host's read: host/owner-host.lisp fn-owner-chunk-span-at -> ... -> books/served-scan.lisp fn-scar-scan-span -> fn-wire-scan. This is the wire's term of fn-heap-article-reserve-octets (PRF-928).",
-      "milestone": "M5",
-      "requirements": [
-        "REP-012"
-      ],
-      "depends_on": [
-        "PRF-922",
-        "PRF-346"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/wire.lisp",
-        "books/wire-scan.lisp",
-        "books/wire-invariants.lisp",
-        "books/wire-outbound-invariants.lisp",
-        "books/transit-bound.lisp",
-        "tests/acl2/wire-tests.lisp",
-        "specs/store-refinement.md"
-      ],
-      "progress_note": "Lane chunked-body-2 (2026-09-29, B6b).",
-      "events": [
-        "fn-wire-statep-article-holds-at-most-the-body-limit",
-        "fn-wire-feed-byte-preserves-statep",
-        "fn-tb-served-run-holds-at-most-the-body-limit-mid-article",
-        "fn-wire-scan-is-span-fold"
-      ]
-    },
-    {
       "id": "PRF-906",
       "title": "An acknowledged BP custody is delivered within one quiet read timeout of an open session, never held until the session ends (PKT-873)",
       "statement": "Subjects fn-tcl-delivery-plan and fn-tcl-delivery-plan-progress-p (books/tcpcl-delivery.lisp), which host/native/tcpcl.lisp fnn-tcl-act calls on every completed inbound transfer; fnn-tcl-session marks the custody when the plan names the progress point and calls *fnn-tcl-progress* at its first quiet read timeout after it (at most max(1, keepalive/4) s; a session the peer ends first is delivered by the between-sessions pass), and host/native/bp-node.lisp fnn-command-bp-node binds it to fnn-bpnode-dispatch-pending. KEYSTONE fn-tcl-acknowledged-custody-is-progressed-in-its-turn: if the plan's released messages carry the transfer's final END XFER_ACK, the callback's result was (:accepted PATH) (kind-5 custody durable, spec 9.2) and the plan names the progress point; fn-tcl-unaccepted-delivery-names-no-progress: a refusal, an uncertain publication or a fault names none. Crash scope: the in-session turn adds no durable write; a process death between the ACK and the delivery is the existing kind-5 cut, recovered by the open's delivery pass. Teeth: tests/acl2/tcpcl-delivery-tests.lisp (fn-tcl-complete's held END ACK with (:accepted nil): final ACK released, progress named; removal of the final-ACK hypothesis by a refusal, an uncertain publication and a fault: no progress). Native: tests/test_native_source_corpus_bp.py (B SIGKILLed mid-receive; the relay restarted after B keeps its session open; the verdict precedes that session's end).",
@@ -14285,6 +14174,196 @@
         "fn-snb-replay-apply-record-keeps-nexts-bounded",
         "fn-snb-replay-keeps-nexts-bounded",
         "fn-snb-replayed-acceptance-is-projection"
+      ]
+    },
+    {
+      "id": "PRF-964",
+      "title": "A served inspect renders as the offline one: the report the client prints from the owner's word is fn-native-operator-inspect-report of the owner's lookup",
+      "statement": "books/owner-maintenance-request.lisp. KEYSTONE fn-omr-inspect-live-is-the-offline-report: for any Message-ID octets and any lookup result FOUNDP, fn-omr-inspect-live-report of the reasoned reply's word (fn-nctrl-reason-word of fn-omr-inspect-word FOUNDP) equals fn-native-operator-inspect-report of FOUNDP: exit, verdict and printed line. fn-omr-inspect-status-is-the-offline-exit: the owner's reply status is :accepted exactly when the offline exit is 0. Subject: host/native/operator.lisp fnn-operator-execute-inspect-live, over the word host/native/admin.lisp fnn-owner-inspect-request answers (fnn-bridge-lookup-found-p under the owner mutex). Teeth: tests/acl2/owner-maintenance-request-tests.lisp (found, absent, a malformed word reads as absent).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-036"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-maintenance-request.lisp",
+        "tests/acl2/owner-maintenance-request-tests.lisp"
+      ],
+      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
+      "events": [
+        "fn-omr-inspect-live-is-the-offline-report",
+        "fn-omr-inspect-status-is-the-offline-exit"
+      ]
+    },
+    {
+      "id": "PRF-965",
+      "title": "A stopped store's status bounds the transactions from its checkpoint header and its journal's octets without a replay",
+      "statement": "books/owner-maintenance-request.lisp. KEYSTONE fn-omr-transactions-at-most-bounds-the-count: for natural COVERED, RECORDS and JOURNAL-OCTETS with RECORDS * *fn-omr-min-frame-octets* <= JOURNAL-OCTETS (every record frame is at least its header and trailer, 42 octets), COVERED + RECORDS <= fn-omr-transactions-at-most COVERED JOURNAL-OCTETS. fn-omr-stopped-line-is-header-and-octets-by-definition: the printed line is a function of the header's sequence field (fn-omr-covered-sequence, fn-scc-parse-header of the first 37 octets) and the journal's octets alone. Subject: host/native/io.lisp fnn-stopped-report (fnn-command-stopped-status, the health arm of host/native/operator.lisp fnn-operator-health-report). Teeth: the tests book's positive witness (12 covered, 5 records in 300 octets) and the removal of the octet premise (8 records cannot fit 300 octets and the bound does not cover them).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-036"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-maintenance-request.lisp",
+        "tests/acl2/owner-maintenance-request-tests.lisp"
+      ],
+      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
+      "events": [
+        "fn-omr-transactions-at-most-bounds-the-count"
+      ]
+    },
+    {
+      "id": "PRF-988",
+      "title": "At most one export in flight on the running owner, never into an existing DIR: the request word is :requested exactly when none is in flight and DIR is absent",
+      "statement": "books/owner-export-request.lisp. KEYSTONE fn-oex-one-export-in-flight: for any observations INFLIGHTP (the service's exporter slot) and EXISTSP (DIR's lstat), an export in flight makes fn-oex-request-word answer :export-in-flight, and the word is :requested iff neither observation holds; fn-oex-request-accepted-exactly-when-requested: the reply status is :accepted iff the word is :requested. fn-oex-word-reads-back: every word the owner answers (request and status words) reads back as itself from its reply octets (fn-nctrl-reason-word). The archive's contents are the offline writer's own steps over the captured octets: books/store-export-stream.lisp fn-sxp-stream-is-the-export and books/store-export-durability.lisp fn-sxd-crash-is-incomplete-or-complete stand unchanged (cited, not restated).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-036"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/owner-export-request.lisp",
+        "tests/acl2/owner-export-request-tests.lisp"
+      ],
+      "progress_note": "Lane operability-4 (2026-09-29): the decision book REPL-admitted on persvati (15 forms) with its teeth (36 assert-events, 0 refused): the keystone's reachable positive witness (in flight, DIR absent -> :export-in-flight, not :requested) and the hypothesis-removal witness (nothing in flight -> :requested); every word reads back; the lines name the reason and what it would take. The host wiring (the admin arms `export request DIR' / `export status', the owner's capture + export thread, the client's wait) and the native case are the successor's; the theorems' subject is what that host calls. Lane operability-7 (2026-09-29): the host calls it: host/native/admin.lisp fnn-owner-export-request (fn-oex-request-word over the lstat off the mutex and the exporter slot under it; the capture, the arena pin and the thread before the mutex is released: fn-owner-oex-capture, fnn-owner-export-start) and fnn-owner-export-status (fn-oex-status-word); the client host/native/operator.lisp fnn-operator-execute-export-live reads the word back (fn-oex-word-of-octets) and prints the owner's kind-23 line. Native tests.test_native_maintenance_live.test_store_export_answers_on_the_running_owner_and_the_archive_imports.",
+      "events": []
+    },
+    {
+      "id": "PRF-972",
+      "title": "The operator's post refused at completion names the Store's word on the log line and the reply",
+      "statement": "books/owner-control-post-reason.lisp. KEYSTONE fn-ocpr-line-names-the-reason-exactly-when-refused: fn-ocpr-log-line O WORD is fn-olog-control-post-line O WORD followed by ` reason=WORD' exactly when fn-own-control-outcome-result O WORD is :refused (and WORD a symbol), and the plain line for every other class. fn-ocpr-reason-is-the-word-when-refused-by-definition: the reply's reason is the Store's word for a refused completion, nil otherwise. Subjects: host/owner-host.lisp fn-owner-control-outcome (the line; the reason kept in fn-owner-control-reason) and host/native/owner.lisp's control reply site (the admission decision's reason, else this one). Teeth: tests/acl2/owner-control-post-reason-tests.lisp (the word for :refused, nothing for :accepted/:duplicate/:uncertain or a non-symbol; the plain line with no submission in flight); the positive witness is native (SCN-209).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-037"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-control-post-reason.lisp",
+        "tests/acl2/owner-control-post-reason-tests.lisp"
+      ],
+      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
+      "events": [
+        "fn-ocpr-line-names-the-reason-exactly-when-refused"
+      ]
+    },
+    {
+      "id": "PRF-922",
+      "title": "The article in flight is held as a canonical store of packed blocks: the wire's article mode keeps the decoded body (completed lines with CR LF, then the current line) as fixed 512-octet naturals, one octet a byte; the served scan appends straight from the buffer and stays equal to the byte fold; the article event is the store's lines and they are its octets",
+      "statement": "books/packed-octets.lisp: fn-bch-pack xs = 256^|xs| + sum xs_i 256^i; fn-bch-unpack-of-pack (octet lists round-trip), fn-bch-pack-of-append, and the reader the host runs, fn-bch-digits-onto (divide and conquer, depth log2 of the length: fn-bch-digits-onto-is-digits; fn-bch-unpack-is-digits). books/body-chunks.lisp: the store (COUNT TAIL-LEN TAIL . BLOCKS); fn-bch-push appends one octet; KEYSTONE fn-bch-octets-of-push-list (the abstraction: appending XS to a well-formed store appends XS to its octets); KEYSTONE fn-bch-wf-is-of-octets (canonicity: a well-formed store is fn-bch-of its octets); the held body fn-bch-body-okp B N L (B's octets are N octets of lines each followed by CR LF, then the current line's decoded octets, L its arrived length) and its transitions fn-bch-body-okp-dot / -octet / -line / -whole-line; KEYSTONE fn-bch-join-of-terminator-lines (at a line start the lines the terminator reads out, joined with CR LF, are exactly the store's octets). books/body-chunks-span.lisp: KEYSTONE fn-bchs-push-span-is-push-list (no hypothesis): the span append straight from the octet buffer is the per-octet append of the span's octets, for every store. books/wire.lisp: in article mode the body-rev field is the store and line-rev is empty; fn-wire-statep has fn-bch-body-okp as its article conjunct; fn-wire-after-line reads the current line's length in constant work (fn-wire-partial-len). books/wire-invariants.lisp KEYSTONE fn-wire-article-event-is-the-held-body: the article a byte ends (fn-wire-feed-byte, the byte step of the served scan) is the store's completed lines (fn-wire-body-lines) and they joined are its octets. books/wire-scan.lisp: an article-mode run goes into the store by fn-bchs-push-span; fn-wire-scan-is-span-fold (PRF-346) stays hypothesis-free. The subject is the host's read: host/owner-host.lisp fn-owner-chunk-span-at -> fn-mca-read-span -> ... -> books/served-scan.lisp fn-scar-scan-span -> fn-wire-scan. Not claimed: the article event and the queued decision are still octet lists (16 octets of heap an octet); the credit (books/heap-store-figure.lisp fn-heap-article-reserve-octets) is therefore unchanged, and now covers the wire's form soundly (before, a body of A and a current line of A+1 could coexist as lists past the reserve's A+512).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012"
+      ],
+      "depends_on": [
+        "PRF-346"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/packed-octets.lisp",
+        "books/body-chunks.lisp",
+        "books/body-chunks-span.lisp",
+        "books/wire.lisp",
+        "books/wire-invariants.lisp",
+        "books/wire-scan.lisp",
+        "books/wire-outbound-invariants.lisp",
+        "books/transit-bound.lisp",
+        "tests/acl2/body-chunks-tests.lisp",
+        "tests/acl2/wire-tests.lisp",
+        "specs/store-refinement.md"
+      ],
+      "progress_note": "Lane chunked-body (2026-09-28/29, B6 of COMPLETE-BEFORE-6.6.0): certification and native modules in the lane's READY.",
+      "events": [
+        "fn-bch-unpack-of-pack",
+        "fn-bch-pack-of-append",
+        "fn-bch-digits-onto-is-digits",
+        "fn-bch-unpack-is-digits",
+        "fn-bch-octets-of-push-list",
+        "fn-bch-wf-is-of-octets",
+        "fn-bch-body-okp-line",
+        "fn-bch-body-okp-whole-line",
+        "fn-bch-join-of-terminator-lines",
+        "fn-bchs-push-span-is-push-list",
+        "fn-wire-article-event-is-the-held-body"
+      ]
+    },
+    {
+      "id": "PRF-928",
+      "title": "The queued submission is packed: the owner's queue holds each submission's article octets as one natural and an injection's groups comma-joined into another, and the take unpacks it, so the committer installs exactly the submission the read enqueued; the per-article credit is the packed article",
+      "statement": "books/packed-submission.lisp: fn-psub-pack-dc (the executable packing, divide and conquer, depth log2 of the length; the lemma fn-psub-pack-dc-is-pack: it is fn-bch-pack of the first N octets); KEYSTONES fn-psub-unpack-of-pack-octets, fn-psub-unpack-of-pack-groups, fn-psub-unpack-of-pack-sub (no hypothesis: every field round-trips, a field that is not an octet list, or groups that are not joinable names, kept as (:raw . X)); fn-psub-packed-octets-len-is-len. books/owner.lisp: fn-own-enqueue appends (fn-psub-pack-sub SUB); fn-own-take-submission installs the fields of (fn-psub-unpack-sub (car queue)); fn-own-sub-fields-of-pack / -unpack and fn-own-decision-fields-of-pack (id, version, mark, login, account, the Message-ID, transit and control are the packed record's own); fn-own-sub-queued-decision (the decision a queued submission carries, unpacked). books/owner-invariants-outcome.lisp KEYSTONE fn-own-take-installs-the-enqueued-submission: after enqueuing SUB on an idle ready owner the take installs SUB's decision exactly; fn-own-take-installs-the-queued-submission-whatever-it-carries restated over the unpacked head. books/owner-credits.lisp fn-mca-sub-charge: twice fn-psub-sub-heap of the QUEUED submission (host/owner-host.lisp fn-owner-take charges the queue's head before the take), capped by the reserve. books/heap-store-figure.lisp fn-heap-article-reserve-octets = 2 x max(fn-heap-article-wire-octets, fn-heap-article-queued-octets) (544 octets a 512-octet block of the wire's store over A + 1 octets; the packed submission: A + HDR + a 250-octet Message-ID list + cells), and fn-heap-store-inflight-octets gains the taken (unpacked) submission, one at a time. The subject is the owner step the host calls (host/owner-host.lisp fn-owner-step -> fn-own-finish-read -> fn-own-enqueue; fn-owner-take -> fn-own-take-submission). Not claimed: that the packed forms take the figure's octets of heap (a measurement: measure at convergence, VmRSS with 30 posters mid-article at A = 1 MiB).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012"
+      ],
+      "depends_on": [
+        "PRF-922",
+        "PRF-380"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/packed-submission.lisp",
+        "books/owner.lisp",
+        "books/owner-invariants-outcome.lisp",
+        "books/owner-invariants-step.lisp",
+        "books/owner-credits.lisp",
+        "books/heap-store-figure.lisp",
+        "books/heap-figure.lisp",
+        "books/heap-breakdown.lisp",
+        "tests/acl2/packed-submission-tests.lisp",
+        "tests/acl2/owner-credits-tests.lisp",
+        "tests/test_native_article_slots.py",
+        "specs/store-refinement.md"
+      ],
+      "progress_note": "Lane chunked-body-2 (2026-09-29, B6b of COMPLETE-BEFORE-6.6.0): at A = 1 MiB the 64 MiB pool holds 30 articles in flight (it held 1).",
+      "events": [
+        "fn-psub-unpack-of-pack-octets",
+        "fn-psub-unpack-of-pack-groups",
+        "fn-psub-unpack-of-pack-sub",
+        "fn-psub-packed-octets-len-is-len",
+        "fn-own-take-installs-the-enqueued-submission",
+        "fn-own-take-installs-the-queued-submission-whatever-it-carries",
+        "fn-heap-article-slots-are-held"
+      ]
+    },
+    {
+      "id": "PRF-929",
+      "title": "Mid-article a connection holds at most the body limit and one octet: the wire closes :body-overlimit at the octet that dooms the line, not at its LF",
+      "statement": "books/wire.lisp: fn-wire-line-room (in article mode the line's room is also the body's: min(line limit, body limit + 1 - body-size)); fn-wire-feed-byte takes an ordinary octet only within it and otherwise closes :body-overlimit (:line-overlimit when the line limit binds); fn-wire-statep's article conjunct gains body-size + line-len <= body limit + 1; KEYSTONE fn-wire-statep-article-holds-at-most-the-body-limit (fn-wire-held-octets <= body limit + 1). The octet closed on dooms the article: its completed line would be over the body limit (a completed line adds its CR LF, and the terminator is one octet). books/wire-scan.lisp: the scan's run ends at the same room, fn-wire-scan-is-span-fold (PRF-346) unchanged and hypothesis-free. books/transit-bound.lisp KEYSTONE fn-tb-served-run-holds-at-most-the-body-limit-mid-article: after any served run from a wire-invariant state, mid-article, the held octets are at most the body limit and one. The subject is the host's read: host/owner-host.lisp fn-owner-chunk-span-at -> ... -> books/served-scan.lisp fn-scar-scan-span -> fn-wire-scan. This is the wire's term of fn-heap-article-reserve-octets (PRF-928).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012"
+      ],
+      "depends_on": [
+        "PRF-922",
+        "PRF-346"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/wire.lisp",
+        "books/wire-scan.lisp",
+        "books/wire-invariants.lisp",
+        "books/wire-outbound-invariants.lisp",
+        "books/transit-bound.lisp",
+        "tests/acl2/wire-tests.lisp",
+        "specs/store-refinement.md"
+      ],
+      "progress_note": "Lane chunked-body-2 (2026-09-29, B6b).",
+      "events": [
+        "fn-wire-statep-article-holds-at-most-the-body-limit",
+        "fn-wire-feed-byte-preserves-statep",
+        "fn-tb-served-run-holds-at-most-the-body-limit-mid-article",
+        "fn-wire-scan-is-span-fold"
       ]
     },
     {
@@ -14757,6 +14836,29 @@
         "fn-onbj-boundp-at-owner-prepare-buffer",
         "fn-onbj-boundp-at-owner-reconfigure-complete",
         "fn-onbj-open-okp-is-boundp-when-idle"
+      ]
+    },
+    {
+      "id": "PRF-1004",
+      "title": "`store inspect --group GROUP' lists LISTGROUP's numbers: the report's rows number exactly fn-nntp-group-range-numbers of the archive, offline and on the running owner alike",
+      "statement": "books/owner-inspect-group.lisp. KEYSTONE fn-oig-rows-number-the-listgroup-numbers: for every group, range and article list, the cars of fn-oig-rows equal fn-nntp-group-range-numbers of the same arguments (books/nntp-projection.lisp, the logical model the served catalog's fn-scat-range-numbers is proven equal to: books/served-catalog.lisp fn-scat-range-numbers-is-group-range-numbers); no hypothesis. fn-oig-report-exit-is-the-membership: the exit the client reads back from the printed octets is 0 exactly when the archive carries the group, 1 for the refusal by name. Subject: fn-oig-report over 1 .. *fn-nntp-max-article-number*, which the host reaches through books/control-evidence.lisp fn-cev-offline-report (host/native/io.lisp fnn-command-inspect-group-offline: the archive the open replayed from the checkpoint and its suffix) and fn-cev-live-report (host/native-live-status-host.lisp fn-native-live-status-host-answer under the owner mutex: the archive the served view carries, books/owner.lisp fn-served-live-archive), both from host/native/operator.lisp fnn-operator-execute-inspect-group. The request rides FNLS frame kind 3 code 11: fn-cev-any-request-decode-of-encode now covers (:inspect-group . GROUP). Work: one report renders the group's rows in one quantum (as the status report's reclaim line walks every article); a per-number cursor over the paged report is the named next step, measure at convergence. Teeth: tests/acl2/owner-inspect-group-tests.lisp (rows in number order out of posting order, two groups, a sub-range, the report's octets, the refusal, both exits, a configured empty group, digits past ten); tests/acl2/control-evidence-tests.lisp (the request round trip at two offsets, the recognizers).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-038"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/owner-inspect-group.lisp",
+        "tests/acl2/owner-inspect-group-tests.lisp",
+        "books/control-evidence.lisp",
+        "tests/acl2/control-evidence-tests.lisp"
+      ],
+      "progress_note": "Lane operability-5 (2026-09-29): REPL-admitted on persvati (44 forms; teeth 28 forms, 0 refused); certification and the native tests.test_native_maintenance_live at READY 3.",
+      "events": [
+        "fn-oig-rows-number-the-listgroup-numbers",
+        "fn-oig-report-exit-is-the-membership"
       ]
     },
     {
@@ -15585,84 +15687,6 @@
       ]
     },
     {
-      "id": "PRF-964",
-      "title": "A served inspect renders as the offline one: the report the client prints from the owner's word is fn-native-operator-inspect-report of the owner's lookup",
-      "statement": "books/owner-maintenance-request.lisp. KEYSTONE fn-omr-inspect-live-is-the-offline-report: for any Message-ID octets and any lookup result FOUNDP, fn-omr-inspect-live-report of the reasoned reply's word (fn-nctrl-reason-word of fn-omr-inspect-word FOUNDP) equals fn-native-operator-inspect-report of FOUNDP: exit, verdict and printed line. fn-omr-inspect-status-is-the-offline-exit: the owner's reply status is :accepted exactly when the offline exit is 0. Subject: host/native/operator.lisp fnn-operator-execute-inspect-live, over the word host/native/admin.lisp fnn-owner-inspect-request answers (fnn-bridge-lookup-found-p under the owner mutex). Teeth: tests/acl2/owner-maintenance-request-tests.lisp (found, absent, a malformed word reads as absent).",
-      "milestone": "M5",
-      "requirements": [
-        "HST-036"
-      ],
-      "depends_on": [],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/owner-maintenance-request.lisp",
-        "tests/acl2/owner-maintenance-request-tests.lisp"
-      ],
-      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
-      "events": [
-        "fn-omr-inspect-live-is-the-offline-report",
-        "fn-omr-inspect-status-is-the-offline-exit"
-      ]
-    },
-    {
-      "id": "PRF-965",
-      "title": "A stopped store's status bounds the transactions from its checkpoint header and its journal's octets without a replay",
-      "statement": "books/owner-maintenance-request.lisp. KEYSTONE fn-omr-transactions-at-most-bounds-the-count: for natural COVERED, RECORDS and JOURNAL-OCTETS with RECORDS * *fn-omr-min-frame-octets* <= JOURNAL-OCTETS (every record frame is at least its header and trailer, 42 octets), COVERED + RECORDS <= fn-omr-transactions-at-most COVERED JOURNAL-OCTETS. fn-omr-stopped-line-is-header-and-octets-by-definition: the printed line is a function of the header's sequence field (fn-omr-covered-sequence, fn-scc-parse-header of the first 37 octets) and the journal's octets alone. Subject: host/native/io.lisp fnn-stopped-report (fnn-command-stopped-status, the health arm of host/native/operator.lisp fnn-operator-health-report). Teeth: the tests book's positive witness (12 covered, 5 records in 300 octets) and the removal of the octet premise (8 records cannot fit 300 octets and the bound does not cover them).",
-      "milestone": "M5",
-      "requirements": [
-        "HST-036"
-      ],
-      "depends_on": [],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/owner-maintenance-request.lisp",
-        "tests/acl2/owner-maintenance-request-tests.lisp"
-      ],
-      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
-      "events": [
-        "fn-omr-transactions-at-most-bounds-the-count"
-      ]
-    },
-    {
-      "id": "PRF-988",
-      "title": "At most one export in flight on the running owner, never into an existing DIR: the request word is :requested exactly when none is in flight and DIR is absent",
-      "statement": "books/owner-export-request.lisp. KEYSTONE fn-oex-one-export-in-flight: for any observations INFLIGHTP (the service's exporter slot) and EXISTSP (DIR's lstat), an export in flight makes fn-oex-request-word answer :export-in-flight, and the word is :requested iff neither observation holds; fn-oex-request-accepted-exactly-when-requested: the reply status is :accepted iff the word is :requested. fn-oex-word-reads-back: every word the owner answers (request and status words) reads back as itself from its reply octets (fn-nctrl-reason-word). The archive's contents are the offline writer's own steps over the captured octets: books/store-export-stream.lisp fn-sxp-stream-is-the-export and books/store-export-durability.lisp fn-sxd-crash-is-incomplete-or-complete stand unchanged (cited, not restated).",
-      "milestone": "M5",
-      "requirements": [
-        "HST-036"
-      ],
-      "depends_on": [],
-      "assumptions": [],
-      "status": "planned",
-      "evidence": [
-        "books/owner-export-request.lisp",
-        "tests/acl2/owner-export-request-tests.lisp"
-      ],
-      "progress_note": "Lane operability-4 (2026-09-29): the decision book REPL-admitted on persvati (15 forms) with its teeth (36 assert-events, 0 refused): the keystone's reachable positive witness (in flight, DIR absent -> :export-in-flight, not :requested) and the hypothesis-removal witness (nothing in flight -> :requested); every word reads back; the lines name the reason and what it would take. The host wiring (the admin arms `export request DIR' / `export status', the owner's capture + export thread, the client's wait) and the native case are the successor's; the theorems' subject is what that host calls. Lane operability-7 (2026-09-29): the host calls it: host/native/admin.lisp fnn-owner-export-request (fn-oex-request-word over the lstat off the mutex and the exporter slot under it; the capture, the arena pin and the thread before the mutex is released: fn-owner-oex-capture, fnn-owner-export-start) and fnn-owner-export-status (fn-oex-status-word); the client host/native/operator.lisp fnn-operator-execute-export-live reads the word back (fn-oex-word-of-octets) and prints the owner's kind-23 line. Native tests.test_native_maintenance_live.test_store_export_answers_on_the_running_owner_and_the_archive_imports."
-    },
-    {
-      "id": "PRF-972",
-      "title": "The operator's post refused at completion names the Store's word on the log line and the reply",
-      "statement": "books/owner-control-post-reason.lisp. KEYSTONE fn-ocpr-line-names-the-reason-exactly-when-refused: fn-ocpr-log-line O WORD is fn-olog-control-post-line O WORD followed by ` reason=WORD' exactly when fn-own-control-outcome-result O WORD is :refused (and WORD a symbol), and the plain line for every other class. fn-ocpr-reason-is-the-word-when-refused-by-definition: the reply's reason is the Store's word for a refused completion, nil otherwise. Subjects: host/owner-host.lisp fn-owner-control-outcome (the line; the reason kept in fn-owner-control-reason) and host/native/owner.lisp's control reply site (the admission decision's reason, else this one). Teeth: tests/acl2/owner-control-post-reason-tests.lisp (the word for :refused, nothing for :accepted/:duplicate/:uncertain or a non-symbol; the plain line with no submission in flight); the positive witness is native (SCN-209).",
-      "milestone": "M5",
-      "requirements": [
-        "HST-037"
-      ],
-      "depends_on": [],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/owner-control-post-reason.lisp",
-        "tests/acl2/owner-control-post-reason-tests.lisp"
-      ],
-      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
-      "events": [
-        "fn-ocpr-line-names-the-reason-exactly-when-refused"
-      ]
-    },
-    {
       "id": "PRF-983",
       "title": "The host reads a sequence reservation exactly when the recovered frontier is below the 64-bit ceiling; its sequence is that frontier and the frame made durable first is the successor record's",
       "statement": "books/bp-node-host-sequence.lisp (fn-bpn-host-sequence-reserve, fn-bpn-host-sequence-reservationp, fn-bpn-host-sequence-reservation-sequence and fn-bpn-host-sequence-reservation-frame moved from host/bp-node-host.lisp and guard-verified; host/native/bp.lisp's fnn-bp-reserve-sequence calls them through the host file). KEYSTONE fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling (the four entries composed): fn-bpn-host-sequence-reservationp of the reserve answer holds iff the argument is a frontier (fn-bpn-sequence-frontierp) below *fn-bpc-max-uint*; then the reservation's sequence is that frontier, its frame is fn-bpn-sequence-record-frame of fn-bpn-sequence-record of the successor and is an octet list; a frontier at the ceiling answers exactly (:refused :sequence-exhausted), the books' refusal; a non-frontier answers exactly (:refused :host-arguments), the host's, distinct from exhaustion. Teeth: tests/acl2/bp-node-host-sequence-tests.lisp (positive witness at frontier 5 with the antecedent by name; hypothesis removal: the ceiling, a negative and a string frontier; the reads of a refusal are empty).",
@@ -16162,92 +16186,6 @@
         "fn-mpxt-faithful-of-adopt",
         "fn-mpxt-first-page-faithful-nil",
         "fn-mpxt-first-page-not-saturated"
-      ]
-    },
-    {
-      "id": "PRF-1037",
-      "title": "THE SWITCH: the catalog's Message-ID column is served from the paged table (lane paged-history-5, row P2): fn-cat-msgid-seqs reads a nested fn-mpxt whose logical value is the fold fn-mpxt-build of the rows under the table's own key; the served refusal fn-cat-msgid-saturatedp is the fold's outcome for one more row",
-      "statement": "Subjects: books/catalog.lisp, the concrete stobj fn-cat$c with the paged Message-ID table fn-cat$c-mpx (a nested fn-mpxt, books/msgid-pages-exec), its next generation fn-cat$c-mpx2 and the unplaced count fn-cat$c-unplaced, replacing the hash fn-cat$c-msgids; the abstraction relation fn-cat$corr-base states EQUALITY: (nth 2 c) = fn-mpxt-build key rows, (nth 9 c) = fn-mpxt-build-buffer, (nth 10 c) = fn-mpxt-build-unplaced, key = fn-cat-key-of c (the table's own key octets). Host caller: every served Message-ID finder calls the abstract export fn-cat-msgid-seqs (served-columns fn-scol-find-row, served-catalog fn-scat-msgid-article, served-catalog-owner); its logic fn-cat$a-msgid-seqs is unchanged (design B.6, the 5u method: no served book changes). (1) fn-cat-msgid-seqs{correspondence-bl}: the executable reader -- fn-cat$c-confirm (the twin of fn-mpxt-confirm over the rows array, a candidate at or past the count dropped) of fn-mpxt-candidates of the tag from the nested table, or the degraded scan fn-cat$c-scan-msgid when a row could not be placed -- equals fn-cat-seqs-for under the relation, by KEYSTONE fn-mpxt-seqs-is-cat-msgid-seqs (PRF-970, folded in from the retired bridge book msgid-pages-catalog) under fn-mpxt-build-faithful (PRF-1018) when the unplaced count is 0, and by fn-ctg-scan-is-seqs-for otherwise. (2) The commit is the fold's step: fn-ctg-index-add-is-the-fold (the index's add on tables that are the fold of the rows is fn-mpxt-build-append for a row carrying the added Message-ID; the step is BOUNDED: below the word limit the entry is placed or counted unplaced, at the limit counted unplaced without a write), so fn-cat-commit{correspondence} preserves the equality; withdraw and redecide keep it by fn-mpxt-build-of-update-nth-same-msgid; the clear and the creator meet the fold's base case by fn-mpxt-clear-is-build-nil and fn-mpxt-create-is-build-nil (7h: the cleared table is canonical, fn-mpxt-set-key-is-a-list). (3) The served refusal: fn-cat-msgid-saturatedp key msgid fn-cat, logic fn-mpxt-build-saturatedp (the fold over a local table, executable and guard-verified), exec the table's own fn-mpxt-saturatedp when KEY is the table's key (fn-mpxt-key-samep, no conses) else the fold over fn-cat$c-rows-below-count (unreachable-in-composition: the host passes the ring's key the open installed; O(count) when reached); KEYSTONE fn-cat-msgid-saturatedp-is-the-outcome over the opened view: the fold over the rows and one more row carrying MSGID leaves the unplaced count unchanged exactly when the refusal does not fire -- the POST that is accepted is indexed (the host boundary switch is paged-history-6's). (4) fn-cat-clear-keyed key: the clear with the ring's key installed (fn-mpxt-key-octets-of-set-key: a 32-octet key reads back as itself); fn-cat-index-health key: (pages count unplaced stuck) of the fold. Scope: the concrete tables only; the served path never evaluates the relation; the heap holds 16 octets an entry and no Message-ID string (the figure's restatement is paged-history-6's).",
-      "milestone": "M5",
-      "requirements": [
-        "STO-027"
-      ],
-      "depends_on": [
-        "PRF-969",
-        "PRF-970",
-        "PRF-1018"
-      ],
-      "assumptions": [],
-      "status": "certified",
-      "evidence": [
-        "books/catalog.lisp",
-        "books/msgid-pages-exec.lisp",
-        "tests/acl2/msgid-pages-exec-tests.lisp",
-        "planning/design-paged-history-2026-09-29.md"
-      ],
-      "progress_note": "2026-09-29 lane paged-history-5: catalog.lisp REPL-admitted end to end on persvati (proof_repl ph5c) and CERTIFIED for real there by the fixture session's --certify-missing (certify_books exit 0; msgid-pages-exec likewise); the fixture loaded 38/38. Landed under the LAND-AND-FIX-FORWARD mode; native served_differential at ea9bf4636 on hbox. Teeth: tests/acl2/msgid-pages-exec-tests mpxe-catalog-witness (fn-cat$a-msgid-seqs on the positive fixture equals the reader's answers); a catalog-level witness (a stobj commit, then fn-cat-msgid-seqs; the refusal firing at a crafted saturated table) is owed by paged-history-6.",
-      "events": [
-        "fn-cat-msgid-seqs{correspondence-bl}",
-        "fn-mpxt-seqs-is-cat-msgid-seqs",
-        "fn-cat-msgid-saturatedp-is-the-outcome",
-        "fn-cat-index-health-is-the-build",
-        "fn-cat-clear-keyed-is-nil"
-      ]
-    },
-    {
-      "id": "PRF-1044",
-      "title": "The served POST's admission with the keyed Message-ID index (lane paged-history-6, row P2 slice 3): fn-pak-post-admission asks the five carried bounds, then THE SWITCH's served refusal fn-cat-msgid-saturatedp under the ring's key; an admitted POST is indexed, and the sixth verdict word :mpx-saturated is a refusal by name before durable acceptance",
-      "statement": "Subjects: books/post-admission-keyed.lisp fn-pak-post-admission (carry profile msgid-octets payload-length group-count charge key fn-cat), THE HOST-CALLED SUBJECT of host/owner-host.lisp fn-owner-post-boundary (host/native/owner.lisp fnn-owner-attempt-post and fnn-owner-attempt-transit through fnn-validate-post-boundary), asked before the duplicate test, the prepare and any staging. KEYSTONE fn-pak-post-admission-ok-is-indexed: when the admission answers :ok and H carries the POST's Message-ID (fn-record-octets-string of the octets), fn-mpxt-build-unplaced of KEY over the catalog's rows and H equals it over the rows (no unplaced row is added), by books/catalog.lisp fn-cat-msgid-saturatedp-is-the-outcome (PRF-1037). fn-pak-post-admission-saturated-is-not-indexed: the sixth word is said exactly when that fold could not place the row. fn-pak-post-admission-is-a-named-verdict: under fn-pvc-carryp the answer is one of the six words of books/store-budget-naming.lisp fn-sbud-post-boundary-verdictp (widened to :mpx-saturated, with its 441 text *fn-sbud-refusal-mpx-saturated*; fn-sbud-post-boundary-refusals-are-distinct and -is-a-printable-line cover it). fn-pak-boundary-never-says-mpx-saturated: the carried boundary never says it. The key: fn-mpxt-key-of-entry of the node secret's current entry, read by the host before the open (host/native/owner.lisp fnn-owner-read-node-secret), installed in the table by the keyed open books/served-catalog-owner-keyed.lisp fn-sca-load-held-rows-keyed (fn-sca-load-held-rows-keyed-is-load-held-rows: the same catalog as fn-sca-load-held-rows, so every served-catalog-join keystone holds of the host's open unchanged) and read for the boundary from the owner's ring (fn-owner-mpx-key), one source. The health line fn-pak-index-health-line renders fn-cat-index-health (pages entries unplaced stuck). Scope: the composed boundary only; saturation itself is the exec book's (PRF-969/1037). Teeth: tests/acl2/post-admission-keyed-tests.lisp (ground :ok witness with the fold's equality; the by-definition pass-through of every bound; the six distinct texts; the hypothesis-removal witness; must-fail of the conclusion without the verdict; the exec path on a live local catalog under the table's own key and another), tests/acl2/catalog-tests.lisp (the switch's exports), tests/test_native_reader_index.py test_ten_thousand_similar_msgids_stay_flat_on_the_keyed_index (a 10,000-row family: entries 10000, unplaced 0, stuck 0, every 1,000th resolves after a restart). The :mpx-saturated branch has no ground witness (a home page saturates past 1,024 rows and its overflow).",
-      "milestone": "M5",
-      "requirements": [
-        "STO-027"
-      ],
-      "depends_on": [
-        "PRF-1037",
-        "PRF-284"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/post-admission-keyed.lisp",
-        "books/served-catalog-owner-keyed.lisp",
-        "books/store-budget-naming.lisp",
-        "host/owner-host.lisp",
-        "host/native/owner.lisp",
-        "tests/acl2/post-admission-keyed-tests.lisp",
-        "tests/acl2/catalog-tests.lisp",
-        "tests/test_native_reader_index.py"
-      ],
-      "progress_note": "2026-09-29 lane paged-history-6: books/post-admission-keyed.lisp (14 forms) and books/served-catalog-owner-keyed.lisp (5 forms) REPL-admitted on persvati (ph6pak, ph6sca); the host's open keyed (fn-owner-install-extended, fn-owner-recover-from-store-open takes the ring's current entry; fn-owner-orcp-load-columns the reclaim's key), the boundary fn-owner-post-boundary over fn-cat, the health line; landed under the LAND-AND-FIX-FORWARD mode 2026-09-29 GPT-6.1 continuation: saturation previously raised a generic host condition and became :refused on the served wire; both native attempt boundary sites now return the exact ACL2 :mpx-saturated word before buffer fill/identity allocation/prepare. nntp-post accepts and names that refusal, with its existing distinctness and uncertainty-separation theorems REPL-admitted at the broadened enum; nntp-post-tests has exact-line and complete positive witnesses. Native crafted-collision/saturation activation and refusal-finder composition remain open; no native verdict transferred.",
-      "events": [
-        "fn-pak-post-admission-ok-is-indexed",
-        "fn-pak-post-admission-saturated-is-not-indexed",
-        "fn-pak-post-admission-is-a-named-verdict",
-        "fn-pak-boundary-never-says-mpx-saturated",
-        "fn-sca-load-held-rows-keyed-is-load-held-rows"
-      ]
-    },
-    {
-      "id": "PRF-1004",
-      "title": "`store inspect --group GROUP' lists LISTGROUP's numbers: the report's rows number exactly fn-nntp-group-range-numbers of the archive, offline and on the running owner alike",
-      "statement": "books/owner-inspect-group.lisp. KEYSTONE fn-oig-rows-number-the-listgroup-numbers: for every group, range and article list, the cars of fn-oig-rows equal fn-nntp-group-range-numbers of the same arguments (books/nntp-projection.lisp, the logical model the served catalog's fn-scat-range-numbers is proven equal to: books/served-catalog.lisp fn-scat-range-numbers-is-group-range-numbers); no hypothesis. fn-oig-report-exit-is-the-membership: the exit the client reads back from the printed octets is 0 exactly when the archive carries the group, 1 for the refusal by name. Subject: fn-oig-report over 1 .. *fn-nntp-max-article-number*, which the host reaches through books/control-evidence.lisp fn-cev-offline-report (host/native/io.lisp fnn-command-inspect-group-offline: the archive the open replayed from the checkpoint and its suffix) and fn-cev-live-report (host/native-live-status-host.lisp fn-native-live-status-host-answer under the owner mutex: the archive the served view carries, books/owner.lisp fn-served-live-archive), both from host/native/operator.lisp fnn-operator-execute-inspect-group. The request rides FNLS frame kind 3 code 11: fn-cev-any-request-decode-of-encode now covers (:inspect-group . GROUP). Work: one report renders the group's rows in one quantum (as the status report's reclaim line walks every article); a per-number cursor over the paged report is the named next step, measure at convergence. Teeth: tests/acl2/owner-inspect-group-tests.lisp (rows in number order out of posting order, two groups, a sub-range, the report's octets, the refusal, both exits, a configured empty group, digits past ten); tests/acl2/control-evidence-tests.lisp (the request round trip at two offsets, the recognizers).",
-      "milestone": "M5",
-      "requirements": [
-        "HST-038"
-      ],
-      "depends_on": [],
-      "assumptions": [],
-      "status": "certified",
-      "evidence": [
-        "books/owner-inspect-group.lisp",
-        "tests/acl2/owner-inspect-group-tests.lisp",
-        "books/control-evidence.lisp",
-        "tests/acl2/control-evidence-tests.lisp"
-      ],
-      "progress_note": "Lane operability-5 (2026-09-29): REPL-admitted on persvati (44 forms; teeth 28 forms, 0 refused); certification and the native tests.test_native_maintenance_live at READY 3.",
-      "events": [
-        "fn-oig-rows-number-the-listgroup-numbers",
-        "fn-oig-report-exit-is-the-membership"
       ]
     },
     {
@@ -17417,6 +17355,36 @@
       ]
     },
     {
+      "id": "PRF-1037",
+      "title": "THE SWITCH: the catalog's Message-ID column is served from the paged table (lane paged-history-5, row P2): fn-cat-msgid-seqs reads a nested fn-mpxt whose logical value is the fold fn-mpxt-build of the rows under the table's own key; the served refusal fn-cat-msgid-saturatedp is the fold's outcome for one more row",
+      "statement": "Subjects: books/catalog.lisp, the concrete stobj fn-cat$c with the paged Message-ID table fn-cat$c-mpx (a nested fn-mpxt, books/msgid-pages-exec), its next generation fn-cat$c-mpx2 and the unplaced count fn-cat$c-unplaced, replacing the hash fn-cat$c-msgids; the abstraction relation fn-cat$corr-base states EQUALITY: (nth 2 c) = fn-mpxt-build key rows, (nth 9 c) = fn-mpxt-build-buffer, (nth 10 c) = fn-mpxt-build-unplaced, key = fn-cat-key-of c (the table's own key octets). Host caller: every served Message-ID finder calls the abstract export fn-cat-msgid-seqs (served-columns fn-scol-find-row, served-catalog fn-scat-msgid-article, served-catalog-owner); its logic fn-cat$a-msgid-seqs is unchanged (design B.6, the 5u method: no served book changes). (1) fn-cat-msgid-seqs{correspondence-bl}: the executable reader -- fn-cat$c-confirm (the twin of fn-mpxt-confirm over the rows array, a candidate at or past the count dropped) of fn-mpxt-candidates of the tag from the nested table, or the degraded scan fn-cat$c-scan-msgid when a row could not be placed -- equals fn-cat-seqs-for under the relation, by KEYSTONE fn-mpxt-seqs-is-cat-msgid-seqs (PRF-970, folded in from the retired bridge book msgid-pages-catalog) under fn-mpxt-build-faithful (PRF-1018) when the unplaced count is 0, and by fn-ctg-scan-is-seqs-for otherwise. (2) The commit is the fold's step: fn-ctg-index-add-is-the-fold (the index's add on tables that are the fold of the rows is fn-mpxt-build-append for a row carrying the added Message-ID; the step is BOUNDED: below the word limit the entry is placed or counted unplaced, at the limit counted unplaced without a write), so fn-cat-commit{correspondence} preserves the equality; withdraw and redecide keep it by fn-mpxt-build-of-update-nth-same-msgid; the clear and the creator meet the fold's base case by fn-mpxt-clear-is-build-nil and fn-mpxt-create-is-build-nil (7h: the cleared table is canonical, fn-mpxt-set-key-is-a-list). (3) The served refusal: fn-cat-msgid-saturatedp key msgid fn-cat, logic fn-mpxt-build-saturatedp (the fold over a local table, executable and guard-verified), exec the table's own fn-mpxt-saturatedp when KEY is the table's key (fn-mpxt-key-samep, no conses) else the fold over fn-cat$c-rows-below-count (unreachable-in-composition: the host passes the ring's key the open installed; O(count) when reached); KEYSTONE fn-cat-msgid-saturatedp-is-the-outcome over the opened view: the fold over the rows and one more row carrying MSGID leaves the unplaced count unchanged exactly when the refusal does not fire -- the POST that is accepted is indexed (the host boundary switch is paged-history-6's). (4) fn-cat-clear-keyed key: the clear with the ring's key installed (fn-mpxt-key-octets-of-set-key: a 32-octet key reads back as itself); fn-cat-index-health key: (pages count unplaced stuck) of the fold. Scope: the concrete tables only; the served path never evaluates the relation; the heap holds 16 octets an entry and no Message-ID string (the figure's restatement is paged-history-6's).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-969",
+        "PRF-970",
+        "PRF-1018"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/catalog.lisp",
+        "books/msgid-pages-exec.lisp",
+        "tests/acl2/msgid-pages-exec-tests.lisp",
+        "planning/design-paged-history-2026-09-29.md"
+      ],
+      "progress_note": "2026-09-29 lane paged-history-5: catalog.lisp REPL-admitted end to end on persvati (proof_repl ph5c) and CERTIFIED for real there by the fixture session's --certify-missing (certify_books exit 0; msgid-pages-exec likewise); the fixture loaded 38/38. Landed under the LAND-AND-FIX-FORWARD mode; native served_differential at ea9bf4636 on hbox. Teeth: tests/acl2/msgid-pages-exec-tests mpxe-catalog-witness (fn-cat$a-msgid-seqs on the positive fixture equals the reader's answers); a catalog-level witness (a stobj commit, then fn-cat-msgid-seqs; the refusal firing at a crafted saturated table) is owed by paged-history-6.",
+      "events": [
+        "fn-cat-msgid-seqs{correspondence-bl}",
+        "fn-mpxt-seqs-is-cat-msgid-seqs",
+        "fn-cat-msgid-saturatedp-is-the-outcome",
+        "fn-cat-index-health-is-the-build",
+        "fn-cat-clear-keyed-is-nil"
+      ]
+    },
+    {
       "id": "PRF-1039",
       "title": "fn-bpnr-publish-outcome reports :pending exactly while the generation publication loop has not stopped, and the three stopped outcomes name the phase the loop stopped at",
       "statement": "books/bp-node-rotation-codec.lisp, called by host/native/bp-service.lisp's fnn-bps-publish-generation after its loop (start :directory, fn-bpnr-publish-step under each observed result, until fn-bpnr-publish-action answers :done). fn-bpnr-publish-run is that loop's phase after a result sequence; fn-bpnr-publish-phasep its seven phases, preserved by the step and the run. KEYSTONE fn-bpnr-publish-outcome-is-pending-exactly-while-the-loop-runs, two-sided: over every run from :directory the outcome is :pending iff the action is not :done, and a stopped run's outcome is one of :durable, :refused, :uncertain (the host reads the outcome only after the loop returned, so :pending names a cut loop and nothing else). fn-bpnr-publish-outcome-names-the-stopped-phase: two stopped runs report the same outcome iff they stopped at the same phase (:durable at :idle, :refused at :refused, :uncertain at :fenced-marker). fn-bpnr-publish-action-of-run-is-dispatched: the host's fnn-fault branch (an action outside the five it dispatches) is unreachable. fn-bpnr-publish-action/-step/-outcome guard-verified. Teeth: tests/acl2/bp-node-rotation-codec-tests.lisp (each stopped run by its result sequence, a retried transient stage error, a running loop at :pending; the start-at-:directory hypothesis and the both-stopped hypothesis each removed).",
@@ -17559,6 +17527,56 @@
       "events": [
         "fn-bpnf-family-next-selects-exactly-the-first-ready-family",
         "fn-bpnf-family-next-aux-answers-the-first-ready-row"
+      ]
+    },
+    {
+      "id": "PRF-1050",
+      "title": "Snapshot blessing is accepted exactly when the completion marker, read-only open and node-secret observations hold; every failure names its first missing observation",
+      "statement": "Host-called fn-osn-bless-word in host/native/io.lisp fnn-command-store-bless-snapshot. KEYSTONE fn-osn-bless-word-blessed-exactly-when: blessed iff markerp and open=:ok and keysp; missing marker answers :snapshot-incomplete, otherwise non-ok open answers :open-refused, otherwise missing key answers :no-node-secret. fn-osn-absent-marker-never-opens makes the absent-marker result independent of an open observation; host checks fn-osn-bless-open-needed before opening. This proves the decision over supplied observations, not the snapshot producer's capture, freshness, or the disk/key implementations.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-039"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/owner-snapshot-request.lisp",
+        "tests/acl2/owner-snapshot-request-tests.lisp"
+      ],
+      "progress_note": "Claim inherited from operability-12. S7a host wiring completed by gpt61-operability; native observation pending union image. No running snapshot producer claim."
+    },
+    {
+      "id": "PRF-1044",
+      "title": "The served POST's admission with the keyed Message-ID index (lane paged-history-6, row P2 slice 3): fn-pak-post-admission asks the five carried bounds, then THE SWITCH's served refusal fn-cat-msgid-saturatedp under the ring's key; an admitted POST is indexed, and the sixth verdict word :mpx-saturated is a refusal by name before durable acceptance",
+      "statement": "Subjects: books/post-admission-keyed.lisp fn-pak-post-admission (carry profile msgid-octets payload-length group-count charge key fn-cat), THE HOST-CALLED SUBJECT of host/owner-host.lisp fn-owner-post-boundary (host/native/owner.lisp fnn-owner-attempt-post and fnn-owner-attempt-transit through fnn-validate-post-boundary), asked before the duplicate test, the prepare and any staging. KEYSTONE fn-pak-post-admission-ok-is-indexed: when the admission answers :ok and H carries the POST's Message-ID (fn-record-octets-string of the octets), fn-mpxt-build-unplaced of KEY over the catalog's rows and H equals it over the rows (no unplaced row is added), by books/catalog.lisp fn-cat-msgid-saturatedp-is-the-outcome (PRF-1037). fn-pak-post-admission-saturated-is-not-indexed: the sixth word is said exactly when that fold could not place the row. fn-pak-post-admission-is-a-named-verdict: under fn-pvc-carryp the answer is one of the six words of books/store-budget-naming.lisp fn-sbud-post-boundary-verdictp (widened to :mpx-saturated, with its 441 text *fn-sbud-refusal-mpx-saturated*; fn-sbud-post-boundary-refusals-are-distinct and -is-a-printable-line cover it). fn-pak-boundary-never-says-mpx-saturated: the carried boundary never says it. The key: fn-mpxt-key-of-entry of the node secret's current entry, read by the host before the open (host/native/owner.lisp fnn-owner-read-node-secret), installed in the table by the keyed open books/served-catalog-owner-keyed.lisp fn-sca-load-held-rows-keyed (fn-sca-load-held-rows-keyed-is-load-held-rows: the same catalog as fn-sca-load-held-rows, so every served-catalog-join keystone holds of the host's open unchanged) and read for the boundary from the owner's ring (fn-owner-mpx-key), one source. The health line fn-pak-index-health-line renders fn-cat-index-health (pages entries unplaced stuck). Scope: the composed boundary only; saturation itself is the exec book's (PRF-969/1037). Teeth: tests/acl2/post-admission-keyed-tests.lisp (ground :ok witness with the fold's equality; the by-definition pass-through of every bound; the six distinct texts; the hypothesis-removal witness; must-fail of the conclusion without the verdict; the exec path on a live local catalog under the table's own key and another), tests/acl2/catalog-tests.lisp (the switch's exports), tests/test_native_reader_index.py test_ten_thousand_similar_msgids_stay_flat_on_the_keyed_index (a 10,000-row family: entries 10000, unplaced 0, stuck 0, every 1,000th resolves after a restart). The :mpx-saturated branch has no ground witness (a home page saturates past 1,024 rows and its overflow).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-1037",
+        "PRF-284"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/post-admission-keyed.lisp",
+        "books/served-catalog-owner-keyed.lisp",
+        "books/store-budget-naming.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "tests/acl2/post-admission-keyed-tests.lisp",
+        "tests/acl2/catalog-tests.lisp",
+        "tests/test_native_reader_index.py"
+      ],
+      "progress_note": "2026-09-29 lane paged-history-6: books/post-admission-keyed.lisp (14 forms) and books/served-catalog-owner-keyed.lisp (5 forms) REPL-admitted on persvati (ph6pak, ph6sca); the host's open keyed (fn-owner-install-extended, fn-owner-recover-from-store-open takes the ring's current entry; fn-owner-orcp-load-columns the reclaim's key), the boundary fn-owner-post-boundary over fn-cat, the health line; landed under the LAND-AND-FIX-FORWARD mode 2026-09-29 GPT-6.1 continuation: saturation previously raised a generic host condition and became :refused on the served wire; both native attempt boundary sites now return the exact ACL2 :mpx-saturated word before buffer fill/identity allocation/prepare. nntp-post accepts and names that refusal, with its existing distinctness and uncertainty-separation theorems REPL-admitted at the broadened enum; nntp-post-tests has exact-line and complete positive witnesses. Native crafted-collision/saturation activation and refusal-finder composition remain open; no native verdict transferred.",
+      "events": [
+        "fn-pak-post-admission-ok-is-indexed",
+        "fn-pak-post-admission-saturated-is-not-indexed",
+        "fn-pak-post-admission-is-a-named-verdict",
+        "fn-pak-boundary-never-says-mpx-saturated",
+        "fn-sca-load-held-rows-keyed-is-load-held-rows"
       ]
     }
   ]

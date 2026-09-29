@@ -5614,6 +5614,28 @@
         "tests/test_native_maintenance_live.py"
       ],
       "implementation_note": "Lane operability-2 (row S3, 2026-09-29): PKT-868's owner-request route (the administrative vector over the control socket, ACL2's liveness decision) carries `inspect request ID'; `recover' with a live owner is a status read; the stopped report is fn-omr-stopped-report over config.json, the checkpoint's 37-octet header and lstat sizes. `store export' on the running owner is the row's remaining item (S3b)."
+    },
+    {
+      "id": "HST-039",
+      "title": "Offline snapshot blessing requires a completion marker before read-only open, the copy's own accepted lineage and a valid node secret; first failure is named, never inferred fresh",
+      "specification": "specs/host.md#offline-snapshot-blessing",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-1050"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-snapshot-request.lisp",
+        "tests/acl2/owner-snapshot-request-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_snapshot_bless.py"
+      ],
+      "implementation_note": "S7a checker implemented; native evidence pending matching union image. S7 running producer remains separate, unfinished."
     }
   ]
 }

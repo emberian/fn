@@ -4101,6 +4101,26 @@
 (definterface fn-oex-status-no-owner-line
   :class :common-lisp-compliant)
 
+;; books/owner-snapshot-request.lisp (row S7, PRF-1050): the running owner's
+;; snapshot request and status (host/native/admin.lisp), the blessing's
+;; verdict (host/native/io.lisp fnn-command-store-bless-snapshot), the
+;; marker's text and the client's lines (host/native/operator.lisp).
+(definterface fn-nop-parse-store
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-open-needed
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-word
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-status
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-line
+  :class :common-lisp-compliant
+  :kinds ((dir stringp) (transactions natp)))
+
 ;; books/native-control-reason.lisp
 
 ; host/native/control.lisp dispatches it (lane correctness-remainder).

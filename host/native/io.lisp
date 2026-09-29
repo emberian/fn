@@ -4423,6 +4423,29 @@ by fn-bs-imp-classify."
         (fnn-out "imported records=~d configuration=~d" count (length configs))
         +fnn-exit-ok+))))
 
+(defun fnn-command-store-bless-snapshot (dir)
+  "S7a: read-only validation of an existing copy, not a snapshot producer.
+
+ACL2 decides which observation is needed, its first refusal, the report and
+exit.  A regular SNAPSHOT is a producer completion observation, not evidence
+that this host produced an atomic copy.  The read-only open checks the copy's
+own lineage; no observation of the currently configured store is used."
+  (let* ((markerp (and (fnn-check-regular (fnn-join dir "SNAPSHOT")) t))
+         (opened :never-observed) (count 0) (keysp nil))
+    (when (fnn-core 'fn-osn-bless-open-needed markerp)
+      (handler-case
+          (multiple-value-bind (store records) (fnn-open-live-store dir nil)
+            (unwind-protect
+                 (setf opened :ok count records
+                       keysp (and (fnn-node-secret-read-entry
+                                   (fnn-node-secret-path store) "node secret") t))
+              (fnn-store-close store)))
+        (fnn-store-open-refusal (condition)
+          (setf opened (fnn-message condition)))))
+    (let ((word (fnn-core 'fn-osn-bless-word markerp opened keysp)))
+      (fnn-out "~a" (fnn-core 'fn-osn-bless-line word dir opened count))
+      (fnn-core 'fn-outcome-code (fnn-core 'fn-osn-bless-status word)))))
+
 (defun fnn-read-up-to (fd n)
   "At most N octets from FD's position, fewer only at end of file."
   (let ((data (fnn-make-octets n)) (at 0))
@@ -8019,6 +8042,17 @@ segment' (tests/test_native_topic_local.py)."
                  ((string= command "digest") (fnn-command-store-digest root))
                  ((string= command "journal") (fnn-command-store-journal root))
                  ((string= command "export") (need 4) (fnn-command-store-export root (first rest)))
+                 ((string= command "bless-snapshot")
+                  ;; The direct store entry reuses the operator's grammar.
+                  ;; ROOT is the CLI context, never the copy that is opened.
+                  (let ((plan (fnn-core 'fn-nop-parse-store (cons command rest) nil)))
+                    (if (eq (fnn-core 'fn-native-operator-host-result-status plan) :accepted)
+                        (fnn-command-store-bless-snapshot
+                         (fnn-octets-string
+                          (fnn-core 'fn-native-operator-host-result-archive-path-octets plan)))
+                      (progn
+                        (fnn-operator-emit-result plan)
+                        (fnn-core 'fn-native-operator-host-result-exit-code plan)))))
                  ((string= command "import") (need 4) (fnn-command-store-import root (first rest) nil))
                  ((string= command "retention") (fnn-command-retention root))
                  ((string= command "compression") (fnn-command-compression root))
