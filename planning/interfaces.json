@@ -5,7 +5,7 @@
     "declared": 1224,
     "declared_and_dispatched": 1207,
     "guard_verified": 546,
-    "with_keystone": 153
+    "with_keystone": 155
   },
   "entries": [
     {
@@ -19860,7 +19860,12 @@
         ]
       ],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-xrt-quiet-files-are-unnamed",
+          "via": "fn-xrt-quiet-files"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -19889,7 +19894,12 @@
         ]
       ],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-xrt-reseat-checkpoint-frame-keeps-the-arena",
+          "via": "fn-xrt-reseat-checkpoint-frame"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -21473,7 +21483,12 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "program",
-      "kinds": [],
+      "kinds": [
+        [
+          "octet-records",
+          "fn-octet-list-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -21489,7 +21504,12 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "program",
-      "kinds": [],
+      "kinds": [
+        [
+          "octet-records",
+          "fn-octet-list-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,

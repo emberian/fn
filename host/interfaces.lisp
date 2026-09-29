@@ -4211,7 +4211,7 @@
 
 ; host/native/admin.lisp dispatches it (lane online-reclaim).
 (definterface fn-native-admin-host-reclaim-mode
-  :class ::program)
+  :class :ideal)
 
 ;; host/native-control-host.lisp
 
@@ -4374,12 +4374,11 @@
 
 ; host/native/io.lisp, host/native/owner.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
 (definterface fn-his-file-octets
-  :class ::program
-  :exempt ((stream-octets "a count of octets (the stream region's length), not bytes")))
+  :class :common-lisp-compliant)
 
 ; host/native/io.lisp, host/native/owner.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
 (definterface fn-his-stream-free
-  :class ::program)
+  :class :common-lisp-compliant)
 
 ; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
 (definterface fn-store-cfg-next-txid
