@@ -10,10 +10,11 @@ draws in the same order.  A later change to the grammar edits the table and
 this file's expectation together, and names the difference here.
 
 Named differences (the table has them, the grammar does not send them):
-fuzz_nntp.UNFUZZED_ROWS -- XFNCATCHUP and XFN-ZARTICLE; QUIT and COMPRESS are
+fuzz_nntp.UNFUZZED_ROWS -- XFNCATCHUP; QUIT and COMPRESS are
 sent in the fuzzer's own spellings (fuzz_nntp.RAW_ROWS), not through their
 rows.  The AUTHINFO SASL mechanism choice follows the table (sasl-4's SCRAM
-additions).
+additions).  XFN-ZARTICLE (NNT-055) takes the last hundredth of the
+ARTICLE family's share (compress-10), through its row's grammar.
 
     python3 -m unittest tests.test_protocol_fuzz_grammar
 """
@@ -51,7 +52,7 @@ class LegacyGen(fuzz_nntp.Gen):
             return [c(words)]
         if r < 0.24:
             return [c([self.choice([b"LAST", b"NEXT"])])]
-        if r < 0.36:
+        if r < 0.35:
             verb = self.choice([b"ARTICLE", b"HEAD", b"BODY", b"STAT"])
             arg = self.rng.random()
             words = [verb]
@@ -60,6 +61,11 @@ class LegacyGen(fuzz_nntp.Gen):
             elif arg < 0.8:
                 words.append(self.choice(RANGES))
             return [c(words)]
+        if r < 0.36:
+            # compress-10: XFN-ZARTICLE (NNT-055, named difference).
+            return [c([b"XFN-ZARTICLE", self.msgid(),
+                       self.choice([b"845aa5e18680ef219a9b0f0d0b959cd8886d5eabc12236aae19f301aed9de75e",
+                                    b"00", b"x"])])]
         if r < 0.44:
             kw = self.choice([b"", b"ACTIVE", b"NEWSGROUPS", b"OVERVIEW.FMT", b"HEADERS",
                               b"ACTIVE.TIMES", b"DISTRIB.PATS", b"MOTD", b"COUNTS", b"SUBSCRIPTIONS",
@@ -158,7 +164,8 @@ class ProtocolFuzzGrammarTests(unittest.TestCase):
         sent = {"CAPABILITIES", "MODE", "GROUP", "LISTGROUP", "LAST", "NEXT",
                 "ARTICLE", "HEAD", "BODY", "STAT", "LIST", "OVER", "XOVER", "HDR",
                 "XHDR", "XPAT", "NEWGROUPS", "NEWNEWS", "HELP", "DATE", "POST",
-                "IHAVE", "CHECK", "TAKETHIS", "AUTHINFO", "XREDEEM", "STARTTLS"}
+                "IHAVE", "CHECK", "TAKETHIS", "AUTHINFO", "XREDEEM", "STARTTLS",
+                "XFN-ZARTICLE"}
         with_fuzz = {n for n, r in table.items() if r["fuzz"] is not None}
         self.assertEqual(with_fuzz - sent,
                          set(fuzz_nntp.UNFUZZED_ROWS) | set(fuzz_nntp.RAW_ROWS))

@@ -212,11 +212,7 @@ import protocol_emit  # noqa: E402  (the table, read without evaluating a book)
 
 PROTOCOL = {row["name"]: row for row in protocol_emit.load()["rows"]}
 # Table rows with a :fuzz production that no step sends (named, not silent).
-# XFN-ZARTICLE (NNT-055, lanes compress-5/-6): its answer is a DEFLATE block
-# in a length-counted body, which this transcript reader does not parse; the
-# served command is exercised by tests/test_native_compression.py's zarticle
-# tests, not by this fuzzer (an open gap, compress-9's LANEDUMP).
-UNFUZZED_ROWS = ["XFNCATCHUP", "XFN-ZARTICLE"]
+UNFUZZED_ROWS = ["XFNCATCHUP"]
 # Rows the fuzzer sends in its own spellings (QUIT_SPELLINGS: lower case, an
 # argument, no mutation; COMPRESS as UNKNOWN_VERBS' "COMPRESS DEFLATE", whose
 # 206 would switch the stream to DEFLATE, RFC 8054 section 2.2.2), not
@@ -422,8 +418,10 @@ class Gen:
             return [self.cmd("LISTGROUP")]
         if r < 0.24:
             return [self.cmd(self.family("LAST", "NEXT"))]
-        if r < 0.36:
+        if r < 0.35:
             return [self.cmd(self.family("ARTICLE", "HEAD", "BODY", "STAT"))]
+        if r < 0.36:
+            return [self.cmd("XFN-ZARTICLE")]
         if r < 0.44:
             return [self.cmd("LIST")]
         if r < 0.50:
@@ -503,7 +501,10 @@ class Gen:
 # ---------------------------------------------------------------------------
 # Reply-stream shape (RFC 3977 section 3.1 and 3.1.1)
 
-MULTILINE = {100, 101, 215, 220, 221, 222, 224, 225, 230, 231}
+# 229 is XFN-ZARTICLE's stored block (fn extension, NNT-055): escaped so it
+# carries no NUL, CR or LF, cut into lines and dot-stuffed, a block like 220's
+# (docs/extensions/nntp-compress-dict.md, "Negotiation").
+MULTILINE = {100, 101, 215, 220, 221, 222, 224, 225, 229, 230, 231}
 STATUS = re.compile(rb"^[1-5][0-9][0-9](?: |$)")
 
 
@@ -854,7 +855,8 @@ def campaign_diff(args):
     if args.store_articles:
         # A store-backed reader: several articles in two groups, dot lines.
         built = Path(tempfile.mkdtemp(prefix="d", dir=args.scratch))
-        store, _, store_ids = build_base_store(image, built, args.store_articles)
+        store, _, store_ids = build_base_store(image, built, args.store_articles,
+                                               args.store_compress_min)
         ids = store_ids + ids
     reader = Reader(image, store)
     deadline = time.monotonic() + args.seconds
@@ -896,7 +898,8 @@ def campaign_diff(args):
                 cls, sig, detail = verdict
                 record = {"campaign": "diff", "store": str(store) if store else "-", "seed": case_seed,
                           "class": cls, "detail": detail, "chunks_hex": hexs(cut),
-                          "model_chunks_hex": hexs(model_cut), "gap": gap}
+                          "model_chunks_hex": hexs(model_cut), "gap": gap,
+                          "store_compress_min": args.store_compress_min}
                 if stats.finding(cls, sig, detail, record):
                     print("FINDING {} seed={} {}".format(sig, case_seed, detail[:300]), flush=True)
                     if not reader.alive():
@@ -1355,12 +1358,23 @@ def store_payload(n):
             % (n, n, body))
 
 
-def build_base_store(image, scratch, articles):
-    """init + ARTICLES posts + export; (base, archive, ids)."""
+def build_base_store(image, scratch, articles, compress_min=None):
+    """init + ARTICLES posts + export; (base, archive, ids).  With
+    COMPRESS_MIN the store's compress-min-octets policy is set first, so a
+    payload that long is stored compressed under the shipped dictionary and
+    XFN-ZARTICLE can answer 229 (NNT-055)."""
     base = scratch / "base"
     init = run_image(image, ["store", base, "init", "fn.test", "fn.letters"])
     if init.returncode != 0:
         raise RuntimeError(init.stderr.decode())
+    if compress_min is not None:
+        config = scratch / "fn.toml"
+        config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = 1\n'
+                          '[control]\npath = "%s"\n' % (base, scratch / "c.sock"))
+        row = run_image(image, ["operator", config, "policy", "set",
+                                "compress-min-octets", str(compress_min)])
+        if row.returncode != 0:
+            raise RuntimeError("policy set: " + row.stderr.decode())
     ids = []
     payload = scratch / "payload"
     for n in range(articles):
@@ -1651,6 +1665,7 @@ def main(argv=None):
         if name == "diff":
             p.add_argument("--store", default=None)
             p.add_argument("--store-articles", type=int, default=0)
+            p.add_argument("--store-compress-min", type=int, default=None)
             p.add_argument("--ids", nargs="*", default=[])
             p.add_argument("--cuts", type=int, default=4)
             p.add_argument("--every-cut-max", type=int, default=96)
