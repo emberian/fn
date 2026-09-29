@@ -998,6 +998,7 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
 def compatible_partial_choices(
     root: Path, options: dict[str, list[tuple[Path, dict]]], acl2: Path,
     pair_checker=cert_alists.acl2_certificate_pairs,
+    prefer: Iterable[str] = (),
 ) -> dict[str, tuple[Path, dict]]:
     """Choose a partial set whose ACL2 certificate alists actually agree.
 
@@ -1007,6 +1008,16 @@ def compatible_partial_choices(
     cached pair when possible, and otherwise recertify the conflicting parent
     and its cached ancestors.  The last step is conservative: a new child's
     book-hash cannot be promised before it is certified.
+
+    That greedy search can drop a book for good although a later move made a
+    cached pair of it fit (sasl-3, 2026-09-29: two cached versions of
+    books/consumer-reason, the three image-world roots dropped while the set
+    finally chosen fit them).  So every result is completed (`complete`: any
+    dropped book one of whose pairs fits the chosen set comes back), and a
+    PREFERred book (the caller's roots; by default the books nothing else
+    here includes) that is still missing gets another search started from each
+    of its pairs with every dependency on a version that pair agrees with.
+    The answer keeps the most preferred books, then the most books.
     """
     indexed: list[tuple[str, Path, dict]] = []
     ids: dict[str, list[int]] = {}
@@ -1023,8 +1034,6 @@ def compatible_partial_choices(
                          pairs, acl2, root)
     if set(facts) != set(pairs):
         raise ValueError("ACL2 certificate-alist probe omitted a candidate pair")
-    selected = {name: candidates[0] for name, candidates in ids.items() if candidates}
-
     def conflicts(chosen: dict[str, int]) -> list[tuple[str, str]]:
         bad = []
         for parent in sorted(chosen):
@@ -1037,40 +1046,80 @@ def compatible_partial_choices(
                     raise ValueError("ACL2 could not read a cached certificate alist")
         return bad
 
-    seen: set[tuple[tuple[str, int], ...]] = set()
-    steps = 0
-    while True:
-        bad = conflicts(selected)
-        if not bad:
-            break
-        seen.add(tuple(sorted(selected.items())))
-        parent, child = bad[0]
-        best: dict[str, int] | None = None
-        best_count = len(bad) + 1
-        if steps < 8 * len(indexed) + 32:
-            for name in (child, parent):
-                for candidate in ids.get(name, []):
-                    if selected.get(name) == candidate:
-                        continue
+    def search(selected: dict[str, int]) -> dict[str, int]:
+        seen: set[tuple[tuple[str, int], ...]] = set()
+        steps = 0
+        while True:
+            bad = conflicts(selected)
+            if not bad:
+                break
+            seen.add(tuple(sorted(selected.items())))
+            parent, child = bad[0]
+            best: dict[str, int] | None = None
+            best_count = len(bad) + 1
+            if steps < 8 * len(indexed) + 32:
+                for name in (child, parent):
+                    for candidate in ids.get(name, []):
+                        if selected.get(name) == candidate:
+                            continue
+                        trial = dict(selected)
+                        trial[name] = candidate
+                        if tuple(sorted(trial.items())) in seen:
+                            continue
+                        count = len(conflicts(trial))
+                        if count < best_count:
+                            best, best_count = trial, count
+            if best is not None:
+                selected = best
+                steps += 1
+                continue
+            # No cached pair can satisfy this parent.  Its cached ancestors must
+            # also be authored afresh; their stored hash for it may differ.
+            selected = {name: candidate for name, candidate in selected.items()
+                        if name != parent and parent not in dependencies[name]}
+            steps += 1
+        return selected
+
+    def complete(selected: dict[str, int]) -> dict[str, int]:
+        changed = True
+        while changed:
+            changed = False
+            for name in sorted(ids, key=lambda n: (len(dependencies[n]), n)):
+                if name in selected:
+                    continue
+                for candidate in ids[name]:
                     trial = dict(selected)
                     trial[name] = candidate
-                    if tuple(sorted(trial.items())) in seen:
-                        continue
-                    count = len(conflicts(trial))
-                    if count < best_count:
-                        best, best_count = trial, count
-        if best is not None:
-            selected = best
-            steps += 1
-            continue
-        # No cached pair can satisfy this parent.  Its cached ancestors must
-        # also be authored afresh; their stored hash for it may differ.
-        selected = {name: candidate for name, candidate in selected.items()
-                    if name != parent and parent not in dependencies[name]}
-        steps += 1
+                    if not conflicts(trial):
+                        selected, changed = trial, True
+                        break
+        return selected
 
+    wanted = [name for name in (prefer or [n for n in options
+                                           if not any(n in dependencies[o] for o in options)])
+              if ids.get(name)]
+
+    def score(chosen: dict[str, int]) -> tuple[int, int]:
+        return (sum(1 for name in wanted if name in chosen), len(chosen))
+
+    best = complete(search({name: candidates[0] for name, candidates in ids.items()
+                            if candidates}))
+    for name in wanted:
+        if name in best:
+            continue
+        for candidate in ids[name]:
+            start = {n: c[0] for n, c in ids.items() if c}
+            start[name] = candidate
+            for child in dependencies[name]:
+                agreeing = [c for c in ids.get(child, [])
+                            if facts[(candidate, c)] != (True, False)]
+                if agreeing:
+                    start[child] = agreeing[0]
+            trial = complete(search(start))
+            if score(trial) > score(best):
+                best = trial
     return {name: (indexed[candidate][1], indexed[candidate][2])
-            for name, candidate in selected.items()}
+            for name, candidate in best.items()}
 
 
 def install_partial(root: Path, cache: Path, roots: Iterable[str],
@@ -1130,7 +1179,8 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
                          "certificate-alist compatibility")
     if pair_checker is None:
         pair_checker = cert_alists.acl2_certificate_pairs
-    selected = compatible_partial_choices(root, options, acl2, pair_checker)
+    selected = compatible_partial_choices(root, options, acl2, pair_checker,
+                                          prefer=roots)
     for name in sorted(required):
         source = root / f"{name}.lisp"
         chosen = selected.get(name)

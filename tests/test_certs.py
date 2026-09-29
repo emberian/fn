@@ -1410,6 +1410,37 @@ class PartialInstallTests(unittest.TestCase):
             self.assertEqual(selected["books/mid"][0], Path("mid-old"))
             self.assertEqual(selected["tests/acl2/mid-tests"][0], Path("test"))
 
+    def test_a_root_that_fits_some_version_of_its_leaf_is_never_dropped(self):
+        """Two cached versions of a leaf; a root fits only one of them.
+
+        sasl-3 (2026-09-29): two versions of books/consumer-reason in hbox's
+        cache; the greedy search dropped the three image-world roots for good
+        and chose 666 of 667 although they fit the set it chose.  The shape
+        here is the smallest one the old search got wrong (it kept base
+        alone)."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = worktree(directory)
+            options = {
+                "books/base": [(Path("base-new"), {}), (Path("base-old"), {})],
+                "books/mid": [(Path("mid-stale"), {}), (Path("mid-fits"), {})],
+                "tests/acl2/mid-tests": [(Path("test-stale"), {}), (Path("test-fits"), {})],
+            }
+            fits = {("mid-fits", "base-new"), ("test-fits", "base-new"),
+                    ("test-fits", "base-old"), ("test-fits", "mid-fits"),
+                    ("test-fits", "mid-stale"), ("test-stale", "mid-stale")}
+
+            def probe(paths, pairs, acl2, probe_root):
+                return {pair: (True, (paths[pair[0]].parent.name,
+                                      paths[pair[1]].parent.name) in fits)
+                        for pair in pairs}
+
+            selected = certs.compatible_partial_choices(
+                root, options, Path("acl2"), pair_checker=probe,
+                prefer=["tests/acl2/mid-tests"])
+            self.assertEqual({name: str(entry[0]) for name, entry in selected.items()},
+                             {"books/base": "base-new", "books/mid": "mid-fits",
+                              "tests/acl2/mid-tests": "test-fits"})
+
     def test_incompatible_cached_parent_is_recertified_if_no_child_matches(self):
         with tempfile.TemporaryDirectory() as one, \
                 tempfile.TemporaryDirectory() as two, \
