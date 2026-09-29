@@ -25,7 +25,7 @@ class HboxNativeDryRunTests(unittest.TestCase):
                      "tests.test_native_owner")
         self.assertEqual(answer.returncode, 0, answer.stderr)
         self.assertEqual(image_lines(answer.stdout),
-                         [f"step image-set python3 $S/bin/image_set.py link {sha} $T "
+                         [f"step image-set python3 $S/bin/image_set.py link --base /tank/fn/images {sha} $T "
                           "developer production"])
         self.assertNotIn("certify_books", answer.stdout)
         self.assertIn(f"--source {sha}", answer.stdout)
@@ -71,6 +71,7 @@ class HboxNativeDryRunTests(unittest.TestCase):
                                 % (tool, log))
                 stub.chmod(0o755)
             env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}"}
+            env["FN_HBOX"] = "hbox"
             for rev, keeps in ((".", "--exclude=*.cert"), ("HEAD", "! -name '*.cert'")):
                 log.write_text("")
                 done = subprocess.run(["sh", str(SCRIPT), "--detach", "--no-build", "--name", "t",
@@ -381,6 +382,7 @@ class IdentityTests(unittest.TestCase):
             head + '\necho "COPY=$FN_HBOX_NATIVE_COPY"\necho "RUNNING=$0"\necho "HERE=$HERE"\n')
         shutil.copy(ROOT / "tools" / "wait_for.sh", tree / "tools" / "wait_for.sh")
         shutil.copy(ROOT / "tools" / "boxes.sh", tree / "tools" / "boxes.sh")
+        shutil.copy(ROOT / "tools" / "native_box.sh", tree / "tools" / "native_box.sh")
         shutil.copy(ROOT / "tools" / "image_set.py", tree / "tools" / "image_set.py")
         env = {k: v for k, v in os.environ.items() if not k.startswith("FN_HBOX_NATIVE_")}
         probe = subprocess.run(["sh", str(tree / "tools" / "hbox_native.sh")], cwd=ROOT,
@@ -447,6 +449,61 @@ class GatedModuleTests(unittest.TestCase):
         _, refusals, notes = native_env.plan(["developer"], {}, ["tests.test_native_consumer_e2"],
                                              allow_skips=True)
         self.assertFalse(any("gated by" in r for r in refusals), refusals)
+
+
+class BoxRowTests(unittest.TestCase):
+    """Each build box's row (obstructions-7 item 67): hbox_native used hbox's
+    cache and swarm-build whatever box FN_HBOX named (compress-8)."""
+
+    def row(self, box, home=None):
+        out = subprocess.run(["sh", str(ROOT / "tools" / "native_box.sh"), box, str(ROOT)]
+                             + ([home] if home else []),
+                             capture_output=True, text=True, timeout=60)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return dict(line.split("=", 1) for line in out.stdout.splitlines())
+
+    def test_hbox_row(self):
+        row = self.row("hbox")
+        self.assertEqual(row, {"BASE": "'/tank/fn/scratch'", "CACHE": "'/tank/fn/certcache'",
+                               "WRAP": "'swarm-build'", "IMAGES_BASE": "'/tank/fn/images'",
+                               "OPENSSL": "'bundled'"})
+        script = dry("--box", "hbox", "HEAD", "tests.test_native_owner").stdout
+        self.assertIn("S=/tank/fn/scratch/t/native-l", script)
+        self.assertIn("CACHE=/tank/fn/certcache", script)
+        self.assertIn("step certify swarm-build python3", script)
+        self.assertIn("openssl-3.5.8/bin/openssl", script)
+        self.assertIn("flock /tank/fn/scratch/.hbox-native-bigmem.lock",
+                      dry("--box", "hbox", "--mem", "64G", "HEAD", "tests.test_native_owner").stdout)
+
+    def test_persvati_row(self):
+        row = self.row("persvati")
+        self.assertEqual(row, {"BASE": "'~/fn-gates'", "CACHE": "'~/fn-certcache'",
+                               "WRAP": "''", "IMAGES_BASE": "''", "OPENSSL": "'system'"})
+        resolved = self.row("persvati", "/home/u")
+        self.assertEqual((resolved["BASE"], resolved["CACHE"]),
+                         ("'/home/u/fn-gates'", "'/home/u/fn-certcache'"))
+        answer = dry("--box", "persvati", "HEAD", "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        script = answer.stdout
+        self.assertIn("S=~/fn-gates/t/native-l", script)
+        self.assertIn("CACHE=~/fn-certcache", script)
+        self.assertNotIn("swarm-build", script)
+        self.assertNotIn("openssl-3.5.8", script)
+        self.assertIn("command -v openssl", script)
+        # No published image sets there: refused up front, naming hbox.
+        refused = dry("--box", "persvati", "--image-set", "a" * 40, "HEAD",
+                      "tests.test_native_owner")
+        self.assertEqual(refused.returncode, 2)
+        self.assertIn("published on hbox", refused.stderr)
+
+    def test_auto_and_unknown(self):
+        # A dry run never ssh-es to pick: auto reads as hbox.
+        self.assertIn("S=/tank/fn/scratch/", dry("--box", "auto", "HEAD",
+                                                 "tests.test_native_owner").stdout)
+        self.assertEqual(dry("--box", "laptop", "HEAD", "tests.test_native_owner").returncode, 2)
+        out = subprocess.run(["sh", str(ROOT / "tools" / "native_box.sh"), "laptop", str(ROOT)],
+                             capture_output=True, text=True, timeout=60)
+        self.assertEqual(out.returncode, 2)
 
 
 if __name__ == "__main__":
