@@ -1473,7 +1473,7 @@
   :class ::program)
 
 (definterface fn-owner-exposure-install-set
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-exposure-open
   :class ::program
@@ -1575,7 +1575,10 @@
   :class ::program)
 
 (definterface fn-owner-io
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-key-statement-event
   :class ::program)
@@ -1606,7 +1609,16 @@
   :class :common-lisp-compliant)
 
 (definterface fn-owner-known-abort
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
+
+(definterface fn-owner-limit-carried
+  :class ::program)
+
+(definterface fn-owner-limit-decided
+  :class ::program)
 
 (definterface fn-owner-live-post-config
   :class :common-lisp-compliant)
@@ -1675,7 +1687,10 @@
   :class ::program)
 
 (definterface fn-owner-prepare-consumer
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-prepare-identity
   :class :common-lisp-compliant)
@@ -1685,7 +1700,10 @@
   :kinds ((id-octets fn-cbor-octet-listp) (subject-octets fn-cbor-octet-listp) (evidence-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-prepare-topic
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-prov-post
   :class :common-lisp-compliant)
@@ -1718,7 +1736,10 @@
   :class ::program)
 
 (definterface fn-owner-refuse-reservation
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-sco-capture
   :class ::program)
@@ -1842,6 +1863,21 @@
   :class ::common-lisp-compliant
   :kinds ((w natp))
   :keystones (fn-splan-window-is-a-prefix-of-the-reply))
+
+(definterface fn-splan-at-cursorp
+  :class ::common-lisp-compliant
+  :keystones (fn-splan-window-size-is-positive-until-done))
+
+(definterface fn-splan-cursor-step
+  :class ::common-lisp-compliant
+  :kinds ((w natp))
+  ;; The keystone must call the entry: this one does (fn-splan-cw-drain-is-the-
+  ;; expanded-reply calls it only through fn-splan-cw-drain; hbox host-ld at
+  ;; 899634977 refused that).
+  :keystones (fn-splan-cursor-step-keeps-cw-remaining))
+
+(definterface fn-splan-cursor-window
+  :class ::common-lisp-compliant)
 
 (definterface fn-splan-window-size
   :class ::common-lisp-compliant
@@ -3952,6 +3988,10 @@
 (definterface fn-arpn-step
   :class ::common-lisp-compliant)
 
+(definterface fn-rpin-step
+  :class :common-lisp-compliant
+  :keystones (fn-rpin-step-preserves-funded-ownership))
+
 ;; books/control-request-word.lisp
 
 ; host/native/operator-live.lisp dispatches it (lane online-reclaim-5).
@@ -4053,10 +4093,6 @@
 ;; books/limits-live.lisp
 
 ; host/native/admin.lisp dispatches it (lane limits-live).
-(definterface fn-lim-apply-row
-  :class ::common-lisp-compliant)
-
-; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-lim-decide
   :class ::common-lisp-compliant)
 
@@ -4067,10 +4103,6 @@
 ; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-lim-decision-status
   :class ::common-lisp-compliant)
-
-; host/native/admin.lisp dispatches it (lane limits-live).
-(definterface fn-lim-funded-after
-  :class :common-lisp-compliant)
 
 ; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-lim-reply-line
@@ -4136,6 +4168,26 @@
 
 (definterface fn-oex-status-no-owner-line
   :class :common-lisp-compliant)
+
+;; books/owner-snapshot-request.lisp (row S7, PRF-1050): the running owner's
+;; snapshot request and status (host/native/admin.lisp), the blessing's
+;; verdict (host/native/io.lisp fnn-command-store-bless-snapshot), the
+;; marker's text and the client's lines (host/native/operator.lisp).
+(definterface fn-nop-parse-store
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-open-needed
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-word
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-status
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-line
+  :class :common-lisp-compliant
+  :kinds ((dir stringp) (transactions natp)))
 
 ;; books/native-control-reason.lisp
 
@@ -4246,6 +4298,22 @@
   :direct "the raw body of A-ARENA-STORED's realizer (host/native/extent.lisp fn-arena-stored) recognizes the compressed extent itself; guard t")
 
 ;; books/payload-extent-read.lisp
+
+;; books/page-read-ownership.lisp (PRF-1057).
+(definterface fn-pio-issue
+  :class :common-lisp-compliant
+  :kinds ((next natp) (cid natp) (file natp) (eoff natp) (elen natp) (trailer natp)))
+(definterface fn-pio-token
+  :class :common-lisp-compliant
+  :kinds ((r true-listp)))
+(definterface fn-pio-cancel
+  :class :common-lisp-compliant)
+(definterface fn-pio-complete
+  :class :common-lisp-compliant
+  :keystones ((fn-pio-completion-publishes-only-the-issued-identity :via fn-pio-complete)))
+(definterface fn-pio-file-clear-p
+  :class :common-lisp-compliant
+  :keystones ((fn-pio-close-waits-for-every-worker :via fn-pio-file-clear-p)))
 
 ; host/native/io.lisp dispatches it (lane extent-identity).
 (definterface fn-arx-attach-trailers-buffer
@@ -4428,7 +4496,8 @@
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-rebuild
-  :class ::program)
+  :class :ideal
+  :keystones (fn-owner-orcp-rebuild-establishes-retain-carry))
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-salt
@@ -4542,3 +4611,7 @@
 
 (definterface fn-bpnc-status-unavailable
   :class ::common-lisp-compliant)
+; Called directly only while installing dispatch from the loaded image world.
+(definterface fn-di-raw-with-problem
+  :class :program
+  :direct "Image-build declaration lint over the loaded world; no client data or served decision")

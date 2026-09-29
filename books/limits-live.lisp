@@ -379,6 +379,13 @@
         (fn-lim-values-line "max-history-octets" requested funded)
         (fn-lim-values-line "max-article-octets" requested funded)))
 
+;; The history's requested profile after decision D over VALUES: the
+;; candidate when D is accepted (applied now or recorded for the next start:
+;; either way the verb's record is published), else VALUES.
+(defun fn-lim-requested-after (d values candidate)
+  (declare (xargs :guard t))
+  (if (fn-lim-acceptedp d) candidate values))
+
 ;; The reply of `policy set FIELD N': ACL2's decision sentence, then the
 ;; field's three values after it (VALUES the history's requested profile
 ;; before it, FUNDED the running owner's served profile, NIL offline).
@@ -388,7 +395,7 @@
                                                             fn-lim-values-line fn-lim-funded-after
                                                             fn-lim-acceptedp)))))
   (let* ((c (fn-lim-apply-row values field n))
-         (requested (if (fn-lim-acceptedp d) c values)))
+         (requested (fn-lim-requested-after d values c)))
     (concatenate 'string (fn-lim-decision-line field n d open-ms) "; "
                  (fn-lim-values-line field requested
                                      (and funded (fn-lim-funded-after d funded c))))))
@@ -396,5 +403,100 @@
 (defthm fn-lim-reply-line-stringp
   (stringp (fn-lim-reply-line field n d open-ms values funded))
   :rule-classes :type-prescription)
+
+;; -----------------------------------------------------------------------------
+;; The running owner's carried triple (PRF-996's live report).  CARRY is
+;; (REQUESTED . FUNDED): the profile the configuration history requests and
+;; the profile the owner serves.  The owner sets it at its open to the
+;; history's effective profile for both (host/owner-host.lisp
+;; fn-owner-install-profile: the launcher reserved that profile's heap) and
+;; after each accepted, published `policy set' to fn-lim-carry-after
+;; (fn-owner-limit-decided).  `status' and `health' render it
+;; (fn-lim-report-octets) without walking the history.
+
+(defun fn-lim-carry-requested (carry)
+  (declare (xargs :guard t))
+  (if (consp carry) (car carry) nil))
+
+(defun fn-lim-carry-funded (carry)
+  (declare (xargs :guard t))
+  (if (consp carry) (cdr carry) nil))
+
+(defun fn-lim-carry-after (field n d carry)
+  (declare (xargs :guard t))
+  (let* ((values (fn-lim-carry-requested carry))
+         (c (fn-lim-apply-row values field n)))
+    (cons (fn-lim-requested-after d values c)
+          (fn-lim-funded-after d (fn-lim-carry-funded carry) c))))
+
+(defun fn-lim-lines-octets (lines)
+  (declare (xargs :guard t))
+  (if (consp lines)
+      (append (fn-record-string-octets (car lines)) (list 10)
+              (fn-lim-lines-octets (cdr lines)))
+    nil))
+
+;; The owner's report: one `limit F requested=R funded=U ceiling=C' line per
+;; live field, nothing before its open carried a profile.
+(defun fn-lim-report-lines (carry)
+  (declare (xargs :guard t))
+  (if (fn-lim-carry-requested carry)
+      (fn-lim-values-lines (fn-lim-carry-requested carry) (fn-lim-carry-funded carry))
+    nil))
+
+(defun fn-lim-report-octets (carry)
+  (declare (xargs :guard t))
+  (fn-lim-lines-octets (fn-lim-report-lines carry)))
+
+;; KEYSTONE (the reported triple is the decision's triple).  After the
+;; running owner decides `policy set FIELD N' (D) over its carry
+;; (VALUES . FUNDED), the reply names FIELD's requested, funded and ceiling
+;; values, and those are exactly the ones the owner's status and health then
+;; report for FIELD from the carry it keeps (fn-lim-carry-after): the reply's
+;; line is the decision sentence followed by the report's line for FIELD,
+;; and that line is one of the report's lines.  The subject is
+;; fn-lim-reply-line (host/native/admin.lisp fnn-lim-line) and
+;; fn-lim-report-lines under fn-lim-report-octets
+;; (host/native-live-status-host.lisp fn-native-live-status-host-answer
+;; through fn-owner-limit-report).
+(defthm fn-lim-reported-triple-is-the-decisions
+  (let* ((after (fn-lim-carry-after field n d (cons values funded)))
+         (line (fn-lim-values-line field (fn-lim-carry-requested after)
+                                   (fn-lim-carry-funded after))))
+    (implies (and (fn-lim-fieldp field) values funded)
+             (and (equal (fn-lim-reply-line field n d open-ms values funded)
+                         (concatenate 'string (fn-lim-decision-line field n d open-ms)
+                                      "; " line))
+                  (member-equal line (fn-lim-report-lines after)))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-lim-carry-after fn-lim-carry-requested
+                                fn-lim-carry-funded fn-lim-reply-line
+                                fn-lim-report-lines fn-lim-values-lines
+                                fn-lim-fieldp fn-lim-requested-after
+                                fn-lim-funded-after member-equal
+                                car-cons cdr-cons fn-lim-apply-row
+                                (:type-prescription fn-lim-set-nth))
+                              (theory 'minimal-theory)))))
+
+;; KEYSTONE (the carry is the history's, without walking it).  When the
+;; carried requested profile is the history's (fn-lim-effective over its
+;; configuration records, what every open computes: host/store-node-host.lisp
+;; fn-store-lim-effective), it stays the history's after a decision: an
+;; accepted one publishes the verb's record (fn-lim-deltas) and the carry
+;; becomes the history that record ends; a refused one publishes nothing and
+;; the carry is unchanged.
+(defthm fn-lim-carry-after-is-the-history
+  (implies (and (equal (fn-lim-carry-requested carry) (fn-lim-effective sealed records))
+                (fn-lim-fieldp field))
+           (equal (fn-lim-carry-requested (fn-lim-carry-after field n d carry))
+                  (if (fn-lim-acceptedp d)
+                      (fn-lim-effective sealed
+                                        (append records
+                                                (list (fn-cfg-record-make
+                                                       s tx gen (fn-lim-deltas field n)
+                                                       stamp))))
+                    (fn-lim-effective sealed records))))
+  :hints (("Goal" :in-theory (e/d (fn-lim-carry-after fn-lim-requested-after)
+                                  (fn-lim-apply-row fn-lim-deltas fn-lim-acceptedp)))))
 
 (in-theory (disable fn-lim-decide fn-lim-effective fn-lim-apply-deltas))

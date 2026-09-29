@@ -101,6 +101,71 @@ octets × 2 = 8.0 MiB of decoded rows, plus its index (256 entries).
 
 ## B. The design
 
+### P12 implementation contract amendment (GPT-6.1, 2026-09-29)
+
+The ratified [review](review-2026-09-30-gpt6-log2.md) section2 supersedes
+A.3's older policy-question wording. The suffix admission gate is still
+unimplemented: PRF-963 is the deferred-checkpoint health code, not a theorem
+bounding the suffix or preserving rescue capacity. The current maintenance
+reserve funds one release record; it is not a resource-vector rescue proof.
+
+The first implementation increment is `books/page-read-resources.lisp`,
+an admission-algebra library, with no served allocation or complete P12
+claim. It uses five explicit units: resident octets (collector copy
+included), disk octets, registered descriptor credits, executing worker
+slots, and spent process-local read identities. The last coordinate is one
+named identity namespace; Store txids and file identities need their own
+coordinates/refinement, never an aggregate that treats them as fungible.
+
+`fn-prs-issue(B,U,R,C,next,limit,demand)` issues only when the supported
+vector covers `U + R + C + demand` and the next local read identity is
+representable. Failure changes neither credits nor identity; repeated
+refusal spends neither. Settlement releases reusable coordinates but never
+refunds an identity. Supplied static rescue R survives an admitted charge;
+the library does not establish `R >= W(P,Omega(s))` or that the host's
+supplied U/C/demand represent its actual allocations.
+
+For the current uncompressed cold prefetch, `fn-prs-worker-demand` charges
+twice the protected buffer's `elen + 32` plus conservatively supplied
+bookkeeping, and the native worker's stack/runtime once. It charges one
+execution slot, no descriptor opening, and one local read identity. A
+registered file incarnation instead holds `fn-prs-incarnation-demand`:
+its own bookkeeping and one descriptor credit. Shared descriptors are not
+charged once per worker. A compressed reader needs its actual expansion
+demand, not this constructor. Bookkeeping/runtime inputs have no measured
+bound established by the library.
+
+The ownership API from `books/page-read-ownership.lisp` constructs the
+token at the old `next` only after admission, with a named equality to the
+admission's returned `next + 1`; there must not be two independent counters.
+An immutable token-to-charge binding is separate from that book's seven
+row fields. Cancel, deadline, client loss and stale completion do not
+refund. Only the first actual matching completion settles ownership, then
+refunds after dropping the extent mutex; the wrapper must prove exactly-once
+settlement and the lock order. A refused issue allocates no buffer/thread.
+
+Remaining complete increments, in order:
+
+1. Supported operator resource policy, representability and initial funding;
+   no guessed max-connections surrogate. Operational policy belongs in
+   configuration; the planned durable `page-cache-octets` profile field is
+   an intentional format/layout change. Coordinate both with the limits lane.
+2. Ownership + immutable charge relation through issue, completion, failed
+   read, cancellation and late/stale callbacks; actual pread stall witness,
+   repeated timeouts, refusal before allocation, incarnation retirement.
+3. Performed checkpoint/recovery demand W: existing whole-store terms until
+   P3/P8 remove them, codec expansion, retained old/new generations and
+   cleanup. Reserve static worst case first if justified; charge positive
+   demand growth before every accepting primitive, not just POST.
+4. Refused-response, diagnostics and audit primitives must use already
+   funded bounded workspace without borrowing rescue or silently growing
+   durable identities/artifacts. A crash leaves a bounded recognizable set.
+   Admission algebra alone does not prove these primitives preserve slack.
+5. Host-called suffix/rescue gate, its requirement/spec/scenario together,
+   full literal witnesses, matching candidate native evidence, then the
+   T/H-independent figure only after its physical representation premises
+   are established. No abstract gate is a substitute for measured peak.
+
 ### B.1 The page layouts
 
 Every paged structure is an FNADTSN2 sequence ADT (books/proto/adt-bytes)

@@ -256,6 +256,7 @@ the TLS session, then the socket.  Idempotent."
           (opened-cid (fnn-mux-conn-opened-cid conn))
           (was (fnn-mux-conn-phase conn)))
       (setf (fnn-mux-conn-phase conn) :done)
+      (fnn-owner-response-unpin service (or cid opened-cid))
       (when (fnn-mux-conn-ssl conn)
         (ignore-errors (fnn-%ssl-free (fnn-mux-conn-ssl conn)))
         (setf (fnn-mux-conn-ssl conn) nil))
@@ -366,13 +367,23 @@ plan remains."
           (fnn-mux-conn-want conn) nil)
     (fnn-mux-flush loop conn)))
 
+(defun fnn-mux-render-next (loop conn plan)
+  "The plan's next window, its cursor quantum run first when it is at one
+(lane join-f2-13, PRF-1020: a served OVER/XOVER range; fnn-owner-cursor-step
+under the owner mutex, at most one quantum per mutex hold; sparse ranges
+can take several empty quanta before a write): (values OCTETS PLAN-REST
+DONEP)."
+  (fnn-owner-render-next-quantum (fnn-mux-service loop) (fnn-mux-conn-cid conn) plan
+                                 (fnn-mux-conn-class conn)
+                                 (and (fnn-mux-conn-zout conn) t)))
+
 (defun fnn-mux-queue-plan (loop conn plan after)
   "Write the step's render PLAN a window at a time (HST-023): the first
 window now, each next one when the socket took the last (fnn-mux-flush).
 The connection holds one window and the plan's continuation, never the
 whole reply; a plan with nothing to write runs AFTER at once."
   (multiple-value-bind (octets rest donep)
-      (fnn-owner-render-next plan (and (fnn-mux-conn-zout conn) t))
+      (fnn-mux-render-next loop conn plan)
     (setf (fnn-mux-conn-plan conn) (if donep nil rest))
     (if (> (length octets) 0)
         (fnn-mux-queue loop conn octets :send-reply after)
@@ -398,7 +409,7 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
       (let ((plan (fnn-mux-conn-plan conn)))
         (if plan
             (multiple-value-bind (octets rest donep)
-      (fnn-owner-render-next plan (and (fnn-mux-conn-zout conn) t))
+                (fnn-mux-render-next loop conn plan)
               (setf (fnn-mux-conn-plan conn) (if donep nil rest)
                     (fnn-mux-conn-out conn) (fnn-mux-z-out conn octets)
                     (fnn-mux-conn-out-at conn) 0
@@ -439,6 +450,9 @@ contract, without blocking the loop)."
 ;; now only re-arms the idle timer: the running loop steps the rest of the
 ;; input, as the nested call did, in the same order.
 (defun fnn-mux-after (loop conn after)
+  ;; All windows, including a partial socket write's pending suffix, have
+  ;; drained.  A replacement catalog is now safe for this connection.
+  (fnn-owner-response-unpin (fnn-mux-service loop) (fnn-mux-conn-cid conn))
   (case after
     (:close (fnn-mux-begin-drain loop conn))
     (:starttls (fnn-mux-request-handshake loop conn))

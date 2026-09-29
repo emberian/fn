@@ -18,6 +18,7 @@ reopens with the new T).
 """
 
 import hashlib
+import re
 
 from tests.native_harness import EXIT_OK
 from tests.test_native_checkpoint_auto import AutoCheckpointFixture
@@ -82,6 +83,11 @@ class LimitsLiveTests(AutoCheckpointFixture):
                       raised.stderr)
         # Served now: the same owner admits a post past the old T.
         self.assertEqual(self.post("within", 100), EXIT_OK)
+        # PRF-996, the owner's report: the running owner's `status' and
+        # `health' name the triple the reply named, from its carry.
+        line = "limit max-transactions requested=14 funded=14 ceiling=4294967295"
+        self.assertIn(line, self.op("status").stdout.decode())
+        self.assertIn(line, self.op("health").stdout.decode())
         self.node.stop(process=owner)
         self.assertEqual(self.config_digest(), sealed, "config.json is never rewritten")
 
@@ -98,13 +104,35 @@ class LimitsLiveTests(AutoCheckpointFixture):
         # sealed H it funded; only the requested value moved.
         self.assertIn(b"; limit max-history-octets requested=805306368 funded=", raised.stderr)
         self.assertNotIn(b"funded=805306368", raised.stderr)
+        # The running owner's report: requested moved, funded is the one it
+        # serves (a number, not none), the same line as the reply's.
+        replied = re.search(r"limit max-history-octets requested=\d+ funded=\d+ ceiling=\d+",
+                            raised.stderr.decode())
+        self.assertIsNotNone(replied, raised.stderr)
+        replied = replied.group(0)
+        for verb in ("status", "health"):
+            report = self.op(verb).stdout.decode()
+            self.assertIn(replied, report, verb)
+            self.assertNotIn("funded=none", report, verb)
         self.node.stop(process=owner)
         # Offline, `status' names the three values, funded=none.
         self.assertIn("limit max-history-octets requested=805306368 funded=none "
                       "ceiling=4294967295", self.op("status").stdout.decode())
-        # The next open serves the recorded profile.
-        lines = self.status_lines()
-        self.assertTrue(any("history-bound=805306368" in line for line in lines), lines)
+        # The inexpensive stopped report describes the sealed header, not
+        # the replayed effective profile.  Explicit replay opens the history.
+        replayed = self.op("status", "--replay")
+        self.assertEqual(replayed.returncode, EXIT_OK, replayed.stderr.decode())
+        self.assertIn("history-bound=805306368", replayed.stdout.decode())
+        # A restarted owner funds the recorded value under the developer
+        # image's normal reservation; the first owner deliberately used 4 GiB.
+        again = self.node.start()
+        funded = "limit max-history-octets requested=805306368 funded=805306368 ceiling=4294967295"
+        self.assertIn(funded, self.op("status").stdout.decode())
+        with self.node.session() as client:
+            reply, payload = client.multiline("ARTICLE <beyond-0@example.invalid>")
+            self.assertTrue(reply.startswith(b"220 "), reply)
+            self.assertIn(b"Subject: beyond 0\r\n", payload)
+        self.node.stop(process=again)
 
     def test_a_lowering_below_use_is_refused_by_name_and_records_nothing(self):
         self.init_small()
@@ -141,19 +169,17 @@ class LimitsLiveTests(AutoCheckpointFixture):
         self.assertGreater(first, 0)
 
     def test_a_value_past_the_representation_ceiling_is_refused_by_name(self):
-        # PRF-996: the verb's row carries N in a u32; past it nothing is
-        # staged.  In composition the operator's parser refuses N first
-        # (books/native-admin-shape.lisp fn-native-admin-decimalp: a u32), so
-        # the answer is the usage refusal (exit 5), not fn-lim-decide's
-        # :above-representation-ceiling, which a direct decision names
-        # (tests/acl2/limits-live-tests.lisp).  OPEN (LANEDUMP limits-live-7):
-        # route an over-u32 decimal of a live field to fn-lim-decide so the
-        # operator is told the ceiling.
+        # PRF-996: the verb's row carries N in a u32.  The parser takes any
+        # decimal natural (books/native-admin.lisp fn-native-admin-naturalp),
+        # so past the ceiling the change is fn-lim-decide's refusal by name,
+        # with the ceiling, exit refused, nothing staged -- not a usage line.
         self.init_small()
         before = sorted(p.name for p in (self.store / "config").iterdir())
         past = self.policy("max-history-octets", 4294967296)
-        self.assertEqual(past.returncode, 5, past.stderr.decode())
-        self.assertIn(b"usage: fn operator CONFIG policy set", past.stderr)
+        self.assertEqual(past.returncode, 1, past.stderr.decode())
+        self.assertIn(b"refused limit max-history-octets=4294967296 above-representation-ceiling: "
+                      b"the format carries at most 4294967295", past.stderr)
+        self.assertNotIn(b"usage:", past.stderr)
         self.assertEqual(sorted(p.name for p in (self.store / "config").iterdir()), before)
         at = self.policy("max-history-octets", 4294967295)
         self.assertNotIn(b"above-representation-ceiling", at.stderr + at.stdout)

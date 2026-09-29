@@ -159,7 +159,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
     def test_missing_staging_is_a_current_native_fault(self):
         store = self.initialized("missing-staging")
         (store / "staging").rmdir()
-        result = self.invoke(store, "status")
+        result = self.store_words(store, "status", "--replay")
         self.assertEqual(result.returncode, EXIT_FAULT, result.stderr)
         self.assertIn(b"missing store directory", result.stderr)
 
@@ -192,7 +192,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
                 b'{"next_txid": 4242}')
         # A reader does not sweep; it reports one bounded observation and
         # says there is more.  It still opens.
-        status = self.invoke(store, "status")
+        status = self.store_words(store, "status", "--replay")
         self.assertEqual(status.returncode, EXIT_OK, status.stderr)
         self.assertIn(b"staging-orphans=64+ [", status.stdout)
         self.assertEqual(len(list((store / "staging").iterdir())), 65)
@@ -202,7 +202,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         self.assertIn(b"staging-orphans=0", recovered.stdout)
         self.assertEqual(list((store / "staging").iterdir()), [])
         self.assertEqual((store / "journal" / "000001.log").read_bytes(), segment)
-        again = self.invoke(store, "status")
+        again = self.store_words(store, "status", "--replay")
         self.assertEqual(again.returncode, EXIT_OK, again.stderr)
         self.assertIn(b"staging-orphans=0", again.stdout)
 

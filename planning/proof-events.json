@@ -17211,6 +17211,110 @@
           "name": "fn-bpnc-retirement-stops-the-control-listener"
         }
       ]
+    },
+    {
+      "id": "PRF-1020",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-run-is-over-range-cat"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-run-is-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-progresses"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-window-at-most-w"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-lines-is-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-of-commit-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-of-withdraw-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-range-ovw-expands-to-over-range-cat"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-cursor-effect-expands-to-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-cw-drain-is-the-expanded-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-cw-residual-rendering"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-cw-drain-of-the-arm-is-the-unbounded-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-range-ovw-emits-a-fresh-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-cursor-step-of-okp-is-ok"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-run-of-start-is-cursor-octets"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1059",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rpin-step-preserves-funded-ownership"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rpin-acquire-holds-the-captured-generation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1060",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-orcp-rebuild-establishes-retain-carry"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1057",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pio-completion-publishes-only-the-issued-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-cancellation-retains-worker-ownership"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-close-waits-for-every-worker"
+        }
+      ]
     }
   ]
 }

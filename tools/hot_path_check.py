@@ -22,6 +22,15 @@ What "the executed path" means here:
     through a dispatcher (`(fnn-core 'fn-x a b)`), which calls the executable
     counterpart and so evaluates fn-x's guard.  An ACL2 host file is
     `:program` mode, so every call it makes evaluates the callee's guard.
+  * NOT MODELLED: a host entry's OWN guard.  A host file's definitions are
+    read with guard=None (Recorder.record below), so the walk the *1*
+    counterpart's guard check performs at the host boundary (fn-sn-statep
+    of the live Store for the owner's served entries) is never on the
+    path this tool traverses.  That walk is accounted by the raw-dispatch
+    list instead: an entry declared `:raw-with` (D40; planning/
+    interfaces.json `raw_dispatched`) runs its guard-verified definition
+    and skips it; every other guard-verified host entry still pays it once
+    per call.  Do not read a silent report here as "no boundary walk".
   * A constrained function runs its `defattach` (edges from
     reach_check.attachments).  A constrained function with no attachment, or
     a `funcall` of a variable, receiving a seeded value is an UNRESOLVED edge.
@@ -51,6 +60,7 @@ does not expand macros, and treats `equal` as constant time, which structure
 sharing usually makes true.  The record lists what it cannot follow.
 
 Run: python3 tools/hot_path_check.py [--report | --summary] [--strict] [--json FILE]
+(A host entry's own guard is not modelled; see the raw-dispatch list, D40.)
 """
 
 from __future__ import annotations
@@ -1211,7 +1221,11 @@ def refresh_stale(stale: list[str], path: Path = FINDINGS) -> None:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description=__doc__.splitlines()[0],
+        epilog="A host entry's OWN guard (the *1* counterpart's check at the host "
+               "boundary) is not modelled here; the raw-dispatch list (D40, "
+               "planning/interfaces.json raw_dispatched) accounts for that walk.")
     parser.add_argument("--report", action="store_true",
                         help="every find, grouped by host entry, with its path")
     parser.add_argument("--summary", action="store_true",

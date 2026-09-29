@@ -108,6 +108,9 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        ;; D40: the raw-dispatched entries, from the fn-interfaces table of
+        ;; this world (an unknown or unverified target stops the build).
+        (fnn-install-raw-dispatch)
         ; The stored payloads' DEFLATE encoder and ACL2's payload decoder's
         ; buffers (the SBCL encoder; untrusted: ACL2 checks every candidate).
         (load "host/native/deflate.lisp")
