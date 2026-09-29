@@ -3,42 +3,20 @@
 ; PRF-1050): the request's words, the blessing's verdict and the client's
 ; lines.
 ;
-; A snapshot is a copy of the store's files as the open reads them: the
-; checkpoint file (if one is published), every segment of journal/ with the
-; genesis, the active segment cut at the log kernel's committed FRONTIER
-; (host/native/io.lisp fn-lgc-frontier: an appended but unfenced batch lies
-; past it and is never history) and preallocated to the extent the owner
-; had given it, config.json, config/, keys/, auth.toml and
-; filesystem-identity.fnmi when present.  Nothing is decoded, digested or
-; re-rendered: the copy is a store directory, and a restore is `cp -a DIR
-; STORE` and a start.  On a running node the operator's verb goes to the
-; owner over PKT-868's administrative route as `snapshot request DIR'
-; (host/native/admin.lisp fnn-owner-snapshot-request).  Under the owner
-; mutex ACL2 answers the request's WORD from two observations: whether a
-; snapshot is already in flight (the service's snapshotter slot) and whether
-; DIR exists (lstat, read off the mutex before the quantum that decides
-; with it).  A request answered :requested captures the store's file set
-; under the mutex -- one open descriptor per file the copy will read, the
-; journal and config/ listings, the kernel's frontier -- so that a
-; publication that replaces the checkpoint (a rename) or a compaction that
-; drops a covered segment (an unlink) after the capture changes nothing the
-; copy reads: an unlinked file stays readable through its descriptor.  The
-; copy never reads the arena, so it takes no arena pin
-; (books/arena-reader-pins.lisp governs the in-memory staged pages a
-; COMPLETE retires, not files).  The copy runs on its own thread off the
-; mutex in bounded chunks with the publication's yield, and the marker file
-; SNAPSHOT is written LAST by the export's durability program's shape
-; (books/store-export-durability.lisp fn-sxd-program with the marker as the
-; MANIFEST: data written, one sync, the marker staged, fenced and renamed
-; into place, DIR fenced): a snapshot that ended anywhere earlier has no
-; marker, and `bless-snapshot' refuses it by that name, never opens it.
+; S7a ships only the read-only offline blessing below.  The request,
+; status and marker renderers are an unused logical sketch for the later
+; producer, preserved from operability-12; no running-owner snapshot host
+; calls them, and they make no producer completion claim.
 ;
-; Words.  A request: :requested (accepted); :snapshot-in-flight and
-; :target-exists (refused by name, each with what it would take).  A
-; status: :in-flight, :done, :failed, :idle.  The reasoned reply carries one
-; word (books/native-control-reason.lisp fn-nctrl-reason-word); the client
-; reads it back (fn-osn-word-of-octets: the reply's octets to the word, or
-; nil for any other octets, which the client reports as uncertain).
+; Remaining producer design: capture one coherent store file set and the
+; committed log frontier, including concurrent key/config publications,
+; keep the captured versions alive through replacement/unlink, and publish
+; SNAPSHOT last with the durability program's crash cuts.  A whole-directory
+; listing and one descriptor per file under the owner mutex do not satisfy
+; bounded scheduling steps for arbitrary supported stores; copying key/config
+; paths later off the mutex does not establish a coherent capture.  Ownership
+; and atomic capture therefore remain explicit S7 dependencies, not behavior
+; supplied by this book.  See specs/host.md, Offline snapshot blessing.
 ;
 ; The blessing (`store bless-snapshot DIR', offline, on the copy): ACL2's
 ; verdict over three observations the host reads in this order -- the
