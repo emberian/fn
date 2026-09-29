@@ -7,6 +7,16 @@
     python3 tools/host_check.py --interfaces    # static: declared vs dispatched entries
     python3 tools/host_check.py --world         # static: counterparts in the image world
     python3 tools/host_check.py --alone FILE... # one file alone (a diagnosis, not a gate)
+    python3 tools/host_check.py --read [FILE...] # static: every host/ file reads (half a second)
+
+`--read` (obstructions-9 item 80; `make check-fast` runs it) reads every
+host/**/*.lisp with tools/ledger.py's Reader, which never interns or
+evaluates.  stx-model-2's closing paren landed on a trailing COMMENT line of
+host/owner-host.lisp and reached an image build before `--load` read it.  A
+file that does not read is named with the reader's error and, when a
+top-level form is left open, the line it starts on and the first later line
+that begins a form at column 0 while it is still open -- where the missing
+paren belongs, or a comment took it.
 
 THE DEFAULT (lane lane-tools-2, 2026-09-28) is the ACL2-mode prefix of
 host/native/build.lisp and of host/native/build-dtn.lisp -- every
@@ -1462,6 +1472,67 @@ def world_stale(runner=None) -> list[str]:
     return found
 
 
+def _open_at_column_zero(text: str) -> tuple[int, int] | None:
+    """(the line an unclosed top-level form starts on, the first later line
+    starting with `(` at column 0 while it is open), or None."""
+    depth, start, i, n, line = 0, 0, 0, len(text), 1
+    at_line_start = True
+    while i < n:
+        c = text[i]
+        if at_line_start and c == "(" and depth > 0:
+            return start, line
+        at_line_start = False
+        if c == "\n":
+            line, at_line_start = line + 1, True
+        elif c == ";":
+            j = text.find("\n", i)
+            i = n if j < 0 else j
+            continue
+        elif text.startswith("#|", i):
+            j = text.find("|#", i + 2)
+            line += text.count("\n", i, n if j < 0 else j)
+            i = n if j < 0 else j + 2
+            continue
+        elif text.startswith("#\\", i):
+            i += 3
+            continue
+        elif c == '"':
+            i += 1
+            while i < n and text[i] != '"':
+                if text[i] == "\n":
+                    line += 1
+                i += 2 if text[i] == "\\" else 1
+        elif c == "(":
+            if depth == 0:
+                start = line
+            depth += 1
+        elif c == ")":
+            depth = max(depth - 1, 0)
+        i += 1
+    return None
+
+
+def read_check(files: list[str]) -> list[str]:
+    """One finding per host file the reader refuses."""
+    import ledger
+    paths = [ROOT / name for name in files] if files else sorted((ROOT / "host").rglob("*.lisp"))
+    findings = []
+    for path in paths:
+        shown = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
+        try:
+            text = path.read_text(encoding="utf-8")
+            ledger.Reader(text).top_level()
+        except (OSError, UnicodeDecodeError) as error:
+            findings.append(f"{shown}: unreadable: {error}")
+        except ledger.ReadError as error:
+            where = _open_at_column_zero(text)
+            hint = (f"; the form at line {where[0]} is still open where line {where[1]} "
+                    "starts a form at column 0 (its closing paren is missing, or sits in "
+                    "a comment)" if where else "")
+            findings.append(f"{shown}: {error}{hint}")
+    return findings
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -1500,8 +1571,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--require-world", action="store_true",
                         help="with --load: exit 2 NOT RUN when the certified umbrella is "
                              "not available, rather than falling back to a bare ACL2")
+    parser.add_argument("--read", action="store_true",
+                        help="static: every host/ file (or FILE) reads as s-expressions "
+                             "(no ACL2; half a second)")
     args = parser.parse_args(argv)
 
+    if args.read:
+        findings = read_check(args.files)
+        for one in findings:
+            print(f"FAIL {one}")
+        print(f"host_check --read: {len(findings)} host file(s) that do not read")
+        return 1 if findings else 0
     if args.tables:
         return tables_main(args.files)
     if args.interfaces:
