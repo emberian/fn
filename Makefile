@@ -1465,6 +1465,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-operator-stage-tests \
 	tests/acl2/owner-control-post-reason-tests \
 	tests/acl2/owner-export-request-tests \
+	books/owner-snapshot-request \
+	tests/acl2/owner-snapshot-request-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/state-globals \

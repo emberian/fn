@@ -1009,6 +1009,21 @@
                                 (fn-ncfg-nth 2 words)))
        ((equal words '("export" "status"))
         (fn-native-admin-result :accepted nil :request-export-status nil 0 nil nil))
+       ; Row S7 (lane operability-12): what `store snapshot DIR' sends a
+       ; running owner (host/native/operator.lisp
+       ; fnn-operator-execute-snapshot-live): a request for its own copy of
+       ; the store's files into DIR (the operator's grammar admitted an
+       ; absolute path, fn-nop-archive-pathp), and the status poll that
+       ; follows it (books/owner-snapshot-request.lisp fn-osn-request-word,
+       ; fn-osn-status-word).  No configuration record.
+       ((and (equal (fn-ncfg-first words) "snapshot")
+             (equal (fn-ncfg-second words) "request")
+             (stringp (fn-ncfg-nth 2 words))
+             (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest words)))))
+        (fn-native-admin-result :accepted nil :request-snapshot nil 0 nil
+                                (fn-ncfg-nth 2 words)))
+       ((equal words '("snapshot" "status"))
+        (fn-native-admin-result :accepted nil :request-snapshot-status nil 0 nil nil))
        ; Q16: what `store reclaim' sends a running owner
        ; (host/native/operator.lisp fnn-operator-execute-store-action): a
        ; request for its reclaim pass (books/owner-reclaim.lisp), no
@@ -1029,7 +1044,8 @@
        (member-equal (fn-native-admin-result-kind result)
                      '(:request-compaction :request-inspect :request-reclaim
                        :request-reclaim-recorded :request-reclaim-dry-run
-                       :request-export :request-export-status))
+                       :request-export :request-export-status
+                       :request-snapshot :request-snapshot-status))
        t))
 
 ; Row S3: the Message-ID an inspect request carries (its value field), or nil.
@@ -1053,6 +1069,20 @@
   (declare (xargs :guard t))
   (and (fn-native-admin-result-owner-requestp result)
        (equal (fn-native-admin-result-kind result) :request-export-status)))
+
+; Row S7: the target directory a snapshot request carries (its value
+; field), or nil; and whether the request is the snapshot status poll.
+(defun fn-native-admin-result-snapshot-dir (result)
+  (declare (xargs :guard t))
+  (and (fn-native-admin-result-owner-requestp result)
+       (equal (fn-native-admin-result-kind result) :request-snapshot)
+       (stringp (fn-native-admin-result-value result))
+       (fn-native-admin-result-value result)))
+
+(defun fn-native-admin-result-snapshot-statusp (result)
+  (declare (xargs :guard t))
+  (and (fn-native-admin-result-owner-requestp result)
+       (equal (fn-native-admin-result-kind result) :request-snapshot-status)))
 
 ; Q16: the reclaim pass's mode an accepted reclaim request names, or nil
 ; (the compaction, inspect and export requests).

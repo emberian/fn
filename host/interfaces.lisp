@@ -4093,6 +4093,54 @@
 (definterface fn-oex-status-no-owner-line
   :class :common-lisp-compliant)
 
+;; books/owner-snapshot-request.lisp (row S7, PRF-1050): the running owner's
+;; snapshot request and status (host/native/admin.lisp), the blessing's
+;; verdict (host/native/io.lisp fnn-command-store-bless-snapshot), the
+;; marker's text and the client's lines (host/native/operator.lisp).
+(definterface fn-osn-request-word
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-request-status
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-request-line
+  :class :common-lisp-compliant
+  :kinds ((dir stringp)))
+
+(definterface fn-osn-status-word
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-status-status
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-outcome-line
+  :class :common-lisp-compliant
+  :kinds ((dir stringp)))
+
+(definterface fn-osn-word-of-octets
+  :class :common-lisp-compliant
+  :exempt ((octets "compared whole with each reason word's octets (fn-osn-word-reads-back); other octets are no word (nil)")))
+
+(definterface fn-osn-status-no-owner-line
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-open-needed
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-word
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-status
+  :class :common-lisp-compliant)
+
+(definterface fn-osn-bless-line
+  :class :common-lisp-compliant
+  :kinds ((dir stringp) (transactions natp)))
+
+(definterface fn-osn-marker-text
+  :class :common-lisp-compliant
+  :kinds ((index natp) (frontier natp) (files natp)))
+
 ;; books/native-control-reason.lisp
 
 ; host/native/control.lisp dispatches it (lane correctness-remainder).
