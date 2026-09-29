@@ -58,8 +58,10 @@
 ;                length -- *fn-heap-record-msgid-index-octets* (64) a
 ;                record, in the fixed part -- where the retired `equal'
 ;                hash table and the view trie it fed cost 32 an octet with
-;                their rebuild at a checkpoint: 48 x 250 x 32,768 records =
-;                375 MiB of the small profile's state, now 2.0 MiB.
+;                their rebuild at a checkpoint: 2 x 48 x 250 x 16,384
+;                records = 375 MiB of the small profile's state, now
+;                2 x 64 x 16,384 = 2.0 MiB (a model term, not a measured
+;                peak).
 ;              Against f8-reservation's long-header curve (250-octet
 ;              Message-IDs, 900-octet Subjects): 222 Message-ID octets x 80
 ;              and 872 Subject octets x 8 is 24.7 KB a record over the short

@@ -138,12 +138,15 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   Message-ID column is the keyed page table (`books/msgid-pages-exec`), so
   the state term's Message-ID index is `*fn-heap-record-msgid-index-octets*`
   (64 octets, at most 8 u64 words) a record whatever the Message-ID's
-  length: at the small profile (32,768 records) 2.0 MiB where the retired
-  `equal` hash table and view trie were modelled at 48 octets a Message-ID
-  octet, 375 MiB at RFC 5536's 250; the row's and the overview's two
-  strings (16 an octet, 125 MiB at that shape) stay until the rows are
-  paged (P3/P4), and the launcher's reservation gains 4 MiB for the
-  resident table until its pages are paged (P8/P12).
+  length: at the small profile (16,384 records, twice for the collector)
+  2.0 MiB where the retired `equal` hash table and view trie were modelled
+  at 48 octets a Message-ID octet, 375 MiB at RFC 5536's 250 -- a MODEL
+  TERM, not a measured peak (measure at convergence, F8); the row's and
+  the overview's two strings (16 an octet, 125 MiB at that shape) stay
+  until the rows are paged (P3/P4), and the launcher's reservation gains
+  exactly that 2 MiB (`fn-heap-small-run-base-of-an-empty-store`:
+  282,764,298 -> 284,861,450 octets) for the resident table until its
+  pages are paged (P8/P12).
 - Evidence: THEOREM (PRF-198, PRF-314): a store within T and H needs at most
   the figure, memberships are charged to H. The octet-list factor
   `*fn-heap-list-octets-per-octet*` (16 octets per octet) is a modelled
