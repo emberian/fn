@@ -124,7 +124,7 @@
                                           (fn-lg-crash-sels bs image) (fn-bs-unit bs))))))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
-            :in-theory (theory 'minimal-theory)
+            :in-theory (union-theories (theory 'minimal-theory) '(car-cons cdr-cons))
             :use ((:instance fn-lgk-relp-gives-the-tear-hypotheses)
                   (:instance fn-lg-log-true-listp
                              (records (fn-lgk-inflight ks)) (prev (fn-lgk-last ks))
@@ -145,7 +145,7 @@
             (member-equal r (car (fn-lg-scan (fn-bs-durable-content image ino)
                                              genesis (fn-bs-unit bs) max))))
    :hints (("Goal" :do-not-induct t
-            :in-theory (theory 'minimal-theory)
+            :in-theory (union-theories (theory 'minimal-theory) '(car-cons cdr-cons))
             :use ((:instance fn-lgk-relp-gives-the-tear-hypotheses)
                   (:instance fn-lgu-image-of-a-batch-in-flight-keeps-the-prefix)
                   (:instance fn-lgu-scan-of-a-complete-prefix-reads-its-records
@@ -280,6 +280,25 @@
 
 ; The fence's cut states when the barrier returns :ok.
 (local
+ (defthm fn-lgu-fsync-ok-result
+   (and (equal (mv-nth 0 (fn-bs-fsync-file s ino :ok)) :ok)
+        (equal (car (fn-bs-fsync-file s ino :ok)) :ok))
+   :hints (("Goal" :in-theory (enable fn-bs-fsync-file)))))
+
+; The fence's run, computed: the fenced store and the fenced kernel, twice
+; (the barrier, then the cut).
+(local
+ (defthm fn-lgu-fence-run-computed
+   (equal (fn-lg-run bs ks (fn-lg-fence-program) nil ino)
+          (let ((pair (cons (mv-nth 1 (fn-bs-fsync-file bs ino :ok))
+                            (fn-lgk-fence ks (fn-bs-unit bs)))))
+            (list pair pair)))
+   :hints (("Goal" :in-theory (e/d (fn-lg-run fn-lg-step fn-lg-fence-program)
+                                   (fn-lgk-fence fn-lgk-fence-failed fn-bs-fsync-file
+                                    fn-bs-durable-content fn-lgk-frontier fn-bs-fence-file
+                                    fn-lgk-make))))))
+
+(local
  (defthm fn-lgu-fence-run-pairs
    (implies (and (fn-lgk-relp bs ks ino genesis max)
                  (member-equal pair (fn-lg-run bs ks (fn-lg-fence-program) nil ino)))
@@ -290,9 +309,11 @@
    :hints (("Goal" :do-not-induct t
             :use ((:instance fn-lg-fence-program-keeps-the-relation)
                   (:instance fn-lgu-relp-committed-true-listp))
-            :in-theory (e/d (fn-lg-run fn-lg-step fn-lg-fence-program)
-                            (fn-lgk-relp fn-lgk-fence fn-bs-durable-content fn-lgk-frontier
-                             fn-lgk-inflight fn-lgk-phase fn-bs-fsync-file fn-lgk-committed
+            :in-theory (e/d (fn-lg-all-relp)
+                            (fn-lgk-relp fn-lgk-fence fn-lgk-fence-failed fn-bs-durable-content
+                             fn-lgk-frontier fn-lgk-inflight fn-lgk-phase fn-bs-fsync-file
+                             fn-lgk-committed fn-lgk-make fn-lg-run fn-lg-fence-program
+                             (:executable-counterpart fn-lg-fence-program)
                              fn-lg-fence-program-keeps-the-relation
                              fn-lgu-relp-committed-true-listp))))))
 
@@ -335,6 +356,10 @@
 (local
  (defthm fn-lgu-ops-for-ino-of-not-for-ino
    (equal (fn-bs-ops-for-ino (fn-bs-ops-not-for-ino ops ino) ino) nil)))
+
+(local
+ (defthm fn-lgu-ops-for-ino-of-nil
+   (equal (fn-bs-ops-for-ino nil ino) nil)))
 
 (local
  (defthm fn-lgu-relp-pending-names-only-the-segment
@@ -385,10 +410,11 @@
            :in-theory (e/d (fn-bs-fencedp)
                            (fn-lg-scan fn-lgk-relp fn-bs-crash-imagep fn-bs-durable-content
                             fn-lgk-committed fn-lgk-inflight fn-lg-run fn-lg-fence-program
+                            (:executable-counterpart fn-lg-fence-program)
                             fn-bs-fsync-file fn-bs-crash fn-bs-crash-choicesp
                             fn-bs-ops-for-ino fn-bs-ops-not-for-ino fn-bs-crash-imagep-suff
                             fn-lgu-committed-record-is-read-from-every-crash-image
-                            fn-bs-crash-keeps-fenced-content fn-lgu-failed-fence-run
+                            fn-bs-crash-keeps-fenced-content
                             fn-lgu-failed-fence-is-the-crash-image fn-lgu-pending-of-failed-fence)))))
 
 ; The extension's cut states: the written state (its zeros pending at the
@@ -415,6 +441,16 @@
                                    (fn-lg-scan fn-lg-scan-last fn-lg-log fn-bs-take fn-lg-zerosp
                                     fn-lg-recordsp fn-frame-digestp fn-bs-durable-content mod))))))
 
+(local
+ (defthm fn-lgu-zeros-true-listp (true-listp (fn-bs-zeros n))))
+
+(local
+ (defthm fn-lgu-take-of-zeros
+   (implies (natp n)
+            (equal (fn-bs-take n (fn-bs-zeros n)) (fn-bs-zeros n)))
+   :hints (("Goal" :use ((:instance fn-lgc-take-all (a (fn-bs-zeros n)) (n n)))
+            :in-theory (e/d (fn-lgc-take-all fn-lgc-zeros-len) (fn-bs-zeros fn-bs-take))))))
+
 ; A crash image of the written state keeps the old content: the zeros are
 ; written at its end.
 (local
@@ -436,6 +472,8 @@
    :hints (("Goal" :do-not-induct t
             :use ((:instance fn-lgu-relp-content-facts)
                   (:instance fn-lgu-relp-at-rest-pending)
+                  (:instance fn-lgu-mod-zero-is-times
+                             (f (len (fn-bs-durable-content bs ino))) (unit (fn-bs-unit bs)))
                   (:instance fn-bs-crash-of-aligned-append
                              (s (fn-lg-extension-written-state bs ino next))
                              (k (floor (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)))
@@ -545,15 +583,6 @@
                             (list (list :write ino f (fn-bs-take (len octets) octets))))))))
    :hints (("Goal" :in-theory (e/d (fn-bs-write fn-bs-durable-content) (fn-bs-take))))))
 
-(local
- (defthm fn-lgu-take-len-zeros
-   (equal (fn-bs-take (len (fn-bs-zeros n)) (fn-bs-zeros n)) (fn-bs-zeros n))
-   :hints (("Goal" :use ((:instance fn-lgc-take-all (x (fn-bs-zeros n))))
-            :in-theory (e/d (fn-lgc-take-all) (fn-bs-zeros))))))
-
-(local
- (defthm fn-lgu-zeros-true-listp (true-listp (fn-bs-zeros n))))
-
 ; The scan's frontier: aligned, within, the scan of the prefix the scan
 ; (T3), restated with the natural number the kernel carries.
 (local
@@ -595,7 +624,10 @@
                                 fn-bs-durable-content fn-bs-crash-imagep fn-lg-apply-to fn-lg-pieces
                                 fn-lg-crash-sels mod floor fn-lgc-take-then-nthcdr)))
            ("Subgoal 2" ; the zeroing write is pending: the shift lemma over the prefix
-            :use ((:instance fn-bs-crash-of-aligned-append
+            :use ((:instance fn-lgu-mod-zero-is-times
+                             (f (cdr (fn-lg-scan (fn-bs-durable-content bs ino) genesis (fn-bs-unit bs) max)))
+                             (unit (fn-bs-unit bs)))
+                  (:instance fn-bs-crash-of-aligned-append
                              (s (mv-nth 1 (fn-bs-write bs ino
                                                        (cdr (fn-lg-scan (fn-bs-durable-content bs ino) genesis (fn-bs-unit bs) max))
                                                        (fn-bs-zeros (- (len (fn-bs-durable-content bs ino))

@@ -129,50 +129,109 @@
    (natp (fn-bs-sum-lens lens))
    :rule-classes :type-prescription))
 
+; A state per read: the loop runs one read in each state of the chain.
+(defun fn-bs-states-cover-p (states lens)
+  (declare (xargs :guard t))
+  (if (consp lens)
+      (and (consp states) (fn-bs-states-cover-p (cdr states) (cdr lens)))
+    t))
+
+; The ranges of one content, no state: what fn-bs-read-range reads of it.
+(defun fn-bs-range-of (c off n)
+  (declare (xargs :guard (and (natp off) (natp n)) :verify-guards nil))
+  (let ((rest (nthcdr off (true-list-fix c))))
+    (if (< (len rest) n) rest (take n rest))))
+
+(defun fn-bs-ranges-of (c off lens)
+  (declare (xargs :guard (natp off) :verify-guards nil))
+  (if (consp lens)
+      (append (fn-bs-range-of c off (nfix (car lens)))
+              (fn-bs-ranges-of c (+ off (nfix (car lens))) (cdr lens)))
+    nil))
+
+(defthm fn-bs-read-range-is-the-range-of-the-content
+  (equal (fn-bs-read-range s ino off n)
+         (fn-bs-range-of (fn-bs-content s ino) off n)))
+
 (local
- (defthm fn-bs-rr-exclusive-read-same-range
-   (implies (fn-assume-host-exclusive-read s0 s1 ino)
-            (equal (fn-bs-read-range s1 ino off n)
-                   (fn-bs-read-range s0 ino off n)))
-   :hints (("Goal" :in-theory (disable fn-bs-content)))))
+ (defthm fn-bs-rr-ranges-of-concatenate
+   (implies (and (natp off) (natp n) (natp m) (<= (+ off n) (len c)))
+            (equal (append (fn-bs-range-of c off n) (fn-bs-range-of c (+ off n) m))
+                   (fn-bs-range-of c off (+ n m))))))
+
+(local
+ (defthm fn-bs-rr-range-of-zero
+   (equal (fn-bs-range-of c off 0) nil)))
+
+(local
+ (defthm fn-bs-rr-range-of-true-listp
+   (true-listp (fn-bs-range-of c off n))))
+
+(local
+ (defthm fn-bs-rr-append-nil
+   (implies (true-listp x) (equal (append x nil) x))))
+
+; Consecutive ranges of one content are one range.
+(defthm fn-bs-ranges-of-is-the-range
+  (implies (and (nat-listp lens) (natp off) (<= (+ off (fn-bs-sum-lens lens)) (len c)))
+           (equal (fn-bs-ranges-of c off lens)
+                  (fn-bs-range-of c off (fn-bs-sum-lens lens))))
+  :hints (("Goal" :induct (fn-bs-ranges-of c off lens)
+           :in-theory (union-theories
+                       '(fn-bs-ranges-of fn-bs-sum-lens nat-listp natp nfix
+                         fn-bs-rr-ranges-of-concatenate fn-bs-rr-sum-lens-natp
+                         fn-bs-rr-range-of-zero fn-bs-rr-range-of-true-listp
+                         fn-bs-rr-append-nil (:type-prescription len))
+                       (theory 'minimal-theory)))))
+
+; Over a chain of exclusive reads, every read sees the first state's
+; content: the loop's output is that content's ranges.
+(defthm fn-bs-read-ranges-over-a-chain-read-the-first-content
+  (implies (and (fn-bs-exclusive-chainp states ino)
+                (fn-bs-states-cover-p states lens)
+                (consp states))
+           (equal (fn-bs-read-ranges states ino off lens)
+                  (fn-bs-ranges-of (fn-bs-content (car states) ino) off lens)))
+  :hints (("Goal" :induct (fn-bs-read-ranges states ino off lens)
+           :in-theory (union-theories
+                       '(fn-bs-read-ranges fn-bs-ranges-of fn-bs-exclusive-chainp
+                         fn-bs-states-cover-p fn-bs-read-range-is-the-range-of-the-content
+                         fn-assume-host-exclusive-read-keeps-content
+                         fn-bs-rr-range-of-true-listp fn-bs-rr-append-nil)
+                       (theory 'minimal-theory)))))
 
 ; The loop's output over a chain of states is one range of the first
 ; state's content: the induction the pairwise lemma promised.
 (defthm fn-bs-read-ranges-is-the-range
   (implies (and (fn-bs-exclusive-chainp states ino)
+                (fn-bs-states-cover-p states lens)
                 (consp states)
-                (<= (len lens) (len states))
+                (nat-listp lens)
                 (natp off)
                 (<= (+ off (fn-bs-sum-lens lens)) (len (fn-bs-content (car states) ino))))
            (equal (fn-bs-read-ranges states ino off lens)
                   (fn-bs-read-range (car states) ino off (fn-bs-sum-lens lens))))
-  :hints (("Goal" :induct (fn-bs-read-ranges states ino off lens)
-           :in-theory (e/d () (fn-bs-read-range fn-bs-content fn-bs-read-ranges-concatenate
-                               fn-bs-rr-exclusive-read-same-range)))
-          ("Subgoal *1/1" :cases ((consp (cdr states)))
-           :use ((:instance fn-bs-read-ranges-concatenate
-                            (s0 (car states)) (s1 (cadr states))
-                            (n (nfix (car lens))) (m (fn-bs-sum-lens (cdr lens))))
-                 (:instance fn-bs-rr-exclusive-read-same-range
-                            (s0 (car states)) (s1 (cadr states))
-                            (off (+ off (nfix (car lens)))) (n (fn-bs-sum-lens (cdr lens))))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-bs-range-of fn-bs-content fn-bs-read-ranges fn-bs-ranges-of
+                               fn-bs-exclusive-chainp fn-bs-states-cover-p))))
 
 (local
  (defthm fn-bs-rr-take-len
-   (implies (true-listp x) (equal (take (len x) x) x))))
+   (implies (and (true-listp x) (equal (len x) n)) (equal (take n x) x))))
 
 ; The whole file: the ranges from offset 0 whose lengths sum to the file's
 ; length read the file's content, as fnn-state-checkpoint-plan reads a
 ; checkpoint to its end.
 (defthm fn-bs-read-ranges-read-the-whole-file
   (implies (and (fn-bs-exclusive-chainp states ino)
+                (fn-bs-states-cover-p states lens)
                 (consp states)
-                (<= (len lens) (len states))
+                (nat-listp lens)
                 (equal (fn-bs-sum-lens lens) (len (fn-bs-content (car states) ino))))
            (equal (fn-bs-read-ranges states ino 0 lens)
                   (true-list-fix (fn-bs-content (car states) ino))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-read-ranges-is-the-range (off 0)))
-           :in-theory (e/d (fn-bs-read-range)
+           :in-theory (e/d (fn-bs-range-of)
                            (fn-bs-content fn-bs-read-ranges fn-bs-exclusive-chainp
-                            fn-bs-read-ranges-is-the-range)))))
+                            fn-bs-states-cover-p fn-bs-read-ranges-is-the-range)))))
