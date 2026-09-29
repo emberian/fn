@@ -5229,7 +5229,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-914"
+        "PRF-914",
+        "PRF-950"
       ],
       "verification": [
         "proof",
@@ -5245,9 +5246,13 @@
         "host/workflow-host.lisp",
         "host/native/workflow.lisp",
         "host/native/bp-obligation.lisp",
-        "tests/test_bp_obligation_native.py"
+        "tests/test_bp_obligation_native.py",
+        "books/bp-carry-waiver.lisp",
+        "tests/acl2/bp-carry-waiver-tests.lisp",
+        "host/bp-release-owner-host.lisp",
+        "tests/test_native_bp_carry_abandon.py"
       ],
-      "implementation_note": "Lane operations (PKT-869). `fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK REASON...}' over the FNWF workflow journal, offline beside the store as the other obligation verbs are (a served store refuses). The controls are durable records of their own application journal (domain :carry at JOURNAL/carry, frame FNCC: books/bp-carry-frame.lisp), replayed over the workflow image, never FNWF kinds: books/frame-journal.lisp has about 1,100 dependents and each FNWF kind doubled books/frame's fn-frame-workflow-protected guard proof (476k to 874k steps for one). A drop stops the carrying and keeps the Store pin: books/retention.lisp releases a pin only with the evidence it was undertaken against (the receipt's), so an operator's abandonment of the pin is a new evidence kind, a decision for the register. Open: the verbs act on a stopped BP node; the application journals' lifetime namespace (app-journal.lisp *fn-aj-max-records* 4096, 16 MiB for FNWF) is a BP data cap (bounds inventory 1.4)."
+      "implementation_note": "Lane operations (PKT-869). `fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK REASON...}' over the FNWF workflow journal, offline beside the store as the other obligation verbs are (a served store refuses). The controls are durable records of their own application journal (domain :carry at JOURNAL/carry, frame FNCC: books/bp-carry-frame.lisp), replayed over the workflow image, never FNWF kinds: books/frame-journal.lisp has about 1,100 dependents and each FNWF kind doubled books/frame's fn-frame-workflow-protected guard proof (476k to 874k steps for one). A drop stops the carrying and keeps the Store pin: books/retention.lisp releases a pin only with the evidence it was undertaken against (the receipt's), so an operator's abandonment of the pin is a new evidence kind, a decision for the register. Open: the verbs act on a stopped BP node; the application journals' lifetime namespace (app-journal.lisp *fn-aj-max-records* 4096, 16 MiB for FNWF) is a BP data cap (bounds inventory 1.4). Lane carry-abandon (2026-09-29, PRF-950, ember approved): `drop WORK --abandon REASON...' is the operator's waiver: a :waive record of the carry journal (principal uid:N, reason) decided only while the Store pin stands (not-held otherwise), durable before the Store retention event it authors, which is the receipt's own :release event (fnn-owner-retention-commit), so retention has one release path; a waiver cut off before its Store event is completed at the next writable owner open, once; a receipt for a waived work is refused (carry-waived). The drop itself still keeps the pin."
     },
     {
       "id": "NNT-057",

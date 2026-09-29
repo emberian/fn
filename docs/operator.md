@@ -530,6 +530,7 @@ fn operator CONFIG carry /srv/fn/workflow inspect WORK
 fn operator CONFIG carry /srv/fn/workflow pause WORK      # or * for all
 fn operator CONFIG carry /srv/fn/workflow resume WORK     # or *
 fn operator CONFIG carry /srv/fn/workflow drop WORK the reason
+fn operator CONFIG carry /srv/fn/workflow drop WORK --abandon the reason
 ```
 
 `list` prints one line per work: its Message-ID, peer, status, whether the
@@ -539,6 +540,17 @@ dropped, `bp-obligation request` for it is refused (`reason=carry-paused`,
 `reason=carry-dropped`) and nothing is written. A drop is final. It stops the
 carrying but does not free the article: only the peer's receipt releases the
 store's pin.
+
+`drop WORK --abandon REASON` also gives up the obligation itself: a waiver.
+It is written first to the carry journal with who waived it (your uid,
+`uid:1000`) and the reason, then the store's pin is released now, through
+the same release the peer's receipt would make. `list` shows the work as
+`hold=waived waived-by=uid:1000 waiver=REASON`. It is refused
+(`reason=not-held`) when the store holds no pin for the work, so a waiver
+can never release an article twice, and a receipt that arrives for a waived
+work later is refused (`reason=carry-waived`). If the machine stops between
+the two steps, the next writable `carry` or `bp-obligation` command finishes
+the release first (`BP carry recovered waiver release work=WORK`).
 
 ## 9. Backups and new releases
 

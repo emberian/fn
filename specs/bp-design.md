@@ -59,7 +59,11 @@ pinned dtn7-rs build and ION stop being fn's agent and become fn's *peers*.
 bundle: the archive pin an accepted article holds (RET-001, `fn-retain`), and
 the `:forward` pin an outstanding work holds (`fn-bprl-undertake`). Both are
 released only by `fn-retain-release` under checked application evidence
-(`fn-bprl-release-decision`, a receipt). These are what "custody" means in
+(`fn-bprl-release-decision`, a receipt), and the `:forward` pin also by the
+operator's explicit waiver (`carry drop WORK --abandon`, PRF-950): a durable
+record naming the principal and the reason, decided only while the pin
+stands, whose release is the receipt's own retention event, once
+(`fn-bpcw-waiver-releases-exactly-once`, books/bp-carry-waiver.lisp). These are what "custody" means in
 fn: a promise about content, discharged by a receipt. They are deliberately
 *not* BPv7 retention constraints, which are BPA bookkeeping about one bundle
 and vanish on deletion (§5.10 step 2). A bundle is a carrier; the article is

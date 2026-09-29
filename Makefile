@@ -1371,6 +1371,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-carry-frame \
 	books/bp-carry-control \
 	tests/acl2/bp-carry-control-tests \
+	books/bp-carry-waiver \
+	tests/acl2/bp-carry-waiver-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/reader-open-carried \
