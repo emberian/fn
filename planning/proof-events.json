@@ -16785,6 +16785,26 @@
           "note": "books/peer-transit-authority.lisp: no verdict unless the bytes are wanted (named -by-definition; not cited)."
         }
       ]
+    },
+    {
+      "id": "PRF-1027",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-snc-node-lace-is-the-rows-lace",
+          "note": "books/store-node-correspondence.lisp: under fn-snc-correspondp and fn-rows-contexts-okp, fn-stx-lace of the node equals fn-sn-lace-of-rows of the indexed rows."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-initial-corresponds",
+          "note": "books/store-node-correspondence.lisp: fn-sn-initial satisfies fn-snc-correspondp (no articles, no rows)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-crash-preserves-correspondp-by-recomputation",
+          "note": "books/store-node-correspondence.lisp: a crash of a corresponding state corresponds (the empty node, no indexed row; -by-recomputation)."
+        }
+      ]
     }
   ]
 }

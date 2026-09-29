@@ -1525,6 +1525,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/stx-node-lace \
 	books/stx-policy \
 	books/peer-transit-authority \
+	books/store-node-correspondence \
 	books/stx-epochs \
 	books/stx-authority \
 	books/stx-evidence-records \
