@@ -761,6 +761,45 @@ class SourceDependencyTests(unittest.TestCase):
         self.assertIn("outside this book's dependencies", why)
 
 
+class RefusalHeadlineTests(unittest.TestCase):
+    """Item 27: a refused start says `--ld books/X` on its first line."""
+
+    GRAPH = {"tests/acl2/mid-tests": ["books/mid", "books/base"],
+             "books/mid": ["books/base"], "books/base": []}
+
+    def test_the_headline_names_the_root_cause_and_the_ld_command(self):
+        line = proof_repl.refusal_headline(self.GRAPH, ["books/base", "books/mid"])
+        self.assertTrue(line.startswith("proof-repl: REFUSED"), line)
+        self.assertIn("books/base.lisp (and 1 book(s) that include it)", line)
+        self.assertIn("`--ld books/base`", line)
+        self.assertNotIn("--ld books/mid", line)
+        self.assertIn("--certify-missing", line)
+
+    def test_install_closure_refusal_leads_with_it(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = worktree(temporary + "/tree")
+            cache = pathlib.Path(temporary) / "cache"
+            cache.mkdir()
+            fake_acl2 = pathlib.Path(temporary) / "acl2"
+            fake_acl2.write_text("#!/bin/sh\nexit 0\n")
+            fake_acl2.chmod(0o755)
+            with mock.patch.object(proof_repl, "ROOT", root), \
+                 mock.patch.dict(os.environ, {"FN_ACL2": str(fake_acl2)}), \
+                 mock.patch.object(proof_repl.certs, "cache_directory", return_value=cache), \
+                 mock.patch.object(proof_repl.acl2_toolchain, "fingerprint",
+                                   return_value=SimpleNamespace(
+                                       qualified=True,
+                                       identity=proof_repl.certs.stable_identity(
+                                           TEST_COMPATIBILITY), reason="")), \
+                 mock.patch.object(proof_repl.acl2_slots, "slot",
+                                   side_effect=lambda label: nullcontext()):
+                ok, detail, _ = proof_repl.install_closure("tests/acl2/mid-tests")
+        self.assertFalse(ok)
+        first = detail.splitlines()[0]
+        self.assertTrue(first.startswith("proof-repl: REFUSED"), detail)
+        self.assertIn("--ld books/base", first)
+
+
 class GraphTests(unittest.TestCase):
     GRAPH = {"t": ["m", "b"], "m": ["b"], "b": [], "z": []}
 

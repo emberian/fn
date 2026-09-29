@@ -1313,6 +1313,29 @@ def unusable_reason(entries: Path, toolchain: str | None) -> str:
             "certificates, or a live worktree's pair)")
 
 
+def root_causes(graph: dict[str, list[str]], missing) -> list[str]:
+    """The missing books none of whose dependencies is missing (their own bytes)."""
+    lost = set(missing)
+    return [name for name in sorted(lost) if not set(graph.get(name, ())) & lost]
+
+
+def refusal_headline(graph: dict[str, list[str]], missing) -> str:
+    """The refusal's first line: the command that gets past it.
+
+    A lane that edited books/X and started a session on a test book that
+    includes it read a page of diagnosis before finding `--ld books/X` in the
+    last line (assurance-hygiene, 2026-09-29).
+    """
+    roots = root_causes(graph, missing)
+    ld = " ".join(f"--ld {name}" for name in roots)
+    follow = len(set(missing)) - len(roots)
+    return (f"proof-repl: REFUSED -- no certificate at these bytes for "
+            f"{', '.join(name + '.lisp' for name in roots)}"
+            + (f" (and {follow} book(s) that include it)" if follow else "")
+            + f"; start again with `{ld}` (load from source in the session) "
+            "or --certify-missing (certify, then include)")
+
+
 def diagnose(graph: dict[str, list[str]], missing: list[str], cache: Path,
              toolchain: str | None = None) -> list[str]:
     """Why the cache has no set: the books whose own bytes are uncertified, and what follows.
@@ -1323,7 +1346,7 @@ def diagnose(graph: dict[str, list[str]], missing: list[str], cache: Path,
     (a closure key hashes every included book's bytes).
     """
     lost = set(missing)
-    roots = [name for name in sorted(lost) if not set(graph.get(name, ())) & lost]
+    roots = root_causes(graph, lost)
     follow = sorted(lost - set(roots))
     lines = [f"proof-repl: no cached certificate for {len(lost)} of this book's "
              f"dependencies at this tree's bytes (cache {cache}):"]
@@ -1461,7 +1484,7 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
             # The refusal keeps the old contract: no local pair of the closure
             # survives a miss to stand in for a certificate later.
             attempt(from_source, purge=True)
-            return False, "\n".join(printed + diagnose(
+            return False, "\n".join([refusal_headline(graph, missing)] + printed + diagnose(
                 graph, missing, cache, fingerprint.identity if fingerprint else None)
                 + fixes(missing, jobs)), []
     except ValueError as error:
