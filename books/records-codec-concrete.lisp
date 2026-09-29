@@ -204,9 +204,7 @@
                                   (fn-record-string-octets
                                    (fn-record-release-evidence record))))
             (fn-record-uint-encode (fn-record-charge record))
-            (if (equal (fn-record-stamp record) :legacy)
-                nil
-              (fn-record-uint-encode (fn-record-stamp record))))))
+            (fn-record-uint-encode (fn-record-stamp record)))))
       (if (fn-cbor-at-mostp octets *fn-record-max-octets*) octets nil))))
 (local (in-theory (enable (:type-prescription true-listp-append))))
 

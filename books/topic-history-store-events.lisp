@@ -4,6 +4,10 @@
 (include-book "topic-history-local-admin")
 
 (defconst *fn-th-topic-magic* '(102 110 116 111)) ; "fnto"
+; Version octets: an anchor carries 2 (it names the administrator
+; installation's generation, its ninth field); an admission and an
+; administrator installation carry 1.  The eight-field version-1 anchor is
+; not a topic event.
 (defconst *fn-th-topic-version* 1)
 (defconst *fn-th-topic-anchor-v2-version* 2)
 ; WORK bound of a fixed record shape (D27; community-bounds 2026-09-26): one
@@ -25,8 +29,7 @@
   (declare (xargs :guard t))
   (and (true-listp event)
        (or (fn-th-local-admin-eventp event)
-           (and (or (equal (len event) 8)
-                    (equal (len event) 9))
+           (and (equal (len event) 9)
                 (equal (fn-th-at 0 event) :topic-anchor)
                 (fn-th-source-id-p (fn-th-at 4 event))
                 (fn-th-auth-ref-p (fn-th-at 5 event))
@@ -35,8 +38,7 @@
                 (posp (fn-th-at 6 event))
                 (<= (fn-th-at 6 event) *fn-th-max-report-quota*)
                 (fn-th-exact-octets-p (fn-th-at 7 event) 32)
-                (or (equal (len event) 8)
-                    (fn-record-uint32p (fn-th-at 8 event))))
+                (fn-record-uint32p (fn-th-at 8 event)))
            (and (equal (len event) 9)
                 (equal (fn-th-at 0 event) :topic-admit)
                 (fn-th-source-id-p (fn-th-at 4 event))
@@ -55,11 +57,6 @@
                                 (fn-th-at 5 event) (fn-th-at 7 event)))
               (fn-th-at 1 event)))))
 
-(defun fn-th-topic-v1-anchorp (event)
-  (declare (xargs :guard t))
-  (and (eq (fn-th-at 0 event) :topic-anchor)
-       (equal (len event) 8)))
-
 (defun fn-th-topic-auth-items (ref)
   (declare (xargs :guard t))
   (list (cons :uint (fn-th-at 0 ref))
@@ -72,8 +69,7 @@
   (declare (xargs :guard t))
   (append
    (list (cons :bytes *fn-th-topic-magic*)
-         (cons :uint (if (and (eq (fn-th-at 0 event) :topic-anchor)
-                              (equal (len event) 9))
+         (cons :uint (if (eq (fn-th-at 0 event) :topic-anchor)
                          *fn-th-topic-anchor-v2-version*
                        *fn-th-topic-version*))
          (cons :uint (case (fn-th-at 0 event)
@@ -90,11 +86,9 @@
        (append
         (list (cons :bytes (fn-th-at 4 event)))
         (fn-th-topic-auth-items (fn-th-at 5 event))
-        (append
-         (list (cons :uint (fn-th-at 6 event))
-               (cons :bytes (fn-th-at 7 event)))
-         (if (equal (len event) 9)
-             (list (cons :uint (fn-th-at 8 event))) nil))))
+        (list (cons :uint (fn-th-at 6 event))
+              (cons :bytes (fn-th-at 7 event))
+              (cons :uint (fn-th-at 8 event)))))
     (t (append
       (list (cons :bytes (fn-th-at 4 event))
             (cons :bytes (fn-th-at 5 event))
@@ -131,22 +125,18 @@
           (version (fn-cbor-ag-cdr (fn-th-at 1 items))))
       (cond
        ((and (equal kind 0)
-             (or (and (equal version *fn-th-topic-version*)
-                      (equal (len items) 15))
-                 (and (equal version *fn-th-topic-anchor-v2-version*)
-                      (equal (len items) 16))))
+             (equal version *fn-th-topic-anchor-v2-version*)
+             (equal (len items) 16))
         (let ((event
-               (append
-                (list :topic-anchor
-                      (fn-cbor-ag-cdr (fn-th-at 3 items))
-                      (fn-cbor-ag-cdr (fn-th-at 4 items))
-                      (fn-cbor-ag-cdr (fn-th-at 5 items))
-                      (fn-cbor-ag-cdr (fn-th-at 6 items))
-                      (fn-th-topic-auth-from-items 7 items)
-                      (fn-cbor-ag-cdr (fn-th-at 13 items))
-                      (fn-cbor-ag-cdr (fn-th-at 14 items)))
-                (if (equal version *fn-th-topic-anchor-v2-version*)
-                    (list (fn-cbor-ag-cdr (fn-th-at 15 items))) nil))))
+               (list :topic-anchor
+                     (fn-cbor-ag-cdr (fn-th-at 3 items))
+                     (fn-cbor-ag-cdr (fn-th-at 4 items))
+                     (fn-cbor-ag-cdr (fn-th-at 5 items))
+                     (fn-cbor-ag-cdr (fn-th-at 6 items))
+                     (fn-th-topic-auth-from-items 7 items)
+                     (fn-cbor-ag-cdr (fn-th-at 13 items))
+                     (fn-cbor-ag-cdr (fn-th-at 14 items))
+                     (fn-cbor-ag-cdr (fn-th-at 15 items)))))
           (if (fn-th-topic-eventp event) (fn-stmt-ok event)
             (fn-stmt-error :shape))))
        ((and (equal version *fn-th-topic-version*)

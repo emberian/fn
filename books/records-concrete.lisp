@@ -282,11 +282,8 @@
              (updated
               (if (and source snapshot)
                   (if (eq (fn-th-at 0 event) :topic-anchor)
-                      (if (fn-th-topic-v1-anchorp event)
-                          (fn-th-commit-anchor event source snapshot
-                                               (fn-th-at 5 installed) anchors)
-                        (fn-th-commit-anchor-installed-v2
-                         event source snapshot installed anchors))
+                      (fn-th-commit-anchor-installed-v2
+                         event source snapshot installed anchors)
                     (fn-th-commit-report event source snapshot anchors))
                 (fn-stmt-error :missing-historical-authorship))))
         (if (fn-stmt-okp updated)

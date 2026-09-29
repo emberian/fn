@@ -56,7 +56,7 @@
   (list (fn-cpe-make 0 0 0 '(:bootstrap (1) (2)))
         (fn-cpe-make 1 1 1 '(:register (3) (4) (5) 1 1 1))
         (fn-held-plain (fn-record-make 2 2 2 "<after-consumer@example.invalid>" '(9)
-                        '("g") "archive-c" "subject-c" "post-c" 1 :legacy) 2)))
+                        '("g") "archive-c" "subject-c" "post-c" 1 0) 2)))
 (defconst *fn-ser-consumer-open*
   (fn-replay '("g") 32 *fn-ser-consumer-history*))
 (assert-event (equal (fn-replay-result-kind *fn-ser-consumer-open*) :ok))

@@ -172,7 +172,7 @@
      (len (fn-record-item-encode (cons :bytes (fn-record-string-octets (fn-record-content-subject w)))))
      (len (fn-record-item-encode (cons :bytes (fn-record-string-octets (fn-record-release-evidence w)))))
      (len (fn-record-uint-encode (fn-record-charge w)))
-     (if (equal (fn-record-stamp w) :legacy) 0 (len (fn-record-uint-encode (fn-record-stamp w))))))
+     (len (fn-record-uint-encode (fn-record-stamp w)))))
 
 ; P is a prefix of R.
 (defun fn-arx-prefixp (p r)

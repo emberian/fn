@@ -1093,7 +1093,6 @@
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (null (fn-node-stage (fn-sn-node s)))
            (fn-held-p record)
-           (not (equal (fn-record-stamp record) :legacy))
            ; The row's context must be of the generation in force: the
            ; finish consumes it only then (fn-sn-completion-core-enabledp),
            ; so a row interned under an older keyring would stage and then
@@ -1116,11 +1115,6 @@
            (e/d (fn-sn-statep)
                 (fn-sf-statep fn-node-statep fn-node-pending-matchesp
                  fn-sn-pending-record fn-sn-prepare-node)))))
-
-(defthm fn-sn-prepare-refuses-a-legacy-record
-  (implies (equal (fn-record-stamp record) :legacy)
-           (equal (fn-sn-prepare s record) s))
-  :hints (("Goal" :in-theory (enable fn-sn-prepare))))
 
 ; Retention events use the same reserved transaction and file publication
 ; machine.  Their node effect is deliberately deferred until fn-sn-finish:
@@ -1162,9 +1156,6 @@
            (or (fn-stxe-p event) (fn-stxk-p event) (fn-hstxa-p event))
            (eq (car (fn-cpe-projection-step
                      (fn-sn-consumer s) event (fn-sn-identity-next s))) :ok)
-           (or (not (fn-hstxa-p event))
-               (not (equal (fn-record-stamp (fn-replay-composite-held event))
-                           :legacy)))
            (consp (fn-replay-apply-record (fn-sn-node s) event))
            (equal (fn-stxk-context-kind
                    (fn-replay-identity-step (fn-sn-identity-context s) event))
@@ -1201,7 +1192,6 @@
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (fn-th-topic-eventp event)
-           (not (fn-th-topic-v1-anchorp event))
            (eq (fn-th-at 0 (fn-th-prefix-step (fn-sn-topic s) event)) :ok)
            (consp (fn-replay-apply-record (fn-sn-node s) event)))
       (let ((files (fn-sf-prepare-record (fn-sn-files s) event
@@ -1211,11 +1201,6 @@
           s))
     s))
 (verify-guards fn-sn-prepare-topic)
-
-(defthm fn-sn-prepare-topic-refuses-fresh-v1-anchor
-  (implies (fn-th-topic-v1-anchorp event)
-           (equal (fn-sn-prepare-topic s event) s))
-  :hints (("Goal" :in-theory (enable fn-sn-prepare-topic))))
 
 (defun fn-sn-find-record (pair records)
   (declare (xargs :guard t :verify-guards nil))

@@ -1,8 +1,8 @@
-; fn: the schema-0 transaction record's shape, without its codec.
+; fn: the transaction record's shape, without its codec.
 ;
-; The logical record is the ten-element tuple
+; The logical record is the eleven-element tuple
 ;   (sequence txid generation msgid payload groups obligation-id
-;    content-subject release-evidence charge)
+;    content-subject release-evidence charge stamp)
 ; where all text-like fields are ACL2 strings.  `msgid` and every group name
 ; are ASCII.  The three metadata fields are nonempty octet-domain strings:
 ; every character has a code in 0..255.  `payload` alone is an arbitrary list
@@ -495,18 +495,19 @@
   (declare (xargs :guard t))
   (and (natp n) (<= n *fn-cbor-max-uint64*)))
 
+; Every record carries its acceptance stamp, a u64 (specs/acceptance-stamp.md
+; §1.4).  The stampless schema-0 record is gone: nodes deploy fresh at 6.6.0
+; and no store holds one (D3, "no migrations").
 (defun fn-record-stampp (stamp)
   (declare (xargs :guard t))
-  (or (equal stamp :legacy) (fn-record-uint64p stamp)))
+  (fn-record-uint64p stamp))
 
-; The schema octet a record's encoding carries.  At schema 0 every record
-; needs version 0.  The acceptance stamp (specs/acceptance-stamp.md §1.4)
-; makes it a function of the stamp's kind (0 for a `:legacy' stamp, 1 for a
-; natural one); the seam constraint `fn-record-accepted-schema-is-the-stamp-kind'
-; is stated through this function so that the change is a change here and
-; behind the seam, and no statement above the seam moves.  Withdrawn on
-; export with the recognizers: no book above the seam may depend on the
-; value 0.
+; The schema octet a record's encoding carries: 1 for a record whose integer
+; fields fit u32, 2 for a wide one.  The seam constraint
+; `fn-record-accepted-schema-is-the-stamp-kind' is stated through this
+; function, so a change to the octet is a change here and behind the seam and
+; no statement above the seam moves.  Withdrawn on export with the
+; recognizers.
 ; -----------------------------------------------------------------------------
 ; Logical record and field accessors
 
@@ -543,25 +544,21 @@
   :car-fn fn-cbor-ag-car
   :cdr-fn fn-cbor-ag-cdr)
 
-; Schema 2 (packet P6) is a stamped record with an integer field above
-; 2^32 - 1: its encoding carries an eight-octet uint head, which an image
-; that knows only schemas 0 and 1 refuses by the version octet.  Every record
-; whose integer fields fit u32 keeps its schema-0 or schema-1 octet and its
-; bytes (records-invariants `fn-record-encode-narrow-record-is-schema-1-bytes').
+; Schema 2 (packet P6) is a record with an integer field above 2^32 - 1:
+; its encoding carries an eight-octet uint head.  Every record whose integer
+; fields fit u32 keeps its schema-1 octet and its bytes (records-invariants
+; `fn-record-encode-narrow-record-is-schema-1-bytes').
 (defun fn-record-widep (record)
   (declare (xargs :guard t))
   (not (and (fn-record-uint32p (fn-record-sequence record))
             (fn-record-uint32p (fn-record-txid record))
             (fn-record-uint32p (fn-record-generation record))
             (fn-record-uint32p (fn-record-charge record))
-            (or (equal (fn-record-stamp record) :legacy)
-                (fn-record-uint32p (fn-record-stamp record))))))
+            (fn-record-uint32p (fn-record-stamp record)))))
 
 (defun fn-record-schema-octet (record)
   (declare (xargs :guard t))
-  (if (equal (fn-record-stamp record) :legacy)
-      0
-    (if (fn-record-widep record) 2 1)))
+  (if (fn-record-widep record) 2 1))
 
 (defun fn-record-with-stamp (record stamp)
   (declare (xargs :guard t))

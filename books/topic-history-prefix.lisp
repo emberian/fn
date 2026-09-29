@@ -68,11 +68,8 @@
              (updated
               (if (and source snapshot)
                   (if (eq (fn-th-at 0 event) :topic-anchor)
-                      (if (fn-th-topic-v1-anchorp event)
-                          (fn-th-commit-anchor event source snapshot
-                                               (fn-th-at 5 installed) anchors)
-                        (fn-th-commit-anchor-installed-v2
-                         event source snapshot installed anchors))
+                      (fn-th-commit-anchor-installed-v2
+                         event source snapshot installed anchors)
                     (fn-th-commit-report event source snapshot anchors))
                 (fn-stmt-error :missing-historical-authorship))))
         (if (fn-stmt-okp updated)
@@ -169,7 +166,7 @@
                             (installed (fn-th-at 5 projection))
                             (anchors (fn-th-at 4 projection))))
            :in-theory
-           (e/d (fn-th-prefix-step fn-th-topic-v1-anchorp)
+           (e/d (fn-th-prefix-step)
                 (fn-store-event-p fn-th-topic-eventp fn-stxk-p fn-stxa-p
                  fn-th-local-admin-eventp fn-th-commit-anchor
                  fn-th-commit-anchor-installed-v2 fn-th-commit-report
