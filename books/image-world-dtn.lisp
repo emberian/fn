@@ -202,6 +202,7 @@
 (include-book "owner-refresh-indexed")
 (include-book "owner-bound-commit")
 (include-book "owner-log-reopen")
+(include-book "transit-authority-carried")
 (include-book "history-columns-store")
 (include-book "owner-log-route")
 (include-book "owner-advance-carried")

@@ -81,6 +81,7 @@
 ; (fn-prc-refresh, fn-prc-sbud-prepare; fn-owner-prepare-buffer).
 (include-book "../books/post-retain-carried")
 (include-book "../books/identity-retain-carried")
+(include-book "../books/transit-authority-carried")
 ;; lane prepare-served: the served decision inside the prepares the host calls
 ;; (fn-psrv-prepare, fn-psrv-refusal-kind, fn-psrv-prepare-identity,
 ;; fn-psrv-prepare-topic) and the configuration un-stage (fn-psrv-unstage).
@@ -2699,12 +2700,22 @@
           ; verdict is read from the store's carried index and keyring
           ; before any durable intent, and named beside the decision
           ; (fn-owner-transit-authority; the transit log line carries it).
+          ; The capacity arm's admission from the carried obligation-id
+          ; trie, refreshed to the Store node's ledger and kept (KEYSTONE
+          ; books/transit-authority-carried.lisp
+          ; fn-ptac-decide-of-refresh-is-pta-decide: the pair is
+          ; fn-pta-decide's for every carry the host holds).
+          (let ((carry (fn-prc-refresh (fn-owner-retain-carry state)
+                                       (fn-node-retention node))))
+          (let ((state (f-put-global 'fn-owner-retain-carry carry state)))
           (mv-let (d authority)
-            (fn-pta-decide (fn-sn-index (fn-own-store owner))
-                           (fn-sn-keyring (fn-own-store owner))
-                           (fn-cfg-value cfg) (fn-cfg-generation cfg)
-                           node cfg peer msgid octets (fn-own-clock owner) id subject
-                           (fn-own-config-header-limits (fn-own-config owner)))
+            (fn-ptac-decide (fn-sn-index (fn-own-store owner))
+                            (fn-sn-keyring (fn-own-store owner))
+                            (fn-cfg-value cfg) (fn-cfg-generation cfg)
+                            node cfg peer msgid octets (fn-own-clock owner) id
+                            subject
+                            (fn-own-config-header-limits (fn-own-config owner))
+                            carry)
           (let* ((args (fn-peer-injection-arguments node cfg peer msgid octets
                                                     0 id subject
                                                     (fn-own-clock owner)))
@@ -2773,7 +2784,7 @@
                                           (nth 2 args)
                                         nil)
                                       state)))
-            (value (fn-peer-decision-kind d)))))))))
+            (value (fn-peer-decision-kind d)))))))))))
 
 ; The transit reply.  `kind' and `reason' are the decision this image just
 ; made; `word' is the store's observed outcome (:durable, :refused,

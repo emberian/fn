@@ -16850,6 +16850,15 @@
       ]
     },
     {
+      "id": "PRF-1045",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ptac-decide-of-refresh-is-pta-decide"
+        }
+      ]
+    },
+    {
       "id": "PRF-1033",
       "events": [
         {

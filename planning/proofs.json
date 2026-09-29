@@ -17090,7 +17090,7 @@
     {
       "id": "PRF-1028",
       "title": "A peer's transfer decision answers its capacity arm from the carried obligation-id trie",
-      "statement": "books/identity-retain-carried.lisp (Q5a-2). KEYSTONE fn-irc-peer-decide-transfer-under-of-refresh-is-reference: for every carry satisfying fn-prc-carryp (PRF-289) and every ledger, fn-irc-peer-decide-transfer-under over (fn-prc-refresh carry ledger) is fn-peer-decide-transfer-under (the decision, header limits included); through fn-irc-peer-decide-transfer-is-reference (the capacity arm's admission by fn-prc-admissiblep, every other arm the reference's). Subject: host/owner-host.lisp fn-owner-bp-transit-submit's refusal reason calls fn-irc-peer-decide-transfer-under with the carry refreshed to the Store node's ledger. fn-owner-transit-decide now calls fn-pta-decide (books/peer-transit-authority.lisp, W5b), whose byte decision is fn-peer-decide-transfer-under: its carried twin is owed (served-costs-5 NEXT). Local policy (cost); no RFC requirement.",
+      "statement": "books/identity-retain-carried.lisp (Q5a-2). KEYSTONE fn-irc-peer-decide-transfer-under-of-refresh-is-reference: for every carry satisfying fn-prc-carryp (PRF-289) and every ledger, fn-irc-peer-decide-transfer-under over (fn-prc-refresh carry ledger) is fn-peer-decide-transfer-under (the decision, header limits included); through fn-irc-peer-decide-transfer-is-reference (the capacity arm's admission by fn-prc-admissiblep, every other arm the reference's). Subject: host/owner-host.lisp fn-owner-bp-transit-submit's refusal reason calls fn-irc-peer-decide-transfer-under with the carry refreshed to the Store node's ledger. fn-owner-transit-decide calls fn-pta-decide's carried twin (PRF-1045), which takes its byte decision from fn-irc-peer-decide-transfer-under. Local policy (cost); no RFC requirement.",
       "depends_on": [
         "PRF-289"
       ],
@@ -17108,6 +17108,29 @@
       "events": [
         "fn-irc-peer-decide-transfer-under-of-refresh-is-reference",
         "fn-irc-peer-decide-transfer-is-reference"
+      ]
+    },
+    {
+      "id": "PRF-1045",
+      "title": "The transit decision with its authority verdict answers its capacity arm from the carried obligation-id trie",
+      "statement": "books/transit-authority-carried.lisp (Q5a-2). KEYSTONE fn-ptac-decide-of-refresh-is-pta-decide: for every carry satisfying fn-prc-carryp (PRF-289) and every ledger, fn-ptac-decide over (fn-prc-refresh carry ledger) is fn-pta-decide (books/peer-transit-authority.lisp, W5b): the byte decision (fn-peer-decide-transfer-under, header limits included) and the authority verdict read from the carried index and keyring; through fn-irc-peer-decide-transfer-under-of-refresh-is-reference (PRF-1028). fn-ptac-decide is guard-verified (fn-pta-decide is not). Subject: host/owner-host.lisp fn-owner-transit-decide (every IHAVE/TAKETHIS and BP transit article) calls fn-ptac-decide with the carry refreshed to the Store node's ledger and keeps the refreshed carry in fn-owner-retain-carry. Local policy (cost); no RFC requirement.",
+      "depends_on": [
+        "PRF-289",
+        "PRF-1028"
+      ],
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/transit-authority-carried.lisp",
+        "tests/acl2/transit-authority-carried-tests.lisp"
+      ],
+      "progress_note": "Lane served-costs-6 (2026-09-29): REPL-admitted on persvati (book 6/6 with the guards, tests 18/18); certification with the runner's background cite.",
+      "events": [
+        "fn-ptac-decide-of-refresh-is-pta-decide"
       ]
     },
     {
