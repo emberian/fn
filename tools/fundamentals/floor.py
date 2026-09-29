@@ -5,7 +5,7 @@ at HEAP_BUILD MB (RSS at start/after N, the in-use figure when --build-heap is t
 stop; reopen at the figure (RSS after); then bisect the least --dynamic-space-size at which
 (a) the owner reopens and serves ARTICLE 0, (b) the owner reopens and takes EXTRA more POSTs.
 usage: floor.py TREE IMAGE WORK --posts N --octets L [--flags ...] [--build-heap MB|figure] [--extra K]"""
-import argparse, json, os, re, shutil, subprocess, sys, time
+import argparse, json, os, re, shutil, subprocess, sys, threading, time
 from pathlib import Path
 ap = argparse.ArgumentParser()
 ap.add_argument("tree"); ap.add_argument("image"); ap.add_argument("work")
@@ -50,11 +50,24 @@ out["status_headroom"] = next((l for l in st.splitlines() if l.startswith("headr
 out["status_open"] = next((l for l in st.splitlines() if l.startswith("open=")), None)
 out["figure_line_after"], fig2, _ = figure()
 try:
-    proc, s, err = r.start_owner(Path(a.image), config, env(bh, stack), work / "owner.stderr", timeout=600)
+    # The reopen's anonymous peak (F1's measure, J2): RssAnon sampled every
+    # 20 ms from the spawn through LISTENING and one settled second after.
+    err = open(work / "owner.stderr", "ab"); t0 = time.perf_counter()
+    proc = subprocess.Popen([a.image, "--fn", "operator", str(config), "run"], env=env(bh, stack),
+                            stdout=subprocess.PIPE, stderr=err)
+    peak, stop = {"anon": 0}, threading.Event()
+    def sample():
+        while not stop.is_set():
+            v = r.status_kib(proc.pid, "RssAnon") if os.path.exists("/proc/%d/status" % proc.pid) else None
+            if v is None: return
+            peak["anon"] = max(peak["anon"], v); stop.wait(0.02)
+    threading.Thread(target=sample, daemon=True).start()
     try:
-        out["reopen_s"] = round(s, 3); time.sleep(1); out["after_reopen"] = nm.rss(proc.pid)
+        r.wait_for_announcement(proc, b"LISTENING ", timeout=600, stderr_path=work / "owner.stderr")
+        out["reopen_s"] = round(time.perf_counter() - t0, 3); time.sleep(1); out["after_reopen"] = nm.rss(proc.pid)
+        stop.set(); out["after_reopen"]["anon_peak_kib"] = peak["anon"] or None
     finally:
-        r.stop_owner(proc, err)
+        stop.set(); r.stop_owner(proc, err)
 except BaseException as e:
     out["reopen_at_figure"] = "failed: %s" % str(e)[:200]
 snap = work / "snap"; shutil.copytree(work / "store", snap, symlinks=True)

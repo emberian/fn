@@ -30,6 +30,14 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-compaction-control-path-octets result))
 
+(defun fn-native-operator-host-result-reclaim-argv (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-reclaim-argv result))
+
+(defun fn-native-operator-host-result-reclaim-control-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-reclaim-control-path-octets result))
+
 (defun fn-native-operator-host-result-status (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-status result))

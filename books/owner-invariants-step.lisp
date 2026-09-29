@@ -565,7 +565,8 @@
 ; 1. What is queued is an injection of the submitted octets by this node's
 ;    injecting agent: its Path line, an Injection-Date, its Injection-Info,
 ;    then the octets as submitted (fn-inj-reinjectionp), under the Message-ID
-;    and newsgroups the command named.
+;    and newsgroups the command named (the decision as queued, unpacked:
+;    fn-own-sub-queued-decision, what the take installs).
 ; 2. With no usable clock nothing is queued and the answer is a refusal
 ;    (D10-a).
 ; 3. A retry of the same octets after the first became durable is the stored
@@ -587,7 +588,7 @@
 (defthm fn-own-operator-submission-is-an-injection-of-the-payload
   (implies (equal (fn-own-operator-submit-result o msgid groups octets stored) :submitted)
            (let* ((q (fn-own-queue (fn-own-operator-submit o msgid groups octets stored)))
-                  (d (fn-own-sub-decision (car q))))
+                  (d (fn-own-sub-queued-decision (car q))))
              (and (equal (len q) 1)
                   (fn-own-control-submissionp (car q))
                   (fn-inj-injectedp d)

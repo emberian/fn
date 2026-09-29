@@ -31,16 +31,23 @@ measured.  No row is a before/after comparison unless it says so.
 The bars are parameters (defaults: the checklist as written, and where it
 leaves a number open, the reading named here and in the record):
   F1  --f1-slope-max 1.5 (B per payload octet after a reopen: "about 1"),
-      --f1-reopen-mb 128, --f1-reopen hwm|rss (the 1,000-post reopen's peak,
-      VmHWM, by default; VmRSS after it is the lenient reading)
+      --f1-anon-peak-mib 64: the 1,000-post reopen judged by F8's split
+      (row J2, adopted 2026-09-28): its anonymous peak (RssAnon sampled
+      every 20 ms from the spawn through LISTENING and one settled second)
+      at most the bar; virtual size, accountable physical memory (the
+      anonymous pages) and working set (VmRSS) reported beside it
   F2  --f2-r-evidence PATH (the committed record discharging R at every host
       entry); the lookups per served command are counted by
       tools/fundamentals/f2_lookups.py (FN_NATIVE_COUNT_LOOKUPS on the
       developer image) at N = 1,000 and 10,000 and judged per command: no
       archive walk, the per-command counts constant in N beyond the pinned
       view's O(log N) bisection, a range command at most its reply's lines
-  F3  --f3-fsync-max 1.0 (fsyncs per POST at 8 posters: "well under 7");
-      the edge disk's POST/s needs --edge-ssh
+  F3  --f3-fsync-max 1.0: under 1 fsync per POST at the named rate (8
+      concurrent posters, the POST/s they reached stated in the clause; row
+      J2); --f3-design-per-post 0.125 (the storage-log design's figure at
+      batch 8): the gap to it is a FINDING the record states, never a pass
+      (release-v6.6.0.md section 2, finding F3-G); the edge disk's POST/s
+      needs --edge-ssh
   F4  planning/design-time-model-2026-09-27.md section 4: F4-R, every served
       read and every status/health within D_R = 3 x Q_max, in the mixed hour
       and under the injected 30 s stall; F4-W, every POST answered within
@@ -58,8 +65,12 @@ leaves a number open, the reading named here and in the record):
   F7  --f7-reading as-written (the module wholly OK on dtn and on
       dtn-developer) or scn077-on-dtn (SCN-077's case OK on dtn, the module
       wholly OK on dtn-developer: F7.md's alternative reading, ember's call)
-  F8  --f8-reserved-mb 256, --f8-in-use-mb 128 (--f8-in-use rss|hwm, rss
-      as the scoreboard read it), --f8-reopen-mb 256
+  F8  the split (adopted 2026-09-28): virtual address space reported;
+      --f8-accountable-mib 256 (accountable physical memory: the anonymous
+      pages, smaps_rollup's Anonymous, after 1,000 posts); --f8-working-set-mib
+      128 (VmRSS after 1,000 posts); --f8-reopen-mb 256 (the least heap that
+      reopens that store).  The old "under --f8-reserved-mb 256 reserved"
+      verdict is recorded beside them, visibly, and judges nothing
 """
 from __future__ import annotations
 
@@ -154,6 +165,14 @@ def mib(kib) -> str:
 # --------------------------------------------------------------------------
 # the rows
 
+def split_text(d: dict) -> str:
+    """F8's split of one /proc sample: virtual, accountable physical, working set."""
+    v = d.get("vmsize_kib")
+    return (f"virtual {mib(v) if v is not None else 'not sampled'}, "
+            f"accountable {mib(d['anonymous_kib']) if d.get('anonymous_kib') is not None else 'not sampled'}, "
+            f"working set {mib(d.get('rss_kib') or 0)}")
+
+
 def f1(out: Path, a) -> Row:
     r = Row("F1")
     s = {n: load(out, f"f1-slope-{n}.json") for n in ("a1000x2048", "a1000x8000", "a2000x2048")}
@@ -192,15 +211,16 @@ def f1(out: Path, a) -> Row:
                  f"at 2 KiB the whole increment is {o1 / (n1 * l1):.2f} B per payload octet after a reopen")
     else:
         r.clause("retained heap per payload octet", None, "the 1,000 x 2,048 and 1,000 x 8,000 rows did not both report")
-    if floor and floor.get("after_reopen"):
-        rss, hwm = floor["after_reopen"]["rss_kib"], floor["after_reopen"]["hwm_kib"]
-        judged = hwm if a.f1_reopen == "hwm" else rss
-        ok = judged * 1024 < a.f1_reopen_mb * MB
-        r.clause(f"the 1,000-post reopen under {a.f1_reopen_mb:g} MB RSS "
-                 f"({'VmHWM: the peak through the reopen' if a.f1_reopen == 'hwm' else 'VmRSS after it'})", ok,
-                 f"VmRSS {mib(rss)}, VmHWM {mib(hwm)} after the reopen ({floor.get('status_open', '?')}, {floor.get('reopen_s')} s)")
+    after = (floor or {}).get("after_reopen")
+    if after:
+        peak = after.get("anon_peak_kib")
+        r.clause(f"the 1,000-post reopen's anonymous peak at most {a.f1_anon_peak_mib:g} MiB (F8's split)",
+                 None if peak is None else peak <= a.f1_anon_peak_mib * 1024,
+                 (f"anonymous peak {mib(peak)}" if peak is not None else "anonymous peak not sampled (floor.py predates J2)")
+                 + f"; after it: {split_text(after)}; VmHWM {mib(after.get('hwm_kib') or 0)} "
+                 f"({floor.get('status_open', '?')}, {floor.get('reopen_s')} s)")
     else:
-        r.clause(f"the 1,000-post reopen under {a.f1_reopen_mb} MB RSS", None, "floor.py reported no reopen")
+        r.clause(f"the 1,000-post reopen's anonymous peak at most {a.f1_anon_peak_mib:g} MiB", None, "floor.py reported no reopen")
     r.notes.append(f"load {load_of(out, 'f1-')} (slope rows), {load_of(out, 'f8')} (the reopen)")
     return r
 
@@ -353,9 +373,18 @@ def f3(out: Path, a) -> Row:
         cons = "/".join(str(row["connections"]) for row in d.get("rows", []))
         table.append(f"| {fs} | {per} | {rates} ({cons}) | {p99} |")
     r.raw += table
-    r.clause(f"fsyncs per POST at 8 posters well under 7 (read: at most {a.f3_fsync_max})",
-             worst is not None and worst <= a.f3_fsync_max,
-             f"worst of the disks measured: {worst}")
+    at8 = {fs: next((row["post_per_s"] for row in d.get("rows", []) if row.get("connections") == 8), None)
+           for fs, d in runs.items() if d}
+    rate = ", ".join(f"{fs} {v} POST/s" for fs, v in at8.items() if v is not None) or "rate not reported"
+    r.clause(f"under {a.f3_fsync_max:g} fsync per POST at the named rate (8 concurrent posters)",
+             worst is not None and worst < a.f3_fsync_max,
+             f"worst of the disks measured: {worst} fsync per POST, at {rate}")
+    if worst is not None:
+        # A finding, not a clause: the batching gap is filed (release-v6.6.0.md
+        # section 2, F3-G) and stays visible in every record until it closes.
+        r.raw.append(f"- FINDING F3-G (batching gap): {worst} fsync per POST at 8 posters against the storage-log "
+                     f"design's {a.f3_design_per_post:g} at batch 8, {worst / a.f3_design_per_post:.1f}x the design; "
+                     + ("closed." if worst <= a.f3_design_per_post else "OPEN."))
     edge = runs["edge"]
     r.clause("POST/s on the public node's edge disk stated", bool(edge and edge.get("rows")),
              "measured over --edge-ssh" if edge else "not measured: no account on the edge (PKT-751); pass --edge-ssh")
@@ -556,19 +585,23 @@ def f8(out: Path, a) -> Row:
         return r
     r.measured = True
     r.commands.append("taskset -c ROW_CORES python3 tools/fundamentals/floor.py TREE build/fn-host WORK --posts 1000 --octets 2048 (MemoryMax=8G, /dev/shm)")
+    after = d.get("after_1000") or {}
+    acc, ws = after.get("anonymous_kib"), after.get("rss_kib")
+    r.clause(f"accountable physical memory at most {a.f8_accountable_mib:g} MiB after 1,000 posts (the anonymous pages)",
+             acc is not None and acc <= a.f8_accountable_mib * 1024, split_text(after))
+    r.clause(f"working set at most {a.f8_working_set_mib:g} MiB after 1,000 posts (VmRSS)",
+             ws is not None and ws <= a.f8_working_set_mib * 1024,
+             f"VmRSS {mib(ws or 0)}, VmHWM {mib(after.get('hwm_kib') or 0)}")
     fig = re.search(r"heap=(\d+) MB", d.get("figure_line_after") or "")
     fig0 = re.search(r"heap=(\d+) MB", d.get("figure_line") or "")
     res = re.search(r"reservation=(\d+) MB", d.get("init") or "")
     reserved = [int(x.group(1)) for x in (fig, res) if x]
-    r.clause(f"under {a.f8_reserved_mb} MB reserved (the launcher's heap figure after 1,000 POSTs and the init's reservation)",
-             bool(reserved) and max(reserved) < a.f8_reserved_mb,
-             f"figure {fig0.group(1) if fig0 else '?'} MB empty, {fig.group(1) if fig else '?'} MB after 1,000; init reservation {res.group(1) if res else '?'} MB")
-    after = d.get("after_1000") or {}
-    key = "rss_kib" if a.f8_in_use == "rss" else "hwm_kib"
-    use = after.get(key)
-    r.clause(f"under {a.f8_in_use_mb} MB in use after 1,000 posts ({'VmRSS' if key == 'rss_kib' else 'VmHWM'})",
-             use is not None and use * 1024 < a.f8_in_use_mb * MB,
-             f"VmRSS {mib(after.get('rss_kib', 0))}, VmHWM {mib(after.get('hwm_kib', 0))}, anonymous {mib(after.get('anonymous_kib', 0))}")
+    old_ok = bool(reserved) and max(reserved) < a.f8_reserved_mb
+    # The split replaced this verdict (decisions.md 2026-09-28); it is kept
+    # visible, judges nothing, and says UNMET while it is.
+    r.raw.append(f"- the old verdict, under {a.f8_reserved_mb:g} MB reserved: {'met' if old_ok else 'UNMET'} "
+                 f"(figure {fig0.group(1) if fig0 else '?'} MB empty, {fig.group(1) if fig else '?'} MB after 1,000; "
+                 f"init reservation {res.group(1) if res else '?'} MB)")
     fl = (d.get("reopen_post_floor") or {}).get("floor_mb")
     r.clause(f"a reopen of that store under {a.f8_reopen_mb} MB (least heap that reopens, serves and takes 50 POSTs)",
              fl is not None and fl < a.f8_reopen_mb, f"{fl} MB (failed at {(d.get('reopen_post_floor') or {}).get('failed_at_mb')} MB)")
@@ -667,9 +700,9 @@ def readme(rev: str, out: Path, rows: list[Row], a) -> str:
              f"- Rows pinned to cores {a.row_cores} one after another, each in its own systemd scope; the F4 hour on {a.f4_cores} at the same time, then the stall case there; native modules unpinned in a 24G scope.",
              "- One image, stated load: no row is a before/after comparison unless its record says so.", "",
              "## The bars as read", "",
-             f"F1 slope at most {a.f1_slope_max} B/octet, reopen under {a.f1_reopen_mb} MB ({a.f1_reopen}); F3 at most {a.f3_fsync_max} fsync/POST; "
+             f"F1 slope at most {a.f1_slope_max} B/octet, reopen anonymous peak at most {a.f1_anon_peak_mib:g} MiB; F3 under {a.f3_fsync_max} fsync/POST at 8 posters (design {a.f3_design_per_post:g}); "
              f"F4 Q_max {a.f4_q_max_ms}, H {a.f4_h_ms}, client deadline {a.f4_client_deadline_ms} ms; F6 under {a.f6_bar_s} s; "
-             f"F7 {a.f7_reading}; F8 reserved {a.f8_reserved_mb} MB, in use {a.f8_in_use_mb} MB ({a.f8_in_use}), reopen {a.f8_reopen_mb} MB.", "",
+             f"F7 {a.f7_reading}; F8 accountable {a.f8_accountable_mib:g} MiB, working set {a.f8_working_set_mib:g} MiB, reopen {a.f8_reopen_mb} MB (reserved {a.f8_reserved_mb} MB recorded only).", "",
              "## The rows", "", "| ID | record | status here |", "| --- | --- | --- |"]
     for r in rows:
         if r.measured:
@@ -755,19 +788,20 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     bars = argparse.ArgumentParser(add_help=False)
     bars.add_argument("--f1-slope-max", type=float, default=1.5)
-    bars.add_argument("--f1-reopen-mb", type=float, default=128)
-    bars.add_argument("--f1-reopen", choices=("hwm", "rss"), default="hwm",
-                      help="the reopen's figure: its peak (VmHWM, default) or VmRSS after it")
+    bars.add_argument("--f1-anon-peak-mib", type=float, default=64,
+                      help="the 1,000-post reopen's anonymous peak (row J2)")
     bars.add_argument("--f2-r-evidence", default=None)
     bars.add_argument("--f3-fsync-max", type=float, default=1.0)
+    bars.add_argument("--f3-design-per-post", type=float, default=0.125,
+                      help="the storage-log design's fsyncs per POST at batch 8 (finding F3-G)")
     bars.add_argument("--f4-q-max-ms", type=float, default=None)
     bars.add_argument("--f4-h-ms", type=float, default=None)
     bars.add_argument("--f4-client-deadline-ms", type=float, default=10000)
     bars.add_argument("--f6-bar-s", type=float, default=10)
     bars.add_argument("--f7-reading", choices=("as-written", "scn077-on-dtn"), default="as-written")
     bars.add_argument("--f8-reserved-mb", type=float, default=256)
-    bars.add_argument("--f8-in-use-mb", type=float, default=128)
-    bars.add_argument("--f8-in-use", choices=("rss", "hwm"), default="rss")
+    bars.add_argument("--f8-accountable-mib", type=float, default=256)
+    bars.add_argument("--f8-working-set-mib", type=float, default=128)
     bars.add_argument("--f8-reopen-mb", type=float, default=256)
     bars.add_argument("--checklist", default=None, help="default planning/release-vVERSION.md at REV's VERSION")
     bars.add_argument("--row-cores", default="20-23")

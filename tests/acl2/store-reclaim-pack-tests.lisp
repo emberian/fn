@@ -91,8 +91,9 @@
 ; fn-rclp-events-never-touch-a-held-article: witness per disjunct, and the
 ; conclusion fails with none of them (the releasing rule, no holder).
 ; (1) a BP obligation names the article.
+(defconst *rpt-articles* (fn-state-articles (fn-node-acceptance (fn-sn-node *rpt-s*))))
 (defconst *rpt-bp* (list *rpt-rule* 0 (list nil nil nil (list *rpt-msgid*))
-                         nil (fn-state-articles (fn-node-acceptance (fn-sn-node *rpt-s*)))))
+                         nil *rpt-articles* nil (fn-rclp-article-index *rpt-articles*)))
 (assert-event (fn-rcl-some-names-p (fn-rcl-obligations (nth 2 *rpt-bp*)) *rpt-msgid*
                                    (fn-article-memberships *rpt-art*)))
 (assert-event (equal (nth (rpt-i) (fn-rclp-events (rpt-events) *rpt-bp*))
@@ -100,7 +101,7 @@
 ; (2) the verdict list needs its payload.
 (defconst *rpt-vd* (list *rpt-rule* 0 (list nil nil nil nil)
                          (list (cons *rpt-msgid* '(:unverified :signature 0)))
-                         (fn-state-articles (fn-node-acceptance (fn-sn-node *rpt-s*)))))
+                         *rpt-articles* nil (fn-rclp-article-index *rpt-articles*)))
 (assert-event (equal (nth (rpt-i) (fn-rclp-events (rpt-events) *rpt-vd*))
                      (nth (rpt-i) (rpt-events))))
 ; (3) keep-forever.
@@ -109,6 +110,16 @@
 ; Tooth: with no holder, no needing verdict and a releasing rule, the
 ; conclusion fails.
 (must-fail-checked (assert-event (equal (nth (rpt-i) (rpt-new)) (nth (rpt-i) (rpt-events)))))
+
+; fn-rclp-article-index-finds-the-article (row A8): the index finds the
+; fixture's article; over the articles twice (every Message-ID bound twice)
+; the index agrees with the walk; an absent Message-ID finds nothing.
+(assert-event (equal (cdr (hons-get *rpt-msgid* (fn-rcl-nth 6 *rpt-ctx*))) *rpt-art*))
+(assert-event (equal (cdr (hons-assoc-equal *rpt-msgid*
+                                            (fn-rclp-article-index
+                                             (append *rpt-articles* *rpt-articles*))))
+                     (fn-find-article *rpt-msgid* (append *rpt-articles* *rpt-articles*))))
+(assert-event (equal (cdr (hons-get "<absent@rpt.invalid>" (fn-rcl-nth 6 *rpt-ctx*))) nil))
 
 ; fn-rclp-events-keep-every-other-kind: every event that is not a legacy
 ; record is unchanged; tooth: the article record (a legacy record) changes.
