@@ -400,13 +400,46 @@
 ; predates this definition; it stays where it is until owner-feed is next
 ; recertified.  host/store-node-host.lisp's `fn-store-cfg-peer-name-list'
 ; was the third copy and now calls this one.
-(defun fn-cfg-peer-names (peers)
+;
+; It walks the whole peer table (D27: no row cap), so it executes by a loop
+; (lane config-and-legacy): the :logic is the recursion, unchanged; the :exec
+; collects onto an accumulator.
+(defun fn-cfg-peer-names-loop (peers acc)
   (declare (xargs :guard t))
   (if (consp peers)
-      (if (equal (fn-cfg-row-b (car peers)) "path-identity")
-          (cons (fn-cfg-row-a (car peers)) (fn-cfg-peer-names (cdr peers)))
-        (fn-cfg-peer-names (cdr peers)))
-    nil))
+      (fn-cfg-peer-names-loop
+       (cdr peers)
+       (if (equal (fn-cfg-row-b (car peers)) "path-identity")
+           (cons (fn-cfg-row-a (car peers)) acc)
+         acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-cfg-peer-names (peers)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp peers)
+           (if (equal (fn-cfg-row-b (car peers)) "path-identity")
+               (cons (fn-cfg-row-a (car peers)) (fn-cfg-peer-names (cdr peers)))
+             (fn-cfg-peer-names (cdr peers)))
+         nil)
+       :exec (fn-cfg-peer-names-loop peers nil)))
+
+(defthm fn-cfg-peer-names-loop-is-rev-onto
+  (equal (fn-cfg-peer-names-loop peers acc)
+         (fn-ag-rev-onto acc (fn-cfg-peer-names peers)))
+  :hints (("Goal" :induct (fn-cfg-peer-names-loop peers acc)
+                  :in-theory (union-theories
+                              '(fn-cfg-peer-names-loop fn-cfg-peer-names
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-cfg-peer-names
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-cfg-peer-names
+                                fn-cfg-peer-names-loop-is-rev-onto
+                                fn-ag-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defthm fn-cfg-peer-names-true-listp
   (true-listp (fn-cfg-peer-names peers)))

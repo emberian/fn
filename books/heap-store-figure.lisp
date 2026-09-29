@@ -25,17 +25,48 @@
 ;     handles  the offset and size arrays, 8 bytes each per handle, doubling:
 ;              48 x N at the peak.
 ;     records  the rest of a record's retained state: small objects the
-;              collector copies, so twice.  *fn-heap-record-octets* is the
-;              measured live state a record, less its payload, on dev after
-;              per-record-state (the log kernel holds only the COUNT, PRF-282)
-;              and catalog-columns (the catalog on the served path): 8 to 10
-;              KB a record posted or reopened (1,000 x 2 KiB, 10,000 x 400;
-;              planning/evidence/catalog-columns-2026-09-27.md section 4,
-;              per-record-state-2026-09-27.md section 4), plus about 1.3 KB
-;              for a realistic 45-character Message-ID in the two tries
-;              (per-record-state section 2): 12 KiB.  The 5 KiB it replaces
-;              was measured before the catalog and the carried retention trie
-;              and was BELOW the measurement.
+;              collector copies, so twice.  Lane heap-bounds (row B2,
+;              2026-09-28) derives it from the profile's limits, since the
+;              measured constant it replaces (12 KiB a record) was BELOW
+;              the need of records with long headers (f8-reservation's
+;              finding F2: 250-octet Message-IDs and 900-octet Subjects
+;              held about 27 KB a record while posting).  What a record
+;              retains, structure by structure (the lane's record,
+;              planning/evidence/heap-bounds-2026-09-28.md):
+;              - a FIXED part that no header octet changes: the held row's
+;                spine and facts, the catalog's and the history columns'
+;                entries, the handle's extent and the retention carry
+;                (measured: 3.4 KB a record reopened and 5.0 KB posting,
+;                28-octet Message-IDs and short headers, header columns
+;                included): *fn-heap-record-fixed-octets*;
+;              - per HEADER octet, the column that holds it: the overview
+;                fields as character strings (4 octets a character) or the
+;                control words (Cancel-Lock, Cancel-Key) as octet lists (16
+;                octets an octet), each twice while the owner posts (the
+;                checkpoint base's canonical rows beside the live ones):
+;                *fn-heap-record-header-octet-cost* (32) a header octet, the
+;                control words' 2 x 16;
+;              - per MESSAGE-ID octet, more: the owner view's Message-ID trie
+;                (a cons and a list cell a character, 32), its rebuild while
+;                a checkpoint is published (the base's event index,
+;                fn-scka-restore-base, 32 more) and the two strings that name
+;                it in the row and the overview (4 each, twice posting): 80
+;                an octet, *fn-heap-record-msgid-octet-cost* (48) over the
+;                header octet's 32, for at most *fn-record-max-msgid* (RFC
+;                5536 3.1.3's 250, which every admission checks:
+;                fn-af-message-idp, fn-record-msgidp).
+;              Against f8-reservation's long-header curve (250-octet
+;              Message-IDs, 900-octet Subjects): 222 Message-ID octets x 80
+;              and 872 Subject octets x 8 is 24.7 KB a record over the short
+;              headers' state, where 23.5 KB was measured posting.
+;              A record's header octets are octets of its payload, which the
+;              history budget charges (USED), and at most the profile's
+;              max-header-octets (HDR), so the header term of N records is at
+;              most the cost of min(USED, N x HDR) octets
+;              (`fn-heap-record-headers-octets'); the rest is
+;              *fn-heap-record-octets* a record, the fixed part and the
+;              Message-ID's at its ceiling.  KEYSTONE
+;              `fn-heap-records-retained-within-the-terms'.
 ;     memberships *fn-heap-membership-octets* a membership (a group a
 ;              record is filed in; measured 137 + 45 octets), twice for the
 ;              collector.  Since lane membership-budget (2026-09-27, ember's
@@ -207,7 +238,16 @@
 (defconst *fn-heap-arena-page-octets* 262144)       ; *fn-arp-page*
 (defconst *fn-heap-arena-page-pointer-octets* 32)
 (defconst *fn-heap-handle-octets* 48)
-(defconst *fn-heap-record-octets* 12288)
+; A record's retained state (the header's comment, `records'): the fixed
+; part, a header octet's columns, and a Message-ID octet's trie and names.
+(defconst *fn-heap-record-fixed-octets* 4096)
+(defconst *fn-heap-record-header-octet-cost* 32)
+(defconst *fn-heap-record-msgid-octet-cost* 48)
+; The part of a record's state no header octet but the Message-ID's moves:
+; the fixed part and a Message-ID at its ceiling (16,096 octets).
+(defconst *fn-heap-record-octets*
+  (+ *fn-heap-record-fixed-octets*
+     (* *fn-heap-record-msgid-octet-cost* *fn-record-max-msgid*)))
 (defconst *fn-heap-membership-octets* 320)
 (defconst *fn-heap-open-chunk-octets* 1048576)      ; *fn-srs-chunk-octets*
 (defconst *fn-heap-open-list-copies* 2)
@@ -286,13 +326,147 @@
            :use ((:instance fn-heap-floor-page-of-sum)
                  (:instance fn-heap-floor-page-bounds (a x))))))
 
+; ONE RECORD's retained state: MID octets of Message-ID among HDR header
+; octets (the Message-ID's octets are header octets too, so a Message-ID
+; octet costs the header octet's and the trie's).
+(defun fn-heap-record-retained-octets (mid hdr)
+  (declare (xargs :guard t))
+  (+ *fn-heap-record-fixed-octets*
+     (* *fn-heap-record-header-octet-cost* (nfix hdr))
+     (* *fn-heap-record-msgid-octet-cost* (nfix mid))))
+
+; The header term of N records holding USED payload octets under the
+; profile's header bound.
+(defun fn-heap-record-headers-octets (profile used n)
+  (declare (xargs :guard t))
+  (* *fn-heap-record-header-octet-cost*
+     (min (nfix used)
+          (* (nfix n) (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile))))))
+
+(defthm fn-heap-record-headers-octets-natp
+  (natp (fn-heap-record-headers-octets profile used n))
+  :rule-classes :type-prescription)
+
+; The records a store holds, each (MID HDR PAYLOAD): its Message-ID's
+; octets, its header's and its payload's.  Admissible under a profile: the
+; Message-ID within RFC 5536's 250 (every admission checks it), the header
+; within the profile's max-header-octets (the parse under the profile's
+; limits refuses more), and the header a part of the payload.
+(defun fn-heap-record-admissiblep (profile rec)
+  (declare (xargs :guard t))
+  (and (true-listp rec) (equal (len rec) 3)
+       (natp (first rec)) (natp (second rec)) (natp (third rec))
+       (<= (first rec) *fn-record-max-msgid*)
+       (<= (second rec) (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile)))
+       (<= (second rec) (third rec))))
+
+(defun fn-heap-records-admissiblep (profile recs)
+  (declare (xargs :guard t))
+  (if (consp recs)
+      (and (fn-heap-record-admissiblep profile (car recs))
+           (fn-heap-records-admissiblep profile (cdr recs)))
+    t))
+
+(defun fn-heap-records-retained-octets (recs)
+  (declare (xargs :guard t))
+  (if (consp recs)
+      (+ (let ((rec (car recs)))
+           (if (consp rec)
+               (fn-heap-record-retained-octets (car rec) (and (consp (cdr rec)) (cadr rec)))
+             *fn-heap-record-fixed-octets*))
+         (fn-heap-records-retained-octets (cdr recs)))
+    0))
+
+(defun fn-heap-records-payload-octets (recs)
+  (declare (xargs :guard t))
+  (if (consp recs)
+      (+ (let ((rec (car recs)))
+           (if (and (consp rec) (consp (cdr rec)) (consp (cddr rec))) (nfix (caddr rec)) 0))
+         (fn-heap-records-payload-octets (cdr recs)))
+    0))
+
+(defun fn-heap-records-header-octets (recs)
+  (declare (xargs :guard t))
+  (if (consp recs)
+      (+ (let ((rec (car recs)))
+           (if (and (consp rec) (consp (cdr rec))) (nfix (cadr rec)) 0))
+         (fn-heap-records-header-octets (cdr recs)))
+    0))
+
+(local
+ (defthm fn-heap-records-retained-is-fixed-and-headers
+   (implies (fn-heap-records-admissiblep profile recs)
+            (<= (fn-heap-records-retained-octets recs)
+                (+ (* (len recs) *fn-heap-record-octets*)
+                   (* *fn-heap-record-header-octet-cost*
+                      (fn-heap-records-header-octets recs)))))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-heap-records-admissiblep profile recs)
+            :in-theory (e/d (fn-heap-record-retained-octets) (fn-bs-profile-field))))))
+
+(local
+ (defthm fn-heap-records-headers-within-payload
+   (implies (fn-heap-records-admissiblep profile recs)
+            (<= (fn-heap-records-header-octets recs)
+                (fn-heap-records-payload-octets recs)))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-heap-records-admissiblep profile recs)
+            :in-theory (disable fn-bs-profile-field)))))
+
+(local
+ (defthm fn-heap-records-headers-within-the-limit
+   (implies (fn-heap-records-admissiblep profile recs)
+            (<= (fn-heap-records-header-octets recs)
+                (* (len recs)
+                   (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile)))))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-heap-records-admissiblep profile recs)
+            :in-theory (disable fn-bs-profile-field)))))
+
+; KEYSTONE (the record term is a bound for every admissible record).  The
+; state retained by records each admissible under the profile -- a
+; Message-ID within 250 octets, a header within the profile's
+; max-header-octets and a part of the payload -- is within the figure's two
+; record terms at N = their count and USED = their payload's octets:
+; *fn-heap-record-octets* a record, and the header term.
+(defthm fn-heap-records-retained-within-the-terms
+  (implies (fn-heap-records-admissiblep profile recs)
+           (<= (fn-heap-records-retained-octets recs)
+               (+ (* (len recs) *fn-heap-record-octets*)
+                  (fn-heap-record-headers-octets
+                   profile (fn-heap-records-payload-octets recs) (len recs)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-heap-records-retained-octets
+                                      fn-heap-records-header-octets
+                                      fn-heap-records-payload-octets
+                                      fn-heap-records-admissiblep
+                                      fn-bs-profile-field)
+           :use (fn-heap-records-retained-is-fixed-and-headers
+                 fn-heap-records-headers-within-payload
+                 fn-heap-records-headers-within-the-limit))))
+
+; The header term grows with the payload, the records and the header bound.
+(defthm fn-heap-record-headers-octets-monotone
+  (implies (and (<= (nfix u1) (nfix u2)) (<= (nfix n1) (nfix n2))
+                (<= (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p1))
+                    (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p2))))
+           (<= (fn-heap-record-headers-octets p1 u1 n1)
+               (fn-heap-record-headers-octets p2 u2 n2)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-bs-profile-field)
+           :nonlinearp t)))
+
+(in-theory (disable fn-heap-record-headers-octets))
+
 ; The state a store of USED payload octets, N records and M memberships
-; keeps.
+; keeps: the arena, the handles, the records' fixed and header terms (twice:
+; the collector's copy) and the memberships.
 (defun fn-heap-store-state-octets (profile used n m)
-  (declare (xargs :guard t) (ignore profile))
+  (declare (xargs :guard t))
   (+ (fn-heap-arena-octets used)
      (* *fn-heap-handle-octets* (nfix n))
      (* 2 (nfix n) *fn-heap-record-octets*)
+     (* 2 (fn-heap-record-headers-octets profile used n))
      (* 2 *fn-heap-membership-octets* (nfix m))))
 
 ; The memberships a store of the profile holds at most: the history budget
@@ -380,16 +554,38 @@
   (declare (xargs :guard t))
   (+ (fn-heap-store-history-octets profile)
      (* *fn-heap-handle-octets* (nfix (fn-bs-profile-max-transactions profile)))
-     (* 2 (nfix (fn-bs-profile-max-transactions profile)) *fn-heap-record-octets*)))
+     (* 2 (nfix (fn-bs-profile-max-transactions profile)) *fn-heap-record-octets*)
+     (* 2 (fn-heap-record-headers-octets profile
+                                         (fn-bs-profile-max-history-octets profile)
+                                         (fn-bs-profile-max-transactions profile)))))
+
+; The octets one open chunk holds over an input of OU octets: a chunk closes
+; once it holds the quantum (`fn-srs-chunk-fullp'), so it is at most the
+; quantum and the record that filled it (R); and every octet of it is an
+; octet of the input, so it is at most OU.  (Lane heap-bounds, row B4: the
+; term was the quantum and R whatever the input, 76 MiB of the small
+; preset's figure for an empty store.)
+(defun fn-heap-open-chunk-bound (profile ou)
+  (declare (xargs :guard t))
+  (min (nfix ou)
+       (+ *fn-heap-open-chunk-octets*
+          (nfix (fn-bs-profile-max-record-octets profile)))))
+
+(defthm fn-heap-open-chunk-bound-monotone
+  (implies (and (<= (nfix ou1) (nfix ou2))
+                (<= (nfix (fn-bs-profile-max-record-octets p1))
+                    (nfix (fn-bs-profile-max-record-octets p2))))
+           (<= (fn-heap-open-chunk-bound p1 ou1) (fn-heap-open-chunk-bound p2 ou2)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-bs-profile-max-record-octets))))
 
 ; The open's transient over an input of OU octets in ON records: one chunk
-; and one entry as lists (at most the chunk and a record of R octets), the
+; and one entry as lists (each at most `fn-heap-open-chunk-bound'), the
 ; checkpoint suffix's vectors, and the per-record build.
 (defun fn-heap-store-open-octets (profile ou on)
   (declare (xargs :guard t))
   (+ (* 2 *fn-heap-list-octets-per-octet* *fn-heap-open-list-copies*
-        (+ *fn-heap-open-chunk-octets*
-           (nfix (fn-bs-profile-max-record-octets profile))))
+        (fn-heap-open-chunk-bound profile ou))
      (* 2 (nfix ou))
      (* 2 *fn-heap-open-record-octets* (nfix on))))
 
@@ -605,16 +801,22 @@
    :hints (("Goal" :in-theory (e/d (fn-heap-store-state-octets fn-heap-store-state-bound)
                                    (fn-heap-arena-octets fn-heap-store-history-octets
                                     fn-bs-profile-max-history-octets
-                                    fn-bs-profile-max-transactions))
-            :use (fn-heap-store-history-holds-payload-and-memberships)
-            :nonlinearp t))))
+                                    fn-bs-profile-max-transactions fn-bs-profile-field))
+            :use (fn-heap-store-history-holds-payload-and-memberships
+                  (:instance fn-heap-record-headers-octets-monotone
+                             (p1 profile) (p2 profile) (u1 used) (n1 n)
+                             (u2 (fn-bs-profile-max-history-octets profile))
+                             (n2 (fn-bs-profile-max-transactions profile))))))))
 
 (local
  (defthm fn-heap-store-open-octets-monotone
    (implies (and (<= (nfix ou) (nfix h)) (<= (nfix on) (nfix tt)))
             (<= (fn-heap-store-open-octets profile ou on)
                 (fn-heap-store-open-octets profile h tt)))
-   :rule-classes nil))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable fn-heap-open-chunk-bound)
+            :use ((:instance fn-heap-open-chunk-bound-monotone
+                             (p1 profile) (p2 profile) (ou1 ou) (ou2 h)))))))
 
 (local
  (defthm fn-heap-open-bounds-natp
@@ -760,7 +962,15 @@
                                    fn-bs-profile-field))
            :use ((:instance fn-heap-open-bounds-of-nil (profile p1))
                  (:instance fn-heap-open-bounds-of-nil (profile p2))
-                 (:instance fn-heap-articles-octets-monotone))
+                 (:instance fn-heap-articles-octets-monotone)
+                 (:instance fn-heap-open-chunk-bound-monotone
+                            (ou1 (fn-bs-profile-max-history-octets p1))
+                            (ou2 (fn-bs-profile-max-history-octets p2)))
+                 (:instance fn-heap-record-headers-octets-monotone
+                            (u1 (fn-bs-profile-max-history-octets p1))
+                            (u2 (fn-bs-profile-max-history-octets p2))
+                            (n1 (fn-bs-profile-max-transactions p1))
+                            (n2 (fn-bs-profile-max-transactions p2))))
            :nonlinearp t)))
 
 (in-theory (disable fn-heap-store-need fn-heap-store-base-octets fn-heap-membership-bound

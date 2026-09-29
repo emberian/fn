@@ -9,6 +9,7 @@
 
 (in-package "ACL2")
 (include-book "records")
+(include-book "profile-limits") ; its figures are rows there
 
 ; Work bounds, not data bounds (D27 classification, PRF-102).  fn.toml has a
 ; fixed schema: ten tables and twenty-seven keys, each admitted at most once
@@ -25,7 +26,7 @@
 (defconst *fn-ncfg-max-server* 128)
 (defconst *fn-ncfg-default-listener-host* "127.0.0.1")
 (defconst *fn-ncfg-default-listener-port* 1119)
-(defconst *fn-ncfg-default-max-connections* 32)
+(defconst *fn-ncfg-default-max-connections* (fn-profile-limit :max-connections))
 (defconst *fn-ncfg-default-clock-error-ms* 1000)
 
 ; The operator's tables (PKT-096, D28 spike deferral 1).  `[alerts]' and
@@ -35,9 +36,9 @@
 ; one grammar and one owner, and `operator CONFIG show' renders them.
 ; Defaults are the spike's figures.  A mission (`[ops] mission') is one of the
 ; names below; its fn.toml and store profile are books/native-config-show.lisp.
-(defconst *fn-ncfg-default-headroom-min-percent* 10)
-(defconst *fn-ncfg-default-refusal-rate-per-minute* 30)
-(defconst *fn-ncfg-default-cooldown-seconds* 900)
+(defconst *fn-ncfg-default-headroom-min-percent* (fn-profile-limit :headroom-min-percent))
+(defconst *fn-ncfg-default-refusal-rate-per-minute* (fn-profile-limit :refusal-rate-per-minute))
+(defconst *fn-ncfg-default-cooldown-seconds* (fn-profile-limit :cooldown-seconds))
 (defconst *fn-ncfg-default-ops-scope* "user")
 (defconst *fn-ncfg-default-keep-releases* 3)
 (defconst *fn-ncfg-default-log-max-bytes* 67108864)

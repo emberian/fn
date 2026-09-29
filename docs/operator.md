@@ -110,7 +110,7 @@ Also on OpenBSD:
   the figure (`reservation=... MB`). OpenBSD caps each program's memory by
   login class (1,536 MB for `default`, 4,096 MB for `daemon`, which the
   service uses). `init` counts that cap: on a small machine it picks a
-  smaller store.
+  smaller store, and refuses by name when even the smallest does not fit.
 - Start fn by hand only from a folder its user can read (`cd /var/fn`),
   or it stops with `getcwd: Permission denied`. The service does this for you.
 
@@ -477,7 +477,7 @@ fn operator /etc/fn/fn.toml policy set exposure-trusted 192.168.1.0/24
 
 In order, these set:
 
-- how many connections at once (31 if unset; each costs memory);
+- how many connections at once (<!--limit:max-connections - 1-->31<!--/limit--> if unset; each costs memory);
 - how many from one address;
 - how fast one address may work (over it, fn slows it down; nothing is
   lost). At the default, 64, one address can send about 32 KB a second, so
@@ -855,7 +855,7 @@ Limits: `--max-transactions`, `--max-history-octets`,
 `--max-credentials`. `--profile scale|development|default` names a starting
 set. When this machine's memory cannot hold the limits you name, `init`
 refuses and makes nothing:
-`fn: refused init-budget-cannot-hold-profile profile=scale sizing=requested reservation=10097 MB budget=2048 MB`
+`fn: refused init-budget-cannot-hold-profile profile=scale sizing=requested reservation=14272 MB budget=2048 MB`
 (exit code 1). The first number is what the store would need at its
 limits, the second what this machine can give. Choose smaller limits, or,
 to make a store for a bigger machine, name that machine's memory with
@@ -877,7 +877,12 @@ warns on stderr with both numbers, exit code 0:
 takes about 1,180 bytes (860 for the post, 320 for its group), so that is
 about 56,000 posts at the top and about 7,000 at the bottom. `status`
 shows the limits on its `profile` line and about how many posts still fit
-on its `capacity articles-left=N` line. A friend's feed uses the same room. For more, remove the `mission`
+on its `capacity articles-left=N` line. A friend's feed uses the same room. The smallest size
+needs about 1.9 GB for its first run (`reservation=1906 MB` with a 190 MB
+image): fn reserves room for every article to carry the longest header
+the store admits, so a machine that gives `init` less, such as a 2 GB
+machine after the system's share, is refused by name; name smaller limits
+(`--max-transactions`, `--max-history-octets`). For more, remove the `mission`
 line from `fn.toml` and `init` with the limits above, or raise them later
 with `store export` and `store import --max-... N`.
 

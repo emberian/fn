@@ -18,9 +18,13 @@
 ;   octets per record            *fn-cfg-max-octets*      65538
 ; The last two are the decoder's whole-record ceilings.  They are NOT part
 ; of fn-cfg-recordp: a record every field of which is within its maximum can
-; encode past 65,538 octets (below, the GAP witness), and the decoder then
-; refuses it :limit.  Stated here; its enforcement at admission is open
-; (LANEDUMP clock-units-2).
+; encode past 65,538 octets, and the decoder then refuses it :limit.  So
+; admission checks them: fn-cfg-record-acceptablep requires
+; fn-cfg-record-fitsp, which is exactly the decoder's two limits
+; (fn-cfg-record-fitsp-is-the-decoder-limits).  Below, the REFUSAL witnesses:
+; at 65,538 octets the record is accepted and round-trips; at 65,539 the
+; same record, admissible in every other conjunct, is refused at admission,
+; as the decoder refuses its octets (lane config-and-legacy).
 (in-package "ACL2")
 (include-book "../../books/config")
 
@@ -121,10 +125,54 @@
                                           (fn-clock-observation (+ 1 *cfm-u64*) 0 0 t)))))
 (assert-event (not (fn-cfg-deltap (fn-cfg-delta-make :no-such-kind "" "" 0 nil))))
 
-; GAP witness (labelled; the open item above): a record whose every field is
-; within its maximum encodes past *fn-cfg-max-octets* and does not decode.
-; When admission bounds the encoding, this record stops being acceptable;
-; until then it is a recognized record the codec cannot carry.
+;; Whole-record limits at admission (fn-cfg-record-fitsp in
+;; fn-cfg-record-acceptablep).  EDGE is a :set-peers record of 84 rows whose
+;; first row's third label has L octets: at L = 58 it encodes to exactly
+;; *fn-cfg-max-octets* octets, at L = 59 one past.
+(defconst *cfm-gen1* (fn-config-replay 0 512 (list *fn-cfg-default-record*)))
+(defun cfm-edge (l)
+  (fn-cfg-record-make
+   1 1 2
+   (list (fn-cfg-delta-make
+          :set-peers "" "" 0
+          (cons (fn-cfg-row-make *cfm-label* *cfm-label*
+                                 (coerce (make-list l :initial-element #\y) 'string)
+                                 *cfm-u32*)
+                (make-list 83 :initial-element *cfm-row*))))
+   *cfm-stamp*))
+(assert-event (and (fn-cfgp *cfm-gen1*) (equal (fn-cfg-generation *cfm-gen1*) 1)))
+
+; Positive witness, at the limit: every conjunct of acceptance holds, the
+; encoding is exactly the octet limit, and it decodes to the record.
+(assert-event
+ (let ((r (cfm-edge 58)))
+   (and (equal (len (fn-cfg-encode r)) *fn-cfg-max-octets*)
+        (<= (len (fn-cfg-record-items r)) *fn-cfg-max-items*)
+        (fn-cfg-record-fitsp r)
+        (fn-cfg-recordp r)
+        (equal (fn-cfg-record-generation r) (+ 1 (fn-cfg-generation *cfm-gen1*)))
+        (fn-cfg-admissiblep (fn-cfg-value *cfm-gen1*) 2 (fn-cfg-record-stamp r) 0 512
+                            (fn-cfg-record-change r))
+        (fn-cfg-record-acceptablep *cfm-gen1* r 0 512)
+        (cfm-round-trips r))))
+
+; Removal witness, one octet past: every other conjunct of acceptance still
+; holds; fitsp fails, so acceptance fails, and the decoder refuses the
+; octets :limit.
+(assert-event
+ (let ((r (cfm-edge 59)))
+   (and (equal (len (fn-cfg-encode r)) (+ 1 *fn-cfg-max-octets*))
+        (fn-cfg-recordp r)
+        (equal (fn-cfg-record-generation r) (+ 1 (fn-cfg-generation *cfm-gen1*)))
+        (fn-cfg-admissiblep (fn-cfg-value *cfm-gen1*) 2 (fn-cfg-record-stamp r) 0 512
+                            (fn-cfg-record-change r))
+        (not (fn-cfg-record-fitsp r))
+        (not (fn-cfg-record-acceptablep *cfm-gen1* r 0 512))
+        (equal (fn-cfg-decode-exact (fn-cfg-encode r))
+               (fn-record-parse-error :limit)))))
+
+; The former GAP record (100 rows of three 256-octet labels): a record, not
+; one admission accepts, and not one the codec carries.
 (defconst *cfm-gap*
   (fn-cfg-record-make 1 1 2
                       (list (fn-cfg-delta-make :set-peers "" "" 0
@@ -133,6 +181,8 @@
                       *cfm-stamp*))
 (assert-event
  (and (fn-cfg-recordp *cfm-gap*)
+      (not (fn-cfg-record-fitsp *cfm-gap*))
+      (not (fn-cfg-record-acceptablep *cfm-gen1* *cfm-gap* 0 512))
       (< *fn-cfg-max-octets* (len (fn-cfg-encode *cfm-gap*)))
       (equal (fn-cfg-decode-exact (fn-cfg-encode *cfm-gap*))
              (fn-record-parse-error :limit))))

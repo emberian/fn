@@ -113,10 +113,9 @@ reasons, each sufficient:
    (`books/checkpoint-codec.lisp`, TREE). The checkpoint stores the exact node,
    so an article stamp in milliseconds would make every node with a stamped
    article unencodable as a checkpoint. In seconds it is inside the universe.
-   The pre-stamp migration also needs a schema-0 selected-checkpoint decoder:
-   old ready nodes store five-field articles, which gain a trailing `:legacy`
-   only after their protected bytes are read and before current-state
-   validation. New captures use checkpoint schema 1; see
+   Checkpoints have one schema, 1: a schema-0 (pre-stamp) checkpoint header
+   is refused `:version` and never upgraded (no migrations: every node
+   redeploys fresh at 6.6.0); see
    [the checkpoint codec](checkpoint.md#2-canonical-bytes-bookscheckpoint-codeclisp).
 3. **Nothing reads a finer instant.** NEWNEWS and NEWGROUPS thresholds are
    whole seconds (`fn-nntp-civil-dtn-ms` returns `1000 * secs`), and DATE
