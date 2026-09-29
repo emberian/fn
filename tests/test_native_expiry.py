@@ -189,7 +189,7 @@ class ExpiryMixin:
             # The policy is written live (the owner publishes the record).
             node.operator("retention", "expire", GROUP, "purge", "30", expect=EXIT.OK)
             c = Client(node.port, timeout=300, greeting=None)
-            self.assertTrue(c.command("ARTICLE %s" % msgid("p0")).startswith(b"220"))
+            self.assertTrue(c.command("STAT %s" % msgid("p0")).startswith(b"223"))
             dry = self.reclaim(node, "--dry-run")
             self.assertIn(b"reclaim dry-run", dry.stdout, dry.stdout)
             summary = self.owner_lines(owner, re.compile(rb"RECLAIM dry-run records="), 1)
@@ -200,7 +200,7 @@ class ExpiryMixin:
             self.assertEqual(listed, {msgid("p0"), msgid("p1")})
             # Nothing was written: the expired article is still served, and a
             # post and a read on the same connection continue.
-            self.assertTrue(c.command("ARTICLE %s" % msgid("p0")).startswith(b"220"))
+            self.assertTrue(c.command("STAT %s" % msgid("p0")).startswith(b"223"))
             first, final = c.post(article("n9", GROUP, None))
             self.assertTrue((final or first).startswith(b"240"), (first, final))
             self.assertTrue(c.command("STAT %s" % msgid("n9")).startswith(b"223"))
