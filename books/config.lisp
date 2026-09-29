@@ -975,7 +975,8 @@
     :add-peer-rows :remove-peer-rows :set-group-description
     :set-group-status :account-access :set-group-moderation
     :consumer-bind
-    :set-default-subscriptions :withdraw-article :account-delete))
+    :set-default-subscriptions :withdraw-article :account-delete
+    :reclaim-note))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -1008,6 +1009,8 @@
         ((equal kind :withdraw-article) 26)
         ; public-node-2: an account's deletion (its tombstone, mark 7).
         ((equal kind :account-delete) 27)
+        ; PKT-855: what a `store reclaim' decided (books/reclaim-note.lisp).
+        ((equal kind :reclaim-note) 28)
         (t 0)))
 
 (defun fn-cfg-code-kind (code)
@@ -1039,6 +1042,7 @@
         ((equal code 25) :set-default-subscriptions)
         ((equal code 26) :withdraw-article)
         ((equal code 27) :account-delete)
+        ((equal code 28) :reclaim-note)
         (t nil)))
 
 (defun fn-cfg-deltap (d)
@@ -1800,6 +1804,34 @@
 (defun fn-cfg-account-delete (login)
   (declare (xargs :guard t))
   (fn-cfg-delta-make :account-delete login "" 0 nil))
+
+;; A reclaim's note (PKT-855; books/reclaim-note.lisp).  `store reclaim'
+;; publishes, in the one record that carries its instant, what it decided:
+;;
+;;   (:reclaim-note TEXT "" 0 ())                                    code 28
+;;
+;; TEXT is ACL2's summary of the decision (fn-rcn-text: the instant's code,
+;; the history's record count, the reclaimed count, the freed octets and the
+;; SHA-256 of the reclaimed Message-IDs).  The value keeps the latest note as
+;; the limits row ("retention-reclaim-note" "" TEXT 0), which no limit
+;; reader names; the configuration history keeps every note.  A note decides
+;; nothing in the store: the rewrite is the decision's
+;; (books/store-log-reclaim.lisp), and the note is what makes it checkable
+;; by a holder of the pre-reclaim history.
+(defconst *fn-cfg-reclaim-note-slot* "retention-reclaim-note")
+
+(defun fn-cfg-reclaim-note (text)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :reclaim-note text "" 0 nil))
+
+(defun fn-cfg-reclaim-note-reason (d)
+  (declare (xargs :guard t))
+  (if (and (consp (fn-record-string-octets (fn-cfg-delta-a d)))
+           (equal (fn-cfg-delta-b d) "")
+           (equal (fn-cfg-delta-n d) 0)
+           (equal (fn-cfg-delta-rows d) nil))
+      nil
+    :reclaim-note))
 
 (defun fn-cfg-account-tombstone-rowp (row)
   (declare (xargs :guard t))
@@ -2660,6 +2692,17 @@
                                   (fn-cfg-accounts v) a)
                                  rows)
                          (fn-cfg-descriptions v)))
+     ; A reclaim's note (PKT-855) is the limits row "retention-reclaim-note"
+     ; whose C field is the note's text (fn-cfg-reclaim-note).
+     ((equal kind :reclaim-note)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-row-upsert (fn-cfg-limits v)
+                                            (fn-cfg-row-make *fn-cfg-reclaim-note-slot* "" a 0))
+                         (fn-cfg-authorities v)
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
      ; An account's deletion tombstones its redeemed rows (public-node-2).
      ((equal kind :account-delete)
       (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
@@ -2916,6 +2959,7 @@
       (fn-cfg-set-group-moderation-reason v gen d))
      ((equal kind :withdraw-article) (fn-cfg-withdraw-article-reason v d))
      ((equal kind :account-delete) (fn-cfg-account-delete-reason v d))
+     ((equal kind :reclaim-note) (fn-cfg-reclaim-note-reason d))
      ((equal kind :set-default-subscriptions)
       (fn-cfg-set-default-subscriptions-reason v gen d))
      (t nil))))
