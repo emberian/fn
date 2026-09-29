@@ -1572,6 +1572,8 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/main_last_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_main_last_check
 	@$(CHECK_EXECUTE)
 
 check-fast-lane:
@@ -1793,6 +1795,11 @@ check:
 # nothing defines (lane tooling-leftovers).  No ACL2: NOT RUN, exit 2.
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --load
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_load.ClassifyTests
+# Every tests/*.py ends with its `if __name__ == "__main__":` block and calls
+# unittest.main() nowhere else (obstructions-5 item 36: test_farm and
+# test_native_bounds_blob ran nothing after a mid-file block).
+	@$(CHECK_STEP) $(PYTHON) tools/main_last_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_main_last_check
 # Every global hash table in host/ is :synchronized t, or declared
 # thread-confined or guarded-by a lock the file takes (static, no ACL2; lane
 # host-lints, after entry-guards-2's owner stop on an unsynchronized table).
