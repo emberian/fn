@@ -186,3 +186,47 @@ class LogRouteArmTests(unittest.TestCase):
                       within="fnn-store-recovery-barriers")
         problems = native_cuts.verify_log_route_arms(host)
         self.assertTrue(any("fnn-recover-log" in p for p in problems), problems)
+
+
+class LogProgramListingTests(unittest.TestCase):
+    """Lane byte-model (row Q3b): native_program_check lists the log programs
+    the host runs (fnn-log-append, fnn-log-fence, fnn-log-recover and the
+    segment's extension fnn-log-ensure-extent) with their cuts, and a cut
+    removed or reordered fails the listing."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.host = (ROOT / npc.HOST).read_text()
+
+    def test_the_tree_lists_the_four_log_programs_with_their_cuts(self):
+        listing = native_cuts.log_program_cut_map(self.host)
+        self.assertEqual([(p, h) for p, h, _ in listing],
+                         [("fn-lg-append-program", "fnn-log-append"),
+                          ("fn-lg-fence-program", "fnn-log-fence"),
+                          ("fn-lg-recover-program", "fnn-log-recover"),
+                          ("fn-lg-extend-program", "fnn-log-ensure-extent")])
+        self.assertEqual([c for _, _, c in listing],
+                         [("log-written",), ("log-fenced",),
+                          ("log-truncated", "log-recovered"),
+                          ("log-extended", "log-extent-fenced")])
+
+    def test_a_missing_append_cut_fails(self):
+        host = mutate(self.host, "  (fnn-log-at :log-written))", "  nil)",
+                      within="fnn-log-append")
+        with self.assertRaises(AssertionError) as caught:
+            native_cuts.log_program_cut_map(host)
+        self.assertIn("fnn-log-append", str(caught.exception))
+
+    def test_an_extension_fenced_before_its_write_fails(self):
+        body = native_cuts.host_function(self.host, "fnn-log-ensure-extent")
+        moved = body.replace("        (fnn-log-preallocate (fnn-log-fd log) next extent)\n"
+                             "        (fnn-log-at :log-extended)\n"
+                             "        (fnn-log-fdatasync (fnn-log-fd log))\n",
+                             "        (fnn-log-fdatasync (fnn-log-fd log))\n"
+                             "        (fnn-log-preallocate (fnn-log-fd log) next extent)\n"
+                             "        (fnn-log-at :log-extended)\n")
+        self.assertNotEqual(moved, body)
+        with self.assertRaises(AssertionError) as caught:
+            native_cuts.log_program_cut_map(self.host.replace(body, moved))
+        self.assertIn("fnn-log-ensure-extent", str(caught.exception))
+

@@ -306,6 +306,9 @@ def main(argv=None) -> int:
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--write", action="store_true")
     args = parser.parse_args(argv)
+    if args.write:
+        from tools import acl2_slots  # noqa: E402
+        acl2_slots.refuse_on_laptop("tools/interface_emit.py --write")
     decls = declarations()
     reading = host_reading()
     if args.write:

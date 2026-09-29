@@ -699,6 +699,7 @@
 (defthm fn-scj-versions-atmost-of-scr-own-read-span
   (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (fn-scj-invp o fn-arena fn-cat)
+                (fn-scar-view-indexedp o)
                 (fn-scj-versions-okp o))
            (fn-scj-versions-okp (fn-own-tls-result-owner
                                  (fn-scr-own-read-span o id i end cache fn-octets fn-arena fn-cat))))
@@ -719,9 +720,11 @@
 (defthm fn-scj-versions-atmost-of-orr-read-span
   (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
+                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scj-versions-okp (fn-ocfg-owner oc))
                 (implies (consp views)
                          (and (fn-scj-live-okp (car views) fn-arena fn-cat)
+                              (fn-scj-trie-indexedp (car views))
                               (<= (nfix (fn-own-view-version (car views)))
                                   (nfix (fn-own-view-version (fn-own-view (fn-ocfg-owner oc))))))))
            (fn-scj-versions-okp (fn-ocfg-owner (fn-own-tls-result-owner
@@ -732,7 +735,7 @@
           ("Subgoal 2" :use ((:instance fn-scj-versions-atmost-of-scr-own-read-span (o (fn-ocfg-owner oc)))))
           ("Subgoal 1"
            :in-theory (union-theories '(fn-scj-orr-read-span-owner fn-scj-scr-ocfg-read-span-owner
-                                        fn-scj-versions-okp)
+                                        fn-scj-versions-okp fn-scj-trie-indexedp-is-view-indexedp)
                                       (theory 'minimal-theory))
            :use ((:instance fn-scj-invp-conns (o (fn-ocfg-owner oc)))
                  (:instance fn-orr-with-view-fields (v (car views)))

@@ -71,7 +71,8 @@
               (rest (fn-article-line-rest (fn-aw-v next))))
           (if (null line)
               (let ((body (fn-aw-body rest)))
-                (if (not (fn-aw-v body))
+                (if (or (not (fn-aw-v body))
+                        (not (fn-article-field-closedp current)))
                     (fn-aw-r (fn-article-error :invalid-header)
                              (+ 1 (fn-aw-c next) (fn-aw-c body)))
                   (let ((header (fn-aw-reverse header-rev))
@@ -106,6 +107,11 @@
                     (if (not (fn-article-line-okp (fn-aw-v field-result)))
                         (fn-aw-charge field-result
                                       (+ 1 (fn-aw-c next) (fn-aw-c length1)))
+                     ; One test on the carried field (fn-article-field-closedp).
+                     (if (not (fn-article-field-closedp current))
+                         (fn-aw-r (fn-article-error :invalid-header)
+                                  (+ 1 (fn-aw-c next) (fn-aw-c length1)
+                                     (fn-aw-c field-result)))
                       ; The field count is carried: one comparison, no walk.
                       (if (<= (fn-article-limit-fields limits)
                               (+ (if current 1 0) (nfix nfields)))
@@ -123,7 +129,7 @@
                             (fn-aw-v header))
                            (+ 1 (fn-aw-c next) (fn-aw-c length1)
                               (fn-aw-c field-result)
-                              (fn-aw-c length2) (fn-aw-c header)))))))))))))))
+                              (fn-aw-c length2) (fn-aw-c header))))))))))))))))
 )
 (defthm fn-aw-parse-lines-value
   (equal (fn-aw-v (fn-aw-parse-lines octets limits lines-left header-bytes nfields fields-rev current header-rev))
@@ -137,7 +143,7 @@
                      fn-aw-fold-line fn-article-fold-linep
                      fn-aw-add-fold fn-article-add-fold
                      fn-aw-header-add fn-article-header-rev-add-line
-                     fn-aw-new-field fn-article-new-field
+                     fn-aw-new-field fn-article-new-field fn-article-field-closedp
                      fn-article-line-okp fn-article-line-value fn-article-line-rest)))))
 
 (defun fn-aw-parse-under (octets limits)

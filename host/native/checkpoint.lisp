@@ -78,13 +78,8 @@ state (D27)."
 ;;; reclamation over the record log (fnn-log-reclaim-steps below: the
 ;;; tombstones' checkpoint and the drop of the segments it covers).
 
-(defun fnn-reclaim-counts-line (counts)
-  (unless (and (listp counts) (= (length counts) 5)
-               (every (lambda (n) (and (integerp n) (>= n 0))) counts))
-    (fnn-fault "ACL2 returned malformed reclaim counts"))
-  (destructuring-bind (reclaimable octets reclaimed freed held) counts
-    (format nil "reclaimable=~d reclaimable-octets=~d held=~d reclaimed=~d freed-octets=~d"
-            reclaimable octets held reclaimed freed)))
+;; fnn-reclaim-counts-line is host/native/owner.lisp's (the live dry run
+;; prints the same words).
 
 (defun fnn-reclaim-record-instant (store clock)
   "The reclaim's instant, recorded before anything is rewritten

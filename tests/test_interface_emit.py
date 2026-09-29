@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 import sys
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -104,6 +105,27 @@ class GapTests(unittest.TestCase):
         self.assertEqual(interface_emit.subsystem("fn-owner-x", {"host/native/bp.lisp"}), "owner")
         self.assertEqual(interface_emit.subsystem("fn-q", {"host/native/bp-node.lisp"}), "bp")
         self.assertEqual(interface_emit.subsystem("fn-q", ()), "nntp/served")
+
+
+class LaptopRefusalTests(unittest.TestCase):
+    """decision-keystones: `interface_emit --write` took minutes on the laptop."""
+
+    def test_write_is_refused_off_a_farm_box_unless_overridden(self):
+        from tools import acl2_slots
+        with self.assertRaises(SystemExit) as refused:
+            acl2_slots.refuse_on_laptop("tools/interface_emit.py --write", environ={},
+                                        hostname="embers-laptop.local")
+        self.assertIn("remote_check.sh auto", str(refused.exception))
+        acl2_slots.refuse_on_laptop("x", environ={}, hostname="persvati")
+        acl2_slots.refuse_on_laptop("x", environ={"FN_LAPTOP_OK": "1"},
+                                    hostname="embers-laptop")
+        from tools import interface_emit
+        with mock.patch("socket.gethostname", return_value="embers-laptop"), \
+                mock.patch.dict("os.environ", {"FN_LAPTOP_OK": ""}), \
+                mock.patch.object(interface_emit, "declarations",
+                                  side_effect=AssertionError("read the tree")):
+            with self.assertRaises(SystemExit):
+                interface_emit.main(["--write"])
 
 
 if __name__ == "__main__":

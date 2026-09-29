@@ -7,7 +7,7 @@
 ; visible or which one matches: this book states what the node's answer is.
 ;
 ; Subject.  The reply the host sends: host/native/owner.lisp calls
-; fn-owner-chunk (host/owner-host.lisp), which runs fn-served-step
+; fn-owner-chunk-span-at (host/owner-host.lisp), which runs fn-served-step
 ; (books/served.lisp) and reaches fn-nntp-step-pinned for every reader
 ; command that is not POST (the chain is in books/nntp-xpat.lisp's header).
 ; `fn-nntp-step-pinned-xpat-is-the-xpat-response' is the XPAT arm of that

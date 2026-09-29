@@ -1447,10 +1447,14 @@ strict bar stands).
 ### 2026-09-28: still open for ember (each with the number that decides it)
 
 1. **F1's reopen measure** (row J2): the anonymous peak (155 MiB on 02018d9e6,
-   a loaded box) or the settled RSS (94.8 MiB), against the 128 MiB bar.
+   a loaded box) or the settled RSS (94.8 MiB), against the 128 MiB bar. RULED
+   2026-09-29 (coordinator brief, lane small-rows): F8's split, with the
+   anonymous peak at most 64 MiB (release-v6.6.0.md section 2, F1).
 2. **F3's bar** (PKT-792, row J2): "well under 7" barriers per POST; the edge
    measured 0.31-0.47 fsyncs per POST at 117-225 POST/s, the design says
-   0.125 at batch 8.
+   0.125 at batch 8. RULED 2026-09-29 (the same brief): under 1 fsync per
+   POST at the named rate (8 concurrent posters, POST/s stated); the gap to
+   0.125 is finding F3-G, printed in every F3 record until it closes.
 3. **F8's admission model** (row B5, building credits by default): credits
    about 200 MiB with today's image and 120 MiB stripped, records charged to
    history about 811 MiB, the worst case 1,179 MiB; only credits reach the
