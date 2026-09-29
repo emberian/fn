@@ -3948,11 +3948,11 @@
 
 (definterface fn-xrt-quiet-files
   :class ::common-lisp-compliant
-  :keystones ((fn-xrt-quiet-files-are-unnamed)))
+  :keystones ((fn-xrt-quiet-files-are-unnamed :via fn-xrt-quiet-files)))
 
 (definterface fn-xrt-reseat-checkpoint-frame
   :class ::common-lisp-compliant
-  :keystones ((fn-xrt-reseat-checkpoint-frame-keeps-the-arena)))
+  :keystones ((fn-xrt-reseat-checkpoint-frame-keeps-the-arena :via fn-xrt-reseat-checkpoint-frame)))
 
 (definterface fn-xrt-step-handles
   :class ::common-lisp-compliant)
