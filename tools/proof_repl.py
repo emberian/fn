@@ -92,7 +92,9 @@ sync a `start` names the closure's books this branch changed (against the
 merge base with origin/dev) and loads them from source as `--ld` (item 82);
 a second live session of the lane on the box gets its own tree
 <lane>-repl-<NAME> (item 79); a bare book name (`--ld store-log`) resolves
-under books/ (item 78).
+under books/ (item 78).  A `send` that loads a host file (`(ld "host/x.lisp")`)
+syncs it to the box first, and a second host load in one session is refused
+by name, since such a session died in a fasl load (item 84).
 
 Round 3 (lane tooling-leftovers, 2026-09-27): `start` sends each of the
 book's events under `with-prover-time-limit` too (`--load-limit S`, default
@@ -2144,6 +2146,76 @@ def sent_events(name: str) -> list[str]:
     return out
 
 
+HOST_LOAD = re.compile(r'^\(\s*(ld|load)\s+"([^"]+)"', re.IGNORECASE)
+HOST_LOADS = "host-loads.jsonl"
+
+
+def host_load_target(form: str, directory: Path | None) -> str | None:
+    """The repository host file (root-relative) an `(ld "X")` / `(load "X")`
+    form names, resolved from DIRECTORY (the session's connected book
+    directory) or else from the root; None for anything else."""
+    match = HOST_LOAD.match(form.strip())
+    if not match:
+        return None
+    written = match.group(2)
+    for base in ([directory] if directory else []) + [ROOT]:
+        target = (base / written).resolve()
+        if target.is_file():
+            with contextlib.suppress(ValueError):
+                relative = target.relative_to(ROOT.resolve()).as_posix()
+                if relative.startswith("host/"):
+                    return relative
+    return None
+
+
+def session_host_loads(name: str) -> list[str]:
+    """The host files `send` loaded into session NAME since it started."""
+    started = (read_state(name) or {}).get("started_at")
+    try:
+        lines = (session_dir(name) / HOST_LOADS).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    out = []
+    for line in lines:
+        with contextlib.suppress(json.JSONDecodeError):
+            row = json.loads(line)
+            if started is not None and row.get("started_at") == started:
+                out.append(row["file"])
+    return out
+
+
+def second_host_load(name: str, several: list[str]) -> str | None:
+    """Why sending SEVERAL would be a second host load in session NAME
+    (obstructions-9 item 84: a session with several host loads behind it
+    died in a fasl load), or None."""
+    directory = session_directory(name)
+    loaded = session_host_loads(name)
+    for one in several:
+        target = host_load_target(one, directory)
+        if target is None:
+            continue
+        if loaded:
+            return (f"session {name!r} already loaded host file {loaded[0]}; a second host "
+                    f"load ({target}) in one session dies in a fasl load.  Start another "
+                    f"session for it (`proof_repl.py start NAME2 ...`), or stop {name} and "
+                    "start it again")
+        loaded = [target]
+    return None
+
+
+def record_host_loads(name: str, several: list[str]) -> None:
+    started = (read_state(name) or {}).get("started_at")
+    directory = session_directory(name)
+    if started is None:
+        return
+    with contextlib.suppress(OSError):
+        with open(session_dir(name) / HOST_LOADS, "a", encoding="utf-8") as handle:
+            for one in several:
+                target = host_load_target(one, directory)
+                if target:
+                    handle.write(json.dumps({"started_at": started, "file": target}) + "\n")
+
+
 def send(args) -> int:
     form = args.form if args.form != "-" else sys.stdin.read()
     try:
@@ -2164,6 +2236,10 @@ def send(args) -> int:
               "is meant, or `resync NAME BOOK --from EVENT` to undo and resend a book.",
               file=sys.stderr)
         return 2
+    why = second_host_load(args.name, several)
+    if why:
+        print(f"proof-repl: refusing: {why}", file=sys.stderr)
+        return 2
     several, ready = prepare_includes(args.name, several)
     if not ready:
         return 1
@@ -2176,6 +2252,8 @@ def send(args) -> int:
         items = [(form_label(index, one), one) for index, one in enumerate(several, 1)]
         code = send_many(args.name, items, args.limit, args.full,
                          getattr(args, "keep_going", False))
+    # A host load is recorded whatever it answered: its fasl is in the session.
+    record_host_loads(args.name, several or [form])
     if code == 0:
         record_sent(args.name, several or [form])
     return code
@@ -3592,6 +3670,7 @@ def run_remote(args, argv: list[str]) -> int:
     forwarded = strip_remote_options(argv)
     books: list[str] = []
     extra: list[str] = []
+    early_stdin = None
     command = args.command
     if command == "start":
         # A box reserved for a measurement (tools/boxes.sh reserve): say who
@@ -3623,15 +3702,22 @@ def run_remote(args, argv: list[str]) -> int:
             raise SystemExit(f"proof-repl: --host probe: no record of session {args.name!r}'s "
                              "book here (start it with --host from this tree, or pass --book)")
         books += list(args.ld or [])
-    elif command == "send" and args.form != "-":
+    elif command == "send":
         # A sent include of a repository book: its closure goes to the box.
+        if args.form == "-":
+            early_stdin = sys.stdin.read()
         record = session_dir(args.name) / "remote.json"
         with contextlib.suppress(OSError, KeyError, json.JSONDecodeError, ValueError):
             directory = (ROOT / f"{json.loads(record.read_text())['book']}.lisp").parent
-            for one in commands(args.form):
+            for one in commands(early_stdin if args.form == "-" else args.form):
                 _, target = rooted_include(one, directory)
                 if target is not None and (ROOT / f"{target}.lisp").is_file():
                     books.append(target)
+                # A sent host load: the box's copy is refreshed first (item 84:
+                # a stale host file there was re-tested once).
+                loaded = host_load_target(one, directory)
+                if loaded:
+                    extra.append(loaded)
     elif command in ("list", "reap", "gc") and not getattr(args, "no_sync", False):
         extra.append("tools/proof_repl.py")  # sync_files adds the rest of tools/
     elif command in ("send-range", "resync", "diff", "send-file"):
@@ -3665,8 +3751,8 @@ def run_remote(args, argv: list[str]) -> int:
         seconds = sync_to(host, tree, files)
         print(f"proof-repl --host {host}: synced {len(files)} files to {tree} "
               f"({seconds:.1f} s)", flush=True)
-    stdin_text = None
-    if (command == "send" and args.form == "-") or (command == "probe" and args.form == "-"):
+    stdin_text = early_stdin
+    if stdin_text is None and (command == "probe" and args.form == "-"):
         stdin_text = sys.stdin.read()
     acl2 = remote_acl2(args)
     if acl2 and command in SERVER_COMMANDS:
