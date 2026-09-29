@@ -230,4 +230,7 @@
 (definterface fn-outcome-host-condition-exit-code
   :class :common-lisp-compliant
   :keystones (fn-outcome-host-condition-fences-iff-indeterminate)
-  :direct "runs in handlers, where a dispatcher's own fault would recurse")
+  :direct "runs in handlers, where a dispatcher's own fault would recurse"
+  ; the extracted driver's exit for the condition that ended a store verb
+  ; (tools/extract/served-main.scm store-report; lane extract-writable)
+  :root :extract)
