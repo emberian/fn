@@ -4276,7 +4276,8 @@ publication).  Answers the reply word."
                    (dotimes (round +fnn-reclaim-swap-rounds+)
                      (let ((sw (fnn-owner-gated (service :control)
                                  (let ((w (fnn-owner-core 'fn-owner-orcp-swap-word count frontier s
-                                                          (max 0 (1- (car *fnn-arena-off-mutex-readers*))))))
+                                                          (max 0 (1- (car *fnn-arena-off-mutex-readers*)))
+                                                          rebuilt)))
                                    (when (eq w :swap)
                                      ;; the commit point, then the swap, in one quantum
                                      (fnn-state-checkpoint-install store stage)
@@ -4290,6 +4291,7 @@ publication).  Answers the reply word."
                        (case sw
                          (:swap (return))
                          (:delta (deferred :delta) (return-from pass))
+                         (:unbound (deferred :unbound) (return-from pass))
                          ((:busy :readers)
                           (when (= round (1- +fnn-reclaim-swap-rounds+))
                             (deferred sw) (return-from pass))

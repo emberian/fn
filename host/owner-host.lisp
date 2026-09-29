@@ -36,7 +36,7 @@
 (include-book "../books/owner-compact-request")
 ; Q16: content reclamation on a running owner (fn-orc-).
 (include-book "../books/owner-reclaim")
-(include-book "../books/owner-reclaim-pass")
+(include-book "../books/owner-reclaim-conns")
 ; Q16 (b): online disk release of dropped files (fn-xrt-).
 (include-book "../books/extent-retire")
 ; The publication through the octet buffer, decided before it is encoded
@@ -4341,33 +4341,34 @@ existing port only after fn-fc has made this connection ready."
 ; the capture's count, frontier and Store against the owner's, the commit
 ; pipeline idle (no queued, pending or in-flight submission and no
 ; prepared catalog commit), READERS the other off-mutex arena readers.
-(defun fn-owner-orcp-swap-word (count-cap frontier-cap s-cap readers state)
+; Its :swap stands only when the swap is admissible over the REBUILT owner
+; (fn-orcp-swap-decision: the rebuild installed, the configuration is
+; the live one, every re-pinned session bounded), else :unbound by name --
+; decided before the install (fn-orcn-swap-over-the-rebuild-keeps-conn-
+; histories, books/owner-reclaim-conns.lisp).
+(defun fn-owner-orcp-swap-word (count-cap frontier-cap s-cap readers rebuilt state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((o (fn-owner-core state))
+  (let* ((oc (fn-owner-ocfg state))
+         (o (fn-ocfg-owner oc))
          (st (fn-own-store o)))
-    (value (fn-orcp-swap-word count-cap frontier-cap s-cap
-                              (fn-sf-records-count (fn-sn-files st))
-                              (fn-sf-frontier (fn-sn-files st))
-                              st
-                              (and (null (fn-own-queue o)) (null (fn-own-pending o))
-                                   (null (fn-own-inflight o))
-                                   (null (f-get-global 'fn-owner-cat-pending state)))
-                              readers))))
+    (value (fn-orcp-swap-decision
+            (fn-orcp-swap-word count-cap frontier-cap s-cap
+                               (fn-sf-records-count (fn-sn-files st))
+                               (fn-sf-frontier (fn-sn-files st))
+                               st
+                               (and (null (fn-own-queue o)) (null (fn-own-pending o))
+                                    (null (fn-own-inflight o))
+                                    (null (f-get-global 'fn-owner-cat-pending state)))
+                               readers)
+            oc (nth 1 rebuilt)))))
 
-; The swap (under the mutex, after the host installed the reclaimed
-; checkpoint and took fn-owner-orcp-swap-word's :swap in the same quantum):
-; the swapped owner (fn-orcp-swapped-owner: KEYSTONE
-; fn-orcp-swapped-store-is-the-full-open; the live connections re-pinned to
-; the rebuilt view), the checkpoint state of an install from E (its base,
-; durable at its count), the carried folds REBUILT computed, the pass's
-; credit released and nothing in flight.  Answers the durable count.
 (defun fn-owner-orcp-swap (rebuilt state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((e (nth 0 rebuilt))
          (oc (nth 1 rebuilt))
-         (live (fn-owner-ocfg state))
-         (swapped (fn-orcp-swapped-owner (fn-ocfg-owner live) (fn-ocfg-owner oc)))
-         (state (fn-owner-install-ocfg (fn-ocfg-with-owner live swapped) state))
+         (next (fn-orcp-swapped-ocfg (fn-owner-ocfg state) oc))
+         (swapped (fn-ocfg-owner next))
+         (state (fn-owner-install-ocfg next state))
          (count (fn-sf-records-count (fn-sn-files (fn-own-store swapped))))
          (state (f-put-global 'fn-owner-retain-carry (nth 2 rebuilt) state))
          (state (f-put-global 'fn-owner-record-octets (nth 3 rebuilt) state))

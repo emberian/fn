@@ -221,7 +221,7 @@
 (include-book "../../books/anchor-invariants")
 (include-book "../../books/owner-config")
 (include-book "../../books/owner-checkpoint-open")
-(include-book "../../books/owner-reclaim-pass")
+(include-book "../../books/owner-reclaim-conns")
 (include-book "../../books/config-owner-live")
 (include-book "../../books/config-owner-publish")
 (include-book "../../books/config-owner-carried")

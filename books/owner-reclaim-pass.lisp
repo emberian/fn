@@ -330,15 +330,72 @@
 ; connections (each re-pinned to the rebuilt view: O(connections)), next
 ; id, bounds, commit pipeline, ledger, clock, facts, posting
 ; configuration, feeds, key ring and refused-offer memory.
+(defun fn-orcp-swap-base (live rebuilt)
+  (declare (xargs :guard t))
+  (fn-own-make (fn-own-store rebuilt) (fn-own-view rebuilt)
+               nil (fn-own-next-id live) (fn-own-max-conns live)
+               (fn-own-pending live) (fn-own-ledger-field live)
+               (fn-own-clock live) (fn-own-facts live) (fn-own-config live)
+               (fn-own-queue live) (fn-own-inflight live) (fn-own-feeds live)
+               (fn-own-node-secret live) (fn-own-refused live)))
+
 (defun fn-orcp-swapped-owner (live rebuilt)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((o (fn-own-make (fn-own-store rebuilt) (fn-own-view rebuilt)
-                        nil (fn-own-next-id live) (fn-own-max-conns live)
-                        (fn-own-pending live) (fn-own-ledger-field live)
-                        (fn-own-clock live) (fn-own-facts live) (fn-own-config live)
-                        (fn-own-queue live) (fn-own-inflight live) (fn-own-feeds live)
-                        (fn-own-node-secret live) (fn-own-refused live))))
+  (let ((o (fn-orcp-swap-base live rebuilt)))
     (fn-own-set-conns o (fn-orcp-repin-conns o (fn-own-conns live)))))
+
+; Every re-pinned connection's configuration pin moves to the rebuilt
+; configuration, as fn-ocfg-advance moves the pin of the one connection it
+; re-pins (books/owner-config.lisp): the connection now reads the rebuilt
+; view, which is that configuration's.
+(defun fn-orcp-pins-at (conns cfg)
+  (declare (xargs :guard t))
+  (if (consp conns)
+      (cons (cons (fn-own-conn-id (car conns)) cfg)
+            (fn-orcp-pins-at (cdr conns) cfg))
+    nil))
+
+; What the swap installs (host/owner-host.lisp fn-owner-orcp-swap): the
+; swapped owner under the rebuilt configuration, every connection pinned
+; to it, the live staged record kept.
+(defun fn-orcp-swapped-ocfg (live-oc rebuilt-oc)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((o (fn-orcp-swapped-owner (fn-ocfg-owner live-oc) (fn-ocfg-owner rebuilt-oc))))
+    (fn-ocfg-make o (fn-ocfg-config rebuilt-oc)
+                  (fn-orcp-pins-at (fn-own-conns o) (fn-ocfg-config rebuilt-oc))
+                  (fn-ocfg-staged live-oc))))
+
+(defun fn-orcp-conns-boundedp (conns domain)
+  (declare (xargs :guard t))
+  (if (consp conns)
+      (and (fn-own-conn-boundedp (car conns) domain)
+           (fn-orcp-conns-boundedp (cdr conns) domain))
+    t))
+
+; The swap is admissible when the rebuild installed (not :fault), the live
+; configuration is the rebuilt one
+; (a live reconfiguration since the capture is a delta) and every
+; re-pinned connection's session is bounded by the rebuilt configuration's
+; domain (its selected group exists there) -- the runtime check
+; fn-own-advance makes of the one connection it re-pins.  O(connections).
+(defun fn-orcp-swap-admissiblep (live-oc rebuilt-oc)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (not (equal rebuilt-oc :fault))
+       (equal (fn-ocfg-config live-oc) (fn-ocfg-config rebuilt-oc))
+       (fn-orcp-conns-boundedp
+        (fn-own-conns (fn-orcp-swapped-owner (fn-ocfg-owner live-oc)
+                                             (fn-ocfg-owner rebuilt-oc)))
+        (fn-cnode-domain-of (fn-ocfg-config rebuilt-oc)))))
+
+; The decision the host takes under the mutex (fn-owner-orcp-swap-word):
+; fn-orcp-swap-word's :swap only when the swap is admissible, else
+; :unbound by name -- decided before the install, so an inadmissible swap
+; never leaves the new publication installed and the old state served.
+(defun fn-orcp-swap-decision (word live-oc rebuilt-oc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (eq word :swap)
+      (if (fn-orcp-swap-admissiblep live-oc rebuilt-oc) :swap :unbound)
+    word))
 
 ; KEYSTONE.  The swapped owner serves exactly the Store the full open of the
 ; rewritten history installs, and keeps every live connection (the same
@@ -348,6 +405,6 @@
                         live (fn-ocfg-owner (cadr (fn-orcp-rebuild rows configs frontier
                                                                    max-conns)))))
          (fn-own-store (fn-ocfg-owner (fn-ock-recover-full configs frontier rows max-conns))))
-  :hints (("Goal" :in-theory (e/d (fn-orcp-swapped-owner fn-own-set-conns)
+  :hints (("Goal" :in-theory (e/d (fn-orcp-swapped-owner fn-orcp-swap-base fn-own-set-conns)
                                   (fn-orcp-rebuild fn-ock-recover-full fn-orcp-repin-conns))
                   :use fn-orcp-rebuild-is-the-full-open)))

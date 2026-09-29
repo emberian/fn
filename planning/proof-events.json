@@ -13539,6 +13539,18 @@
         {
           "kind": "theorem",
           "name": "fn-orcp-swapped-store-is-the-full-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orcn-swapped-conns-have-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orcn-rebuilt-owner-has-ocl-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orcn-swap-over-the-rebuild-keeps-conn-histories"
         }
       ]
     },
