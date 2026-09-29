@@ -49,6 +49,7 @@
 (include-book "../books/owner-reclaim-conns")
 ;; online-reclaim-5: the swapped owner is :ready after the open's barriers.
 (include-book "../books/owner-reclaim-ready")
+(include-book "../books/owner-reclaim-carry")
 ; Q16 (b): online disk release of dropped files (fn-xrt-).
 (include-book "../books/extent-retire")
 ; The publication through the octet buffer, decided before it is encoded
@@ -4718,20 +4719,7 @@ existing port only after fn-fc has made this connection ready."
 ; profile): the retention carry, the record octets, the completion debt, the
 ; carried usage.  (list E OC CARRY OCTETS DEBT USAGE), OC :fault on a
 ; refused open.
-(defun fn-owner-orcp-rebuild (rows configs frontier max-conns)
-  (declare (xargs :mode :program))
-  (let* ((r (fn-orcp-rebuild rows configs frontier max-conns))
-         (oc (cadr r)))
-    (if (equal oc :fault)
-        (list (car r) :fault nil nil nil nil)
-      (let* ((s (fn-own-store (fn-ocfg-owner oc)))
-             (records (fn-sf-records (fn-sn-files s)))
-             (count (fn-sf-records-count (fn-sn-files s))))
-        (list (car r) oc
-              (fn-prc-refresh nil (fn-node-retention (fn-sn-node s)))
-              (cons count (fn-sbud-bytes-used s))
-              (cons count (fn-cvec-record-debt records))
-              (cons count (fn-pcb-tally-records records nil)))))))
+; Defined by books/owner-reclaim-carry.lisp under the same host-called name.
 
 ; Off the mutex, into FRESH catalog and history instances (the served ones
 ; untouched): the catalog of the rebuilt Store's rows and its history

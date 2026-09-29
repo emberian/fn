@@ -197,6 +197,9 @@ def render_raw_declarations(decls: list[dict]) -> str:
              '(in-package "ACL2")', '(include-book "../books/definterface")']
     for d in decls:
         if not d.get("raw_with"):
+            if d["name"] == "fn-di-raw-with-problem":
+                forms.append('(definterface {} :class :{} :direct {})'.format(
+                    d["name"], d["class"], json.dumps(d["direct"])))
             continue
         kinds = " ".join("({} {})".format(*pair) for pair in d["kinds"])
         forms.append("(definterface {} :class :{} :kinds ({}) :raw-with ({}))".format(

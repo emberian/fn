@@ -4345,7 +4345,8 @@
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-rebuild
-  :class :program)
+  :class :ideal
+  :keystones (fn-owner-orcp-rebuild-establishes-retain-carry))
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-salt
@@ -4431,3 +4432,9 @@
 ; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
 (definterface fn-store-sco-want-checkpoint-digest
   :class :program)
+
+
+; Called directly only while installing dispatch from the loaded image world.
+(definterface fn-di-raw-with-problem
+  :class :program
+  :direct "Image-build declaration lint over the loaded world; no client data or served decision")

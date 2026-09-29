@@ -435,6 +435,14 @@ either dispatch, and
 developer image keeps the counterpart path behind
 `FN_NATIVE_DISPATCH_COUNTERPART=1` so a native can compare both.
 
+The off-mutex owner reclamation rebuild calls the logical entry
+`fn-owner-orcp-rebuild` (books/owner-reclaim-carry.lisp). Its returned field 2
+always satisfies `fn-prc-carryp` (PRF-1060), including a refused open's nil
+carry. This initializes a returned value; live installation and later carry
+preservation remain separate obligations. Its cold callees are not all
+guard-verified, so the entry remains `:ideal`; this theorem enables no raw
+owner dispatch.
+
 ### The saved image's memory
 
 HST-025: The saved image carries the execution world only, and the owner

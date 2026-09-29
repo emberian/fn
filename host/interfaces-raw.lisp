@@ -2,3 +2,4 @@
 ; No availability filter: an absent target refuses the selected image.
 (in-package "ACL2")
 (include-book "../books/definterface")
+(definterface fn-di-raw-with-problem :class :program :direct "Image-build declaration lint over the loaded world; no client data or served decision")

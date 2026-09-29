@@ -1543,7 +1543,8 @@
         "PRF-992",
         "PRF-1005",
         "PRF-1011",
-        "PRF-1012"
+        "PRF-1012",
+        "PRF-1060"
       ],
       "verification": [
         "proof",

@@ -52,11 +52,17 @@ class DeclarationTests(unittest.TestCase):
         decls = interface_emit.declarations(tree(
             '(definterface fn-a :class :common-lisp-compliant :kinds ((n natp)) '
             ':raw-with (fn-a-proof))\n'
-            '(definterface fn-b :class :common-lisp-compliant)\n'))
+            '(definterface fn-b :class :common-lisp-compliant)\n'
+            '(definterface fn-di-raw-with-problem :class :program '
+            ':direct "Image-build declaration lint")\n'
+            '(definterface fn-unrelated-helper :class :program :direct "other")\n'))
         rendered = interface_emit.render_raw_declarations(decls)
         self.assertIn('(definterface fn-a :class :common-lisp-compliant '
                       ':kinds ((n natp)) :raw-with (fn-a-proof))', rendered)
         self.assertNotIn('(definterface fn-b', rendered)
+        self.assertIn('(definterface fn-di-raw-with-problem :class :program '
+                      ':direct "Image-build declaration lint")', rendered)
+        self.assertNotIn('(definterface fn-unrelated-helper', rendered)
 
     def test_harness_tables(self):
         root = tree(SOURCE)

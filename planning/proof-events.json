@@ -17121,6 +17121,15 @@
           "name": "fn-bpnf-family-next-aux-answers-the-first-ready-row"
         }
       ]
+    },
+    {
+      "id": "PRF-1060",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-orcp-rebuild-establishes-retain-carry"
+        }
+      ]
     }
   ]
 }
