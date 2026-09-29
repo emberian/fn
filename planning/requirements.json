@@ -5027,7 +5027,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-909",
-        "PRF-910"
+        "PRF-910",
+        "PRF-911"
       ],
       "verification": [
         "proof",
@@ -5036,7 +5037,9 @@
       "evidence": [
         "books/deflate-inflate.lisp",
         "tests/acl2/deflate-inflate-tests.lisp",
-        "specs/nntp.md"
+        "specs/nntp.md",
+        "books/nntp-compress.lisp",
+        "tests/test_native_compress.py"
       ]
     },
     {

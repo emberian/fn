@@ -5742,6 +5742,24 @@
         "The SASL label lists the mechanisms offered now and survives the login; PLAIN in clear is 483; SCRAM answers 383 then 283 with the server's v=; a wrong password and a replayed final message are 481; PLUS succeeds only with the connection's own exporter value."
       ],
       "execution_scope": "Specified by lane sasl increment 1 (the mechanism books); the served arm and tests/test_native_sasl.py come with increment 2."
+    },
+    {
+      "id": "SCN-201",
+      "title": "COMPRESS DEFLATE conversations through the native owner: gated by login, 206, the stream both ways from the octet after the 206, capabilities withdrawn, 502/503/501 by name, a bomb and a malformed stream refused by name and the connection closed; and stored payloads compressed under the shipped dictionary read back octet for octet",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-054",
+        "STO-037"
+      ],
+      "steps": [
+        "tests/test_native_compress.py on the production image: before and after AUTHINFO, COMPRESS DEFLATE, then CAPABILITIES, GROUP, ARTICLE, POST and QUIT through the stream; COMPRESS/STARTTLS/AUTHINFO after 206; COMPRESS with an unknown and a malformed algorithm; compressed octets pipelined behind the COMPRESS line; a 1 MiB run of zeros; a malformed stream.",
+        "tests/test_native_compression.py on the developer image: two twin stores given the same articles, one with `policy set compress-min-octets'; `store ROOT compression'; every article served from both; recover twice; a torn last entry."
+      ],
+      "expected": [
+        "480 before a login, 206 after; the label withdrawn once active; 502 for a second COMPRESS, STARTTLS and AUTHINFO; 503 unknown, 501 malformed; pipelined octets are the stream's first; the bomb refused (compress-bomb) and the malformed stream (compress-malformed), each closing the connection.",
+        "The compressed store reports every article record compressed and `dictionaries=' the shipped baseline's DICT-ID 2220533217, holds fewer octets, and serves every article octet for octet as its uncompressed twin, after both recovers and the torn tail."
+      ]
     }
   ]
 }
