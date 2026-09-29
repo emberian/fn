@@ -833,7 +833,8 @@
   :kinds ((config-octet-records fn-octet-list-listp) (record-octets fn-cbor-octet-listp) (observed-name-octets fn-octet-list-listp)))
 
 (definterface fn-store-charge
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge))
 
 (definterface fn-store-checkpoint-clone-fence-name
   :class ::program)
@@ -889,14 +890,16 @@
   :class ::program)
 
 (definterface fn-store-genesis-octets
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-gen-octets-for)
 
 (definterface fn-store-genesis-open
   :class ::ideal
   :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-store-genesis-refusal-text
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-gen-refusal-text)
 
 (definterface fn-store-group-codes
   :class ::ideal
@@ -935,17 +938,21 @@
 
 (definterface fn-store-metadata-config-decode
   :class ::ideal
-  :kinds ((octets fn-cbor-octet-listp)))
+  :kinds ((octets fn-cbor-octet-listp))
+  :delegates fn-bs-config-decode)
 
 (definterface fn-store-metadata-config-frame
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-config-frame-for-profile)
 
 (definterface fn-store-metadata-config-open
   :class ::ideal
-  :kinds ((octets fn-cbor-octet-listp)))
+  :kinds ((octets fn-cbor-octet-listp))
+  :delegates fn-spo-config-open)
 
 (definterface fn-store-metadata-config-refusal-text
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-spo-refusal-text)
 
 (definterface fn-store-metadata-frontier-decode
   :class ::ideal
@@ -967,19 +974,24 @@
   :class ::program)
 
 (definterface fn-store-profile-admittedp
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-admittedp)
 
 (definterface fn-store-profile-logp
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-logp)
 
 (definterface fn-store-profile-max-record-octets
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-max-record-octets)
 
 (definterface fn-store-profile-read-bound
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-store-profile-read-bound-covers-every-admitted-publication))
 
 (definterface fn-store-profile-report
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bs-profile-report)
 
 (definterface fn-store-prov-for-msgid
   :class ::program
@@ -989,7 +1001,9 @@
   :class ::program)
 
 (definterface fn-store-publication-admissibility
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-store-publication-admissibility-admits-exactly-within-the-profile
+              fn-store-profile-read-bound-covers-every-admitted-publication))
 
 (definterface fn-store-reclaim-context
   :class ::program)
@@ -2226,10 +2240,12 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-authored-wire-authorize
-  :class ::ideal)
+  :class ::ideal
+  :delegates fn-bpn-authored-wire-authorize)
 
 (definterface fn-bpn-host-authored-wire-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-authored-wire-name-names-the-reserved-sequence))
 
 (definterface fn-bpn-host-authored-wire-operation-label
   :class ::ideal)
@@ -2253,6 +2269,9 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-evidence-authorize
+  ; an exact alias of fn-bpn-evidence-authorize, but no proof target cites a theorem
+  ; about it, so the delegation is not declared (decision-keystones-3): a
+  ; keystone about fn-bpn-evidence-authorize, cited, then :delegates again
   :class ::ideal)
 
 (definterface fn-bpn-host-evidence-directory-name
@@ -2396,16 +2415,20 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-sequence-reservation-frame
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-host-sequence-reservation-sequence
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-host-sequence-reservationp
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-host-sequence-reserve
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-machine-invariantp
   :class ::ideal)
@@ -2885,6 +2908,9 @@
   :class ::ideal)
 
 (definterface fn-tcl-host-encode
+  ; an exact alias of fn-tcl-encode, but no proof target cites a theorem
+  ; about it, so the delegation is not declared (decision-keystones-3): a
+  ; keystone about fn-tcl-encode, cited, then :delegates again
   :class ::ideal)
 
 (definterface fn-tcl-host-event-digests
@@ -3220,14 +3246,10 @@
 (definterface fn-native-health-host-log-tail-octets
   :class ::program)
 
-(definterface fn-native-health-host-not-running
-  :class ::program)
 
 (definterface fn-native-health-host-not-running-lines
   :class ::program)
 
-(definterface fn-native-health-host-offline
-  :class ::program)
 
 (definterface fn-native-health-host-run-started-line
   :class ::program)
@@ -3256,9 +3278,6 @@
 (definterface fn-native-live-pages-host-request-encode
   :class ::program)
 
-(definterface fn-native-live-pages-host-requestp
-  :class ::program
-  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-native-live-status-host-answer
   :class ::program)
@@ -3278,9 +3297,6 @@
 (definterface fn-native-live-status-host-request-encode
   :class ::program)
 
-(definterface fn-native-live-status-host-requestp
-  :class ::program
-  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-native-live-status-host-route
   :class ::program)
@@ -3616,9 +3632,6 @@
 (definterface fn-native-control-host-consumer-poll-reply-encode
   :class ::program)
 
-(definterface fn-native-control-host-consumer-reasoned-request-decode
-  :class ::program
-  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-native-control-host-consumer-reasoned-request-encode
   :class ::program)
@@ -3630,9 +3643,6 @@
   :class ::program
   :kinds ((octets fn-cbor-octet-listp)))
 
-(definterface fn-native-control-host-consumer-request-decode
-  :class ::program
-  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-native-control-host-consumer-request-encode
   :class ::program)
@@ -3665,9 +3675,6 @@
 (definterface fn-native-control-host-max-frame
   :class ::program)
 
-(definterface fn-native-control-host-moderation-decode
-  :class ::program
-  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-native-control-host-moderation-encode
   :class ::program)
@@ -3682,9 +3689,6 @@
   :class ::program
   :kinds ((octets fn-cbor-octet-listp)))
 
-(definterface fn-native-control-host-reasoned-framep
-  :class ::program
-  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-native-control-host-reasoned-reply-encode
   :class ::program)
@@ -3721,9 +3725,6 @@
 (definterface fn-native-control-host-topic-reply-encode
   :class ::program)
 
-(definterface fn-native-control-host-topic-request-decode
-  :class ::program
-  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-native-control-host-topic-request-encode
   :class ::program)
@@ -3819,7 +3820,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-arx-file-count
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :kinds ((f natp)))
 
 (definterface fn-crqw-request-word
   :class ::common-lisp-compliant)
@@ -3835,34 +3837,40 @@
   :exempt ((stream-octets "a count of octets (the stream region's length), not bytes")))
 
 (definterface fn-his-image-header
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :kinds ((np natp)))
 
 (definterface fn-his-image-header-np
   :class ::common-lisp-compliant)
 
 (definterface fn-his-np
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :kinds ((acc natp)))
 
 (definterface fn-his-release
   :class ::common-lisp-compliant)
 
 (definterface fn-his-skip-octets
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :kinds ((np natp)))
 
 (definterface fn-his-snapshot
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :kinds ((records true-listp) (salt natp)))
 
 (definterface fn-his-stream-free
   :class ::program)
 
 (definterface fn-his-words
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :kinds ((sel natp) (a natp)))
 
 (definterface fn-native-admin-host-reclaim-mode
   :class ::program)
 
 (definterface fn-oct-line-end
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :kinds ((i natp)))
 
 (definterface fn-otb-dependency-step
   :class ::common-lisp-compliant)
@@ -3948,14 +3956,17 @@
 
 (definterface fn-xrt-quiet-files
   :class ::common-lisp-compliant
+  :kinds ((named true-listp))
   :keystones ((fn-xrt-quiet-files-are-unnamed :via fn-xrt-quiet-files)))
 
 (definterface fn-xrt-reseat-checkpoint-frame
   :class ::common-lisp-compliant
+  :kinds ((file natp) (start natp) (end natp))
   :keystones ((fn-xrt-reseat-checkpoint-frame-keeps-the-arena :via fn-xrt-reseat-checkpoint-frame)))
 
 (definterface fn-xrt-step-handles
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :kinds ((pst true-listp)))
 
 ; The live limits and the configuration's next txid (dev e15534ba4,
 ; limits-live; declared at the union's merge).
@@ -3967,3 +3978,140 @@
 
 (definterface fn-store-lim-use
   :class ::program)
+
+; Dispatched on dev (limits-live, carry-abandon, deflate, maintenance request, ...) without a declaration;
+; declared by lane online-reclaim-9 (kinds from each guard: none).
+(definterface fn-lim-apply-row
+  :class ::common-lisp-compliant)
+
+(definterface fn-lim-decide
+  :class ::common-lisp-compliant)
+
+(definterface fn-lim-decision-line
+  :class ::common-lisp-compliant)
+
+(definterface fn-lim-decision-reason
+  :class ::common-lisp-compliant)
+
+(definterface fn-lim-decision-status
+  :class ::common-lisp-compliant)
+
+(definterface fn-lim-reply-note
+  :class ::common-lisp-compliant)
+
+(definterface fn-native-admin-result-capacity
+  :class ::common-lisp-compliant)
+
+(definterface fn-native-admin-result-kind
+  :class ::common-lisp-compliant)
+
+(definterface fn-native-admin-result-name
+  :class ::common-lisp-compliant)
+
+(definterface fn-record-octets-string
+  :class ::common-lisp-compliant)
+
+(definterface fn-owner-apply-limit-profile
+  :class ::program)
+
+(definterface fn-owner-limit-use
+  :class ::program)
+
+(definterface fn-owner-workflow-pending-waivers
+  :class ::program)
+
+(definterface fn-owner-workflow-store-waive
+  :class ::program)
+
+(definterface fn-lzd-current-id
+  :class ::common-lisp-compliant)
+
+(definterface fn-lzd-lookup
+  :class ::common-lisp-compliant)
+
+(definterface fn-native-admin-result-inspect-msgid
+  :class ::common-lisp-compliant)
+
+(definterface fn-native-control-host-decode-frame
+  :class ::program)
+
+(definterface fn-native-control-host-refusal-reason
+  :class ::common-lisp-compliant)
+
+(definterface fn-native-operator-host-result-account-hash-auth-path-octets
+  :class ::program)
+
+(definterface fn-omr-control-path-octets
+  :class ::common-lisp-compliant)
+
+(definterface fn-omr-header-octets
+  :class ::common-lisp-compliant)
+
+(definterface fn-omr-held-line
+  :class ::common-lisp-compliant
+  :kinds ((verb stringp)))
+
+(definterface fn-omr-inspect-live-report
+  :class ::common-lisp-compliant)
+
+(definterface fn-omr-inspect-status
+  :class ::common-lisp-compliant)
+
+(definterface fn-omr-inspect-word
+  :class ::common-lisp-compliant)
+
+(definterface fn-omr-recover-line
+  :class ::common-lisp-compliant)
+
+(definterface fn-omr-recover-status
+  :class ::common-lisp-compliant)
+
+(definterface fn-omr-route
+  :class ::common-lisp-compliant)
+
+(definterface fn-omr-status-replayp
+  :class ::common-lisp-compliant)
+
+(definterface fn-omr-stopped-health-report
+  :class ::ideal)
+
+(definterface fn-omr-stopped-report
+  :class ::ideal)
+
+(definterface fn-owner-compress-owed
+  :class ::program)
+
+(definterface fn-owner-control-reason
+  :class ::program)
+
+(definterface fn-record-string-octets
+  :class ::common-lisp-compliant)
+
+(definterface fn-store-sco-note-checkpoint-digest
+  :class ::program)
+
+(definterface fn-store-sco-want-checkpoint-digest
+  :class ::program)
+
+(definterface fn-zc-deflate-params
+  :class ::common-lisp-compliant)
+
+(definterface fn-zin-buffer-sizes
+  :class ::common-lisp-compliant)
+
+(definterface fn-zin-buffers-ready
+  :class ::common-lisp-compliant)
+
+(definterface fn-zin-feed
+  :class ::common-lisp-compliant
+  :kinds ((b natp) (start natp) (end natp) (lim natp)))
+
+(definterface fn-zin-refusal-text
+  :class ::common-lisp-compliant)
+
+(definterface fn-zin-reset
+  :class ::common-lisp-compliant)
+
+(definterface fn-zpl-decode-bufs
+  :class ::common-lisp-compliant
+  :kinds ((dict fn-cbor-octet-listp) (end natp) (n natp)))

@@ -12,7 +12,8 @@ set -eu
 TREE=$(cd "$1" && pwd)
 ACL2=${FN_EXTRACT_ACL2:-/tank/fn/toolchains/w28/acl2-literal-4g-tls64k}
 CACHE=${FN_EXTRACT_WORLD_CACHE:-/tank/fn/scratch/extract-cache}
-KEY=$(python3 "$TREE/tools/extract/world.py" --digest "$TREE")
+KEY=$(python3 "$TREE/tools/extract/world.py" --digest "$TREE" --acl2 "$ACL2")
+[ -n "$KEY" ] || { echo "world_image: no world key from world.py --digest" >&2; exit 1; }
 DIR=$CACHE/world-$KEY
 if [ -x "$DIR/world" ] && [ -f "$DIR/world.core" ]; then
     echo "$DIR/world"; exit 0

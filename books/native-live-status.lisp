@@ -14,7 +14,7 @@
 ;
 ;   fn-nls-live-report-is-the-offline-report   the owner's words are the
 ;       offline words of the same state (carried octet sum valid, no open
-;       connection);
+;       connection, the view current: PKT-885, the counts are the view's);
 ;   fn-nls-client-step-of-owner-reply          every page of a report
 ;       extends the client's prefix of the one report, to the whole report;
 ;   fn-nls-client-step-of-owner-page           the same of the page the
@@ -477,11 +477,39 @@ keeps."
 
 (defconst *fn-nls-kinds* (quote (:status :pins :peers :obligations :control :health :accounts)))
 
-(defun fn-nls-report (kind profile s bytes cfg pins obs fn-arena)
+;; PKT-885: the report's `transactions=' and `articles=' counts are SEEN, a
+;; pair (TRANSACTIONS . ARTICLES) of the view the report is rendered at, not
+;; of the Store state S.  Offline S is the durable state and SEEN its counts
+;; (`fn-nls-store-seen'); the running owner renders them from the configured
+;; owner's VIEW (`fn-nls-view-seen'), and the host hands it the READER view
+;; while a batch is in flight (host/native-live-status-host.lisp
+;; `fn-native-live-status-host-answer' passes `fn-ocfg-at-reader-view'; books/
+;; owner-reader-view.lisp KEYSTONE fn-ocvm-reader-view-is-the-completed-
+;; prefix): a count never includes a record whose barrier has not returned.
+;; The capacity, reserve, reclaim and pins lines stay the Store's: they
+;; report what the owner has committed to hold, which is conservative while
+;; a batch is in flight, and issue no number.
+(defun fn-nls-store-seen (s)
+  (declare (xargs :guard t))
+  (cons (fn-sbud-used s)
+        (len (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
+
+(defun fn-nls-view-seen (view)
+  (declare (xargs :guard t))
+  (cons (nfix (fn-own-view-version view))
+        (len (fn-own-view-raw view))))
+
+(defun fn-nls-counts-words (seen)
+  (declare (xargs :guard (consp seen)))
+  (append (fn-nls-text "transactions=") (fn-nls-nat (nfix (car seen)))
+          (fn-nls-field "articles" (nfix (cdr seen)))))
+
+(defun fn-nls-report (kind profile s bytes seen cfg pins obs fn-arena)
   "The octets `operator CONFIG KIND' prints.
 
 S is the Store state, PROFILE its persisted profile, BYTES its committed
-record octets, CFG the configuration, PINS the open connections'
+record octets, SEEN the (TRANSACTIONS . ARTICLES) counts of the view the
+report is rendered at, CFG the configuration, PINS the open connections'
 configuration pins (nil with no owner), OBS the host's open observation."
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (cond
@@ -499,9 +527,7 @@ configuration pins (nil with no owner), OBS the host's open observation."
             *fn-nls-lf*
             (fn-nls-obligation-lines (fn-retain-pins (fn-nls-retention s)))))
    (t
-    (append (fn-nls-text "transactions=") (fn-nls-nat (fn-sbud-used s))
-            (fn-nls-field "articles"
-                          (len (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
+    (append (fn-nls-counts-words seen)
             (fn-nls-text " ") (fn-nls-orphan-words obs)
             (fn-nls-text " unsigned-legacy-experiment") *fn-nls-lf*
             (fn-nls-text "profile")
@@ -522,16 +548,20 @@ configuration pins (nil with no owner), OBS the host's open observation."
   "What the offline command prints over the state it replayed: every
 committed record re-encoded once, and no connection."
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (fn-nls-report kind profile s (fn-sbud-bytes-used s) cfg nil obs fn-arena))
+  (fn-nls-report kind profile s (fn-sbud-bytes-used s) (fn-nls-store-seen s)
+                 cfg nil obs fn-arena))
 
 (defun fn-nls-live-report (kind profile oc cache obs fn-arena)
   "What the running owner answers over the configured owner OC it carries:
 its Store, its configuration and its connections' pins, with the committed
-record octets extended from the carried (K . SUM) CACHE, not stored."
+record octets extended from the carried (K . SUM) CACHE, not stored, and the
+counts of the view OC carries (PKT-885: the reader view while a batch is in
+flight, which the host puts in place)."
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((s (fn-own-store (fn-ocfg-owner oc))))
     (fn-nls-report kind profile s
                    (fn-sbud-bytes-extend cache (fn-sf-records (fn-sn-files s)))
+                   (fn-nls-view-seen (fn-own-view (fn-ocfg-owner oc)))
                    (fn-ocfg-config oc) (fn-ocfg-pins oc) obs fn-arena)))
 
 ; KEYSTONE (the live words are the offline words).  The subject is
@@ -543,20 +573,43 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
 ; sum valid for the carried records and no connection open, the owner's
 ; report of every KIND is the offline report of the same Store and
 ; configuration.  An open connection adds its line; a stale sum changes
-; bytes-used (tests/acl2/native-live-status-tests.lisp).
+; bytes-used; a view behind the Store (a batch in flight) changes the
+; counts (tests/acl2/native-live-status-tests.lisp).
 (local
  (defthm fn-nls-report-without-connections
    (implies (not (consp pins))
-            (equal (fn-nls-report kind profile s bytes cfg pins obs fn-arena)
-                   (fn-nls-report kind profile s bytes cfg nil obs fn-arena)))
+            (equal (fn-nls-report kind profile s bytes seen cfg pins obs fn-arena)
+                   (fn-nls-report kind profile s bytes seen cfg nil obs fn-arena)))
    :hints (("Goal" :expand ((fn-nls-connection-lines pins)
                             (fn-nls-connection-lines nil))
             :in-theory '(fn-nls-report fn-nls-pins-line len)))))
 
+;; PKT-885: the view OC carries is CURRENT when it is the view of every
+;; record the Store holds: no batch is in flight, so no reader view is held
+;; and the working view is the durable one.
+(defun fn-nls-view-currentp (oc)
+  (declare (xargs :guard t))
+  (let ((o (fn-ocfg-owner oc)))
+    (and (equal (fn-own-view-version (fn-own-view o))
+                (len (fn-sf-records (fn-sn-files (fn-own-store o)))))
+         (equal (fn-own-view-raw (fn-own-view o))
+                (fn-state-articles (fn-node-acceptance
+                                    (fn-sn-node (fn-own-store o))))))))
+
+(local
+ (defthm fn-nls-view-seen-of-current
+   (implies (fn-nls-view-currentp oc)
+            (equal (fn-nls-view-seen (fn-own-view (fn-ocfg-owner oc)))
+                   (fn-nls-store-seen (fn-own-store (fn-ocfg-owner oc)))))
+   :hints (("Goal" :in-theory '(fn-nls-view-currentp fn-nls-view-seen
+                                fn-nls-store-seen fn-sbud-used nfix
+                                (:t len))))))
+
 (defthm fn-nls-live-report-is-the-offline-report
   (implies (and (fn-sbud-octets-cache-validp
                  cache (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
-                (not (consp (fn-ocfg-pins oc))))
+                (not (consp (fn-ocfg-pins oc)))
+                (fn-nls-view-currentp oc))
            (equal (fn-nls-live-report kind profile oc cache obs fn-arena)
                   (fn-nls-offline-report kind profile
                                          (fn-own-store (fn-ocfg-owner oc))
@@ -567,8 +620,10 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
                  (:instance fn-nls-report-without-connections
                             (s (fn-own-store (fn-ocfg-owner oc)))
                             (bytes (fn-sbud-bytes-used (fn-own-store (fn-ocfg-owner oc))))
+                            (seen (fn-nls-store-seen (fn-own-store (fn-ocfg-owner oc))))
                             (cfg (fn-ocfg-config oc))
-                            (pins (fn-ocfg-pins oc))))
+                            (pins (fn-ocfg-pins oc)))
+                 fn-nls-view-seen-of-current)
            :in-theory '(fn-nls-live-report fn-nls-offline-report))))
 
 ; KEYSTONE (qual-e747dbcc A3: `control list' printed no grant).  The kind
@@ -591,7 +646,7 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
 
 (defthm fn-nls-report-of-query-kind-is-query-report
   (equal (fn-nls-report (fn-native-admin-result-report-kind plan)
-                        profile s bytes cfg pins obs fn-arena)
+                        profile s bytes seen cfg pins obs fn-arena)
          (fn-nls-query-report plan (fn-cfg-value cfg)))
   :hints (("Goal" :in-theory '(fn-nls-report fn-native-admin-result-report-kind
                                fn-native-admin-query-report
@@ -669,10 +724,12 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
                  (append (fn-cbor-encode (cons :uint (fn-nls-kind-code kind)))
                          (fn-cbor-encode (cons :uint offset))))))
 
-(defun fn-nls-request-decode (octets)
+; The payload grammar over an opened frame; the decode below is the open
+; (fn-nls-open) followed by it, and books/native-live-buffer.lisp opens the
+; frame in place and calls the grammar.
+(defun fn-nls-request-payload-decode (opened)
   "(:live-status KIND OFFSET), or (:refused REASON)."
   (declare (xargs :guard t :verify-guards nil))
-  (let ((opened (fn-nls-open octets *fn-nls-request-kind*)))
     (if (not (fn-frame-result-okp opened))
         (list :refused :frame)
       (let* ((payload (fn-frame-result-payload opened))
@@ -686,7 +743,12 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
                           (null (fn-record-parse-rest second))))
                 (list :refused :fields)
               (list :live-status (fn-nls-code-kind (fn-record-parse-value first))
-                    (fn-record-parse-value second)))))))))
+                    (fn-record-parse-value second))))))))
+
+(defun fn-nls-request-decode (octets)
+  "(:live-status KIND OFFSET), or (:refused REASON)."
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-nls-request-payload-decode (fn-nls-open octets *fn-nls-request-kind*)))
 
 (defun fn-nls-status-code (status)
   (declare (xargs :guard t))

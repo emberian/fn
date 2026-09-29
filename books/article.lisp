@@ -12,7 +12,7 @@
 (include-book "cbor")
 (include-book "std/lists/rev" :dir :system)
 
-; Bounds (D27, planning/decisions.md; design 2026-09-25-bounds §2.3).
+; Bounds (D27, planning/decisions.md; design 2026-09-25-bounds section 2.3).
 ;
 ; Codec ceiling, not policy: the widest article a record can carry, equal to
 ; the record codec's payload ceiling `*fn-record-max-payload*'
@@ -68,7 +68,7 @@
   (and (<= (fn-article-limit-fields limits) (fn-article-limit-fields wider))
        (<= (fn-article-limit-lines limits) (fn-article-limit-lines wider))
        (<= (fn-article-limit-octets limits) (fn-article-limit-octets wider))))
-; RFC 5322 §2.1.1: a line is at most 998 octets.
+; RFC 5322 section 2.1.1: a line is at most 998 octets.
 (defconst *fn-article-max-line-octets* 998)
 
 ; -----------------------------------------------------------------------------

@@ -319,7 +319,7 @@
 
 (defun fn-nntp-command-arguments-at-mostp (tokens)
   ; The 510-octet command preflight independently bounds the complete line.
-  ; This applies the 497-octet §3.1 limit to each actual argument token, after
+  ; This applies the 497-octet section 3.1 limit to each actual argument token, after
   ; excluding the LIST/MODE variant keyword rather than counting separators.
   (fn-nntp-each-token-at-mostp (fn-nntp-argument-tokens tokens)
                                *fn-nntp-max-argument-octets*))

@@ -58,6 +58,7 @@
 (in-package "ACL2")
 (include-book "peer-inbound")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
+(include-book "nntp-compress")   ; COMPRESS (RFC 8054): fn-zc-
 ; PRF-222: the restricted view a login's access rule serves.
 (include-book "group-access")
 (include-book "principal")
@@ -452,11 +453,16 @@
 ;                further octet of this connection is NNTP until the host
 ;                re-enters the plaintext stream with (:tls-established).
 ;                books/served.lisp's byte fold stops on this exactly as it
-;                stops on a closed wire.
+;                stops on a closed wire.  206 (COMPRESS) holds the session
+;                the same way until the host has installed the layer.
+;   compress     the compression layer (books/nntp-compress.lisp): nil,
+;                (:owed ALG) after 206 until the host re-enters with the
+;                same established event, then (:active ALG) for the rest of
+;                the connection (RFC 8054 section 2.2.2).
 
 (defun fn-auth-session-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 6)))
+  (and (true-listp x) (equal (len x) 7)))
 (defun fn-auth-session-base (x)
   (declare (xargs :guard t))
   (fn-inj-nth 0 x))
@@ -475,37 +481,44 @@
 (defun fn-auth-session-handshakingp (x)
   (declare (xargs :guard t))
   (fn-inj-nth 5 x))
-(defun fn-auth-make-session (base config pending subject tlsp handshaking)
+(defun fn-auth-session-compress (x)
   (declare (xargs :guard t))
-  (list base config pending subject tlsp handshaking))
+  (fn-inj-nth 6 x))
+(defun fn-auth-make-session (base config pending subject tlsp handshaking compress)
+  (declare (xargs :guard t))
+  (list base config pending subject tlsp handshaking compress))
 
 (defthm fn-auth-session-shapep-of-fn-auth-make-session
   (fn-auth-session-shapep
-   (fn-auth-make-session base config pending subject tlsp handshaking)))
+   (fn-auth-make-session base config pending subject tlsp handshaking compress)))
 (defthm fn-auth-session-base-of-fn-auth-make-session
   (equal (fn-auth-session-base
-          (fn-auth-make-session base config pending subject tlsp handshaking))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress))
          base))
 (defthm fn-auth-session-config-of-fn-auth-make-session
   (equal (fn-auth-session-config
-          (fn-auth-make-session base config pending subject tlsp handshaking))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress))
          config))
 (defthm fn-auth-session-pending-of-fn-auth-make-session
   (equal (fn-auth-session-pending
-          (fn-auth-make-session base config pending subject tlsp handshaking))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress))
          pending))
 (defthm fn-auth-session-subject-of-fn-auth-make-session
   (equal (fn-auth-session-subject
-          (fn-auth-make-session base config pending subject tlsp handshaking))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress))
          subject))
 (defthm fn-auth-session-tlsp-of-fn-auth-make-session
   (equal (fn-auth-session-tlsp
-          (fn-auth-make-session base config pending subject tlsp handshaking))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress))
          tlsp))
 (defthm fn-auth-session-handshakingp-of-fn-auth-make-session
   (equal (fn-auth-session-handshakingp
-          (fn-auth-make-session base config pending subject tlsp handshaking))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress))
          handshaking))
+(defthm fn-auth-session-compress-of-fn-auth-make-session
+  (equal (fn-auth-session-compress
+          (fn-auth-make-session base config pending subject tlsp handshaking compress))
+         compress))
 (defthm fn-auth-session-shapep-forward-shape
   (implies (fn-auth-session-shapep x) (and (consp x) (true-listp x)))
   :rule-classes :forward-chaining)
@@ -514,7 +527,8 @@
                     (:d fn-auth-session-base) (:d fn-auth-session-config)
                     (:d fn-auth-session-pending) (:d fn-auth-session-subject)
                     (:d fn-auth-session-tlsp)
-                    (:d fn-auth-session-handshakingp)))
+                    (:d fn-auth-session-handshakingp)
+                    (:d fn-auth-session-compress)))
 
 ; The two deeper reaches out of an auth session, named ONCE, for the same
 ; reason and in the same way as `fn-peer-reader-session'
@@ -576,7 +590,8 @@
        (or (null (fn-auth-session-subject x))
            (fn-prin-idp (fn-auth-session-subject x)))
        (booleanp (fn-auth-session-tlsp x))
-       (booleanp (fn-auth-session-handshakingp x))))
+       (booleanp (fn-auth-session-handshakingp x))
+       (fn-zc-statep (fn-auth-session-compress x))))
 
 (defthm fn-auth-sessionp-forward-shape
   (implies (fn-auth-sessionp x) (and (consp x) (true-listp x)))
@@ -605,7 +620,7 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-auth-make-session (fn-peer-open-session archive peer node cfg)
                         (if (fn-auth-configp acfg) acfg (fn-auth-open-config))
-                        nil nil (and tlsp t) nil))
+                        nil nil (and tlsp t) nil nil))
 
 (defthm fn-auth-open-session-is-consistent
   (fn-auth-session-consistentp (fn-auth-open-session archive peer node cfg
@@ -624,7 +639,8 @@
                         (fn-auth-session-pending as)
                         (fn-auth-session-subject as)
                         (fn-auth-session-tlsp as)
-                        (fn-auth-session-handshakingp as)))
+                        (fn-auth-session-handshakingp as)
+                        (fn-auth-session-compress as)))
 
 (defun fn-auth-principal-peer-count (hex rows)
   "How many configured peer records bind HEX as their AUTHINFO principal."
@@ -675,7 +691,7 @@
 
 (defthm fn-auth-session-peer-of-fn-auth-make-session
   (equal (fn-auth-session-peer
-          (fn-auth-make-session base config pending subject tlsp handshaking))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress))
          (fn-peer-session-peer base)))
 
 (defthm fn-auth-session-peer-of-fn-auth-with-base
@@ -1025,7 +1041,8 @@
          (fn-auth-make-session (fn-auth-session-base as) acfg
                                (car (cdr args)) nil
                                (fn-auth-session-tlsp as)
-                               (fn-auth-session-handshakingp as))
+                               (fn-auth-session-handshakingp as)
+                               (fn-auth-session-compress as))
          (fn-auth-single as (fn-proto-text "AUTHINFO" :password))
          nil)))
      ((and (consp args) (fn-nntp-keywordp (car args) "PASS"))
@@ -1045,7 +1062,8 @@
                                                (fn-auth-session-pending as)
                                                (fn-auth-cred-principal cred)
                                                (fn-auth-session-tlsp as)
-                                               (fn-auth-session-handshakingp as)))
+                                               (fn-auth-session-handshakingp as)
+                                               (fn-auth-session-compress as)))
                        (bound (fn-auth-bind-principal-peer
                                authenticated (fn-auth-cred-principal cred))))
                 (fn-post-make-result
@@ -1057,7 +1075,8 @@
               (fn-post-make-result
                (fn-auth-make-session (fn-auth-session-base as) acfg nil nil
                                      (fn-auth-session-tlsp as)
-                                     (fn-auth-session-handshakingp as))
+                                     (fn-auth-session-handshakingp as)
+                                     (fn-auth-session-compress as))
                (fn-auth-single as (fn-proto-text "AUTHINFO" :failed))
                nil))))))
      ; SASL (section 2.4) is DEFERRED, not refused: no mechanism is
@@ -1111,7 +1130,8 @@
          (fn-auth-make-session (fn-auth-session-base as) acfg
                                (list :xredeem-wait (cadr pending)
                                      (caddr pending) (car (cdr args)))
-                               nil (fn-auth-session-tlsp as) t)
+                               nil (fn-auth-session-tlsp as) t
+                               (fn-auth-session-compress as))
          nil nil))))
      ((and (consp args)
            (fn-auth-wire-tokenp (car args))
@@ -1120,7 +1140,8 @@
        (fn-auth-make-session (fn-auth-session-base as) acfg
                              (list :xredeem (car args) (car (cdr args)))
                              nil (fn-auth-session-tlsp as)
-                             (fn-auth-session-handshakingp as))
+                             (fn-auth-session-handshakingp as)
+                             (fn-auth-session-compress as))
        (fn-auth-single as (fn-proto-text "XREDEEM" :password))
        nil))
      (t (fn-post-make-result as (fn-auth-single as (fn-proto-text * :syntax)) nil)))))
@@ -1150,7 +1171,8 @@
       (fn-post-make-result
        (fn-auth-make-session (fn-auth-session-base as)
                              (fn-auth-session-config as)
-                             nil nil (fn-auth-session-tlsp as) nil)
+                             nil nil (fn-auth-session-tlsp as) nil
+                             (fn-auth-session-compress as))
        (if (equal (cadr wire-event) :bound)
            (fn-auth-single
             as (fn-proto-text "XREDEEM" :bound))
@@ -1194,7 +1216,8 @@
     (let ((cleared (fn-auth-clear-principal-peer as)))
     (fn-post-make-result
      (fn-auth-make-session (fn-auth-session-base cleared)
-                           (fn-auth-session-config as) nil nil nil t)
+                           (fn-auth-session-config as) nil nil nil t
+                           (fn-auth-session-compress as))
      (append (fn-auth-single as (fn-proto-text "STARTTLS" :continue))
              (list (fn-auth-starttls-effect)))
      nil)))))
@@ -1204,18 +1227,70 @@
 ; reply.  The session leaves handshaking with a TLS layer recorded; the base
 ; session is untouched, because the protocol state was already reset when
 ; 382 was emitted.
+; RFC 8054: the same event after a 206 says the host installed the owed
+; compression layer: the session leaves the hold with the layer active and
+; its protocol state (pending, subject, TLS) unchanged -- compression is not
+; a new session (section 2.2.2 resets nothing).  Which transition the host
+; completed is this session's to know, not the event's.
 (defun fn-auth-tls-established (as)
   (declare (xargs :guard t))
-  (fn-post-make-result
-   (fn-auth-make-session (fn-auth-session-base as) (fn-auth-session-config as)
-                         nil nil t nil)
-   nil nil))
+  (if (fn-zc-owedp (fn-auth-session-compress as))
+      (fn-post-make-result
+       (fn-auth-make-session (fn-auth-session-base as) (fn-auth-session-config as)
+                             (fn-auth-session-pending as) (fn-auth-session-subject as)
+                             (fn-auth-session-tlsp as) nil
+                             (fn-zc-established (fn-auth-session-compress as)))
+       nil nil)
+    (fn-post-make-result
+     (fn-auth-make-session (fn-auth-session-base as) (fn-auth-session-config as)
+                           nil nil t nil (fn-auth-session-compress as))
+     nil nil)))
 
 (defun fn-auth-tls-eventp (wire-event)
   (declare (xargs :guard t))
   (and (consp wire-event)
        (equal (car wire-event) :tls-established)
        (null (cdr wire-event))))
+
+; COMPRESS (RFC 8054 section 2.2).  Who may: an authenticated connection or
+; one that speaks for a configured peer (fn-zc-may-startp, local policy: see
+; books/nntp-compress.lisp).  206 holds the session (handshaking) with the
+; layer owed; the host installs it after the 206's CRLF and re-enters with
+; the established event (fn-auth-tls-established), and the host asks the
+; session, never the octets, whether a layer is owed
+; (host/owner-host.lisp fn-owner-compress-owed).
+(defun fn-auth-compress-mayp (as)
+  (declare (xargs :guard t))
+  (and (or (fn-auth-session-subject as) (fn-auth-session-peer as)) t))
+
+(defun fn-auth-compress (as args)
+  (declare (xargs :guard t))
+  (let ((d (fn-zc-decide (fn-auth-session-compress as) (fn-auth-compress-mayp as) args)))
+    (case d
+      (:active (fn-post-make-result as (fn-auth-single as (fn-proto-text "COMPRESS" :running)) nil))
+      (:syntax (fn-post-make-result as (fn-auth-single as (fn-proto-text * :syntax)) nil))
+      (:unsupported
+       (fn-post-make-result as (fn-auth-single as (fn-proto-text "COMPRESS" :algorithm)) nil))
+      (:auth-required
+       (fn-post-make-result as (fn-auth-single as (fn-proto-text * :auth-required)) nil))
+      (otherwise
+       (fn-post-make-result
+        (fn-auth-make-session (fn-auth-session-base as) (fn-auth-session-config as)
+                              (fn-auth-session-pending as) (fn-auth-session-subject as)
+                              (fn-auth-session-tlsp as) t
+                              (fn-zc-owed (cadr d)))
+        (fn-auth-single as (fn-proto-text "COMPRESS" :started))
+        nil)))))
+
+; Section 2.2.2: once a layer is active, STARTTLS, AUTHINFO (and XREDEEM,
+; fn's other authentication) are 502.
+(defun fn-auth-compressed-refusedp (as keyword)
+  (declare (xargs :guard t))
+  (and (fn-zc-activep (fn-auth-session-compress as))
+       (or (fn-nntp-keywordp keyword "STARTTLS")
+           (fn-nntp-keywordp keyword "AUTHINFO")
+           (fn-nntp-keywordp keyword "XREDEEM"))
+       t))
 
 (defun fn-auth-command (as config keyword args)
   ; The commands this book answers.  Anything else is nil: delegate.
@@ -1249,6 +1324,10 @@
    ((and (fn-nntp-keywordp keyword "POST") (not (fn-auth-postingp as)))
     (fn-post-make-result
      as (fn-auth-single as (fn-proto-text "POST" :principal)) nil))
+   ((fn-auth-compressed-refusedp as keyword)
+    (fn-post-make-result
+     as (fn-auth-single as (fn-proto-text "COMPRESS" :compressed)) nil))
+   ((fn-nntp-keywordp keyword "COMPRESS") (fn-auth-compress as args))
    ((fn-nntp-keywordp keyword "AUTHINFO") (fn-auth-authinfo as args))
    ((fn-nntp-keywordp keyword "XREDEEM") (fn-auth-xredeem as args))
    ((fn-nntp-keywordp keyword "STARTTLS") (fn-auth-starttls as args))
@@ -1261,13 +1340,16 @@
       (fn-nntp-result-effects
       (fn-nntp-multi (fn-auth-reader-session as)
                      (fn-proto-text "CAPABILITIES" :list)
-                     (fn-auth-capability-lines-for-peer
-                      (fn-auth-session-config as)
-                      (fn-auth-session-subject as)
-                      (fn-auth-session-tlsp as)
-                      (and (fn-inj-config-allow config)
-                           (fn-auth-postingp as))
-                      (fn-auth-peer-record as))))
+                     (fn-zc-capability-lines
+                      (fn-auth-capability-lines-for-peer
+                       (fn-auth-session-config as)
+                       (fn-auth-session-subject as)
+                       (fn-auth-session-tlsp as)
+                       (and (fn-inj-config-allow config)
+                            (fn-auth-postingp as))
+                       (fn-auth-peer-record as))
+                      (fn-auth-session-compress as)
+                      (fn-auth-compress-mayp as))))
      nil))
    (t nil)))
 
@@ -1725,6 +1807,19 @@
                             fn-auth-configp fn-auth-single fn-nntp-single
                             fn-nntp-printable-tokenp fn-prin-idp))))))
 
+(local (defthm fn-auth-compress-preserves-consistentp
+  (implies (fn-auth-session-consistentp as archive)
+           (fn-auth-session-consistentp
+            (fn-post-result-session (fn-auth-compress as args)) archive))
+  :hints (("Goal"
+           :in-theory (e/d (fn-auth-compress fn-auth-session-consistentp
+                            fn-auth-sessionp)
+                           (fn-peer-sessionp fn-peer-session-consistentp
+                            fn-post-sessionp fn-post-session-consistentp
+                            fn-nntp-sessionp fn-nntp-session-consistentp
+                            fn-auth-configp fn-auth-single fn-nntp-single
+                            fn-nntp-printable-tokenp fn-prin-idp))))))
+
 (local (defthm fn-auth-tls-established-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
            (fn-auth-session-consistentp
@@ -1771,7 +1866,8 @@
   :hints (("Goal"
            :in-theory (e/d (fn-auth-command)
                            (fn-auth-authinfo fn-auth-starttls fn-auth-single
-                            fn-auth-xredeem
+                            fn-auth-xredeem fn-auth-compress fn-zc-capability-lines
+                            fn-auth-compressed-refusedp fn-auth-compress-mayp
                             fn-auth-gatedp fn-auth-postingp fn-nntp-keywordp
                             fn-nntp-keyword-tokenp fn-nntp-multi
                             fn-auth-capability-lines
@@ -2295,16 +2391,20 @@
                   (fn-nntp-result-effects
                    (fn-nntp-multi (fn-auth-reader-session as)
                                   "101 capability list follows"
-                                  (fn-auth-capability-lines-for-peer
-                                   (fn-auth-session-config as)
-                                   (fn-auth-session-subject as)
-                                   (fn-auth-session-tlsp as)
-                                   (and (fn-inj-config-allow config)
-                                        (fn-auth-postingp as))
-                                   (fn-auth-peer-record as))))))
+                                  (fn-zc-capability-lines
+                                   (fn-auth-capability-lines-for-peer
+                                    (fn-auth-session-config as)
+                                    (fn-auth-session-subject as)
+                                    (fn-auth-session-tlsp as)
+                                    (and (fn-inj-config-allow config)
+                                         (fn-auth-postingp as))
+                                    (fn-auth-peer-record as))
+                                   (fn-auth-session-compress as)
+                                   (fn-auth-compress-mayp as))))))
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-gatedp
+                            fn-auth-compressed-refusedp
                             fn-auth-tls-eventp fn-auth-restricted-keywordp
                             fn-nntp-keywordp)
                            (fn-peer-step fn-auth-delegate fn-auth-single
@@ -2415,7 +2515,8 @@
 ; event and fn-nntp-tokenize never produces one.
 
 (defthm fn-auth-tls-established-sets-the-layer
-  (implies (fn-auth-sessionp as)
+  (implies (and (fn-auth-sessionp as)
+                (not (fn-zc-owedp (fn-auth-session-compress as))))
            (and (fn-auth-session-tlsp
                  (fn-post-result-session
                   (fn-auth-step as archive config observation injection
@@ -2427,6 +2528,31 @@
                 (null (fn-post-result-effects
                        (fn-auth-step as archive config observation injection
                                      (list :tls-established) fn-arena)))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-step fn-auth-tls-eventp
+                                   fn-auth-tls-established)
+                                  (fn-auth-sessionp fn-peer-step
+                                   fn-auth-delegate fn-auth-command)))))
+
+; KEYSTONE (RFC 8054 section 2.2.2, PRF-911).  After a 206 the same host
+; event establishes the compression layer instead: the layer is active, the
+; hold is released, and nothing else of the session changes -- no TLS layer
+; is recorded that the host did not negotiate, and the login, pending name
+; and base are kept (compression starts no new session).
+(defthm fn-auth-established-starts-the-owed-compression
+  (implies (and (fn-auth-sessionp as)
+                (fn-zc-owedp (fn-auth-session-compress as)))
+           (let ((as2 (fn-post-result-session
+                       (fn-auth-step as archive config observation injection
+                                     (list :tls-established) fn-arena))))
+             (and (fn-zc-activep (fn-auth-session-compress as2))
+                  (not (fn-auth-session-handshakingp as2))
+                  (equal (fn-auth-session-tlsp as2) (fn-auth-session-tlsp as))
+                  (equal (fn-auth-session-subject as2) (fn-auth-session-subject as))
+                  (equal (fn-auth-session-pending as2) (fn-auth-session-pending as))
+                  (equal (fn-auth-session-base as2) (fn-auth-session-base as))
+                  (null (fn-post-result-effects
+                         (fn-auth-step as archive config observation injection
+                                       (list :tls-established) fn-arena))))))
   :hints (("Goal" :in-theory (e/d (fn-auth-step fn-auth-tls-eventp
                                    fn-auth-tls-established)
                                   (fn-auth-sessionp fn-peer-step
@@ -2585,6 +2711,7 @@
 (defthm fn-auth-step-protected-only-refuses-authinfo-before-tls
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-zc-activep (fn-auth-session-compress as)))
                 (not (fn-auth-session-subject as))
                 (fn-auth-config-protected-onlyp (fn-auth-session-config as))
                 (not (fn-auth-session-tlsp as))
@@ -3010,6 +3137,7 @@
 (defthm fn-auth-step-principal-login-binds-exactly-the-unique-match
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-zc-activep (fn-auth-session-compress as)))
                 (not (fn-auth-session-peer as))
                 (not (fn-auth-session-subject as))
                 (not (and (fn-auth-config-protected-onlyp
@@ -3095,7 +3223,14 @@
                 (not (fn-auth-redeem-waitp
                       (fn-post-result-session
                        (fn-auth-step as archive config observation injection
-                                     wire-event fn-arena)))))
+                                     wire-event fn-arena))))
+                ; the hold is not a COMPRESS layer's (RFC 8054: 206 keeps
+                ; the login; fn-auth-established-starts-the-owed-compression)
+                (not (fn-zc-owedp
+                      (fn-auth-session-compress
+                       (fn-post-result-session
+                        (fn-auth-step as archive config observation injection
+                                      wire-event fn-arena))))))
            (and (null (fn-auth-session-subject
                        (fn-post-result-session
                         (fn-auth-step as archive config observation injection
@@ -3148,7 +3283,12 @@
                 (fn-auth-redeem-waitp
                  (fn-post-result-session
                   (fn-auth-step as archive config observation injection
-                                wire-event fn-arena))))
+                                wire-event fn-arena)))
+                (not (fn-zc-owedp
+                      (fn-auth-session-compress
+                       (fn-post-result-session
+                        (fn-auth-step as archive config observation injection
+                                      wire-event fn-arena))))))
            (and (null (fn-auth-session-subject
                        (fn-post-result-session
                         (fn-auth-step as archive config observation injection
@@ -3765,6 +3905,7 @@
 (defthm fn-auth-step-pinned-xredeem-before-tls-is-483
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-zc-activep (fn-auth-session-compress as)))
                 (not (fn-auth-session-subject as))
                 (fn-auth-config-protected-onlyp (fn-auth-session-config as))
                 (not (fn-auth-session-tlsp as))
@@ -3807,6 +3948,7 @@
 (defthm fn-auth-step-pinned-xredeem-pass-holds-for-the-owner
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-zc-activep (fn-auth-session-compress as)))
                 (not (fn-auth-session-subject as))
                 (or (not (fn-auth-config-protected-onlyp
                           (fn-auth-session-config as)))
@@ -3867,7 +4009,8 @@
                                                (fn-auth-session-config as)
                                                nil nil
                                                (fn-auth-session-tlsp as)
-                                               nil)))))
+                                               nil
+                                               (fn-auth-session-compress as))))))
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-auth-step-pinned fn-auth-tls-eventp

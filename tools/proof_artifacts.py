@@ -167,6 +167,41 @@ class Acquisition:
     rejected: list[str] = field(default_factory=list)
     attempts: list[str] = field(default_factory=list)
     reason: str = ""
+    considered: list[str] = field(default_factory=list)
+
+
+MISSING_SHOWN = 8
+
+
+def describe_candidates(root: Path, cache: Path, candidates, toolchain: str | None,
+                        attempts: dict[str, str], why=None) -> list[str]:
+    """One line per candidate set -- identity, origin, coverage, and why it was
+    not taken -- then, for the books no set holds, why their cache entries
+    did not count (obstructions-5 item 44: operability-2/-3 read a one-line
+    "no complete current artifact set ... rejected=0" twice, 25 minutes each)."""
+    why = why or certs.why_no_entry
+    lines = []
+    never: set[str] = set(candidates[0].required) if candidates else set()
+    for candidate in candidates:
+        missing = candidate.missing
+        never &= set(missing)
+        state = attempts.get(candidate.identity)
+        if state is None:
+            state = ("complete, not tried (an earlier set was taken or the install chose "
+                     "another)" if candidate.complete else
+                     "incomplete: missing " + ", ".join(missing[:MISSING_SHOWN])
+                     + (f" (+{len(missing) - MISSING_SHOWN})" if len(missing) > MISSING_SHOWN
+                        else ""))
+        lines.append("candidate {} origin {} ({}) {} of {} books: {}".format(
+            candidate.identity[:16], candidate.origin_root or "?", candidate.origin_kind,
+            len(candidate.entries), len(candidate.required), state))
+    for name in sorted(never)[:MISSING_SHOWN]:
+        lines.append(f"  in no set: {name}: {why(root, cache, name, toolchain)}")
+    if len(never) > MISSING_SHOWN:
+        lines.append(f"  in no set: {len(never) - MISSING_SHOWN} more")
+    if not candidates:
+        lines.append(f"no candidate set at all for toolchain {toolchain} in {cache}")
+    return lines
 
 
 def acquire(root: Path, cache: Path, acl2: Path, profile: str,
@@ -189,6 +224,7 @@ def acquire(root: Path, cache: Path, acl2: Path, profile: str,
     candidates = certs.artifact_sets(root, cache, roots, toolchain, acl2=acl2)
     rejected: list[str] = []
     attempts: list[str] = []
+    tried: dict[str, str] = {}
     for candidate in candidates:
         if not candidate.complete:
             continue
@@ -201,6 +237,8 @@ def acquire(root: Path, cache: Path, acl2: Path, profile: str,
         attempts.append("{} {}: {}".format(
             report.artifact_set[:16], report.artifact_origin,
             "loaded" if loaded.ok else loaded.reason))
+        tried[report.artifact_set] = ("installed and loaded" if loaded.ok
+                                      else "REJECTED by the ACL2 load: " + loaded.reason)
         if loaded.ok:
             report.rejected_sets = list(rejected)
             return Acquisition(True, profile, roots, report, rejected, attempts)
@@ -211,10 +249,15 @@ def acquire(root: Path, cache: Path, acl2: Path, profile: str,
         source = root / f"{name}.lisp"
         source.with_suffix(".cert").unlink(missing_ok=True)
         source.with_suffix(".port").unlink(missing_ok=True)
+    complete = [one for one in candidates if one.complete]
     reason = ("no complete current artifact set passed an ACL2 load"
+              if complete else
+              f"none of the {len(candidates)} candidate artifact sets is complete"
               if candidates else "no current artifact set matches this ACL2 toolchain")
     return Acquisition(False, profile, roots, rejected=rejected,
-                       attempts=attempts, reason=reason)
+                       attempts=attempts, reason=reason,
+                       considered=describe_candidates(root, cache, candidates, toolchain,
+                                                      tried))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -256,6 +299,8 @@ def main(argv: list[str] | None = None) -> int:
     for attempt in result.attempts:
         print("attempt " + attempt)
     if not result.ok or result.report is None:
+        for line in result.considered:
+            print(line)
         print("profile={} image={} result={} rejected={}".format(
             result.profile, PROFILES[result.profile].image, result.reason,
             len(result.rejected)))

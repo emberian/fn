@@ -3,7 +3,7 @@
 ;
 ; The witness is the predecessor's: codec-c1's real held-out 1993 article
 ; (750 octets) as a record through the attached codec, and the blocks
-; liblz4-HC 9 wrote for it (tests/acl2/payload-lz-record-tests.lisp, whose
+; zlib 9 wrote for it (tests/acl2/payload-lz-record-tests.lisp, whose
 ; constants this book includes: *plr-r* the record, *plr-k* its payload
 ; span, *plz-block* the block alone, *plz-dict-block* the block against the
 ; 2,749-octet dictionary *plz-dict*, *plr-z0* the seal with *plz-block*).
@@ -48,7 +48,7 @@
       (equal (fn-lzr-append-decide nil 0 64 *plr-r* *plr-k* 750 :none) (list :kept :lz-no-gain))
       ; a candidate that decodes to the span but does not shrink it (the literal block)
       (equal (fn-lzr-append-decide nil 0 64 *plr-r* *plr-k* 750
-                                   (fn-lz-literal-block *plz-article*))
+                                   (fn-pzd-stored *plz-article*))
              (list :kept :lz-no-gain))
       (equal (fn-lzr-append-octets (list :kept :lz-no-gain) *plr-r*) *plr-r*)
       ; a span past the record
@@ -126,11 +126,11 @@
               (list :refused :lz-candidate))
        (fn-lzr-span-okp *plr-r* *plr-k* 750) (fn-lzr-u32p 0)
        (not (eq *plz-dict-block* :none))
-       (not (equal (fn-lz-decode nil *plz-dict-block* 750)
+       (not (equal (fn-pzd-decode nil *plz-dict-block* 750)
                    (list :ok (take 750 (nthcdr *plr-k* *plr-r*)))))
        (not (equal (fn-lzr-append-decide nil 0 64 *plr-r* *plr-k* 750 *plz-block*)
                    (list :refused :lz-candidate)))
-       (equal (fn-lz-decode nil *plz-block* 750) (list :ok (take 750 (nthcdr *plr-k* *plr-r*))))
+       (equal (fn-pzd-decode nil *plz-block* 750) (list :ok (take 750 (nthcdr *plr-k* *plr-r*))))
        (not (equal (fn-lzr-append-decide nil 0 64 *plr-r* *plr-k* 750 :none)
                    (list :refused :lz-candidate))))
   :rule-classes nil)
@@ -305,7 +305,7 @@
  (let ((d (fn-lzr-append-decide nil 0 64 *plr-r* *plr-k* 750 '(1 2 3))))
    (and (equal d (list :refused :lz-candidate))
         (stringp (fn-lzr-append-refusal-text d))
-        (not (equal (fn-lz-decode nil '(1 2 3) 750)
+        (not (equal (fn-pzd-decode nil '(1 2 3) 750)
                     (list :ok (take 750 (nthcdr *plr-k* *plr-r*))))))))
 (assert-event
  (and (null (fn-lzr-append-refusal-text

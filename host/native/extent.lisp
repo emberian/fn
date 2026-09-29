@@ -228,9 +228,10 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
 ;;; A-DURABLE-LZ (books/assumptions.lisp; lane compression-extents, PRF-326):
 ;;; the realizer of a COMPRESSED extent.  It reads the block C through the
 ;;; extent realizer above (the entry's trailer checked by ACL2), runs ACL2's
-;;; decoder over it (fn-lzr-lz-read, books/payload-lz-record.lisp; KEYSTONE
-;;; fn-lzr-lz-read-is-the-lz-value: an :ok answer is the value the
-;;; constraint names) and answers ACL2's octets.  A decode that fails is
+;;; DEFLATE payload decoder over it (host/native/deflate.lisp fnn-pzd-decode:
+;;; fn-zpl-decode-bufs over pooled buffers; KEYSTONE
+;;; fn-zpl-decode-bufs-is-the-lz-value, books/deflate-pool.lisp: an :ok
+;;; answer is the value the constraint names) and answers ACL2's octets.  A decode that fails is
 ;;; refused by name (arena-extent-lz-decode, a store fault: a recovery
 ;;; event) and nothing is answered.  One decoded payload is kept (the last
 ;;; one read) so a reader that reads octet by octet (fn-arena$x-get) decodes
@@ -246,8 +247,8 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
                        (cddr last))))))
     (or hit
         (let* ((c (fn-durable-realize-octets file eoff elen poff plen trailer))
-               (r (fnn-core 'fn-lzr-lz-read dict c n)))
-          (unless (and (consp r) (eq (first r) :ok))
+               (r (funcall 'fnn-pzd-decode dict c n)))
+          (unless (and (consp r) (eq (first r) :ok) (eql (length (rest r)) n))
             ;; The path is read under the lock that guards the table: another
             ;; thread may be registering a file (fnn-extent-register).
             (let ((path (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
@@ -256,7 +257,7 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
               (error 'fnn-extent-fault
                      :message (format nil "arena-extent-lz-decode: the block at ~a of ~a does not decode to its ~a octets"
                                       poff path n))))
-          (let ((octets (second r)))
+          (let ((octets (rest r)))
             (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
               (setq *fnn-extent-lz-last* (list* key dict octets)))
             octets)))))

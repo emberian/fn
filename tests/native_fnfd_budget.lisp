@@ -8,6 +8,7 @@
 (defun f-get-global (name state)
   (declare (ignore name state))
   nil)
+(load "tests/native_io_prelude.lisp")
 (load "host/native/io.lisp")
 
 (defvar *nfb-observations* nil)

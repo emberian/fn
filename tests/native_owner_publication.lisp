@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (defvar *the-live-state* nil)
 (defun f-get-global (name state) (declare (ignore name state)) nil)
+(load "tests/native_io_prelude.lisp")
 (load "host/native/io.lisp")
 (load "host/native/owner.lisp")
 
@@ -22,14 +23,22 @@
 
 (defun nop-with-stubs (publish owner-action finish thunk)
   (let ((saved (mapcar (lambda (name) (cons name (symbol-function name)))
-                       '(fnn-owner-core fnn-publish fnn-owner-action fnn-finish))))
+                       '(fnn-owner-core fnn-core-arena-state fnn-publish fnn-owner-action
+                         fnn-finish))))
     (unwind-protect
          (progn
-           (setf (symbol-function 'fnn-owner-core)
+           ;; The staged record comes from the arena (fnn-core-arena-state),
+           ;; its sequence from the owner core.
+           (setf (symbol-function 'fnn-core-arena-state)
                  (lambda (name &rest ignored)
                    (declare (ignore ignored))
                    (case name
                      (fn-owner-pending-octets '(1 2 3))
+                     (t (error "unexpected arena state call ~s" name))))
+                 (symbol-function 'fnn-owner-core)
+                 (lambda (name &rest ignored)
+                   (declare (ignore ignored))
+                   (case name
                      (fn-owner-pending-sequence *nop-sequence*)
                      (t (error "unexpected owner core call ~s" name)))))
            (setf (symbol-function 'fnn-publish)

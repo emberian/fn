@@ -341,6 +341,17 @@ deferral stands, and `status' names it)."
       (fnn-owner-maybe-publish service))
     (list :reason (fnn-core 'fn-ock-request-status word) word)))
 
+(defun fnn-owner-inspect-request (service msgid)
+  "Row S3: `store inspect ID' on the running owner: the owner's own lookup of
+ID (the Message-ID table, O(1)) under the owner mutex, answered as ACL2's
+word (books/owner-maintenance-request.lisp fn-omr-inspect-word) with the
+status fn-omr-inspect-status decides: accepted when found, refused when
+absent.  The client renders the offline report from the word."
+  (let* ((octets (fnn-octets (fnn-core 'fn-record-string-octets msgid)))
+         (found (fnn-owner-serialized
+                 service nil (lambda () (and (fnn-bridge-lookup-found-p octets) t))))
+         (word (fnn-core 'fn-omr-inspect-word found)))
+    (list :reason (fnn-core 'fn-omr-inspect-status word) word)))
 (defun fnn-owner-reclaim-request (service mode)
   "Q16: `store reclaim' on the running owner (books/owner-reclaim.lisp).  ACL2
 answers it under the owner mutex (host/owner-host.lisp fn-owner-orc-request):
@@ -491,14 +502,18 @@ accepted change is recorded for the next start.  Prints ACL2's line."
 (defun fnn-owner-live-admin-serialized (service argv)
   "Publish one ACL2-planned configuration mutation through the live owner,
 or answer the one owner request an admin vector carries (PKT-868: the
-compaction request; Q16: the reclaim request; ACL2's
-fn-native-admin-result-owner-requestp and -reclaim-mode)."
+compaction request; row S3: the inspect request; Q16: the reclaim request;
+ACL2's fn-native-admin-result-owner-requestp, -inspect-msgid and
+-reclaim-mode)."
   (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
     (when (fnn-core 'fn-native-admin-host-owner-requestp plan)
-      (let ((mode (fnn-core 'fn-native-admin-host-reclaim-mode plan)))
+      (let ((mode (fnn-core 'fn-native-admin-host-reclaim-mode plan))
+            (msgid (fnn-core 'fn-native-admin-result-inspect-msgid plan)))
         (return-from fnn-owner-live-admin-serialized
-          (if mode
-              (fnn-owner-reclaim-request service mode)
+          (if (or mode msgid)
+              (if mode
+                  (fnn-owner-reclaim-request service mode)
+                (fnn-owner-inspect-request service msgid))
             (fnn-owner-compaction-request service))))))
   (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
     (when (fnn-lim-plan-p plan)
