@@ -4627,3 +4627,9 @@
 (definterface fn-owner-bplc-recover :class ::program)
 (definterface fn-owner-bplc-begin :class ::program)
 (definterface fn-owner-bplc-turn-plan :class ::program)
+
+(definterface fn-pio-reap-work :class :common-lisp-compliant)
+(definterface fn-pio-worker-death-step :class :common-lisp-compliant
+  :kinds ((deadp booleanp)))
+(definterface fn-pio-file-issue :class :common-lisp-compliant
+  :keystones ((fn-pio-successive-file-issues-have-distinct-identities :via fn-pio-file-issue)))
