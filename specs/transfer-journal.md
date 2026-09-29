@@ -82,9 +82,10 @@ whatever follows the bad frame. No partial chunk exists: the fault state is
 the fold, and `fn-tj-run-preserves-statep` says the fold of any inputs over a
 kernel state is a kernel state.
 
-`fn-tj-refused-record-replays-to-same-state`: any record whose recorded
-outcome is neither `:reserved` nor `:stored` replays to exactly the prior
-state, with no hypothesis on the state. This covers duplicates, covered
+The refusal property, that a record whose recorded outcome is neither
+`:reserved` nor `:stored` replays to exactly the prior state, is not a
+theorem: its statement was removed (Open, below) and it rests on witnesses.
+It covers duplicates, covered
 arrivals, every overlap conflict and every resource refusal. Byte-identical
 overlap is accepted as `:stored` and retains the union
 (`fn-transfer-add-chunk-retains-union` in the kernel); a differing overlap is
@@ -104,7 +105,7 @@ shape. Validation and acceptance are [the container](container.md).
 
 ## Open (recorded, not weakened)
 
-- **`fn-tj-refused-record-replays-to-same-state` is removed, not weakened.**
+- **The refusal-replay theorem is removed, not weakened.**
   Stated over an arbitrary record it is false: `fn-tj-apply` answers
   `(list :fault :not-a-transition st)` for a record outside the two
   transition shapes, and item 1 of that answer is the reason, not the state,

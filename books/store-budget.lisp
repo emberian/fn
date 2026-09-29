@@ -92,6 +92,69 @@ ceiling cannot hold KIND's worst-case encoded record."
         ((fn-hstxa-p row) (len (fn-record-groups (fn-hstxa-held row))))
         (t 0)))
 
+; THE HEADER CHARGE (lane heap-pool, B9 of COMPLETE-BEFORE-6.6.0, 2026-09-28;
+; the coordinator's decision: persisted charges, P1 of planning/evidence/
+; f8-reservation-2026-09-28.md).  A retained article's header costs the heap
+; far more than its octets: its overview fields are character strings and its
+; control words (Cancel-Lock, Cancel-Key) octet lists, each twice while the
+; owner posts, and its Message-ID a trie path, its rebuild at a checkpoint's
+; publication and two strings (books/heap-store-figure.lisp names each: 32
+; heap octets a header octet, 48 more a Message-ID octet; twice for the
+; collector's copy, 64 and 96).  Lane heap-bounds (B2) derived the heap
+; figure's term for them from the profile's limits alone, 64 H, because
+; nothing bounded the header octets a store holds but H.  Here the history
+; budget CHARGES them: a held row pays *fn-sbud-header-weight* history octets
+; a header octet and *fn-sbud-msgid-weight* more a Message-ID octet, so its
+; retained header state is at most 8 heap octets a charged octet and the
+; figure's term is 8 H (the resource contract, planning/requirements.json
+; R1: a header-heavy store reaches its budget H sooner and is refused by
+; name, `unaffordable').  The charge is replayed with the rows, so the store
+; a launch observes is the store the budget admitted (the heap figure's
+; "an init-accepted store always reopens").
+(defconst *fn-sbud-header-weight* 8)
+(defconst *fn-sbud-msgid-weight* 12)
+
+; A held row's header octets: its facts' body start (the octets before the
+; blank line, books/catalog-record.lisp fn-held-facts-of) or, with no blank
+; line, all of its octets; never more than its octets.
+(defun fn-sbud-held-header-octets (row)
+  (declare (xargs :guard t))
+  (let* ((facts (fn-held-facts row))
+         (octets (nfix (fn-hf-octets facts)))
+         (start (fn-hf-body-start facts)))
+    (min octets (if (natp start) start octets))))
+
+; A held row's Message-ID octets: at most 250 (fn-record-msgidp) and at most
+; its octets (the Message-ID is a field of its header, a part of the
+; payload; the min keeps the charge within a figure of the payload's length,
+; so an article of no payload is charged nothing more than its record).
+(defun fn-sbud-held-msgid-octets (row)
+  (declare (xargs :guard t))
+  (let ((msgid (fn-record-msgid row)))
+    (min (min 250 (nfix (fn-hf-octets (fn-held-facts row))))
+         (if (stringp msgid) (length msgid) 0))))
+
+(defun fn-sbud-held-heap-charge (row)
+  (declare (xargs :guard t))
+  (+ (* *fn-sbud-header-weight* (fn-sbud-held-header-octets row))
+     (* *fn-sbud-msgid-weight* (fn-sbud-held-msgid-octets row))))
+
+(defthm fn-sbud-held-header-octets-is-within-the-octets
+  (<= (fn-sbud-held-header-octets row) (nfix (fn-hf-octets (fn-held-facts row))))
+  :rule-classes :linear)
+
+(defthm fn-sbud-held-msgid-octets-is-within-250
+  (<= (fn-sbud-held-msgid-octets row) 250)
+  :rule-classes :linear)
+
+(defthm fn-sbud-held-msgid-octets-is-within-the-octets
+  (<= (fn-sbud-held-msgid-octets row) (nfix (fn-hf-octets (fn-held-facts row))))
+  :rule-classes :linear)
+
+(defthm fn-sbud-held-heap-charge-natp
+  (natp (fn-sbud-held-heap-charge row))
+  :rule-classes :type-prescription)
+
 ; The stored octets of one retained row (records-flip, 2026-09-27), and its
 ; membership charge.  A held
 ; article row keeps its payload in the arena: its octets are the extent of
@@ -102,16 +165,19 @@ ceiling cannot hold KIND's worst-case encoded record."
 ; wire event and is its encoding.  Before the flip this was the wire encoder
 ; alone, which is nil on a held row: every retained article counted 0
 ; octets against the history bound.  An article row (held or composite)
-; adds `*fn-sbud-membership-octets*' per group it is filed in.
+; adds `*fn-sbud-membership-octets*' per group it is filed in and its
+; header charge (`fn-sbud-held-heap-charge', lane heap-pool).
 (defun fn-sbud-row-octets (row)
   (declare (xargs :guard t :verify-guards nil))
   (cond ((fn-held-p row)
          (+ (nfix (fn-hf-octets (fn-held-facts row)))
-            (* *fn-sbud-membership-octets* (len (fn-record-groups row)))))
+            (* *fn-sbud-membership-octets* (len (fn-record-groups row)))
+            (fn-sbud-held-heap-charge row)))
         ((fn-hstxa-p row)
          (+ (len (fn-store-event-encode (fn-hstxa-stxa row)))
             (* *fn-sbud-membership-octets*
-               (len (fn-record-groups (fn-hstxa-held row))))))
+               (len (fn-record-groups (fn-hstxa-held row))))
+            (fn-sbud-held-heap-charge (fn-hstxa-held row))))
         (t (len (fn-store-event-encode row)))))
 
 ; On a wire event (neither held nor composite) the row's octets are its

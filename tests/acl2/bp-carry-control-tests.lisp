@@ -77,7 +77,7 @@
                                              '(:carry "pause" "*" "-")))))
 (assert-event (equal (cdr (fn-bpcc-replay nil (list (fn-bpcc-journal-config)
                                                     '(:carry "pause" "*" "-"))))
-                     (list t nil nil)))
+                     (list t nil nil nil)))
 (assert-event (not (car (fn-bpcc-replay nil (list '(:carry "pause" "*" "-"))))))
 (assert-event (not (car (fn-bpcc-replay nil (list (fn-bpcc-journal-config)
                                                   '(:carry "pause" "work-z" "-"))))))
