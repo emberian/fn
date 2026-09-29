@@ -89,6 +89,8 @@ where the node requires one (480 otherwise).
   login.
 - XFNCATCHUP * (fn extension, PRF-325): A peer's batched catch-up over
   the articles it may read (peers only).
+- XFN-ZARTICLE * (fn extension, NNT-055): Sends an article's payload as
+  it is stored when you hold its dictionary (fn peers).
 
 [end of generated text]
 
