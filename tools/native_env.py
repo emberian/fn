@@ -160,6 +160,7 @@ MANUAL = {
     "FN_OLD_NATIVE_HOST": "an older image (upgrade cases)",
     "FN_SPAN_REFERENCE_HOST": "the base image of the ingress-span differential (SCN-110; built from the lane base, by --env)",
     "FN_OLD_IMAGE": "an older image (upgrade cases)",
+    "FN_RUN_SLOW": "opt-in for tests marked slow (tests/native_harness.py `slow'): batches and qualification",
     "FN_INN_SRC": "an installed INN 2.7 tree",
     "FN_DTN7_REPO": "a dtn7-rs checkout",
 }

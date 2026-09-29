@@ -23,7 +23,7 @@ import os
 import time
 import unittest
 
-from tests.native_harness import EXIT_FAULT, EXIT_OK, Node, native_image, requires
+from tests.native_harness import EXIT_FAULT, EXIT_OK, Node, native_image, requires, slow
 # The harness stores' init budget (tools/native_env.py): init refuses a
 # store without FN_INIT_BUDGET_MB on a large machine (batch AZ, 2026-09-28).
 from tools.native_env import HARNESS_INIT_BUDGET_MB  # noqa: E402
@@ -57,6 +57,8 @@ class NativePeerRowsGrowthTests(unittest.TestCase):
         return ([w.split("=", 1)[1] for w in words
                  if w.startswith("carries-principal=")], lines[0])
 
+    @slow("1,100 peer requests: 6,440 s on a loaded hbox (PKT-722); "
+          "FN_PEER_ROWS_REQUESTS=300 decides the same row cap")
     def test_a_peer_carries_more_than_the_old_row_cap(self):
         room = str(REQUESTS + 64)
         # The small preset's record, article and group bounds (tools/fixtures.py
