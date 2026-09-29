@@ -1698,11 +1698,564 @@
                   (equal (len (mv-nth 5 r)) *fn-zin-tab-octets*)
                   (fn-cbor-octet-listp (mv-nth 6 r))))))
 
+; -----------------------------------------------------------------------------
+; THE FAST PATH (zlib's inflate_fast).  Whole symbols of a Huffman block in
+; typed locals: the bit buffer in a 56-bit register refilled a whole octet
+; at a time, a literal/length and a distance each read through the
+; nine-bit lookup (a longer code by the canonical walk from length 1), a
+; match copied in one loop.  It takes a symbol only whole -- every bit it
+; needs in hand, the output room, the distance within reach -- and
+; otherwise stops before it, where the machine takes over a step at a time
+; (a block's end, a malformed code, the input's last octets).  Only the
+; payload decoder (fn-zin-loop-ahead) runs it: the COMPRESS wire's loop
+; keeps its one-octet-at-a-time reading for the resumption keystones.
+
+(encapsulate
+  ()
+  (local (include-book "arithmetic-5/top" :dir :system))
+
+  (defthm fn-zin-f-logand-bound
+    (implies (and (natp x) (natp m))
+             (and (natp (logand x m)) (<= (logand x m) m)))
+    :rule-classes ((:type-prescription :corollary
+                    (implies (and (natp x) (natp m)) (natp (logand x m))))
+                   (:linear :corollary
+                    (implies (and (natp x) (natp m)) (<= (logand x m) m)))))
+
+  (local
+   (defthm fn-zin-f-floor-le
+     (implies (and (natp x) (integerp y) (<= 1 y))
+              (<= (floor x y) x))
+     :hints (("Goal" :nonlinearp t))
+     :rule-classes nil))
+
+  (local
+   (defthm fn-zin-f-expt2-ge1
+     (implies (natp n) (<= 1 (expt 2 n)))
+     :rule-classes nil))
+
+  (defthm fn-zin-f-ash-right-bound
+    (implies (and (natp x) (natp n))
+             (and (natp (ash x (- n))) (<= (ash x (- n)) x)))
+    :hints (("Goal" :use ((:instance fn-zin-f-floor-le (y (expt 2 n)))
+                          (:instance fn-zin-f-expt2-ge1))))
+    :rule-classes ((:type-prescription :corollary
+                    (implies (and (natp x) (natp n)) (natp (ash x (- n)))))
+                   (:linear :corollary
+                    (implies (and (natp x) (natp n)) (<= (ash x (- n)) x)))))
+
+  (defthm fn-zin-f-mask-bound
+    (implies (and (natp x) (natp n) (<= n 13))
+             (and (natp (logand x (+ -1 (ash 1 n))))
+                  (< (logand x (+ -1 (ash 1 n))) 8192)))
+    :rule-classes ((:type-prescription :corollary
+                    (implies (and (natp x) (natp n) (<= n 13))
+                             (natp (logand x (+ -1 (ash 1 n))))))
+                   (:linear :corollary
+                    (implies (and (natp x) (natp n) (<= n 13))
+                             (< (logand x (+ -1 (ash 1 n))) 8192))))))
+
+(local
+ (defthm fn-zin-f-nth-octet-any
+   (implies (fn-cbor-octet-listp x)
+            (<= (nfix (nth i x)) 255))
+   :hints (("Goal" :in-theory (enable nth fn-cbor-octetp)))
+   :rule-classes :linear))
+
+(defthm fn-zin-f-tget-bound
+  (implies (fn-cbor-octet-listp fn-zin-tab)
+           (< (fn-zin-tget e fn-zin-tab) 65536))
+  :hints (("Goal" :in-theory (e/d (fn-zin-tget$inline) (nth))
+                  :use ((:instance fn-zin-f-nth-octet-any (x fn-zin-tab) (i (* 2 e)))
+                        (:instance fn-zin-f-nth-octet-any (x fn-zin-tab) (i (+ 1 (* 2 e)))))))
+  :rule-classes :linear)
+
+(encapsulate
+  ()
+  (local (include-book "arithmetic-5/top" :dir :system))
+
+  (defun-inline fn-zin-f-push (bits o nbits)
+    ; An octet above the NBITS bits held, the buffer kept to 56 bits.
+    (declare (xargs :guard (and (natp bits) (natp o) (natp nbits))))
+    (logand (logior (nfix bits) (ash (nfix o) (nfix nbits))) #xffffffffffffff))
+
+  (defthm fn-zin-f-push-bound
+    (and (natp (fn-zin-f-push bits o nbits))
+         (< (fn-zin-f-push bits o nbits) 72057594037927936))
+    :rule-classes ((:type-prescription :corollary (natp (fn-zin-f-push bits o nbits)))
+                   (:linear :corollary (< (fn-zin-f-push bits o nbits) 72057594037927936)))))
+
+(in-theory (disable fn-zin-f-push$inline))
+
+(defun fn-zin-f-fill (bits nbits ip end fn-octets)
+  ; Input octets into the bit buffer until it holds more than 48 bits or
+  ; the input [IP, END) is exhausted: (mv BITS NBITS IP).
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (unsigned-byte-p 56 bits) (natp nbits) (<= nbits 56)
+                              (unsigned-byte-p 59 ip) (unsigned-byte-p 59 end)
+                              (<= end (fn-octets-len fn-octets)))
+                  :measure (nfix (- 56 (nfix nbits))))
+           (type (unsigned-byte 56) bits) (type (integer 0 56) nbits)
+           (type (unsigned-byte 59) ip end))
+  (if (and (mbt (and (natp bits) (natp nbits) (natp ip))) (<= nbits 48) (< ip end)
+           (< ip (fn-octets-len fn-octets)))
+      (fn-zin-f-fill (fn-zin-f-push bits (fn-octets-get ip fn-octets) nbits)
+                     (+ 8 nbits) (+ 1 ip) end fn-octets)
+    (mv (nfix bits) (nfix nbits) (nfix ip))))
+
+(defthm fn-zin-f-fill-natp
+  (let ((r (fn-zin-f-fill bits nbits ip end fn-octets)))
+    (and (natp (car r)) (natp (mv-nth 1 r)) (natp (mv-nth 2 r))))
+  :rule-classes
+  ((:type-prescription :corollary (natp (car (fn-zin-f-fill bits nbits ip end fn-octets))))
+   (:type-prescription :corollary (natp (mv-nth 1 (fn-zin-f-fill bits nbits ip end fn-octets))))
+   (:type-prescription :corollary (natp (mv-nth 2 (fn-zin-f-fill bits nbits ip end fn-octets))))))
+
+(defthm fn-zin-f-fill-types
+  (implies (and (natp bits) (< bits 72057594037927936) (natp nbits) (<= nbits 56)
+                (natp ip) (natp end) (< end 576460752303423488) (< ip 576460752303423488)
+                (fn-cbor-octet-listp fn-octets))
+           (let ((r (fn-zin-f-fill bits nbits ip end fn-octets)))
+             (and (natp (car r)) (< (car r) 72057594037927936)
+                  (natp (mv-nth 1 r)) (<= (mv-nth 1 r) 56)
+                  (natp (mv-nth 2 r)) (< (mv-nth 2 r) 576460752303423488))))
+  :hints (("Goal" :induct (fn-zin-f-fill bits nbits ip end fn-octets)))
+  :rule-classes
+  ((:rewrite :corollary
+    (implies (and (natp bits) (< bits 72057594037927936) (natp nbits) (<= nbits 56)
+                  (natp ip) (natp end) (< end 576460752303423488) (< ip 576460752303423488)
+                  (fn-cbor-octet-listp fn-octets))
+             (let ((r (fn-zin-f-fill bits nbits ip end fn-octets)))
+               (and (integerp (car r)) (<= 0 (car r))
+                    (integerp (mv-nth 1 r)) (<= 0 (mv-nth 1 r))
+                    (integerp (mv-nth 2 r)) (<= 0 (mv-nth 2 r))))))
+   (:linear :corollary
+    (implies (and (natp bits) (< bits 72057594037927936) (natp nbits) (<= nbits 56)
+                  (natp ip) (natp end) (< end 576460752303423488) (< ip 576460752303423488)
+                  (fn-cbor-octet-listp fn-octets))
+             (let ((r (fn-zin-f-fill bits nbits ip end fn-octets)))
+               (and (< (car r) 72057594037927936) (<= 0 (car r))
+                    (<= (mv-nth 1 r) 56) (<= 0 (mv-nth 1 r))
+                    (< (mv-nth 2 r) 576460752303423488) (<= 0 (mv-nth 2 r))))))))
+
+(in-theory (disable fn-zin-f-fill))
+
+(defun fn-zin-f-walk (len code first index bits cb sb smax fn-zin-tab)
+  ; puff's canonical decode over the bits in hand, for a code longer than
+  ; the lookup's nine bits: (mv SYM LEN), LEN 0 when no code of length
+  ; 1..15 matches.
+  (declare (xargs :stobjs fn-zin-tab
+                  :guard (and (natp len) (natp code) (natp first) (natp index)
+                              (natp bits) (natp cb) (natp sb) (natp smax)
+                              (<= (+ cb 16) *fn-zin-tab-entries*)
+                              (<= (+ sb smax) *fn-zin-tab-entries*)
+                              (fn-zin-tab-okp fn-zin-tab))
+                  :measure (nfix (- 16 (nfix len)))))
+  (if (and (natp len) (<= 1 len) (<= len 15) (<= (+ (nfix cb) 16) *fn-zin-tab-entries*))
+      (let* ((code (+ (nfix code) (logand (nfix bits) 1)))
+             (count (fn-zin-tget (+ (nfix cb) len) fn-zin-tab)))
+        (if (< code (+ (nfix first) count))
+            (let ((i (+ (nfix index) (- code (nfix first)))))
+              (if (and (natp i) (< i (nfix smax)) (<= (+ (nfix sb) (nfix smax)) *fn-zin-tab-entries*))
+                  (mv (fn-zin-tget (+ (nfix sb) i) fn-zin-tab) len)
+                (mv 0 0)))
+          (fn-zin-f-walk (1+ len) (* 2 code) (* 2 (+ (nfix first) count))
+                         (+ (nfix index) count) (ash (nfix bits) -1) cb sb smax fn-zin-tab)))
+    (mv 0 0)))
+
+(defthm fn-zin-f-walk-sym-natp
+  (natp (car (fn-zin-f-walk len code first index bits cb sb smax fn-zin-tab)))
+  :hints (("Goal" :induct (fn-zin-f-walk len code first index bits cb sb smax fn-zin-tab)
+                  :do-not '(generalize fertilize eliminate-destructors)
+                  :in-theory (e/d (fn-zin-f-walk) (fn-zin-tget$inline nfix))))
+  :rule-classes :type-prescription)
+
+(defthm fn-zin-f-walk-len-natp
+  (natp (mv-nth 1 (fn-zin-f-walk len code first index bits cb sb smax fn-zin-tab)))
+  :hints (("Goal" :induct (fn-zin-f-walk len code first index bits cb sb smax fn-zin-tab)
+                  :do-not '(generalize fertilize eliminate-destructors)
+                  :in-theory (e/d (fn-zin-f-walk) (fn-zin-tget$inline nfix))))
+  :rule-classes :type-prescription)
+
+(defthm fn-zin-f-walk-len-bound
+  (<= (mv-nth 1 (fn-zin-f-walk len code first index bits cb sb smax fn-zin-tab)) 15)
+  :hints (("Goal" :induct (fn-zin-f-walk len code first index bits cb sb smax fn-zin-tab)
+                  :do-not '(generalize fertilize eliminate-destructors)
+                  :in-theory (e/d (fn-zin-f-walk) (fn-zin-tget$inline nfix))))
+  :rule-classes :linear)
+
+(defthm fn-zin-f-walk-sym-bound
+  (implies (fn-cbor-octet-listp fn-zin-tab)
+           (< (car (fn-zin-f-walk len code first index bits cb sb smax fn-zin-tab)) 65536))
+  :hints (("Goal" :induct (fn-zin-f-walk len code first index bits cb sb smax fn-zin-tab)
+                  :do-not '(generalize fertilize eliminate-destructors)
+                  :in-theory (e/d (fn-zin-f-walk) (fn-zin-tget$inline nfix))))
+  :rule-classes :linear)
+
+(in-theory (disable fn-zin-f-walk))
+
+(encapsulate
+  ()
+  (local (include-book "arithmetic-5/top" :dir :system))
+
+  (local
+   (defthm fn-zin-f-floor-le2
+     (implies (and (natp x) (integerp y) (<= 1 y))
+              (<= (floor x y) x))
+     :hints (("Goal" :nonlinearp t))
+     :rule-classes nil))
+
+  (defun-inline fn-zin-f-shr (x n)
+    ; X without its low N bits.
+    (declare (xargs :guard (and (natp x) (natp n))))
+    (ash (nfix x) (- (nfix n))))
+
+  (defthm fn-zin-f-shr-bound
+    (and (natp (fn-zin-f-shr x n)) (<= (fn-zin-f-shr x n) (nfix x)))
+    :hints (("Goal" :use ((:instance fn-zin-f-floor-le2 (x (nfix x)) (y (expt 2 (nfix n)))))))
+    :rule-classes ((:type-prescription :corollary (natp (fn-zin-f-shr x n)))
+                   (:linear :corollary (<= (fn-zin-f-shr x n) (nfix x)))))
+
+  (defun-inline fn-zin-f-low (x n)
+    ; The low N bits of X.
+    (declare (xargs :guard (and (natp x) (natp n))))
+    (logand (nfix x) (+ -1 (ash 1 (nfix n)))))
+
+  (defthm fn-zin-f-low-bound
+    (and (natp (fn-zin-f-low x n))
+         (< (fn-zin-f-low x n) (expt 2 (nfix n)))
+         (implies (<= (nfix n) 13) (< (fn-zin-f-low x n) 8192)))
+    :rule-classes ((:type-prescription :corollary (natp (fn-zin-f-low x n)))
+                   (:linear :corollary (< (fn-zin-f-low x n) (expt 2 (nfix n))))
+                   (:linear :corollary (implies (<= (nfix n) 13)
+                                                (< (fn-zin-f-low x n) 8192))))))
+
+(in-theory (disable fn-zin-f-shr$inline fn-zin-f-low$inline))
+
+(encapsulate
+  ()
+  (local (include-book "arithmetic-5/top" :dir :system))
+
+  (local
+   (defthm fn-zin-f-nth-octet
+     (implies (and (fn-cbor-octet-listp x) (natp i) (< i (len x)))
+              (and (integerp (nth i x)) (<= 0 (nth i x)) (<= (nth i x) 255)))
+     :rule-classes (:rewrite
+                    (:linear :corollary (implies (and (fn-cbor-octet-listp x) (natp i) (< i (len x)))
+                                                 (and (<= 0 (nth i x)) (<= (nth i x) 255)))))))
+
+  (defun fn-zin-f-copy (k w d tout h fn-zin-win fn-zin-out)
+    ; fn-zin-copy over typed locals: K octets from D back (D within the
+    ; output or the preset H), the ring's next cell W.  (mv W2 win out).
+    (declare (xargs :stobjs (fn-zin-win fn-zin-out)
+                    :guard (and (unsigned-byte-p 9 k) (natp w) (< w *fn-zin-window*)
+                                (natp d) (<= 1 d) (<= d *fn-zin-window*)
+                                (unsigned-byte-p 59 tout) (natp h) (<= h *fn-zin-window*)
+                                (< (+ tout k) (expt 2 59))
+                                (fn-zin-window-ready-p fn-zin-win))
+                    :measure (nfix k))
+             (type (unsigned-byte 9) k) (type (integer 0 32767) w)
+             (type (integer 1 32768) d) (type (unsigned-byte 59) tout)
+             (type (integer 0 32768) h))
+    (if (and (mbt (and (natp k) (natp w) (< w *fn-zin-window*) (integerp d) (<= 1 d)
+                       (<= d *fn-zin-window*) (natp tout) (natp h) (<= h *fn-zin-window*)))
+             (< 0 k))
+        (let* ((e (- d tout))
+               (o (if (and (< 0 e) (<= e h))
+                      (fn-zin-win-get (+ *fn-zin-window* (- h e)) fn-zin-win)
+                    (fn-zin-win-get (if (<= d w) (- w d) (- (+ w *fn-zin-window*) d))
+                                    fn-zin-win)))
+               (fn-zin-out (fn-zin-out-append-octet o fn-zin-out))
+               (fn-zin-win (fn-zin-win-put w o fn-zin-win))
+               (w (if (< (+ 1 w) *fn-zin-window*) (+ 1 w) 0)))
+          (fn-zin-f-copy (- k 1) w d (+ 1 tout) h fn-zin-win fn-zin-out))
+      (mv w fn-zin-win fn-zin-out))))
+
+(defthm fn-zin-f-copy-keeps
+  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-win-octets*)
+                (fn-cbor-octet-listp fn-zin-out))
+           (let ((r (fn-zin-f-copy k w d tout h fn-zin-win fn-zin-out)))
+             (and (fn-cbor-octet-listp (mv-nth 1 r))
+                  (equal (len (mv-nth 1 r)) *fn-zin-win-octets*)
+                  (fn-cbor-octet-listp (mv-nth 2 r)))))
+  :hints (("Goal" :induct (fn-zin-f-copy k w d tout h fn-zin-win fn-zin-out))))
+
+(defthm fn-zin-f-copy-w
+  (implies (and (natp w) (< w *fn-zin-window*))
+           (let ((w2 (car (fn-zin-f-copy k w d tout h fn-zin-win fn-zin-out))))
+             (and (natp w2) (< w2 *fn-zin-window*))))
+  :hints (("Goal" :induct (fn-zin-f-copy k w d tout h fn-zin-win fn-zin-out)))
+  :rule-classes ((:rewrite :corollary
+                  (implies (and (natp w) (< w *fn-zin-window*))
+                           (natp (car (fn-zin-f-copy k w d tout h fn-zin-win fn-zin-out)))))
+                 (:linear :corollary
+                  (implies (and (natp w) (< w *fn-zin-window*))
+                           (< (car (fn-zin-f-copy k w d tout h fn-zin-win fn-zin-out))
+                              *fn-zin-window*)))))
+
+(in-theory (disable fn-zin-f-copy))
+
+(defun fn-zin-f-sym (bits nbits ip end w tout limit h fn-octets fn-zin-tab fn-zin-win fn-zin-out)
+  ; One whole symbol: (mv GO BITS NBITS IP W TOUT fn-zin-win fn-zin-out).
+  ; GO nil: it stopped before the symbol (the bit buffer refilled).
+  (declare (xargs :stobjs (fn-octets fn-zin-tab fn-zin-win fn-zin-out)
+                  :guard (and (unsigned-byte-p 56 bits)
+                              (natp nbits) (<= nbits 56)
+                              (unsigned-byte-p 59 ip) (unsigned-byte-p 59 end)
+                              (<= end (fn-octets-len fn-octets))
+                              (natp w) (< w *fn-zin-window*)
+                              (unsigned-byte-p 59 tout) (unsigned-byte-p 59 limit)
+                              (natp h) (<= h *fn-zin-window*)
+                              (fn-zin-tab-okp fn-zin-tab) (fn-zin-window-ready-p fn-zin-win))
+                  :guard-debug t
+                  :guard-hints (("Goal" :do-not-induct t)))
+           (type (unsigned-byte 59) ip end tout limit) (type (unsigned-byte 56) bits)
+           (type (integer 0 56) nbits) (type (integer 0 32767) w)
+           (type (integer 0 32768) h))
+  (if (not (mbt (and (natp bits) (< bits 72057594037927936) (natp nbits) (<= nbits 56)
+                     (natp ip) (< ip 576460752303423488) (natp end) (< end 576460752303423488)
+                     (natp w) (< w *fn-zin-window*) (natp tout) (< tout 576460752303423488)
+                     (natp limit) (< limit 576460752303423488) (natp h) (<= h *fn-zin-window*))))
+      (mv nil (nfix bits) (nfix nbits) (nfix ip) (nfix w) (nfix tout) fn-zin-win fn-zin-out)
+    (mv-let (bits nbits ip) (fn-zin-f-fill bits nbits ip end fn-octets)
+      (let* ((e (fn-zin-tget (+ 723 (fn-zin-f-low bits 9)) fn-zin-tab))
+             (l0 (fn-zin-f-shr e 9)))
+        (mv-let (sym l)
+          (if (and (<= 1 l0) (<= l0 9))
+              (mv (fn-zin-f-low e 9) l0)
+            (fn-zin-f-walk 1 0 0 0 bits 320 336 288 fn-zin-tab))
+          (cond
+           ((or (zp l) (< nbits l))
+            (mv nil bits nbits ip w tout fn-zin-win fn-zin-out))
+           ((< sym 256)
+            (if (< tout limit)
+                (let* ((fn-zin-out (fn-zin-out-append-octet sym fn-zin-out))
+                       (fn-zin-win (fn-zin-win-put w sym fn-zin-win)))
+                  (mv t (fn-zin-f-shr bits l) (- nbits l) ip
+                      (if (< (+ 1 w) *fn-zin-window*) (+ 1 w) 0)
+                      (+ 1 tout) fn-zin-win fn-zin-out))
+              (mv nil bits nbits ip w tout fn-zin-win fn-zin-out)))
+           ((or (eql sym 256) (< 285 sym))
+            (mv nil bits nbits ip w tout fn-zin-win fn-zin-out))
+           (t
+            (let* ((s (- sym 257))
+                   (lx (fn-zin-lext-of s))
+                   (b1 (fn-zin-f-shr bits l))
+                   (len (+ (fn-zin-lbase-of s) (fn-zin-f-low b1 lx)))
+                   (b2 (fn-zin-f-shr b1 lx))
+                   (e2 (fn-zin-tget (+ 1235 (fn-zin-f-low b2 9)) fn-zin-tab))
+                   (dl0 (fn-zin-f-shr e2 9)))
+              (mv-let (dsym dl)
+                (if (and (<= 1 dl0) (<= dl0 9))
+                    (mv (fn-zin-f-low e2 9) dl0)
+                  (fn-zin-f-walk 1 0 0 0 b2 624 640 32 fn-zin-tab))
+                (let* ((dx (fn-zin-dext-of dsym))
+                       (b3 (fn-zin-f-shr b2 dl))
+                       (d (+ (fn-zin-dbase-of dsym) (fn-zin-f-low b3 dx)))
+                       (used (+ l lx dl dx)))
+                  (if (and (<= 1 dl) (< dsym 30) (<= used nbits) (<= len 258)
+                           (<= 1 d) (<= d (+ tout h)) (<= d *fn-zin-window*)
+                           (<= (+ tout len) limit))
+                      (mv-let (w fn-zin-win fn-zin-out)
+                        (fn-zin-f-copy len w d tout h fn-zin-win fn-zin-out)
+                        (mv t (fn-zin-f-shr b3 dx) (- nbits used) ip w (+ tout len)
+                            fn-zin-win fn-zin-out))
+                    (mv nil bits nbits ip w tout fn-zin-win fn-zin-out))))))))))))
+
+(defthm fn-zin-f-sym-keeps
+  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-win-octets*)
+                (fn-cbor-octet-listp fn-zin-out) (fn-cbor-octet-listp fn-zin-tab))
+           (let ((r (fn-zin-f-sym bits nbits ip end w tout limit h fn-octets fn-zin-tab fn-zin-win
+                                  fn-zin-out)))
+             (and (fn-cbor-octet-listp (mv-nth 6 r))
+                  (equal (len (mv-nth 6 r)) *fn-zin-win-octets*)
+                  (fn-cbor-octet-listp (mv-nth 7 r))))))
+
+(defthm fn-zin-f-sym-types
+  (implies (and (natp bits) (< bits 72057594037927936) (natp nbits) (<= nbits 56)
+                (natp ip) (< ip 576460752303423488) (natp end) (< end 576460752303423488)
+                (natp w) (< w *fn-zin-window*) (natp tout) (<= tout limit)
+                (natp limit) (< limit 576460752303423488)
+                (fn-cbor-octet-listp fn-octets) (fn-cbor-octet-listp fn-zin-tab))
+           (let ((r (fn-zin-f-sym bits nbits ip end w tout limit h fn-octets fn-zin-tab fn-zin-win
+                                  fn-zin-out)))
+             (and (natp (mv-nth 1 r)) (< (mv-nth 1 r) 72057594037927936)
+                  (natp (mv-nth 2 r)) (<= (mv-nth 2 r) 56)
+                  (natp (mv-nth 3 r)) (< (mv-nth 3 r) 576460752303423488)
+                  (natp (mv-nth 4 r)) (< (mv-nth 4 r) *fn-zin-window*)
+                  (natp (mv-nth 5 r)) (<= tout (mv-nth 5 r)) (<= (mv-nth 5 r) limit))))
+  :rule-classes :rewrite)
+
+(defthm fn-zin-f-sym-types-linear
+  (implies (and (natp bits) (< bits 72057594037927936) (natp nbits) (<= nbits 56)
+                (natp ip) (< ip 576460752303423488) (natp end) (< end 576460752303423488)
+                (natp w) (< w *fn-zin-window*) (natp tout) (<= tout limit)
+                (natp limit) (< limit 576460752303423488)
+                (fn-cbor-octet-listp fn-octets) (fn-cbor-octet-listp fn-zin-tab))
+           (let ((r (fn-zin-f-sym bits nbits ip end w tout limit h fn-octets fn-zin-tab fn-zin-win
+                                  fn-zin-out)))
+             (and (<= 0 (mv-nth 1 r)) (< (mv-nth 1 r) 72057594037927936)
+                  (<= 0 (mv-nth 2 r)) (<= (mv-nth 2 r) 56)
+                  (<= 0 (mv-nth 3 r)) (< (mv-nth 3 r) 576460752303423488)
+                  (<= 0 (mv-nth 4 r)) (< (mv-nth 4 r) *fn-zin-window*)
+                  (<= 0 (mv-nth 5 r)) (<= tout (mv-nth 5 r)) (<= (mv-nth 5 r) limit))))
+  :hints (("Goal" :use fn-zin-f-sym-types :in-theory (disable fn-zin-f-sym fn-zin-f-sym-types)))
+  :rule-classes :linear)
+
+(in-theory (disable fn-zin-f-sym))
+
+(defun fn-zin-fast (k bits nbits ip end w tout limit h fn-octets fn-zin-tab fn-zin-win fn-zin-out)
+  ; Whole symbols while they come whole, at most K:
+  ; (mv K2 BITS NBITS IP W TOUT fn-zin-win fn-zin-out).
+  (declare (xargs :stobjs (fn-octets fn-zin-tab fn-zin-win fn-zin-out)
+                  :guard (and (unsigned-byte-p 59 k) (unsigned-byte-p 56 bits)
+                              (natp nbits) (<= nbits 56)
+                              (unsigned-byte-p 59 ip) (unsigned-byte-p 59 end)
+                              (<= end (fn-octets-len fn-octets))
+                              (natp w) (< w *fn-zin-window*)
+                              (unsigned-byte-p 59 tout) (unsigned-byte-p 59 limit) (<= tout limit)
+                              (natp h) (<= h *fn-zin-window*)
+                              (fn-zin-tab-okp fn-zin-tab) (fn-zin-window-ready-p fn-zin-win))
+                  :measure (nfix k))
+           (type (unsigned-byte 59) k ip end tout limit) (type (unsigned-byte 56) bits)
+           (type (integer 0 56) nbits) (type (integer 0 32767) w)
+           (type (integer 0 32768) h))
+  (if (and (mbt (natp k)) (< 0 k))
+      (mv-let (go bits2 nbits2 ip2 w2 tout2 fn-zin-win fn-zin-out)
+        (fn-zin-f-sym bits nbits ip end w tout limit h fn-octets fn-zin-tab fn-zin-win fn-zin-out)
+        (if go
+            (fn-zin-fast (- k 1) bits2 nbits2 ip2 end w2 tout2 limit h
+                         fn-octets fn-zin-tab fn-zin-win fn-zin-out)
+          (mv k bits2 nbits2 ip2 w2 tout2 fn-zin-win fn-zin-out)))
+    (mv (nfix k) (nfix bits) (nfix nbits) (nfix ip) (nfix w) (nfix tout) fn-zin-win fn-zin-out)))
+
+(defthm fn-zin-fast-keeps
+  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-win-octets*)
+                (fn-cbor-octet-listp fn-zin-out) (fn-cbor-octet-listp fn-zin-tab))
+           (let ((r (fn-zin-fast k bits nbits ip end w tout limit h fn-octets fn-zin-tab fn-zin-win
+                                 fn-zin-out)))
+             (and (fn-cbor-octet-listp (mv-nth 6 r))
+                  (equal (len (mv-nth 6 r)) *fn-zin-win-octets*)
+                  (fn-cbor-octet-listp (mv-nth 7 r))))))
+
+(defthm fn-zin-fast-types
+  (implies (and (natp bits) (< bits 72057594037927936) (natp nbits) (<= nbits 56)
+                (natp ip) (< ip 576460752303423488) (natp end) (< end 576460752303423488)
+                (natp w) (< w *fn-zin-window*) (natp tout) (<= tout limit)
+                (natp limit) (< limit 576460752303423488)
+                (fn-cbor-octet-listp fn-octets) (fn-cbor-octet-listp fn-zin-tab))
+           (let ((r (fn-zin-fast k bits nbits ip end w tout limit h fn-octets fn-zin-tab fn-zin-win
+                                 fn-zin-out)))
+             (and (natp (car r)) (<= (car r) (nfix k))
+                  (natp (mv-nth 1 r)) (< (mv-nth 1 r) 72057594037927936)
+                  (natp (mv-nth 2 r)) (<= (mv-nth 2 r) 56)
+                  (natp (mv-nth 3 r)) (< (mv-nth 3 r) 576460752303423488)
+                  (natp (mv-nth 4 r)) (< (mv-nth 4 r) *fn-zin-window*)
+                  (natp (mv-nth 5 r)) (<= tout (mv-nth 5 r)) (<= (mv-nth 5 r) limit))))
+  :rule-classes :rewrite)
+
+(defthm fn-zin-fast-types-linear
+  (implies (and (natp bits) (< bits 72057594037927936) (natp nbits) (<= nbits 56)
+                (natp ip) (< ip 576460752303423488) (natp end) (< end 576460752303423488)
+                (natp w) (< w *fn-zin-window*) (natp tout) (<= tout limit)
+                (natp limit) (< limit 576460752303423488)
+                (fn-cbor-octet-listp fn-octets) (fn-cbor-octet-listp fn-zin-tab))
+           (let ((r (fn-zin-fast k bits nbits ip end w tout limit h fn-octets fn-zin-tab fn-zin-win
+                                 fn-zin-out)))
+             (and (<= 0 (car r)) (<= (car r) (nfix k))
+                  (<= 0 (mv-nth 1 r)) (< (mv-nth 1 r) 72057594037927936)
+                  (<= 0 (mv-nth 2 r)) (<= (mv-nth 2 r) 56)
+                  (<= 0 (mv-nth 3 r)) (< (mv-nth 3 r) 576460752303423488)
+                  (<= 0 (mv-nth 4 r)) (< (mv-nth 4 r) *fn-zin-window*)
+                  (<= 0 (mv-nth 5 r)) (<= tout (mv-nth 5 r)) (<= (mv-nth 5 r) limit))))
+  :hints (("Goal" :use fn-zin-fast-types :in-theory (disable fn-zin-fast fn-zin-fast-types)))
+  :rule-classes :linear)
+
+(defthm fn-zin-fast-k-natp
+  (natp (car (fn-zin-fast k bits nbits ip end w tout limit h fn-octets fn-zin-tab fn-zin-win
+                          fn-zin-out)))
+  :rule-classes :type-prescription)
+
+(defthm fn-zin-fast-k-bound
+  (<= (car (fn-zin-fast k bits nbits ip end w tout limit h fn-octets fn-zin-tab fn-zin-win
+                        fn-zin-out))
+      (nfix k))
+  :rule-classes :linear)
+
+(in-theory (disable fn-zin-fast))
+
+(defun fn-zin-ahead-fast (b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)
+  ; The fast path from the machine's state, when it is in a Huffman block
+  ; between symbols: (mv B2 IP2 fn-zin-st fn-zin-win fn-zin-out), B2 < B
+  ; when it took a symbol, else B and everything as it was.
+  (declare (xargs :stobjs (fn-octets fn-zin-win fn-zin-tab fn-zin-out fn-zin-st)
+                  :guard (and (natp b) (natp ip) (natp end) (natp lim)
+                              (<= end (fn-octets-len fn-octets))
+                              (fn-zin-window-ready-p fn-zin-win)
+                              (fn-zin-tab-okp fn-zin-tab))))
+  (let* ((bits (fn-zin-bits fn-zin-st))
+         (nbits (fn-zin-nbits fn-zin-st))
+         (tout (fn-zin-tout fn-zin-st))
+         (room (- (nfix lim) (fn-zin-out-len fn-zin-out)))
+         (limit (min (fn-zin-bomb-limit fn-zin-st) (+ tout (nfix room))))
+         (top 576460752303423488))
+    (if (and (eql (fn-zin-mode fn-zin-st) 8) (fn-zin-freshp fn-zin-st)
+             (< bits 72057594037927936) (<= nbits 56)
+             (< ip top) (< end top) (< limit top) (<= tout limit) (<= ip end))
+        (let ((k (min (nfix b) (- top 1)))
+              (w (fn-zin-wrap (fn-zin-wpos fn-zin-st)))
+              (h (min (fn-zin-preset fn-zin-st) *fn-zin-window*)))
+          (mv-let (k2 bits nbits ip2 w tout2 fn-zin-win fn-zin-out)
+            (fn-zin-fast k bits nbits ip end w tout limit h fn-octets fn-zin-tab fn-zin-win
+                         fn-zin-out)
+            (if (< k2 k)
+                (let* ((fn-zin-st (fn-zin-set 1 bits fn-zin-st))
+                       (fn-zin-st (fn-zin-set 2 nbits fn-zin-st))
+                       (fn-zin-st (fn-zin-set 5 w fn-zin-st))
+                       (fn-zin-st (fn-zin-set 6 tout2 fn-zin-st))
+                       (fn-zin-st (fn-zin-set 7 (+ (fn-zin-tin fn-zin-st) (- (nfix ip2) ip))
+                                              fn-zin-st)))
+                  (mv (- (nfix b) (- k k2)) (nfix ip2) fn-zin-st fn-zin-win fn-zin-out))
+              (mv (nfix b) (nfix ip) fn-zin-st fn-zin-win fn-zin-out))))
+      (mv (nfix b) (nfix ip) fn-zin-st fn-zin-win fn-zin-out))))
+
+(defthm fn-zin-ahead-fast-keeps
+  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-win-octets*)
+                (fn-cbor-octet-listp fn-zin-out) (fn-cbor-octet-listp fn-zin-tab))
+           (let ((r (fn-zin-ahead-fast b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
+                                       fn-zin-out)))
+             (and (fn-cbor-octet-listp (mv-nth 3 r))
+                  (equal (len (mv-nth 3 r)) *fn-zin-win-octets*)
+                  (fn-cbor-octet-listp (mv-nth 4 r))))))
+
+(defthm fn-zin-ahead-fast-b
+  (and (natp (car (fn-zin-ahead-fast b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
+                                     fn-zin-out)))
+       (<= (car (fn-zin-ahead-fast b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
+                                   fn-zin-out))
+           (nfix b)))
+  :rule-classes ((:type-prescription :corollary
+                  (natp (car (fn-zin-ahead-fast b ip end lim fn-zin-st fn-octets fn-zin-win
+                                                fn-zin-tab fn-zin-out))))
+                 (:linear :corollary
+                  (<= (car (fn-zin-ahead-fast b ip end lim fn-zin-st fn-octets fn-zin-win
+                                              fn-zin-tab fn-zin-out))
+                      (nfix b)))))
+
+(defthm fn-zin-ahead-fast-ip-natp
+  (natp (mv-nth 1 (fn-zin-ahead-fast b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
+                                     fn-zin-out)))
+  :rule-classes :type-prescription)
+
+(in-theory (disable fn-zin-ahead-fast))
+
 ;; -----------------------------------------------------------------------------
 ; The whole-payload loop (the store's decoder: a stored payload is decoded
 ; whole, never in reads the network cut).  The same actions as fn-zin-loop,
-; but it takes input octets ahead while fewer than 24 bits are in hand, so a
-; Huffman code is mostly read through the lookup in one action.  Its answer
+; but it takes input octets ahead while fewer than 24 bits (or fewer than
+; the mode needs: a stored block's 32-bit lengths) are in hand, so a
+; Huffman code is mostly read through the lookup in one action, and between
+; symbols of a Huffman block it runs the fast path above.  Its answer
 ; depends on where its input ends, which is why the COMPRESS wire uses
 ; fn-zin-loop (whose resumption keystones need no lookahead) and this loop
 ; decodes only a complete payload; the seal checks that this decoder gives
@@ -1719,19 +2272,27 @@
     (cond ((zp b) (mv :yield 0 ip fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))
           ((<= (nfix lim) (fn-zin-out-len fn-zin-out))
            (mv :full b ip fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))
-          ((and avail (< (fn-zin-nbits fn-zin-st) 24))
+          ((and avail (or (< (fn-zin-nbits fn-zin-st) 24)
+                          (< (fn-zin-nbits fn-zin-st) (fn-zin-need fn-zin-st))))
            (let ((fn-zin-st (fn-zin-pull ip fn-zin-st fn-octets)))
              (fn-zin-loop-ahead (1- b) (1+ ip) end lim fn-zin-st
                                 fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
           ((< (fn-zin-nbits fn-zin-st) (fn-zin-need fn-zin-st))
            (mv :more b ip fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))
-          (t (mv-let (why fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
-               (fn-zin-step (- (nfix lim) (fn-zin-out-len fn-zin-out))
-                            fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
-               (if why
-                   (mv (list :refused why) (1- b) ip fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
-                 (fn-zin-loop-ahead (1- b) ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
-                                    fn-zin-out)))))))
+          (t (mv-let (b2 ip2 fn-zin-st fn-zin-win fn-zin-out)
+               (fn-zin-ahead-fast b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
+                                  fn-zin-out)
+               (if (< b2 b)
+                   (fn-zin-loop-ahead b2 ip2 end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
+                                      fn-zin-out)
+                 (mv-let (why fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
+                   (fn-zin-step (nfix (- (nfix lim) (fn-zin-out-len fn-zin-out)))
+                                fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
+                   (if why
+                       (mv (list :refused why) (1- b) ip fn-zin-st fn-zin-win fn-zin-tab
+                           fn-zin-out)
+                     (fn-zin-loop-ahead (1- b) ip end lim fn-zin-st fn-octets fn-zin-win
+                                        fn-zin-tab fn-zin-out)))))))))
 
 (defthm fn-zin-loop-ahead-keeps
   (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-win-octets*)
@@ -1901,6 +2462,55 @@
 (defun fn-zin-inflate (b c lim)
   (declare (xargs :guard (and (natp b) (natp lim) (fn-cbor-octet-listp c))))
   (fn-zin-inflate-with b nil c lim))
+
+; The payload decoder (the store's: a payload is decoded whole, from the
+; initial state over its dictionary): the same buffers and actions, run by
+; fn-zin-loop-ahead and so by the fast path.  (mv STATUS fn-zin-st win out)
+; over the input in fn-octets cells [START, END).  What it produces is what
+; a seal compares with the octets a payload was made from.
+
+(defun fn-zin-payload-bufs (b dict start end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
+                              fn-zin-out)
+  (declare (xargs :stobjs (fn-octets fn-zin-win fn-zin-tab fn-zin-out fn-zin-st)
+                  :guard (and (natp b) (fn-cbor-octet-listp dict) (natp start) (natp end)
+                              (natp lim) (<= end (fn-octets-len fn-octets)))))
+  (let* ((fn-zin-out (fn-zin-out-clear fn-zin-out))
+         (fn-zin-st (fn-zin-reset fn-zin-st)))
+    (mv-let (fn-zin-win fn-zin-tab) (fn-zin-buffers-ready fn-zin-win fn-zin-tab)
+      (mv-let (fn-zin-st fn-zin-win) (fn-zin-load-preset dict fn-zin-st fn-zin-win)
+        (if (and (fn-zin-window-ready-p fn-zin-win) (fn-zin-tab-okp fn-zin-tab))
+            (mv-let (st b2 ip fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
+              (fn-zin-loop-ahead b start end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
+                                 fn-zin-out)
+              (declare (ignore b2 ip))
+              (mv st fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))
+          (mv (list :refused :buffers) fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))))))
+
+(defun fn-zin-payload-with (b dict c lim)
+  ; The payload decoder over octet lists: (list STATUS OUTPUT FIELDS).
+  (declare (xargs :guard (and (natp b) (natp lim) (fn-cbor-octet-listp c)
+                              (fn-cbor-octet-listp dict))))
+  (with-local-stobj fn-octets
+    (mv-let (r fn-octets)
+      (with-local-stobj fn-zin-win
+        (mv-let (r fn-zin-win fn-octets)
+          (with-local-stobj fn-zin-tab
+            (mv-let (r fn-zin-tab fn-zin-win fn-octets)
+              (with-local-stobj fn-zin-out
+                (mv-let (r fn-zin-out fn-zin-tab fn-zin-win fn-octets)
+                  (with-local-stobj fn-zin-st
+                    (mv-let (r fn-zin-st fn-zin-win fn-zin-tab fn-zin-out fn-octets)
+                      (let ((fn-octets (fn-octets-from-list c fn-octets)))
+                        (mv-let (st fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
+                          (fn-zin-payload-bufs b dict 0 (fn-octets-len fn-octets) lim fn-zin-st
+                                               fn-octets fn-zin-win fn-zin-tab fn-zin-out)
+                          (mv (list st (fn-zin-out-list fn-zin-out) (fn-zin-fields-list 0 fn-zin-st))
+                              fn-zin-st fn-zin-win fn-zin-tab fn-zin-out fn-octets)))
+                      (mv r fn-zin-out fn-zin-tab fn-zin-win fn-octets)))
+                  (mv r fn-zin-tab fn-zin-win fn-octets)))
+              (mv r fn-zin-win fn-octets)))
+          (mv r fn-octets)))
+      r)))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE (the bomb, PRF-910).  The octets a call appends to the output

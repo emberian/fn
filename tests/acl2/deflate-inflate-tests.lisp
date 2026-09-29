@@ -428,3 +428,34 @@
                                *dzv-dict-z* 100000)))
    (and (equal (cadr r) *dzv-dict-article*)
         (equal (nth 18 (caddr r)) 32768))))
+
+; -----------------------------------------------------------------------------
+; The payload decoder (fn-zin-loop-ahead and its fast path, the store's)
+; against the wire's (fn-zin-loop): the same status and octets on every
+; vector (the octets of every one not refused), with and without the preset; and the fast
+; path is taken (the dynamic-block prose is mostly whole symbols).
+(defun dzt-same-decoders (vs)
+  (declare (xargs :guard t))
+  (if (and (consp vs) (fn-cbor-octet-listp (car vs)))
+      (let ((w (fn-zin-inflate-with 100000 nil (car vs) 100000))
+            (p (fn-zin-payload-with 100000 nil (car vs) 100000)))
+        (and (equal (car w) (car p))
+             ; a refused stream's partial output is discarded; the payload
+             ; decoder reads ahead, so a bomb is refused a few octets later
+             (or (consp (car w)) (equal (cadr w) (cadr p)))
+             (dzt-same-decoders (cdr vs))))
+    t))
+(assert-event
+ (dzt-same-decoders (list *dzv-session-z* *dzv-prose-z* *dzv-stored-z* *dzv-final-z*
+                          *dzv-bomb-z* *dzv-bad-type* *dzv-bad-stored* *dzv-bad-counts*
+                          *dzv-bad-clcode* *dzv-too-far* *dzv-bad-length* *dzv-bad-distance*
+                          *dzv-bad-repeat* *dzv-bad-code*)))
+(assert-event
+ (let ((r (fn-zin-payload-with 100000 *dzv-dict* *dzv-dict-z* 100000)))
+   (and (equal (car r) :more)
+        (equal (cadr r) *dzv-dict-article*))))
+; Teeth: the fast path is what decodes the prose: its whole-symbol run
+; spends far fewer actions than the machine's one-octet steps.
+(assert-event
+ (and (equal (cadr (fn-zin-payload-with 800 nil *dzv-prose-z* 100000)) *dzv-prose*)
+      (equal (car (fn-zin-inflate-with 800 nil *dzv-prose-z* 100000)) :yield)))
