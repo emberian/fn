@@ -414,11 +414,15 @@
 ; Configuration-level projection.  This is the whole-archive recognizer.  It
 ; says nothing about the contents of individual articles: a committed article
 ; whose stored bytes cannot be projected no longer denies the service.
+; RFC 3977 section 6's article-number bound is kept per group by the
+; watermarks (fn-nntp-nexts-boundedp), which the admission maintains
+; (books/store-number-bound.lisp, PKT-615).  The whole-archive article count
+; this recognizer also bounded until 2026-09-28 has no RFC basis (numbers
+; are per group) and was an O(N) walk at every re-pin; it is gone.
 (defun fn-nntp-projectionp (archive)
   (and (fn-statep archive)
        (fn-nntp-safe-group-listp (fn-state-groups archive))
-       (fn-nntp-nexts-boundedp (fn-state-nexts archive))
-       (<= (len (fn-state-articles archive)) *fn-nntp-max-article-number*)))
+       (fn-nntp-nexts-boundedp (fn-state-nexts archive))))
 
 (defun fn-nntp-open-session (archive)
   (fn-nntp-make-session t nil nil

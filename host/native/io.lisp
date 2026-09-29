@@ -826,11 +826,28 @@ label; it does not select a policy."
 (defvar *fnn-sighup-count* 0)
 (defvar *fnn-owner-log-mutex* (sb-thread:make-mutex :name "fn service log"))
 
+(defvar *fnn-test-entropy-draws* 0)
+
+(defun fnn-test-entropy (width)
+  "Developer-only FN_NATIVE_TEST_ENTROPY=N (0 to 255): the Kth draw of this
+process (from 0) is octet I = (N + 7K + I) mod 256, recorded instead of read
+(the extraction gate's stateful differential).  NIL when unset."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_TEST_ENTROPY")))
+    (when raw
+      (unless (and (plusp (length raw)) (<= (length raw) 3) (every #'digit-char-p raw)
+                   (< (parse-integer raw) 256))
+        (fnn-fault "invalid FN_NATIVE_TEST_ENTROPY (expected 0 to 255)"))
+      (let ((n (parse-integer raw)) (k *fnn-test-entropy-draws*))
+        (incf *fnn-test-entropy-draws*)
+        (loop for i below width collect (mod (+ n (* 7 k) i) 256))))))
+
 (defun fnn-csprng-octets (width what)
   "Exactly WIDTH octets from the OS CSPRNG as an octet list; short or failed
 entropy is a host fault.  WIDTH is ACL2's."
   (unless (and (integerp width) (< 0 width))
     (fnn-fault "ACL2 returned an invalid ~a width" what))
+  (let ((recorded (fnn-test-entropy width)))
+    (when recorded (return-from fnn-csprng-octets recorded)))
   (let ((fd (fnn-open "/dev/urandom" sb-posix:o-rdonly))
         (answer (fnn-make-octets width))
         (offset 0))
@@ -1235,7 +1252,7 @@ execution-boundary fault, never a claim that the core refused an input."
 
 (defparameter +fnn-actions+
   '(:ready :prepared :durable :aborted :indeterminate :duplicate :conflict :absent :invalid
-    :refused :fault :recovering :frontier-staged :frontier-data-durable :frontier-attempted
+    :refused :article-numbers-exhausted :fault :recovering :frontier-staged :frontier-data-durable :frontier-attempted
     :record-staged :record-data-durable :record-attempted :reserved :aborting :completing
     :fenced-frontier :fenced-record :fenced-recovery))
 
@@ -1491,12 +1508,35 @@ compares nothing."
     (fnn-store-fault (condition) (error condition))
     (error () (values 0 nil))))
 
+(defun fnn-test-clock-readings ()
+  "Developer-only FN_NATIVE_TEST_CLOCK=MONO-MS:SECONDS:MICROSECONDS: the
+readings a prepare's observation is taken from, recorded instead of read (the
+extraction gate's stateful differential gives the image and the extracted
+program the same environment).  NIL when unset."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_TEST_CLOCK")))
+    (when raw
+      (let* ((a (position #\: raw)) (b (and a (position #\: raw :start (1+ a))))
+             (words (and b (list (subseq raw 0 a) (subseq raw (1+ a) b) (subseq raw (1+ b))))))
+        (unless (and words (every (lambda (w) (and (plusp (length w)) (<= (length w) 18)
+                                                   (every #'digit-char-p w)))
+                                  words))
+          (fnn-fault "invalid FN_NATIVE_TEST_CLOCK (expected MONO-MS:SECONDS:MICROSECONDS)"))
+        (mapcar #'parse-integer words)))))
+
 (defun fnn-store-prepare-observation ()
-  (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
-    (fnn-core 'fn-clock-observation
-              (floor (* (get-internal-real-time) 1000)
-                     internal-time-units-per-second)
-              wall +fnn-owner-wall-error-ms+ has-wall)))
+  (let ((recorded (fnn-test-clock-readings)))
+    (if recorded
+        (destructuring-bind (wall has-wall)
+            (fnn-core 'fn-otm-wall-reading (second recorded) (third recorded)
+                      +fnn-owner-unix-dtn-offset-seconds+)
+          (unless (and (integerp wall) (<= 0 wall) (member has-wall '(t nil)))
+            (fnn-fault "ACL2 returned a malformed wall reading"))
+          (fnn-core 'fn-clock-observation (first recorded) wall +fnn-owner-wall-error-ms+ has-wall))
+      (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
+        (fnn-core 'fn-clock-observation
+                  (floor (* (get-internal-real-time) 1000)
+                         internal-time-units-per-second)
+                  wall +fnn-owner-wall-error-ms+ has-wall)))))
 
 (defun fnn-seal-octets (octets)
   "The arena update a prepare names: seal OCTETS (the octet list the core
@@ -2179,6 +2219,7 @@ store; anything else is left to the ordinary open."
   (let ((log (fnn-store-log store)))
     (when log
       (setf (fnn-store-log store) nil)
+      (ignore-errors (fnn-log-discard-spare log))
       (ignore-errors (fnn-close (fnn-log-fd log)))))
   (let ((fd (fnn-store-lock-fd store)))
     (when fd
@@ -2968,7 +3009,7 @@ it covers are dropped (fnn-log-drop; T8)."
                             (fnn-profile-nat 'fn-store-profile-max-record-octets store)
                             +fnn-checkpoint-batch-octets+))
          (budget (fnn-core 'fn-ock-capture-budget profile))
-         (position (fnn-log-rotate store))
+         (position (fnn-log-rotate-now store))
          ;; one walk of the live rows, a bounded number per call: each
          ;; canonical payload's length and source (fn-store-sco-pass-step)
          (walked (progn
@@ -5396,6 +5437,10 @@ tree root), or stop the build."
 ;;; not (review of the dabebb84 campaign, F4 to F6).
 (defparameter +fnn-developer-selectors+
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
+    ;; the extraction gate's stateful differential (tools/extract/stateful.py):
+    ;; a recorded clock observation and a recorded entropy stream, the
+    ;; environment readings the image and the extracted program then share.
+    "FN_NATIVE_TEST_CLOCK" "FN_NATIVE_TEST_ENTROPY"
     "FN_NATIVE_STATE_CHECKPOINT_FAULT" "FN_NATIVE_IMPORT_FAULT" "FN_NATIVE_EXPORT_FAULT"
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST"
     "FN_NATIVE_DISK_FREE"
@@ -5698,7 +5743,18 @@ with its depth, and the rows under it name the path that called it."
   ;; COMPLETE then reseats through ACL2's compressed reseat
   ;; (fn-lzr-commit-reseats), which a framed member needs; NIL keeps
   ;; fn-arx-commit-reseats, as before.
-  (lz-min nil) (lz nil))
+  (lz-min nil) (lz nil)
+  ;; The rotation's spare (lane operations, P-ROTATE split): (INDEX PATH FD)
+  ;; of the next segment, created in staging/ under a `.stage-' name,
+  ;; preallocated and fenced OFF the owner mutex (fnn-log-prepare-spare); the
+  ;; rotation under the mutex only renames it into journal/.  SPARE-LOCK
+  ;; serializes preparers; it is never taken under the owner mutex.
+  (spare nil) (spare-lock (sb-thread:make-mutex :name "fn log spare"))
+  ;; journal/'s path while the rotated-to segment's name is not yet durable:
+  ;; the first fence of the new segment (fnn-log-fence) and the checkpoint
+  ;; that names it (fnn-owner-publish-captured) fence journal/ first
+  ;; (fnn-log-make-durable, cut rotate-durable).  NIL when durable.
+  (dir-pending nil))
 
 (defmacro fnn-log-with-kernel ((log) &body body)
   "BODY under the log's kernel lock (recursive: a kernel step may call another)."
@@ -6149,6 +6205,9 @@ serialized run fn-lgc-run-refines-the-kernel speaks of."
                   ;; here is the barrier's failure.
                   (when *fnn-record-barrier-fault-observer*
                     (funcall *fnn-record-barrier-fault-observer* (fnn-log-path log)))
+                  ;; A segment rotated to off-mutex-fenced names: its name is
+                  ;; made durable before any member in it is acknowledged.
+                  (fnn-log-make-durable log)
                   (fnn-log-fdatasync (fnn-log-fd log)))
     (fnn-os-error (e)
       (fnn-log-with-kernel (log)
@@ -6514,19 +6573,80 @@ open's plan names again (fn-lgs-open-plan's DROP), never a segment it scans."
     (fnn-log-at :drop-durable))
   (length indices))
 
+(defun fnn-log-spare-path (store k)
+  "staging/.stage-segment-K: the spare of segment K.  A `.stage-' name, so a
+writable open's staging sweep (books/store-sweep.lisp fn-sn-staging-namep)
+removes one a death left, and the open's segment listing never sees it
+(fn-lgs-indices keeps only NNNNNN.log names)."
+  (fnn-join (fnn-staging store) (format nil ".stage-segment-~6,'0d" k)))
+
+(defun fnn-log-discard-spare (log)
+  "Close and unlink a spare that will not be renamed (another index, or the
+store closing).  Removing a staged name is never uncertain for the history:
+the open ignores and sweeps it."
+  (let ((spare (fnn-log-spare log)))
+    (when spare
+      (setf (fnn-log-spare log) nil)
+      (destructuring-bind (index path fd) spare
+        (declare (ignore index))
+        (ignore-errors (fnn-close fd))
+        (ignore-errors (when (fnn-lstat path) (fnn-unlink path)))))))
+
+(defun fnn-log-prepare-spare (store)
+  "P-ROTATE's first half, fn-lgs-spare-program (books/store-log-segments.lisp),
+OFF the owner mutex: the next segment (fn-lgs-next-segment of the active
+index) created in staging/, preallocated to ACL2's initial extent (cut
+rotate-created) and fenced (cut rotate-fenced).  Nothing names it in
+journal/, so a death here leaves the history as it was and the next open
+sweeps the staged file.  Idempotent: a spare of the next index already
+prepared is kept.  An OS error removes what it made and is a known failure
+of the checkpoint that wanted the rotation (serving continues)."
+  (let ((log (fnn-store-log store)))
+    (sb-thread:with-mutex ((fnn-log-spare-lock log))
+      (let ((next (fnn-core 'fn-lgs-next-segment (fnn-log-index log)))
+            (spare (fnn-log-spare log)))
+        (unless (and spare (eql (first spare) next))
+          (fnn-log-discard-spare log)
+          (unless next
+            (fnn-refuse "rotation refused reason=segment-index-exhausted"))
+          (let ((path (fnn-log-spare-path store next))
+                (extent (fnn-nat (fnn-core 'fn-store-log-initial-extent)))
+                (fd nil))
+            (handler-case
+                (progn
+                  ;; A staged spare an earlier failed prepare of this run left.
+                  (when (fnn-lstat path) (fnn-unlink path))
+                  (setq fd (fnn-open path (logior sb-posix:o-rdwr sb-posix:o-creat
+                                                  sb-posix:o-excl +fnn-o-nofollow+)))
+                  (fnn-log-preallocate fd extent)
+                  (fnn-log-at :rotate-created)
+                  (fnn-fsync-file fd)
+                  (fnn-log-at :rotate-fenced))
+              (fnn-os-error (e)
+                (when fd (ignore-errors (fnn-close fd)))
+                (ignore-errors (when (fnn-lstat path) (fnn-unlink path)))
+                (fnn-refuse-io "log rotation's spare failed: ~a" e)))
+            (setf (fnn-log-spare log) (list next path fd))))))))
+
 (defun fnn-log-rotate (store)
-  "P-ROTATE (design 2026-09-27 storage-log sections 4 and 6), at a
-checkpoint's capture, with no batch open, none in flight and every member
-acknowledged (fn-lgc-rotate-admitsp): the next segment (fn-lgs-next-segment)
-is created and preallocated to ACL2's initial extent (cut rotate-created),
-fenced (cut rotate-fenced) and journal/ fenced (cut rotate-durable) before
-anything names it; then it is the active segment, its kernel fn-lgc-rotate
-of the closed one's (fn-lgc-rotate-refines: fn-lgs-rotate's abstraction, the
-kernel recovery derives from its zeros: fn-lgs-rotate-is-the-recovered-kernel).  Returns the log position the
-checkpoint's F row carries: (K GENESIS), the new segment and the closed
-one's last trailer.  An OS error before the switch leaves the closed segment
-active and removes what it created (a leftover is an interrupted rotation
-the next open completes); it is a known failure of the checkpoint."
+  "P-ROTATE's switch, fn-lgs-rotate-program (design 2026-09-27 storage-log
+sections 4 and 6; lane operations), at a checkpoint's capture, with no batch
+open, none in flight and every member acknowledged (fn-lgc-rotate-admitsp):
+the prepared spare of the next segment (fn-lgs-next-segment;
+fnn-log-prepare-spare made it off the mutex) is renamed into journal/ under
+its segment name (cut rotate-renamed) and becomes the active segment, its
+kernel fn-lgc-rotate of the closed one's (fn-lgc-rotate-refines:
+fn-lgs-rotate's abstraction, the kernel recovery derives from its zeros:
+fn-lgs-rotate-is-the-recovered-kernel).  The rename is the only I/O here:
+journal/'s fence (cut rotate-durable) is fnn-log-make-durable's, taken by
+the new segment's first fence and by the checkpoint that names it, both off
+the owner mutex; until then no member in the new segment is acknowledged
+and no checkpoint names it.  Returns the log position the checkpoint's F
+row carries: (K GENESIS), the new segment and the closed one's last
+trailer.  No spare of the next index: refused (spare-unprepared), the
+closed segment stays active; the caller prepares one and asks again.  A
+rename whose outcome is unknown is a recovery event (the name may or may not
+be in journal/ while the closed segment would take more records)."
   (let* ((log (fnn-store-log store))
          (ks (fnn-log-kernel log))
          (next (fnn-core 'fn-lgs-next-segment (fnn-log-index log))))
@@ -6540,33 +6660,54 @@ the next open completes); it is a known failure of the checkpoint."
         (list (fnn-log-index log) (fnn-core 'fn-lgc-last ks))))
     (unless next
       (fnn-refuse "rotation refused reason=segment-index-exhausted"))
-    (let* ((path (fnn-segment-path-at store next))
-           (extent (fnn-nat (fnn-core 'fn-store-log-initial-extent)))
-           (fd nil))
-      (handler-case
-          (progn
-            (setq fd (fnn-open path (logior sb-posix:o-rdwr sb-posix:o-creat
-                                            sb-posix:o-excl +fnn-o-nofollow+)))
-            (fnn-log-preallocate fd extent)
-            (fnn-log-at :rotate-created)
-            (fnn-fsync-file fd)
-            (fnn-log-at :rotate-fenced)
-            (fnn-fsync-dir (fnn-journal-dir store))
-            (fnn-log-at :rotate-durable))
-        (fnn-os-error (e)
-          (when fd (ignore-errors (fnn-close fd)))
-          (ignore-errors (when (fnn-lstat path) (fnn-unlink path)))
-          (fnn-refuse-io "log rotation failed: ~a" e)))
-      (fnn-close (fnn-log-fd log))
-      (setf (fnn-log-path log) path
-            (fnn-log-fd log) fd
-            (fnn-log-kernel log) (fnn-core 'fn-lgc-rotate ks)
-            (fnn-log-index log) next
-            (fnn-log-genesis log) (fnn-core 'fn-lgc-last ks)
-            (fnn-log-extent log) extent
-            (fnn-log-pending log) 0)
-      (fnn-log-batch-reset log)
-      (list next (fnn-core 'fn-lgc-last ks)))))
+    (let ((spare (fnn-log-spare log)))
+      (unless (and spare (eql (first spare) next))
+        (fnn-refuse "rotation refused reason=spare-unprepared"))
+      (setf (fnn-log-spare log) nil)
+      (destructuring-bind (index staged fd) spare
+        (declare (ignore index))
+        (let* ((path (fnn-segment-path-at store next))
+               (renamed (handler-case (fnn-rename-no-replace staged path)
+                          (fnn-os-error (e)
+                            (ignore-errors (fnn-close fd))
+                            (fnn-indeterminate "log rotation's rename is uncertain: ~a" e)))))
+          (when renamed
+            ;; :exists (a segment of that index is already there) or
+            ;; :unsupported: nothing was renamed.
+            (ignore-errors (fnn-close fd))
+            (ignore-errors (when (fnn-lstat staged) (fnn-unlink staged)))
+            (fnn-refuse "rotation refused reason=spare-rename-~(~a~)" renamed))
+          (fnn-log-at :rotate-renamed)
+          (fnn-close (fnn-log-fd log))
+          (setf (fnn-log-path log) path
+                (fnn-log-fd log) fd
+                (fnn-log-kernel log) (fnn-core 'fn-lgc-rotate ks)
+                (fnn-log-index log) next
+                (fnn-log-genesis log) (fnn-core 'fn-lgc-last ks)
+                (fnn-log-extent log) (fnn-nat (fnn-core 'fn-store-log-initial-extent))
+                (fnn-log-pending log) 0
+                (fnn-log-dir-pending log) (fnn-journal-dir store))
+          (fnn-log-batch-reset log)
+          (list next (fnn-core 'fn-lgc-last ks)))))))
+
+(defun fnn-log-make-durable (log)
+  "fn-lgs-rotate-durable-program: journal/ fenced (cut rotate-durable) while
+the rotated-to segment's name is pending.  Called off the owner mutex by the
+new segment's first fence (fnn-log-fence: no member there is acknowledged
+before its name is durable) and by the publication before its checkpoint
+names the segment.  Two callers may both fence; that is harmless."
+  (let ((dir (fnn-log-dir-pending log)))
+    (when dir
+      (fnn-fsync-dir dir)
+      (fnn-log-at :rotate-durable)
+      (setf (fnn-log-dir-pending log) nil))))
+
+(defun fnn-log-rotate-now (store)
+  "The whole P-ROTATE in one thread, for a store no owner serves (`store
+compact', `store reclaim'): the spare, the switch, journal/'s fence."
+  (fnn-log-prepare-spare store)
+  (prog1 (fnn-log-rotate store)
+    (fnn-log-make-durable (fnn-store-log store))))
 
 (defun fnn-log-covered-indices (store first)
   "The segments present below FIRST (a checkpoint's first suffix segment)."

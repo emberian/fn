@@ -16,7 +16,7 @@
          (fn-arena (fn-arn-seal-many payloads fn-arena))
          (fn-cat (fn-sca-load-held-rows rows (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
                                         fn-arena fn-cat)))
-    (mv (fn-mca-read-span credits oc views id 0 (len octs) s slots reserve fn-octets fn-arena fn-cat)
+    (mv (fn-mca-read-span credits oc views id 0 (len octs) nil s slots reserve fn-octets fn-arena fn-cat)
         fn-octets fn-arena fn-cat)))
 
 (defun mcat-read (credits oc views id octs s slots reserve)

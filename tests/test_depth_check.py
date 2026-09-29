@@ -116,7 +116,7 @@ class BaselineTests(unittest.TestCase):
         self.assertIn("does not define", problems[0])
 
     def test_the_trees_constants_are_read(self):
-        self.assertIn("*fn-native-admin-max-arguments*", d.defined_constants())
+        self.assertIn("*fn-nctrl-max-command-frame*", d.defined_constants())
 
 
 if __name__ == "__main__":

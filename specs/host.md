@@ -1508,3 +1508,15 @@ over a large range) is outside the figure until replies are rendered in
 windows (lane owner-scheduler's plans; PKT-644); the measured constants
 (record, kernel, TLS) are measurements pinned by tests/test_native_mux.py,
 not theorems.
+
+### Operator commands and owner critical sections
+
+Lane operations, 2026-09-28 (planning/evidence/operations-2026-09-28.md).
+
+HST-032: An operator command carries any number of words of any length (PKT-867, PRF-902). ACL2 parses the argv the kernel admits in one pass in constant stack (loop twins), the administrative vector travels in the record codec, and what bounds one command is the control frame the owner reads under the profile's bound; KEYSTONE `fn-native-control-admin-decode-of-encode`: an argv the client can seal is the argv the owner decodes.
+
+HST-033: The owner holds its mutex for no disk I/O at a connection's greeting or a checkpoint's capture (PRF-907). The free-space observation (statvfs) is taken before the gate admits a quantum, at the NEED ACL2 computed under the mutex; the log rotation's spare is staged, preallocated and fenced off the mutex, the switch under it is one rename, and `journal/` is fenced off it before anything in the new segment is acknowledged or named (KEYSTONE `fn-lgrs-journal-fence-names-the-acknowledged-batch`).
+
+HST-034: Compaction needs no stop (PKT-868, PRF-908). `store compact` and `store checkpoint` on a running owner are a request it answers by name (requested, coalesced, nothing-to-compact, refused while a deferral blocks) and serves with its own publication in bounded batches off its mutex; KEYSTONE `fn-ock-requested-next-is-due-with-a-suffix`.
+
+HST-035: The operator lists, inspects, pauses, resumes and drops the BP carry obligations (PKT-869, PRF-914) with `operator CONFIG carry JOURNAL ...`; each control is a durable record of the carry journal (domain `:carry`, frame FNCC) ACL2 decides, and a paused or dropped work's request is refused by name before anything is written (KEYSTONE `fn-bpcc-gate-refuses-a-held-work`). A drop keeps the Store pin: only the receipt's evidence releases it.

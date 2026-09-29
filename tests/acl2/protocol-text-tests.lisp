@@ -100,6 +100,7 @@
 (assert-event (equal (fn-proto-text "POST" :refused-unknown-group) "441 posting failed; a named newsgroup is not carried here"))
 (assert-event (equal (fn-proto-text "POST" :refused-unnamed) "441 posting failed"))
 (assert-event (equal (fn-proto-text "POST" :refused-unparsable) "441 posting failed; the article is not valid syntax"))
+(assert-event (equal (fn-proto-text "POST" :refused-line-length) "441 posting failed; a header line is longer than 998 octets (RFC 5322 section 2.1.1); fold it"))
 (assert-event (equal (fn-proto-text "POST" :refused-xref) "441 posting failed; Xref must not be supplied"))
 (assert-event (equal (fn-proto-text "POST" :send) "340 send article to be posted"))
 (assert-event (equal (fn-proto-text "POST" :syntax) "501 syntax error"))

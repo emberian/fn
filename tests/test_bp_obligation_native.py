@@ -199,3 +199,108 @@ class NativeBpObligationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@requires(IMAGE)
+class NativeBpCarryVerbTests(unittest.TestCase):
+    """PKT-869 (HST-035, SCN-201): the operator's verbs over BP carry.
+    `operator CONFIG carry JOURNAL list|inspect|pause|resume|drop' over one
+    enqueued, undertaken work: ACL2 decides each control record
+    (books/bp-carry-control.lisp) and renders each report; a paused or
+    dropped work's `bp-obligation request' is refused by name before any
+    attempt is published; the records survive a reopen; a drop is final and
+    keeps the Store pin (only the receipt releases it)."""
+
+    def setUp(self):
+        self.tmp = scratch(self, "fn-native-bp-carry-")
+        self.store = self.tmp / "store"
+        self.journal = self.tmp / "workflow"
+        self.config = self.tmp / "fn.toml"
+        self.config.write_text('[store]\npath = "{}"\n'.format(self.store), encoding="ascii")
+        payload = self.tmp / "article"
+        self.msgid = "<native-carry@example.invalid>"
+        payload.write_text(
+            f"Message-ID: {self.msgid}\r\nNewsgroups: fn.test\r\n\r\nbody\r\n",
+            encoding="ascii")
+        for args in (("store", self.store, "init", "fn.test"),
+                     ("store", self.store, "post", self.msgid, payload, "-", "-", "fn.test"),
+                     ("app-journal", "workflow-init", self.store, self.journal,
+                      "dtn://fn-a/", "dtn://fn-b/", "policy-a", "authority-a",
+                      "3600000", "incarnation-a", "authorization-a"),
+                     ("app-journal", "workflow-enqueue", self.store, self.journal,
+                      "1", "0", "work-a", self.msgid, "forward-a",
+                      "dtn://fn-b/", "policy-a", "terms-a"),
+                     ("bp-obligation", "undertake", self.store, self.journal, "work-a", "3")):
+            done = self.invoke(*args)
+            self.assertEqual(done.returncode, EXIT.OK, (args, done.stderr))
+
+    def invoke(self, *args, env=None):
+        return run([IMAGE, "--fn", *args], env=environment(env), timeout=60, text=True)
+
+    def carry(self, *words):
+        return self.invoke("operator", self.config, "carry", self.journal, *words)
+
+    def records(self):
+        return {p.name: p.read_bytes()
+                for p in sorted((self.journal / "records").glob("*.wf"))}
+
+    def request(self):
+        return self.invoke("bp-obligation", "request", self.store, self.journal,
+                           "work-a", "attempt-1", self.tmp / "fnbs", "dtn://fn-a/",
+                           "127.0.0.1", str(free_port()))
+
+    def test_list_pause_resume_drop_and_the_request_gate(self):
+        listed = self.carry("list")
+        self.assertEqual(listed.returncode, EXIT.OK, listed.stderr)
+        self.assertIn("carry work-a message-id=" + self.msgid, listed.stdout)
+        self.assertIn("pinned=yes hold=none", listed.stdout)
+        inspect = self.carry("inspect", "work-a")
+        self.assertEqual(inspect.returncode, EXIT.OK, inspect.stderr)
+        self.assertEqual(inspect.stdout.strip(), listed.stdout.strip())
+        missing = self.carry("inspect", "work-z")
+        self.assertEqual(missing.returncode, EXIT.REFUSED, missing.stderr)
+        self.assertIn("unknown-work", missing.stderr)
+
+        paused = self.carry("pause", "work-a")
+        self.assertEqual(paused.returncode, EXIT.OK, paused.stderr)
+        again = self.carry("pause", "work-a")
+        self.assertEqual(again.returncode, EXIT.REFUSED, again.stderr)
+        self.assertIn("already-paused", again.stderr)
+        self.assertIn("hold=paused", self.carry("list").stdout)
+        before = self.records()
+        refused = self.request()
+        self.assertEqual(refused.returncode, EXIT.REFUSED, refused.stderr)
+        self.assertIn("reason=carry-paused", refused.stderr)
+        self.assertEqual(before, self.records())
+
+        resumed = self.carry("resume", "work-a")
+        self.assertEqual(resumed.returncode, EXIT.OK, resumed.stderr)
+        self.assertIn("hold=none", self.carry("list").stdout)
+        self.assertEqual(self.carry("resume", "work-a").returncode, EXIT.REFUSED)
+
+        everything = self.carry("pause", "*")
+        self.assertEqual(everything.returncode, EXIT.OK, everything.stderr)
+        self.assertIn("hold=paused", self.carry("list").stdout)
+        self.assertEqual(self.carry("resume", "*").returncode, EXIT.OK)
+
+        dropped = self.carry("drop", "work-a", "peer", "retired")
+        self.assertEqual(dropped.returncode, EXIT.OK, dropped.stderr)
+        listed = self.carry("list").stdout
+        self.assertIn("hold=dropped", listed)
+        self.assertIn("reason=peer retired", listed)
+        # The Store pin stays: only the receipt's evidence releases it.
+        self.assertIn("pinned=yes", listed)
+        self.assertIn("already-dropped", self.carry("drop", "work-a", "x").stderr)
+        self.assertIn("dropped", self.carry("resume", "work-a").stderr)
+        before = self.records()
+        refused = self.request()
+        self.assertEqual(refused.returncode, EXIT.REFUSED, refused.stderr)
+        self.assertIn("reason=carry-dropped", refused.stderr)
+        self.assertEqual(before, self.records())
+
+    def test_usage_and_help(self):
+        bad = self.invoke("operator", self.config, "carry", "relative", "list")
+        self.assertEqual(bad.returncode, EXIT.USAGE, bad.stderr)
+        helped = self.invoke("operator", self.config, "help", "carry")
+        self.assertEqual(helped.returncode, EXIT.OK, helped.stderr)
+        self.assertIn("carry JOURNAL", helped.stdout + helped.stderr)

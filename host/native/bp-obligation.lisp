@@ -1,9 +1,15 @@
 ;;; Shared-owner native surface for durable forwarding obligations.
 (in-package "ACL2")
 
+;;; PKT-869: the carry control journal (domain :carry) at JOURNAL/carry,
+;;; opened after the workflow journal so its controls replay over that
+;;; image (host/workflow-host.lisp fn-workflow-carry-install); bound here
+;;; while the obligation verbs run.
+(defvar *fnn-bpo-carry-journal* nil)
+
 (defun fnn-bpo-call-with-owner-journal
     (store-root journal-root writable thunk)
-  (let ((service nil) (journal nil))
+  (let ((service nil) (journal nil) (carry nil))
     (unwind-protect
          (progn
            (setq service (fnn-owner-install store-root 1))
@@ -13,10 +19,16 @@
               (setq journal
                     (fnn-app-open (fnn-owner-service-store service)
                                   journal-root :workflow :owner-mode t))
+              (setq carry
+                    (fnn-app-open (fnn-owner-service-store service)
+                                  (fnn-join (fnn-absolute journal-root) "carry") :carry
+                                  :owner-mode t))
               (when (and writable
                          (fnn-store-fenced (fnn-owner-service-store service)))
                 (fnn-indeterminate "BP obligation owner Store is fenced"))
-              (funcall thunk journal service))))
+              (let ((*fnn-bpo-carry-journal* carry))
+                (funcall thunk journal service)))))
+      (when carry (fnn-app-journal-close carry))
       (when journal (fnn-app-journal-close journal))
       (when service
         (fnn-owner-feed-close-all service)
@@ -114,8 +126,13 @@
          (if (eq (fnn-core-state 'fn-workflow-fencedp) t)
              (fnn-refuse "ACL2 refused a request for work ~a attempt ~a: the workflow image is fenced on an uncertain publication (bp-obligation recover)"
                          work-id attempt-id)
-           (fnn-refuse "ACL2 refused a request for work ~a attempt ~a"
-                       work-id attempt-id)))
+           ;; PKT-869: a held work's refusal names its hold (carry-paused,
+           ;; carry-dropped: books/bp-carry-control.lisp).
+           (if (and (consp plan) (eq (first plan) :refused) (keywordp (second plan)))
+               (fnn-refuse "ACL2 refused a request for work ~a attempt ~a reason=~(~a~)"
+                           work-id attempt-id (second plan))
+             (fnn-refuse "ACL2 refused a request for work ~a attempt ~a"
+                         work-id attempt-id))))
        (destructuring-bind (tag attempt outcome key adu destination retry) plan
          (declare (ignore tag))
          ;; The ADU's width is ACL2's (fn-bpa-encoding-bound); the host only
@@ -276,3 +293,57 @@
                                  command))))))
 
 (fnn-register-verb "bp-obligation" (fnn-bp-verb #'fnn-dispatch-bp-obligation))
+
+;;; PKT-869: `fn operator CONFIG carry JOURNAL ...', the operator's verbs over
+;;; the BP carry obligations.  ACL2 plans the command
+;;; (books/native-operator.lisp fn-nop-parse-carry), decides every control
+;;; record and renders every report (books/bp-carry-control.lisp, through
+;;; host/workflow-host.lisp fn-workflow-carry-record / -report); this
+;;; publishes the record it is handed and prints the octets.  The store is
+;;; opened as the other obligation verbs open it (the owner-mode journal
+;;; beside it), so a served store refuses (`already locked').
+(defun fnn-carry-execute (result)
+  (let* ((root (fnn-core 'fn-native-operator-host-result-store-root result))
+         (fields (fnn-core 'fn-native-operator-host-result-carry-fields result)))
+    (handler-case
+        (destructuring-bind (journal verb work reason) fields
+          (let ((code
+                  (if (member verb '(:list :inspect))
+                      (fnn-bpo-call-with-owner-journal
+                       root journal nil
+                       (lambda (opened service)
+                         (declare (ignore opened service))
+                         (let ((report (fnn-core-state 'fn-workflow-carry-report
+                                                       (and (eq verb :inspect) work))))
+                           (unless (fnn-octet-list-p report)
+                             (fnn-fault "ACL2 returned a malformed carry report"))
+                           (when (and (eq verb :inspect) (null report))
+                             (fnn-refuse "carry refused reason=unknown-work work=~a" work))
+                           (write-sequence (fnn-octets report) *fnn-stdout*)
+                           (finish-output *fnn-stdout*)
+                           +fnn-exit-ok+)))
+                    (fnn-bpo-call-with-owner-journal
+                     root journal t
+                     (lambda (opened service)
+                       (declare (ignore opened service))
+                       (let ((answer (fnn-core-state 'fn-workflow-carry-record verb work reason))
+                             (carry *fnn-bpo-carry-journal*))
+                         (unless (and (consp answer) (member (first answer) '(:record :refused)))
+                           (fnn-fault "ACL2 returned a malformed carry decision"))
+                         (when (eq (first answer) :refused)
+                           (fnn-refuse "carry refused reason=~(~a~) work=~a" (second answer) work))
+                         ;; The journal's first record is its :config (ACL2's
+                         ;; app-journal admits nothing else first).
+                         (unless (fnn-core 'fn-aj-initializedp (fnn-app-journal-frontier carry))
+                           (fnn-app-publish carry (fnn-core 'fn-bpcc-journal-config)))
+                         (fnn-app-publish carry (second answer))
+                         (fnn-out "BP carry durable ~(~a~) work=~a" verb work)
+                         +fnn-exit-ok+))))))
+            (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "carry")
+            code))
+      (error (condition)
+        (let ((code (fnn-exit-code-for condition)))
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "carry" condition)
+          code)))))
+
+(fnn-operator-register-action :carry #'fnn-carry-execute)
