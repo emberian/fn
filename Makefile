@@ -389,6 +389,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/feed-pause-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
+	books/history-knowledge \
+	tests/acl2/history-knowledge-tests \
 	books/store-reclaim-stream \
 	tests/acl2/store-reclaim-stream-tests \
 	books/reclaim-admission \

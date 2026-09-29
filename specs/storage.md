@@ -1097,6 +1097,34 @@ again; from the install on the open reads the rewritten history and a rerun
 reclaims nothing more (`fn-rclp-events-idempotent`,
 `fn-rclp-a-reclaimed-event-stays-reclaimed`).
 
+What the rewritten history MEANS is decided in books/history-knowledge.lisp
+(W8; PRF-997 to PRF-1000). A Message-ID's knowledge state over the event
+history and the node's stage is one of five: not accepted, accepted and
+retained, accepted and reclaimed, outcome unresolved (staged, not in the
+readable history: a lost acknowledgement or an indeterminate completion),
+history unavailable; the rewrite turns only "accepted and retained" into
+"accepted and reclaimed" and changes no other answer
+(`fn-hkn-reclamation-never-forgets-an-acceptance`): the current absence of
+a payload never collapses to "not accepted". An acceptance records its
+commitment: the replay step that accepts an article record binds the
+record's Message-ID to its content subject and obligation id and holds the
+pin with the record's own release evidence and charge
+(`fn-hkn-acceptance-records-subject-principal-and-undertaking`), none of
+which is a function of the open's groups or capacity
+(`fn-hkn-replay-binds-the-recorded-evidence-not-the-policy`). Reclamation
+is the logical release first (`fn-hkn-release`: the payload at the
+tombstone, the pin's charge at the history unit) and the rewrite implements
+it; over the released node a retry or a conflicting retry is refused as
+before, a receipt discharges the same obligation or none, every known
+obligation id stays known, and the one observable change is exactly the
+freed content charge: a request the ledger refused for capacity alone may
+be admitted after, and only such a request
+(`fn-hkn-release-enables-only-what-the-freed-charge-affords`). A refused
+node transition is the identity per entry; the full-store POST's footprint
+is one transaction id (`fn-rfx-refused-post-consumes-one-txid`), and that
+path never spends a recovery barrier
+(`fn-hkn-refusal-keeps-the-recovery-barriers`).
+
 The two operations (the Fable mandate, section 8):
 
 - **History compaction** (replacing history by a summary sufficient for

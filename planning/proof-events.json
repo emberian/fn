@@ -14016,6 +14016,122 @@
           "name": "fn-onb-boundp-at-owner-prepare-buffer"
         }
       ]
+    },
+    {
+      "id": "PRF-997",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-knowledge-is-one-of-the-five-states"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-tombstoned-keeps-the-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-tombstone-of-is-a-tombstone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-record-of-a-rewritten-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-record-of-an-unrewritten-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-find-event-after-rewrite"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-reclamation-never-forgets-an-acceptance"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-acceptance-records-subject-principal-and-undertaking"
+        }
+      ]
+    },
+    {
+      "id": "PRF-998",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-release-keeps-the-stage-and-the-bindings-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-reduce-pins-keeps-the-ids"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-reduce-pin-keeps-the-identifying-fields"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-find-id-after-reduce"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-matching-release-ignores-the-charge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-release-keeps-every-known-id"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-release-discharges-the-same-obligation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-release-frees-exactly-the-content-charge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-release-enables-only-what-the-freed-charge-affords"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-retry-refused-after-release-as-before"
+        }
+      ]
+    },
+    {
+      "id": "PRF-999",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-replay-binds-the-recorded-evidence-not-the-policy"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1000",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-refused-prepare-is-the-identity-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-unmatched-complete-is-the-identity-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-unmatched-release-is-the-identity-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-refusal-keeps-the-recovery-barriers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hkn-frontier-at-the-ceiling-reserves-nothing"
+        }
+      ]
     }
   ]
 }

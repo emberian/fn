@@ -14687,6 +14687,120 @@
         "fn-onb-boundp-of-psrv-prepare",
         "fn-onb-boundp-at-owner-prepare-buffer"
       ]
+    },
+    {
+      "id": "PRF-997",
+      "title": "The event history keeps every acceptance through reclamation, and an acceptance records its commitment",
+      "statement": "fn-hkn-reclamation-never-forgets-an-acceptance: for the host's rewrite fn-rclp-events (fn-store-log-reclaim-event per record), the knowledge fn-hkn-knowledge of any Message-ID over the rewritten history is :not-accepted, :outcome-unresolved or :history-unavailable exactly when it was over the original, :accepted-reclaimed stays, and :accepted-retained becomes one of the two accepted states. fn-hkn-acceptance-records-subject-principal-and-undertaking: when fn-replay-apply-record accepts a plain article record, the node binds the record's Message-ID to (msgid, content-subject, obligation-id) and holds the pin (obligation-id, content-subject, :archive, release-evidence, charge), with nothing staged. Teeth: tests/acl2/history-knowledge-tests.lisp.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017",
+        "STO-014"
+      ],
+      "depends_on": [
+        "PRF-088",
+        "PRF-119"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/history-knowledge.lisp",
+        "tests/acl2/history-knowledge-tests.lisp"
+      ],
+      "progress_note": "",
+      "events": [
+        "fn-hkn-knowledge-is-one-of-the-five-states",
+        "fn-hkn-tombstoned-keeps-the-identity",
+        "fn-hkn-tombstone-of-is-a-tombstone",
+        "fn-hkn-record-of-a-rewritten-event",
+        "fn-hkn-record-of-an-unrewritten-event",
+        "fn-hkn-find-event-after-rewrite",
+        "fn-hkn-reclamation-never-forgets-an-acceptance",
+        "fn-hkn-acceptance-records-subject-principal-and-undertaking"
+      ]
+    },
+    {
+      "id": "PRF-998",
+      "title": "Reclamation is a logical release the continuation language cannot distinguish, except by the freed charge",
+      "statement": "Over fn-hkn-release (the node with the article's payload at the tombstone, fn-rcl-reclaim-state, and its pin's charge at the history unit): a retry of the same Message-ID with any payload and any groups is refused after as before (fn-hkn-retry-refused-after-release-as-before); a receipt or release discharges the same obligation or none over an obligation list (fn-hkn-release-discharges-the-same-obligation); every obligation id is known after as before (fn-hkn-release-keeps-every-known-id); the stage and the bindings are unchanged; the reserved sum drops by exactly the content charge less the history unit (fn-hkn-release-frees-exactly-the-content-charge); and a request refused before and admitted after was refused for capacity alone and fits the freed charge (fn-hkn-release-enables-only-what-the-freed-charge-affords). The naive equivalence of every continuation is FALSE at the capacity refusal: must-fail in the teeth.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017",
+        "STO-014"
+      ],
+      "depends_on": [
+        "PRF-088",
+        "PRF-119"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/history-knowledge.lisp",
+        "tests/acl2/history-knowledge-tests.lisp"
+      ],
+      "progress_note": "",
+      "events": [
+        "fn-hkn-release-keeps-the-stage-and-the-bindings-by-definition",
+        "fn-hkn-reduce-pins-keeps-the-ids",
+        "fn-hkn-reduce-pin-keeps-the-identifying-fields",
+        "fn-hkn-find-id-after-reduce",
+        "fn-hkn-matching-release-ignores-the-charge",
+        "fn-hkn-release-keeps-every-known-id",
+        "fn-hkn-release-discharges-the-same-obligation",
+        "fn-hkn-release-frees-exactly-the-content-charge",
+        "fn-hkn-release-enables-only-what-the-freed-charge-affords",
+        "fn-hkn-retry-refused-after-release-as-before"
+      ]
+    },
+    {
+      "id": "PRF-999",
+      "title": "Replay binds the recorded evidence, never the replay's policy",
+      "statement": "fn-hkn-replay-binds-the-recorded-evidence-not-the-policy: when fn-replay-apply-record accepts a plain article record from any node (any groups, any capacity), the evidence of the pin it holds under the record's obligation id is the record's release-evidence. Observed evidence (the record's release-evidence, a fn-provp value), the authorized decision (the binding) and the obligation (the pin) are three fields of the same acceptance; replay copies, it does not derive. Open: the revocation half (preserved historical authorization confers no current authority) is books/replay.lisp's fn-replay-apply-revoked-verdict (PRF-098) for identity verdicts; no theorem yet states it for retention authority.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-088",
+        "PRF-119"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/history-knowledge.lisp",
+        "tests/acl2/history-knowledge-tests.lisp"
+      ],
+      "progress_note": "",
+      "events": [
+        "fn-hkn-replay-binds-the-recorded-evidence-not-the-policy"
+      ]
+    },
+    {
+      "id": "PRF-1000",
+      "title": "Every refusal's footprint is named and bounded",
+      "statement": "fn-hkn-refused-prepare-is-the-identity-by-definition (a prepare stages or is the identity), fn-hkn-unmatched-complete-is-the-identity-by-definition, fn-hkn-unmatched-release-is-the-identity-by-definition; the full-store POST consumes one txid (fn-rfx-refused-post-consumes-one-txid, books/refusal-effect.lisp) and the five steps of that path keep the recovery barriers (fn-hkn-refusal-keeps-the-recovery-barriers); a frontier at *fn-sf-max-uint* reserves nothing (fn-hkn-frontier-at-the-ceiling-reserves-nothing): the refused path consumes at most the ids between the frontier and the uint32 ceiling, never a barrier, never a record.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-088",
+        "PRF-119"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/history-knowledge.lisp",
+        "tests/acl2/history-knowledge-tests.lisp"
+      ],
+      "progress_note": "",
+      "events": [
+        "fn-hkn-refused-prepare-is-the-identity-by-definition",
+        "fn-hkn-unmatched-complete-is-the-identity-by-definition",
+        "fn-hkn-unmatched-release-is-the-identity-by-definition",
+        "fn-hkn-refusal-keeps-the-recovery-barriers",
+        "fn-hkn-frontier-at-the-ceiling-reserves-nothing"
+      ]
     }
   ]
 }
