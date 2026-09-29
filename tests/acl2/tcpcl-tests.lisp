@@ -514,3 +514,63 @@
 (assert-event (equal (fn-tcl-drop 3 '(1 2)) nil))
 (assert-event (equal (fn-tcl-take 2 '(1 2 3)) '(1 2)))
 (assert-event (equal (fn-tcl-drop 2 '(1 2 3)) '(3)))
+
+; KEYSTONE teeth (PRF-1006: fn-tcl-encode is the canonical wire form, the
+; callee of host/tcpcl-host.lisp's fn-tcl-host-encode).  Per kind: the
+; antecedent by name (fn-tcl-messagep at the MRU; octet version and flags for
+; the contact header) and the conclusion of fn-tcl-decode-message-of-encode-KIND
+; / fn-tcl-decode-contact-of-encode, the peer reads exactly the message and
+; leaves the rest.  Then fn-tcl-accepted-message-is-canonical on an accepted
+; buffer, and a segment over the MRU: neither a message at that MRU nor
+; accepted at it.
+(defconst *t-tcl-rt-rest* '(9 9 9))
+(assert-event
+ (and (fn-cbor-octetp 4) (fn-cbor-octetp 1)
+      (equal (fn-tcl-decode-contact
+              (append (fn-tcl-encode (fn-tcl-make-contact 4 1)) *t-tcl-rt-rest*))
+             (fn-tcl-parse-ok (fn-tcl-make-contact 4 1) *t-tcl-rt-rest*))))
+(assert-event
+ (and (fn-tcl-messagep *t-init-a* 3)
+      (equal (fn-tcl-decode-message
+              (append (fn-tcl-encode *t-init-a*) *t-tcl-rt-rest*) 3)
+             (fn-tcl-parse-ok *t-init-a* *t-tcl-rt-rest*))))
+(assert-event
+ (and (fn-tcl-messagep *t-seg-1* 3)
+      (equal (fn-tcl-decode-message
+              (append (fn-tcl-encode *t-seg-1*) *t-tcl-rt-rest*) 3)
+             (fn-tcl-parse-ok *t-seg-1* *t-tcl-rt-rest*))))
+(assert-event
+ (and (fn-tcl-messagep (fn-tcl-make-xfer-ack 1 0 5) 3)
+      (equal (fn-tcl-decode-message
+              (append (fn-tcl-encode (fn-tcl-make-xfer-ack 1 0 5)) *t-tcl-rt-rest*) 3)
+             (fn-tcl-parse-ok (fn-tcl-make-xfer-ack 1 0 5) *t-tcl-rt-rest*))))
+(assert-event
+ (and (fn-tcl-messagep (fn-tcl-make-xfer-refuse 6 258) 3)
+      (equal (fn-tcl-decode-message
+              (append (fn-tcl-encode (fn-tcl-make-xfer-refuse 6 258)) *t-tcl-rt-rest*) 3)
+             (fn-tcl-parse-ok (fn-tcl-make-xfer-refuse 6 258) *t-tcl-rt-rest*))))
+(assert-event
+ (and (fn-tcl-messagep (fn-tcl-make-sess-term 1 2) 3)
+      (equal (fn-tcl-decode-message
+              (append (fn-tcl-encode (fn-tcl-make-sess-term 1 2)) *t-tcl-rt-rest*) 3)
+             (fn-tcl-parse-ok (fn-tcl-make-sess-term 1 2) *t-tcl-rt-rest*))))
+(assert-event
+ (and (fn-tcl-messagep (fn-tcl-make-msg-reject 3 1) 3)
+      (equal (fn-tcl-decode-message
+              (append (fn-tcl-encode (fn-tcl-make-msg-reject 3 1)) *t-tcl-rt-rest*) 3)
+             (fn-tcl-parse-ok (fn-tcl-make-msg-reject 3 1) *t-tcl-rt-rest*))))
+(assert-event
+ (and (fn-tcl-messagep (fn-tcl-make-keepalive) 3)
+      (equal (fn-tcl-decode-message
+              (append (fn-tcl-encode (fn-tcl-make-keepalive)) *t-tcl-rt-rest*) 3)
+             (fn-tcl-parse-ok (fn-tcl-make-keepalive) *t-tcl-rt-rest*))))
+(assert-event
+ (let ((buf (append (fn-tcl-encode *t-seg-1*) *t-tcl-rt-rest*)))
+   (and (fn-cbor-octet-listp buf)
+        (fn-tcl-parse-okp (fn-tcl-decode-message buf 3))
+        (equal (append (fn-tcl-encode (fn-tcl-parse-msg (fn-tcl-decode-message buf 3)))
+                       (fn-tcl-parse-rest (fn-tcl-decode-message buf 3)))
+               buf))))
+(assert-event
+ (and (not (fn-tcl-messagep *t-seg-1* 0))
+      (not (fn-tcl-parse-okp (fn-tcl-decode-message (fn-tcl-encode *t-seg-1*) 0)))))

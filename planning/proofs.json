@@ -15113,6 +15113,98 @@
         "fn-mpxt-seqs-is-cat-msgid-seqs",
         "fn-mpxt-spec-from-is-cat-seqs-for"
       ]
+    },
+    {
+      "id": "PRF-1006",
+      "title": "fn-tcl-encode is the canonical TCPCL wire form: the encoding of every message kind the host sends decodes back to it with the rest untouched, and an accepted buffer is the encoding of its parse",
+      "statement": "books/tcpcl-octets.lisp; host/tcpcl-host.lisp's fn-tcl-host-encode is an exact alias (a checked :delegates fn-tcl-encode, the generated equation fn-tcl-host-encode-is-fn-tcl-encode-by-definition), called by host/native/tcpcl.lisp's send path. KEYSTONES: fn-tcl-decode-message-of-encode-{init,segment,ack,refuse,term,reject,keepalive} and fn-tcl-decode-contact-of-encode: for a message M of that kind with (fn-tcl-messagep M mru) (for the contact header: an octet version and octet flags), (fn-tcl-decode-message (append (fn-tcl-encode M) rest) mru) is (fn-tcl-parse-ok M rest), so a peer reads exactly M and consumes exactly the encoding; fn-tcl-accepted-message-is-canonical and fn-tcl-accepted-contact-is-canonical: an octet buffer the decoder accepts equals the encoding of its parse followed by its rest, so no second octet form is accepted for a message. Scope: the octet codec under the segment MRU bound; the session machine's use of the codec is PRF-956 and PRF-060. Teeth: tests/acl2/tcpcl-tests.lisp (golden vectors per kind; the round trip per kind with the antecedent by name; the canonical reconstruction of an accepted buffer; a segment over the MRU is neither a message at it nor accepted at it).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "ENC-001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/tcpcl-octets.lisp",
+        "host/tcpcl-host.lisp",
+        "host/interfaces.lisp",
+        "tests/acl2/tcpcl-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-4: the theorems existed (tcpcl-octets) and no proof target cited them, which is why decision-keystones-3 withdrew fn-tcl-host-encode's delegation; registered here and the delegation restored under the strict rule.",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-contact-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-init"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-ack"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-refuse"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-term"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-reject"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-keepalive"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-accepted-message-is-canonical"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-accepted-contact-is-canonical"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1007",
+      "title": "Receive-evidence admission issues an operation exactly under the held lock, a ready state below the ceiling, a classified outcome and both exact next names absent, and then the operation carries the next identity, its names, initial authorized publications and the successor",
+      "statement": "books/bp-receive-evidence.lisp; host/bp-receive-evidence-host.lisp's fn-bpn-host-evidence-authorize is an exact alias (a checked :delegates fn-bpn-evidence-authorize, common-lisp-compliant; the admission chain fn-bpn-evidence-authorize, -name, -next-wire-name, -next-result-name and their helpers are guard-verified), and fn-bpn-host-evidence-operationp an exact alias of the boolean recognizer (:delegates fn-bpn-evidence-operationp); host/native/bp.lisp's receive path calls both. KEYSTONE fn-bpn-evidence-authorize-admits-exactly-the-locked-next-identity, two-sided: (fn-bpn-evidence-operationp answer) iff the state is ready (fn-bpn-evidence-statep) with its next identity below *fn-bpn-evidence-max-records*, the outcome is one of :accepted/:refused/:uncertain, and LOCK-OWNEDP, WIRE-ABSENTP and RESULT-ABSENTP are each exactly t (the principal: the caller holds the evidence lock; the evidence: both exact next names observed absent); then the operation's identity is the state's next, its wire name and result name are fn-bpn-evidence-name of that identity for :wire and for the outcome's result kind, both publications are (fn-jpub-initial t) and the successor is the ready state at the next identity; otherwise the answer is exactly (:refused :evidence-admission). With fn-bpn-evidence-successor-does-not-reuse-identity (the successor's next is the issued identity plus one). Teeth: tests/acl2/bp-receive-evidence-tests.lisp (the positive witness with the antecedent by name and every conclusion conjunct; hypothesis-removal witnesses for the lock, each absence, an unclassified outcome, the ceiling, a truthy non-t lock report; a corrupted-state witness, labelled).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/bp-receive-evidence.lisp",
+        "host/bp-receive-evidence-host.lisp",
+        "host/interfaces.lisp",
+        "tests/acl2/bp-receive-evidence-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-4: the finding decision-keystones-3 withdrew the delegation for (an exact alias whose callee had no cited theorem) gets its callee's two-sided keystone; the delegation restored under the strict rule.",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-evidence-authorize-admits-exactly-the-locked-next-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-evidence-successor-does-not-reuse-identity"
+        }
+      ]
     }
   ]
 }

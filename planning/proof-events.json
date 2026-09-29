@@ -14424,6 +14424,64 @@
           "name": "fn-mpxt-spec-from-is-cat-seqs-for"
         }
       ]
+    },
+    {
+      "id": "PRF-1006",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-contact-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-init"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-ack"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-refuse"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-term"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-reject"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-decode-message-of-encode-keepalive"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-accepted-message-is-canonical"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-accepted-contact-is-canonical"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1007",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-evidence-authorize-admits-exactly-the-locked-next-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-evidence-successor-does-not-reuse-identity"
+        }
+      ]
     }
   ]
 }
