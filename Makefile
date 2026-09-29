@@ -551,6 +551,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-finalize-incremental-tests \
 	books/store-finalize-published \
 	tests/acl2/store-finalize-published-tests \
+	books/store-finalize-carried-check \
+	tests/acl2/store-finalize-carried-check-tests \
 	books/assumptions-publication \
 	books/bp-fnbs-delivery-codec \
 	tests/acl2/bp-fnbs-delivery-codec-tests \

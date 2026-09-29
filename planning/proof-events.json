@@ -14402,6 +14402,39 @@
           "name": "fn-sfp-observed-history-is-a-true-list"
         }
       ]
+    },
+    {
+      "id": "PRF-1005",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sfk-check-ok-is-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfk-check-ok-facts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfk-check-wrong-msgid-trie-is-not-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfk-check-shape-answers-are-not-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfk-carry-checks-ok"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-assume-carried-pair-is-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfp-carried-open-under-carried-pair"
+        }
+      ]
     }
   ]
 }

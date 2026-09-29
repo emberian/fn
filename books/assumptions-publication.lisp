@@ -39,6 +39,7 @@
 (in-package "ACL2")
 
 (include-book "store-finalize-published")
+(include-book "store-finalize-carried-check")
 
 ; A-CHECKPOINT-PUBLICATION.  (fn-assume-checkpoint-publishedp tables configs)
 ; holds of the tables a verified checkpoint file loaded to, under the
@@ -88,4 +89,44 @@
                             (frontier (nth 2 (fn-assume-checkpoint-publication tables configs)))
                             (revision (nth 3 (fn-assume-checkpoint-publication tables configs)))
                             (log (nth 4 (fn-assume-checkpoint-publication tables configs)))))
+           :in-theory (theory 'minimal-theory))))
+
+; -----------------------------------------------------------------------------
+; A-CARRIED-PAIR (PRF-1005).  The carried entries (books/store-finalize-
+; incremental.lisp fn-sfi-cpr-resume-carried, fn-sfi-extend-open-carried;
+; PRF-968) take the pair (R . IX) under fn-sfi-cpr-carriedp, a guard the
+; evaluator cannot run (fn-rii-known-okp is a defun-sk) and ACL2 will not
+; hold in a stobj (fn-cnode-statep reaches the attached fn-digest).  A host
+; that carries the pair across extensions (the online-reclaim swap; the
+; owner's later publications) relies on this: the pair it passes is the one
+; fn-sfi-carry produced at the open, or the one the previous carried entry
+; answered -- the preservation theorems (fn-sfi-carry-is-carried,
+; fn-sfi-extend-open-carried-keeps-carried, fn-sfi-cpr-resume-carried-keeps-
+; carried) keep it carried along exactly that sequence.  At a boundary that
+; can afford one node pass, fn-sfk-carried-check decides it (:ok establishes
+; the invariant; every other answer but :uncertain-id-trie refutes it).
+; Nothing on a served path calls the carried entries at this revision
+; (the open calls fn-sfi-extend-open); the row is the contract of the
+; wiring that will.
+(encapsulate
+  (((fn-assume-carried-pairp * *) => *))
+  (local (defun fn-assume-carried-pairp (r ix) (declare (ignore r ix)) nil))
+  (defthm fn-assume-carried-pair-is-carried
+    (implies (fn-assume-carried-pairp r ix)
+             (fn-sfi-cpr-carriedp r ix))
+    :rule-classes nil))
+
+; The carried open under A-CARRIED-PAIR (with PRF-968's other hypotheses).
+(defthm fn-sfp-carried-open-under-carried-pair
+  (implies (and (fn-assume-carried-pairp (fn-sco-cpr c) ix)
+                (equal (fn-sn-open-kind (fn-sco-finalize c configs f0)) :ok)
+                (equal count (len (fn-sco-records c)))
+                (equal next (fn-sf-next-lower (fn-sco-records c) 0)))
+           (equal (fn-sfi-extend-open-carried c ix configs suffix frontier count next)
+                  (list (fn-sco-extend c configs suffix)
+                        (cdr (fn-sfi-cpr-resume-carried (fn-sco-cpr c) configs suffix ix))
+                        (fn-rii-classified-open (fn-sco-extend c configs suffix)
+                                                configs frontier))))
+  :hints (("Goal" :use ((:instance fn-assume-carried-pair-is-carried (r (fn-sco-cpr c)))
+                        (:instance fn-sfi-extend-open-carried-is-rii-extend-open))
            :in-theory (theory 'minimal-theory))))

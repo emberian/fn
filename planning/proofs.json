@@ -117,7 +117,11 @@
         "fn-own-served-local-number-is-never-reassigned",
         "fn-own-raw-local-number-is-never-reassigned",
         "fn-ocfg-read-step-without-selection-depends-only-on-its-connection-and-clock",
-        "fn-own-other-post-keeps-a-non-selecting-read-step"
+        "fn-own-other-post-keeps-a-non-selecting-read-step",
+        "fn-scl-step-counted-fast-of-with-live-selecting-nothing",
+        "fn-scl-own-read-tls-prefix-selecting-nothing-ignores-the-view",
+        "fn-scl-other-post-keeps-a-chunk-selecting-nothing",
+        "fn-scl-host-chunk-selecting-nothing-survives-other-post"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -1880,7 +1884,6 @@
         "fn-bs-record-dir-error-preserves-relation",
         "fn-bs-crash-image-relates-to-recovery-entry-kernel",
         "fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel",
-        "fn-bs-recover-program-run-from-a-quiet-image",
         "fn-bs-recover-program-keeps-relation-at-every-cut",
         "fn-bs-host-reopened-kernel-is-the-recovered-kernel",
         "fn-bs-k0-record-link-error-arm-relation"
@@ -3585,7 +3588,7 @@
         "A-WRITE-ISOLATION",
         "A-CRYPTO"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-checkpoint-open.lisp",
         "books/store-checkpoint-codec.lisp",
@@ -4320,8 +4323,6 @@
       ],
       "progress_note": "Certified with teeth; the theorem is over the implementation the seam attaches, not over the constrained seam function; the open corollary over fn-store-sn-recover is by congruence of the program-mode host map and is not an ACL2 event. Format 10 (lane format-bump-10, 2026-09-28): books/byte-store-profile-v1.lisp and its tests were deleted with format 9 (D34: every format-10 profile is written by a format-10 init or import under the current relation; the frozen pre-P6 relation and the PKT-467 window describe profiles no format-10 store holds); the events and paths that named them are removed from this row.",
       "events": [
-        "fn-record-v1-bytes-decode-identically",
-        "fn-record-v1-bytes-are-their-translation",
         "fn-cbor-decode-prechecked-wide-extends-narrow",
         "fn-cbor-encode-uint-wide-is-narrow",
         "fn-cbor-decode-prechecked-wide-of-uint",
@@ -5218,7 +5219,7 @@
         "PRF-119"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-maintenance-reserve.lisp",
         "tests/acl2/store-maintenance-reserve-tests.lisp",
@@ -5242,7 +5243,6 @@
         "fn-smr-reserve-admits-the-release",
         "fn-smr-admission-is-within-the-profile",
         "fn-smr-roomp-antitone-in-octets",
-        "fn-smr-roomp-is-within-the-bound",
         "fn-smr-admitted-profile-starts-reserved",
         "fn-scka-publication-setup-plans-within-the-disk"
       ]
@@ -5463,7 +5463,7 @@
         "PRF-087"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-sct-renc-is-program",
         "fn-ockp-encode-batch-is-rows-program",
@@ -5560,7 +5560,7 @@
         "PRF-133"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-sct-load-is-decode-file",
         "fn-sctr-run-decode-is-run-decode",
@@ -6830,7 +6830,7 @@
         "PRF-087"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-ockp-estimate-is-len-file-octets",
         "fn-ockp-len-acc-is-len-program",
@@ -7501,7 +7501,7 @@
         "PRF-183"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-heap-decide-admits-every-store-the-profile-admits",
         "fn-heap-decide-refuses-exactly-past-the-machine",
@@ -7684,7 +7684,7 @@
         "PRF-104"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-sct-decode-file-of-file-is-the-capture",
         "fn-sct-capture-of-tables-of-capture",
@@ -7726,7 +7726,7 @@
         "PRF-183"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-ockp-decide-defers-by-the-estimate"
       ],
@@ -8229,8 +8229,7 @@
       "progress_note": "Lane served-line-iterative (2026-09-26; image-floor packet 2, PKT-481's class, D27). Cause by persvati REPL backtrace (FN-POST-BODY-OCTETS frames to exhaustion on 3,000,000 lines) and by the native witness (one 4 MiB line: Control stack exhausted in fn-owner-chunk-span until fn-wire-list-length was a loop). Teeth: tests/acl2/served-line-iterative-tests.lisp (reachable witnesses, the composed BODY reply, served-size witnesses of 2,100,000 lines and of one 20,000,000-octet line through the compiled executables, labelled MUTATION witnesses refuted on ground instances). Lane line-stack (Opus 5.5, 2026-09-27): the fourth keystone; cause read from the frames of FN_NATIVE_FAULT_BACKTRACE's stack-exhaustion report (FN-HF-CRLF-COUNT x60795 on the committer); teeth in tests/acl2/catalog-record-tests.lisp (reachable witnesses by loop and definition; 5,000,000 lines through fn-hf-body-lines-of). Lane chunked-body (B6, 2026-09-29): fn-wire-list-length-onto-is-list-length is no longer cited: the served article line is no longer a list the wire measures -- it is in the article's packed store and fn-wire-after-line reads its length in constant work (fn-wire-partial-len; PRF-922).",
       "events": [
         "fn-nntp-stuff-lines-iter-is-stuff-lines",
-        "fn-post-body-octets-iter-is-body-octets",
-        "fn-wire-list-length-onto-is-list-length"
+        "fn-post-body-octets-iter-is-body-octets"
       ]
     },
     {
@@ -8424,7 +8423,7 @@
         "PRF-198"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/connection-budget.lisp",
         "tests/acl2/connection-budget-tests.lisp",
@@ -10788,7 +10787,7 @@
         "PRF-201"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/served-catalog-join-refresh.lisp",
         "books/served-catalog-join-step.lisp",
@@ -10881,7 +10880,6 @@
         "fn-sjh-okp-at-owner-unstage",
         "fn-sjh-okp-at-owner-node-secret",
         "fn-sjh-okp-at-owner-install-profile",
-        "fn-sjh-okp-at-owner-outcome",
         "fn-sjh-okp-at-owner-open-peer",
         "fn-sjh-okp-at-owner-chunk-span",
         "fn-sjh-files-okp-exec-is-files-okp",
@@ -10903,7 +10901,6 @@
         "fn-sjh-viewsp-at-owner-finish-identity",
         "fn-sjh-viewsp-at-host-article-finish",
         "fn-sjh-viewsp-of-ocfg-store-step",
-        "fn-sjh-viewsp-of-ocfg-step-view-event",
         "fn-sjh-viewsp-at-owner-chunk-span",
         "fn-sjh-okp-at-owner-chunk-span-fully-carried",
         "fn-sjh-okp-at-owner-open-captured-carried"
@@ -10922,7 +10919,7 @@
         "PRF-299"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-prepare-outcome.lisp",
         "tests/acl2/owner-prepare-outcome-tests.lisp",
@@ -11346,7 +11343,7 @@
         "PRF-180"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-budget.lisp",
         "books/store-budget-stored.lisp",
@@ -11508,7 +11505,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/heap-reservation.lisp",
         "tests/acl2/heap-reservation-tests.lisp",
@@ -12642,7 +12639,7 @@
         "PRF-345"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/control-authority.lisp",
         "books/control-served.lisp",
@@ -12824,7 +12821,7 @@
         "PRF-342"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/history-pages-owner.lisp",
         "tests/acl2/history-pages-owner-tests.lisp",
@@ -12889,7 +12886,7 @@
         "PRF-198"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/heap-open-nursery.lisp",
         "tests/acl2/heap-open-nursery-tests.lisp",
@@ -13351,7 +13348,7 @@
         "PRF-198"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/connection-budget.lisp",
         "books/heap-figure.lisp",
@@ -13585,7 +13582,7 @@
         "PRF-198"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/heap-breakdown.lisp",
         "tests/acl2/heap-breakdown-tests.lisp",
@@ -13611,7 +13608,7 @@
         "PRF-377"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/memory-credits.lisp",
         "books/owner-credits.lisp",
@@ -13972,7 +13969,8 @@
         "tests/test_native_header_lines.py"
       ],
       "events": [
-        "fn-inj-decide-line-length-is-a-long-header-line"
+        "fn-inj-decide-line-length-is-a-long-header-line",
+        "fn-peer-decide-transfer-line-length-is-a-long-header-line"
       ]
     },
     {
@@ -14146,12 +14144,24 @@
         "PRF-242"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "evidence": [
         "books/store-finalize-incremental.lisp",
         "tests/acl2/store-finalize-incremental-tests.lisp"
       ],
-      "progress_note": "Lane incremental-finalize (Claude Fable 5.1, 2026-09-29): REPL-admitted on the box (every form, both guards; the keystone 232k steps, 0.4 s); early certify hbox run-20260929T042235Z-19e0. Wired into the host open: NOT YET (the open's carried verdict needs the checkpoint's frontier/count/last record beside the trailer, composed-owner-4's A5 discipline); online-reclaim-4 cites the corollary for the swap's delta. Teeth: the twin book's history; positive witness (both hypotheses, the conclusion, the open :ok, the corollary's shape); the empty suffix; four suffix-only refusals decided alike (at the frontier, out of sequence, a repeated transaction, a frontier below the bound); two hypothesis-removal witnesses (a base that never finalizes :ok; the bound omitted) each affirming the retained hypothesis, the omitted one failing and the conclusion failing, plus must-fail-checked ground defthms; a corrupted carried bound labelled as a mutation witness (refuses more, never admits more). WIRED 2026-09-29 (lane incremental-finalize-3, PRF-992): host/store-node-host.lisp fn-store-sn-recover-from-checkpoint calls fn-sfi-extend-open with the F row's NEXT; the twin fn-rii-sco-extend-open remains the full open's (fn-store-sn-recover-rows)."
+      "progress_note": "Lane incremental-finalize (Claude Fable 5.1, 2026-09-29): REPL-admitted on the box (every form, both guards; the keystone 232k steps, 0.4 s); early certify hbox run-20260929T042235Z-19e0. Wired into the host open: NOT YET (the open's carried verdict needs the checkpoint's frontier/count/last record beside the trailer, composed-owner-4's A5 discipline); online-reclaim-4 cites the corollary for the swap's delta. Teeth: the twin book's history; positive witness (both hypotheses, the conclusion, the open :ok, the corollary's shape); the empty suffix; four suffix-only refusals decided alike (at the frontier, out of sequence, a repeated transaction, a frontier below the bound); two hypothesis-removal witnesses (a base that never finalizes :ok; the bound omitted) each affirming the retained hypothesis, the omitted one failing and the conclusion failing, plus must-fail-checked ground defthms; a corrupted carried bound labelled as a mutation witness (refuses more, never admits more). WIRED 2026-09-29 (lane incremental-finalize-3, PRF-992): host/store-node-host.lisp fn-store-sn-recover-from-checkpoint calls fn-sfi-extend-open with the F row's NEXT; the twin fn-rii-sco-extend-open remains the full open's (fn-store-sn-recover-rows).",
+      "events": [
+        "fn-sfi-extend-open-is-rii-extend-open",
+        "fn-sfi-extend-open-finalizes-the-extension",
+        "fn-sfi-historyp-extend-is-observed-historyp",
+        "fn-sfi-sf-record-listp-append",
+        "fn-sfi-sf-record-listp-refrontier",
+        "fn-sfi-finalize-carried-is-finalize-configured",
+        "fn-sfi-sn-statep-carried-is-rii-sn-statep-carried",
+        "fn-sfi-verdict-pairs-are-verdicts",
+        "fn-sfi-identity-loop-keeps-snapshots",
+        "fn-sfi-carried-verdict-facts"
+      ]
     },
     {
       "id": "PRF-968",
@@ -14166,12 +14176,28 @@
         "PRF-946"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "evidence": [
         "books/store-finalize-incremental.lisp",
         "tests/acl2/store-finalize-incremental-tests.lisp"
       ],
-      "progress_note": "Lane incremental-finalize-2 (Claude Fable 5.1, 2026-09-29): REPL-admitted on persvati (every form; keystones 16k and 2.8k steps, fn-sfi-extend-open-carried-keeps-carried 3.5M steps / 6.9 s). Teeth: positive witness of the complete antecedent and conclusion over two rounds (the second from the carried pair with no node pass); per-hypothesis removal: the invariant on the served path only (the empty node's tries, raw: the :exec path ADMITS a duplicate Message-ID the checkpoint's resume refuses; the carried trie refuses alike; in the logic the instance coincides -- the twin's inner mbe :logic sides answer from the node -- so the invariant is the guard's hypothesis, kept as the twin keystone's, no ground defthm refutes the weakened equality), the verdict (the bad base carries; its open says :ok under the lie), the bound and the count (as PRF-946's), each affirming the retained hypotheses and failing the omitted one and the conclusion, with must-fail-checked ground defthms; the step count equals the counters' advance; the executed-path closure (the :exec side of every mbe): the carried resume reaches neither fn-cnode-statep nor fn-rii-ix-of, the twin's reaches both. Wired: NOT YET (online-reclaim-5 installs under posting from the carried pair; READY 3 the open)."
+      "progress_note": "Lane incremental-finalize-2 (Claude Fable 5.1, 2026-09-29): REPL-admitted on persvati (every form; keystones 16k and 2.8k steps, fn-sfi-extend-open-carried-keeps-carried 3.5M steps / 6.9 s). Teeth: positive witness of the complete antecedent and conclusion over two rounds (the second from the carried pair with no node pass); per-hypothesis removal: the invariant on the served path only (the empty node's tries, raw: the :exec path ADMITS a duplicate Message-ID the checkpoint's resume refuses; the carried trie refuses alike; in the logic the instance coincides -- the twin's inner mbe :logic sides answer from the node -- so the invariant is the guard's hypothesis, kept as the twin keystone's, no ground defthm refutes the weakened equality), the verdict (the bad base carries; its open says :ok under the lie), the bound and the count (as PRF-946's), each affirming the retained hypotheses and failing the omitted one and the conclusion, with must-fail-checked ground defthms; the step count equals the counters' advance; the executed-path closure (the :exec side of every mbe): the carried resume reaches neither fn-cnode-statep nor fn-rii-ix-of, the twin's reaches both. Wired: NOT YET (online-reclaim-5 installs under posting from the carried pair; READY 3 the open).",
+      "events": [
+        "fn-sfi-cpr-resume-carried-is-sco-cpr-resume",
+        "fn-sfi-extend-open-carried-is-rii-extend-open",
+        "fn-sfi-extend-open-carried-finalizes-the-extension",
+        "fn-sfi-cpr-prefix-carried-car",
+        "fn-sfi-cpr-prefix-carried-keeps-carried",
+        "fn-sfi-cpr-resume-carried-keeps-carried",
+        "fn-sfi-extend-open-carried-keeps-carried",
+        "fn-sfi-extend-open-carried-count-and-bound",
+        "fn-sfi-carry-is-carried",
+        "fn-sfi-carried-msgid-trie-is-the-rebuilt-trie",
+        "fn-sfi-cpr-resume-carried-steps-bounded",
+        "fn-sfi-cpr-prefix-carried-steps-bounded",
+        "fn-sfi-extend-open-carried-is-extend-open",
+        "fn-sfi-next-lower-total-is-next-lower"
+      ]
     },
     {
       "id": "PRF-922",
@@ -14227,7 +14253,7 @@
         "PRF-380"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/packed-submission.lisp",
         "books/owner.lisp",
@@ -14330,7 +14356,7 @@
         "PRF-941"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/extent-retire.lisp",
         "tests/acl2/extent-retire-tests.lisp",
@@ -14342,10 +14368,7 @@
       "events": [
         "fn-xrt-reseat-frame-keeps-the-arena",
         "fn-xrt-reseat-checkpoint-frame-keeps-the-arena",
-        "fn-xrt-first-naming-none",
-        "fn-xrt-first-naming-found",
-        "fn-xrt-first-naming-compose",
-        "fn-xrt-close-set-is-safe"
+        "fn-xrt-quiet-files-are-unnamed"
       ]
     },
     {
@@ -14386,7 +14409,7 @@
         "PRF-274"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-host-relation.lisp",
         "tests/acl2/owner-host-relation-tests.lisp"
@@ -14412,7 +14435,7 @@
         "PRF-286"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-host-relation.lisp",
         "tests/acl2/owner-host-relation-tests.lisp"
@@ -14451,7 +14474,7 @@
         "PRF-286"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-host-relation.lisp"
       ],
@@ -14718,7 +14741,7 @@
         "PRF-921"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-number-bound.lisp",
         "tests/acl2/owner-number-bound-tests.lisp"
@@ -14747,7 +14770,7 @@
         "PRF-380"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reclaim-pass.lisp",
         "tests/acl2/owner-reclaim-conns-tests.lisp",
@@ -14789,7 +14812,7 @@
         "PRF-939"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reclaim-ready.lisp",
         "tests/acl2/owner-reclaim-ready-tests.lisp",
@@ -14817,7 +14840,7 @@
         "PRF-172"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/control-request-word.lisp",
         "tests/acl2/control-request-word-tests.lisp",
@@ -14845,7 +14868,7 @@
       "assumptions": [
         "A-PGS-HOST-IO"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/history-image-binding.lisp",
         "tests/acl2/history-image-binding-tests.lisp",
@@ -14880,7 +14903,7 @@
         "PRF-372"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/history-image-fold.lisp",
         "tests/acl2/history-image-binding-tests.lisp",
@@ -14902,7 +14925,7 @@
         "PRF-384"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "title": "A served read's cold line past the dependency deadline is answered 403 with the session unchanged; pipelined lines are answered in order (row A4, option (c))",
       "statement": "Subject (books/owner-cold-line.lisp): fn-ocln-unavailable-span, which host/owner-host.lisp fn-owner-unavailable-line-at calls from host/native/owner.lisp fnn-owner-unavailable-line once fn-otb-dependency-step answers :unavailable for the cold first line of a span aborted in the realizer's no-I/O mode (fnn-owner-chunk-span-no-io, fnn-owner-cold-line). KEYSTONE fn-ocln-a-cold-line-is-answered-unavailable: for a connection in command mode and I within the buffer, the result consumes exactly the octets up to and including the line's LF (fn-oct-line-end; at least one when any remain), carries one reply, fn-otb-unavailable-line (code 403), and its owner is OC with only that connection's wire reset to the start of a line in command mode with its limits kept. fn-ocln-unavailable-span-outside-command-mode-by-definition: otherwise nil (the host faults).",
       "evidence": [
@@ -14955,7 +14978,7 @@
         "PRF-939"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reclaim-instant.lisp",
         "tests/acl2/owner-reclaim-instant-tests.lisp",
@@ -15010,7 +15033,7 @@
       "assumptions": [
         "A-CHECKPOINT-PUBLICATION"
       ],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-finalize-published.lisp",
         "books/assumptions-publication.lisp",
@@ -15018,7 +15041,46 @@
         "tests/acl2/store-finalize-published-tests.lisp",
         "host/store-node-host.lisp"
       ],
-      "progress_note": "Lane incremental-finalize-3 (Claude Fable 5.1, 2026-09-29): READY 3 of row A9, the open wiring. Teeth (tests/acl2/store-finalize-published-tests.lisp): a positive witness of the complete antecedent and every conclusion (NEXT = 8, the open :ok at frontier 9 and at the publication frontier with the empty suffix); the keystone's hypothesis removed (a history that does not open :ok, published anyway: the twin refuses :history, the open from the tables opens, the equality fails; must-fail-checked); the trust row's constraint at a ground publication and its failure at a non-publication. Natives: recovery, checkpoint, checkpoint_auto, state_checkpoint, replay_determinism, served_differential."
+      "progress_note": "Lane incremental-finalize-3 (Claude Fable 5.1, 2026-09-29): READY 3 of row A9, the open wiring. Teeth (tests/acl2/store-finalize-published-tests.lisp): a positive witness of the complete antecedent and every conclusion (NEXT = 8, the open :ok at frontier 9 and at the publication frontier with the empty suffix); the keystone's hypothesis removed (a history that does not open :ok, published anyway: the twin refuses :history, the open from the tables opens, the equality fails; must-fail-checked); the trust row's constraint at a ground publication and its failure at a non-publication. Natives: recovery, checkpoint, checkpoint_auto, state_checkpoint, replay_determinism, served_differential.",
+      "events": [
+        "fn-sfp-open-from-publication-is-the-twin",
+        "fn-sfp-published-capture-finalizes-ok",
+        "fn-sfp-published-next-is-the-bound",
+        "fn-sfp-next-lower-natp",
+        "fn-sct-next-lower-is-next-lower",
+        "fn-sct-next-of-tables-of-capture",
+        "fn-sct-next-of-tables-is-bound-of-loaded-records",
+        "fn-sfp-open-under-checkpoint-publication",
+        "fn-assume-checkpoint-publication-is-a-publication",
+        "fn-sfp-extend-capture-by-nothing",
+        "fn-sfp-finalize-of-capture-is-the-open",
+        "fn-sfp-next-of-capture-tables",
+        "fn-sfp-observed-history-bound-natp",
+        "fn-sfp-observed-history-is-a-true-list"
+      ]
+    },
+    {
+      "id": "PRF-1005",
+      "title": "The carried pair's invariant made decidable: fn-sfk-carried-check's :ok establishes fn-sfi-cpr-carriedp and its :wrong-msgid-trie refutes it; the trust row A-CARRIED-PAIR",
+      "statement": "books/store-finalize-carried-check.lisp (fn-sfk-, row A9 item (2); lane incremental-finalize-3). fn-sfi-cpr-carriedp (PRF-968) is a verified guard the evaluator cannot run (fn-rii-okp's fn-rii-known-okp is a defun-sk) and ACL2 refuses an abstract stobj holding the pair (fn-cnode-statep reaches the attached fn-digest), so the :program host keeps it. fn-sfk-carried-check (r ix), guard t and executable (one node pass, fn-rii-ix-of; never on a served path), answers :ok, :wrong-msgid-trie, :not-paused, :node-not-configured, :not-a-pair or :uncertain-id-trie, kept distinct. KEYSTONES: fn-sfk-check-ok-is-carried (:ok implies fn-sfi-cpr-carriedp, via fn-sfk-check-ok-facts: :ok is the three conjuncts with IX exactly fn-rii-ix-of of the paused node, and fn-rii-okp-of-ix-of); fn-sfk-check-wrong-msgid-trie-is-not-carried (fn-sfi-carried-msgid-trie-is-the-rebuilt-trie: under fn-rii-okp the Message-ID trie is canonical, so a different one refutes the invariant); fn-sfk-check-shape-answers-are-not-carried (the three shape answers refute it by the invariant's own conjuncts); fn-sfk-carry-checks-ok (the open's own pair, fn-sfi-carry, checks :ok). :uncertain-id-trie decides nothing: fn-rii-known-okp is extensional and a structurally different id trie may still satisfy it; the check says so instead of guessing. Trust row A-CARRIED-PAIR (books/assumptions-publication.lisp: encapsulate fn-assume-carried-pairp, constraint fn-assume-carried-pair-is-carried; theorem fn-sfp-carried-open-under-carried-pair = PRF-968's keystone under the row): a host that carries the pair across extensions relies on passing the pair fn-sfi-carry produced or the previous carried entry answered, which the preservation theorems keep carried; nothing on a served path calls the carried entries at this revision (the open calls fn-sfi-extend-open, PRF-992), the row is the contract of the swap wiring that will. Item (3) decided here: fn-rii-sco-cpr-prefix-is-sco-cpr-prefix (and PRF-968's keystones) need NO fn-rii-okp hypothesis -- they equate logical values and the tries enter only through mbe :exec, whose faithfulness is the guard obligation of the twin's inner functions (fn-rii-okp is that guard); a wrong trie is a guard violation visible only on the raw path, which the tooth shows (the wrong pair admits a duplicate Message-ID the right pair refuses) while the check names it :wrong-msgid-trie. Adding the hypothesis would weaken a true theorem for nothing; the decidable check is what the boundary lacked.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-025",
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-968"
+      ],
+      "assumptions": [
+        "A-CARRIED-PAIR"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/store-finalize-carried-check.lisp",
+        "tests/acl2/store-finalize-carried-check-tests.lisp",
+        "books/assumptions-publication.lisp"
+      ],
+      "progress_note": "Lane incremental-finalize-3 (Claude Fable 5.1, 2026-09-29): REPL-green on persvati (every theorem under 400 steps). Teeth: the open's pair and a carried round's answered pair both check :ok (so on the test history the carried id trie IS structurally the rebuilt one); the empty node's tries check :wrong-msgid-trie and on the served path (raw) admit a duplicate Message-ID the right pair refuses; the three shape answers; :uncertain-id-trie reached with the right Message-ID trie and a foreign id trie."
     }
   ]
 }
