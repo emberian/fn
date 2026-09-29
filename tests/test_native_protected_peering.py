@@ -429,7 +429,7 @@ class NativeProtectedPeeringTests(unittest.TestCase):
                          before["records"].get("feed-offer", 0), (before, after))
         self.assertEqual(after["records"].get("feed-sent", 0),
                          before["records"].get("feed-sent", 0), (before, after))
-        status = b.operator("status", expect=EXIT_OK)
+        status = b.operator("status", "--replay", expect=EXIT_OK)
         self.assertIn(b"articles=1", status.stdout, status.stdout)
         self.witness({"kind": "feed-once", "security": "starttls",
                       "auth": "authinfo", "source_killed": True,
@@ -498,7 +498,7 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         self.assertGreaterEqual(settled["records"].get("feed-outcome", 0), 1, settled)
         self.assertGreater(settled["records"].get("feed-offer", 0),
                            interrupted["records"].get("feed-offer", 0))
-        status = b.operator("status", expect=EXIT_OK)
+        status = b.operator("status", "--replay", expect=EXIT_OK)
         self.assertIn(b"articles=1", status.stdout, status.stdout)
         self.witness({"kind": "feed-sent-restart", "security": "starttls",
                       "auth": "authinfo", "sender_stopped_after_sent": True,
