@@ -293,6 +293,97 @@
   :hints (("Goal" :induct (fn-ars-body-crlfp j fn-octets)
                   :in-theory (enable fn-article-body-crlfp))))
 
+; The line result's three faces, as the parse loop reads them: the same
+; verdict as the reference's, the same line, and the rest located (the
+; reference's rest IS the buffer's suffix at the twin's index).
+(defthm fn-ars-next-line-okp
+  (implies (natp j)
+           (equal (fn-article-line-okp (fn-ars-next-line j fn-octets))
+                  (fn-article-line-okp (fn-article-next-line (nthcdr j fn-octets))))))
+
+(defthm fn-ars-next-line-error
+  (implies (and (natp j)
+                (not (fn-article-line-okp (fn-article-next-line (nthcdr j fn-octets)))))
+           (equal (fn-ars-next-line j fn-octets)
+                  (fn-article-next-line (nthcdr j fn-octets)))))
+
+(defthm fn-ars-next-line-value
+  (implies (natp j)
+           (equal (fn-article-line-value (fn-ars-next-line j fn-octets))
+                  (fn-article-line-value (fn-article-next-line (nthcdr j fn-octets))))))
+
+; An :ok line result has its three positions.
+(local
+ (defthm fn-ars-reference-ok-shape
+   (implies (fn-article-line-okp (fn-article-next-line-aux ys lr left))
+            (and (consp (cdr (fn-article-next-line-aux ys lr left)))
+                 (consp (cddr (fn-article-next-line-aux ys lr left)))))
+   :hints (("Goal" :in-theory (enable fn-article-next-line-aux)
+                   :induct (fn-article-next-line-aux ys lr left)))))
+
+(defthm fn-ars-next-line-rest-natp
+  (implies (and (natp j)
+                (fn-article-line-okp (fn-ars-next-line j fn-octets)))
+           (natp (fn-article-line-rest (fn-ars-next-line j fn-octets))))
+  :hints (("Goal" :use ((:instance fn-ars-reference-rest-len
+                                   (ys (nthcdr j fn-octets)) (lr nil)
+                                   (left *fn-article-max-line-octets*)))
+                  :in-theory (e/d (fn-article-next-line
+                                   fn-ars-next-line-aux-is-reference
+                                   fn-article-line-okp fn-article-line-rest)
+                                  (fn-ars-reference-rest-len))))
+  :rule-classes (:rewrite :type-prescription))
+
+(defthm fn-ars-next-line-rest-bound
+  (implies (and (natp j)
+                (fn-article-line-okp (fn-ars-next-line j fn-octets)))
+           (<= (fn-article-line-rest (fn-ars-next-line j fn-octets))
+               (len fn-octets)))
+  :hints (("Goal" :use ((:instance fn-ars-reference-rest-len
+                                   (ys (nthcdr j fn-octets)) (lr nil)
+                                   (left *fn-article-max-line-octets*)))
+                  :in-theory (e/d (fn-article-next-line
+                                   fn-ars-next-line-aux-is-reference
+                                   fn-article-line-okp fn-article-line-rest)
+                                  (fn-ars-reference-rest-len))))
+  :rule-classes (:rewrite :linear))
+
+(defthm fn-ars-next-line-rest-located
+  (implies (and (natp j) (<= j (len fn-octets))
+                (fn-article-line-okp (fn-article-next-line (nthcdr j fn-octets))))
+           (equal (fn-article-line-rest (fn-article-next-line (nthcdr j fn-octets)))
+                  (nthcdr (fn-article-line-rest (fn-ars-next-line j fn-octets))
+                          fn-octets)))
+  :hints (("Goal" :use ((:instance fn-ars-reference-rest-located))
+                  :in-theory (e/d (fn-article-next-line
+                                   fn-ars-next-line-aux-is-reference
+                                   fn-article-line-okp fn-article-line-rest)
+                                  (fn-ars-reference-rest-located)))))
+
+(local (in-theory (disable fn-ars-next-line-aux-is-reference
+                           fn-ars-next-line-is-reference)))
+
+; The two verdict readers are one test; the loop's proof names this rule
+; and the rest of the book keeps it closed (fn-ars-of-okp reads the twin's).
+(local
+ (defthm fn-ars-result-okp-is-line-okp
+   (equal (fn-article-result-okp r) (fn-article-line-okp r))))
+
+(defthm fn-ars-line-okp-of-error
+  (not (fn-article-line-okp (fn-article-error c))))
+
+(defthm fn-ars-of-ok-located
+  (implies (and (natp k) (<= k (len fn-octets)))
+           (equal (fn-ars-of (fn-article-ok (fn-article-make h (nthcdr k fn-octets) f))
+                             (len fn-octets))
+                  (fn-article-ok (fn-article-make h k f))))
+  :hints (("Goal" :in-theory (enable fn-ars-of))))
+
+; The parse loop reads a line result only through its accessors, which
+; stay closed here so that the facets above are what the loop's proof sees.
+(local (in-theory (disable fn-article-line-okp fn-article-line-value
+                           fn-article-line-rest fn-article-result-okp)))
+
 (defthm fn-ars-parse-lines-is-reference
   (implies (and (natp i) (<= i (len fn-octets)))
            (equal (fn-ars-parse-lines i limits lines-left header-bytes nfields
@@ -301,18 +392,38 @@
                               (nthcdr i fn-octets) limits lines-left header-bytes
                               nfields fields-rev current header-rev)
                              (len fn-octets))))
+  ; The loop's own induction, both loops opened once a step, and only the
+  ; facets: no arithmetic, no accessor opens (the two bodies are the same
+  ; text, so each step is the facets' rewrites and nothing else).
   :hints (("Goal" :induct (fn-ars-parse-lines i limits lines-left header-bytes
                                               nfields fields-rev current
                                               header-rev fn-octets)
-                  :in-theory (e/d (fn-article-parse-lines)
-                                  (fn-article-next-line fn-ars-next-line
-                                   fn-article-new-field fn-article-add-fold
-                                   fn-article-header-rev-add-line
-                                   fn-article-finish-fields
-                                   fn-article-body-crlfp fn-ars-body-crlfp
-                                   fn-article-fold-linep fn-article-wspp
-                                   fn-article-limit-octets
-                                   fn-article-limit-fields)))))
+                  :expand ((:free (limits lines-left header-bytes nfields
+                                    fields-rev current header-rev)
+                                  (fn-ars-parse-lines i limits lines-left
+                                                      header-bytes nfields
+                                                      fields-rev current
+                                                      header-rev fn-octets))
+                           (:free (limits lines-left header-bytes nfields
+                                    fields-rev current header-rev)
+                                  (fn-article-parse-lines
+                                   (nthcdr i fn-octets) limits lines-left
+                                   header-bytes nfields fields-rev current
+                                   header-rev)))
+                  :in-theory (union-theories
+                              '(fn-ars-next-line-okp fn-ars-next-line-error
+                                fn-ars-next-line-value
+                                fn-ars-next-line-rest-natp
+                                fn-ars-next-line-rest-bound
+                                fn-ars-next-line-rest-located
+                                fn-ars-body-crlfp-is-reference
+                                fn-ars-of-error fn-ars-result-okp-is-line-okp
+                                fn-ars-line-okp-of-error fn-ars-of-ok-located
+                                natp-compound-recognizer
+                                (:induction fn-ars-parse-lines))
+                              (theory 'minimal-theory)))))
+
+(local (in-theory (disable fn-ars-result-okp-is-line-okp)))
 
 (local
  (defthm fn-ars-at-mostp-is-len
@@ -339,32 +450,73 @@
                                   (fn-article-parse-under fn-ars-parse-under)))))
 
 ; The body located: the reference's body is the buffer's suffix at the
-; twin's OFFSET (the reference's parse leaves the body as the rest after
-; the separator line, a suffix of its input).
+; twin's OFFSET.  The reference's parse leaves the body as the rest after
+; the separator line, a suffix of its input (fn-ars-suffixp: the suffix of
+; XS with R's length is R), and every line's rest is a suffix of the input.
+(defun fn-ars-suffixp (r xs)
+  ; A specification (no host path executes it): nthcdr's guard wants a list.
+  (declare (xargs :guard t :verify-guards nil))
+  (equal (nthcdr (nfix (- (len xs) (len r))) xs) r))
+
+(local
+ (defthm fn-ars-suffixp-reflexive
+   (fn-ars-suffixp xs xs)))
+
+(local
+ (defthm fn-ars-suffixp-len
+   (implies (fn-ars-suffixp r xs)
+            (<= (len r) (len xs)))
+   :rule-classes :forward-chaining))
+
+(local
+ (defthm fn-ars-suffixp-transitive
+   (implies (and (fn-ars-suffixp a b) (fn-ars-suffixp b c))
+            (fn-ars-suffixp a c))
+   :hints (("Goal" :in-theory (disable fn-ars-suffixp)
+                   :use ((:instance fn-ars-suffixp-len (r a) (xs b))
+                         (:instance fn-ars-suffixp-len (r b) (xs c))))
+           ("Goal'" :in-theory (enable fn-ars-suffixp)))))
+
+(local
+ (defthm fn-ars-next-line-rest-suffixp
+   (implies (fn-article-line-okp (fn-article-next-line ys))
+            (fn-ars-suffixp (fn-article-line-rest (fn-article-next-line ys)) ys))
+   :hints (("Goal" :in-theory (enable fn-article-next-line fn-article-line-okp
+                                      fn-article-line-rest)
+                   :use ((:instance fn-ars-reference-rest-is-suffix
+                                    (lr nil) (left *fn-article-max-line-octets*)))))))
+
+(local (in-theory (disable fn-ars-suffixp)))
+
 (local
  (defthm fn-ars-parse-lines-body-is-suffix
-   (implies (and (true-listp octets)
-                 (fn-article-result-okp
-                  (fn-article-parse-lines octets limits lines-left header-bytes
-                                          nfields fields-rev current header-rev)))
-            (let ((body (fn-article-body
-                         (fn-article-result-article
-                          (fn-article-parse-lines octets limits lines-left
-                                                  header-bytes nfields fields-rev
-                                                  current header-rev)))))
-              (and (<= (len body) (len octets))
-                   (equal (nthcdr (- (len octets) (len body)) octets) body))))
+   (implies (fn-article-result-okp
+             (fn-article-parse-lines octets limits lines-left header-bytes
+                                     nfields fields-rev current header-rev))
+            (fn-ars-suffixp
+             (fn-article-body
+              (fn-article-result-article
+               (fn-article-parse-lines octets limits lines-left header-bytes
+                                       nfields fields-rev current header-rev)))
+             octets))
    :hints (("Goal" :induct (fn-article-parse-lines octets limits lines-left
                                                    header-bytes nfields fields-rev
                                                    current header-rev)
-                   :in-theory (e/d (fn-article-parse-lines)
-                                   (fn-article-new-field fn-article-add-fold
-                                    fn-article-header-rev-add-line
-                                    fn-article-finish-fields
-                                    fn-article-body-crlfp
-                                    fn-article-fold-linep fn-article-wspp
-                                    fn-article-limit-octets
-                                    fn-article-limit-fields))))))
+                   :expand ((:free (limits lines-left header-bytes nfields
+                                     fields-rev current header-rev)
+                                   (fn-article-parse-lines
+                                    octets limits lines-left header-bytes
+                                    nfields fields-rev current header-rev)))
+                   :in-theory (union-theories
+                               '(fn-ars-suffixp-reflexive fn-ars-suffixp-transitive
+                                 fn-ars-next-line-rest-suffixp
+                                 fn-ars-result-okp-is-line-okp
+                                 fn-ars-line-okp-of-error
+                                 fn-article-ok fn-article-make
+                                 fn-article-result-article fn-article-body
+                                 car-cons cdr-cons
+                                 (:induction fn-article-parse-lines))
+                               (theory 'minimal-theory))))))
 
 (defthm fn-ars-body-is-located
   (implies (and (fn-octets-p fn-octets)
@@ -376,45 +528,39 @@
                   (fn-article-body
                    (fn-article-result-article
                     (fn-article-parse-under fn-octets limits)))))
-  :hints (("Goal" :in-theory (e/d (fn-article-parse-under)
+  :hints (("Goal" :in-theory (e/d (fn-article-parse-under fn-ars-of fn-ars-suffixp)
                                   (fn-article-parse-lines fn-ars-parse-lines
-                                   fn-article-limit-lines
+                                   fn-article-limit-lines fn-ars-suffixp-len
                                    fn-ars-parse-under-is-article-parse-under))
-                  :use ((:instance fn-ars-parse-under-is-article-parse-under)))))
+                  :use ((:instance fn-ars-parse-under-is-article-parse-under)
+                        (:instance fn-ars-parse-lines-body-is-suffix
+                                   (octets fn-octets)
+                                   (lines-left (1+ (fn-article-limit-lines limits)))
+                                   (header-bytes 0) (nfields 0) (fields-rev nil)
+                                   (current nil) (header-rev nil))
+                        (:instance fn-ars-suffixp-len
+                                   (r (fn-article-body
+                                       (fn-article-result-article
+                                        (fn-article-parse-lines
+                                         fn-octets limits
+                                         (1+ (fn-article-limit-lines limits))
+                                         0 0 nil nil nil))))
+                                   (xs fn-octets))))))
 
 ; -----------------------------------------------------------------------------
-; Guards.
-
-(defthm fn-ars-next-line-aux-index
-  (implies (and (natp j)
-                (fn-article-line-okp (fn-ars-next-line-aux j line-rev left fn-octets)))
-           (and (natp (fn-article-line-rest
-                       (fn-ars-next-line-aux j line-rev left fn-octets)))
-                (<= (fn-article-line-rest
-                     (fn-ars-next-line-aux j line-rev left fn-octets))
-                    (len fn-octets))))
-  :hints (("Goal" :induct (fn-ars-next-line-aux j line-rev left fn-octets)
-                  :in-theory (disable fn-ars-next-line-aux-is-reference)))
-  :rule-classes ((:forward-chaining
-                  :trigger-terms ((fn-ars-next-line-aux j line-rev left fn-octets)))
-                 :rewrite))
-
-(defthm fn-ars-next-line-aux-true-listp
-  (implies (true-listp line-rev)
-           (true-listp (fn-article-line-value
-                        (fn-ars-next-line-aux j line-rev left fn-octets))))
-  :hints (("Goal" :induct (fn-ars-next-line-aux j line-rev left fn-octets)
-                  :in-theory (disable fn-ars-next-line-aux-is-reference))))
+; Guards: the loop's obligations beyond the reference's are the next index
+; (the rest facets); the line's shape is the reference's
+; (fn-article-next-line-value-listp, fn-article-guard-backchaining).
 
 (verify-guards fn-ars-parse-lines
   :hints (("Goal"
            :in-theory
-           (e/d (fn-ars-next-line)
-                (fn-ars-next-line-aux fn-ars-next-line-aux-is-reference
+           (e/d (fn-article-guard-backchaining)
+                (fn-ars-next-line fn-ars-next-line-aux fn-ars-body-crlfp
+                 fn-article-next-line fn-article-next-line-aux
                  fn-article-new-field fn-article-split-colon-aux
-                 fn-article-line-value fn-article-line-rest
                  fn-article-add-fold fn-article-header-rev-add-line
-                 fn-article-finish-fields fn-ars-body-crlfp)))))
+                 fn-article-finish-fields fn-article-body-crlfp)))))
 (verify-guards fn-ars-parse-under)
 (verify-guards fn-ars-parse)
 
@@ -423,7 +569,9 @@
 ; replaced by the buffer parse, and each proved equal to it.
 
 (local (in-theory (disable fn-ars-parse fn-ars-parse-under fn-article-parse
-                           fn-article-parse-under fn-ars-of)))
+                           fn-article-parse-under fn-ars-of
+                           fn-article-result-article fn-article-fields
+                           fn-article-header fn-article-body)))
 
 ; books/peer-authored-accept.lisp fn-pa-carrier-kind.
 (defun fn-ars-carrier-kind (fn-octets)
