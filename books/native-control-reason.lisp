@@ -488,3 +488,52 @@
                     fn-nctrl-reasoned-reply-payload-decode
                     fn-native-control-reasoned-client-step
                     fn-native-control-reply-detail))
+
+; -----------------------------------------------------------------------------
+; PKT-472 (e): the refusals the host observes as a condition class.  A store,
+; OS or socket error inside a control request's handling (host/native/
+; control.lisp fnn-control-handle-client) is a refusal the host classifies,
+; with no ACL2 decision behind it; ACL2 names the class as its reason, so a
+; reasoned frame's reply says which refusal it was instead of NONE.
+
+(defconst *fn-nctrl-host-refusal-classes* '(:store-error :os-error :socket-error))
+
+(defun fn-native-control-host-refusal-reason (class)
+  (declare (xargs :guard t))
+  (if (member-equal class *fn-nctrl-host-refusal-classes*) class nil))
+
+(defthm fn-native-control-host-refusal-reason-of-a-class
+  (implies (member-equal class *fn-nctrl-host-refusal-classes*)
+           (equal (fn-native-control-host-refusal-reason class) class)))
+
+; KEYSTONE (PKT-472 (e)).  Over the reply the host writes for such a refusal
+; (fn-native-control-reasoned-reply-encode :refused REASON) and the client's
+; read of it: the printed detail is the class's own word, never NONE; a
+; class outside the three names no reason.
+(defthm fn-native-control-host-refusal-names-its-class
+  (let* ((reason (fn-native-control-host-refusal-reason class))
+         (step (fn-native-control-reasoned-client-step
+                (fn-native-control-reasoned-reply-read
+                 (fn-native-control-reasoned-reply-encode :refused reason)))))
+    (implies (member-equal class *fn-nctrl-host-refusal-classes*)
+             (and (equal reason class)
+                  (equal (fn-native-control-reply-detail (cadr step) (caddr step))
+                         (fn-nctrl-reason-word class))
+                  (not (equal (fn-nctrl-reason-word class)
+                              *fn-nctrl-no-reason-word*)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-native-control-host-refusal-reason-of-a-class)
+                 (:instance fn-native-control-printed-reason-is-the-decisions
+                            (status :refused) (reason class))
+                 (:instance fn-nctrl-reason-word-of-a-reason-is-not-none
+                            (reason class)))
+           :in-theory (disable fn-native-control-printed-reason-is-the-decisions
+                               fn-nctrl-reason-word-of-a-reason-is-not-none
+                               fn-native-control-host-refusal-reason-of-a-class
+                               fn-native-control-host-refusal-reason
+                               fn-nctrl-reason-word
+                               member-equal))))
+
+(defthm fn-native-control-host-refusal-reason-outside-is-none
+  (implies (not (member-equal class *fn-nctrl-host-refusal-classes*))
+           (equal (fn-native-control-host-refusal-reason class) nil)))

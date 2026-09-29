@@ -374,8 +374,9 @@ Every post by a login carries a line like this:
 Injection-Info: news.example.org; posting-account="8c59...f172"; mail-complaints-to="abuse@example.org"
 ```
 
-The `posting-account` value is the same for every post by one login. So
-anyone can tell that two posts came from the same login. Nobody can work
+The `posting-account` value is the same for every post by one account
+(the principal a login signs in as; usually one login is one account). So
+anyone can tell that two posts came from the same account. Nobody can work
 out the login name from it without your node's secret key. Tell the
 people you give logins to.
 

@@ -1753,8 +1753,10 @@ packaging/fn-native operator /etc/fn/fn.toml account hash alice
 ```
 
 It prints the value `alice`'s posts carry (it reads the node secret, with
-the same permission checks as the owner; the secret itself is never
-printed). Articles relayed from peers keep the peer's own `Injection-Info`
+the same permission checks as the owner, and the credential file: the value
+is keyed by alice's account, the principal her credential names, or for an
+invitation-code account its login's local principal; the secret itself is
+never printed; `books/native-operator.lisp` `fn-nop-account-hash`). Articles relayed from peers keep the peer's own `Injection-Info`
 untouched. The decision is ACL2's (`books/injection-info-params.lisp`,
 `specs/nntp.md` "Injection-Info parameters").
 
