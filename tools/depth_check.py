@@ -670,7 +670,7 @@ def world_classes(path: Path) -> dict[str, str]:
     return out
 
 
-def _xargs(form) -> dict[str, object]:
+def _interpreted_xargs(form) -> dict[str, object]:
     found: dict[str, object] = {}
     for item in form[3:] if isinstance(form, list) else ():
         if isinstance(item, list) and item and _name(item[0]) == "declare":
@@ -692,7 +692,7 @@ def static_class(d: callgraph.Definition, verified_later: set[str],
                  eager_books: set[str]) -> str:
     """The symbol class the source gives D (an estimate; see above)."""
     head = callgraph.head(d.form)
-    xargs = _xargs(d.form)
+    xargs = _interpreted_xargs(d.form)
     mode = str(xargs.get("mode", "")).lower().lstrip(":")
     if mode == "program":
         return "program"
