@@ -38,6 +38,8 @@
 (include-book "../books/owner-checkpoint-open")
 ; PKT-868: the operator's compaction request on a running owner.
 (include-book "../books/owner-compact-request")
+; S3b: the native export request/status decisions belong to the full image.
+(include-book "../books/owner-export-request")
 ; Row S10 (lane operability-2): a refused control post completion names the
 ; Store's word on the reply and the line.
 (include-book "../books/owner-control-post-reason")
