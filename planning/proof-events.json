@@ -7703,11 +7703,6 @@
         {
           "kind": "theorem",
           "name": "fn-cnx-freshp-of-cat-writers"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cnxw-windows-is-range",
-          "note": "The number range cut into windows of any width is the range (PKT-733 (4)): the equation a bounded OVER arm needs."
         }
       ]
     },
