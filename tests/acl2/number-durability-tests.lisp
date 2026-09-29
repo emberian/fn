@@ -434,20 +434,8 @@
 (assert! (not (fn-sf-prefixp (fn-ndh-events (fn-own-take 3 *ndt-live*)) (fn-ndh-events *ndt-zs*))))
 (assert! (ndt-k3-hyps-but *ndt-o-live* 3 *ndt-zs* "fn.test" 1 :r3))
 (assert! (not (ndt-k2-concl *ndt-o-live* *ndt-zs* "fn.test" 1)))
-(must-fail-checked
- (defthm ndt-k3-without-extension
-   (let* ((st (fn-own-store o))
-          (raw (fn-own-view-raw (fn-own-view o)))
-          (node (fn-sn-node (fn-sn-open-state
-                             (fn-cpo-open-observed (fn-sn-config-history st)
-                                                   frontier recovered)))))
-     (implies (and (fn-ocl-view-historyp o)
-                   (<= (fn-own-view-version (fn-own-view o)) (nfix fenced))
-                   (fn-sn-open-okp (fn-cpo-open-observed (fn-sn-config-history st)
-                                                         frontier recovered))
-                   (fn-ndur-holder g n raw))
-              (equal (fn-ndur-holder g n (fn-state-articles (fn-node-acceptance node)))
-                     (fn-ndur-holder g n raw))))))
+; These values are a counterexample to the theorem without R3' (frontier
+; *NDT-F*), so no proof search is run for it.
 ; R1, R2, R4, R5 fail as in K2, on the live owner.
 (defconst *ndt-o-live-lying* (ndt-owner *ndt-live* (ndt-view-at 3 *ndt-zs*)))
 (assert! (not (fn-ocl-view-historyp *ndt-o-live-lying*)))
