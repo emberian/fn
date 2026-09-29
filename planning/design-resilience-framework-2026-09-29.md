@@ -295,6 +295,17 @@ The row stays pending until a matching-image native run. A new socket does
 not establish native CID reuse, and completion/close logs alone do not
 establish worker thread death. The reclaim owner owns that join extension.
 
+Capture-first reclaim continuation: `adapters/reclaim_hold.py` starts a real
+recorded reclaim held at capture, then acquires a new live OVER response
+hold (the actual off-mutex quantum marker after ownership acquisition).
+A full candidate ARTICLE completes while competing work is held. Resuming
+reclaim must produce the actual readers deferral; draining the five-row
+captured response must settle that same CID. The next recorded reclaim
+must install and leave the retained article readable and the eligible one
+distinctly reclaimed. This is a bounded recorded-expiry fixture, not an
+arbitrary IR interpreter or a physical-sector release claim. Its source
+row remains pending matching-image execution and native composition.
+
 W7d **power_loss as a backend**. DONE: crash-image selection is an
 environment fact with the storage profile's ordering constraints made
 explicit (preflush/FUA semantics from dm-log-writes); `classify`/`bindings`
