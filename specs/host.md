@@ -1224,7 +1224,18 @@ decision named (`fn-native-control-printed-reason-is-the-decisions`). The
 kind-2 reply is unchanged, so a client that sends the plain request reads
 what it always read; a new client that meets an owner predating kind 13 gets
 that owner's refusal of a frame it could not decode and resends the plain
-request once. PRF-172; the native cases are SCN-102.
+request once. PRF-172; the native cases are SCN-102. A decision that owes
+the operator a sentence (a live `policy set max-transactions|max-history-
+octets|max-article-octets N`: what was applied, what the next start
+reserves, the use a lowering is below) is answered with reply kind 23: the
+status, the reason word (the decision's class: `applied`, `recorded`,
+`below-current-use`, ...) and a LINE ACL2 rendered
+(`fn-lim-decision-line`; printable ASCII, spaces allowed, at most 1,024
+octets), which the client prints after the status (`ACCEPTED applied limit
+max-transactions=14 heap=2342 MB: served now, no data moved`); a reply with
+no line is kind 18, unchanged (books/native-control-line.lisp,
+`fn-native-control-printed-line-is-the-decisions`, PRF-975;
+tests/test_native_limits_live.py).
 
 HST-011: An operator reads what the owner decided about withdrawing
 articles, in ACL2's words. `operator CONFIG control log` prints the count and

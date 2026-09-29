@@ -4,6 +4,7 @@
 ;; host-decisions-2 packet B: the control launch decision (fn-ncla-).
 (include-book "../books/native-control-launch")
 (include-book "../books/native-control-reason")
+(include-book "../books/native-control-line")
 (include-book "../books/consumer-local-control")
 (include-book "../books/consumer-wait-codec")
 (include-book "../books/consumer-reason")
@@ -236,6 +237,25 @@
                   :guard (fn-cbor-octet-listp octets)))
   (fn-native-control-reasoned-client-step
    (fn-native-control-reasoned-reply-read octets)))
+
+;; Row S1 (books/native-control-line.lisp, kind 23): a reasoned reply that
+;; carries the owner's printed line; a nil LINE seals the reasoned reply.
+(defun fn-native-control-host-lined-reply-encode (status reason line)
+  (declare (xargs :mode :program))
+  (fn-native-control-lined-reply-encode status reason line))
+
+(defun fn-native-control-host-lined-client-step (octets)
+  ; (:status STATUS WORD LINE) for a lined reply, else the reasoned step.
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
+  (fn-native-control-lined-client-step
+   (fn-native-control-lined-reply-read octets)))
+
+(defun fn-native-control-host-lined-detail (step)
+  ; What the operator's line carries after the status: the owner's line,
+  ; else the refusal's word.
+  (declare (xargs :mode :program))
+  (fn-native-control-lined-detail step))
 
 (defun fn-native-control-host-reply-detail (status word)
   ; The reason word the operator's line carries after the status, or nil.

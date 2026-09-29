@@ -139,9 +139,11 @@ SECONDS is the deadline; a consumer wait's client allows its timeout more."
             ;; (`fn-native-live-status-host-answer').
             ((and (consp status) (eq (first status) :live-status-reply))
              (second status))
+            ;; A reply with no line seals kind 18 as before
+            ;; (fn-ncline-read-of-a-lineless-encode).
             ((and (consp status) (eq (first status) :reasoned-reply))
-             (fnn-core 'fn-native-control-host-reasoned-reply-encode
-                       (second status) (third status)))
+             (fnn-core 'fn-native-control-host-lined-reply-encode
+                       (second status) (third status) (fourth status)))
             ;; `tls reload' / the served line (PRF-212): FNCT kind 20,
             ;; sealed by ACL2 (host/native/tls-reload.lisp).
             ((and (consp status) (eq (first status) :tls-reply))
@@ -532,9 +534,12 @@ ACL2 returns."
     ;; host/native/admin.lisp fnn-owner-live-admin-serialized); a reasoned
     ;; frame gets the reasoned reply (reason nil is ACL2's NONE), any other
     ;; frame the plain status an old client parses.
-    (let ((reason nil))
+    ;; A limit decision also names its sentence, (:reason STATUS REASON
+    ;; LINE): the reply carries ACL2's line (books/native-control-line.lisp,
+    ;; kind 23).
+    (let ((reason nil) (line nil))
       (when (and (consp status) (eq (first status) :reason))
-        (setq reason (third status) status (second status)))
+        (setq reason (third status) line (fourth status) status (second status)))
       (fnn-control-test-after-submit
        (if (and (consp status) (eq (first status) :live-status-reply))
            nil
@@ -544,7 +549,7 @@ ACL2 returns."
                           :consumer-status-reply)))
            (second status) status)))
       (when (and reasoned (keywordp status))
-        (setq status (list :reasoned-reply status reason)))
+        (setq status (list :reasoned-reply status reason line)))
       ;; PKT-709: a reasoned consumer request's refusal answers the reasoned
       ;; reply (its status and ACL2's reason); an acceptance answers the
       ;; consumer reply it always did.
@@ -802,11 +807,12 @@ nothing); or the transport outcome of the stage reached.  WORD is ACL2's
 octets, or NIL.  PLAIN-THUNK encodes the plain request, only for a resend."
   (multiple-value-bind (frame stage) (fnn-control-exchange path reasoned-list)
     (let ((step (if frame
-                    (fnn-core 'fn-native-control-host-reasoned-client-step
+                    (fnn-core 'fn-native-control-host-lined-client-step
                               (fnn-octet-list frame))
                   '(:transport))))
       (case (first step)
-        (:status (values (second step) (third step)))
+        ;; LINE: the owner's sentence (kind 23), or NIL.
+        (:status (values (second step) (third step) (fourth step)))
         (:resend (multiple-value-bind (plain plain-stage)
                      (let ((plain (funcall plain-thunk)))
                        (unless (fnn-octet-list-p plain)
@@ -820,7 +826,8 @@ octets, or NIL.  PLAIN-THUNK encodes the plain request, only for a resend."
 
 (defun fnn-control-admin (path-octets argv)
   "Send one ACL2-bounded administrative vector to the live owner.
-Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
+Answers (values STATUS WORD LINE): WORD is ACL2's reason word (PKT-453 (a)),
+LINE the owner's sentence when its reply carried one (kind 23), else NIL."
   (let ((reasoned (fnn-core 'fn-native-control-host-reasoned-admin-encode argv)))
     (unless (fnn-octet-list-p reasoned)
       (fnn-fault "ACL2 refused normalized live administration"))

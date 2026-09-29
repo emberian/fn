@@ -35,7 +35,8 @@ def article(tag, n):
 # The owner's reservation, pinned: fn-lim-decide compares the new profile's
 # heap figure with the running process's dynamic space (host/native/admin.lisp
 # fnn-owner-limit-serialized, run-mb), and the developer image's own figure is
-# the machine's (13,398 MB answered on hbox), not the deployed launcher's.
+# the machine's (a raise to 13,398 MB was applied on hbox), not a deployed
+# launcher's.  The reply carries ACL2's sentence (books/native-control-line.lisp).
 RESERVATION = {"SBCL_USER_ARGS": "--dynamic-space-size 4096"}
 
 
@@ -74,8 +75,8 @@ class LimitsLiveTests(AutoCheckpointFixture):
         self.assertEqual(outcomes[-1], 1, "the post past T is refused before the raise")
         raised = self.policy("max-transactions", self.T + 2)
         self.assertEqual(raised.returncode, EXIT_OK, raised.stderr.decode())
-        self.assertIn(b"applied:max-transactions=14", raised.stderr)
-        self.assertIn(b"no-data-moved", raised.stderr)
+        self.assertIn(b"applied limit max-transactions=14 heap=", raised.stderr)
+        self.assertIn(b"MB: served now, no data moved", raised.stderr)
         # Served now: the same owner admits a post past the old T.
         self.assertEqual(self.post("within", 100), EXIT_OK)
         self.node.stop(process=owner)
@@ -87,9 +88,9 @@ class LimitsLiveTests(AutoCheckpointFixture):
         self.fill("beyond", 0, self.T)
         raised = self.policy("max-history-octets", 805306368)
         self.assertEqual(raised.returncode, EXIT_OK, raised.stderr.decode())
-        self.assertIn(b"recorded:max-history-octets=805306368:effective-at-next-start",
-                      raised.stderr)
-        self.assertIn(b"no-data-moved", raised.stderr)
+        self.assertIn(b"recorded limit max-history-octets=805306368 effective-at-next-start: "
+                      b"takes effect at the next restart (about ", raised.stderr)
+        self.assertIn(b"no data moved; the next start reserves heap=", raised.stderr)
         self.node.stop(process=owner)
         # The next open serves the recorded profile.
         lines = self.status_lines()
@@ -102,7 +103,8 @@ class LimitsLiveTests(AutoCheckpointFixture):
         before = sorted(p.name for p in (self.store / "config").iterdir())
         lowered = self.policy("max-transactions", 3)
         self.assertEqual(lowered.returncode, 1, lowered.stderr.decode())
-        self.assertIn(b"below-current-use:max-transactions=3:the-store-holds=", lowered.stderr)
+        self.assertIn(b"refused limit max-transactions=3 below-current-use: the store holds 6",
+                      lowered.stderr)
         self.assertEqual(sorted(p.name for p in (self.store / "config").iterdir()), before)
         self.node.stop(process=owner)
         # Offline, the same refusal, in ACL2's sentence.

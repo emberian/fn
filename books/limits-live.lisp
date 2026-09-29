@@ -232,54 +232,24 @@
   (declare (xargs :guard t))
   (if (fn-lim-acceptedp d) 0 1))
 
-; The same decision as one word, for the control reply's reason field
+; The decision's class as one word, for the control reply's reason field
 ; (books/native-control-reason.lisp: printable, no spaces, folded to lower
-; case): what a live owner answers the operator.  The owner's log carries
-; fn-lim-decision-line.
-(defun fn-lim-decision-word (field n d open-ms)
+; case).  The sentence travels as the reply's line (books/native-control-
+; line.lisp, kind 23: fn-lim-decision-line).
+(defun fn-lim-decision-word (d)
   (declare (xargs :guard t))
-  (let* ((d (true-list-fix d))
-         (f (concatenate 'string (fn-lim-word field) "=" (fn-heap-decimal n))))
-    (cond ((equal (car d) :applied)
-           (concatenate 'string "applied:" f ":heap=" (fn-heap-decimal (nth 1 d))
-                        "mb:served-now:no-data-moved"))
-          ((equal (car d) :at-restart)
-           (concatenate 'string "recorded:" f
-                        ":effective-at-next-start:takes-effect-at-the-next-restart:about-"
-                        (fn-heap-decimal (+ 1 (floor (nfix open-ms) 1000)))
-                        "s:no-data-moved:next-start-heap="
-                        (fn-heap-decimal (nth 1 d)) "mb"))
-          ((equal (nth 1 d) :below-current-use)
-           (concatenate 'string "below-current-use:" f ":the-store-holds="
-                        (fn-heap-decimal (nth 3 d))))
-          ((equal (nth 1 d) :profile-invalid)
-           (concatenate 'string "profile-invalid:" f ":" (fn-lim-word (nth 2 d))))
-          ((equal (nth 1 d) :not-a-live-limit)
-           (concatenate 'string "not-a-live-limit:" f))
-          (t
-           (concatenate 'string (fn-lim-word (nth 1 d)) ":" f ":heap="
-                        (fn-heap-decimal (nth 2 d)) "mb:machine="
-                        (fn-heap-decimal (nth 3 d)) "mb")))))
+  (let ((d (true-list-fix d)))
+    (cond ((equal (car d) :applied) "applied")
+          ((equal (car d) :at-restart) "recorded")
+          (t (fn-lim-word (nth 1 d))))))
 
-(defun fn-lim-decision-reason (field n d open-ms)
+(defun fn-lim-decision-reason (d)
   (declare (xargs :guard t))
-  (intern-in-package-of-symbol (fn-lim-decision-word field n d open-ms)
-                               'fn-lim-decide))
+  (intern-in-package-of-symbol (fn-lim-decision-word d) 'fn-lim-decide))
 
 ; The control status a live owner answers for decision D.
 (defun fn-lim-decision-status (d)
   (declare (xargs :guard t))
   (if (fn-lim-acceptedp d) :accepted :refused))
-
-; What the operator's line carries after an ACCEPTED reply's status: the
-; owner's word when it named one (a limit decision), else nothing -- the
-; refusals' words are fn-native-control-reply-detail's.
-(defun fn-lim-reply-note (status word)
-  (declare (xargs :guard t))
-  (if (and (equal (fn-native-control-status-class status) :accepted)
-           (consp word)
-           (not (equal word *fn-nctrl-no-reason-word*)))
-      word
-    nil))
 
 (in-theory (disable fn-lim-decide fn-lim-effective fn-lim-apply-deltas))

@@ -146,21 +146,16 @@
 (assert! (equal (fn-lim-decision-exit *lim-t-later*) 0))
 (assert! (equal (fn-lim-decision-exit '(:refused :below-current-use "max-transactions" 100)) 1))
 
-; The control reply's word (fn-lim-decision-word, one printable word) and
-; the note an accepted reply prints (fn-lim-reply-note).
-(assert! (equal (fn-lim-decision-word "max-transactions" 4096 '(:at-restart 2688) 4200)
-                "recorded:max-transactions=4096:effective-at-next-start:takes-effect-at-the-next-restart:about-5s:no-data-moved:next-start-heap=2688mb"))
-(assert! (equal (fn-lim-decision-word "max-transactions" 99
-                                      '(:refused :below-current-use "max-transactions" 100) 0)
-                "below-current-use:max-transactions=99:the-store-holds=100"))
-(assert! (consp (fn-nctrl-reason-word
-                 (fn-lim-decision-reason "max-transactions" 4096 '(:at-restart 2688) 4200))))
-(assert! (not (equal (fn-nctrl-reason-word
-                      (fn-lim-decision-reason "max-transactions" 4096 '(:at-restart 2688) 4200))
-                     *fn-nctrl-unnamed-reason-word*)))
+; The control reply's reason word (fn-lim-decision-word): the decision's
+; class; the sentence is the reply's line (tests/acl2/native-control-line-tests).
+(assert! (equal (fn-lim-decision-word '(:applied 2342)) "applied"))
+(assert! (equal (fn-lim-decision-word '(:at-restart 2688)) "recorded"))
+(assert! (equal (fn-lim-decision-word '(:refused :below-current-use "max-transactions" 100))
+                "below-current-use"))
+(assert! (equal (fn-lim-decision-word '(:refused :machine-cannot-hold-profile 2688 2048))
+                "machine-cannot-hold-profile"))
+(assert! (equal (fn-nctrl-reason-word (fn-lim-decision-reason '(:at-restart 2688)))
+                '(114 101 99 111 114 100 101 100)))
 (assert! (equal (fn-lim-decision-status *lim-t-later*) :accepted))
 (assert! (equal (fn-lim-decision-status '(:refused :below-current-use "max-transactions" 100))
                 :refused))
-(assert! (equal (fn-lim-reply-note :accepted '(97 98)) '(97 98)))
-(assert! (null (fn-lim-reply-note :accepted *fn-nctrl-no-reason-word*)))
-(assert! (null (fn-lim-reply-note :refused '(97 98))))

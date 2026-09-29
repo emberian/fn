@@ -372,9 +372,8 @@ every :set-limit row (ACL2's fn-store-lim-effective over the records)."
             values use run-mb core +fnn-gc-nursery-octets+ observations
             (fnn-heap-history-observation (fnn-store-root store) values)))
 
-(defun fnn-lim-reason (plan decision store)
-  (fnn-core 'fn-lim-decision-reason (fnn-lim-plan-field plan) (fnn-lim-plan-n plan)
-            decision (fnn-store-open-ms store)))
+(defun fnn-lim-reason (decision)
+  (fnn-core 'fn-lim-decision-reason decision))
 
 (defun fnn-lim-line (plan decision store)
   (fnn-core 'fn-lim-decision-line (fnn-lim-plan-field plan) (fnn-lim-plan-n plan)
@@ -397,7 +396,7 @@ ordinary live reconfiguration, and on :applied served at once."
               (d (fnn-lim-decision store plan values use run-mb core observations)))
          (fnn-err "LIMIT ~a" (fnn-lim-line plan d store))
          (if (not (eq (fnn-core 'fn-lim-decision-status d) :accepted))
-             (list :reason :refused (fnn-lim-reason plan d store))
+             (list :reason :refused (fnn-lim-reason d) (fnn-lim-line plan d store))
            (multiple-value-bind (word reason)
                (fnn-owner-live-reconfigure-locked
                 service
@@ -417,7 +416,8 @@ ordinary live reconfiguration, and on :applied served at once."
                       (fnn-indeterminate
                        "owner refused a durably recorded limit's profile"))
                     (setf (fnn-store-config store) served)))
-                (list :reason :accepted (fnn-lim-reason plan d store)))))))))))
+                (list :reason :accepted (fnn-lim-reason d)
+                      (fnn-lim-line plan d store)))))))))))
 
 (defun fnn-admin-execute-limit (store plan)
   "The offline limit change: no process holds a reservation (run-mb 0), so an

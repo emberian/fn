@@ -173,6 +173,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-control-tests \
 	books/native-control-reason \
 	tests/acl2/native-control-reason-tests \
+	books/native-control-line \
+	tests/acl2/native-control-line-tests \
 	tests/acl2/native-control-host-tests \
 	books/native-live-status \
 	tests/acl2/native-live-status-tests \
