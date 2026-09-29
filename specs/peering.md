@@ -590,6 +590,9 @@ Three functions, one decision.
   '(:not-a-peer :no-inbound :message-id-syntax :history :staged :busy :fenced
     :inflight-limit :capacity :out-of-scope :loop :no-date :date-future :no-clock
     :proto-article :oversize :unknown-group :date-cutoff))
+;; (books/peer-inbound.lisp is the authority; it adds, among others,
+;; :line-length, a header line over RFC 5322 section 2.1.1's 998 octets,
+;; refused by that name as POST refuses it: row I5.)
 
 (defun fn-peer-decision (kind reason) (list kind reason))
 (defun fn-peer-decision-kind   (d) (car d))

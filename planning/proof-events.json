@@ -13506,6 +13506,10 @@
         {
           "kind": "theorem",
           "name": "fn-inj-decide-line-length-is-a-long-header-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-decide-transfer-line-length-is-a-long-header-line"
         }
       ]
     },
