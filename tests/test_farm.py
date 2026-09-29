@@ -906,8 +906,13 @@ class WaitTests(unittest.TestCase):
     def test_progress_counts_markers_in_the_run_directory_not_the_farm_log(self):
         # Until 2026-09-22 the script grepped the farm log, which carries no
         # per-book marker, so every progress line read "0 books certified".
+        # Since item 63 the run directory is the one the farm log names, else
+        # the newest certify-* directory stamped at the run's start (not a
+        # glob over every run's directories).
         script = farm.progress_script(Path("/remote/root"), "run-x")
-        self.assertIn("build/acl2/certify-*/", script)
+        self.assertIn("build/acl2/certify-[0-9]{8}T[0-9]{6}Z-[0-9]+", script)
+        self.assertIn("glob(", script)
+        self.assertIn("certify-*", script)
         self.assertIn("grep -lE '^(ACL2 [^[:space:]]*>)?FN_CERTIFY_SUCCESS", script)
         self.assertIn("*.certify.log", script)
         self.assertIn("STARTED", script)
