@@ -282,6 +282,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-bpaj-` | `bp-native-app` | Native BP request intent, exact evolving-Store binding, and receipt-journal replay join; host wrappers use the same dispatch definitions |
 | `fn-bso-` | `byte-store-observation`, `byte-store-observation-scan`, and their ACL2 test books | Visible Store directory comparison across physical/model inode renaming: exact names and file octets plus the hard-link alias partition in root, transactions and staging. Its scanner theorem also requires identical ordered transaction names and a valid model scan. Unreachable inodes are outside this read-only observation. |
 | `fn-tlsr-`, `tlst-` | `tls-reload`, `tests/acl2/tls-reload-tests` | `tls reload` (PRF-212, HST-020): the leaf's validity times and subjectAltName dNSNames parsed from the octets the TLS library hands over, the decision whether a running owner takes renewed material (`fn-tlsr-decide`), the served line `status` prints, and the FNCT kind-19 request and kind-20 reply |
+| `fn-ofr-` | `open-frontier` | The open's transaction frontier (row B10): the folds over Store events and configuration records (`fn-ofr-frontier`, called by the host's `fn-store-cfg-next-txid`) and the keystone that a replay that succeeds ends idle at or below it (`fn-ofr-replay-ok-frontier-admits`) |
 
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `fn-bprj-` and similar; they are `:program` mode and outside the proof boundary.
