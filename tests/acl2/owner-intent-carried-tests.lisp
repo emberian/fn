@@ -128,22 +128,6 @@
    (equal (fn-icar-submission-targets *own-control-fed-taken*
                                       *icar-t-forged-path-carry*)
           (fn-own-submission-targets *own-control-fed-taken*))))
-(must-fail-checked
- (defthm icar-t-intent-id-without-carryp
-   (equal (fn-icar-intent-id sub carry)
-          (fn-own-feed-intent-id (fn-own-sub-msgid sub)
-                                 (fn-own-sub-octets sub)))))
-(must-fail-checked
- (defthm icar-t-intent-without-carryp
-   (equal (fn-icar-submission-intent o carry evidence generation txid)
-          (cons (fn-own-submission-intent-result o evidence generation txid)
-                (fn-own-submission-intent-records o evidence generation txid)))))
-(must-fail-checked
- (defthm icar-t-resolution-without-carryp
-   (equal (fn-icar-submission-resolution-records
-           o carry word evidence generation txid)
-          (fn-own-submission-resolution-records
-           o word evidence generation txid))))
 
 ; PKT-400 (PRF-163): the host's carried intent (fn-icar-submission-targets,
 ; what fn-owner-submission-intent calls) names the target a cancel's

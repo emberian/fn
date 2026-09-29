@@ -259,8 +259,8 @@ them is `fn-record-p`, whose eleventh field is `fn-record-stampp`.
   :rule-classes nil)
 ```
 
-T1's fifth constraint, `fn-record-accepted-input-header`, pins six octets that
-include the version `0`. At schema 1 it is replaced by two:
+T1's fifth constraint pinned six header octets that included the version `0`.
+At schema 1 it is replaced by two:
 
 ```
 (defconst *fn-record-magic-octets* '(68 102 110 45 114))  ; bstr head, "fn-r"
@@ -512,7 +512,8 @@ served path reaches as today:
 stays the subject clause.
 
 **The definitions.** The fuel argument and `*fn-nntp-newnews-parse-budget*`
-are deleted with `fn-nntp-newnews-stamp` and `fn-nntp-newnews-field-value`.
+are deleted with the per-article parse they bounded (the payload parsed for
+its `Injection-Date`, then `Date`, per article per query).
 The scan walks the committed list newest first, as today, carrying one value:
 
 ```
@@ -571,13 +572,14 @@ not about the matched groups.
    (fn-nntp-newnews-scan groups threshold articles horizon)))
 ```
 
-The plan's name `fn-nntp-newnews-scan-reports-only-articles-accepted-at-or-after`
-is the soundness half of the first keystone; the equation is stated instead
+The plan's soundness theorem (the scan reports only articles accepted at or
+after the instant) is the soundness half of the first keystone and is not a
+separate event; the equation is stated instead
 because it carries completeness as well: an article accepted at or after the
 instant in a matched group is reported, which the budgeted scan could not
-promise. `fn-nntp-newnews-scan-reports-only-witnessed-lines`,
-`-answers-exactly-within-the-budget`, `-reports-at-most-the-budget` and
-`-refusal-is-the-only-other-outcome` retire with the budget; the effects book's
+promise. The budgeted scan's four theorems (it reports only witnessed lines,
+answers exactly within the budget, reports at most the budget, and refusal is
+its only other outcome) retire with the budget; the effects book's
 `fn-nntp-newnews-block-is-block-text` is restated without the fuel.
 
 None of the four has a hypothesis, so their teeth are witnesses, each asserting
@@ -784,7 +786,7 @@ From `books/records-seam.lisp` (the `encapsulate`):
 | `fn-record-round-trip` | kept, statement unchanged |
 | `fn-record-accepted-input-is-canonical` | kept, statement unchanged |
 | `fn-record-accepted-input-bounds` | kept, same `*fn-record-max-octets*` |
-| `fn-record-accepted-input-header` (6 octets, version 0) | **replaced** by `fn-record-accepted-input-magic` (5 octets) and `fn-record-accepted-schema-is-the-stamp-kind` |
+| the header constraint (6 octets, version 0) | **replaced** by `fn-record-accepted-input-magic` (5 octets) and `fn-record-accepted-schema-is-the-stamp-kind` |
 | derived `fn-record-decode-exact-refuses-another-header` | becomes `-refuses-another-magic`, derived from the magic constraint |
 
 The request to T1, through root, while T1 is still in flight: export the
