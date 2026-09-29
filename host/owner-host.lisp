@@ -37,6 +37,8 @@
 ; Q16: content reclamation on a running owner (fn-orc-).
 (include-book "../books/owner-reclaim")
 (include-book "../books/owner-reclaim-conns")
+;; online-reclaim-5: the swapped owner is :ready after the open's barriers.
+(include-book "../books/owner-reclaim-ready")
 ; Q16 (b): online disk release of dropped files (fn-xrt-).
 (include-book "../books/extent-retire")
 ; The publication through the octet buffer, decided before it is encoded

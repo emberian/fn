@@ -4173,6 +4173,26 @@ intern-chunk).  NIL when ACL2 refused a record."
         (push done out)))
     (let ((all nil)) (dolist (c out all) (setq all (nconc c all))))))
 
+;;; Q16 (a) (lane online-reclaim-5): the swapped owner is the owner the full
+;;; open of the rewritten history installs, BEFORE the open's recovery
+;;; barriers (its Store :recovering; books/owner-reclaim-ready.lisp).  The
+;;; open's three (fnn-store-recovery-barriers), delivered as fnn-owner-install
+;;; delivers them; without them the writer's take never takes and every POST
+;;; after the swap waits forever (fn-orrd-the-swap-without-the-barriers-never-
+;;; takes).  The publication is already installed: a barrier that fails, or
+;;; an owner that is not :ready after them, is a recovery event.
+(defun fnn-owner-reclaim-barriers (store)
+  (let ((phase nil))
+    (dolist (barrier (fnn-store-recovery-barriers store))
+      (handler-case (funcall barrier)
+        (fnn-os-error (e)
+          (fnn-owner-observe :recovery-barrier :uncertain)
+          (fnn-indeterminate "reclaim swap: recovery barrier failed after the install (~a): recovery required" e)))
+      (setq phase (fnn-owner-observe :recovery-barrier :ok)))
+    (unless (eq phase :ready)
+      (fnn-indeterminate "reclaim swap: the swapped owner is ~(~a~) after the recovery barriers: recovery required"
+                         phase))))
+
 (defun fnn-owner-reclaim-pass (service free)
   "`store reclaim --recorded' on the running owner: the capture under the
 mutex (the pass's credit reserved, refused by name; the log rotated as a
@@ -4288,7 +4308,13 @@ publication).  Answers the reply word."
                                      (fnn-owner-core 'fn-owner-orcp-swap rebuilt)
                                      (fnn-install-stobj 'fn-cat cat)
                                      (fnn-install-stobj 'fn-hist hist)
-                                     (setq swapped t))
+                                     (setq swapped t)
+                                     ;; The swapped owner is the open's owner
+                                     ;; before its recovery barriers: :ready
+                                     ;; only after them, in this quantum
+                                     ;; (fn-orrd-a-post-after-the-swap-is-
+                                     ;; taken-as-before).
+                                     (fnn-owner-reclaim-barriers store))
                                    w))))
                        (case sw
                          (:swap (return))

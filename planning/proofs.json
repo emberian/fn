@@ -14151,6 +14151,59 @@
         "planning/evidence/pkt-615-number-bound-2026-09-28.md"
       ],
       "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound."
+    },
+    {
+      "id": "PRF-966",
+      "title": "The owner the installing reclaim pass swaps in is ready: after the open's three recovery barriers, delivered in the swap quantum, a POST queued after the swap is taken exactly as the live owner would take it; served without them the swapped owner is :recovering and never takes",
+      "statement": "Subject: host/native/owner.lisp fnn-owner-reclaim-pass, whose swap quantum after fn-owner-orcp-swap (fn-orcp-swapped-ocfg) calls fnn-owner-reclaim-barriers: the open's three barriers (fnn-store-recovery-barriers) each delivered through fnn-owner-observe -> host/owner-host.lisp fn-owner-io -> fn-rcon-ocfg-io, as fnn-owner-install delivers them; fn-orrd-ready-ocfg is that composition (fn-orrd-barriers of the swapped configuration, *fn-sf-recovery-barrier-count* :ok barriers). fn-orrd-a-post-after-the-swap-is-taken-as-before (KEYSTONE): over the pass's rebuild, when fn-orcp-swap-decision answers :swap, the served owner's Store is :ready, its queue is the live owner's, it takes exactly when the live pipeline would (nothing staged, in flight or pending, a queued submission), and its (:take) step takes the live queue's head. fn-orrd-the-swap-without-the-barriers-never-takes: the swapped configuration served without the barriers is :recovering and its (:take) is the identity on the owner -- the defect native-orp4 found (the POST after the swap never got its final reply). fn-orrd-rebuilt-store-is-the-open: a rebuild that installed is the host open's state (fn-cpo-open-observed of the rewritten rows, fn-sn-open-okp). Scope: a barrier that fails, or an owner not :ready after them, is a recovery event (fnn-indeterminate) because the publication is already installed.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-939"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-reclaim-ready.lisp",
+        "tests/acl2/owner-reclaim-ready-tests.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_expiry.py"
+      ],
+      "progress_note": "Lane online-reclaim-5 (2026-09-29, Q16 (a)): diagnosed from native-orp4's owner stderr (START members=0 after the swap: the take refused outside :ready). REPL-admitted on persvati (book 16 forms; tests incl. 2 must-fails).",
+      "events": [
+        "fn-orrd-a-post-after-the-swap-is-taken-as-before",
+        "fn-orrd-the-swap-without-the-barriers-never-takes",
+        "fn-orrd-swapped-ready-phase",
+        "fn-orrd-rebuilt-store-is-the-open"
+      ]
+    },
+    {
+      "id": "PRF-967",
+      "title": "An operator request against a running owner never prints NONE beside a fault: the printed word is the owner's word when it named one, else the status's own name",
+      "statement": "Subject: host/native/operator-live.lisp fnn-operator-live-request (`store reclaim`, `store compact`, `store checkpoint` against a live owner) prints the request's verb and fn-crqw-request-word of the reply's status and word. fn-crqw-request-word-names-the-outcome (KEYSTONE): for every control status the word is never `NONE`; it is the owner's word when the owner named one and fn-nctrl-reason-word of the status (`fault`, `uncertain`, ...) when it named none. Before this a faulted reclaim printed `reclaim NONE` next to exit FAULT (4).",
+      "milestone": "M4",
+      "requirements": [
+        "HST-010"
+      ],
+      "depends_on": [
+        "PRF-172"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/control-request-word.lisp",
+        "tests/acl2/control-request-word-tests.lisp",
+        "host/native/operator-live.lisp",
+        "host/native-control-host.lisp"
+      ],
+      "progress_note": "Lane online-reclaim-5 (2026-09-29): REPL-admitted on persvati (tests 15 forms incl. 1 must-fail).",
+      "events": [
+        "fn-crqw-request-word-names-the-outcome"
+      ]
     }
   ]
 }

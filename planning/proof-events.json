@@ -13640,6 +13640,36 @@
           "name": "fn-gac-view-entry-is-per-command"
         }
       ]
+    },
+    {
+      "id": "PRF-966",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orrd-a-post-after-the-swap-is-taken-as-before"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orrd-the-swap-without-the-barriers-never-takes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orrd-swapped-ready-phase"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orrd-rebuilt-store-is-the-open"
+        }
+      ]
+    },
+    {
+      "id": "PRF-967",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-crqw-request-word-names-the-outcome"
+        }
+      ]
     }
   ]
 }
