@@ -5,7 +5,7 @@
     "declared": 1223,
     "declared_and_dispatched": 1206,
     "guard_verified": 482,
-    "with_keystone": 151
+    "with_keystone": 152
   },
   "entries": [
     {
@@ -14874,7 +14874,11 @@
       "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-tcl-delivery-plan-decides-exactly-by-the-held-final-ack-and-the-callback"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
