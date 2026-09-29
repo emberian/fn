@@ -92,7 +92,6 @@
     "books/records-stamp",
     "books/records-canonicality",
     "books/records-seam",
-    "books/records-schema-v1",
     "books/records-attach",
     "books/store-events",
     "tests/acl2/store-events-tests",
@@ -110,7 +109,6 @@
     "tests/acl2/consumer-poll-projection-tests",
     "tests/acl2/records-tests",
     "tests/acl2/records-teeth-tests",
-    "tests/acl2/records-schema-v1-teeth-tests",
     "tests/acl2/records-ceiling-tests",
     "tests/acl2/records-shape-tests",
     "books/provenance-codec",
@@ -288,11 +286,13 @@
     "books/byte-store-range-read",
     "tests/acl2/byte-store-state-checkpoint-program-tests",
     "books/store-node-resolution",
+    "books/refusal-effect",
     "books/store-identity-sequence-invariants",
     "tests/acl2/store-identity-sequence-invariants-tests",
     "books/consumer-store-invariants",
     "tests/acl2/consumer-store-invariants-tests",
     "tests/acl2/store-node-resolution-tests",
+    "tests/acl2/refusal-effect-tests",
     "tests/acl2/store-node-resolution-traces-tests",
     "tests/acl2/store-identity-traces-tests",
     "books/store-sweep",
@@ -432,6 +432,8 @@
     "books/store-log-route-phases",
     "books/store-log-extend",
     "tests/acl2/store-log-extend-tests",
+    "books/store-log-durable",
+    "tests/acl2/store-log-durable-tests",
     "books/store-init-log-publication",
     "tests/acl2/store-init-log-publication-tests",
     "books/owner-feed-txid-reuse",
@@ -994,6 +996,9 @@
     "books/octet-window",
     "books/subject-id-buffer",
     "tests/acl2/subject-id-buffer-tests",
+    "books/article-buffer",
+    "tests/acl2/article-buffer-tests",
+    "books/frame-buffer",
     "books/owner-advance-carried",
     "books/owner-intent-carried",
     "books/owner-commit-ocl",
@@ -1048,6 +1053,10 @@
     "books/config-store-steps",
     "books/owner-log-ocl",
     "tests/acl2/owner-log-ocl-tests",
+    "books/owner-outcome-pinned",
+    "books/owner-host-relation",
+    "tests/acl2/owner-host-relation-tests",
+    "books/owner-host-relation-span",
     "books/config-owner-live-authorize",
     "tests/acl2/config-owner-live-authorize-tests",
     "books/store-number-bound",
@@ -1332,7 +1341,6 @@
     "tests/acl2/owner-stop-drain-tests",
     "books/owner-time-bars",
     "tests/acl2/owner-time-bars-tests",
-    "tests/acl2/owner-cold-line-tests",
     "books/feed-restart-domain",
     "tests/acl2/feed-restart-domain-tests",
     "books/web-request",
@@ -1489,37 +1497,32 @@
     "books/history-records-disk",
     "books/store-records-field",
     "tests/acl2/history-records-disk-tests",
-    "books/history-image-binding",
-    "books/history-image-fold",
-    "books/history-image-snapshot",
-    "tests/acl2/history-image-binding-tests",
-    "tests/acl2/history-image-campaign-tests",
     "books/image-world",
     "books/image-world-dtn",
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1540,
-    "books_in_root_closure": 1535,
-    "roots": 1495,
-    "theorems": 25018,
-    "functions": 16670,
-    "assert_events": 21227,
-    "must_fails": 2312,
+    "books": 1545,
+    "books_in_root_closure": 1538,
+    "roots": 1498,
+    "theorems": 25167,
+    "functions": 16610,
+    "assert_events": 21254,
+    "must_fails": 2307,
     "prover_refusals": 0,
     "encapsulates": 141,
     "guards": {
-      "verified": 3035,
-      "declared-off": 1962,
-      "default-guarded": 9151,
-      "default-unguarded": 2522
+      "verified": 3039,
+      "declared-off": 1959,
+      "default-guarded": 9128,
+      "default-unguarded": 2484
     },
-    "suspect_theorems": 1177,
+    "suspect_theorems": 1193,
     "export_hygiene_warnings": 309,
-    "enabled_projection_warnings": 50,
-    "teeth_form_warnings": 260,
-    "include_hygiene_warnings": 2182,
-    "host_names_warnings": 2037,
+    "enabled_projection_warnings": 52,
+    "teeth_form_warnings": 255,
+    "include_hygiene_warnings": 2196,
+    "host_names_warnings": 2031,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -1794,7 +1797,7 @@
       "book": "books/anchor-replace.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 6,
+      "theorems": 7,
       "functions": 10,
       "guards": {
         "verified": 0,
@@ -1955,6 +1958,38 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/article-buffer.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 50,
+      "functions": 17,
+      "guards": {
+        "verified": 3,
+        "declared-off": 1,
+        "default-guarded": 13,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 3,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "login-binding-live",
+        "octets-stobj",
+        "peer-authored-accept"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-ars-result-okp-is-line-okp"
+      ],
       "read_error": null
     },
     {
@@ -4659,6 +4694,32 @@
       "read_error": null
     },
     {
+      "book": "books/bp-node-host-transfer.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-node"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bp-node-job-cursor.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5156,7 +5217,7 @@
       "book": "books/bp-node-progress.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 1,
       "functions": 100,
       "guards": {
         "verified": 0,
@@ -7424,12 +7485,12 @@
       "book": "books/byte-store-range-read.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 10,
-      "functions": 1,
+      "theorems": 23,
+      "functions": 7,
       "guards": {
         "verified": 0,
-        "declared-off": 1,
-        "default-guarded": 0,
+        "declared-off": 5,
+        "default-guarded": 2,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -7445,7 +7506,9 @@
       "system_includes": [
         "arithmetic/top"
       ],
-      "suspects": [],
+      "suspects": [
+        "fn-bs-read-range-is-the-range-of-the-content"
+      ],
       "read_error": null
     },
     {
@@ -10775,6 +10838,36 @@
       "read_error": null
     },
     {
+      "book": "books/frame-buffer.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 22,
+      "functions": 5,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "frame-fields",
+        "octet-window",
+        "octets-stobj"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/frame-digest-buffer.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -11538,91 +11631,6 @@
         "fn-hfr-wire-of-a-held-row",
         "fn-hfr-wire-of-another-event"
       ],
-      "read_error": null
-    },
-    {
-      "book": "books/history-image-binding.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 99,
-      "functions": 39,
-      "guards": {
-        "verified": 0,
-        "declared-off": 3,
-        "default-guarded": 25,
-        "default-unguarded": 11
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 1,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "history-records-disk",
-        "store-log"
-      ],
-      "system_includes": [
-        "arithmetic/top"
-      ],
-      "suspects": [],
-      "read_error": null
-    },
-    {
-      "book": "books/history-image-fold.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 17,
-      "functions": 6,
-      "guards": {
-        "verified": 0,
-        "declared-off": 1,
-        "default-guarded": 2,
-        "default-unguarded": 3
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 0,
-      "defmacros": 1,
-      "encapsulates": 1,
-      "includes": [
-        "history-image-binding"
-      ],
-      "system_includes": [
-        "arithmetic/top"
-      ],
-      "suspects": [],
-      "read_error": null
-    },
-    {
-      "book": "books/history-image-snapshot.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 8,
-      "functions": 24,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 20,
-        "default-unguarded": 4
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 5,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "history-image-fold"
-      ],
-      "system_includes": [
-        "arithmetic/top"
-      ],
-      "suspects": [],
       "read_error": null
     },
     {
@@ -12551,7 +12559,7 @@
       "book": "books/hybrid-store-injected.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 3,
+      "theorems": 4,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -12753,6 +12761,7 @@
         "anchor-invariants",
         "anchor-replace",
         "app-journal",
+        "article-buffer",
         "article-fields",
         "bp-app-handoff",
         "bp-app-handoff-time",
@@ -12783,6 +12792,7 @@
         "bp-node-contact-driver",
         "bp-node-forward-plan",
         "bp-node-fragment-guards",
+        "bp-node-host-transfer",
         "bp-node-job-cursor",
         "bp-node-job-offer",
         "bp-node-machine",
@@ -12847,7 +12857,6 @@
         "heap-reservation",
         "history-columns-relation",
         "history-columns-store",
-        "history-image-snapshot",
         "hybrid-carrier",
         "hybrid-lifecycle",
         "hybrid-store",
@@ -12877,7 +12886,6 @@
         "owner-bound-commit",
         "owner-checkpoint-open",
         "owner-checkpoint-pipeline",
-        "owner-cold-line",
         "owner-commit-carried",
         "owner-commit-ocl",
         "owner-compact-request",
@@ -13036,6 +13044,7 @@
         "acceptance-payload-ref",
         "accounts",
         "app-journal",
+        "article-buffer",
         "article-fields",
         "bp-node",
         "bp-node-machine",
@@ -13070,7 +13079,6 @@
         "frame-trailer",
         "history-columns-relation",
         "history-columns-store",
-        "history-image-snapshot",
         "hybrid-lifecycle",
         "identity",
         "journal-publish",
@@ -13094,7 +13102,6 @@
         "owner-bound-commit",
         "owner-checkpoint-open",
         "owner-checkpoint-pipeline",
-        "owner-cold-line",
         "owner-commit-carried",
         "owner-commit-ocl",
         "owner-compact-request",
@@ -13246,6 +13253,7 @@
         "anchor-servers",
         "anchor-wire",
         "app-journal",
+        "article-buffer",
         "article-fields",
         "bp-app-handoff",
         "bp-app-handoff-time",
@@ -13276,6 +13284,7 @@
         "bp-node-contact-driver",
         "bp-node-forward-plan",
         "bp-node-fragment-guards",
+        "bp-node-host-transfer",
         "bp-node-job-cursor",
         "bp-node-job-offer",
         "bp-node-machine",
@@ -13345,7 +13354,6 @@
         "heap-reservation",
         "history-columns-relation",
         "history-columns-store",
-        "history-image-snapshot",
         "hybrid-carrier",
         "hybrid-lifecycle",
         "hybrid-store",
@@ -13382,7 +13390,6 @@
         "owner-bound-commit",
         "owner-checkpoint-open",
         "owner-checkpoint-pipeline",
-        "owner-cold-line",
         "owner-commit-carried",
         "owner-commit-class",
         "owner-commit-ocl",
@@ -16497,37 +16504,6 @@
       "read_error": null
     },
     {
-      "book": "books/owner-cold-line.lisp",
-      "in_root_closure": true,
-      "is_root": false,
-      "theorems": 6,
-      "functions": 6,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 6,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 0,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "owner-article-slots",
-        "owner-time-bars"
-      ],
-      "system_includes": [],
-      "suspects": [
-        "fn-ocln-conns-of-set-conns",
-        "fn-ocln-ocfg-owner-of-with-owner",
-        "fn-ocln-unavailable-span-outside-command-mode-by-definition"
-      ],
-      "read_error": null
-    },
-    {
       "book": "books/owner-commit-carried.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -17050,12 +17026,12 @@
       "book": "books/owner-feed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 104,
-      "functions": 94,
+      "theorems": 103,
+      "functions": 93,
       "guards": {
         "verified": 6,
         "declared-off": 0,
-        "default-guarded": 88,
+        "default-guarded": 87,
         "default-unguarded": 0
       },
       "verify_guards_events": 6,
@@ -17076,6 +17052,76 @@
       "system_includes": [],
       "suspects": [
         "fn-own-feed-entry-scoped-of-no-dists-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-host-relation-span.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-credits",
+        "owner-host-relation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-host-relation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 141,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-owner-advance-invariants",
+        "owner-identity-served",
+        "owner-open-carried",
+        "owner-outcome-pinned",
+        "owner-parse-carried",
+        "owner-prepare-outcome",
+        "owner-served-bound"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-ohr-close-keeps-store",
+        "fn-ohr-fault-keeps-store",
+        "fn-ohr-fault-unfolds-to-close-with-staged",
+        "fn-ohr-read-step-preserves-capacity-bound",
+        "fn-ohr-read-step-preserves-carried-relation",
+        "fn-ohr-read-step-preserves-ocl-relation",
+        "fn-ohr-read-step-preserves-ocl-relation-missing",
+        "fn-ohr-read-step-preserves-ocl-relation-removed",
+        "fn-ohr-read-step-preserves-owner-shape",
+        "fn-ohr-with-owner-store"
       ],
       "read_error": null
     },
@@ -17568,6 +17614,32 @@
       "includes": [
         "owner-advance-carried",
         "public-exposure"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-outcome-pinned.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-parse-carried"
       ],
       "system_includes": [],
       "suspects": [],
@@ -18259,7 +18331,7 @@
       "book": "books/owner-time-bars.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 35,
+      "theorems": 47,
       "functions": 16,
       "guards": {
         "verified": 0,
@@ -19029,13 +19101,13 @@
       "book": "books/payload-arena-extent.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 152,
-      "functions": 38,
+      "theorems": 119,
+      "functions": 28,
       "guards": {
         "verified": 0,
         "declared-off": 4,
-        "default-guarded": 27,
-        "default-unguarded": 7
+        "default-guarded": 19,
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -19050,7 +19122,6 @@
       ],
       "system_includes": [],
       "suspects": [
-        "fn-arx-entry-file-of-extent-by-definition",
         "fn-arx-entry-of-extent",
         "fn-arx-entry-of-resident",
         "fn-arx-view-empty"
@@ -19236,7 +19307,7 @@
       "book": "books/payload-lz-append.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
+      "theorems": 19,
       "functions": 15,
       "guards": {
         "verified": 0,
@@ -19432,12 +19503,12 @@
       "book": "books/peer-carriage.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 45,
-      "functions": 21,
+      "theorems": 47,
+      "functions": 22,
       "guards": {
         "verified": 0,
         "declared-off": 1,
-        "default-guarded": 19,
+        "default-guarded": 20,
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
@@ -21159,32 +21230,6 @@
       "read_error": null
     },
     {
-      "book": "books/records-schema-v1.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 9,
-      "functions": 4,
-      "guards": {
-        "verified": 0,
-        "declared-off": 3,
-        "default-guarded": 0,
-        "default-unguarded": 1
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 0,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "records-canonicality"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "books/records-seam.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -21296,6 +21341,38 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/refusal-effect.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 11,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-prepare-served",
+        "store-log-route-phases",
+        "store-node-resolution"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-rfx-refused-reconfigure-is-unchanged-by-definition",
+        "fn-rfx-unaffordable-prepare-is-unchanged-by-definition",
+        "fn-rfx-unserved-prepare-is-unchanged-by-definition"
+      ],
       "read_error": null
     },
     {
@@ -23872,6 +23949,36 @@
       "read_error": null
     },
     {
+      "book": "books/store-checkpoint-digest.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "state-digest",
+        "store-checkpoint-arena-load"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-sckd-digest-ignores-revision-and-log",
+        "fn-sckd-verifiable-of-tables-of-capture"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/store-checkpoint-open.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -24486,7 +24593,7 @@
       "book": "books/store-init-publication.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
+      "theorems": 2,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -24629,7 +24736,7 @@
       "book": "books/store-log-damage.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 41,
+      "theorems": 42,
       "functions": 36,
       "guards": {
         "verified": 0,
@@ -24682,6 +24789,41 @@
       ],
       "suspects": [
         "fn-lgd-slice-when-short"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/store-log-durable.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 57,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "byte-store-invariants",
+        "owner-batch",
+        "store-log-extend",
+        "store-log-programs"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [
+        "fn-lgu-recovered-kernel-holds-the-scan",
+        "fn-lgu-recovered-kernel-is-the-recover-by-definition",
+        "fn-lgu-unit-of-extended-state"
       ],
       "read_error": null
     },
@@ -25190,7 +25332,7 @@
       "book": "books/store-mount-identity.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 65,
+      "theorems": 66,
       "functions": 61,
       "guards": {
         "verified": 6,
@@ -28678,6 +28820,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/article-buffer-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/article-buffer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/article-fields-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -30498,7 +30666,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 24,
+      "assert_events": 28,
       "must_fails": 16,
       "prover_refusals": 0,
       "defconsts": 37,
@@ -30755,10 +30923,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 14,
+      "assert_events": 27,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 5,
+      "defconsts": 15,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -35747,58 +35915,6 @@
       "read_error": null
     },
     {
-      "book": "tests/acl2/history-image-binding-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 1,
-      "functions": 31,
-      "guards": {
-        "verified": 0,
-        "declared-off": 24,
-        "default-guarded": 1,
-        "default-unguarded": 6
-      },
-      "verify_guards_events": 0,
-      "assert_events": 37,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 31,
-      "defmacros": 1,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/history-image-fold"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
-      "book": "tests/acl2/history-image-campaign-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 1,
-      "functions": 13,
-      "guards": {
-        "verified": 0,
-        "declared-off": 5,
-        "default-guarded": 1,
-        "default-unguarded": 7
-      },
-      "verify_guards_events": 0,
-      "assert_events": 16,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 13,
-      "defmacros": 1,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/history-image-snapshot"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "tests/acl2/history-pages-digest-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -38595,34 +38711,6 @@
       "read_error": null
     },
     {
-      "book": "tests/acl2/owner-cold-line-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 0,
-      "functions": 5,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 5
-      },
-      "verify_guards_events": 0,
-      "assert_events": 25,
-      "must_fails": 1,
-      "prover_refusals": 0,
-      "defconsts": 15,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/owner-cold-line",
-        "must-fail-checked",
-        "owner-time-model-tests"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "tests/acl2/owner-commit-carried-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -39064,6 +39152,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-host-relation-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 49,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 20,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-host-relation",
+        "owner-log-ocl-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-identity-intern-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -39383,16 +39498,17 @@
         "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 84,
+      "assert_events": 90,
       "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 34,
+      "defconsts": 35,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-parse-carried",
         "must-fail-checked",
-        "owner-commit-carried-tests"
+        "owner-commit-carried-tests",
+        "peer-authored-accept-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -40068,7 +40184,7 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 31,
+      "assert_events": 34,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 12,
@@ -40339,17 +40455,17 @@
       "book": "tests/acl2/payload-arena-extent-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 13,
-      "functions": 7,
+      "theorems": 6,
+      "functions": 3,
       "guards": {
         "verified": 0,
-        "declared-off": 2,
+        "declared-off": 0,
         "default-guarded": 1,
-        "default-unguarded": 4
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 6,
-      "must_fails": 10,
+      "assert_events": 4,
+      "must_fails": 6,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
@@ -40512,7 +40628,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 18,
+      "assert_events": 22,
       "must_fails": 8,
       "prover_refusals": 0,
       "defconsts": 4,
@@ -40622,8 +40738,8 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 114,
-      "must_fails": 20,
+      "assert_events": 121,
+      "must_fails": 22,
       "prover_refusals": 0,
       "defconsts": 21,
       "defmacros": 1,
@@ -41676,33 +41792,6 @@
       "read_error": null
     },
     {
-      "book": "tests/acl2/records-schema-v1-teeth-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 0,
-      "functions": 0,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 20,
-      "must_fails": 6,
-      "prover_refusals": 0,
-      "defconsts": 1,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/records-schema-v1",
-        "must-fail-checked"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "tests/acl2/records-shape-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -41780,6 +41869,33 @@
       "encapsulates": 0,
       "includes": [
         "../../books/records-attach"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/refusal-effect-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 11,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/refusal-effect"
       ],
       "system_includes": [],
       "suspects": [],
@@ -43235,6 +43351,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-checkpoint-digest-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 4,
+      "prover_refusals": 0,
+      "defconsts": 7,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/crypto-attach",
+        "../../books/store-checkpoint-digest",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-checkpoint-open-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -43796,15 +43940,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 2,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 2
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 7,
+      "assert_events": 12,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 1,
@@ -43910,7 +44054,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 9,
+      "assert_events": 12,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
@@ -43946,6 +44090,33 @@
       "includes": [
         "../../books/frame-trailer",
         "../../books/store-log-decode"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-log-durable-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 32,
+      "guards": {
+        "verified": 0,
+        "declared-off": 27,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 10,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/frame-trailer",
+        "../../books/store-log-durable"
       ],
       "system_includes": [],
       "suspects": [],
@@ -44354,7 +44525,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 104,
+      "assert_events": 106,
       "must_fails": 27,
       "prover_refusals": 0,
       "defconsts": 37,
@@ -46549,7 +46720,7 @@
     {
       "theorem": "fn-apc-own-finish-is-own-finish",
       "book": "books/owner-parse-carried.lisp",
-      "line": 948,
+      "line": 960,
       "reasons": [
         "closed-theory-corollary: proved only by fn-apc-own-finish-is-ccar-own-finish, fn-ccar-own-finish-is-own-finish"
       ]
@@ -46590,6 +46761,15 @@
       "theorem": "fn-arp-put-is-put-kj",
       "book": "books/payload-arena-paged.lisp",
       "line": 980,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-ars-result-okp-is-line-okp",
+      "book": "books/article-buffer.lisp",
+      "line": 401,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -46638,18 +46818,9 @@
       ]
     },
     {
-      "theorem": "fn-arx-entry-file-of-extent-by-definition",
-      "book": "books/payload-arena-extent.lisp",
-      "line": 1477,
-      "reasons": [
-        "arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry-file and the conclusion is that arm's value",
-        "branch-of-definition: the hypothesis is a branch test of fn-arx-entry-file and the conclusion is that branch's value"
-      ]
-    },
-    {
       "theorem": "fn-arx-entry-of-extent",
       "book": "books/payload-arena-extent.lisp",
-      "line": 191,
+      "line": 190,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry and the conclusion is that arm's value"
       ]
@@ -46657,7 +46828,7 @@
     {
       "theorem": "fn-arx-entry-of-resident",
       "book": "books/payload-arena-extent.lisp",
-      "line": 205,
+      "line": 204,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry and the conclusion is that arm's value"
       ]
@@ -46665,7 +46836,7 @@
     {
       "theorem": "fn-arx-view-empty",
       "book": "books/payload-arena-extent.lisp",
-      "line": 250,
+      "line": 249,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-view and the conclusion is that arm's value"
       ]
@@ -47738,6 +47909,14 @@
       "line": 420,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bs-profile-admittedp"
+      ]
+    },
+    {
+      "theorem": "fn-bs-read-range-is-the-range-of-the-content",
+      "book": "books/byte-store-range-read.lisp",
+      "line": 152,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
@@ -49201,6 +49380,30 @@
       ]
     },
     {
+      "theorem": "fn-lgu-recovered-kernel-holds-the-scan",
+      "book": "books/store-log-durable.lisp",
+      "line": 199,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-lgu-recovered-kernel-is-the-recover-by-definition",
+      "book": "books/store-log-durable.lisp",
+      "line": 807,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-lgu-unit-of-extended-state",
+      "book": "books/store-log-durable.lisp",
+      "line": 567,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-lgw-fields-of-make",
       "book": "books/store-log-stream.lisp",
       "line": 68,
@@ -50004,7 +50207,7 @@
     {
       "theorem": "fn-ocfg-refused-reconfiguration-changes-nothing",
       "book": "books/owner-config.lisp",
-      "line": 961,
+      "line": 976,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-ocfg-reconfigure and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value"
@@ -50078,31 +50281,6 @@
       ]
     },
     {
-      "theorem": "fn-ocln-conns-of-set-conns",
-      "book": "books/owner-cold-line.lisp",
-      "line": 113,
-      "reasons": [
-        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
-      ]
-    },
-    {
-      "theorem": "fn-ocln-ocfg-owner-of-with-owner",
-      "book": "books/owner-cold-line.lisp",
-      "line": 108,
-      "reasons": [
-        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
-      ]
-    },
-    {
-      "theorem": "fn-ocln-unavailable-span-outside-command-mode-by-definition",
-      "book": "books/owner-cold-line.lisp",
-      "line": 161,
-      "reasons": [
-        "arm-of-definition: the hypotheses select one IF/COND arm of fn-ocln-unavailable-span and the conclusion is that arm's value",
-        "branch-of-definition: the hypothesis negates a branch test of fn-ocln-unavailable-span and the conclusion is that branch's value"
-      ]
-    },
-    {
       "theorem": "fn-ocs-member-uncertain-word-told-uncertain",
       "book": "books/owner-commit-steps.lisp",
       "line": 423,
@@ -50155,6 +50333,86 @@
       "theorem": "fn-odr-list-motd-of-reader-env",
       "book": "books/owner-descriptions-read.lisp",
       "line": 32,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-ohr-close-keeps-store",
+      "book": "books/owner-host-relation.lisp",
+      "line": 491,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-ohr-fault-keeps-store",
+      "book": "books/owner-host-relation.lisp",
+      "line": 481,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-ohr-fault-unfolds-to-close-with-staged",
+      "book": "books/owner-host-relation.lisp",
+      "line": 108,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-ohr-read-step-preserves-capacity-bound",
+      "book": "books/owner-host-relation.lisp",
+      "line": 1498,
+      "reasons": [
+        "preserves-no-subject-call: the statement never calls fn-ohr-read-step or a fn-ohr-read-step- transition"
+      ]
+    },
+    {
+      "theorem": "fn-ohr-read-step-preserves-carried-relation",
+      "book": "books/owner-host-relation.lisp",
+      "line": 1931,
+      "reasons": [
+        "preserves-no-subject-call: the statement never calls fn-ohr-read-step or a fn-ohr-read-step- transition"
+      ]
+    },
+    {
+      "theorem": "fn-ohr-read-step-preserves-ocl-relation",
+      "book": "books/owner-host-relation.lisp",
+      "line": 1912,
+      "reasons": [
+        "preserves-no-subject-call: the statement never calls fn-ohr-read-step or a fn-ohr-read-step- transition"
+      ]
+    },
+    {
+      "theorem": "fn-ohr-read-step-preserves-ocl-relation-missing",
+      "book": "books/owner-host-relation.lisp",
+      "line": 1508,
+      "reasons": [
+        "preserves-no-subject-call: the statement never calls fn-ohr-read-step or a fn-ohr-read-step- transition"
+      ]
+    },
+    {
+      "theorem": "fn-ohr-read-step-preserves-ocl-relation-removed",
+      "book": "books/owner-host-relation.lisp",
+      "line": 1577,
+      "reasons": [
+        "preserves-no-subject-call: the statement never calls fn-ohr-read-step or a fn-ohr-read-step- transition"
+      ]
+    },
+    {
+      "theorem": "fn-ohr-read-step-preserves-owner-shape",
+      "book": "books/owner-host-relation.lisp",
+      "line": 1242,
+      "reasons": [
+        "preserves-no-subject-call: the statement never calls fn-ohr-read-step or a fn-ohr-read-step- transition"
+      ]
+    },
+    {
+      "theorem": "fn-ohr-with-owner-store",
+      "book": "books/owner-host-relation.lisp",
+      "line": 488,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -50715,7 +50973,7 @@
     {
       "theorem": "fn-own-feed-entry-scoped-of-no-dists-by-definition",
       "book": "books/owner-feed.lisp",
-      "line": 122,
+      "line": 105,
       "reasons": [
         "arm-of-definition: constant arguments select one IF/COND arm of fn-own-feed-entry-scoped and the conclusion is that arm's value"
       ]
@@ -51156,7 +51414,7 @@
     {
       "theorem": "fn-pcb-transit-verdict-names-the-accepted-arm",
       "book": "books/peer-carriage.lisp",
-      "line": 761,
+      "line": 806,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-transit-verdict and the conclusion is that arm's value"
       ]
@@ -52080,6 +52338,32 @@
       ]
     },
     {
+      "theorem": "fn-rfx-refused-reconfigure-is-unchanged-by-definition",
+      "book": "books/refusal-effect.lisp",
+      "line": 71,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-ocfg-reconfigure and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-rfx-unaffordable-prepare-is-unchanged-by-definition",
+      "book": "books/refusal-effect.lisp",
+      "line": 65,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-prc-sbud-prepare and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis negates a branch test of fn-prc-sbud-prepare and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-rfx-unserved-prepare-is-unchanged-by-definition",
+      "book": "books/refusal-effect.lisp",
+      "line": 59,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-psrv-prepare and the conclusion is that arm's value"
+      ]
+    },
+    {
       "theorem": "fn-rfz-accessors-of-held-wire",
       "book": "books/records-freeze.lisp",
       "line": 93,
@@ -52638,6 +52922,22 @@
       ]
     },
     {
+      "theorem": "fn-sckd-digest-ignores-revision-and-log",
+      "book": "books/store-checkpoint-digest.lisp",
+      "line": 57,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-sckd-verifiable-of-tables-of-capture",
+      "book": "books/store-checkpoint-digest.lisp",
+      "line": 49,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-scl-haltedp-of-with-live",
       "book": "books/served-chunk-live-free.lisp",
       "line": 115,
@@ -52681,7 +52981,7 @@
     {
       "theorem": "fn-sco-select-named-refuses-schema",
       "book": "books/store-checkpoint-tables.lisp",
-      "line": 1052,
+      "line": 1047,
       "reasons": [
         "arm-of-definition: constant arguments select one IF/COND arm of fn-sco-select-named and the conclusion is that arm's value"
       ]
@@ -52689,7 +52989,7 @@
     {
       "theorem": "fn-sco-select-named-unfolds",
       "book": "books/store-checkpoint-tables.lisp",
-      "line": 1047,
+      "line": 1042,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-sco-select-named and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-sco-select-named and the conclusion is that branch's value"
@@ -52797,7 +53097,7 @@
     {
       "theorem": "fn-sct-event-index-of-capture",
       "book": "books/store-checkpoint-tables.lisp",
-      "line": 720,
+      "line": 715,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -52805,7 +53105,7 @@
     {
       "theorem": "fn-sct-records-of-capture",
       "book": "books/store-checkpoint-tables.lisp",
-      "line": 729,
+      "line": 724,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -56129,6 +56429,24 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-ars-carrier-kind-is-reference",
+        "book": "books/article-buffer.lisp",
+        "line": 673,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-ars-classify-octets-is-reference",
+        "book": "books/article-buffer.lisp",
+        "line": 693,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-ars-carrier-form-is-reference",
+        "book": "books/article-buffer.lisp",
+        "line": 748,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-article-unfold-join-is-concat",
         "book": "books/article-invariants.lisp",
         "line": 308,
@@ -56564,18 +56882,6 @@
         "theorem": "fn-hist-count-serves-cei-count",
         "book": "books/history-columns.lisp",
         "line": 825,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-hib-tabs-page",
-        "book": "books/history-image-binding.lisp",
-        "line": 191,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-hib-tw-page",
-        "book": "books/history-image-binding.lisp",
-        "line": 531,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -57163,13 +57469,13 @@
       {
         "theorem": "fn-arx-page-copy-len",
         "book": "books/payload-arena-extent.lisp",
-        "line": 113,
+        "line": 112,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "fn-cfg-peer-names-of-peer-rows",
         "book": "books/peer-config.lisp",
-        "line": 447,
+        "line": 446,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -57278,18 +57584,6 @@
         "theorem": "fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence",
         "book": "books/records-concrete.lisp",
         "line": 351,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-record-v1-read-uint-agrees",
-        "book": "books/records-schema-v1.lisp",
-        "line": 166,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-record-v1-bytes-decode-identically",
-        "book": "books/records-schema-v1.lisp",
-        "line": 248,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -57597,6 +57891,12 @@
         "book": "books/store-log-crash.lisp",
         "line": 317,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
+        "theorem": "fn-lgu-recovered-kernel-holds-the-scan",
+        "book": "books/store-log-durable.lisp",
+        "line": 199,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-lgx-pack-is-pack",
@@ -58021,27 +58321,30 @@
         "book": "books/article.lisp",
         "line": 144,
         "stated_in": [
+          "books/article-buffer.lisp",
           "books/article-invariants.lisp",
           "books/article-properties.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-body",
         "book": "books/article.lisp",
         "line": 147,
         "stated_in": [
+          "books/article-buffer.lisp",
           "books/article-properties.lisp",
           "books/relay-source.lisp",
           "books/source-projection-bridge.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 4 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-fields",
         "book": "books/article.lisp",
         "line": 150,
         "stated_in": [
+          "books/article-buffer.lisp",
           "books/article-invariants.lisp",
           "books/article-properties.lisp",
           "books/peer-authored-accept.lisp",
@@ -58049,7 +58352,7 @@
           "books/source-projection-bridge.lisp",
           "books/topic-history-metadata-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-field-raw-lines",
@@ -58087,6 +58390,7 @@
         "book": "books/article.lisp",
         "line": 206,
         "stated_in": [
+          "books/article-buffer.lisp",
           "books/article-invariants.lisp",
           "books/article-properties.lisp",
           "books/injection-invariants.lisp",
@@ -58099,13 +58403,14 @@
           "books/source-projection-bridge.lisp",
           "books/topic-history-metadata-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 11 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 12 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-line-value",
         "book": "books/article.lisp",
         "line": 246,
         "stated_in": [
+          "books/article-buffer.lisp",
           "books/article-invariants.lisp",
           "books/article-line-bound.lisp",
           "books/article-properties.lisp",
@@ -58115,20 +58420,21 @@
           "books/reclaim-admission.lisp",
           "books/source-projection-bridge.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 8 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 9 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-line-rest",
         "book": "books/article.lisp",
         "line": 249,
         "stated_in": [
+          "books/article-buffer.lisp",
           "books/article-header-census.lisp",
           "books/article-invariants.lisp",
           "books/article-properties.lisp",
           "books/article-public-bound.lisp",
           "books/article-work-scanners.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 5 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-bpf-offset",
@@ -58365,12 +58671,31 @@
         "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
+        "function": "fn-owb-ks",
+        "book": "books/owner-batch.lisp",
+        "line": 124,
+        "stated_in": [
+          "books/store-log-durable.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-owb-acked",
+        "book": "books/owner-batch.lisp",
+        "line": 128,
+        "stated_in": [
+          "books/store-log-durable.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
         "function": "fn-lgk-committed",
         "book": "books/store-log-kernel.lisp",
         "line": 47,
         "stated_in": [
           "books/owner-batch.lisp",
           "books/store-init-log-publication.lisp",
+          "books/store-log-durable.lisp",
           "books/store-log-extend.lisp",
           "books/store-log-kernel-concrete.lisp",
           "books/store-log-recover.lisp",
@@ -58379,7 +58704,7 @@
           "books/store-log-stream.lisp",
           "books/store-log-txid.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 9 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 10 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-lgk-last",
@@ -58388,6 +58713,7 @@
         "stated_in": [
           "books/owner-batch.lisp",
           "books/store-init-log-publication.lisp",
+          "books/store-log-durable.lisp",
           "books/store-log-extend.lisp",
           "books/store-log-kernel-concrete.lisp",
           "books/store-log-recover.lisp",
@@ -58395,7 +58721,7 @@
           "books/store-log-segments.lisp",
           "books/store-log-txid.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 8 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 9 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-lgk-batch",
@@ -58417,6 +58743,7 @@
         "stated_in": [
           "books/owner-batch.lisp",
           "books/owner-reader-view.lisp",
+          "books/store-log-durable.lisp",
           "books/store-log-extend.lisp",
           "books/store-log-kernel-concrete.lisp",
           "books/store-log-open-barriers.lisp",
@@ -58425,7 +58752,7 @@
           "books/store-log-route.lisp",
           "books/store-log-txid.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 9 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 10 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-lgk-phase",
@@ -59423,12 +59750,6 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
-        "check": "oclnt-mutation-whole-buffer",
-        "book": "tests/acl2/owner-cold-line-tests.lisp",
-        "line": 98,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
         "check": "fn-oco-t-observe-ignores-the-reading",
         "book": "tests/acl2/owner-config-observe-tests.lisp",
         "line": 43,
@@ -59479,31 +59800,31 @@
       {
         "check": "apc-t-parse-without-apc-p",
         "book": "tests/acl2/owner-parse-carried-tests.lisp",
-        "line": 265,
+        "line": 288,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "apc-t-filing-without-apc-p",
         "book": "tests/acl2/owner-parse-carried-tests.lisp",
-        "line": 268,
+        "line": 291,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "apc-t-transit-verdict-without-apc-p",
         "book": "tests/acl2/owner-parse-carried-tests.lisp",
-        "line": 272,
+        "line": 295,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "apc-t-row-without-apc-p",
         "book": "tests/acl2/owner-parse-carried-tests.lisp",
-        "line": 276,
+        "line": 299,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "apc-t-intent-without-apc-p",
         "book": "tests/acl2/owner-parse-carried-tests.lisp",
-        "line": 280,
+        "line": 303,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -59684,30 +60005,6 @@
         "check": "thm",
         "book": "tests/acl2/records-ceiling-tests.lisp",
         "line": 93,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "p6-teeth-extends-narrow-without-acceptance",
-        "book": "tests/acl2/records-schema-v1-teeth-tests.lisp",
-        "line": 34,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "p6-teeth-reencode-without-acceptance",
-        "book": "tests/acl2/records-schema-v1-teeth-tests.lisp",
-        "line": 53,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "p6-teeth-identically-without-acceptance",
-        "book": "tests/acl2/records-schema-v1-teeth-tests.lisp",
-        "line": 108,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "p6-teeth-translation-without-acceptance",
-        "book": "tests/acl2/records-schema-v1-teeth-tests.lisp",
-        "line": 113,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -61731,13 +62028,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/history-image-snapshot.lisp",
-        "line": 22,
-        "include": "history-image-fold",
-        "included": "books/history-image-fold.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/history-pages-append-grown.lisp",
         "line": 13,
         "include": "history-pages-grow-append",
@@ -62362,247 +62652,247 @@
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 148,
-        "include": "history-image-snapshot",
-        "included": "books/history-image-snapshot.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/image-world-dtn.lisp",
-        "line": 151,
+        "line": 150,
         "include": "retention-figures",
         "included": "books/retention-figures.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 153,
+        "line": 152,
         "include": "config-carried-open",
         "included": "books/config-carried-open.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 154,
+        "line": 153,
         "include": "store-checkpoint-open",
         "included": "books/store-checkpoint-open.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 155,
+        "line": 154,
         "include": "store-checkpoint-arena-load",
         "included": "books/store-checkpoint-arena-load.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 156,
+        "line": 155,
         "include": "store-checkpoint-arena-writer",
         "included": "books/store-checkpoint-arena-writer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 157,
+        "line": 156,
         "include": "store-open-pre-c1",
         "included": "books/store-open-pre-c1.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 158,
+        "line": 157,
         "include": "store-open-replay-refusal",
         "included": "books/store-open-replay-refusal.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 165,
+        "line": 164,
         "include": "store-reclaim",
         "included": "books/store-reclaim.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 169,
+        "line": 168,
         "include": "provenance-inspect",
         "included": "books/provenance-inspect.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 170,
+        "line": 169,
         "include": "state-digest",
         "included": "books/state-digest.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 172,
+        "line": 171,
         "include": "checkpoint-auxiliary",
         "included": "books/checkpoint-auxiliary.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 173,
+        "line": 172,
         "include": "store-reclaim-stream",
         "included": "books/store-reclaim-stream.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 174,
+        "line": 173,
         "include": "store-log-reclaim",
         "included": "books/store-log-reclaim.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 176,
+        "line": 175,
         "include": "expiry-instant",
         "included": "books/expiry-instant.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 177,
+        "line": 176,
         "include": "accounts",
         "included": "books/accounts.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 179,
+        "line": 178,
         "include": "owner-checkpoint-open",
         "included": "books/owner-checkpoint-open.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 182,
+        "line": 181,
         "include": "config-owner-carried",
         "included": "books/config-owner-carried.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 183,
+        "line": 182,
         "include": "config-owner-live-authorize",
         "included": "books/config-owner-live-authorize.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 185,
+        "line": 184,
         "include": "owner-config-observe",
         "included": "books/owner-config-observe.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 189,
+        "line": 188,
         "include": "owner-log-reopen",
         "included": "books/owner-log-reopen.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 190,
+        "line": 189,
         "include": "history-columns-store",
         "included": "books/history-columns-store.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 191,
+        "line": 190,
         "include": "owner-log-route",
         "included": "books/owner-log-route.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 196,
+        "line": 195,
         "include": "owner-identity-served",
         "included": "books/owner-identity-served.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 198,
+        "line": 197,
         "include": "owner-commit-ocl",
         "included": "books/owner-commit-ocl.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 203,
+        "line": 202,
         "include": "served-catalog-owner",
         "included": "books/served-catalog-owner.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 206,
+        "line": 205,
         "include": "feed-wire-input",
         "included": "books/feed-wire-input.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 207,
+        "line": 206,
         "include": "feed-connection",
         "included": "books/feed-connection.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 208,
+        "line": 207,
         "include": "feed-connection-invariants",
         "included": "books/feed-connection-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 209,
+        "line": 208,
         "include": "owner-agent",
         "included": "books/owner-agent.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 210,
+        "line": 209,
         "include": "owner-log",
         "included": "books/owner-log.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 211,
+        "line": 210,
         "include": "moderation-verbs",
         "included": "books/moderation-verbs.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 212,
+        "line": 211,
         "include": "owner-results",
         "included": "books/owner-results.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 213,
+        "line": 212,
         "include": "owner-served-bound",
         "included": "books/owner-served-bound.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 214,
+        "line": 213,
         "include": "topic-history-local-proposals",
         "included": "books/topic-history-local-proposals.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/image-world-dtn.lisp",
+        "line": 214,
+        "include": "article-buffer",
+        "included": "books/article-buffer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -62663,86 +62953,93 @@
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 248,
+        "line": 247,
         "include": "feed-filename",
         "included": "books/feed-filename.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 253,
+        "line": 252,
         "include": "native-live-pages",
         "included": "books/native-live-pages.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 258,
+        "line": 257,
         "include": "bp-workflow-constructors",
         "included": "books/bp-workflow-constructors.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 259,
+        "line": 258,
         "include": "bp-channel-ingress",
         "included": "books/bp-channel-ingress.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 260,
+        "line": 259,
         "include": "bp-listener-set",
         "included": "books/bp-listener-set.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 262,
+        "line": 261,
         "include": "bp-transit-join",
         "included": "books/bp-transit-join.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 263,
+        "line": 262,
         "include": "bp-release-authority",
         "included": "books/bp-release-authority.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 264,
+        "line": 263,
         "include": "tcpcl-host-drive",
         "included": "books/tcpcl-host-drive.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 265,
+        "line": 264,
         "include": "tcpcl-delivery",
         "included": "books/tcpcl-delivery.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 266,
+        "line": 265,
         "include": "bp-run-class",
         "included": "books/bp-run-class.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 267,
+        "line": 266,
         "include": "bp-node-profile",
         "included": "books/bp-node-profile.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 268,
+        "line": 267,
         "include": "bp-node-profile-admission",
         "included": "books/bp-node-profile-admission.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/image-world-dtn.lisp",
+        "line": 268,
+        "include": "bp-node-host-transfer",
+        "included": "books/bp-node-host-transfer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -62950,240 +63247,240 @@
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 83,
-        "include": "history-image-snapshot",
-        "included": "books/history-image-snapshot.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/image-world-store-test.lisp",
-        "line": 86,
+        "line": 85,
         "include": "retention-figures",
         "included": "books/retention-figures.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 88,
+        "line": 87,
         "include": "config-carried-open",
         "included": "books/config-carried-open.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 89,
+        "line": 88,
         "include": "store-checkpoint-open",
         "included": "books/store-checkpoint-open.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 91,
+        "line": 90,
         "include": "store-checkpoint-arena-load",
         "included": "books/store-checkpoint-arena-load.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 92,
+        "line": 91,
         "include": "store-checkpoint-arena-writer",
         "included": "books/store-checkpoint-arena-writer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 94,
+        "line": 93,
         "include": "store-open-pre-c1",
         "included": "books/store-open-pre-c1.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 95,
+        "line": 94,
         "include": "store-open-replay-refusal",
         "included": "books/store-open-replay-refusal.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 103,
+        "line": 102,
         "include": "store-reclaim",
         "included": "books/store-reclaim.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 107,
+        "line": 106,
         "include": "provenance-inspect",
         "included": "books/provenance-inspect.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 108,
+        "line": 107,
         "include": "state-digest",
         "included": "books/state-digest.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 110,
+        "line": 109,
         "include": "owner-checkpoint-open",
         "included": "books/owner-checkpoint-open.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 111,
+        "line": 110,
         "include": "owner-compact-request",
         "included": "books/owner-compact-request.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 112,
+        "line": 111,
         "include": "owner-reclaim",
         "included": "books/owner-reclaim.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 113,
+        "line": 112,
         "include": "extent-retire",
         "included": "books/extent-retire.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 116,
+        "line": 115,
         "include": "config-owner-carried",
         "included": "books/config-owner-carried.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 117,
+        "line": 116,
         "include": "config-owner-live-authorize",
         "included": "books/config-owner-live-authorize.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 119,
+        "line": 118,
         "include": "owner-config-observe",
         "included": "books/owner-config-observe.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 123,
+        "line": 122,
         "include": "owner-log-reopen",
         "included": "books/owner-log-reopen.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 129,
+        "line": 128,
         "include": "history-columns-store",
         "included": "books/history-columns-store.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 130,
+        "line": 129,
         "include": "owner-log-route",
         "included": "books/owner-log-route.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 135,
+        "line": 134,
         "include": "owner-identity-served",
         "included": "books/owner-identity-served.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 137,
+        "line": 136,
         "include": "owner-commit-ocl",
         "included": "books/owner-commit-ocl.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 142,
+        "line": 141,
         "include": "served-catalog-owner",
         "included": "books/served-catalog-owner.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 146,
+        "line": 145,
         "include": "checkpoint-auxiliary",
         "included": "books/checkpoint-auxiliary.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 147,
+        "line": 146,
         "include": "feed-wire-input",
         "included": "books/feed-wire-input.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 148,
+        "line": 147,
         "include": "feed-connection",
         "included": "books/feed-connection.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 149,
+        "line": 148,
         "include": "feed-connection-invariants",
         "included": "books/feed-connection-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 150,
+        "line": 149,
         "include": "owner-agent",
         "included": "books/owner-agent.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 151,
+        "line": 150,
         "include": "owner-log",
         "included": "books/owner-log.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 152,
+        "line": 151,
         "include": "moderation-verbs",
         "included": "books/moderation-verbs.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 153,
+        "line": 152,
         "include": "owner-results",
         "included": "books/owner-results.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 154,
+        "line": 153,
         "include": "owner-served-bound",
         "included": "books/owner-served-bound.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world-store-test.lisp",
-        "line": 155,
+        "line": 154,
         "include": "topic-history-local-proposals",
         "included": "books/topic-history-local-proposals.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/image-world-store-test.lisp",
+        "line": 157,
+        "include": "article-buffer",
+        "included": "books/article-buffer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -63839,177 +64136,177 @@
       },
       {
         "book": "books/image-world.lisp",
-        "line": 200,
-        "include": "history-image-snapshot",
-        "included": "books/history-image-snapshot.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/image-world.lisp",
-        "line": 203,
+        "line": 202,
         "include": "retention-figures",
         "included": "books/retention-figures.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 205,
+        "line": 204,
         "include": "config-carried-open",
         "included": "books/config-carried-open.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 206,
+        "line": 205,
         "include": "store-checkpoint-open",
         "included": "books/store-checkpoint-open.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 207,
+        "line": 206,
         "include": "store-checkpoint-arena-load",
         "included": "books/store-checkpoint-arena-load.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 208,
+        "line": 207,
         "include": "store-checkpoint-arena-writer",
         "included": "books/store-checkpoint-arena-writer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 209,
+        "line": 208,
         "include": "store-open-pre-c1",
         "included": "books/store-open-pre-c1.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 210,
+        "line": 209,
         "include": "store-open-replay-refusal",
         "included": "books/store-open-replay-refusal.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 215,
+        "line": 214,
         "include": "store-reclaim",
         "included": "books/store-reclaim.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 219,
+        "line": 218,
         "include": "provenance-inspect",
         "included": "books/provenance-inspect.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 220,
+        "line": 219,
         "include": "checkpoint-auxiliary",
         "included": "books/checkpoint-auxiliary.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 221,
+        "line": 220,
         "include": "store-reclaim-stream",
         "included": "books/store-reclaim-stream.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 222,
+        "line": 221,
         "include": "store-log-reclaim",
         "included": "books/store-log-reclaim.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 224,
+        "line": 223,
         "include": "expiry-instant",
         "included": "books/expiry-instant.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 227,
+        "line": 226,
         "include": "owner-checkpoint-open",
         "included": "books/owner-checkpoint-open.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 230,
+        "line": 229,
         "include": "config-owner-carried",
         "included": "books/config-owner-carried.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 231,
+        "line": 230,
         "include": "config-owner-live-authorize",
         "included": "books/config-owner-live-authorize.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 233,
+        "line": 232,
         "include": "owner-log-reopen",
         "included": "books/owner-log-reopen.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 234,
+        "line": 233,
         "include": "owner-log-route",
         "included": "books/owner-log-route.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 237,
+        "line": 236,
         "include": "owner-identity-served",
         "included": "books/owner-identity-served.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 242,
+        "line": 241,
         "include": "served-catalog-owner",
         "included": "books/served-catalog-owner.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 245,
+        "line": 244,
         "include": "moderation-verbs",
         "included": "books/moderation-verbs.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 246,
+        "line": 245,
         "include": "owner-results",
         "included": "books/owner-results.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 247,
+        "line": 246,
         "include": "owner-served-bound",
         "included": "books/owner-served-bound.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 248,
+        "line": 247,
         "include": "topic-history-local-proposals",
         "included": "books/topic-history-local-proposals.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/image-world.lisp",
+        "line": 248,
+        "include": "article-buffer",
+        "included": "books/article-buffer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -64056,135 +64353,142 @@
       },
       {
         "book": "books/image-world.lisp",
-        "line": 269,
+        "line": 268,
         "include": "accounts",
         "included": "books/accounts.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 272,
+        "line": 271,
         "include": "native-live-pages",
         "included": "books/native-live-pages.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 273,
+        "line": 272,
         "include": "native-control-launch",
         "included": "books/native-control-launch.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 274,
+        "line": 273,
         "include": "consumer-local-control",
         "included": "books/consumer-local-control.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 275,
+        "line": 274,
         "include": "consumer-wait-codec",
         "included": "books/consumer-wait-codec.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 276,
+        "line": 275,
         "include": "consumer-reason",
         "included": "books/consumer-reason.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 277,
+        "line": 276,
         "include": "topic-history-local-control",
         "included": "books/topic-history-local-control.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 282,
+        "line": 281,
         "include": "web-config",
         "included": "books/web-config.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 283,
+        "line": 282,
         "include": "topic-history-authorship",
         "included": "books/topic-history-authorship.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 284,
+        "line": 283,
         "include": "bp-workflow-constructors",
         "included": "books/bp-workflow-constructors.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 285,
+        "line": 284,
         "include": "bp-channel-ingress",
         "included": "books/bp-channel-ingress.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 286,
+        "line": 285,
         "include": "bp-listener-set",
         "included": "books/bp-listener-set.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 288,
+        "line": 287,
         "include": "bp-transit-join",
         "included": "books/bp-transit-join.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 289,
+        "line": 288,
         "include": "bp-release-authority",
         "included": "books/bp-release-authority.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 290,
+        "line": 289,
         "include": "tcpcl-host-drive",
         "included": "books/tcpcl-host-drive.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 291,
+        "line": 290,
         "include": "tcpcl-delivery",
         "included": "books/tcpcl-delivery.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 292,
+        "line": 291,
         "include": "bp-run-class",
         "included": "books/bp-run-class.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 293,
+        "line": 292,
         "include": "bp-node-profile",
         "included": "books/bp-node-profile.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 294,
+        "line": 293,
         "include": "bp-node-profile-admission",
         "included": "books/bp-node-profile-admission.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/image-world.lisp",
+        "line": 294,
+        "include": "bp-node-host-transfer",
+        "included": "books/bp-node-host-transfer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -64664,6 +64968,34 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/owner-host-relation-span.lisp",
+        "line": 22,
+        "include": "owner-host-relation",
+        "included": "books/owner-host-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-host-relation.lisp",
+        "line": 58,
+        "include": "owner-identity-served",
+        "included": "books/owner-identity-served.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-host-relation.lisp",
+        "line": 62,
+        "include": "owner-outcome-pinned",
+        "included": "books/owner-outcome-pinned.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-host-relation.lisp",
+        "line": 64,
+        "include": "owner-served-bound",
+        "included": "books/owner-served-bound.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/owner-invariants-outcome.lisp",
         "line": 7,
         "include": "owner-invariants-served",
@@ -65119,6 +65451,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/refusal-effect.lisp",
+        "line": 51,
+        "include": "store-log-route-phases",
+        "included": "books/store-log-route-phases.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/relay-invariants.lisp",
         "line": 18,
         "include": "relay",
@@ -65504,6 +65843,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/store-checkpoint-digest.lisp",
+        "line": 24,
+        "include": "store-checkpoint-arena-load",
+        "included": "books/store-checkpoint-arena-load.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-checkpoint-digest.lisp",
+        "line": 25,
+        "include": "state-digest",
+        "included": "books/state-digest.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/store-checkpoint-reader.lisp",
         "line": 57,
         "include": "frame-digest-buffer",
@@ -65578,6 +65931,27 @@
         "line": 42,
         "include": "payload-extent",
         "included": "books/payload-extent.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-log-durable.lisp",
+        "line": 63,
+        "include": "owner-batch",
+        "included": "books/owner-batch.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-log-durable.lisp",
+        "line": 64,
+        "include": "store-log-programs",
+        "included": "books/store-log-programs.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-log-durable.lisp",
+        "line": 65,
+        "include": "store-log-extend",
+        "included": "books/store-log-extend.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -66089,6 +66463,13 @@
         "line": 9,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/article-buffer-tests.lisp",
+        "line": 21,
+        "include": "../../books/article-buffer",
+        "included": "books/article-buffer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -70152,20 +70533,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "tests/acl2/history-image-binding-tests.lisp",
-        "line": 26,
-        "include": "../../books/history-image-fold",
-        "included": "books/history-image-fold.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/history-image-campaign-tests.lisp",
-        "line": 25,
-        "include": "../../books/history-image-snapshot",
-        "included": "books/history-image-snapshot.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "tests/acl2/history-pages-digest-tests.lisp",
         "line": 16,
         "include": "must-fail-checked",
@@ -71419,20 +71786,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "tests/acl2/owner-cold-line-tests.lisp",
-        "line": 8,
-        "include": "owner-time-model-tests",
-        "included": "tests/acl2/owner-time-model-tests.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/owner-cold-line-tests.lisp",
-        "line": 9,
-        "include": "must-fail-checked",
-        "included": "tests/acl2/must-fail-checked.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "tests/acl2/owner-commit-carried-tests.lisp",
         "line": 4,
         "include": "must-fail-checked",
@@ -71657,6 +72010,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-host-relation-tests.lisp",
+        "line": 9,
+        "include": "../../books/owner-host-relation",
+        "included": "books/owner-host-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-host-relation-tests.lisp",
+        "line": 10,
+        "include": "owner-log-ocl-tests",
+        "included": "tests/acl2/owner-log-ocl-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-identity-intern-tests.lisp",
         "line": 7,
         "include": "owner-signed-post-tests",
@@ -71836,6 +72203,13 @@
         "line": 5,
         "include": "owner-commit-carried-tests",
         "included": "tests/acl2/owner-commit-carried-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-parse-carried-tests.lisp",
+        "line": 6,
+        "include": "peer-authored-accept-tests",
+        "included": "tests/acl2/peer-authored-accept-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -72386,7 +72760,7 @@
       },
       {
         "book": "tests/acl2/payload-arena-extent-tests.lisp",
-        "line": 21,
+        "line": 17,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -73043,20 +73417,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "tests/acl2/records-schema-v1-teeth-tests.lisp",
-        "line": 8,
-        "include": "../../books/records-schema-v1",
-        "included": "books/records-schema-v1.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/records-schema-v1-teeth-tests.lisp",
-        "line": 9,
-        "include": "must-fail-checked",
-        "included": "tests/acl2/must-fail-checked.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "tests/acl2/records-shape-tests.lisp",
         "line": 20,
         "include": "must-fail-checked",
@@ -73082,6 +73442,20 @@
         "line": 3,
         "include": "../../books/records-attach",
         "included": "books/records-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/refusal-effect-tests.lisp",
+        "line": 10,
+        "include": "../../books/refusal-effect",
+        "included": "books/refusal-effect.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/refusal-effect-tests.lisp",
+        "line": 11,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -73764,6 +74138,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/store-checkpoint-digest-tests.lisp",
+        "line": 5,
+        "include": "../../books/store-checkpoint-digest",
+        "included": "books/store-checkpoint-digest.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-checkpoint-digest-tests.lisp",
+        "line": 7,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/store-checkpoint-open-tests.lisp",
         "line": 9,
         "include": "must-fail-checked",
@@ -74062,6 +74450,13 @@
         "line": 34,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-log-durable-tests.lisp",
+        "line": 12,
+        "include": "../../books/store-log-durable",
+        "included": "books/store-log-durable.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -75545,7 +75940,7 @@
       },
       {
         "host": "host/bp-node-host.lisp",
-        "line": 120,
+        "line": 118,
         "name": "character-listp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -80613,91 +81008,84 @@
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 35,
+        "line": 34,
         "name": "fnn-open",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 55,
+        "line": 60,
         "name": "fnn-developer-selector",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 55,
-        "name": "plusp",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
-      },
-      {
-        "host": "host/native/extent.lisp",
-        "line": 77,
+        "line": 60,
         "name": "fnn-core",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 87,
+        "line": 70,
         "name": "user-stobj-alist",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 87,
+        "line": 70,
         "name": "fnn-fault",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 93,
+        "line": 76,
         "name": "svref",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 93,
+        "line": 76,
         "name": "fnn-call",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 124,
+        "line": 92,
         "name": "find-if",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 124,
+        "line": 92,
         "name": "delete",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 124,
+        "line": 92,
         "name": "gethash",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 124,
-        "name": "throw",
+        "line": 92,
+        "name": "plusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 124,
+        "line": 92,
         "name": "list*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
@@ -81579,287 +81967,280 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2385,
-        "name": "fnn-extent-register-at",
-        "source": "host/native/extent.lisp",
-        "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/io.lisp",
-        "line": 2645,
+        "line": 2602,
         "name": "string-trim",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2645,
+        "line": 2602,
         "name": "read-line",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2687,
+        "line": 2644,
         "name": "fnn-%statfs",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2720,
+        "line": 2677,
         "name": "fill-pointer",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3242,
+        "line": 3113,
         "name": "unsigned-byte",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3242,
+        "line": 3113,
         "name": "file-length",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3242,
+        "line": 3113,
         "name": "read-sequence",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3300,
+        "line": 3171,
         "name": "functionp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3920,
+        "line": 3791,
         "name": "search",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4887,
+        "line": 4758,
         "name": "write-byte",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5283,
+        "line": 5154,
         "name": "find-if",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5307,
+        "line": 5178,
         "name": "find-class",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5307,
+        "line": 5178,
         "name": "slot-value",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5688,
+        "line": 5559,
         "name": "*error-output*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5755,
+        "line": 5626,
         "name": "terpri",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5782,
+        "line": 5653,
         "name": "macro-function",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5782,
+        "line": 5653,
         "name": "set-difference",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5949,
+        "line": 5820,
         "name": "minusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6098,
+        "line": 5969,
         "name": "fnn-lz4-candidate",
         "source": "host/native/lz4.lisp",
         "reason": "defined in host/native/lz4.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6263,
+        "line": 6134,
         "name": "file-namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6311,
+        "line": 6182,
         "name": "some",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6311,
+        "line": 6182,
         "name": "fnn-extent-register",
         "source": "host/native/extent.lisp",
         "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6339,
+        "line": 6210,
         "name": "nconc",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6412,
+        "line": 6283,
         "name": "*fn-lg-genesis*",
         "source": "books/store-log.lisp",
         "reason": "defined in books/store-log.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6431,
+        "line": 6302,
         "name": "*standard-input*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6588,
+        "line": 6459,
         "name": "notevery",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7008,
+        "line": 6879,
         "name": "multiple-value-setq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7008,
+        "line": 6879,
         "name": "decoded",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7486,
+        "line": 7357,
         "name": "nth-value",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7571,
+        "line": 7442,
         "name": "namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7697,
+        "line": 7568,
         "name": "fn-profile-limit",
         "source": "books/profile-limits.lisp",
         "reason": "defined in books/profile-limits.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7724,
+        "line": 7595,
         "name": "fnn-heap-history-octets",
         "source": "host/native/heap.lisp",
         "reason": "defined in host/native/heap.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7763,
+        "line": 7634,
         "name": "open",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7763,
+        "line": 7634,
         "name": "logandc2",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7800,
+        "line": 7671,
         "name": "fnn-tls-send-all",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7800,
+        "line": 7671,
         "name": "fnn-tls-read",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7800,
+        "line": 7671,
         "name": "fnn-tls-open-client-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7800,
+        "line": 7671,
         "name": "fnn-tls-connect",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7800,
+        "line": 7671,
         "name": "fnn-tls-close-channel",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7800,
+        "line": 7671,
         "name": "fnn-tls-close-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -83952,420 +84333,385 @@
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3468,
-        "name": "fnn-core-buffer-state",
-        "source": "host/native/io.lisp",
-        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/owner.lisp",
-        "line": 3468,
-        "name": "fnn-extent-no-io-usable-p",
-        "source": "host/native/extent.lisp",
-        "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/owner.lisp",
-        "line": 3468,
-        "name": "fnn-live-octets",
-        "source": "host/native/io.lisp",
-        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/owner.lisp",
-        "line": 3524,
-        "name": "fnn-octets-fill",
-        "source": "host/native/io.lisp",
-        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/owner.lisp",
-        "line": 3546,
+        "line": 3454,
         "name": "block",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3546,
+        "line": 3454,
+        "name": "fnn-octets-fill",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/owner.lisp",
+        "line": 3454,
+        "name": "fnn-core-buffer-state",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/owner.lisp",
+        "line": 3454,
         "name": "multiple-value-prog1",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3719,
+        "line": 3623,
         "name": "fnn-tls-read",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3719,
+        "line": 3623,
         "name": "fnn-tls-peek-plaintext",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3719,
+        "line": 3623,
         "name": "fnn-recv",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3727,
+        "line": 3631,
         "name": "fnn-tls-send-all",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3727,
+        "line": 3631,
         "name": "fnn-send-all",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3732,
+        "line": 3636,
         "name": "vectorp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3751,
+        "line": 3655,
         "name": "fnn-mux-adopt",
         "source": "host/native/mux.lisp",
         "reason": "defined in host/native/mux.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3804,
+        "line": 3708,
         "name": "fnn-extent-register",
         "source": "host/native/extent.lisp",
         "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3804,
+        "line": 3708,
         "name": "fnn-state-checkpoint-path",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3804,
+        "line": 3708,
         "name": "fnn-extent-ids-of-paths",
         "source": "host/native/extent.lisp",
         "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3804,
+        "line": 3708,
         "name": "*fnn-extent-retired*",
         "source": "host/native/extent.lisp",
         "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3804,
+        "line": 3708,
         "name": "fnn-extent-open-count",
         "source": "host/native/extent.lisp",
         "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3878,
+        "line": 3782,
         "name": "fnn-gc-nursery-octets",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3878,
+        "line": 3782,
         "name": "fnn-checkpoint-walk",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3878,
-        "name": "fnn-history-image-build",
-        "source": "host/native/io.lisp",
-        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/owner.lisp",
-        "line": 3878,
-        "name": "fnn-history-image-octets",
-        "source": "host/native/io.lisp",
-        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/owner.lisp",
-        "line": 3878,
+        "line": 3782,
         "name": "fnn-log-make-durable",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3878,
+        "line": 3782,
         "name": "fnn-state-checkpoint-write",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3878,
-        "name": "fnn-history-image-write",
-        "source": "host/native/io.lisp",
-        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/owner.lisp",
-        "line": 3878,
+        "line": 3782,
         "name": "fnn-checkpoint-write-steps",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3878,
+        "line": 3782,
         "name": "fnn-live-octets-pub",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3878,
+        "line": 3782,
         "name": "fnn-octets-pub-release",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3878,
+        "line": 3782,
         "name": "fnn-log-covered-indices",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3878,
+        "line": 3782,
         "name": "fnn-segment-path-at",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3878,
+        "line": 3782,
         "name": "fnn-log-drop",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3878,
+        "line": 3782,
         "name": "*fnn-checkpoint-frames*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4042,
+        "line": 3933,
         "name": "fnn-log-kernel",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4042,
+        "line": 3933,
         "name": "fnn-log-spare",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4042,
+        "line": 3933,
         "name": "fnn-log-index",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4152,
+        "line": 4043,
         "name": "nconc",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4170,
+        "line": 4061,
         "name": "fnn-store-prepare-observation",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4235,
+        "line": 4126,
         "name": "fnn-mkdir",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4235,
+        "line": 4126,
         "name": "*fnn-journal-fd*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4235,
+        "line": 4126,
         "name": "*fnn-journal-w*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4235,
+        "line": 4126,
         "name": "fnn-journal-line",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4327,
+        "line": 4218,
         "name": "*fnn-sighup-count*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4327,
+        "line": 4218,
         "name": "*fnn-owner-log-path*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4327,
+        "line": 4218,
         "name": "fnn-log-swap-fd",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4418,
+        "line": 4309,
         "name": "fnn-mux-unsent",
         "source": "host/native/mux.lisp",
         "reason": "defined in host/native/mux.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4478,
+        "line": 4369,
         "name": "*fnn-sigterm-owner-active*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4478,
+        "line": 4369,
         "name": "*fnn-sigterm-requested*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4478,
+        "line": 4369,
         "name": "*fnn-sigterm-wakeup-fd*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4478,
+        "line": 4369,
         "name": "fnn-log-writer-start",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4478,
+        "line": 4369,
         "name": "fnn-mux-budget-install",
         "source": "host/native/mux.lisp",
         "reason": "defined in host/native/mux.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4478,
+        "line": 4369,
         "name": "fnn-mux-start",
         "source": "host/native/mux.lisp",
         "reason": "defined in host/native/mux.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4478,
+        "line": 4369,
         "name": "fnn-out",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4478,
+        "line": 4369,
         "name": "fnn-listen",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4478,
+        "line": 4369,
         "name": "fnn-socket-shut",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4478,
+        "line": 4369,
         "name": "fnn-log-writer-stop",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4644,
+        "line": 4535,
         "name": "fnn-tls-context-p",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4644,
+        "line": 4535,
         "name": "fnn-octets-string",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4644,
+        "line": 4535,
         "name": "fnn-post-entry-fault",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4644,
+        "line": 4535,
         "name": "fnn-state-checkpoint-test-fault",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 4708,
+        "line": 4599,
         "name": "fnn-register-developer-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -87186,91 +87532,105 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 365,
+        "line": 363,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 460,
+        "line": 458,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 460,
+        "line": 458,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 476,
+        "line": 474,
         "name": "with-local-stobj",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 711,
+        "line": 709,
         "name": "member-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 802,
+        "line": 791,
         "name": "atom",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 802,
+        "line": 791,
         "name": "reverse",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1023,
+        "line": 996,
         "name": "fn-hist-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1439,
+        "line": 1412,
         "name": "fn-arena-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1595,
+        "line": 1568,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1595,
+        "line": 1568,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2611,
+        "line": 2584,
         "name": "assoc-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 3861,
+        "line": 2728,
+        "name": "fn-oop-transit-outcome",
+        "source": "books/owner-outcome-pinned.lisp",
+        "reason": "defined in books/owner-outcome-pinned.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 2774,
+        "name": "fn-oop-outcome",
+        "source": "books/owner-outcome-pinned.lisp",
+        "reason": "defined in books/owner-outcome-pinned.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 3850,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -87360,93 +87720,86 @@
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
-        "host": "host/store-host.lisp",
-        "line": 550,
-        "name": "cadr",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
         "host": "host/store-node-host.lisp",
-        "line": 89,
+        "line": 88,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 210,
+        "line": 209,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 247,
+        "line": 246,
         "name": "revappend",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 307,
+        "line": 306,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 655,
+        "line": 578,
+        "name": "fn-sckd-tables-digest",
+        "source": "books/store-checkpoint-digest.lisp",
+        "reason": "defined in books/store-checkpoint-digest.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 632,
+        "name": "fn-sckd-combine",
+        "source": "books/store-checkpoint-digest.lisp",
+        "reason": "defined in books/store-checkpoint-digest.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 650,
+        "name": "explode-atom",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 709,
         "name": "last",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 757,
+        "line": 811,
         "name": "atom",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 796,
+        "line": 850,
         "name": "reverse",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 839,
-        "name": "er-let*",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/store-node-host.lisp",
-        "line": 839,
-        "name": "prepared",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/store-node-host.lisp",
-        "line": 1056,
+        "line": 1063,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 1207,
+        "line": 1214,
         "name": "fn-arena-count",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/store-node-host.lisp",
-        "line": 1631,
-        "name": "explode-atom",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },

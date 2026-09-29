@@ -167,7 +167,8 @@
         "PRF-048",
         "PRF-050",
         "PRF-063",
-        "PRF-069"
+        "PRF-069",
+        "PRF-943"
       ],
       "verification": [
         "proof",
@@ -392,7 +393,8 @@
         "PRF-282",
         "PRF-328",
         "PRF-331",
-        "PRF-333"
+        "PRF-333",
+        "PRF-936"
       ],
       "verification": [
         "proof",
@@ -498,7 +500,8 @@
         "PRF-255",
         "PRF-280",
         "PRF-316",
-        "PRF-903"
+        "PRF-903",
+        "PRF-953"
       ],
       "verification": [
         "proof",
@@ -1145,7 +1148,9 @@
         "PRF-114",
         "PRF-190",
         "PRF-214",
-        "PRF-906"
+        "PRF-906",
+        "PRF-944",
+        "PRF-956"
       ],
       "verification": [
         "proof",
@@ -1301,7 +1306,8 @@
         "PRF-057",
         "PRF-063",
         "PRF-091",
-        "PRF-206"
+        "PRF-206",
+        "PRF-943"
       ],
       "verification": [
         "proof",
@@ -1490,7 +1496,8 @@
         "PRF-277",
         "PRF-284",
         "PRF-289",
-        "PRF-266"
+        "PRF-266",
+        "PRF-935"
       ],
       "verification": [
         "proof",
@@ -1594,7 +1601,8 @@
         "PRF-278",
         "PRF-283",
         "PRF-293",
-        "PRF-347"
+        "PRF-347",
+        "PRF-935"
       ],
       "verification": [
         "proof",
@@ -1906,7 +1914,8 @@
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-066"
+        "PRF-066",
+        "PRF-955"
       ],
       "verification": [
         "proof",
@@ -2070,7 +2079,8 @@
       "proof_targets": [
         "PRF-083",
         "PRF-104",
-        "PRF-199"
+        "PRF-199",
+        "PRF-959"
       ],
       "verification": [
         "proof",
@@ -2807,7 +2817,8 @@
         "PRF-321",
         "PRF-330",
         "PRF-326",
-        "PRF-341"
+        "PRF-341",
+        "PRF-952"
       ],
       "verification": [
         "proof",
@@ -3738,7 +3749,8 @@
         "PRF-366",
         "PRF-369",
         "PRF-370",
-        "PRF-382"
+        "PRF-382",
+        "PRF-959"
       ],
       "verification": [
         "proof",
@@ -4107,7 +4119,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-232"
+        "PRF-232",
+        "PRF-954"
       ],
       "verification": [
         "proof",
@@ -4445,7 +4458,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-217"
+        "PRF-217",
+        "PRF-942"
       ],
       "verification": [
         "proof",
@@ -4645,7 +4659,12 @@
         "PRF-303",
         "PRF-310",
         "PRF-354",
-        "PRF-901"
+        "PRF-901",
+        "PRF-924",
+        "PRF-925",
+        "PRF-926",
+        "PRF-931",
+        "PRF-932"
       ],
       "verification": [
         "proof",
@@ -5048,7 +5067,8 @@
       "proof_targets": [
         "PRF-384",
         "PRF-385",
-        "PRF-933"
+        "PRF-933",
+        "PRF-951"
       ],
       "verification": [
         "proof",
