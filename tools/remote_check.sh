@@ -32,7 +32,10 @@
 #      (obstructions-5 item 38);
 #   5. first installs the box cache's certificates for the tree's bytes
 #      (tools/certs.py install; its summary heads the log; --no-install-certs
-#      skips it): without them make check's host_check prints NOT RUN for both
+#      skips it), then the image umbrellas as ONE set (certs.py
+#      install-umbrellas: per-book pairs from different origins did not
+#      compose under include-book books/image-world on either box;
+#      obstructions-7 item 64): without them make check's host_check prints NOT RUN for both
 #      images and check-lane fails for every lane (batch AZ, tooling-obstructions,
 #      2026-09-28); then runs `make T` there (T = check-lane by default; `--cmd
 #      'COMMAND'` runs that shell command in the tree instead, e.g. one test
@@ -256,7 +259,7 @@ echo "remote_check: $RUN in $BOX:$TREE (log $BOX:$LOG)"
 # reported as make's status while make kept running (scale-latency,
 # 2026-09-28).  A poll that cannot reach the box is retried.
 remote "cat > $LOG.run.sh" <<RUNSCRIPT || { echo "remote_check: cannot write the run script on $BOX" >&2; exit 3; }
-cd $TREE && $ENVS; eval "\$(python3 tools/native_env.py sbcl --export 2>/dev/null)"; export FN_CERTIFY_JOBS=${FN_CERTIFY_JOBS:-auto}; [ -n "\${FN_ACL2:-}" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)'; exit 3; }; { echo "== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)"; if [ -f tools/native_env.py ] && ! python3 tools/native_env.py sbcl-check; then echo "== make exit 3"; exit 3; fi; if [ $INSTALL = 1 ] && [ -f tools/certs.py ]; then echo "== certs install: \$(python3 tools/certs.py install 2>&1 | grep -E '^ *installed' | tail -n 1)"; fi; $WRAP $RUN 2>&1; echo "== make exit \$?"; } > $LOG 2>&1
+cd $TREE && $ENVS; eval "\$(python3 tools/native_env.py sbcl --export 2>/dev/null)"; export FN_CERTIFY_JOBS=${FN_CERTIFY_JOBS:-auto}; [ -n "\${FN_ACL2:-}" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)'; exit 3; }; { echo "== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)"; if [ -f tools/native_env.py ] && ! python3 tools/native_env.py sbcl-check; then echo "== make exit 3"; exit 3; fi; if [ $INSTALL = 1 ] && [ -f tools/certs.py ]; then echo "== certs install: \$(python3 tools/certs.py install 2>&1 | grep -E '^ *installed' | tail -n 1)"; echo "== certs install-umbrellas: \$(python3 tools/certs.py install-umbrellas 2>&1 | tail -n 1)"; fi; $WRAP $RUN 2>&1; echo "== make exit \$?"; } > $LOG 2>&1
 RUNSCRIPT
 remote "rm -f $LOG; echo $HEAD_SHA $TARGET > $LOG.head; nohup sh $LOG.run.sh > $LOG 2>&1 < /dev/null &" || {
     echo "remote_check: cannot start make on $BOX" >&2; exit 3; }

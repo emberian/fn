@@ -1808,5 +1808,45 @@ class PairFactMemoTests(unittest.TestCase):
         self.assertIn("memoized_pair_checker(cache)", inspect.getsource(certs.artifact_sets))
 
 
+class InstallUmbrellasTests(unittest.TestCase):
+    """obstructions-7 item 64: the image umbrellas install as ONE set after
+    remote_check's per-book install, falling back to fewer umbrellas."""
+
+    def test_order_and_fallback(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "books").mkdir()
+            for stem in ("image-world-store-test", "image-world-dtn", "image-world", "other"):
+                (root / "books" / f"{stem}.lisp").write_text("")
+            self.assertEqual(certs.umbrella_roots(root),
+                             ["books/image-world", "books/image-world-dtn",
+                              "books/image-world-store-test"])
+            asked = []
+
+            def installer(roots):
+                asked.append(list(roots))
+                ok = len(roots) == 2
+                return SimpleReport(object() if ok else None)
+            chosen, lines = certs.install_umbrellas(root, root / "cache", root / "acl2", installer)
+            self.assertEqual(chosen, ["books/image-world", "books/image-world-dtn"])
+            self.assertEqual(asked, [certs.umbrella_roots(root),
+                                     ["books/image-world", "books/image-world-dtn"]])
+            self.assertIn("installed as one set", lines[-1])
+            chosen, lines = certs.install_umbrellas(root, root / "cache", root / "acl2",
+                                                    lambda roots: SimpleReport(None))
+            self.assertEqual(chosen, [])
+            self.assertIn("NOT installed", lines[-1])
+
+    def test_remote_check_runs_it_after_the_per_book_install(self):
+        text = (TOOLS / "remote_check.sh").read_text()
+        self.assertLess(text.index("tools/certs.py install 2>&1"),
+                        text.index("tools/certs.py install-umbrellas"))
+
+
+class SimpleReport:
+    def __init__(self, artifact_set):
+        self.artifact_set = artifact_set
+
+
 if __name__ == "__main__":
     unittest.main()

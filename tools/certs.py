@@ -1298,6 +1298,45 @@ def compatible_partial_choices(
             for name, candidate in best.items()}
 
 
+# The image umbrellas (obstructions-7 item 64): remote_check's per-book
+# `install` takes each book's newest pair on its own, and pairs from
+# different origins then fail to compose under `include-book
+# books/image-world` (both boxes, 1f0503c1d).  `install-umbrellas` installs
+# them as ONE set after it: all of them if one set covers all, else the
+# build's two, else books/image-world alone.
+UMBRELLA_FIRST = ("books/image-world", "books/image-world-dtn")
+
+
+def umbrella_roots(root: Path) -> list[str]:
+    present = sorted(f"books/{path.stem}" for path in (root / "books").glob("image-world*.lisp"))
+    return ([name for name in UMBRELLA_FIRST if name in present]
+            + [name for name in present if name not in UMBRELLA_FIRST])
+
+
+def install_umbrellas(root: Path, cache: Path, acl2: Path,
+                      installer=None) -> tuple[list[str], list[str]]:
+    """(the umbrellas installed as one set, report lines)."""
+    installer = installer or (lambda roots: install_artifact_set(root, cache, roots,
+                                                                 acl2=acl2))
+    roots = umbrella_roots(root)
+    tries = []
+    for candidate in (roots, [n for n in roots if n in UMBRELLA_FIRST], roots[:1]):
+        if candidate and candidate not in tries:
+            tries.append(candidate)
+    lines: list[str] = []
+    for candidate in tries:
+        try:
+            report = installer(candidate)
+        except (ValueError, OSError) as error:
+            lines.append(f"umbrellas {' '.join(candidate)}: {error}")
+            continue
+        if report.artifact_set is not None:
+            return candidate, lines + [f"umbrellas installed as one set: {' '.join(candidate)}"]
+        lines.append(f"umbrellas {' '.join(candidate)}: no coherent set in {cache}")
+    return [], lines + ["umbrellas: NOT installed as one set (include-book of the "
+                        "umbrella may fail on a certificate here)"]
+
+
 def install_partial(root: Path, cache: Path, roots: Iterable[str],
                     toolchain_identity: str, acl2: Path | None = None,
                     pair_checker=None,
@@ -2087,7 +2126,7 @@ def mirror(cache: Path, remote: str,
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("action", choices=("publish", "install", "install-set",
-                                           "install-partial", "status", "prune",
+                                           "install-partial", "install-umbrellas", "status", "prune",
                                            "rekey"))
     parser.add_argument("books", nargs="*", default=None,
                         help="repository-relative book names without .lisp "
@@ -2155,6 +2194,12 @@ def main(argv: list[str] | None = None) -> int:
             purge_on_miss=arguments.purge_on_miss,
             dependencies_only=arguments.dependencies_only,
             acl2=Path(arguments.acl2).resolve())
+    elif arguments.action == "install-umbrellas":
+        if not arguments.acl2:
+            parser.error("install-umbrellas needs --acl2 (or FN_ACL2)")
+        chosen, lines = install_umbrellas(root, cache, Path(arguments.acl2).resolve())
+        print("\n".join(lines))
+        return 0 if chosen else 1
     elif arguments.action == "install-partial":
         if not names:
             parser.error("install-partial needs one or more root books")
