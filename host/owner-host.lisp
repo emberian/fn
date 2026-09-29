@@ -3797,7 +3797,7 @@
 ;; NNT-041: several listeners.  The node is public when any listener is
 ;; (fn-exp-address-publicp decides each).
 (defun fn-owner-exposure-projections-publicp (projections)
-  (declare (xargs :guard (alistp projections)))
+  (declare (xargs :mode :program))
   (and (consp projections)
        (or (fn-exp-address-publicp (car (car projections)) (cadr (car projections)))
            (fn-owner-exposure-projections-publicp (cdr projections)))))
