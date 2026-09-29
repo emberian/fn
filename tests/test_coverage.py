@@ -19,10 +19,16 @@ from tools import coverage  # noqa: E402
 BOOK = "/box/tree/books/served.lisp"
 
 
-def fn(name, callees=(), cls="COMMON-LISP-COMPLIANT", book=BOOK, attachment=None):
+def fn(name, callees=(), cls="COMMON-LISP-COMPLIANT", book=BOOK, attachment=None,
+       formals=("x",), alias=None):
+    """ALIAS: (callee, args) when the body is one application of a function to
+    variables, as the dump's `alias` field carries it; None otherwise."""
     return {"name": "ACL2::" + name.upper(), "book": book, "class": "KEYWORD::" + cls,
             "callees": ["ACL2::" + c.upper() if "::" not in c else c for c in callees],
             "attachment": attachment and "ACL2::" + attachment.upper(),
+            "formals": ["ACL2::" + f.upper() for f in formals],
+            "alias": alias and {"callee": "ACL2::" + alias[0].upper(),
+                                "args": ["ACL2::" + a.upper() for a in alias[1]]},
             "body": True, "constrained": False, "non_executable": False}
 
 
@@ -109,18 +115,33 @@ class DelegationTests(unittest.TestCase):
     def build(self):
         world = json.loads(json.dumps(WORLD))
         world["functions"] += [
-            fn("fn-wrap-serve", ["fn-serve"]),         # exactly a call of fn-serve (direct theorem)
-            fn("fn-wrap-scan", ["fn-scan"]),           # exactly a call of fn-scan (no theorem)
+            fn("fn-wrap-serve", ["fn-serve"], alias=("fn-serve", ["x"])),   # a true alias (cited theorem)
+            fn("fn-wrap-scan", ["fn-scan"], alias=("fn-scan", ["x"])),      # a true alias (no theorem)
             fn("fn-wrap-branch", [IF, "fn-serve-refusal"]),  # branches itself, over a helper
+            # the 2026-09-29 review's wrappers, each declared :delegates fn-serve:
+            fn("fn-wrap-invert", ["not", "fn-serve"]),                        # (not (fn-serve x))
+            fn("fn-wrap-hardwire", ["fn-serve"]),                             # (fn-serve x 'admin): calls only fn-serve
+            fn("fn-wrap-reorder", ["fn-serve"], formals=("x", "s"),
+               alias=("fn-serve", ["s", "x"])),                               # (fn-serve s x)
+            fn("fn-wrap-discard", ["car", "fn-serve"]),                       # (car (fn-serve x)): drops the state
+            fn("fn-wrap-effect", ["fn-serve", "fn-bump"]),                    # (fn-serve (fn-bump x))
+            fn("fn-wrap-shape", ["fn-shape"], alias=("fn-shape", ["x"])),     # alias of a callee with a shape lemma only
+            fn("fn-shape", [IF, "fn-serve-refusal"]),
+            # undeclared: a one-call wrapper of a decision entry is not a delegation by shape
+            fn("fn-wrap-plain", ["fn-serve"], alias=("fn-serve", ["x"])),
+            fn("fn-wrap-plain-invert", ["not", "fn-serve"]),
         ]
+        world["theorems"] += [thm("fn-shape-true-listp", [], ["fn-shape"])]   # a shape lemma, cited by nothing
         interfaces = json.loads(json.dumps(INTERFACES))
+        entry = lambda name, callee: {"name": name, "subsystem": "store", "class": "ideal",
+                                      "keystones": [], "dispatched_from": [], "delegates": callee}
         interfaces["entries"] += [
-            {"name": "fn-wrap-serve", "subsystem": "store", "class": "ideal",
-             "keystones": [], "dispatched_from": [], "delegates": "fn-serve"},
-            {"name": "fn-wrap-scan", "subsystem": "store", "class": "ideal",
-             "keystones": [], "dispatched_from": [], "delegates": "fn-scan"},
-            {"name": "fn-wrap-branch", "subsystem": "store", "class": "ideal",
-             "keystones": [], "dispatched_from": [], "delegates": "fn-serve"},
+            entry("fn-wrap-serve", "fn-serve"), entry("fn-wrap-scan", "fn-scan"),
+            entry("fn-wrap-branch", "fn-serve"), entry("fn-wrap-invert", "fn-serve"),
+            entry("fn-wrap-hardwire", "fn-serve"), entry("fn-wrap-reorder", "fn-serve"),
+            entry("fn-wrap-discard", "fn-serve"), entry("fn-wrap-effect", "fn-serve"),
+            entry("fn-wrap-shape", "fn-shape"), entry("fn-shape", None),
+            entry("fn-wrap-plain", None), entry("fn-wrap-plain-invert", None),
         ]
         root = Path(tempfile.mkdtemp())
         (root / "planning").mkdir()
@@ -139,8 +160,25 @@ class DelegationTests(unittest.TestCase):
         self.assertNotIn("delegates_problem", rows["fn-wrap-serve"])
         self.assertNotIn("fn-wrap-serve", coverage.uncovered_decisions(cov))
         self.assertIn("no theorem's conclusion names", rows["fn-wrap-scan"]["delegates_problem"])
-        self.assertIn("but calls", rows["fn-wrap-branch"]["delegates_problem"])
+        self.assertIn("not one application", rows["fn-wrap-branch"]["delegates_problem"])
         self.assertEqual(rows["fn-wrap-branch"]["kind"], "decision")
+        # the review's wrappers: every one refused, none filed as delegating
+        for name, text in (("fn-wrap-invert", "not one application"),
+                           ("fn-wrap-hardwire", "not one application"),
+                           ("fn-wrap-reorder", "not the identity"),
+                           ("fn-wrap-discard", "not one application"),
+                           ("fn-wrap-effect", "not one application"),
+                           ("fn-wrap-shape", "no proof target cites")):
+            self.assertIn(text, rows[name]["delegates_problem"], name)
+            self.assertNotEqual(rows[name]["kind"], "delegates", name)
+        # wrapping a decision entry without a verified delegation is a decision
+        for name in ("fn-wrap-invert", "fn-wrap-hardwire", "fn-wrap-reorder", "fn-wrap-discard",
+                     "fn-wrap-effect", "fn-wrap-plain", "fn-wrap-plain-invert"):
+            self.assertEqual(rows[name]["kind"], "decision", name)
+            self.assertEqual(rows[name]["wraps"], ["fn-serve"], name)
+            self.assertIn(name, coverage.uncovered_decisions(cov), name)
+        self.assertEqual(rows["fn-wrap-serve"]["delegated_cited"], ["fn-serve-answers"])
+        self.assertEqual(rows["fn-serve"]["keystone_cited"], ["fn-serve-answers"])
         coverage.write_baseline(cov, root / "planning" / "coverage-baseline.json")
         (root / "planning" / "interfaces-gaps.md").write_text(coverage.render_gaps(cov))
         problems, _notes = coverage.check(cov, root)
@@ -203,14 +241,15 @@ class CoverTests(unittest.TestCase):
         self.assertIn("refus", self.rows["fn-serve"]["vocabulary"])
         # a :program forwarder whose private closure stops at the entry it calls
         wrap = self.rows["fn-wrap"]
-        self.assertEqual(wrap["kind"], "straight-line")
+        self.assertEqual(wrap["kind"], "decision")
         self.assertEqual(wrap["mode"], "program")
         self.assertEqual(wrap["book"], "top-level")
         self.assertEqual(self.rows["fn-field"]["kind"], "straight-line")
         self.assertEqual(self.rows["fn-codec-entry"]["kind"], "codec")
         self.assertEqual(self.rows["fn-scan"]["kind"], "branches")
         self.assertEqual(self.rows["fn-missing"]["kind"], "absent")
-        self.assertEqual(self.rows["fn-route"]["kind"], "delegates")
+        self.assertEqual(self.rows["fn-route"]["kind"], "decision")  # wraps fn-serve, no verified :delegates
+        self.assertEqual(self.rows["fn-route"]["wraps"], ["fn-serve"])
         self.assertIn("fn-serve", self.rows["fn-route"]["why"])
 
     def test_callee_only_and_nothing(self):
@@ -225,7 +264,7 @@ class CoverTests(unittest.TestCase):
     def test_summary_and_families(self):
         counts = coverage.summary(self.cov["entries"])
         self.assertEqual(counts["all"]["declared"], 8)
-        self.assertEqual(counts["all"]["decision"], 1)
+        self.assertEqual(counts["all"]["decision"], 3)  # fn-serve, and fn-route/fn-wrap wrapping it
         self.assertEqual(counts["all"]["absent"], 1)
         self.assertEqual(counts["nntp/served"]["direct"], 1)
         rows = coverage.query(self.cov, "reply", None, None, True, "direct")
@@ -270,7 +309,7 @@ class CoverTests(unittest.TestCase):
     def test_gaps_render_names_the_coordinate(self):
         text = coverage.render_gaps(self.cov)
         self.assertIn("box hbox", text.replace("box box", "box hbox"))
-        self.assertIn("| all | 8 | 1 |", text)
+        self.assertIn("| all | 8 | 3 |", text)
         self.assertIn("`fn-missing`", text)
 
 
