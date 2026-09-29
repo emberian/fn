@@ -151,14 +151,23 @@ class StateCheckpointSourceTests(unittest.TestCase):
         arena_steps = native_cuts.host_function(io, "fnn-checkpoint-write-arena-steps")
         self.assertIn("(fnn-call 'fn-scka-write-step state n count sequence", arena_steps)
         self.assertIn("(fnn-plan-write-all fd frames st)", arena_steps)
-        node_setup = native_cuts.host_function(node_host, "fn-store-sco-publish-setup")
         # checkpoint-arena-3: NEXT is the open's E extended over the rows
         # after it (fn-scka-next-checkpoint, no second canonicalization);
         # the arena run's setup and sources come from the bounded walk.
-        self.assertIn("(fn-scka-next-checkpoint e (len lens) configs records fn-arena)", node_setup)
+        # composed-owner: the setup in two halves (NEXT, then the setup over
+        # the position that carries the history image's binding).
+        node_next = native_cuts.host_function(node_host, "fn-store-sco-publish-next")
+        node_setup = native_cuts.host_function(node_host, "fn-store-sco-publish-setup-of")
+        self.assertIn("(fn-scka-next-checkpoint e (len lens) configs records fn-arena)", node_next)
         self.assertIn("(fn-scka-publication-setup next (fn-sf-frontier (fn-sn-files st))", node_setup)
         self.assertIn("(fn-scka-lens-setup lens segment-octets)", node_setup)
         self.assertIn("(fn-scka-initial-state srcs (nth 1 ws) 0)", node_setup)
+        self.assertIn("'fn-store-sco-publish-next", publish_steps_io := native_cuts.host_function(
+            io, "fnn-state-checkpoint-publish-steps"))
+        self.assertIn("(fnn-history-image-build", publish_steps_io)
+        self.assertIn("(fnn-history-image-write fd image)", publish_steps_io)
+        self.assertIn("(fn-his-open binding node salt (cadr log) file fn-hrecs$c)",
+                      native_cuts.host_function(node_host, "fn-store-sco-image-open"))
         publish_steps = native_cuts.host_function(io, "fnn-state-checkpoint-publish-steps")
         self.assertIn("(fnn-core-state 'fn-store-sco-pass-begin)", publish_steps)
         self.assertIn("(fnn-core-arena-state 'fn-store-sco-pass-step", publish_steps)
