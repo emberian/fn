@@ -1525,27 +1525,27 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1577,
+    "books": 1578,
     "books_in_root_closure": 1567,
     "roots": 1521,
-    "theorems": 25566,
-    "functions": 16803,
-    "assert_events": 21604,
-    "must_fails": 2320,
+    "theorems": 25599,
+    "functions": 16824,
+    "assert_events": 21624,
+    "must_fails": 2323,
     "prover_refusals": 0,
     "encapsulates": 143,
     "guards": {
-      "verified": 3044,
-      "declared-off": 1995,
-      "default-guarded": 9263,
-      "default-unguarded": 2501
+      "verified": 3047,
+      "declared-off": 1998,
+      "default-guarded": 9270,
+      "default-unguarded": 2509
     },
-    "suspect_theorems": 1201,
+    "suspect_theorems": 1204,
     "export_hygiene_warnings": 318,
     "enabled_projection_warnings": 52,
-    "teeth_form_warnings": 252,
-    "include_hygiene_warnings": 2238,
-    "host_names_warnings": 2064,
+    "teeth_form_warnings": 254,
+    "include_hygiene_warnings": 2241,
+    "host_names_warnings": 1926,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -15034,12 +15034,12 @@
       "book": "books/native-live-status.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 73,
-      "functions": 58,
+      "theorems": 74,
+      "functions": 62,
       "guards": {
         "verified": 6,
         "declared-off": 11,
-        "default-guarded": 41,
+        "default-guarded": 45,
         "default-unguarded": 0
       },
       "verify_guards_events": 6,
@@ -15159,7 +15159,7 @@
       "book": "books/native-status-columns.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 17,
+      "theorems": 23,
       "functions": 12,
       "guards": {
         "verified": 1,
@@ -15176,10 +15176,13 @@
       "encapsulates": 0,
       "includes": [
         "native-health",
+        "owner-reader-view",
         "served-columns"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-nsc-at-reader-view-without-capture"
+      ],
       "read_error": null
     },
     {
@@ -16790,7 +16793,7 @@
       "book": "books/owner-checkpoint-open.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
+      "theorems": 20,
       "functions": 7,
       "guards": {
         "verified": 4,
@@ -24473,7 +24476,7 @@
       "book": "books/store-checkpoint-open.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 37,
+      "theorems": 42,
       "functions": 30,
       "guards": {
         "verified": 11,
@@ -24492,7 +24495,10 @@
         "config-observed"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-sco-fault-of-fault",
+        "fn-sco-identity-step-when-faulted"
+      ],
       "read_error": null
     },
     {
@@ -24941,15 +24947,15 @@
       "book": "books/store-finalize-incremental.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 20,
-      "functions": 4,
+      "theorems": 42,
+      "functions": 12,
       "guards": {
-        "verified": 2,
-        "declared-off": 0,
-        "default-guarded": 2,
+        "verified": 5,
+        "declared-off": 2,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
-      "verify_guards_events": 2,
+      "verify_guards_events": 5,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -38221,15 +38227,16 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 76,
-      "must_fails": 15,
+      "assert_events": 83,
+      "must_fails": 16,
       "prover_refusals": 0,
-      "defconsts": 26,
+      "defconsts": 27,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
         "../../books/native-live-status",
+        "../../books/owner-reader-view",
         "../../books/owner-store-budget",
         "arena-lift",
         "held-rows-tests",
@@ -38355,22 +38362,23 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 8,
+      "functions": 9,
       "guards": {
         "verified": 0,
-        "declared-off": 8,
+        "declared-off": 9,
         "default-guarded": 0,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 6,
-      "must_fails": 4,
+      "assert_events": 8,
+      "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 1,
+      "defconsts": 2,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/native-status-columns",
+        "native-live-status-tests",
         "store-reclaim-holders-tests"
       ],
       "system_includes": [],
@@ -43805,6 +43813,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/simulator.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/acceptance"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/snapshot-segments-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -44302,10 +44336,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 29,
+      "assert_events": 33,
       "must_fails": 10,
       "prover_refusals": 0,
-      "defconsts": 9,
+      "defconsts": 10,
       "defmacros": 2,
       "encapsulates": 0,
       "includes": [
@@ -44656,18 +44690,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 1,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 1
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 10,
-      "must_fails": 2,
+      "assert_events": 17,
+      "must_fails": 3,
       "prover_refusals": 0,
-      "defconsts": 21,
+      "defconsts": 28,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -50931,6 +50965,15 @@
       ]
     },
     {
+      "theorem": "fn-nsc-at-reader-view-without-capture",
+      "book": "books/native-status-columns.lisp",
+      "line": 284,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-ocfg-at-reader-view and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-at-reader-view and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-nss-hdr-lines-of-no-numbers",
       "book": "books/nntp-search-scope.lisp",
       "line": 83,
@@ -51186,7 +51229,7 @@
     {
       "theorem": "fn-ock-sco-records-of-capture",
       "book": "books/owner-checkpoint-open.lisp",
-      "line": 198,
+      "line": 192,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -53946,6 +53989,23 @@
       "line": 65,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-sco-fault-of-fault",
+      "book": "books/store-checkpoint-open.lisp",
+      "line": 449,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-sco-identity-step-when-faulted",
+      "book": "books/store-checkpoint-open.lisp",
+      "line": 425,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-replay-identity-step and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis is a branch test of fn-replay-identity-step and the conclusion is that branch's value"
       ]
     },
     {
@@ -58142,7 +58202,7 @@
       {
         "theorem": "fn-nls-octets-string-is-record-octets-string",
         "book": "books/native-live-status.lisp",
-        "line": 825,
+        "line": 880,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -58154,7 +58214,7 @@
       {
         "theorem": "fn-nsc-client-step-carries-its-length",
         "book": "books/native-status-columns.lisp",
-        "line": 381,
+        "line": 456,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
@@ -59833,10 +59893,11 @@
           "books/owner-prepare-served-ocl.lisp",
           "books/owner-signed-post.lisp",
           "books/served-catalog-join-host-identity-finish.lisp",
+          "books/store-checkpoint-open.lisp",
           "books/store-identity-sequence-invariants.lisp",
           "books/store-open-pre-c1.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-next",
@@ -60612,6 +60673,12 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
+        "check": "nlst-live-is-offline-with-the-view-behind",
+        "book": "tests/acl2/native-live-status-tests.lisp",
+        "line": 148,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
         "check": "nopt-developer-init-groups-are-not-flags-without-init",
         "book": "tests/acl2/native-operator-tests.lisp",
         "line": 1119,
@@ -60651,6 +60718,12 @@
         "check": "nsct-client-step-without-the-length",
         "book": "tests/acl2/native-status-columns-tests.lisp",
         "line": 198,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "nsct-counts-for-every-kind",
+        "book": "tests/acl2/native-status-columns-tests.lisp",
+        "line": 255,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -65748,6 +65821,13 @@
         "line": 16,
         "include": "outcome-class",
         "included": "books/outcome-class.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/native-status-columns.lisp",
+        "line": 36,
+        "include": "owner-reader-view",
+        "included": "books/owner-reader-view.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -72403,20 +72483,27 @@
       {
         "book": "tests/acl2/native-live-status-tests.lisp",
         "line": 9,
+        "include": "../../books/owner-reader-view",
+        "included": "books/owner-reader-view.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/native-live-status-tests.lisp",
+        "line": 10,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/native-live-status-tests.lisp",
-        "line": 10,
+        "line": 11,
         "include": "held-rows-tests",
         "included": "tests/acl2/held-rows-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/native-live-status-tests.lisp",
-        "line": 46,
+        "line": 47,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -72482,6 +72569,13 @@
         "line": 18,
         "include": "store-reclaim-holders-tests",
         "included": "tests/acl2/store-reclaim-holders-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/native-status-columns-tests.lisp",
+        "line": 210,
+        "include": "native-live-status-tests",
+        "included": "tests/acl2/native-live-status-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -77128,20 +77222,6 @@
     ],
     "host_names": [
       {
-        "host": "host/bp-ingress-host.lisp",
-        "line": 122,
-        "name": "mv",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/bp-ingress-host.lisp",
-        "line": 122,
-        "name": "fn-arena-count",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
         "host": "host/bp-native-app-host.lisp",
         "line": 11,
         "name": "fn-owner-config",
@@ -77429,27 +77509,6 @@
         "reason": "defined in books/bp-node-machine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
-        "host": "host/bp-receipt-host.lisp",
-        "line": 35,
-        "name": "fn-host-hist-sync",
-        "source": "host/store-node-host.lisp",
-        "reason": "defined in host/store-node-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-receipt-host.lisp",
-        "line": 35,
-        "name": "cadr",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/bp-receipt-host.lisp",
-        "line": 35,
-        "name": "mv",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
         "host": "host/bp-receipt-journal-host.lisp",
         "line": 37,
         "name": "fn-host-hist-sync",
@@ -77460,27 +77519,6 @@
         "host": "host/bp-receipt-journal-host.lisp",
         "line": 37,
         "name": "mv",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/bp-receive-host.lisp",
-        "line": 23,
-        "name": "fn-host-hist-sync",
-        "source": "host/store-node-host.lisp",
-        "reason": "defined in host/store-node-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-receive-host.lisp",
-        "line": 23,
-        "name": "mv",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/bp-receive-host.lisp",
-        "line": 23,
-        "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
@@ -77593,6 +77631,13 @@
         "host": "host/native-live-status-host.lisp",
         "line": 34,
         "name": "fn-owner-store-profile",
+        "source": "host/owner-host.lisp",
+        "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native-live-status-host.lisp",
+        "line": 34,
+        "name": "fn-owner-reader-views",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
@@ -86520,923 +86565,6 @@
         "name": "fnn-exit-code-for",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 45,
-        "name": "read-sequence",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 57,
-        "name": "file-position",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 64,
-        "name": "fn-scc-decode-tree",
-        "source": "books/store-tree-codec.lisp",
-        "reason": "defined in books/store-tree-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 109,
-        "name": "fnps-with-needs",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 109,
-        "name": "fn-hp-x-header",
-        "source": "books/history-pages-row.lisp",
-        "reason": "defined in books/history-pages-row.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 109,
-        "name": "fnps-n",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 109,
-        "name": "fnps-mem",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 124,
-        "name": "*fnps-served*",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 124,
-        "name": "*fnps-read-calls*",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 124,
-        "name": "fnps-now",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 124,
-        "name": "fn-hp-records-at",
-        "source": "books/history-pages-view.lisp",
-        "reason": "defined in books/history-pages-view.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 124,
-        "name": "fn-scc-encode",
-        "source": "books/store-tree-codec.lisp",
-        "reason": "defined in books/store-tree-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 124,
-        "name": "fnps-refusal-string",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 144,
-        "name": "ensure-directories-exist",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 144,
-        "name": "write-line",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 144,
-        "name": "fnps-open-file",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 144,
-        "name": "fnps-fullsync",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 144,
-        "name": "fnps-pages-path",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 144,
-        "name": "fnps-write-to-file",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 144,
-        "name": "fnps-datasync",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 144,
-        "name": "fnps-sync-dir",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 144,
-        "name": "resize-pgs-m",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 144,
-        "name": "*pgs-x-dir-base*",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 144,
-        "name": "pgs-x-reset-table",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 144,
-        "name": "fnps-size-image",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 164,
-        "name": "make-fnps",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 164,
-        "name": "fnps-file-pages",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 164,
-        "name": "fn-hp-x-init",
-        "source": "books/history-pages-import.lisp",
-        "reason": "defined in books/history-pages-import.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 164,
-        "name": "unsigned-byte",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 164,
-        "name": "pgs-x-words-digest",
-        "source": "books/pagestore-words.lisp",
-        "reason": "defined in books/pagestore-words.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 164,
-        "name": "fnps-npages",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 164,
-        "name": "fnps-oct",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 164,
-        "name": "fnps-hex",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 164,
-        "name": "fnps-emit",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 164,
-        "name": "fnps-rss-kib",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 164,
-        "name": "fnps-commit",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 164,
-        "name": "list*",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 164,
-        "name": "fnps-close",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 205,
-        "name": "fnps-open",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 214,
-        "name": "pgs-rec-txid",
-        "source": "books/pagestore.lisp",
-        "reason": "defined in books/pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 214,
-        "name": "fnps-rec",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 214,
-        "name": "fnps-image-digest",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 241,
-        "name": "fnps-timed",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 272,
-        "name": "rest",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 272,
-        "name": "fnps-digest-startup",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 272,
-        "name": "fifth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 272,
-        "name": "fnps-kw",
-        "source": "host/native/proto-pagestore.lisp",
-        "reason": "defined in host/native/proto-pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 272,
-        "name": "sixth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 272,
-        "name": "fnps-io-error-call",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 272,
-        "name": "fnps-io-error-errno",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-history-pages.lisp",
-        "line": 272,
-        "name": "fnps-io-error-detail",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore-io.lisp",
-        "line": 35,
-        "name": "etypecase",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore-io.lisp",
-        "line": 35,
-        "name": "simple-array",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore-io.lisp",
-        "line": 35,
-        "name": "unsigned-byte",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 89,
-        "name": "fnn-digest-initialize",
-        "source": "host/native/digest.lisp",
-        "reason": "defined in host/native/digest.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 89,
-        "name": "fnn-digest-reset",
-        "source": "host/native/digest.lisp",
-        "reason": "defined in host/native/digest.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 100,
-        "name": "*user-stobj-alist*",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 106,
-        "name": "svref",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 114,
-        "name": "pgs-d-length",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 122,
-        "name": "w",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 122,
-        "name": "cadr",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 122,
-        "name": "getpropc",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 128,
-        "name": "plusp",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 128,
-        "name": "intern",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 128,
-        "name": "string-upcase",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 157,
-        "name": "multiple-value-prog1",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 170,
-        "name": "floatp",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 170,
-        "name": "evenp",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 197,
-        "name": "fnps-io-error-call",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 197,
-        "name": "fnps-io-error-errno",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 197,
-        "name": "search",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 197,
-        "name": "fnps-io-error-detail",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 204,
-        "name": "fnps-fill-from-file",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 204,
-        "name": "fill",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 233,
-        "name": "ceiling",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 260,
-        "name": "fnps-open-file",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 265,
-        "name": "resize-pgs-m",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 265,
-        "name": "*pgs-x-dir-base*",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 265,
-        "name": "pgs-x-read-rec",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 265,
-        "name": "pgs-rec-ok",
-        "source": "books/pagestore.lisp",
-        "reason": "defined in books/pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 279,
-        "name": "pgs-dir-run-pages",
-        "source": "books/pagestore.lisp",
-        "reason": "defined in books/pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 279,
-        "name": "pgs-rec-npages",
-        "source": "books/pagestore.lisp",
-        "reason": "defined in books/pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 279,
-        "name": "pgs-rec-dir-addr",
-        "source": "books/pagestore.lisp",
-        "reason": "defined in books/pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 279,
-        "name": "pgs-x-open-dir",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 298,
-        "name": "resize-pgs-w",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 298,
-        "name": "resize-pgs-d",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 298,
-        "name": "resize-pgs-v",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 306,
-        "name": "pgs-x-open-table-page",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 312,
-        "name": "pgs-x-open-page",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 320,
-        "name": "block",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 320,
-        "name": "pgs-rec-txid",
-        "source": "books/pagestore.lisp",
-        "reason": "defined in books/pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 320,
-        "name": "pgs-x-ntables",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 320,
-        "name": "pgs-x-open-tables",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 352,
-        "name": "pgs-slot-refusals",
-        "source": "books/pagestore.lisp",
-        "reason": "defined in books/pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 352,
-        "name": "pgs-open-order",
-        "source": "books/pagestore.lisp",
-        "reason": "defined in books/pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 352,
-        "name": "list*",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 405,
-        "name": "ecase",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 431,
-        "name": "pgs-x-read",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 434,
-        "name": "reverse",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 450,
-        "name": "*fnps-syncs*",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 450,
-        "name": "pgs-next-txid-of",
-        "source": "books/pagestore.lisp",
-        "reason": "defined in books/pagestore.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 450,
-        "name": "rest",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 450,
-        "name": "pgs-x-commit-durable",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 546,
-        "name": "resize-pgs-gs",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 576,
-        "name": "pgs-g-mark-run-all",
-        "source": "books/pagestore-gc.lisp",
-        "reason": "defined in books/pagestore-gc.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 576,
-        "name": "pgs-g-mark-words-all",
-        "source": "books/pagestore-gc.lisp",
-        "reason": "defined in books/pagestore-gc.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 595,
-        "name": "pgs-g-start",
-        "source": "books/pagestore-gc.lisp",
-        "reason": "defined in books/pagestore-gc.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 595,
-        "name": "pgs-g-load-free0-all",
-        "source": "books/pagestore-gc.lisp",
-        "reason": "defined in books/pagestore-gc.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 595,
-        "name": "pgs-g-sweep-all",
-        "source": "books/pagestore-gc.lisp",
-        "reason": "defined in books/pagestore-gc.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 595,
-        "name": "pgs-g-install",
-        "source": "books/pagestore-gc.lisp",
-        "reason": "defined in books/pagestore-gc.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 631,
-        "name": "pgs-x-write",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 640,
-        "name": "integer-length",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 640,
-        "name": "expt",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 640,
-        "name": "pgs-x-grow-image",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 640,
-        "name": "pgs-msgid-start",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 684,
-        "name": "fnps-write-to-file",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 684,
-        "name": "fnps-fullsync",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 691,
-        "name": "ensure-directories-exist",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 691,
-        "name": "write-line",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 691,
-        "name": "fnps-datasync",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 691,
-        "name": "fnps-sync-dir",
-        "source": "host/native/proto-pagestore-io.lisp",
-        "reason": "defined in host/native/proto-pagestore-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 691,
-        "name": "pgs-x-reset-table",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 724,
-        "name": "make-hash-table",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 749,
-        "name": "pgs-x-words-digest",
-        "source": "books/pagestore-words.lisp",
-        "reason": "defined in books/pagestore-words.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 835,
-        "name": "pgs-x-fork",
-        "source": "books/pagestore-refine.lisp",
-        "reason": "defined in books/pagestore-refine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 861,
-        "name": "pgs-x-get-entry",
-        "source": "books/pagestore-exec.lisp",
-        "reason": "defined in books/pagestore-exec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 861,
-        "name": "logxor",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 906,
-        "name": "string-downcase",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 906,
-        "name": "fnn-digest-status",
-        "source": "host/native/digest.lisp",
-        "reason": "defined in host/native/digest.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 918,
-        "name": "fifth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-pagestore.lisp",
-        "line": 918,
-        "name": "sixth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/native/pull-service.lisp",

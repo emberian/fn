@@ -1718,6 +1718,16 @@ check:
 # on build order with it).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_modes
+# Every host file is loaded by a build (Q7k): an image, the extraction world
+# or the store-test image; a prototype, a retired host or a test harness in
+# host/ is refused (KNOWN, shrink-only, names an exception with why).
+	@$(CHECK_STEP) $(PYTHON) tools/host_loaded_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_loaded_check
+# Every tests/*.sh witness says its class (raw: tests.test_native_raw_scripts
+# runs it; needs-image/needs-acl2: the convergence checklist names it;
+# helper) and a scenario-catalog row cites it (KNOWN shrink-only).
+	@$(CHECK_STEP) $(PYTHON) tools/witness_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_witness_check
 # specs/crash-model-v2.md section 2.3's transcription check for the native
 # host (the Python host and its transcribe_check retired, python-diet T5):
 # for each program tests/campaign/native_cuts.py names, the

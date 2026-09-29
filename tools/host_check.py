@@ -701,8 +701,12 @@ def _callers():
     return callers
 
 
-def ld_sequence(build: str = BUILD_SCRIPT, root: Path = ROOT) -> list[str]:
-    """The ld host files BUILD loads, in its order (an ld inside one in place)."""
+def ld_sequence(build: str = BUILD_SCRIPT, root: Path = ROOT,
+                cbd: str = ".") -> list[str]:
+    """The ld host files BUILD loads, in its order (an ld inside one in place).
+    CBD is the root-relative directory ACL2's connected book directory is at
+    when BUILD runs: the tree's root for the image builds, tools/extract for
+    the extraction world (tools/extract/world-host.lisp, `../../host/...')."""
     import ledger
     order: list[str] = []
 
@@ -727,7 +731,7 @@ def ld_sequence(build: str = BUILD_SCRIPT, root: Path = ROOT) -> list[str]:
 
     script = root / build
     for form, _ in ledger.Reader(script.read_text(encoding="utf-8")).top_level():
-        walk(form, root)
+        walk(form, Path(os.path.normpath(root / cbd)))
     return order
 
 

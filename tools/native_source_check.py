@@ -47,20 +47,11 @@ IGNORED = shutil.ignore_patterns("__pycache__", "*.cert", "*.cert.out", "*.fasl"
 # Red at the first run (persvati, lane tooling-truth, 2026-09-29, at ec4d4d13c):
 # real findings with owners owed, listed so the step lands green and can only
 # shrink -- a module here that goes green, or one not here that goes red, fails.
-KNOWN_RED = {
-    "tests.test_native_app_journal": "collected no test",
-    "tests.test_native_compression": "collected no test",
-    "tests.test_native_log_damage": "collected no test",
-    "tests.test_native_reader_clients": "collected no test",
-    "tests.test_native_reader_freshness": "collected no test",
-    "tests.test_native_served_differential": "collected no test",
-    "tests.test_native_recovery": "a source-map test fails with no image",
-    "tests.test_native_served_crash_model": "exits 5 with no image",
-    "tests.test_native_tls_transport": "three TLS tests run and fail with no image",
-}
+KNOWN_RED: dict[str, str] = {}
 RAN = re.compile(r"^Ran (\d+) tests? in ", re.M)
 SKIPPED = re.compile(r"\bskipped=(\d+)")
 SUMMARY = re.compile(r"^(?:OK|FAILED)(?: \(.*\))?$", re.M)
+SETUP_SKIP = re.compile(r"^(?:setUpClass|setUpModule) \(.*\) \.\.\. skipped '(.*)'$", re.M)
 FAILED_TEST = re.compile(r"^(?:FAIL|ERROR): (\S+) \(([^)]+)\)", re.M)
 
 
@@ -82,9 +73,34 @@ def image_free_root(root: Path, into: Path) -> Path:
     return into
 
 
+LAUNCHER_SBCL = re.compile(r'(/[^\s"\'\0]*/bin/sbcl)\b')
+
+
+def toolchain_sbcl(source: dict[str, str]) -> str | None:
+    """The toolchain's SBCL: FN_SBCL, else the one FN_ACL2's launcher script
+    runs.  It names the toolchain, not an image, so the image-free run keeps
+    it: without it the raw-stub tests read the host with the system SBCL
+    (hbox's /usr/bin/sbcl 2.2.9 lacks symbols the host names, PKT-614) and
+    fail on the reader, not on the host (2026-09-29, tooling-truth-2)."""
+    if source.get("FN_SBCL"):
+        return source["FN_SBCL"]
+    launcher = source.get("FN_ACL2")
+    try:
+        head = Path(launcher).read_bytes()[:4096].decode("utf-8", "replace") if launcher else ""
+    except OSError:
+        return None
+    found = LAUNCHER_SBCL.search(head)
+    return found.group(1) if found and os.access(found.group(1), os.X_OK) else None
+
+
 def scrubbed_env(env: dict[str, str] | None = None) -> dict[str, str]:
     source = dict(os.environ if env is None else env)
     clean = {k: v for k, v in source.items() if not k.startswith("FN_")}
+    sbcl = toolchain_sbcl(source)
+    if sbcl:
+        # FN_SBCL only: an SBCL_HOME here would be read by every other SBCL
+        # the modules start (a `sbcl' on PATH), with the wrong core.
+        clean["FN_SBCL"] = sbcl
     clean["PYTHONDONTWRITEBYTECODE"] = "1"
     return clean
 
@@ -106,6 +122,14 @@ def verdict(module: str, status: int | None, output: str, seconds: float) -> tup
     if status != 0 or failing:
         named = ", ".join(failing[:6]) or f"exit {status}"
         return False, f"FAILED {module}: {named}"
+    if count == 0 and skipped:
+        # A class or module that skips in its setup (setUpClass/setUpModule
+        # raising SkipTest: no image, no docker) runs no test and says why:
+        # every test it has needs what is missing, which is not a red.  A
+        # module that collects nothing and skips nothing is.
+        reasons = sorted(set(SETUP_SKIP.findall(output)))
+        return True, (f"OK     {module}: 0 run, skipped whole at setup: "
+                      f"{'; '.join(reasons) or 'no reason printed'} ({seconds:.1f} s)")
     if count == 0:
         return False, f"FAILED {module}: collected no test"
     return True, (f"OK     {module}: {count - skipped} run, {skipped} NOT RUN (need an image) "
@@ -115,7 +139,7 @@ def verdict(module: str, status: int | None, output: str, seconds: float) -> tup
 def run_one(module: str, root: Path, env: dict[str, str], timeout: int) -> tuple[bool, str]:
     start = time.monotonic()
     try:
-        answer = subprocess.run([sys.executable, "-m", "unittest", module],
+        answer = subprocess.run([sys.executable, "-m", "unittest", "-v", module],
                                 cwd=root, env=env, capture_output=True, text=True,
                                 timeout=timeout)
     except subprocess.TimeoutExpired:

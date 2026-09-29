@@ -98,12 +98,6 @@ class NativeControlCutGateTests(unittest.TestCase):
         # A new selector read straight from the environment would bypass the
         # startup gate; the accessor faults on a name the table lacks.
         for path in sorted((ROOT / "host/native").glob("*.lisp")):
-            if path.name.startswith("proto-"):
-                # The page store's prototype image (tools/proto/pagestore_bench.py)
-                # loads only the proto-*.lisp files: a measurement host, never a
-                # node, with no startup gate to bypass (arena-store-5 reads
-                # FN_NATIVE_DIGEST_TEST_OFF there).
-                continue
             source = path.read_text(encoding="utf-8")
             direct = re.findall(r'posix-getenv\s+"(FN_[A-Z_]+)"', source)
             guarded = {name for name in direct if name.startswith((

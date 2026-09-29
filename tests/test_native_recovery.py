@@ -95,6 +95,8 @@ class NativeRecoverySourceMapTests(unittest.TestCase):
             self.assertTrue(any(prefix.startswith(p) for p in prefixes),
                             "{} is staged but not swept".format(prefix))
 
+    @unittest.skipUnless(executable(DEVELOPER), "the developer image is absent: "
+                         "the fixture is encoded by its ACL2 session")
     def test_missing_enrollment_fixture_is_acl2_encoded_and_nonempty(self):
         self.assertTrue(missing_enrollment_fixture().startswith(b"\x44fn-e"))
 

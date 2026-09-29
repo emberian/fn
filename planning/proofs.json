@@ -3571,7 +3571,7 @@
     {
       "id": "PRF-083",
       "title": "Open from an exact-state Store checkpoint equals the full open",
-      "statement": "fn-sn-recover-from-checkpoint-equals-full-recover: for every configuration history, frontier, record prefix P and suffix Q, (fn-sco-open (fn-sco-capture configs P) configs frontier Q) equals (fn-cpo-open-observed configs frontier (append P Q)), with no hypothesis; fn-sco-open is what the host calls at open when a checkpoint verified (host/store-node-host.lisp fn-store-sn-recover-from-checkpoint) and fn-cpo-open-observed is the full open (fn-store-sn-recover). Built from one append lemma per fold of fn-cpo-open-observed: fn-cpr-loop-append (configuration and node fold, paused at the prefix end), fn-replay-identity-append, fn-cpe-projection-replay-append, fn-th-prefix-project-append, fn-cei-build-append; the history recognizer runs over the carried record list. fn-sco-extend-of-capture: the next checkpoint is the extension. fn-sco-capture-of-later-configs: a configuration whose txid is above every covered record does not change the capture. fn-scc-decode-segments-of-segments: the FNSC segments decode to the value, for every tree whose program and record count fit the u64 header fields. fn-bs-scp-program-crash-is-old-or-new: at every cut of the publish program the checkpoint name is the old file, absent, or the new octets. fn-bs-read-ranges-concatenate: consecutive range reads concatenate under A-HOST-EXCLUSIVE-READ. Owner (2026-09-25, lane owner-checkpoint-open): fn-owner-recover-from-checkpoint-equals-full-recover, with no hypothesis: the owner fn-ock-recover-extended installs from (fn-sco-extend (fn-sco-capture configs P) configs Q) is the owner fn-ock-recover-full installs from the full open of P ++ Q (the composition fn-orec-recover-installs-ocl-relation is stated over: the Store open, the configuration replay, fn-own-start's archive, views, trie and ledger, fn-own-configure, fn-ocfg-make) or :fault on both; host/owner-host.lisp fn-owner-recover-extended calls fn-ock-recover-extended on both paths (fn-owner-recover-from-checkpoint over the decoded checkpoint and the suffix, fn-owner-recover over the empty capture and the whole history, fn-ock-recover-from-empty-capture-is-full). fn-ock-recover-installs-ocl-relation carries fn-ocl-relation and fn-scar-view-indexedp to what is installed on either path. Publication: fn-ock-next-checkpoint-is-the-capture (hypothesis: an admitted history, which has no must-fail) and fn-ock-published-checkpoint-opens-to-the-full-open: what the owner publishes is the capture of its whole history and opens, over any later records, to the full open; fn-ock-not-due-keeps-the-checkpoint-open: until fn-ock-publication-duep (twice the suffix reaches K) the durable checkpoint is the one a restart selects. Replay carries the node invariant: fn-cpr-apply-event-preserves-cnode-statep (no hypothesis beyond non-refusal) and fn-cpr-loop-preserves-cnode-statep; fn-cpr-apply-event and fn-cpr-loop test a refusal by NIL on the executable path. Recovery-lag policy (2026-09-26, lane checkpoint-pipeline-5, PKT-583 (b), gpt-6's review section 2): fn-ock-publication-next (host/owner-host.lisp fn-owner-sco-due) decides :due, :idle, :blocked, :inflight or :coalesce; fn-ock-one-publication-in-flight: while one publication is in flight (the count it captured) the decision is never :due and the rule's observation is the one coalesced request; fn-ock-publication-next-decides-by-the-rule: with nothing in flight it is fn-ock-publication-duep at the frontier given unless a recorded deferral blocks; fn-ock-finish-binds-the-captured-prefix: the next checkpoint's sequence is the count the capture was handed (fn-owner-sco-publication-done records it as the durable S, never the count at the finish); fn-ock-fast-path-within-k-by-definition: K is the fast path's threshold at fn-sco-select, the full replay past it (the honest fallback; not a guaranteed maximum suffix). RECORDS FLIP (lanes checkpoint-arena, checkpoint-arena-2, 2026-09-27; books/store-checkpoint-arena.lisp, -load.lisp, -writer.lisp): the file carries the ARENA run first (the canonical payloads, batched, framed and chained like every run), then the four tables of the capture of the CANONICAL rows. fn-intern-events-is-intern-at (no hypothesis) and fn-intern-events-arena-is-payloads (the intern not refused, the arena a true list): the open's intern is the counter intern fn-scka-intern-at and its arena the canonical payloads. fn-scka-load-of-written-file: a plan whose segments are the arena run of PS followed by the tables' runs of the capture of RECORDS loads (fn-scka-load: fn-scka-open-run, the host's fn-scka-seal-n calls, which are one loop by fn-scka-seal-n-compose, fn-scka-finish) to those tables with the arena exactly PS. fn-scka-recover-from-checkpoint-is-full-recover (hypothesis: the whole history interns): from the capture of a prefix's canonical rows and its canonical arena, the recover over the suffix is the full recover of the whole history from the emptied arena, extension and arena; fn-scka-recover-rows-rii-is-recover-rows: the composition the host runs (fn-intern-events, then fn-rii-sco-extend) is that recover. fn-scka-write-run-is-run-segments (hypothesis: the batches sum to the payload count): the octets of the host's arena-run steps (fn-scka-write-step) are the run segments of the live rows' canonical payloads, for any buffer contents. fn-scka-next-checkpoint-is-capture: the owner's next checkpoint (its base extended over the canonical rows of the rows after it, handles from the base's payload count) is the capture of the canonical rows of all of them.",
+      "statement": "fn-sn-recover-from-checkpoint-equals-full-recover: for every configuration history, frontier, record prefix P and suffix Q, (fn-sco-open (fn-sco-capture configs P) configs frontier Q) equals (fn-cpo-open-observed configs frontier (append P Q)), with no hypothesis; fn-sco-open is what the host calls at open when a checkpoint verified (host/store-node-host.lisp fn-store-sn-recover-from-checkpoint) and fn-cpo-open-observed is the full open (fn-store-sn-recover). Built from one append lemma per fold of fn-cpo-open-observed: fn-cpr-loop-append (configuration and node fold, paused at the prefix end), fn-replay-identity-append (and fn-replay-identity-append-of-true-lists, which asks only true lists: the fault is sticky), fn-cpe-projection-replay-append, fn-th-prefix-project-append, fn-cei-build-append; the history recognizer runs over the carried record list. fn-sco-extend-of-capture (one hypothesis, a true-list suffix): the next checkpoint is the extension. fn-sco-capture-of-later-configs: a configuration whose txid is above every covered record does not change the capture. fn-scc-decode-segments-of-segments: the FNSC segments decode to the value, for every tree whose program and record count fit the u64 header fields. fn-bs-scp-program-crash-is-old-or-new: at every cut of the publish program the checkpoint name is the old file, absent, or the new octets. fn-bs-read-ranges-concatenate: consecutive range reads concatenate under A-HOST-EXCLUSIVE-READ. Owner (2026-09-25, lane owner-checkpoint-open): fn-owner-recover-from-checkpoint-equals-full-recover, with no hypothesis: the owner fn-ock-recover-extended installs from (fn-sco-extend (fn-sco-capture configs P) configs Q) is the owner fn-ock-recover-full installs from the full open of P ++ Q (the composition fn-orec-recover-installs-ocl-relation is stated over: the Store open, the configuration replay, fn-own-start's archive, views, trie and ledger, fn-own-configure, fn-ocfg-make) or :fault on both; host/owner-host.lisp fn-owner-recover-extended calls fn-ock-recover-extended on both paths (fn-owner-recover-from-checkpoint over the decoded checkpoint and the suffix, fn-owner-recover over the empty capture and the whole history, fn-ock-recover-from-empty-capture-is-full). fn-ock-recover-installs-ocl-relation carries fn-ocl-relation and fn-scar-view-indexedp to what is installed on either path. Publication: fn-ock-next-checkpoint-is-the-capture (no hypothesis: a record that is not a Store event faults the identity fold stickily, fn-replay-identity-append-of-true-lists, so the extension over a prefix holding one is still the capture; the admitted-history hypothesis was proved redundant, PKT-192) and fn-ock-published-checkpoint-opens-to-the-full-open: what the owner publishes is the capture of its whole history and opens, over any later records, to the full open; fn-ock-not-due-keeps-the-checkpoint-open: until fn-ock-publication-duep (twice the suffix reaches K) the durable checkpoint is the one a restart selects. Replay carries the node invariant: fn-cpr-apply-event-preserves-cnode-statep (no hypothesis beyond non-refusal) and fn-cpr-loop-preserves-cnode-statep; fn-cpr-apply-event and fn-cpr-loop test a refusal by NIL on the executable path. Recovery-lag policy (2026-09-26, lane checkpoint-pipeline-5, PKT-583 (b), gpt-6's review section 2): fn-ock-publication-next (host/owner-host.lisp fn-owner-sco-due) decides :due, :idle, :blocked, :inflight or :coalesce; fn-ock-one-publication-in-flight: while one publication is in flight (the count it captured) the decision is never :due and the rule's observation is the one coalesced request; fn-ock-publication-next-decides-by-the-rule: with nothing in flight it is fn-ock-publication-duep at the frontier given unless a recorded deferral blocks; fn-ock-finish-binds-the-captured-prefix: the next checkpoint's sequence is the count the capture was handed (fn-owner-sco-publication-done records it as the durable S, never the count at the finish); fn-ock-fast-path-within-k-by-definition: K is the fast path's threshold at fn-sco-select, the full replay past it (the honest fallback; not a guaranteed maximum suffix). RECORDS FLIP (lanes checkpoint-arena, checkpoint-arena-2, 2026-09-27; books/store-checkpoint-arena.lisp, -load.lisp, -writer.lisp): the file carries the ARENA run first (the canonical payloads, batched, framed and chained like every run), then the four tables of the capture of the CANONICAL rows. fn-intern-events-is-intern-at (no hypothesis) and fn-intern-events-arena-is-payloads (the intern not refused, the arena a true list): the open's intern is the counter intern fn-scka-intern-at and its arena the canonical payloads. fn-scka-load-of-written-file: a plan whose segments are the arena run of PS followed by the tables' runs of the capture of RECORDS loads (fn-scka-load: fn-scka-open-run, the host's fn-scka-seal-n calls, which are one loop by fn-scka-seal-n-compose, fn-scka-finish) to those tables with the arena exactly PS. fn-scka-recover-from-checkpoint-is-full-recover (hypothesis: the whole history interns): from the capture of a prefix's canonical rows and its canonical arena, the recover over the suffix is the full recover of the whole history from the emptied arena, extension and arena; fn-scka-recover-rows-rii-is-recover-rows: the composition the host runs (fn-intern-events, then fn-rii-sco-extend) is that recover. fn-scka-write-run-is-run-segments (hypothesis: the batches sum to the payload count): the octets of the host's arena-run steps (fn-scka-write-step) are the run segments of the live rows' canonical payloads, for any buffer contents. fn-scka-next-checkpoint-is-capture: the owner's next checkpoint (its base extended over the canonical rows of the rows after it, handles from the base's payload count) is the capture of the canonical rows of all of them.",
       "milestone": "M5",
       "requirements": [
         "STO-011",
@@ -8258,8 +8258,6 @@
         "books/owner-store-indexed.lisp",
         "tests/acl2/bp-native-app-fast-tests.lisp",
         "tests/acl2/owner-store-indexed-tests.lisp",
-        "host/bp-receipt-host.lisp",
-        "host/bp-receive-host.lisp",
         "host/bp-native-app-host.lisp",
         "planning/evidence/hot-path-fixes-bp-2026-09-26.md",
         "planning/evidence/manifests/certify-20260927T021015Z-1915504.json"
@@ -8386,7 +8384,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-smid-record-decode-of-seal",
         "fn-smid-payload-decode-of-payload",
@@ -10652,7 +10650,6 @@
         "host/owner-host.lisp",
         "host/store-node-host.lisp",
         "host/store-host.lisp",
-        "host/bp-ingress-host.lisp",
         "planning/evidence/host-decisions-2026-09-27.md"
       ],
       "progress_note": "Lane host-decisions (Opus 5.5, 2026-09-27; prepare-served's host-decision list, item 1). Teeth: tests/acl2/post-fields-tests.lisp: REACHABLE witnesses over the identities and evidence the node builds for a POST (fn-id-subject-of-payload, fn-id-obligation-of through the digest attachment; fn-pfld-post-evidence with and without a path identity), each keystone's complete antecedent and conclusion; each conjunct of the article verdict removed refuses; BOUNDARY witnesses at 256/257/512 octets (the old host limit admitted 512, the record refuses it); the printable hypothesis needed (a space is a metadata octet the check refuses); the identity bound needed (129 octets renders 258); must-fail of the exactness keystone without its hypothesis and of the identity keystone without its bound.",
@@ -10990,7 +10987,6 @@
       "evidence": [
         "books/clock-reading.lisp",
         "tests/acl2/clock-reading-tests.lisp",
-        "host/bp-ingress-host.lisp",
         "planning/evidence/host-decisions-2-2026-09-27.md"
       ],
       "progress_note": "Lane host-decisions-2 (Opus 5.5, 2026-09-27; packet C). Teeth: tests/acl2/clock-reading-tests.lisp: one DTN epoch in the tree (equal to the NNTP book's); a 2026 reading with 500 ms bound (wall, error and monotonic asserted); the epoch itself usable, one millisecond before it not; each usability conjunct removed takes the wall away (no claim, negative reading, negative and non-numeric error); a malformed monotonic counter is still an observation.",
@@ -11475,7 +11471,7 @@
         "tests/acl2/pagestore-refine-tests.lisp",
         "planning/evidence/arena-store-2026-09-27.md"
       ],
-      "pending_subject": "host wiring behind its own driver (host/native/proto-pagestore.lisp) until fn-hist lives in pages (lane arena-store milestone 5); the owner does not call it.",
+      "pending_subject": "no host calls the page store: its prototype driver (host/native/proto-pagestore.lisp) was retired as a prototype no build loaded (Q7k, tooling-truth-2, 2026-09-29; planning/retired-paths.json); the page store is hosted when fn-hist lives in pages (lane arena-store milestone 5).",
       "progress_note": "Page 0 (the owner's root slots) is the model's reserved page: pgs-disk-keeps keeps it, pgs-g-start marks it (pgs-g-start-facts), so allocation freshness and both reclamation keystones cover it. Reach: pgs-reclaim-is-g-install ties pgs-reclaim to pgs-g-install, which fnps-reclaim calls. Open: L-PGS-LAZY-SHAPE, the host's lazy open defers the shape check of table pages written by older commits to first touch while the model's lazy open checks them (eager equals the model; record section 5); the per-disk marking composition is a hypothesis of pgs-g-reclaim-sound; A-PGS-HOST-IO names the fill; milestone 5 (fn-hist columns in FNADTSN1 regions on these pages) not started. Reach (arena-store-5, 2026-09-28): pgs-x-commit-refines-commit and pgs-x-commit-refines-crash tie pgs-commit, pgs-crash and pgs-plan-commit to pgs-x-commit (fnps-commit), pgs-x-fork-refines ties pgs-fork to pgs-x-fork (fnps-cmd-branch), through reach_check's square with the abstraction from the concrete state; the five HOST rows of planning/reach-baseline.json are gone.",
       "events": [
         "pgs-open-after-commit",
@@ -14620,7 +14616,7 @@
         "PRF-232"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-mount-identity.lisp",
         "tests/acl2/store-mount-identity-tests.lisp"
@@ -14711,7 +14707,7 @@
         "PRF-380"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reclaim-pass.lisp",
         "tests/acl2/owner-reclaim-conns-tests.lisp",
@@ -14753,7 +14749,7 @@
         "PRF-939"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reclaim-ready.lisp",
         "tests/acl2/owner-reclaim-ready-tests.lisp",
@@ -14781,7 +14777,7 @@
         "PRF-172"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/control-request-word.lisp",
         "tests/acl2/control-request-word-tests.lisp",
@@ -14807,7 +14803,7 @@
         "PRF-186"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/open-frontier.lisp",
         "tests/acl2/open-frontier-tests.lisp",
@@ -14832,7 +14828,7 @@
         "PRF-937"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/limits-live.lisp",
         "tests/acl2/limits-live-tests.lisp"
@@ -14858,7 +14854,7 @@
         "PRF-321"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/closure-open.lisp",
         "tests/acl2/closure-open-tests.lisp"
@@ -14914,7 +14910,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/msgid-pages.lisp",
         "tests/acl2/msgid-pages-tests.lisp",
@@ -14944,7 +14940,7 @@
         "PRF-242"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-finalize-incremental.lisp",
         "tests/acl2/store-finalize-incremental-tests.lisp"
@@ -14975,7 +14971,7 @@
         "PRF-957"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/msgid-pages-exec.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -15007,7 +15003,7 @@
         "PRF-969"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/msgid-pages-catalog.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",

@@ -416,6 +416,55 @@
            :in-theory (e/d (fn-replay-identity-loop)
                            (fn-replay-identity-step fn-store-event-p)))))
 
+;; A fault the identity fold takes at a record that is not a Store event is
+;; sticky: every later step answers a faulted context unchanged, and a later
+;; invalid record faults it again with the same reason.  So the fold splits
+;; over any true-list prefix without asking that it holds only Store events;
+;; only an improper suffix, whose tail faults with :improper-record-list,
+;; could tell the two apart.
+(local
+ (defthm fn-sco-identity-step-when-faulted
+   (implies (not (equal (fn-stxk-context-kind ctx) :ok))
+            (equal (fn-replay-identity-step ctx e) ctx))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                              '(fn-replay-identity-step))))))
+
+(local
+ (defthm fn-sco-identity-loop-of-a-fixed-fault
+   (implies (and (true-listp s)
+                 (not (equal (fn-stxk-context-kind x) :ok))
+                 (equal (fn-stxk-fault x :invalid-record) x))
+            (equal (fn-replay-identity-loop s x) x))
+   :hints (("Goal" :induct (len s)
+            :in-theory (e/d (fn-replay-identity-loop)
+                            (fn-store-event-p fn-stxk-fault
+                             fn-replay-identity-step))))))
+
+(local
+ (defthm fn-sco-fault-kind
+   (not (equal (fn-stxk-context-kind (fn-stxk-fault ctx r)) :ok))
+   :hints (("Goal" :in-theory (enable fn-stxk-fault fn-stxk-context
+                                      fn-stxk-context-kind)))))
+
+(local
+ (defthm fn-sco-fault-of-fault
+   (equal (fn-stxk-fault (fn-stxk-fault ctx r) r) (fn-stxk-fault ctx r))
+   :hints (("Goal" :in-theory (enable fn-stxk-fault fn-stxk-context
+                                      fn-stxk-context-kind fn-stxk-context-next
+                                      fn-stxk-context-snapshots
+                                      fn-stxk-context-verdicts
+                                      fn-stxk-context-current-generation)))))
+
+(defthm fn-replay-identity-append-of-true-lists
+  (implies (and (true-listp prefix) (true-listp suffix))
+           (equal (fn-replay-identity-loop (append prefix suffix) ctx)
+                  (fn-replay-identity-loop suffix
+                                           (fn-replay-identity-loop prefix ctx))))
+  :hints (("Goal" :induct (fn-replay-identity-loop prefix ctx)
+           :in-theory (e/d (fn-replay-identity-loop)
+                           (fn-replay-identity-step fn-store-event-p
+                            fn-stxk-fault fn-stxk-context-kind)))))
+
 (defthm fn-cpe-projection-replay-append
   (implies (and (natp expected) (true-listp prefix))
            (equal (fn-cpe-projection-replay s (append prefix suffix) expected)
@@ -487,8 +536,7 @@
 ; Extending the capture of P over Q is the capture of P ++ Q: the checkpoint
 ; the owner publishes after an open is the capture of the whole history.
 (defthm fn-sco-extend-of-capture
-  (implies (and (fn-sco-store-eventsp (true-list-fix prefix))
-                (true-listp suffix))
+  (implies (true-listp suffix)
            (equal (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
                   (fn-sco-capture configs (append prefix suffix))))
   :hints (("Goal"
@@ -496,7 +544,7 @@
                             (cn (fn-cnode-initial (fn-cfg-initial)))
                             (prefix (true-list-fix prefix))
                             (config-sequence 0) (event-sequence 0))
-                 (:instance fn-replay-identity-append
+                 (:instance fn-replay-identity-append-of-true-lists
                             (prefix (true-list-fix prefix))
                             (ctx (fn-stxk-initial-context 0)))
                  (:instance fn-cpe-projection-replay-append
@@ -512,7 +560,7 @@
                             fn-sco-at fn-sco-nthcdr fn-sco-cpr-resume fn-sco-consumer-resume
                             fn-cp-nth)
                            (fn-sco-cpr-prefix-append fn-replay-identity-append
-                            fn-cpe-projection-replay-append
+                            fn-replay-identity-append-of-true-lists fn-cpe-projection-replay-append
                             fn-th-prefix-project-append fn-cei-build-append
                             fn-sco-cpr-prefix fn-replay-identity-loop
                             fn-cpe-projection-replay fn-th-prefix-loop

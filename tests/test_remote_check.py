@@ -157,6 +157,22 @@ class RemoteCheckTests(unittest.TestCase):
         self.assertEqual(attached.returncode, 3)
         self.assertIn("no run of lane my-lane", attached.stderr)
 
+    def test_ship_carries_an_untracked_helper_with_its_mode(self):
+        helper = self.lane / "build" / "helpers" / "probe.sh"
+        helper.parent.mkdir(parents=True)
+        helper.write_text("#!/bin/sh\necho probe-ran\n")
+        helper.chmod(0o755)
+        (self.lane / "notes.txt").write_text("left here\n")
+        done = self.run_check("--no-install-certs", "--ship", "build/helpers/probe.sh",
+                              "--cmd", "./build/helpers/probe.sh; test ! -e notes.txt")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("shipped build/helpers/probe.sh", done.stdout)
+        self.assertIn("probe-ran", done.stdout)
+        self.assertIn("notes.txt", done.stdout.split("NOT shipped")[1])
+        for bad in ("/etc/passwd", "../x", "missing.sh"):
+            refused = self.run_check("--ship", bad, "--cmd", "true")
+            self.assertEqual(refused.returncode, 2, bad)
+
     def test_certificates_install_by_default_and_regen_fetches_the_generated_files(self):
         (self.lane / "tools").mkdir()
         (self.lane / "tools/certs.py").write_text("print('  installed 3')\n")

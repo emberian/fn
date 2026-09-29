@@ -1,4 +1,5 @@
 #!/bin/sh
+# witness: helper
 # The friend's install step, scripted (PKT-400's repeatable session): freeze
 # the production image of one built tree, package the release tarball, unpack
 # it under a scratch prefix exactly as docs/peering-with-a-friend.md section 1
