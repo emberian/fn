@@ -4672,6 +4672,27 @@ in use (lane compression-extents-2)."
                     +fnn-exit-ok+)))
       (fnn-store-close store))))
 
+(defun fnn-command-provenance (root message-id)
+  "`store ROOT provenance MSGID': the provenance the article's retention pin
+records, as ACL2 describes it (host/store-node-host.lisp
+fn-store-prov-for-msgid, books/provenance-inspect.lisp fn-provi-of-msgid),
+then LF; refused when the store binds no such Message-ID or its pin was
+released.  The host decodes nothing: it relays ACL2's octets."
+  (multiple-value-bind (store records) (fnn-open-live-store root nil)
+    (declare (ignore records))
+    (unwind-protect
+         (progn
+           (unless (every (lambda (c) (< (char-code c) 128)) message-id)
+             (error 'fnn-usage-error :message "Message-ID is not ASCII"))
+           (let ((value (fnn-core-state 'fn-store-prov-for-msgid
+                                        (fnn-ascii-octet-list message-id))))
+             (cond ((null value) +fnn-exit-refused+)
+                   (t (write-sequence (fnn-as-octets value) *fnn-stdout*)
+                      (write-byte 10 *fnn-stdout*)
+                      (finish-output *fnn-stdout*)
+                      +fnn-exit-ok+))))
+      (fnn-store-close store))))
+
 (defun fnn-probe-article (sequence size)
   "A well-formed article of exactly SIZE octets for probe record SEQUENCE: a
 head naming its Message-ID, groups and Subject, a blank line, and a body of
@@ -5267,6 +5288,7 @@ connection `fn-reader-reset' opens and projects with
 ;;;   store ROOT init [GROUP...] | recover | status | retention | config
 ;;;   store ROOT post MESSAGE-ID PAYLOAD CHARGE|- FAULT|- GROUP...
 ;;;   store ROOT inspect MESSAGE-ID
+;;;   store ROOT provenance MESSAGE-ID
 ;;;   store ROOT probe COUNT
 ;;;   reader PORT ONCE(0|1) STORE-ROOT|-
 ;;;   model CHUNK-FILE STORE-ROOT|-
@@ -5493,6 +5515,9 @@ with its depth, and the rows under it name the path that called it."
     ;; the catalog's tables (books/catalog.lisp exports, :exec side)
     fn-cat$c-group-number fn-cat$c-msgid-seqs fn-cat$c-at fn-cat$c-visible-at
     fn-cat$c-group-next fn-cat$c-group-count
+    ;; the maintained group summary and withdrawal horizon (one cell each)
+    fn-cat$c-group-live-count fn-cat$c-group-live-low fn-cat$c-group-live-high
+    fn-cat$c-horizon
     ;; the catalog finders over them
     fn-cnx-view-seq fn-cnx-view-range fn-scat-range-numbers
     (fn-cat-view-last-visible . 0) fn-cat-row-article
@@ -6150,8 +6175,12 @@ acknowledges past the committed records' count)."
   ;; The oracle's records are the segment's own, decoded again from its
   ;; bytes (the concrete kernel keeps only their count).
   (let ((ks (fnn-log-kernel log))
+        ;; From the segment's own genesis (a store's segment 1 chains from
+        ;; its genesis record: `log scan-store'), the log's constant one
+        ;; for a bare rig segment.
         (records (fnn-log-open-kernel (fnn-log-fd log) (fnn-log-extent log)
-                                      (fnn-log-unit log) (fnn-log-max log))))
+                                      (fnn-log-unit log) (fnn-log-max log)
+                                      (or (fnn-log-genesis log) *fn-lg-genesis*))))
     (fnn-out "~a records=~d frontier=~d next=~d last=~a workload=~(~a~)"
              what (fnn-core 'fn-lgc-acked ks) (fnn-core 'fn-lgc-frontier ks)
              (fnn-core 'fn-lgc-next-txid ks) (fnn-hex (fnn-core 'fn-lgc-last ks))
@@ -7131,9 +7160,41 @@ observation (the COMPLETE re-signals it under the owner)."
 ;; EXTENT UNIT MAX SIZE BATCHES PER' (the power-loss rig's workload: recover,
 ;; then BATCHES batches of PER workload records, one `ACK' line after each
 ;; fence and its acknowledgements, flushed).
+(defun fnn-command-log-scan-store (root)
+  "`log scan-store ROOT': the rig's SCAN line over a format-10 store's first
+segment, every parameter the store's own and none typed: the profile from
+config.json (fnn-metadata-config-decode), the chain segment 1 starts from out
+of journal/000000.log under that profile (fnn-genesis-open: ACL2's
+fn-store-genesis-open, refused by name), the unit (fn-store-log-unit) and
+the record bound (fn-store-profile-max-record-octets; the entry header's
+length field is read against it).  Read only, no lock: the durable prefix a
+crash would keep, while an owner may run (tests/native_log_observation.py)."
+  (let* ((store (make-fnn-store root))
+         (raw (fnn-read-regular-bounded (fnn-config-path store) 16384))
+         (profile (fnn-metadata-config-decode raw))
+         (genesis (progn (setf (fnn-store-config store) profile)
+                         (fnn-genesis-open store profile)))
+         (unit (fnn-store-log-unit))
+         (max (fnn-store-log-max store))
+         (path (fnn-segment-path-at store 1))
+         (extent (fnn-log-observed-extent path))
+         (fd (fnn-log-open-segment path extent unit t)))
+    (unwind-protect
+         (fnn-log-rig-line "SCAN" (%make-fnn-log :path path :fd fd :unit unit :max max
+                                             :extent extent :genesis genesis
+                                             :kernel (nth-value 1 (fnn-log-open-kernel
+                                                                   fd extent unit max genesis)))
+                       0)
+      (fnn-close fd)))
+  +fnn-exit-ok+)
+
 (defun fnn-command-log (command argv)
+  (when (string= command "scan-store")
+    (unless (= (length argv) 1)
+      (error 'fnn-usage-error :message "log scan-store ROOT"))
+    (return-from fnn-command-log (fnn-command-log-scan-store (first argv))))
   (unless (member command '("scan" "recover" "append") :test #'equal)
-    (error 'fnn-usage-error :message "log scan|recover|append SEGMENT EXTENT UNIT MAX SIZE [BATCHES PER]"))
+    (error 'fnn-usage-error :message "log scan|recover|append SEGMENT EXTENT UNIT MAX SIZE [BATCHES PER] | log scan-store ROOT"))
   (when (and (not (string= command "scan")) (not (fnn-developer-image-p)))
     (error 'fnn-usage-error :message (format nil "log ~a is a developer-image verb" command)))
   (when (< (length argv) (if (string= command "append") 7 5))
@@ -7245,6 +7306,7 @@ observation (the COMPLETE re-signals it under the owner)."
                   (fnn-refuse "~a" (fnn-core 'fn-store-repair-control-text)))
                  ((string= command "config") (fnn-command-config root))
                  ((string= command "inspect") (need 4) (fnn-command-inspect root (first rest)))
+                 ((string= command "provenance") (need 4) (fnn-command-provenance root (first rest)))
                  ((string= command "probe")
                   (need 4)
                   (fnn-command-probe root (parse-integer (first rest))

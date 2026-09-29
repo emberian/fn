@@ -62,8 +62,18 @@ def decode_view(recorded):
             for key, value in recorded.items()}
 
 
+GENESIS = "000000.log"
+
+
 def segments(store):
-    return sorted(p.name for p in (Path(store) / "journal").iterdir() if p.is_file())
+    """The history's segments.  Format 10's genesis, journal/000000.log
+    (books/store-genesis.lisp), is position 0 of the log, never rotated or
+    dropped: it must be there, and it is not listed (as
+    tests/test_native_log_compaction.segments)."""
+    journal = Path(store) / "journal"
+    if not (journal / GENESIS).is_file():
+        raise AssertionError("the store's genesis {} is gone".format(journal / GENESIS))
+    return sorted(p.name for p in journal.iterdir() if p.is_file() and p.name != GENESIS)
 
 
 def archive_tree(root):

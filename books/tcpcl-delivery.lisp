@@ -106,3 +106,17 @@
 (defun fn-tcl-delivery-plan-detail (plan)
   (declare (xargs :guard t))
   (if (true-listp plan) (nth 3 plan) nil))
+
+; PKT-873 (lane durability-bugs, 2026-09-28): the session's progress point.
+; A receiving node that acknowledged a transfer (its custody is durable)
+; hands that custody to progress -- the local delivery, the receipt it
+; queues -- while the session is still open, not only when it ends: a peer
+; that keeps its session open with keepalives (dtn7-rs pools its sessions)
+; would otherwise hold an acknowledged custody undelivered for as long as the
+; node runs.  The host (host/native/tcpcl.lisp fnn-tcl-session) marks the
+; custody when this answers T and runs the progress hook at the session's
+; first quiet read timeout after it; a session the peer ends first is
+; delivered by the node's between-sessions pass, as before.
+(defun fn-tcl-delivery-plan-progress-p (plan)
+  (declare (xargs :guard t))
+  (equal (fn-tcl-delivery-plan-status plan) :accepted))

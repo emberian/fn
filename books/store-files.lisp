@@ -29,6 +29,7 @@
 (include-book "replay")
 (include-book "records-seam")
 (include-book "snoc-list")
+(include-book "store-records-field")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -58,14 +59,24 @@
 ; committed POST and an ordinary list copies itself to append (post-alloc-2,
 ; 2026-09-27: the only N-dependent allocation of an owner POST).
 ; fn-sf-records and fn-sf-successes read the lists back; fn-sf-make converts;
-; the shape requires each field to be the representation of its list
-; (fn-sl-canonp), so a transition that passes a history through copies the
-; field (fn-sf-remake: mbe, the logic is fn-sf-make of the lists) and the
-; commit appends in O(1) (fn-sl-snoc).
+; the shape requires each field to be a representation of its list, so a
+; transition that passes a history through copies the field (fn-sf-remake)
+; and the commit appends in O(1) (fn-sfr-snoc, fn-sl-snoc).
+;
+; The RECORDS field may also be BASED (arena-store-7, 2026-09-28; books/
+; store-records-field.lisp): (:hrs-based HANDLE . SNOC), the committed
+; history image the handle names followed by the records appended since.
+; A based field does not hold the image's records as executed data; its
+; list is the image's decode followed by SNOC's (fn-sfr-list).  A list has
+; one unbased representation and many based ones, so the transitions that
+; keep the history keep the FIELD, in the logic too: fn-sf-remake and the
+; two appends are fn-sf-make-fields of the state's fields, and the goals
+; about them stay in accessor vocabulary (fn-sf-records-of-fn-sf-make-fields
+; and its siblings).
 (defun fn-sf-shapep (x)
   (declare (xargs :guard t))
   (and (true-listp x) (equal (len x) 9) (equal (car x) :store-files)
-       (fn-sl-canonp (nth 4 x)) (fn-sl-canonp (nth 7 x))))
+       (fn-sfr-canonp (nth 4 x)) (fn-sl-canonp (nth 7 x))))
 
 (defun fn-sf-phase (s)
   (declare (xargs :guard t :verify-guards nil))
@@ -84,7 +95,7 @@
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s)))))))
 (defun fn-sf-records (s)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-sl-list (fn-sf-records-field s)))
+  (fn-sfr-list (fn-sf-records-field s)))
 (defun fn-sf-record-candidate (s)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr s))))))
@@ -177,12 +188,12 @@
                                      record-candidate completion successes barriers))
          barriers))
 
-;; The held fields.  A transition that keeps a history copies its field
-;; (fn-sf-remake below); the commit and the success append one element in
-;; O(1) (fn-sl-snoc).  Under the shape each is fn-sf-make of the lists
-;; (fn-sf-make-fields-is-make, fn-sf-make-fields-snoc-records-is-make,
-;; fn-sf-make-fields-snoc-successes-is-make), which is what the executable
-;; branch of every transition is proved to compute.
+;; The held fields.  A transition that keeps a history keeps its field
+;; (fn-sf-remake below: no copy, no rebuild), the commit appends one record
+;; to it (fn-sfr-snoc) and the success one pair (fn-sl-snoc), in O(1).  The
+;; rules below read the phase, the lists and the shape back from the fields,
+;; for every value; fn-sf-make-fields-is-make says a kept UNBASED field is
+;; the state fn-sf-make builds from its lists.
 (defthm fn-sf-records-field-of-fn-sf-make-fields
   (equal (fn-sf-records-field
           (fn-sf-make-fields phase frontier frontier-candidate rf
@@ -193,14 +204,68 @@
           (fn-sf-make-fields phase frontier frontier-candidate rf
                              record-candidate completion sf barriers))
          sf))
+(defthm fn-sf-records-of-fn-sf-make-fields
+  (equal (fn-sf-records
+          (fn-sf-make-fields phase frontier frontier-candidate rf
+                             record-candidate completion sf barriers))
+         (fn-sfr-list rf)))
+(defthm fn-sf-successes-of-fn-sf-make-fields
+  (equal (fn-sf-successes
+          (fn-sf-make-fields phase frontier frontier-candidate rf
+                             record-candidate completion sf barriers))
+         (fn-sl-list sf)))
+(defthm fn-sf-scalars-of-fn-sf-make-fields
+  (let ((x (fn-sf-make-fields phase frontier frontier-candidate rf
+                              record-candidate completion sf barriers)))
+    (and (equal (fn-sf-phase x) phase)
+         (equal (fn-sf-frontier x) frontier)
+         (equal (fn-sf-frontier-candidate x) frontier-candidate)
+         (equal (fn-sf-record-candidate x) record-candidate)
+         (equal (fn-sf-completion x) completion)
+         (equal (fn-sf-barriers x) barriers))))
+(defthm fn-sf-shapep-of-fn-sf-make-fields
+  (equal (fn-sf-shapep
+          (fn-sf-make-fields phase frontier frontier-candidate rf
+                             record-candidate completion sf barriers))
+         (and (fn-sfr-canonp rf) (fn-sl-canonp sf))))
+; The two ways the kernel builds a kept field: the field itself, and the
+; field with one element appended.  (Stated over the field, never as
+; "(fn-sfr-list (fn-sf-records-field s))" = (fn-sf-records s), which loops
+; with the definition wherever a proof enables it.)
+(defthm fn-sf-records-of-fn-sf-make-fields-kept
+  (equal (fn-sf-records
+          (fn-sf-make-fields phase frontier frontier-candidate (fn-sf-records-field s)
+                             record-candidate completion sf barriers))
+         (fn-sf-records s))
+  :hints (("Goal" :in-theory (enable fn-sf-records))))
+(defthm fn-sf-records-of-fn-sf-make-fields-snoc
+  (equal (fn-sf-records
+          (fn-sf-make-fields phase frontier frontier-candidate
+                             (fn-sfr-snoc (fn-sf-records-field s) record)
+                             record-candidate completion sf barriers))
+         (append (fn-sf-records s) (list record)))
+  :hints (("Goal" :in-theory (enable fn-sf-records))))
+(defthm fn-sf-successes-of-fn-sf-make-fields-kept
+  (equal (fn-sf-successes
+          (fn-sf-make-fields phase frontier frontier-candidate rf
+                             record-candidate completion (fn-sf-successes-field s) barriers))
+         (fn-sf-successes s))
+  :hints (("Goal" :in-theory (enable fn-sf-successes))))
+(defthm fn-sf-successes-of-fn-sf-make-fields-snoc
+  (equal (fn-sf-successes
+          (fn-sf-make-fields phase frontier frontier-candidate rf
+                             record-candidate completion
+                             (fn-sl-snoc (fn-sf-successes-field s) pair) barriers))
+         (append (fn-sf-successes s) (list pair)))
+  :hints (("Goal" :in-theory (enable fn-sf-successes))))
 (defthm fn-sf-shape-fields-canonical
   (implies (fn-sf-shapep s)
-           (and (fn-sl-canonp (fn-sf-records-field s))
+           (and (fn-sfr-canonp (fn-sf-records-field s))
                 (fn-sl-canonp (fn-sf-successes-field s))))
   :hints (("Goal" :in-theory (enable fn-sf-shapep fn-sf-records-field
                                      fn-sf-successes-field))))
 (defthm fn-sf-make-fields-is-make
-  (implies (fn-sf-shapep s)
+  (implies (and (fn-sf-shapep s) (not (fn-sfr-basedp (fn-sf-records-field s))))
            (equal (fn-sf-make-fields phase frontier frontier-candidate
                                      (fn-sf-records-field s)
                                      record-candidate completion
@@ -208,27 +273,28 @@
                   (fn-sf-make phase frontier frontier-candidate
                               (fn-sf-records s) record-candidate completion
                               (fn-sf-successes s) barriers)))
-  :hints (("Goal" :in-theory (e/d (fn-sf-make fn-sf-records fn-sf-successes)
+  :hints (("Goal" :in-theory (e/d (fn-sf-make fn-sf-records fn-sf-successes fn-sfr-list fn-sfr-canonp)
                                   (fn-sf-make-fields))
            :use fn-sf-shape-fields-canonical)))
+
 (defthm fn-sf-make-fields-snoc-records-is-make
-  (implies (fn-sf-shapep s)
+  (implies (and (fn-sf-shapep s) (not (fn-sfr-basedp (fn-sf-records-field s))))
            (equal (fn-sf-make-fields phase frontier frontier-candidate
-                                     (fn-sl-snoc (fn-sf-records-field s) record)
+                                     (fn-sfr-snoc (fn-sf-records-field s) record)
                                      record-candidate completion
                                      (fn-sf-successes-field s) barriers)
                   (fn-sf-make phase frontier frontier-candidate
                               (append (fn-sf-records s) (list record))
                               record-candidate completion
                               (fn-sf-successes s) barriers)))
-  :hints (("Goal" :in-theory (e/d (fn-sf-make fn-sf-records fn-sf-successes)
+  :hints (("Goal" :in-theory (e/d (fn-sf-make fn-sf-records fn-sf-successes fn-sfr-list fn-sfr-canonp fn-sfr-snoc)
                                   (fn-sf-make-fields fn-sl-snoc-of-fn-sl-of))
            :use (fn-sf-shape-fields-canonical
                  (:instance fn-sl-snoc-of-fn-sl-of
                             (x (fn-sl-list (fn-sf-records-field s)))
                             (r record))))))
 (defthm fn-sf-make-fields-snoc-successes-is-make
-  (implies (fn-sf-shapep s)
+  (implies (and (fn-sf-shapep s) (not (fn-sfr-basedp (fn-sf-records-field s))))
            (equal (fn-sf-make-fields phase frontier frontier-candidate
                                      (fn-sf-records-field s)
                                      record-candidate completion
@@ -238,24 +304,43 @@
                               (fn-sf-records s) record-candidate completion
                               (append (fn-sf-successes s) (list pair))
                               barriers)))
-  :hints (("Goal" :in-theory (e/d (fn-sf-make fn-sf-records fn-sf-successes)
+  :hints (("Goal" :in-theory (e/d (fn-sf-make fn-sf-records fn-sf-successes fn-sfr-list fn-sfr-canonp)
                                   (fn-sf-make-fields fn-sl-snoc-of-fn-sl-of))
            :use (fn-sf-shape-fields-canonical
                  (:instance fn-sl-snoc-of-fn-sl-of
                             (x (fn-sl-list (fn-sf-successes-field s)))
                             (r pair))))))
+;; Over a state built from lists (fn-sf-make), a kept field is the list's
+;; representation, so a transition that keeps it builds the state fn-sf-make
+;; builds from the same lists: value equalities between kernel states
+;; written with fn-sf-make keep holding.
+(defthm fn-sf-records-field-of-fn-sf-make
+  (equal (fn-sf-records-field (fn-sf-make phase frontier frontier-candidate records
+                                          record-candidate completion successes barriers))
+         (fn-sl-of records))
+  :hints (("Goal" :in-theory (enable fn-sf-make))))
+(defthm fn-sf-successes-field-of-fn-sf-make
+  (equal (fn-sf-successes-field (fn-sf-make phase frontier frontier-candidate records
+                                            record-candidate completion successes barriers))
+         (fn-sl-of successes))
+  :hints (("Goal" :in-theory (enable fn-sf-make))))
+(defthm fn-sf-make-fields-canonical-is-make
+  ; any two canonical unbased fields, (fn-sl-of X) or a constant such as
+  ; (:snoc 0) alike
+  (implies (and (fn-sl-canonp rf) (not (fn-sfr-basedp rf)) (fn-sl-canonp sf))
+           (equal (fn-sf-make-fields phase frontier frontier-candidate rf
+                                     record-candidate completion sf barriers)
+                  (fn-sf-make phase frontier frontier-candidate (fn-sl-list rf) record-candidate
+                              completion (fn-sl-list sf) barriers)))
+  :hints (("Goal" :in-theory (enable fn-sf-make fn-sl-canonp fn-sfr-list))))
 
-; A transition that keeps both histories: the logic is fn-sf-make of the
-; lists, the execution copies the two fields (fn-sf-make-fields-is-make).
+; A transition that keeps both histories keeps their fields.
 (defmacro fn-sf-remake (phase frontier frontier-candidate record-candidate
                               completion barriers s)
-  `(mbe :logic (fn-sf-make ,phase ,frontier ,frontier-candidate
-                           (fn-sf-records ,s) ,record-candidate ,completion
-                           (fn-sf-successes ,s) ,barriers)
-        :exec (fn-sf-make-fields ,phase ,frontier ,frontier-candidate
-                                 (fn-sf-records-field ,s) ,record-candidate
-                                 ,completion (fn-sf-successes-field ,s)
-                                 ,barriers)))
+  `(fn-sf-make-fields ,phase ,frontier ,frontier-candidate
+                      (fn-sf-records-field ,s) ,record-candidate
+                      ,completion (fn-sf-successes-field ,s)
+                      ,barriers))
 
 ; The history's length and its last record, in O(1), for every value
 ; (fn-sl-count-is-len, fn-sl-last-is-last): the prepare's candidate test and
@@ -264,18 +349,18 @@
 (defun fn-sf-records-count (s)
   (declare (xargs :guard t))
   (mbe :logic (len (fn-sf-records s))
-       :exec (fn-sl-count (fn-sf-records-field s))))
+       :exec (fn-sfr-count (fn-sf-records-field s))))
 (defun fn-sf-records-last (s)
   (declare (xargs :guard t))
   (mbe :logic (car (last (fn-sf-records s)))
-       :exec (fn-sl-last (fn-sf-records-field s))))
+       :exec (fn-sfr-last (fn-sf-records-field s))))
 ; The record at position I, counted from the oldest, read from the newest
 ; end (fn-sl-nth-is-nth): the commit's finish reads the record it just
 ; appended in O(1) (books/owner-commit-carried.lisp).
 (defun fn-sf-records-nth (i s)
   (declare (xargs :guard (natp i)))
   (mbe :logic (nth i (fn-sf-records s))
-       :exec (fn-sl-nth i (fn-sf-records-field s))))
+       :exec (fn-sfr-nth i (fn-sf-records-field s))))
 
 ; Nothing below opens the record: goals stay in accessor vocabulary.
 (in-theory (disable (:d fn-sf-shapep) (:d fn-sf-phase) (:d fn-sf-frontier)
@@ -318,7 +403,7 @@
                                     :trigger-terms ((fn-sf-successes x)))
                  (:forward-chaining :corollary (implies (fn-sf-barriers x) (consp x))
                                     :trigger-terms ((fn-sf-barriers x))))
-  :hints (("Goal" :in-theory (enable fn-sf-phase fn-sf-frontier fn-sf-frontier-candidate fn-sf-records fn-sf-record-candidate fn-sf-completion fn-sf-successes fn-sf-barriers fn-sf-records-field fn-sf-successes-field fn-sl-list fn-sl-snoc-formp))))
+  :hints (("Goal" :in-theory (enable fn-sf-phase fn-sf-frontier fn-sf-frontier-candidate fn-sf-records fn-sf-record-candidate fn-sf-completion fn-sf-successes fn-sf-barriers fn-sf-records-field fn-sf-successes-field fn-sl-list fn-sl-snoc-formp fn-sfr-list fn-sfr-basedp))))
 
 ; Every phase below is either observable between host calls or transient
 ; inside one composed host call (:aborting, :completed).  The kernel has no
@@ -625,11 +710,10 @@
       (cond
        ((equal result :ok)
         (let ((record (fn-sf-record-candidate s)))
-          (mbe :logic (fn-sf-make :completing (fn-sf-frontier s) nil
-                      (append (fn-sf-records s) (list record)) nil
-                      (fn-sf-record-pair record) (fn-sf-successes s)
-                      (fn-sf-barriers s))
-               :exec (fn-sf-make-fields :completing (fn-sf-frontier s) nil (fn-sl-snoc (fn-sf-records-field s) record) nil (fn-sf-record-pair record) (fn-sf-successes-field s) (fn-sf-barriers s)))))
+          (fn-sf-make-fields :completing (fn-sf-frontier s) nil
+                             (fn-sfr-snoc (fn-sf-records-field s) record) nil
+                             (fn-sf-record-pair record) (fn-sf-successes-field s)
+                             (fn-sf-barriers s))))
        ((equal result :error)
         (fn-sf-remake :fenced-record (fn-sf-frontier s) nil (fn-sf-record-candidate s) nil (fn-sf-barriers s) s))
        (t s))
@@ -652,10 +736,9 @@
   (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
   (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :completed)
            (equal (cons sequence txid) (fn-sf-completion s)))
-      (mbe :logic (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
-                  (append (fn-sf-successes s) (list (cons sequence txid)))
-                  (fn-sf-barriers s))
-               :exec (fn-sf-make-fields :ready (fn-sf-frontier s) nil (fn-sf-records-field s) nil nil (fn-sl-snoc (fn-sf-successes-field s) (cons sequence txid)) (fn-sf-barriers s)))
+      (fn-sf-make-fields :ready (fn-sf-frontier s) nil (fn-sf-records-field s) nil nil
+                         (fn-sl-snoc (fn-sf-successes-field s) (cons sequence txid))
+                         (fn-sf-barriers s))
     s))
 
 ; unreachable-in-composition: fn-sn-finish performs fn-sf-core-completion and

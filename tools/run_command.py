@@ -2,7 +2,7 @@
 """Run one development command in a bounded, cleaned-up POSIX task group.
 
 Example:
-  python3 tools/run_command.py --timeout 120 -- python3 -m unittest tests.test_feed -v
+  python3 tools/run_command.py --timeout 120 -- python3 -m unittest tests.test_ledger -v
 
 The child receives /dev/null on stdin. For a tool that reads a saved driver,
 open that file inside the child (for example, `sh -c 'exec acl2 < driver.lsp'`),

@@ -139,6 +139,17 @@ f2) box f2-load; rm -rf "$W/f2"; mkdir -p "$W/f2"
         done_ "f2-$side-$i" $?; rm -rf "$W/f2/$side-$i"
       done
     done
+    # The lookups per served command (FN_NATIVE_COUNT_LOOKUPS): a fresh 1,000-post
+    # store, then the kept 10,000-article store; the before image at 10,000.
+    box f2-lookups-1000
+    scope 40G "$ROW_CORES" python3 "$H/f2_lookups.py" --image "$DEV" --work "$W/f2/k1000" --articles 1000 --json "$O/f2-lookups-1000.json" > "$O/f2-lookups-1000.out" 2>&1
+    done_ f2-lookups-1000 $?; rm -rf "$W/f2/k1000"
+    for side in after before; do
+      if [ $side = before ]; then I=${F2_BEFORE:-}; [ -n "$I" ] || continue; J=$O/f2-lookups-before-10000; else I=$DEV; J=$O/f2-lookups-10000; fi
+      box "f2-lookups-$side-10000"
+      scope 40G "$ROW_CORES" python3 "$H/f2_lookups.py" --image "$I" --work "$W/f2/k10000-$side" --store-from "$W/f2/fx/store" --articles 10000 --json "$J.json" > "$J.out" 2>&1
+      done_ "f2-lookups-$side-10000" $?; rm -rf "$W/f2/k10000-$side"
+    done
     rm -rf "$W/f2" ;;
 f7) for img in dtn dtn-developer; do
       module "f7-bp-$img" tests.test_bp_fragment_node_native FN_NATIVE_DEVELOPER_HOST="$T/build/fn-host-$img"

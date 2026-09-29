@@ -176,6 +176,7 @@ SHIMS = {
     "ACL2::FN-DURABLE-REALIZE-OCTET": "a-durable-realize-octet",
     "ACL2::FN-DURABLE-REALIZE-OCTETS": "a-durable-realize-octets",
     "ACL2::FN-DURABLE-REALIZE-LZ": "a-durable-realize-lz",
+    "ACL2::FN-PGS-FILL-REALIZE": "a-pgs-fill-realize",
     # host/store-open-host.lisp's host primitives (tools/extract/hostio.scm)
     "ACL2::FN-HX-LSTAT": "a-hx-lstat", "ACL2::FN-HX-LIST-DIR": "a-hx-list-dir",
     "ACL2::FN-HX-OPEN": "a-hx-open", "ACL2::FN-HX-PREAD": "a-hx-pread",

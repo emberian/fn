@@ -49,6 +49,9 @@
 (defstruct (fnn-tcl-conn (:conc-name fnn-tclc-))
   fd tag spool session (carry nil) (held nil) (closing nil) (broken nil)
   (pending nil) (trace nil) (inbound 0)
+  ;; PKT-873: T when an accepted transfer's custody awaits the session's
+  ;; progress hook (ACL2's fn-tcl-delivery-plan-progress-p named it).
+  (progress nil)
   (accepted 0) (refused 0) (uncertain 0) (outcome nil)
   ;; T when a Store or FNBS publication inside the delivery callback was
   ;; uncertain: a fence, not the connection's own loss (ACL2 reads both,
@@ -94,6 +97,17 @@
 ;;; The FNBS barrier.  A received bundle is a regular file whose data and whose
 ;;; name are both durable before its acknowledgement is released.  An ambiguous
 ;;; failure is not a refusal: it is uncertain, and the caller never acks.
+
+(defvar *fnn-tcl-progress* nil
+  "When non-nil, a function (conn) the session calls at the first quiet read
+timeout (at most max(1, keepalive/4) seconds, fnn-tcl-read-timeout) after it
+released the final ACK of an accepted transfer (ACL2's
+fn-tcl-delivery-plan-progress-p) while the peer keeps the session open: the
+receiving node's delivery of the custody it acknowledged (PKT-873,
+books/tcpcl-delivery-invariants.lisp fn-tcl-acknowledged-custody-is-
+progressed-in-its-turn).  Before it, a node delivered only after the session
+ended, and a peer that keeps its session open with keepalives held the
+acknowledged custody undelivered for as long as the node ran.")
 
 (defvar *fnn-tcl-deliver* nil
   "When non-nil, a function (conn xfer-id octets) that takes custody of one
@@ -288,6 +302,8 @@ and faults without following or deleting anything."
              (:accepted
               (incf (fnn-tclc-accepted conn))
               (incf (fnn-tclc-inbound conn))
+              (when (fnn-core 'fn-tcl-delivery-plan-progress-p plan)
+                (setf (fnn-tclc-progress conn) t))
               (fnn-tcl-log conn "accepted" "xfer=~d path=~a"
                            (second event)
                            (fnn-core 'fn-tcl-delivery-plan-detail plan))
@@ -395,7 +411,16 @@ failure rather than a refusal."
              (wake (fnn-tcl-now)))
         (cond
           ((eq incoming :timeout)
-           (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) wake)))
+           (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) wake))
+           ;; PKT-873: the peer kept the session open and quiet for a whole
+           ;; read timeout after an acknowledged custody: that custody goes to
+           ;; progress now, inside the session.  A peer that ends the session
+           ;; after the ACK (bp send, bp-service run) never reaches here and
+           ;; the node's between-sessions pass delivers it as before.
+           (when (and (fnn-tclc-progress conn) *fnn-tcl-progress*
+                      (not (fnn-tclc-closing conn)))
+             (setf (fnn-tclc-progress conn) nil)
+             (funcall *fnn-tcl-progress* conn)))
           ((zerop (length incoming))
            (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tcp-closed (fnn-tclc-session conn)))
            (return))
