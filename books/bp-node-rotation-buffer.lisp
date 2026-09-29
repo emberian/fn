@@ -331,6 +331,7 @@
 ; The whole run: the specification of the host's loop of quanta.
 (defun fn-bpnrb-mrun-all (i end goals vals fn-octets)
   (declare (xargs :stobjs fn-octets
+                  :guard (and (natp end) (<= end (fn-octets-len fn-octets)))
                   :measure (fn-bpnrb-measure i end goals)
                   :hints (("Goal" :use ((:instance fn-bpnrb-mstep-progress (x fn-octets)))
                            :in-theory (disable fn-bpnrb-mstep fn-bpnrb-measure
@@ -472,14 +473,39 @@
   :hints (("Goal" :in-theory (disable fn-frame-trailer fn-bpnr-checkpoint-prefix
                                       fn-bpnrb-slice-acc-is-slice))))
 
+; The value's decode runs on the goal-stack machine (lane depth-debt-2,
+; PRF-919): the recursive decoder took one control-stack frame per level of
+; the value's cons structure, whose depth the budget caps -- 4096 plus four
+; per job, operator data.  fn-bpnrb-mrun-all-of-dec-goal is the equality.
+(verify-guards fn-bpnrb-mrun-all
+  :hints (("Goal" :in-theory (disable fn-bpnrb-mstep))))
+
 (defun fn-bpnrb-decode-range (m budget fn-octets)
   (declare (xargs :stobjs fn-octets
-                  :guard (and (natp m) (<= m (fn-octets-len fn-octets)))))
+                  :guard (and (natp m) (<= m (fn-octets-len fn-octets)))
+                  :verify-guards nil))
   (let ((e (fn-bpnrb-frame-end m budget fn-octets)))
     (if (not e)
         nil
-      (mv-let (ok v k) (fn-bpnrb-dec 14 e budget fn-octets)
-        (if (and ok (<= e k) (fn-bpnr-checkpointp v)) v nil)))))
+      (mbe :logic (mv-let (ok v k) (fn-bpnrb-dec 14 e budget fn-octets)
+                    (if (and ok (<= e k) (fn-bpnr-checkpointp v)) v nil))
+           :exec (mv-let (ok k vals) (fn-bpnrb-mrun-all 14 e (list budget) nil fn-octets)
+                   (if (and ok (consp vals) (<= e k) (fn-bpnr-checkpointp (car vals)))
+                       (car vals)
+                     nil))))))
+
+(defthm fn-bpnrb-frame-end-budget-natp
+  (implies (fn-bpnrb-frame-end m budget x) (natp budget))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (disable fn-frame-trailer fn-bpnr-checkpoint-prefix
+                                      fn-bpnrb-slice-acc-is-slice))))
+
+(verify-guards fn-bpnrb-decode-range
+  :hints (("Goal" :in-theory (disable fn-bpnrb-mrun-all fn-bpnrb-dec fn-bpnrb-frame-end
+                                      fn-bpnr-checkpointp)
+                  :use ((:instance fn-bpnrb-mrun-all-of-dec-goal
+                                   (i 14) (end (fn-bpnrb-frame-end m budget fn-octets))
+                                   (d budget) (goals nil) (vals nil) (x fn-octets))))))
 
 (defthm fn-bpnrb-decode-range-is-decode
   (implies (and (fn-cbor-octet-listp x) (natp m) (<= m (len x)))

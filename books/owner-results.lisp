@@ -135,6 +135,8 @@
   (fn-record-octets-string
    (fn-feed-record-peer (fn-feed-journal-values record))))
 
+(verify-guards fn-ores-record-peer)
+
 (defun fn-ores-record-peers (records)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp records)
@@ -152,6 +154,8 @@
       (let ((prefix (fn-frame-protected-prefix frame)))
         (append prefix (fn-frame-trailer prefix)))
     :bad))
+
+(verify-guards fn-ores-seal)
 
 ; Executes by a loop (lane depth-debt, PRF-919): one record per target peer,
 ; operator data with no fixed cap (D27).  (mbe :logic <the recursion,
@@ -173,6 +177,9 @@
                                 (cons (fn-ores-sealed-entry (car records)) acc))
     (fn-ag-rev-onto acc nil)))
 
+(verify-guards fn-ores-sealed-entry)
+(verify-guards fn-ores-sealed-plan-loop)
+
 (defun fn-ores-sealed-plan (records)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (if (consp records)
@@ -193,6 +200,9 @@
                               '(fn-ores-sealed-plan-loop fn-ores-sealed-plan
                                 fn-ag-rev-onto car-cons cdr-cons fn-ores-sealed-entry)
                               (theory 'minimal-theory)))))
+
+(verify-guards fn-ores-sealed-plan
+  :hints (("Goal" :in-theory (disable fn-ores-sealed-entry fn-ores-seal fn-ores-record-peer))))
 
 (defun fn-ores-feed-publication (word peer records token command status log-line)
   (declare (xargs :guard t :verify-guards nil))
