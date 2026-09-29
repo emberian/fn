@@ -475,11 +475,11 @@ connections reserved about 4 GB beside its heap, and on OpenBSD, where a
 reservation counts against the login class's datasize, the fourteenth thread
 was refused at 1,536 MiB. The figure is the heap-figure heap, plus the
 image's own mappings outside the dynamic space (at most the core file), plus
-THREADS x (STACK + 4 MiB; measured 2.5 MiB on Linux, at most 3 on OpenBSD):
-THREADS the 12 fixed threads, the 2 I/O loops that serve every connection
+THREADS x (STACK + <!--limit:thread-runtime-mib-->4<!--/limit--> MiB; measured 2.5 MiB on Linux, at most 3 on OpenBSD):
+THREADS the <!--limit:fixed-threads-->12<!--/limit--> fixed threads, the <!--limit:mux-loops-->2<!--/limit--> I/O loops that serve every connection
 (a connection is no thread since connection-multiplexing; the reservation
 counted one per `max-connections` until lane reservation-after-flip) and the
-16 control clients: 30; STACK a constant 1,024 KiB, seven times the 142 KiB
+<!--limit:control-clients-->16<!--/limit--> control clients: <!--limit:fixed-threads + mux-loops + control-clients-->30<!--/limit-->; STACK a constant <!--limit:stack-kib,-->1,024<!--/limit--> KiB, seven times the 142 KiB
 the node needs whatever the article since the served path's per-line
 recursions became loops (lane served-line-iterative, PRF-218; before, the
 need grew by 32 octets per line and this figure carried a per-line term). A total the machine cannot hold is refused by name
@@ -556,8 +556,27 @@ turns; a thread that re-enters the gate while it holds the owner is a host
 fault. The keystone
 `fn-osch-control-waits-at-most-the-bound`: while control has a waiter, at
 most three quanta of the other classes run before a control quantum, from
-any cursor. A quantum is one bounded semantic step, unchanged by this
-requirement (a served read with its drain, one control request, one transit
+any cursor. That bound counts the picks outside a batch in flight; while
+one is in flight only `:inspect`, `:commit` and `:reader` run, and until
+lane durability-bugs (2026-09-28) the pipelined committer prepared a next
+batch behind every barrier, so under sustained POST load a batch was always
+in flight and a control, poster or transit request was never admitted. Now
+the committer's wake (`fn-ocp-wake`, BLOCKED; host
+`fnn-owner-commit-wake`, which reads the gate's waiting counts, and again
+inside the START-NEXT quantum) prepares no next batch once one of those
+classes has waited through four `:commit` quanta in flight (the pass budget
+`*fn-ocp-pass-bound*`, counted by the gate's pick and reset at a pick where
+none waits: background waiters, the feeds' transit ticks and maintenance
+steps, arrive during nearly every barrier, and stopping at the first would
+unpipeline every batch), and the keystone
+`fn-ocf-control-waits-at-most-the-bound` (PRF-901,
+books/owner-commit-fairness.lisp) holds over the host's pick, wake and
+commit events from any scheduler value: while a control request waits at
+every pick, before it is admitted (or the owner stops) at most 22 quanta run
+that are not `:inspect`, a reader during a barrier or a START-NEXT that took
+nobody, and at most six batches are sealed, so its wait is at most seven
+barriers plus those quanta (in practice two or three). A quantum is one bounded semantic
+step, unchanged by this requirement (a served read with its drain, one control request, one transit
 step); the journal writes stay inside it. The exposure charge (PRF-161) is
 decided in the same critical section as the step it admits. What leaves the
 critical section is the reply's rendering: `fn-owner-chunk-span` returns one
@@ -1375,29 +1394,67 @@ min(32, the 64 MiB budget)) credits. A credit is taken BEFORE the body is
 retained: every served read is `fn-oas-read-span`
 (books/owner-article-slots.lisp, host `fn-owner-chunk-span-at`, the slots
 installed by `fn-owner-connection-budget` from the store's profile), which
-admits a connection into article mode only while the owner then holds at
-most the slots (`fn-oas-held`: connections in article mode, queued
-submissions, the batch in flight; KEYSTONE
-`fn-oas-read-span-admits-within-the-slots`). Past them a POST is answered
-`440 posting not permitted now; the articles in flight fill the memory, try
-again later` at the command (RFC 3977 section 6.3.1: no article is sent),
-and an IHAVE or TAKETHIS that enters article mode is answered `400 the
-articles in flight fill the memory; try again later` and closed (RFC 3977
-section 3.2.1) with its wire dropped. The credit moves with the request:
-held in article mode, then in the owner's queue, then in the batch in
-flight, and released when the commit answers; a client that disconnects
-mid-article drops its wire (nothing else owns it), a queued submission stays
-counted. The completion policy is RESERVE-TO-FINISH: a credit is the whole
-article's worst case (past the body limit the wire closes with 441), so an
-admitted connection's reads are never refused by the slots (KEYSTONE
-`fn-oas-read-span-never-blocks-an-admitted-article`) and partial uploads
-cannot hold the pool while each needs more of it; a stalled upload holds
-its credit until the idle timeout closes its connection. The launcher's
-former room (connection-budget's launch figure, 1,024 connections' heap
-parts, no caller since lane reservation-figure) is gone. Not yet: the body in bounded
+keeps what the owner holds (`fn-oas-held`: connections in article mode,
+queued submissions, the batch in flight) within the slots across every
+read: a read from an owner holding at most the slots leaves it holding at
+most the slots (KEYSTONE `fn-oah-read-span-keeps-held-within-the-slots`,
+books/owner-article-held.lisp), whatever the read carried -- including a
+TAKETHIS (RFC 4644 section 2.5), a pipelined IHAVE or POST, or a small
+article whose command and whole body arrive in one socket read, which
+enters article mode and leaves it within the read with one more
+submission queued; and a connection entering article mode does so within
+the slots (KEYSTONE `fn-oas-read-span-admits-within-the-slots`). A read
+that would take the owner past the slots and past what it held is refused
+in three tiers, the first the slots hold: a POST is answered `440 posting
+not permitted now; the articles in flight fill the memory, try again later`
+at the command (RFC 3977 section 6.3.1: no article is sent); else an article
+the read entered is dropped with its wire closed and `400 the articles in
+flight fill the memory; try again later` and close (RFC 3977 section
+3.2.1), what the read completed before it kept; else the whole read is
+refused, 400 and close, nothing it carried taken (a TAKETHIS in one read:
+RFC 4644 offers it no "later"). A read of one connection leaves every other
+connection's record, and so its wire mode, as it was (KEYSTONE
+`fn-oah-read-span-leaves-the-others-article-mode`). The credit moves with
+the request: held in article mode, then in the owner's queue, then in the
+batch in flight, and released when the commit answers; a client that
+disconnects mid-article drops its wire (nothing else owns it), a queued
+submission stays counted. The completion policy is RESERVE-TO-FINISH: a
+credit is the whole article's worst case (past the body limit the wire
+closes with 441), so an admitted connection's reads that complete or
+continue its article are the reads before the slots exactly (KEYSTONE
+`fn-oas-read-span-never-blocks-an-admitted-article`), and past the slots
+only an article such a read began after completing its own is closed
+(`fn-oah-admitted-read-keeps-what-it-completed`); partial uploads cannot
+hold the pool while each needs more of it; a stalled upload holds its
+credit until the idle timeout closes its connection. The launcher's former
+room (connection-budget's launch figure, 1,024 connections' heap parts, no
+caller since lane reservation-figure) is gone. Not yet: the body in bounded
 pooled chunks (one octet a byte) instead of wire lists, which lowers the
-credit about 32-fold; the frame theorem that a read of one connection leaves
-every other connection's wire mode as it was.
+credit about 32-fold; the queue's growth by the control channel and BP
+deliveries (no connection's read).
+
+Memory credits (lane credits, B5, 2026-09-28; PRF-380, SCN-194). The
+article slots are now one instance of the credit ledger
+(books/memory-credits.lisp): the run's ledger (`fn-owner-credits`, installed
+by `fn-owner-connection-budget` as `fn-mca-initial`) has the launcher's heap
+figure as its budget, the figure's fixed terms as its base, the open's terms
+as a completion reserve that nothing is admitted against, the collector's room
+as the runtime reserve, and exactly the articles' pool free
+(`fn-mca-initial-funds-exactly-the-articles`). Every served read is
+`fn-mca-read-span` (books/owner-credits.lisp) over `fn-oas-read-span`: the
+connection's credit becomes one reserve while it is mid-article plus one per
+queued submission of it; growth past the budget is refused by name (the
+memory 440 at a POST command, else `400 the articles in flight fill the
+memory; try again later` and close, the read not run) and shrinking or
+holding steady never is (reserve to finish). The credit then follows the
+buffer: the committer's take moves it to `:open`, the batch's append to
+`:sealed`, and only the batch's COMPLETE, after its barrier returned,
+releases it. A close, an idle timeout, a stall's uncertain answer or a fault
+releases the connection's own body and queue only
+(`fn-mca-close-keeps-what-the-commit-owns`): the pipeline feeds each member's
+outcome before the barrier, so the owner's queue and in-flight field are empty
+while the syncer's fdatasync still owns the batch. No cache is charged yet: a
+committed article is held by the base's state term at the profile's bounds.
 
 Not claimed: a reply larger than the stated workload's (an OVER or LISTGROUP
 over a large range) is outside the figure until replies are rendered in

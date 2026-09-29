@@ -305,25 +305,25 @@
 (assert-event (fn-feed-sentp (fn-feed-state-of *oft-msgid*
                                                (fn-feed-queue (car *oft-sent*)))))
 (assert-event (equal (len (cdr *oft-sent*)) 1))
-; The record that authorized it is a (:feed-sent ...), not an outcome.
-(assert-event (equal (fn-feed-journal-kind
-                      (car (fn-own-feed-reply-records-of "nodeB" *oft-msgid* 1 238)))
-                     :feed-sent))
-; 239: accepted, and the entry is done.
-(assert-event (equal (fn-feed-journal-kind
-                      (car (fn-own-feed-reply-records-of "nodeB" *oft-msgid* 1 239)))
-                     :feed-outcome))
-; 438: the peer already has it -- also done, and journaled as itself.
+;; The records a reply authorizes, as the host writes them
+;; (books/owner.lisp fn-own-feed-reply-records -> fn-feed-observe-records),
+;; for the entry now in flight: a final code is a :feed-outcome of that code;
+;; a retry (431) is a :feed-retry with the observation's tick; a code the map
+;; does not know is a :feed-lost with the tick, never an outcome.
+(defmacro oft-reply-kind (code)
+  `(fn-feed-journal-kind
+    (car (fn-feed-observe-records (car *oft-sent*)
+                                  (fn-feed-response ,code *oft-msgid*)
+                                  *oft-obs*))))
+(assert-event (equal (oft-reply-kind 239) :feed-outcome))
 (assert-event (equal (fn-feed-record-nat
                       3 (fn-feed-journal-values
-                         (car (fn-own-feed-reply-records-of "nodeB" *oft-msgid* 1 438))))
+                         (car (fn-feed-observe-records
+                               (car *oft-sent*) (fn-feed-response 438 *oft-msgid*)
+                               *oft-obs*))))
                      438))
-; A code the map does not know is journaled as 400, which is what
-; fn-feed-observe does with it and what replay applies.
-(assert-event (equal (fn-feed-record-nat
-                      3 (fn-feed-journal-values
-                         (car (fn-own-feed-reply-records-of "nodeB" *oft-msgid* 1 503))))
-                     400))
+(assert-event (equal (oft-reply-kind 431) :feed-retry))
+(assert-event (equal (oft-reply-kind 503) :feed-lost))
 
 ; -----------------------------------------------------------------------------
 ; Restart by offer (K5): a process death fences the in-flight entry
