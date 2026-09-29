@@ -5638,7 +5638,12 @@
         "native": true,
         "record": "planning/evidence/operations-2026-09-28.md",
         "log": "planning/evidence/operations-2026-09-28/native-i4c-checkpoint_auto.log"
-      }
+      },
+      "evidence": [
+        "tests/test_native_checkpoint_auto.py",
+        "tests/test_native_log_compaction.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
     },
     {
       "id": "SCN-200",
@@ -5662,7 +5667,11 @@
         "native": true,
         "record": "planning/evidence/operations-2026-09-28.md",
         "log": "planning/evidence/operations-2026-09-28/native-i4c-checkpoint_auto.log"
-      }
+      },
+      "evidence": [
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/operations-2026-09-28.md"
+      ]
     }
   ]
 }
