@@ -178,22 +178,28 @@ zlib's failure (ACL2 planned the span, so that is a defect)."
 
 ;;; The served read of a stored payload (host/native/extent.lisp
 ;;; fn-durable-realize-lz): ACL2's payload decoder over buffers the host
-;;; keeps in a pool (fn-pzd-decode-bufs, books/payload-deflate.lisp; KEYSTONE
-;;; fn-pzd-decode-bufs-is-decode, and books/payload-lz-record.lisp
-;;; fn-lzr-decode-bufs-is-the-lz-value: an :ok answer is the value
-;;; A-DURABLE-LZ names).  The decoder makes every buffer it reads, so a
-;;; pooled set carries nothing from one payload to the next.
+;;; keeps in a pool (fn-zpl-decode-bufs, books/deflate-pool.lisp; KEYSTONES
+;;; fn-zpl-decode-bufs-is-decode and fn-zpl-decode-bufs-is-the-lz-value: an
+;;; :ok answer is the value A-DURABLE-LZ names).  Each buffer set carries
+;;; ACL2's POOL value, NIL when the set is made and afterwards only what the
+;;; entry returned (the invariant fn-zpl-pool-okp holds of NIL and the
+;;; entry re-establishes it): the window keeps its dictionary, and a payload
+;;; over the same dictionary re-zeroes only the ring cells the last one
+;;; wrote.
 
 (defvar *fnn-pzd-pool* nil)
 (defvar *fnn-pzd-lock* (sb-thread:make-mutex :name "fn payload decoder buffers"))
 
 (defun fnn-pzd-buffers ()
+  "A buffer set (IN WIN TAB OUT POOL): one from the pool, else a new one
+whose POOL is NIL."
   (or (sb-thread:with-mutex (*fnn-pzd-lock*) (pop *fnn-pzd-pool*))
       (let ((sizes (fnn-core 'fn-zin-buffer-sizes)))
         (list (fnn-zin-private-octets 4096)
               (fnn-zin-private-octets (getf sizes :window))
               (fnn-zin-private-octets (getf sizes :table))
-              (fnn-zin-private-octets 4096)))))
+              (fnn-zin-private-octets 4096)
+              nil))))
 
 (defun fnn-pzd-decode (dict c n)
   "ACL2's decode of the stored stream C (octets, a list) over the dictionary
@@ -204,13 +210,14 @@ DICT (a list) to N octets: (:ok . OCTET-LIST) or ACL2's (:error WHY)."
     (fn-octets$c-reserve m in)
     (replace (the fnn-octets (svref in 0)) c)
     (setf (svref in 1) m)
-    (destructuring-bind (answer win tab out)
-        (fnn-call 'fn-pzd-decode-bufs dict m n in (second bufs) (third bufs) (fourth bufs))
+    (destructuring-bind (answer pool win tab out)
+        (fnn-call 'fn-zpl-decode-bufs (fifth bufs) dict m n in (second bufs) (third bufs)
+                  (fourth bufs))
       (prog1 (if (and (consp answer) (eq (first answer) :ok))
                  (cons :ok (coerce (subseq (svref out 0) 0 (svref out 1)) 'list))
                answer)
         (sb-thread:with-mutex (*fnn-pzd-lock*)
-          (push (list in win tab out) *fnn-pzd-pool*))))))
+          (push (list in win tab out pool) *fnn-pzd-pool*))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The inbound stream of one connection: ACL2's inflater over private

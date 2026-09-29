@@ -154,9 +154,9 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
 ;;; the realizer of a COMPRESSED extent.  It reads the block C through the
 ;;; extent realizer above (the entry's trailer checked by ACL2), runs ACL2's
 ;;; DEFLATE payload decoder over it (host/native/deflate.lisp fnn-pzd-decode:
-;;; fn-pzd-decode-bufs; KEYSTONE fn-lzr-decode-bufs-is-the-lz-value,
-;;; books/payload-lz-record.lisp: an :ok answer is the value the constraint
-;;; names) and answers ACL2's octets.  A decode that fails is
+;;; fn-zpl-decode-bufs over pooled buffers; KEYSTONE
+;;; fn-zpl-decode-bufs-is-the-lz-value, books/deflate-pool.lisp: an :ok
+;;; answer is the value the constraint names) and answers ACL2's octets.  A decode that fails is
 ;;; refused by name (arena-extent-lz-decode, a store fault: a recovery
 ;;; event) and nothing is answered.  One decoded payload is kept (the last
 ;;; one read) so a reader that reads octet by octet (fn-arena$x-get) decodes
