@@ -289,8 +289,8 @@
 
 ; Native ION sender calls these exact ACL2 constructors. Raw Lisp only
 ; publishes their returned records and executes their returned ADU bytes.
-; ION is an adapter of the generic attempt: fn-bpiw-attempt-record is
-; fn-bprq-attempt-record (tests/acl2/bp-request-plan-tests.lisp).
+; ION is an adapter of the generic attempt: its attempt record is
+; fn-bprq-attempt-record (books/bp-request-plan.lisp).
 (defun fn-workflow-ion-attempt-record
     (txid tx-generation work-id attempt-id state)
   (declare (xargs :stobjs state :mode :program))

@@ -288,6 +288,11 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-inspect-msgid-octets result))
 
+; Row S3d: the group `store inspect --group GROUP' names, or nil.
+(defun fn-native-operator-host-result-inspect-group (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-inspect-group result))
+
 (defun fn-native-operator-host-inspect-report (msgid-octets foundp)
   (declare (xargs :mode :program))
   (fn-native-operator-inspect-report msgid-octets foundp))

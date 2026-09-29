@@ -107,6 +107,7 @@
   (if (and (fn-stxa-p w) (fn-record-p (fn-replay-composite-record w)))
       (len (fn-record-groups (fn-replay-composite-record w)))
     0))
+(verify-guards fn-oii-publication-group-count)
 
 ; The preflight's count is the interned row's: the held article inside the
 ; composite row is filed in exactly the groups the wire article names.

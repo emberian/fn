@@ -506,7 +506,7 @@ its outcome, which is the refusal to the offering ingress."
 (defun fnn-bps-route-segment-mru (route) (sixth route))
 (defun fnn-bps-route-transfer-mru (route) (seventh route))
 
-(defun fnn-bps-send-effect (service effect)
+(defun fnn-bps-send-effect-next (service effect)
   (let* ((route (second effect))
          (key (fourth effect))
          (wire (fifth effect))
@@ -607,12 +607,12 @@ its outcome, which is the refusal to the offering ingress."
     ;; from the durable :requeued record's reason (the :forward-refused
     ;; effect, fn-bpnrc-job-result-class-is-the-transport-class).
     (setf (fnn-bps-transfer service) outcome)
-    (fnn-bps-drive-effects service
-                           (fnn-bps-foundation-step
-                            service (list :job-result key attempt outcome)))))
+    (fnn-bps-foundation-step service (list :job-result key attempt outcome))))
 
-(defun fnn-bps-drive-effects (service effects)
-  (dolist (effect effects)
+(defun fnn-bps-drive-effect (service effect)
+  "Carry out one ACL2 effect; answer the effects ACL2 returned for it, which
+are driven next, before the effects after this one (depth first)."
+  (let ((next nil))
     (case (first effect)
       (:persist-dispatch
        (unless (= (length effect) 4)
@@ -624,8 +624,8 @@ its outcome, which is the refusal to the offering ingress."
                 (fnn-bps-persist-dispatch
                  service epoch operation-id record)))
          (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
-         (fnn-bps-drive-effects
-          service (fnn-bps-foundation-step
+         (setq next
+          (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
       (:dispatch-ready
        (fnn-out "BP received carrier dispatch durable"))
@@ -638,7 +638,7 @@ its outcome, which is the refusal to the offering ingress."
           (fnn-bps-note service :fenced)
           (fnn-indeterminate "bp-service: dispatch publication uncertain"))))
       (:persist-conflict
-       (fnn-bps-drive-effects service (fnn-bps-settle-conflict service effect)))
+       (setq next (fnn-bps-settle-conflict service effect)))
       (:persist-delete
        (unless (= (length effect) 4)
          (fnn-indeterminate "bp-service: malformed kind-10 publication effect"))
@@ -649,8 +649,8 @@ its outcome, which is the refusal to the offering ingress."
                 (fnn-bps-persist-kind-ten
                  service epoch operation-id record)))
          (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
-         (fnn-bps-drive-effects
-          service (fnn-bps-foundation-step
+         (setq next
+          (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
       (:delete-ready
        (fnn-out "BP held carrier deletion durable arrival=~d" (second effect)))
@@ -674,12 +674,12 @@ its outcome, which is the refusal to the offering ingress."
                 (fnn-bps-persist-kind-eighteen
                  service epoch operation-id record)))
          (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
-         (fnn-bps-drive-effects
-          service (fnn-bps-foundation-step
+         (setq next
+          (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
       (:family-ready
        (fnn-out "BP fragment family durable")
-       (fnn-bps-fragment-progress service))
+       (setq next (fnn-bps-fragment-effects service)))
       (:family-answer
        (case (second effect)
          (:refused (fnn-out "BP fragment family publication refused"))
@@ -696,8 +696,8 @@ its outcome, which is the refusal to the offering ingress."
                 (fnn-bps-persist-kind-seven
                  service epoch operation-id record)))
          (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
-         (fnn-bps-drive-effects
-          service (fnn-bps-foundation-step
+         (setq next
+          (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
       ((:persist-attempt :persist-forward-result :persist-deferral)
        (unless (= (length effect) 4)
@@ -708,8 +708,8 @@ its outcome, which is the refusal to the offering ingress."
               (outcome (fnn-bps-persist-forward
                         service epoch operation-id record)))
          (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
-         (fnn-bps-drive-effects
-          service (fnn-bps-foundation-step
+         (setq next
+          (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
       (:deliver
        (fnn-fault "bp-service: application delivery requires the owner caller"))
@@ -741,15 +741,15 @@ its outcome, which is the refusal to the offering ingress."
               (record (third effect))
               (outcome (fnn-bps-persist-record service token record)))
          (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
-         (fnn-bps-drive-effects
-          service (fnn-bps-step service (list :persist-result token outcome)))))
+         (setq next
+          (fnn-bps-step service (list :persist-result token outcome)))))
       (:cl-send
        (if (= (length effect) 7)
            (if *fnn-bps-forward-send*
                (funcall *fnn-bps-forward-send* effect)
              (fnn-indeterminate
               "bp-service: durable forward attempt lacks its session"))
-         (fnn-bps-send-effect service effect)))
+         (setq next (fnn-bps-send-effect-next service effect))))
       (:forward-ready
        (fnn-out "BP forwarding result durable arrival=~d status=~(~a~)"
                 (second effect) (third effect)))
@@ -854,8 +854,8 @@ its outcome, which is the refusal to the offering ingress."
               (outcome (fnn-bps-publish-generation service (fourth effect)
                                                    (fifth effect))))
          (fnn-bps-note service (fnn-core 'fn-bprc-publication-evidence outcome))
-         (fnn-bps-drive-effects
-          service (fnn-bps-foundation-step
+         (setq next
+          (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
       (:generation-selected
        (fnn-out "BP journal generation selected generation=~d" (second effect))
@@ -867,7 +867,23 @@ its outcome, which is the refusal to the offering ingress."
       (:rotation-uncertain
        (fnn-bps-note service :fenced)
        (fnn-out "BP journal rotation uncertain generation=~d" (second effect)))
-      (t nil)))
+      (t nil))
+    next))
+
+;; Executes by a loop (lane depth-debt, PRF-919): an effect's answer used to be
+;; driven by a nested call, one control-stack frame per publication in the
+;; chain, and :family-ready re-entered through fnn-bps-fragment-progress once
+;; per ready fragment family, so the depth grew with the held fragments.  The
+;; order is the recursion's: an effect's answer is driven completely before
+;; the next effect of its list (a stack of the lists still to finish).
+(defun fnn-bps-drive-effects (service effects)
+  (let ((pending (list effects)))
+    (loop while pending
+          do (let ((current (pop pending)))
+               (when (consp current)
+                 (push (cdr current) pending)
+                 (let ((next (fnn-bps-drive-effect service (car current))))
+                   (when next (push next pending)))))))
   service)
 
 (defun fnn-bps-rotation-test-stop (point)
@@ -980,10 +996,11 @@ octet is ACL2's."
         (ignore-errors (when (fnn-check-regular stage) (fnn-unlink stage)))))
     (fnn-core 'fn-bpnr-publish-outcome phase)))
 
-(defun fnn-bps-fragment-progress (service)
+(defun fnn-bps-fragment-effects (service)
   ;; The ACL2 selector chooses an exact ready family from the one held list.
-  ;; Each durable :family-ready retires at least one fragment and invokes
-  ;; this once more; a refusal/uncertainty does not loop.
+  ;; Each durable :family-ready retires at least one fragment and asks for
+  ;; the next one (fnn-bps-drive-effect); a refusal/uncertainty does not
+  ;; loop.  The answer is the family step's effects, or nil.
   (let* ((tally (fnn-bps-tally service))
          (observation (fnn-bp-observation
                        (fnn-bp-tally-wall tally)
@@ -991,9 +1008,11 @@ octet is ACL2's."
          (candidate (fnn-core 'fn-bpnf-family-next
                               (fnn-bps-state service) observation)))
     (when (and (consp candidate) (eq (first candidate) :ready))
-      (fnn-bps-drive-effects
-       service (fnn-bps-foundation-step
-                service (list :family (second candidate) observation)))))
+      (fnn-bps-foundation-step
+       service (list :family (second candidate) observation)))))
+
+(defun fnn-bps-fragment-progress (service)
+  (fnn-bps-drive-effects service (fnn-bps-fragment-effects service))
   service)
 
 (defun fnn-bps-receive (service admission wire)

@@ -48,8 +48,10 @@ class Journal:
     def environment(self, event: str, **fields) -> dict:
         return self.append("environment", event=event, **fields)
 
-    def stage(self, name: str, event: str) -> dict:
-        return self.append("stage", name=name, event=event)
+    def stage(self, name: str, event: str, **fields) -> dict:
+        """A stage begun or ended; an ended healing stage carries `elapsed`
+        (seconds) for the scenario's declared bound."""
+        return self.append("stage", name=name, event=event, **fields)
 
     def bind(self, symbol: str, concrete) -> dict:
         return self.append("binding", symbol=symbol, concrete=concrete)

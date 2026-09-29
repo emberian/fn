@@ -44,6 +44,7 @@ import unittest
 
 from tests.native_harness import (
     ROOT, Client, Node, article, client_context, free_port, native_image, run)
+from tests.sasl_client import scram_login, status_data
 
 IMAGE = native_image("FN_NATIVE_HOST", "build/fn-host-developer")
 if not os.environ.get("FN_NATIVE_HOST") and not IMAGE.is_file():
@@ -112,6 +113,23 @@ class NativeFriendsAccountsTests(unittest.TestCase):
             self.assertTrue(first.startswith(b"340"), first)
             return final.decode("ascii", "replace").strip()
 
+    def scram_login_and_post(self, login, password, message_id):
+        """SCRAM-SHA-256 (RFC 4643 2.4, RFC 7677) as LOGIN on a new TLS
+        connection, then one POST: the POST's final status, or the failed
+        login's line."""
+        with self.tls() as client:
+            final, scram, _ = scram_login(client.command, client.command, login, password)
+            status, data = status_data(final)
+            print("NATIVE-ACCOUNTS AUTHINFO SASL SCRAM-SHA-256 ->", status)
+            if status != "283":
+                return final.decode("ascii", "replace").strip()
+            self.assertTrue(scram.server_final_ok(data), final)
+            first, done = client.post(article(
+                message_id, sender=login + "@friend.example", groups="local.general",
+                subject="hello", date=None))
+            self.assertTrue(first.startswith(b"340"), first)
+            return done.decode("ascii", "replace").strip()
+
     def invite(self):
         result = self.ok("account", "invite", "--expires", "3600")
         codes = re.findall(rb"^[0-9a-f]{32}$", result.stdout, re.M)
@@ -172,14 +190,21 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         self.node.start()
         clear = self.node.session(greeting=None)
         self.addCleanup(clear.close)
+        # The AUTHINFO line's arguments (RFC 4643 section 2.2: USER, and SASL
+        # beside it since NNT-056), never an exact-line match.
+        def authinfo(labels):
+            return [set(l.split()[1:]) for l in labels if l.split()[:1] == [b"AUTHINFO"]]
         listed = self.capabilities(clear)
         self.assertIn(b"STARTTLS", listed)
-        self.assertNotIn(b"AUTHINFO USER", listed)
+        self.assertEqual(authinfo(listed), [])
         self.assertTrue(clear.starttls().startswith(b"382"))
         listed = self.capabilities(clear)
-        self.assertIn(b"AUTHINFO USER", listed)
+        self.assertEqual(len(authinfo(listed)), 1, listed)
+        self.assertIn(b"USER", authinfo(listed)[0])
         self.assertNotIn(b"STARTTLS", listed)
-        self.assertIn(b"AUTHINFO USER", self.capabilities(self.tls()))
+        overtls = authinfo(self.capabilities(self.tls()))
+        self.assertEqual(len(overtls), 1, overtls)
+        self.assertIn(b"USER", overtls[0])
         self.stop()
 
     def test_fn_redeem_to_an_unreachable_node_is_uncertain_never_refused(self):
@@ -310,6 +335,10 @@ class NativeFriendsAccountsTests(unittest.TestCase):
                             .startswith("483"))
         self.assertTrue(self.redeem(code, "robin", "correct-horse").startswith("281"))
         reply = self.login_and_post("robin", "correct-horse", "<robin-1@friend.example>")
+        self.assertTrue(reply.startswith("240"), reply)
+        # The redeemed account's verifier serves SCRAM too (the redeem wrote
+        # the SCRAM keys with the digest).
+        reply = self.scram_login_and_post("robin", "correct-horse", "<robin-scram@friend.example>")
         self.assertTrue(reply.startswith("240"), reply)
         self.assertTrue(self.redeem(code, "mallory", "x").startswith("482"))
         self.assertTrue(self.redeem(code, "robin", "correct-horse").startswith("281"))

@@ -149,10 +149,3 @@
                     (list (fn-bprq-plan-attempt *bprq-plan-2*)
                           (fn-bprq-plan-outcome *bprq-plan-2*)))))))
 
-; ION is an adapter of the same attempt: its constructor is this one.
-(defthm fn-bpiw-attempt-record-is-the-generic-attempt
-  (equal (fn-bpiw-attempt-record bp txid tx-generation work-id attempt-id)
-         (fn-bprq-attempt-record bp txid tx-generation work-id attempt-id))
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-bpiw-attempt-record fn-bprq-attempt-record)
-                              (theory 'minimal-theory)))))

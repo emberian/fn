@@ -154,6 +154,56 @@
                      (mv t (cons a b) k2))))))
             (t (mv nil nil 0))))))
 
+; One value that is not a pair (tag 10), without recursion: what the host's
+; bounded machine (fn-bpnrb-mstep) executes, since the machine splits every
+; pair into goals itself (lane depth-debt, PRF-919).  Equal to
+; `fn-bpnrb-dec' there (fn-bpnrb-dec-leaf-is-dec), so the recursive decoder
+; stays the specification and never runs on the host's stack.
+(defun fn-bpnrb-dec-leaf (i end d fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp i) (natp end) (natp d)
+                              (<= end (fn-octets-len fn-octets)))
+                  :verify-guards nil))
+  (if (or (zp d) (not (natp i)) (not (natp end)) (<= end i))
+      (mv nil nil 0)
+    (let ((tag (fn-octets-get i fn-octets)) (j (1+ i)))
+      (cond ((equal tag 0) (mv t nil j))
+            ((equal tag 1) (mv t t j))
+            ((or (equal tag 2) (equal tag 3) (equal tag 4) (equal tag 7))
+             (mv-let (ok codes k) (fn-bpnrb-counted j end fn-octets)
+               (if (not ok)
+                   (mv nil nil 0)
+                 (let ((s (coerce (fn-bpnr-chars codes) 'string)))
+                   (mv t
+                       (cond ((equal tag 2) (intern-in-package-of-symbol s :fn))
+                             ((equal tag 3)
+                              (intern-in-package-of-symbol s 'fn-bpnr-dec))
+                             ((equal tag 4) (intern-in-package-of-symbol s 'car))
+                             (t s))
+                       k)))))
+            ((equal tag 5)
+             (if (< end (+ j 8))
+                 (mv nil nil 0)
+               (mv t (fn-bpnrb-u64 j fn-octets) (+ j 8))))
+            ((equal tag 6)
+             (if (< end (+ j 8))
+                 (mv nil nil 0)
+               (mv t (- (nfix (fn-bpnrb-u64 j fn-octets))) (+ j 8))))
+            ((equal tag 8)
+             (if (and (< j end) (fn-cbor-octetp (fn-octets-get j fn-octets)))
+                 (mv t (code-char (fn-octets-get j fn-octets)) (1+ j))
+               (mv nil nil 0)))
+            ((equal tag 9) (fn-bpnrb-counted j end fn-octets))
+            (t (mv nil nil 0))))))
+
+(defthm fn-bpnrb-dec-leaf-is-dec
+  (implies (not (and (not (zp d)) (natp i) (natp end) (< i end)
+                     (equal (fn-octets-get i fn-octets) 10)))
+           (equal (fn-bpnrb-dec-leaf i end d fn-octets)
+                  (fn-bpnrb-dec i end d fn-octets)))
+  :hints (("Goal" :expand ((fn-bpnrb-dec i end d fn-octets))
+                  :in-theory (disable fn-bpnrb-counted fn-bpnrb-u64))))
+
 (in-theory (disable fn-bpnrb-u64))
 
 (defthm fn-bpnrb-counted-next
@@ -183,6 +233,7 @@
                                       (theory 'minimal-theory)))))
 
 (verify-guards fn-bpnrb-dec)
+(verify-guards fn-bpnrb-dec-leaf)
 
 (local
  (defthm fn-bpnrb-u64-is
@@ -256,7 +307,8 @@
               (mv nil 0 nil nil)
             (if (equal (fn-octets-get i fn-octets) 10)
                 (mv t (1+ i) (list* (1- d) (1- d) :pair rest) vals)
-              (mv-let (ok v k) (fn-bpnrb-dec i end d fn-octets)
+              (mv-let (ok v k) (mbe :logic (fn-bpnrb-dec i end d fn-octets)
+                                     :exec (fn-bpnrb-dec-leaf i end d fn-octets))
                 (if ok
                     (mv t k rest (cons v vals))
                   (mv nil 0 nil nil))))))))))
@@ -279,6 +331,7 @@
 ; The whole run: the specification of the host's loop of quanta.
 (defun fn-bpnrb-mrun-all (i end goals vals fn-octets)
   (declare (xargs :stobjs fn-octets
+                  :guard (and (natp end) (<= end (fn-octets-len fn-octets)))
                   :measure (fn-bpnrb-measure i end goals)
                   :hints (("Goal" :use ((:instance fn-bpnrb-mstep-progress (x fn-octets)))
                            :in-theory (disable fn-bpnrb-mstep fn-bpnrb-measure
@@ -420,14 +473,43 @@
   :hints (("Goal" :in-theory (disable fn-frame-trailer fn-bpnr-checkpoint-prefix
                                       fn-bpnrb-slice-acc-is-slice))))
 
+; The value's decode runs on the goal-stack machine (lane depth-debt-2,
+; PRF-919): the recursive decoder took one control-stack frame per level of
+; the value's cons structure, whose depth the budget caps -- 4096 plus four
+; per job, operator data.  fn-bpnrb-mrun-all-of-dec-goal is the equality.
+(verify-guards fn-bpnrb-mrun-all
+  :hints (("Goal" :in-theory (disable fn-bpnrb-mstep))))
+
 (defun fn-bpnrb-decode-range (m budget fn-octets)
   (declare (xargs :stobjs fn-octets
-                  :guard (and (natp m) (<= m (fn-octets-len fn-octets)))))
+                  :guard (and (natp m) (<= m (fn-octets-len fn-octets)))
+                  :verify-guards nil))
   (let ((e (fn-bpnrb-frame-end m budget fn-octets)))
     (if (not e)
         nil
-      (mv-let (ok v k) (fn-bpnrb-dec 14 e budget fn-octets)
-        (if (and ok (<= e k) (fn-bpnr-checkpointp v)) v nil)))))
+      (mbe :logic (mv-let (ok v k) (fn-bpnrb-dec 14 e budget fn-octets)
+                    (if (and ok (<= e k) (fn-bpnr-checkpointp v)) v nil))
+           :exec (mv-let (ok k vals) (fn-bpnrb-mrun-all 14 e (list budget) nil fn-octets)
+                   (if (and ok (consp vals) (<= e k) (fn-bpnr-checkpointp (car vals)))
+                       (car vals)
+                     nil))))))
+
+(defthm fn-bpnrb-frame-end-budget-natp
+  (implies (fn-bpnrb-frame-end m budget x) (natp budget))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (disable fn-frame-trailer fn-bpnr-checkpoint-prefix
+                                      fn-bpnrb-slice-acc-is-slice))))
+
+(defthm fn-bpnrb-mrun-all-of-no-goals
+  (implies (atom goals)
+           (equal (fn-bpnrb-mrun-all i end goals vals x)
+                  (mv (natp end) i vals)))
+  :hints (("Goal" :expand ((fn-bpnrb-mrun-all i end goals vals x))
+                  :in-theory (disable fn-bpnrb-mstep fn-bpnrb-mrun-all-of-mrun))))
+
+(verify-guards fn-bpnrb-decode-range
+  :hints (("Goal" :in-theory (disable fn-bpnrb-mrun-all-of-mrun fn-bpnrb-dec fn-bpnrb-frame-end
+                                      fn-bpnr-checkpointp fn-bpnrb-mstep))))
 
 (defthm fn-bpnrb-decode-range-is-decode
   (implies (and (fn-cbor-octet-listp x) (natp m) (<= m (len x)))

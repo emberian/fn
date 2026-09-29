@@ -30,6 +30,7 @@
 (in-package "ACL2")
 (include-book "cbor")
 (include-book "utf8")
+(include-book "rev-onto") ; the loop twins' step
 
 ; -----------------------------------------------------------------------------
 ; RFC grammar parser
@@ -258,10 +259,32 @@
 ; one fresh row and scans the target once, so a pattern of m items and target of
 ; n code points takes O(m*n) list work rather than exponential star
 ; backtracking.  The 497-octet preflight bounds both dimensions in this profile.
-(defun fn-wildmat-false-row (target)
+; The three row walks below execute by loops (lane depth-debt, PRF-919):
+; each scans the TARGET (a group name, or an XHDR/XPAT header value) once,
+; and a recursion took one control-stack frame per code point of it.  Each
+; is (mbe :logic <the recursion, unchanged> :exec <a loop>), equal by its
+; <f>-loop-is-rev-onto (books/rev-onto.lisp); the matcher's O(m*n) work is
+; unchanged.  Their guards are verified with the rest below.
+(defun fn-wildmat-false-row-loop (target acc)
   (if (consp target)
-      (cons nil (fn-wildmat-false-row (cdr target)))
-    nil))
+      (fn-wildmat-false-row-loop (cdr target) (cons nil acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-wildmat-false-row (target)
+  (declare (xargs :verify-guards nil))
+  (mbe :logic (if (consp target)
+                  (cons nil (fn-wildmat-false-row (cdr target)))
+                nil)
+       :exec (fn-wildmat-false-row-loop target nil)))
+
+(defthm fn-wildmat-false-row-loop-is-rev-onto
+  (equal (fn-wildmat-false-row-loop target acc)
+         (fn-ag-rev-onto acc (fn-wildmat-false-row target)))
+  :hints (("Goal" :induct (fn-wildmat-false-row-loop target acc)
+                  :in-theory (union-theories
+                              '(fn-wildmat-false-row-loop fn-wildmat-false-row
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
 (defun fn-wildmat-initial-row (target)
   (cons t (fn-wildmat-false-row target)))
 (defun fn-wildmat-bool-or (left right)
@@ -279,18 +302,45 @@
         (if (equal item codepoint) t nil)
       nil)))
 
-(defun fn-wildmat-step-character-aux (target previous item)
+(defun fn-wildmat-step-character-aux-loop (target previous item acc)
   (declare (xargs :guard (and (true-listp target)
                               (true-listp previous)
                               (equal (len previous) (1+ (len target))))
                   :verify-guards nil))
   (if (consp target)
-      (cons (if (and (consp previous)
-                     (fn-wildmat-item-character-matchp item (car target)))
-                (if (car previous) t nil)
-              nil)
-            (fn-wildmat-step-character-aux (cdr target) (cdr previous) item))
-    nil))
+      (fn-wildmat-step-character-aux-loop
+       (cdr target) (cdr previous) item
+       (cons (if (and (consp previous)
+                      (fn-wildmat-item-character-matchp item (car target)))
+                 (if (car previous) t nil)
+               nil)
+             acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-wildmat-step-character-aux (target previous item)
+  (declare (xargs :guard (and (true-listp target)
+                              (true-listp previous)
+                              (equal (len previous) (1+ (len target))))
+                  :verify-guards nil))
+  (mbe :logic
+       (if (consp target)
+           (cons (if (and (consp previous)
+                          (fn-wildmat-item-character-matchp item (car target)))
+                     (if (car previous) t nil)
+                   nil)
+                 (fn-wildmat-step-character-aux (cdr target) (cdr previous) item))
+         nil)
+       :exec (fn-wildmat-step-character-aux-loop target previous item nil)))
+
+(defthm fn-wildmat-step-character-aux-loop-is-rev-onto
+  (equal (fn-wildmat-step-character-aux-loop target previous item acc)
+         (fn-ag-rev-onto acc (fn-wildmat-step-character-aux target previous item)))
+  :hints (("Goal" :induct (fn-wildmat-step-character-aux-loop target previous item acc)
+                  :in-theory (union-theories
+                              '(fn-wildmat-step-character-aux-loop
+                                fn-wildmat-step-character-aux
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
 
 (defun fn-wildmat-step-character (target previous item)
   (declare (xargs :guard (and (true-listp target)
@@ -301,16 +351,39 @@
 
 ; For a star, next[j] = previous[j] OR next[j-1].  `carry` is next[j-1], and
 ; the tail of previous starts at previous[j], making this a single row scan.
-(defun fn-wildmat-step-star-aux (target previous-tail carry)
+(defun fn-wildmat-step-star-aux-loop (target previous-tail carry acc)
   (declare (xargs :guard (and (true-listp target)
                               (true-listp previous-tail)
                               (equal (len previous-tail) (len target)))
                   :verify-guards nil))
   (if (consp target)
       (let ((next (fn-wildmat-bool-or (car previous-tail) carry)))
-        (cons next (fn-wildmat-step-star-aux (cdr target)
-                                             (cdr previous-tail) next)))
-    nil))
+        (fn-wildmat-step-star-aux-loop (cdr target) (cdr previous-tail) next
+                                       (cons next acc)))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-wildmat-step-star-aux (target previous-tail carry)
+  (declare (xargs :guard (and (true-listp target)
+                              (true-listp previous-tail)
+                              (equal (len previous-tail) (len target)))
+                  :verify-guards nil))
+  (mbe :logic
+       (if (consp target)
+           (let ((next (fn-wildmat-bool-or (car previous-tail) carry)))
+             (cons next (fn-wildmat-step-star-aux (cdr target)
+                                                  (cdr previous-tail) next)))
+         nil)
+       :exec (fn-wildmat-step-star-aux-loop target previous-tail carry nil)))
+
+(defthm fn-wildmat-step-star-aux-loop-is-rev-onto
+  (equal (fn-wildmat-step-star-aux-loop target previous-tail carry acc)
+         (fn-ag-rev-onto acc (fn-wildmat-step-star-aux target previous-tail carry)))
+  :hints (("Goal" :induct (fn-wildmat-step-star-aux-loop target previous-tail carry acc)
+                  :in-theory (union-theories
+                              '(fn-wildmat-step-star-aux-loop
+                                fn-wildmat-step-star-aux
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
 
 (defun fn-wildmat-step-star (target previous)
   (declare (xargs :guard (and (true-listp target)
@@ -550,13 +623,28 @@
 (verify-guards fn-wildmat-parse-codepoints)
 (verify-guards fn-wildmat-parse)
 (verify-guards fn-wildmat-parse-text)
-(verify-guards fn-wildmat-false-row)
+(verify-guards fn-wildmat-false-row-loop)
+(verify-guards fn-wildmat-false-row
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-wildmat-false-row fn-ag-rev-onto fn-wildmat-false-row-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 (verify-guards fn-wildmat-initial-row)
 (verify-guards fn-wildmat-bool-or)
 (verify-guards fn-wildmat-item-character-matchp)
-(verify-guards fn-wildmat-step-character-aux)
+(verify-guards fn-wildmat-step-character-aux-loop)
+(verify-guards fn-wildmat-step-character-aux
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-wildmat-step-character-aux fn-ag-rev-onto fn-wildmat-step-character-aux-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 (verify-guards fn-wildmat-step-character)
-(verify-guards fn-wildmat-step-star-aux)
+(verify-guards fn-wildmat-step-star-aux-loop)
+(verify-guards fn-wildmat-step-star-aux
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-wildmat-step-star-aux fn-ag-rev-onto fn-wildmat-step-star-aux-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 (verify-guards fn-wildmat-step-star)
 (verify-guards fn-wildmat-pattern-row)
 (verify-guards fn-wildmat-row-last)

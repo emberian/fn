@@ -56,7 +56,7 @@
     ("ARTICLE" "HEAD" "BODY" "STAT")
     ("OVER" "XOVER" "HDR" "XHDR" "XPAT")
     ("IHAVE" "CHECK" "TAKETHIS")
-    ("XFNCATCHUP")))
+    ("XFNCATCHUP" "XFN-ZARTICLE")))
 
 (defun fn-nntp-keyword-in-rowp (keyword row)
   (declare (xargs :guard t))
@@ -121,7 +121,8 @@
              (fn-nntp-keywordp k "XPAT")
              (fn-nntp-keywordp k "IHAVE") (fn-nntp-keywordp k "CHECK")
              (fn-nntp-keywordp k "TAKETHIS")
-             (fn-nntp-keywordp k "XFNCATCHUP")))
+             (fn-nntp-keywordp k "XFNCATCHUP")
+             (fn-nntp-keywordp k "XFN-ZARTICLE")))
   :hints (("Goal" :in-theory (e/d (fn-nntp-served-keywordp
                                    fn-nntp-keyword-in-tablep
                                    fn-nntp-keyword-in-rowp)
@@ -197,7 +198,7 @@
   :hints (("Goal" :in-theory (enable fn-auth-session-shapep fn-auth-session-base
                                      fn-auth-session-config fn-auth-session-pending
                                      fn-auth-session-subject fn-auth-session-tlsp
-                                     fn-auth-session-handshakingp fn-auth-session-compress
+                                     fn-auth-session-handshakingp fn-auth-session-compress fn-auth-session-ctx
                                      fn-auth-with-base fn-auth-make-session
                                      fn-inj-nth fn-inj-car fn-inj-cdr)
            :expand ((len (cdr (cddddr as))) (len (cddr (cddddr as)))
@@ -215,6 +216,8 @@
 (defthm fn-auth-step-pinned-answers-500-to-a-keyword-help-does-not-list
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                ; A line while a SASL exchange is kept is its response.
+                (not (fn-auth-sasl-waitingp as))
                 (not (fn-peer-session-transfer (fn-auth-session-base as)))
                 (not (fn-post-session-awaiting (fn-auth-post-session as)))
                 (equal (fn-nntp-session-openp (fn-auth-reader-session as)) t)

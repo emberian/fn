@@ -613,9 +613,53 @@
   (declare (xargs :guard (true-listp c)))
   (< 0 (fn-lgc-count c)))
 
-(defun fn-lgc-rotate (c)
-  (declare (xargs :guard (true-listp c)))
-  (fn-lgc-make 0 (fn-lgc-last c) 0 (fn-lgc-next-txid c) nil nil 0 :ready))
+; The rotation entry that heads the new segment K (lane store-lineage,
+; books/store-log.lisp fn-lg-rotation-entry; books/store-log-lineage.lisp),
+; executably: the frame over the closed segment's last trailer and K, padded
+; to the unit.  fn-lgc-rotation-octets is what the host writes at offset 0 of
+; the new segment (fnn-log-rotate, cut rotate-headed; the open's completion of
+; an unheaded segment, fnn-log-head-segment).
+(defun fn-lgx-rotation-frame (prev k)
+  (declare (xargs :guard (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k))
+                  :guard-hints (("Goal" :in-theory (e/d (fn-frame-digestp) (fn-cbor-u32-bytes))
+                                 :use ((:instance fn-lg-rotation-payload-octets))))))
+  (fn-frame-seal *fn-lg-magic* *fn-lg-version* *fn-lg-rotation-kind*
+                 (append prev (fn-cbor-u32-bytes k))))
+
+(defthm fn-lgx-rotation-frame-is-frame
+  (equal (fn-lgx-rotation-frame prev k) (fn-lg-rotation-frame prev k))
+  :hints (("Goal" :in-theory (enable fn-lg-rotation-frame))))
+
+(defthm fn-lgx-rotation-frame-true-listp
+  (true-listp (fn-lgx-rotation-frame prev k))
+  :hints (("Goal" :in-theory (e/d (fn-lgx-rotation-frame) (fn-lgx-rotation-frame-is-frame)))))
+
+(defun fn-lgx-rotation-entry (prev k unit)
+  (declare (xargs :guard (and (fn-frame-digestp prev) (fn-lg-rotation-indexp k) (natp unit))
+                  :guard-hints (("Goal" :in-theory (disable fn-lgx-rotation-frame fn-frame-digestp
+                                                            fn-lg-rotation-indexp)))))
+  (let ((frame (fn-lgx-rotation-frame prev k)))
+    (append frame (fn-lgx-zeros (fn-lg-pad-len (len frame) unit)))))
+
+(defthm fn-lgx-rotation-entry-is-entry
+  (equal (fn-lgx-rotation-entry prev k unit) (fn-lg-rotation-entry prev k unit))
+  :hints (("Goal" :in-theory (e/d (fn-lg-rotation-entry) (fn-lgx-rotation-frame fn-lg-rotation-frame)))))
+
+(in-theory (disable fn-lgx-rotation-frame fn-lgx-rotation-entry))
+
+(defun fn-lgc-rotation-octets (c k unit)
+  (declare (xargs :guard (and (true-listp c) (fn-frame-digestp (fn-lgc-last c))
+                              (fn-lg-rotation-indexp k) (natp unit))))
+  (fn-lgx-rotation-entry (fn-lgc-last c) k unit))
+
+; The new segment's kernel: no record, the frontier past the head, LAST the
+; head's trailer (the F row's genesis for the segment), the txid carried.
+(defun fn-lgc-rotate (c k unit)
+  (declare (xargs :guard (and (true-listp c) (fn-frame-digestp (fn-lgc-last c))
+                              (fn-lg-rotation-indexp k) (natp unit))))
+  (fn-lgc-make 0 (fn-lgx-trailer (fn-lgx-rotation-frame (fn-lgc-last c) k))
+               (len (fn-lgx-rotation-entry (fn-lgc-last c) k unit))
+               (fn-lgc-next-txid c) nil nil 0 :ready))
 
 ;; The segment's extension before a seal (books/store-log-extend.lisp
 ;; fn-lg-extend-program; host fnn-log-ensure-extent, lane log-2): needed when
@@ -768,7 +812,9 @@
   (equal (fn-lgc-rotate-needed-p (fn-lgc-of ks)) (fn-lgs-rotate-needed-p ks)))
 
 (defthm fn-lgc-rotate-refines
-  (equal (fn-lgc-rotate (fn-lgc-of ks)) (fn-lgc-of (fn-lgs-rotate ks))))
+  (equal (fn-lgc-rotate (fn-lgc-of ks) k unit) (fn-lgc-of (fn-lgs-rotate ks k unit)))
+  :hints (("Goal" :in-theory (e/d (fn-lgc-rotate fn-lgs-rotate)
+                                  (fn-lg-rotation-frame fn-lg-rotation-entry fn-lg-trailer)))))
 
 ; The extension program changes no kernel field: over any byte store,
 ; outcomes and steps, the kernel its run ends on is the one it started from,
@@ -868,7 +914,7 @@
       (:fence (fn-lgk-fence ks (nth 1 op)))
       (:fence-failed (fn-lgk-fence-failed ks))
       (:finish-one (fn-lgk-finish-one ks))
-      (:rotate (if (fn-lgs-rotate-admitsp ks) (fn-lgs-rotate ks) ks))
+      (:rotate (if (fn-lgs-rotate-admitsp ks) (fn-lgs-rotate ks (nth 1 op) (nth 2 op)) ks))
       (:seal (fn-lgk-append ks (nth 1 op) (fn-lgk-sealed-extent ks (nth 2 op) (nth 1 op))))
       (otherwise ks)))
 
@@ -883,7 +929,7 @@
       (:fence (fn-lgc-fence c (nth 1 op)))
       (:fence-failed (fn-lgc-fence-failed c))
       (:finish-one (fn-lgc-finish-one c))
-      (:rotate (if (fn-lgc-rotate-admitsp c) (fn-lgc-rotate c) c))
+      (:rotate (if (fn-lgc-rotate-admitsp c) (fn-lgc-rotate c (nth 1 op) (nth 2 op)) c))
       (:seal (fn-lgc-append c (nth 1 op) (fn-lgc-sealed-extent c (nth 2 op) (nth 1 op))))
       (otherwise c)))
 

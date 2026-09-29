@@ -678,6 +678,35 @@ detect or repair it. Restore only the newest backup of a node whose
 readers have seen its numbers, or tell its readers to reset their
 newsreader's record of what they have read for the node.
 
+A restored backup is a **new lineage** once it takes an article of its own.
+It serves, and it keeps every article the backup held; but from the point
+the two copies parted, each log carries its own ancestry, so a checkpoint
+file from one copy put beside the other copy's log is refused by name
+(`open refused reason=foreign-lineage`), never replayed as that copy's
+history. Keep one copy serving. What the node cannot tell you is that a
+restore happened at all: a complete restore of every file is an old,
+legitimate state of the node, and it starts, reissuing numbers as the
+paragraph above says. If that matters to you, keep a note of the newest
+article number outside the node before you restore.
+
+Proposed, not built: `store adopt`, for the deliberate fork. Rather than
+starting a restored copy as if nothing had happened, `adopt` would fence the
+old writer (the original copy stopped, and refused while a newer state of it
+can be reached), name the exact source and the point it parted from (the
+backup's segment and chain value), write a durable, attributed adoption
+record into the log -- a new branch identity with its parent and fork point,
+chained like every other record, so the same ancestry authenticates it --
+and report what continuity is lost: article numbers past the fork point may
+be reused (a branch label is not allocation evidence; tell your peers),
+obligations pending at the fork do not vanish, and the node's secret key and
+its peers' expectations are the old node's. Never a `--force` that inspects,
+adopts and continues in one step; never a merge of two forks by clock or by
+the larger counter. It needs a row of its own before it is built.
+
+An **export** (`store export`) is different. It carries the store's history
+for moving to a new store, not the node's secrets or settings. Keep backups
+and exports both.
+
 ### Move the node
 
 1. Stop the node.
@@ -691,10 +720,6 @@ newsreader's record of what they have read for the node.
 Nothing in `fn.toml` needs changing when its paths are relative (as
 `mission` writes them). An absolute path still names the same place after
 the move.
-
-An **export** (`store export`) is different. It carries the store's history
-for moving to a new store, not the node's secrets or settings. Keep backups
-and exports both.
 
 ### New releases
 
@@ -867,6 +892,23 @@ absent <never-posted@fn.example.invalid> nothing is stored here under this Messa
 
 `accepted` means it was saved (even if it was later withdrawn). `absent`
 means it was not. Tell the person which answer you got.
+
+### Which articles are in a group?
+
+`store inspect --group GROUP` lists a group's memberships: a first line
+`inspect group=GROUP members=N`, then one line per article number with its
+Message-ID, in number order. It answers while the node runs (the node
+reports the archive it serves) and while it is stopped (the store is opened
+read-only: the checkpoint and its suffix). A group the node does not carry
+is refused by name (`refused unknown-group group=GROUP ...`, exit 1).
+
+```text
+fn operator /path/to/fn.toml store inspect --group fn.test
+inspect group=fn.test members=3
+1 <auto-0@example.invalid>
+2 <auto-1@example.invalid>
+3 <auto-2@example.invalid>
+```
 
 ### Why was an article withdrawn?
 

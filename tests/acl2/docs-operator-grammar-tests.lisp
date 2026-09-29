@@ -136,6 +136,7 @@
     ("docs/operator.md#articles-carried-over-bp" 1 "carry" "/srv/fn/workflow" "list")
     ("docs/operator.md#a-damaged-record-log" 1 "recover" "--repair" "truncate" "000001.log:4096")
     ("docs/operator.md#the-node-does-not-start" 1 "policy" "set" "exposure-connections" "1000")
+    ("docs/operator.md#which-articles-are-in-a-group" 1 "store" "inspect" "--group" "fn.test")
     ("docs/operator.md#when-the-store-is-full" 1 "policy" "set" "max-transactions" "1000")
     ("docs/operator.md#store-settings" 2 "policy" "set" "max-transactions" "1000000")
     ("docs/operator.md#store-settings" 3 "policy" "set" "max-history-octets" "1073741824")

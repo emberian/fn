@@ -109,7 +109,7 @@
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
         ; The stored payloads' DEFLATE encoder and ACL2's payload decoder's
-        ; buffers (lib/libfn-deflate; untrusted: ACL2 checks every candidate).
+        ; buffers (the SBCL encoder; untrusted: ACL2 checks every candidate).
         (load "host/native/deflate.lisp")
         ; A developer image by definition (the header): its `store' selectors
         ; are developer-image selectors, refused by a production profile.
