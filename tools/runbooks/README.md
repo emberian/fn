@@ -51,7 +51,7 @@ session. None of them is a gate or a claim; each says what it does at the top.
   `planning/evidence/two-store-join-harness-2026-09-24.md`.
 
 After `hbox-node-deploy.sh`, the check from the laptop is `tools/node_probe.py`
-(see docs/operator.md, "Reaching it from a laptop"): STARTTLS, the 483 before
+(see docs/operator-internals.md, "Reaching it from a laptop"): STARTTLS, the 483 before
 it, login, a post and a fresh-connection reread, with the password taken from
 the environment and the certificate copied from `/tank/fn/node/tls/cert.pem`.
 

@@ -1399,6 +1399,20 @@
   :hints (("Goal" :in-theory (enable fn-arena$pp fn-arp-okp fn-arp-buf fn-arp-cap
                                      fn-arn-slices fn-arn-rangesp))))
 
+; THE CREATOR ESTABLISHES THE INVARIANT (lane closure-theorems-3, the premise
+; audit, tools/premise_audit.py).  Every `fn-arp-' theorem above assumes
+; `(fn-arp-okp fn-arena$p)'; what makes it true of the arena the host's node
+; starts with is the creator `create-fn-arena-paged' runs, `:exec
+; create-fn-arena$p' -- the paged arena is the live extent arena's foundation
+; (host/bp-ingress-host.lisp -> fn-arena-seal-list -> fn-arena-extent-seal-list
+; -> fn-arena-paged-seal-list).  A conjunct of the correspondence obligation,
+; stated on its own so the establishment is a theorem of the creator.
+(defthm fn-arp-okp-of-create-fn-arena$p
+  (fn-arp-okp (create-fn-arena$p))
+  :rule-classes nil
+  :hints (("Goal" :use create-fn-arena-paged{correspondence}
+                  :in-theory '(fn-arena$pcorr))))
+
 (defthm create-fn-arena-paged{preserved}
   (fn-arena$ap (create-fn-arena$a))
   :rule-classes nil)
