@@ -4915,7 +4915,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-322"
+        "PRF-322",
+        "PRF-1030"
       ],
       "verification": [
         "proof",
@@ -4929,7 +4930,8 @@
         "host/native/io.lisp",
         "tests/acl2/owner-time-model-tests.lisp",
         "tests/test_native_slow_disk.py",
-        "planning/evidence/time-model-2-2026-09-27.md"
+        "planning/evidence/time-model-2-2026-09-27.md",
+        "books/owner-time-journal-stream.lisp"
       ],
       "implementation_note": "Lane time-model-2. The journal is STORE/decisions/decisions.fnj, one segment per run (a start entry), written by the service-log writer thread under ACL2's sink bound; a dropped entry is a visible gap. What a death with entries unflushed loses: those entries, i.e. the replay of decisions that stored nothing; never durable state. Not yet: a native replay verb (the replay is ACL2's fn-otm-replay; the native case checks the file's sequence and events), the served transcript replay from the :served readings."
     },

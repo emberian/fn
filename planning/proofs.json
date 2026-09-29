@@ -17115,6 +17115,32 @@
         "fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family",
         "fn-bpnf-family-record-at-epoch-and-op-are-frame-nats"
       ]
+    },
+    {
+      "id": "PRF-1030",
+      "title": "`store ROOT journal` reads the decision journal a bounded chunk at a time, and its line and exit are the whole file's whatever the chunking",
+      "statement": "books/owner-time-journal-stream.lisp (prefix fn-otjs-; PKT-893, D27). host/native/io.lisp fnn-command-store-journal reads STORE/decisions/decisions.fnj into a buffer of fn-otjs-chunk-octets (65,536) octets and calls fn-otjs-feed once per chunk from fn-otjs-init, then fn-otjs-report and fn-otjs-exit; before, it read the whole file as one octet list for fn-otm-journal-report (2.4 MB of journal, some 50 MB of conses). fn-otjs-feed scans the chunk as fn-otm-jparse does, keeping of the entries only (N STARTS VERDICT S): their count, segment count and fn-otm-replay's two values from fn-otm-init. KEYSTONE fn-otjs-report-of-the-chunks-is-the-journal-report: (and (equal (fn-otjs-report (fn-otjs-feed-all (fn-otjs-init) chunks)) (fn-otm-journal-report (fn-otjs-concat chunks))) (equal (fn-otjs-exit ...) (fn-otm-journal-exit (fn-otjs-concat chunks)))) for every list of chunks; fn-otjs-feed-of-append (feeding A then B is feeding A++B), fn-otjs-feed-all-is-feed-of-concat, fn-otjs-feed-nil-keeps-the-report (the host's fold omits feed-all's final empty feed). fn-otm-journal-report-of-a-run therefore holds at the verb's surface. Scope: the chunk is an octet list (a bounded one per step), not the concrete buffer.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-028"
+      ],
+      "depends_on": [
+        "PRF-322"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-time-journal-stream.lisp",
+        "tests/acl2/owner-time-journal-stream-tests.lisp",
+        "host/native/io.lisp"
+      ],
+      "progress_note": "Lane correctness-i4 (Opus 5.5, 2026-09-29). Teeth: tests/acl2/owner-time-journal-stream-tests.lisp: a whole two-segment journal fed in one chunk, split mid-line, one octet a chunk and 7-octet chunks (each the whole file's line: 12 entries, 2 segments, whole, agrees, exit 0); torn split inside the last line; malformed in the second chunk; diverged (exit 1); the empty file.",
+      "events": [
+        "fn-otjs-report-of-the-chunks-is-the-journal-report",
+        "fn-otjs-feed-of-append",
+        "fn-otjs-feed-all-is-feed-of-concat",
+        "fn-otjs-feed-nil-keeps-the-report"
+      ]
     }
   ]
 }

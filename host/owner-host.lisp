@@ -204,6 +204,8 @@
 (include-book "../books/owner-credits")
 ; lane health-truth-journal (PKT-872, PRF-360): the journal writer never keeps a torn line.
 (include-book "../books/owner-time-journal-writer")
+; PKT-893: `store ROOT journal' reads the journal a bounded chunk at a time.
+(include-book "../books/owner-time-journal-stream")
 ; lane time-bars (PRF-384): the committer's ledger of the request in flight
 ; (its generation, the connections told before its late completion), a
 ; read's page-dependency outcome, the restart's clock domain.

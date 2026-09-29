@@ -755,7 +755,11 @@ start (a start entry, SEQ 0, per run) to agreement at the run's disk and
 clock, and every decision the host asks of the value reads only those.
 The operator's replay is `fn store ROOT journal`: ACL2 reads the file back
 and replays it (`fn-otm-journal-report`, `fn-otm-journal-exit`: exit 0 when
-it agrees, 1 at a gap, divergence or malformed entry).
+it agrees, 1 at a gap, divergence or malformed entry). The host reads the
+file a bounded chunk at a time (PKT-893: `fn-otjs-feed` per 64 KiB, keeping
+only the entries' count, segments and the replay's verdict and state) and
+prints `fn-otjs-report`, which is that line whatever the chunking (PRF-1030,
+KEYSTONE `fn-otjs-report-of-the-chunks-is-the-journal-report`).
 What a process death with entries unflushed loses is exactly those entries:
 the replay of decisions that stored nothing. No durable state depends on an
 entry (a disk event keeps the pipeline; a refusal stores nothing), and the
