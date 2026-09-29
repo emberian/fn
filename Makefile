@@ -407,6 +407,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-reclaim-holders \
 	tests/acl2/store-reclaim-holders-tests \
 	tests/acl2/native-status-columns-tests \
+	books/view-delta \
+	books/view-delta-concrete \
+	books/retention-obligation-view \
+	books/retention-obligation-view-status \
+	books/owner-obligation-state \
+	tests/acl2/retention-obligation-view-tests \
 	tests/acl2/native-live-pages-tests \
 	books/feed-link-backoff \
 	tests/acl2/feed-link-backoff-tests \
