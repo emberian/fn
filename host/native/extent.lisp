@@ -8,9 +8,10 @@
 ;;; (books/payload-arena-extent.lisp fn-arena$x-get / -payload call it).
 ;;;
 ;;; What the host does, and nothing else: it holds a read-only descriptor per
-;;; durable file an extent names (a log segment, registered by the open, never
-;;; closed and never reused within the process: an unlinked segment stays
-;;; readable through it), preads an entry's protected prefix into a bounded
+;;; durable file an extent names (a log segment or an installed checkpoint;
+;;; an id is never reused within the process and an unlinked file stays
+;;; readable through its descriptor until the file is RETIRED and ACL2's close
+;;; decision names it: see the end of this file), preads an entry's protected prefix into a bounded
 ;;; cache (ACL2's fn-arx-read-cache-entries entries) with the entry's trailer,
 ;;; and asks ACL2 whether the prefix's frame digest is that trailer, over its
 ;;; own octet buffer (fn-arx-entry-ok-buffer, books/payload-extent-read.lisp).  A
@@ -223,3 +224,51 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
 
 (defun acl2_*1*_acl2::fn-pgs-fill-realize (file addr)
   (fn-pgs-fill-realize file addr))
+
+;;; Online disk release (lane online-reclaim-2, row Q16, PRF-930;
+;;; books/extent-retire.lisp).  A descriptor is no longer held for the
+;;; process's life: once a checkpoint publication has reseated the live
+;;; payloads at the installed checkpoint's frames, the files it dropped (the
+;;; covered log segments, the previous checkpoint) are RETIRED, and a retired
+;;; file's descriptor is closed when ACL2's close decision names it
+;;; (fn-xrt-close-set: a clean scan of the extent column, no log member in
+;;; flight naming it, no off-mutex arena reader).  Closing the last
+;;; descriptor of an unlinked file gives its blocks back while the owner
+;;; serves.  host/native/owner.lisp fnn-owner-release-extents drives it.
+
+(defvar *fnn-extent-retired* nil)
+;; guarded-by: the owner mutex (file ids waiting for their close)
+(defvar *fnn-extent-checkpoint-id* nil)
+;; guarded-by: the owner mutex (the realizer id of the installed checkpoint
+;; the last reseat pointed payloads at)
+
+(defun fnn-extent-ids-of-paths (paths)
+  "The registered file ids whose path is one of PATHS."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (let ((ids nil))
+      (maphash (lambda (id path) (when (member path paths :test #'equal) (push id ids)))
+               *fnn-extent-paths*)
+      (sort ids #'<))))
+
+(defun fnn-extent-close (ids)
+  "Close the descriptors of IDS (ACL2's close set) and forget every cached
+entry of them.  Answers the count closed."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (let ((closed 0))
+      (dolist (id ids)
+        (let ((fd (gethash id *fnn-extent-fds*)))
+          (remhash id *fnn-extent-fds*)
+          (remhash id *fnn-extent-paths*)
+          (when fd
+            (fnn-close fd)
+            (incf closed))))
+      (setq *fnn-extent-cache*
+            (remove-if (lambda (e) (member (first e) ids)) *fnn-extent-cache*))
+      (when (and *fnn-extent-lz-last* (member (first (first *fnn-extent-lz-last*)) ids))
+        (setq *fnn-extent-lz-last* nil))
+      closed)))
+
+(defun fnn-extent-open-count ()
+  "The descriptors the realizer holds (the natives' observation)."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (hash-table-count *fnn-extent-fds*)))

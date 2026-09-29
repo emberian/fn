@@ -701,3 +701,23 @@
 (defun fn-lgdm-history-break-text ()
   (declare (xargs :guard t))
   "history refused reason=log-damaged: the closed log segments read again do not chain to the active segment's genesis (a closed segment changed since the open); nothing was written")
+
+; KEYSTONE (PRF-953).  The refusal line of the open (host/native/io.lisp, the
+; store-open refusal over the verdict of the stopped stream and the probe)
+; exists exactly when the stream broke or the probe found a first invalid
+; entry with valid entries after it: the two refused kinds, and no other
+; verdict -- a torn tail or a complete segment opens without a line.
+(defthm fn-lgdm-refusal-text-refuses-exactly-a-break-or-damage
+  (let ((v (fn-lgdm-verdict st ps extent)))
+    (and (iff (fn-lgdm-refusal-text v segment)
+              (or (fn-lgw-broken st) (fn-lgdm-first ps)))
+         (iff (fn-lgdm-refusal-text v segment) (fn-lgdm-refused-p v))
+         (implies (fn-lgdm-refusal-text v segment)
+                  (stringp (fn-lgdm-refusal-text v segment)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgdm-refusal-text fn-lgdm-verdict fn-lgdm-refused-p
+                            fn-lgdm-kind)
+                           (fn-lgw-broken fn-lgw-pos fn-lgdm-first fn-lgdm-entries
+                            fn-lgdm-records fn-lgdm-debris fn-lgdm-at fn-lgdm-dec
+                            string-append coerce nth)))))

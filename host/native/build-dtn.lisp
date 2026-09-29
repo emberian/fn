@@ -82,6 +82,8 @@
 (include-book "books/bp-carry-frame")
 (include-book "books/bp-carry-control")
 (include-book "books/owner-compact-request")
+(include-book "books/owner-reclaim")
+(include-book "books/extent-retire")
 (include-book "books/bp-request-plan")
 (include-book "books/journal-publish")
 (include-book "books/app-journal")
@@ -193,6 +195,8 @@
 ;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
 ;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
 (include-book "books/post-identity-index")
+(include-book "books/post-identity-catalog")
+(include-book "books/post-prepare-catalog")
 ;; fn-owner-prepare-buffer calls fn-prc-refresh and fn-prc-sbud-prepare.
 (include-book "books/post-retain-carried")
 ;; PRF-284: host/owner-host.lisp calls fn-pvc-make and the carried budget,

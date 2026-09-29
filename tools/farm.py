@@ -453,11 +453,14 @@ def book_name_problem(root: Path, word: str, kind: str) -> str | None:
     if word.startswith("-"):
         return f"{kind} {word!r} is an option, not a book name"
     name = word[:-len(".lisp")] if word.endswith(".lisp") else word
-    if kind == "--recertify":
+    if kind in ("--recertify", "--affected-by"):
         # A book to recertify is any book of the closure, and the closure
         # reaches host/ (host/native-operator-host): the box's runner takes
         # it (certify_books.normalize_book) and refuses one outside the
         # closure itself.  Only roots are held to books/ or tests/acl2/.
+        # `--affected-by host/bp-node-host` selects what includes that host
+        # file (tests/acl2/bp-node-host-tests; decision-keystones had to
+        # name the test book by hand, 2026-09-29).
         if not DEPENDENCY_NAME.fullmatch(name):
             return (f"{kind} {word!r} is not a repository-relative book "
                     "(e.g. books/wire or host/native-operator-host)")
@@ -796,9 +799,12 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
         raise FarmError(f"{host}: {identifier} did not start under {remote}: "
                         f"ssh exited {started.returncode}: "
                         f"{started.stdout.strip() or '(no output)'}")
+    launched = re.search(r"FN_FARM_STARTED \S+ (\d+)", started.stdout or "")
     record = {
         "run_id": identifier,
         "host": host,
+        # The detached wrapper's PID on the box: what `cancel` stops.
+        "pid": int(launched.group(1)) if launched else None,
         "path": str(root),
         "remote_path": str(remote),
         "books": books,
@@ -842,9 +848,14 @@ def progress_script(root: Path, identifier: str) -> str:
     log = f"build/farm/{identifier}.log"
     newest = "$(ls -td build/acl2/certify-*/ 2>/dev/null | head -1)"
     return (
-        f"cd {remote_quote(root)} 2>/dev/null || exit 9; "
+        f"cd {remote_quote(root)} 2>/dev/null || {{ echo 'NOROOT'; exit 9; }}; "
         f"printf 'STATUS %s\\n' \"$(cat build/farm/{identifier}.status "
         f"2>/dev/null || echo running)\"; "
+        # Whether this tree has the run at all: a wait from another worktree
+        # looked under its own remote root and polled a run that was not
+        # there for the whole --wait-seconds (one-format, 2026-09-29).
+        f"printf 'KNOWN %s\\n' \"$(test -e {log} -o -e build/farm/{identifier}.status "
+        f"&& echo yes || echo no)\"; "
         f"d={newest}; "
         f"printf 'MARKERS %s\\n' \"$(grep -lE '{SUCCESS_LINE}' \"$d\"*.certify.log "
         f"2>/dev/null | wc -l | tr -d ' ')\"; "
@@ -853,14 +864,35 @@ def progress_script(root: Path, identifier: str) -> str:
         f"printf 'TAIL %s\\n' \"$(tail -c 300 {log} 2>/dev/null | tr '\\n' ' ')\"; "
         # The runner's plan (certify_books: the critical chain of what it
         # certifies and the job count it chose), once it has printed it.
-        f"printf 'PLAN %s\\n' \"$(grep -m1 '^Critical chain: ' {log} 2>/dev/null)\""
+        f"printf 'PLAN %s\\n' \"$(grep -m1 '^Critical chain: ' {log} 2>/dev/null)\"; "
+        # The run's manifest once it is final: the runner writes it with
+        # `finished_utc` and only then publishes and exits, so a run whose
+        # manifest is final but whose status file is not yet written is
+        # finished as far as its verdict goes (depth-debt-2, d27-representation-2:
+        # waits that never returned on a final manifest).
+        f"printf 'MANIFEST %s\\n' \"$(python3 -c {shlex.quote(MANIFEST_VERDICT)} "
+        f"\"$d\" 2>/dev/null)\""
     )
+
+
+# Prints `<status> <certify-id>` for a final manifest (one with
+# `finished_utc`), nothing otherwise.  The runner records a provisional
+# manifest with status `failed` at its start; that one is not a verdict.
+MANIFEST_VERDICT = (
+    "import json,sys,pathlib\n"
+    "d=pathlib.Path(sys.argv[1])\n"
+    "m=json.loads((d/'manifest.json').read_text())\n"
+    "print(m.get('status','unknown'),d.name) if m.get('finished_utc') else None\n"
+)
 
 
 def parse_progress(output: str) -> dict[str, str]:
     fields: dict[str, str] = {}
     for line in output.splitlines():
-        for key in ("STATUS", "MARKERS", "STARTED", "TAIL", "PLAN"):
+        if line.strip() == "NOROOT":
+            fields["NOROOT"] = "yes"
+        for key in ("STATUS", "MARKERS", "STARTED", "TAIL", "PLAN", "KNOWN",
+                    "MANIFEST"):
             if line.startswith(key + " "):
                 fields[key] = line[len(key) + 1:].strip()
     return fields
@@ -900,8 +932,23 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
         if progress.get("PLAN") and not planned:
             print(f"{identifier} on {host}: {progress['PLAN']}", flush=True)
             planned = True
+        if progress.get("NOROOT") or progress.get("KNOWN") == "no":
+            where = ("no such directory" if progress.get("NOROOT")
+                     else "neither its log nor its status file is there")
+            raise FarmError(
+                f"{identifier} is not a run under {host}:{remote} ({where}); "
+                f"wait from the worktree that submitted it, or pass "
+                f"--remote-root with the gate it ran in")
         state = progress.get("STATUS", "running")
         if state != "running":
+            break
+        final = progress.get("MANIFEST", "").split()
+        if final:
+            # The verdict is decided; the runner is publishing or hung after it.
+            state = "0" if final[0] == "passed" else "1"
+            print(f"{identifier} on {host}: manifest {final[1] if len(final) > 1 else ''} "
+                  f"is final ({final[0]}) though the status file is not written yet; "
+                  f"taking its verdict", flush=True)
             break
         elapsed = int(time.monotonic() - started)
         print(f"{identifier} on {host}: running, {progress.get('MARKERS', '0')} "
@@ -922,10 +969,20 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
         code = int(state)
     except ValueError:
         code = 1
-    collect(host, identifier, root, remote, cache)
     signalled = killed_signal(code)
+    # Say the verdict before the collection: fetching the evidence, sweeping
+    # the box's cache and mirroring to the other box can take many minutes
+    # (correctness-remainder: 25), and a wait that printed nothing through
+    # them read as a wait that never returned.
+    final = progress.get("MANIFEST", "").split()
     print(f"{identifier} on {host}: finished with exit code {code}"
-          + (f" -- {killed_words(signalled)}" if signalled is not None else ""))
+          + (f" -- {killed_words(signalled)}" if signalled is not None else "")
+          + (f"; manifest {final[1]} {final[0]}" if len(final) > 1 else "")
+          + "; now collecting the evidence and publishing the pairs", flush=True)
+    phase_started = time.monotonic()
+    collect(host, identifier, root, remote, cache)
+    print(f"{identifier} on {host}: collected in "
+          f"{int(time.monotonic() - phase_started)}s", flush=True)
     return code
 
 
@@ -1314,6 +1371,58 @@ print(json.dumps(rows))
 '''
 
 
+def cancel_script(root: Path, identifier: str, pid: int | None) -> str:
+    """Stop one run's process tree on the box and finalise it as killed.
+
+    Lanes killed their superseded runs by hand and then wrote
+    `build/farm/RUN.status` = 143 themselves, because until then `status`
+    and `wait` reported the run as still certifying (credits-stall, and
+    tooling-obstructions' ask).  The tree is collected first and signalled
+    at once, so the runner cannot start its next book in between.  Without a
+    recorded PID (a run submitted before 2026-09-29) the wrapper is found by
+    its log path; the bracketed pattern never matches this script's own
+    command line.
+    """
+    status_file = f"build/farm/{identifier}.status"
+    pattern = "[b]uild/farm/" + re.escape(identifier) + r"\.log"
+    finder = (str(pid) if pid else
+              f"$(ps -eo pid=,args= | grep {shlex.quote(pattern)} | awk '{{print $1}}')")
+    return (
+        f"cd {remote_quote(root)} 2>/dev/null || {{ echo NOROOT; exit 9; }}; "
+        f"if [ -s {status_file} ]; then echo ALREADY $(cat {status_file}); exit 0; fi; "
+        f"test -e build/farm/{identifier}.log || {{ echo UNKNOWN; exit 8; }}; "
+        "tree() { echo $1; for c in $(ps -eo pid=,ppid= | awk -v p=$1 '$2==p{print $1}'); "
+        "do tree $c; done; }; "
+        f"all=; for p in {finder}; do kill -0 $p 2>/dev/null && all=\"$all $(tree $p)\"; done; "
+        "[ -n \"$all\" ] && kill -TERM $all 2>/dev/null; sleep 2; "
+        "[ -n \"$all\" ] && kill -KILL $all 2>/dev/null; "
+        f"[ -s {status_file} ] || echo 143 > {status_file}; "
+        "echo CANCELLED $(echo $all | wc -w | tr -d ' ')"
+    )
+
+
+def cancel(host: str, identifier: str, root: Path, remote: str | None = None) -> int:
+    """`farm.py cancel HOST RUN`: stop the run and write the status 143 runners wrote by hand."""
+    record = run_record(root, identifier)
+    if record.get("host") and record["host"] != host:
+        raise FarmError(f"{identifier} was submitted to {record['host']}, not {host}")
+    where = remote_root(root, identifier, remote)
+    result = ssh(host, cancel_script(where, identifier, record.get("pid")), check=False)
+    said = result.stdout.strip().splitlines()[-1:] or [""]
+    word = said[0].split()
+    if not word or word[0] in ("NOROOT", "UNKNOWN"):
+        raise FarmError(f"{identifier} is not a run under {host}:{where} "
+                        f"({' '.join(word) or f'ssh exited {result.returncode}'}); "
+                        "pass --remote-root with the gate it ran in")
+    if word[0] == "ALREADY":
+        print(f"{identifier} on {host}: already finished (status {word[1:] and word[1]}); "
+              "nothing stopped")
+        return 0
+    print(f"{identifier} on {host}: stopped {word[1]} process(es); status 143 "
+          f"(killed, no verdict) written under {where}")
+    return 0
+
+
 def status_script(root: Path) -> str:
     """Read one remote snapshot; never start a proof or publish a pair."""
     return f"cd {remote_quote(root)} && python3 -c {shlex.quote(STATUS_SNAPSHOT)}"
@@ -1353,7 +1462,8 @@ def uncited_in_selection(root: Path, books: list[str], affected_by: list[str]) -
     import ledger  # noqa: E402
     roots = books or ledger.makefile_roots()
     if affected_by:
-        roots = certify_books.affected_roots(roots, affected_by)
+        roots = certify_books.affected_selection(books, ledger.makefile_roots(),
+                                                 affected_by)
     return certified_claims.uncited_books(root, certify_books.with_dependencies(roots))
 
 
@@ -1386,6 +1496,83 @@ def pick_host(runner=subprocess.run) -> str:
     if done.returncode != 0 or host not in HOSTS:
         raise FarmError("no farm run started: no build box answered (tools/boxes.sh)")
     return host
+
+
+# The closure-key count a box's cache answers.  Keys arrive on stdin (one
+# per line), the answer is one integer: `test -d` per key, nothing opened.
+COUNT_KEYS = ("import os,sys\n"
+              "print(sum(os.path.isdir(k) for k in sys.stdin.read().split()))\n")
+
+# A box must hold this many more of the run's certificates than the other
+# (or this share of the closure) before the cache outweighs the load.
+CACHE_MARGIN_BOOKS = 20
+CACHE_MARGIN_SHARE = 0.05
+
+
+def closure_keys(root: Path, books: list[str], affected_by: list[str]) -> list[str]:
+    """The plain-world closure keys of the selection's closure (certs.closure_key).
+
+    Plain world only: a handful of umbrellas certify in an image world, and
+    counting those too tripled the cost (the image rule parses every book
+    again).  About 10 s for the widest closure (image-world, 668 books).
+    """
+    import certify_books  # noqa: E402
+    import certs  # noqa: E402
+    import ledger  # noqa: E402
+    selection = list(books)
+    if affected_by or not selection:
+        selection = certify_books.affected_selection(
+            selection, ledger.makefile_roots(), affected_by) if affected_by \
+            else ledger.makefile_roots()
+    return [certs.closure_key(root, book)[0]
+            for book in certify_books.with_dependencies(selection)]
+
+
+def matching_certificates(keys: list[str]) -> dict[str, int]:
+    """How many of `keys` each box's cache holds; a box that cannot answer is absent."""
+    counts: dict[str, int] = {}
+    for host in HOSTS:
+        script = (f"cd {remote_quote(host_settings(host)['cache'])} || exit 9; "
+                  f"python3 -c {shlex.quote(COUNT_KEYS)} <<'FN_KEYS'\n"
+                  + "\n".join(keys) + "\nFN_KEYS\n")
+        done = RUN(["ssh", "-o", "ConnectTimeout=10", host, script], check=False,
+                   stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        words = (done.stdout or "").split()
+        if done.returncode == 0 and words and words[-1].isdigit():
+            counts[host] = int(words[-1])
+    return counts
+
+
+def choose_host(root: Path, books: list[str], affected_by: list[str],
+                pick=None) -> str:
+    """`submit auto`: the box holding clearly more of the run's certificates,
+    else the lower load per core (`pick_host`).
+
+    A run went to a box whose cache lacked dev's recertification and
+    certified 484 books the other box held (obstructions-2 item 3).  Load
+    decides only when the caches are within CACHE_MARGIN of each other.
+    """
+    pick = pick or pick_host
+    try:
+        keys = closure_keys(root, books, affected_by)
+    except Exception as error:  # a selection the runner refuses says so later
+        print(f"auto: could not count the closure's certificates ({error}); "
+              "choosing by load", file=sys.stderr)
+        return pick()
+    counts = matching_certificates(keys) if keys else {}
+    if len(counts) < 2:
+        return pick()
+    print("auto: certificates held of the run's " + str(len(keys)) + " closure books: "
+          + ", ".join(f"{host} {count}" for host, count in sorted(counts.items())),
+          file=sys.stderr)
+    ranked = sorted(counts.items(), key=lambda item: -item[1])
+    (best, most), (_, next_most) = ranked[0], ranked[1]
+    margin = max(CACHE_MARGIN_BOOKS, int(CACHE_MARGIN_SHARE * len(keys)))
+    if most - next_most >= margin:
+        print(f"auto: {best} (its cache holds {most - next_most} more of them; "
+              "the cache outweighs the load)", file=sys.stderr)
+        return best
+    return pick()
 
 
 def cache_summary(record: dict) -> str:
@@ -1422,18 +1609,20 @@ def recertify_list(paths: list[str]) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("action", choices=("submit", "wait", "status"))
+    parser.add_argument("action", choices=("submit", "wait", "status", "cancel"))
     parser.add_argument("host", help="hbox or persvati; submit: 'auto' (or no box at "
                                      "all) picks the one with the lowest load per core")
     parser.add_argument("rest", nargs="*",
-                        help="submit: book roots; wait: the run id")
+                        help="submit: book roots; wait, cancel: the run id (farm.py wait BOX RUN)")
     parser.add_argument("--jobs", default=os.environ.get("FN_CERTIFY_JOBS", "auto"),
                         help="concurrent ACL2s on the box: a count, or auto / auto:N "
                              "(the default: the count that finishes the longest "
                              "include chain soonest, tools/chain_schedule.py)")
     parser.add_argument("--affected-by", action="append", default=[],
-                        help="certify the Makefile roots whose closure contains "
-                             "this book (repeatable)")
+                        help="also certify every Makefile root whose closure "
+                             "contains this book (repeatable).  With books named, "
+                             "the run certifies the UNION: the named books and "
+                             "every affected Makefile root (umbrellas included)")
     parser.add_argument("--closure", action="store_true",
                         help="also certify what those roots include, in "
                              "dependency order: the box then needs no "
@@ -1448,7 +1637,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="certify this book of the closure afresh instead of "
                              "installing its cached pair (repeatable; passed to "
                              "the cache preflight and the runner)")
-    parser.add_argument("--recertify-from", action="append", default=[], metavar="FILE",
+    parser.add_argument("--recertify-from", "--recertify-list", action="append",
+                        default=[], metavar="FILE", dest="recertify_from",
                         help="add to --recertify every book named in FILE (words "
                              "separated by whitespace or commas; `#' starts a "
                              "comment; `-' reads standard input), so a list "
@@ -1522,7 +1712,8 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.host != "auto":
             # `farm.py submit books/x`: no box named, so the first word is a book.
             arguments.rest.insert(0, arguments.host)
-        arguments.host = pick_host()
+        arguments.host = choose_host(root, list(arguments.rest),
+                                     list(arguments.affected_by))
     elif arguments.host == "auto":
         parser.error(f"{arguments.action} needs the box the run is on (its submit "
                      "printed it); auto picks a box only for submit")
@@ -1572,6 +1763,12 @@ def main(argv: list[str] | None = None) -> int:
             for line in verdict_lines(root, identifier, code):
                 print(line)
             return code
+        if arguments.action == "cancel":
+            if len(arguments.rest) != 1:
+                parser.error("cancel takes exactly one run id: farm.py cancel BOX RUN")
+            return cancel(arguments.host, arguments.rest[0], root,
+                          (str(expand_remote(arguments.host, arguments.remote_root))
+                           if arguments.remote_root else None))
         remote = (expand_remote(arguments.host, arguments.remote_root)
                   if arguments.remote_root else root)
         return status(arguments.host, remote, root)

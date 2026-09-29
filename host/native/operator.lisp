@@ -465,15 +465,12 @@ observation into the outcome and this function only carries it out."
 ; And `fnn-command-reclaim' (`store reclaim [--dry-run | --recorded]', STO-017).
 (defvar *fnn-reclaim-callback* nil)
 
-(defun fnn-operator-execute-compaction (result root offline)
-  "PKT-868: `store compact' / `store checkpoint'.  A running owner is asked
-(ACL2's liveness decision over the socket and the lock, as for an
-administrative vector): it answers the compaction request by name and runs
-the publication itself, off its mutex (host/native/admin.lisp
-fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
+(defun fnn-operator-execute-owner-request (result root offline path-fn argv-fn)
+  "An operator verb a running owner answers as a request (PKT-868's
+compaction, Q16's reclaim): ACL2's liveness decision, then the request vector
+ARGV-FN names over the control path PATH-FN names; OFFLINE with no owner."
   (let* ((live *fnn-operator-live-owner*)
-         (path-list (fnn-core 'fn-native-operator-host-result-compaction-control-path-octets
-                              result))
+         (path-list (fnn-core path-fn result))
          (control-path (and (fnn-octet-list-p path-list) (consp path-list)
                             (fnn-octets path-list)))
          (liveness (if (and live control-path)
@@ -484,16 +481,25 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
            ;; fn-ock-request-word: requested, coalesced, nothing-to-compact,
            ;; or the refusal's blocked), printed as ACL2 rendered it
            ;; (host/native/operator-live.lisp fnn-operator-live-request).
-           (funcall (fnn-olo-request live) control-path
-                    (fnn-core 'fn-native-operator-host-result-compaction-argv result)))
+           (funcall (fnn-olo-request live) control-path (fnn-core argv-fn result)))
           ((eq liveness :held)
            (multiple-value-bind (exit detail)
-               (funcall (fnn-olo-admin live) control-path
-                        (fnn-core 'fn-native-operator-host-result-compaction-argv result)
+               (funcall (fnn-olo-admin live) control-path (fnn-core argv-fn result)
                         liveness)
              (when detail (fnn-out "~a" detail))
              exit))
           (t (funcall offline)))))
+
+(defun fnn-operator-execute-compaction (result root offline)
+  "PKT-868: `store compact' / `store checkpoint'.  A running owner is asked
+(ACL2's liveness decision over the socket and the lock, as for an
+administrative vector): it answers the compaction request by name and runs
+the publication itself, off its mutex (host/native/admin.lisp
+fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
+  (fnn-operator-execute-owner-request
+   result root offline
+   'fn-native-operator-host-result-compaction-control-path-octets
+   'fn-native-operator-host-result-compaction-argv))
 
 (defun fnn-operator-execute-store-action (result action)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
@@ -515,9 +521,19 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
                            (fnn-operator-execute-recover-live route root result))))
                       (:compact (fnn-operator-execute-compaction
                                  result root (lambda () (funcall *fnn-compact-callback* root))))
-                      (:reclaim (funcall *fnn-reclaim-callback* root :reclaim))
-                      (:reclaim-dry-run (funcall *fnn-reclaim-callback* root :dry-run))
-                      (:reclaim-recorded (funcall *fnn-reclaim-callback* root :recorded))
+                      ;; Q16: on a running owner, a request for its reclaim
+                      ;; pass (host/native/admin.lisp fnn-owner-reclaim-request).
+                      ((:reclaim :reclaim-dry-run :reclaim-recorded)
+                       (fnn-operator-execute-owner-request
+                        result root
+                        (lambda ()
+                          (funcall *fnn-reclaim-callback* root
+                                   (case action
+                                     (:reclaim :reclaim)
+                                     (:reclaim-dry-run :dry-run)
+                                     (t :recorded))))
+                        'fn-native-operator-host-result-reclaim-control-path-octets
+                        'fn-native-operator-host-result-reclaim-argv))
                       (:checkpoint (fnn-operator-execute-compaction
                                     result root (lambda () (fnn-command-state-checkpoint root))))
                       (:rebind-filesystem
