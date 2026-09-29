@@ -407,7 +407,8 @@ class StateCheckpointTests(StateCheckpointFixture):
         article number at 2147483648 (tools/fixtures/damaged_checkpoint.py).
         The file still decodes and verifies -- the Store opens from it --
         and the owner refuses to start on it BY NAME; the same file with the
-        watermark at the bound, 2147483647, starts."""
+        watermark that reaches the bound, 2147483647, after the suffix
+        starts."""
         self.init_with_checkpoint_at_three()
         good = self.path().read_bytes()
         try:
@@ -422,9 +423,12 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertEqual(process.returncode, EXIT_REFUSED, err)
         self.assertIn("is damaged: an article-number watermark exceeds RFC 3977's bound "
                       "(2147483647)", err)
-        # At the bound: the same re-write, the start proceeds.
+        # At the bound: the checkpoint's watermark two below it, so the two
+        # suffix articles replayed over it (ids[3:], `suffix=2') leave the
+        # node's next article number exactly at 2147483647; the start
+        # proceeds.
         self.path().write_bytes(good)
-        self.assertEqual(damaged_checkpoint.damage(self.path(), 2147483647), (group, old))
+        self.assertEqual(damaged_checkpoint.damage(self.path(), 2147483645), (group, old))
         self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
         process, err = self.node.try_start()
         self.assertIsNone(err, "a watermark at the bound starts")
