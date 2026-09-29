@@ -22,7 +22,11 @@
   nil)
 
 (defun fnn-app-journal-lock (root domain)
-  (let* ((name (if (eq domain :workflow) "workflow.lock" "receipt.lock"))
+  (let* ((name (case domain
+                 (:workflow "workflow.lock")
+                 ;; PKT-869: the carry control journal (books/bp-carry-frame).
+                 (:carry "carry.lock")
+                 (t "receipt.lock")))
          (path (fnn-join root name))
          (fd nil))
     (handler-case
@@ -61,9 +65,10 @@
   (sort (fnn-list-directory (fnn-app-journal-records journal)) #'string<))
 
 (defun fnn-app-frame (journal record)
-  (let* ((wrapper (if (eq (fnn-app-journal-domain journal) :workflow)
-                      'fn-store-frame-workflow-logical-protected
-                    'fn-store-frame-receipt-logical-protected))
+  (let* ((wrapper (case (fnn-app-journal-domain journal)
+                   (:workflow 'fn-store-frame-workflow-logical-protected)
+                   (:carry 'fn-workflow-carry-frame-protected)
+                   (t 'fn-store-frame-receipt-logical-protected)))
          (prefix (fnn-core wrapper (first record) (rest record))))
     (when (or (keywordp prefix) (not (fnn-octet-list-p prefix)))
       ;; Name the journal and the record kind ACL2 refused (PKT-646).
@@ -72,9 +77,10 @@
     (fnn-seal (fnn-octets prefix))))
 
 (defun fnn-app-unframe (journal raw)
-  (let* ((wrapper (if (eq (fnn-app-journal-domain journal) :workflow)
-                      'fn-store-frame-workflow-logical-decode
-                    'fn-store-frame-receipt-logical-decode))
+  (let* ((wrapper (case (fnn-app-journal-domain journal)
+                   (:workflow 'fn-store-frame-workflow-logical-decode)
+                   (:carry 'fn-workflow-carry-frame-decode)
+                   (t 'fn-store-frame-receipt-logical-decode)))
          (answer (fnn-core wrapper (fnn-octet-list raw)
                            (fnn-digest-of raw))))
     (unless (and (consp answer) (eq (first answer) :ok)
@@ -102,6 +108,12 @@
     (nreverse records)))
 
 (defun fnn-app-install (journal records)
+  (when (eq (fnn-app-journal-domain journal) :carry)
+    ;; PKT-869: the carry controls replay over the workflow image already
+    ;; installed (books/bp-carry-control.lisp fn-bpcc-replay).
+    (unless (eq (fnn-core-state 'fn-workflow-carry-install records) :ready)
+      (fnn-fault "ACL2 rejected the carry control journal's replay"))
+    (return-from fnn-app-install :ready))
   (let ((answer
           (if records
               (if (eq (fnn-app-journal-domain journal) :workflow)
@@ -124,7 +136,7 @@
 (defun fnn-app-open (store root domain &key owner-mode)
   "Open a journal beside an already-open Store; never replace its ACL2 image."
   (fnn-app-require-live-store store)
-  (unless (member domain '(:workflow :receipt))
+  (unless (member domain '(:workflow :receipt :carry))
     (fnn-fault "unknown application journal domain"))
   (let* ((absolute (fnn-absolute root))
          (records (fnn-join absolute "records"))
@@ -157,6 +169,9 @@
 
 (defun fnn-app-preflight (journal record)
   (let ((domain (fnn-app-journal-domain journal)))
+    (when (eq domain :carry)
+      (return-from fnn-app-preflight
+        (eq (fnn-core-state 'fn-workflow-carry-preflight record) :ready)))
     (if (eq (first record) :config)
         (if (eq domain :workflow)
             (and (fnn-core 'fn-workflow-valid-config record) t)
@@ -172,6 +187,10 @@
           :ready))))
 
 (defun fnn-app-apply (journal record)
+  (when (eq (fnn-app-journal-domain journal) :carry)
+    (unless (eq (fnn-core-state 'fn-workflow-carry-apply record) :ready)
+      (fnn-fault "ACL2 rejected a durable carry control record"))
+    (return-from fnn-app-apply :ready))
   (if (eq (first record) :config)
       (fnn-app-install journal (list record))
     (let ((answer

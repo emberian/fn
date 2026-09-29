@@ -8058,14 +8058,6 @@
         {
           "kind": "theorem",
           "name": "fn-auth-delegate-pinned-preserves-consistentp"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-gac-views-find-is-restriction"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-gac-access-views-covers-pattern"
         }
       ]
     },
@@ -10657,6 +10649,171 @@
           "kind": "theorem",
           "name": "fn-sjh-okp-of-other-prepare",
           "note": "KEYSTONE (join-f2). The retention, consumer and topic prepares stage events that load no row: fn-sjh-okp with no pending row."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-finish-identity",
+          "note": "KEYSTONE (join-f2-2). host/owner-host.lisp fn-owner-finish-identity, every branch: a signed composite's row (its acceptance and verdict equations derived from the store, fn-sjh-idf-finish-equations), an article row, no row, a finish that changed nothing; fn-sjh-okp after with the pending row the host keeps. Teeth: tests/acl2/served-catalog-join-host-tests.lisp items 1, 4, 5."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-idf-finish-equations",
+          "note": "The identity finish's (I) equations from the store's identity completion: the node conses exactly the composite's held article and the verdicts gain the pair of its verdict statement (Message-IDs equal through fn-stxa-bindsp and fn-row-composite-okp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-of-ocfg-step-owner-event",
+          "note": "KEYSTONE (join-f2-2). Every fn-owner-step event other than the store's, the completion and the connection events (begin, take, submits, outcomes, feeds, ticks, observe, declare-group, configure, reconfigure staging): fn-sjh-okp with the same pending row."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-begin",
+          "note": "KEYSTONE (join-f2-2). fn-owner-begin (fn-pout-begin)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-declare-group",
+          "note": "KEYSTONE (join-f2-2). fn-owner-declare-group (fn-pout-declare-group)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-observe",
+          "note": "KEYSTONE (join-f2-2). fn-owner-observe (fn-ocfg-observe)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-unstage",
+          "note": "KEYSTONE (join-f2-2). fn-owner-reconfigure-unstage (fn-psrv-unstage keeps the owner)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-node-secret",
+          "note": "KEYSTONE (join-f2-2). fn-owner-install-node-secret."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-install-profile",
+          "note": "KEYSTONE (join-f2-2). fn-owner-install-profile (fn-osb-install)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-open-peer",
+          "note": "KEYSTONE (join-f2-2). fn-owner-open-peer (fn-ocfg-open-peer)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-chunk-span",
+          "note": "KEYSTONE (join-f2-2). fn-owner-chunk-span-at: the owner of fn-mca-read-span's result (every credit, slot and disk branch). Named premises: fn-scol-okp and the captured reader view's liveness (fn-sjh-views-okp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-files-okp-exec-is-files-okp",
+          "note": "The executable twin of fn-sjh-okp's store side (S and LINK) is the predicate; evaluated in tests/acl2/served-catalog-join-host-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-log-reserve",
+          "note": "KEYSTONE (join-f2-2). fn-owner-io :log-reserve (fn-olr-ocfg-reserve, the io route composed)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-log-order",
+          "note": "KEYSTONE (join-f2-2). fn-owner-io :log-order."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-reconfigure-complete",
+          "note": "KEYSTONE (join-f2-2). fn-owner-reconfigure-complete (fn-oclc-publish): the carried configure keeps the store's files, verdicts and acceptance articles."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-open",
+          "note": "KEYSTONE (join-f2-2). fn-owner-open with no capture (fn-ocar-ocfg-open)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-open-captured",
+          "note": "KEYSTONE (join-f2-2). fn-owner-open at a captured reader view, the working view put back; fn-sjh-views-okp named."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-exposure-open",
+          "note": "KEYSTONE (join-f2-2). fn-owner-exposure-open (fn-ocar-exp-open)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-read-step",
+          "note": "KEYSTONE (join-f2-2). fn-owner-tls-established and fn-owner-account-outcome (fn-ocfg-read-step)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-colsp-at-full-open",
+          "note": "KEYSTONE (join-f2-2). The columns at the full open: the intern decides each row's column from the bytes it seals."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-colsp-at-recover",
+          "note": "KEYSTONE (join-f2-2). The columns at the checkpoint open and recovery (the checkpoint rows' column facts named)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-colsp-at-owner-prepare-buffer",
+          "note": "KEYSTONE (join-f2-2). The columns across the article POST's seal and catalog prepare."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-colsp-at-owner-prepare-identity-sealed",
+          "note": "KEYSTONE (join-f2-2). The columns across the signed composite's seal and catalog prepare."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-colsp-at-finish",
+          "note": "KEYSTONE (join-f2-2). The columns across the host's finishes (fn-sca-finish with the pending row)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-colsp-at-commit-reseat",
+          "note": "KEYSTONE (join-f2-2). The columns across the commit's reseat (the arena is the same arena)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-chunk-span-carried",
+          "note": "KEYSTONE (join-f2-2). The served read with fn-scol-okp discharged by fn-sjh-colsp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-viewsp-at-capture",
+          "note": "KEYSTONE (join-f2-2). The committer's capture of the working view (fn-owner-reader-views-capture)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-viewsp-at-owner-finish-identity",
+          "note": "KEYSTONE (join-f2-2). The captured views across every branch of the identity finish."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-viewsp-at-host-article-finish",
+          "note": "KEYSTONE (join-f2-2). The captured views across the article finish (an older view stays live: fn-scj-catalogp-of-finish)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-viewsp-of-ocfg-store-step",
+          "note": "KEYSTONE (join-f2-2). The store's steps other than its finish: the working view refreshes forward."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-viewsp-at-owner-chunk-span",
+          "note": "KEYSTONE (join-f2-2). The served read keeps the view."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-chunk-span-fully-carried",
+          "note": "KEYSTONE (join-f2-2). The served read over fn-sjh-okp, fn-sjh-colsp and fn-sjh-viewsp: no named premise."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-open-captured-carried",
+          "note": "KEYSTONE (join-f2-2). The open at a captured view over fn-sjh-okp and fn-sjh-viewsp."
         }
       ]
     },
@@ -13297,6 +13454,173 @@
         {
           "kind": "theorem",
           "name": "fn-arx-files-agree-of-mark"
+        }
+      ]
+    },
+    {
+      "id": "PRF-904",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scat-counts-lines-status-is-the-active-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-counts-lines-status-is-the-active-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-counts-lines-status-is-the-active-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-counts-summary-line-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-active-status-line-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-list-counts-command-cat-is-archive"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-list-counts-command-is-the-archive-fold"
+        }
+      ]
+    },
+    {
+      "id": "PRF-905",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-inj-decide-line-length-is-a-long-header-line"
+        }
+      ]
+    },
+    {
+      "id": "PRF-913",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scr-auth-delegate-is-scar-auth-delegate-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scr-cached-view-is-the-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scr-prepare-access-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scr-prepare-access-serves-the-pin"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gacc-view-is-the-view-entry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gacc-prepare-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gacc-view-of-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gacc-refresh-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gacc-grow-builds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-view-entry-is-per-command"
+        }
+      ]
+    },
+    {
+      "id": "PRF-902",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-admin-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-reasoned-admin-decode-of-encode"
+        }
+      ]
+    },
+    {
+      "id": "PRF-907",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgrs-journal-fence-names-the-acknowledged-batch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgrs-spare-name-is-swept-and-never-a-segment"
+        }
+      ]
+    },
+    {
+      "id": "PRF-908",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ock-requested-next-is-due-with-a-suffix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-requested-one-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-requested-never-past-a-deferral"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-requested-word-is-the-next-due"
+        }
+      ]
+    },
+    {
+      "id": "PRF-914",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpcc-gate-refuses-a-held-work"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcc-gate-is-the-plan-otherwise"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcc-drop-is-final"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcc-admitted-drop-drops"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcc-frame-decode-of-sealed"
         }
       ]
     }

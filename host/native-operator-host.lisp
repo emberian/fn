@@ -18,13 +18,17 @@
   (declare (xargs :mode :program))
   (fn-native-operator-run config-octets argv-octets))
 
-(defun fn-native-operator-host-argv-max-arguments ()
+(defun fn-native-operator-host-result-carry-fields (result)
   (declare (xargs :mode :program))
-  *fn-nop-max-arguments*)
+  (fn-native-operator-result-carry-fields result))
 
-(defun fn-native-operator-host-argv-max-octets ()
+(defun fn-native-operator-host-result-compaction-argv (result)
   (declare (xargs :mode :program))
-  *fn-nop-max-argument-octets*)
+  (fn-native-operator-result-compaction-argv result))
+
+(defun fn-native-operator-host-result-compaction-control-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-compaction-control-path-octets result))
 
 (defun fn-native-operator-host-result-status (result)
   (declare (xargs :mode :program))

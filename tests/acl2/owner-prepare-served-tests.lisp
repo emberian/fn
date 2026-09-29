@@ -292,3 +292,64 @@
       (equal (lgt-phase (fn-psrv-prepare *pst-f-reserved* (own-record 3 9 "<pin-reuse@example>")
                                          1000000 (pst-carry *pst-f-reserved*)))
              :record-staged)))
+
+; -----------------------------------------------------------------------------
+; RFC 3977 section 6's number bound (PKT-615, lane join-f2-615):
+; fn-psrv-prepare-refuses-exhausted.  The witnesses are *lgt-reserved* with
+; fn.letters' watermark set in its Store's node: a CONSTRUCTED boundary
+; state (reaching it takes 2,147,483,646 articles in the group), labelled so.
+(defun pst-with-next (oc group n)
+  (let* ((o (fn-ocfg-owner oc))
+         (s (fn-own-store o))
+         (node (fn-sn-node s))
+         (a (fn-node-acceptance node))
+         (a2 (fn-make-state (fn-state-groups a)
+                            (put-assoc-equal group n (fn-state-nexts a))
+                            (fn-state-articles a) (fn-state-next-txid a)
+                            (fn-state-pending a) (fn-state-fenced a)))
+         (node2 (fn-node-make-state a2 (fn-node-retention node) (fn-node-stage node)
+                                    (fn-node-bindings node))))
+    (fn-ocfg-with-owner oc (fn-ocl-owner-with-store o (fn-sn-update s (fn-sn-files s) node2)))))
+
+(defconst *pst-at-bound* (pst-with-next *lgt-reserved* "fn.letters" *fn-nntp-max-article-number*))
+(defconst *pst-below-bound* (pst-with-next *lgt-reserved* "fn.letters" (1- *fn-nntp-max-article-number*)))
+
+; Reachable positive witness of the number test: the configured owner's
+; first POST fits (fn.letters' next number is small) and is staged.
+(assert-event (fn-psrv-event-numberedp *lgt-reserved* *acar-t-record*))
+(assert-event (equal (lgt-phase *pst-prepared*) :record-staged))
+
+; Constructed boundary, positive: every hypothesis of the keystone holds
+; (fn.letters served; its next number IS the bound, so the allocation would
+; take the watermark past it) and so does every conclusion: the owner is
+; unchanged and the word names the bound.
+(assert-event (fn-psrv-event-servedp (fn-ocfg-config *pst-at-bound*) *acar-t-record*))
+(assert-event (not (fn-psrv-event-numberedp *pst-at-bound* *acar-t-record*)))
+(assert-event (equal (fn-psrv-prepare *pst-at-bound* *acar-t-record* 1000000
+                                      (pst-carry *pst-at-bound*))
+                     *pst-at-bound*))
+(assert-event (equal (fn-psrv-refusal-kind *pst-at-bound* *acar-t-record* 1000000)
+                     :article-numbers-exhausted))
+(assert-event (equal (fn-psrv-prepare-identity *pst-at-bound* *acar-t-record*) *pst-at-bound*))
+(assert-event (equal (fn-psrv-identity-refusal-kind *pst-at-bound* *acar-t-record*)
+                     :article-numbers-exhausted))
+; One below: the last number the bound leaves (2,147,483,646; the watermark
+; after it is 2,147,483,647) is admitted and staged.
+(assert-event (fn-psrv-event-numberedp *pst-below-bound* *acar-t-record*))
+(assert-event (equal (lgt-phase (fn-psrv-prepare *pst-below-bound* *acar-t-record* 1000000
+                                                 (pst-carry *pst-below-bound*)))
+                     :record-staged))
+
+; Hypothesis removal, (not numberedp): at *lgt-reserved* the article is
+; served (the retained hypothesis holds), the omitted one fails (it fits),
+; and the conclusion fails: the prepare staged it.
+(assert-event (and (fn-psrv-event-servedp (fn-ocfg-config *lgt-reserved*) *acar-t-record*)
+                   (fn-psrv-event-numberedp *lgt-reserved* *acar-t-record*)
+                   (not (equal *pst-prepared* *lgt-reserved*))))
+; Hypothesis removal, servedp: the retired-group owner with fn.letters at the
+; bound: (not numberedp) holds, servedp fails, and the word is :refused,
+; not :article-numbers-exhausted (an unserved group names no number).
+(defconst *pst-r-at-bound* (pst-with-next *lgt-r-reserved* "fn.letters" *fn-nntp-max-article-number*))
+(assert-event (and (not (fn-psrv-event-numberedp *pst-r-at-bound* *acar-t-record*))
+                   (not (fn-psrv-event-servedp (fn-ocfg-config *pst-r-at-bound*) *acar-t-record*))
+                   (equal (fn-psrv-refusal-kind *pst-r-at-bound* *acar-t-record* 1000000) :refused)))

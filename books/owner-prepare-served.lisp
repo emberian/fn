@@ -19,6 +19,7 @@
 (include-book "post-retain-carried")
 (include-book "owner-commit-carried")
 (include-book "owner-identity-intern")
+(include-book "store-number-bound")
 
 ; -----------------------------------------------------------------------------
 ; The served decision.  An event that creates an article (a held row, or the
@@ -34,26 +35,43 @@
           config (fn-record-groups (fn-replay-composite-held event))))
         (t t)))
 
+; The number decision (RFC 3977 section 6: "Article numbers MUST lie between
+; 1 and 2,147,483,647, inclusive"; PKT-615 as decided).  An event that
+; installs an article is admitted only when every group's number the
+; allocation gives it is below that bound at the Store's node, so every
+; watermark stays an article number (books/store-number-bound.lisp
+; fn-snb-record-fitp; KEYSTONE fn-snb-replay-apply-record-keeps-nexts-
+; bounded).  A protocol bound, not an implementation ceiling (D27): nothing
+; is truncated, the article is refused by name.
+(defun fn-psrv-event-numberedp (oc event)
+  (declare (xargs :guard t))
+  (fn-snb-record-fitp (fn-sn-node (fn-own-store (fn-ocfg-owner oc))) event))
+
 ; THE ARTICLE PREPARE THE HOST CALLS (host/owner-host.lisp
 ; fn-owner-prepare-buffer).  An article whose groups the live configuration
 ; does not serve -- a retired group, still in the Store's allocation domain
-; -- leaves the owner unchanged; otherwise it is fn-prc-sbud-prepare.
+; -- or whose numbers would pass RFC 3977 section 6's bound leaves the owner
+; unchanged; otherwise it is fn-prc-sbud-prepare.
 (defun fn-psrv-prepare (oc record budget carry)
   (declare (xargs :guard (and (fn-sn-statep (fn-sbud-oc-store oc))
                               (fn-pidx-view-okp
                                (fn-own-view (fn-ocfg-owner oc)))
                               (fn-prc-carryp carry))))
-  (if (fn-psrv-event-servedp (fn-ocfg-config oc) record)
+  (if (and (fn-psrv-event-servedp (fn-ocfg-config oc) record)
+           (fn-psrv-event-numberedp oc record))
       (fn-prc-sbud-prepare oc record budget carry)
     oc))
 
 ; The word the host reports when the prepare left the owner unchanged: an
-; unserved group is :refused whatever the budget; otherwise the budget's
+; unserved group is :refused whatever the budget; numbers past RFC 3977
+; section 6's bound are :article-numbers-exhausted; otherwise the budget's
 ; word (fn-sbud-refusal-kind).
 (defun fn-psrv-refusal-kind (oc record budget)
   (declare (xargs :guard t))
   (if (fn-psrv-event-servedp (fn-ocfg-config oc) record)
-      (fn-sbud-refusal-kind oc budget)
+      (if (fn-psrv-event-numberedp oc record)
+          (fn-sbud-refusal-kind oc budget)
+        :article-numbers-exhausted)
     :refused))
 
 ; THE IDENTITY PREPARE THE HOST CALLS (host/owner-host.lisp
@@ -62,9 +80,21 @@
 ; fn-ccar-ocfg-prepare-identity (PRF-144, PRF-193).
 (defun fn-psrv-prepare-identity (oc event)
   (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))))
-  (if (fn-psrv-event-servedp (fn-ocfg-config oc) event)
+  (if (and (fn-psrv-event-servedp (fn-ocfg-config oc) event)
+           (fn-psrv-event-numberedp oc event))
       (fn-ccar-ocfg-prepare-identity oc event)
     oc))
+
+; Its word when it left the owner unchanged: :article-numbers-exhausted for
+; a composite whose groups are served but whose numbers would pass the
+; bound, else :refused (books/owner-prepare-outcome.lisp
+; fn-pout-prepare-identity).
+(defun fn-psrv-identity-refusal-kind (oc event)
+  (declare (xargs :guard t))
+  (if (and (fn-psrv-event-servedp (fn-ocfg-config oc) event)
+           (not (fn-psrv-event-numberedp oc event)))
+      :article-numbers-exhausted
+    :refused))
 
 ; THE TOPIC PREPARE THE HOST CALLS (host/owner-host.lisp
 ; fn-owner-prepare-topic): the configured owner's (:store (:prepare-topic E))
@@ -108,10 +138,27 @@
   (implies (not (fn-psrv-event-servedp (fn-ocfg-config oc) record))
            (and (equal (fn-psrv-prepare oc record budget carry) oc)
                 (equal (fn-psrv-refusal-kind oc record budget) :refused)
-                (equal (fn-psrv-prepare-identity oc record) oc))))
+                (equal (fn-psrv-prepare-identity oc record) oc)
+                (equal (fn-psrv-identity-refusal-kind oc record) :refused))))
+
+; KEYSTONE (the admission refuses by name past RFC 3977 section 6's bound):
+; an article whose groups are served but whose numbers would pass the bound
+; leaves the owner unchanged at every budget and is answered
+; :article-numbers-exhausted; teeth in
+; tests/acl2/store-number-bound-tests.lisp.
+(defthm fn-psrv-prepare-refuses-exhausted
+  (implies (and (fn-psrv-event-servedp (fn-ocfg-config oc) record)
+                (not (fn-psrv-event-numberedp oc record)))
+           (and (equal (fn-psrv-prepare oc record budget carry) oc)
+                (equal (fn-psrv-refusal-kind oc record budget)
+                       :article-numbers-exhausted)
+                (equal (fn-psrv-prepare-identity oc record) oc)
+                (equal (fn-psrv-identity-refusal-kind oc record)
+                       :article-numbers-exhausted))))
 
 (defthm fn-psrv-prepare-when-served
-  (implies (fn-psrv-event-servedp (fn-ocfg-config oc) record)
+  (implies (and (fn-psrv-event-servedp (fn-ocfg-config oc) record)
+                (fn-psrv-event-numberedp oc record))
            (and (equal (fn-psrv-prepare oc record budget carry)
                        (fn-prc-sbud-prepare oc record budget carry))
                 (equal (fn-psrv-refusal-kind oc record budget)
@@ -128,6 +175,7 @@
 ;; unchanged at every budget.
 (defthm fn-psrv-prepare-is-sbud-prepare-when-served
   (implies (and (fn-psrv-event-servedp (fn-ocfg-config oc) record)
+                (fn-psrv-event-numberedp oc record)
                 (fn-prc-carryp carry)
                 (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc)))
                 (fn-scar-view-indexedp (fn-ocfg-owner oc)))
@@ -140,4 +188,5 @@
            :in-theory nil)))
 
 (in-theory (disable fn-psrv-prepare fn-psrv-refusal-kind fn-psrv-prepare-identity
-                    fn-psrv-prepare-topic))
+                    fn-psrv-prepare-topic fn-psrv-event-numberedp
+                    fn-psrv-identity-refusal-kind))

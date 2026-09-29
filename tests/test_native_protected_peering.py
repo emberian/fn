@@ -89,7 +89,10 @@ def inspect_feed_journal(path, msgid, peer):
                 "sent_before_restart": sent_before,
                 "state_after_restart": symbol("(fn-feed-state-of '{} {})".format(mid, queue)),
                 "queue_length": nat("(len {})".format(queue)),
-                "attempts": nat("(fn-feed-entry-attempts (fn-feed-find '{} {}))".format(mid, queue)),
+                # An acknowledged entry is retired by its outcome record
+                # (fn-feed-done): it has left the queue and has no attempts.
+                "attempts": (None if symbol("(fn-feed-find '{} {})".format(mid, queue)) == "nil"
+                             else nat("(fn-feed-entry-attempts (fn-feed-find '{} {}))".format(mid, queue))),
                 "next_attempt": nat("(fn-feed-next-attempt (@ fn-test-feed))"),
                 "inflight": symbol("(fn-feed-inflightp '{} (@ fn-test-feed))".format(mid))}
 

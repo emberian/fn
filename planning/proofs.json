@@ -13943,6 +13943,224 @@
         "fn-arx-files-agree-of-mark"
       ],
       "progress_note": "Lane composed-owner-4 (Opus 5.5, 2026-09-29). REPL-admitted on persvati (the whole book and the teeth). Teeth tests/acl2/payload-arena-extent-tests.lisp section 4 (paxt-files-): the run (file 7's count 1 then 0 after the reseat onto 9), a reachable positive witness (paxt-files-unnamed-positive, the state reached through the exports: paxt-x3-corresponds), a witness and a must-fail per hypothesis; the correspondence one is a CORRUPTED-STATE witness. natp H was proved redundant and removed. Host caller: online-reclaim-3's checkpoint release (not on this branch)."
+    },
+    {
+      "id": "PRF-904",
+      "title": "LIST COUNTS carries LIST ACTIVE's status for every group: m for a moderated group, n for a read-only one, y otherwise",
+      "statement": "RFC 6048 section 2.2.2: the last field of a LIST COUNTS line is LIST ACTIVE's status (RFC 3977 section 7.6.3; RFC 6048 section 2.1.1). books/nntp-responses.lisp fn-nntp-counts-summary-line renders fn-nntp-closed-status of the group under the connection's CLOSED list (the reader environment's, books/nntp-post.lisp fn-post-reader-env-closed: the read-only groups, the moderated entries, a moderator's approver entries), the list LIST ACTIVE's status reads; the reference fn-nntp-list-counts-command, the pinned bucket arm fn-gidx-list-counts-command (books/nntp.lisp) and the catalog arm fn-nntp-list-counts-command-cat (books/served-catalog.lisp) take (fn-nntp-env-closed env) from their dispatchers. KEYSTONES: fn-scat-counts-lines-status-is-the-active-status (the host's arm: host/owner-host.lisp fn-owner-chunk-span-at -> fn-scr-command -> fn-nntp-archive-command-cat -> fn-nntp-list-counts-command-cat -> fn-scat-counts-lines), fn-gidx-counts-lines-status-is-the-active-status, fn-nntp-counts-lines-status-is-the-active-status (books/nntp-list-counts.lisp): line I of the LIST COUNTS lines over GROUPS and CLOSED ends with the octet line I of LIST ACTIVE's status lines over the same GROUPS and CLOSED ends with, for any archive, buckets and catalog; fn-nntp-counts-summary-line-status names that octet (fn-nntp-closed-status-octet). The served equations to the archive fold (fn-nntp-list-counts-command-cat-is-archive, fn-gidx-list-counts-command-is-the-archive-fold, fn-served-dispatch-list-counts) carry CLOSED. Before PKT-703 the field was the constant y.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-040",
+        "NNT-047",
+        "NNT-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/nntp-responses.lisp",
+        "books/nntp.lisp",
+        "books/nntp-list-counts.lisp",
+        "books/served-catalog.lisp",
+        "tests/acl2/nntp-list-counts-tests.lisp",
+        "tests/test_native_moderation.py",
+        "tests/test_native_group_access.py"
+      ],
+      "events": [
+        "fn-scat-counts-lines-status-is-the-active-status",
+        "fn-gidx-counts-lines-status-is-the-active-status",
+        "fn-nntp-counts-lines-status-is-the-active-status",
+        "fn-nntp-counts-summary-line-status",
+        "fn-nntp-active-status-line-status",
+        "fn-nntp-list-counts-command-cat-is-archive",
+        "fn-gidx-list-counts-command-is-the-archive-fold"
+      ]
+    },
+    {
+      "id": "PRF-905",
+      "title": "A POST refused for a header line longer than 998 octets is refused by that name; a header field of any length folded within the line bound is never so refused",
+      "statement": "RFC 5322 section 2.1.1 (a MUST: a line is at most 998 octets without its CRLF; RFC 5536 section 2.1 applies RFC 5322 to articles) bounds a LINE, not a field: a header field of any length is carried folded (section 2.2.3), up to the store profile's header limits (PRF-230). books/injection.lisp fn-inj-decide refuses a source the parser refuses :limit with the reason :line-length (fn-inj-parse-refusal), answered `441 posting failed; a header line is longer than 998 octets (RFC 5322 section 2.1.1); fold it' (books/nntp-post.lisp fn-post-refusal-line; logged reason=line-length, books/owner-log.lisp); every other parse refusal stays :unparsable. KEYSTONE fn-inj-decide-line-length-is-a-long-header-line (no hypotheses): a :line-length refusal's source has, among the header lines the parser reads, a line of at least 999 octets before any CR or LF (books/article-line-bound.lisp fn-alb-long-header-linep); by contraposition a header whose every line is within the bound is never refused :line-length. It rests on fn-article-parse-under-limit-is-a-long-header-line (within the codec ceiling, a parse refused :limit met such a line, under any header limits) and fn-article-next-line-limit-is-a-long-line. Subject: fn-inj-decide, run by every POST (books/nntp-post.lisp fn-nntp-post-step on the served path from host/owner-host.lisp fn-owner-chunk-span-at) and the operator's article. PKT-506: before it the refusal read `the article is not valid syntax'.",
+      "milestone": "M4",
+      "requirements": [
+        "STO-030",
+        "NNT-005"
+      ],
+      "depends_on": [
+        "PRF-230"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/article-line-bound.lisp",
+        "books/injection.lisp",
+        "books/nntp-post.lisp",
+        "books/protocol-table.lisp",
+        "books/owner-log.lisp",
+        "tests/acl2/injection-tests.lisp",
+        "tests/acl2/owner-log-tests.lisp",
+        "tests/test_native_header_lines.py"
+      ],
+      "events": [
+        "fn-inj-decide-line-length-is-a-long-header-line"
+      ]
+    },
+    {
+      "id": "PRF-913",
+      "title": "A read-restricted session's view is prepared once per pin and every command reads it; the reply is the per-command view's",
+      "statement": "PKT-643. books/group-access-cache.lisp: the access cache holds one entry per read rule text, keyed by the archive and control pin it was built for; fn-gacc-okp says every entry's view is fn-gac-view-entry of its key (books/group-access.lisp: the restricted store and its index; fn-gac-view-entry-is-per-command equates it with the per-command restriction of a pinned index). fn-gacc-prepare keeps an entry keyed to the pin, grows one whose articles are a tail of the new archive's under the same control cut by the articles accepted since (fn-gacc-grow: one cut, one trie path copy and its bucket entries per article; fn-gacc-grow-builds: the result is the builds of the longer list), else builds. KEYSTONES fn-gacc-prepare-keeps-okp, fn-gacc-view-of-prepare (the prepared key is answered with the view) and fn-gacc-view-is-the-view-entry (an answer under fn-gacc-okp is the view of the key). The host: host/owner-host.lisp fn-owner-chunk-span-at prepares the connection's entry (books/served-catalog-chain.lisp fn-scr-prepare-access, KEYSTONE fn-scr-prepare-access-keeps-okp; fn-scr-prepare-access-serves-the-pin) from its global fn-owner-access-cache (nil at start, fn-gacc-okp-of-nil; written only there) and passes it to the read (fn-oas-read-span ... cache ...); fn-scr-auth-delegate's restricted arm reads the view (fn-scr-cached-view, fn-scr-cached-view-is-the-view) and builds it per command only when no entry is keyed to the pin. fn-scr-auth-delegate-is-scar-auth-delegate-pinned and the chain up to fn-scr-ocfg-read-span-is-reference-under-ocl-relation carry (fn-gacc-okp cache). Work: a restricted command at a prepared pin builds nothing; a prepare after k acceptances does O(k) cuts and path copies plus the configuration-sized group cut; a build happens at a restart, a withdrawal or a new rule. Supersedes group-access-2's per-pin table (fn-gac-access-views, removed): a table built at every pin for every rule would walk the archive once per rule per commit.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-046",
+        "SEC-007"
+      ],
+      "depends_on": [
+        "PRF-222"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/group-access-cache.lisp",
+        "books/group-access.lisp",
+        "books/served-catalog-chain.lisp",
+        "host/owner-host.lisp",
+        "tests/acl2/group-access-cache-tests.lisp",
+        "tests/acl2/served-catalog-chain-tests.lisp",
+        "tests/test_native_group_access.py"
+      ],
+      "events": [
+        "fn-scr-auth-delegate-is-scar-auth-delegate-pinned",
+        "fn-scr-cached-view-is-the-view",
+        "fn-scr-prepare-access-keeps-okp",
+        "fn-scr-prepare-access-serves-the-pin",
+        "fn-gacc-view-is-the-view-entry",
+        "fn-gacc-prepare-keeps-okp",
+        "fn-gacc-view-of-prepare",
+        "fn-gacc-refresh-okp",
+        "fn-gacc-grow-builds",
+        "fn-gac-view-entry-is-per-command"
+      ]
+    },
+    {
+      "id": "PRF-902",
+      "title": "An administrative argv of any length round-trips through the control frame",
+      "statement": "books/native-control-reason.lisp KEYSTONE fn-native-control-admin-decode-of-encode and fn-native-control-reasoned-admin-decode-of-encode: (implies (not (equal (fn-native-control-admin-encode argv) :bad)) (equal (fn-native-control-admin-decode (fn-native-control-admin-encode argv)) (list :admin argv))), and the same for the reasoned kind. The encoder refuses only a malformed word (empty, non-ASCII), a word past the record codec's byte-string width, a count past the u32 codec field, or a frame past the FNCT payload width; no word count or length bound. Subjects: fn-native-control-host-admin-encode / -reasoned-admin-encode (host/native/control.lisp fnn-control-admin) and fn-native-control-host-admin-decode / -reasoned-admin-decode (the owner's control read). Built on fn-nctrl-admin-words-decode-of-encode and fn-nctrl-admin-argv-decode-of-encode (books/native-control.lisp).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-032"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/native-control.lisp",
+        "books/native-control-reason.lisp",
+        "tests/acl2/native-control-reason-tests.lisp"
+      ],
+      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: 200 words and a 70,000-octet word round-trip with the antecedent asserted; an unsealable argv is :bad and its decode is not the argv; must-fail of the theorem without the antecedent.",
+      "events": [
+        "fn-native-control-admin-decode-of-encode",
+        "fn-native-control-reasoned-admin-decode-of-encode"
+      ]
+    },
+    {
+      "id": "PRF-907",
+      "title": "The rotation with its I/O off the owner mutex keeps every acknowledged batch named: a staged spare leaves the journal as it was, and journal/'s fence before the new segment's first acknowledgment names the batch in every crash image",
+      "statement": "books/store-log-rotate-spare.lisp, in books/byte-store.lisp's crash model. KEYSTONE fn-lgrs-journal-fence-names-the-acknowledged-batch: after the spare (created in staging/, preallocated, fenced) is renamed into journal/ as 000002.log, a batch written to it, journal/ fenced and the batch fenced (acknowledged), every crash image names journal/000002.log with the batch and journal/000001.log as it was. fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was: a death with the spare staged changes no journal/ entry. Teeth fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed: without journal/'s fence a crash image keeps the acknowledged batch's octets under the staging name only. fn-lgrs-spare-name-is-swept-and-never-a-segment: the spare's name is no segment (fn-lgs-segment-index) and is a staging name the writable open sweeps (fn-sn-staging-namep). The programs are books/store-log-segments.lisp fn-lgs-spare-program / fn-lgs-rotate-program / fn-lgs-rotate-durable-program, hosted by host/native/io.lisp fnn-log-prepare-spare / fnn-log-rotate / fnn-log-make-durable (tests/campaign/native_cuts.py verify_log_segment_cut_map checks the order, that fnn-log-rotate does no other disk I/O, that fnn-log-fence runs fnn-log-make-durable before its barrier and that the publication runs it before writing the checkpoint).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-033"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-rotate-spare.lisp",
+        "books/store-log-segments.lisp",
+        "tests/campaign/native_cuts.py"
+      ],
+      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox (all four theorems, 4.5k steps). Ground witnesses over the byte model, as books/store-log-open-barriers.lisp's.",
+      "events": [
+        "fn-lgrs-journal-fence-names-the-acknowledged-batch",
+        "fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was",
+        "fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed",
+        "fn-lgrs-spare-name-is-swept-and-never-a-segment"
+      ]
+    },
+    {
+      "id": "PRF-908",
+      "title": "An operator's compaction request makes the owner's publication due at any suffix, without a second in flight and never past a deferral",
+      "statement": "books/owner-compact-request.lisp. KEYSTONE fn-ock-requested-next-is-due-with-a-suffix: with a request, nothing in flight and no deferral blocking, fn-ock-requested-next is :due exactly when the automatic rule is due or there is a suffix past the durable checkpoint that the last attempt did not take (fn-ock-request-duep). fn-ock-requested-next-without-request: no request is the automatic decision (fn-ock-publication-next). fn-ock-requested-one-in-flight: in flight, the automatic word stands (:coalesce/:inflight). fn-ock-requested-never-past-a-deferral: :blocked stands. fn-ock-requested-word-is-the-next-due: an answer :requested is the next decision's :due. Subjects: host/owner-host.lisp fn-owner-sco-due (fnn-owner-maybe-publish-quantum) and fn-owner-sco-request (host/native/admin.lisp fnn-owner-compaction-request).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-034"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-compact-request.lisp",
+        "tests/acl2/owner-compact-request-tests.lisp"
+      ],
+      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
+      "events": [
+        "fn-ock-requested-next-is-due-with-a-suffix",
+        "fn-ock-requested-one-in-flight",
+        "fn-ock-requested-never-past-a-deferral",
+        "fn-ock-requested-word-is-the-next-due"
+      ]
+    },
+    {
+      "id": "PRF-914",
+      "title": "A paused or dropped BP carry work's request is refused by name, any other work's request is the request plan itself, and no control record undoes a drop",
+      "statement": "books/bp-carry-control.lisp. KEYSTONE fn-bpcc-gate-refuses-a-held-work: when fn-bpcc-work-state names a hold (paused, by the work or by \"*\", or dropped), fn-bpcc-request-gate answers (:refused :carry-paused) or (:refused :carry-dropped), never a :request. fn-bpcc-gate-is-the-plan-otherwise: with no hold it is books/bp-request-plan.lisp fn-bprq-plan's answer unchanged. fn-bpcc-drop-is-final: after any record the dropped work stays dropped. fn-bpcc-admitted-drop-drops: an admitted drop records the work and its reason. Subject: host/workflow-host.lisp fn-workflow-request-plan (called by host/native/bp-obligation.lisp fnn-bpo-request-publish), which gates fn-bprq-plan through the carry state the carry journal replays (fn-bpcc-replay over the workflow image, host/workflow-host.lisp fn-workflow-carry-install). The journal's representation boundary: KEYSTONE fn-bpcc-frame-decode-of-sealed (books/bp-carry-frame.lisp): what the host seals (fnn-app-frame: the protected prefix and its digest) decodes to the record it sealed.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-035"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-carry-control.lisp",
+        "books/bp-carry-frame.lisp",
+        "tests/acl2/bp-carry-control-tests.lisp"
+      ],
+      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox (bp-carry-control and bp-ion-workflow over it); teeth: paused, dropped and all-paused witnesses, the no-hold identity with its must-fail, drop finality over resume * and pause, and the refusals by name.",
+      "events": [
+        "fn-bpcc-gate-refuses-a-held-work",
+        "fn-bpcc-gate-is-the-plan-otherwise",
+        "fn-bpcc-drop-is-final",
+        "fn-bpcc-admitted-drop-drops",
+        "fn-bpcc-frame-decode-of-sealed"
+      ]
+    },
+    {
+      "id": "PRF-921",
+      "title": "Admission keeps every group watermark within RFC 3977 section 6's bound, and the served projection follows from the Store's facts without counting articles",
+      "statement": "books/store-number-bound.lisp, books/store-number-projection.lisp, books/owner-prepare-served.lisp, books/store-prepare-served.lisp. The admission test is fn-snb-groups-fitp (each group's allocated number, bumped in the allocation's order, below 2,147,483,647) over the record's article (fn-snb-record-fitp: a held row or a signed composite's held row) at the Store's node. The host's article and identity prepares (host/owner-host.lisp fn-owner-prepare-buffer / fn-owner-prepare / fn-owner-prepare-identity via fn-pout-prepare-article / fn-pout-prepare-identity) are fn-psrv-prepare / fn-psrv-prepare-identity, which stage only where fn-psrv-event-servedp and fn-psrv-event-numberedp hold. KEYSTONE fn-psrv-prepare-refuses-exhausted: a served record whose numbers would pass the bound leaves the owner unchanged at every budget and is answered :article-numbers-exhausted (fn-psrv-refusal-kind, fn-psrv-identity-refusal-kind); the standalone Store's fn-psrv-store-prepare-refuses-exhausted likewise (host/store-node-host.lisp fn-store-sn-prepare). KEYSTONE fn-snb-replay-apply-record-keeps-nexts-bounded: fn-nntp-nexts-boundedp of the node's watermarks and fn-snb-record-fitp give fn-nntp-nexts-boundedp after fn-replay-apply-record (the node step of every durable record, live and at recovery), no other hypothesis; KEYSTONE fn-snb-replay-keeps-nexts-bounded: fn-replay of a history each of whose records fits at its own prefix (fn-snb-history-fitp) keeps them. KEYSTONE fn-snb-replayed-acceptance-is-projection: that replayed acceptance, a fn-statep with fn-nntp-safe-group-listp names, is fn-nntp-projectionp, whose whole-archive article-count conjunct is removed (fn-snb-projectionp-unfolds). NOT proved here: that the owner CARRIES the node's watermark bound and the in-flight candidate's fit through every host entry (the carried form of fn-snb-history-fitp); that is the owner-relation work of row Q3c / the fn-sjh-okp carrying of row J1.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-057"
+      ],
+      "depends_on": [
+        "PRF-290"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/store-number-bound.lisp",
+        "books/store-number-projection.lisp",
+        "books/owner-prepare-served.lisp",
+        "books/store-prepare-served.lisp",
+        "books/nntp-session.lisp",
+        "tests/acl2/store-number-bound-tests.lisp",
+        "tests/acl2/owner-prepare-served-tests.lisp",
+        "tests/acl2/owner-prepare-outcome-tests.lisp",
+        "tests/acl2/store-prepare-served-tests.lisp",
+        "tests/acl2/nntp-post-tests.lisp",
+        "planning/evidence/pkt-615-number-bound-2026-09-28.md"
+      ],
+      "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound."
     }
   ]
 }

@@ -80,7 +80,7 @@ class PlanTests(unittest.TestCase):
         fingerprinted = [(command, source) for command, source in calls
                          if command[-1].startswith("python3 - identity ")]
         self.assertEqual([command[-1] for command, _ in fingerprinted],
-                         ["python3 - identity /tank/fn/toolchains/w28/acl2-literal-4g",
+                         ["python3 - identity /tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
                           "python3 - identity /tank/fn/toolchains/w28/acl2-literal-4g-tls64k"])
         self.assertTrue(all("def fingerprint" in source for _, source in fingerprinted))
         self.assertEqual(cert_cache_sync.plan(self.SCANNED, set(), {"tc-old", "tc-a"},

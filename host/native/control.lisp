@@ -312,7 +312,9 @@ configuration and the connection pins the owner carries once per request
 (`fn-native-live-status-host-answer').  The wrapper returns no `state', so
 answering changes nothing the owner holds; the host keeps the buffers ACL2
 returns.  The mutex keeps a render from observing a half-applied
-transition."
+transition.  The free space health reports is observed first, off the
+mutex (HST-033: statvfs never runs inside the owner's critical section)."
+  (fnn-owner-space-preobserve service t)
   (fnn-owner-serialized
    service nil
    (lambda ()

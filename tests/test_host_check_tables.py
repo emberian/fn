@@ -63,7 +63,7 @@ def host_function(text: str, name: str) -> str:
 class PublicationReaderCountTests(unittest.TestCase):
     def test_counted_under_the_mutex_before_the_thread_starts(self):
         owner = (ROOT / "host" / "native" / "owner.lisp").read_text(encoding="utf-8")
-        maybe = host_function(owner, "fnn-owner-maybe-publish")
+        maybe = host_function(owner, "fnn-owner-maybe-publish-quantum")
         publish = host_function(owner, "fnn-owner-publish-captured")
         incf = "(sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))"
         decf = "(sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*))"

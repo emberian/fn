@@ -1253,7 +1253,12 @@ reopen predicate, writer-lock observation and observed final namespace."
                            (f-get-global 'fn-store-cfg state)
                            s record (fn-arena-count fn-arena))))
                 (if (equal next s)
-                    (mv nil :refused fn-arena state)
+                    ; :refused, or RFC 3977 section 6's
+                    ; :article-numbers-exhausted
+                    ; (books/store-prepare-served.lisp).
+                    (mv nil (fn-psrv-store-refusal-kind
+                             (f-get-global 'fn-store-cfg state) s record)
+                        fn-arena state)
                   (let ((state (f-put-global 'fn-store-sn next state)))
                     (mv nil (list :seal (fn-record-payload record))
                         fn-arena state)))))))))))
