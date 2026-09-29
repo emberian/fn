@@ -17313,6 +17313,10 @@
         {
           "kind": "theorem",
           "name": "fn-pio-close-waits-for-every-worker"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-successive-file-issues-have-distinct-identities"
         }
       ]
     },
@@ -17355,6 +17359,72 @@
         {
           "kind": "theorem",
           "name": "fn-bplc-bind-and-retire-account-exact-descriptor-completions"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1067",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-of-put"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-of-other-global-put"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1055",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pct-tick-offers-the-queued-article"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1056",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pct-tick-hands-nothing-otherwise"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1062",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pct-requested-article-is-handed-to-the-local-transport"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1058",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-asj-permitted-relay-transform-preserves-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-asj-body-of-strip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-asj-strip-preserves-byte-order"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1061",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-set-group-authority-installs-binding"
         }
       ]
     }

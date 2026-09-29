@@ -1283,6 +1283,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/productive-contract \
 	books/productive-observer \
 	tests/acl2/productive-contract-tests \
+	books/productive-transfer \
+	tests/acl2/productive-transfer-tests \
 	tests/acl2/owner-numbering-tests \
 	books/number-durability \
 	books/number-durability-handles \
@@ -1479,6 +1481,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reclaim-conns-tests \
 	tests/acl2/owner-reclaim-pass-tests \
 	tests/acl2/owner-reclaim-carry-tests \
+	tests/acl2/owner-retain-state-tests \
 	tests/acl2/owner-reclaim-ready-tests \
 	tests/acl2/control-request-word-tests \
 	tests/acl2/packed-submission-tests \
@@ -1556,6 +1559,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/stx-node-lace \
 	books/stx-policy \
 	books/peer-transit-authority \
+	books/article-subject \
+	tests/acl2/article-subject-tests \
+	tests/acl2/group-authority-tests \
 	books/store-node-correspondence \
 	books/stx-epochs \
 	books/stx-authority \
