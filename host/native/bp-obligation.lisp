@@ -36,7 +36,11 @@
   (let ((service nil) (journal nil) (carry nil))
     (unwind-protect
          (progn
-           (setq service (fnn-owner-install store-root 1))
+           ;; A writable owner open honours the developer image's post-cut
+           ;; selector (fnn-post-entry-fault; NIL on a production image), so
+           ;; its Store publications' model cuts are exercised as a POST's.
+           (setq service (fnn-owner-install store-root 1
+                                            (and writable (fnn-post-entry-fault nil))))
            (fnn-owner-transit-serialized
             service nil
             (lambda ()

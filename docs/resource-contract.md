@@ -611,7 +611,12 @@ class and quotes what has been measured with its scope.
 - Evidence: THEOREM (PRF-138, PRF-119).
 - Exceeded: refused by name at T, H or A (code 1).
 - Not bounded: growth under no release: "every class grows monotonically
-  until admission refuses" (specs/storage.md).
+  until admission refuses" (specs/storage.md). One class has an operator's
+  release besides its evidence: a BP carry obligation whose receipt never
+  comes pins its article until the operator waives it (`carry JOURNAL drop
+  WORK --abandon REASON`), a durable waiver whose Store release is the
+  receipt's own event, once (`fn-bpcw-waiver-releases-exactly-once`,
+  PRF-950).
 
 **D2** — a full disk.
 - Bounded: before an append the owner checks `statvfs` against

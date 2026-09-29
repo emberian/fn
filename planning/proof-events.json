@@ -13513,6 +13513,35 @@
           "name": "fn-bpcc-frame-decode-of-sealed"
         }
       ]
+    },
+    {
+      "id": "PRF-950",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpcw-waiver-releases-exactly-once"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcw-only-a-waiver-waives"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcw-only-a-waiver-authors-a-waiver-release"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcw-admitted-waiver-authors-its-release"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcw-waiver-of-an-unheld-obligation-is-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcw-refusal-ignores-the-pin"
+        }
+      ]
     }
   ]
 }
