@@ -23,3 +23,28 @@
                      (fn-olog-control-post-line nil :unaffordable)))
 (assert-event (equal (fn-olog-field "reason" (fn-olog-symbol-text :unaffordable))
                      (fn-olog-text "reason=unaffordable")))
+
+; KEYSTONE fn-ocpr-line-names-the-reason-exactly-when-refused (PRF-972; an
+; equality over an `if', no hypothesis), the refused arm by name.  The owner
+; value is CONSTRUCTED, not a run: nothing but a control submission in
+; flight (id :control, no ledger mark), which is all the class reads.  The
+; completion of :unaffordable is then :refused, and the line is the plain
+; line followed by ` reason=unaffordable'.
+(defconst *ocpr-o*
+  (fn-own-make nil nil nil 0 0 nil nil nil nil nil nil
+               (list *fn-own-control-id*) nil nil nil))
+(assert-event (fn-own-control-submissionp (fn-own-inflight *ocpr-o*)))
+(assert-event
+ (and (equal (fn-own-control-outcome-result *ocpr-o* :unaffordable) :refused)
+      (equal (fn-ocpr-log-line *ocpr-o* :unaffordable)
+             (append (fn-olog-control-post-line *ocpr-o* :unaffordable)
+                     (fn-olog-text " ")
+                     (fn-olog-field "reason" (fn-olog-symbol-text :unaffordable))))
+      (not (equal (fn-ocpr-log-line *ocpr-o* :unaffordable)
+                  (fn-olog-control-post-line *ocpr-o* :unaffordable)))))
+; The same in-flight control submission with a word that refuses nothing
+; takes the plain arm: the reason is named exactly when refused.
+(assert-event
+ (and (not (equal (fn-own-control-outcome-result *ocpr-o* :bogus) :refused))
+      (equal (fn-ocpr-log-line *ocpr-o* :bogus)
+             (fn-olog-control-post-line *ocpr-o* :bogus))))

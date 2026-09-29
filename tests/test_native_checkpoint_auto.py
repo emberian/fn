@@ -206,8 +206,8 @@ class AutoCheckpointFixture(scp.StateCheckpointFixture):
             if nudge:
                 self.nudge(30)
 
-    def status_lines(self):
-        status = self.op("status")
+    def status_lines(self, *words):
+        status = self.op("status", *words)
         self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
         return status.stdout.decode("ascii").splitlines()
 
@@ -356,7 +356,7 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         made = self.op("group", "create", "fn.live")
         self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
         self.node.stop(process=owner)
-        lines = self.status_lines()
+        lines = self.status_lines("--replay")
         self.assertTrue(any(line.startswith("open=checkpoint:") for line in lines), lines)
         again = self.node.start()
         self.node.stop(process=again)
@@ -395,9 +395,15 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         self.assertTrue(20 <= health.returncode <= 29, (health.returncode, text))
         self.assertEqual(self.headroom()["transactions-used"], 66)
         self.node.stop(process=owner)
-        # Offline the publisher is unobserved, never clear.
-        offline = self.op("health").stdout.decode("ascii")
-        self.assertIn("\ncheckpoint-deferred unobserved", offline)
+        # Offline the publisher is unobserved, never clear: a stopped
+        # store's health is the not-running header and the stopped report
+        # (operability-2, row S3; nothing replayed), so it names no
+        # checkpoint-deferred state at all.
+        health = self.op("health")
+        offline = health.stdout.decode("ascii")
+        self.assertTrue(offline.startswith("health exit=18 state=not-running"), offline)
+        self.assertEqual(health.returncode, 18, offline)
+        self.assertNotIn("checkpoint-deferred", offline)
         self.assertFalse(self.path().exists())
         # Offline: no owner, no publisher, no deferral; the store opens by
         # full replay with every article.
