@@ -2070,5 +2070,47 @@ class SentEventsTests(unittest.TestCase):
             self.assertEqual(proof_repl.sent_events("s"), expected)
 
 
+class SendFileTests(unittest.TestCase):
+    """obstructions-8 item 75: send-file sends every form of a test file in
+    order, its includes rewritten for the session's directory."""
+
+    def run_send_file(self, text, keep_going=False, session_dir="books"):
+        with tempfile.TemporaryDirectory(dir=proof_repl.ROOT / "tests" / "acl2") as directory:
+            path = pathlib.Path(directory) / "o8-send-file-tests.lisp"
+            path.write_text(text)
+            args = SimpleNamespace(name="s", file=str(path), limit=None, full=False,
+                                   keep_going=keep_going, allow_undo=False)
+            sent = []
+
+            def fake_many(name, items, limit, full, keep):
+                sent.extend(items)
+                return 0
+
+            out = io.StringIO()
+            with mock.patch.object(proof_repl, "session_directory",
+                                   return_value=proof_repl.ROOT / session_dir), \
+                    mock.patch.object(proof_repl.certs, "valid_looking", return_value=True), \
+                    mock.patch.object(proof_repl, "send_many", side_effect=fake_many), \
+                    mock.patch.object(proof_repl, "record_sent") as recorded, \
+                    contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                code = proof_repl.send_file(args)
+            return code, sent, out.getvalue(), recorded
+
+    def test_every_form_in_order_with_the_includes_made_the_sessions(self):
+        text = ('(in-package "ACL2")\n(include-book "../../../books/wire")\n'
+                '(defthm o8-a (equal x x))\n(assert-event t)\n')
+        code, sent, out, recorded = self.run_send_file(text)
+        self.assertEqual(code, 0, out)
+        self.assertEqual([label.split()[0] for label, _ in sent], ["#1", "#2", "#3", "#4"])
+        self.assertEqual(sent[1][1], '(include-book "wire")')  # books/ is the session's dir
+        self.assertIn("4 form(s) of tests/acl2/", out)
+        recorded.assert_called_once()
+
+    def test_a_form_leaving_the_loop_refuses_the_whole_file(self):
+        code, sent, _, _ = self.run_send_file("(defthm o8-b (equal x x))\n(value :q)\n")
+        self.assertEqual(code, 2)
+        self.assertEqual(sent, [])
+
+
 if __name__ == "__main__":
     unittest.main()

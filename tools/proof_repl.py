@@ -38,6 +38,7 @@ Measuring and probing (2026-09-27, the lanes' recurring obstructions):
     proof_repl.py send NAME '(defthm a ...) (defthm b ...)'   # several forms
     proof_repl.py send-range NAME BOOK --from EVENT --until EVENT [--keep-going]
                                           # --until EXCLUDES its event; --through sends it
+    proof_repl.py send-file NAME tests/acl2/X-tests.lisp [--keep-going]
     proof_repl.py forms BOOK                                  # #N and name of each form
     proof_repl.py probe NAME EVENT [--hints '((...))'] [--form F] [--stop]
 
@@ -2278,6 +2279,63 @@ def range_words(name: str, book: str, chosen: range, items: list, skipped: list[
     return words
 
 
+def file_includes_rooted(form: str, file_dir: Path) -> str:
+    """FORM with an include path written relative to FILE_DIR (the sent
+    file's directory) rewritten root-relative, for prepare_includes to make
+    relative to the session's directory."""
+    match = INCLUDE.match(form.strip())
+    if not match or ":dir" in match.group(2).lower():
+        return form
+    target = include_target(form, file_dir)
+    if target is None or target.startswith("/") or not (ROOT / f"{target}.lisp").is_file():
+        return form
+    return form.replace(f'"{match.group(1)}"', f'"{target}"', 1)
+
+
+def send_file(args) -> int:
+    """Every form of a file, in order, into a live session (item 75).
+
+    For a test file (tests/acl2/X-tests.lisp) beside a book session: its
+    includes are written relative to ITS directory, so each is rewritten for
+    the session's (and a book with no certificate is acquired first, as
+    `send` does); then the forms go one at a time with a line each, stopping
+    at the first refusal unless --keep-going.  send-range sends a range of a
+    book with the book's own paths; this sends a whole file with its paths
+    made the session's."""
+    path = book_path(args.file)
+    text = path.read_text(encoding="utf-8")
+    all_forms = forms(text)
+    if not all_forms:
+        print(f"proof-repl send-file: {args.file} has no forms")
+        return 2
+    for one in all_forms:
+        why = leaves_loop(one)
+        if why:
+            print(f"proof-repl: refusing {args.file}: {one.strip()[:40]!r}: {why}",
+                  file=sys.stderr)
+            return 2
+        if undoes(one) and not getattr(args, "allow_undo", False):
+            print(f"proof-repl: refusing {args.file}: {one.strip()[:40]!r} takes events "
+                  "back out of the session; pass --allow-undo if that is meant",
+                  file=sys.stderr)
+            return 2
+    labels = [form_label(index, one) for index, one in enumerate(all_forms, 1)]
+    rooted = [file_includes_rooted(one, path.parent) for one in all_forms]
+    prepared, ready = prepare_includes(args.name, rooted)
+    if not ready:
+        return 1
+    relative = path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else str(path)
+    print(f"proof-repl send-file: {len(prepared)} form(s) of {relative} into {args.name}, "
+          "in order" + (" (every refusal reported)" if args.keep_going else
+                        " (stopping at the first refusal)"))
+    warn_free_expands(prepared, [text])
+    code = send_many(args.name, list(zip(labels, prepared)), args.limit, args.full,
+                     args.keep_going)
+    if code == 0:
+        record_sent(args.name, prepared)
+    return code
+
+
 def guard_notes(text: str, chosen: range) -> list[str]:
     """For each guard verification among the CHOSEN forms (0-based), the
     same-book callees and the form each is verified at (obstructions-7 item
@@ -3313,8 +3371,8 @@ def refuse_stale_remote(host: str, tree: str, relative: str,
 
 # The commands about one existing session: without --host they go to the
 # machine its start recorded.
-SESSION_COMMANDS = ("send", "send-range", "resync", "status", "stop", "probe", "diff",
-                    "checkpoints")
+SESSION_COMMANDS = ("send", "send-range", "send-file", "resync", "status", "stop", "probe",
+                    "diff", "checkpoints")
 
 # Minutes `start --host BOX` waits for another lane's reservation of BOX.
 # config-and-legacy and operations (2026-09-28) waited 10 and 13 minutes in
@@ -3457,8 +3515,15 @@ def run_remote(args, argv: list[str]) -> int:
                     books.append(target)
     elif command in ("list", "reap", "gc") and not getattr(args, "no_sync", False):
         extra.append("tools/proof_repl.py")  # sync_files adds the rest of tools/
-    elif command in ("send-range", "resync", "diff"):
-        path = book_path(args.book)
+    elif command in ("send-range", "resync", "diff", "send-file"):
+        named = args.file if command == "send-file" else args.book
+        path = book_path(named)
+        if command == "send-file":
+            # its includes' closures go to the box, as a sent include's does
+            for one in forms(path.read_text(encoding="utf-8")):
+                target = include_target(one, path.parent)
+                if target is not None and (ROOT / f"{target}.lisp").is_file():
+                    books.append(target)
         try:
             relative = path.relative_to(ROOT.resolve()).as_posix()
         except ValueError:
@@ -3470,7 +3535,7 @@ def run_remote(args, argv: list[str]) -> int:
             shutil.copyfile(path, staged)
             relative = staged.relative_to(ROOT).as_posix()
         extra.append(relative)
-        forwarded = [relative if word == args.book else word for word in forwarded]
+        forwarded = [relative if word == named else word for word in forwarded]
         if getattr(args, "no_sync", False):
             refuse_stale_remote(host, tree, relative)
     if command == "start":
@@ -3676,6 +3741,18 @@ def main(argv: list[str] | None = None) -> int:
                         "from-source books are always skipped)")
     add_remote_options(p, sync=True)
     p.set_defaults(run=send_range)
+    p = sub.add_parser("send-file", help="every form of a file (a tests/acl2 test file), "
+                                         "in order, its include paths made the session's")
+    p.add_argument("name")
+    p.add_argument("file", help="the file of forms (tests/acl2/X-tests.lisp, .lisp optional)")
+    p.add_argument("--limit", type=float, default=None)
+    p.add_argument("--full", action="store_true", help="every form's whole output")
+    p.add_argument("--keep-going", action="store_true",
+                   help="report every refusal instead of stopping at the first")
+    p.add_argument("--allow-undo", action="store_true",
+                   help="send a form that takes events back out (`:u`, `:ubt`, ...)")
+    add_remote_options(p, sync=True)
+    p.set_defaults(run=send_file)
     p = sub.add_parser("resync", help="undo the session back to EVENT and resend the "
                                       "book from there (or from the first earlier event "
                                       "the world lacks)")
