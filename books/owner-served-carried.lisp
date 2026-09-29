@@ -9,7 +9,8 @@
 ; (fn-scar-relation-carries-node-statep), and the read never changes
 ; the store (fn-scar-ocfg-read-keeps-store), so the premise is carried from
 ; open through every read without being evaluated on it.
-; host/owner-host.lisp fn-owner-chunk calls fn-scar-ocfg-read-tls-prefix.
+; host/owner-host.lisp fn-owner-chunk-span-at runs fn-scar-ocfg-read-tls-prefix
+; over the span (fn-scr-ocfg-read-span-is-reference-under-ocl-relation).
 
 (in-package "ACL2")
 (include-book "served-carried")
@@ -125,7 +126,8 @@
                                    fn-own-tls-served-conn fn-node-statep
                                    fn-midx-correspondencep)))))
 
-; The function host/owner-host.lisp fn-owner-chunk calls.
+; The read host/owner-host.lisp fn-owner-chunk-span-at runs over the span
+; (fn-scr-ocfg-read-span-is-reference-under-ocl-relation).
 (defun fn-scar-ocfg-read-tls-prefix (oc id octets fn-arena)
   (declare (xargs :stobjs fn-arena :guard (fn-wire-octet-listp octets)))
   (let ((result (fn-scar-own-read-tls-prefix (fn-ocfg-owner oc) id octets fn-arena)))
@@ -219,7 +221,7 @@
   :hints (("Goal" :in-theory (e/d (fn-ocl-relation fn-cst-relation fn-sn-statep)
                                   (fn-node-statep)))))
 
-; KEYSTONE for host/owner-host.lisp fn-owner-chunk: under the configured
+; KEYSTONE for host/owner-host.lisp fn-owner-chunk-span-at: under the configured
 ; owner's relation and its view trie's correspondence, the carried read is
 ; the reference read, for every connection identifier, every observed octet
 ; list and every session.  books/owner-offer-indexed.lisp carries the second
