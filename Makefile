@@ -1490,6 +1490,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-export-request-tests \
 	books/owner-snapshot-request \
 	tests/acl2/owner-snapshot-request-tests \
+	books/owner-snapshot-recovery \
+	tests/acl2/owner-snapshot-recovery-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/state-globals \

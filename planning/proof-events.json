@@ -17385,6 +17385,40 @@
           "name": "fn-bpnc-retirement-stops-the-control-listener"
         }
       ]
+    },
+    {
+      "id": "PRF-1068",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osr-open-establishes-live-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-live-ready-capture-opens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-ready-capture-keeps-established-projections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-finish-preserves-identity-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-store-trace-preserves-independent-live"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-finish-preserves-live-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-configure-durable-preserves-live-carry"
+        }
+      ],
+      "pending_subject": "fn-osr-capture is a pure inverse dependency; the running snapshot producer capture caller and maintained keyed/verdict/index fields are not integrated by this slice."
     }
   ]
 }
