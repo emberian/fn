@@ -65,7 +65,7 @@
                       (+ *xt-s* (* 400 *xt-day*)))))
 ; No Expires: default days.
 (assert-event (equal (fn-xpy-age-instant *xt-inn* *xt-s* nil) (+ *xt-s* (* 3 *xt-day*))))
-; No age rule: never.  A :legacy stamp: never.
+; No age rule: never.  A non-natural stamp: never.
 (assert-event (null (fn-xpy-age-instant (fn-xpy-policy 0 0 0 5) *xt-s* *xt-oct1*)))
 (assert-event (null (fn-xpy-age-instant *xt-inn* :legacy *xt-oct1*)))
 

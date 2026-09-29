@@ -96,9 +96,68 @@ RULES = {
     "reclaim-old-or-new": Rule(
         "reclaim-old-or-new",
         "a death at a cut of the reclaim pass leaves the old publication before "
-        ":installed and the new one from it (host/native/owner.lisp +fnn-reclaim-cuts+; "
-        "the pass's book is owner-reclaim-pass.lisp; its theorem is not yet named here)",
-        None, "books/owner-reclaim-pass.lisp", None, "pending"),
+        ":installed and the new one from it: the rerun rewrites nothing "
+        "(fn-orcp-rerun-rewrites-nothing); the swap happens only over exactly the "
+        "captured store with no other reader, in one mutex hold "
+        "(fn-orcp-swap-only-over-the-capture); every open connection is re-pinned onto "
+        "the rebuilt history (books/owner-reclaim-conns.lisp "
+        "fn-orcn-swap-over-the-rebuild-keeps-conn-histories); no single theorem states "
+        "old-or-new at the reader level (online-reclaim-8)",
+        "fn-orcp-rerun-rewrites-nothing", "books/owner-reclaim-pass.lisp", None, "registered"),
+    "receipt-once": Rule(
+        "receipt-once",
+        "a BP application request whose decision is durable (:committed) is never "
+        "re-dispatched: a replay or a duplicate carrier of the same request answers only "
+        "(:return-receipt), so the request's effect (the stored article, the owed receipt) "
+        "happens once however many carriers arrive and survives the loss of its completion "
+        "(fn-bpaj-dispatch-committed-never-retries; the sender's obligation is released "
+        "only by a receipt naming exactly it: fn-bpah-released-receipt-names-exactly-its-"
+        "obligation, books/bp-release-authority.lisp, PRF-075)",
+        "fn-bpaj-dispatch-committed-never-retries", "books/bp-native-app.lisp", "PRF-132",
+        "registered"),
+    "xref-locations-exact": Rule(
+        "xref-locations-exact",
+        "the one Xref line ARTICLE serves ahead of the stored octets (RFC 5537 §3.5 item 8, "
+        "RFC 5536 §3.2.14; fn-rcompat-served-payload-inserts-one-line, books/nntp-reader-"
+        "compat.lisp, PRF-346) names exactly the (group, local number) pairs at which the "
+        "node serves the article, the numbers its own LISTGROUP gave; the stored octets "
+        "never carry one (a supplied Xref is refused at injection)",
+        "fn-xref-pairs-exact", "books/nntp-xref.lisp", "PRF-206", "registered"),
+    "identity-is-the-bytes": Rule(
+        "identity-is-the-bytes",
+        "a retry that takes another route than its original carries other bytes (the served "
+        "route stores the injected article, the store verb the payload as posted) and is "
+        "refused by name as a different article under the same Message-ID "
+        "(fn-post-store-refusal-text :conflict, books/nntp-post.lisp), never a duplicate, "
+        "and changes nothing: the store's committed history and the served bytes are those "
+        "before it (no theorem states the conflict decision at the store boundary yet)",
+        None, "books/nntp-post.lisp", None, "pending"),
+    "power-loss-prefix": Rule(
+        "power-loss-prefix",
+        "a power cut at a recorded write boundary (tools/power_loss.py, dm-log-writes; W7d) "
+        "leaves the recovered store serving every acknowledged post (its 240 was durable) "
+        "and a PREFIX of the unacknowledged ones in log order (the recovery truncates at the "
+        "first incomplete record), whatever writes the device presented (flush, prefix, "
+        "subset or torn selection): the served count is the committed count and no "
+        "acknowledged article is absent or other; judged whole-history, never per article",
+        "fn-lg-batch-crash-is-a-prefix", "books/store-log-crash.lisp", None, "registered"),
+    "number-stability": Rule(
+        "number-stability",
+        "after recovery a fresh article takes a local number above every number the "
+        "recovered store serves: no allocated number is handed out twice (tools/power_loss.py "
+        "bindings; no theorem states it at the served boundary yet)",
+        None, "tools/power_loss.py", None, "pending"),
+    "receipt-policy-order": Rule(
+        "receipt-policy-order",
+        "a policy change after the decision is recorded does not re-decide it: the "
+        "article stays stored and the receipt stays owed; the receipt's forwarding follows "
+        "the route table of the pass that forwards it (host/native/bp-node.lisp reads "
+        "fn-owner-bp-route-table each pass): no route, the receipt is held and the pass "
+        "reports no-route; the route restored, it is sent (no theorem states the "
+        "pass-order property; the host's route read is measured by "
+        "tests/test_bp_node_native.py test_removed_route_keeps_transit_held_and_reports_"
+        "no_route)",
+        None, "host/native/bp-node.lisp", None, "pending"),
 }
 
 # Which rule a persisted-records fact (the image's scan) is judged by, per
@@ -115,13 +174,43 @@ def pending_rules(names) -> list:
     return sorted(n for n in set(names) if RULES[n].status == "pending")
 
 
-def histories(scenario, budget: int):
-    """Every assignment of a fate to each post's original attempt, or None
-    past BUDGET (the caller answers `inconclusive`, never `consistent`)."""
-    posts = [o.id for o in scenario.posts()]
-    if 2 ** len(posts) > budget:
+FATED = ("post", "receipt")      # the operations whose original attempt has a fate
+
+
+def fated(scenario) -> list:
+    return [o for o in scenario.operations if o.op in FATED]
+
+
+def histories(scenario, budget: int, journal=None):
+    """Every assignment of a fate to each post's (and each BP request
+    carrier's) original attempt, or None past BUDGET (the caller answers
+    `inconclusive`, never `consistent`).  With JOURNAL, an attempt whose
+    own reply the client saw (accepted: committed; refused: absent) has
+    that fate fixed before enumeration: the first narrowing step would fix
+    it anyway, and only the attempts with a lost reply are uncertain (a
+    power-loss image with a hundred acknowledged posts and two in flight
+    has four histories, not 2^102)."""
+    fixed = {}
+    if journal is not None:
+        for r in journal.of_kind("client"):
+            if r.get("event") == "reply" and r.get("outcome") in ("accepted", "refused"):
+                op = scenario.operation(r["operation"])
+                if op.op in FATED and op.id not in fixed and not r.get("cross_route"):
+                    fixed[op.id] = "committed" if r["outcome"] == "accepted" else "absent"
+    ids = [o.id for o in fated(scenario) if o.id not in fixed]
+    if 2 ** len(ids) > budget:
         return None
-    return [dict(zip(posts, fates)) for fates in itertools.product(FATES, repeat=len(posts))]
+    return [dict(fixed, **dict(zip(ids, fates)))
+            for fates in itertools.product(FATES, repeat=len(ids))]
+
+
+def identity_committed_at(scenario, history: dict, identity: str, seq: int, journal) -> bool:
+    """Whether the BP request IDENTITY (a receipt operation's `bundle`) has
+    a committed carrier in HISTORY at SEQ: any carrier of it committed
+    (receipt-once: a second carrier of a committed request adds nothing)."""
+    return any(committed_at(scenario, history, o.id, seq, journal)
+               for o in scenario.operations
+               if o.op == "receipt" and o.args.get("bundle") == identity)
 
 
 def committed_at(scenario, history: dict, post_id: str, seq: int, journal) -> bool:
@@ -130,7 +219,7 @@ def committed_at(scenario, history: dict, post_id: str, seq: int, journal) -> bo
     the client saw accepted before SEQ (duplicate-is-no-op)."""
     if any(p["id"] == post_id for p in scenario.prior_posts()):
         return True
-    if history[post_id] == "committed":
+    if history.get(post_id) == "committed":
         return True
     for r in journal.of_kind("client"):
         if r["seq"] >= seq:
@@ -163,17 +252,81 @@ def narrow(scenario, history: dict, rec: dict, journal, registry: dict) -> tuple
             if op.op == "retry":
                 of = op.args["of"]
                 was = committed_at(scenario, history, of, seq, journal)
+                if rec.get("cross_route"):
+                    # Other bytes under the same Message-ID: the named
+                    # conflict exactly when the original is committed; an
+                    # acceptance when it is not; never a duplicate.
+                    if out == "lost":
+                        return True, ()
+                    named = "different article with this Message-ID" in str(rec.get("status", ""))
+                    if out == "refused" and named:
+                        return was, ("identity-is-the-bytes",)
+                    if out == "accepted":
+                        return not was, ("identity-is-the-bytes",)
+                    return False, ("identity-is-the-bytes",)
                 if out == "duplicate":
                     return was, ("duplicate-is-no-op",)
                 if out == "accepted":
                     return not was, ("duplicate-is-no-op",)
                 return True, ()          # refused for another reason, or lost
+            if op.op == "receipt":
+                # The sender's transfer completed (its disposition durable):
+                # this carrier committed; interrupted: both fates survive.
+                if out == "accepted":
+                    return history[op.id] == "committed", ("receipt-once",)
+                return True, ()
             return True, ()
+        if ev == "probe":
+            # The receiver Store after healing: the identity present exactly
+            # when a carrier of it committed; the count is the committed
+            # identities (a duplicate carrier adds no article).
+            identity = rec["identity"]
+            is_in = identity_committed_at(scenario, history, identity, seq, journal)
+            identities = {o.args.get("bundle") for o in scenario.operations if o.op == "receipt"}
+            count = sum(1 for i in identities
+                        if identity_committed_at(scenario, history, i, seq, journal))
+            return (rec["present"] == is_in and rec["articles"] == count), ("receipt-once",)
+        if ev == "status":
+            # The sender's obligation released only by a receipt naming it:
+            # pinned=no needs a committed carrier of the request.
+            if rec.get("pinned") == "no":
+                return identity_committed_at(scenario, history, rec.get("identity", "bundle-1"),
+                                             seq, journal), ("receipt-once",)
+            return True, ()
+        if ev == "restart" and "forward" in rec:
+            # A dispatch pass after a policy change: without the route the
+            # owed receipt is held (no-route), never sent; with it, never
+            # reported no-route.  Which pass sends it is the host's.
+            forward, present = rec["forward"], rec.get("route_present", True)
+            if not present:
+                return forward != "sent", ("receipt-policy-order",)
+            return forward != "no-route", ("receipt-policy-order",)
         if ev == "read":
             art = rec["article"]
             is_in = committed_at(scenario, history, art, seq, journal)
+            xref = rec.get("xref")
+            if xref is not None and rec["result"] in ("match", "other"):
+                # The served Xref names exactly the article's memberships at
+                # the local numbers this session's LISTGROUP gave.
+                if xref.get("malformed") or not is_in:
+                    return False, ("xref-locations-exact",)
+                expected = {}
+                for group in sorted(scenario.groups_of(art)):
+                    number = None
+                    for lst in journal.of_kind("client"):
+                        if lst["seq"] >= seq:
+                            break
+                        if (lst.get("event") == "list-group" and lst.get("group") == group
+                                and art in lst.get("members", ())):
+                            number = lst["numbers"][lst["members"].index(art)]
+                    expected[group] = number
+                got = xref.get("locations", {})
+                if set(got) != set(expected) or any(
+                        n is not None and got[g] != n for g, n in expected.items()):
+                    return False, ("xref-locations-exact",)
             if rec["result"] == "match":
-                return is_in, ("committed-serves-exact", "committed-publishes-id")
+                rules = ("committed-serves-exact", "committed-publishes-id")
+                return is_in, rules + (("xref-locations-exact",) if xref else ())
             if rec["result"] == "absent":
                 return not is_in, ("absent-until-committed",)
             return False, ("committed-serves-exact",)   # other bytes: no history serves them
@@ -190,10 +343,55 @@ def narrow(scenario, history: dict, rec: dict, journal, registry: dict) -> tuple
                 if post_id not in declared:
                     return False, used   # a membership the post never named
             return True, used
+        if ev == "served-counts":
+            # The block replay rig's classification as one observation (W7d,
+            # counts until the rig writes per-article outcomes): the served
+            # count is the committed count, nothing is served with other
+            # bytes, the rest are absent.
+            # The rig's `served_ref` counts a match with the uncut run's
+            # reference, a 430 matching a 430 reference (a refused post)
+            # included, so on counts the composition says: no article is
+            # served with other bytes (an acknowledged article's 430 is
+            # `other`), and the absent ones are among the unanswered whose
+            # fate is absent.  The prefix property waits for per-article
+            # outcomes (`per`).
+            committed = sum(1 for o in scenario.posts()
+                            if committed_at(scenario, history, o.id, seq, journal))
+            refused = sum(1 for r in journal.of_kind("client")
+                          if r["seq"] < seq and r.get("event") == "reply"
+                          and r.get("outcome") == "refused"
+                          and scenario.operation(r["operation"]).op == "post")
+            ok = (rec.get("other", 0) == 0
+                  and rec["served"] + rec["absent"] == rec["attempted"]
+                  and rec["absent"] <= rec["attempted"] - refused - committed)
+            return ok, ("power-loss-prefix", "committed-serves-exact")
+        if ev == "numbers":
+            fresh, top = rec.get("fresh_number"), rec.get("max_served")
+            if fresh is None or top is None:
+                return False, ("number-stability",)
+            return fresh > top, ("number-stability",)
+        if ev == "number":
+            # A number a reader was served before the cut names the same
+            # article after recovery; unlisted only once the reclaim ran
+            # (the reclaim withdraws articles, never reissues a number);
+            # served with another Message-ID it was handed out twice.
+            result = rec.get("result")
+            if result == "same":
+                return True, ("number-stability",)
+            if result == "unlisted":
+                return bool(rec.get("reclaimed")), ("number-stability",)
+            return False, ("number-stability",)
         if ev == "recover":
             # A killed recovery (outcome lost) says nothing; the healing
             # recovery completes, or the history was not kept.
             if rec.get("phase") == "healing":
+                if rec.get("outcome") == "no-store":
+                    # The cut fell before the store's initialization was
+                    # durable (the block rig's init phase): no store is the
+                    # old state, consistent only with nothing committed.
+                    committed = any(committed_at(scenario, history, o.id, seq, journal)
+                                    for o in fated(scenario))
+                    return not committed, ("crash-prefix",)
                 return rec.get("outcome") == "completed", ("recovery-keeps-history",)
             return True, ()
         return True, ()
@@ -214,6 +412,12 @@ def narrow(scenario, history: dict, rec: dict, journal, registry: dict) -> tuple
             if op.op == "reclaim":
                 return True, ("reclaim-old-or-new",)
             return True, ()
+        if ev == "persisted-write-selection":
+            # Whatever the device presented, the committed unacknowledged
+            # posts are a prefix of the open batch in log order.
+            fates = [history.get(o) == "committed" for o in rec.get("open", ())]
+            prefix = all(fates[:sum(fates)]) if fates else True
+            return prefix, ("power-loss-prefix",)
         if ev == "persisted-records":
             count = len(scenario.prior_posts()) + sum(
                 1 for o in scenario.posts()
@@ -238,10 +442,13 @@ def witnesses_observed(scenario, journal) -> set:
         ev = r.get("event")
         if ev == "reply":
             op = scenario.operation(r["operation"])
-            if r["outcome"] == "accepted":
+            if r["outcome"] == "accepted" and op.op in ("post", "retry"):
                 seen.add("post-accepted")
             if op.op == "retry" and r["outcome"] in ("duplicate", "accepted"):
                 seen.add("retry-reconciled")
+            if (op.op == "retry" and r.get("cross_route") and r["outcome"] == "refused"
+                    and "different article with this Message-ID" in str(r.get("status", ""))):
+                seen.add("cross-route-retry-refused")
         if ev == "read" and r.get("result") == "match":
             seen.add("read-completed")
         if ev == "read" and r.get("during_competing_work") and r.get("result") == "match":
@@ -250,8 +457,18 @@ def witnesses_observed(scenario, journal) -> set:
             seen.add("reclaim-freed")
         if ev == "recover" and r.get("phase") == "healing" and r.get("outcome") == "completed":
             seen.add("recovery-completed")
+        if ev == "recover" and r.get("phase") == "healing" and r.get("init_phase") and (
+                r.get("outcome") == "completed"
+                or (r.get("outcome") == "no-store" and r.get("reinit") == 0)):
+            # A cut in the store's initialization leaves the old state (no
+            # store, re-initialized) or the new (a store that recovers).
+            seen.add("init-old-or-new")
         if ev == "list-group" and r.get("members"):
             seen.add("memberships-listed")
         if ev == "status" and str(r.get("open", "")).startswith("open=checkpoint:"):
             seen.add("checkpoint-installed")
+        if ev == "status" and r.get("receipt") == "accepted" and r.get("pinned") == "no":
+            seen.add("receipt-delivered")
+        if ev == "probe" and r.get("present") and r.get("articles") == 1:
+            seen.add("receipt-effect-once")
     return seen

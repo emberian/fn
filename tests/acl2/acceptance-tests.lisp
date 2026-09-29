@@ -166,7 +166,7 @@
 ; the dotted-list witness carries handle 0 where it carried the empty octet list.
 (assert-event (fn-pendingp '("fn.test") '(("fn.test" . 1)) #c(0 1)
                            '(0 0 "m" 0 ("fn.test") (("fn.test" . 1)) t
-                             :legacy)))
+                             0)))
 
 ; The :logic bodies of the transitions are total: a non-state is returned
 ; unchanged.  These calls are outside the guard, so they run in the logic.

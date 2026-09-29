@@ -28,6 +28,7 @@
 ; tools/run_owner.py can abandon ONE connection, and before it existed an
 ; exception in the serve loop ended the process for every connection.
 (include-book "../books/owner-config")
+(include-book "../books/state-globals")
 ; The compression threshold (fn-owner-compress-min-octets; PRF-341).
 (include-book "../books/payload-lz-append")
 ;; RFC 8054 COMPRESS DEFLATE: the inflater the host calls per connection
@@ -220,6 +221,13 @@
 (include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
+; The owner's calls into these books (host_check --books, obstructions-9 item
+; 83): the TLS handshake budget (fn-hsb-*), the number bound at the open
+; (fn-onb-open-okp) and the pinned outcomes (fn-oop-*).  No other host file
+; brought them into the image world, so its host-ld would fail.
+(include-book "../books/tls-handshake-budget")
+(include-book "../books/owner-number-bound")
+(include-book "../books/owner-outcome-pinned")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -239,7 +247,7 @@
 ; fixed before the profile is handed over; the POST boundary applies the
 ; profile's own bound (`fn-owner-post-boundary').
 (defun fn-owner-post-config (cfg)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (fn-oag-post-config cfg *fn-record-max-payload*))
 
 (defun fn-owner-ocfg (state)
@@ -283,14 +291,14 @@
                           (fn-record-parse-value parsed) lock-owned names profile)))))
 
 (defun fn-owner-clock-observation (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-own-clock (fn-owner-core state))))
 
 (defun fn-owner-stamp-status (state)
   ; The native submission boundary asks ACL2 whether this owner's current
   ; observation can become a schema-1 stamp.  An accepted observation may
   ; still have no wall or exceed the record's uint32 seconds bound.
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (if (natp (fn-record-stamp-of-observation
                     (fn-own-clock (fn-owner-core state))))
              :usable :clock-unusable)))
@@ -313,7 +321,7 @@
 ;; passed injection and the owner's admission refused it with no name
 ;; (PKT-codex-003's native case).
 (defun fn-owner-live-post-config (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-own-config (fn-owner-core state))))
 
 (defun fn-owner-install-ocfg (oc state)
@@ -321,7 +329,7 @@
   (f-put-global 'fn-owner oc state))
 
 (defun fn-owner-replace-core (owner state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let ((oc (f-get-global 'fn-owner state)))
     (fn-owner-install-ocfg (fn-ocfg-with-owner oc owner) state)))
 
@@ -346,7 +354,7 @@
 ; fn-owner-chunk-span and books/served-plan.lisp, HST-023; before it the
 ; octet buffer of PRF-192, books/served-reply-buffer.lisp).
 (defun fn-owner-install-served-effects (effects state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (let* ((state (f-put-global 'fn-owner-effects effects state))
          (state (f-put-global 'fn-owner-output nil state))
          (state (f-put-global 'fn-owner-closep (fn-served-closingp effects) state))
@@ -607,7 +615,7 @@
       (value :refused))))
 
 (defun fn-owner-store-profile (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (if (boundp-global 'fn-owner-store-profile state)
       (f-get-global 'fn-owner-store-profile state)
     nil))
@@ -620,7 +628,7 @@
 ; reader uses the verdict only for the profile the carry names (the same
 ; object as fn-owner-store-profile's, so the EQUAL is an EQ).
 (defun fn-owner-profile-carry (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (if (boundp-global 'fn-owner-profile-carry state)
       (f-get-global 'fn-owner-profile-carry state)
     nil))
@@ -654,7 +662,7 @@
 ;; owner `fn-owner' is never written here.
 
 (defun fn-owner-sco-global (name state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (symbolp name)))
   (if (boundp-global name state) (f-get-global name state) nil))
 
 ; The committed record count: the snoc-list's carried count, which is
@@ -662,12 +670,12 @@
 ; fn-sf-records-count-is-used-by-definition), not a len of the history and
 ; not a read of the store node's event index.
 (defun fn-owner-sco-count (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (fn-sf-records-count (fn-sn-files (fn-own-store (fn-owner-core state)))))
 
 ; The newest durable checkpoint the Store open verified: its S, or NIL.
 (defun fn-owner-sco-note-durable (sequence state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (let ((state (f-put-global 'fn-owner-sco-durable (and (natp sequence) sequence)
                              state)))
     (value :noted)))
@@ -679,7 +687,7 @@
 ; arena holds exactly the canonical payloads of the opened history, which is
 ; the base's (fn-scka-next-checkpoint-is-capture's H0).
 (defun fn-owner-sco-note-base-payloads (count state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (let ((state (f-put-global 'fn-owner-sco-base-payloads (and (natp count) count) state)))
     (value :noted)))
 
@@ -697,7 +705,7 @@
 ; fnn-checkpoint-budget-test-override; nil otherwise), so the due path and
 ; the publication see one budget.
 (defun fn-owner-sco-budget (override profile)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (if (natp override) override (fn-ock-capture-budget profile)))
 
 ;; :due, :idle, :blocked or :inflight, by fn-ock-publication-next
@@ -892,7 +900,7 @@
 ; and the status report) until a later verdict replaces it.  Answers S, or
 ; :none.
 (defun fn-owner-sco-publication-done (next payloads durablep verdict state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (let* ((state (f-put-global 'fn-owner-sco-base (fn-scka-strip-base next) state))
          ; NEXT's canonical payload count, the next publication's H0
          (state (f-put-global 'fn-owner-sco-base-payloads (and (natp payloads) payloads)
@@ -948,7 +956,7 @@
             (or dry (eq mode :reclaim) (fn-rci-recordedp v)))))))
 
 (defun fn-owner-orc-request-status (word)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   ; Q16 (a): the pass's answers -- :installed and :none accepted; a deferral
   ; by name (:deferred-credit, -delta, -unbound, -busy, -readers, -rebuild, the
   ; publication's -budget/-space/-unencodable) and :failed refused.
@@ -1007,7 +1015,7 @@
   (fn-orc-chunk rows ctx acc fn-arena))
 
 (defun fn-owner-orc-init ()
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (fn-rcls-init))
 
 (defun fn-owner-orc-classes (ctx fn-arena)
@@ -1073,7 +1081,7 @@
 ; grow (`fn-sbud-octets-cache-valid-after-commit'); the count stored with it
 ; is the stobj's (fn-hist-count-is-used).
 (defun fn-owner-record-octets (fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (declare (xargs :stobjs (fn-hist state) :guard (boundp-global 'fn-owner state)))
   (let* ((s (fn-owner-store state))
          (fn-hist (fn-hist-sync (fn-sn-files s) fn-hist))
          (cache (if (boundp-global 'fn-owner-record-octets state)
@@ -1102,7 +1110,7 @@
 ; fn-cvec-debt-extend-is-the-record-debt), reset with the octets when a
 ; profile is installed at open.
 (defun fn-owner-record-debt (fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (declare (xargs :stobjs (fn-hist state) :guard (boundp-global 'fn-owner state)))
   (let* ((s (fn-owner-store state))
          (fn-hist (fn-hist-sync (fn-sn-files s) fn-hist))
          (cache (if (boundp-global 'fn-owner-record-debt state)
@@ -1159,7 +1167,10 @@
   (fn-sn-node (fn-owner-store state)))
 
 (defun fn-owner-step (event fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))
+                              (fn-ocfg-eventp (fn-owner-ocfg state) event))
+                  :guard-hints (("Goal" :in-theory (enable fn-sbud-oc-store)))))
   (let ((state (fn-owner-install-ocfg
                 (fn-ocfg-step (fn-owner-ocfg state) event fn-arena) state)))
     state))
@@ -1189,7 +1200,7 @@
 ;; (books/connection-budget.lisp fn-cbud-deltas-refusal-keeps-the-capacity-held).
 ;; Every live path reaches this function (native-admin, peer-invite, auth).
 (defun fn-owner-connection-bound (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (and (boundp-global 'fn-owner-connection-bound state)
        (f-get-global 'fn-owner-connection-bound state)))
 
@@ -1211,14 +1222,14 @@
 ; PKT-643: the restricted views prepared for read-restricted sessions
 ; (books/group-access-cache.lisp), nil before the first read.
 (defun fn-owner-access-cache (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (and (boundp-global 'fn-owner-access-cache state)
        (f-get-global 'fn-owner-access-cache state)))
 
 (defun fn-owner-article-slots (state)
   ; The slots the run installed (fn-owner-connection-budget), or one before
   ; any run has: a node always admits one article in flight.
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (let ((slots (and (boundp-global 'fn-owner-article-slots state)
                     (f-get-global 'fn-owner-article-slots state))))
     (if (posp slots) slots 1)))
@@ -1228,7 +1239,7 @@
 ; pool what it leaves free) and one article's reserve.  Before a run
 ; installs them, a ledger that admits one article (fn-mca-default).
 (defun fn-owner-credit-reserve (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (let ((r (and (boundp-global 'fn-owner-credit-reserve state)
                 (f-get-global 'fn-owner-credit-reserve state))))
     (if (posp r) r (fn-heap-article-reserve-octets nil))))
@@ -1240,7 +1251,7 @@
     (or l (fn-mca-default (fn-owner-credit-reserve state)))))
 
 (defun fn-owner-put-credits (l state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (f-put-global 'fn-owner-credits l state))
 
 ;; The commit's steps (host/native/owner.lisp): the batch appended
@@ -1353,7 +1364,7 @@
 ;; invariant the history reopens to the state it installs
 ;; (fn-oclc-authorized-record-reopens).  It reads no record.
 (defun fn-owner-reconfigure-authorizedp (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-oclc-live-authorizep (fn-owner-ocfg state))))
 
 ;; lane prepare-served: a live request refused BEFORE its record was written
@@ -1364,13 +1375,13 @@
 ;; the configuration lock held and :begin/:take refused every POST until a
 ;; restart.  Answers :unstaged, or :none when nothing was staged.
 (defun fn-owner-reconfigure-unstage (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let* ((before (fn-owner-ocfg state))
          (state (fn-owner-install-ocfg (fn-psrv-unstage before) state)))
     (value (if (fn-ocfg-staged before) :unstaged :none))))
 
 (defun fn-owner-config-generation (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-cfg-generation (fn-owner-config state))))
 
 (defun fn-owner-config-served (state)
@@ -1391,7 +1402,9 @@
 ;; the two composite steps of books/owner-log-route.lisp (fn-olr-ocfg-reserve,
 ;; fn-olr-ocfg-order: the file route's success sequences, by definition).
 (defun fn-owner-io (operation result state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (and (boundp-global 'fn-owner state)
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state))))
+                  :guard-hints (("Goal" :in-theory (enable fn-sbud-oc-store)))))
   (let* ((oc (fn-owner-ocfg state))
          (state (fn-owner-install-ocfg
                  (case operation
@@ -1404,7 +1417,7 @@
 ; The parse carry fn-owner-take wrote (books/owner-parse-carried.lisp): each
 ; reader below is its reference under fn-apc-p, whatever octets it is given.
 (defun fn-owner-parse-carry (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (if (boundp-global 'fn-owner-parse-carry state)
       (f-get-global 'fn-owner-parse-carry state)
     nil))
@@ -1448,7 +1461,7 @@
 ;; keeps it before each member's outcome, and renders from it only when the
 ;; batch's barrier fails).
 (defun fn-owner-snapshot (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-owner-core state)))
 
 ;; The reply a member's connection gets for the word :uncertain, rendered
@@ -1458,7 +1471,7 @@
 ;; feeds it) for that word, as fn-owner-install-effects renders them.  No
 ;; state changes: the batch failed and the owner stops.
 (defun fn-owner-uncertain-reply-of (owner id transitp kind reason)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (fn-served-reply-octets
    (car (if transitp
             (fn-own-transit-outcome owner id kind reason :uncertain)
@@ -1466,7 +1479,7 @@
 
 ;; The operator's bounds on one log batch, from the live configuration.
 (defun fn-owner-log-bounds (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-olr-bounds (fn-owner-config state))))
 
 ;; Lane compression-extents-2 (PRF-341): the compression threshold from the
@@ -1474,7 +1487,7 @@
 ;; (books/payload-lz-append.lisp fn-lzr-config-min; no row is 0, off): the
 ;; MIN host/native/io.lisp fnn-log-compress hands fn-lzr-append-plan.
 (defun fn-owner-compress-min-octets (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-lzr-config-min (fn-cfg-value (fn-owner-config state)))))
 
 ;; Lane time-model-2: the three disk rows, (D H C) as the operator set them
@@ -1482,7 +1495,7 @@
 ;; barrier's :issue event normalizes them (fn-otm-limits: defaults for
 ;; absent rows, H at least D).
 (defun fn-owner-barrier-limits (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let ((v (fn-cfg-value (fn-owner-config state))))
     (value (fn-otm-limits (list (fn-cfg-limit v "barrier-deadline-ms")
                                 (fn-cfg-limit v "barrier-stall-ms")
@@ -1494,7 +1507,7 @@
 ;; (books/owner-log-route.lisp fn-olr-omax) and the operator's
 ;; `disk-reserve-octets' row (ACL2's default when unset).
 (defun fn-owner-space-need (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let ((v (fn-cfg-value (fn-owner-config state))))
     (value (fn-otm-space-need (fn-olr-omax v) (fn-smr-reserve-octets)
                               (fn-cfg-limit v "disk-reserve-octets")))))
@@ -1502,7 +1515,7 @@
 ;; Whether the oldest queued submission is a served POST's (not a control
 ;; submission, not a peer transit): the only kind a slow disk sheds.
 (defun fn-owner-queue-head-served-p (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let ((q (fn-own-queue (fn-owner-core state))))
     (value (and (consp q)
                 (not (fn-own-transit-subp (car q)))
@@ -1517,7 +1530,7 @@
 ;; fn-prc-carryp-when-atom).  The recognizer names no owner state, so no
 ;; owner step between two POSTs can falsify it.
 (defun fn-owner-retain-carry (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (if (boundp-global 'fn-owner-retain-carry state)
       (f-get-global 'fn-owner-retain-carry state)
     nil))
@@ -1643,7 +1656,7 @@
 ; one seal per POST.  A row that does not name the newest handle is refused
 ; by name (:not-sealed), never prepared.
 (defun fn-owner-cat-prepare-sealed (fn-arena fn-cat state)
-  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
+  (declare (xargs :stobjs (fn-arena fn-cat state) :guard t))
   (let ((cand (and (boundp-global 'fn-owner-cat-candidate state)
                    (f-get-global 'fn-owner-cat-candidate state))))
     (if (not (consp cand))
@@ -1660,7 +1673,8 @@
 ; :fault (KEYSTONE fn-pout-refuse-reservation-answers-the-host-test: the word
 ; the before/after comparison this entry used to make).
 (defun fn-owner-refuse-reservation (fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state))))))
   (mv-let (word next)
     (fn-pout-refuse-reservation (fn-owner-ocfg state) fn-arena)
     (let* ((state (fn-owner-install-ocfg next state))
@@ -1852,7 +1866,10 @@
 ;; Guard-verified under fn-sn-statep of the store, which fn-ocl-relation
 ;; carries.
 (defun fn-owner-prepare-identity (event fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :guard (and (boundp-global 'fn-owner state)
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))
+                              (fn-prc-carryp (fn-owner-retain-carry state)))
+                  :guard-hints (("Goal" :in-theory (enable fn-sn-statep fn-sbud-oc-store fn-arena-count-is-len)))))
   (let ((s (fn-owner-store state)))
     (if (not (or (fn-stxk-p event) (fn-stxa-p event)))
         (value :invalid)
@@ -1903,7 +1920,8 @@
 ; The consumer proposal is constructed by ACL2.  The host carries this exact
 ; bounded event into Store; it does not rebuild the scope, epoch or cursor.
 (defun fn-owner-prepare-consumer (event fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state))))))
   (if (not (fn-cpe-eventp event))
       (value :invalid)
     ; fn-pout-prepare-consumer: (:store (:prepare-consumer E)) and its word
@@ -1916,7 +1934,8 @@
 ; ACL2 constructs the exact topic event before this host boundary. Store's
 ; carried historical projection decides whether it may be staged.
 (defun fn-owner-prepare-topic (event fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program)
+  (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))))
            (ignorable fn-arena))
   (if (not (fn-th-topic-eventp event))
       (value :invalid)
@@ -1936,7 +1955,7 @@
 ; peer nor host may supply an external verified/source verdict.
 (defun fn-owner-topic-propose (operation source-sequence observed-uid
                                          entropy-id quota state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let* ((s (fn-owner-store state))
          (projection (fn-sn-topic s))
          (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
@@ -1948,7 +1967,7 @@
 ; These ACL2 calls alone choose the operation, current cursor scope and Store
 ; coordinates.  No request may provide qver, view, principal or event bytes.
 (defun fn-owner-consumer-local-bootstrap (history incarnation state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-col-bootstrap (fn-owner-core state) history incarnation)))
 
 ;; The consumer count is the carried Store profile's field 9 (D27, PRF-167),
@@ -1966,16 +1985,16 @@
 ; (books/consumer-bound.lisp fn-cbind-plain-ack-of-an-unbound-consumer-is-
 ; the-consumer-ack).
 (defun fn-owner-consumer-local-ack (cursor-octets state)
-  (declare (xargs :stobjs state :mode :program
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
                   :guard (fn-cbor-octet-listp cursor-octets)))
   (value (fn-cbind-plain-ack (fn-owner-ocfg state) cursor-octets)))
 
 (defun fn-owner-consumer-local-position (consumer state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-col-position (fn-owner-core state) consumer)))
 
 (defun fn-owner-consumer-local-status (consumer state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-col-status (fn-owner-core state) consumer)))
 
 (defun fn-owner-consumer-local-poll (consumer fn-arena fn-hist state)
@@ -2003,11 +2022,11 @@
         fn-hist state)))
 
 (defun fn-owner-consumer-local-unregister (consumer state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-col-unregister (fn-owner-core state) consumer)))
 
 (defun fn-owner-checkpoint-clone-phase (marker-octets state)
-  (declare (xargs :stobjs state :mode :program
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
                   :guard (fn-cbor-octet-listp marker-octets)))
   (value (fn-cpa-clone-phase-of-octets
           (fn-owner-store state) marker-octets)))
@@ -2016,7 +2035,8 @@
 ; when the Store's gate fn-sn-known-abort-enabledp holds, else :fault
 ; (KEYSTONE fn-pout-known-abort-answers-the-host-test).
 (defun fn-owner-known-abort (fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state))))))
   (mv-let (word next)
     (fn-pout-known-abort (fn-owner-ocfg state) fn-arena)
     (let* ((state (fn-owner-install-ocfg next state))
@@ -2032,7 +2052,7 @@
       (value word))))
 
 (defun fn-owner-pending-octets (fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :guard (boundp-global 'fn-owner state)))
   (let ((record (fn-sf-record-candidate
                  (fn-sn-files (fn-owner-store state)))))
     ; fn-rcon-store-event-encode-is-store-event-encode: the encoder's
@@ -2045,7 +2065,7 @@
 ; count of its own.  It is the committed count
 ; (books/store-budget-naming.lisp `fn-sbud-pending-sequence-is-used').
 (defun fn-owner-pending-sequence (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   ; fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence (books/records-concrete).
   (value (fn-rcon-sbud-pending-sequence (fn-owner-store state))))
 
@@ -2079,7 +2099,10 @@
 ;; every field it read.  The signed POST's composite, keyring snapshots,
 ;; retention, consumer and topic events complete here.
 (defun fn-owner-finish-synced (fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (declare (xargs :stobjs (fn-hist state) :guard (and (boundp-global 'fn-owner state)
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))
+                              (fn-prc-carryp (fn-owner-retain-carry state)))
+                  :guard-hints (("Goal" :in-theory (enable fn-sbud-oc-store)))))
   (let* ((before (fn-owner-core state))
          (before-files (fn-sn-files (fn-own-store before)))
          ;; served-costs-4 (Q5b): the completion the host calls is
@@ -2109,7 +2132,10 @@
 ; history, fn-ceis-finish-keeps-records), so fn-rix-ocfg-complete is
 ; fn-ccar-ocfg-complete (fn-rix-ocfg-complete-is-ccar-ocfg-complete).
 (defun fn-owner-finish (fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (declare (xargs :stobjs (fn-hist state) :guard (and (boundp-global 'fn-owner state)
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))
+                              (fn-prc-carryp (fn-owner-retain-carry state)))
+                  :guard-hints (("Goal" :in-theory (enable fn-sbud-oc-store)))))
   (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
     (mv-let (erp val state) (fn-owner-finish-synced fn-hist state)
       (mv erp val fn-hist state))))
@@ -2233,7 +2259,8 @@
 ; fn-pout-begin-answers-the-host-test, for the natural connection
 ; identifiers the host passes).
 (defun fn-owner-begin (id fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state))))))
   (mv-let (word next)
     (fn-pout-begin (fn-owner-ocfg state) id fn-arena)
     (let ((state (fn-owner-install-ocfg next state)))
@@ -2353,7 +2380,7 @@
     (value result)))
 
 (defun fn-owner-bp-transit-raw (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let ((sub (fn-own-inflight (fn-owner-core state))))
     (value (and (fn-own-bp-transit-submissionp sub)
                 (fn-peer-submission-octets (fn-own-sub-decision sub))))))
@@ -2377,7 +2404,7 @@
 ;; the host seals; flip-L6-2's rule): its payload position is a handle since
 ;; the records flip (lane matrix-reds: approve answered envelope-malformed).
 (defun fn-owner-moderation-plan (op login id reason fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :guard (boundp-global 'fn-owner state)))
   (value (fn-mvb-plan op login id reason (fn-owner-ocfg state) fn-arena)))
 
 ; After the records flip the node holds the stored article's HANDLE; the
@@ -2409,7 +2436,7 @@
 ; (`fn-native-control-refusal-status'), so an article past the profile's A
 ; reaches the operator as `article-exceeds-profile-bound', not a bare refusal.
 (defun fn-owner-operator-refusal-reason (msgid-octets group-octets payload fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program
+  (declare (xargs :stobjs (fn-arena state) :guard (boundp-global 'fn-owner state)
                   :guard (and (fn-cbor-octet-listp msgid-octets)
                               (fn-cbor-octet-listp payload)
                               (fn-octet-list-listp group-octets))))
@@ -2437,7 +2464,7 @@
 ; for postingp: books/auth-secret.lisp's verifier v2 fields.
 
 (defun fn-owner-auth-cred-of (row)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard (true-listp row)))
   (fn-auth-make-cred (nth 0 row) (nth 1 row)
                      (fn-authsec-verifier (nth 2 row) (nth 3 row)
                                           (nth 5 row) (nth 6 row))
@@ -2461,7 +2488,7 @@
         (value :ok)))))
 
 (defun fn-owner-auth (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (if (boundp-global 'fn-owner-auth state)
       (f-get-global 'fn-owner-auth state)
     (fn-auth-open-config)))
@@ -2518,7 +2545,7 @@
 ; auth profile parser calls this after owner recovery and before the listener
 ; opens.  Raw Lisp cannot rebuild a credential row or change one policy bit.
 (defun fn-owner-set-auth-config (acfg state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (if (not (fn-auth-configp acfg))
       (value :rejected)
     (let ((state (f-put-global 'fn-owner-auth acfg state)))
@@ -2537,7 +2564,7 @@
 
 (defun fn-owner-peer-name-for (rows address)
   ; The first configured peer whose auth slot is this source address.
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (if (consp rows)
       (if (and (equal (fn-cfg-row-b (car rows)) "auth-source-address")
                (equal (fn-cfg-row-c (car rows)) address))
@@ -2562,7 +2589,7 @@
 ; IPv6 profile admits only ::1, so every other IPv6 shape remains an explicit
 ; non-match until its textual policy is added in ACL2.
 (defun fn-owner-ipv4-address-octets (address)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (if (consp address)
       (if (and (natp (car address)) (<= (car address) 255))
           (append (fn-nntp-decimal (car address))
@@ -2737,7 +2764,7 @@
 (defun fn-owner-feed-word-publication (word command log-line)
   ; A step with no journal records: a connection-phase command (MODE,
   ; AUTHINFO, STARTTLS), a bare word, or a refusal.
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (fn-ores-feed-publication word nil nil nil command :ok log-line))
 
 ; The only host projection of a bounded feed step.  The ACL2 subject has
@@ -2775,7 +2802,7 @@
 ;; (fn-icar-submission-intent-is-reference): the identity is the one digested
 ;; at take, not three new digests of the payload.
 (defun fn-owner-intent-carry (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (if (boundp-global 'fn-owner-submit-intent state)
       (f-get-global 'fn-owner-submit-intent state)
     nil))
@@ -2821,7 +2848,8 @@
 ; key.  A partial binding is :uncertain and must fence startup.
 ; The record for the first unresolved intent, or nil (none, or unbound).
 (defun fn-owner-feed-reconcile-record (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (and (boundp-global 'fn-owner state) (boundp-global 'fn-owner-feed-intents state)
+                              (listp (f-get-global 'fn-owner-feed-intents state)))))
   (let ((values (car (f-get-global 'fn-owner-feed-intents state))))
     (and values
          (fn-own-feed-intent-reconcile-record
@@ -2861,20 +2889,20 @@
         (value :ok)))))
 
 (defun fn-owner-feed-journal-peer-validp (peer-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (value (if (fn-feed-namep peer-octets) t nil)))
 
 (defun fn-owner-feed-journal-begin (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (let ((state (f-put-global 'fn-owner-feed-safe-offset 0 state)))
     (value :ok)))
 
 (defun fn-owner-feed-journal-prefix-size (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (value *fn-feed-journal-prefix-size*))
 
 (defun fn-owner-feed-journal-offset (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner-feed-safe-offset state)))
   (value (f-get-global 'fn-owner-feed-safe-offset state)))
 
 ; A transit transfer that became durable owes the feed journal the same
@@ -2904,7 +2932,7 @@
 ; VERDICT (PKT-473) is the accepted arm's fn-pcb-transit-verdict
 ; (fn-owner-transit-verdict below), or nil.
 (defun fn-owner-transit-log-line (id kind reason word detail verdict state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let ((state (f-put-global 'fn-owner-log-line
                              ; W5b: "accepted ... authority=NAME" keeps the
                              ; authority refusal distinct from the byte
@@ -2921,15 +2949,15 @@
     (value :ok)))
 
 (defun fn-owner-transit-kind (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner-transit-kind state)))
   (value (f-get-global 'fn-owner-transit-kind state)))
 
 (defun fn-owner-transit-reason (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner-transit-reason state)))
   (value (f-get-global 'fn-owner-transit-reason state)))
 
 (defun fn-owner-transit-evidence (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner-transit-evidence state)))
   (value (f-get-global 'fn-owner-transit-evidence state)))
 
 ; The word the host observed for the submission in flight (:durable,
@@ -3060,21 +3088,21 @@
                      (fn-node-acceptance (fn-owner-node state))))))))
 
 (defun fn-owner-next-txid (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-state-next-txid (fn-node-acceptance (fn-owner-node state)))))
 
 (defun fn-owner-next-store-coordinates (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let* ((s (fn-owner-store state))
          (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
     (value (list (fn-sn-identity-next s) txid txid))))
 
 (defun fn-owner-hybrid-snapshots (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-sn-keyring-snapshots (fn-owner-store state))))
 
 (defun fn-owner-hybrid-current-enrollment (generation state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-hl-current-enrollment
           generation (fn-sn-keyring-snapshots (fn-owner-store state)))))
 
@@ -3083,7 +3111,7 @@
 ; submissions and BP transit pass nil, the D02 decision unchanged
 ; (fn-pa-current-plan-without-carried-list-never-carries).
 (defun fn-owner-transit-carried-list (transitp state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (if (and transitp (boundp-global 'fn-owner-transit-carried state))
       (f-get-global 'fn-owner-transit-carried state)
     nil))
@@ -3095,7 +3123,7 @@
 ;; delta list host/native/auth.lisp fnn-native-auth-publish-bindings stages
 ;; with fn-owner-reconfigure-deltas and publishes in order, or (:refused R).
 (defun fn-owner-login-bindings-plan (bindings state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-lb-sync-plan bindings (fn-cfg-value (fn-ocfg-config (fn-owner-ocfg state))))))
 
 ;; The posting policy's gate for the served submission in flight
@@ -3108,7 +3136,7 @@
 ;; verdict's service-log line is left in fn-owner-login-log-line (nil: no
 ;; login).
 (defun fn-owner-login-gate (received state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let* ((verdict (fn-lb-ocfg-gate (fn-owner-ocfg state) received))
          (state (f-put-global 'fn-owner-login-log-line
                               (fn-lb-verdict-line verdict) state)))
@@ -3143,7 +3171,7 @@
 ;; starts with, left in `fn-owner-log-line' for host/native/owner.lisp
 ;; fnn-owner-maybe-reopen-log.
 (defun fn-owner-log-reopen (configured handled requested state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let* ((decision (fn-olr-decide configured handled requested))
          (state (f-put-global 'fn-owner-log-line
                               (if (equal (car decision) :reopen)
@@ -3157,7 +3185,7 @@
 ;; asks before it calls a commit callback (books/owner-bound-commit.lisp
 ;; fn-obc-commit-gate; KEYSTONE fn-obc-commit-only-after-filing).
 (defun fn-owner-bound-commit-gate (received group-octets state)
-  (declare (xargs :stobjs state :mode :program
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
                   :guard (fn-octet-list-listp group-octets)))
   (value (fn-obc-commit-gate
           received group-octets
@@ -3170,14 +3198,14 @@
     (value (fn-apc-carrier-form received plans (fn-owner-parse-carry state)))))
 
 (defun fn-owner-served-carried-word (word detail state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (value (fn-pa-served-word word detail)))
 
 ; The served POST's word (PKT-473, PRF-184): fn-pa-served-post-word names a
 ; durable composite whose key change the Store refused.  Called by
 ; host/native/owner.lisp fnn-owner-attempt-served only.
 (defun fn-owner-served-post-word (word detail state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (value (fn-pa-served-post-word word detail)))
 
 ; PRF-099: the carried usage of the boundary whose release evidence is
@@ -3188,7 +3216,7 @@
 ; fn-hist-usage-carried-is-usage-extend, so fn-pcb-extended-cache-is-valid
 ; keeps the stored cache valid).  Reset at open (fn-owner-install-profile).
 (defun fn-owner-carried-usage (evidence fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (declare (xargs :stobjs (fn-hist state) :guard (boundp-global 'fn-owner state)))
   (let* ((s (fn-owner-store state))
          (fn-hist (fn-hist-sync (fn-sn-files s) fn-hist))
          (cache (if (boundp-global 'fn-owner-carried-usage state)
@@ -3333,7 +3361,7 @@
 ;; (fn-ks-recover-recorded; PRF-124, PRF-140).  The reopen is recorded by
 ;; definition: there is no policy switch.
 (defun fn-owner-key-statement-rows (event at-open state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (fn-ks-statement-rows event at-open
                         (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))
                         (fn-sn-config-history (fn-owner-store state))))
@@ -3356,7 +3384,7 @@
                         (third coordinates))))
 
 (defun fn-owner-key-statement-log-line (plan outcome at-open state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (value (fn-ks-log-line plan outcome at-open)))
 
 ;; PRF-098, the crash cut: the open's recovery (books/key-statements.lisp
@@ -3415,7 +3443,7 @@
   (value (fn-sbud-signed-event-boundary (fn-owner-store-profile state) event)))
 
 (defun fn-owner-article-count (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (len (fn-state-articles (fn-node-acceptance (fn-owner-node state))))))
 
 ; The local-post provenance from the owner's canonical live configuration.
@@ -3424,7 +3452,7 @@
 ; an owner reconfiguration.  This is the same ACL2 construction over the
 ; configuration that owns the acceptance decision.
 (defun fn-owner-prov-post (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let* ((cfg (fn-owner-config state))
          (identity (fn-cfg-policy (fn-cfg-value cfg) "path-identity"))
          (principal (if (and (stringp identity) (not (equal identity "")))
@@ -3520,16 +3548,16 @@
 ; Connections
 
 (defun fn-owner-version (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-own-view-version (fn-own-view (fn-owner-core state)))))
 
 (defun fn-owner-conn-version (id state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))))
     (value (if conn (fn-own-conn-version conn) nil))))
 
 (defun fn-owner-connection-versions (conns)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (if (consp conns)
       (cons (fn-own-conn-id (car conns))
             (cons (fn-own-conn-version (car conns))
@@ -3601,7 +3629,7 @@
 ; PKT-828 (books/owner-reader-view.lisp).  The reader views the committer
 ; captured: nil (none held: readers read the working view), (D) or (D N).
 (defun fn-owner-reader-views (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (if (boundp-global 'fn-owner-reader-views state)
       (f-get-global 'fn-owner-reader-views state)
     nil))
@@ -3706,18 +3734,18 @@
 ;; advanced just before (fnn-owner-advance-clock).
 
 (defun fn-owner-exposure-state (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (if (boundp-global 'fn-owner-exposure state)
       (f-get-global 'fn-owner-exposure state)
     (fn-exp-initial)))
 
 (defun fn-owner-exposure-publicp (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (and (boundp-global 'fn-owner-exposure-public state)
        (f-get-global 'fn-owner-exposure-public state)))
 
 (defun fn-owner-exposure-now (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (fn-clock-monotonic (fn-own-clock (fn-owner-core state))))
 
 (defun fn-owner-exposure-limits (state)
@@ -4084,7 +4112,7 @@
 ; to the one already held exactly like a contradicted clock, and put the
 ; decision in the host.  Nothing here judges a reading.
 (defun fn-owner-observe (monotonic wall wall-error has-wall state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let* ((obs (fn-clock-observation monotonic wall wall-error has-wall))
          (outcome (fn-own-observe-outcome (fn-owner-core state) obs))
          ; fn-ocfg-observe, not fn-owner-step: it is fn-ocfg-step's
@@ -4110,7 +4138,7 @@
         (value word)))))
 
 (defun fn-owner-group-facts (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-own-replay-facts (fn-own-facts (fn-owner-core state)))))
 
 ; -----------------------------------------------------------------------------
@@ -4144,7 +4172,7 @@
 ; `fn-fps-live-names' over the live configuration).  A paused peer's link is
 ; closed and not dialled; its queue, pull and inbound admission stay.
 (defun fn-owner-feed-peers (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-fps-live-names
           (fn-own-feed-names (fn-own-feeds (fn-owner-core state)))
           (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))
@@ -4193,12 +4221,12 @@
           (fn-owner-feed-record peer-octets state))))
 
 (defun fn-owner-feed-profile-decode (octets)
-  (declare (xargs :mode :program
+  (declare (xargs :guard t
                   :guard (fn-cbor-octet-listp octets)))
   (fn-fap-decode octets))
 
 (defun fn-owner-feed-profile-max-octets ()
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   *fn-fap-max-octets*)
 
 (defun fn-owner-feed-streamingp (peer-octets state)
@@ -4241,7 +4269,7 @@
 ; opening a socket it has nothing to send on.
 (defun fn-owner-feed-stopped (state)
   "The owner process's feed stop table (peer . reason), nil before any stop."
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (if (boundp-global 'fn-owner-feed-stopped state)
       (f-get-global 'fn-owner-feed-stopped state)
     nil))
@@ -4340,7 +4368,7 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
 
 (defun fn-owner-feed-read-limit ()
   "ACL2-owned upper bound for one native feed socket-read observation."
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   *fn-feed-wire-input-max-chunk-octets*)
 
 ; The raw socket layer enforces this one TCP completion deadline after DNS has
@@ -4351,7 +4379,7 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
 
 (defun fn-owner-feed-connect-timeout ()
   "ACL2-owned TCP completion deadline for one outbound peer dial."
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   *fn-owner-feed-connect-timeout-seconds*)
 
 ; One tick for one peer: the records first, then the bytes.
@@ -4607,13 +4635,13 @@ existing port only after fn-fc has made this connection ready."
 ; the one live configuration, read by ACL2; host/native/pull-service.lisp
 ; drives each round through the pure fn-pull-* functions.
 (defun fn-owner-pull-plans (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-pull-plans (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))
 
 ; PRF-325: the peers this node catches up from (books/peer-catchup.lisp
 ; `fn-cu-plans'); host/native/pull-service.lisp drives each round.
 (defun fn-owner-catchup-plans (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-cu-plans (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))
 
 ;; Q16 (a) (lane online-reclaim-3): the pass that installs

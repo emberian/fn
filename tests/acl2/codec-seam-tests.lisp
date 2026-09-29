@@ -9,7 +9,7 @@
 ; implementation on the same vector.  These are computations, not theorems:
 ; ACL2 never uses an attachment in a proof, and an exact-byte fact a proof
 ; needs comes from the concrete codec books (for the record,
-; `fn-record-schema0-golden-octets-are-the-encoding' in books/records.lisp).
+; `fn-record-schema1-golden-octets-are-the-encoding' in books/records.lisp).
 ; What these checks establish is that the image's attachment configuration
 ; -- the one books/codec-attach.lisp installs and host/native/build.lisp
 ; includes -- evaluates each vector exactly as the concrete codec does.
@@ -29,17 +29,17 @@
 ; The record seam, attached, against the implementation.
 
 (defconst *cst-record*
-  (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 :legacy))
+  (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5))
 
 (defconst *cst-record-inputs*
-  (list *fn-record-schema0-golden-octets*
-        '(88 4 102 110 45 114 0)                                 ; :noncanonical
-        '(68 102 110 45 115 0)                                   ; :magic
-        '(68 102 110 45 114 2)                                   ; :unknown-version
-        '(68 102 110 45 114 0 1 2 3 65 97 64 26 0 1 0 0)         ; :groups-limit
-        '(68 102 110 45 114 0 65 97)                             ; :field-type
-        (append *fn-record-schema0-golden-octets* '(0))          ; :trailing
-        (take 15 *fn-record-schema0-golden-octets*)              ; :truncated
+  (list *fn-record-schema1-golden-octets*
+        '(88 4 102 110 45 114 1)                                 ; :noncanonical
+        '(68 102 110 45 115 1)                                   ; :magic
+        '(68 102 110 45 114 0)                                   ; :unknown-version
+        '(68 102 110 45 114 1 1 2 3 65 97 64 26 0 1 0 0)         ; :groups-limit
+        '(68 102 110 45 114 1 65 97)                             ; :field-type
+        (append *fn-record-schema1-golden-octets* '(0))          ; :trailing
+        (take 15 *fn-record-schema1-golden-octets*)              ; :truncated
         '(68 102 110 45 101 0)                                   ; a Store event's magic
         nil))
 
@@ -54,10 +54,10 @@
 
 ; The attached encoder writes the concrete golden octets, octet for octet.
 (assert-event (equal (fn-record-encode *cst-record*)
-                     *fn-record-schema0-golden-octets*))
+                     *fn-record-schema1-golden-octets*))
 (assert-event (equal (fn-record-encode *cst-record*)
                      (fn-record-encode-impl *cst-record*)))
-(assert-event (equal (fn-record-decode-exact *fn-record-schema0-golden-octets*)
+(assert-event (equal (fn-record-decode-exact *fn-record-schema1-golden-octets*)
                      (list :ok *cst-record*)))
 
 ; A value that is not a record encodes to nil on both sides.
