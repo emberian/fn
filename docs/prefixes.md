@@ -358,3 +358,5 @@ Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `host/config-host.lisp` marshals under `fn-cfg-host-`. The `fn-store-` tag is shared: `books/store-config` owns the group table under
 it and `host/store-host.lisp` marshals under it. A host wrapper never decides
 anything a book does not already decide.
+
+| `fn-pct-` | `productive-transfer`, `tests/acl2/productive-transfer-tests` | Productive outbound NNTP offer and requested article effect; local journal and attempt, explicit quiet/refused outcomes; no remote acceptance claim (W6b) |

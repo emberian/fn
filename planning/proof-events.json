@@ -17302,6 +17302,33 @@
           "name": "fn-owner-retain-carry-of-other-global-put"
         }
       ]
+    },
+    {
+      "id": "PRF-1055",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pct-tick-offers-the-queued-article"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1056",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pct-tick-hands-nothing-otherwise"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1062",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pct-requested-article-is-handed-to-the-local-transport"
+        }
+      ]
     }
   ]
 }
