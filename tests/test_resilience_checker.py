@@ -3,19 +3,26 @@
 the whole-history checker narrows a lost reply by a read, a retry and a
 listing; the two-group fracture is REFUSED (the tooth) while the
 per-membership independent oracle accepts it; budget exhaustion is
-`inconclusive`; refusing everything is `no-witness`; the seven
+`inconclusive`; refusing everything is `no-witness`; the nine
 tester-of-testers mutations are each distinguished from the green control.
-No image, no store: the journals are the tester's fabricated inputs."""
+The second increment (W7c, §5, §7): a killed recovery that changed the
+history, a checkpoint the cut's column excludes and a served-route fate the
+served column excludes are each a violation citing its rule; a healing
+phase past its bound is `healing-overran` (an experimental budget's overrun
+a diagnostic); the six schedule points generate scenarios, the pending ones
+named with their owners.  No image, no store: the journals are the tester's
+fabricated inputs."""
 from __future__ import annotations
 
 from pathlib import Path
 import tempfile
 import unittest
 
-from tools.resilience import checker, contract, mutations
+from tools.resilience import checker, contract, mutations, schedule_points
 from tools.resilience.journal import Journal, TruncatedHistory
 from tools.resilience.scenario import (Scenario, Operation, Fault, ScenarioError, validate,
-                                       boundary_registry, executable_on_native)
+                                       boundary_registry, executable_on_native,
+                                       pending_reasons, reclaim_cut_names, PENDING_BOUNDARIES)
 from tools.resilience.adapters import native_cuts as adapter
 from tests.campaign import native_cuts
 
@@ -64,9 +71,29 @@ class ScenarioIRTests(unittest.TestCase):
             adapter.check_scenario(s, REGISTRY)
 
     def test_pending_schedule_points_are_registered_but_not_executable(self):
+        for name, row in PENDING_BOUNDARIES.items():
+            self.assertFalse(REGISTRY[name]["executable"], name)
+            self.assertEqual(REGISTRY[name]["owner"], row["owner"])
+        for s in schedule_points.scenarios():
+            if any(f.boundary in PENDING_BOUNDARIES for f in s.faults):
+                self.assertEqual(validate(s, REGISTRY), [], s.id)
+                self.assertFalse(executable_on_native(s, REGISTRY), s.id)
+                self.assertTrue(pending_reasons(s, REGISTRY), s.id)
+        # A post does not reach a reader's boundary: the category error is named.
         s = two_group(boundary="page-read-outstanding")
-        self.assertEqual(validate(s, REGISTRY), [])
-        self.assertFalse(executable_on_native(s, REGISTRY))
+        self.assertTrue(any("does not reach this boundary" in p for p in validate(s, REGISTRY)))
+
+    def test_a_fault_at_a_boundary_its_operation_never_reaches_is_refused(self):
+        s = adapter.scenario_for(native_cuts.POST_LOG_CUTS[3])
+        s.faults.append(Fault("recover", "log-written", "kill", "contract-admissible"))
+        problems = validate(s, REGISTRY)
+        self.assertTrue(any("recover@log-written" in p and "does not reach" in p
+                            for p in problems), problems)
+        s = adapter.scenario_for(native_cuts.POST_LOG_CUTS[3])
+        s.healing_bound = {"kind": "minutes", "value": 0, "source": ""}
+        problems = validate(s, REGISTRY)
+        for expected in ("bound of no kind", "positive value", "names its source"):
+            self.assertTrue(any(expected in p for p in problems), (expected, problems))
 
     def test_registry_carries_the_verified_candidate_columns(self):
         for cut in native_cuts.POST_LOG_CUTS:
@@ -199,7 +226,8 @@ class TestTheTestersTests(unittest.TestCase):
         v = checker.check(self.scenario, self.journal, registry=REGISTRY)
         self.assertTrue(v.green, v)
         self.assertEqual(sorted(v.witnesses_observed),
-                         ["post-accepted", "read-completed", "retry-reconciled"])
+                         ["post-accepted", "read-completed", "recovery-completed",
+                          "retry-reconciled"])
         self.assertEqual(v.pending_rules, [])
         self.assertTrue(v.verify())
         for fate in ("committed", "absent"):
@@ -215,8 +243,7 @@ class TestTheTestersTests(unittest.TestCase):
             self.assertEqual(v.kind, kind, (name, v))
             self.assertTrue((v.cause or "").startswith(cause), (name, v.cause))
             self.assertFalse(v.green, name)
-            kinds.add((v.kind, (v.cause or "").split(":")[0] + ":" + (v.cause or "").split(":")[1]
-                       if ":" in (v.cause or "") else v.kind))
+            kinds.add((v.kind, v.cause))
         self.assertEqual(len(kinds), len(mutations.MUTATIONS))   # pairwise distinct
 
     def test_truncated_history_is_refused_by_the_reader(self):
@@ -236,6 +263,214 @@ class TestTheTestersTests(unittest.TestCase):
         self.assertFalse(forged.verify())      # and why it must not
         self.assertTrue(v.verify())
         self.assertEqual(checker.Verdict.from_json(v.to_json()), v)
+
+
+def W(scenario):
+    j = Journal(scenario.id)
+    j.stage("workload", "begun")
+    return j
+
+
+def heal(j, elapsed=0.5):
+    j.stage("workload", "ended")
+    j.stage("healing", "begun")
+    return lambda: j.stage("healing", "ended", elapsed=elapsed)
+
+
+class RecoveryAndCheckpointCheckerTests(unittest.TestCase):
+    def test_a_killed_recovery_that_changed_the_history_is_a_violation(self):
+        s = adapter.recovery_scenario_for(adapter.recovery_cuts()[0])   # recover-replayed
+        j = W(s)
+        j.client("reply", operation="post-prior", outcome="accepted", route="store-post")
+        j.client("reply", operation="post-candidate", outcome="lost", route="store-post")
+        j.environment("fault-fired", operation="post-candidate", boundary="log-written",
+                      action="kill", route="store-post", evidence="returncode=-9")
+        j.environment("persisted-records", count=2, phase="at-cut", source="log scan-store")
+        j.client("recover", operation="recover-killed", outcome="lost", phase="fault")
+        j.environment("fault-fired", operation="recover-killed", boundary="recover-replayed",
+                      action="kill", route="store-post", evidence="returncode=-9")
+        j.environment("persisted-records", count=1, phase="after-killed-recovery",
+                      source="log scan-store")
+        end = heal(j)
+        end()
+        v = checker.check(s, j, registry=REGISTRY)
+        self.assertEqual(v.kind, "violation", v.to_json())
+        self.assertEqual(v.explanation["record"]["phase"], "after-killed-recovery")
+        self.assertIn("recovery-keeps-history", v.explanation["rules"])
+
+    def test_a_kept_history_and_a_completed_second_recovery_are_consistent(self):
+        s = adapter.recovery_scenario_for(adapter.recovery_cuts()[0])
+        j = W(s)
+        j.client("reply", operation="post-prior", outcome="accepted", route="store-post")
+        j.client("reply", operation="post-candidate", outcome="lost", route="store-post")
+        j.environment("fault-fired", operation="post-candidate", boundary="log-written",
+                      action="kill", route="store-post", evidence="returncode=-9")
+        j.environment("persisted-records", count=2, phase="at-cut", source="log scan-store")
+        j.client("recover", operation="recover-killed", outcome="lost", phase="fault")
+        j.environment("fault-fired", operation="recover-killed", boundary="recover-replayed",
+                      action="kill", route="store-post", evidence="returncode=-9")
+        j.environment("persisted-records", count=2, phase="after-killed-recovery",
+                      source="log scan-store")
+        end = heal(j)
+        j.client("recover", operation="recover", outcome="completed", phase="healing")
+        j.environment("persisted-records", count=2, phase="after-recovery",
+                      source="log scan-store")
+        j.client("read", operation="read-prior", article="post-prior", result="match")
+        j.client("read", operation="read-candidate", article="post-candidate", result="match")
+        j.client("reply", operation="retry-candidate", outcome="duplicate", route="store-post")
+        j.environment("persisted-records", count=2, phase="final", source="log scan-store")
+        end()
+        v = checker.check(s, j, registry=REGISTRY)
+        self.assertTrue(v.green, v.to_json())
+        self.assertEqual(v.surviving, 1)
+        self.assertIn("recovery-completed", v.witnesses_observed)
+        # The healing recovery failing is the history not kept, by rule.
+        j.records[[r["seq"] for r in j.records if r.get("operation") == "recover"][0]]["outcome"] = "failed"
+        v = checker.check(s, j, registry=REGISTRY)
+        self.assertEqual(v.kind, "violation")
+        self.assertEqual(v.explanation["rules"], ["recovery-keeps-history"])
+
+    def checkpoint_journal(self, s, which, final_open="open=checkpoint:5 suffix=0"):
+        j = W(s)
+        for p in adapter.CHECKPOINT_POSTS[:3]:
+            j.client("reply", operation=p, outcome="accepted", route="store-post")
+        j.client("checkpoint", operation="checkpoint-1", outcome="completed")
+        for p in adapter.CHECKPOINT_POSTS[3:]:
+            j.client("reply", operation=p, outcome="accepted", route="store-post")
+        j.client("checkpoint", operation="checkpoint-killed", outcome="lost")
+        j.environment("fault-fired", operation="checkpoint-killed", boundary=s.faults[0].boundary,
+                      action="kill", route="store-post", evidence="returncode=-9")
+        j.client("status", operation="status-after",
+                 open="open=checkpoint:{} suffix={}".format(3 if which == "old" else 5,
+                                                           2 if which == "old" else 0))
+        j.environment("checkpoint-installed", boundary=s.faults[0].boundary, which=which,
+                      source="store status")
+        end = heal(j)
+        j.client("recover", operation="recover", outcome="completed", phase="healing")
+        for p in adapter.CHECKPOINT_POSTS:
+            j.client("read", operation="read-" + p, article=p, result="match")
+        j.client("reply", operation="retry-5", outcome="duplicate", route="store-post")
+        j.client("checkpoint", operation="checkpoint-2", outcome="completed")
+        j.client("status", operation="status-final", open=final_open)
+        end()
+        return j
+
+    def test_the_checkpoint_the_cut_excludes_is_a_violation_and_the_allowed_one_is_not(self):
+        staged = native_cuts.STATE_CHECKPOINT_CUTS[2]        # staged-durable: old
+        durable = native_cuts.STATE_CHECKPOINT_CUTS[4]       # durable: new
+        replaced = native_cuts.STATE_CHECKPOINT_CUTS[3]      # replaced: either
+        for cut, which, expect in ((staged, "new", "violation"), (staged, "old", "consistent"),
+                                   (durable, "old", "violation"), (durable, "new", "consistent"),
+                                   (replaced, "old", "consistent"),
+                                   (replaced, "new", "consistent")):
+            s = adapter.checkpoint_scenario_for(cut)
+            v = checker.check(s, self.checkpoint_journal(s, which), registry=REGISTRY)
+            self.assertEqual(v.kind, expect, (cut.name, which, v.to_json()))
+            if expect == "violation":
+                self.assertEqual(v.explanation["rules"], ["checkpoint-old-or-new"])
+            else:
+                self.assertTrue(v.green, (cut.name, which))
+                self.assertIn("checkpoint-installed", v.witnesses_observed)
+
+    def test_the_served_column_judges_a_served_route_fault(self):
+        # finish-consumed: absent on the served route, present for a batch of one.
+        cut = native_cuts.POST_LOG_CUTS[1]
+        self.assertEqual((REGISTRY[cut.name]["rules"]["served-post"],
+                          REGISTRY[cut.name]["rules"]["store-post"]), ("absent", "present"))
+        s = adapter.served_scenario_for(cut)
+        for route, expect in (("served-post", "violation"), ("store-post", "consistent")):
+            j = W(s)
+            j.client("reply", operation="post-prior", outcome="accepted", route="served-post")
+            j.client("reply", operation="post-candidate", outcome="lost", route="served-post")
+            j.environment("fault-fired", operation="post-candidate", boundary=cut.name,
+                          action="kill", route=route, evidence="owner rc=-9")
+            j.environment("persisted-records", count=2, phase="at-cut", source="log scan-store")
+            end = heal(j)
+            end()
+            v = checker.check(s, j, registry=REGISTRY)
+            self.assertEqual(v.kind if v.kind == "violation" else "consistent", expect,
+                             (route, v.to_json()))
+            if expect == "violation":
+                # The served column left only the absent fate; the image's
+                # scan of two records then emptied B.
+                self.assertIn("boundary-fate", v.explanation["rules_used"])
+                self.assertEqual(v.explanation["record"]["event"], "persisted-records")
+
+    def test_healing_past_its_bound_is_a_verdict_and_an_experimental_overrun_a_diagnostic(self):
+        s = adapter.scenario_for(native_cuts.POST_LOG_CUTS[3])
+        j = mutations.fabricated_green_run(s, fate="absent")     # elapsed 0.5
+        s.healing_bound = {"kind": "seconds", "value": 0.1, "source": "test"}
+        v = checker.check(s, j, registry=REGISTRY)
+        self.assertEqual((v.kind, v.green), ("healing-overran", False))
+        self.assertTrue(v.cause.startswith("healing:0.5s>0.1s"), v.cause)
+        self.assertEqual(v.healing["elapsed"], 0.5)
+        s.healing_bound = {"kind": "experimental", "value": 0.1, "source": "test"}
+        v = checker.check(s, j, registry=REGISTRY)
+        self.assertTrue(v.green, v.to_json())
+        self.assertTrue(any("experimental healing budget exceeded" in d for d in v.diagnostics))
+        s.healing_bound = {"kind": "seconds", "value": 60, "source": "test"}
+        self.assertTrue(checker.check(s, j, registry=REGISTRY).green)
+
+    def test_offline_membership_variant_lists_both_groups(self):
+        s = adapter.scenario_for(native_cuts.POST_LOG_CUTS[3], memberships=True)
+        self.assertEqual(validate(s, REGISTRY), [])
+        self.assertEqual([o.args["group"] for o in s.operations if o.op == "list-group"],
+                         [adapter.GROUP, adapter.GROUP2])
+        self.assertIn("memberships-listed", s.witnesses)
+        for fate in ("committed", "absent"):
+            v = checker.check(s, mutations.fabricated_green_run(s, fate=fate), registry=REGISTRY)
+            self.assertTrue(v.green, (fate, v.to_json()))
+
+
+class SchedulePointTests(unittest.TestCase):
+    def test_the_six_rows_generate_scenarios_and_name_the_pending_ones(self):
+        self.assertEqual([r.point for r in schedule_points.ROWS],
+                         ["publication-durable-reply-pending", "page-read-outstanding",
+                          "reclaim-candidate-selected", "new-checkpoint-prepared",
+                          "recovery-repair-write", "receipt-observed"])
+        rows = schedule_points.status(REGISTRY)
+        self.assertTrue(all(r["valid"] for r in rows), [r for r in rows if not r["valid"]])
+        self.assertEqual({r["scenario"] for r in rows if r["status"] == "executable"},
+                         {"native-served-log-fenced",
+                          "native-checkpoint-state-checkpoint-staged-durable",
+                          "native-checkpoint-state-checkpoint-replaced",
+                          "native-checkpoint-state-checkpoint-durable",
+                          "native-recovery-log-truncated", "native-recovery-log-recovered",
+                          "native-recovery-recovery-stage-unlinked"})
+        pending = {r["scenario"]: r for r in rows if r["status"] == "pending"}
+        self.assertEqual(set(pending), {"schedule-page-read-outstanding",
+                                        "schedule-reclaim-candidate-selected",
+                                        "schedule-receipt-observed-duplicate",
+                                        "schedule-receipt-observed-reorder",
+                                        "schedule-receipt-observed-lose-completion"})
+        self.assertEqual(pending["schedule-page-read-outstanding"]["owner"], "extent-identity")
+        self.assertEqual(pending["schedule-reclaim-candidate-selected"]["owner"],
+                         "online-reclaim-8")
+        for r in pending.values():
+            self.assertTrue(r["reasons"] and r["expected"] == "consistent", r)
+        self.assertTrue(all(r["expected"] == "consistent" for r in rows))
+
+    def test_the_reclaim_pass_cuts_are_registered_from_the_host_in_kill_form(self):
+        names = reclaim_cut_names()
+        if not names:
+            self.skipTest("no +fnn-reclaim-cuts+ in this tree")
+        self.assertEqual(names[:1] + names[-1:], ["captured", "released"])
+        self.assertEqual(REGISTRY["reclaim-captured"]["rule"], "old")
+        self.assertEqual(REGISTRY["reclaim-installed"]["rule"], "new")
+        self.assertEqual(REGISTRY["reclaim-candidate-selected"]["kill_form"], "reclaim-captured")
+        self.assertIn(REGISTRY["reclaim-candidate-selected"]["kill_form"], REGISTRY)
+
+    def test_every_family_scenario_validates_and_is_executable(self):
+        counts = {}
+        for name in adapter.FAMILIES:
+            ss = adapter.family_scenarios(name)
+            counts[name] = len(ss)
+            for s in ss:
+                self.assertEqual(validate(s, REGISTRY), [], s.id)
+                self.assertTrue(executable_on_native(s, REGISTRY), s.id)
+                self.assertEqual(Scenario.from_json(s.to_json()), s)
+        self.assertEqual(counts, {"post": 5, "recovery": 7, "served": 5,
+                                  "served-recovery": 3, "checkpoint": 5})
 
 
 class ContractRuleTests(unittest.TestCase):
