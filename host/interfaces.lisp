@@ -4384,11 +4384,3 @@
 ; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
 (definterface fn-store-sco-want-checkpoint-digest
   :class ::program)
-
-; Online-reclaim lane entries not in the batch BE block above.
-
-(definterface fn-lim-decision-line
-  :class ::common-lisp-compliant)
-
-(definterface fn-lim-reply-note
-  :class ::common-lisp-compliant)
