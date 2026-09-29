@@ -595,7 +595,12 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         while filler_total - fill > 0:
             filler_id = "<xp-f{:03d}@example.invalid>".format(count)
             header = self.header_octets(filler_id, groups[:1]) + injected
-            size = min(30000, filler_total - fill - 320 - 9 * injected - 8 * header
+            # The gate admits a filler of stored payload P at its figure,
+            # 9 P + 1,083 + 261 + 320 + 3,000, beside the 4,096 reserve
+            # (lane heap-pool), though it is charged far less.
+            remaining = room["history-bound"] - room["bytes-used"] - fill
+            gate_cap = (remaining - (1083 + 261 + 320 + 3000 + 4096) - 200) // 9 - header
+            size = min(30000, gate_cap, filler_total - fill - 320 - 9 * injected - 8 * header
                        - 12 * len(filler_id) - 200)
             if size < 200:
                 break
