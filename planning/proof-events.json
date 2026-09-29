@@ -15266,6 +15266,53 @@
           "name": "fn-arx-attach-trailers-buffer-is-attach-trailers"
         }
       ]
+    },
+    {
+      "id": "PRF-1001",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-post-productive"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-store-run-fields"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-store-run-completion-enabled"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-own-run-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-post-finish-word"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1002",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-uncertain-has-a-named-cause"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1003",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-observer-240"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcx-observer-240-code"
+        }
+      ]
     }
   ]
 }

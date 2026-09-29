@@ -1229,6 +1229,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/relay-source \
 	tests/acl2/relay-source-routes-tests \
 	tests/acl2/owner-served-invariants-tests \
+	books/productive-contract \
+	books/productive-observer \
+	tests/acl2/productive-contract-tests \
 	tests/acl2/owner-numbering-tests \
 	books/number-durability \
 	tests/acl2/number-durability-tests \
