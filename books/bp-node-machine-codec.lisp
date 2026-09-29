@@ -227,6 +227,69 @@
   (declare (xargs :guard t))
   (nth 3 operation))
 
+; A ready machine state's pending operation carries a u64 token and a
+; lifecycle record (the record recognizer's field predicates); stated once so
+; the keystone below never opens the state recognizer.  The big recognizers
+; stay closed: opening them costs thirty seconds here.
+(defthm fn-bpn-lifecycle-pending-fields-of-statep
+  (implies (and (fn-bpn-machine-statep st) (fn-bpn-machine-state-pending st))
+           (and (fn-bpn-machine-u64p
+                 (fn-bpn-pending-token (fn-bpn-machine-state-pending st)))
+                (fn-bpn-lifecycle-recordp
+                 (fn-bpn-pending-record (fn-bpn-machine-state-pending st)))))
+  :hints (("Goal" :in-theory (e/d (fn-bpn-machine-statep fn-bpn-machine-recordp
+                                   fn-bpn-maybe-pendingp fn-bpn-pendingp)
+                                  (fn-bpn-configp fn-bpn-job-listp
+                                   fn-bpn-contact-listp fn-bpn-lifecycle-recordp
+                                   fn-bpn-effect-listp fn-bpn-jobs-octets
+                                   fn-bpn-machine-u64p fn-bpn-machine-limitp
+                                   fn-bpn-machine-boolp)))))
+
+; KEYSTONE (PRF-985).  The publication authorization, two-sided, with the
+; principal (the native caller holds the lifecycle lock), the policy context
+; (a ready, unfenced machine whose pending :persist is the one being
+; published: the offered token is the machine's next token and the pending
+; token, the offered record the pending record) and the evidence (the
+; canonical final name observed absent) in the conclusion.  An operation is
+; issued exactly under all of them, and then it carries the offered token and
+; record and an initial authorized publication; anything else is the one
+; fault.  host/bp-node-machine-host.lisp's fn-bpn-host-lifecycle-publication-
+; authorize is an exact alias (:delegates).
+(defthm fn-bpn-lifecycle-publication-authorize-admits-exactly-the-pending-persist
+  (let ((answer (fn-bpn-lifecycle-publication-authorize
+                 st token record lock-owned final-absent))
+        (pending (fn-bpn-machine-state-pending st)))
+    (and (iff (fn-bpn-lifecycle-publication-operationp answer)
+              (and (fn-bpn-machine-statep st)
+                   (not (fn-bpn-machine-state-fenced st))
+                   pending
+                   (equal token (fn-bpn-machine-state-next-token st))
+                   (equal token (fn-bpn-pending-token pending))
+                   (equal record (fn-bpn-pending-record pending))
+                   lock-owned
+                   final-absent))
+         (implies (fn-bpn-lifecycle-publication-operationp answer)
+                  (and (equal (fn-bpn-lifecycle-publication-operation-token answer)
+                              token)
+                       (equal (fn-bpn-lifecycle-publication-operation-record answer)
+                              record)
+                       (equal (fn-bpn-lifecycle-publication-operation-publication
+                               answer)
+                              (fn-jpub-initial t))))
+         (implies (not (fn-bpn-lifecycle-publication-operationp answer))
+                  (equal answer '(:fault :lifecycle-publication-authority)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-bpn-lifecycle-publication-authorize
+                                   fn-bpn-lifecycle-publication-operationp
+                                   fn-bpn-lifecycle-publication-operation-token
+                                   fn-bpn-lifecycle-publication-operation-record
+                                   fn-bpn-lifecycle-publication-operation-publication)
+                                  (fn-bpn-machine-statep fn-bpn-machine-recordp
+                                   fn-bpn-lifecycle-recordp fn-bpn-machine-u64p
+                                   fn-bpn-jobs-octets fn-bpn-configp fn-bpn-job-listp
+                                   fn-bpn-contact-listp fn-bpn-pendingp
+                                   fn-bpn-maybe-pendingp fn-bpn-effect-listp)))))
+
 (defconst *fn-bpn-lifecycle-queued-spec*
   '(:nat :text :text :nat :nat :nat :nat
     :text :nat :text :nat :nat :nat :blob :blob))

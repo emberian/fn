@@ -54,7 +54,7 @@
                                      fn-sct-tables-f fn-sct-tables-p
                                      fn-sct-tables-e fn-sct-tables-r fn-sco-at))))
 
-(defthm fn-sckd-digest-ignores-revision-and-log
+(defthm fn-sckd-digest-ignores-revision-and-log-by-definition
   (equal (fn-sckd-digest (fn-sct-tables-of-capture c frontier revision log) pool)
          (fn-sckd-digest (fn-sct-tables-of-capture c frontier nil nil) pool))
   :rule-classes nil
@@ -97,7 +97,7 @@
                     (fn-sckd-digest-of-prefix configs records frontier ps))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-scka-load-of-written-file)
-                 (:instance fn-sckd-digest-ignores-revision-and-log
+                 (:instance fn-sckd-digest-ignores-revision-and-log-by-definition
                             (c (fn-sco-capture configs records))
                             (pool (fn-sdg-arena-pool ps))))
            :in-theory (e/d ()

@@ -262,6 +262,24 @@
                               :transactions name))
                (bsk5-frame-2)))))
 
+;;; KEYSTONE fn-bs-k6-related-staged-durable-final-name-absent (PRF-041, row B37 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; A related pair with a valid record input has no durable entry at the final name.
+(assert-event
+ (let ((bs (bsk6-start)) (ks (bsk6-prepared)) (name (fn-bs-txn-name 1)))
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
+        (consp (fn-sf-records ks))
+        (fn-bs-record-inputp ks ".stage-k5-2" name (bsk5-frame-2) *bsk5-arena*)
+        (not (fn-bs-durable-entry bs :transactions name)))))
+; Drop the relation: the completing bytes of the same publication hold the
+; name durably, and the prepared input is still valid there.
+(assert-event
+ (let ((bs (car (nth 14 (bsk5-record-2-run)))) (ks (bsk6-prepared)) (name (fn-bs-txn-name 1)))
+   (and (not (fn-bs-store-relation bs ks *bsk5-arena*))
+        (fn-bs-record-inputp ks ".stage-k5-2" name (bsk5-frame-2) *bsk5-arena*))))
+(must-fail-checked
+ (assert-event
+  (not (fn-bs-durable-entry (car (nth 14 (bsk5-record-2-run))) :transactions (fn-bs-txn-name 1)))))
+
 ; Survival is a real premise: the all-drop model image omits the new name.
 (must-fail-checked
  (assert-event
@@ -1484,3 +1502,81 @@
     (fn-bs-create (bsk5-initial) :staging ".allocation-owner-eio-k0" :ok)
     (declare (ignore result))
     (in-arena-bsk0-owner-frontier-eio-applied-conclusionp *sr-arena* bs (bsk0-owner-frontier-entry) ".allocation-owner-eio-k0" (fn-bs-frontier-encode 1)))))
+
+; ---------------------------------------------------------------------------
+; The root fsync :eio cut of the SECOND frontier program, from the :ready
+; pair after the first finish (article 1 retained).
+(defun bsk6-eio-run (bs ks outcomes)
+  (fn-bs-run bs ks (fn-bs-frontier-program ".allocation-k0" (fn-bs-frontier-encode 2))
+             outcomes *bsk5-groups* *bsk5-capacity*))
+(defun bsk6-eio-fsync (bs ks choice)
+  (let ((file (car (nth 6 (bsk6-eio-run bs ks nil)))))
+    (mv-let (r1 renamed) (fn-bs-rename file :staging ".allocation-k0" :root *fn-bs-frontier-name* :ok)
+      (declare (ignore r1))
+      (mv-let (r2 fenced) (fn-bs-fsync-dir renamed :root (list :eio choice))
+        (declare (ignore r2))
+        fenced))))
+(defun bsk6-eio-choice-okp (bs ks choice)
+  (let ((err (bsk6-eio-run bs ks (fn-bs-k0-root-error-outcomes choice))))
+    (and (equal (len err) 13)
+         (equal (car (nth 12 err)) (bsk6-eio-fsync bs ks choice)))))
+(defun bsk6-eio-applied-okp (bs ks)
+  (equal (car (nth 12 (bsk6-eio-run bs ks (fn-bs-k0-root-error-outcomes :apply))))
+         (car (nth 12 (bsk6-eio-run bs ks nil)))))
+(defun bsk6-eio-antecedentp (bs ks)
+  (and (fn-bs-store-relation bs ks *bsk5-arena*)
+       (fn-bs-frontier-inputp ks ".allocation-k0" (fn-bs-frontier-encode 2))
+       (not (fn-bs-lookup bs :staging ".allocation-k0"))))
+(defun bsk6-eio-occupied ()
+  (let ((bs (car (bsk5-finished))))
+    (fn-bs-make (fn-bs-unit bs) (fn-bs-inodes bs)
+                (put-assoc-equal :staging
+                                 (cons (cons ".allocation-k0" 0)
+                                       (cdr (assoc-equal :staging (fn-bs-dirs bs))))
+                                 (fn-bs-dirs bs))
+                (fn-bs-pending bs) (fn-bs-next-ino bs))))
+
+;;; KEYSTONE fn-bs-k0-frontier-eio-applied-run-has-actual-failed-cut (PRF-041, row B41 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; With the root fsync failing :eio and the rename applied, pair 12's bytes equal the ok run's.
+(assert-event
+ (let ((bs (car (bsk5-finished))) (ks (cdr (bsk5-finished))))
+   (and (bsk6-eio-antecedentp bs ks)
+        (consp (fn-sf-records ks))
+        (equal (len (bsk6-eio-run bs ks nil)) 16)
+        (consp (car (nth 12 (bsk6-eio-run bs ks nil))))
+        (bsk6-eio-applied-okp bs ks))))
+
+;;; KEYSTONE fn-bs-k0-frontier-eio-dropped-run-has-actual-failed-cut (PRF-041, row B43 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; With the root fsync failing (:eio :drop), the run stops at 13 pairs and pair 12 is
+;;; that failed fsync over the rename of pair 6's staged file.
+(assert-event
+ (let ((bs (car (bsk5-finished))) (ks (cdr (bsk5-finished))))
+   (and (bsk6-eio-antecedentp bs ks)
+        (consp (fn-sf-records ks))
+        (bsk6-eio-choice-okp bs ks :drop)
+        (not (equal (bsk6-eio-fsync bs ks :drop) (bsk6-eio-fsync bs ks :apply))))))
+
+;;; KEYSTONE fn-bs-k0-frontier-eio-choice-run-has-actual-failed-cut (PRF-041, row B46 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; For either :eio choice, the run stops at 13 pairs and pair 12 is the failed fsync
+;;; over the rename of pair 6's staged file.
+(assert-event
+ (let ((bs (car (bsk5-finished))) (ks (cdr (bsk5-finished))))
+   (and (bsk6-eio-antecedentp bs ks)
+        (consp (fn-sf-records ks))
+        (bsk6-eio-choice-okp bs ks :apply)
+        (bsk6-eio-choice-okp bs ks :drop))))
+; Drop the absent-stage premise (B43, B46): the relation and the input still
+; hold, O_EXCL fails, and the run never reaches the fsync cut.
+(assert-event
+ (let ((bs (bsk6-eio-occupied)) (ks (cdr (bsk5-finished))))
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
+        (fn-bs-frontier-inputp ks ".allocation-k0" (fn-bs-frontier-encode 2))
+        (fn-bs-lookup bs :staging ".allocation-k0")
+        (equal (len (bsk6-eio-run bs ks nil)) 2))))
+(must-fail-checked
+ (assert-event (bsk6-eio-choice-okp (bsk6-eio-occupied) (cdr (bsk5-finished)) :drop)))
+(must-fail-checked
+ (assert-event (bsk6-eio-choice-okp (bsk6-eio-occupied) (cdr (bsk5-finished)) :apply)))
+; Observed, not a counterexample: dropping the relation (the initial byte
+; image under the retained kernel) or the absent stage (B41's two runs both
+; end before pair 12) leaves these byte-level equalities true on this fixture.

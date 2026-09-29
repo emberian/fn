@@ -63,7 +63,6 @@
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (null (fn-node-stage (fn-sn-node s)))
            (fn-held-p record)
-           (not (equal (fn-record-stamp record) :legacy))
            ; fn-sn-prepare's gate: the row's context is of the generation in force.
            (equal (fn-hc-generation (fn-held-context record))
                   (fn-sn-keyring-generation s))

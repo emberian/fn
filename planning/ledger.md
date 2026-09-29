@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1648 |
-| Certification roots in the Makefile | 1586 |
-| Books inside the root closure | 1647 |
-| `defthm` and `defthmd` events | 27090 |
-| `defun` events | 17756 |
-| Functions with verified guards | 3316 |
-| Functions declared `:verify-guards nil` and never verified | 2072 |
-| Functions left at the default with an explicit guard | 9753 |
-| Functions left at the default with no guard | 2615 |
-| `assert-event` checks | 22420 |
-| `must-fail` checks | 2388 |
+| Books read | 1657 |
+| Certification roots in the Makefile | 1595 |
+| Books inside the root closure | 1656 |
+| `defthm` and `defthmd` events | 27255 |
+| `defun` events | 17846 |
+| Functions with verified guards | 3330 |
+| Functions declared `:verify-guards nil` and never verified | 2064 |
+| Functions left at the default with an explicit guard | 9788 |
+| Functions left at the default with no guard | 2664 |
+| `assert-event` checks | 22524 |
+| `must-fail` checks | 2413 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
-| Theorems flagged SUSPECT by shape | 1205 |
+| Theorems flagged SUSPECT by shape | 1204 |
 | Export-hygiene warnings | 317 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 265 |
-| Include-hygiene warnings | 2326 |
-| Host-names warnings | 2001 |
+| Include-hygiene warnings | 2357 |
+| Host-names warnings | 1990 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -138,6 +138,7 @@ that `make certify` requests.
 | `books/bp-clock-domain.lisp` | root | 16 | 19 | 4/0/15/0 | 0 | 0 | 2 |
 | `books/bp-contact-service.lisp` | root | 3 | 5 | 5/0/0/0 | 0 | 0 | 1 |
 | `books/bp-eid-shape.lisp` | root | 11 | 14 | 0/0/14/0 | 0 | 0 | 0 |
+| `books/bp-evidence-host-names.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-byte-invariants.lisp` | root | 12 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-byte-publisher.lisp` | root | 0 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-codec-equivalence.lisp` | root | 4 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -147,25 +148,25 @@ that `make certify` requests.
 | `books/bp-fnbs-conflict-invariants.lisp` | root | 11 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-conflict-publication.lisp` | root | 1 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-deletion-codec.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/bp-fnbs-deletion-publication.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-deletion-publication.lisp` | root | 4 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-delivery-codec.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/bp-fnbs-delivery-publication.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-delivery-publication.lisp` | root | 3 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-delivery-replay.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-dispatch-codec.lisp` | root | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-dispatch-invariants.lisp` | root | 14 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-fnbs-dispatch-publication.lisp` | root | 0 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-dispatch-publication.lisp` | root | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-family-codec.lisp` | root | 0 | 13 | 1/0/12/0 | 0 | 0 | 0 |
-| `books/bp-fnbs-family-publication.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-family-publication.lisp` | root | 3 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-family-replay.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-forward-codec.lisp` | root | 0 | 14 | 0/0/14/0 | 0 | 0 | 0 |
-| `books/bp-fnbs-forward-publication.lisp` | root | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-forward-publication.lisp` | root | 3 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-inspect.lisp` | root | 0 | 3 | 3/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-namespace.lisp` | root | 0 | 15 | 2/0/13/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-publication.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-replay-append.lisp` | root | 3 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/bp-fnbs-replay-invariants.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-replay.lisp` | root | 1 | 6 | 0/0/6/0 | 0 | 0 | 0 |
-| `books/bp-forward-attempt.lisp` | root | 3 | 42 | 0/3/39/0 | 0 | 0 | 0 |
+| `books/bp-forward-attempt.lisp` | root | 4 | 42 | 0/3/39/0 | 0 | 0 | 0 |
 | `books/bp-forward-image.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-fragment-fast.lisp` | root | 15 | 8 | 6/0/0/2 | 0 | 0 | 0 |
 | `books/bp-fragment-invariants.lisp` | root | 62 | 3 | 0/0/0/3 | 0 | 0 | 5 |
@@ -204,13 +205,14 @@ that `make certify` requests.
 | `books/bp-node-fragment-plan.lisp` | root | 4 | 4 | 2/2/0/0 | 0 | 0 | 1 |
 | `books/bp-node-fragment-replacement.lisp` | root | 3 | 7 | 0/2/5/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-step.lisp` | root | 29 | 18 | 0/15/3/0 | 0 | 0 | 0 |
+| `books/bp-node-host-machine.lisp` | root | 1 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/bp-node-host-sequence.lisp` | closure | 7 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-node-host-transfer.lisp` | closure | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-node-job-cursor.lisp` | root | 103 | 32 | 1/16/15/0 | 0 | 0 | 2 |
 | `books/bp-node-job-offer-progress.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-job-offer.lisp` | root | 61 | 26 | 0/6/20/0 | 0 | 0 | 1 |
 | `books/bp-node-machine-authorization.lisp` | root | 30 | 4 | 0/4/0/0 | 0 | 0 | 0 |
-| `books/bp-node-machine-codec.lisp` | root | 1 | 35 | 2/0/33/0 | 0 | 0 | 0 |
+| `books/bp-node-machine-codec.lisp` | root | 3 | 35 | 2/0/33/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-gaps.lisp` | root | 25 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/bp-node-machine-guards.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-invariants.lisp` | root | 83 | 1 | 0/1/0/0 | 0 | 0 | 11 |
@@ -244,7 +246,7 @@ that `make certify` requests.
 | `books/bp-receipt-alpha.lisp` | root | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-receipt-records.lisp` | root | 0 | 10 | 0/9/1/0 | 0 | 0 | 0 |
 | `books/bp-receipt.lisp` | root | 47 | 57 | 3/5/7/42 | 0 | 0 | 3 |
-| `books/bp-receive-evidence.lisp` | root | 4 | 25 | 0/6/0/19 | 0 | 0 | 0 |
+| `books/bp-receive-evidence.lisp` | root | 8 | 25 | 11/2/0/12 | 0 | 0 | 0 |
 | `books/bp-receiver-context-invariants.lisp` | root | 20 | 4 | 0/1/0/3 | 0 | 0 | 0 |
 | `books/bp-receiver-evolving-history-invariants.lisp` | root | 35 | 8 | 0/5/0/3 | 0 | 0 | 0 |
 | `books/bp-receiver-evolving-node-invariants.lisp` | root | 44 | 1 | 0/0/0/1 | 0 | 0 | 4 |
@@ -331,7 +333,7 @@ that `make certify` requests.
 | `books/catalog-refresh.lisp` | root | 17 | 3 | 0/0/3/0 | 0 | 0 | 3 |
 | `books/catalog-relation.lisp` | root | 42 | 8 | 1/1/4/2 | 0 | 0 | 10 |
 | `books/catalog-view.lisp` | root | 21 | 12 | 5/0/6/1 | 0 | 0 | 3 |
-| `books/catalog.lisp` | root | 338 | 119 | 14/22/60/23 | 0 | 0 | 7 |
+| `books/catalog.lisp` | root | 385 | 131 | 14/20/70/27 | 0 | 0 | 7 |
 | `books/cbor-invariants.lisp` | root | 73 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/cbor.lisp` | root | 18 | 35 | 35/0/0/0 | 0 | 0 | 2 |
 | `books/checkpoint-auxiliary.lisp` | root | 0 | 12 | 7/0/0/5 | 0 | 0 | 0 |
@@ -340,9 +342,9 @@ that `make certify` requests.
 | `books/checkpoint-publish.lisp` | root | 67 | 65 | 13/1/51/0 | 0 | 0 | 0 |
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 5 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/clock-reading.lisp` | root | 6 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/clock-reading.lisp` | root | 7 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/clock-unit.lisp` | root | 4 | 8 | 0/0/8/0 | 0 | 0 | 0 |
-| `books/clock-wall-reading.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/clock-wall-reading.lisp` | root | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/clock.lisp` | root | 9 | 18 | 18/0/0/0 | 0 | 0 | 4 |
 | `books/closure-open.lisp` | root | 15 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/codec-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -368,7 +370,7 @@ that `make certify` requests.
 | `books/config-store-steps.lisp` | root | 84 | 7 | 0/3/3/1 | 0 | 0 | 1 |
 | `books/config-store-traces.lisp` | root | 2 | 7 | 5/0/2/0 | 0 | 0 | 0 |
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
-| `books/config.lisp` | root | 103 | 281 | 31/0/250/0 | 0 | 0 | 1 |
+| `books/config.lisp` | root | 103 | 279 | 31/0/248/0 | 0 | 0 | 1 |
 | `books/connection-budget.lisp` | root | 36 | 26 | 0/0/26/0 | 0 | 0 | 2 |
 | `books/consumer-artifact-retry.lisp` | root | 21 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/consumer-bound.lisp` | root | 26 | 15 | 7/1/7/0 | 0 | 0 | 5 |
@@ -432,7 +434,7 @@ that `make certify` requests.
 | `books/frame-digest-buffer.lisp` | root | 5 | 4 | 0/2/2/0 | 0 | 0 | 0 |
 | `books/frame-fields.lisp` | root | 25 | 42 | 13/0/29/0 | 0 | 0 | 0 |
 | `books/frame-invariants.lisp` | root | 85 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/frame-journal.lisp` | root | 8 | 15 | 11/0/4/0 | 0 | 0 | 0 |
+| `books/frame-journal.lisp` | root | 9 | 17 | 11/0/6/0 | 0 | 0 | 0 |
 | `books/frame-octets.lisp` | root | 29 | 8 | 3/0/4/1 | 0 | 0 | 0 |
 | `books/frame-trailer.lisp` | root | 7 | 1 | 1/0/0/0 | 0 | 0 | 1 |
 | `books/frame.lisp` | root | 0 | 5 | 5/0/0/0 | 0 | 0 | 0 |
@@ -496,7 +498,7 @@ that `make certify` requests.
 | `books/hybrid-store.lisp` | closure | 23 | 25 | 2/0/23/0 | 0 | 0 | 1 |
 | `books/ideal.lisp` | root | 9 | 16 | 0/2/14/0 | 0 | 0 | 7 |
 | `books/identity-invariants.lisp` | root | 43 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/identity-retain-carried.lisp` | root | 15 | 14 | 10/2/2/0 | 0 | 0 | 1 |
+| `books/identity-retain-carried.lisp` | root | 15 | 14 | 12/0/2/0 | 0 | 0 | 1 |
 | `books/identity.lisp` | root | 2 | 22 | 4/0/18/0 | 0 | 0 | 0 |
 | `books/image-world-dtn.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world-store-test.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -526,8 +528,7 @@ that `make certify` requests.
 | `books/moderation.lisp` | closure | 40 | 25 | 4/0/21/0 | 0 | 0 | 2 |
 | `books/msgid-index-concrete.lisp` | root | 14 | 7 | 1/0/6/0 | 0 | 0 | 0 |
 | `books/msgid-index.lisp` | root | 23 | 15 | 1/0/14/0 | 0 | 0 | 0 |
-| `books/msgid-pages-catalog.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/msgid-pages-exec.lisp` | root | 249 | 68 | 1/8/47/12 | 0 | 0 | 2 |
+| `books/msgid-pages-exec.lisp` | root | 285 | 74 | 2/7/51/14 | 0 | 0 | 2 |
 | `books/msgid-pages.lisp` | root | 44 | 22 | 0/0/20/2 | 0 | 0 | 0 |
 | `books/native-admin-peer-budget.lisp` | closure | 26 | 13 | 4/0/9/0 | 0 | 0 | 2 |
 | `books/native-admin-peer.lisp` | root | 42 | 57 | 9/0/48/0 | 0 | 0 | 5 |
@@ -640,7 +641,7 @@ that `make certify` requests.
 | `books/owner-host-relation-span.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-host-relation.lisp` | root | 141 | 2 | 0/0/2/0 | 0 | 0 | 10 |
 | `books/owner-identity-intern.lisp` | root | 5 | 5 | 1/1/3/0 | 0 | 0 | 0 |
-| `books/owner-identity-served.lisp` | root | 2 | 1 | 0/1/0/0 | 0 | 0 | 0 |
+| `books/owner-identity-served.lisp` | root | 2 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/owner-injection-info.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-inspect-group.lisp` | root | 14 | 19 | 5/0/14/0 | 0 | 0 | 0 |
 | `books/owner-intent-carried.lisp` | root | 9 | 8 | 0/0/8/0 | 0 | 0 | 0 |
@@ -665,7 +666,7 @@ that `make certify` requests.
 | `books/owner-prepare-carried.lisp` | root | 18 | 8 | 5/0/3/0 | 0 | 0 | 0 |
 | `books/owner-prepare-correspondence.lisp` | root | 19 | 3 | 1/0/2/0 | 0 | 0 | 1 |
 | `books/owner-prepare-outcome-topic.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/owner-prepare-outcome.lisp` | root | 22 | 13 | 7/1/5/0 | 0 | 0 | 0 |
+| `books/owner-prepare-outcome.lisp` | root | 22 | 13 | 8/0/5/0 | 0 | 0 | 0 |
 | `books/owner-prepare-served-ocl.lisp` | root | 50 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-prepare-served.lisp` | root | 4 | 8 | 0/0/8/0 | 0 | 0 | 3 |
 | `books/owner-reader-read.lisp` | root | 24 | 13 | 0/0/13/0 | 0 | 0 | 4 |
@@ -740,11 +741,12 @@ that `make certify` requests.
 | `books/peer-inbound-invariants.lisp` | root | 30 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/peer-inbound.lisp` | root | 82 | 80 | 15/3/62/0 | 0 | 0 | 28 |
 | `books/peer-invite.lisp` | root | 50 | 77 | 0/0/77/0 | 0 | 0 | 1 |
-| `books/peer-offer-indexed.lisp` | root | 20 | 10 | 9/0/1/0 | 0 | 0 | 1 |
+| `books/peer-offer-indexed.lisp` | root | 14 | 7 | 6/0/1/0 | 0 | 0 | 0 |
 | `books/peer-pull-session.lisp` | root | 44 | 51 | 4/0/47/0 | 0 | 0 | 3 |
 | `books/peer-pull.lisp` | root | 93 | 128 | 22/0/106/0 | 0 | 0 | 2 |
 | `books/peer-refused-offers.lisp` | root | 20 | 4 | 0/4/0/0 | 0 | 0 | 1 |
 | `books/peer-set.lisp` | root | 29 | 18 | 1/0/17/0 | 0 | 0 | 2 |
+| `books/peer-transit-authority.lisp` | root | 10 | 8 | 0/1/7/0 | 0 | 0 | 0 |
 | `books/peer-transit-forms.lisp` | root | 10 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 1 |
 | `books/policy.lisp` | root | 14 | 29 | 1/0/28/0 | 0 | 0 | 3 |
@@ -782,17 +784,17 @@ that `make certify` requests.
 | `books/record-width-producers.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/records-attach-concrete.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/records-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/records-canonicality.lisp` | root | 48 | 0 | 0/0/0/0 | 0 | 0 | 5 |
+| `books/records-canonicality.lisp` | root | 49 | 0 | 0/0/0/0 | 0 | 0 | 5 |
 | `books/records-codec-concrete.lisp` | closure | 18 | 5 | 1/0/4/0 | 0 | 0 | 0 |
 | `books/records-concrete-owner.lisp` | root | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/records-concrete.lisp` | root | 17 | 17 | 4/0/13/0 | 0 | 0 | 7 |
 | `books/records-exec.lisp` | root | 3 | 3 | 3/0/0/0 | 0 | 0 | 2 |
 | `books/records-freeze.lisp` | root | 28 | 12 | 0/1/11/0 | 0 | 0 | 2 |
-| `books/records-invariants.lisp` | root | 45 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/records-invariants.lisp` | root | 44 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/records-seam.lisp` | root | 21 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/records-shape.lisp` | root | 71 | 57 | 41/0/16/0 | 0 | 0 | 3 |
 | `books/records-stamp.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/records.lisp` | root | 23 | 13 | 8/0/4/1 | 0 | 0 | 0 |
+| `books/records.lisp` | root | 21 | 12 | 8/0/4/0 | 0 | 0 | 0 |
 | `books/refusal-effect.lisp` | root | 11 | 0 | 0/0/0/0 | 0 | 0 | 3 |
 | `books/refused-offers.lisp` | root | 12 | 4 | 1/0/3/0 | 0 | 0 | 0 |
 | `books/relay-checks.lisp` | root | 4 | 40 | 0/0/40/0 | 0 | 0 | 0 |
@@ -876,7 +878,7 @@ that `make certify` requests.
 | `books/store-capacity-config.lisp` | root | 5 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/store-capacity-vector.lisp` | root | 52 | 22 | 0/4/17/1 | 0 | 0 | 5 |
 | `books/store-carried-folds.lisp` | root | 12 | 5 | 0/2/3/0 | 0 | 0 | 2 |
-| `books/store-checkpoint-arena-load.lisp` | root | 54 | 7 | 2/1/3/1 | 0 | 0 | 3 |
+| `books/store-checkpoint-arena-load.lisp` | root | 55 | 7 | 2/1/3/1 | 0 | 0 | 3 |
 | `books/store-checkpoint-arena-writer.lisp` | root | 65 | 23 | 11/1/11/0 | 0 | 0 | 3 |
 | `books/store-checkpoint-arena.lisp` | root | 56 | 27 | 5/11/11/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-buffer.lisp` | root | 31 | 9 | 3/0/6/0 | 0 | 0 | 0 |
@@ -890,7 +892,7 @@ that `make certify` requests.
 | `books/store-config.lisp` | root | 10 | 9 | 3/0/6/0 | 0 | 0 | 0 |
 | `books/store-event-fields.lisp` | root | 2 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/store-events-carried.lisp` | root | 24 | 13 | 0/0/13/0 | 0 | 0 | 1 |
-| `books/store-events.lisp` | root | 7 | 26 | 15/9/2/0 | 0 | 0 | 1 |
+| `books/store-events.lisp` | root | 7 | 25 | 15/8/2/0 | 1 | 0 | 1 |
 | `books/store-existing-alpha.lisp` | root | 3 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/store-export-durability.lisp` | root | 108 | 29 | 0/25/4/0 | 0 | 0 | 2 |
 | `books/store-export-stream.lisp` | root | 6 | 8 | 0/4/4/0 | 0 | 0 | 0 |
@@ -934,6 +936,7 @@ that `make certify` requests.
 | `books/store-log.lisp` | root | 136 | 39 | 12/13/14/0 | 0 | 0 | 2 |
 | `books/store-maintenance-reserve.lisp` | root | 10 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/store-mount-identity.lisp` | root | 67 | 62 | 7/0/54/1 | 0 | 0 | 1 |
+| `books/store-node-correspondence.lisp` | root | 11 | 7 | 0/0/7/0 | 0 | 0 | 1 |
 | `books/store-node-existing-invariants.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-node-invariants-base.lisp` | root | 113 | 2 | 0/1/0/1 | 0 | 0 | 13 |
 | `books/store-node-invariants.lisp` | root | 80 | 1 | 0/0/0/1 | 0 | 0 | 4 |
@@ -941,7 +944,7 @@ that `make certify` requests.
 | `books/store-node-retention.lisp` | root | 32 | 0 | 0/0/0/0 | 0 | 0 | 6 |
 | `books/store-node-traces-prepare.lisp` | root | 44 | 6 | 5/0/1/0 | 0 | 0 | 2 |
 | `books/store-node-traces.lisp` | root | 58 | 2 | 1/0/0/1 | 0 | 0 | 7 |
-| `books/store-node.lisp` | root | 84 | 70 | 39/2/29/0 | 0 | 0 | 34 |
+| `books/store-node.lisp` | root | 82 | 70 | 39/2/29/0 | 0 | 0 | 32 |
 | `books/store-number-bound.lisp` | root | 15 | 4 | 2/1/1/0 | 0 | 0 | 0 |
 | `books/store-number-projection.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/store-observed-traces.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -973,7 +976,7 @@ that `make certify` requests.
 | `books/stx-carrier.lisp` | root | 56 | 31 | 8/0/23/0 | 0 | 0 | 0 |
 | `books/stx-epochs.lisp` | root | 17 | 13 | 0/1/12/0 | 0 | 0 | 1 |
 | `books/stx-evidence-records.lisp` | root | 18 | 27 | 8/0/19/0 | 0 | 0 | 1 |
-| `books/stx-index.lisp` | root | 56 | 26 | 9/0/17/0 | 0 | 0 | 9 |
+| `books/stx-index.lisp` | root | 93 | 38 | 10/0/20/8 | 0 | 0 | 10 |
 | `books/stx-invariants.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/stx-keyring-records.lisp` | root | 13 | 28 | 12/0/16/0 | 0 | 0 | 0 |
 | `books/stx-lace-rows.lisp` | closure | 19 | 1 | 0/0/1/0 | 0 | 0 | 1 |
@@ -984,7 +987,7 @@ that `make certify` requests.
 | `books/stx-verify.lisp` | root | 19 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/subject-id-buffer.lisp` | root | 4 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/tcpcl-delivery-invariants.lisp` | root | 20 | 4 | 0/4/0/0 | 0 | 0 | 0 |
-| `books/tcpcl-delivery.lisp` | root | 1 | 11 | 2/0/9/0 | 0 | 0 | 0 |
+| `books/tcpcl-delivery.lisp` | root | 2 | 11 | 2/0/9/0 | 0 | 0 | 0 |
 | `books/tcpcl-host-drive.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/tcpcl-invariants.lisp` | root | 63 | 1 | 0/0/1/0 | 0 | 0 | 4 |
 | `books/tcpcl-octets.lisp` | root | 173 | 37 | 15/0/22/0 | 0 | 0 | 1 |
@@ -1004,7 +1007,7 @@ that `make certify` requests.
 | `books/topic-history-prefix-invariants.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/topic-history-prefix.lisp` | closure | 4 | 5 | 0/0/5/0 | 0 | 0 | 1 |
 | `books/topic-history-recovery-invariants.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/topic-history-store-events.lisp` | root | 4 | 9 | 0/0/9/0 | 0 | 0 | 1 |
+| `books/topic-history-store-events.lisp` | root | 4 | 8 | 0/0/8/0 | 0 | 0 | 1 |
 | `books/topic-history-store-invariants.lisp` | root | 56 | 2 | 0/2/0/0 | 0 | 0 | 1 |
 | `books/transfer-assembly-invariants.lisp` | root | 25 | 5 | 0/0/0/5 | 0 | 0 | 0 |
 | `books/transfer-invariants.lisp` | root | 14 | 1 | 0/0/0/1 | 0 | 0 | 0 |
@@ -1038,7 +1041,7 @@ that `make certify` requests.
 | `books/wire-span.lisp` | root | 18 | 6 | 1/0/5/0 | 0 | 0 | 5 |
 | `books/wire.lisp` | root | 65 | 79 | 56/0/23/0 | 0 | 0 | 16 |
 | `tests/acl2/acceptance-payload-ref-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 21 | 0 | 0 |
-| `tests/acl2/acceptance-stamp-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 15 | 0 |
+| `tests/acl2/acceptance-stamp-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 61 | 14 | 0 |
 | `tests/acl2/acceptance-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 249 | 0 | 0 |
 | `tests/acl2/account-list-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/accounts-snapshot-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 2 | 0 |
@@ -1073,26 +1076,29 @@ that `make certify` requests.
 | `tests/acl2/bp-channel-ingress-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 6 | 0 |
 | `tests/acl2/bp-clock-domain-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 26 | 3 | 0 |
 | `tests/acl2/bp-contact-service-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 4 | 0 |
+| `tests/acl2/bp-evidence-host-names-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 1 | 0 |
 | `tests/acl2/bp-fnbs-byte-counterexamples.lisp` | root | 2 | 5 | 0/0/0/5 | 3 | 2 | 0 |
 | `tests/acl2/bp-fnbs-byte-publisher-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 17 | 2 | 0 |
 | `tests/acl2/bp-fnbs-codec-equivalence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/bp-fnbs-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 1 | 0 |
 | `tests/acl2/bp-fnbs-deletion-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
-| `tests/acl2/bp-fnbs-deletion-publication-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 5 | 1 | 0 |
+| `tests/acl2/bp-fnbs-deletion-publication-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 8 | 1 | 0 |
 | `tests/acl2/bp-fnbs-delivery-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 1 | 0 |
-| `tests/acl2/bp-fnbs-delivery-publication-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
+| `tests/acl2/bp-fnbs-delivery-publication-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 1 | 0 |
 | `tests/acl2/bp-fnbs-delivery-replay-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 20 | 2 | 0 |
 | `tests/acl2/bp-fnbs-dispatch-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 1 | 0 |
+| `tests/acl2/bp-fnbs-dispatch-publication-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 1 | 0 |
 | `tests/acl2/bp-fnbs-family-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 2 | 0 |
-| `tests/acl2/bp-fnbs-family-publication-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 8 | 1 | 0 |
+| `tests/acl2/bp-fnbs-family-publication-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 11 | 1 | 0 |
 | `tests/acl2/bp-fnbs-family-replay-tests.lisp` | root | 0 | 8 | 0/8/0/0 | 14 | 1 | 0 |
 | `tests/acl2/bp-fnbs-forward-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
+| `tests/acl2/bp-fnbs-forward-publication-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 1 | 0 |
 | `tests/acl2/bp-fnbs-forward-replay-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 7 | 0 | 0 |
 | `tests/acl2/bp-fnbs-inspect-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 3 | 1 | 0 |
 | `tests/acl2/bp-fnbs-namespace-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 12 | 1 | 0 |
 | `tests/acl2/bp-fnbs-publication-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 10 | 1 | 0 |
 | `tests/acl2/bp-fnbs-replay-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 24 | 1 | 0 |
-| `tests/acl2/bp-forward-attempt-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
+| `tests/acl2/bp-forward-attempt-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-forward-image-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/bp-forward-live-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 13 | 0 | 0 |
 | `tests/acl2/bp-fragment-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
@@ -1130,13 +1136,14 @@ that `make certify` requests.
 | `tests/acl2/bp-node-fragment-plan-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-replacement-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-step-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 28 | 2 | 0 |
+| `tests/acl2/bp-node-host-machine-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 1 | 0 |
 | `tests/acl2/bp-node-host-sequence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/bp-node-host-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 27 | 0 | 0 |
 | `tests/acl2/bp-node-job-cursor-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 11 | 1 | 0 |
 | `tests/acl2/bp-node-job-offer-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 38 | 0 | 0 |
 | `tests/acl2/bp-node-machine-authorization-tests.lisp` | root | 1 | 1 | 0/1/0/0 | 21 | 4 | 0 |
 | `tests/acl2/bp-node-machine-teeth-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 10 | 5 | 0 |
-| `tests/acl2/bp-node-machine-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 47 | 4 | 0 |
+| `tests/acl2/bp-node-machine-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 51 | 4 | 0 |
 | `tests/acl2/bp-node-profile-admission-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 17 | 6 | 0 |
 | `tests/acl2/bp-node-profile-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 32 | 6 | 0 |
 | `tests/acl2/bp-node-progress-premises-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
@@ -1154,7 +1161,7 @@ that `make certify` requests.
 | `tests/acl2/bp-receipt-alpha-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 11 | 1 | 0 |
 | `tests/acl2/bp-receipt-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/bp-receipt-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 36 | 0 | 0 |
-| `tests/acl2/bp-receive-evidence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 3 | 0 |
+| `tests/acl2/bp-receive-evidence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 3 | 0 |
 | `tests/acl2/bp-receiver-evolving-tests.lisp` | root | 0 | 6 | 0/4/0/2 | 97 | 13 | 0 |
 | `tests/acl2/bp-receiver-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-receiver-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 19 | 2 | 0 |
@@ -1184,15 +1191,16 @@ that `make certify` requests.
 | `tests/acl2/byte-store-fault-keystones-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 8 | 19 | 0 |
 | `tests/acl2/byte-store-frame-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 100 | 3 | 0 |
 | `tests/acl2/byte-store-initializer-tests.lisp` | root | 0 | 9 | 0/4/0/5 | 12 | 3 | 0 |
-| `tests/acl2/byte-store-k0-recovery-tests.lisp` | root | 0 | 23 | 0/0/0/23 | 15 | 9 | 0 |
-| `tests/acl2/byte-store-k0-tests.lisp` | root | 0 | 22 | 0/0/0/22 | 11 | 14 | 0 |
+| `tests/acl2/byte-store-k0-recovery-tests.lisp` | root | 4 | 26 | 0/0/0/26 | 18 | 9 | 0 |
+| `tests/acl2/byte-store-k0-tests.lisp` | root | 0 | 29 | 0/0/0/29 | 22 | 20 | 0 |
 | `tests/acl2/byte-store-log-initializer-tests.lisp` | root | 1 | 2 | 0/2/0/0 | 11 | 0 | 0 |
 | `tests/acl2/byte-store-native-correspondence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 2 | 0 |
+| `tests/acl2/byte-store-node-witness-tests.lisp` | root | 4 | 25 | 0/2/0/23 | 15 | 7 | 0 |
 | `tests/acl2/byte-store-observation-scan-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 1 | 3 | 0 |
 | `tests/acl2/byte-store-observation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/byte-store-program-invariants-tests.lisp` | root | 0 | 3 | 0/1/0/2 | 9 | 8 | 0 |
 | `tests/acl2/byte-store-record-fence-tests.lisp` | root | 1 | 4 | 0/0/0/4 | 7 | 5 | 0 |
-| `tests/acl2/byte-store-record-provenance-tests.lisp` | root | 1 | 39 | 0/5/0/34 | 48 | 63 | 0 |
+| `tests/acl2/byte-store-record-provenance-tests.lisp` | root | 1 | 45 | 0/5/0/40 | 54 | 66 | 0 |
 | `tests/acl2/byte-store-relation-tests.lisp` | root | 1 | 5 | 0/0/0/5 | 12 | 12 | 0 |
 | `tests/acl2/byte-store-retention-publication-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 6 | 5 | 0 |
 | `tests/acl2/byte-store-scan-tests.lisp` | root | 3 | 24 | 0/0/0/24 | 38 | 5 | 0 |
@@ -1220,7 +1228,7 @@ that `make certify` requests.
 | `tests/acl2/checkpoint-compaction-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 15 | 4 | 0 |
 | `tests/acl2/checkpoint-publish-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 93 | 2 | 0 |
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 0 | 0 |
-| `tests/acl2/clock-reading-tests.lisp` | root | 9 | 0 | 0/0/0/0 | 16 | 7 | 0 |
+| `tests/acl2/clock-reading-tests.lisp` | root | 12 | 0 | 0/0/0/0 | 16 | 9 | 0 |
 | `tests/acl2/clock-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/closure-export-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 17 | 0 | 0 |
 | `tests/acl2/closure-open-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 30 | 0 | 0 |
@@ -1298,6 +1306,7 @@ that `make certify` requests.
 | `tests/acl2/feed-wire-input-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/frame-buffer-tests.lisp` | root | 3 | 3 | 0/3/0/0 | 6 | 0 | 0 |
 | `tests/acl2/frame-digest-buffer-tests.lisp` | root | 7 | 0 | 0/0/0/0 | 10 | 3 | 0 |
+| `tests/acl2/frame-journal-kinds-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 5 | 1 | 0 |
 | `tests/acl2/frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 78 | 0 | 0 |
 | `tests/acl2/frame-trailer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 25 | 0 | 0 |
 | `tests/acl2/group-access-cache-tests.lisp` | root | 0 | 5 | 0/2/0/3 | 27 | 3 | 0 |
@@ -1515,11 +1524,11 @@ that `make certify` requests.
 | `tests/acl2/peer-carriage-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 121 | 22 | 0 |
 | `tests/acl2/peer-catchup-tests.lisp` | root | 0 | 8 | 0/1/0/7 | 42 | 9 | 0 |
 | `tests/acl2/peer-feed-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 141 | 0 | 0 |
-| `tests/acl2/peer-guard-carried-tests.lisp` | root | 0 | 8 | 0/7/0/1 | 37 | 6 | 0 |
+| `tests/acl2/peer-guard-carried-tests.lisp` | root | 0 | 8 | 0/7/0/1 | 42 | 7 | 0 |
 | `tests/acl2/peer-host-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 83 | 9 | 0 |
 | `tests/acl2/peer-inbound-tests.lisp` | root | 0 | 11 | 0/2/0/9 | 276 | 5 | 0 |
 | `tests/acl2/peer-invite-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 157 | 27 | 0 |
-| `tests/acl2/peer-offer-indexed-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 43 | 4 | 0 |
+| `tests/acl2/peer-offer-indexed-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 38 | 3 | 0 |
 | `tests/acl2/peer-pull-session-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 63 | 11 | 0 |
 | `tests/acl2/peer-pull-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 84 | 20 | 0 |
 | `tests/acl2/peer-set-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 43 | 0 | 0 |
@@ -1553,8 +1562,8 @@ that `make certify` requests.
 | `tests/acl2/records-concrete-tests.lisp` | root | 0 | 4 | 0/1/1/2 | 68 | 3 | 0 |
 | `tests/acl2/records-freeze-tests.lisp` | root | 22 | 5 | 0/0/1/4 | 8 | 12 | 0 |
 | `tests/acl2/records-shape-tests.lisp` | root | 1 | 4 | 0/0/0/4 | 45 | 7 | 0 |
-| `tests/acl2/records-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 11 | 0 |
-| `tests/acl2/records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 0 | 0 |
+| `tests/acl2/records-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 38 | 11 | 0 |
+| `tests/acl2/records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/refusal-effect-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/relay-source-routes-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 15 | 5 | 0 |
 | `tests/acl2/relay-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 62 | 4 | 0 |
@@ -1670,7 +1679,7 @@ that `make certify` requests.
 | `tests/acl2/store-number-bound-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 24 | 0 | 0 |
 | `tests/acl2/store-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 0 | 0 |
 | `tests/acl2/store-observed-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 140 | 0 | 0 |
-| `tests/acl2/store-open-bridge-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 7 | 2 | 0 |
+| `tests/acl2/store-open-bridge-tests.lisp` | root | 2 | 10 | 0/0/0/10 | 10 | 3 | 0 |
 | `tests/acl2/store-open-node-bridge-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 7 | 6 | 0 |
 | `tests/acl2/store-open-pre-c1-tests.lisp` | root | 2 | 10 | 0/0/0/10 | 18 | 6 | 0 |
 | `tests/acl2/store-open-replay-refusal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
@@ -1695,11 +1704,11 @@ that `make certify` requests.
 | `tests/acl2/stx-keyring-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 30 | 0 | 0 |
 | `tests/acl2/stx-reader-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/stx-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 42 | 0 | 0 |
-| `tests/acl2/stx-transit-tests.lisp` | root | 0 | 24 | 0/13/11/0 | 120 | 5 | 0 |
+| `tests/acl2/stx-transit-tests.lisp` | root | 0 | 24 | 0/13/11/0 | 142 | 5 | 0 |
 | `tests/acl2/subject-id-buffer-tests.lisp` | root | 2 | 1 | 0/0/0/1 | 2 | 0 | 0 |
-| `tests/acl2/tcpcl-delivery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 30 | 4 | 0 |
+| `tests/acl2/tcpcl-delivery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 5 | 0 |
 | `tests/acl2/tcpcl-spool-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
-| `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 146 | 0 | 0 |
+| `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 156 | 0 | 0 |
 | `tests/acl2/tls-handshake-budget-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 33 | 0 | 0 |
 | `tests/acl2/tls-reload-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 39 | 1 | 0 |
 | `tests/acl2/topic-history-admission-tests.lisp` | root | 0 | 2 | 0/1/1/0 | 24 | 5 | 0 |
@@ -1711,9 +1720,9 @@ that `make certify` requests.
 | `tests/acl2/topic-history-metadata-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 27 | 3 | 0 |
 | `tests/acl2/topic-history-native-vector-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
 | `tests/acl2/topic-history-prefix-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 1 | 0 |
-| `tests/acl2/topic-history-prefix-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 1 | 0 |
+| `tests/acl2/topic-history-prefix-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 1 | 0 |
 | `tests/acl2/topic-history-recovery-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 2 | 0 |
-| `tests/acl2/topic-history-store-events-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 23 | 1 | 0 |
+| `tests/acl2/topic-history-store-events-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 1 | 0 |
 | `tests/acl2/topic-history-store-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 1 | 0 |
 | `tests/acl2/topic-history-store-node-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 36 | 1 | 0 |
 | `tests/acl2/topic-history-store-union-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
@@ -1931,7 +1940,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-cbud-step-read-octets-under-a-rate-by-definition` | `books/connection-budget.lisp` | 145 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cbud-step-read-octets and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-cbud-step-read-octets and the conclusion is that branch's value |
 | `fn-cc-decode-rejects-over-aggregate-bound-before-header` | `books/checkpoint-compaction.lisp` | 305 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cc-decode-exact and the conclusion is that arm's value |
 | `fn-cdl-payload-of-with-context` | `books/catalog-delta.lisp` | 91 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-cfg-delta-items-is-head-and-rows` | `books/config.lisp` | 3266 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-cfg-delta-items-is-head-and-rows` | `books/config.lisp` | 3227 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-cfg-delta-reason-of-a-redeem-past-its-expiry` | `books/accounts.lisp` | 1015 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cfg-delta-reason and the conclusion is that arm's value |
 | `fn-cfg-set-group-description-refuses-an-unknown-group-by-definition` | `books/config-descriptions.lisp` | 134 | branch-of-definition: the hypothesis negates a branch test of fn-cfg-delta-reason and the conclusion is that branch's value |
 | `fn-checkpoint-capacity-of-fn-checkpoint-make` | `books/checkpoint.lisp` | 72 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -1971,12 +1980,12 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-csi-recover-outside-replaying-is-no-op-by-definition` | `books/consumer-store-invariants.lisp` | 1345 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-recover and the conclusion is that arm's value |
 | `fn-cstp-topic-step-not-ok-is-identity` | `books/config-store-steps.lisp` | 1200 | arm-of-definition: the hypotheses select one IF/COND arm of fn-th-prefix-step and the conclusion is that arm's value |
 | `fn-ct-article-from-pending-msgid` | `books/container-invariants.lisp` | 403 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-ctg-assign-fields` | `books/catalog.lisp` | 1333 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-ctg-corr-live-facts` | `books/catalog.lisp` | 2940 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-cat$corr-live |
-| `fn-ctg-mark-withdrawn-is-update` | `books/catalog.lisp` | 1531 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-mark-withdrawn and the conclusion is that arm's value |
-| `fn-ctg-withdrawn-of-assign` | `books/catalog.lisp` | 1358 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-ctg-withdrawn-of-with-context` | `books/catalog.lisp` | 3246 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-ctg-withdrawn-of-with-withdrawn` | `books/catalog.lisp` | 3177 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-ctg-assign-fields` | `books/catalog.lisp` | 1478 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-ctg-corr-live-facts` | `books/catalog.lisp` | 3409 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-cat$corr-live |
+| `fn-ctg-mark-withdrawn-is-update` | `books/catalog.lisp` | 1676 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-mark-withdrawn and the conclusion is that arm's value |
+| `fn-ctg-withdrawn-of-assign` | `books/catalog.lisp` | 1503 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-ctg-withdrawn-of-with-context` | `books/catalog.lisp` | 3715 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-ctg-withdrawn-of-with-withdrawn` | `books/catalog.lisp` | 3646 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ctl-cei-get-of-non-uint` | `books/control-visible-indexed.lisp` | 211 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cei-get and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-cei-get and the conclusion is that branch's value |
 | `fn-ctl-classify-without-control-is-ordinary` | `books/control-classify.lisp` | 293 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ctl-classify-fields and the conclusion is that arm's value |
 | `fn-ctl-drop-via-of-atom` | `books/control-visible.lisp` | 199 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ctl-drop-via and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ctl-drop-via and the conclusion is that branch's value |
@@ -1984,7 +1993,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ctl-pin-withdrawn-of-pin` | `books/control-served.lisp` | 507 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ctl-pin-ws-of-pin` | `books/control-served.lisp` | 509 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ctl-visible-state-of-fields` | `books/control-visible.lisp` | 275 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-ctw-corr-wbv-parts` | `books/catalog.lisp` | 3756 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-cat$corr-wbv |
+| `fn-ctw-corr-wbv-parts` | `books/catalog.lisp` | 4291 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-cat$corr-wbv |
 | `fn-cvec-debt-from-of-atom` | `books/store-capacity-vector.lisp` | 958 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cvec-debt-from and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-cvec-debt-from and the conclusion is that branch's value |
 | `fn-cvec-debt-from-of-cons` | `books/store-capacity-vector.lisp` | 950 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cvec-debt-from and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-cvec-debt-from and the conclusion is that branch's value |
 | `fn-cvec-history-admittedp-of-cons` | `books/store-capacity-vector.lisp` | 915 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cvec-history-admittedp and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-cvec-history-admittedp and the conclusion is that branch's value |
@@ -2387,9 +2396,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-peer-submission-octets-of-fn-peer-make-submission` | `books/peer-inbound.lisp` | 766 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-peer-submission-peer-of-fn-peer-make-submission` | `books/peer-inbound.lisp` | 757 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-peer-tls-select-numeric-host-needs-a-name-by-definition` | `books/peer-host.lisp` | 253 | branch-of-definition: the hypothesis negates a branch test of fn-peer-tls-select and the conclusion is that branch's value |
-| `fn-pgc-msgid-argp-forward` | `books/peer-guard-carried.lisp` | 292 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-peer-msgid-argp |
+| `fn-pgc-msgid-argp-forward` | `books/peer-guard-carried.lisp` | 293 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-peer-msgid-argp |
 | `fn-pinv-confirm-record-plan-passes-the-other-plans` | `books/peer-invite.lisp` | 1392 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pinv-confirm-record-plan and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-pinv-confirm-record-plan and the conclusion is that branch's value |
-| `fn-pix-msgid-argp-forward` | `books/peer-offer-indexed.lisp` | 250 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-peer-msgid-argp |
 | `fn-pol-policy-group-of-fn-pol-make-policy` | `books/policy.lisp` | 476 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-pol-policy-members-of-fn-pol-make-policy` | `books/policy.lisp` | 479 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-pol-policy-terms-of-fn-pol-make-policy` | `books/policy.lisp` | 482 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -2440,7 +2448,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-rcompat-response-of-served-article` | `books/nntp-reader-compat.lisp` | 832 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-rcompat-single-preserves-session` | `books/nntp-reader-compat.lisp` | 541 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-rcompat-subscription-names-keep-the-configured-order` | `books/nntp-reader-compat.lisp` | 267 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rcompat-subscription-names and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-rcompat-subscription-names and the conclusion is that branch's value |
-| `fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence` | `books/records-concrete.lisp` | 352 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence` | `books/records-concrete.lisp` | 349 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-rcon-sf-record-pair-is-sf-record-pair` | `books/records-concrete.lisp` | 176 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-rcon-sn-record-bindsp-is-sn-record-bindsp` | `books/records-concrete.lisp` | 193 | definition-restated: the conclusion is the body of fn-rcon-sn-record-bindsp; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-rcon-store-event-generation-is-store-event-generation` | `books/records-concrete.lisp` | 164 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-rcon-store-event-generation; reflexive-conclusion: a conjunct is (equal X X) |
@@ -2449,17 +2457,17 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-rcon-store-event-txid-is-store-event-txid` | `books/records-concrete.lisp` | 157 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-rcon-store-event-txid; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-rdc-store-selection-unfolds` | `books/reader-open-carried.lisp` | 157 | definition-restated: the conclusion is the body of fn-rdc-store-selection |
 | `fn-record-accessors-of-held-make` | `books/held-record.lisp` | 253 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-record-decode-exact-exec-is-impl-by-definition` | `books/records-exec.lisp` | 260 | definition-restated: the conclusion is the body of fn-record-decode-exact-exec; reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-record-final-ok-has-record` | `books/records-canonicality.lisp` | 762 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-record-impl-encode-domain` | `books/records-canonicality.lisp` | 919 | arm-of-definition: the hypotheses select one IF/COND arm of fn-record-encode-impl and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-record-encode-impl and the conclusion is that branch's value |
+| `fn-record-decode-exact-exec-is-impl-by-definition` | `books/records-exec.lisp` | 253 | definition-restated: the conclusion is the body of fn-record-decode-exact-exec; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-record-final-ok-has-record` | `books/records-canonicality.lisp` | 782 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-record-impl-encode-domain` | `books/records-canonicality.lisp` | 936 | arm-of-definition: the hypotheses select one IF/COND arm of fn-record-encode-impl and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-record-encode-impl and the conclusion is that branch's value |
 | `fn-record-parse-ok-has-rest` | `books/records-canonicality.lisp` | 251 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-record-parse-ok-has-value` | `books/records-canonicality.lisp` | 248 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-record-parse-rest-of-ok` | `books/records-shape.lisp` | 764 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-record-parse-value-of-ok` | `books/records-shape.lisp` | 759 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-record-parse-rest-of-ok` | `books/records-shape.lisp` | 761 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-record-parse-value-of-ok` | `books/records-shape.lisp` | 756 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-record-payload-of-with-numbers` | `books/catalog-relation.lisp` | 147 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-record-payloadp-of-octets-by-definition` | `books/records-exec.lisp` | 40 | definition-restated: the conclusion is the body of fn-record-payloadp with the conjuncts the hypotheses already assert struck out |
-| `fn-record-result-okp-is-parse-okp` | `books/records-canonicality.lisp` | 750 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-record-result-record-of-result-ok` | `books/records-shape.lisp` | 800 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-record-result-okp-is-parse-okp` | `books/records-canonicality.lisp` | 770 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-record-result-record-of-result-ok` | `books/records-shape.lisp` | 797 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-relay-forwarding-without-undertaking-is-refused-by-definition` | `books/relay-crash-invariants.lisp` | 214 | arm-of-definition: the hypotheses select one IF/COND arm of fn-relay-undertake and the conclusion is that arm's value |
 | `fn-replay-result-kind-of-fn-replay-fault` | `books/replay.lisp` | 172 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-replay-result-kind-of-fn-replay-ok` | `books/replay.lisp` | 163 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -2539,10 +2547,10 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-scka-car-run-segments` | `books/store-checkpoint-arena-load.lisp` | 386 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-scka-payload-of-record` | `books/store-checkpoint-arena-writer.lisp` | 361 | arm-of-definition: the hypotheses select one IF/COND arm of fn-scka-payload-of and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-scka-payload-of and the conclusion is that branch's value |
 | `fn-scka-record-payload-of-held-wire` | `books/store-checkpoint-arena-writer.lisp` | 349 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scka-select-named-refuses-the-arena-by-name` | `books/store-checkpoint-arena-load.lisp` | 728 | arm-of-definition: constant arguments select one IF/COND arm of fn-scka-select-named and the conclusion is that arm's value |
-| `fn-scka-select-named-unfolds` | `books/store-checkpoint-arena-load.lisp` | 732 | arm-of-definition: the hypotheses select one IF/COND arm of fn-scka-select-named and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-scka-select-named and the conclusion is that branch's value |
+| `fn-scka-select-named-refuses-the-arena-by-name` | `books/store-checkpoint-arena-load.lisp` | 748 | arm-of-definition: constant arguments select one IF/COND arm of fn-scka-select-named and the conclusion is that arm's value |
+| `fn-scka-select-named-unfolds` | `books/store-checkpoint-arena-load.lisp` | 752 | arm-of-definition: the hypotheses select one IF/COND arm of fn-scka-select-named and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-scka-select-named and the conclusion is that branch's value |
 | `fn-scka-strip-base-keeps-the-records` | `books/store-checkpoint-arena-writer.lisp` | 969 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sckd-digest-ignores-revision-and-log` | `books/store-checkpoint-digest.lisp` | 57 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sckd-digest-ignores-revision-and-log-by-definition` | `books/store-checkpoint-digest.lisp` | 57 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sckd-verifiable-of-tables-of-capture` | `books/store-checkpoint-digest.lisp` | 49 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scl-haltedp-of-with-live` | `books/served-chunk-live-free.lisp` | 115 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scl-reader-live-session-is-its-own-by-definition` | `books/served-chunk-live-free.lisp` | 213 | arm-of-definition: the hypotheses select one IF/COND arm of fn-own-conn-live-session and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value |
@@ -2719,8 +2727,6 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sn-open-kind-of-fn-sn-open-ok` | `books/store-observed.lisp` | 71 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-open-observed-invalid-history-refuses` | `books/store-observed.lisp` | 499 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-open-observed and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value |
 | `fn-sn-open-state-of-fn-sn-open-ok` | `books/store-observed.lisp` | 73 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-prepare-refuses-a-legacy-record` | `books/store-node.lisp` | 913 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-prepare and the conclusion is that arm's value |
-| `fn-sn-prepare-topic-refuses-fresh-v1-anchor` | `books/store-node.lisp` | 1008 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-prepare-topic and the conclusion is that arm's value |
 | `fn-sn-refuse-reservation-disabled-is-no-op` | `books/store-node-resolution.lisp` | 166 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-refuse-reservation and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value |
 | `fn-sn-state-fields-of-fn-sn-update-replayed` | `books/store-node.lisp` | 665 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-state-fields-of-fn-sn-with-consumer` | `books/store-node.lisp` | 611 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -2734,6 +2740,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sn-verdicts-of-fn-sn-with-consumer` | `books/store-node-invariants-base.lisp` | 394 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-verdicts-of-fn-sn-with-topic` | `books/store-node-invariants-base.lisp` | 408 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-snb-projectionp-unfolds` | `books/store-number-projection.lisp` | 18 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-nntp-projectionp |
+| `fn-snc-row-bytes-is-handle-bytes` | `books/store-node-correspondence.lisp` | 109 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sni-files-index-of-constructors` | `books/store-node-invariants.lisp` | 955 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sni-replaying-has-no-indexed-rows` | `books/store-node-invariants.lisp` | 993 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-indexed-rows-of and the conclusion is that arm's value |
 | `fn-snrt-node-of-make-v6` | `books/store-node-retention.lisp` | 354 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -2751,7 +2758,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-snt-initial-node-is-idle` | `books/store-node-invariants-base.lisp` | 1927 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-snt-store-event-fields-of-an-article-record` | `books/store-node-traces-prepare.lisp` | 696 | arm-of-definition: the hypotheses select one IF/COND arm of fn-store-event-generation and the conclusion is that arm's value |
 | `fn-sopc-identity-wire-is-hw-composite` | `books/store-open-pre-c1.lisp` | 239 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-spc-store-event-fields-of-an-article-record` | `books/store-prepare-correspondence.lisp` | 93 | arm-of-definition: the hypotheses select one IF/COND arm of fn-store-event-generation and the conclusion is that arm's value |
+| `fn-spc-store-event-fields-of-an-article-record` | `books/store-prepare-correspondence.lisp` | 92 | arm-of-definition: the hypotheses select one IF/COND arm of fn-store-event-generation and the conclusion is that arm's value |
 | `fn-splan-step-accessors-of-make` | `books/served-plan.lisp` | 401 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-splan-step-handshake-owed-excludes-close-by-definition` | `books/served-plan.lisp` | 428 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-splan-step-handshake-owed |
 | `fn-srs-split-zero` | `books/store-recover-stream.lisp` | 437 | arm-of-definition: the hypotheses select one IF/COND arm of fn-frame-split and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-frame-split and the conclusion is that branch's value |
@@ -2774,22 +2781,23 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-stmt-receipt-policy-id-of-fn-stmt-make-receipt` | `books/statement.lisp` | 620 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stmt-receipt-subject-of-fn-stmt-make-receipt` | `books/statement.lisp` | 614 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stmt-signature-of-fn-stmt-make` | `books/statement.lisp` | 610 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-store-event-article-encoding-is-legacy-record-encoding` | `books/store-events.lisp` | 263 | arm-of-definition: the hypotheses select one IF/COND arm of fn-store-event-encode and the conclusion is that arm's value |
+| `fn-store-event-article-encoding-is-legacy-record-encoding` | `books/store-events.lisp` | 276 | arm-of-definition: the hypotheses select one IF/COND arm of fn-store-event-encode and the conclusion is that arm's value |
 | `fn-stx-admission-is-peer-independent-by-definition` | `books/stx-policy.lisp` | 60 | definition-restated: the conclusion is the body of fn-stx-transit-authority-ok |
 | `fn-stx-equivocating-creator-is-never-admitted` | `books/stx-authority.lisp` | 62 | arm-of-definition: the hypotheses select one IF/COND arm of fn-stx-authority-outcome and the conclusion is that arm's value |
 | `fn-stx-forked-authority-is-its-own-outcome` | `books/stx-authority.lisp` | 75 | arm-of-definition: the hypotheses select one IF/COND arm of fn-stx-authority-outcome and the conclusion is that arm's value |
-| `fn-stx-index-bindings-of-fn-stx-make-index` | `books/stx-index.lisp` | 216 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-stx-index-lookup-cost-is-index-bounded` | `books/stx-index.lisp` | 799 | instance-corollary: the statement is fn-stx-alist-steps-is-len-bounded instantiated, discharging nothing |
-| `fn-stx-index-query-is-store-free-by-definition` | `books/stx-index.lisp` | 816 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-stx-index-lookup; reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-stx-index-records-of-fn-stx-make-index` | `books/stx-index.lisp` | 222 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-stx-index-slots-of-fn-stx-make-index` | `books/stx-index.lisp` | 219 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-stx-index-bindings-of-fn-stx-make-index` | `books/stx-index.lisp` | 228 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-stx-index-lookup-cost-is-index-bounded` | `books/stx-index.lisp` | 872 | instance-corollary: the statement is fn-stx-alist-steps-is-len-bounded instantiated, discharging nothing |
+| `fn-stx-index-policies-of-fn-stx-make-index` | `books/stx-index.lisp` | 237 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-stx-index-query-is-store-free-by-definition` | `books/stx-index.lisp` | 889 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-stx-index-lookup; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-stx-index-records-of-fn-stx-make-index` | `books/stx-index.lisp` | 234 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-stx-index-slots-of-fn-stx-make-index` | `books/stx-index.lisp` | 231 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stx-lace-is-the-wire-lace-of-alpha-by-definition` | `books/stx-node-lace.lisp` | 92 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-stx-lace; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-stx-reader-verdict-is-the-recorded-verdict` | `books/stx-reader.lisp` | 52 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-stx-reader-verdict; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-stx-reconnect-does-not-extend-the-chain` | `books/stx-epochs.lisp` | 317 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-stx-record-creator-of-fn-stx-equivocation-record` | `books/stx-index.lisp` | 268 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-stx-record-id-new-of-fn-stx-equivocation-record` | `books/stx-index.lisp` | 281 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-stx-record-incarnation-of-fn-stx-equivocation-record` | `books/stx-index.lisp` | 271 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-stx-record-sequence-of-fn-stx-equivocation-record` | `books/stx-index.lisp` | 274 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-stx-record-creator-of-fn-stx-equivocation-record` | `books/stx-index.lisp` | 283 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-stx-record-id-new-of-fn-stx-equivocation-record` | `books/stx-index.lisp` | 296 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-stx-record-incarnation-of-fn-stx-equivocation-record` | `books/stx-index.lisp` | 286 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-stx-record-sequence-of-fn-stx-equivocation-record` | `books/stx-index.lisp` | 289 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stx-unverified-contributes-no-authority` | `books/stx-lace.lisp` | 134 | arm-of-definition: the hypotheses select one IF/COND arm of fn-stx-delta and the conclusion is that arm's value |
 | `fn-stxe-keyring-profile-is-identity-off-v2-by-definition` | `books/stx-evidence-records.lisp` | 103 | arm-of-definition: the hypotheses select one IF/COND arm of fn-stxe-keyring-profile and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-stxe-keyring-profile and the conclusion is that branch's value |
 | `fn-sxd-durable-content-by-inodes` | `books/store-export-durability.lisp` | 832 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-bs-durable-content; reflexive-conclusion: a conjunct is (equal X X) |
@@ -2884,8 +2892,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-th-accepted-selection-refuses-unbound-context` | `books/topic-history-authorship.lisp` | 96 | arm-of-definition: the hypotheses select one IF/COND arm of fn-th-select-accepted-event and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-th-select-accepted-event and the conclusion is that branch's value |
 | `fn-th-accepted-selection-uses-exact-source-and-snapshot` | `books/topic-history-authorship.lisp` | 87 | arm-of-definition: the hypotheses select one IF/COND arm of fn-th-select-accepted-event and the conclusion is that arm's value |
 | `fn-th-decode-refuses-oversize-by-definition` | `books/topic-history-metadata.lisp` | 292 | arm-of-definition: the hypotheses select one IF/COND arm of fn-th-decode and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-th-decode and the conclusion is that branch's value |
-| `fn-th-prefix-step-failure-sticks` | `books/topic-history-prefix.lisp` | 103 | arm-of-definition: the hypotheses select one IF/COND arm of fn-th-prefix-step and the conclusion is that arm's value |
-| `fn-th-topic-decode-refuses-oversize` | `books/topic-history-store-events.lisp` | 200 | arm-of-definition: the hypotheses select one IF/COND arm of fn-th-topic-event-decode-exact and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-th-topic-event-decode-exact and the conclusion is that branch's value |
+| `fn-th-prefix-step-failure-sticks` | `books/topic-history-prefix.lisp` | 100 | arm-of-definition: the hypotheses select one IF/COND arm of fn-th-prefix-step and the conclusion is that arm's value |
+| `fn-th-topic-decode-refuses-oversize` | `books/topic-history-store-events.lisp` | 190 | arm-of-definition: the hypotheses select one IF/COND arm of fn-th-topic-event-decode-exact and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-th-topic-event-decode-exact and the conclusion is that branch's value |
 | `fn-web-client-address-without-proxy-unfolds` | `books/web-request.lisp` | 1369 | arm-of-definition: the hypotheses select one IF/COND arm of fn-web-client-address and the conclusion is that arm's value |
 | `fn-wire-drive-closed-is-noop` | `books/wire-invariants.lisp` | 719 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-drive and the conclusion is that arm's value |
 | `fn-wire-drive-of-empty-chunk` | `books/wire-invariants.lisp` | 713 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-drive and the conclusion is that arm's value |

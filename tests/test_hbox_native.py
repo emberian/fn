@@ -25,7 +25,7 @@ class HboxNativeDryRunTests(unittest.TestCase):
                      "tests.test_native_owner")
         self.assertEqual(answer.returncode, 0, answer.stderr)
         self.assertEqual(image_lines(answer.stdout),
-                         [f"step image-set python3 $S/bin/image_set.py link {sha} $T "
+                         [f"step image-set python3 $S/bin/image_set.py link --base /tank/fn/images {sha} $T "
                           "developer production"])
         self.assertNotIn("certify_books", answer.stdout)
         self.assertIn(f"--source {sha}", answer.stdout)
@@ -71,6 +71,7 @@ class HboxNativeDryRunTests(unittest.TestCase):
                                 % (tool, log))
                 stub.chmod(0o755)
             env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}"}
+            env["FN_HBOX"] = "hbox"
             for rev, keeps in ((".", "--exclude=*.cert"), ("HEAD", "! -name '*.cert'")):
                 log.write_text("")
                 done = subprocess.run(["sh", str(SCRIPT), "--detach", "--no-build", "--name", "t",
@@ -84,6 +85,40 @@ class HboxNativeDryRunTests(unittest.TestCase):
                                 rev, "tests.test_native_owner"], cwd=ROOT, env=env,
                                capture_output=True, text=True, timeout=120)
                 self.assertNotIn(".cert", log.read_text())
+
+    def test_no_build_refuses_a_tree_without_its_images_up_front(self):
+        # item 74: the refusal comes before any rsync/ship, and names the
+        # runs of NAME on the box that hold the images.
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "calls"
+            answers = Path(directory) / "runs"
+            stub = Path(directory) / "ssh"
+            stub.write_text('#!/bin/sh\necho "ssh $*" >> %s\ncase "$*" in\n'
+                            '*fn-no-build-images*) echo build/fn-host-developer ;;\n'
+                            '*fn-no-build-runs*) cat %s ;;\nesac\ncat > /dev/null\nexit 0\n'
+                            % (log, answers))
+            stub.chmod(0o755)
+            rsync = Path(directory) / "rsync"
+            rsync.write_text('#!/bin/sh\necho "rsync $*" >> %s\nexit 0\n' % log)
+            rsync.chmod(0o755)
+            env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}", "FN_HBOX": "hbox"}
+            for held, words in (("abc\nxyz\n", "holding every image this run needs: abc xyz "
+                                                 "-- pass --label ONE"),
+                                ("", "no run of t on hbox holds them")):
+                answers.write_text(held)
+                log.write_text("")
+                done = subprocess.run(["sh", str(SCRIPT), "--no-build", "--name", "t", "--label",
+                                       "fresh", ".", "tests.test_native_owner"], cwd=ROOT,
+                                      env=env, capture_output=True, text=True, timeout=120,
+                                      stdin=subprocess.DEVNULL)
+                self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+                self.assertIn("--no-build reuses hbox:/tank/fn/scratch/t/native-fresh/tree "
+                              "(--label fresh), which lacks: build/fn-host-developer", done.stderr)
+                self.assertIn(words, done.stderr)
+                self.assertNotIn("rsync", log.read_text())
+                self.assertNotIn("mkdir -p", log.read_text())
 
     def test_default_builds_the_developer_image_only(self):
         answer = dry("HEAD", "tests.test_native_owner")
@@ -286,11 +321,21 @@ class HboxNativeDryRunTests(unittest.TestCase):
                     if line.startswith("tstep test-tests.test_native_bounds_join "))
         self.assertIn("FN_NATIVE_HOST=$T/build/fn-host ", join)
         self.assertIn("FN_NATIVE_DEVELOPER_HOST=$T/build/fn-host-developer ", join)
-        developer = dry("--allow-skips", "HEAD", "tests.test_native_bounds_join")
-        self.assertEqual(developer.returncode, 0, developer.stderr)
-        self.assertIn("reads FN_NATIVE_HOST through a tests/ helper", developer.stdout + developer.stderr)
-        self.assertNotIn("FN_NATIVE_HOST=", next(
-            line for line in developer.stdout.splitlines()
+        # Since dev 96b3eb2e4 the module USES tests.native_profile_fixture's
+        # IMAGE (FN_NATIVE_HOST), so the derived list adds production; the
+        # dtn-developer image it reads only through an imported helper stays
+        # a note, never a refusal.
+        derived = dry("--allow-skips", "HEAD", "tests.test_native_bounds_join")
+        self.assertEqual(derived.returncode, 0, derived.stderr)
+        text = derived.stdout + derived.stderr
+        self.assertIn("added production (tests.test_native_bounds_join reads FN_NATIVE_HOST "
+                      "(through tests.native_profile_fixture.IMAGE, which it uses))", text)
+        self.assertIn("FN_NATIVE_HOST=$T/build/fn-host ", next(
+            line for line in derived.stdout.splitlines()
+            if line.startswith("tstep test-tests.test_native_bounds_join ")))
+        self.assertIn("reads FN_NATIVE_DTN_DEVELOPER_HOST through a tests/ helper", text)
+        self.assertNotIn("FN_NATIVE_DTN_DEVELOPER_HOST=", next(
+            line for line in derived.stdout.splitlines()
             if line.startswith("tstep test-tests.test_native_bounds_join ")))
 
     def test_every_image_or_opt_in_variable_a_native_module_reads_is_classified(self):
@@ -381,6 +426,7 @@ class IdentityTests(unittest.TestCase):
             head + '\necho "COPY=$FN_HBOX_NATIVE_COPY"\necho "RUNNING=$0"\necho "HERE=$HERE"\n')
         shutil.copy(ROOT / "tools" / "wait_for.sh", tree / "tools" / "wait_for.sh")
         shutil.copy(ROOT / "tools" / "boxes.sh", tree / "tools" / "boxes.sh")
+        shutil.copy(ROOT / "tools" / "native_box.sh", tree / "tools" / "native_box.sh")
         shutil.copy(ROOT / "tools" / "image_set.py", tree / "tools" / "image_set.py")
         env = {k: v for k, v in os.environ.items() if not k.startswith("FN_HBOX_NATIVE_")}
         probe = subprocess.run(["sh", str(tree / "tools" / "hbox_native.sh")], cwd=ROOT,
@@ -447,6 +493,176 @@ class GatedModuleTests(unittest.TestCase):
         _, refusals, notes = native_env.plan(["developer"], {}, ["tests.test_native_consumer_e2"],
                                              allow_skips=True)
         self.assertFalse(any("gated by" in r for r in refusals), refusals)
+
+
+class BoxRowTests(unittest.TestCase):
+    """Each build box's row (obstructions-7 item 67): hbox_native used hbox's
+    cache and swarm-build whatever box FN_HBOX named (compress-8)."""
+
+    def row(self, box, home=None):
+        out = subprocess.run(["sh", str(ROOT / "tools" / "native_box.sh"), box, str(ROOT)]
+                             + ([home] if home else []),
+                             capture_output=True, text=True, timeout=60)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return dict(line.split("=", 1) for line in out.stdout.splitlines())
+
+    def test_hbox_row(self):
+        row = self.row("hbox")
+        self.assertEqual(row, {"BASE": "'/tank/fn/scratch'", "CACHE": "'/tank/fn/certcache'",
+                               "WRAP": "'swarm-build'", "IMAGES_BASE": "'/tank/fn/images'",
+                               "OPENSSL": "'bundled'"})
+        script = dry("--box", "hbox", "HEAD", "tests.test_native_owner").stdout
+        self.assertIn("S=/tank/fn/scratch/t/native-l", script)
+        self.assertIn("CACHE=/tank/fn/certcache", script)
+        self.assertIn("step certify swarm-build python3", script)
+        self.assertIn("openssl-3.5.8/bin/openssl", script)
+        self.assertIn("flock /tank/fn/scratch/.hbox-native-bigmem.lock",
+                      dry("--box", "hbox", "--mem", "64G", "HEAD", "tests.test_native_owner").stdout)
+
+    def test_persvati_row(self):
+        row = self.row("persvati")
+        self.assertEqual(row, {"BASE": "'~/fn-gates'", "CACHE": "'~/fn-certcache'",
+                               "WRAP": "''", "IMAGES_BASE": "''", "OPENSSL": "'system'"})
+        resolved = self.row("persvati", "/home/u")
+        self.assertEqual((resolved["BASE"], resolved["CACHE"]),
+                         ("'/home/u/fn-gates'", "'/home/u/fn-certcache'"))
+        answer = dry("--box", "persvati", "HEAD", "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        script = answer.stdout
+        self.assertIn("S=~/fn-gates/t/native-l", script)
+        self.assertIn("CACHE=~/fn-certcache", script)
+        self.assertNotIn("swarm-build", script)
+        self.assertNotIn("openssl-3.5.8", script)
+        self.assertIn("command -v openssl", script)
+        # No published image sets there: refused up front, naming hbox.
+        refused = dry("--box", "persvati", "--image-set", "a" * 40, "HEAD",
+                      "tests.test_native_owner")
+        self.assertEqual(refused.returncode, 2)
+        self.assertIn("published on hbox", refused.stderr)
+
+    def test_auto_and_unknown(self):
+        # A dry run never ssh-es to pick: auto reads as hbox.
+        self.assertIn("S=/tank/fn/scratch/", dry("--box", "auto", "HEAD",
+                                                 "tests.test_native_owner").stdout)
+        self.assertEqual(dry("--box", "laptop", "HEAD", "tests.test_native_owner").returncode, 2)
+        out = subprocess.run(["sh", str(ROOT / "tools" / "native_box.sh"), "laptop", str(ROOT)],
+                             capture_output=True, text=True, timeout=60)
+        self.assertEqual(out.returncode, 2)
+
+
+class DetachedByDefaultTests(unittest.TestCase):
+    """A run survives its lane (obstructions-7 item 58): the start returns
+    detached, the record names box, dir, pid and log, and `status` / `attach`
+    read it from any later session."""
+
+    def test_start_detaches_and_records_the_pid(self):
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "calls"
+            for tool in ("ssh", "rsync"):
+                stub = Path(directory) / tool
+                stub.write_text('#!/bin/sh\necho "%s $*" >> %s\ncase "$*" in *nohup*) echo 4242 ;; '
+                                'esac\ncat > /dev/null\nexit 0\n'
+                                % (tool, log))
+                stub.chmod(0o755)
+            env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}", "FN_HBOX": "hbox"}
+            label = "detach-test-%d" % os.getpid()
+            record = ROOT / "build" / "hbox-native" / f"{label}.run"
+            self.addCleanup(lambda: record.unlink(missing_ok=True))
+            started = subprocess.run(["sh", str(SCRIPT), "--no-build", "--name", "t", "--label", label,
+                                      "HEAD", "tests.test_native_owner"],
+                                     cwd=ROOT, env=env, capture_output=True, text=True, timeout=120,
+                                     stdin=subprocess.DEVNULL)
+            self.assertEqual(started.returncode, 0, started.stdout + started.stderr)
+            self.assertIn(f"re-attach with: tools/hbox_native.sh attach {label}", started.stdout)
+            fields = dict(line.split("=", 1) for line in record.read_text().splitlines())
+            self.assertEqual(fields["box"], "hbox")
+            self.assertEqual(fields["pid"], "4242")
+            self.assertEqual(fields["dir"], f"/tank/fn/scratch/t/native-{label}")
+            self.assertEqual(fields["log"], fields["dir"] + "/run.log")
+            # No wait_for poll happened: the start did not attach.
+            self.assertNotIn("test -f", log.read_text())
+            status = subprocess.run(["sh", str(SCRIPT), "status", label], cwd=ROOT, env=env,
+                                    capture_output=True, text=True, timeout=60,
+                                    stdin=subprocess.DEVNULL)
+            self.assertEqual(status.returncode, 0, status.stderr)
+            self.assertIn("pid=4242", status.stdout)
+            self.assertIn("kill -0 '4242'", log.read_text())
+
+    def test_attach_without_a_record_names_the_runs_here(self):
+        answer = subprocess.run(["sh", str(SCRIPT), "attach", "no-such-label"], cwd=ROOT,
+                                capture_output=True, text=True, timeout=60)
+        self.assertEqual(answer.returncode, 2)
+        self.assertIn("no record", answer.stderr)
+        self.assertIn("no-such-label.run", answer.stderr)
+        # --wait keeps the old attach-at-once behaviour; the dry run takes it.
+        self.assertEqual(dry("--wait", "HEAD", "tests.test_native_owner").returncode, 0)
+
+
+class HelperImageUseTests(unittest.TestCase):
+    """obstructions-7 item 62: a helper's image read counts for a module
+    through the helper names the module uses; a scope's reads are
+    alternatives; unmet -> refused up front, not 25 minutes of build then
+    every test skipped."""
+
+    def fake_tree(self, directory):
+        import sys
+        sys.path.insert(0, str(ROOT / "tools"))
+        import native_env
+        base = Path(directory)
+        files = {
+            "tests.test_x": "from tests.helper import starts_dtn, harmless\n"
+                            "import tests.other as other\n"
+                            "def test_a():\n    starts_dtn()\n    other.both()\n",
+            "tests.helper": "import os\nfrom tests.deep import deep_start\n"
+                            "def starts_dtn():\n    return deep_start()\n"
+                            "def harmless():\n    return 1\n"
+                            "def unused():\n    return native_image(\"FN_NATIVE_HOST\")\n",
+            "tests.deep": "def deep_start():\n    return native_image(\"FN_NATIVE_DTN_HOST\")\n",
+            "tests.other": "def both():\n    image = native_image(\"FN_NATIVE_DEVELOPER_HOST\")\n"
+                           "    return image or native_image(\"FN_NATIVE_DTN_DEVELOPER_HOST\")\n",
+        }
+        paths = {}
+        for name, text in files.items():
+            path = base / (name.replace(".", "_") + ".py")
+            path.write_text(text)
+            paths[name] = path
+
+        def module_file(name):
+            if name in paths:
+                return paths[name]
+            raise SystemExit("none")
+        return native_env, module_file
+
+    def test_scopes_follow_the_names_the_module_uses(self):
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as directory:
+            native_env, module_file = self.fake_tree(directory)
+            with mock.patch.object(native_env, "module_file", module_file):
+                scopes = native_env.helper_scopes("tests.test_x")
+        self.assertEqual(scopes, [
+            ("tests.deep", "deep_start", frozenset({"FN_NATIVE_DTN_HOST"})),
+            ("tests.other", "both", frozenset({"FN_NATIVE_DEVELOPER_HOST",
+                                               "FN_NATIVE_DTN_DEVELOPER_HOST"}))])
+        # `unused` reads FN_NATIVE_HOST, but test_x never refers to it.
+
+    def test_plan_refuses_an_unmet_scope_and_accepts_an_alternative(self):
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as directory:
+            native_env, module_file = self.fake_tree(directory)
+            with mock.patch.object(native_env, "module_file", module_file):
+                _, refusals, notes = native_env.plan(["developer"], {}, ["tests.test_x"])
+                self.assertEqual(len(refusals), 1, refusals)
+                self.assertIn("FN_NATIVE_DTN_HOST (through tests.deep.deep_start", refusals[0])
+                self.assertIn("--images developer,dtn", refusals[0])
+                # The developer image meets `both` (its dtn-developer read is
+                # the fallback): noted, not refused.
+                self.assertTrue(any("FN_NATIVE_DTN_DEVELOPER_HOST" in n for n in notes), notes)
+                _, refusals, _ = native_env.plan(["developer", "dtn"], {}, ["tests.test_x"])
+                self.assertEqual(refusals, [])
 
 
 if __name__ == "__main__":

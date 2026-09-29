@@ -29,7 +29,10 @@
   "fn-reader-closep": "an ACL2 state global set with f-put-global (host/reader-host.lisp), not a definition",
   "fn-reader-submit-octets/-msgid": "an ACL2 state global set with f-put-global (host/reader-host.lisp), not a definition",
   "FN-BP-ADU": "the BP ADU magic string (*fn-bpa-magic*, books/bp-adu.lisp), not a Lisp definition",
-  "FN-BP-SRCPT": "the signed-receipt magic string (*fn-bpsr-magic*, books/bp-signed-receipt.lisp), not a Lisp definition"
+  "FN-BP-SRCPT": "the signed-receipt magic string (*fn-bpsr-magic*, books/bp-signed-receipt.lisp), not a Lisp definition",
+  "fn-record-schema0-encode": "retired name kept as history: specs/acceptance-stamp.md's status note names the schema-0 forms D3 (small-rows-2-d3) deleted; no migrations, fresh deploys at 6.6.0",
+  "fn-record-schema-0-bytes-decode-as-legacy": "retired name kept as history: specs/acceptance-stamp.md's status note names the schema-0 forms D3 (small-rows-2-d3) deleted; no migrations, fresh deploys at 6.6.0",
+  "fn-sn-prepare-refuses-a-legacy-record": "retired name kept as history: specs/acceptance-stamp.md's status note names the schema-0 forms D3 (small-rows-2-d3) deleted; no migrations, fresh deploys at 6.6.0"
  },
  "stale": {}
 }
