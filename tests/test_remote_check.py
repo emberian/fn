@@ -181,8 +181,12 @@ class RemoteCheckTests(unittest.TestCase):
             "    pathlib.Path('planning', n).write_text('regen ' + n)\n")
         (self.lane / "tools/current_view.py").write_text(
             "import pathlib\npathlib.Path('planning/current.md').write_text('regen current')\n")
+        (self.lane / "tools/hot_path_check.py").write_text(
+            "import pathlib, sys\nassert sys.argv[1:] == ['--refresh-stale']\n"
+            "pathlib.Path('planning/hot-path-findings.json').write_text('refreshed')\n")
         (self.lane / "planning").mkdir()
-        for name in ("ledger.json", "ledger.md", "proofs.json", "current.md"):
+        for name in ("ledger.json", "ledger.md", "proofs.json", "current.md",
+                     "hot-path-findings.json"):
             (self.lane / "planning" / name).write_text("old\n")
         git(self.lane, "add", ".")
         git(self.lane, "commit", "-q", "-m", "tools")
@@ -192,6 +196,7 @@ class RemoteCheckTests(unittest.TestCase):
         self.assertIn("== certs install:   installed 3", log)
         self.assertEqual((self.lane / "planning/current.md").read_text(), "regen current")
         self.assertEqual((self.lane / "planning/proofs.json").read_text(), "regen proofs.json")
+        self.assertEqual((self.lane / "planning/hot-path-findings.json").read_text(), "refreshed")
         skipped = self.run_check("--no-install-certs", "--cmd", "true")
         self.assertNotIn("certs install", (self.lane / "build/remote-check/hbox-cmd.log")
                          .read_text())

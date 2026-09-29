@@ -39,8 +39,9 @@
 #      images and check-lane fails for every lane (batch AZ, tooling-obstructions,
 #      2026-09-28); then runs `make T` there (T = check-lane by default; `--cmd
 #      'COMMAND'` runs that shell command in the tree instead, e.g. one test
-#      module; `--regen` runs tools/ledger.py --write and tools/current_view.py
-#      --write and fetches the four files they write) with the box's own
+#      module; `--regen` runs tools/ledger.py --write, tools/current_view.py
+#      --write and tools/hot_path_check.py --refresh-stale and fetches the five
+#      files they write) with the box's own
 #      FN_ACL2 and FN_CERT_CACHE (tools/farm.py HOSTS), under swarm-build on
 #      hbox, logging to --log BOXPATH (a path ON THE BOX; default
 #      <base>/LANE-check.log; the copy here is build/remote-check/BOX-T.log);
@@ -116,8 +117,10 @@ done
 
 if [ -n "$CMD" ] && [ $REGEN = 1 ]; then echo "remote_check: --cmd and --regen are exclusive" >&2; usage; fi
 if [ $REGEN = 1 ]; then
-    CMD='python3 tools/ledger.py --write && python3 tools/current_view.py --write'
-    FETCH="$FETCH planning/ledger.json planning/ledger.md planning/proofs.json planning/current.md"
+    # hot_path_check --refresh-stale drops listed finds that no longer occur
+    # (item 76: dev's own STALE entries kept `make check` red at every head).
+    CMD='python3 tools/ledger.py --write && python3 tools/current_view.py --write && python3 tools/hot_path_check.py --refresh-stale'
+    FETCH="$FETCH planning/ledger.json planning/ledger.md planning/proofs.json planning/current.md planning/hot-path-findings.json"
 fi
 sq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 if [ -n "$CMD" ]; then RUN="sh -c $(sq "$CMD")"; else RUN="make $TARGET"; fi
