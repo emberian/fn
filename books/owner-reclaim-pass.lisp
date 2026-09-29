@@ -257,23 +257,52 @@
 ; appended by the owner's quanta only); the fresh handles are above every
 ; count a reader captured, and no row the owner serves names them until
 ; the swap.  (mv ROWS FN-ARENA), ROWS :bad when a record does not intern.
-(defun fn-orcp-intern-rows (rows keyring generation fn-arena)
+; Executes by a loop (depth_check: a chunk of rewritten rows, data), as
+; books/store-intern.lisp fn-intern-events does: the :logic is the recursion,
+; the :exec collects onto an accumulator (fn-orcp-intern-rows-loop-is-rev-onto),
+; and the guards are verified, so the host's call runs the loop.
+(defun fn-orcp-intern-rows-loop (rows keyring generation acc fn-arena)
   (declare (xargs :stobjs fn-arena
-                  :guard (and (fn-prin-keyringp keyring) (natp generation))
-                  :verify-guards nil))
+                  :guard (and (fn-prin-keyringp keyring) (natp generation))))
   (if (atom rows)
-      (mv nil fn-arena)
+      (mv (fn-ag-rev-onto acc nil) fn-arena)
     (mv-let (row fn-arena)
       (if (fn-record-p (car rows))
           (fn-intern-event (car rows) keyring generation fn-arena)
         (mv (car rows) fn-arena))
       (if (eq row :bad)
           (mv :bad fn-arena)
-        (mv-let (rest fn-arena)
-          (fn-orcp-intern-rows (cdr rows) keyring generation fn-arena)
-          (if (eq rest :bad)
-              (mv :bad fn-arena)
-            (mv (cons row rest) fn-arena)))))))
+        (fn-orcp-intern-rows-loop (cdr rows) keyring generation (cons row acc) fn-arena)))))
+
+(defun fn-orcp-intern-rows (rows keyring generation fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-prin-keyringp keyring) (natp generation))
+                  :verify-guards nil))
+  (mbe :logic
+       (if (atom rows)
+           (mv nil fn-arena)
+         (mv-let (row fn-arena)
+           (if (fn-record-p (car rows))
+               (fn-intern-event (car rows) keyring generation fn-arena)
+             (mv (car rows) fn-arena))
+           (if (eq row :bad)
+               (mv :bad fn-arena)
+             (mv-let (rest fn-arena)
+               (fn-orcp-intern-rows (cdr rows) keyring generation fn-arena)
+               (if (eq rest :bad)
+                   (mv :bad fn-arena)
+                 (mv (cons row rest) fn-arena))))))
+       :exec (fn-orcp-intern-rows-loop rows keyring generation nil fn-arena)))
+
+(defthm fn-orcp-intern-rows-loop-is-rev-onto
+  (equal (fn-orcp-intern-rows-loop rows keyring generation acc fn-arena)
+         (mv-let (r a) (fn-orcp-intern-rows rows keyring generation fn-arena)
+           (mv (if (eq r :bad) :bad (fn-ag-rev-onto acc r)) a)))
+  :hints (("Goal" :induct (fn-orcp-intern-rows-loop rows keyring generation acc fn-arena)
+                  :in-theory (disable fn-intern-event))))
+
+(verify-guards fn-orcp-intern-rows
+  :hints (("Goal" :in-theory (disable fn-intern-event))))
 
 ; The rebuild, off the mutex over the interned rewritten ROWS: the open's
 ; extension of the empty capture over them (fn-rii-sco-extend, the host's
@@ -302,7 +331,7 @@
 ; its pin moved, and taken back as fn-own-finish-read takes a read's pin
 ; back.  Its session, wire, configuration and observation are kept.
 (defun fn-orcp-repin-conn (owner conn)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (let* ((sconn (fn-served-repin
                  (fn-own-served-conn owner conn (fn-own-conn-live-session owner conn))))
          (pinned (fn-served-conn-pinned sconn)))
@@ -319,12 +348,31 @@
                                     (fn-served-conn-group-index sconn)
                                     (fn-served-conn-control sconn))))
 
+; Executes by a loop (depth_check: the live connections), guards verified so
+; the host's call runs it; equal by fn-orcp-repin-conns-loop-is-rev-onto.
+(defun fn-orcp-repin-conns-loop (owner conns acc)
+  (declare (xargs :guard t))
+  (if (consp conns)
+      (fn-orcp-repin-conns-loop owner (cdr conns)
+                                (cons (fn-orcp-repin-conn owner (car conns)) acc))
+    (fn-ag-rev-onto acc nil)))
+
 (defun fn-orcp-repin-conns (owner conns)
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp conns)
-      (cons (fn-orcp-repin-conn owner (car conns))
-            (fn-orcp-repin-conns owner (cdr conns)))
-    nil))
+  (mbe :logic (if (consp conns)
+                  (cons (fn-orcp-repin-conn owner (car conns))
+                        (fn-orcp-repin-conns owner (cdr conns)))
+                nil)
+       :exec (fn-orcp-repin-conns-loop owner conns nil)))
+
+(defthm fn-orcp-repin-conns-loop-is-rev-onto
+  (equal (fn-orcp-repin-conns-loop owner conns acc)
+         (fn-ag-rev-onto acc (fn-orcp-repin-conns owner conns)))
+  :hints (("Goal" :induct (fn-orcp-repin-conns-loop owner conns acc)
+                  :in-theory (disable fn-orcp-repin-conn))))
+
+(verify-guards fn-orcp-repin-conns
+  :hints (("Goal" :in-theory (disable fn-orcp-repin-conn))))
 
 ; The swapped owner: the rebuilt owner's Store and view; the live owner's
 ; connections (each re-pinned to the rebuilt view: O(connections)), next
@@ -348,12 +396,26 @@
 ; configuration, as fn-ocfg-advance moves the pin of the one connection it
 ; re-pins (books/owner-config.lisp): the connection now reads the rebuilt
 ; view, which is that configuration's.
-(defun fn-orcp-pins-at (conns cfg)
-  (declare (xargs :guard t))
+(defun fn-orcp-pins-at-loop (conns cfg rev)
+  ; the loop twin (depth_check: the live connections, operator data)
+  (declare (xargs :guard (true-listp rev)))
   (if (consp conns)
-      (cons (cons (fn-own-conn-id (car conns)) cfg)
-            (fn-orcp-pins-at (cdr conns) cfg))
-    nil))
+      (fn-orcp-pins-at-loop (cdr conns) cfg (cons (cons (fn-own-conn-id (car conns)) cfg) rev))
+    (revappend rev nil)))
+
+(defun fn-orcp-pins-at (conns cfg)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp conns)
+                  (cons (cons (fn-own-conn-id (car conns)) cfg)
+                        (fn-orcp-pins-at (cdr conns) cfg))
+                nil)
+       :exec (fn-orcp-pins-at-loop conns cfg nil)))
+
+(defthm fn-orcp-pins-at-loop-is-pins-at
+  (equal (fn-orcp-pins-at-loop conns cfg rev)
+         (revappend rev (fn-orcp-pins-at conns cfg))))
+
+(verify-guards fn-orcp-pins-at)
 
 ; What the swap installs (host/owner-host.lisp fn-owner-orcp-swap): the
 ; swapped owner under the rebuilt configuration, every connection pinned

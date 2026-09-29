@@ -73,30 +73,79 @@
   (declare (xargs :guard (fn-arpn-pinsp pins)))
   (< 0 (fn-arpn-pins-of g pins)))
 
-(defun fn-arpn-count (pins)
-  (declare (xargs :guard (fn-arpn-pinsp pins)))
+; Loop twins (depth_check: the pins list grows with the live readers, which
+; the operator's max-connections bounds, operator data under D27): each
+; walk runs as a tail-recursive loop, (mbe :logic <the recursion> :exec
+; <the loop>), with the lemma equating them.
+(defun fn-arpn-count-loop (pins acc)
+  (declare (xargs :guard (and (fn-arpn-pinsp pins) (acl2-numberp acc))))
   (if (atom pins)
-      0
-    (+ (cdar pins) (fn-arpn-count (cdr pins)))))
+      acc
+    (fn-arpn-count-loop (cdr pins) (+ acc (cdar pins)))))
+
+(defun fn-arpn-count (pins)
+  (declare (xargs :guard (fn-arpn-pinsp pins) :verify-guards nil))
+  (mbe :logic (if (atom pins)
+                  0
+                (+ (cdar pins) (fn-arpn-count (cdr pins))))
+       :exec (fn-arpn-count-loop pins 0)))
+
+(defthm fn-arpn-count-loop-is-count
+  (implies (acl2-numberp acc)
+           (equal (fn-arpn-count-loop pins acc)
+                  (+ acc (fn-arpn-count pins)))))
+
+(verify-guards fn-arpn-count)
 
 ; One more reader at G (G's row incremented, or inserted in order).
+(defun fn-arpn-pin-at-loop (g pins rev)
+  ; REV: the rows passed, reversed
+  (declare (xargs :guard (and (natp g) (fn-arpn-pinsp pins) (true-listp rev))))
+  (cond ((atom pins) (revappend rev (list (cons g 1))))
+        ((equal (caar pins) g) (revappend rev (cons (cons g (+ 1 (cdar pins))) (cdr pins))))
+        ((< g (caar pins)) (revappend rev (cons (cons g 1) pins)))
+        (t (fn-arpn-pin-at-loop g (cdr pins) (cons (car pins) rev)))))
+
 (defun fn-arpn-pin-at (g pins)
-  (declare (xargs :guard (and (natp g) (fn-arpn-pinsp pins))))
-  (cond ((atom pins) (list (cons g 1)))
-        ((equal (caar pins) g) (cons (cons g (+ 1 (cdar pins))) (cdr pins)))
-        ((< g (caar pins)) (cons (cons g 1) pins))
-        (t (cons (car pins) (fn-arpn-pin-at g (cdr pins))))))
+  (declare (xargs :guard (and (natp g) (fn-arpn-pinsp pins)) :verify-guards nil))
+  (mbe :logic (cond ((atom pins) (list (cons g 1)))
+                    ((equal (caar pins) g) (cons (cons g (+ 1 (cdar pins))) (cdr pins)))
+                    ((< g (caar pins)) (cons (cons g 1) pins))
+                    (t (cons (car pins) (fn-arpn-pin-at g (cdr pins)))))
+       :exec (fn-arpn-pin-at-loop g pins nil)))
+
+(defthm fn-arpn-pin-at-loop-is-pin-at
+  (equal (fn-arpn-pin-at-loop g pins rev)
+         (revappend rev (fn-arpn-pin-at g pins))))
+
+(verify-guards fn-arpn-pin-at)
 
 ; One reader fewer at G (its row dropped at zero); a G nobody pins is left
 ; as it is (the step refuses it first).
-(defun fn-arpn-unpin-at (g pins)
-  (declare (xargs :guard (fn-arpn-pinsp pins)))
-  (cond ((atom pins) pins)
+(defun fn-arpn-unpin-at-loop (g pins rev)
+  (declare (xargs :guard (and (fn-arpn-pinsp pins) (true-listp rev))))
+  (cond ((atom pins) (revappend rev pins))
         ((equal (caar pins) g)
          (if (< 1 (cdar pins))
-             (cons (cons g (- (cdar pins) 1)) (cdr pins))
-           (cdr pins)))
-        (t (cons (car pins) (fn-arpn-unpin-at g (cdr pins))))))
+             (revappend rev (cons (cons g (- (cdar pins) 1)) (cdr pins)))
+           (revappend rev (cdr pins))))
+        (t (fn-arpn-unpin-at-loop g (cdr pins) (cons (car pins) rev)))))
+
+(defun fn-arpn-unpin-at (g pins)
+  (declare (xargs :guard (fn-arpn-pinsp pins) :verify-guards nil))
+  (mbe :logic (cond ((atom pins) pins)
+                    ((equal (caar pins) g)
+                     (if (< 1 (cdar pins))
+                         (cons (cons g (- (cdar pins) 1)) (cdr pins))
+                       (cdr pins)))
+                    (t (cons (car pins) (fn-arpn-unpin-at g (cdr pins)))))
+       :exec (fn-arpn-unpin-at-loop g pins nil)))
+
+(defthm fn-arpn-unpin-at-loop-is-unpin-at
+  (equal (fn-arpn-unpin-at-loop g pins rev)
+         (revappend rev (fn-arpn-unpin-at g pins))))
+
+(verify-guards fn-arpn-unpin-at)
 
 ; No reader is pinned at or below S: one comparison with the oldest pin.
 (defun fn-arpn-clear-through-p (s pins)

@@ -34,18 +34,22 @@
 ;; header charge's heap 8 H = 64 MiB; 1,884 MiB under lane heap-bounds'
 ;; uncharged term, 1,235 MiB before it with zero-copy-commit's 32 article
 ;; slots and the 12 KiB record constant long headers exceeded, 1,188 MiB
-;; before lane f8-reservation).
+;; before lane f8-reservation).  THE SWITCH adds 2 x 64 x 16,384
+;; = 2,097,152 state octets: base 562,489,005, figure ceil(8 base / 7)
+;; = 642,844,578, rounded to 614 MiB; with the unchanged core and thread
+;; terms the reservation is 1,015,124,992 octets.  These numeric pins are
+;; independently summed; the expression oracle above stays unchanged.
 (assert! (not (member-equal :run *fn-heap-list-actions*)))
 (assert! (hbt-conclusion :run *hbt-small* *hbt-core* *hbt-nursery* nil
                          (fn-heap-reserve-init-connections)))
 (assert! (equal (fn-heap-init-reservation-octets *hbt-small* *hbt-core* *hbt-nursery*)
-                1011979264))
+                1015124992))
 (assert! (equal (fn-heap-breakdown :run *hbt-small* *hbt-core* *hbt-nursery* nil
                                    (fn-heap-reserve-init-connections))
                 '((:image-dynamic . 147604131)
                   (:state-history . 17039424)
                   (:state-handles . 786432)
-                  (:state-records . 134217728)
+                  (:state-records . 136314880)
                   (:state-record-headers . 67108864)
                   (:open-chunk-lists . 79691776)
                   (:open-suffix-vectors . 16777216)
@@ -54,8 +58,8 @@
                   (:taken-submission-lists . 1580864)
                   (:octet-buffers . 50725002)
                   (:articles . 3441664)
-                  (:collector-room . 80055979)
-                  (:megabyte-rounding . 232104)
+                  (:collector-room . 80355573)
+                  (:megabyte-rounding . 981086)
                   (:image-outside-heap . 214012928)
                   (:thread-stacks . 31457280)
                   (:thread-runtime . 125829120))))
@@ -67,10 +71,10 @@
 ;; profile's limits (lane heap-bounds; the empty store's open chunk is 0), 520
 ;; MB with the header charged to the history budget (lane heap-pool), 470 MB
 ;; with the articles in flight charged as packed submissions (lane
-;; chunked-body-2).
+;; chunked-body-2), 472 MB with THE SWITCH's keyed index.
 (assert! (equal (fn-heap-mb-of (fn-heap-operation-figure-octets :init *hbt-small* *hbt-core*
                                                                  *hbt-nursery* nil))
-                470))
+                472))
 (assert! (hbt-conclusion :init *hbt-small* *hbt-core* *hbt-nursery* nil 32))
 
 ;; The hypothesis is needed: `store compact' reserves the larger of its list
