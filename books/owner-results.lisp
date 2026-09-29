@@ -152,16 +152,17 @@
   (declare (xargs :guard t :verify-guards nil))
   (if (fn-cbor-octet-listp frame)
       (let ((prefix (fn-frame-protected-prefix frame)))
-        (append prefix (fn-frame-trailer prefix)))
+        (mbe :logic (append prefix (fn-frame-trailer prefix))
+             :exec (fn-ag-append prefix (fn-frame-trailer prefix))))
     :bad))
 
 (verify-guards fn-ores-seal)
 
 ; Executes by a loop (lane depth-debt, PRF-919): one record per target peer,
 ; operator data with no fixed cap (D27).  (mbe :logic <the recursion,
-; unchanged> :exec <a loop>).  This book's functions are not guard-verified,
-; so the equality is the theorem fn-ores-sealed-plan-loop-is-rev-onto rather
-; than a guard obligation; raw Lisp runs the :exec.
+; unchanged> :exec <a loop>).  The seal, the entry, the loop and the plan are
+; guard-verified (lane depth-debt-2), so the host's call runs the :exec; the
+; equality is fn-ores-sealed-plan-loop-is-rev-onto.
 (defun fn-ores-sealed-entry (r)
   (declare (xargs :guard t :verify-guards nil))
   (cons (fn-ores-record-peer r)
