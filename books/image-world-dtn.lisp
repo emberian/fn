@@ -106,7 +106,7 @@
 (include-book "store-checkpoint-tables-reader")
 (include-book "owner-checkpoint-pipeline")
 (include-book "served-span")
-(include-book "clock-wall-reading")
+(include-book "clock-reading")
 (include-book "heap-figure")
 (include-book "heap-open-nursery")
 (include-book "heap-reservation")

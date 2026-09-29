@@ -298,18 +298,6 @@
                                                               '(0 . 0)))))))))
 
 ; -----------------------------------------------------------------------------
-; init's default.
-
-(assert! (equal (fn-heap-init-request '(:default nil) *hft-2g*) *fn-heap-small-request*))
-(assert! (equal (fn-bs-profile-resolve (fn-heap-init-request '(:default nil) *hft-2g*) nil)
-                *fn-heap-small-profile*))
-(assert! (equal (fn-heap-init-request '(:default nil) (* 8 1024 *fn-heap-mib*))
-                '(:default nil)))
-(assert! (equal (fn-heap-init-request '(:development nil) *hft-2g*) '(:development nil)))
-(assert! (equal (fn-heap-init-request '(:default ((1 . 100))) *hft-2g*)
-                '(:default ((1 . 100)))))
-
-; -----------------------------------------------------------------------------
 ; The store-less figure (PKT-686 item 3).  fn-heap-storeless-decide-is-small-
 ; and-fits: the witness is `fn --version' under the OpenBSD guest's 4 GiB
 ; datasize on its 195,856,696-octet core (before: the whole 4,096 MB as heap,

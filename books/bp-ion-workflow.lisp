@@ -61,19 +61,9 @@
            (equal (nth 5 record) (nth 5 route))
            (equal (nth 6 record) (nth 6 route))))))
 
-(defun fn-bpiw-attempt-record (bp txid tx-generation work-id attempt-id)
-  (declare (xargs :guard t :verify-guards nil))
-  (let* ((work (fn-bp-find-work work-id (fn-bp-state-works bp)))
-         (config (fn-bp-state-config bp))
-         (record (list :attempt txid tx-generation work-id attempt-id
-                       (fn-bp-work-next-generation work)
-                       (fn-bp-config-local-eid config)
-                       (fn-bp-config-peer-eid config)
-                       (fn-bp-config-policy-id config)
-                       (fn-bp-config-lifetime config))))
-    (if (and (fn-bp-journal-recordp record)
-             (car (fn-bprl-apply-journal-record bp record)))
-        record nil)))
+; (Q3a, assurance-hygiene-5) the ION attempt record is the generic one,
+; books/bp-request-plan.lisp fn-bprq-attempt-record, which the host calls;
+; the copy fn-bpiw-attempt-record was deleted.
 
 (defun fn-bpiw-route-record (bp ion work-id attempt-id generation
                                 bp-destination own-bp-eid fn-arena)

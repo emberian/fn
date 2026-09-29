@@ -1513,20 +1513,23 @@ round policy."
   (fnn-action (fnn-core-state 'fn-store-sn-io operation result)))
 
 (defconstant +fnn-owner-wall-error-ms+ 1000)
-(defconstant +fnn-owner-unix-dtn-offset-seconds+
-  (- (encode-universal-time 0 0 0 1 1 2000 0)
-     (encode-universal-time 0 0 0 1 1 1970 0)))
+
+(defun fnn-monotonic-ms ()
+  "One monotonic reading, in milliseconds: SBCL's tick counter and its rate,
+converted by ACL2 (books/clock-wall-reading.lisp fn-otm-monotonic-ms; PRF-305,
+books/clock-reading.lisp fn-clkr-monotonic-readings-are-the-ns-decision)."
+  (fnn-core 'fn-otm-monotonic-ms (get-internal-real-time)
+            internal-time-units-per-second))
 
 (defun fnn-owner-wall-milliseconds ()
   "One gettimeofday reading since 2000-01-01; the second value says if usable.
 Lane time-model-2 (N3 of lane proto-determinism): ACL2 decides both from the
-raw reading (books/owner-time-model.lisp fn-otm-wall-reading); the host
-compares nothing."
+raw reading (books/clock-wall-reading.lisp fn-otm-wall-reading, whose DTN
+epoch is ACL2's constant: PRF-305); the host computes and compares nothing."
   (handler-case
       (multiple-value-bind (seconds microseconds) (sb-ext:get-time-of-day)
         (destructuring-bind (wall has-wall)
-            (fnn-core 'fn-otm-wall-reading seconds microseconds
-                      +fnn-owner-unix-dtn-offset-seconds+)
+            (fnn-core 'fn-otm-wall-reading seconds microseconds)
           (unless (and (integerp wall) (<= 0 wall) (member has-wall '(t nil)))
             (fnn-fault "ACL2 returned a malformed wall reading"))
           (values wall has-wall)))
@@ -1552,15 +1555,12 @@ program the same environment).  NIL when unset."
   (let ((recorded (fnn-test-clock-readings)))
     (if recorded
         (destructuring-bind (wall has-wall)
-            (fnn-core 'fn-otm-wall-reading (second recorded) (third recorded)
-                      +fnn-owner-unix-dtn-offset-seconds+)
+            (fnn-core 'fn-otm-wall-reading (second recorded) (third recorded))
           (unless (and (integerp wall) (<= 0 wall) (member has-wall '(t nil)))
             (fnn-fault "ACL2 returned a malformed wall reading"))
           (fnn-core 'fn-clock-observation (first recorded) wall +fnn-owner-wall-error-ms+ has-wall))
       (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
-        (fnn-core 'fn-clock-observation
-                  (floor (* (get-internal-real-time) 1000)
-                         internal-time-units-per-second)
+        (fnn-core 'fn-clock-observation (fnn-monotonic-ms)
                   wall +fnn-owner-wall-error-ms+ has-wall)))))
 
 (defun fnn-seal-octets (octets)
@@ -1662,8 +1662,7 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
   (let ((value (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
                  (fnn-core 'fn-cfg-host-initial-octets-at
                            (mapcar (lambda (n) (fnn-octet-list (fnn-string-octets n))) names)
-                           (floor (* (get-internal-real-time) 1000)
-                                  internal-time-units-per-second)
+                           (fnn-monotonic-ms)
                            wall has-wall))))
     (when (or (keywordp value) (not (fnn-octet-list-p value)))
       (fnn-refuse "refused initial group table"))

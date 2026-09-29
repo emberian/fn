@@ -57,7 +57,7 @@
     (fnn-pull-runtime-stopping runtime)))
 
 (defun fnn-pull-monotonic ()
-  (floor (* 1000 (get-internal-real-time)) internal-time-units-per-second))
+  (fnn-monotonic-ms))
 
 (defun fnn-pull-peer-string (peer-octets)
   (fnn-octets-string (fnn-octets peer-octets)))

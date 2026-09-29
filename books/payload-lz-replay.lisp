@@ -19,7 +19,7 @@
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-arn-extent-guardp)
                           (:definition fn-arn-lz-guardp)
-                          (:rewrite fn-bs-stxa-is-no-other-wire-event)
+                          (:rewrite fn-stxa-is-no-other-wire-event)
                           (:rewrite fn-intern-event-arena))))
 
 ; -----------------------------------------------------------------------------

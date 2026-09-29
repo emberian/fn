@@ -69,6 +69,11 @@
 ;; Lane time-model (PRF-311): the gate's value with the disk's deadline
 ;; (fn-otm-*), over fn-ocp-*.
 (include-book "books/owner-time-model")
+;; PRF-305 (assurance-hygiene-5): the served clock readings' keystones
+;; (fn-clkr-wall-reading-is-the-ns-decision,
+;; fn-clkr-monotonic-readings-are-the-ns-decision), named by
+;; host/interfaces.lisp's fn-otm-wall-reading / -monotonic-ms / -boottime-ms.
+(include-book "books/clock-reading")
 ;; Lane time-model-2: the decision journal (fn-otm-disk-step, fn-otm-note-step,
 ;; fn-otm-start-line) and the 440 at the POST command (fn-otm-read-span).
 (include-book "books/owner-time-journal")
