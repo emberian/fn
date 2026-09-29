@@ -4250,6 +4250,54 @@ reads run as a :control quantum; the thread's registration is the roster's."
                 (setf (fnn-owner-service-publisher service) thread)
                 (push thread (fnn-owner-service-workers service)))))))))))
 
+(defun fnn-snapshot-write-captured-checkpoint (target captured position profile)
+  "Write the captured whole Store into TARGET's complete checkpoint.
+Caller owns the shared publication scratch, pins the captured arena/version
+and funds the old/new artifact demand BEFORE calling.  POSITION names the
+empty suffix segment established by the source capture's rotation.  This
+component neither publishes SNAPSHOT nor mutates the source checkpoint."
+  (destructuring-bind (base configs records record-octets count suffix budget frontier free revision
+                        base-payloads ident) captured
+    (declare (ignore base suffix base-payloads))
+    (let* ((segment (fnn-core 'fn-ockp-segment-octets record-octets
+                             +fnn-checkpoint-batch-octets+))
+           (prepared (fnn-core 'fn-owner-sco-next nil nil configs records
+                                (fnn-checkpoint-walk records) segment (fnn-live-arena)))
+           (image nil))
+      (unwind-protect
+           (multiple-value-bind (bound-position built-image)
+               (if prepared
+                   (fnn-history-image-build (fnn-core 'fn-sco-records (first prepared))
+                                            (first ident) (second ident) position)
+                 (values position nil))
+             (setq image built-image)
+             (destructuring-bind (setup next payloads arun)
+                 (fnn-core 'fn-owner-sco-setup-of prepared frontier revision bound-position
+                           segment budget
+                           (fnn-core 'fn-his-stream-free free (fnn-history-image-np image)))
+               (let ((verdict (first setup)))
+                 (cond
+                   ((eq verdict :unencodable)
+                    (fnn-refuse-io "snapshot captured Store is unencodable as a checkpoint"))
+                   ((and (consp verdict) (eq (first verdict) :deferred))
+                    (fnn-refuse-io "snapshot deferred reason=~(~a~) estimate=~d budget=~d"
+                                   (second verdict) (third verdict) (fourth verdict)))
+                   ((and (consp verdict) (eq (first verdict) :plan))
+                    (setf (fnn-store-config target) profile)
+                    (fnn-state-checkpoint-write
+                     target
+                     (lambda (fd)
+                       (fnn-history-image-write fd image)
+                       (fnn-checkpoint-write-steps fd setup segment count profile
+                                                   (fnn-live-octets-pub) arun)))
+                    (values next payloads
+                            (fnn-core 'fn-his-file-octets (fnn-history-image-np image)
+                                      (second verdict))))
+                   (t (fnn-fault "ACL2 returned a malformed snapshot checkpoint plan"))))))
+        (fnn-octets-pub-release)
+        ;; A cancelled/failed write may end before image-write released it.
+        (fnn-call 'fn-his-release (fnn-live-hrecs))))))
+
 ;;; Row S3b (lane operability-7): `store export DIR' on the running owner
 ;;; (books/owner-export-request.lisp fn-oex-; SCN-210, PRF-988).  The export
 ;;; is a reader of the live arena, as the publication is: the capture under

@@ -4506,6 +4506,6 @@
 
 ; S7 producer prefix-copy loop in host/native/io.lisp; source is a held fd.
 (definterface fn-osc-begin
-  :class :common-lisp-compliant :arg-kinds ((limit . natp)))
+  :class :common-lisp-compliant :kinds ((limit natp)))
 (definterface fn-osc-plan :class :common-lisp-compliant)
 (definterface fn-osc-advance :class :common-lisp-compliant)
