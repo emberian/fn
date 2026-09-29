@@ -287,4 +287,5 @@
 (include-book "../../books/bp-node-profile")
 (include-book "../../books/bp-node-profile-admission")
 (include-book "../../books/bp-node-host-transfer")
+(include-book "../../books/bp-node-host-sequence")
 (include-book "../../books/definterface")

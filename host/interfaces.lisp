@@ -2251,7 +2251,8 @@
   :delegates fn-bpn-authored-wire-authorize)
 
 (definterface fn-bpn-host-authored-wire-name
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpn-host-authored-wire-name-names-the-reserved-sequence))
 
 (definterface fn-bpn-host-authored-wire-operation-label
   :class ::ideal)
@@ -2419,16 +2420,20 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-sequence-reservation-frame
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-host-sequence-reservation-sequence
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-host-sequence-reservationp
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-host-sequence-reserve
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-machine-invariantp
   :class ::ideal)
