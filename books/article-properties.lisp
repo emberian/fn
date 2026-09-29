@@ -388,7 +388,7 @@
     :in-theory (disable fn-article-next-line fn-article-next-line-aux
                         fn-article-new-field fn-article-add-fold
                         fn-article-finish-fields fn-article-body-crlfp
-                        fn-article-header-rev-add-line
+                        fn-article-header-rev-add-line fn-article-field-closedp
                         fn-article-line-value fn-article-line-rest
                         fn-article-line-okp fn-article-result-okp))))
 

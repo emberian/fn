@@ -1,8 +1,9 @@
 ;; The served Xref overview field over the served step the host runs (R3,
 ;; PRF-206).
 ;;
-;; Host path (reader): host/native/owner.lisp calls fn-owner-chunk
-;; (host/owner-host.lisp), which runs fn-scar-ocfg-read-tls-prefix; the chain
+;; Host path (reader): host/native/owner.lisp calls fn-owner-chunk-span-at
+;; (host/owner-host.lisp), which runs fn-scar-ocfg-read-tls-prefix over the
+;; span (fn-scr-ocfg-read-span-is-reference-under-ocl-relation); the chain
 ;; recorded in books/owner-verdict-read.lisp and
 ;; books/owner-list-counts-read.lisp equates that with fn-served-step on the
 ;; connection, as for books/owner-descriptions-read.lisp's keystones.

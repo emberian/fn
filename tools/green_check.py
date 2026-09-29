@@ -125,6 +125,17 @@ class Run:
         return f"{self.when} {self.run_id} ({place})"
 
 
+def green_at_these_bytes(record: dict | None) -> bool:
+    """THE meaning of "certified" (row R2, 2026-09-29): this tool's verdict is
+    green for the book at its current digest AND include closure, from an
+    archived (committed) manifest.  planning/proofs.json's `certified` status
+    is generated from it (tools/ledger.py derived_status) and
+    tools/certified_claims.py checks it; no other rule says "certified"."""
+    return bool(record and record.get("verdict") == "green"
+                and not record.get("deps_moved_since")
+                and record.get("certified_archived"))
+
+
 def host_of(manifest: dict) -> str:
     """The box a run happened on: `archived_from` first, then its own name."""
     archived = str(manifest.get("archived_from") or "")
@@ -315,6 +326,7 @@ def audit(root: Path = ROOT, roots: list[str] | None = None) -> dict:
                 "digest_sha256": record.digest,
                 "note": record.note(),
                 "certified_at_digest": record.green.run_id if record.green else None,
+                "certified_archived": bool(record.green and record.green.archived),
                 "failed_at_digest": record.red.run_id if record.red else None,
                 "last_green_any_digest": (record.last_green.run_id
                                           if record.last_green else None),

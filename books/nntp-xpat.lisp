@@ -1,7 +1,7 @@
 ; fn: XPAT on the served reader step (RFC 2980 section 2.9), and its label.
 ;
 ; Subject.  The served reader reaches fn-nntp-step-pinned (books/nntp.lisp)
-; for every reader command: host/native/owner.lisp calls fn-owner-chunk
+; for every reader command: host/native/owner.lisp calls fn-owner-chunk-span-at
 ; (host/owner-host.lisp), which runs fn-served-step (books/served.lisp) over
 ; the connection; fn-served-dispatch calls fn-auth-step-pinned
 ; (books/nntp-auth.lisp), whose delegate reaches fn-nntp-post-step-pinned and
