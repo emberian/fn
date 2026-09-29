@@ -46,6 +46,10 @@
 ;      succeed, the composite fact fails, and the Message-ID the node
 ;      installs is not the one the verdict names (the verdict equation's
 ;      pair).
+;   6. REACHABLE WITNESS of fn-sjh-colsp-at-finish and of the captured views
+;      across the finish (the T2 state; the section below).
+;   7. HYPOTHESIS REMOVAL of fn-sjh-colsp's pending conjunct (a pending row
+;      whose handle is past the arena).
 
 (in-package "ACL2")
 
@@ -53,6 +57,7 @@
 (include-book "owner-signed-post-tests")
 (include-book "../../books/served-catalog-join-host-exec")
 (include-book "../../books/served-catalog-join-host-identity-finish")
+(include-book "../../books/served-catalog-join-host-views")
 
 ; Every conjunct of fn-sjh-okp at owner O with pending row PENDING, over the
 ; live catalog.
@@ -267,3 +272,79 @@
 ; The corrupted row: both steps succeed, the fact fails, the Message-IDs differ.
 (assert-event (equal (sjht-id-step-exec *sjht-id-store* *sjht-id-bad-row* *sjht-id-payloads*)
                      (list t :ok nil nil)))
+
+; -----------------------------------------------------------------------------
+; 6. REACHABLE WITNESS of fn-sjh-colsp-at-finish and of the captured views
+; across the finish (fn-sjh-vw-viewsp-at-finish-by-facts): on the T2 state,
+; the columns' three conjuncts with the host's pending row before and with none
+; after (the catalog grown by the committed row), and the working view the
+; committer captured before the finish still live over the grown catalog at
+; its own version, no newer than the finished owner's view.
+; 7. HYPOTHESIS REMOVAL (fn-sjh-colsp's pending conjunct): a pending row whose
+; handle is past the arena -- the handles conjunct fails, and the committed
+; catalog's handles conjunct fails after the finish.
+
+(defun sjht-colsp-parts (pending fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let ((c (scji-rows-of 0 fn-cat)))
+    (list (and (fn-arena-p fn-arena) (fn-scol-rows-okp c fn-arena) t)
+          (fn-scol-handles-below c (fn-arena-count fn-arena))
+          (if pending
+              (and (fn-scol-row-okp (fn-pc-held pending) fn-arena)
+                   (fn-scol-handles-below (list (fn-pc-held pending)) (fn-arena-count fn-arena))
+                   t)
+            t))))
+
+(defun sjht-cols-run (oc payloads mode fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arn-seal-many payloads fn-arena))
+         (o (fn-ocfg-owner oc))
+         (s (fn-own-store o))
+         (rows (fn-sf-records (fn-sn-files s)))
+         (fn-cat (fn-sca-load-held-rows (butlast rows 1) (fn-own-view-index (fn-own-view o))
+                                        fn-arena fn-cat))
+         (row (fn-sn-completion-record s))
+         (w (fn-held-wire-of row fn-arena))
+         (pending (if (eq mode :far)
+                      (fn-pc-make (cons (nfix (fn-record-txid row)) (fn-cat-count fn-cat)) (fn-cat-count fn-cat)
+                                  (update-nth 4 99 row) nil nil)
+                    (fn-cat-prepare-sealed w row nil nil nil fn-arena fn-cat)))
+         (captured (fn-own-view o))
+         (before (sjht-colsp-parts pending fn-arena fn-cat))
+         (o2 (cdr (fn-ccar-own-finish o (fn-ocfg-config oc) fn-arena)))
+         (view2 (fn-own-view o2))
+         (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files s)))) (fn-pc-expected pending))))
+    (mv-let (word pending2 fn-cat)
+      (fn-sca-finish token pending (fn-own-view-index view2)
+                     (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
+                                        (fn-own-view-withdrawals view2))
+                     fn-cat)
+      (declare (ignore word))
+      (mv (list before
+                (sjht-colsp-parts pending2 fn-arena fn-cat)
+                (scji-catalogp (fn-own-view-archive captured)
+                               (if (fn-own-view-group-index captured)
+                                   (fn-gidx-pin-with-control (fn-own-view-index captured)
+                                                             (fn-own-view-group-index captured)
+                                                             (fn-own-view-control captured))
+                                 (fn-own-view-index captured))
+                               (fn-scr-view-of (fn-own-view-version captured) fn-cat) fn-arena fn-cat)
+                (<= (nfix (fn-own-view-version captured)) (nfix (fn-own-view-version view2)))
+                (fn-cat-count fn-cat))
+          fn-arena fn-cat))))
+
+(defun sjht-cols-exec (oc payloads mode)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (result fn-arena fn-cat)
+          (sjht-cols-run oc payloads mode fn-arena fn-cat)
+          (mv result fn-arena)))
+      result)))
+
+(assert-event (equal (sjht-cols-exec *cet-t2-oc* *cet-t2-payloads* nil)
+                     (list (list t t t) (list t t t) t t 1)))
+(assert-event (equal (sjht-cols-exec *cet-t2-oc* *cet-t2-payloads* :far)
+                     (list (list t t nil) (list nil nil t) t t 1)))

@@ -285,10 +285,10 @@
                 (fn-nop-test-argv '("status")))))
 (assert-event (equal (fn-native-operator-result-reason
                       (fn-native-operator-command-preflight '(999)))
-                     :argv-bounds))
+                     :argv-malformed))
 (assert-event (equal (fn-native-operator-result-reason
                       (fn-native-operator-run '(999) '(999)))
-                     :argv-bounds))
+                     :argv-malformed))
 
 ; `policy set path-identity' reaches the administrative plan through the
 ; public operator, and its help subject exists.
@@ -647,10 +647,11 @@
                        *fn-nop-minimal-config*
                        (fn-nop-test-argv '("init" "fn.test" "fn.test"))))
                      :usage))
-; D27: seventeen groups (over the pre-D27 16) are no longer a usage error;
-; the group count's codec ceiling (65 535) is above what one argv can name,
-; so what refuses a long `init' is the argv work bound
-; (`*fn-nop-max-arguments*', 32 words).
+; D27: seventeen groups (over the pre-D27 16) are no longer a usage error,
+; and (PKT-867) neither is any count: no word bound refuses a long `init'.
+; The group count's codec ceiling is the store profile's; the argv is the
+; kernel's.  Teeth: 17 groups and 400 groups are both accepted and carried
+; whole; an empty word and a non-ASCII word are still refused by name.
 (defconst *fn-nop-17-groups*
   '("g01" "g02" "g03" "g04" "g05" "g06" "g07" "g08"
     "g09" "g10" "g11" "g12" "g13" "g14" "g15" "g16" "g17"))
@@ -659,16 +660,28 @@
                             *fn-nop-minimal-config*
                             (fn-nop-test-argv (cons "init" *fn-nop-17-groups*))))
                           :usage)))
-(assert-event (equal (fn-native-operator-result-status
-                      (fn-native-operator-run
-                       *fn-nop-minimal-config*
-                       (fn-nop-test-argv
-                        (cons "init"
-                              (append *fn-nop-17-groups*
-                                      '("g18" "g19" "g20" "g21" "g22" "g23"
-                                        "g24" "g25" "g26" "g27" "g28" "g29"
-                                        "g30" "g31" "g32"))))))
-                     :usage))
+(defun fn-nop-test-many-groups (n acc)
+  (if (zp n)
+      acc
+    (fn-nop-test-many-groups
+     (1- n)
+     (cons (concatenate 'string "fit.g" (coerce (explode-nonnegative-integer n 10 nil) 'string))
+           acc))))
+(defconst *fn-nop-400-groups* (fn-nop-test-many-groups 400 nil))
+(defconst *fn-nop-init-400*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv (cons "init" *fn-nop-400-groups*))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-init-400*) :accepted))
+(assert-event (equal (len (fn-native-operator-result-init-group-octets *fn-nop-init-400*))
+                     400))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-command-preflight
+                       (list (fn-record-string-octets "status") nil)))
+                     :argv-malformed))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-command-preflight
+                       (list (fn-record-string-octets "status") '(200))))
+                     :argv-malformed))
 (assert-event (equal (fn-native-operator-result-status
                       (fn-native-operator-run
                        *fn-nop-minimal-config*
@@ -1488,6 +1501,41 @@
                            (fn-native-operator-run *fn-nop-minimal-config*
                                                    (fn-nop-test-argv '("account" "delete"))))
                           :accepted)))
+
+; PKT-868: `store compact' and `store checkpoint' carry the request vector
+; and the control path; other store plans carry neither.
+(defconst *fn-nop-compact* (fn-native-operator-run *fn-nop-minimal-config*
+                                                   (fn-nop-test-argv '("store" "compact"))))
+(assert-event (fn-native-operator-result-compaction-planp *fn-nop-compact*))
+(assert-event (equal (fn-native-operator-result-compaction-argv *fn-nop-compact*)
+                     (fn-nop-test-argv '("compaction" "request"))))
+(assert-event (fn-native-operator-result-compaction-planp
+               (fn-native-operator-run *fn-nop-minimal-config*
+                                       (fn-nop-test-argv '("store" "checkpoint")))))
+(assert-event (not (fn-native-operator-result-compaction-planp
+                    (fn-native-operator-run *fn-nop-minimal-config*
+                                            (fn-nop-test-argv '("store" "reclaim"))))))
+
+; PKT-869: `carry JOURNAL ...' plans; a drop's reason is its words joined.
+(defconst *fn-nop-carry-drop*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("carry" "/srv/fn/workflow" "drop" "work-a"
+                                              "peer" "retired"))))
+(assert-event (equal (fn-native-operator-result-carry-fields *fn-nop-carry-drop*)
+                     '("/srv/fn/workflow" :drop "work-a" "peer retired")))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-carry-drop*) :carry))
+(assert-event (equal (fn-native-operator-result-carry-fields
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("carry" "/srv/fn/workflow" "pause" "*"))))
+                     '("/srv/fn/workflow" :pause "*" nil)))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("carry" "relative" "list"))))
+                     :usage))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("carry" "/srv/fn/workflow" "drop" "work-a"))))
+                     :usage))
 
 ; PRF-388 (PKT-560): `principal bind|unbind' carries the `account
 ; bind|unbind' plan of the same words, which the host dispatches when the

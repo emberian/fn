@@ -298,13 +298,23 @@ answer (:live), or the refusal of a store whose lock an owner holds (:held)."
         (values (fnn-core 'fn-native-control-host-status-exit-code status)
                 (and (not (eq detail status)) detail))))))
 
+(defun fnn-operator-live-request (control-path argv)
+  "PKT-868: an administrative vector the live owner answers with a word of
+its own state (the compaction request): the exit code of ACL2's status, and
+the word printed as ACL2 rendered it (the reply detail names only refusals)."
+  (multiple-value-bind (status word) (fnn-control-admin control-path argv)
+    (when (fnn-octet-list-p word)
+      (fnn-out "compaction ~a" (fnn-octets-string (fnn-octets word))))
+    (fnn-core 'fn-native-control-host-status-exit-code status)))
+
 (setq *fnn-operator-live-owner*
       (make-fnn-operator-live-owner
        :socket-present #'fnn-operator-live-socket-present
        :live-status #'fnn-control-live-status
        :status-tail #'fnn-operator-live-status-tail
        :admin-observe #'fnn-operator-live-admin-observe
-       :admin #'fnn-operator-live-admin))
+       :admin #'fnn-operator-live-admin
+       :request #'fnn-operator-live-request))
 
 (fnn-operator-register-action :run #'fnn-operator-execute-run)
 (fnn-operator-register-action :post #'fnn-operator-execute-post)

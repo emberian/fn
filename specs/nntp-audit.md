@@ -45,6 +45,8 @@ probes supply different evidence from those pure transcripts.
 
 ## The served path carries its projection verdict
 
+NNT-057: An article whose number in any of its groups would pass RFC 3977 section 6's 2,147,483,647 is refused by name at admission; the served path counts no articles.
+
 Defect D3 of [the independent review](../planning/review-2026-09-18-independent.md)
 was an availability bug: `fn-nntp-step` re-ran the whole-archive recognizer
 `fn-nntp-projectionp` on every command, that recognizer demanded every committed

@@ -32,6 +32,8 @@
 (include-book "../books/payload-lz-append")
 ; P3 owner open and publication (fn-ock-).
 (include-book "../books/owner-checkpoint-open")
+; PKT-868: the operator's compaction request on a running owner.
+(include-book "../books/owner-compact-request")
 ; The publication through the octet buffer, decided before it is encoded
 ; (fn-ock-publication-stream, fn-ock-capture-budget, fn-ock-publication-blockedp;
 ; PKT-492, PKT-315).
@@ -403,6 +405,9 @@
              ; nil; and the one coalesced request observed while it ran.
              (state (f-put-global 'fn-owner-sco-inflight nil state))
              (state (f-put-global 'fn-owner-sco-pending nil state))
+             ; PKT-868: an operator's standing compaction request
+             ; (fn-owner-sco-request), cleared by the capture it causes.
+             (state (f-put-global 'fn-owner-sco-requested nil state))
              ; The pending PreparedCommit of the catalog (fn-owner-prepare-buffer).
              (state (f-put-global 'fn-owner-cat-pending nil state))
              ; E (step 8): the catalog of the installed store's history, from
@@ -656,12 +661,17 @@
 ;; FREE: the free octets of the store's filesystem the host observed by
 ;; statvfs (or nil); a space deferral stays blocked while the space is still
 ;; below the estimate it named (fn-ock-publication-blockedp, both reasons).
+; PKT-868: with an operator's standing request (fn-owner-sco-requested) the
+; decision is books/owner-compact-request.lisp fn-ock-requested-next: due at
+; any suffix, never a second in flight, never past a deferral.  A decision
+; made with nothing in flight that is not :due ends the request (there was
+; nothing left to compact, or a deferral blocks it and says so itself).
 (defun fn-owner-sco-due (override free state)
   (declare (xargs :stobjs state :mode :program))
   (let ((profile (fn-owner-store-profile state)))
     (if (not profile)
         (value :idle)
-      (let ((next (fn-ock-publication-next
+      (let ((next (fn-ock-requested-next
                    (fn-owner-sco-global 'fn-owner-sco-durable state)
                    (fn-owner-sco-count state)
                    (fn-bs-profile-max-open-suffix profile)
@@ -670,13 +680,44 @@
                    (fn-ock-publication-blockedp
                     (fn-owner-sco-deferred state)
                     (fn-owner-sco-budget override profile)
-                    (fn-ockp-space free)))))
+                    (fn-ockp-space free))
+                   (fn-owner-sco-global 'fn-owner-sco-requested state))))
         (cond ((eq next :coalesce)
                (let ((state (f-put-global 'fn-owner-sco-pending t state)))
                  (value :inflight)))
               ((eq next :inflight) (value :inflight))
-              (t (let ((state (f-put-global 'fn-owner-sco-pending nil state)))
+              ((eq next :due)
+               (let ((state (f-put-global 'fn-owner-sco-pending nil state)))
+                 (value next)))
+              (t (let* ((state (f-put-global 'fn-owner-sco-pending nil state))
+                        (state (f-put-global 'fn-owner-sco-requested nil state)))
                    (value next))))))))
+
+; PKT-868: the operator's compaction request (`store compact' or `store
+; checkpoint' while the owner runs; the admin plan :request-compaction,
+; host/native/admin.lisp fnn-owner-live-admin-serialized).  The answer is
+; fn-ock-request-word over the observations the decision reads (FREE the
+; statvfs the host took before the quantum); :requested and :coalesced leave
+; the request standing for the next decisions, :blocked and
+; :nothing-to-compact leave nothing.
+(defun fn-owner-sco-request (override free state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((profile (fn-owner-store-profile state)))
+    (if (not profile)
+        (value :nothing-to-compact)
+      (let ((word (fn-ock-request-word
+                   (fn-owner-sco-global 'fn-owner-sco-durable state)
+                   (fn-owner-sco-count state)
+                   (fn-owner-sco-global 'fn-owner-sco-attempted state)
+                   (fn-owner-sco-global 'fn-owner-sco-inflight state)
+                   (fn-ock-publication-blockedp
+                    (fn-owner-sco-deferred state)
+                    (fn-owner-sco-budget override profile)
+                    (fn-ockp-space free)))))
+        (let ((state (f-put-global 'fn-owner-sco-requested
+                                   (and (member-eq word '(:requested :coalesced)) t)
+                                   state)))
+          (value word))))))
 
 ; The one coalesced request, for the status report: t while a due
 ; observation waits for the publication in flight to finish.
@@ -708,7 +749,9 @@
          (profile (fn-owner-store-profile state))
          (state (f-put-global 'fn-owner-sco-attempted count state))
          ; the publication in flight, bound to the count it captures
-         (state (f-put-global 'fn-owner-sco-inflight count state)))
+         (state (f-put-global 'fn-owner-sco-inflight count state))
+         ; PKT-868: the capture answers a standing request.
+         (state (f-put-global 'fn-owner-sco-requested nil state)))
     (value (list (fn-owner-sco-global 'fn-owner-sco-base state)
                  (fn-sn-config-history st)
                  records
