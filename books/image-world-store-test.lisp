@@ -94,6 +94,7 @@
 (include-book "config-carried-open")
 (include-book "store-checkpoint-open")
 (include-book "store-checkpoint-tables-reader")
+(include-book "store-checkpoint-digest")
 (include-book "store-checkpoint-arena-load")
 (include-book "store-checkpoint-digest")
 (include-book "store-checkpoint-arena-writer")

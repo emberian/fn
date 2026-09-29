@@ -8270,7 +8270,7 @@
         {
           "kind": "theorem",
           "name": "fn-prof-offer-answer-is-the-reparse",
-          "note": "KEYSTONE. Subject fn-peer-decide-offer (served: fn-pgc-decide-offer = fn-pix-decide-offer = fn-peer-decide-offer, reached from host/owner-host.lisp fn-owner-chunk -> fn-own-read with the memory re-pinned by fn-own-conn-live-session). Teeth: tests/acl2/transit-hygiene-tests.lisp; native: tests/test_native_peering.py test_transit_hygiene_refused_offer_memory_and_relay_checks."
+          "note": "KEYSTONE. Subject fn-peer-decide-offer (served: fn-pgc-decide-offer, equal to fn-peer-decide-offer by fn-pgc-decide-offer-is-peer-decide-offer, reached from host/owner-host.lisp fn-owner-chunk -> fn-own-read with the memory re-pinned by fn-own-conn-live-session). Teeth: tests/acl2/transit-hygiene-tests.lisp; native: tests/test_native_peering.py test_transit_hygiene_refused_offer_memory_and_relay_checks."
         },
         {
           "kind": "theorem",
@@ -10949,7 +10949,17 @@
         {
           "kind": "theorem",
           "name": "fn-clkr-wall-reading-is-the-ns-decision",
-          "note": "host/native/io.lisp fnn-owner-wall-milliseconds (and fnn-store-prepare-observation) calls fn-otm-wall-reading over gettimeofday's seconds and microseconds at +fnn-owner-unix-dtn-offset-seconds+. Teeth: tests/acl2/clock-reading-tests.lisp (clkt-wall-reading-*: a 2026 reading and the second before the epoch; removal of integerp seconds, natp microseconds and the epoch offset)."
+          "note": "host/native/io.lisp fnn-owner-wall-milliseconds calls fn-otm-wall-reading over gettimeofday's seconds and microseconds; the DTN epoch is ACL2's constant *fn-otm-dtn-epoch-unix-seconds*. Teeth: tests/acl2/clock-reading-tests.lisp (clkt-wall-reading-*: a 2026 reading and the second before the epoch; removal of integerp seconds and natp microseconds)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clkr-monotonic-readings-are-the-ns-decision",
+          "note": "host/native/io.lisp fnn-monotonic-ms calls fn-otm-monotonic-ms over SBCL's tick counter and rate; host/native/bp.lisp fnn-bp-monotonic-now calls fn-otm-boottime-ms over CLOCK_BOOTTIME. Teeth: clkt-monotonic-* (positives for both; removal of each hypothesis)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clkr-wall-seconds-is-the-ns-decision",
+          "note": "host/native/io.lisp fnn-genesis-created-seconds (for fnn-genesis-octets) calls fn-otm-wall-seconds over gettimeofday's seconds and microseconds. Teeth: clkt-wall-seconds-* (5.25 s past the epoch is 5, the second before it 0; removal of integerp seconds and natp microseconds)."
         }
       ]
     },
