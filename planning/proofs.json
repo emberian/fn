@@ -17592,6 +17592,31 @@
         "fn-pak-boundary-never-says-mpx-saturated",
         "fn-sca-load-held-rows-keyed-is-load-held-rows"
       ]
+    },
+    {
+      "id": "PRF-1065",
+      "title": "Token-bound cold read resource admission, joined completion, cache and incarnation lifetime",
+      "statement": "Subject fn-prl-admit in books/page-read-ledger.lisp, called by the guard-verified fn-owner-page-read-admit adapter in host/page-read-host.lisp: fn-prl-admit-preserves-pool-funding establishes the installed cold-pool vector is funded after every admitted issue. fn-prl-completion-refunds-at-most-once is unconditional: repeating settlement of the complete immutable token is stale and changes nothing. fn-prl-settle-never-reuses-identity retains the process-local counter. Cache settlement releases only the supplied native worker demand; buffer/bookkeeping credits persist until eviction. These are pool transition claims, not an allocator refinement or full P12 rescue theorem. Native issuance/publication, physically dead joined workers, physical incarnation close, measured persistent hash-capacity baseline, supported profile/launcher and checkpoint/recovery/suffix rescue remain open.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-prl-admit-preserves-pool-funding",
+        "fn-prl-completion-refunds-at-most-once",
+        "fn-prl-settle-never-reuses-identity"
+      ],
+      "evidence": [
+        "books/page-read-resources.lisp",
+        "books/page-read-ledger.lisp",
+        "host/page-read-host.lisp",
+        "tests/acl2/page-read-ledger-tests.lisp",
+        "tests/acl2/page-read-host-tests.lisp"
+      ],
+      "progress_note": "paged-history-5: clean source REPL g61phledgerteethclean (34 forms), g61phhostteeth (6 forms), 0 refused; adapter functions common-lisp-compliant. No committed certification manifest or native verdict yet. SCN-1002 specifies actual boundary observations."
     }
   ]
 }

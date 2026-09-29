@@ -1574,6 +1574,19 @@ torn. `status` prints `maintenance-reserve octets=R transactions=N debt=D
 held|short`.
 
 
+The P12 cold-pool increment (PRF-1065, SCN-1002) separates resident octets,
+disk octets, registered descriptor credits, executing worker slots and
+spent process-local read identities. Its ACL2 adapter admits only a funded
+charge and binds the whole read token to it. Refusal is unchanged; timeout
+or cancellation cannot refund. Native settlement must follow observed
+worker death and join. Cached vectors retain their charge until eviction,
+and incarnations retain FD credit until physical close. Hash arrays that
+retain capacity after removal need baseline funding. This implementation
+is partial: supplied charges are not an allocator refinement, and the
+performed checkpoint/recovery demand, old/new coexistence, productive
+supported profile and suffix rescue admission still need implementation.
+
+
 ### Compaction of any length (P5; STO-012)
 
 STO-012: Compaction covers a history of any length: `store compact` checkpoints the whole history with the log rotated and drops the covered segments; no unit of work bounds the history
