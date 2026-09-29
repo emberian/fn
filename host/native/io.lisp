@@ -1196,6 +1196,12 @@ the :raw-with entries, each checked against the world; the count."
       (let ((name (car entry))
             (theorems (cadr (assoc-keyword :raw-with (cdr entry)))))
         (when theorems
+          ;; Recheck the loaded table at the dispatch installation boundary,
+          ;; rather than assuming every table entry came from definterface.
+          (let ((problem (fn-di-raw-with-problem name (cdr entry) wrld)))
+            (when problem
+              (error "fnn-install-raw-dispatch: ~a has a refused declaration: ~s"
+                     name problem)))
           (let ((raw (find-symbol (symbol-name name) "ACL2")))
             (unless (and raw (fboundp raw))
               (error "fnn-install-raw-dispatch: ~a is declared :raw-with but has no raw definition" name))

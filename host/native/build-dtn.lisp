@@ -281,6 +281,10 @@
 (include-book "books/heap-open-nursery")
 (include-book "books/heap-reservation")
 
+; D40: explicit raw declaration scope. Every selected entry is checked in
+; this loaded world; an unavailable target refuses the build.
+(ld "host/interfaces-raw.lisp" :ld-error-action :error)
+
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.
 ;; No include-book since the umbrella added a book (tools/extract/world.py).

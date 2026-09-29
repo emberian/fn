@@ -231,13 +231,10 @@ class NativeOwnerTests(unittest.TestCase):
         node.stop(process=process)
         return [first, final, dup_first, dup_final, group, answer, body], process.stderr.since(0)
 
-    def test_raw_dispatch_and_counterpart_serve_the_same_post(self):
-        # D40: the owner's served entries declared :raw-with run their
-        # guard-verified definition; the developer selector keeps the
-        # executable-counterpart path (the *1* guard check at the boundary).
-        # Both must decide and store the same; the selector run proves the
-        # table is populated (its stderr line names the count) and the
-        # default run proves it is not the counterpart.
+    def test_unqualified_raw_annotations_stay_on_counterpart(self):
+        # D40's real-owner annotations are withheld pending complete host
+        # guard establishment and preservation. The selector must explicitly
+        # report zero entries; both runs still exercise POST and retrieval.
         raw, raw_stderr = self.served_post_transcript(None)
         counterpart, counterpart_stderr = self.served_post_transcript(
             {"FN_NATIVE_DISPATCH_COUNTERPART": "1"})
@@ -251,7 +248,7 @@ class NativeOwnerTests(unittest.TestCase):
         match = re.search(rb"fn-dispatch: counterpart for (\d+) raw-dispatched entries",
                           counterpart_stderr)
         self.assertIsNotNone(match, counterpart_stderr[-2000:])
-        self.assertGreaterEqual(int(match.group(1)), 5, counterpart_stderr[-2000:])
+        self.assertEqual(int(match.group(1)), 0, counterpart_stderr[-2000:])
 
     def test_client_disconnect_is_not_a_global_owner_fault(self):
         process, port = self.node.start_store_owner(once=False)

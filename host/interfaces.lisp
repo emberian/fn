@@ -1577,12 +1577,9 @@
 
 (definterface fn-owner-io
   :class :common-lisp-compliant
-  ;; D40 raw dispatch: fn-sn-statep of the live Store is established at the
-  ;; open and preserved by this entry's transition (books/owner-host-relation.lisp
-  ;; names every other transition's theorem); the bridge concludes the guard.
-  :raw-with (fn-ohr-store-open-installs-the-carried-relation fn-lgoc-recover-installs-invariant
-             fn-lgoc-log-reserve-preserves-invariant fn-lgoc-log-order-preserves-invariant fn-lgoc-rcon-io-preserves-invariant
-             fn-lgoc-invariant-statep))
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-key-statement-event
   :class ::program)
@@ -1614,12 +1611,9 @@
 
 (definterface fn-owner-known-abort
   :class :common-lisp-compliant
-  ;; D40 raw dispatch: fn-sn-statep of the live Store is established at the
-  ;; open and preserved by this entry's transition (books/owner-host-relation.lisp
-  ;; names every other transition's theorem); the bridge concludes the guard.
-  :raw-with (fn-ohr-store-open-installs-the-carried-relation fn-lgoc-recover-installs-invariant
-             fn-psrv-known-abort-preserves-invariant
-             fn-lgoc-invariant-statep))
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-live-post-config
   :class :common-lisp-compliant)
@@ -1689,12 +1683,9 @@
 
 (definterface fn-owner-prepare-consumer
   :class :common-lisp-compliant
-  ;; D40 raw dispatch: fn-sn-statep of the live Store is established at the
-  ;; open and preserved by this entry's transition (books/owner-host-relation.lisp
-  ;; names every other transition's theorem); the bridge concludes the guard.
-  :raw-with (fn-ohr-store-open-installs-the-carried-relation fn-lgoc-recover-installs-invariant
-             fn-psrv-prepare-consumer-preserves-invariant
-             fn-lgoc-invariant-statep))
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-prepare-identity
   :class :common-lisp-compliant)
@@ -1705,12 +1696,9 @@
 
 (definterface fn-owner-prepare-topic
   :class :common-lisp-compliant
-  ;; D40 raw dispatch: fn-sn-statep of the live Store is established at the
-  ;; open and preserved by this entry's transition (books/owner-host-relation.lisp
-  ;; names every other transition's theorem); the bridge concludes the guard.
-  :raw-with (fn-ohr-store-open-installs-the-carried-relation fn-lgoc-recover-installs-invariant
-             fn-psrv-prepare-topic-preserves-invariant
-             fn-lgoc-invariant-statep))
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-prov-post
   :class :common-lisp-compliant)
@@ -1744,12 +1732,9 @@
 
 (definterface fn-owner-refuse-reservation
   :class :common-lisp-compliant
-  ;; D40 raw dispatch: fn-sn-statep of the live Store is established at the
-  ;; open and preserved by this entry's transition (books/owner-host-relation.lisp
-  ;; names every other transition's theorem); the bridge concludes the guard.
-  :raw-with (fn-ohr-store-open-installs-the-carried-relation fn-lgoc-recover-installs-invariant
-             fn-lgoc-refuse-reservation-preserves-invariant
-             fn-lgoc-invariant-statep))
+  ;; D40 proposal withheld: model preservation alone does not establish
+  ;; the complete host-called guard. Retain executable-counterpart dispatch.
+)
 
 (definterface fn-owner-sco-capture
   :class ::program)

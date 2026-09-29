@@ -424,9 +424,13 @@ is applied as its guard-verified definition, not its counterpart --
 guard verification is the condition for faithful raw execution, and the named
 theorems are the argument that the guard's carried conjuncts (the owner's
 `fn-sn-statep` of the live Store, established at the open and preserved by
-every transition) hold at the call; `books/definterface.lisp` refuses the
-annotation at image build unless they do conclude those conjuncts, the entry
-guard's arity and kind checks still run before the call, and
+every transition) hold at the call. `books/definterface.lisp` checks declaration
+shape against the loaded world, including a positive predicate conclusion.
+That lint does not prove that theorem premises hold or that its arguments
+name the entry's actual state and effects. The five proposed owner annotations
+are withheld until that host-subject argument exists; they still use their
+executable counterparts. The entry guard's arity and kind checks run before
+either dispatch, and
 `planning/interfaces.json` (`raw_dispatched`) lists every such entry. The
 developer image keeps the counterpart path behind
 `FN_NATIVE_DISPATCH_COUNTERPART=1` so a native can compare both.

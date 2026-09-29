@@ -1633,3 +1633,13 @@ dispatch is not a proof about the host's other globals, and hot_path_check
 never modelled a host entry's own guard (its doc now says so) -- the
 raw-dispatch list, not hot_path, accounts for the boundary walk.
 Affected: specs/host.md (the dispatch), planning/interfaces.json, K2.
+
+
+D40 implementation status, execution-costs takeover (2026-09-29): the checker
+is a declaration lint, not proof that a theorem's premises hold at a host
+call. The proposed five owner annotations are withheld pending the exact
+host-subject establishment/preservation argument. In particular, a predicate
+occurring below NOT cannot establish the skipped guard; that case now refuses.
+The native comparison records zero raw owner entries while this obligation
+remains open. The DTN image loads an explicit generated raw declaration scope;
+an absent target refuses instead of silently dropping its declaration.

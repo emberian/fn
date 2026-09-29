@@ -293,3 +293,4 @@
 (include-book "bp-node-host-sequence")
 (include-book "bp-node-host-machine")
 (include-book "bp-evidence-host-names")
+(include-book "definterface")

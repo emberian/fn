@@ -237,17 +237,17 @@
   (implies (and (natp n) (fn-dit-positivep fn-dit-st))
            (fn-dit-positivep (fn-dit-r n fn-dit-st))))
 
-; Accepted: the bridge concludes the head; the preservation theorem is
-; stated over the relation the bridge mentions.
+; Accepted: the preservation theorem concludes the actual entry guard over
+; this entry on its full guard domain; the bridge also names the relation.
 (definterface fn-dit-r
   :class :common-lisp-compliant
   :kinds ((n natp))
-  :raw-with (fn-dit-relation-positive fn-dit-r-keeps-relation))
+  :raw-with (fn-dit-relation-positive fn-dit-r-keeps-positive))
 
 (assert-event
  (equal (cdr (assoc-eq 'fn-dit-r (table-alist 'fn-interfaces (w state))))
         '(:class :common-lisp-compliant :kinds ((n natp))
-          :raw-with (fn-dit-relation-positive fn-dit-r-keeps-relation))))
+          :raw-with (fn-dit-relation-positive fn-dit-r-keeps-positive))))
 
 ; The invariant conjuncts are the guard's minus the kind checks; their heads
 ; are the tree's predicates.
@@ -261,6 +261,72 @@
           (w state))
          (w state))
         '(fn-dit-positivep)))
+
+; A negative conclusion mentions the predicate but establishes its failure.
+(defthm fn-dit-zero-is-not-positive
+  (implies (equal (fn-dit-fld fn-dit-st) 0)
+           (not (fn-dit-positivep fn-dit-st))))
+(assert-event
+ (fn-di-problem 'fn-dit-r
+  '(:class :common-lisp-compliant :kinds ((n natp))
+    :raw-with (fn-dit-zero-is-not-positive fn-dit-r-keeps-relation)) (w state)))
+(must-fail-checked
+ (definterface fn-dit-r :class :common-lisp-compliant :kinds ((n natp))
+  :raw-with (fn-dit-zero-is-not-positive fn-dit-r-keeps-relation))
+ :unchecked "a negative conclusion cannot establish the skipped guard")
+
+; Reachable positive witness: establish the entire retained entry domain
+; and assert the conclusion after a nontrivial increment.
+(defun fn-dit-raw-positive-witness ()
+  (declare (xargs :guard t))
+  (with-local-stobj fn-dit-st
+    (mv-let (answer fn-dit-st)
+      (let* ((fn-dit-st (update-fn-dit-fld 1 fn-dit-st))
+             (before (and (natp 7) (fn-dit-positivep fn-dit-st)))
+             (fn-dit-st (fn-dit-r 7 fn-dit-st)))
+        (mv (and before (fn-dit-positivep fn-dit-st)
+                 (equal (fn-dit-fld fn-dit-st) 8)) fn-dit-st))
+      answer)))
+(assert-event (fn-dit-raw-positive-witness))
+
+(defun fn-dit-other-r (fn-dit-st)
+  (declare (xargs :stobjs fn-dit-st :guard (fn-dit-positivep fn-dit-st)))
+  fn-dit-st)
+(defthm fn-dit-other-r-keeps-positive
+  (implies (fn-dit-positivep fn-dit-st)
+           (fn-dit-positivep (fn-dit-other-r fn-dit-st))))
+(assert-event
+ (fn-di-problem 'fn-dit-r
+  '(:class :common-lisp-compliant :kinds ((n natp))
+    :raw-with (fn-dit-relation-positive fn-dit-other-r-keeps-positive)) (w state)))
+(must-fail-checked
+ (definterface fn-dit-r :class :common-lisp-compliant :kinds ((n natp))
+  :raw-with (fn-dit-relation-positive fn-dit-other-r-keeps-positive))
+ :unchecked "the preservation theorem is about a different entry")
+
+; Stronger premises do not justify the full entry domain.
+(defthm fn-dit-r-keeps-positive-under-extra-bound
+  (implies (and (natp n) (< n 1) (fn-dit-positivep fn-dit-st))
+           (fn-dit-positivep (fn-dit-r n fn-dit-st))))
+(assert-event
+ (fn-di-problem 'fn-dit-r
+  '(:class :common-lisp-compliant :kinds ((n natp))
+    :raw-with (fn-dit-relation-positive fn-dit-r-keeps-positive-under-extra-bound))
+  (w state)))
+(must-fail-checked
+ (definterface fn-dit-r :class :common-lisp-compliant :kinds ((n natp))
+  :raw-with (fn-dit-relation-positive fn-dit-r-keeps-positive-under-extra-bound))
+ :unchecked "the stronger bound is absent from the actual entry guard")
+
+; An invariant bridge alone says nothing about this entry's transition.
+(assert-event
+ (fn-di-problem 'fn-dit-r
+  '(:class :common-lisp-compliant :kinds ((n natp))
+    :raw-with (fn-dit-relation-positive)) (w state)))
+(must-fail-checked
+ (definterface fn-dit-r :class :common-lisp-compliant :kinds ((n natp))
+  :raw-with (fn-dit-relation-positive))
+ :unchecked "the bridge lacks the actual entry subject")
 
 ; Refused: a theorem that is not in the world.
 (assert-event (fn-di-problem 'fn-dit-r '(:class :common-lisp-compliant :kinds ((n natp))

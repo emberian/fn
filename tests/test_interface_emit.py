@@ -48,6 +48,16 @@ class DeclarationTests(unittest.TestCase):
                                           {"theorem": "fn-b-thm", "via": "fn-b"}])
         self.assertEqual(a["root"], "extract")
 
+    def test_raw_scope_is_explicit_and_preserves_kind_checks(self):
+        decls = interface_emit.declarations(tree(
+            '(definterface fn-a :class :common-lisp-compliant :kinds ((n natp)) '
+            ':raw-with (fn-a-proof))\n'
+            '(definterface fn-b :class :common-lisp-compliant)\n'))
+        rendered = interface_emit.render_raw_declarations(decls)
+        self.assertIn('(definterface fn-a :class :common-lisp-compliant '
+                      ':kinds ((n natp)) :raw-with (fn-a-proof))', rendered)
+        self.assertNotIn('(definterface fn-b', rendered)
+
     def test_harness_tables(self):
         root = tree(SOURCE)
         self.assertEqual(interface_emit.entry_kind_exempt(root), {("fn-c", "frame"): "total scan"})

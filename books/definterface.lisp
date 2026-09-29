@@ -379,12 +379,20 @@
         ((null (getpropc (car thms) 'theorem nil w)) (car thms))
         (t (fn-di-missing-theorem (cdr thms) w))))
 
+(defun fn-di-positive-conclusion-headp (head formula)
+  (declare (xargs :mode :program))
+  ; Occurrence is not establishment: NOT, IFF and EQUAL can all mention
+  ; HEAD while concluding its failure. Only a positive top-level conjunct
+  ; counts here. This remains a declaration lint, not a guard proof.
+  (let ((conclusion (fn-di-theorem-conclusion formula)))
+    (and (consp conclusion) (eq (car conclusion) head))))
+
 (defun fn-di-concluding-theorems (head thms w)
   (declare (xargs :mode :program))
   ; the theorems of THMS whose conclusion applies HEAD
   (cond ((atom thms) nil)
-        ((member-eq head (all-fnnames (fn-di-theorem-conclusion
-                                       (getpropc (car thms) 'theorem nil w))))
+        ((fn-di-positive-conclusion-headp
+          head (getpropc (car thms) 'theorem nil w))
          (cons (car thms) (fn-di-concluding-theorems head (cdr thms) w)))
         (t (fn-di-concluding-theorems head (cdr thms) w))))
 
@@ -400,6 +408,31 @@
       nil
     (append (all-fnnames (getpropc (car thms) 'theorem nil w))
             (fn-di-theorems-fnnames (cdr thms) w))))
+
+(defun fn-di-guard-preservation-theoremp (name head formula guard)
+  (declare (xargs :mode :program))
+  ; A deliberately narrow lint: a positive conclusion about this entry,
+  ; with no hypothesis stronger than its literal guard. It does not establish
+  ; the initial invariant or identify the right returned stobj/effects.
+  (and (consp formula) (eq (car formula) 'implies)
+       (fn-di-positive-conclusion-headp head formula)
+       (member-eq name (all-fnnames (caddr formula)))
+       (subsetp-equal (fn-di-conjuncts (cadr formula))
+                     (fn-di-conjuncts guard))))
+
+(defun fn-di-has-guard-preservation (name head thms guard w)
+  (declare (xargs :mode :program))
+  (and (consp thms)
+       (or (fn-di-guard-preservation-theoremp
+            name head (getpropc (car thms) 'theorem nil w) guard)
+           (fn-di-has-guard-preservation name head (cdr thms) guard w))))
+
+(defun fn-di-unpreserved-head (name heads thms guard w)
+  (declare (xargs :mode :program))
+  (cond ((atom heads) nil)
+        ((not (fn-di-has-guard-preservation name (car heads) thms guard w))
+         (car heads))
+        (t (fn-di-unpreserved-head name (cdr heads) thms guard w))))
 
 (defun fn-di-related-fnnames (heads thms w)
   (declare (xargs :mode :program))
@@ -434,6 +467,8 @@
              (heads (fn-di-invariant-heads conjuncts w))
              (missing (fn-di-missing-theorem thms w))
              (unconcluded (fn-di-unconcluded-head heads thms w))
+             (unpreserved (fn-di-unpreserved-head
+                           name heads thms (getpropc name 'guard *t* w) w))
              (unrelated (fn-di-unrelated-theorem
                          thms (fn-di-related-fnnames heads thms w) w)))
         (cond
@@ -455,6 +490,10 @@
           (msg ":raw-with on ~x0: no named theorem concludes ~x1, a guard ~
                 conjunct raw dispatch leaves unevaluated (the named theorems ~
                 are ~&2)" name unconcluded thms))
+         (unpreserved
+          (msg ":raw-with on ~x0: no named positive preservation theorem for ~x1 ~
+                mentions this entry under no hypotheses stronger than its guard"
+               name unpreserved))
          (unrelated
           (msg ":raw-with names ~x0, which mentions no function of ~x1's ~
                 guard argument (~&2)" unrelated name
