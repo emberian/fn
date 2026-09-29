@@ -274,6 +274,16 @@ bp-remainder-3). incremental-finalize-3 confirmed (2026-09-29) that the
 capture adds no earlier prepared boundary: the NEXT bound is written inside
 the same staged checkpoint file, and the cuts stay STATE_CHECKPOINT_CUTS'.
 
+Receipt reorder continuation (SCN-218): the adapter requests the BP owner's
+serialized live listener with the trailing `--control-config CONFIG` on the
+receiver only and requires the observed `BP NODE CONTROL Store/control.sock`
+before the held route mutation. Its existing journal checker requires the
+actual successful route removal, no-route dispatch, restored sent dispatch,
+receipt and unpinned obligation, and one application effect. This adapter
+wiring is unit-tested; the source catalog still names the live-route
+dependency as pending until that owner's source and a matching runner image
+execute this case. An announcement alone never activates the receipt fault.
+
 W7d **power_loss as a backend**. DONE: crash-image selection is an
 environment fact with the storage profile's ordering constraints made
 explicit (preflush/FUA semantics from dm-log-writes); `classify`/`bindings`
@@ -304,25 +314,52 @@ and `peer-innd`; the same rules judge both agents. Over the three findings
 files every verdict is the lab's. Remaining: the lab running from the
 scenarios (its checks as journal writes) on hbox with INN.
 
-W7f **the deterministic backend**. DONE: completion delivery and the
-selected scheduling boundaries are deterministic in the simulator; a small
-exhaustive suite around uncertainty, two independent holds, a generation
-change and repeated recovery. AFTER THE CUT.
+W7f **the deterministic backend**. IN PROGRESS: the fixed acceptance-world
+suite executes 100 schedules over two proposals, durable/aborted/indeterminate
+completion, matching/stale generation and repeated recovery. It compares the
+actual acceptance transitions with the separate four-field ACL2 oracle at
+every step. This is executable model evidence, not certification or evidence
+about the served host. It does not yet cover two independent holds or a general
+IR-driven backend. Schedule plans and separate oracle records accompany the
+traces; the driver must consume every planned step exactly once before it
+accepts the result.
+
+The next increment executes a bounded acceptance-model IR through
+`tools/resilience/adapters/simulator.py`: its validated model-prepare,
+model-complete and model-recover operations are translated to calls of the
+actual ACL2 acceptance functions, not precomputed oracle replies. It retains
+the scenario, driver, source and launcher digests, raw output, sealed journal
+and shared checker verdict. The example observes stale completion delivery,
+an indeterminate completion, stale recovery, repeated recovery and a productive
+retry; a real healing suffix ends with no pending proposal or fence. Fault
+activation is recorded from the transition that executed with the named
+completion/generation, not inferred from a requested selector. The independent
+Python contract interpretation is explicitly a model check, with the composed
+fixture rule marked pending; the separate ACL2 oracle is also checked at every
+step. Native page buffers, descriptors and generation leases are outside this
+fixture. Two independent holds and broader lifecycle IR remain open. The
+tester mutations cover child death, missing operations, suppressed workload,
+disabled fault records, universal refusal, omitted terminal ownership,
+truncated journals, edited verdicts and corrupted oracle observations.
+The historical box failure was launcher configuration: the command replaced
+the real FN_ACL2 with tools/acl2, whose recursion refusal exited 2 before any
+scenario executed. Preserve that non-green result; it was not a model failure.
+AFTER THE original cut prerequisites; still part of the complete-all portfolio.
 
 W7g **Hypothesis rule-based generation + dependency-aware shrinking**.
-DONE: stateful workloads over the IR with bundles for symbolic identities;
+PLANNED: stateful workloads over the IR with bundles for symbolic identities;
 shrinking preserves prerequisites (a retry never survives its post's
 removal); separate randomness streams; the minimized scenario reproduces
 under the same backend. AFTER THE CUT.
 
-W7h **semantic coverage + structure-aware storage mutation**. DONE: the
+W7h **semantic coverage + structure-aware storage mutation**. PLANNED: the
 coverage signature (publication phase, client-outcome certainty, pending
 effect classes, reader-generation relation, hold-count class, headroom
 band, evidence-version relation, recovery attempt) counts abstract
 situations; checksum-preserving and checksum-breaking storage cases; the
 corpus keeps boundary-sized payloads. AFTER THE CUT.
 
-W7i **LibAFL / Antithesis evaluated against the same corpus**, each
+W7i **PLANNED: LibAFL / Antithesis evaluated against the same corpus**, each
 evaluation proving the intended faults occur, the storage model matches the
 declared campaign, and feedback reaches SBCL code. AFTER THE CUT.
 

@@ -130,6 +130,8 @@ def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
     healing, overran, unmeasured = healing_measure(scenario, journal)
     if unmeasured:
         return harness_failure(scenario, journal, unmeasured)
+    if scenario.contract == "acceptance-model":
+        return check_acceptance_model(scenario, journal, budget, healing, overran)
     narrowing = journal.narrowing()
     if len(narrowing) > budget.max_records:
         return Verdict("inconclusive", scenario.id, journal.digest(),
@@ -182,6 +184,53 @@ def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
     return Verdict(kind, scenario.id, journal.digest(),
                    cause=("missing:" + ",".join(missing)) if missing else None,
                    **common).sign()
+
+
+def check_acceptance_model(scenario, journal, budget, healing, overran):
+    """Every model observation must fit one independent sequential fixture.
+    Model observations never stand in for native socket or disk evidence.
+    """
+    rows = [r for r in journal.of_kind("client") if r.get("event") == "model-step"]
+    if budget.max_histories < 1:
+        return Verdict("inconclusive", scenario.id, journal.digest(),
+                       cause="budget:histories", budget=asdict(budget)).sign()
+    if len(rows) > budget.max_records:
+        return Verdict("inconclusive", scenario.id, journal.digest(),
+                       cause="budget:records", budget=asdict(budget)).sign()
+    if [r.get("operation") for r in rows] != [o.id for o in scenario.operations]:
+        return harness_failure(scenario, journal, "model-schedule-incomplete")
+    state = dict(published=set(), pending=None, generation=None, fenced=False)
+    observed = set()
+    for operation, row in zip(scenario.operations, rows):
+        before = state
+        state = contract.acceptance_model_step(state, operation)
+        expected = contract.acceptance_model_view(state)
+        if any(row.get(key) != value for key, value in expected.items()):
+            return Verdict("violation", scenario.id, journal.digest(),
+                           explanation=dict(record=row, expected=expected,
+                                            rule="acceptance-model-step"),
+                           surviving=0, pending_rules=["acceptance-model-composition"]).sign()
+        if before["pending"] is None and state["pending"] is not None:
+            observed.add("model-prepared")
+        if state["published"] - before["published"]:
+            observed.add("model-published")
+    terminals = [r for r in journal.of_kind("environment")
+                 if r.get("event") == "model-terminal"]
+    if len(terminals) != 1 or any(terminals[0].get(key) != value
+                                for key, value in contract.acceptance_model_view(state).items()):
+        return harness_failure(scenario, journal, "model-terminal-unobserved")
+    if state["pending"] is None and not state["fenced"]:
+        observed.add("model-settled")
+    missing = sorted(set(scenario.witnesses) - observed)
+    if overran and healing["bound"]["kind"] == "seconds":
+        kind = "healing-overran"
+    else:
+        kind = "no-witness" if missing else "consistent"
+    return Verdict(kind, scenario.id, journal.digest(), surviving=1,
+                   witnesses_observed=sorted(observed), witnesses_missing=missing,
+                   pending_rules=["acceptance-model-composition"],
+                   diagnostics=["Logical pending ownership only; no native I/O executed."],
+                   healing=healing, budget=asdict(budget)).sign()
 
 
 def independent_per_membership(scenario: Scenario, journal: Journal) -> bool:
