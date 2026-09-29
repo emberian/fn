@@ -2661,7 +2661,7 @@
         "PRF-046"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tcpcl-delivery.lisp",
         "books/tcpcl-delivery-invariants.lisp",
@@ -10844,7 +10844,20 @@
         "fn-scjs-invp-of-store-frame",
         "fn-scj-owner-catalogp-at-host-finish",
         "fn-scj-invp-at-host-article-finish-carried",
-        "fn-scj-invp-at-identity-finish"
+        "fn-scj-invp-at-identity-finish",
+        "fn-sjh-okp-at-owner-finish-submission",
+        "fn-sjh-okp-at-host-article-finish",
+        "fn-sjh-okp-of-ocfg-io",
+        "fn-sjh-okp-at-owner-prepare-buffer",
+        "fn-sjh-okp-at-owner-known-abort",
+        "fn-sjh-okp-at-owner-refuse-reservation",
+        "fn-sjh-okp-at-install",
+        "fn-sjh-okp-at-recover",
+        "fn-sjh-okp-at-full-open",
+        "fn-sjh-okp-at-owner-prepare-identity-sealed",
+        "fn-sjh-okp-at-owner-prepare-identity-unsealed",
+        "fn-sjh-okp-at-owner-finish-no-row",
+        "fn-sjh-okp-of-other-prepare"
       ]
     },
     {
@@ -13654,7 +13667,10 @@
         "host/native/bp-node.lisp",
         "tests/test_native_source_corpus_bp.py"
       ],
-      "events": []
+      "events": [
+        "fn-tcl-acknowledged-custody-is-progressed-in-its-turn",
+        "fn-tcl-unaccepted-delivery-names-no-progress"
+      ]
     },
     {
       "id": "PRF-384",
@@ -13739,7 +13755,7 @@
         "PRF-002"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/number-durability.lisp",
         "tests/acl2/number-durability-tests.lisp",
@@ -13838,7 +13854,6 @@
         "fn-xpy-a-group-that-keeps-it-keeps-it",
         "fn-xpy-expired-set-is-the-spec",
         "fn-xpy-classes-partition-the-articles",
-        "fn-xpy-standing-verdict-without-expiry",
         "fn-xpy-releasablep-without-expiry",
         "fn-xpy-releasablep-is-rule-or-expired-and-unheld",
         "fn-xpy-expired-verdict-is-the-policys",
