@@ -32,6 +32,7 @@
 (include-book "../books/store-profile-namespace")
 ; P3: open from an exact-state checkpoint.
 (include-book "../books/store-checkpoint-open")
+(include-book "../books/statement-recover-stream")
 (include-book "../books/store-checkpoint-tables-reader")
 ; The state checkpoint under the records flip (lane checkpoint-arena): the
 ; arena run A before the four tables; its load (fn-scka-open-run, the
@@ -509,12 +510,12 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; fn-store-sn-recover-rows opens over the rows.  The native host
 ; (host/native/io.lisp fnn-bridge-recover) sends the history in CHUNKS
 ; (PKT-823; books/store-recover-stream.lisp): it clears the arena, then per
-; chunk calls fn-store-decode-records (fn-srs-decode) and the guard-verified
-; fn-srs-intern-step (the rows accumulated newest first), then fn-srs-rows and
-; fn-store-sn-recover-rows.  KEYSTONE fn-srs-steps-are-one-step-of-the-
-; concatenation: any chunking gives the rows and arena of one step over the
-; whole history, which fn-srs-one-step-is-the-intern-of-the-decode says is
-; the intern of the decoded history.  Neither :program entry calls an arena updater: one that
+; chunk calls fn-store-decode-records and fn-ssr-intern-step, then
+; fn-ssr-rows and fn-store-sn-recover-rows. The worker carries the durable
+; statement identity epoch; fn-ssr-resident-step-of-append proves chunk
+; composition including arena effects. Its extent/lz refinement theorems
+; name the physical-mode hypotheses. Neither :program entry calls an arena
+; updater: one that
 ; did would carry ACL2's invariant-risk, run through its *1* body (every
 ; guard-verified callee re-checking its guard) and print a warning on
 ; standard output (flip-L6-2 LANEDUMP).
@@ -555,6 +556,13 @@ reopen predicate, writer-lock observation and observed final namespace."
   (if (boundp-global 'fn-store-sco-checkpoint state)
       (f-get-global 'fn-store-sco-checkpoint state)
     nil))
+
+ ; A checkpoint suffix starts at its captured identity epoch, not NIL/0.
+(defun fn-store-statement-replay-seed (state)
+ (declare (xargs :stobjs state :mode :program))
+ (let ((checkpoint (fn-store-sco-current state)))
+  (value (fn-ssr-seed (if checkpoint (fn-sco-identity checkpoint)
+                           (fn-stxk-initial-context 0))))))
 
 (defun fn-store-sco-clear (state)
   (declare (xargs :stobjs state :mode :program))

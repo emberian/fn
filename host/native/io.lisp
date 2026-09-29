@@ -1359,19 +1359,15 @@ configured node, and opens the observed store through `fn-cpo-open-observed'
 (host/store-node-host.lisp `fn-store-sn-recover-rows'); a store with no
 configuration record never reaches here.
 
-The history goes over in CHUNKS (PKT-823; books/store-recover-stream.lisp).
-NEXT-CHUNK answers ACL2's decode of the next chunk, or :END: the file reader
-(`fnn-recover-file-chunks') answers `fn-srs-checked-decode' of a numbered
-chunk, the pack path (`fnn-recover-record-chunks') `fn-store-decode-records'
-(`fn-srs-decode') of a chunk of records already checked.  Per chunk the
-guard-verified `fn-srs-intern-step' interns it into the arena, accumulating
-the rows; the arena is cleared first and updated only by those direct calls,
-so no :program entry updates it (invariant-risk: flip-L6-2).  KEYSTONES
-fn-srs-steps-are-one-step-of-the-concatenation (every chunking gives the rows
-and arena one step over the whole history gives) and
-fn-srs-checked-step-is-the-step (a numbered chunk's two calls are the step
-over its records).  The host supplies octets, passes ACL2's values back
-unread, and decides nothing about them."
+The history goes over in chunks. The file reader uses fn-srs-checked-decode;
+the pack path uses fn-store-decode-records. The guard-verified sequential
+worker fn-ssr-intern-step carries the active statement keyring, generation
+and identity cursor between records. fn-ssr-resident-step-of-append equates
+arbitrary resident chunking, including the resulting arena. Its physical
+modes refine that resident worker under fn-arena-p and faithful placement:
+fn-ssr-extent-step-refines-resident and fn-ssr-lz-step-refines-resident.
+The host passes ACL2's values back unchanged. Full replay clears the arena
+and any previous selected checkpoint before initializing the epoch."
   (let ((replay (fnn-bridge-recover-begin)))
     (loop
       (let ((decoded (funcall next-chunk)))
@@ -1385,24 +1381,25 @@ unread, and decides nothing about them."
 ;; fnn-bridge-recover's three parts, in its order, for a history that arrives
 ;; a record at a time (the open, fnn-recover-log-stream-replay): the
 ;; arena cleared, each decoded chunk interned by the guard-verified
-;; fn-srs-intern-step (the accumulated rows in a one-slot cell), then the open
+;; fn-ssr-intern-step (rows and the statement epoch in one cell), then the open
 ;; over the rows.
 (defun fnn-bridge-recover-begin ()
+  (fnn-core-state 'fn-store-sco-clear)
   (fnn-call 'fn-arena-clear (fnn-live-arena))
-  (list nil))
+  (list (fnn-core 'fn-ssr-seed (fnn-core 'fn-stxk-initial-context 0))))
 
 (defun fnn-bridge-recover-step (replay decoded)
   "Intern one decoded chunk; NIL when ACL2 answered :bad (a fault)."
-  (let ((acc (first (fnn-call 'fn-srs-intern-step (car replay) decoded (fnn-live-arena)))))
+  (let ((acc (first (fnn-call 'fn-ssr-intern-step (car replay) decoded nil nil :resident nil (fnn-live-arena)))))
     (setf (car replay) acc)
     (not (eq acc :bad))))
 
 
 (defun fnn-bridge-recover-step-extents (replay decoded chunk places)
   "fnn-bridge-recover-step with the chunk's octets and places: the guard-
-verified fn-arx-intern-step (books/payload-extent.lisp) seals a placed
-record whose place holds its payload as an extent; NIL on :bad."
-  (let ((acc (first (fnn-call 'fn-arx-intern-step (car replay) decoded chunk places
+verified fn-ssr-intern-step :extent preserves the sequential identity epoch
+and seals a faithful payload placement; NIL on :bad."
+  (let ((acc (first (fnn-call 'fn-ssr-intern-step (car replay) decoded chunk places :extent nil
                               (fnn-live-arena)))))
     (unless (eq acc :bad)
       (setf (car replay) acc)
@@ -1410,10 +1407,10 @@ record whose place holds its payload as an extent; NIL on :bad."
 
 (defun fnn-bridge-recover-step-lz (replay decoded stored places)
   "fnn-bridge-recover-step-extents for a chunk holding compressed records:
-the guard-verified fn-lzr-intern-step (books/payload-lz-replay.lisp) over
+the guard-verified fn-ssr-intern-step :lz over
 the decoded expansions, the octets the log holds (STORED) and their places,
 with the store's dictionaries; NIL on :bad."
-  (let ((acc (first (fnn-call 'fn-lzr-intern-step (car replay) decoded stored places
+  (let ((acc (first (fnn-call 'fn-ssr-intern-step (car replay) decoded stored places :lz
                               (fnn-lz-dicts) (fnn-live-arena)))))
     (unless (eq acc :bad)
       (setf (car replay) acc)
@@ -1421,7 +1418,7 @@ with the store's dictionaries; NIL on :bad."
 
 (defun fnn-bridge-recover-end (replay frontier config-records)
   (fnn-action (fnn-core-state 'fn-store-sn-recover-rows
-                              (fnn-core 'fn-srs-rows (car replay)) frontier
+                              (fnn-core 'fn-ssr-rows (car replay)) frontier
                               (mapcar #'fnn-octet-list config-records))))
 
 (defun fnn-recover-record-chunks (records)
@@ -2490,39 +2487,27 @@ empties it first (fnn-bridge-recover)."
           (values :refused 0)))))
 
 (defun fnn-recover-suffix-intern (suffix configs acc)
-  "The suffix over the loaded checkpoint (SUFFIX, the records as octet
-vectors; CONFIGS, the configuration records as ACL2's octet lists) decoded
-and interned ON TOP of the arena the load left, a chunk at a time: the
-chunks `fnn-recover-record-chunks' closes (fn-srs-chunk-fullp), each
-decoded (fn-store-decode-records, which is fn-srs-decode) and interned by
-the guard-verified fn-srs-intern-step, as the full replay's chunks are.
-Answers (values ROWS ACC2): ROWS oldest first (fn-srs-rows), or :bad when
-the configuration history or any chunk does not decode or intern; ACC2 the
-txid fold (fn-ofw-wire-next) of every decoded event over
-ACC, or ACC when ROWS is :bad.
-
-Lane heap-bounds (row B3): the suffix was converted to octet lists and
-decoded WHOLE (sixteen heap octets an octet and its decode beside it), so a
-checkpoint's long suffix held two list copies of every suffix octet at once
--- the reopen of a 100,000-post store with a 19,082-record suffix exhausted
-the heap at the launcher's own figure, whose open term is a chunk.  Any
-chunking interns what one step over the whole suffix interns
-(books/store-recover-stream.lisp KEYSTONES
-fn-srs-steps-are-one-step-of-the-concatenation and
-fn-srs-one-step-is-the-intern-of-the-decode, for any arena: here the
-checkpoint's), which is the fn-intern-events of the decode that
-fn-scka-recover-rows makes (books/store-checkpoint-arena.lisp)."
+  "Intern decoded suffix chunks over the arena left by the selected checkpoint.
+fn-store-statement-replay-seed reads the selected fn-store-sco-current
+checkpoint's captured identity epoch; it never uses the current live keyring.
+fn-ssr-intern-step :resident carries that keyring, generation and cursor
+between every record and chunk. fn-ssr-resident-step-of-append proves the
+chunk composition, including arena effects, under true-listp of the first
+chunk. The result is (values ROWS ACC2), rows oldest first (fn-ssr-rows),
+or :bad on invalid configuration, decode or identity replay. ACC2 is
+fn-ofw-wire-next over decoded events, starting at ACC. The suffix is decoded
+one work quantum at a time using fn-srs-chunk-fullp."
   (if (eq (fnn-core 'fn-store-sn-recover-records nil configs) :bad)
       (values :bad acc)
-      (let ((next (fnn-recover-record-chunks suffix)) (rows nil) (fold acc))
+      (let ((next (fnn-recover-record-chunks suffix)) (rows (fnn-core-state 'fn-store-statement-replay-seed)) (fold acc))
         (loop
           (let ((decoded (funcall next)))
             (when (eq decoded :end) (return))
             (when (eq decoded :bad) (return-from fnn-recover-suffix-intern (values :bad acc)))
             (setq fold (fnn-core 'fn-ofw-wire-next decoded fold)
-                  rows (first (fnn-call 'fn-srs-intern-step rows decoded (fnn-live-arena))))
+                  rows (first (fnn-call 'fn-ssr-intern-step rows decoded nil nil :resident nil (fnn-live-arena))))
             (when (eq rows :bad) (return-from fnn-recover-suffix-intern (values :bad acc)))))
-        (values (fnn-core 'fn-srs-rows rows) fold))))
+        (values (fnn-core 'fn-ssr-rows rows) fold))))
 
 (defun fnn-recover-suffix-rows (store suffix config-records &optional (interned nil internedp))
   "The open from the loaded checkpoint: the suffix decoded and interned ON
@@ -6855,18 +6840,16 @@ segment's records from 1, taken from the same decode (fn-lgb-decode-next) and
 handed to the stream at the segment's end (*fnn-log-stream-finish*).  The
 chunks close where ACL2 says (fn-srs-chunk-fullp before a record is added, one
 record always taken first), as fnn-recover-record-chunks closes them; any
-chunking opens the same Store (PRF-261
-fn-srs-steps-are-one-step-of-the-concatenation)."
+chunking gives the same statement-context replay and arena
+(fn-ssr-resident-step-of-append; physical modes refine the resident worker)."
   (setq *fnn-lz-tally* nil)
   (list (fnn-bridge-recover-begin) nil 0 0 nil 1 nil))
 
 (defun fnn-recover-log-stream-flush (replay)
-  "The open chunk decoded and interned.  With places (the stream's, FIFTH),
-the chunk goes to `fn-arx-intern-step' (books/payload-extent.lisp): a record
-whose place holds its payload is sealed as an EXTENT, no octets on the heap
-(PRF-294; KEYSTONE fn-arx-steps-are-one-step-of-the-concatenation: over any
-chunking, the rows and arena of one resident step over the history, each
-placed record faithful at its place)."
+  "Decode and intern the open chunk with its sequential statement epoch.
+Physical placement modes of fn-ssr-intern-step refine its resident mode
+under fn-arena-p and fn-arx-faithful-p, including rows and arena effects
+(fn-ssr-extent-step-refines-resident, fn-ssr-lz-step-refines-resident)."
   (when (second replay)
     (let* ((chunk (nreverse (second replay)))
            (places (nreverse (fifth replay)))

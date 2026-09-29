@@ -17164,7 +17164,7 @@
         "specs/substrate-transport.md"
       ],
       "planning_note": "Lane stx-model-2 (Fable), 2026-09-29, row W5b: the transit gate on a host path.",
-      "note": "The closed enumeration *fn-pta-verdicts* keeps :admitted, :ungoverned, :no-statement, :unverified, :not-a-post, :equivocation, :authority-equivocation, :no-policy and :unauthorized distinct (spec section 2.3: the refusal is of authority, not of bytes). The node-lace form of the gate (fn-stx-transit-authority-ok) is reached through PRF-995 and its correspondence hypothesis. The group's authority is the live group entry's policy-id when it is a principal id; D11's portable authority is M4 work.",
+      "note": "The closed enumeration *fn-pta-verdicts* keeps :admitted, :ungoverned, :no-statement, :unverified, :not-a-post, :equivocation, :authority-equivocation, :no-policy and :unauthorized distinct (spec section 2.3: the refusal is of authority, not of bytes). The node-lace form of the gate (fn-stx-transit-authority-ok) is reached through PRF-995 and its correspondence hypothesis. The group authority is the explicit authority field selected from the connection-pinned configuration, distinct from policy-id (SUB-007). A selected current policy is reverified under the active keyring. The lace correspondence retains its uniform-context hypothesis; multi-epoch composition is separate work.",
       "events": [
         "fn-pta-admitted-is-the-gate-over-the-rows",
         "fn-pta-group-verdict-is-one-of-the-verdicts"
@@ -17569,7 +17569,7 @@
         "tests/test_native_group_authority.py",
         "specs/reconfiguration.md"
       ],
-      "progress_note": "Clean config-invariants75forms, native-admin120forms, ADTgroup28forms, config teeth27forms and peer-transit-authority25forms; operator code29 and new authority slot. Statement/hybrid snapshot bridge remains active. New immutable image/native coordinate pending runner; no productive admitted claim from unsigned gate fixture.",
+      "progress_note": "Clean config-invariants75forms, native-admin120forms, ADTgroup28forms, config teeth27forms and peer-transit-authority25forms; operator code29 and new authority slot. Statement/hybrid snapshot bridge remains active. New immutable image/native coordinate pending runner; no productive admitted claim from unsigned gate fixture. Productive bridge source and pending native fixture are tracked in PRF-1070/1078/1079.",
       "events": [
         "fn-cfg-set-group-authority-installs-binding"
       ]
@@ -17606,6 +17606,76 @@
         "fn-pak-boundary-never-says-mpx-saturated",
         "fn-sca-load-held-rows-keyed-is-load-held-rows"
       ]
+    },
+    {
+      "id": "PRF-1070",
+      "title": "Durable snapshot publication preserves active statement-key resolution",
+      "statement": "The host-called fn-sn-finish preserves fn-skp-resolvedp: its active legacy statement keyring and generation equal the retained hybrid-snapshot resolution oracle. The resolvedp hypothesis is sole; no snapshot-kind premise remains. New snapshot publication applies one key update, historical repeats keep the current epoch. The existing stable enrolled principal and A-SIG-NATIVE suite are reused. Canonical open derives the oracle; startup/config/full-history composition is the snapshot inverse lane, not this single-transition theorem.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-007"
+      ],
+      "depends_on": [
+        "PRF-1061"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/statement-keyring-publication.lisp",
+        "books/statement-snapshot-keyring.lisp",
+        "tests/acl2/statement-keyring-publication-tests.lisp",
+        "tests/test_native_group_authority.py",
+        "specs/substrate-transport.md"
+      ],
+      "progress_note": "Literal durable lifecycle positive and corrupted-state sole-hypothesis removal; clean REPL source admission. Matching productive native image is pending; no certification/qualified image claim.",
+      "events": [
+        "fn-skp-finish-preserves-resolution"
+      ]
+    },
+    {
+      "id": "PRF-1078",
+      "title": "Sequential statement-epoch recovery is independent of resident chunking",
+      "statement": "Host/native/io.lisp calls guard-verified fn-ssr-intern-step in resident recovery and checkpoint suffix replay. Under true-listp of the first decoded chunk, one call over append equals the two sequential calls, including rows, active keys, generations, identity cursor and complete arena effects. Each row freezes its acceptance context; enrollment affects only later rows. Full replay clears old checkpoint state; suffix seed reads the selected checkpoint identity.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-007"
+      ],
+      "depends_on": [
+        "PRF-1061"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/statement-recover-stream.lisp",
+        "host/native/io.lisp",
+        "host/store-node-host.lisp",
+        "tests/acl2/statement-recover-stream-tests.lisp",
+        "specs/substrate-transport.md"
+      ],
+      "progress_note": "Source REPL event admitted; literal journal/arena positive and dotted-list hypothesis-removal teeth. Native restart/rotation pending new immutable image.",
+      "events": [
+        "fn-ssr-resident-step-of-append"
+      ]
+    },
+    {
+      "id": "PRF-1079",
+      "title": "Physical sequential statement recovery refines resident recovery",
+      "statement": "Extent and compressed modes of host-called fn-ssr-intern-step produce the exact resident worker result and arena under fn-arena-p and fn-arx-faithful-p of the record/placement lists. This includes historical statement epochs. These source events are admitted; full literal physical-hypothesis teeth and native image evidence remain pending.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-007"
+      ],
+      "depends_on": [
+        "PRF-1061"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/statement-recover-stream.lisp",
+        "tests/test_native_group_authority.py",
+        "specs/substrate-transport.md"
+      ],
+      "progress_note": "Implementation/proof-source input only. Candidate events fn-ssr-extent-step-refines-resident and fn-ssr-lz-step-refines-resident are not cited as completed keystones until complete literal teeth. Runner owns image coordinate."
     }
   ]
 }

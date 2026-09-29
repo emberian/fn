@@ -354,3 +354,8 @@ it and `host/store-host.lisp` marshals under it. A host wrapper never decides
 anything a book does not already decide.
 
 | `fn-gat-`, `gat-` | `tests/acl2/group-authority-tests` | Explicit authority publication and replay teeth; distinct posting policy and principal bindings. |
+
+| `fn-ssk-` | `statement-snapshot-keyring` | Stable operator principal projection of retained hybrid enrollment/revocation into the existing ML-DSA FN-Statement table, with an incremental publication operation and recovery oracle. |
+| `fn-ssr-`, `ssrt-` | `statement-recover-stream`, `tests/acl2/statement-recover-stream-tests` | Sequential frozen statement-context replay, with resident chunk composition and extent/compressed refinement including arena effects. |
+| `fn-skp-`, `skpt-` | `statement-keyring-publication`, `tests/acl2/statement-keyring-publication-tests` | Carried active keyring/generation resolution at durable identity publication. |
+| `fn-nsm-` | `native-statement-material` | ACL2-owned legacy statement material, rendering and supplied-key verification for the statement-sign native command. |

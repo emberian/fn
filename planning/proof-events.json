@@ -17181,6 +17181,28 @@
           "name": "fn-sca-load-held-rows-keyed-is-load-held-rows"
         }
       ]
+    },
+    {
+      "id": "PRF-1070",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-skp-finish-preserves-resolution"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1078",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ssr-resident-step-of-append"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1079",
+      "events": []
     }
   ]
 }

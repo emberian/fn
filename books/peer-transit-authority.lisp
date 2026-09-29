@@ -97,7 +97,11 @@
         ((not (equal (fn-stmt-kind s) :article)) :not-a-post)
         ((fn-pta-poster-forkedp index s) :equivocation)
         (t (let ((cur (fn-stx-index-policy-current index group authority)))
-             (cond ((and (consp cur) (fn-stmt-p cur))
+             (cond ((and (consp cur) (fn-stmt-p cur)
+                         ; A frozen index is evidence, not current trust.
+                         ; Rotation/revocation must invalidate its authority
+                         ; before any later admission can use it.
+                         (fn-prin-verifiedp cur keyring))
                     (if (member-equal (fn-stmt-creator s) (fn-pol-authorized-set cur))
                         :admitted
                       :unauthorized))
@@ -260,9 +264,13 @@
            :use ((:instance fn-pol-current-is-stmt-or-nil
                             (lace (fn-stx-lace-of-store
                                    (fn-rows-articles-newest-first (fn-sn-indexed-rows st) fn-arena)
+                                   keyring)))
+                 (:instance fn-pol-current-is-candidate-in-lace
+                            (lace (fn-stx-lace-of-store
+                                   (fn-rows-articles-newest-first (fn-sn-indexed-rows st) fn-arena)
                                    keyring))))
            :in-theory (e/d (fn-pta-group-verdict fn-pta-poster-forkedp
-                            fn-pol-admitp fn-pol-authorizedp)
+                            fn-pol-admitp fn-pol-authorizedp fn-pol-candidatep)
                            (fn-sn-statep fn-sn-index-of-rows fn-sn-indexed-rows
                             fn-rows-contexts-okp fn-rows-articles-newest-first
                             fn-stx-index-of-store fn-stx-lace-of-store fn-sn-lace-of-rows
