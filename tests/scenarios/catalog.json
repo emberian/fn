@@ -2802,14 +2802,12 @@
         "Node A runs with an implicit-TLS listener, `[auth] protected_only = true` and no auth.toml; `operator CONFIG account invite --expires 3600` prints one code.",
         "In cleartext, XREDEEM CODE robin is sent; over TLS, XREDEEM CODE robin then XREDEEM PASS correct-horse.",
         "On a new TLS connection AUTHINFO USER robin / PASS correct-horse, then POST one article; XREDEEM of the same code as mallory; the same exchange as robin again; an unknown code; `account list`.",
-        "A second code: A on the developer image with FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH dies after the publication and before the reply; A restarts; the same exchange again, then AUTHINFO and POST as robin2.",
-        "With FN_OLD_IMAGE (the bbf52159 image), `operator CONFIG status` on the store."
+        "A second code: A on the developer image with FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH dies after the publication and before the reply; A restarts; the same exchange again, then AUTHINFO and POST as robin2."
       ],
       "expected": [
         "Cleartext XREDEEM is 483; over TLS 381 then 281.",
         "AUTHINFO is 281 and the POST 240; mallory is 482; robin again is 281 (resume); the unknown code is 482; `account list` names robin and never the code; the service log never holds either code.",
-        "The owner exits 137 with no reply sent; after the restart the retry is 281 and robin2 logs in and posts (240).",
-        "The pre-accounts image refuses to open the store (PKT-440)."
+        "The owner exits 137 with no reply sent; after the restart the retry is 281 and robin2 logs in and posts (240)."
       ],
       "implementation": {
         "test": "tests.test_native_friends_accounts",

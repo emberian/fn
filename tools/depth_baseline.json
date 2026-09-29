@@ -329,7 +329,6 @@
   "fn-own-feed-intent-records": "D27: walks peer names; bounded by the peer config table",
   "fn-own-feed-names": "D27: walks the peer feed table; bounded by the peer config table",
   "fn-own-feed-new-targets": "D27: walks peer names; bounded by the peer config table",
-  "fn-own-feed-peer-names": "D27: walks config rows; bounded by the peer config table",
   "fn-own-feed-port-restart-fold": "D27: walks peer names; bounded by the peer config table",
   "fn-own-feed-put": "D27: walks the peer feed table; bounded by the peer config table",
   "fn-own-feed-resolution-records": "D27: walks peer names; bounded by the peer config table",

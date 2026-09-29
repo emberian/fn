@@ -4295,8 +4295,8 @@
     },
     {
       "id": "PRF-086",
-      "title": "Records of the old schemas decode and re-encode identically under the u64 record codec",
-      "statement": "fn-record-v1-bytes-decode-identically: for all octets, if the pre-P6 decoder (fn-record-v1-decode-exact, books/records-schema-v1.lisp, the text of books/records.lisp at e366c633) accepts them, then (fn-record-decode-exact-impl octets) equals (fn-record-v1-decode-exact octets); fn-record-v1-bytes-are-their-translation: under the same hypothesis the new encoder writes the decoded record back to exactly those octets. The host reaches fn-record-decode-exact-impl through fn-store-event-decode-exact (host/store-host.lisp fn-store-decode-records, called by fn-store-sn-recover) and the seam attachment (books/records-attach.lisp), so an old store opens to the records the old image read and nothing is rewritten. Built on fn-cbor-decode-prechecked-wide-extends-narrow and the restated record keystones fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical (now over u64 fields and schema 2). Record ceiling (the fix of the lane's first cut, which raised the overhead a profile's R must hold to 1 111 octets and so refused a saved format-8 profile with R = 17 138 486): fn-record-impl-encode-narrow-length-bound: a record that is not fn-record-widep (sequence, txid, generation, charge and a natural stamp all at most 2^32 - 1) encodes to at most fn-record-encoded-octets-ceiling of its payload length and group count, the 1 083-octet overhead the profile relation reads; the seam exports it as fn-record-encode-narrow-length-bound, and any record, wide or not, is within fn-record-wide-encoded-octets-ceiling (1 111). fn-bs-profile-admits-every-article-record gains the hypothesis that the record is not wide (every record was narrow before P6; the width of the producers is stated, not proved, and a wide record past R is refused at the publish gate, host/store-host.lisp fn-store-publication-admissibility). fn-bs-profile-v1-valid-stays-valid (books/byte-store-profile-v1.lisp): every VALUES the relation of dev 56eb33ee admitted (fn-bs-profile-v1-invalid-reason, frozen, the ceiling written out at 1 083) is admitted by fn-bs-profile-admittedp, which host/store-host.lisp fn-store-profile-admittedp calls, and fn-bs-profile-of VALUES is VALUES; its relation half is fn-bs-profile-v1-valid-is-valid.",
+      "title": "The u64 record codec: round trip, canonical acceptance and the record ceiling",
+      "statement": "The u64 record codec (packet P6): Built on fn-cbor-decode-prechecked-wide-extends-narrow and the restated record keystones fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical (now over u64 fields and schema 2). Record ceiling (the fix of the lane's first cut, which raised the overhead a profile's R must hold to 1 111 octets and so refused a saved format-8 profile with R = 17 138 486): fn-record-impl-encode-narrow-length-bound: a record that is not fn-record-widep (sequence, txid, generation, charge and a natural stamp all at most 2^32 - 1) encodes to at most fn-record-encoded-octets-ceiling of its payload length and group count, the 1 083-octet overhead the profile relation reads; the seam exports it as fn-record-encode-narrow-length-bound, and any record, wide or not, is within fn-record-wide-encoded-octets-ceiling (1 111). fn-bs-profile-admits-every-article-record gains the hypothesis that the record is not wide (every record was narrow before P6; the width of the producers is stated, not proved, and a wide record past R is refused at the publish gate, host/store-host.lisp fn-store-publication-admissibility). Retired 2026-09-29 (lane small-rows, D3; no migrations: fresh deploys at 6.6.0): the pre-P6 decoder books/records-schema-v1.lisp and its two theorems (fn-record-v1-bytes-decode-identically, fn-record-v1-bytes-are-their-translation), whose only subject was a store written by an older image.",
       "milestone": "M5",
       "requirements": [
         "STO-013"
@@ -4305,11 +4305,9 @@
       "assumptions": [],
       "status": "uncertified-at-current-digest",
       "evidence": [
-        "books/records-schema-v1.lisp",
         "books/cbor-invariants.lisp",
         "books/records-canonicality.lisp",
         "books/records-invariants.lisp",
-        "tests/acl2/records-schema-v1-teeth-tests.lisp",
         "books/byte-store-frame.lisp",
         "books/records-seam.lisp",
         "tests/acl2/byte-store-frame-tests.lisp",
