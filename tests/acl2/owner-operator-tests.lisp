@@ -111,7 +111,7 @@
 (assert-event (equal (len (fn-own-queue *opt-queued*)) 1))
 (assert-event (fn-own-control-submissionp (car (fn-own-queue *opt-queued*))))
 (assert-event (equal (fn-inj-decision-octets
-                      (fn-own-sub-decision (car (fn-own-queue *opt-queued*))))
+                      (fn-own-sub-queued-decision (car (fn-own-queue *opt-queued*))))
                      *opt-injected*))
 ; Separating: the verb's former decision stored the payload as read, which is
 ; not a re-injection of anything (no Path line), and is what innd refused.
@@ -165,7 +165,7 @@
 (must-fail-checked
  (defthm opt-submission-without-submitted
    (let* ((q (fn-own-queue (fn-own-operator-submit o msgid groups octets stored)))
-          (d (fn-own-sub-decision (car q))))
+          (d (fn-own-sub-queued-decision (car q))))
      (and (equal (len q) 1)
           (fn-own-control-submissionp (car q))
           (fn-inj-injectedp d)))
@@ -290,7 +290,7 @@
 (defconst *opt-nd-queued*
   (fn-own-operator-submit *opt-0* *opt-msgid* *opt-groups* *opt-nodate* :absent))
 (assert-event (equal (fn-inj-decision-octets
-                      (fn-own-sub-decision (car (fn-own-queue *opt-nd-queued*))))
+                      (fn-own-sub-queued-decision (car (fn-own-queue *opt-nd-queued*))))
                      *opt-nd-injected*))
 (defconst *opt-nd-wire*
   (fn-record-make 0 0 0
