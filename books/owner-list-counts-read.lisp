@@ -1,8 +1,9 @@
 ;; LIST COUNTS and the numbered Message-ID answer, stated over the served
 ;; step the host runs.
 ;;
-;; Host path (reader): host/native/owner.lisp calls fn-owner-chunk
-;; (host/owner-host.lisp), which runs fn-scar-ocfg-read-tls-prefix; the chain
+;; Host path (reader): host/native/owner.lisp calls fn-owner-chunk-span-at
+;; (host/owner-host.lisp), which runs fn-scar-ocfg-read-tls-prefix over the
+;; span (fn-scr-ocfg-read-span-is-reference-under-ocl-relation); the chain
 ;; recorded in books/owner-verdict-read.lisp equates that with fn-own-read on
 ;; the connection, and fn-own-read-is-served-step-on-pinned-prefix
 ;; (books/owner-invariants) with fn-served-step over the connection's pinned

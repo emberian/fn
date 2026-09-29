@@ -2780,7 +2780,7 @@
 
 ; KEYSTONE.  The subject is fn-served-step, which books/owner.lisp
 ; fn-own-read calls once per socket read (host/native/owner.lisp through
-; fn-owner-chunk).  A read whose prefix LEFT leaves the session quit serves
+; fn-owner-chunk-span-at).  A read whose prefix LEFT leaves the session quit serves
 ; exactly what LEFT alone serves: no octet after QUIT is framed, answered,
 ; submitted, or moves the connection.  No other hypothesis: it holds of any
 ; connection and any octets.  With fn-served-run-is-the-concatenated-step

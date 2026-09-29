@@ -526,7 +526,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-signed-binding \
 	tests/acl2/bp-signed-binding-tests \
 	books/post-identity-index \
+	books/post-identity-catalog \
 	tests/acl2/post-identity-index-tests \
+	tests/acl2/post-identity-catalog-tests \
+	books/post-prepare-catalog \
+	tests/acl2/post-prepare-catalog-tests \
 	books/post-retain-carried \
 	tests/acl2/post-retain-carried-tests \
 	books/store-profile-carried \
@@ -924,6 +928,16 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-join-host-open \
 	books/served-catalog-join-host-identity \
 	books/served-catalog-join-host-complete \
+	books/served-catalog-join-host-identity-finish \
+	books/served-catalog-join-host-arms \
+	books/served-catalog-join-host-read \
+	books/served-catalog-join-host-exec \
+	books/served-catalog-join-host-entries \
+	books/served-catalog-join-host-columns \
+	books/served-catalog-join-host-columns-open \
+	books/served-catalog-join-host-views \
+	books/catalog-number-window \
+	books/served-chunk-live-free \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -967,6 +981,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-join-frame-store-tests \
 	tests/acl2/served-catalog-join-pinned-tests \
 	tests/acl2/served-catalog-join-inv-tests \
+	tests/acl2/served-catalog-join-host-tests \
+	tests/acl2/served-chunk-live-free-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
 	books/payload-kinds \
@@ -1042,6 +1058,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-prepare-served-ocl \
 	tests/acl2/owner-prepare-served-tests \
 	tests/acl2/owner-prepare-served-events-tests \
+	books/owner-number-bound \
+	tests/acl2/owner-number-bound-tests \
 	tests/acl2/owner-identity-served-tests \
 	tests/acl2/owner-prepare-served-abort-tests \
 	books/owner-prepare-outcome \

@@ -1282,7 +1282,7 @@
         "fn-served-reply-stream-is-partition-independent",
         "fn-served-step-preserves-connp"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The framing keystones are chunk-independent: the consumed prefix reconstructs the input and feeding is a proper append. The subject rule is met here for the first time: the host no longer owns a :program-mode chunk loop, it calls fn-served-step once per socket read, and books/served states chunk independence of that very function: fn-served-step-partition-independence and fn-served-reply-stream-is-partition-independent. Open: the concurrent server (books/owner) does not certify, so this is exercised through the single-connection reader only. The current native owner uses fn-served-step-counted-fast via fn-owner-chunk and fn-ocfg-read-tls-prefix. Its fixed-spine guard and full-wire-invariant correspondence have focused certification; current outer owner correspondence and runtime integration remain open."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The framing keystones are chunk-independent: the consumed prefix reconstructs the input and feeding is a proper append. The subject rule is met here for the first time: the host no longer owns a :program-mode chunk loop, it calls fn-served-step once per socket read, and books/served states chunk independence of that very function: fn-served-step-partition-independence and fn-served-reply-stream-is-partition-independent. Open: the concurrent server (books/owner) does not certify, so this is exercised through the single-connection reader only. The current native owner uses fn-served-step-counted-fast via fn-owner-chunk-span-at (fn-ocfg-read-tls-prefix over the span: fn-scr-ocfg-read-span-is-reference-under-ocl-relation). Its fixed-spine guard and full-wire-invariant correspondence have focused certification; current outer owner correspondence and runtime integration remain open."
     },
     {
       "id": "NNT-004",
@@ -5102,6 +5102,35 @@
       "note": "OPEN: expiry runs offline (`store reclaim` refuses while an owner runs); expiry while serving needs the owner's checkpoint publication to carry the rewrite. GROUP's count and low water and LISTGROUP still include a reclaimed article (pre-existing, reclaim). Reclaim frees bytes, never transactions: a count-full store stays count-full (Q11, D13)."
     },
     {
+      "id": "NNT-057",
+      "title": "An article whose number in any of its groups would pass RFC 3977 section 6's 2,147,483,647 is refused by name at admission; the served path counts no articles",
+      "specification": "specs/nntp-audit.md#the-served-path-carries-its-projection-verdict",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-921",
+        "PRF-958"
+      ],
+      "verification": [
+        "proof"
+      ],
+      "evidence": [
+        "books/store-number-bound.lisp",
+        "books/store-number-projection.lisp",
+        "books/owner-prepare-served.lisp",
+        "books/store-prepare-served.lisp",
+        "books/nntp-session.lisp",
+        "tests/acl2/store-number-bound-tests.lisp",
+        "tests/acl2/owner-prepare-served-tests.lisp",
+        "tests/acl2/owner-prepare-outcome-tests.lisp",
+        "tests/acl2/store-prepare-served-tests.lisp",
+        "tests/acl2/nntp-post-tests.lisp",
+        "planning/evidence/pkt-615-number-bound-2026-09-28.md"
+      ],
+      "implementation_note": "RFC 3977 section 6 requirement (article numbers 1..2,147,483,647), enforced as a protocol bound, not an implementation ceiling (D27): admission refuses (:article-numbers-exhausted; POST 441 with reason, IHAVE 437, TAKETHIS 439) instead of allocating a number past it. The whole-archive article-count conjunct of fn-nntp-projectionp (no RFC basis; an O(N) walk at every re-pin) is removed. Local policy: the last number assigned in a group is 2,147,483,646, so the watermark after it (rendered as an emptied group's low number, RFC 3977 section 6.1.1.2) is itself an article number.",
+      "note": "PKT-615 as the coordinator decided it (lane join-f2-615, 2026-09-28). Scenario: no native scenario reaches the bound (2^31 articles); the refusal is exercised by the ACL2 teeth at constructed boundary states, labelled as such."
+    },
+    {
       "id": "HST-032",
       "title": "An operator command carries any number of words of any length: ACL2 parses the argv the kernel admits in one linear pass in constant stack, and an administrative argv the client can seal is exactly the argv the running owner decodes",
       "specification": "specs/host.md#operator-commands-and-owner-critical-sections",
@@ -5208,34 +5237,6 @@
         "tests/test_bp_obligation_native.py"
       ],
       "implementation_note": "Lane operations (PKT-869). `fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK REASON...}' over the FNWF workflow journal, offline beside the store as the other obligation verbs are (a served store refuses). The controls are durable records of their own application journal (domain :carry at JOURNAL/carry, frame FNCC: books/bp-carry-frame.lisp), replayed over the workflow image, never FNWF kinds: books/frame-journal.lisp has about 1,100 dependents and each FNWF kind doubled books/frame's fn-frame-workflow-protected guard proof (476k to 874k steps for one). A drop stops the carrying and keeps the Store pin: books/retention.lisp releases a pin only with the evidence it was undertaken against (the receipt's), so an operator's abandonment of the pin is a new evidence kind, a decision for the register. Open: the verbs act on a stopped BP node; the application journals' lifetime namespace (app-journal.lisp *fn-aj-max-records* 4096, 16 MiB for FNWF) is a BP data cap (bounds inventory 1.4)."
-    },
-    {
-      "id": "NNT-057",
-      "title": "An article whose number in any of its groups would pass RFC 3977 section 6's 2,147,483,647 is refused by name at admission; the served path counts no articles",
-      "specification": "specs/nntp-audit.md#the-served-path-carries-its-projection-verdict",
-      "milestone": "M3",
-      "status": "specified",
-      "proof_targets": [
-        "PRF-921"
-      ],
-      "verification": [
-        "proof"
-      ],
-      "evidence": [
-        "books/store-number-bound.lisp",
-        "books/store-number-projection.lisp",
-        "books/owner-prepare-served.lisp",
-        "books/store-prepare-served.lisp",
-        "books/nntp-session.lisp",
-        "tests/acl2/store-number-bound-tests.lisp",
-        "tests/acl2/owner-prepare-served-tests.lisp",
-        "tests/acl2/owner-prepare-outcome-tests.lisp",
-        "tests/acl2/store-prepare-served-tests.lisp",
-        "tests/acl2/nntp-post-tests.lisp",
-        "planning/evidence/pkt-615-number-bound-2026-09-28.md"
-      ],
-      "implementation_note": "RFC 3977 section 6 requirement (article numbers 1..2,147,483,647), enforced as a protocol bound, not an implementation ceiling (D27): admission refuses (:article-numbers-exhausted; POST 441 with reason, IHAVE 437, TAKETHIS 439) instead of allocating a number past it. The whole-archive article-count conjunct of fn-nntp-projectionp (no RFC basis; an O(N) walk at every re-pin) is removed. Local policy: the last number assigned in a group is 2,147,483,646, so the watermark after it (rendered as an emptied group's low number, RFC 3977 section 6.1.1.2) is itself an article number.",
-      "note": "PKT-615 as the coordinator decided it (lane join-f2-615, 2026-09-28). Scenario: no native scenario reaches the bound (2^31 articles); the refusal is exercised by the ACL2 teeth at constructed boundary states, labelled as such."
     }
   ]
 }

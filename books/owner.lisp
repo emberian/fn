@@ -1524,7 +1524,7 @@
 ; The served port: one socket read of one connection is one fn-served-step
 ; over the connection's wire, session and pinned archive.  The result is
 ; (effects . owner); the host writes `effects` through fn-served-reply-octets
-; and fn-served-closingp (host/owner-host.lisp, fn-owner-chunk) and takes no
+; and fn-served-closingp (host/owner-host.lisp, fn-owner-chunk-span-at) and takes no
 ; decision of its own.  An unknown connection reads nothing.  A read whose
 ; effects carry a submission (fn-served-submission: the :submit effect of an
 ; injected article) records it in the queue against this connection and its
