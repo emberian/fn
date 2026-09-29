@@ -435,6 +435,13 @@ either dispatch, and
 developer image keeps the counterpart path behind
 `FN_NATIVE_DISPATCH_COUNTERPART=1` so a native can compare both.
 
+The live carry state boundary is `fn-owner-retain-carry` with
+`fn-owner-retain-carry-put` (books/owner-retain-state.lisp). Reading after
+put returns exactly the supplied value, and writing a different global
+leaves that read unchanged (PRF-1067). The actual carry writers use this
+setter. These state effects do not establish the validity of the supplied
+value or the invariant across a whole owner transition.
+
 The off-mutex owner reclamation rebuild calls the logical entry
 `fn-owner-orcp-rebuild` (books/owner-reclaim-carry.lisp). Its returned field 2
 always satisfies `fn-prc-carryp` (PRF-1060), including a refused open's nil

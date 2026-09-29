@@ -17289,6 +17289,19 @@
           "name": "fn-pio-close-waits-for-every-worker"
         }
       ]
+    },
+    {
+      "id": "PRF-1067",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-of-put"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-of-other-global-put"
+        }
+      ]
     }
   ]
 }

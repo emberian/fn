@@ -238,6 +238,7 @@
 (include-book "../../books/anchor-invariants")
 (include-book "../../books/state-globals")
 (include-book "../../books/owner-config")
+(include-book "../../books/owner-retain-state")
 (include-book "../../books/deflate-inflate")
 (include-book "../../books/owner-checkpoint-open")
 (include-book "../../books/owner-export-request")
