@@ -5951,9 +5951,11 @@ record's (FILE . PLACE), PLACE ACL2's (START N ROFF RLEN); else NIL.")
 ;;; The APPEND (fnn-log-compress, from fnn-log-publish): with the owner's
 ;;; live threshold set (`policy set compress-min-octets N', a configuration
 ;;; row; no row is off), ACL2 plans the payload span of the record
-;;; (fn-lzr-append-plan), the host asks the untrusted LZ4-HC encoder for a
-;;; candidate block within ACL2's cap (host/native/lz4.lisp), and ACL2 decides
-;;; (fn-lzr-append-decide: the proved decoder runs over the candidate): the
+;;; (fn-lzr-append-plan), the host asks the untrusted zlib encoder for a
+;;; candidate DEFLATE stream over the current shipped dictionary within
+;;; ACL2's cap (host/native/deflate.lisp fnn-deflate-candidate), and ACL2
+;;; decides (fn-lzr-append-decide: the proved decoder runs over the
+;;; candidate): the
 ;;; frame is taken, or the record is kept by the named policy :lz-no-gain, or
 ;;; the candidate is refused and the append stops with a named store fault
 ;;; before anything is taken.  The digests stay over the original octets
@@ -5966,9 +5968,10 @@ record's (FILE . PLACE), PLACE ACL2's (START N ROFF RLEN); else NIL.")
 ;;; The replay alone also needs the stored octets (*fnn-log-record-stored*)
 ;;; for the compressed extents.
 ;;;
-;;; Dictionaries: ID 0, the empty dictionary, only (ACL2's
-;;; fn-lzr-dicts-initial).  Where a trained dictionary's octets persist is
-;;; ember's decision (planning/evidence/compression-extents-2-2026-09-27.md).
+;;; Dictionaries: the release's shipped table (books/payload-lz-dicts.lisp,
+;;; ACL2's fn-lzr-dicts-initial), each under the first four octets of its
+;;; BLAKE3 digest; ID 0 is the empty dictionary.  New payloads are made under
+;;; the current one (fn-lzd-current-id); nothing is transcoded at rest.
 
 (defvar *fnn-log-record-stored* nil
   "While a log stream hands a record to its sink: the octets the log holds
@@ -5979,6 +5982,16 @@ for it (a compressed record's frame, or the record itself).")
 what `store ROOT compression' reports.")
 
 (defvar *fnn-lz-dicts* nil)
+(defvar *fnn-lz-current* nil)
+
+(defun fnn-lz-current-dict ()
+  "The dictionary new payloads are made under (books/payload-lz-dicts.lisp
+fn-lzd-current-id): (ID OCTET-LIST . OCTET-VECTOR)."
+  (or *fnn-lz-current*
+      (setq *fnn-lz-current*
+            (let* ((id (fnn-core 'fn-lzd-current-id))
+                   (octets (fnn-core 'fn-lzd-lookup id)))
+              (list* id octets (coerce octets '(simple-array (unsigned-byte 8) (*))))))))
 
 (defun fnn-lz-dicts ()
   "The store's dictionary table (ACL2's): ID 0 only."
@@ -6024,9 +6037,10 @@ offline `store ROOT post'), the store's replayed configuration's
         (if (null plan)
             record
           (let* ((k (car plan)) (n (cdr plan))
-                 (candidate (fnn-lz4-candidate (fnn-make-octets 0) (fnn-octets record) k n
-                                               (fnn-core 'fn-lzr-candidate-cap n)))
-                 (decision (fnn-core 'fn-lzr-append-decide nil 0 min r k n
+                 (dict (fnn-lz-current-dict))
+                 (candidate (funcall 'fnn-deflate-candidate (cddr dict) (fnn-octets record) k n
+                                     (fnn-core 'fn-lzr-candidate-cap n)))
+                 (decision (fnn-core 'fn-lzr-append-decide (second dict) (first dict) min r k n
                                      (if (eq candidate :none) :none
                                        (fnn-octet-list candidate)))))
             (case (and (consp decision) (first decision))

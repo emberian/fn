@@ -14663,6 +14663,115 @@
           "name": "fn-sfi-next-lower-total-is-next-lower"
         }
       ]
+    },
+    {
+      "id": "PRF-909",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-zin-loop-split-input"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-loop-split-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-loop-out-free"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-loop-is-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-run-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-feed-out-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-loop-stops"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-feed-unfolds"
+        }
+      ]
+    },
+    {
+      "id": "PRF-910",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-zin-feed-bomb-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-reset-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-act-counts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zin-loop-counts"
+        }
+      ]
+    },
+    {
+      "id": "PRF-948",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-zfr-loop-ahead-frame"
+        }
+      ]
+    },
+    {
+      "id": "PRF-949",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-zpl-decode-bufs-is-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zpl-decode-bufs-is-the-lz-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zpl-pool-okp-of-nil"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zpl-pool-check-is-pool-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zpl-ready-window-is-list"
+        }
+      ]
+    },
+    {
+      "id": "PRF-974",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-zdn-choose-stored-only-shared"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zdn-choose-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zdn-request-shape"
+        }
+      ]
     }
   ]
 }

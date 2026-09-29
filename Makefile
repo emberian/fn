@@ -452,14 +452,17 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-log-initializer-tests \
 	books/owner-log-route \
 	tests/acl2/owner-log-route-tests \
-	books/payload-lz \
-	tests/acl2/payload-lz-tests \
+	books/deflate-inflate \
+	books/payload-deflate \
+	books/payload-lz-dict-1 \
+	books/payload-lz-dicts \
 	books/payload-lz-value \
 	books/payload-lz-record \
 	books/payload-lz-replay \
 	tests/acl2/payload-lz-record-tests \
 	books/payload-lz-append \
 	tests/acl2/payload-lz-append-tests \
+	tests/acl2/deflate-inflate-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \

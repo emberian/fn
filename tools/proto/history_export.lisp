@@ -20,7 +20,7 @@
 (defun fnhx-export (root out)
   (fnn-open-streams)
   (fnn-crypto-startup) (fnn-tls-reset) (fnn-tls-initialize) (fnn-digest-startup)
-  (fnn-hsig-reset) (fnn-hsig-initialize) (fnn-lz4-reset) (fnn-lz4-initialize)
+  (fnn-hsig-reset) (fnn-hsig-initialize) (fnn-deflate-reset) (fnn-deflate-initialize)
   (let ((t0 (get-internal-real-time)))
     (multiple-value-bind (store count) (fnn-open-live-store root nil)
       (let* ((t-open (/ (- (get-internal-real-time) t0) (float internal-time-units-per-second)))

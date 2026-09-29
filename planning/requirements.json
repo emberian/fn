@@ -5313,6 +5313,73 @@
         "tests/acl2/limits-live-tests.lisp"
       ],
       "implementation_note": "Row S1. The sealed profile's digest is in the genesis record, so config.json is never rewritten: a limit is a :set-limit row folded over it (fn-lim-effective). Verb and native scenario land with lane limits-live-3."
+    },
+    {
+      "id": "NNT-054",
+      "title": "COMPRESS DEFLATE (RFC 8054): a client may compress its session after authentication; the inbound stream is decoded by ACL2, bounded, resumable and bomb-refusing, the outbound by vendored zlib behind the trust boundary",
+      "specification": "specs/nntp.md#compression-compress-nnt-054-nnt-055",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-909",
+        "PRF-910",
+        "PRF-911"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/deflate-inflate.lisp",
+        "tests/acl2/deflate-inflate-tests.lisp",
+        "specs/nntp.md",
+        "books/nntp-compress.lisp",
+        "tests/test_native_compress.py"
+      ]
+    },
+    {
+      "id": "STO-037",
+      "title": "A stored payload may be held compressed: a raw DEFLATE stream over a shipped preset dictionary named by its BLAKE3 digest, decoded by the verified inflater, never transcoded at rest",
+      "specification": "specs/storage.md#compressed-payloads-deflate-over-a-shipped-dictionary-sto-037",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-257",
+        "PRF-326",
+        "PRF-341",
+        "PRF-912"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/payload-deflate.lisp",
+        "books/payload-lz-dicts.lisp",
+        "tests/acl2/payload-lz-record-tests.lisp",
+        "tests/test_native_compression.py",
+        "docs/extensions/nntp-compress-dict.md"
+      ]
+    },
+    {
+      "id": "NNT-055",
+      "title": "fn extension: COMPRESS DEFLATE with a shipped preset dictionary named by its BLAKE3 digest (RFC 9842-shaped), and stored payloads carried as they are stored between fn peers",
+      "specification": "docs/extensions/nntp-compress-dict.md",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-974"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "docs/extensions/nntp-compress-dict.md",
+        "specs/nntp.md",
+        "books/nntp-compress-dict.lisp",
+        "tests/acl2/nntp-compress-dict-tests.lisp"
+      ]
     }
   ]
 }

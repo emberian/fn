@@ -26,6 +26,9 @@
 ; realizer's decode (host/native/extent.lisp fn-durable-realize-lz).
 (include-book "../books/payload-lz-append")
 (include-book "../books/payload-lz-replay")
+; The realizer's pooled payload decoder (host/native/deflate.lisp
+; fnn-pzd-decode: fn-zpl-decode-bufs).
+(include-book "../books/deflate-pool")
 (include-book "../books/store-config")
 (include-book "../books/identity")
 (include-book "../books/crypto-attach")

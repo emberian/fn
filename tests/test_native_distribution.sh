@@ -49,8 +49,8 @@ printf different-core > "$tmp/mismatched.core"
 # The ML-DSA-65 library the image loads from lib/ beside its core (HST-016).
 mkdir "$tmp/lib"
 printf mldsa > "$tmp/lib/libfn-mldsa65.so"
-# The LZ4 block encoder beside it (tools/build_lz4.sh).
-printf lz4 > "$tmp/lib/libfn-lz4.so"
+# The COMPRESS DEFLATE compressor beside it (tools/build_deflate.sh).
+printf deflate > "$tmp/lib/libfn-deflate.so"
 # BLAKE3, fn's digest, from the same lib/ (host/native/digest.lisp).
 printf blake3 > "$tmp/lib/libfn-blake3.so"
 set +e
