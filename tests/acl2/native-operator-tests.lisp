@@ -1635,3 +1635,19 @@
                       (fn-native-admin-plan
                        (fn-nop-test-argv (list "account" "unbind" "a b"))))
                      :account-login))
+
+; S7 producer grammar: target and status are distinct; these assertions
+; describe syntax, not producer completion.
+(assert-event
+ (let ((r (fn-nop-t-store "snapshot" "/tmp/snapshot")))
+   (and (equal (fn-native-operator-result-status r) :accepted)
+        (equal (fn-native-operator-result-native-action r) :snapshot)
+        (fn-native-operator-result-needs-storep r)
+        (equal (fn-native-operator-result-archive-path-octets r)
+               (fn-record-string-octets "/tmp/snapshot")))))
+(assert-event
+ (let ((r (fn-nop-t-store "snapshot" "--status")))
+   (and (equal (fn-native-operator-result-status r) :accepted)
+        (equal (fn-native-operator-result-native-action r) :snapshot-status))))
+(assert-event (equal (fn-native-operator-result-status (fn-nop-t-store "snapshot" "relative")) :usage))
+(assert-event (equal (fn-native-operator-result-status (fn-nop-t-store "snapshot" "/tmp/s" "extra")) :usage))
