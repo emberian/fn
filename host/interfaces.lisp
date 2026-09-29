@@ -4336,6 +4336,9 @@
 (definterface fn-owner-orcp-salt
   :class :program)
 
+(definterface fn-owner-orcp-key
+  :class :program)
+
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-swap
   :class :program)
