@@ -15,7 +15,7 @@ X=$TREE/tools/extract
 mkdir -p "$OUT"
 # No product of an earlier build survives to stand in for this one's.
 rm -f "$OUT/served.json" "$OUT/served.scm" "$OUT/erased.json" "$OUT/inventory.json" \
-      "$OUT/fntable.scm" "$OUT/probes.scm" "$OUT/served" "$OUT/csc-served.args"
+      "$OUT/fntable.scm" "$OUT/probes.scm" "$OUT/served" "$OUT/csc-served.args" "$OUT/link.args"
 # The boundary: every function the driver calls (host/native/io.lisp calls
 # each through fnn-call) -- the reader's served path, its store selection,
 # the durable-extent realizers' ACL2 calls (host/native/extent.lisp), the
@@ -29,13 +29,13 @@ rm -f "$OUT/served.json" "$OUT/served.scm" "$OUT/erased.json" "$OUT/inventory.js
 ROOTS=${FN_EXTRACT_ROOTS:-$FN_EXTRACT_ROOTS_DECLARED}
 EXTRA=${FN_EXTRACT_EXTRA:-$FN_EXTRACT_EXTRA_DECLARED}
 python3 "$X/world.py" --check
+# The world, loaded once per world digest and saved (world_image.sh).
+WORLD=$(sh "$X/world_image.sh" "$TREE")
 cat > "$OUT/extract.lsp" <<LSP
-(ld "tools/extract/world.lisp")
-(ld "tools/extract/world-host.lisp")
 (ld "tools/extract/frontend.lisp")
 (xt-extract-with (quote ($ROOTS)) (quote ($EXTRA)) "build/extract/served.json" state)
 LSP
-( cd "$TREE" && swarm-build "$ACL2" < "$OUT/extract.lsp" > "$OUT/extract.log" 2>&1 )
+( cd "$TREE" && swarm-build "$WORLD" < "$OUT/extract.lsp" > "$OUT/extract.log" 2>&1 )
 if grep -q "ACL2 Error" "$OUT/extract.log" || [ ! -s "$OUT/served.json" ]; then
     echo "extract: the front end failed; see $OUT/extract.log" >&2; exit 1
 fi
@@ -49,10 +49,24 @@ cp "$X/runtime.scm" "$X/served-main.scm" "$X/native.scm" "$X/hostio.scm" .
 # the run path; libcrypto is for the Cancel-Lock SHA-256.
 sh "$TREE/tools/build_blake3.sh" "$OUT/lib" > blake3.log 2>&1 || {
     echo "extract: tools/build_blake3.sh failed; see $OUT/blake3.log" >&2; exit 1; }
+# The image's own libraries (tools/build_native_host.sh builds them into lib/
+# beside the image's core, where the image loads them): ML-DSA-65 for the
+# signature seam's verifier (A-SIG-NATIVE, native.scm) and the LZ4 block
+# encoder the writable verbs' compressed append asks for candidates
+# (host/native/lz4.lisp; hostio.scm a-hx-lz4-candidate).  Linked from that
+# directory, with it as the run path, so the program calls the very files the
+# image calls (the gate checks the resolved paths and digests).
+IMGLIB=${FN_EXTRACT_IMAGE_LIB:-$TREE/build/lib}
+for lib in libfn-mldsa65.so libfn-lz4.so; do
+    [ -f "$IMGLIB/$lib" ] || {
+        echo "extract: no $IMGLIB/$lib (build the developer image first: tools/build_native_host.sh)" >&2; exit 1; }
+done
+LINK="-L$OUT/lib -lfn-blake3 -Wl,-rpath,$OUT/lib -L$IMGLIB -lfn-mldsa65 -lfn-lz4 -Wl,-rpath,$IMGLIB"
+printf '%s\n' "$LINK" > link.args
 # The compiler options, recorded for the gate's extraction manifest (check.sh).
 CSC_OPTS="-O3 -d0 -block -inline-global -lfa2"
-printf '%s\n' "csc $CSC_OPTS served-main.scm -o served -L -lcrypto -L -L$OUT/lib -lfn-blake3 -Wl,-rpath,$OUT/lib" > csc-served.args
+printf '%s\n' "csc $CSC_OPTS served-main.scm -o served -L -lcrypto -L $LINK" > csc-served.args
 PATH=$CHICKEN/bin:$PATH swarm-build csc $CSC_OPTS \
-    served-main.scm -o served -L -lcrypto -L "-L$OUT/lib -lfn-blake3 -Wl,-rpath,$OUT/lib" > csc.log 2>&1 || {
+    served-main.scm -o served -L -lcrypto -L "$LINK" > csc.log 2>&1 || {
     echo "extract: csc failed; see $OUT/csc.log" >&2; tail -20 csc.log >&2; exit 1; }
 echo "extract: built $OUT/served"
