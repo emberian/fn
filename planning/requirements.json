@@ -1767,7 +1767,8 @@
       "proof_targets": [
         "PRF-021",
         "PRF-022",
-        "PRF-023"
+        "PRF-023",
+        "PRF-995"
       ],
       "verification": [
         "proof",
@@ -2205,7 +2206,9 @@
       "status": "specified",
       "proof_targets": [
         "PRF-088",
-        "PRF-361"
+        "PRF-361",
+        "PRF-997",
+        "PRF-998"
       ],
       "verification": [
         "proof",
@@ -2718,7 +2721,11 @@
         "PRF-930",
         "PRF-934",
         "PRF-939",
-        "PRF-966"
+        "PRF-966",
+        "PRF-997",
+        "PRF-998",
+        "PRF-999",
+        "PRF-1000"
       ],
       "verification": [
         "proof",
@@ -2835,7 +2842,8 @@
         "PRF-330",
         "PRF-326",
         "PRF-341",
-        "PRF-952"
+        "PRF-952",
+        "PRF-994"
       ],
       "verification": [
         "proof",
@@ -4461,7 +4469,8 @@
         "PRF-281",
         "PRF-295",
         "PRF-309",
-        "PRF-320"
+        "PRF-320",
+        "PRF-994"
       ],
       "verification": [
         "proof",
@@ -5473,6 +5482,30 @@
         "tests/test_bp_service_native.py",
         "planning/evidence/bp-cursors-2026-09-27.md"
       ]
+    },
+    {
+      "id": "NNT-1000",
+      "title": "The served POST is productive: a request the Store admits, under the specified successful primitive completions, reaches the 240 line and the record in durable history within nine steps of the served step function; every uncertain answer names its cause; the 240 on the wire is the line the theorem names",
+      "specification": "specs/productive-contract.md",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1001",
+        "PRF-1002",
+        "PRF-1003"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/productive-contract.lisp",
+        "books/productive-observer.lisp",
+        "tests/acl2/productive-contract-tests.lisp",
+        "tests/test_native_outside_in.py"
+      ],
+      "implementation_note": "GPT-6's second review section 1 (warranty-quality-proof-engineering.md): a machine that always answers uncertain satisfies every success-implies-durability theorem; fn was that machine once (the handle compared against the staged octets). The productive theorem pairs fn-own-240-follows-consumed-completion; the served read and the peer transfer are stated in the spec's section 5 and open.",
+      "note": "Row W6 of the pre-6.6.0 list; lane productive-contract 2026-09-29."
     }
   ]
 }

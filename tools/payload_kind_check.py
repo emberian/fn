@@ -27,7 +27,15 @@ when the value goes
     so its payload IS octets.
 
 Anything else is a finding: the function consumes a handle without saying
-which kind it takes.  There are no waivers (lane entry-guards-2 closed the
+which kind it takes.
+
+One hop further (W1, entry-guards-2's finding): a definition that is neither
+:wire nor :handle and calls a :wire function with an argument built from the
+RETAINED state -- the node's or state's articles (`fn-state-articles`,
+`fn-node-acceptance`, `fn-sn-node`, `fn-stx-store`), whose payloads are
+handles -- hands handles to the octet model, unless that argument goes
+through a converter to octet articles (`fn-articles-wire-of`,
+`fn-rows-articles-newest-first`).  There are no waivers (lane entry-guards-2 closed the
 fourteen the first version named): a finding is fixed, never excused.
 
     python3 tools/payload_kind_check.py            # findings, exit 1 if any
@@ -49,6 +57,14 @@ from tools import ledger  # noqa: E402
 ACCESSORS = {"fn-article-payload", "fn-held-payload"}
 DEFINERS = {"defun", "defund", "defun-inline", "defun-nx", "define"}
 DECLARER = "fn-payload-kind"
+# Calls whose value holds retained articles (payloads are handles).
+RETAINED = {"fn-state-articles", "fn-node-acceptance", "fn-sn-node", "fn-stx-store"}
+# Calls whose value is the octet model's articles, whatever they are given.
+CONVERTERS = {"fn-articles-wire-of", "fn-rows-articles-newest-first"}
+# :wire functions that read no payload when the named argument (1-based) is
+# the literal NIL, each by the theorem named: no statement verifies without a
+# keyring, so the index is empty whatever the payloads.
+KEYLESS = {"fn-stx-index-of-store": (2, "fn-stx-index-of-store-without-a-keyring")}
 
 def forms_of(relative: str) -> list[tuple[object, int]]:
     return ledger.Reader((ROOT / relative).read_text(encoding="utf-8")).top_level()
@@ -149,6 +165,40 @@ def scan_body(form, sinks: set[str], bad: list, parent=None) -> None:
         scan_body(item, sinks, bad, form)
 
 
+def retained_in(form) -> bool:
+    """FORM builds a value from the retained state, not through a converter."""
+    if not isinstance(form, list) or not form:
+        return False
+    name = ledger.head(form)
+    if name == "quote" or (name is not None and name.lower() in CONVERTERS):
+        return False
+    if name is not None and name.lower() in RETAINED:
+        return True
+    return any(retained_in(item) for item in
+               (form[1:] if isinstance(form[0], ledger.Sym) else form))
+
+
+def wire_calls(form, wire: set[str], bad: list) -> None:
+    """Each call of a :wire function under FORM given the retained state."""
+    if not isinstance(form, list) or not form:
+        return
+    name = ledger.head(form)
+    if name == "quote":
+        return
+    keyless = KEYLESS.get(name.lower()) if name is not None else None
+    if (keyless is not None and len(form) > keyless[0]
+            and isinstance(form[keyless[0]], ledger.Sym)
+            and str(form[keyless[0]]).lower() == "nil"):
+        keyless_ok = True
+    else:
+        keyless_ok = False
+    if (name is not None and name.lower() in wire and not keyless_ok
+            and any(retained_in(arg) for arg in form[1:])):
+        bad.append(name.lower())
+    for item in form[1:] if isinstance(form[0], ledger.Sym) else form:
+        wire_calls(item, wire, bad)
+
+
 def paths() -> list[str]:
     books = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "books").glob("*.lisp"))
     hosts = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "host").glob("*.lisp"))
@@ -175,6 +225,20 @@ def scan() -> tuple[list[dict], dict]:
             defs: list = []
             definitions(form, line, defs)
             for name, definition, where in defs:
+                if name not in wire and name not in sinks:
+                    hop: list = []
+                    for item in definition[3:]:
+                        wire_calls(item, wire, hop)
+                    if hop:
+                        findings.append({
+                            "where": "{}:{}".format(relative, where), "function": name,
+                            "sites": len(hop),
+                            "problem": "hands the retained state's articles (payloads are "
+                                       "handles) to the octet model [{}]: convert them "
+                                       "(fn-articles-wire-of) or declare the function "
+                                       "(fn-payload-kind {} :wire ...) if its node is the "
+                                       "octet model's".format(
+                                           "; ".join(sorted(set(hop))), name)})
                 text = repr(definition).lower()
                 if not any(word in text for word in ACCESSORS | SOURCES):
                     continue

@@ -549,6 +549,51 @@ In order, these set:
 - address ranges exempt from the per-address limit. Name your home network
   here if your router makes every local reader look like one address.
 
+### TLS handshakes: what the node resists on its own
+
+A TLS handshake costs the node work and memory before anyone has logged in.
+fn decides every handshake, on 563 and after STARTTLS alike, before it
+starts one (books/tls-handshake-budget.lisp):
+
+```
+fn operator /etc/fn/fn.toml policy set tls-handshakes-per-source-per-minute 30
+fn operator /etc/fn/fn.toml policy set tls-handshakes-in-flight 16
+fn operator /etc/fn/fn.toml policy set tls-handshake-ms 5000
+```
+
+- **One source** (an IPv4 address, or an IPv6 /64) may start 30 handshakes
+  a minute: a burst of 30, refilled continuously. Past that its next
+  connection is closed at once and the service log says
+  `tls refused reason=handshake-budget source=ADDRESS`. Every attempt counts,
+  whether it completes or fails.
+- **The whole node** runs at most 16 handshakes at once and starts at most 16
+  a second. A connection past that waits its turn without costing any
+  handshake work, at most 5 seconds (`reason=timeout`); when 32 x 16 already
+  wait it is closed (`reason=busy`). A slow handshake that never finishes
+  holds its slot for at most 5 seconds.
+- The trusted range above exempts a source from the per-source budget only,
+  never from the node's.
+- On 563 nothing is written to a refused connection: the refusal is in the
+  service log, and the connection is closed (an NNTP 400 cannot be sent
+  before TLS).
+
+What this proves (PRF-986): whatever is offered, the node starts at most 16
+handshakes in any second and holds at most 16, and one source is admitted at
+most 30 + 30 x (seconds / 60) handshakes over any interval.
+
+What it cannot do: from one shared address the node cannot tell many
+people from one attacker. Everyone behind one carrier-grade NAT, one office
+router or one proxy shares one budget; raise it for that address with the
+policy above if your readers arrive that way, and the node's own bound still
+holds. A flood from many addresses is held by the node's bound, so honest
+readers then wait their turn too.
+
+You do not need a proxy to be safe. A TCP proxy in front of fn adds nothing
+here and costs the per-address limits (fn sees the proxy's address); fn does
+not read PROXY headers. A proxy that terminates TLS is a different profile
+again: it holds the TLS session, so channel binding (SCRAM-PLUS's
+`tls-exporter` under TLS 1.3) cannot reach fn through it.
+
 ## 8. Peers
 
 [Peering with a friend](peering-with-a-friend.md) walks through connecting
