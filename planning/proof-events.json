@@ -15368,6 +15368,27 @@
           "note": "books/stx-lace-rows.lisp: under the context invariant and the correspondence of the node's articles (through the arena) with the rows' articles, the node lace (books/stx-node-lace.lisp fn-stx-lace) is the rows' lace fn-sn-lace-of-rows. The correspondence hypothesis is the named open composed obligation (nothing at this revision carries it in fn-sn-statep). fn-stx-lace-is-the-wire-lace-of-alpha-by-definition names the unfolding."
         }
       ]
+    },
+    {
+      "id": "PRF-1010",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-acar-view-historyp-carries-safe-groups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acar-record-group-name-is-safe"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acar-cfgp-domain-is-safe"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acar-cnode-groups-are-safe"
+        }
+      ]
     }
   ]
 }

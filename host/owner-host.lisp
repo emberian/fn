@@ -2859,8 +2859,9 @@
          ; the re-pin tests the rebuilt session at the node the held session
          ; already carries instead of re-running fn-node-statep on it, and
          ; opens the reader session with fn-acar-nntp-projectionp, which
-         ; omits the fn-statep of the whole view archive that
-         ; fn-ocl-view-historyp carries (fn-acar-view-historyp-carries-view-statep).
+         ; omits the fn-statep of the whole view archive and the safety of
+         ; its group names, both of which fn-ocl-view-historyp carries
+         ; (fn-acar-view-historyp-carries-view-statep).
          ; post-alloc-2: fn-apc-own-outcome, equal to fn-acar-own-outcome
          ; under the intent and parse carries fn-owner-take wrote
          ; (fn-apc-own-outcome-is-acar-own-outcome): the durable article's

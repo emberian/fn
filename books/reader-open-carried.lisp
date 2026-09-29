@@ -28,9 +28,9 @@
 ;   the selection's verdicts.
 ;
 ; What a connection open still evaluates: the greeting's projection flag
-; without its `fn-statep' conjunct (`fn-acar-open-session': the group list,
-; the next-number table and the article count, pointer steps; PKT-190) and
-; the connection record.
+; without its `fn-statep' and group-list conjuncts (`fn-acar-open-session':
+; the next-number table; the selection's fn-nntp-projectionp carries the
+; rest; PKT-190) and the connection record.
 
 (in-package "ACL2")
 (include-book "owner-open-carried")
@@ -103,6 +103,7 @@
 
 (defthm fn-rdc-served-open-is-served-open
   (implies (and (fn-statep archive)
+                (fn-nntp-safe-group-listp (fn-state-groups archive))
                 (equal index (fn-midx-build (fn-state-articles archive))))
            (equal (fn-rdc-served-open archive index line-limit body-limit
                                       config observation injection acfg)
@@ -112,7 +113,8 @@
            :in-theory (e/d (fn-served-open fn-served-open-indexed)
                            (fn-ocar-auth-open-reader fn-auth-open-session
                             fn-ocar-auth-open-reader-is-auth-open-session
-                            fn-statep fn-midx-build fn-served-greeting)))))
+                            fn-statep fn-nntp-safe-group-listp fn-midx-build
+                            fn-served-greeting)))))
 
 ;; The subject host/reader-host.lisp `fn-reader-reset' calls, per connection.
 ; It has no arm for a selection that did not answer :ready: no host reaches

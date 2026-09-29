@@ -777,5 +777,15 @@
       "packet": "PKT-891"
     }
   },
-  "note": "Every traversal of retained state that tools/hot_path_check.py finds on a path from a host entry, keyed 'function primitive dimension', with the packet that owns it (planning/backlog-2026-09-25.md; PKT-448's lettered items are the finds no earlier packet owned). This is a list, not a baseline: every entry here is a find the report prints, whatever its class. --strict fails on an unexpected find not listed here (NEW) and on a listed key that no longer occurs (STALE): remove an entry by removing the walk, in the same commit. 'confirmed' names the scaling row (planning/evidence/hot-path-checker-2026-09-26.md) that measured it; absent means static only."
+  "note": "Every traversal of retained state that tools/hot_path_check.py finds on a path from a host entry, keyed 'function primitive dimension', with the packet that owns it (planning/backlog-2026-09-25.md; PKT-448's lettered items are the finds no earlier packet owned). This is a list, not a baseline: every entry here is a find the report prints, whatever its class. --strict fails on an unexpected find not listed here (NEW) and on a listed key that no longer occurs (STALE): remove an entry by removing the walk, in the same commit. 'confirmed' names the scaling row (planning/evidence/hot-path-checker-2026-09-26.md) that measured it; absent means static only.",
+  "accepted": {
+    "note": "Walks accepted by a coordinator ruling that tools/hot_path_check.py does not report (a dimension it does not seed, e.g. G, the configured groups). Named here so the acceptance and its reason are on record; the checker reads only 'findings'.",
+    "fn-nntp-nexts-boundedp recursion G": {
+      "via": "fn-acar-nntp-projectionp (books/owner-advance-carried.lisp), evaluated at every durable POST re-pin of the reader session (host/owner-host.lisp, the re-pin after an owner advance)",
+      "cost": "one natp test and one integer compare against *fn-nntp-max-article-number* per configured group; no allocation, no article visited",
+      "reason": "COORDINATOR RULING 2026-09-29 (on join-f2-9's open question): KEEP the watermark check. The conjunct is carried by fn-onb-boundp (PRF-958, books/owner-number-bound.lisp), which fn-ocl-relation does not include; dropping it would spread fn-onb-boundp through the relation-form keystones (fn-oop-*), and an O(groups) integer compare is not a served-path cost worth that. The group-name conjunct was proved carried (PRF-1010) and dropped.",
+      "class": "accepted",
+      "packet": "J1 (join-f2-9 / join-f2-10)"
+    }
+  }
 }
