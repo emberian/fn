@@ -338,6 +338,12 @@
   `(fn-native-operator-run *fn-nop-minimal-config*
                            (fn-nop-test-argv '("store" ,@words))))
 (defconst *fn-nop-export* (fn-nop-t-store "export" "/tmp/a"))
+; Row S3b: `store export --status' is a store plan of its own action.
+(assert-event (equal (fn-native-operator-result-native-action
+                      (fn-nop-t-store "export" "--status"))
+                     :export-status))
+(assert-event (fn-native-operator-result-needs-storep
+               (fn-nop-t-store "export" "--status")))
 (assert-event (equal (fn-native-operator-result-status *fn-nop-export*) :accepted))
 (assert-event (equal (fn-native-operator-result-native-action *fn-nop-export*) :export))
 (assert-event (equal (fn-nop-store-plan-word *fn-nop-export*) :export))
@@ -421,7 +427,7 @@
 (assert-event (equal (fn-native-operator-result-archive-path-octets *fn-nop-init*) nil))
 (assert-event (equal (fn-native-operator-result-import-request *fn-nop-init*) nil))
 ; The store help names the two verbs and none of the retired ones.
-(assert-event (search "export ARCHIVE-DIR | import ARCHIVE-DIR [--FIELD N ...]"
+(assert-event (search "export ARCHIVE-DIR | export --status | import ARCHIVE-DIR [--FIELD N ...]"
                       (fn-nop-help-text "store")))
 (assert-event (not (search "upgrade" (fn-nop-help-text "store"))))
 

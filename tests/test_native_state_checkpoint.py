@@ -259,7 +259,10 @@ class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
         self.node.stop()
 
     def open_line(self):
-        status = self.op("status")
+        # A stopped store's plain `status' is its checkpoint header's and
+        # replays nothing (operability-2, row S3): the open's line is
+        # `status --replay''s.
+        status = self.op("status", "--replay")
         self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
         lines = [l for l in status.stdout.decode("ascii").splitlines() if l.startswith("open=")]
         self.assertEqual(len(lines), 1, status.stdout.decode())
@@ -276,7 +279,7 @@ class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
     def observation(self):
         """What an open reconstructs, through four verbs that each reopen."""
         words = []
-        for verb in (("status",), ("retention",), ("config",)):
+        for verb in (("status", "--replay"), ("retention",), ("config",)):
             out = self.store_cli(*verb)
             self.assertEqual(out.returncode, EXIT_OK, out.stderr.decode())
             # How the store opened and the checkpoint file's size and
@@ -311,7 +314,7 @@ class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
         """The open without a usable checkpoint over the dropped log refuses
         by name; the kept segments are linked back.  The reason."""
         self.assertTrue(self.dropped_segments())
-        status = self.op("status")
+        status = self.op("status", "--replay")
         self.assertNotEqual(status.returncode, EXIT_OK, status.stdout.decode())
         match = re.search(rb"open refused reason=([a-z-]+)", status.stderr)
         self.assertIsNotNone(match, status.stderr.decode())
@@ -510,7 +513,7 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertGreater(np, 1)
         self.assertEqual(int.from_bytes(data[13:21], "little"), IMAGE_BASE)
         self.assertEqual(data[framed_start(data):framed_start(data) + 4], b"FNSC")
-        status = self.op("status")
+        status = self.op("status", "--replay")
         self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
         self.assertNotIn(b"checkpoint image refused", status.stderr)
         self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
@@ -540,7 +543,7 @@ class StateCheckpointTests(StateCheckpointFixture):
         data = bytearray(good)
         data[IMAGE_BASE + PAGE * phys + 8 * 7] ^= 0x01   # logical page 0, word 7
         self.path().write_bytes(bytes(data))
-        status = self.op("status")
+        status = self.op("status", "--replay")
         self.assertIn("checkpoint image refused reason=(:page-damaged 0 {})".format(phys).encode(),
                       status.stderr)
         self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
@@ -581,7 +584,7 @@ class StateCheckpointTests(StateCheckpointFixture):
             self.node, self.root, self.store, self.config, self.port, self.control = saved
         self.assertNotEqual(theirs, mine)
         self.path().write_bytes(theirs)
-        status = self.op("status")
+        status = self.op("status", "--replay")
         self.assertIn(b"checkpoint image refused reason=(:refused :store-identity)", status.stderr)
         self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
         self.path().write_bytes(mine)

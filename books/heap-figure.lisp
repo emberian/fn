@@ -699,15 +699,17 @@
 ;; chunk term is 0 (lane heap-bounds, B4).  The articles in flight are
 ;; charged as packed submissions since lane chunked-body-2
 ;; (books/heap-store-figure.lisp fn-heap-article-reserve-octets), not as
-;; lists; with heap-pool's header charge the base is 282,764,298 octets
-;; (269.7 MiB), the value ACL2 evaluates.  The run of an empty small store
+;; lists; with heap-pool's header charge the base was 282,764,298 octets
+;; (269.7 MiB); THE SWITCH (PRF-1037) adds the keyed Message-ID index's
+;; 64 octets a record, twice for the collector, over the profile's 16,384
+;; records: 284,861,450 octets (271.7 MiB), the value ACL2 evaluates.  The run of an empty small store
 ;; is accepted on every machine
 ;; of at least 1,536 MiB (OpenBSD's default login class) for any image up to
 ;; 512 MiB of dynamic content, and on 2,048 MiB too (the friend's machine
 ;; has about 2 GB).
 (defthm fn-heap-small-run-base-of-an-empty-store
   (equal (fn-heap-store-base-octets *fn-heap-small-profile* core '(0 . 0))
-         (+ (fn-heap-core-dynamic core) 282764298))
+         (+ (fn-heap-core-dynamic core) 284861450))
   :hints (("Goal" :in-theory (enable fn-heap-store-base-octets fn-heap-open-octets-bound
                                      fn-heap-open-records-bound))))
 

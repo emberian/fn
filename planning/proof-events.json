@@ -1722,6 +1722,11 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-bs-sweep-round-unlinks-each-removal-by-its-name",
+          "note": "The byte run of fn-sn-sweep-round's removals unlinks each in :staging by its byte-model name (fn-bs-octets-name), which gives the octet name back (fn-bs-octets-name-inverts): the model removes the file the sweep chose (row B29, online-reclaim-10)."
+        },
+        {
+          "kind": "theorem",
           "name": "fn-sn-sweep-round-removes-only-unheld-staging-names"
         },
         {
@@ -3917,23 +3922,18 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-bpnp-contact-offer-is-the-routed-hop",
-          "note": "KEYSTONE. Over the called fn-bpnp-step (host/native/bp-service.lisp fnn-bps-foundation-step) on the event fn-bpnp-contact-next answers, which host/native/bp-service.lisp fnn-bpc-drive-contact asks before every offer of a base contact (bp-service run/resume, bp-obligation request, bp-contact tick, bp-node serve's fnn-bpnode-send-receipts): with routing (:table TABLE), a well-formed base and the token below its bound, the one effect persists the first queued job's :attempting record, its :cl-send carries the job's durable route, and that route is fn-bprt-send-decision's over TABLE, the contact port of fn-bprt-next-hop's boundary among those with a contact; the EID the host expects is the decision's. Teeth: tests/acl2/bp-node-contact-driver-tests (reachable queued job routed to port 4556; must-fail with the route removed, with no contact row, with the table moved to another hop, at the token bound, and on a malformed base)."
+          "name": "fn-bpnj-contact-offer-is-the-routed-hop",
+          "note": "KEYSTONE. Over fn-bpnj-contact-next, which host/native/bp-service.lisp fnn-bpc-drive-contact calls fn-bpnjc-contact-next, equal to fn-bpnj-contact-next by fn-bpnjc-contact-next-is-the-head-scan (books/bp-node-job-cursor.lisp), before every offer of a base contact (bp-service run/resume, bp-obligation request, bp-contact tick, bp-node serve's fnn-bpnode-send-receipts): when it answers an offer with routing (:table TABLE) in force, the gate is open and the offer names fn-bpnj-select's job: queued, for the peer, not in OFFERED; the event is (:contact-job PEER KEY), OFFERED gains KEY, fn-bprt-send-decision over TABLE answers :send on the job's durable route, and the EID the host passes as the expected TCPCL peer is the decision's. So a job the table routes nowhere is never offered. Teeth: tests/acl2/bp-node-contact-driver-tests (the routed offer and its :attempting record through fn-bpnj-step; the offer hypothesis removed by four tables that hold the job; the routing hypothesis removed: an offer without a hop)."
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnp-contact-holds-an-unrouted-job",
-          "note": "With no route matching the peer's destination the driver never offers, and a peer with an offerable job gets (:held KEY :no-route): the host drives no event, so the job keeps its durable row and its obligation. Teeth: tests/acl2/bp-node-contact-driver-tests (route removed; another destination's route)."
+          "name": "fn-bpnj-contact-offers-each-job-at-most-once",
+          "note": "KEYSTONE (once per contact). Along any sequence of states the host's contact loop consults fn-bpnj-contact-next at (host/native/bp-service.lisp fnn-bpc-drive-contact calls fn-bpnjc-contact-next, equal to fn-bpnj-contact-next by fn-bpnjc-contact-next-is-the-head-scan (books/bp-node-job-cursor.lisp), before every offer of a base contact (bp-service run/resume, bp-obligation request, bp-contact tick, bp-node serve's fnn-bpnode-send-receipts)), threading the OFFERED it answers (fn-bpnj-contact-offers), the keys one contact offers are pairwise distinct and none was in the initial OFFERED. Teeth: tests/acl2/bp-node-contact-driver-tests (a reachable contact whose transfer ends :uncertain and whose :requeued record makes the job :queued again: the threaded OFFERED closes the contact; mutation witness: an unthreaded driver offers the key twice)."
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnp-contact-offers-each-job-at-most-once",
-          "note": "KEYSTONE (once per contact). Along any sequence of states host/native/bp-service.lisp fnn-bpc-drive-contact consults fn-bpnp-contact-next at, threading the OFFERED it answers, the keys one contact offers are pairwise distinct and none was in the initial OFFERED. Teeth: tests/acl2/bp-node-contact-driver-tests (a reachable contact whose transfer ends :uncertain and whose :requeued record is durable: the contact offers the key once and closes; must-fail without the threaded OFFERED, which offers it again)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnp-contact-closes-only-when-nothing-owed-remains",
-          "note": "KEYSTONE. With the peer an EID, nothing issued, no delivery uncertain, the base neither fenced nor pending and a queued job for the peer, a close from fn-bpnp-contact-next means the job's key is in OFFERED: every owed job is offered unless its transfer on this contact was not accepted (with fn-bpn-apply-record-keeps-forwarded). Teeth: tests/acl2/bp-node-contact-driver-tests (witness closing with the key offered; one must-fail per gate: issued, delivery uncertain, fenced, pending, a string peer)."
+          "name": "fn-bpnj-contact-offers-while-a-ready-job-remains",
+          "note": "KEYSTONE (no starvation; replaces the retired driver's closes-only theorem). Over fn-bpnj-contact-next (host/native/bp-service.lisp fnn-bpc-drive-contact calls fn-bpnjc-contact-next, equal to fn-bpnj-contact-next by fn-bpnjc-contact-next-is-the-head-scan (books/bp-node-job-cursor.lisp), before every offer of a base contact (bp-service run/resume, bp-obligation request, bp-contact tick, bp-node serve's fnn-bpnode-send-receipts)): while the contact gate is open and any queued job for the peer is ready (not offered on this contact, routed on its durable route), the answer is an offer; a held or already offered job ahead of it never ends the contact. Teeth: tests/acl2/bp-node-job-offer-tests (gate open and KEY2 ready: an offer; readiness removed: :held; gate removed: :close)."
         },
         {
           "kind": "theorem",
@@ -13889,6 +13889,10 @@
         {
           "kind": "theorem",
           "name": "fn-xrt-quiet-files-are-unnamed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-dropped-file-is-released"
         }
       ]
     },
@@ -15577,6 +15581,56 @@
       ]
     },
     {
+      "id": "PRF-1037",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cat-msgid-seqs{correspondence-bl}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-seqs-is-cat-msgid-seqs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-msgid-saturatedp-is-the-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-index-health-is-the-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-clear-keyed-is-nil"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1044",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pak-post-admission-ok-is-indexed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pak-post-admission-saturated-is-not-indexed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pak-post-admission-is-a-named-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pak-boundary-never-says-mpx-saturated"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-load-held-rows-keyed-is-load-held-rows"
+        }
+      ]
+    },
+    {
       "id": "PRF-1004",
       "events": [
         {
@@ -16808,10 +16862,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-irc-rix-ocfg-complete-is-rix"
         },
         {
@@ -16990,27 +17040,119 @@
       ]
     },
     {
-      "id": "PRF-1037",
+      "id": "PRF-1039",
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-cat-msgid-seqs{correspondence-bl}"
+          "name": "fn-bpnr-publish-outcome-is-pending-exactly-while-the-loop-runs"
         },
         {
           "kind": "theorem",
-          "name": "fn-mpxt-seqs-is-cat-msgid-seqs"
+          "name": "fn-bpnr-publish-outcome-names-the-stopped-phase"
         },
         {
           "kind": "theorem",
-          "name": "fn-cat-msgid-saturatedp-is-the-outcome"
+          "name": "fn-bpnr-publish-action-of-run-is-dispatched"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1034",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-snc-finish-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: under fn-sn-statep and fn-sn-completion-is-last-p a corresponding state corresponds after fn-sn-finish (one theorem, the five arms as cases)."
         },
         {
           "kind": "theorem",
-          "name": "fn-cat-index-health-is-the-build"
+          "name": "fn-snc-recover-preserves-correspondp-by-recomputation",
+          "note": "books/store-node-correspondence.lisp: a corresponding state corresponds after fn-sn-recover (the replayed node's articles are the history's article rows, newest first; -by-recomputation)."
         },
         {
           "kind": "theorem",
-          "name": "fn-cat-clear-keyed-is-nil"
+          "name": "fn-snc-prepare-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: fn-sn-prepare keeps the store and the indexed rows."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-io-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: fn-sn-io keeps the store and the indexed rows."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-set-keyring-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: fn-sn-set-keyring recontexts the rows and keeps their Message-IDs and handles."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-refuse-reservation-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: fn-sn-refuse-reservation (books/store-node-resolution) keeps the store and the indexed rows."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-known-abort-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: fn-sn-known-abort (books/store-node-resolution) keeps the store (an aborted completion clears the pending) and the indexed rows."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1046",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-lifecycle-recovery-agrees-with-the-replayed-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-lifecycle-namespace-plan-frontier-counts-the-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-lifecycle-record-bindingsp-pairs-the-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-replay-records-ready-advances-the-frontier-per-record"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1047",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-observe-next-selects-exactly-the-least-yielding-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-observe-next-aux-selects-the-least-yield"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1048",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-outbox-next-selects-exactly-the-least-yielding-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-outbox-next-aux-selects-the-least-yield"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1051",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-next-selects-exactly-the-first-ready-family"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-next-aux-answers-the-first-ready-row"
         }
       ]
     }

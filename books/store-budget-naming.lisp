@@ -210,6 +210,15 @@ max_groups_per_article field G, or 0 when PROFILE is not admitted."
   (fn-record-string-octets "group count exceeds codec bound"))
 (defconst *fn-sbud-refusal-charge-bound*
   (fn-record-string-octets "charge must be a positive uint32"))
+; The sixth word (lane paged-history-6, row P2 slice 3): the catalog's keyed
+; Message-ID page table could not place this Message-ID (books/catalog
+; fn-cat-msgid-saturatedp, the fold's outcome for one more row); the POST is
+; refused BEFORE durable acceptance, by name, and nothing is staged.  Asked
+; by books/post-admission-keyed.lisp fn-pak-post-admission after the five
+; bounds admit.
+(defconst *fn-sbud-refusal-mpx-saturated*
+  (fn-record-string-octets
+   "Message-ID index saturated: the keyed page table cannot place this Message-ID"))
 (defconst *fn-sbud-refusal-unnamed*
   (fn-record-string-octets "the POST boundary returned an unnamed verdict"))
 
@@ -222,16 +231,19 @@ max_groups_per_article field G, or 0 when PROFILE is not admitted."
     (:payload-bound *fn-sbud-refusal-payload-bound*)
     (:group-bound *fn-sbud-refusal-group-bound*)
     (:charge-bound *fn-sbud-refusal-charge-bound*)
+    (:mpx-saturated *fn-sbud-refusal-mpx-saturated*)
     (otherwise *fn-sbud-refusal-unnamed*)))
 
 (defun fn-sbud-post-boundary-verdictp (verdict)
   (declare (xargs :guard t))
   (if (member-equal verdict '(:ok :bad-message-id :payload-bound :group-bound
-                                  :charge-bound))
+                                  :charge-bound :mpx-saturated))
       t
     nil))
 
-; The range of the boundary: five words, each named above.
+; The range of the boundary: five of the six words, each named above (the
+; sixth, :mpx-saturated, is the composed admission's,
+; books/post-admission-keyed.lisp fn-pak-post-admission-is-a-named-verdict).
 (defthm fn-sbud-post-boundary-verdicts-are-named
   (fn-sbud-post-boundary-verdictp
    (fn-sbud-post-boundary profile msgid payload-length group-count charge))

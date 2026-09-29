@@ -1776,6 +1776,18 @@ disk's outcome DISK (PRF-358) and its deferred checkpoint publication CKPT
   (declare (xargs :guard t))
   *fn-nh-run-started*)
 
+; `run opened ms=N': the milliseconds the start took from the image's entry
+; to the store's open, recovery included, measured by the host
+; (host/native/owner.lisp at OWNER-OPEN, io.lisp *fnn-process-started*) and
+; rendered here.  The scan (fn-nh-run-of-line) passes it over: the run is
+; still :started.  `install.sh --upgrade' reads the last one of the service
+; log for the gap to expect (docs/install.md, "Upgrading and going back").
+(defconst *fn-nh-run-opened-prefix* (fn-record-string-octets "run opened ms="))
+
+(defun fn-nh-run-opened-line (ms)
+  (declare (xargs :guard t))
+  (append *fn-nh-run-opened-prefix* (fn-nls-nat (nfix ms))))
+
 ; `run stopped exit=NN', then ` reason=' and the reason when one is given.
 (defun fn-nh-code-octet (d)
   (declare (xargs :guard t))
