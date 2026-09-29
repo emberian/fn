@@ -139,7 +139,6 @@
 (include-book "native-config-observation")
 (include-book "store-sweep")
 (include-book "limits-live")
-(include-book "open-frontier")
 (include-book "store-prepare-correspondence")
 (include-book "store-budget")
 (include-book "store-budget-article")
