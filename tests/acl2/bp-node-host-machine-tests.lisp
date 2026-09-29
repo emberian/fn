@@ -47,3 +47,82 @@
   (fn-bpn-host-existing-sequence-p
    (fn-bpn-host-existing-sequence
     *bpna-s-queued* *bpna-work* *bpna-attempt* 1))))
+
+; KEYSTONE teeth (PRF-1046,
+; fn-bpn-host-lifecycle-recovery-agrees-with-the-replayed-machine).  The
+; positive witness with its complete antecedent by name: the initial machine
+; *bpna-s0* (its invariant holds, frontier 0); the observed namespace (a
+; hidden stage, then the names of tokens 0 and 1) recovered over the records
+; the machine persisted (*bpna-r0*, *bpna-r1*) is :ready; the replay of those
+; records into *bpna-s0* is :ready.  Then the host's agreement is t and both
+; frontiers are 2, the record count.
+(defconst *bpnhm-names*
+  (list ".interrupted-stage"
+        (fn-bpn-lifecycle-record-name 0) (fn-bpn-lifecycle-record-name 1)))
+(defconst *bpnhm-records* (list *bpna-r0* *bpna-r1*))
+(defconst *bpnhm-recovery*
+  (fn-bpn-lifecycle-recovery *bpnhm-names* *bpnhm-records*))
+(defconst *bpnhm-replay* (fn-bpn-replay-records *bpna-s0* *bpnhm-records*))
+(assert-event
+ (and (fn-bpn-machine-invariantp *bpna-s0*)
+      (equal (fn-bpn-machine-state-next-token *bpna-s0*) 0)
+      (equal (car *bpnhm-recovery*) :ready)
+      (equal (car *bpnhm-replay*) :ready)
+      (consp *bpnhm-records*)
+      (equal (fn-bpn-host-lifecycle-recovery-agrees-p
+              *bpnhm-recovery* (nth 1 *bpnhm-replay*))
+             t)
+      (equal (fn-bpn-lifecycle-recovery-next-token *bpnhm-recovery*) 2)
+      (equal (fn-bpn-machine-state-next-token (nth 1 *bpnhm-replay*)) 2)))
+
+;; Tooth, hypothesis "the machine's frontier is 0": the machine that already
+;; applied the first record (*bpna-s-queued*: invariant, frontier 1) with an
+;; empty namespace and no records; the recovery is :ready (frontier 0), the
+;; replay of nothing is :ready, and the host's agreement is nil.
+(assert-event
+ (and (fn-bpn-machine-invariantp *bpna-s-queued*)
+      (equal (fn-bpn-machine-state-next-token *bpna-s-queued*) 1)
+      (equal (car (fn-bpn-lifecycle-recovery nil nil)) :ready)
+      (equal (car (fn-bpn-replay-records *bpna-s-queued* nil)) :ready)))
+(must-fail-checked
+ (assert-event
+  (equal (fn-bpn-host-lifecycle-recovery-agrees-p
+          (fn-bpn-lifecycle-recovery nil nil)
+          (nth 1 (fn-bpn-replay-records *bpna-s-queued* nil)))
+         t)))
+
+;; Tooth, hypothesis "the recovery is :ready": a namespace with a gap (token
+;; 0's name, then token 2's) over the same records is :fault, the machine and
+;; the replay as in the witness; the agreement is nil.
+(defconst *bpnhm-gap-recovery*
+  (fn-bpn-lifecycle-recovery
+   (list (fn-bpn-lifecycle-record-name 0) (fn-bpn-lifecycle-record-name 2))
+   *bpnhm-records*))
+(assert-event
+ (and (fn-bpn-machine-invariantp *bpna-s0*)
+      (equal (fn-bpn-machine-state-next-token *bpna-s0*) 0)
+      (equal (car *bpnhm-gap-recovery*) :fault)
+      (equal (car *bpnhm-replay*) :ready)))
+(must-fail-checked
+ (assert-event
+  (equal (fn-bpn-host-lifecycle-recovery-agrees-p
+          *bpnhm-gap-recovery* (nth 1 *bpnhm-replay*))
+         t)))
+
+;; Tooth, hypothesis "the replay is :ready": an initial machine whose octet
+;; capacity (1) admits no queued job (invariant, frontier 0) refuses the first
+;; record, so the replay is :fault and returns the machine at frontier 0; the
+;; recovery is :ready as in the witness; the agreement is nil.
+(defconst *bpnhm-tiny* (fn-bpn-initial-machine-state *bpna-config* 4 1))
+(defconst *bpnhm-tiny-replay*
+  (fn-bpn-replay-records *bpnhm-tiny* *bpnhm-records*))
+(assert-event
+ (and (fn-bpn-machine-invariantp *bpnhm-tiny*)
+      (equal (fn-bpn-machine-state-next-token *bpnhm-tiny*) 0)
+      (equal (car *bpnhm-recovery*) :ready)
+      (equal (car *bpnhm-tiny-replay*) :fault)))
+(must-fail-checked
+ (assert-event
+  (equal (fn-bpn-host-lifecycle-recovery-agrees-p
+          *bpnhm-recovery* (nth 1 *bpnhm-tiny-replay*))
+         t)))

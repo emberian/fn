@@ -175,10 +175,16 @@
 
 (defun fn-bpn-lifecycle-recovery-agrees-with-statep (answer st)
   (declare (xargs :guard t))
-  (and (equal (car answer) :ready)
+  (and (consp answer)
+       (equal (car answer) :ready)
        (fn-bpn-machine-statep st)
        (equal (fn-bpn-lifecycle-recovery-next-token answer)
               (fn-bpn-machine-state-next-token st))))
+
+; The host's open calls this pair through fn-bpn-host-lifecycle-recovery-agrees-p
+; (books/bp-node-host-machine); guard-verified so that wrapper can be.
+(verify-guards fn-bpn-lifecycle-recovery-next-token)
+(verify-guards fn-bpn-lifecycle-recovery-agrees-with-statep)
 
 ; Authorize the shared immutable publication machine only for the exact
 ; :persist token/record currently pending in fn-bpn-step.  The native caller

@@ -17007,6 +17007,27 @@
       ]
     },
     {
+      "id": "PRF-1046",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-lifecycle-recovery-agrees-with-the-replayed-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-lifecycle-namespace-plan-frontier-counts-the-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-lifecycle-record-bindingsp-pairs-the-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-replay-records-ready-advances-the-frontier-per-record"
+        }
+      ]
+    },
+    {
       "id": "PRF-1037",
       "events": [
         {

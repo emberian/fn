@@ -2409,7 +2409,8 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-lifecycle-recovery-agrees-p
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-lifecycle-recovery-agrees-with-the-replayed-machine))
 
 (definterface fn-bpn-host-lifecycle-recovery-ready-p
   :class ::ideal)
