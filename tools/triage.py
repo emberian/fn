@@ -9,7 +9,7 @@ claim.  Nothing here certifies anything.  It finds out what is broken.
 
     python3 tools/triage.py persvati books/checkpoint tests/acl2/checkpoint-tests \\
         --remote-root /home/ember/fn-gates/w32-triage \\
-        --acl2 /tank/fn/toolchains/w28/acl2-literal-4g \\
+        --acl2 /tank/fn/toolchains/w28/acl2-literal-4g-tls64k \\
         --cache /home/ember/fn-certcache --budget-seconds 900 --rounds 2
 
 WHY.  `include-book` refuses an uncertified dependency, so an ordinary

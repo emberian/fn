@@ -200,13 +200,13 @@
 ;; Tier (a): the read from OC with ID's posting bit off and restored after;
 ;; a POST is refused 440 at the command, with this book's reason line when
 ;; the connection's own configuration permits posting.
-(defun fn-oas-posting-off-read (oc views id i end s fn-octets fn-arena fn-cat)
+(defun fn-oas-posting-off-read (oc views id i end cache s fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (natp i) (natp end) (<= i end)
                               (<= end (fn-octets-len fn-octets))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
   (let* ((allow (fn-otm-conn-allow oc id))
-         (r (fn-otm-read-span (fn-otm-owner-with-allow oc id nil) views id i end s
+         (r (fn-otm-read-span (fn-otm-owner-with-allow oc id nil) views id i end cache s
                               fn-octets fn-arena fn-cat)))
     (fn-own-tls-make-result
      (fn-own-tls-result-consumed r)
@@ -256,15 +256,15 @@
 ; slots only the article it began after completing its own is closed
 ; (books/owner-article-held.lisp fn-oah-read-span-never-blocks-an-admitted-
 ; article shows tier (c) is unreachable for it).
-(defun fn-oas-read-span (oc views id i end s slots fn-octets fn-arena fn-cat)
+(defun fn-oas-read-span (oc views id i end cache s slots fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (natp i) (natp end) (<= i end)
                               (<= end (fn-octets-len fn-octets))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
-  (let ((r (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat)))
+  (let ((r (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat)))
     (cond ((not (fn-oas-over-p oc (fn-own-tls-result-owner r) id slots)) r)
           ((fn-oas-articlep oc id) (fn-oas-tiers oc r id i end slots))
-          (t (fn-oas-tiers oc (fn-oas-posting-off-read oc views id i end s
+          (t (fn-oas-tiers oc (fn-oas-posting-off-read oc views id i end cache s
                                                        fn-octets fn-arena fn-cat)
                            id i end slots)))))
 
@@ -284,11 +284,11 @@
 ;; A read the slots hold is the read before this book.
 (defthm fn-oas-read-span-when-held-unfolds
   (implies (not (fn-oas-over-p oc (fn-own-tls-result-owner
-                                   (fn-otm-read-span oc views id i end s fn-octets
+                                   (fn-otm-read-span oc views id i end cache s fn-octets
                                                      fn-arena fn-cat))
                                id slots))
-           (equal (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat)
-                  (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat)))
+           (equal (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat)
+                  (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat)))
   :hints (("Goal" :in-theory (union-theories '(fn-oas-read-span) (theory 'minimal-theory)))))
 
 (local
@@ -433,7 +433,7 @@
                                                   fn-oas-whole-refusal)))))
 
 (defthm fn-oas-read-span-cases
-  (let ((r (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat)))
+  (let ((r (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat)))
     (or (not (fn-oas-over-p oc (fn-own-tls-result-owner r) id slots))
         (equal r (fn-oas-whole-refusal oc id i end))))
   :rule-classes nil
@@ -441,9 +441,9 @@
                                   (fn-oas-over-p fn-oas-tiers fn-otm-read-span
                                    fn-oas-posting-off-read fn-oas-whole-refusal))
            :use ((:instance fn-oas-tiers-cases
-                            (r1 (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat)))
+                            (r1 (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat)))
                  (:instance fn-oas-tiers-cases
-                            (r1 (fn-oas-posting-off-read oc views id i end s
+                            (r1 (fn-oas-posting-off-read oc views id i end cache s
                                                          fn-octets fn-arena fn-cat)))))))
 
 ;; THE STEP.  The host's read leaves the owner holding at most the slots, or
@@ -452,7 +452,7 @@
 ;; raises what the owner holds past the slots.
 (defthm fn-oas-read-span-held-step
   (let ((held1 (fn-oas-held (fn-own-tls-result-owner
-                             (fn-oas-read-span oc views id i end s slots
+                             (fn-oas-read-span oc views id i end cache s slots
                                                fn-octets fn-arena fn-cat)))))
     (or (<= held1 (nfix slots))
         (<= held1 (fn-oas-held oc))))
@@ -467,7 +467,7 @@
 ;; did so with the owner holding at most the slots.
 (defthm fn-oas-read-span-admits-within-the-slots
   (let ((oc1 (fn-own-tls-result-owner
-              (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat))))
+              (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat))))
     (implies (and (not (fn-oas-articlep oc id))
                   (fn-oas-articlep oc1 id))
              (<= (fn-oas-held oc1) (nfix slots))))

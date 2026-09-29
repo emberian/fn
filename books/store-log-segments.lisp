@@ -397,8 +397,9 @@
 ; -----------------------------------------------------------------------------
 ; Rotation.  The active segment is closed where its kernel stands (no batch
 ; open, none in flight: fn-lgs-rotate-admitsp) and the next segment -- created
-; preallocated to zeros and fenced with journal/ before anything names it --
-; becomes the active one.  Its kernel (host/native/io.lisp fnn-log-rotate) is
+; preallocated to zeros and fenced in staging/, then renamed into journal/,
+; and journal/ fenced before anything acknowledged in it or a checkpoint
+; names it -- becomes the active one.  Its kernel (host/native/io.lisp fnn-log-rotate) is
 ; fn-lgs-rotate: no records, frontier 0, the genesis the closed segment's last
 ; trailer, the txid allocation carried.  That is the kernel recovery derives
 ; from the new segment's durable zeros (fn-lgs-rotate-is-the-recovered-kernel),
@@ -422,19 +423,43 @@
   (fn-lgk-make nil (fn-lgk-last ks) 0 (fn-lgk-next-txid ks) nil nil 0 :ready))
 
 ; The rotation's and the drop's byte programs, as the host performs them
-; (host/native/io.lisp fnn-log-rotate, fnn-log-drop; the order is checked by
-; tests/campaign/native_cuts.py verify_log_segment_cut_map).  Their crash
-; points: before rotate-durable no checkpoint names NEXT, so the open scans
-; it as the active segment (an interrupted rotation, completed by the open:
-; fnn-log-complete-rotation); at drop-unlinked and drop-durable the open's
-; plan scans the remaining segments (fn-lgs-open-plan-scan-ignores-covered).
+; (host/native/io.lisp fnn-log-prepare-spare, fnn-log-rotate,
+; fnn-log-make-durable, fnn-log-drop; the order is checked by
+; tests/campaign/native_cuts.py verify_log_segment_cut_map).  The rotation
+; is three programs (lane operations): its file I/O runs OFF the owner mutex
+; and only the rename runs under it.
+;   the spare: NEXT created in staging/ under a `.stage-' name (the open
+;     ignores it: fn-lgs-indices keeps segment names only; a writable open's
+;     staging sweep removes it) and fenced.  A death here leaves the history
+;     as it was.
+;   the switch, under the owner mutex with nothing in flight
+;     (fn-lgs-rotate-admitsp): the spare renamed into journal/ as NEXT.  From
+;     here the open scans NEXT as the active segment (an interrupted rotation,
+;     completed by the open: fnn-log-complete-rotation); the closed segment
+;     holds only acknowledged batches, so its read-only scan is its whole
+;     history.
+;   the durable fence: journal/ fenced before any member in NEXT is
+;     acknowledged (the new segment's first fence runs it) and before any
+;     checkpoint names NEXT.  A death between the rename and this fence may
+;     lose NEXT's name, and with it only writes nobody was told were durable
+;     (books/store-log-rotate-spare.lisp states it in the byte model).
+; Their crash points: at drop-unlinked and drop-durable the open's plan scans
+; the remaining segments (fn-lgs-open-plan-scan-ignores-covered).
+(defun fn-lgs-spare-program ()
+  (declare (xargs :guard t))
+  (list (list :create :staging :spare)
+        (list :cut "rotate-created")
+        (list :fsync-file :staging :spare)
+        (list :cut "rotate-fenced")))
+
 (defun fn-lgs-rotate-program ()
   (declare (xargs :guard t))
-  (list (list :create :journal :next)
-        (list :cut "rotate-created")
-        (list :fsync-file :journal :next)
-        (list :cut "rotate-fenced")
-        (list :fsync-dir :journal)
+  (list (list :rename :staging :spare :journal :next)
+        (list :cut "rotate-renamed")))
+
+(defun fn-lgs-rotate-durable-program ()
+  (declare (xargs :guard t))
+  (list (list :fsync-dir :journal)
         (list :cut "rotate-durable")))
 
 (defun fn-lgs-drop-program ()

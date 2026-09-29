@@ -57,14 +57,32 @@
 (defconst *fn-native-admin-reserved-example* '(101 120 97 109 112 108 101))
 (defconst *fn-native-admin-reserved-poster* '(112 111 115 116 101 114))
 
-(defun fn-native-admin-fold-octets (xs)
-  (declare (xargs :guard t))
+; PKT-867: argv words have no length bound; the walks over them are loop
+; twins (tools/depth_check.py).
+(defun fn-native-admin-fold-octets-loop (xs acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp xs)
-      (cons (if (and (integerp (car xs)) (<= 65 (car xs)) (<= (car xs) 90))
+      (fn-native-admin-fold-octets-loop (cdr xs) (cons (if (and (integerp (car xs)) (<= 65 (car xs)) (<= (car xs) 90))
+                (+ 32 (car xs))
+              (car xs)) acc))
+    (revappend acc nil)))
+
+(defun fn-native-admin-fold-octets (xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp xs)
+                  (cons (if (and (integerp (car xs)) (<= 65 (car xs)) (<= (car xs) 90))
                 (+ 32 (car xs))
               (car xs))
-            (fn-native-admin-fold-octets (cdr xs)))
-    nil))
+                        (fn-native-admin-fold-octets (cdr xs)))
+                nil)
+       :exec (fn-native-admin-fold-octets-loop xs nil)))
+
+(local
+ (defthm fn-native-admin-fold-octets-loop-is-revappend
+   (equal (fn-native-admin-fold-octets-loop xs acc)
+          (revappend acc (fn-native-admin-fold-octets xs)))))
+
+(verify-guards fn-native-admin-fold-octets)
 
 (defun fn-native-admin-group-name-reservedp (text)
   (declare (xargs :guard t))
@@ -194,15 +212,34 @@
 ;; ends the moderation.  The delta's admission (the group and the queue
 ;; live, the queue not moderated, the logins' spelling) is the store core's
 ;; (`fn-cfg-set-group-moderation-reason').
-(defun fn-native-admin-split-commas-aux (octets piece-rev)
-  (declare (xargs :guard t))
+(defun fn-native-admin-split-commas-loop (octets piece-rev acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp octets)
       (if (equal (car octets) 44)
-          (cons (reverse (true-list-fix piece-rev))
-                (fn-native-admin-split-commas-aux (cdr octets) nil))
-        (fn-native-admin-split-commas-aux (cdr octets)
-                                          (cons (car octets) piece-rev)))
-    (list (reverse (true-list-fix piece-rev)))))
+          (fn-native-admin-split-commas-loop
+           (cdr octets) nil (cons (reverse (true-list-fix piece-rev)) acc))
+        (fn-native-admin-split-commas-loop (cdr octets)
+                                           (cons (car octets) piece-rev) acc))
+    (revappend acc (list (reverse (true-list-fix piece-rev))))))
+
+(defun fn-native-admin-split-commas-aux (octets piece-rev)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp octets)
+           (if (equal (car octets) 44)
+               (cons (reverse (true-list-fix piece-rev))
+                     (fn-native-admin-split-commas-aux (cdr octets) nil))
+             (fn-native-admin-split-commas-aux (cdr octets)
+                                               (cons (car octets) piece-rev)))
+         (list (reverse (true-list-fix piece-rev))))
+       :exec (fn-native-admin-split-commas-loop octets piece-rev nil)))
+
+(local
+ (defthm fn-native-admin-split-commas-loop-is-revappend
+   (equal (fn-native-admin-split-commas-loop octets piece-rev acc)
+          (revappend acc (fn-native-admin-split-commas-aux octets piece-rev)))))
+
+(verify-guards fn-native-admin-split-commas-aux)
 
 ; The comma-separated pieces of OCTETS, in order (an empty piece included).
 (defun fn-native-admin-split-commas (octets)
@@ -236,12 +273,26 @@
         :bad)
     (list mods queue address)))
 
-(defun fn-native-admin-octets-strings (xs)
-  (declare (xargs :guard t))
+(defun fn-native-admin-octets-strings-loop (xs acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp xs)
-      (cons (fn-record-octets-string (car xs))
-            (fn-native-admin-octets-strings (cdr xs)))
-    nil))
+      (fn-native-admin-octets-strings-loop (cdr xs) (cons (fn-record-octets-string (car xs)) acc))
+    (revappend acc nil)))
+
+(defun fn-native-admin-octets-strings (xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp xs)
+                  (cons (fn-record-octets-string (car xs))
+                        (fn-native-admin-octets-strings (cdr xs)))
+                nil)
+       :exec (fn-native-admin-octets-strings-loop xs nil)))
+
+(local
+ (defthm fn-native-admin-octets-strings-loop-is-revappend
+   (equal (fn-native-admin-octets-strings-loop xs acc)
+          (revappend acc (fn-native-admin-octets-strings xs)))))
+
+(verify-guards fn-native-admin-octets-strings)
 
 (defun fn-native-admin-moderate-plan (words argv)
   (declare (xargs :guard t))
@@ -295,8 +346,8 @@
 ;; ASCII (the argv is ASCII; a control octet is refused here by name);
 ;; a description is cut into row pieces of at most *fn-cfg-max-label* octets
 ;; (`fn-native-admin-text-pieces'), so its length is bounded by the argv
-;; (*fn-native-admin-max-arguments* words of
-;; *fn-native-admin-max-argument-octets*) and not by a row.  A message line is
+;; (PKT-867: by the control frame that carries it, read under the profile's
+;; bound, books/native-control.lisp fn-nctrl-read-bound-for) and not by a row.  A message line is
 ;; one row, so a line is at most *fn-cfg-max-label* octets.
 (defun fn-native-admin-text-wordsp (words)
   (declare (xargs :guard t))
@@ -305,14 +356,37 @@
            (fn-native-admin-text-wordsp (cdr words)))
     (null words)))
 
-(defun fn-native-admin-join-words (words)
-  (declare (xargs :guard t))
+(defun fn-native-admin-join-words-loop (words acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp words)
       (if (consp (cdr words))
-          (append (true-list-fix (car words))
-                  (cons 32 (fn-native-admin-join-words (cdr words))))
-        (true-list-fix (car words)))
-    nil))
+          (fn-native-admin-join-words-loop
+           (cdr words) (cons 32 (revappend (true-list-fix (car words)) acc)))
+        (revappend (revappend (true-list-fix (car words)) acc) nil))
+    (revappend acc nil)))
+
+(defun fn-native-admin-join-words (words)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp words)
+           (if (consp (cdr words))
+               (append (true-list-fix (car words))
+                       (cons 32 (fn-native-admin-join-words (cdr words))))
+             (true-list-fix (car words)))
+         nil)
+       :exec (fn-native-admin-join-words-loop words nil)))
+
+(local
+ (defthm fn-native-admin-revappend-revappend
+   (equal (revappend (revappend x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-native-admin-join-words-loop-is-revappend
+   (equal (fn-native-admin-join-words-loop words acc)
+          (revappend acc (fn-native-admin-join-words words)))))
+
+(verify-guards fn-native-admin-join-words)
 
 (defun fn-native-admin-lines-fitp (lines)
   (declare (xargs :guard t))
@@ -361,21 +435,60 @@
             (equal (len (nthcdr n x)) (nfix (- (len x) n))))
    :hints (("Goal" :induct (nthcdr n x) :in-theory (enable nthcdr len)))))
 
-(defun fn-native-admin-text-pieces (octets)
-  (declare (xargs :guard (true-listp octets) :measure (len octets)))
+; The loop carries N, the remaining length, so each piece costs its own
+; octets rather than a walk of the rest.
+(defun fn-native-admin-text-pieces-loop (octets n acc)
+  (declare (xargs :guard (and (true-listp octets) (equal n (len octets))
+                              (true-listp acc))
+                  :measure (len octets)))
   (if (consp octets)
-      (if (< *fn-cfg-max-label* (len octets))
-          (cons (fn-record-octets-string (take *fn-cfg-max-label* octets))
-                (fn-native-admin-text-pieces (nthcdr *fn-cfg-max-label* octets)))
-        (list (fn-record-octets-string octets)))
-    nil))
+      (if (< *fn-cfg-max-label* (mbe :logic (len octets) :exec n))
+          (fn-native-admin-text-pieces-loop
+           (nthcdr *fn-cfg-max-label* octets)
+           (- (mbe :logic (len octets) :exec n) *fn-cfg-max-label*)
+           (cons (fn-record-octets-string (take *fn-cfg-max-label* octets)) acc))
+        (revappend acc (list (fn-record-octets-string octets))))
+    (revappend acc nil)))
+
+(defun fn-native-admin-text-pieces (octets)
+  (declare (xargs :guard (true-listp octets) :measure (len octets)
+                  :verify-guards nil))
+  (mbe :logic
+       (if (consp octets)
+           (if (< *fn-cfg-max-label* (len octets))
+               (cons (fn-record-octets-string (take *fn-cfg-max-label* octets))
+                     (fn-native-admin-text-pieces (nthcdr *fn-cfg-max-label* octets)))
+             (list (fn-record-octets-string octets)))
+         nil)
+       :exec (fn-native-admin-text-pieces-loop octets (len octets) nil)))
+
+(local
+ (defthm fn-native-admin-text-pieces-loop-is-revappend
+   (equal (fn-native-admin-text-pieces-loop octets n acc)
+          (revappend acc (fn-native-admin-text-pieces octets)))))
+
+(verify-guards fn-native-admin-text-pieces)
+
+(defun fn-native-admin-line-pieces-loop (lines acc)
+  (declare (xargs :guard (true-listp acc)))
+  (if (consp lines)
+      (fn-native-admin-line-pieces-loop (cdr lines) (cons (fn-record-octets-string (car lines)) acc))
+    (revappend acc nil)))
 
 (defun fn-native-admin-line-pieces (lines)
-  (declare (xargs :guard t))
-  (if (consp lines)
-      (cons (fn-record-octets-string (car lines))
-            (fn-native-admin-line-pieces (cdr lines)))
-    nil))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp lines)
+                  (cons (fn-record-octets-string (car lines))
+                        (fn-native-admin-line-pieces (cdr lines)))
+                nil)
+       :exec (fn-native-admin-line-pieces-loop lines nil)))
+
+(local
+ (defthm fn-native-admin-line-pieces-loop-is-revappend
+   (equal (fn-native-admin-line-pieces-loop lines acc)
+          (revappend acc (fn-native-admin-line-pieces lines)))))
+
+(verify-guards fn-native-admin-line-pieces)
 
 ;; PRF-222: `account access LOGIN|--anonymous --read R --post P'.  A
 ;; pattern is admitted only when it is an RFC 3977 section 4.2 wildmat over
@@ -478,8 +591,7 @@
                                                default-+-1 default-+-2
                                                default-<-1 default-<-2 len
                                                (tau-system))))))
-  (if (or (not (fn-native-admin-argvp argv))
-          (< *fn-native-admin-max-arguments* (len argv)))
+  (if (not (fn-native-admin-argvp argv))
       (fn-native-admin-result :refused :argv nil nil nil nil nil)
     (let ((words (fn-native-admin-words argv)))
       (cond
@@ -799,7 +911,20 @@
         (fn-native-admin-bp-boundary-plan words))
        ((and (consp words) (equal (car words) "bp-route"))
         (fn-bprt-admin-plan words))
+       ; PKT-868: what `store compact' and `store checkpoint' send a running
+       ; owner (host/native/operator.lisp fnn-operator-execute-compaction): a
+       ; request for its publication, no configuration record
+       ; (fn-native-admin-result-owner-requestp; books/owner-compact-request).
+       ((equal words '("compaction" "request"))
+        (fn-native-admin-result :accepted nil :request-compaction nil 0 nil nil))
        (t (fn-native-admin-result :refused :syntax nil nil nil nil nil))))))
+
+; PKT-868: an accepted plan the live owner answers from its own state, not by
+; publishing a configuration record (the compaction request).
+(defun fn-native-admin-result-owner-requestp (result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-admin-result-status result) :accepted)
+       (equal (fn-native-admin-result-kind result) :request-compaction)))
 
 ; The delta list the LIVE owner stages for an accepted plan.
 ;

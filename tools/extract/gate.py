@@ -15,7 +15,11 @@ marker and zero executed cases each FAIL with a named reason.  Steps:
      compared once each and byte-identical (compare.sh);
   3. probes: the boundary probes through both sides, every probe identical;
   4. store: a copy of a real format-9 store, rebound, read through both;
-  5. functions: the per-function differential (fcheck.py gen -> ACL2 ->
+  5. stateful: the writable verbs (`store ROOT post|recover|node-secret')
+     through IMAGE and the program on twin stores, step for step
+     (stateful.py): outcomes, durable files and subsequent reads identical,
+     every case of its manifest run once, every required class covered;
+  6. functions: the per-function differential (fcheck.py gen -> ACL2 ->
      fcheck.py scheme -> csc -> the fcheck program -> fcheck.py report): every
      vector of the manifest executed once and agreeing; uncovered functions
      are listed, never counted as agreement.
@@ -61,6 +65,12 @@ class Tools:
     ldd: list = field(default_factory=lambda: ["ldd"])
     cc: list = field(default_factory=lambda: ["cc", "--version"])
     store: str = "/tank/fn/scratch/fixtures/n1k-2k/store"
+    # the Common Lisp product's build (tools/extract/core.sh TREE): the SBCL
+    # core without ACL2, the second product under test
+    core: list = None
+    # the stateful differential's driver (tools/extract/stateful.py); the
+    # gate's tests substitute a stand-in
+    stateful: list = field(default_factory=lambda: ["python3", str(X / "stateful.py")])
     per: int = 20
     source: str = None
 
@@ -170,7 +180,7 @@ class Gate:
             self.fail("served.json extracts no functions")
         inv = self.load_json(self.e / "inventory.json", "build")
         self.load_json(self.e / "erased.json", "build")
-        for name in ("served.scm", "fntable.scm", "csc-served.args", "lib/libfn-blake3.so"):
+        for name in ("served.scm", "fntable.scm", "csc-served.args", "link.args", "lib/libfn-blake3.so"):
             self.nonempty(self.e / name, "build")
         served = self.e / "served"
         if not (served.is_file() and os.access(served, os.X_OK)):
@@ -183,6 +193,34 @@ class Gate:
                       % (undeclared[0]["name"], undeclared[0]["reason"]))
         self.ir, self.inv, self.declared = ir, inv, declared
         print("build: %d functions; %d blockers, all declared" % (len(ir["functions"]), len(inv.get("blocker", []))))
+
+    def core(self):
+        """The Common Lisp product (A-TARGET-COMPILER): fn's functions and
+        host/native in a bare SBCL core, built from the same world."""
+        self.step = "core"
+        k = self.tree / "build" / "core"
+        (k / "fn-core").unlink(missing_ok=True)
+        log = self.c / "core-build.log"
+        self.need("core.sh", self.t.core, stdout=log, stderr="stdout", log=log)
+        for name in ("core.json", "defs.lisp", "packages.lisp", "core-world.lisp", "host-block.lisp", "inventory.json"):
+            self.nonempty(k / name, "core")
+        exe = k / "fn-core"
+        if not (exe.is_file() and os.access(exe, os.X_OK)):
+            self.fail("no executable %s" % exe)
+        self.core_exe = exe
+        self.core_inv = self.load_json(k / "inventory.json", "core")
+        print("core: %d defuns, %d *1* functions, %d stobj primitives; host-defined %s"
+              % (self.core_inv["defun"], self.core_inv["star1"], self.core_inv["stobj-prim"],
+                 ",".join(sorted(self.core_inv["host-defined"]))))
+
+    def core_same(self, what, argv, expected, stderr_path):
+        """Run the core; its stdout must be EXPECTED's bytes and its status 0."""
+        out = Path(str(stderr_path).replace(".err", ""))
+        rc = self.run("core " + what, argv, stdout=out, stderr=stderr_path, env=self.acl2_env)
+        if rc != 0:
+            self.fail("%s: the core %s%s" % (what, describe_status(rc), self.tail(stderr_path, 1)))
+        if out.read_bytes() != Path(expected).read_bytes():
+            self.fail("%s: the core's reply differs from the image's (%s against %s)" % (what, out, expected))
 
     def transcripts(self):
         self.step = "transcripts"
@@ -222,7 +260,11 @@ class Gate:
             self.fail("compare.sh summary %r, want %d identical" % (summary, len(expected)))
         if rc != 0:
             self.fail("compare.sh %s" % describe_status(rc))
-        print("transcripts: %d of %d identical" % (len(expected), len(expected)))
+        for n in expected:
+            self.core_same("transcript " + n, [self.core_exe, "--fn", "model", d / (n + ".chunks"), "-"],
+                           self.c / "cmp" / ("%s.sbcl" % n), self.c / "cmp" / ("%s.core.err" % n))
+        print("transcripts: %d of %d identical (image, program model and socket, core)"
+              % (len(expected), len(expected)))
 
     def probes(self):
         self.step = "probes"
@@ -236,6 +278,12 @@ class Gate:
         self.need("probes.py compare", ["python3", self.x / "probes.py", "compare", c / "probes.sbcl", c / "probes.chicken"],
                   stdout=c / "probes.log", stderr="stdout", log=c / "probes.log")
         print(Path(c / "probes.log").read_text().strip().splitlines()[-1])
+        self.need("probes.py run-core", ["python3", self.x / "probes.py", "run-core", self.core_exe, c / "probes.core"],
+                  stdout=c / "probes-core.log", stderr="stdout", log=c / "probes-core.log")
+        self.nonempty(c / "probes.core", "probes")
+        self.need("probes.py compare core", ["python3", self.x / "probes.py", "compare", c / "probes.sbcl", c / "probes.core"],
+                  stdout=c / "probes-core-cmp.log", stderr="stdout", log=c / "probes-core-cmp.log")
+        print("core " + Path(c / "probes-core-cmp.log").read_text().strip().splitlines()[-1])
 
     STORE_READ = (b"CAPABILITIES\r\nMODE READER\r\nLIST\r\nLIST ACTIVE\r\nGROUP fn.test\r\nSTAT\r\nHEAD\r\nBODY\r\n"
                   b"ARTICLE 1\r\nARTICLE 2\r\nNEXT\r\nLAST\r\nOVER 1-3\r\nHDR Subject 1-3\r\nLISTGROUP fn.test 1-5\r\n"
@@ -273,7 +321,51 @@ class Gate:
             self.nonempty(a, "store")
             if a.read_bytes() != b.read_bytes():
                 self.fail("%s DIFFER (%s against %s)" % (t, a, b))
-            print("%s over the store: %d bytes IDENTICAL" % (t, a.stat().st_size))
+            self.core_same("store " + t, [self.core_exe, "--fn", "model", f, dst], a,
+                           c / ("%s.store.core.err" % t))
+            print("%s over the store: %d bytes IDENTICAL (image, program, core)" % (t, a.stat().st_size))
+
+    def stateful(self):
+        """The writable verbs, step for step on twin stores (stateful.py): the
+        outcome, the durable files and the subsequent read of every step
+        identical, every case of its manifest run once, every required class
+        covered -- through the Common Lisp product (the product under test)
+        and through the CHICKEN program (the independent oracle, its store
+        verbs host/store-write-host.lisp)."""
+        self.step = "stateful"
+        for label, program, extra in (("core", self.core_exe, ["--core"]), ("chicken", self.e / "served", [])):
+            d = self.c / ("stateful-" + label)
+            if d.exists():
+                shutil.rmtree(d)
+            log = self.c / ("stateful-%s.log" % label)
+            rc = self.run("stateful.py " + label, self.t.stateful + [self.image, program, d] + extra, stdout=log,
+                          stderr="stdout", env=self.acl2_env)
+            man = self.load_json(d / "manifest.json", "stateful")
+            doc = self.load_json(d / "stateful.json", "stateful")
+            cases = sorted((man.get("cases") or {}))
+            if not cases:
+                self.fail("%s: the stateful manifest lists no cases" % label)
+            results = doc.get("results") or []
+            seen = collections.Counter(r.get("case") for r in results)
+            for c in cases:
+                if seen[c] != 1:
+                    self.fail("%s: case %s ran %d times (want once)" % (label, c, seen[c]))
+            extra_cases = sorted(set(seen) - set(cases))
+            if extra_cases:
+                self.fail("%s: cases %s are not in the manifest" % (label, extra_cases))
+            bad = [r for r in results if r.get("verdict") != "agree"]
+            if bad:
+                self.fail("%s: %s DIFFER at %s: %s" % (label, bad[0]["case"], bad[0].get("step"), bad[0].get("reason")))
+            if doc.get("missing"):
+                self.fail("%s: classes not covered: %s" % (label, ", ".join(doc["missing"])))
+            if doc.get("steps_run") != doc.get("steps_expected") or not doc.get("steps_run"):
+                self.fail("%s: %s of %s steps ran" % (label, doc.get("steps_run"), doc.get("steps_expected")))
+            if doc.get("status") != "PASS":
+                self.fail("%s: stateful.json status %r" % (label, doc.get("status")))
+            if rc != 0:
+                self.fail("%s: stateful.py %s" % (label, describe_status(rc)))
+            print("stateful %s: %d cases, %d steps agree; classes %s"
+                  % (label, len(cases), doc["steps_run"], ",".join(doc.get("covered", []))))
 
     def functions(self):
         self.step = "functions"
@@ -304,8 +396,12 @@ class Gate:
             self.fail("zero vectors")
         shutil.copy(self.x / "fcheck-main.scm", e / "fcheck-main.scm")
         (e / "fcheck").unlink(missing_ok=True)
-        self.fcheck_args = ["-O2", "-d0", "fcheck-main.scm", "-o", "fcheck", "-L", "-lcrypto",
-                            "-L", "-L%s/lib -lfn-blake3 -Wl,-rpath,%s/lib" % (e, e)]
+        # the served program's own link line (build.sh's link.args: BLAKE3,
+        # and the image's ML-DSA-65 library)
+        link = (e / "link.args").read_text().strip() if (e / "link.args").is_file() else ""
+        if not link:
+            self.fail("build/extract/link.args is missing or empty")
+        self.fcheck_args = ["-O2", "-d0", "fcheck-main.scm", "-o", "fcheck", "-L", "-lcrypto", "-L", link]
         env = dict(self.env)
         env["PATH"] = str(Path(self.t.csc).parent) + os.pathsep + env.get("PATH", "")
         self.need("csc fcheck-main", self.t.swarm + [self.t.csc] + self.fcheck_args, cwd=e, env=env,
@@ -357,12 +453,32 @@ class Gate:
             if m:
                 libs[m.group(1)] = m.group(2)
         found = {}
-        for want in ("libfn-blake3", "libcrypto", "libchicken"):
+        for want in ("libfn-blake3", "libfn-mldsa65", "libfn-lz4", "libcrypto", "libchicken"):
             name = next((n for n in libs if n.startswith(want + ".")), None)
             if name is None:
                 self.fail("the program does not resolve %s (%s)" % (want, out))
             found[want] = {"soname": name, "path": libs[name], "sha256": sha256_file(libs[name])}
+        # A-SIG-NATIVE and the LZ4 encoder: the program calls the files beside
+        # the image's core that the image loads (host/native/signatures.lisp,
+        # host/native/lz4.lisp), not a second build of the same source.
+        for want in ("libfn-mldsa65", "libfn-lz4"):
+            image_lib = Path(os.path.realpath(self.image)).parent / "lib" / found[want]["soname"]
+            if os.path.realpath(found[want]["path"]) != os.path.realpath(image_lib):
+                self.fail("the program's %s is %s, not the image's %s"
+                          % (found[want]["soname"], found[want]["path"], image_lib))
         return found
+
+    def core_manifest(self):
+        k = self.tree / "build" / "core"
+        if not getattr(self, "core_exe", None):
+            return None
+        return {"executable": str(self.core_exe), "sha256": sha256_file(self.core_exe),
+                "ir_sha256": sha256_file(k / "core.json"), "defs_sha256": sha256_file(k / "defs.lisp"),
+                "compiler": "SBCL compile-file under ACL2's policy (speed 3) (space 1) (safety 0) "
+                            "(acl2.lisp *acl2-optimize-form*), each raw definition with the type "
+                            "declarations ACL2 compiled it with",
+                "erased_checks": "none beyond ACL2's raw code: the policy and declarations are the image's",
+                "inventory": {k2: v for k2, v in self.core_inv.items() if k2 != "star1_names"}}
 
     def capture(self, argv):
         try:
@@ -412,6 +528,7 @@ class Gate:
                          "c_compiler": self.capture(self.t.cc),
                          "served_sha256": sha256_file(self.e / "served")},
             "foreign_libraries": self.foreign(),
+            "core": self.core_manifest(),
             "toolchain": {"acl2": self.t.acl2, "acl2_sha256": sha256_file(self.t.acl2[0])
                           if Path(self.t.acl2[0]).is_file() else None,
                           "chicken_lib": self.t.chicken_lib},
@@ -427,9 +544,10 @@ class Gate:
         self.c.mkdir(parents=True)
         self.write_status("RUNNING")
         try:
-            for name, stepfn in (("1 build", self.build), ("1b manifest", self.manifest),
+            for name, stepfn in (("1 build", self.build), ("1b manifest", self.manifest), ("1c core", self.core),
                                  ("2 transcripts", self.transcripts), ("3 probes", self.probes),
-                                 ("4 store", self.store), ("5 functions", self.functions)):
+                                 ("4 store", self.store), ("5 stateful", self.stateful),
+                                 ("6 functions", self.functions)):
                 print("==", name, flush=True)
                 stepfn()
                 sys.stdout.flush()
@@ -452,7 +570,7 @@ def tools_from_env():
     acl2 = os.environ.get("FN_EXTRACT_ACL2", "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k")
     chicken = os.environ.get("CHICKEN", "/tank/fn/toolchains/chicken-5.4.0")
     return Tools(acl2=[acl2], csc=chicken + "/bin/csc", chicken_lib=chicken + "/lib",
-                 swarm=["swarm-build"], build=["sh", str(X / "build.sh")],
+                 swarm=["swarm-build"], build=["sh", str(X / "build.sh")], core=["sh", str(X / "core.sh")],
                  store=os.environ.get("EXTRACT_STORE", "/tank/fn/scratch/fixtures/n1k-2k/store"),
                  per=int(os.environ.get("EXTRACT_FCHECK_PER", "20")),
                  source=os.environ.get("FN_EXTRACT_SOURCE"))
@@ -464,6 +582,7 @@ def main(argv):
     tree = Path(argv[1]).resolve()
     tools = tools_from_env()
     tools.build = tools.build + [str(tree)]
+    tools.core = tools.core + [str(tree)]
     if not tools.source:
         r = subprocess.run(["git", "-C", str(tree), "rev-parse", "HEAD"], stdout=subprocess.PIPE,
                            stderr=subprocess.DEVNULL, check=False)

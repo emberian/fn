@@ -237,7 +237,7 @@ set -u
 S=$S
 T=\$S/tree
 L=\$S/logs
-ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k  # the certify launcher (tools/farm.py HOSTS)
 CACHE=/tank/fn/certcache
 unset FN_OPENSSL_PREFIX
 mkdir -p \$S/bin
@@ -288,7 +288,7 @@ BOX
         cat <<BOX
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
-step certify swarm-build python3 tools/certify_books.py --incremental --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
+step certify swarm-build python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-off} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
 step acquire python3 tools/proof_artifacts.py acquire --profile default --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
 step validate python3 tools/proof_artifacts.py validate --profile default --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
 BOX

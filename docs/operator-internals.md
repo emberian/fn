@@ -419,15 +419,25 @@ fn operator /path/to/fn.toml store compact
 compacted steps=checkpoint,drop records=N checkpoint sequence=... octets=... steps=... segment=K dropped=D open=...
 ```
 
-It opens the store as `recover` does, so it is refused (1, `store is already
-locked`) while an owner runs. The order: with no batch open, rotate the log
-(`fnn-log-rotate`: a new segment `journal/NNNNNN.log`, preallocated,
-fenced, then `journal/` fenced; cuts `rotate-created`, `rotate-fenced`,
-`rotate-durable`); write and install the checkpoint, whose F row names that
+While an owner runs, the verb (and `store checkpoint`) is a request to it
+(PKT-868, HST-034): the owner answers `requested`, `coalesced` (a
+publication is in flight; the request runs after it), `nothing-to-compact`,
+or refuses `blocked` while a checkpoint deferral stands (`status` names it),
+and runs its own publication at once, off its mutex, in bounded batches,
+while it keeps serving; the owner's log carries `CHECKPOINT auto ...`. The
+request needs the `[control]` socket; with no owner the verb opens the store
+as `recover` does. The order: with no batch open, rotate the log
+(`fnn-log-prepare-spare`: the next segment staged as
+`staging/.stage-segment-NNNNNN`, preallocated and fenced, cuts
+`rotate-created`, `rotate-fenced`; `fnn-log-rotate`: renamed into
+`journal/NNNNNN.log`, cut `rotate-renamed`; `fnn-log-make-durable`:
+`journal/` fenced, cut `rotate-durable`); write and install the checkpoint, whose F row names that
 segment and the trailer its first entry chains from; then unlink every
 segment below it (`fnn-log-drop`; cuts `drop-unlinked`, `drop-durable`). The
-running owner's automatic checkpoint does the same under the owner mutex,
-so a node that runs rarely needs the verb. The open reads the checkpoint
+running owner's automatic checkpoint does the same, with only the rename
+under the owner mutex: the spare is made before the capture and `journal/`
+is fenced by the new segment's first fence and by the publication, both off
+the mutex, so a node that runs rarely needs the verb. The open reads the checkpoint
 first and scans from the segment its F row names, with the chain carried
 across segments; the drop preserves the history that open replays (KEYSTONE
 `fn-lgw-segment-drop-preserves-the-open`, books/store-log-stream.lisp,

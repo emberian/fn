@@ -303,56 +303,20 @@
   (fn-native-admin-plan (gat-argv '("account" "access" "show")))))
 
 ;; -----------------------------------------------------------------------------
-;; PKT-643: the restricted view carried with the pin (books/group-access.lisp
-;; fn-gac-views-find-is-restriction, fn-gac-access-views-covers-pattern).
+;; PKT-643: the restricted view as one value (books/group-access.lisp
+;; fn-gac-view-entry; its cache and the served use are
+;; tests/acl2/group-access-cache-tests.lisp's).
 
 (defconst *gat-ctl* (fn-ctl-pin nil nil))
-(defconst *gat-views*
-  (fn-gac-access-views (fn-gac-read-texts *gat-table*) *gat-state* *gat-ctl*))
 (defconst *gat-bob-read* (fn-gac-pattern *gat-table* (fn-nntp-string-octets "bob") 1))
 (assert-event (stringp *gat-bob-read*))
-
-; fn-gac-views-find-is-restriction, reachable: bob's entry in the table the
-; pin builds is his view, and the view drops the private article.
-(assert-event (fn-gac-views-okp *gat-views* *gat-state* *gat-ctl*))
-(assert-event (fn-gac-views-find *gat-bob-read* *gat-views*))
-(assert-event (equal (cdr (fn-gac-views-find *gat-bob-read* *gat-views*))
-                     (fn-gac-view-entry *gat-bob-read* *gat-state* *gat-ctl*)))
+; The entry is bob's per-command view, and drops the private article.
+(assert-event (equal (fn-gac-view-entry *gat-bob-read* *gat-state* *gat-ctl*)
+                     (cons (fn-gac-restrict-state *gat-bob-read* *gat-state*)
+                           (fn-gac-restrict-index
+                            *gat-bob-read* (fn-gidx-pin-with-control nil nil *gat-ctl*)
+                            (fn-state-articles
+                             (fn-gac-restrict-state *gat-bob-read* *gat-state*))))))
 (assert-event (equal (len (fn-state-articles
-                           (car (cdr (fn-gac-views-find *gat-bob-read* *gat-views*)))))
+                           (car (fn-gac-view-entry *gat-bob-read* *gat-state* *gat-ctl*))))
                      2))
-; Without okp: a forged entry (the unrestricted store) is found and is not
-; the view.
-(defconst *gat-forged* (list (cons *gat-bob-read* (cons *gat-state* *gat-pin*))))
-(assert-event (and (fn-gac-views-find *gat-bob-read* *gat-forged*)
-                   (not (fn-gac-views-okp *gat-forged* *gat-state* *gat-ctl*))
-                   (not (equal (cdr (fn-gac-views-find *gat-bob-read* *gat-forged*))
-                               (fn-gac-view-entry *gat-bob-read* *gat-state* *gat-ctl*)))))
-; Without the find: a text the table lacks.
-(assert-event (and (fn-gac-views-okp *gat-views* *gat-state* *gat-ctl*)
-                   (not (fn-gac-views-find "fn.none" *gat-views*))
-                   (not (equal (cdr (fn-gac-views-find "fn.none" *gat-views*))
-                               (fn-gac-view-entry "fn.none" *gat-state* *gat-ctl*)))))
-(must-fail-checked
- (defthm gat-views-find-without-okp
-   (implies (fn-gac-views-find text views)
-            (equal (cdr (fn-gac-views-find text views))
-                   (fn-gac-view-entry text archive control)))))
-(must-fail-checked
- (defthm gat-views-find-without-find
-   (implies (fn-gac-views-okp views archive control)
-            (equal (cdr (fn-gac-views-find text views))
-                   (fn-gac-view-entry text archive control)))))
-
-; fn-gac-access-views-covers-pattern, reachable (bob) and without its
-; hypothesis (carol has no rule: the pattern is nil and nothing is found).
-(assert-event (fn-gac-views-find (fn-gac-pattern *gat-table* (fn-nntp-string-octets "bob") 1)
-                                 *gat-views*))
-(assert-event (and (null (fn-gac-pattern *gat-table* (fn-nntp-string-octets "carol") 1))
-                   (not (fn-gac-views-find
-                         (fn-gac-pattern *gat-table* (fn-nntp-string-octets "carol") 1)
-                         *gat-views*))))
-(must-fail-checked
- (defthm gat-covers-without-pattern
-   (fn-gac-views-find (fn-gac-pattern table login 1)
-                      (fn-gac-access-views (fn-gac-read-texts table) archive control))))

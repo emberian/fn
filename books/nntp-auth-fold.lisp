@@ -172,7 +172,7 @@
 (defthm fn-auth-fold-gidx-list-counts-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects
-         (fn-gidx-list-counts-command session archive buckets args))))
+         (fn-gidx-list-counts-command session archive buckets closed args))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-gidx-list-counts-command)
                            (fn-gidx-counts-lines fn-post-offeredp

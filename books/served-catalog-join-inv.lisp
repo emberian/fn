@@ -808,26 +808,26 @@
 
 (defthm fn-scj-otm-read-span-owner
   (equal (fn-ocfg-owner (fn-own-tls-result-owner
-                         (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat)))
+                         (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat)))
          (if (eq (fn-otm-admit-post s) :shed)
              (fn-ocfg-owner
               (fn-otm-unshed-ocfg
                (fn-own-tls-result-owner
-                (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end
+                (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end cache
                                   fn-octets fn-arena fn-cat))
                id (fn-otm-conn-allow oc id)))
            (fn-ocfg-owner (fn-own-tls-result-owner
-                           (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat)))))
+                           (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat)))))
   :hints (("Goal" :in-theory (union-theories '(fn-otm-read-span fn-scj-tls-result-owner-of-make)
                                              (theory 'minimal-theory)))))
 
 ; KEYSTONE (the host's read entry keeps the invariant).
 (defthm fn-scj-invp-of-otm-read-span
-  (implies (and (fn-scol-okp fn-arena fn-cat)
+  (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (implies (consp views) (fn-scj-live-okp (car views) fn-arena fn-cat)))
            (fn-scj-invp (fn-ocfg-owner (fn-own-tls-result-owner
-                                        (fn-otm-read-span oc views id i end s
+                                        (fn-otm-read-span oc views id i end cache s
                                                           fn-octets fn-arena fn-cat)))
                         fn-arena fn-cat))
   :hints (("Goal" :in-theory (union-theories '(fn-scj-otm-read-span-owner) (theory 'minimal-theory))
@@ -836,7 +836,7 @@
                  (:instance fn-scj-invp-of-otm-shed-ocfg)
                  (:instance fn-scj-invp-of-otm-unshed-ocfg
                             (oc (fn-own-tls-result-owner
-                                 (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end
+                                 (fn-orr-read-span (fn-otm-shed-ocfg oc id) views id i end cache
                                                    fn-octets fn-arena fn-cat)))
                             (allow (fn-otm-conn-allow oc id)))))))
 

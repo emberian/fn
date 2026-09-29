@@ -438,14 +438,14 @@
 ; RFC 6048 LIST COUNTS lines: the group name and three decimal fields.
 (defthm fn-nntp-counts-summary-line-is-response-text
   (implies (fn-nntp-safe-group-namep group)
-           (fn-nntp-response-textp (fn-nntp-counts-summary-line group summary)))
+           (fn-nntp-response-textp (fn-nntp-counts-summary-line group summary closed)))
   :hints (("Goal" :in-theory (enable fn-nntp-counts-summary-line
                                      fn-nntp-append-pieces))))
 
 (defthm fn-nntp-counts-lines-are-response-text
   (implies (fn-nntp-safe-group-listp groups)
-           (fn-nntp-block-textp (fn-nntp-counts-lines archive groups)))
-  :hints (("Goal" :induct (fn-nntp-counts-lines archive groups)
+           (fn-nntp-block-textp (fn-nntp-counts-lines archive groups closed)))
+  :hints (("Goal" :induct (fn-nntp-counts-lines archive groups closed)
            :in-theory (e/d (fn-nntp-counts-lines fn-nntp-counts-line
                             fn-nntp-block-textp fn-nntp-safe-group-listp)
                            (fn-nntp-counts-summary-line)))))
@@ -865,7 +865,7 @@
   (implies (fn-nntp-projectionp archive)
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-nntp-list-counts-command session archive args))))
+             (fn-nntp-list-counts-command session archive closed args))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-list-counts-command
                                    fn-nntp-list-counts)
                                   (fn-nntp-projectionp

@@ -50,7 +50,7 @@
 
 (defvar *fnn-prof-original-entry* (symbol-function 'fn-native-entry)
   "The entry host/native/build.lisp defined (its start-up: crypto, TLS, the
-native digest, signatures, DEFLATE), which this entry runs after the watcher
+native digest, signatures, LZ4), which this entry runs after the watcher
 starts.  Redefining the entry's body here instead skipped
 fnn-native-startup, so a profiling image hashed every frame with the ACL2
 reference BLAKE3 (fn-b3x-hash, ~12 MB/s: 54% of a POST load's samples) and
