@@ -687,9 +687,12 @@
                             fn-own-replace-conn fn-own-remove-conn)))))
 
 ;; The pinned index of that served connection carries the owner connection's
-;; control pin whenever the connection has buckets.
+;; control pin whenever the connection has buckets, and also when its view
+;; holds no article at all (PKT-443: every article withdrawn, so no buckets).
 (defthm fn-octl-pinned-index-of-served-conn
-  (implies (fn-own-conn-group-index conn)
+  (implies (or (fn-own-conn-group-index conn)
+               (and (fn-own-conn-control conn)
+                    (not (consp (fn-state-articles (fn-own-conn-archive conn))))))
            (and (equal (fn-gidx-pin-control
                         (fn-served-conn-pinned-index (fn-octl-served-conn o conn)))
                        (fn-own-conn-control conn))
@@ -730,3 +733,119 @@
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o)))
                             (records (fn-sf-records (fn-sn-files (fn-own-store o)))))))))
+
+;; PKT-443 KEYSTONE over the host-called reader port (host/owner-host.lisp
+;; fn-owner-chunk, through fn-own-read): a read by Message-ID of an article
+;; the connection's view withdrew answers `430 withdrawn' -- also when the
+;; view holds no article at all, which has no buckets (two signed cancels
+;; naming each other withdraw both; tests/test_native_control_across_peers.py
+;; test_a_view_with_every_article_withdrawn).  Before PKT-443 such a view was
+;; served from the bare trie and answered `430 no article with that
+;; message-id'.
+(defthm fn-own-read-of-a-withdrawn-article-answers-430-withdrawn
+  (let* ((s (fn-own-store o))
+         (conn (fn-own-find-conn id (fn-own-conns o)))
+         (raw (fn-state-articles
+               (fn-own-prefix-archive (fn-sn-groups s) (fn-sn-capacity s)
+                                      (fn-sf-records (fn-sn-files s))
+                                      (fn-own-conn-version conn)
+                                      (fn-own-conn-frontier conn))))
+         (control (fn-own-conn-control conn))
+         (ws (fn-ctl-pin-ws control))
+         (w0 (fn-own-conn-wire conn))
+         (w1 (fn-wire-result-state (fn-wire-feed-proper w0 prefix)))
+         (w2 (fn-wire-result-state (fn-wire-feed-byte w1 byte)))
+         (as (fn-own-conn-live-session o conn))
+         (ns (fn-post-session-base
+              (fn-peer-session-base (fn-auth-session-base as))))
+         (tokens (fn-nntp-tokenize line))
+         (msgid (fn-nntp-token-string (cadr tokens))))
+    (implies (and (fn-own-relation o) conn control
+                  (or (fn-own-conn-group-index conn)
+                      (not (consp (fn-state-articles (fn-own-conn-archive conn)))))
+                  (fn-wire-statep w0)
+                  (not (equal (fn-wire-state-mode w0) :closed))
+                  (not (fn-wire-result-events (fn-wire-feed-proper w0 prefix)))
+                  (equal (fn-wire-result-events (fn-wire-feed-byte w1 byte))
+                         (list (list :command line)))
+                  (not (equal (fn-wire-state-mode w2) :closed))
+                  (fn-octl-reader-hyps as tokens line)
+                  (not (fn-auth-access-restrictedp as (fn-own-conn-config conn)))
+                  (fn-nctl-retrievalp (car tokens))
+                  (consp (cdr tokens)) (null (cddr tokens))
+                  (fn-nntp-message-id-tokenp (cadr tokens))
+                  (fn-octet-listp (cadr tokens))
+                  (member-equal x raw) (consp x)
+                  (not (member-equal x (fn-ctl-visible-articles
+                                        raw ws (fn-own-conn-verdicts conn))))
+                  (equal (fn-article-msgid x) msgid)
+                  (not (consp (fn-find-article
+                               msgid (fn-state-articles (fn-own-conn-archive conn))))))
+             (equal (car (fn-own-read o id (append prefix (list byte)) fn-arena))
+                    (fn-nntp-result-effects (fn-nntp-single ns "430 withdrawn")))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-own-read-archive-command-is-the-pinned-dispatcher)
+                 (:instance fn-own-related-conn-control)
+                 (:instance fn-octl-pinned-index-of-served-conn
+                  (conn (fn-own-find-conn id (fn-own-conns o))))
+                 (:instance fn-nntp-withdrawn-article-answers-430-withdrawn
+                  (session (fn-post-session-base
+                            (fn-peer-session-base
+                             (fn-auth-session-base
+                              (fn-served-conn-session
+                               (fn-octl-served-conn
+                                o (fn-own-find-conn id (fn-own-conns o))))))))
+                  (archive (fn-served-conn-archive
+                            (fn-octl-served-conn
+                             o (fn-own-find-conn id (fn-own-conns o)))))
+                  (index (fn-served-conn-pinned-index
+                          (fn-octl-served-conn
+                           o (fn-own-find-conn id (fn-own-conns o)))))
+                  (verdicts (fn-served-conn-verdicts
+                             (fn-octl-served-conn
+                              o (fn-own-find-conn id (fn-own-conns o)))))
+                  (env (fn-post-reader-env
+                        (fn-auth-moderation-config
+                         (fn-served-conn-session
+                          (fn-octl-served-conn
+                           o (fn-own-find-conn id (fn-own-conns o))))
+                         (fn-served-conn-config
+                          (fn-octl-served-conn
+                           o (fn-own-find-conn id (fn-own-conns o)))))
+                        (fn-served-conn-observation
+                         (fn-octl-served-conn
+                          o (fn-own-find-conn id (fn-own-conns o))))))
+                  (keyword (car (fn-nntp-tokenize line)))
+                  (args (cdr (fn-nntp-tokenize line)))
+                  (raw (fn-state-articles
+                        (fn-own-prefix-archive
+                         (fn-sn-groups (fn-own-store o))
+                         (fn-sn-capacity (fn-own-store o))
+                         (fn-sf-records (fn-sn-files (fn-own-store o)))
+                         (fn-own-conn-version (fn-own-find-conn id (fn-own-conns o)))
+                         (fn-own-conn-frontier (fn-own-find-conn id (fn-own-conns o))))))
+                  (ws (fn-ctl-pin-ws
+                       (fn-own-conn-control (fn-own-find-conn id (fn-own-conns o)))))))
+           :in-theory (e/d (fn-octl-reply fn-octl-served-conn fn-own-served-conn
+                            fn-nntp-single fn-post-offeredp fn-nntp-reply-effect)
+                           (fn-own-read-archive-command-is-the-pinned-dispatcher
+                            fn-own-related-conn-control
+                            fn-octl-pinned-index-of-served-conn
+                            fn-nntp-withdrawn-article-answers-430-withdrawn
+                            fn-nntp-archive-command-pinned
+                            fn-served-conn-pinned-index
+                            fn-ctl-withdrawn-articles fn-ctl-visible-articles
+                            fn-own-prefix-archive fn-midx-correspondencep
+                            fn-own-relation fn-find-article
+                            fn-own-read fn-served-step fn-own-conn-live-session
+                            fn-own-conn-wire fn-own-conn-archive fn-own-conn-config
+                            fn-own-conn-observation fn-own-conn-verdicts
+                            fn-own-conn-index fn-own-conn-group-index
+                            fn-own-conn-control fn-own-conn-session fn-own-find-conn
+                            fn-wire-feed-byte fn-wire-feed-proper fn-wire-statep
+                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                            fn-nntp-sessionp fn-nntp-tokenize fn-auth-gatedp
+                            fn-nntp-keywordp fn-nntp-message-id-tokenp
+                            fn-nntp-archive-keywordp
+                            fn-nntp-command-inputp fn-nntp-keyword-tokenp
+                            fn-nntp-command-arguments-at-mostp fn-octet-listp)))))
