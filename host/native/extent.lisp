@@ -53,6 +53,12 @@ file stays readable after a later checkpoint replaces its name."
 
 (defun fnn-extent-pread (fd octets offset)
   "Fill OCTETS from OFFSET of FD; the count read (short at end of file)."
+  ;; Developer image only (lane composed-owner-3, row A4): a stalled read
+  ;; device.  While the named file exists a pread does not return, as a read
+  ;; from a device under maintenance does not (tests/test_native_slow_disk.py).
+  (let ((stall (fnn-developer-selector "FN_NATIVE_TEST_READ_STALL_FILE")))
+    (when (and stall (plusp (length stall)))
+      (loop while (probe-file stall) do (sleep 0.05))))
   (let ((n (length octets)) (done 0))
     (loop while (< done n) do
       (let ((got (sb-sys:with-pinned-objects (octets)
@@ -99,6 +105,21 @@ held; the buffer lets go of OCTETS afterwards."
       (setf (svref st 1) 0
             (svref st 0) (make-array 0 :element-type '(unsigned-byte 8))))))
 
+;;; Row A4 (option (c), lane composed-owner-3; books/owner-cold-line.lisp):
+;;; the served read span runs with *fnn-extent-no-io* bound true (host/native/
+;;; owner.lisp fnn-owner-chunk-span-no-io).  A miss then reads nothing: it
+;;; THROWS the entry it needs to the tag fnn-extent-cold (a throw, not a
+;;; condition: fnn-call turns every condition into a store fault), the span (pure over its
+;;; stobjs) is discarded, and the host reads the entry OUTSIDE the owner mutex
+;;; (fnn-extent-prefetch) within ACL2's dependency deadline
+;;; (fn-otb-dependency-step).  A hit is a hit either way: the warm path does
+;;; no more work than before.  With a cache limit of 0 nothing a prefetch
+;;; reads is kept, so the no-I/O mode is never used (fnn-extent-no-io-usable-p).
+(defvar *fnn-extent-no-io* nil)
+
+(defun fnn-extent-no-io-usable-p ()
+  (plusp (fnn-extent-cache-limit)))
+
 (defun fnn-extent-entry (file eoff elen trailer)
   (declare (ignore trailer))
   "The verified protected prefix of the entry at [EOFF, EOFF+ELEN) of FILE,
@@ -112,7 +133,9 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
                  (setq *fnn-extent-cache* (cons hit (delete hit *fnn-extent-cache* :test #'eq))))
                (cddr hit))
       (let ((fd (gethash file *fnn-extent-fds*))
-            (octets (make-array (+ elen 32) :element-type '(unsigned-byte 8))))
+            (octets (if *fnn-extent-no-io*
+                        (throw 'fnn-extent-cold (list file eoff elen trailer))
+                        (make-array (+ elen 32) :element-type '(unsigned-byte 8)))))
         (incf (second *fnn-extent-stats*))
         (unless fd
           (incf (third *fnn-extent-stats*))
@@ -134,6 +157,46 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
             (when (> (length *fnn-extent-cache*) limit)
               (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit)))))
         octets))))
+
+;;; The entry a cold span needs, read into the cache (a store fault is
+;;; signalled as always: the caller re-signals it in the owner's thread).
+;;; Called OFF the owner mutex, from a thread of its own.  The pread runs
+;;; WITHOUT the realizer's lock, so a stalled disk holds only this thread:
+;;; cached reads on every other connection proceed (the lock is taken to find
+;;; the descriptor, and again to check the entry -- ACL2's check uses the
+;;; realizer's one buffer -- and keep it).
+(defun fnn-extent-prefetch (file eoff elen trailer)
+  (declare (ignore trailer))
+  (let ((fd nil)
+        (octets (make-array (+ elen 32) :element-type '(unsigned-byte 8))))
+    (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+      (when (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)))
+                     *fnn-extent-cache*)
+        (return-from fnn-extent-prefetch t))
+      (setq fd (gethash file *fnn-extent-fds*))
+      (incf (second *fnn-extent-stats*))
+      (unless fd
+        (incf (third *fnn-extent-stats*))
+        (error 'fnn-extent-fault
+               :message (format nil "arena-extent-read: no durable file ~a is registered" file))))
+    (let ((got (fnn-extent-pread fd octets eoff)))
+      (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+        (unless (= got (+ elen 32))
+          (incf (third *fnn-extent-stats*))
+          (error 'fnn-extent-fault
+                 :message (format nil "arena-extent-read: ~a at ~a holds fewer than ~a octets"
+                                  (gethash file *fnn-extent-paths*) eoff (+ elen 32))))
+        (unless (eq (fnn-extent-entry-ok octets elen) t)
+          (incf (third *fnn-extent-stats*))
+          (error 'fnn-extent-fault
+                 :message (format nil "arena-extent-digest: the entry at ~a of ~a does not match its trailer"
+                                  eoff (gethash file *fnn-extent-paths*))))
+        (let ((limit (fnn-extent-cache-limit)))
+          (when (plusp limit)
+            (push (list* file eoff octets) *fnn-extent-cache*)
+            (when (> (length *fnn-extent-cache*) limit)
+              (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit)))))
+        t))))
 
 ;;; The realizer (A-DURABLE-EXTENT's constrained function), raw and *1*.
 (defun fn-durable-realize-octet (file eoff elen poff plen trailer i)

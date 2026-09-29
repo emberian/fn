@@ -255,6 +255,7 @@
 (include-book "../../books/owner-stop-drain")
 (include-book "../../books/owner-time-journal-writer")
 (include-book "../../books/owner-time-bars")
+(include-book "../../books/owner-cold-line")
 (include-book "../../books/owner-reader-read")
 (include-book "../../books/peer-carriage")
 (include-book "../../books/accounts")

@@ -3400,7 +3400,99 @@ CLOSING STARTTLS CONSUMED)."
          (declare (ignore tag))
          (values :await step (and waiting (fnn-owner-redeem-quantum service cid))
                  closing starttls consumed)))
+      (:fnn-extent-cold
+       (fnn-owner-cold-line service cid incoming socket class peerp (second results)))
       (t (values-list results)))))
+
+;;; Row A4, option (c) (lane composed-owner-3; books/owner-cold-line.lisp,
+;;; PRF-933).  The served read span is pure over its stobjs, so it runs with
+;;; the extent realizer in its no-I/O mode (host/native/extent.lisp
+;;; *fnn-extent-no-io*): a payload extent not in the realizer's cache throws
+;;; the entry it needs and nothing of the span is kept.  Then the span is
+;;; re-run limited to its FIRST LINE (ACL2's fn-oct-line-end): a warm first
+;;; line is answered as its own read (the caller feeds the rest of INCOMING
+;;; as the next read, exactly as after a submission's yield, PKT-600), so
+;;; pipelined lines are answered in order.  A cold first line comes back as
+;;; (:fnn-extent-cold FILE EOFF ELEN TRAILER).  The per-line re-run happens
+;;; only after a cold abort: a warm span runs once, as before.  With the
+;;; realizer's cache off (limit 0) the mode is never used and a cold extent
+;;; is read under the owner as before.
+(defun fnn-owner-chunk-span-no-io (cid incoming sched)
+  (flet ((try (end)
+           (catch 'fnn-extent-cold
+             (let ((*fnn-extent-no-io* t))
+               (list :warm (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 end sched))))))
+    (if (not (fnn-extent-no-io-usable-p))
+        (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming) sched)
+      (let ((whole (try (length incoming))))
+        (if (eq (car whole) :warm)
+            (second whole)
+          (let* ((line-end (first (fnn-call 'fn-oct-line-end 0 (fnn-live-octets))))
+                 (first-line (try line-end)))
+            (unless (and (integerp line-end) (< 0 line-end) (<= line-end (length incoming)))
+              (fnn-fault "owner returned a malformed line end"))
+            (if (eq (car first-line) :warm)
+                (second first-line)
+              (cons :fnn-extent-cold first-line))))))))
+
+;;; The cold line's page, read OFF the owner mutex in a thread of its own
+;;; (fnn-extent-prefetch: its pread holds no lock), waited for at most ACL2's
+;;; dependency deadline (books/owner-time-bars.lisp fn-otb-dependency-step,
+;;; `read-dependency-ms', 5,000 ms by default: the operator's limit row is not
+;;; in the configuration yet, so the default is passed as nil).  :serve --
+;;; the page came: the read runs again, warm.  :unavailable -- the line is
+;;; answered by ACL2 (fnn-owner-unavailable-line): 403, the line consumed,
+;;; the session unchanged; the prefetch keeps running and its page is kept
+;;; for a later read.  A store fault the prefetch met (a short read, a digest
+;;; mismatch) is signalled here, in the owner's thread, as the synchronous
+;;; read signalled it.  Other connections are served meanwhile: nothing here
+;;; holds the owner mutex or the realizer's lock.
+(defun fnn-owner-cold-line (service cid incoming socket class peerp entry)
+  (let* ((since (fnn-owner-monotonic-ms))
+         (limit nil)
+         (thread (sb-thread:make-thread
+                  (lambda ()
+                    (handler-case (apply #'fnn-extent-prefetch entry)
+                      (serious-condition (c) c)))
+                  :name "fn cold extent")))
+    (loop
+      (let* ((now (fnn-owner-monotonic-ms))
+             (done (not (sb-thread:thread-alive-p thread)))
+             (decision (fnn-core 'fn-otb-dependency-step since now limit done)))
+        (cond ((eq decision :serve)
+               (let ((got (sb-thread:join-thread thread :default nil)))
+                 (when (typep got 'serious-condition) (error got)))
+               (return (fnn-owner-handle-chunk service cid incoming socket class peerp)))
+              ((eq decision :unavailable)
+               (return (fnn-owner-unavailable-line service cid incoming since now limit class)))
+              ((and (consp decision) (eq (car decision) :wait)
+                    (integerp (second decision)) (plusp (second decision)))
+               (sb-thread:join-thread thread :default nil :timeout (/ (second decision) 1000)))
+              (t (fnn-fault "owner returned a malformed dependency step")))))))
+
+;;; ACL2's answer to the cold line past its deadline (host/owner-host.lisp
+;;; fn-owner-unavailable-line-at over fn-ocln-unavailable-span), under the
+;;; owner mutex; the values are fnn-owner-handle-chunk-read's.
+(defun fnn-owner-unavailable-line (service cid incoming since now limit class)
+  (fnn-owner-serialized
+   service cid
+   (lambda ()
+     (fnn-octets-fill incoming)
+     (let ((step (fnn-core-buffer-state 'fn-owner-unavailable-line-at cid 0 since now limit)))
+       (when (eq step :unknown)
+         (fnn-refuse "owner no longer knows connection ~d" cid))
+       (unless (fnn-core 'fn-splan-step-p step)
+         (fnn-fault "owner returned a malformed cold-line step ~a" step))
+       (fnn-owner-refresh-read-octets service)
+       (let ((consumed (fnn-core 'fn-splan-step-consumed step)))
+         (unless (and (integerp consumed) (< 0 consumed) (<= consumed (length incoming)))
+           (fnn-fault "owner returned a malformed cold-line count"))
+         (values (fnn-core 'fn-splan-step-plan step nil nil)
+                 (or (fnn-core 'fn-splan-step-closep step)
+                     (fnn-core 'fn-splan-step-exposure-close step))
+                 (fnn-core 'fn-splan-step-handshake-owed step)
+                 consumed nil nil))))
+   class))
 
 
 (defun fnn-owner-handle-chunk-read (service cid incoming socket class &optional peerp)
@@ -3474,7 +3566,11 @@ EPIPE and the client saw a bare close)."
        ;; step's typed result carries the effects, the plan the caller
        ;; renders off the mutex.
        (fnn-octets-fill incoming)
-       (let ((step (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming) sched)))
+       (let ((step (fnn-owner-chunk-span-no-io cid incoming sched)))
+         ;; Row A4 (c): the first line needs a page not in memory; its read
+         ;; happens off the mutex (fnn-owner-handle-chunk, fnn-owner-cold-line).
+         (when (and (consp step) (eq (car step) :fnn-extent-cold))
+           (return-from step (values :fnn-extent-cold (cdr step))))
          (when (eq step :unknown)
            (fnn-refuse "owner no longer knows connection ~d" cid))
          (fnn-owner-refresh-read-octets service)

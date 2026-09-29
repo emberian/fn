@@ -187,6 +187,9 @@
 ; (its generation, the connections told before its late completion), a
 ; read's page-dependency outcome, the restart's clock domain.
 (include-book "../books/owner-time-bars")
+; lane composed-owner-3 (PRF-933, row A4 (c)): a cold line past its
+; dependency deadline answered 403, the session unchanged.
+(include-book "../books/owner-cold-line")
 (include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
@@ -3512,6 +3515,41 @@
                   ; fn-olog-served-refusal-lines-one-per-441).
                   (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
                   (f-get-global 'fn-owner-exposure-close state))))))))
+
+; Row A4 (c), lane composed-owner-3 (PRF-933): the line of the octet buffer
+; that begins at START, whose page did not come within the dependency
+; deadline (host/native/owner.lisp fnn-owner-unavailable-line, after
+; fn-otb-dependency-step answered :unavailable).  books/owner-cold-line.lisp
+; fn-ocln-unavailable-span decides it: time-bars' 403, the whole line
+; consumed (fn-oct-line-end), the connection's wire back at the start of a
+; line in command mode and nothing else of the owner moved
+; (fn-ocln-a-cold-line-is-answered-unavailable).  :not-command when the
+; connection is not in command mode (no command, so no payload read: the
+; host faults).  The step is typed as fn-owner-chunk-span-at's.
+(defun fn-owner-unavailable-line-at (id start since now limit fn-octets fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program)
+           (ignorable fn-arena fn-cat))
+  (let ((owner (fn-owner-core state)))
+    (if (not (fn-own-find-conn id (fn-own-conns owner)))
+        (value :unknown)
+      (if (not (and (natp start) (<= start (fn-octets-len fn-octets))))
+          (value :bad-range)
+        (let ((result (fn-ocln-unavailable-span (fn-owner-ocfg state) id start
+                                                since now limit fn-octets)))
+          (if (null result)
+              (value :not-command)
+            (let* ((effects (fn-own-tls-result-effects result))
+                   (consumed (fn-own-tls-result-consumed result))
+                   (state (fn-owner-install-ocfg (fn-own-tls-result-owner result) state))
+                   (state (fn-owner-exposure-observe id effects consumed state)))
+              (value (fn-splan-step-make
+                      effects
+                      (fn-served-closingp effects)
+                      (fn-served-starttlsp effects)
+                      (fn-served-submission effects)
+                      consumed
+                      (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
+                      (f-get-global 'fn-owner-exposure-close state))))))))))
 
 (defun fn-owner-chunk-span (id start end sched fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))

@@ -1310,6 +1310,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-stop-drain-tests \
 	books/owner-time-bars \
 	tests/acl2/owner-time-bars-tests \
+	tests/acl2/owner-cold-line-tests \
 	books/feed-restart-domain \
 	tests/acl2/feed-restart-domain-tests \
 	books/web-request \
