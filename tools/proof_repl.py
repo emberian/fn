@@ -2465,7 +2465,7 @@ def local_cache_gap(book: str, cache: Path | None = None,
     lacking = 0
     for name in wanted:
         try:
-            entries = certs.cached_entries(cache, certs.closure_key(ROOT, name)[0])
+            entries = certs.book_entries(ROOT, cache, name)
         except (OSError, certs.UnreadableBook):
             entries = []
         if toolchain:
