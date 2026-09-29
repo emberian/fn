@@ -77,7 +77,8 @@
     fn-frame-result-version fn-frame-result-kind fn-frame-result-payload))
 
 (defthm fn-frb-payload-of-error
-  (equal (fn-frame-result-payload (fn-frame-error reason)) nil))
+  (equal (fn-frame-result-payload (fn-frame-error reason)) nil)
+  :hints (("Goal" :in-theory (enable fn-frame-result-payload fn-frame-error fn-frame-item))))
 
 (defthm fn-frb-of-okp
   (equal (fn-frame-result-okp (fn-frb-of r)) (fn-frame-result-okp r))
@@ -133,7 +134,8 @@
  (defthm fn-frb-u32-at-natp
    (implies (and (fn-octets-p fn-octets) (natp j) (<= (+ 4 j) (len fn-octets)))
             (natp (fn-frb-u32-at j fn-octets)))
-   :hints (("Goal" :in-theory (enable fn-frb-u32-at fn-oct-octets-p-is-octet-listp)))
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-frb-u32-at fn-oct-octets-p-is-octet-listp) (nth))))
    :rule-classes ((:rewrite) (:type-prescription))))
 
 (local
@@ -168,7 +170,14 @@
 
 (verify-guards fn-frb-open-payload-with
   :hints (("Goal" :use fn-frb-open-with-ok-bound
-                  :in-theory (disable fn-frb-open-with-is-nctrl-open-with))))
+                  :in-theory (disable fn-frb-open-with fn-frb-open-with-is-nctrl-open-with
+                                      fn-frb-frame-record-fns))))
+
+; The empty window (an error's payload is nil, fn-frb-payload-of-error).
+(local
+ (defthm fn-frb-win-0
+   (equal (fn-shr-win a 0 l) nil)
+   :hints (("Goal" :in-theory (enable fn-shr-win)))))
 
 ; The reference's payload is the window of its own length after the header
 ; (fn-frb-payload-is-window, through the open's tests).
@@ -186,14 +195,44 @@
                                    (fn-frame-decode fn-frb-decode fn-frb-frame-record-fns
                                     fn-frb-payload-is-window))))))
 
+; An ok result is fn-frame-ok of its four fields: the decoder's ok arm is
+; that constructor, and the open's ok arm is the decoder's.
+(local
+ (defthm fn-frb-decode-ok-is-frame-ok
+   (implies (fn-frame-result-okp (fn-frame-decode octets digest max-payload))
+            (equal (fn-frame-decode octets digest max-payload)
+                   (fn-frame-ok (fn-frame-result-magic (fn-frame-decode octets digest max-payload))
+                                (fn-frame-result-version (fn-frame-decode octets digest max-payload))
+                                (fn-frame-result-kind (fn-frame-decode octets digest max-payload))
+                                (fn-frame-result-payload (fn-frame-decode octets digest max-payload)))))
+   :hints (("Goal" :in-theory (e/d (fn-frame-decode)
+                                   (fn-cbor-u32-from fn-frame-split fn-frame-head-fields
+                                    fn-frb-frame-record-fns))))
+   :rule-classes nil))
+
+(local
+ (defthm fn-frb-nctrl-open-with-ok-is-frame-ok
+   (implies (fn-frame-result-okp (fn-frb-nctrl-open-with octets digest expected-kind))
+            (equal (fn-frb-nctrl-open-with octets digest expected-kind)
+                   (fn-frame-ok (fn-frame-result-magic (fn-frb-nctrl-open-with octets digest expected-kind))
+                                (fn-frame-result-version (fn-frb-nctrl-open-with octets digest expected-kind))
+                                (fn-frame-result-kind (fn-frb-nctrl-open-with octets digest expected-kind))
+                                (fn-frame-result-payload (fn-frb-nctrl-open-with octets digest expected-kind)))))
+   :hints (("Goal" :use ((:instance fn-frb-decode-ok-is-frame-ok
+                                    (max-payload *fn-nctrl-max-payload*)))
+                   :in-theory (e/d (fn-frb-nctrl-open-with)
+                                   (fn-frame-decode fn-frb-frame-record-fns))))
+   :rule-classes nil))
+
 (defthm fn-frb-open-payload-with-is-nctrl-open-with
   (implies (fn-octets-p fn-octets)
            (equal (fn-frb-open-payload-with digest expected-kind fn-octets)
                   (fn-frb-nctrl-open-with fn-octets digest expected-kind)))
-  :hints (("Goal" :use (fn-frb-open-with-ok-bound fn-frb-nctrl-open-with-payload-is-window)
+  :hints (("Goal" :use (fn-frb-open-with-ok-bound fn-frb-nctrl-open-with-payload-is-window
+                        (:instance fn-frb-nctrl-open-with-ok-is-frame-ok (octets fn-octets)))
                   :in-theory (e/d (fn-frb-open-payload-with fn-frb-of fn-oct-octets-p-is-octet-listp
                                    fn-shr-win-is-slice)
-                                  (fn-frb-nctrl-open-with fn-frb-frame-record-fns
+                                  (fn-frb-open-with fn-frb-nctrl-open-with fn-frb-frame-record-fns
                                    fn-frb-nctrl-open-with-payload-is-window)))))
 
 ; -----------------------------------------------------------------------------
@@ -353,6 +392,8 @@
                                    fn-thlc-request-decode fn-cwait-request-decode
                                    fn-ncr-request-decode)
                                   (fn-frb-nctrl-open-with fn-frb-of fn-frb-frame-record-fns
+                                   fn-frb-open-with fn-frb-open-payload-with fn-frb-decode
+                                   fn-frb-decode-is-frame-decode
                                    fn-nctrl-request-payload-decode fn-nctrl-admin-payload-decode
                                    fn-nctrl-moderation-payload-decode
                                    fn-thlc-request-payload-decode
