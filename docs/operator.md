@@ -451,6 +451,29 @@ the certificate in use:
 tls names=fn.fg-goose.online not-after=2026-12-25T22:23:43Z
 ```
 
+### A certificate from a public authority
+
+A certificate from an authority such as Let's Encrypt works as it comes,
+with two rules:
+
+- `tls_cert` names the **full chain** file: your certificate first, then
+  the authority's intermediate certificates (Let's Encrypt's
+  `fullchain.pem`, not `cert.pem`). fn sends the whole file, so readers
+  can check it against the public roots they already have. With only your
+  certificate, a reader that does not already hold the intermediate cannot
+  check it and refuses the connection.
+- `tls_key` is the key without a password. fn refuses a key that asks for
+  one, and a key that does not match the certificate.
+
+These certificates last about 90 days. Let your renewal tool's hook
+install the new pair and then run `tls reload` (above), so the node
+never needs a restart. If the reload is refused, the old certificate stays in use and the command
+says why; fix it before the old one expires. Each
+renewal brings a new key, so friends' nodes should trust the authority,
+not your certificate itself: they add you by host name with `- -` in
+place of a certificate file (see
+[peering with a friend](peering-with-a-friend.md#3-turn-on-the-encrypted-feed-both-ways)).
+
 ## 7. Opening your node to the internet
 
 Before you open the port:
@@ -563,6 +586,16 @@ the release first (`BP carry recovered waiver release work=WORK`).
 
 Copying while the node runs may miss the newest article. Keep the `keys`
 folder private: it holds the node's secret.
+
+**Restoring an older copy reissues article numbers.** Articles posted or
+fed after the backup are gone from the restored store, and the next ones
+take their numbers again. A reader who saw number 42 as one article now
+sees a different article as 42, and a newsreader that marked 42 read
+skips it. NNTP forbids this: one number is one article in a group, and
+later arrivals get higher numbers (RFC 3977 section 6). fn does not yet
+detect or repair it. Restore only the newest backup of a node whose
+readers have seen its numbers, or tell its readers to reset their
+newsreader's record of what they have read for the node.
 
 An **export** (`store export`) is different. It carries the store's history
 for moving to a new store, not the node's secrets or settings. Keep backups
@@ -853,9 +886,14 @@ Restart after editing the file.
 
 ### Store settings
 
-A store's size limits are set by `init`. Under a `mission`, `init` takes
-group names only and picks the limits for the machine. To choose them
-yourself, and to raise or lower three of them later in place:
+A store's size limits are set by `init`. A store admits
+one transaction fewer than `--max-transactions`: the last one is kept so
+the store can always record a maintenance release, even when full. A
+store made with `--max-transactions 128` takes 127 posts and other
+changes; `status`'s `maintenance-reserve ... held` line shows the kept one.
+Under a `mission`, `init` takes group names only and picks the limits for
+the machine. To choose them yourself, and to raise or lower three of them
+later in place:
 
 ```text
 fn operator /path/to/fn.toml init --max-transactions 100000 --max-history-octets 268435456 --max-article-octets 20000 fn.letters
