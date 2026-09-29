@@ -889,7 +889,8 @@ def render_twins(found: dict) -> str:
     return "\n".join(lines)
 
 
-def load_twins(path: Path = TWINS) -> dict:
+def load_twins(path: Path | None = None) -> dict:
+    path = path or TWINS
     return load_json(path) if path.is_file() else {"pairs": []}
 
 
