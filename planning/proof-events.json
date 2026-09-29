@@ -14661,6 +14661,32 @@
       ]
     },
     {
+      "id": "PRF-1016",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-dispatch-publication-authorize-admits-exactly-the-issued-pending-dispatch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-dispatch-record-epoch-and-op-are-frame-nats"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1017",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-forward-publication-frame-not-bad-implies-frame-nats"
+        }
+      ]
+    },
+    {
       "id": "PRF-959",
       "events": [
         {

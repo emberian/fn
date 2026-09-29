@@ -641,6 +641,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fnbs-forward-codec-tests \
 	books/bp-fnbs-forward-publication \
 	tests/acl2/bp-fnbs-forward-replay-tests \
+	tests/acl2/bp-fnbs-forward-publication-tests \
 	books/bp-node-progress-invariants \
 	books/bp-node-progress-guards \
 	books/bp-node-progress-premises \
@@ -702,6 +703,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-dispatch \
 	books/bp-fnbs-dispatch-publication \
 	tests/acl2/bp-fnbs-dispatch-codec-tests \
+	tests/acl2/bp-fnbs-dispatch-publication-tests \
 	books/bp-report-observe \
 	tests/acl2/bp-report-observe-tests \
 	books/bp-report-guards \
