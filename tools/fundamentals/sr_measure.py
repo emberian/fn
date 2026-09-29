@@ -22,14 +22,14 @@ class Conn:
     def __init__(self, port):
         self.sock = socket.create_connection(("127.0.0.1", port), timeout=900)
         self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        self.f = self.sock.makefile("rwb", buffering=0)
+        self.f = self.sock.makefile("rb", buffering=0)  # reads only: writes are sendall
         self.greeting = self.readline()
     def readline(self):
         if hasattr(socket, "TCP_QUICKACK"):
             self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_QUICKACK, 1)
         return self.f.readline()
     def line(self, t):
-        self.f.write(t.encode() + b"\r\n"); return self.readline()
+        self.sock.sendall(t.encode() + b"\r\n"); return self.readline()
     def multi(self, t):
         if BULK:
             return self.multi_bulk(t)
@@ -38,7 +38,7 @@ class Conn:
         """The reply read in bulk (recv of up to 1 MiB) until its terminator;
         the per-line client (multi_line) spends ~2 us per octet in Python's
         unbuffered readline, which dominated the served numbers it reported."""
-        t0 = time.perf_counter(); self.f.write(t.encode() + b"\r\n"); buf = b""
+        t0 = time.perf_counter(); self.sock.sendall(t.encode() + b"\r\n"); buf = b""
         while b"\r\n" not in buf:
             buf += self.sock.recv(1 << 20)
         first = buf[:buf.index(b"\r\n") + 2]
@@ -129,7 +129,7 @@ def main():
                 art = ("From: cs7@example.invalid\r\nNewsgroups: fn.test\r\nSubject: cs7 %d\r\n"
                        "Date: Thu, 24 Sep 2026 12:00:00 +0000\r\nMessage-ID: <cs7-%06d@example.invalid>\r\n\r\n%s"
                        % (i, i, body))
-                c.f.write(art.encode() + b".\r\n"); r = c.readline(); assert r.startswith(b"240"), (i, r)
+                c.sock.sendall(art.encode() + b".\r\n"); r = c.readline(); assert r.startswith(b"240"), (i, r)
             c.line("QUIT"); c.sock.close(); out["load_s"] = round(time.perf_counter() - t1, 1)
         # settle: wait until the owner process is idle (a checkpoint publication
         # after the load or the open runs on its own thread and would be
