@@ -63,7 +63,8 @@
           fn-aw-header-add fn-article-header-rev-add-line fn-aw-new-field
           fn-article-new-field fn-article-line-okp fn-article-line-value
           fn-article-line-rest fn-aw-current-size fn-aw-state-size
-          fn-aw-budget fn-aw-budget-polynomial fn-aw-budget-monotone)))
+          fn-aw-budget fn-aw-budget-polynomial fn-aw-budget-monotone
+          fn-article-field-closedp)))
 (defthm fn-aw-budget-covers-local
   (implies (and (not (zp fuel)) (natp n) (natp s))
            (<= (* 32 (+ 1 n s)) (fn-aw-budget fuel n s)))
@@ -94,7 +95,7 @@
   :hints (("Goal" :induct (fn-aw-parse-lines octets limits lines-left header-bytes nfields fields-rev current header-rev)
             :in-theory (e/d (fn-aw-parse-lines fn-aw-state-size fn-aw-current-size)
                             (fn-article-limit-fields fn-article-limit-lines fn-article-limit-octets)))
-          ("Subgoal *1/11" :use
+          ("Subgoal *1/12" :use
             ((:instance fn-aw-budget-step (fuel lines-left) (n (len octets)) (s (fn-aw-state-size fields-rev current header-rev)) (n2 (len (fn-article-line-rest (fn-article-next-line octets)))) (s2 (fn-aw-state-size (if current (cons current fields-rev) fields-rev) (fn-article-line-value (fn-article-new-field (fn-article-line-value (fn-article-next-line octets)))) (fn-article-header-rev-add-line header-rev (fn-article-line-value (fn-article-next-line octets))))))
              (:instance fn-aw-new-state-growth (line (fn-article-line-value (fn-article-next-line octets)))))
              :in-theory (e/d (fn-aw-state-size fn-aw-current-size)
