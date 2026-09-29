@@ -4150,14 +4150,14 @@
 ; host/native/io.lisp dispatches it (lane operability-2/-5).
 (definterface fn-omr-stopped-health-report
   :class :ideal
-  :kinds ((journal-octets natp))
-  :exempt ((config-octets "fn-spo-config-open decides the open verdict first and refuses a malformed config by name")))
+  :exempt ((journal-octets "a COUNT of octets (the journal files' lstat sizes), a natural the report nfixes; not bytes")
+           (config-octets "fn-spo-config-open decides the open verdict first and refuses a malformed config by name")))
 
 ; host/native/io.lisp dispatches it (lane operability-2/-5).
 (definterface fn-omr-stopped-report
   :class :ideal
-  :kinds ((journal-octets natp))
-  :exempt ((config-octets "fn-spo-config-open decides the open verdict first and refuses a malformed config by name")))
+  :exempt ((journal-octets "a COUNT of octets (the journal files' lstat sizes), a natural the report nfixes; not bytes")
+           (config-octets "fn-spo-config-open decides the open verdict first and refuses a malformed config by name")))
 
 ;; books/owner-time-bars.lisp
 
